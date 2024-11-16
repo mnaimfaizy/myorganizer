@@ -4,6 +4,25 @@
   "sourceRoot": "apps/myorganizer",
   "projectType": "application",
   "tags": [],
-  "// targets": "to see all targets run: nx show project myorganizer --web",
-  "targets": {}
+  "targets": {
+    "serve": {
+      "executor": "@nx/next:server",
+      "options": {
+        "buildTarget": "myorganizer:build",
+        "dev": true
+      },
+      "configurations": {
+        "production": {
+          "buildTarget": "myorganizer:build:production",
+          "dev": false
+        },
+        "development": {
+          "buildTarget": "myorganizer:build:development",
+          "dev": true
+        }
+      },
+      "defaultConfiguration": "development"
+    }
+
+  }
 }
