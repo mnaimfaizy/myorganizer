@@ -1,0 +1,9 @@
+{
+  "name": "myorganizer-e2e",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/myorganizer-e2e/src",
+  "tags": [],
+  "implicitDependencies": ["myorganizer"],
+  "// targets": "to see all targets run: nx show project myorganizer-e2e --web",
+  "targets": {}
+}
