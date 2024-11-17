@@ -18,5 +18,5 @@
       "@myorganizer/web-ui": ["libs/web-ui/src/index.ts"]
     }
   },
-  "exclude": ["node_modules", "tmp"]
+  "exclude": ["node_modules", "tmp", "**/Pods/**", "dist", "ios", "android"],
 }

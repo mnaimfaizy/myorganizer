@@ -22,7 +22,29 @@
         }
       },
       "defaultConfiguration": "development"
+    },
+    "build": {
+      "executor": "@nx/next:build",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/myorganizer",
+        "postcssConfig": "apps/myorganizer/postcss.config.js"
+      },
+      "configurations": {
+        "production": {},
+        "development": {
+          "outputPath": "dist/apps/myorganizer"
+        }
+      }
+    },
+  "lint": {
+    "executor": "@nx/eslint:lint",
+    "outputs": ["{options.outputFile}"],
+    "options": {
+      "lintFilePatterns": ["{workspaceRoot}/package.json"]
     }
+  }
 
   }
 }
