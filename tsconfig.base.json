@@ -15,8 +15,9 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@myorganizer/core": ["libs/core/src/index.ts"],
       "@myorganizer/web-ui": ["libs/web-ui/src/index.ts"]
     }
   },
-  "exclude": ["node_modules", "tmp", "**/Pods/**", "dist", "ios", "android"],
+  "exclude": ["node_modules", "tmp", "**/Pods/**", "dist", "ios", "android"]
 }
