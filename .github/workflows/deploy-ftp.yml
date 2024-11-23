@@ -30,6 +30,5 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./dist/apps/backend/  # This points to the directory of your Node.js app
-          server-dir: /home/khudqyeg/myorganizerapi.mnfprofile.com/
-          protocol: ftps
+          server-dir: /
           timeout: 300000  # Set a longer timeout value in milliseconds (here, 2 minutes)
