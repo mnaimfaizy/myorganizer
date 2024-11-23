@@ -29,6 +29,6 @@ jobs:
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./  # This points to the directory of your Node.js app
-          server-dir: /
+          server-dir: /home/khudqyeg/
           protocol: ftps
           timeout: 300000  # Set a longer timeout value in milliseconds (here, 2 minutes)
