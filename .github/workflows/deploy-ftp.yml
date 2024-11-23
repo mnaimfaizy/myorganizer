@@ -1,0 +1,38 @@
+name: Deploy to FTP
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: 20.17.0 
+
+      - name: Install dependencies
+        run: |
+          yarn install  # Install project dependencies
+          touch .env.local
+          echo MONGO_URL=${{ secrets.MONGO_URL }} >> .env.local
+          echo JWT_SECRET=${{ secrets.JWT_SECRET }} >> .env.local
+          yarn build  # Build Next.js app
+
+      - name: Deploy via FTPS
+        uses: SamKirkland/FTP-Deploy-Action@4.3.3
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./apps/backend  # This points to the directory of your Node.js app
+          server-dir: /home/khudqyeg/myorganizerapi.mnfprofile.com
+          protocol: ftps
+          timeout: 300000  # Set a longer timeout value in milliseconds (here, 2 minutes)
