@@ -1944,15 +1944,36 @@
     tslib "^2.3.0"
     typescript "~5.4.2"
 
-"@nx/express@^20.1.3":
-  version "20.1.3"
-  resolved "https://registry.yarnpkg.com/@nx/express/-/express-20.1.3.tgz#33a1b86701e5163af02cb422cb0c7bb73bf7c5b6"
-  integrity sha512-NC58hNo84BOYGxC/ZdCkTy+KJBBcSggJ5ZKgDm1D5io9G9sKEFqirO0IAkNZPpBkvkTQm6+f4nLAkNyY8CgrzA==
+"@nx/express@20.1.2":
+  version "20.1.2"
+  resolved "https://registry.yarnpkg.com/@nx/express/-/express-20.1.2.tgz#efa047b558f9d42a64260ea3c38ca1c5940536ac"
+  integrity sha512-zaAXKEmAOEjKEvGbaGh4WQGlvjT3iQdzdUYA0rr+6M8644SmCHGpax5LeZs3RkwMHjpntXgHMyWTggGDS3sxRw==
   dependencies:
-    "@nx/devkit" "20.1.3"
-    "@nx/js" "20.1.3"
-    "@nx/node" "20.1.3"
+    "@nx/devkit" "20.1.2"
+    "@nx/js" "20.1.2"
+    "@nx/node" "20.1.2"
     tslib "^2.3.0"
+
+"@nx/jest@20.1.2":
+  version "20.1.2"
+  resolved "https://registry.yarnpkg.com/@nx/jest/-/jest-20.1.2.tgz#e3d4ec4dc0781e989383388f0d573feeb9a906bd"
+  integrity sha512-KUHm+NcH4Iq/Pk6GpaRhACEHd8Gt28dbXUAErxo/T9b+a3ir/6uUb4Sr+aXf63uYSePDhUmYbrYxGf/KzS2I8w==
+  dependencies:
+    "@jest/reporters" "^29.4.1"
+    "@jest/test-result" "^29.4.1"
+    "@nx/devkit" "20.1.2"
+    "@nx/js" "20.1.2"
+    "@phenomnomnominal/tsquery" "~5.0.1"
+    chalk "^4.1.0"
+    identity-obj-proxy "3.0.0"
+    jest-config "^29.4.1"
+    jest-resolve "^29.4.1"
+    jest-util "^29.4.1"
+    minimatch "9.0.3"
+    resolve.exports "1.1.0"
+    semver "^7.5.3"
+    tslib "^2.3.0"
+    yargs-parser "21.1.1"
 
 "@nx/jest@20.1.3":
   version "20.1.3"
@@ -2068,7 +2089,18 @@
     tslib "^2.3.0"
     webpack-merge "^5.8.0"
 
-"@nx/node@20.1.3":
+"@nx/node@20.1.2":
+  version "20.1.2"
+  resolved "https://registry.yarnpkg.com/@nx/node/-/node-20.1.2.tgz#c1cf049ab928332ab3d6bb31b5e359b3a9a9e322"
+  integrity sha512-PGPSXkzTJc97GnsRNSBcekH5L5BM/SCSWA8lH/bBV/N8HBFUWppsv0Nj+UUcGGH3O3kjEMrhtbG9iJijX7+9kw==
+  dependencies:
+    "@nx/devkit" "20.1.2"
+    "@nx/eslint" "20.1.2"
+    "@nx/jest" "20.1.2"
+    "@nx/js" "20.1.2"
+    tslib "^2.3.0"
+
+"@nx/node@^20.1.3":
   version "20.1.3"
   resolved "https://registry.yarnpkg.com/@nx/node/-/node-20.1.3.tgz#55701cb6fd736ca2c43f17acfd73abba95e18010"
   integrity sha512-w2njtw+bcRDe7YRTY4QxG6B4/K755yH+GYewQlA6MvK1kNaRdC7a/bnD6wEjRfGRwq3xBsY9NGW3vAc7c1yGAw==
