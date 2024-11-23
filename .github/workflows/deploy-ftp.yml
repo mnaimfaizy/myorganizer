@@ -23,12 +23,12 @@ jobs:
           yarn install  # Install project dependencies
 
       - name: Deploy via FTPS
-        uses: SamKirkland/FTP-Deploy-Action@4.3.3
+        uses: SamKirkland/FTP-Deploy-Action@4.3.5
         with:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./  # This points to the directory of your Node.js app
-          server-dir: home/khudqyeg/myorganizerapi.mnfprofile.com/
+          server-dir: ./
           protocol: ftps
           timeout: 300000  # Set a longer timeout value in milliseconds (here, 2 minutes)
