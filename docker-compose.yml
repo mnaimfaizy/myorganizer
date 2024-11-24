@@ -15,6 +15,8 @@ services:
       - POSTGRESQL_USERNAME=${DATABASE_USER}
       - POSTGRESQL_PASSWORD=${DATABASE_PASSWORD}
       - POSTGRESQL_DATABASE=${DATABASE_NAME}
+    networks:
+      - myorganizer_network
 
   pgadmin:
     image: dpage/pgadmin4
@@ -29,7 +31,13 @@ services:
       PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     volumes:
       - pgadmin-data:/var/lib/pgadmin
+    networks:
+      - myorganizer_network
 
 volumes:
   .database:
   pgadmin-data:
+
+networks:
+  myorganizer_network:
+    driver: bridge

@@ -1,0 +1,6 @@
+{
+  "name": "@backend/prisma-schema",
+  "version": "0.0.1",
+  "dependencies": {},
+  "private": true
+}
