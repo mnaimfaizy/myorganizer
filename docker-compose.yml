@@ -1,0 +1,35 @@
+services:
+  myorganizer_db:
+    image: bitnami/postgresql
+    restart: always
+    container_name: myorganizer_db
+    env_file: ".env"
+    user: root
+    volumes:
+        - .database:/bitnami/postgresql
+    ports:
+      - "5453:5432"  # Remove this on production
+    expose:
+      - 5432
+    environment:
+      - POSTGRESQL_USERNAME=${DATABASE_USER}
+      - POSTGRESQL_PASSWORD=${DATABASE_PASSWORD}
+      - POSTGRESQL_DATABASE=${DATABASE_NAME}
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin4_container
+    restart: always
+    ports:
+      - "8888:80"
+    env_file:
+      - .env
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+
+volumes:
+  .database:
+  pgadmin-data:

@@ -34,6 +34,13 @@ yarn-error.log
 testem.log
 /typings
 
+# Environment
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
 # System Files
 .DS_Store
 Thumbs.db
@@ -44,3 +51,7 @@ Thumbs.db
 # Next.js
 .next
 out
+
+# Database
+.database
+pgadmin-data

@@ -15,10 +15,12 @@
       },
       "configurations": {
         "development": {
-          "buildTarget": "backend:build:development"
+          "buildTarget": "backend:build:development",
+          "dev": true
         },
         "production": {
-          "buildTarget": "backend:build:production"
+          "buildTarget": "backend:build:production",
+          "dev": false
         }
       }
     }
