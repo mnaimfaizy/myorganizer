@@ -5,10 +5,28 @@
   "projectType": "application",
   "tags": [],
   "targets": {
+    "build": {
+      "executor": "@nx/webpack:webpack",
+      "options": {
+        "webpackConfig": "apps/backend/webpack.config.js",
+        "main": "apps/backend/src/main.ts",
+        "tsConfig": "apps/backend/tsconfig.app.json",
+        "outputHashing": "none",
+        "sourceMap": true,
+        "outputPath": "dist/apps/backend/",
+        "compiler": "tsc",
+        "target": "node"
+      }
+    },
     "serve": {
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": ["build"],
+      "dependsOn": [
+        {
+          "projects": [],
+          "target": "build"
+        }
+      ],
       "options": {
         "buildTarget": "backend:build",
         "runBuildTargetDependencies": false

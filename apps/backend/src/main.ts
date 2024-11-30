@@ -3,29 +3,40 @@
  * This is only a minimal backend to get started.
  */
 
-import express from 'express';
+import express, { Response as ExResponse, Request as ExRequest } from 'express';
 import cors from 'cors';
 import * as path from 'path';
-import { specs, swaggerUi } from './swagger';
-import { PrismaClient } from '@backend/prisma-schema';
-import * as bodyParser from 'body-parser';
+import swaggerUi from 'swagger-ui-express';
+import bodyParser from 'body-parser';
 import todosRouter from './routes/todo';
+import usersRouter from './routes/user';
+import { RegisterRoutes } from './routes/routes';
 
 const app = express();
 
-const prisma = new PrismaClient();
-
 // CORS is enabled for the selected origins
 let corsOptions = {
-  origin: [ 'https://myorganizerapi.mnfprofile.com', 'http://localhost:3000' ]
+  origin: ['https://myorganizerapi.mnfprofile.com', 'http://localhost:3000'],
 };
 
 // Middleware to parse JSON bodies
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+app.use('/docs', swaggerUi.serve, async (_req: ExRequest, res: ExResponse) => {
+  const swaggerDocument = await import('./swagger/swagger.json').then(
+    (module) => module.default
+  );
+  res.send(swaggerUi.generateHTML(swaggerDocument));
+});
 app.use(cors(corsOptions));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
+
+// Register the routes
+RegisterRoutes(app);
+
+// Define the routes
 app.use('/todos', todosRouter);
+app.use('/users', usersRouter);
 
 const port = process.env.PORT || 3000;
 const server = app.listen(port, () => {

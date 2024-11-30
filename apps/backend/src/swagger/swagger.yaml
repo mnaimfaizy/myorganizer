@@ -1,0 +1,168 @@
+openapi: 3.0.0
+components:
+  examples: {}
+  headers: {}
+  parameters: {}
+  requestBodies: {}
+  responses: {}
+  schemas:
+    User:
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+      required:
+        - id
+        - email
+      type: object
+      additionalProperties: false
+    UserCreationBody:
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+      required:
+        - email
+      type: object
+      additionalProperties: false
+    Todo:
+      properties:
+        id:
+          type: number
+          format: double
+        todo:
+          type: string
+      required:
+        - id
+        - todo
+      type: object
+      additionalProperties: false
+    TodoRequestBody:
+      properties:
+        todo:
+          type: string
+      required:
+        - todo
+      type: object
+      additionalProperties: false
+  securitySchemes: {}
+info:
+  title: "@myorganizer/source"
+  version: 0.0.0
+  license:
+    name: MIT
+  contact: {}
+paths:
+  /users:
+    get:
+      operationId: GetAllUsers
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/User"
+                type: array
+      tags:
+        - Users Management
+      security: []
+      parameters: []
+    post:
+      operationId: CreateUser
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+      tags:
+        - Users Management
+      security: []
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserCreationBody"
+  /users/{userId}:
+    get:
+      operationId: GetUserById
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/User"
+                nullable: true
+      tags:
+        - Users Management
+      security: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+  /todos:
+    get:
+      operationId: GetAllTodos
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/Todo"
+                type: array
+      tags:
+        - Todos Management
+      security: []
+      parameters: []
+    post:
+      operationId: CreateTodo
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Todo"
+      tags:
+        - Todos Management
+      security: []
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TodoRequestBody"
+  /todos/{todoId}:
+    delete:
+      operationId: DeleteTodo
+      responses:
+        "204":
+          description: No content
+      tags:
+        - Todos Management
+      security: []
+      parameters:
+        - in: path
+          name: todoId
+          required: true
+          schema:
+            format: double
+            type: number
+servers:
+  - url: /

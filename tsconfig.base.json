@@ -15,8 +15,8 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@myorganizer/core": ["libs/core/src/index.ts"],
       "@backend/prisma-schema": ["libs/prisma-schema/index.ts"],
+      "@myorganizer/core": ["libs/core/src/index.ts"],
       "@myorganizer/web-ui": ["libs/web-ui/src/index.ts"]
     }
   },

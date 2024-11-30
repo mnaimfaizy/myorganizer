@@ -1,51 +1,29 @@
-import { Request, Response} from 'express';
-import { PrismaClient } from '@backend/prisma-schema';
+import todoService from '../services/TodoService';
+import { Body, Controller, Delete, Get, Path, Post, Route, Tags } from 'tsoa';
+import { Todo, TodoRequestBody } from '../models/Todo';
 
-class TodoController {
+@Tags('Todos Management')
+@Route('/todos')
+export class TodoController extends Controller {
+  @Get()
+  public async getAllTodos(): Promise<Todo[]> {
+    return todoService.getAllTodos();
+  }
 
-    constructor(private prisma: PrismaClient) {}
+  @Post()
+  public async createTodo(@Body() requestBody: TodoRequestBody): Promise<Todo> {
+    const todo = await todoService.createTodo(requestBody);
+    this.setStatus(201);
+    return Promise.resolve(todo);
+  }
 
-    public getAllTodos = async (req: Request, res: Response) => {
-        // #swagger.tags = ['Todos Management']
-        try {
-            const todos = await this.prisma.todo.findMany();
-            res.send(todos);
-        } catch (error) {
-            res.status(500).send({ error: `Failed to get todos: ${error.message}` });
-        }
-    }
-
-    public createTodo = async (req: Request, res: Response) => {
-        // #swagger.tags = ['Todos Management']
-        try {
-            const { todo } = req.body ?? {};
-            const newTodo = await this.prisma.todo.create({
-                data: {
-                    todo: todo
-                }
-            });
-            res.send(newTodo);
-        } catch (error) {
-            res.status(500).send({ error: `Failed to create todo: ${error.message}` });
-        }
-    }
-
-    public deleteTodo = async (req: Request, res: Response) => {
-        // #swagger.tags = ['Todos Management']
-        try {
-            const { id } = req.params;
-            await this.prisma.todo.delete({
-                where: {
-                    id: parseInt(id)
-                }
-            });
-            res.send({ message: 'Todo deleted successfully' });
-        } catch (error) {
-            res.status(500).send({ error: `Failed to delete todo: ${error.message}` });
-        }
-    }
-
+  @Delete('{todoId}')
+  public async deleteTodo(@Path() todoId: number): Promise<void> {
+    await todoService.deleteTodo(todoId);
+    this.setStatus(204);
+    return Promise.resolve();
+  }
 }
 
-const todoController = new TodoController(new PrismaClient());
+const todoController = new TodoController();
 export default todoController;

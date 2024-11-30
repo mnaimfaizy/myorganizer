@@ -1,72 +1,39 @@
-import { PrismaClient } from '@backend/prisma-schema';
-import { Router } from 'express';
+import { Request, Response, Router } from 'express';
 import todoController from '../controllers/TodoController';
 
-const prisma = new PrismaClient();
 const router = Router();
 
-/**
- * @swagger
- * /todos:
- *   get:
- *     summary: Retrieve a list of todos
- *     responses:
- *       200:
- *         description: A list of todos
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: integer
- *                   todo:
- *                     type: string
- */
-router.get('/', todoController.getAllTodos);
+router.get('/', async (req: Request, res: Response) => {
+  try {
+    const todos = await todoController.getAllTodos();
+    res.status(200).json(todos);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: `Failed to fetch todos: ${error.message}` });
+  }
+});
 
-/**
- * @swagger
- * /todos:
- *   post:
- *     summary: Create a new todo
- *     responses:
- *       200:
- *         description: The created todo
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 todo:
- *                  type: string
- */
-router.post('/', todoController.createTodo);
+router.post('/', async (req: Request, res: Response) => {
+  try {
+    const todo = await todoController.createTodo(req.body);
+    res.status(201).json(todo);
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: `Failed to create todo: ${error.message}` });
+  }
+});
 
-/**
- * @swagger
- * /todos/{id}:
- *   delete:
- *     summary: Delete a todo
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: The deleted todo
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 id:
- *                   type: integer
- * */
-router.delete('/:id', todoController.deleteTodo);
+router.delete('/:todoId', async (req: Request, res: Response) => {
+  try {
+    await todoController.deleteTodo(parseInt(req.params.todoId));
+    res.status(204).json({ message: 'Todo deleted successfully' });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: `Failed to delete todo: ${error.message}` });
+  }
+});
 
 export default router;

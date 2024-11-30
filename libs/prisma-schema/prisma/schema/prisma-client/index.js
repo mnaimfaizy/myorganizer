@@ -97,6 +97,12 @@ exports.Prisma.TodoScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.UserScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  email: 'email'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -107,9 +113,15 @@ exports.Prisma.QueryMode = {
   insensitive: 'insensitive'
 };
 
+exports.Prisma.NullsOrder = {
+  first: 'first',
+  last: 'last'
+};
+
 
 exports.Prisma.ModelName = {
-  Todo: 'Todo'
+  Todo: 'Todo',
+  User: 'User'
 };
 /**
  * Create the Client
@@ -122,7 +134,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "C:\\Users\\MNF\\Downloads\\myorganizer\\libs\\prisma-schema\\prisma\\prisma-client",
+      "value": "C:\\Users\\MNF\\Downloads\\myorganizer\\libs\\prisma-schema\\prisma\\schema\\prisma-client",
       "fromEnvVar": null
     },
     "config": {
@@ -135,8 +147,10 @@ const config = {
         "native": true
       }
     ],
-    "previewFeatures": [],
-    "sourceFilePath": "C:\\Users\\MNF\\Downloads\\myorganizer\\libs\\prisma-schema\\prisma\\schema.prisma",
+    "previewFeatures": [
+      "prismaSchemaFolder"
+    ],
+    "sourceFilePath": "C:\\Users\\MNF\\Downloads\\myorganizer\\libs\\prisma-schema\\prisma\\schema\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
@@ -149,7 +163,6 @@ const config = {
     "db"
   ],
   "activeProvider": "postgresql",
-  "postinstall": false,
   "inlineDatasources": {
     "db": {
       "url": {
@@ -158,8 +171,8 @@ const config = {
       }
     }
   },
-  "inlineSchema": "datasource db {\n  url      = env(\"DATABASE_URL\")\n  provider = \"postgres\"\n}\n\ngenerator client {\n  provider = \"prisma-client-js\"\n  output   = \"prisma-client\"\n}\n\nmodel Todo {\n  id        Int      @id @default(autoincrement())\n  todo      String\n  createdAt DateTime @default(now())\n}\n",
-  "inlineSchemaHash": "bf261342ab1dc2d3eb5698e4538c97f3ada596f96dc3bae5398c0484442ad95d",
+  "inlineSchema": "datasource db {\n  url      = env(\"DATABASE_URL\")\n  provider = \"postgres\"\n}\n\ngenerator client {\n  provider        = \"prisma-client-js\"\n  output          = \"prisma-client\"\n  previewFeatures = [\"prismaSchemaFolder\"]\n}\n\nmodel Todo {\n  id        Int      @id @default(autoincrement())\n  todo      String\n  createdAt DateTime @default(now())\n}\n\nmodel User {\n  id    String  @id @default(cuid())\n  name  String?\n  email String  @unique\n}\n",
+  "inlineSchemaHash": "822244fbfcb62a7f2e8887114af5f6c1f22303218f584d86f8834d006414a860",
   "copyEngine": true
 }
 
@@ -168,8 +181,8 @@ const fs = require('fs')
 config.dirname = __dirname
 if (!fs.existsSync(path.join(__dirname, 'schema.prisma'))) {
   const alternativePaths = [
-    "prisma/prisma-client",
-    "prisma-client",
+    "prisma/schema/prisma-client",
+    "schema/prisma-client",
   ]
   
   const alternativePath = alternativePaths.find((altPath) => {
@@ -180,7 +193,7 @@ if (!fs.existsSync(path.join(__dirname, 'schema.prisma'))) {
   config.isBundled = true
 }
 
-config.runtimeDataModel = JSON.parse("{\"models\":{\"Todo\":{\"dbName\":null,\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":false,\"isId\":true,\"isReadOnly\":false,\"hasDefaultValue\":true,\"type\":\"Int\",\"default\":{\"name\":\"autoincrement\",\"args\":[]},\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"todo\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":false,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":false,\"type\":\"String\",\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":false,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":true,\"type\":\"DateTime\",\"default\":{\"name\":\"now\",\"args\":[]},\"isGenerated\":false,\"isUpdatedAt\":false}],\"primaryKey\":null,\"uniqueFields\":[],\"uniqueIndexes\":[],\"isGenerated\":false}},\"enums\":{},\"types\":{}}")
+config.runtimeDataModel = JSON.parse("{\"models\":{\"Todo\":{\"dbName\":null,\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":false,\"isId\":true,\"isReadOnly\":false,\"hasDefaultValue\":true,\"type\":\"Int\",\"default\":{\"name\":\"autoincrement\",\"args\":[]},\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"todo\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":false,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":false,\"type\":\"String\",\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"createdAt\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":false,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":true,\"type\":\"DateTime\",\"default\":{\"name\":\"now\",\"args\":[]},\"isGenerated\":false,\"isUpdatedAt\":false}],\"primaryKey\":null,\"uniqueFields\":[],\"uniqueIndexes\":[],\"isGenerated\":false},\"User\":{\"dbName\":null,\"fields\":[{\"name\":\"id\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":false,\"isId\":true,\"isReadOnly\":false,\"hasDefaultValue\":true,\"type\":\"String\",\"default\":{\"name\":\"cuid\",\"args\":[]},\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"name\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":false,\"isUnique\":false,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":false,\"type\":\"String\",\"isGenerated\":false,\"isUpdatedAt\":false},{\"name\":\"email\",\"kind\":\"scalar\",\"isList\":false,\"isRequired\":true,\"isUnique\":true,\"isId\":false,\"isReadOnly\":false,\"hasDefaultValue\":false,\"type\":\"String\",\"isGenerated\":false,\"isUpdatedAt\":false}],\"primaryKey\":null,\"uniqueFields\":[],\"uniqueIndexes\":[],\"isGenerated\":false}},\"enums\":{},\"types\":{}}")
 defineDmmfProperty(exports.Prisma, config.runtimeDataModel)
 config.engineWasm = undefined
 
@@ -198,7 +211,7 @@ Object.assign(exports, Prisma)
 
 // file annotations for bundling tools to include these files
 path.join(__dirname, "query_engine-windows.dll.node");
-path.join(process.cwd(), "prisma/prisma-client/query_engine-windows.dll.node")
+path.join(process.cwd(), "prisma/schema/prisma-client/query_engine-windows.dll.node")
 // file annotations for bundling tools to include these files
 path.join(__dirname, "schema.prisma");
-path.join(process.cwd(), "prisma/prisma-client/schema.prisma")
+path.join(process.cwd(), "prisma/schema/prisma-client/schema.prisma")
