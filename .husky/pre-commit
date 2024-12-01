@@ -1,2 +1,8 @@
-yarn nx format:write --uncommitted < /dev/null
-yarn nx affected:lint --uncommitted < /dev/null
+. .husky/common.sh
+
+yarn nx format:write --uncommitted
+yarn nx affected:lint --uncommitted
+
+# .husky/pre-commit
+prettier $(git diff --cached --name-only --diff-filter=ACMR | sed 's| |\\ |g') --write --ignore-unknown
+git update-index --again

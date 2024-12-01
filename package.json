@@ -22,7 +22,8 @@
     "format:check": "nx format:check",
     "format:write": "nx format:write",
     "format": "nx format",
-    "nx": "nx"
+    "nx": "nx",
+    "postinstall": "husky"
   },
   "private": true,
   "dependencies": {
