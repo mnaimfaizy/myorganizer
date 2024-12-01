@@ -3,6 +3,13 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
+    "affected:apps": "nx affected:apps",
+    "affected:build": "nx affected:build",
+    "affected:dep-graph": "nx affected:dep-graph",
+    "affected:e2e": "nx affected:e2e",
+    "affected:libs": "nx affected:libs",
+    "affected:lint": "nx affected:lint --exclude=prisma-client-ba3d7c885db67023a9ad8f8e20a6fbe701f7fc67f0580af219363f0771ce0a60 --exclude=prisma-schema",
+    "affected": "nx affected",
     "start:myorganizer": "nx serve --project=myorganizer",
     "start:backend": "nx serve --project=backend",
     "build:myorganizer": "nx myorganizer:build",
@@ -10,7 +17,12 @@
     "json-api:generate": "yarn run tsoa spec-and-routes -c=apps/backend/tsoa.json",
     "yaml-api:generate": "yarn run tsoa spec-and-routes -c=apps/backend/tsoa.json --yaml",
     "api-docs:generate": "yarn run json-api:generate && yarn run yaml-api:generate",
-    "lint": "nx lint"
+    "lint": "nx lint",
+    "dep-graph": "nx dep-graph",
+    "format:check": "nx format:check",
+    "format:write": "nx format:write",
+    "format": "nx format",
+    "nx": "nx"
   },
   "private": true,
   "dependencies": {
@@ -92,6 +104,8 @@
     "eslint-plugin-jsx-a11y": "6.10.1",
     "eslint-plugin-react": "7.35.0",
     "eslint-plugin-react-hooks": "5.0.0",
+    "eslint-plugin-unused-imports": "^4.1.4",
+    "husky": "^9.1.7",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
     "jest-environment-node": "^29.7.0",

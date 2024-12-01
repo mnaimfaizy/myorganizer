@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { Route } from 'tsoa';
 import userController from '../controllers/UserController';
 
 const router = Router();

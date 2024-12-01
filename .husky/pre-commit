@@ -1,0 +1,2 @@
+yarn nx format:write --uncommitted < /dev/null
+yarn nx affected:lint --uncommitted < /dev/null

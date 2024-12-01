@@ -15,7 +15,7 @@ import { RegisterRoutes } from './routes/routes';
 const app = express();
 
 // CORS is enabled for the selected origins
-let corsOptions = {
+const corsOptions = {
   origin: ['https://myorganizerapi.mnfprofile.com', 'http://localhost:3000'],
 };
 
