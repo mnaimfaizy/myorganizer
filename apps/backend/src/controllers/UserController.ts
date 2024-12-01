@@ -1,15 +1,15 @@
 import {
-  Route,
-  Tags,
-  Response as TsoaResponse,
+  Body,
   Controller,
   Get,
   Path,
   Post,
-  Body,
+  Route,
+  Tags,
+  Response as TsoaResponse,
 } from 'tsoa';
-import userService from '../services/UserService';
 import { User, UserCreationBody } from '../models/User';
+import userService from '../services/UserService';
 
 @Tags('Users Management')
 @Route('/users')

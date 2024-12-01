@@ -1,13 +1,21 @@
 const nx = require('@nx/eslint-plugin');
+const unusedImports = require('eslint-plugin-unused-imports');
 
 module.exports = [
   ...nx.configs['flat/base'],
   ...nx.configs['flat/typescript'],
   ...nx.configs['flat/javascript'],
   {
-    ignores: ['**/dist'],
+    ignores: [
+      '**/dist',
+      '**/libs/prisma-schema',
+      '**/libs/prisma-schema/schema/prisma-client',
+    ],
   },
   {
+    plugins: {
+      'unused-imports': unusedImports,
+    },
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
     rules: {
       '@nx/enforce-module-boundaries': [
@@ -21,6 +29,17 @@ module.exports = [
               onlyDependOnLibsWithTags: ['*'],
             },
           ],
+        },
+      ],
+      'no-unused-vars': 'off', // or "@typescript-eslint/no-unused-vars": "off",
+      'unused-imports/no-unused-imports': 'error',
+      'unused-imports/no-unused-vars': [
+        'warn',
+        {
+          vars: 'all',
+          varsIgnorePattern: '^_',
+          args: 'after-used',
+          argsIgnorePattern: '^_',
         },
       ],
     },

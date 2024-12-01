@@ -7,6 +7,20 @@ module.exports = [
   ...baseConfig,
   {
     // Override or add rules here
-    rules: {},
+    rules: {
+      '@typescript-eslint/no-unused-expressions': [
+        'error',
+        {
+          allowShortCircuit: true,
+          allowTernary: true,
+          allowTaggedTemplates: true,
+        },
+      ],
+      '@typescript-eslint/no-empty-function': [
+        'error',
+        { allow: ['arrowFunctions', 'functions', 'methods'] },
+      ],
+      '@typescript-eslint/no-namespace': 'off',
+    },
   },
 ];
