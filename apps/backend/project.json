@@ -45,6 +45,13 @@
       "options": {
         "lintFilePatterns": ["apps/backend/**/*.ts"]
       }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/apps/backend"],
+      "options": {
+        "jestConfig": "apps/backend/jest.config.ts"
+      }
     }
   }
 }
