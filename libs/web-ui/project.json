@@ -9,6 +9,13 @@
     "lint": {
       "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"]
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/libs/web-ui"],
+      "options": {
+        "jestConfig": "libs/web-ui/jest.config.ts"
+      }
     }
   }
 }

@@ -38,13 +38,19 @@
         }
       }
     },
-  "lint": {
-    "executor": "@nx/eslint:lint",
-    "outputs": ["{options.outputFile}"],
-    "options": {
-      "lintFilePatterns": ["{workspaceRoot}/package.json"]
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["{workspaceRoot}/package.json"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/apps/myorganizer"],
+      "options": {
+        "jestConfig": "apps/myorganizer/jest.config.ts"
+      }
     }
-  }
-
   }
 }

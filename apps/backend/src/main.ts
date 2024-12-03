@@ -1,16 +1,11 @@
-/**
- * This is not a production server yet!
- * This is only a minimal backend to get started.
- */
-
-import express, { Response as ExResponse, Request as ExRequest } from 'express';
+import bodyParser from 'body-parser';
 import cors from 'cors';
+import express, { Request as ExRequest, Response as ExResponse } from 'express';
 import * as path from 'path';
 import swaggerUi from 'swagger-ui-express';
-import bodyParser from 'body-parser';
+import { RegisterRoutes } from './routes/routes';
 import todosRouter from './routes/todo';
 import usersRouter from './routes/user';
-import { RegisterRoutes } from './routes/routes';
 
 const app = express();
 
