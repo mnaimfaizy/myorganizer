@@ -89,6 +89,7 @@
     "@swc/core": "~1.5.7",
     "@swc/helpers": "~0.5.11",
     "@testing-library/react": "15.0.6",
+    "@testing-library/react-hooks": "^8.0.1",
     "@types/body-parser": "^1.19.5",
     "@types/jest": "^29.5.12",
     "@types/node": "18.16.9",
