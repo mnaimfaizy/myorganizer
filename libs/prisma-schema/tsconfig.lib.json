@@ -6,6 +6,6 @@
     "types": ["node"],
     "composite": true
   },
-  "include": ["prisma/**/*.ts"],
-  "exclude": ["prisma/schema/**/*.ts"]
+  "include": ["prisma/**/*.ts", "prisma/**/*.js"],
+  "exclude": []
 }
