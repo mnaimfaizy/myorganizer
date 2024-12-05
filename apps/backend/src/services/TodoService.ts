@@ -1,5 +1,5 @@
-import { PrismaClient } from '@backend/prisma-schema';
 import { TodoRequestBody } from '../models/Todo';
+import { PrismaClient } from '../prisma';
 
 export class TodoService {
   constructor(private prisma: PrismaClient) {}

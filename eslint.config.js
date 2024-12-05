@@ -8,8 +8,9 @@ module.exports = [
   {
     ignores: [
       '**/dist',
-      '**/libs/prisma-schema',
-      '**/libs/prisma-schema/schema/prisma-client',
+      'apps/backend/src/prisma/',
+      'apps/backend/prisma/prisma-client',
+      'apps/backend/prisma/migrations',
     ],
   },
   {
