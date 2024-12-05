@@ -1,5 +1,5 @@
-import { PrismaClient } from '@backend/prisma-schema';
 import { User, UserCreationBody } from '../models/User';
+import { PrismaClient } from '../prisma';
 
 class UserService {
   Users: User[] = [];

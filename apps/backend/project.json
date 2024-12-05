@@ -52,6 +52,24 @@
       "options": {
         "jestConfig": "apps/backend/jest.config.ts"
       }
+    },
+    "prisma": {
+      "command": "prisma",
+      "options": {
+        "cwd": "apps/backend/src"
+      }
+    },
+    "migrate": {
+      "command": "prisma migrate dev",
+      "options": {
+        "cwd": "apps/backend/src"
+      }
+    },
+    "generate-types": {
+      "command": "prisma generate",
+      "options": {
+        "cwd": "apps/backend/src"
+      }
     }
   }
 }

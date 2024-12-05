@@ -5,6 +5,9 @@ module.exports = [
   ...baseConfig,
   ...nx.configs['flat/react'],
   {
+    ignores: ['apps/backend/src/prisma/'],
+  },
+  {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
     // Override or add rules here
     rules: {
