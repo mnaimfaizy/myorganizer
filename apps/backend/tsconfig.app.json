@@ -12,6 +12,7 @@
     "src/swagger/swagger.json",
     "src/swagger/swagger.yaml",
     "../../libs/prisma-schema/prisma/index.ts",
+    "src/templates/**/*.html",
     "src/prisma/**/*.prisma"
   ],
   "exclude": ["jest.config.ts", "src/**/*.spec.ts", "src/**/*.test.ts"]

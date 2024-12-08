@@ -11,8 +11,11 @@
         "webpackConfig": "apps/backend/webpack.config.js",
         "main": "apps/backend/src/main.ts",
         "tsConfig": "apps/backend/tsconfig.app.json",
+        "assets": ["apps/backend/src/assets", "apps/backend/src/templates"],
+        "externalDependencies": "all",
+        "generatePackageJson": true,
         "outputHashing": "none",
-        "sourceMap": true,
+        "sourceMap": false,
         "outputPath": "dist/apps/backend/",
         "compiler": "tsc",
         "target": "node"
@@ -21,23 +24,9 @@
     "serve": {
       "executor": "@nx/js:node",
       "defaultConfiguration": "development",
-      "dependsOn": [
-        {
-          "projects": [],
-          "target": "build"
-        }
-      ],
       "options": {
         "buildTarget": "backend:build",
-        "runBuildTargetDependencies": false
-      },
-      "configurations": {
-        "development": {
-          "buildTarget": "backend:build:development"
-        },
-        "production": {
-          "buildTarget": "backend:build:production"
-        }
+        "watch": true
       }
     },
     "lint": {

@@ -13,6 +13,7 @@
     "src/**/*.d.ts",
     "src/main.test.ts",
     "src/routes/**/*.ts",
+    "src/utils/**/*.ts",
     "src/swagger/**/*.json"
   ]
 }

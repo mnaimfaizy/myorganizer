@@ -14,6 +14,17 @@ components:
           type: string
         email:
           type: string
+        password:
+          type: string
+        reset_password_token:
+          type: string
+        email_verification_timestamp:
+          type: string
+          format: date-time
+        blacklisted_tokens:
+          items:
+            type: string
+          type: array
       required:
         - id
         - email
@@ -25,8 +36,11 @@ components:
           type: string
         email:
           type: string
+        password:
+          type: string
       required:
         - email
+        - password
       type: object
       additionalProperties: false
     Todo:
@@ -36,6 +50,9 @@ components:
           format: double
         todo:
           type: string
+        createdAt:
+          type: string
+          format: date-time
       required:
         - id
         - todo
@@ -51,23 +68,23 @@ components:
       additionalProperties: false
   securitySchemes: {}
 info:
-  title: "@myorganizer/source"
+  title: '@myorganizer/source'
   version: 0.0.0
   license:
     name: MIT
   contact: {}
 paths:
-  /users:
+  /user:
     get:
       operationId: GetAllUsers
       responses:
-        "200":
+        '200':
           description: Ok
           content:
             application/json:
               schema:
                 items:
-                  $ref: "#/components/schemas/User"
+                  $ref: '#/components/schemas/User'
                 type: array
       tags:
         - Users Management
@@ -76,12 +93,14 @@ paths:
     post:
       operationId: CreateUser
       responses:
-        "200":
+        '200':
           description: Ok
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/User"
+                anyOf:
+                  - $ref: '#/components/schemas/User'
+                  - {}
       tags:
         - Users Management
       security: []
@@ -91,18 +110,18 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UserCreationBody"
-  /users/{userId}:
+              $ref: '#/components/schemas/UserCreationBody'
+  /user/{userId}:
     get:
       operationId: GetUserById
       responses:
-        "200":
+        '200':
           description: Ok
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: "#/components/schemas/User"
+                  - $ref: '#/components/schemas/User'
                 nullable: true
       tags:
         - Users Management
@@ -117,13 +136,13 @@ paths:
     get:
       operationId: GetAllTodos
       responses:
-        "200":
+        '200':
           description: Ok
           content:
             application/json:
               schema:
                 items:
-                  $ref: "#/components/schemas/Todo"
+                  $ref: '#/components/schemas/Todo'
                 type: array
       tags:
         - Todos Management
@@ -132,12 +151,12 @@ paths:
     post:
       operationId: CreateTodo
       responses:
-        "200":
+        '200':
           description: Ok
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Todo"
+                $ref: '#/components/schemas/Todo'
       tags:
         - Todos Management
       security: []
@@ -147,12 +166,12 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/TodoRequestBody"
+              $ref: '#/components/schemas/TodoRequestBody'
   /todos/{todoId}:
     delete:
       operationId: DeleteTodo
       responses:
-        "204":
+        '204':
           description: No content
       tags:
         - Todos Management

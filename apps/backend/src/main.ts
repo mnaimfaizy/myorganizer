@@ -7,6 +7,7 @@ import { RegisterRoutes } from './routes/routes';
 import todosRouter from './routes/todo';
 import usersRouter from './routes/user';
 
+const routerPrefix = '/api/v1';
 const app = express();
 
 // CORS is enabled for the selected origins
@@ -25,16 +26,17 @@ app.use('/docs', swaggerUi.serve, async (_req: ExRequest, res: ExResponse) => {
 });
 app.use(cors(corsOptions));
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
+app.use(express.static('templates'));
 
 // Register the routes
 RegisterRoutes(app);
 
 // Define the routes
-app.use('/todos', todosRouter);
-app.use('/users', usersRouter);
+app.use(`${routerPrefix}/todo`, todosRouter);
+app.use(`${routerPrefix}/user`, usersRouter);
 
 const port = process.env.PORT || 3000;
 const server = app.listen(port, () => {
-  console.log(`Listening at http://localhost:${port}/`);
+  console.log(`Listening at: http://localhost:${port}/`);
 });
 server.on('error', console.error);
