@@ -4,7 +4,8 @@
     "outDir": "../../dist/out-tsc",
     "module": "commonjs",
     "types": ["node", "express"],
-    "composite": true
+    "composite": false,
+    "lib": ["es2021"]
   },
   "include": [
     "src/**/*.ts",

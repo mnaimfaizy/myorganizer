@@ -13,3 +13,14 @@ export interface UserCreationBody {
   email: string;
   password: string;
 }
+
+export interface UserLoginBody {
+  email: string;
+  password: string;
+}
+
+export interface ConfirmResetPasswordBody {
+  token: string;
+  password: string;
+  confirm_password: string;
+}

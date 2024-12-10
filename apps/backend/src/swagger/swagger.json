@@ -39,6 +39,23 @@
         "type": "object",
         "additionalProperties": false
       },
+      "ValidateErrorJSON": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "enum": ["Validation failed"],
+            "nullable": false
+          },
+          "details": {
+            "properties": {},
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "required": ["message", "details"],
+        "type": "object",
+        "additionalProperties": false
+      },
       "UserCreationBody": {
         "properties": {
           "name": {
@@ -82,9 +99,71 @@
         "required": ["todo"],
         "type": "object",
         "additionalProperties": false
+      },
+      "UserLoginBody": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": ["email", "password"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "FilteredUserInterface": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name", "email"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ConfirmResetPasswordBody": {
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "confirm_password": {
+            "type": "string"
+          }
+        },
+        "required": ["token", "password", "confirm_password"],
+        "type": "object",
+        "additionalProperties": false
       }
     },
-    "securitySchemes": {}
+    "securitySchemes": {
+      "OAuth2PasswordSecurity": {
+        "type": "oauth2",
+        "description": "OAuth2 Password Grant",
+        "flows": {
+          "password": {
+            "tokenUrl": "http://localhost:3000/api/v1/auth/login",
+            "scopes": {}
+          }
+        }
+      },
+      "jwt": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT Access Token only"
+      }
+    }
   },
   "info": {
     "title": "@myorganizer/source",
@@ -131,6 +210,19 @@
                     },
                     {}
                   ]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created"
+          },
+          "422": {
+            "description": "Validation Failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateErrorJSON"
                 }
               }
             }
@@ -258,11 +350,257 @@
           }
         ]
       }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "Login",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status_code": {
+                      "type": "number",
+                      "format": "double"
+                    }
+                  },
+                  "required": ["message", "status_code"],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLoginBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "CreateUser",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/User"
+                    },
+                    {}
+                  ]
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created"
+          },
+          "422": {
+            "description": "Validation Failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateErrorJSON"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreationBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify/email": {
+      "patch": {
+        "operationId": "VerifyEmail",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilteredUserInterface"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateErrorJSON"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                },
+                "required": ["token"],
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify/resend/{userId}": {
+      "post": {
+        "operationId": "ResendVerificationEmail",
+        "responses": {
+          "204": {
+            "description": "No content"
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/auth/password/reset": {
+      "post": {
+        "operationId": "ResetPassword",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number",
+                      "format": "double"
+                    }
+                  },
+                  "required": ["message", "status"],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  }
+                },
+                "required": ["email"],
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/password/reset/confirm": {
+      "patch": {
+        "operationId": "ConfirmResetPassword",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number",
+                      "format": "double"
+                    }
+                  },
+                  "required": ["message", "status"],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmResetPasswordBody"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "servers": [
     {
-      "url": "/"
+      "url": "/api/v1"
     }
   ]
 }

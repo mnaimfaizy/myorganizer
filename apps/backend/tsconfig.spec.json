@@ -4,7 +4,7 @@
     "outDir": "../../dist/out-tsc",
     "module": "commonjs",
     "types": ["jest", "node"],
-    "composite": true
+    "composite": false
   },
   "include": [
     "jest.config.ts",
@@ -12,8 +12,6 @@
     "src/**/*.spec.ts",
     "src/**/*.d.ts",
     "src/main.test.ts",
-    "src/routes/**/*.ts",
-    "src/utils/**/*.ts",
     "src/swagger/**/*.json"
   ]
 }
