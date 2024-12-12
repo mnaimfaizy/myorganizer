@@ -13,7 +13,6 @@ export interface UserInterface {
   blacklisted_tokens?: Array<string>;
   createdAt: Date;
   updatedAt: Date;
-  save: () => Promise<UserInterface>;
 }
 
 export interface FilteredUserInterface {

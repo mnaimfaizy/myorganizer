@@ -5,7 +5,14 @@
   "spec": {
     "outputDirectory": "apps/backend/src/swagger",
     "specVersion": 3,
-    "basePath": "/api/v1/",
+    "spec": {
+      "servers": [
+        {
+          "url": "http://localhost:3000/api/v1/",
+          "description": "Local server"
+        }
+      ]
+    },
     "securityDefinitions": {
       "OAuth2PasswordSecurity": {
         "type": "oauth2",

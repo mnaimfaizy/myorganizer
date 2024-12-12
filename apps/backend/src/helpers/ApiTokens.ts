@@ -25,10 +25,6 @@ class ApiTokens {
     return token;
   }
 
-  public verifyToken(token: string): string {
-    return Buffer.from(token, 'base64').toString('ascii');
-  }
-
   public createTokens = (user: User): LoginTokensInterface => {
     const token: string | Error = generateToken(
       { userId: user.id },

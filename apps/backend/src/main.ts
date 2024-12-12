@@ -1,10 +1,12 @@
 import bodyParser from 'body-parser';
+import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express, {
   Request as ExRequest,
   Response as ExResponse,
   NextFunction,
 } from 'express';
+import session from 'express-session';
 import * as path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { ValidateError } from 'tsoa';
@@ -14,6 +16,7 @@ import todosRouter from './routes/todo';
 import usersRouter from './routes/user';
 import passport from './utils/passport';
 
+const routerPrefix = process.env.ROUTER_PREFIX || '';
 const app = express();
 
 // CORS is enabled for the selected origins
@@ -36,6 +39,19 @@ app.use('/docs', swaggerUi.serve, async (_req: ExRequest, res: ExResponse) => {
 // Enable CORS
 app.use(cors(corsOptions));
 
+// Enable session
+app.use(
+  session({
+    secret: 'secret', // TODO: Change this to a secure secret
+    resave: false,
+    saveUninitialized: true,
+    cookie: { secure: process.env.NODE_ENV === 'production' },
+  })
+);
+
+// Enable cookie parser
+app.use(cookieParser());
+
 // Serve the static files
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
 app.use(express.static('templates'));
@@ -44,9 +60,9 @@ app.use(express.static('templates'));
 app.use(passport.initialize());
 
 // Define the routes
-app.use(`${process.env.ROUTER_PREFIX}/todo`, todosRouter);
-app.use(`${process.env.ROUTER_PREFIX}/user`, usersRouter);
-app.use(`${process.env.ROUTER_PREFIX}/auth`, authRouter);
+app.use(`${routerPrefix}/todo`, todosRouter);
+app.use(`${routerPrefix}/user`, usersRouter);
+app.use(`${routerPrefix}/auth`, authRouter);
 
 // Register the routes
 RegisterRoutes(app);

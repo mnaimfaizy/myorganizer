@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { Request as ExRequest } from 'express';
 import { JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 import {
   Controller,
@@ -6,9 +7,11 @@ import {
   Patch,
   Path,
   Post,
+  Request,
   Response,
   Route,
   Security,
+  SuccessResponse,
   Tags,
 } from 'tsoa';
 import { Body, ValidateBody } from '../decorators/request-body-validator';
@@ -22,6 +25,7 @@ import {
   UserLoginBody,
 } from '../models/User';
 import {
+  refreshTokenSchema,
   resetPasswordSchema,
   updatePasswordSchema,
   VerifyEmailSchema,
@@ -46,6 +50,61 @@ export class AuthController extends Controller {
       this.setStatus(401);
       return { status_code: 401, message: 'Invalid email or password' };
     }
+  }
+
+  @Post('/logout/{userId}')
+  @SuccessResponse(200, 'Logged out successfully')
+  @Response(500, 'Failed to logout')
+  @Middlewares([passport.authenticate('jwt', { session: false })])
+  @Security('jwt')
+  async logout(
+    @Request() req: ExRequest,
+    @Path() userId: string
+  ): Promise<{ status: number; message: string }> {
+    const user = req.user as UserInterface;
+    const refresh_token = req.cookies.refresh_cookie;
+
+    if (!user || !refresh_token) {
+      this.setStatus(401);
+      return { status: 401, message: 'Unauthorized' };
+    }
+
+    const result = await userService.logout(user.id, refresh_token);
+    if (result instanceof Error) {
+      this.setStatus(500);
+      return { status: 500, message: 'Failed to logout' };
+    } else {
+      this.setStatus(200);
+      return { status: 200, message: 'Logged out successfully' };
+    }
+  }
+
+  @Post('/refresh')
+  @Response(401, 'Unauthorized')
+  @Response<ValidateErrorJSON>(422, 'Validation Failed') // Custom error response
+  @ValidateBody(refreshTokenSchema)
+  async refreshToken(
+    @Body() requestBody: { refresh_token: string }
+  ): Promise<{ status: number; message: string; user: User }> {
+    const refresh_token = requestBody.refresh_token;
+    if (!refresh_token) {
+      this.setStatus(401);
+      return { status: 401, message: 'Unauthorized', user: null };
+    }
+
+    const user = await userService.refreshToken(refresh_token);
+    if (user instanceof Error || !user) {
+      this.setStatus(404);
+      return { status: 404, message: 'User not found', user: null };
+    }
+
+    if (user.blacklisted_tokens?.includes(refresh_token)) {
+      this.setStatus(401);
+      return { status: 401, message: 'Unauthorized', user: null };
+    }
+
+    this.setStatus(200);
+    return { status: 200, message: 'Success', user };
   }
 
   @Post('/register')

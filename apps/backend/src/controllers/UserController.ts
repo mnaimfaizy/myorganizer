@@ -1,14 +1,27 @@
-import { Controller, Get, Path, Post, Response, Route, Tags } from 'tsoa';
+import {
+  Controller,
+  Get,
+  Middlewares,
+  Path,
+  Post,
+  Response,
+  Route,
+  Security,
+  Tags,
+} from 'tsoa';
 import { Body, ValidateBody } from '../decorators/request-body-validator';
 import { ValidateErrorJSON } from '../interfaces';
 import { User, UserCreationBody } from '../models/User';
 import { UserSchema } from '../schemas/user.schema';
 import userService from '../services/UserService';
+import passport from '../utils/passport';
 
 @Tags('Users Management')
 @Route('/user')
 export class UserController extends Controller {
   @Get()
+  @Middlewares([passport.authenticate('jwt', { session: false })])
+  @Security('jwt')
   async getAllUsers(): Promise<User[]> {
     return userService.getAll();
   }

@@ -3,6 +3,7 @@ import authController from '../controllers/AuthController';
 import userController from '../controllers/UserController';
 import apiTokens from '../helpers/ApiTokens';
 import { getExpiry } from '../helpers/cookieHelper';
+import filterUser from '../helpers/filterUser';
 import isOwner from '../middleware/isOwner';
 import { FilteredUserInterface, UserInterface } from '../types';
 import passport from '../utils/passport';
@@ -46,6 +47,30 @@ router.post(
       next(err);
       return err;
     }
+  }
+);
+
+router.post(
+  '/logout/:userId',
+  passport.authenticate('jwt', { session: false }),
+  isOwner,
+  async (req, res, next: NextFunction) => {
+    const result = await authController.logout(
+      req,
+      (req.user as UserInterface)?.id
+    );
+    if (result instanceof Error || result.status === 500) {
+      res.status(500).json({ message: 'Failed to logout' });
+    }
+    req.logout(function (err) {
+      if (err) {
+        console.log('Error: ', err);
+        res.status(500).json({ message: 'Failed to logout' });
+        return next(err);
+      }
+      res.status(200).json({ message: 'Logged out successfully' });
+    });
+    res.status(result.status).json({ message: result.message });
   }
 );
 
@@ -109,6 +134,46 @@ router.post('/password/reset', async (req, res) => {
 router.post('/password/reset/confirm', async (req, res) => {
   const result = await authController.confirmResetPassword(req.body);
   res.status(result.status).json({ message: result.message });
+});
+
+router.post('/refresh', async (req, res, next: NextFunction) => {
+  try {
+    const { status, message, user } = await authController.refreshToken(
+      req.body
+    );
+
+    if (!user || status !== 200) {
+      res.status(status).json({ message });
+      return;
+    } else {
+      const { token, refreshToken } = apiTokens.createTokens(
+        user as UserInterface
+      );
+
+      const filteredUser = filterUser(user as UserInterface);
+
+      const expiry = getExpiry();
+
+      res
+        .cookie('refresh_cookie', refreshToken, {
+          expires: expiry,
+          httpOnly: true,
+          // sameSite: "None",
+          // secure: true,
+        })
+        .status(200)
+        .json({
+          token: token,
+          expires_in: 600_000,
+          user: filteredUser,
+        });
+    }
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: `Failed to refresh token. Error: ${error}` });
+    next(error);
+  }
 });
 
 export default router;

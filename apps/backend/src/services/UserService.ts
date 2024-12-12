@@ -1,7 +1,9 @@
 import bcrypt from 'bcrypt';
 import fs from 'fs';
+import { JsonWebTokenError, JwtPayload } from 'jsonwebtoken';
 import path from 'path';
 import apiTokens from '../helpers/ApiTokens';
+import { decodeToken } from '../helpers/jwtHelper';
 import { User, UserCreationBody } from '../models/User';
 import { PrismaClient } from '../prisma';
 import sendEmail from './EmailService';
@@ -111,6 +113,46 @@ class UserService {
 
     await sendEmail(user.email, 'Reset your password', htmlTemplate);
     return token;
+  }
+
+  async logout(userId: string, refreshToken: string): Promise<User> {
+    const data = {
+      blacklisted_tokens: {
+        push: refreshToken,
+      },
+    };
+    const updatedUser = await this.prisma.user.update({
+      where: {
+        id: userId,
+      },
+      data,
+    });
+
+    return updatedUser;
+  }
+
+  async refreshToken(refreshToken: string): Promise<User | null> {
+    const decodedToken = decodeToken(
+      refreshToken,
+      process.env.REFRESH_JWT_SECRET as string
+    ) as JwtPayload;
+
+    if (
+      decodedToken instanceof Error ||
+      decodeToken instanceof JsonWebTokenError
+    ) {
+      return null;
+    }
+
+    const { userId } = decodedToken;
+
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    return user;
   }
 }
 

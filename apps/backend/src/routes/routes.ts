@@ -133,6 +133,7 @@ export function RegisterRoutes(app: Router) {
 
   app.get(
     '/user',
+    authenticateMiddleware([{ jwt: [] }]),
     ...fetchMiddlewares<RequestHandler>(UserController),
     ...fetchMiddlewares<RequestHandler>(UserController.prototype.getAllUsers),
 
@@ -260,7 +261,7 @@ export function RegisterRoutes(app: Router) {
   );
   // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
   app.get(
-    '/todos',
+    '/todo',
     ...fetchMiddlewares<RequestHandler>(TodoController),
     ...fetchMiddlewares<RequestHandler>(TodoController.prototype.getAllTodos),
 
@@ -298,7 +299,7 @@ export function RegisterRoutes(app: Router) {
   );
   // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
   app.post(
-    '/todos',
+    '/todo',
     ...fetchMiddlewares<RequestHandler>(TodoController),
     ...fetchMiddlewares<RequestHandler>(TodoController.prototype.createTodo),
 
@@ -343,7 +344,7 @@ export function RegisterRoutes(app: Router) {
   );
   // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
   app.delete(
-    '/todos/:todoId',
+    '/todo/:todoId',
     ...fetchMiddlewares<RequestHandler>(TodoController),
     ...fetchMiddlewares<RequestHandler>(TodoController.prototype.deleteTodo),
 
@@ -420,6 +421,101 @@ export function RegisterRoutes(app: Router) {
 
         await templateService.apiHandler({
           methodName: 'login',
+          controller,
+          response,
+          next,
+          validatedArgs,
+          successStatus: undefined,
+        });
+      } catch (err) {
+        return next(err);
+      }
+    }
+  );
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  app.post(
+    '/auth/logout/:userId',
+    authenticateMiddleware([{ jwt: [] }]),
+    ...fetchMiddlewares<RequestHandler>(AuthController),
+    ...fetchMiddlewares<RequestHandler>(AuthController.prototype.logout),
+
+    async function AuthController_logout(
+      request: ExRequest,
+      response: ExResponse,
+      next: any
+    ) {
+      const args: Record<string, TsoaRoute.ParameterSchema> = {
+        req: { in: 'request', name: 'req', required: true, dataType: 'object' },
+        userId: {
+          in: 'path',
+          name: 'userId',
+          required: true,
+          dataType: 'string',
+        },
+      };
+
+      // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = templateService.getValidatedArgs({
+          args,
+          request,
+          response,
+        });
+
+        const controller = new AuthController();
+
+        await templateService.apiHandler({
+          methodName: 'logout',
+          controller,
+          response,
+          next,
+          validatedArgs,
+          successStatus: 200,
+        });
+      } catch (err) {
+        return next(err);
+      }
+    }
+  );
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  app.post(
+    '/auth/refresh',
+    ...fetchMiddlewares<RequestHandler>(AuthController),
+    ...fetchMiddlewares<RequestHandler>(AuthController.prototype.refreshToken),
+
+    async function AuthController_refreshToken(
+      request: ExRequest,
+      response: ExResponse,
+      next: any
+    ) {
+      const args: Record<string, TsoaRoute.ParameterSchema> = {
+        requestBody: {
+          in: 'body',
+          name: 'requestBody',
+          required: true,
+          dataType: 'nestedObjectLiteral',
+          nestedProperties: {
+            refresh_token: { dataType: 'string', required: true },
+          },
+        },
+      };
+
+      // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = templateService.getValidatedArgs({
+          args,
+          request,
+          response,
+        });
+
+        const controller = new AuthController();
+
+        await templateService.apiHandler({
+          methodName: 'refreshToken',
           controller,
           response,
           next,

@@ -193,7 +193,11 @@
           }
         },
         "tags": ["Users Management"],
-        "security": [],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
         "parameters": []
       },
       "post": {
@@ -277,7 +281,7 @@
         ]
       }
     },
-    "/todos": {
+    "/todo": {
       "get": {
         "operationId": "GetAllTodos",
         "responses": {
@@ -295,7 +299,7 @@
             }
           }
         },
-        "tags": ["Todos Management"],
+        "tags": ["Todo Management"],
         "security": [],
         "parameters": []
       },
@@ -313,7 +317,7 @@
             }
           }
         },
-        "tags": ["Todos Management"],
+        "tags": ["Todo Management"],
         "security": [],
         "parameters": [],
         "requestBody": {
@@ -328,7 +332,7 @@
         }
       }
     },
-    "/todos/{todoId}": {
+    "/todo/{todoId}": {
       "delete": {
         "operationId": "DeleteTodo",
         "responses": {
@@ -336,7 +340,7 @@
             "description": "No content"
           }
         },
-        "tags": ["Todos Management"],
+        "tags": ["Todo Management"],
         "security": [],
         "parameters": [
           {
@@ -385,6 +389,114 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UserLoginBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout/{userId}": {
+      "post": {
+        "operationId": "Logout",
+        "responses": {
+          "200": {
+            "description": "Logged out successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number",
+                      "format": "double"
+                    }
+                  },
+                  "required": ["message", "status"],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Failed to logout"
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "RefreshToken",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/User"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number",
+                      "format": "double"
+                    }
+                  },
+                  "required": ["user", "message", "status"],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "422": {
+            "description": "Validation Failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateErrorJSON"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "refresh_token": {
+                    "type": "string"
+                  }
+                },
+                "required": ["refresh_token"],
+                "type": "object"
               }
             }
           }
@@ -600,7 +712,8 @@
   },
   "servers": [
     {
-      "url": "/api/v1"
+      "url": "http://localhost:3000/api/v1/",
+      "description": "Local server"
     }
   ]
 }

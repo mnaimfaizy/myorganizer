@@ -1,4 +1,4 @@
-import jwt, { TokenExpiredError } from 'jsonwebtoken';
+import jwt, { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 
 export const generateToken = (
   payload: object,
@@ -16,9 +16,11 @@ export const decodeToken = (
     const decoded = jwt.verify(token, secret);
     return decoded;
   } catch (err) {
-    console.log(err);
+    console.error(err);
     if (err instanceof TokenExpiredError) {
       return err as TokenExpiredError;
+    } else if (err instanceof JsonWebTokenError) {
+      return err as JsonWebTokenError;
     } else {
       return err as Error;
     }

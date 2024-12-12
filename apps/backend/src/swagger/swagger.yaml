@@ -155,7 +155,8 @@ paths:
                 type: array
       tags:
         - Users Management
-      security: []
+      security:
+        - jwt: []
       parameters: []
     post:
       operationId: CreateUser
@@ -207,7 +208,7 @@ paths:
           required: true
           schema:
             type: string
-  /todos:
+  /todo:
     get:
       operationId: GetAllTodos
       responses:
@@ -220,7 +221,7 @@ paths:
                   $ref: '#/components/schemas/Todo'
                 type: array
       tags:
-        - Todos Management
+        - Todo Management
       security: []
       parameters: []
     post:
@@ -233,7 +234,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Todo'
       tags:
-        - Todos Management
+        - Todo Management
       security: []
       parameters: []
       requestBody:
@@ -242,14 +243,14 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/TodoRequestBody'
-  /todos/{todoId}:
+  /todo/{todoId}:
     delete:
       operationId: DeleteTodo
       responses:
         '204':
           description: No content
       tags:
-        - Todos Management
+        - Todo Management
       security: []
       parameters:
         - in: path
@@ -287,6 +288,82 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/UserLoginBody'
+  /auth/logout/{userId}:
+    post:
+      operationId: Logout
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                  status:
+                    type: number
+                    format: double
+                required:
+                  - message
+                  - status
+                type: object
+        '500':
+          description: Failed to logout
+      tags:
+        - Authentication
+      security:
+        - jwt: []
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+  /auth/refresh:
+    post:
+      operationId: RefreshToken
+      responses:
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  message:
+                    type: string
+                  status:
+                    type: number
+                    format: double
+                required:
+                  - user
+                  - message
+                  - status
+                type: object
+        '401':
+          description: Unauthorized
+        '422':
+          description: Validation Failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateErrorJSON'
+      tags:
+        - Authentication
+      security: []
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                refresh_token:
+                  type: string
+              required:
+                - refresh_token
+              type: object
   /auth/register:
     post:
       operationId: CreateUser
@@ -428,4 +505,5 @@ paths:
             schema:
               $ref: '#/components/schemas/ConfirmResetPasswordBody'
 servers:
-  - url: /api/v1
+  - url: http://localhost:3000/api/v1/
+    description: Local server

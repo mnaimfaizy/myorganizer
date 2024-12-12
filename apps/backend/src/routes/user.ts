@@ -1,18 +1,24 @@
-import { Router } from 'express';
+import { NextFunction, Router } from 'express';
 import userController from '../controllers/UserController';
+import passport from '../utils/passport';
 
 const router = Router();
 
-router.get('/', async (req, res) => {
-  try {
-    const users = await userController.getAllUsers();
-    res.status(200).json(users);
-  } catch (error) {
-    res
-      .status(500)
-      .json({ message: `Failed to fetch users: ${error.message}` });
+router.get(
+  '/',
+  passport.authenticate('jwt', { session: false }),
+  async (req, res, next: NextFunction) => {
+    try {
+      const users = await userController.getAllUsers();
+      res.status(200).json(users);
+    } catch (error) {
+      res
+        .status(500)
+        .json({ message: `Failed to fetch users: ${error.message}` });
+      next(error);
+    }
   }
-});
+);
 
 router.get('/:userId', async (req, res) => {
   try {
