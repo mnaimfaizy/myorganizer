@@ -1,9 +1,9 @@
-import todoService from '../services/TodoService';
 import { Body, Controller, Delete, Get, Path, Post, Route, Tags } from 'tsoa';
 import { Todo, TodoRequestBody } from '../models/Todo';
+import todoService from '../services/TodoService';
 
-@Tags('Todos Management')
-@Route('/todos')
+@Tags('Todo Management')
+@Route('/todo')
 export class TodoController extends Controller {
   @Get()
   public async getAllTodos(): Promise<Todo[]> {

@@ -4,9 +4,32 @@
   "controllerPathGlobs": ["apps/backend/src/**/*Controller.ts"],
   "spec": {
     "outputDirectory": "apps/backend/src/swagger",
-    "specVersion": 3
+    "specVersion": 3,
+    "spec": {
+      "servers": [
+        {
+          "url": "http://localhost:3000/api/v1/",
+          "description": "Local server"
+        }
+      ]
+    },
+    "securityDefinitions": {
+      "OAuth2PasswordSecurity": {
+        "type": "oauth2",
+        "flow": "password",
+        "tokenUrl": "http://localhost:3000/api/v1/auth/login",
+        "description": "OAuth2 Password Grant"
+      },
+      "jwt": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT Access Token only"
+      }
+    }
   },
   "routes": {
-    "routesDir": "apps/backend/src/routes"
+    "routesDir": "apps/backend/src/routes",
+    "authenticationModule": "apps/backend/src/middleware/authentication.ts"
   }
 }

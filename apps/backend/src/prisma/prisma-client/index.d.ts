@@ -2034,18 +2034,28 @@ export namespace Prisma {
     id: string | null;
     name: string | null;
     email: string | null;
+    password: string | null;
+    reset_password_token: string | null;
+    email_verification_timestamp: Date | null;
   };
 
   export type UserMaxAggregateOutputType = {
     id: string | null;
     name: string | null;
     email: string | null;
+    password: string | null;
+    reset_password_token: string | null;
+    email_verification_timestamp: Date | null;
   };
 
   export type UserCountAggregateOutputType = {
     id: number;
     name: number;
     email: number;
+    password: number;
+    reset_password_token: number;
+    email_verification_timestamp: number;
+    blacklisted_tokens: number;
     _all: number;
   };
 
@@ -2053,18 +2063,28 @@ export namespace Prisma {
     id?: true;
     name?: true;
     email?: true;
+    password?: true;
+    reset_password_token?: true;
+    email_verification_timestamp?: true;
   };
 
   export type UserMaxAggregateInputType = {
     id?: true;
     name?: true;
     email?: true;
+    password?: true;
+    reset_password_token?: true;
+    email_verification_timestamp?: true;
   };
 
   export type UserCountAggregateInputType = {
     id?: true;
     name?: true;
     email?: true;
+    password?: true;
+    reset_password_token?: true;
+    email_verification_timestamp?: true;
+    blacklisted_tokens?: true;
     _all?: true;
   };
 
@@ -2147,6 +2167,10 @@ export namespace Prisma {
     id: string;
     name: string | null;
     email: string;
+    password: string;
+    reset_password_token: string | null;
+    email_verification_timestamp: Date | null;
+    blacklisted_tokens: string[];
     _count: UserCountAggregateOutputType | null;
     _min: UserMinAggregateOutputType | null;
     _max: UserMaxAggregateOutputType | null;
@@ -2171,6 +2195,10 @@ export namespace Prisma {
       id?: boolean;
       name?: boolean;
       email?: boolean;
+      password?: boolean;
+      reset_password_token?: boolean;
+      email_verification_timestamp?: boolean;
+      blacklisted_tokens?: boolean;
     },
     ExtArgs['result']['user']
   >;
@@ -2182,6 +2210,10 @@ export namespace Prisma {
       id?: boolean;
       name?: boolean;
       email?: boolean;
+      password?: boolean;
+      reset_password_token?: boolean;
+      email_verification_timestamp?: boolean;
+      blacklisted_tokens?: boolean;
     },
     ExtArgs['result']['user']
   >;
@@ -2190,6 +2222,10 @@ export namespace Prisma {
     id?: boolean;
     name?: boolean;
     email?: boolean;
+    password?: boolean;
+    reset_password_token?: boolean;
+    email_verification_timestamp?: boolean;
+    blacklisted_tokens?: boolean;
   };
 
   export type $UserPayload<
@@ -2202,6 +2238,10 @@ export namespace Prisma {
         id: string;
         name: string | null;
         email: string;
+        password: string;
+        reset_password_token: string | null;
+        email_verification_timestamp: Date | null;
+        blacklisted_tokens: string[];
       },
       ExtArgs['result']['user']
     >;
@@ -2691,6 +2731,10 @@ export namespace Prisma {
     readonly id: FieldRef<'User', 'String'>;
     readonly name: FieldRef<'User', 'String'>;
     readonly email: FieldRef<'User', 'String'>;
+    readonly password: FieldRef<'User', 'String'>;
+    readonly reset_password_token: FieldRef<'User', 'String'>;
+    readonly email_verification_timestamp: FieldRef<'User', 'DateTime'>;
+    readonly blacklisted_tokens: FieldRef<'User', 'String[]'>;
   }
 
   // Custom InputTypes
@@ -3032,6 +3076,10 @@ export namespace Prisma {
     id: 'id';
     name: 'name';
     email: 'email';
+    password: 'password';
+    reset_password_token: 'reset_password_token';
+    email_verification_timestamp: 'email_verification_timestamp';
+    blacklisted_tokens: 'blacklisted_tokens';
   };
 
   export type UserScalarFieldEnum =
@@ -3188,12 +3236,24 @@ export namespace Prisma {
     id?: StringFilter<'User'> | string;
     name?: StringNullableFilter<'User'> | string | null;
     email?: StringFilter<'User'> | string;
+    password?: StringFilter<'User'> | string;
+    reset_password_token?: StringNullableFilter<'User'> | string | null;
+    email_verification_timestamp?:
+      | DateTimeNullableFilter<'User'>
+      | Date
+      | string
+      | null;
+    blacklisted_tokens?: StringNullableListFilter<'User'>;
   };
 
   export type UserOrderByWithRelationInput = {
     id?: SortOrder;
     name?: SortOrderInput | SortOrder;
     email?: SortOrder;
+    password?: SortOrder;
+    reset_password_token?: SortOrderInput | SortOrder;
+    email_verification_timestamp?: SortOrderInput | SortOrder;
+    blacklisted_tokens?: SortOrder;
   };
 
   export type UserWhereUniqueInput = Prisma.AtLeast<
@@ -3204,6 +3264,14 @@ export namespace Prisma {
       OR?: UserWhereInput[];
       NOT?: UserWhereInput | UserWhereInput[];
       name?: StringNullableFilter<'User'> | string | null;
+      password?: StringFilter<'User'> | string;
+      reset_password_token?: StringNullableFilter<'User'> | string | null;
+      email_verification_timestamp?:
+        | DateTimeNullableFilter<'User'>
+        | Date
+        | string
+        | null;
+      blacklisted_tokens?: StringNullableListFilter<'User'>;
     },
     'id' | 'email'
   >;
@@ -3212,6 +3280,10 @@ export namespace Prisma {
     id?: SortOrder;
     name?: SortOrderInput | SortOrder;
     email?: SortOrder;
+    password?: SortOrder;
+    reset_password_token?: SortOrderInput | SortOrder;
+    email_verification_timestamp?: SortOrderInput | SortOrder;
+    blacklisted_tokens?: SortOrder;
     _count?: UserCountOrderByAggregateInput;
     _max?: UserMaxOrderByAggregateInput;
     _min?: UserMinOrderByAggregateInput;
@@ -3228,6 +3300,17 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<'User'> | string;
     name?: StringNullableWithAggregatesFilter<'User'> | string | null;
     email?: StringWithAggregatesFilter<'User'> | string;
+    password?: StringWithAggregatesFilter<'User'> | string;
+    reset_password_token?:
+      | StringNullableWithAggregatesFilter<'User'>
+      | string
+      | null;
+    email_verification_timestamp?:
+      | DateTimeNullableWithAggregatesFilter<'User'>
+      | Date
+      | string
+      | null;
+    blacklisted_tokens?: StringNullableListFilter<'User'>;
   };
 
   export type TodoCreateInput = {
@@ -3273,42 +3356,98 @@ export namespace Prisma {
     id?: string;
     name?: string | null;
     email: string;
+    password: string;
+    reset_password_token?: string | null;
+    email_verification_timestamp?: Date | string | null;
+    blacklisted_tokens?: UserCreateblacklisted_tokensInput | string[];
   };
 
   export type UserUncheckedCreateInput = {
     id?: string;
     name?: string | null;
     email: string;
+    password: string;
+    reset_password_token?: string | null;
+    email_verification_timestamp?: Date | string | null;
+    blacklisted_tokens?: UserCreateblacklisted_tokensInput | string[];
   };
 
   export type UserUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string;
     name?: NullableStringFieldUpdateOperationsInput | string | null;
     email?: StringFieldUpdateOperationsInput | string;
+    password?: StringFieldUpdateOperationsInput | string;
+    reset_password_token?:
+      | NullableStringFieldUpdateOperationsInput
+      | string
+      | null;
+    email_verification_timestamp?:
+      | NullableDateTimeFieldUpdateOperationsInput
+      | Date
+      | string
+      | null;
+    blacklisted_tokens?: UserUpdateblacklisted_tokensInput | string[];
   };
 
   export type UserUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string;
     name?: NullableStringFieldUpdateOperationsInput | string | null;
     email?: StringFieldUpdateOperationsInput | string;
+    password?: StringFieldUpdateOperationsInput | string;
+    reset_password_token?:
+      | NullableStringFieldUpdateOperationsInput
+      | string
+      | null;
+    email_verification_timestamp?:
+      | NullableDateTimeFieldUpdateOperationsInput
+      | Date
+      | string
+      | null;
+    blacklisted_tokens?: UserUpdateblacklisted_tokensInput | string[];
   };
 
   export type UserCreateManyInput = {
     id?: string;
     name?: string | null;
     email: string;
+    password: string;
+    reset_password_token?: string | null;
+    email_verification_timestamp?: Date | string | null;
+    blacklisted_tokens?: UserCreateblacklisted_tokensInput | string[];
   };
 
   export type UserUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string;
     name?: NullableStringFieldUpdateOperationsInput | string | null;
     email?: StringFieldUpdateOperationsInput | string;
+    password?: StringFieldUpdateOperationsInput | string;
+    reset_password_token?:
+      | NullableStringFieldUpdateOperationsInput
+      | string
+      | null;
+    email_verification_timestamp?:
+      | NullableDateTimeFieldUpdateOperationsInput
+      | Date
+      | string
+      | null;
+    blacklisted_tokens?: UserUpdateblacklisted_tokensInput | string[];
   };
 
   export type UserUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string;
     name?: NullableStringFieldUpdateOperationsInput | string | null;
     email?: StringFieldUpdateOperationsInput | string;
+    password?: StringFieldUpdateOperationsInput | string;
+    reset_password_token?:
+      | NullableStringFieldUpdateOperationsInput
+      | string
+      | null;
+    email_verification_timestamp?:
+      | NullableDateTimeFieldUpdateOperationsInput
+      | Date
+      | string
+      | null;
+    blacklisted_tokens?: UserUpdateblacklisted_tokensInput | string[];
   };
 
   export type IntFilter<$PrismaModel = never> = {
@@ -3437,6 +3576,25 @@ export namespace Prisma {
     not?: NestedStringNullableFilter<$PrismaModel> | string | null;
   };
 
+  export type DateTimeNullableFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null;
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null;
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null;
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null;
+  };
+
+  export type StringNullableListFilter<$PrismaModel = never> = {
+    equals?: string[] | ListStringFieldRefInput<$PrismaModel> | null;
+    has?: string | StringFieldRefInput<$PrismaModel> | null;
+    hasEvery?: string[] | ListStringFieldRefInput<$PrismaModel>;
+    hasSome?: string[] | ListStringFieldRefInput<$PrismaModel>;
+    isEmpty?: boolean;
+  };
+
   export type SortOrderInput = {
     sort: SortOrder;
     nulls?: NullsOrder;
@@ -3446,18 +3604,28 @@ export namespace Prisma {
     id?: SortOrder;
     name?: SortOrder;
     email?: SortOrder;
+    password?: SortOrder;
+    reset_password_token?: SortOrder;
+    email_verification_timestamp?: SortOrder;
+    blacklisted_tokens?: SortOrder;
   };
 
   export type UserMaxOrderByAggregateInput = {
     id?: SortOrder;
     name?: SortOrder;
     email?: SortOrder;
+    password?: SortOrder;
+    reset_password_token?: SortOrder;
+    email_verification_timestamp?: SortOrder;
   };
 
   export type UserMinOrderByAggregateInput = {
     id?: SortOrder;
     name?: SortOrder;
     email?: SortOrder;
+    password?: SortOrder;
+    reset_password_token?: SortOrder;
+    email_verification_timestamp?: SortOrder;
   };
 
   export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -3481,6 +3649,24 @@ export namespace Prisma {
     _max?: NestedStringNullableFilter<$PrismaModel>;
   };
 
+  export type DateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null;
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null;
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null;
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+    not?:
+      | NestedDateTimeNullableWithAggregatesFilter<$PrismaModel>
+      | Date
+      | string
+      | null;
+    _count?: NestedIntNullableFilter<$PrismaModel>;
+    _min?: NestedDateTimeNullableFilter<$PrismaModel>;
+    _max?: NestedDateTimeNullableFilter<$PrismaModel>;
+  };
+
   export type StringFieldUpdateOperationsInput = {
     set?: string;
   };
@@ -3497,8 +3683,21 @@ export namespace Prisma {
     divide?: number;
   };
 
+  export type UserCreateblacklisted_tokensInput = {
+    set: string[];
+  };
+
   export type NullableStringFieldUpdateOperationsInput = {
     set?: string | null;
+  };
+
+  export type NullableDateTimeFieldUpdateOperationsInput = {
+    set?: Date | string | null;
+  };
+
+  export type UserUpdateblacklisted_tokensInput = {
+    set?: string[];
+    push?: string | string[];
   };
 
   export type NestedIntFilter<$PrismaModel = never> = {
@@ -3609,6 +3808,17 @@ export namespace Prisma {
     not?: NestedStringNullableFilter<$PrismaModel> | string | null;
   };
 
+  export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null;
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null;
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null;
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null;
+  };
+
   export type NestedStringNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null;
     in?: string[] | ListStringFieldRefInput<$PrismaModel> | null;
@@ -3639,6 +3849,29 @@ export namespace Prisma {
     gte?: number | IntFieldRefInput<$PrismaModel>;
     not?: NestedIntNullableFilter<$PrismaModel> | number | null;
   };
+
+  export type NestedDateTimeNullableWithAggregatesFilter<$PrismaModel = never> =
+    {
+      equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null;
+      in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null;
+      notIn?:
+        | Date[]
+        | string[]
+        | ListDateTimeFieldRefInput<$PrismaModel>
+        | null;
+      lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+      lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+      gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+      gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>;
+      not?:
+        | NestedDateTimeNullableWithAggregatesFilter<$PrismaModel>
+        | Date
+        | string
+        | null;
+      _count?: NestedIntNullableFilter<$PrismaModel>;
+      _min?: NestedDateTimeNullableFilter<$PrismaModel>;
+      _max?: NestedDateTimeNullableFilter<$PrismaModel>;
+    };
 
   /**
    * Aliases for legacy arg types
