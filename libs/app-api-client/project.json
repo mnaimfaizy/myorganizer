@@ -1,0 +1,19 @@
+{
+  "name": "app-api-client",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/app-api-client/src",
+  "projectType": "library",
+  "targets": {
+    "generate-sources": {
+      "executor": "@driimus/nx-plugin-openapi:generate-api-lib-sources",
+      "options": {
+        "generator": "typescript-axios",
+        "sourceSpecPathOrUrl": "libs/api-specs/src/api-specs.openapi.yaml",
+        "additionalProperties": "useSingleRequestParameter=true",
+        "globalProperties": ""
+      }
+    }
+  },
+  "implicitDependencies": ["api-specs"],
+  "tags": []
+}

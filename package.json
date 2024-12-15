@@ -20,6 +20,7 @@
     "json-api:generate": "yarn run tsoa spec-and-routes -c=apps/backend/tsoa.json",
     "yaml-api:generate": "yarn run tsoa spec-and-routes -c=apps/backend/tsoa.json --yaml",
     "api-docs:generate": "yarn run json-api:generate && yarn run yaml-api:generate",
+    "api:generate": "nx run app-api-client:generate-sources",
     "lint": "nx lint",
     "dep-graph": "nx dep-graph",
     "format:check": "nx format:check",
@@ -77,6 +78,7 @@
   "devDependencies": {
     "@babel/core": "^7.14.5",
     "@babel/preset-react": "^7.14.5",
+    "@driimus/nx-plugin-openapi": "^3.0.1",
     "@eslint/compat": "^1.1.1",
     "@eslint/js": "^9.8.0",
     "@nestjs/schematics": "^10.0.1",
@@ -94,6 +96,7 @@
     "@nx/web": "20.1.2",
     "@nx/webpack": "20.1.2",
     "@nx/workspace": "20.1.2",
+    "@openapitools/openapi-generator-cli": "^2.15.3",
     "@pmmmwh/react-refresh-webpack-plugin": "^0.5.7",
     "@svgr/webpack": "^8.0.1",
     "@swc-node/register": "~1.9.1",
