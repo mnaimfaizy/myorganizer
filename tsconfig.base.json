@@ -15,6 +15,8 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@myorganizer/api-specs": ["libs/api-specs/src/index.ts"],
+      "@myorganizer/app-api-client": ["libs/app-api-client/src/index.ts"],
       "@myorganizer/core": ["libs/core/src/index.ts"],
       "@myorganizer/web-ui": ["libs/web-ui/src/index.ts"]
     }
