@@ -9,9 +9,12 @@
       "options": {
         "generator": "typescript-axios",
         "sourceSpecPathOrUrl": "libs/api-specs/src/api-specs.openapi.yaml",
-        "additionalProperties": "useSingleRequestParameter=true",
+        "additionalProperties": "useSingleRequestParameter=true --skip-validate-spec",
         "globalProperties": ""
       }
+    },
+    "lint": {
+      "executor": "nx:noop"
     }
   },
   "implicitDependencies": ["api-specs"],

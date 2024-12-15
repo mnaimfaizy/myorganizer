@@ -21,7 +21,11 @@ const app = express();
 
 // CORS is enabled for the selected origins
 const corsOptions = {
-  origin: ['https://myorganizerapi.mnfprofile.com', 'http://localhost:3000'],
+  origin: [
+    'https://myorganizerapi.mnfprofile.com',
+    'http://localhost:3000',
+    'http://localhost:4200',
+  ],
 };
 
 // Middleware to parse JSON bodies

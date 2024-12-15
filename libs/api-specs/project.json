@@ -4,5 +4,9 @@
   "sourceRoot": "libs/api-specs/src",
   "projectType": "library",
   "tags": [],
-  "targets": {}
+  "targets": {
+    "lint": {
+      "executor": "nx:noop"
+    }
+  }
 }

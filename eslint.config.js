@@ -7,6 +7,8 @@ module.exports = [
   ...nx.configs['flat/javascript'],
   {
     ignores: [
+      '**/libs/app-api-client/src/**/*',
+      '**/libs/api-specs/src/**/*',
       '**/dist',
       'apps/backend/src/prisma/',
       'apps/backend/prisma/prisma-client',
