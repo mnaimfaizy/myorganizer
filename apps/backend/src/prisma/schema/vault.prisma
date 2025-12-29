@@ -1,0 +1,35 @@
+model EncryptedVault {
+    id                      String              @id @default(cuid())
+    userId                  String              @unique
+
+    version                 Int
+    kdf_name                String
+    kdf_salt                String
+    kdf_params              Json
+
+    wrapped_mk_passphrase   Json
+    wrapped_mk_recovery     Json
+
+    createdAt               DateTime            @default(now())
+    updatedAt               DateTime            @updatedAt
+
+    user                    User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+    blobs                   EncryptedVaultBlob[]
+
+    @@index([userId])
+}
+
+model EncryptedVaultBlob {
+    id          String          @id @default(cuid())
+    userId      String
+    type        String
+    blob        Json
+
+    createdAt   DateTime        @default(now())
+    updatedAt   DateTime        @updatedAt
+
+    vault       EncryptedVault  @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+    @@unique([userId, type])
+    @@index([userId])
+}
