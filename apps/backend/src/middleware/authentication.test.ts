@@ -41,6 +41,25 @@ describe('expressAuthentication (tsoa jwt)', () => {
       'status',
       401
     );
+
+    await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
+      'message',
+      'No token provided'
+    );
+  });
+
+  test('rejects unsupported security scheme', async () => {
+    const req = makeReq();
+
+    await expect(expressAuthentication(req, 'api_key')).rejects.toHaveProperty(
+      'status',
+      401
+    );
+
+    await expect(expressAuthentication(req, 'api_key')).rejects.toHaveProperty(
+      'message',
+      'Unsupported security scheme'
+    );
   });
 
   test('uses Authorization Bearer token', async () => {
@@ -68,6 +87,20 @@ describe('expressAuthentication (tsoa jwt)', () => {
     expect(user).toEqual({ id: 'u1' });
   });
 
+  test('rejects when body.token is not a string', async () => {
+    const req = makeReq({ body: { token: 123 } as any });
+
+    await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
+      'status',
+      401
+    );
+
+    await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
+      'message',
+      'No token provided'
+    );
+  });
+
   test('rejects invalid token', async () => {
     decodeTokenMock.mockReturnValue(new Error('bad'));
 
@@ -76,6 +109,27 @@ describe('expressAuthentication (tsoa jwt)', () => {
     await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
       'status',
       401
+    );
+
+    await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
+      'message',
+      'Invalid token'
+    );
+  });
+
+  test('rejects when decoded payload missing userId', async () => {
+    decodeTokenMock.mockReturnValue({});
+
+    const req = makeReq({ headers: { authorization: 'Bearer abc' } });
+
+    await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
+      'status',
+      401
+    );
+
+    await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
+      'message',
+      'Invalid token'
     );
   });
 
@@ -88,6 +142,11 @@ describe('expressAuthentication (tsoa jwt)', () => {
     await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
       'status',
       401
+    );
+
+    await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
+      'message',
+      'User not found'
     );
   });
 });

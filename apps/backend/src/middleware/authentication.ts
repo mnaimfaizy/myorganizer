@@ -43,16 +43,18 @@ export function expressAuthentication(
       throw unauthorized('No token provided');
     }
 
-    const decoded = decodeToken(
-      token,
-      process.env.ACCESS_JWT_SECRET as string
-    ) as JwtPayload;
+    const decoded = decodeToken(token, process.env.ACCESS_JWT_SECRET as string);
 
-    if (!decoded || decoded instanceof Error || !decoded.userId) {
+    if (!decoded || decoded instanceof Error) {
       throw unauthorized('Invalid token');
     }
 
-    const user = await userService.getById(decoded.userId);
+    const payload = decoded as JwtPayload;
+    if (!payload.userId) {
+      throw unauthorized('Invalid token');
+    }
+
+    const user = await userService.getById(payload.userId);
     if (!user) {
       throw unauthorized('User not found');
     }
@@ -66,7 +68,16 @@ export function expressAuthentication(
     }
 
     return user;
-  })().catch(() => {
+  })().catch((err: unknown) => {
+    if (
+      err &&
+      typeof err === 'object' &&
+      'status' in err &&
+      (err as { status?: unknown }).status === 401
+    ) {
+      throw err;
+    }
+
     throw unauthorized('Unauthorized');
   });
 }
