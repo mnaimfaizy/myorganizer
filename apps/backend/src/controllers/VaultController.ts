@@ -4,7 +4,6 @@ import {
   Controller,
   Get,
   Header,
-  Middlewares,
   Path,
   Post,
   Put,
@@ -20,7 +19,6 @@ import vaultService, {
   VaultMetaV1,
 } from '../services/VaultService';
 import { UserInterface } from '../types';
-import passport from '../utils/passport';
 
 type ErrorResponse = { message: string; details?: unknown };
 
@@ -52,7 +50,6 @@ type ImportVaultResponse = { ok: true } | ErrorResponse;
 @Tags('Vault')
 @Route('/vault')
 @Security('jwt')
-@Middlewares([passport.authenticate('jwt', { session: false })])
 export class VaultController extends Controller {
   private getUserId(req: ExRequest): string {
     const user = req.user as UserInterface;
