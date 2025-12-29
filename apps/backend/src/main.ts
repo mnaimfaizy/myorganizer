@@ -10,6 +10,7 @@ import session from 'express-session';
 import * as path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { ValidateError } from 'tsoa';
+import { vaultRateLimiter } from './middleware/vaultRateLimit';
 import authRouter from './routes/auth';
 import { RegisterRoutes } from './routes/routes';
 import todosRouter from './routes/todo';
@@ -30,7 +31,7 @@ const corsOptions = {
 
 // Middleware to parse JSON bodies
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '2mb' }));
 
 // Serve the Swagger UI at /docs
 app.use('/docs', swaggerUi.serve, async (_req: ExRequest, res: ExResponse) => {
@@ -67,6 +68,9 @@ app.use(passport.initialize());
 app.use(`${routerPrefix}/todo`, todosRouter);
 app.use(`${routerPrefix}/user`, usersRouter);
 app.use(`${routerPrefix}/auth`, authRouter);
+
+// Apply additional protections for blind-storage endpoints.
+app.use('/vault', vaultRateLimiter);
 
 // Register the routes
 RegisterRoutes(app);

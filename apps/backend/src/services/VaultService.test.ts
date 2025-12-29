@@ -19,6 +19,9 @@ describe('VaultService', () => {
   let prisma: any;
   let service: VaultService;
 
+  const IV_12B_BASE64 = Buffer.alloc(12).toString('base64');
+  const CT_BASE64 = Buffer.from('ciphertext').toString('base64');
+
   beforeEach(() => {
     prisma = makePrismaMock();
     service = new VaultService(prisma);
@@ -84,7 +87,7 @@ describe('VaultService', () => {
   test('putBlob returns 404 when vault missing', async () => {
     prisma.encryptedVault.findUnique.mockResolvedValue(null);
 
-    const blob = { version: 1, iv: 'iv', ciphertext: 'ct' };
+    const blob = { version: 1, iv: IV_12B_BASE64, ciphertext: CT_BASE64 };
     const result = await service.putBlob('user-1', 'addresses', blob);
 
     expect(result.ok).toBe(false);
@@ -99,7 +102,7 @@ describe('VaultService', () => {
       updatedAt: new Date('2025-01-01T00:00:00.000Z'),
     });
 
-    const blob = { version: 1, iv: 'iv', ciphertext: 'ct' };
+    const blob = { version: 1, iv: IV_12B_BASE64, ciphertext: CT_BASE64 };
     const result = await service.putBlob(
       'user-1',
       'addresses',
@@ -110,6 +113,43 @@ describe('VaultService', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.status).toBe(409);
+    }
+  });
+
+  test('putBlob returns 422 for non-base64 iv', async () => {
+    prisma.encryptedVault.findUnique.mockResolvedValue({ userId: 'user-1' });
+
+    const blob = { version: 1, iv: 'not-base64', ciphertext: CT_BASE64 };
+    const result = await service.putBlob('user-1', 'addresses', blob);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(422);
+    }
+  });
+
+  test('putBlob returns 422 for iv that decodes to the wrong byte length', async () => {
+    prisma.encryptedVault.findUnique.mockResolvedValue({ userId: 'user-1' });
+
+    const iv1 = Buffer.alloc(1).toString('base64');
+    const blob = { version: 1, iv: iv1, ciphertext: CT_BASE64 };
+    const result = await service.putBlob('user-1', 'addresses', blob);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(422);
+    }
+  });
+
+  test('putBlob returns 422 for non-base64 ciphertext', async () => {
+    prisma.encryptedVault.findUnique.mockResolvedValue({ userId: 'user-1' });
+
+    const blob = { version: 1, iv: IV_12B_BASE64, ciphertext: '***' };
+    const result = await service.putBlob('user-1', 'addresses', blob);
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.status).toBe(422);
     }
   });
 });

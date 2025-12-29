@@ -38,12 +38,32 @@ const VAULT_META_MAX_BYTES = 32 * 1024;
 const VAULT_BLOB_MAX_BYTES = 256 * 1024;
 const VAULT_EXPORT_MAX_BYTES = 1024 * 1024;
 
+const BASE64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
+
 function etagFromDate(date: Date): string {
   return `W/\"${date.getTime()}\"`;
 }
 
 function jsonByteLength(value: unknown): number {
   return Buffer.byteLength(JSON.stringify(value), 'utf8');
+}
+
+function decodeBase64Strict(value: string): Buffer | null {
+  if (typeof value !== 'string' || value.length === 0) return null;
+  if (value.length % 4 !== 0) return null;
+  if (!BASE64_RE.test(value)) return null;
+
+  const decoded = Buffer.from(value, 'base64');
+
+  const normalizedInput = value.replace(/=+$/, '');
+  const normalizedOutput = decoded.toString('base64').replace(/=+$/, '');
+  if (normalizedOutput !== normalizedInput) return null;
+
+  return decoded;
+}
+
+function isBase64String(value: string): boolean {
+  return decodeBase64Strict(value) !== null;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -64,11 +84,22 @@ function isVaultMetaV1(value: unknown): value is VaultMetaV1 {
 
 function isEncryptedBlobV1(value: unknown): value is EncryptedBlobV1 {
   if (!isPlainObject(value)) return false;
-  return (
-    typeof value.version === 'number' &&
-    typeof value.iv === 'string' &&
-    typeof value.ciphertext === 'string'
-  );
+
+  if (
+    typeof value.version !== 'number' ||
+    typeof value.iv !== 'string' ||
+    typeof value.ciphertext !== 'string'
+  ) {
+    return false;
+  }
+
+  const ivBytes = decodeBase64Strict(value.iv);
+  if (!ivBytes) return false;
+  if (ivBytes.byteLength < 12 || ivBytes.byteLength > 24) return false;
+
+  if (!isBase64String(value.ciphertext)) return false;
+
+  return true;
 }
 
 export class VaultService {
