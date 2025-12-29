@@ -7,6 +7,228 @@
     "requestBodies": {},
     "responses": {},
     "schemas": {
+      "Record_string.unknown_": {
+        "properties": {},
+        "additionalProperties": {},
+        "type": "object",
+        "description": "Construct a type with a set of properties K of type T"
+      },
+      "VaultMetaV1": {
+        "properties": {
+          "version": {
+            "type": "number",
+            "format": "double"
+          },
+          "kdf_name": {
+            "type": "string"
+          },
+          "kdf_salt": {
+            "type": "string"
+          },
+          "kdf_params": {
+            "$ref": "#/components/schemas/Record_string.unknown_"
+          },
+          "wrapped_mk_passphrase": {},
+          "wrapped_mk_recovery": {}
+        },
+        "required": [
+          "version",
+          "kdf_name",
+          "kdf_salt",
+          "kdf_params",
+          "wrapped_mk_passphrase",
+          "wrapped_mk_recovery"
+        ],
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "ErrorResponse": {
+        "properties": {
+          "details": {},
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["message"],
+        "type": "object"
+      },
+      "GetVaultMetaResponse": {
+        "anyOf": [
+          {
+            "properties": {
+              "etag": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "meta": {
+                "$ref": "#/components/schemas/VaultMetaV1"
+              }
+            },
+            "required": ["etag", "updatedAt", "meta"],
+            "type": "object"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "PutVaultMetaResponse": {
+        "anyOf": [
+          {
+            "properties": {
+              "updatedAt": {
+                "type": "string"
+              },
+              "etag": {
+                "type": "string"
+              },
+              "ok": {
+                "type": "boolean",
+                "enum": [true],
+                "nullable": false
+              }
+            },
+            "required": ["updatedAt", "etag", "ok"],
+            "type": "object"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "VaultBlobType": {
+        "type": "string",
+        "enum": ["addresses", "mobileNumbers"]
+      },
+      "EncryptedBlobV1": {
+        "properties": {
+          "version": {
+            "type": "number",
+            "format": "double"
+          },
+          "iv": {
+            "type": "string"
+          },
+          "ciphertext": {
+            "type": "string"
+          }
+        },
+        "required": ["version", "iv", "ciphertext"],
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "GetVaultBlobResponse": {
+        "anyOf": [
+          {
+            "properties": {
+              "etag": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "blob": {
+                "$ref": "#/components/schemas/EncryptedBlobV1"
+              },
+              "type": {
+                "$ref": "#/components/schemas/VaultBlobType"
+              }
+            },
+            "required": ["etag", "updatedAt", "blob", "type"],
+            "type": "object"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "PutVaultBlobResponse": {
+        "anyOf": [
+          {
+            "properties": {
+              "updatedAt": {
+                "type": "string"
+              },
+              "etag": {
+                "type": "string"
+              },
+              "ok": {
+                "type": "boolean",
+                "enum": [true],
+                "nullable": false
+              }
+            },
+            "required": ["updatedAt", "etag", "ok"],
+            "type": "object"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "Partial_Record_VaultBlobType.EncryptedBlobV1__": {
+        "properties": {
+          "addresses": {
+            "$ref": "#/components/schemas/EncryptedBlobV1"
+          },
+          "mobileNumbers": {
+            "$ref": "#/components/schemas/EncryptedBlobV1"
+          }
+        },
+        "type": "object",
+        "description": "Make all properties in T optional"
+      },
+      "VaultExportV1": {
+        "properties": {
+          "exportVersion": {
+            "type": "number",
+            "enum": [1],
+            "nullable": false
+          },
+          "exportedAt": {
+            "type": "string"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/VaultMetaV1"
+          },
+          "blobs": {
+            "$ref": "#/components/schemas/Partial_Record_VaultBlobType.EncryptedBlobV1__"
+          }
+        },
+        "required": ["exportVersion", "exportedAt", "meta", "blobs"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ExportVaultResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/VaultExportV1"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "ImportVaultResponse": {
+        "anyOf": [
+          {
+            "properties": {
+              "ok": {
+                "type": "boolean",
+                "enum": [true],
+                "nullable": false
+              }
+            },
+            "required": ["ok"],
+            "type": "object"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
       "User": {
         "properties": {
           "id": {
@@ -174,6 +396,226 @@
     "contact": {}
   },
   "paths": {
+    "/vault": {
+      "get": {
+        "operationId": "GetVaultMeta",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetVaultMetaResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Vault"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": []
+      },
+      "put": {
+        "operationId": "PutVaultMeta",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PutVaultMetaResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Vault"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/VaultMetaV1"
+                  }
+                },
+                "required": ["meta"],
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vault/blob/{type}": {
+      "get": {
+        "operationId": "GetVaultBlob",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetVaultBlobResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Vault"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/VaultBlobType"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "PutVaultBlob",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PutVaultBlobResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Vault"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/VaultBlobType"
+            }
+          },
+          {
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "blob": {
+                    "$ref": "#/components/schemas/EncryptedBlobV1"
+                  },
+                  "type": {
+                    "$ref": "#/components/schemas/VaultBlobType"
+                  }
+                },
+                "required": ["blob", "type"],
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vault/export": {
+      "post": {
+        "operationId": "ExportVault",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportVaultResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Vault"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/vault/import": {
+      "post": {
+        "operationId": "ImportVault",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportVaultResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Vault"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VaultExportV1"
+              }
+            }
+          }
+        }
+      }
+    },
     "/user": {
       "get": {
         "operationId": "GetAllUsers",
