@@ -21,6 +21,8 @@
     "yaml-api:generate": "yarn run tsoa spec-and-routes -c=apps/backend/tsoa.json --yaml",
     "api-docs:generate": "yarn run json-api:generate && yarn run yaml-api:generate",
     "api:generate": "nx run app-api-client:generate-sources",
+    "openapi:sync": "nx run api-specs:sync",
+    "openapi:check": "nx run api-specs:check",
     "lint": "nx lint",
     "dep-graph": "nx dep-graph",
     "format:check": "nx format:check",

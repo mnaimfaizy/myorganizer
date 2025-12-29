@@ -26,11 +26,13 @@ The backend API provides a RESTful interface for the MyOrganizer application. It
 This backend application is built with the following technologies:
 
 ### Core Framework & Runtime
+
 - **Node.js** - JavaScript runtime
 - **Express.js** - Web application framework
 - **TypeScript** - Typed JavaScript
 
 ### Database & ORM
+
 - **PostgreSQL** - Relational database
 - **Prisma** - Next-generation ORM for Node.js
   - Type-safe database client
@@ -38,12 +40,14 @@ This backend application is built with the following technologies:
   - Schema management
 
 ### API Documentation
+
 - **TSOA** - TypeScript OpenAPI (Swagger) generator
   - Automatic route generation
   - API documentation from TypeScript types
 - **Swagger UI Express** - Interactive API documentation
 
 ### Authentication & Security
+
 - **Passport.js** - Authentication middleware
   - Local strategy for username/password
   - JWT strategy for token-based auth
@@ -53,6 +57,7 @@ This backend application is built with the following technologies:
 - **express-session** - Session management
 
 ### Utilities
+
 - **dotenv** - Environment variable management
 - **cors** - Cross-Origin Resource Sharing
 - **body-parser** - Request body parsing
@@ -62,6 +67,7 @@ This backend application is built with the following technologies:
 - **zod** - TypeScript-first schema validation
 
 ### Development Tools
+
 - **Nx** - Monorepo build system
 - **Webpack** - Module bundler
 - **Jest** - Testing framework
@@ -80,12 +86,14 @@ Before you begin, ensure you have the following installed:
 ## Installation
 
 1. **Clone the repository** (if not already done):
+
    ```bash
    git clone <repository-url>
    cd myorganizer
    ```
 
 2. **Install dependencies**:
+
    ```bash
    yarn install
    ```
@@ -100,6 +108,7 @@ Before you begin, ensure you have the following installed:
 ## Environment Configuration
 
 1. **Copy the example environment file**:
+
    ```bash
    cp .env.example .env
    ```
@@ -113,23 +122,23 @@ Before you begin, ensure you have the following installed:
    PORT=3000
    NODE_ENV=development
    ROUTER_PREFIX=/api/v1
-   
+
    # JWT Secrets (generate secure random strings)
    ACCESS_JWT_SECRET=your-access-secret-here
    REFRESH_JWT_SECRET=your-refresh-secret-here
    VERIFY_JWT_SECRET=your-verify-secret-here
    RESET_JWT_SECRET=your-reset-secret-here
-   
+
    # PostgreSQL Database
    DATABASE_USER=postgres
    DATABASE_PASSWORD=Admin@123
    DATABASE_NAME=myorganizer
    DATABASE_URL=postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@localhost:5453/${DATABASE_NAME}
-   
+
    # PgAdmin (if using Docker)
    PGADMIN_DEFAULT_EMAIL=admin@myorganizer.com
    PGADMIN_DEFAULT_PASSWORD=Admin@123
-   
+
    # Mail - SMTP Configuration
    MAIL_SERVICE=smtp
    DEFAULT_EMAIL_PROVIDER=smtp
@@ -142,6 +151,7 @@ Before you begin, ensure you have the following installed:
    ```
 
    **Important Notes:**
+
    - Generate strong, random secrets for JWT tokens in production
    - Update database credentials if not using default values
    - Configure SMTP settings for email functionality
@@ -154,11 +164,13 @@ The application uses Prisma ORM for database management. Follow these steps to s
 ### 1. Ensure Database is Running
 
 If using Docker Compose:
+
 ```bash
 docker-compose up -d myorganizer_db
 ```
 
 Verify the database is running:
+
 ```bash
 docker ps | grep myorganizer_db
 ```
@@ -166,6 +178,7 @@ docker ps | grep myorganizer_db
 ### 2. Generate Prisma Client
 
 Generate the Prisma client based on your schema:
+
 ```bash
 # Using Nx
 nx run backend:generate-types
@@ -178,6 +191,7 @@ npx prisma generate
 ### 3. Run Database Migrations
 
 Apply database migrations to create tables:
+
 ```bash
 # Using Nx
 nx run backend:migrate
@@ -188,6 +202,7 @@ npx prisma migrate dev
 ```
 
 This will:
+
 - Create the database if it doesn't exist
 - Run all pending migrations
 - Generate Prisma Client
@@ -195,6 +210,7 @@ This will:
 ### 4. (Optional) Seed the Database
 
 If seed scripts are available, run:
+
 ```bash
 cd apps/backend/src
 npx prisma db seed
@@ -203,6 +219,7 @@ npx prisma db seed
 ### Prisma Schema Location
 
 The Prisma schema files are located in:
+
 ```
 apps/backend/src/prisma/schema/
 ├── schema.prisma    # Main schema configuration
@@ -249,6 +266,7 @@ nx serve backend
 ```
 
 The development server features:
+
 - **Hot reload** - Automatically restarts when you save changes
 - **TypeScript compilation** - Compiles TypeScript on the fly
 - **Watch mode** - Monitors file changes
@@ -277,8 +295,31 @@ yarn api-docs:generate
 ```
 
 Generated files:
+
 - JSON: `apps/backend/src/swagger/swagger.json`
 - YAML: `apps/backend/src/swagger/swagger.yaml`
+
+### Sync OpenAPI + regenerate the TypeScript client
+
+`apps/backend/src/swagger/swagger.yaml` is the **source of truth** for the repo’s OpenAPI.
+
+From the repo root, run:
+
+```bash
+yarn openapi:sync
+```
+
+This will:
+
+1. Generate the TSOA YAML spec
+2. Copy it into `libs/api-specs/src/api-specs.openapi.yaml`
+3. Regenerate `libs/app-api-client`
+
+To verify in CI (no drift between backend spec, copied spec, and generated client):
+
+```bash
+yarn openapi:check
+```
 
 ### Development Workflow
 
@@ -436,11 +477,13 @@ npx prisma db push
 ### Swagger UI
 
 Once the server is running, visit:
+
 ```
 http://localhost:3000/docs
 ```
 
 This provides an interactive API documentation where you can:
+
 - Explore all available endpoints
 - View request/response schemas
 - Test API endpoints directly from the browser
@@ -451,6 +494,7 @@ This provides an interactive API documentation where you can:
 The API follows RESTful conventions:
 
 #### Authentication Endpoints (`/auth`)
+
 - `POST /auth/login` - User login
 - `POST /auth/register` - User registration
 - `POST /auth/refresh` - Refresh access token
@@ -459,11 +503,13 @@ The API follows RESTful conventions:
 - `PATCH /auth/reset-password` - Reset password
 
 #### User Endpoints (`/user`)
+
 - `GET /user/:id` - Get user by ID
 - `PATCH /user/:id` - Update user
 - `DELETE /user/:id` - Delete user
 
 #### Todo Endpoints (`/todo`)
+
 - `GET /todo` - Get all todos
 - `POST /todo` - Create new todo
 - `DELETE /todo/:id` - Delete todo
@@ -494,6 +540,7 @@ nx test backend --coverage
 ### Test Structure
 
 Tests are located alongside the source files with `.test.ts` or `.spec.ts` extensions:
+
 - `main.test.ts` - Main application tests
 - `controllers/*.test.ts` - Controller tests
 - `routes/*.test.ts` - Route tests
@@ -511,7 +558,7 @@ describe('TodoController', () => {
     const controller = new TodoController();
     const todo = await controller.createTodo({
       title: 'Test Todo',
-      completed: false
+      completed: false,
     });
     expect(todo).toBeDefined();
   });
@@ -531,6 +578,7 @@ nx run backend:build:production
 ```
 
 This will:
+
 - Compile TypeScript to JavaScript
 - Bundle the application using Webpack
 - Output to `dist/apps/backend/`
@@ -557,6 +605,7 @@ node main.js
 ### Production Environment Variables
 
 Ensure all required environment variables are set:
+
 - `NODE_ENV=production`
 - `DATABASE_URL` pointing to production database
 - All JWT secrets configured
@@ -578,18 +627,22 @@ Ensure all required environment variables are set:
 ## Additional Resources
 
 ### Prisma Documentation
+
 - [Prisma Docs](https://www.prisma.io/docs)
 - [Prisma Schema Reference](https://www.prisma.io/docs/reference/api-reference/prisma-schema-reference)
 - [Prisma Client API](https://www.prisma.io/docs/reference/api-reference/prisma-client-reference)
 
 ### TSOA Documentation
+
 - [TSOA GitHub](https://github.com/lukeautry/tsoa)
 - [TSOA Documentation](https://tsoa-community.github.io/docs/)
 
 ### Express.js
+
 - [Express.js Guide](https://expressjs.com/en/guide/routing.html)
 
 ### Nx Monorepo
+
 - [Nx Documentation](https://nx.dev)
 - [Nx Express Plugin](https://nx.dev/nx-api/express)
 
@@ -598,14 +651,16 @@ Ensure all required environment variables are set:
 ### Common Issues
 
 **Issue: Database connection fails**
+
 ```
-Solution: 
+Solution:
 1. Ensure PostgreSQL is running: docker-compose ps
 2. Check DATABASE_URL in .env file
 3. Verify database credentials
 ```
 
 **Issue: Prisma client not generated**
+
 ```
 Solution:
 cd apps/backend/src
@@ -613,6 +668,7 @@ npx prisma generate
 ```
 
 **Issue: Port already in use**
+
 ```
 Solution:
 1. Change PORT in .env file
@@ -622,6 +678,7 @@ Solution:
 ```
 
 **Issue: Migration fails**
+
 ```
 Solution:
 1. Check database connection
@@ -632,6 +689,7 @@ Solution:
 ## Support
 
 For issues and questions:
+
 - Check the main repository [README](../../README.md)
 - Review existing issues on GitHub
 - Create a new issue with detailed information
