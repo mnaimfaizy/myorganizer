@@ -21,7 +21,7 @@ components:
         kdf_salt:
           type: string
         kdf_params:
-          $ref: '#/components/schemas/Record_string.unknown_'
+          $ref: "#/components/schemas/Record_string.unknown_"
         wrapped_mk_passphrase: {}
         wrapped_mk_recovery: {}
       required:
@@ -49,13 +49,13 @@ components:
             updatedAt:
               type: string
             meta:
-              $ref: '#/components/schemas/VaultMetaV1'
+              $ref: "#/components/schemas/VaultMetaV1"
           required:
             - etag
             - updatedAt
             - meta
           type: object
-        - $ref: '#/components/schemas/ErrorResponse'
+        - $ref: "#/components/schemas/ErrorResponse"
     PutVaultMetaResponse:
       anyOf:
         - properties:
@@ -73,7 +73,7 @@ components:
             - etag
             - ok
           type: object
-        - $ref: '#/components/schemas/ErrorResponse'
+        - $ref: "#/components/schemas/ErrorResponse"
     VaultBlobType:
       type: string
       enum:
@@ -102,16 +102,16 @@ components:
             updatedAt:
               type: string
             blob:
-              $ref: '#/components/schemas/EncryptedBlobV1'
+              $ref: "#/components/schemas/EncryptedBlobV1"
             type:
-              $ref: '#/components/schemas/VaultBlobType'
+              $ref: "#/components/schemas/VaultBlobType"
           required:
             - etag
             - updatedAt
             - blob
             - type
           type: object
-        - $ref: '#/components/schemas/ErrorResponse'
+        - $ref: "#/components/schemas/ErrorResponse"
     PutVaultBlobResponse:
       anyOf:
         - properties:
@@ -129,13 +129,13 @@ components:
             - etag
             - ok
           type: object
-        - $ref: '#/components/schemas/ErrorResponse'
+        - $ref: "#/components/schemas/ErrorResponse"
     Partial_Record_VaultBlobType.EncryptedBlobV1__:
       properties:
         addresses:
-          $ref: '#/components/schemas/EncryptedBlobV1'
+          $ref: "#/components/schemas/EncryptedBlobV1"
         mobileNumbers:
-          $ref: '#/components/schemas/EncryptedBlobV1'
+          $ref: "#/components/schemas/EncryptedBlobV1"
       type: object
       description: Make all properties in T optional
     VaultExportV1:
@@ -148,9 +148,9 @@ components:
         exportedAt:
           type: string
         meta:
-          $ref: '#/components/schemas/VaultMetaV1'
+          $ref: "#/components/schemas/VaultMetaV1"
         blobs:
-          $ref: '#/components/schemas/Partial_Record_VaultBlobType.EncryptedBlobV1__'
+          $ref: "#/components/schemas/Partial_Record_VaultBlobType.EncryptedBlobV1__"
       required:
         - exportVersion
         - exportedAt
@@ -160,8 +160,8 @@ components:
       additionalProperties: false
     ExportVaultResponse:
       anyOf:
-        - $ref: '#/components/schemas/VaultExportV1'
-        - $ref: '#/components/schemas/ErrorResponse'
+        - $ref: "#/components/schemas/VaultExportV1"
+        - $ref: "#/components/schemas/ErrorResponse"
     ImportVaultResponse:
       anyOf:
         - properties:
@@ -173,7 +173,7 @@ components:
           required:
             - ok
           type: object
-        - $ref: '#/components/schemas/ErrorResponse'
+        - $ref: "#/components/schemas/ErrorResponse"
     User:
       properties:
         id:
@@ -303,7 +303,7 @@ components:
       bearerFormat: JWT
       description: JWT Access Token only
 info:
-  title: '@myorganizer/source'
+  title: "@myorganizer/source"
   version: 0.0.0
   license:
     name: MIT
@@ -313,12 +313,12 @@ paths:
     get:
       operationId: GetVaultMeta
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetVaultMetaResponse'
+                $ref: "#/components/schemas/GetVaultMetaResponse"
       tags:
         - Vault
       security:
@@ -327,12 +327,12 @@ paths:
     put:
       operationId: PutVaultMeta
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PutVaultMetaResponse'
+                $ref: "#/components/schemas/PutVaultMetaResponse"
       tags:
         - Vault
       security:
@@ -350,7 +350,7 @@ paths:
             schema:
               properties:
                 meta:
-                  $ref: '#/components/schemas/VaultMetaV1'
+                  $ref: "#/components/schemas/VaultMetaV1"
               required:
                 - meta
               type: object
@@ -358,12 +358,12 @@ paths:
     get:
       operationId: GetVaultBlob
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetVaultBlobResponse'
+                $ref: "#/components/schemas/GetVaultBlobResponse"
       tags:
         - Vault
       security:
@@ -373,16 +373,16 @@ paths:
           name: type
           required: true
           schema:
-            $ref: '#/components/schemas/VaultBlobType'
+            $ref: "#/components/schemas/VaultBlobType"
     put:
       operationId: PutVaultBlob
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PutVaultBlobResponse'
+                $ref: "#/components/schemas/PutVaultBlobResponse"
       tags:
         - Vault
       security:
@@ -392,7 +392,7 @@ paths:
           name: type
           required: true
           schema:
-            $ref: '#/components/schemas/VaultBlobType'
+            $ref: "#/components/schemas/VaultBlobType"
         - in: header
           name: if-match
           required: false
@@ -405,9 +405,9 @@ paths:
             schema:
               properties:
                 blob:
-                  $ref: '#/components/schemas/EncryptedBlobV1'
+                  $ref: "#/components/schemas/EncryptedBlobV1"
                 type:
-                  $ref: '#/components/schemas/VaultBlobType'
+                  $ref: "#/components/schemas/VaultBlobType"
               required:
                 - blob
                 - type
@@ -416,12 +416,12 @@ paths:
     post:
       operationId: ExportVault
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ExportVaultResponse'
+                $ref: "#/components/schemas/ExportVaultResponse"
       tags:
         - Vault
       security:
@@ -431,12 +431,12 @@ paths:
     post:
       operationId: ImportVault
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ImportVaultResponse'
+                $ref: "#/components/schemas/ImportVaultResponse"
       tags:
         - Vault
       security:
@@ -447,18 +447,18 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VaultExportV1'
+              $ref: "#/components/schemas/VaultExportV1"
   /user:
     get:
       operationId: GetAllUsers
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
               schema:
                 items:
-                  $ref: '#/components/schemas/User'
+                  $ref: "#/components/schemas/User"
                 type: array
       tags:
         - Users Management
@@ -468,22 +468,22 @@ paths:
     post:
       operationId: CreateUser
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
               schema:
                 anyOf:
-                  - $ref: '#/components/schemas/User'
+                  - $ref: "#/components/schemas/User"
                   - {}
-        '201':
+        "201":
           description: Created
-        '422':
+        "422":
           description: Validation Failed
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidateErrorJSON'
+                $ref: "#/components/schemas/ValidateErrorJSON"
       tags:
         - Users Management
       security: []
@@ -493,18 +493,18 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserCreationBody'
+              $ref: "#/components/schemas/UserCreationBody"
   /user/{userId}:
     get:
       operationId: GetUserById
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
               schema:
                 allOf:
-                  - $ref: '#/components/schemas/User'
+                  - $ref: "#/components/schemas/User"
                 nullable: true
       tags:
         - Users Management
@@ -519,13 +519,13 @@ paths:
     get:
       operationId: GetAllTodos
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
               schema:
                 items:
-                  $ref: '#/components/schemas/Todo'
+                  $ref: "#/components/schemas/Todo"
                 type: array
       tags:
         - Todo Management
@@ -534,12 +534,12 @@ paths:
     post:
       operationId: CreateTodo
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Todo'
+                $ref: "#/components/schemas/Todo"
       tags:
         - Todo Management
       security: []
@@ -549,12 +549,12 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TodoRequestBody'
+              $ref: "#/components/schemas/TodoRequestBody"
   /todo/{todoId}:
     delete:
       operationId: DeleteTodo
       responses:
-        '204':
+        "204":
           description: No content
       tags:
         - Todo Management
@@ -570,7 +570,7 @@ paths:
     post:
       operationId: Login
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
@@ -594,12 +594,12 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserLoginBody'
+              $ref: "#/components/schemas/UserLoginBody"
   /auth/logout/{userId}:
     post:
       operationId: Logout
       responses:
-        '200':
+        "200":
           description: Logged out successfully
           content:
             application/json:
@@ -614,7 +614,7 @@ paths:
                   - message
                   - status
                 type: object
-        '500':
+        "500":
           description: Failed to logout
       tags:
         - Authentication
@@ -630,14 +630,14 @@ paths:
     post:
       operationId: RefreshToken
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
               schema:
                 properties:
                   user:
-                    $ref: '#/components/schemas/User'
+                    $ref: "#/components/schemas/User"
                   message:
                     type: string
                   status:
@@ -648,14 +648,14 @@ paths:
                   - message
                   - status
                 type: object
-        '401':
+        "401":
           description: Unauthorized
-        '422':
+        "422":
           description: Validation Failed
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidateErrorJSON'
+                $ref: "#/components/schemas/ValidateErrorJSON"
       tags:
         - Authentication
       security: []
@@ -675,22 +675,22 @@ paths:
     post:
       operationId: CreateUser
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
               schema:
                 anyOf:
-                  - $ref: '#/components/schemas/User'
+                  - $ref: "#/components/schemas/User"
                   - {}
-        '201':
+        "201":
           description: Created
-        '422':
+        "422":
           description: Validation Failed
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidateErrorJSON'
+                $ref: "#/components/schemas/ValidateErrorJSON"
       tags:
         - Authentication
       security: []
@@ -700,23 +700,23 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserCreationBody'
+              $ref: "#/components/schemas/UserCreationBody"
   /auth/verify/email:
     patch:
       operationId: VerifyEmail
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/FilteredUserInterface'
-        '422':
+                $ref: "#/components/schemas/FilteredUserInterface"
+        "422":
           description: Validation Failed
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidateErrorJSON'
+                $ref: "#/components/schemas/ValidateErrorJSON"
       tags:
         - Authentication
       security: []
@@ -736,7 +736,7 @@ paths:
     post:
       operationId: ResendVerificationEmail
       responses:
-        '204':
+        "204":
           description: No content
       tags:
         - Authentication
@@ -752,7 +752,7 @@ paths:
     post:
       operationId: ResetPassword
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
@@ -786,7 +786,7 @@ paths:
     patch:
       operationId: ConfirmResetPassword
       responses:
-        '200':
+        "200":
           description: Ok
           content:
             application/json:
@@ -810,7 +810,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ConfirmResetPasswordBody'
+              $ref: "#/components/schemas/ConfirmResetPasswordBody"
 servers:
   - url: http://localhost:3000/api/v1/
     description: Local server
