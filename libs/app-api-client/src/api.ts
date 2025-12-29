@@ -67,6 +67,103 @@ export interface ConfirmResetPasswordBody {
 /**
  *
  * @export
+ * @interface EncryptedBlobV1
+ */
+export interface EncryptedBlobV1 {
+  [key: string]: any;
+
+  /**
+   *
+   * @type {number}
+   * @memberof EncryptedBlobV1
+   */
+  version: number;
+  /**
+   *
+   * @type {string}
+   * @memberof EncryptedBlobV1
+   */
+  iv: string;
+  /**
+   *
+   * @type {string}
+   * @memberof EncryptedBlobV1
+   */
+  ciphertext: string;
+}
+/**
+ *
+ * @export
+ * @interface ErrorResponse
+ */
+export interface ErrorResponse {
+  /**
+   *
+   * @type {any}
+   * @memberof ErrorResponse
+   */
+  details?: any;
+  /**
+   *
+   * @type {string}
+   * @memberof ErrorResponse
+   */
+  message: string;
+}
+/**
+ *
+ * @export
+ * @interface ExportVaultResponse
+ */
+export interface ExportVaultResponse {
+  /**
+   *
+   * @type {number}
+   * @memberof ExportVaultResponse
+   */
+  exportVersion: ExportVaultResponseExportVersionEnum;
+  /**
+   *
+   * @type {string}
+   * @memberof ExportVaultResponse
+   */
+  exportedAt: string;
+  /**
+   *
+   * @type {VaultMetaV1}
+   * @memberof ExportVaultResponse
+   */
+  meta: VaultMetaV1;
+  /**
+   *
+   * @type {PartialRecordVaultBlobTypeEncryptedBlobV1}
+   * @memberof ExportVaultResponse
+   */
+  blobs: PartialRecordVaultBlobTypeEncryptedBlobV1;
+  /**
+   *
+   * @type {any}
+   * @memberof ExportVaultResponse
+   */
+  details?: any;
+  /**
+   *
+   * @type {string}
+   * @memberof ExportVaultResponse
+   */
+  message: string;
+}
+
+export const ExportVaultResponseExportVersionEnum = {
+  NUMBER_1: 1,
+} as const;
+
+export type ExportVaultResponseExportVersionEnum =
+  (typeof ExportVaultResponseExportVersionEnum)[keyof typeof ExportVaultResponseExportVersionEnum];
+
+/**
+ *
+ * @export
  * @interface FilteredUserInterface
  */
 export interface FilteredUserInterface {
@@ -88,6 +185,182 @@ export interface FilteredUserInterface {
    * @memberof FilteredUserInterface
    */
   email: string;
+}
+/**
+ *
+ * @export
+ * @interface GetVaultBlobResponse
+ */
+export interface GetVaultBlobResponse {
+  /**
+   *
+   * @type {string}
+   * @memberof GetVaultBlobResponse
+   */
+  etag: string;
+  /**
+   *
+   * @type {string}
+   * @memberof GetVaultBlobResponse
+   */
+  updatedAt: string;
+  /**
+   *
+   * @type {EncryptedBlobV1}
+   * @memberof GetVaultBlobResponse
+   */
+  blob: EncryptedBlobV1;
+  /**
+   *
+   * @type {VaultBlobType}
+   * @memberof GetVaultBlobResponse
+   */
+  type: VaultBlobType;
+  /**
+   *
+   * @type {any}
+   * @memberof GetVaultBlobResponse
+   */
+  details?: any;
+  /**
+   *
+   * @type {string}
+   * @memberof GetVaultBlobResponse
+   */
+  message: string;
+}
+
+/**
+ *
+ * @export
+ * @interface GetVaultBlobResponseAnyOf
+ */
+export interface GetVaultBlobResponseAnyOf {
+  /**
+   *
+   * @type {string}
+   * @memberof GetVaultBlobResponseAnyOf
+   */
+  etag: string;
+  /**
+   *
+   * @type {string}
+   * @memberof GetVaultBlobResponseAnyOf
+   */
+  updatedAt: string;
+  /**
+   *
+   * @type {EncryptedBlobV1}
+   * @memberof GetVaultBlobResponseAnyOf
+   */
+  blob: EncryptedBlobV1;
+  /**
+   *
+   * @type {VaultBlobType}
+   * @memberof GetVaultBlobResponseAnyOf
+   */
+  type: VaultBlobType;
+}
+
+/**
+ *
+ * @export
+ * @interface GetVaultMetaResponse
+ */
+export interface GetVaultMetaResponse {
+  /**
+   *
+   * @type {string}
+   * @memberof GetVaultMetaResponse
+   */
+  etag: string;
+  /**
+   *
+   * @type {string}
+   * @memberof GetVaultMetaResponse
+   */
+  updatedAt: string;
+  /**
+   *
+   * @type {VaultMetaV1}
+   * @memberof GetVaultMetaResponse
+   */
+  meta: VaultMetaV1;
+  /**
+   *
+   * @type {any}
+   * @memberof GetVaultMetaResponse
+   */
+  details?: any;
+  /**
+   *
+   * @type {string}
+   * @memberof GetVaultMetaResponse
+   */
+  message: string;
+}
+/**
+ *
+ * @export
+ * @interface GetVaultMetaResponseAnyOf
+ */
+export interface GetVaultMetaResponseAnyOf {
+  /**
+   *
+   * @type {string}
+   * @memberof GetVaultMetaResponseAnyOf
+   */
+  etag: string;
+  /**
+   *
+   * @type {string}
+   * @memberof GetVaultMetaResponseAnyOf
+   */
+  updatedAt: string;
+  /**
+   *
+   * @type {VaultMetaV1}
+   * @memberof GetVaultMetaResponseAnyOf
+   */
+  meta: VaultMetaV1;
+}
+/**
+ *
+ * @export
+ * @interface ImportVaultResponse
+ */
+export interface ImportVaultResponse {
+  /**
+   *
+   * @type {boolean}
+   * @memberof ImportVaultResponse
+   */
+  ok: boolean;
+  /**
+   *
+   * @type {any}
+   * @memberof ImportVaultResponse
+   */
+  details?: any;
+  /**
+   *
+   * @type {string}
+   * @memberof ImportVaultResponse
+   */
+  message: string;
+}
+/**
+ *
+ * @export
+ * @interface ImportVaultResponseAnyOf
+ */
+export interface ImportVaultResponseAnyOf {
+  /**
+   *
+   * @type {boolean}
+   * @memberof ImportVaultResponseAnyOf
+   */
+  ok: boolean;
 }
 /**
  *
@@ -126,6 +399,157 @@ export interface Logout200Response {
    * @memberof Logout200Response
    */
   status: number;
+}
+/**
+ * Make all properties in T optional
+ * @export
+ * @interface PartialRecordVaultBlobTypeEncryptedBlobV1
+ */
+export interface PartialRecordVaultBlobTypeEncryptedBlobV1 {
+  /**
+   *
+   * @type {EncryptedBlobV1}
+   * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
+   */
+  addresses?: EncryptedBlobV1;
+  /**
+   *
+   * @type {EncryptedBlobV1}
+   * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
+   */
+  mobileNumbers?: EncryptedBlobV1;
+}
+/**
+ *
+ * @export
+ * @interface PutVaultBlobRequest
+ */
+export interface PutVaultBlobRequest {
+  /**
+   *
+   * @type {EncryptedBlobV1}
+   * @memberof PutVaultBlobRequest
+   */
+  blob: EncryptedBlobV1;
+  /**
+   *
+   * @type {VaultBlobType}
+   * @memberof PutVaultBlobRequest
+   */
+  type: VaultBlobType;
+}
+
+/**
+ *
+ * @export
+ * @interface PutVaultBlobResponse
+ */
+export interface PutVaultBlobResponse {
+  /**
+   *
+   * @type {string}
+   * @memberof PutVaultBlobResponse
+   */
+  updatedAt: string;
+  /**
+   *
+   * @type {string}
+   * @memberof PutVaultBlobResponse
+   */
+  etag: string;
+  /**
+   *
+   * @type {boolean}
+   * @memberof PutVaultBlobResponse
+   */
+  ok: boolean;
+  /**
+   *
+   * @type {any}
+   * @memberof PutVaultBlobResponse
+   */
+  details?: any;
+  /**
+   *
+   * @type {string}
+   * @memberof PutVaultBlobResponse
+   */
+  message: string;
+}
+/**
+ *
+ * @export
+ * @interface PutVaultMetaRequest
+ */
+export interface PutVaultMetaRequest {
+  /**
+   *
+   * @type {VaultMetaV1}
+   * @memberof PutVaultMetaRequest
+   */
+  meta: VaultMetaV1;
+}
+/**
+ *
+ * @export
+ * @interface PutVaultMetaResponse
+ */
+export interface PutVaultMetaResponse {
+  /**
+   *
+   * @type {string}
+   * @memberof PutVaultMetaResponse
+   */
+  updatedAt: string;
+  /**
+   *
+   * @type {string}
+   * @memberof PutVaultMetaResponse
+   */
+  etag: string;
+  /**
+   *
+   * @type {boolean}
+   * @memberof PutVaultMetaResponse
+   */
+  ok: boolean;
+  /**
+   *
+   * @type {any}
+   * @memberof PutVaultMetaResponse
+   */
+  details?: any;
+  /**
+   *
+   * @type {string}
+   * @memberof PutVaultMetaResponse
+   */
+  message: string;
+}
+/**
+ *
+ * @export
+ * @interface PutVaultMetaResponseAnyOf
+ */
+export interface PutVaultMetaResponseAnyOf {
+  /**
+   *
+   * @type {string}
+   * @memberof PutVaultMetaResponseAnyOf
+   */
+  updatedAt: string;
+  /**
+   *
+   * @type {string}
+   * @memberof PutVaultMetaResponseAnyOf
+   */
+  etag: string;
+  /**
+   *
+   * @type {boolean}
+   * @memberof PutVaultMetaResponseAnyOf
+   */
+  ok: boolean;
 }
 /**
  *
@@ -336,6 +760,103 @@ export const ValidateErrorJSONMessageEnum = {
 export type ValidateErrorJSONMessageEnum =
   (typeof ValidateErrorJSONMessageEnum)[keyof typeof ValidateErrorJSONMessageEnum];
 
+/**
+ *
+ * @export
+ * @enum {string}
+ */
+
+export const VaultBlobType = {
+  Addresses: 'addresses',
+  MobileNumbers: 'mobileNumbers',
+} as const;
+
+export type VaultBlobType = (typeof VaultBlobType)[keyof typeof VaultBlobType];
+
+/**
+ *
+ * @export
+ * @interface VaultExportV1
+ */
+export interface VaultExportV1 {
+  /**
+   *
+   * @type {number}
+   * @memberof VaultExportV1
+   */
+  exportVersion: VaultExportV1ExportVersionEnum;
+  /**
+   *
+   * @type {string}
+   * @memberof VaultExportV1
+   */
+  exportedAt: string;
+  /**
+   *
+   * @type {VaultMetaV1}
+   * @memberof VaultExportV1
+   */
+  meta: VaultMetaV1;
+  /**
+   *
+   * @type {PartialRecordVaultBlobTypeEncryptedBlobV1}
+   * @memberof VaultExportV1
+   */
+  blobs: PartialRecordVaultBlobTypeEncryptedBlobV1;
+}
+
+export const VaultExportV1ExportVersionEnum = {
+  NUMBER_1: 1,
+} as const;
+
+export type VaultExportV1ExportVersionEnum =
+  (typeof VaultExportV1ExportVersionEnum)[keyof typeof VaultExportV1ExportVersionEnum];
+
+/**
+ *
+ * @export
+ * @interface VaultMetaV1
+ */
+export interface VaultMetaV1 {
+  [key: string]: any;
+
+  /**
+   *
+   * @type {number}
+   * @memberof VaultMetaV1
+   */
+  version: number;
+  /**
+   *
+   * @type {string}
+   * @memberof VaultMetaV1
+   */
+  kdf_name: string;
+  /**
+   *
+   * @type {string}
+   * @memberof VaultMetaV1
+   */
+  kdf_salt: string;
+  /**
+   * Construct a type with a set of properties K of type T
+   * @type {{ [key: string]: any; }}
+   * @memberof VaultMetaV1
+   */
+  kdf_params: { [key: string]: any };
+  /**
+   *
+   * @type {any}
+   * @memberof VaultMetaV1
+   */
+  wrapped_mk_passphrase: any;
+  /**
+   *
+   * @type {any}
+   * @memberof VaultMetaV1
+   */
+  wrapped_mk_recovery: any;
+}
 /**
  *
  * @export
@@ -2149,6 +2670,824 @@ export class UsersManagementApi extends BaseAPI {
   ) {
     return UsersManagementApiFp(this.configuration)
       .getUserById(requestParameters.userId, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+}
+
+/**
+ * VaultApi - axios parameter creator
+ * @export
+ */
+export const VaultApiAxiosParamCreator = function (
+  configuration?: Configuration
+) {
+  return {
+    /**
+     *
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    exportVault: async (
+      options: RawAxiosRequestConfig = {}
+    ): Promise<RequestArgs> => {
+      const localVarPath = `/vault/export`;
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication jwt required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {VaultBlobType} type
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getVaultBlob: async (
+      type: VaultBlobType,
+      options: RawAxiosRequestConfig = {}
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'type' is not null or undefined
+      assertParamExists('getVaultBlob', 'type', type);
+      const localVarPath = `/vault/blob/{type}`.replace(
+        `{${'type'}}`,
+        encodeURIComponent(String(type))
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'GET',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication jwt required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getVaultMeta: async (
+      options: RawAxiosRequestConfig = {}
+    ): Promise<RequestArgs> => {
+      const localVarPath = `/vault`;
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'GET',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication jwt required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {VaultExportV1} vaultExportV1
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    importVault: async (
+      vaultExportV1: VaultExportV1,
+      options: RawAxiosRequestConfig = {}
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'vaultExportV1' is not null or undefined
+      assertParamExists('importVault', 'vaultExportV1', vaultExportV1);
+      const localVarPath = `/vault/import`;
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'POST',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication jwt required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        vaultExportV1,
+        localVarRequestOptions,
+        configuration
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {VaultBlobType} type
+     * @param {PutVaultBlobRequest} putVaultBlobRequest
+     * @param {string} [ifMatch]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    putVaultBlob: async (
+      type: VaultBlobType,
+      putVaultBlobRequest: PutVaultBlobRequest,
+      ifMatch?: string,
+      options: RawAxiosRequestConfig = {}
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'type' is not null or undefined
+      assertParamExists('putVaultBlob', 'type', type);
+      // verify required parameter 'putVaultBlobRequest' is not null or undefined
+      assertParamExists(
+        'putVaultBlob',
+        'putVaultBlobRequest',
+        putVaultBlobRequest
+      );
+      const localVarPath = `/vault/blob/{type}`.replace(
+        `{${'type'}}`,
+        encodeURIComponent(String(type))
+      );
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'PUT',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication jwt required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      if (ifMatch != null) {
+        localVarHeaderParameter['if-match'] = String(ifMatch);
+      }
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        putVaultBlobRequest,
+        localVarRequestOptions,
+        configuration
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+    /**
+     *
+     * @param {PutVaultMetaRequest} putVaultMetaRequest
+     * @param {string} [ifMatch]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    putVaultMeta: async (
+      putVaultMetaRequest: PutVaultMetaRequest,
+      ifMatch?: string,
+      options: RawAxiosRequestConfig = {}
+    ): Promise<RequestArgs> => {
+      // verify required parameter 'putVaultMetaRequest' is not null or undefined
+      assertParamExists(
+        'putVaultMeta',
+        'putVaultMetaRequest',
+        putVaultMetaRequest
+      );
+      const localVarPath = `/vault`;
+      // use dummy base URL string because the URL constructor only accepts absolute URLs.
+      const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+      let baseOptions;
+      if (configuration) {
+        baseOptions = configuration.baseOptions;
+      }
+
+      const localVarRequestOptions = {
+        method: 'PUT',
+        ...baseOptions,
+        ...options,
+      };
+      const localVarHeaderParameter = {} as any;
+      const localVarQueryParameter = {} as any;
+
+      // authentication jwt required
+      // http bearer authentication required
+      await setBearerAuthToObject(localVarHeaderParameter, configuration);
+
+      localVarHeaderParameter['Content-Type'] = 'application/json';
+
+      if (ifMatch != null) {
+        localVarHeaderParameter['if-match'] = String(ifMatch);
+      }
+      setSearchParams(localVarUrlObj, localVarQueryParameter);
+      let headersFromBaseOptions =
+        baseOptions && baseOptions.headers ? baseOptions.headers : {};
+      localVarRequestOptions.headers = {
+        ...localVarHeaderParameter,
+        ...headersFromBaseOptions,
+        ...options.headers,
+      };
+      localVarRequestOptions.data = serializeDataIfNeeded(
+        putVaultMetaRequest,
+        localVarRequestOptions,
+        configuration
+      );
+
+      return {
+        url: toPathString(localVarUrlObj),
+        options: localVarRequestOptions,
+      };
+    },
+  };
+};
+
+/**
+ * VaultApi - functional programming interface
+ * @export
+ */
+export const VaultApiFp = function (configuration?: Configuration) {
+  const localVarAxiosParamCreator = VaultApiAxiosParamCreator(configuration);
+  return {
+    /**
+     *
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async exportVault(
+      options?: RawAxiosRequestConfig
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string
+      ) => AxiosPromise<ExportVaultResponse>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.exportVault(
+        options
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['VaultApi.exportVault']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {VaultBlobType} type
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async getVaultBlob(
+      type: VaultBlobType,
+      options?: RawAxiosRequestConfig
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string
+      ) => AxiosPromise<GetVaultBlobResponse>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.getVaultBlob(
+        type,
+        options
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['VaultApi.getVaultBlob']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async getVaultMeta(
+      options?: RawAxiosRequestConfig
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string
+      ) => AxiosPromise<GetVaultMetaResponse>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.getVaultMeta(
+        options
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['VaultApi.getVaultMeta']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {VaultExportV1} vaultExportV1
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async importVault(
+      vaultExportV1: VaultExportV1,
+      options?: RawAxiosRequestConfig
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string
+      ) => AxiosPromise<ImportVaultResponse>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.importVault(
+        vaultExportV1,
+        options
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['VaultApi.importVault']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {VaultBlobType} type
+     * @param {PutVaultBlobRequest} putVaultBlobRequest
+     * @param {string} [ifMatch]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async putVaultBlob(
+      type: VaultBlobType,
+      putVaultBlobRequest: PutVaultBlobRequest,
+      ifMatch?: string,
+      options?: RawAxiosRequestConfig
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string
+      ) => AxiosPromise<PutVaultBlobResponse>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.putVaultBlob(
+        type,
+        putVaultBlobRequest,
+        ifMatch,
+        options
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['VaultApi.putVaultBlob']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+    /**
+     *
+     * @param {PutVaultMetaRequest} putVaultMetaRequest
+     * @param {string} [ifMatch]
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    async putVaultMeta(
+      putVaultMetaRequest: PutVaultMetaRequest,
+      ifMatch?: string,
+      options?: RawAxiosRequestConfig
+    ): Promise<
+      (
+        axios?: AxiosInstance,
+        basePath?: string
+      ) => AxiosPromise<PutVaultMetaResponse>
+    > {
+      const localVarAxiosArgs = await localVarAxiosParamCreator.putVaultMeta(
+        putVaultMetaRequest,
+        ifMatch,
+        options
+      );
+      const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+      const localVarOperationServerBasePath =
+        operationServerMap['VaultApi.putVaultMeta']?.[
+          localVarOperationServerIndex
+        ]?.url;
+      return (axios, basePath) =>
+        createRequestFunction(
+          localVarAxiosArgs,
+          globalAxios,
+          BASE_PATH,
+          configuration
+        )(axios, localVarOperationServerBasePath || basePath);
+    },
+  };
+};
+
+/**
+ * VaultApi - factory interface
+ * @export
+ */
+export const VaultApiFactory = function (
+  configuration?: Configuration,
+  basePath?: string,
+  axios?: AxiosInstance
+) {
+  const localVarFp = VaultApiFp(configuration);
+  return {
+    /**
+     *
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    exportVault(
+      options?: RawAxiosRequestConfig
+    ): AxiosPromise<ExportVaultResponse> {
+      return localVarFp
+        .exportVault(options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {VaultApiGetVaultBlobRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getVaultBlob(
+      requestParameters: VaultApiGetVaultBlobRequest,
+      options?: RawAxiosRequestConfig
+    ): AxiosPromise<GetVaultBlobResponse> {
+      return localVarFp
+        .getVaultBlob(requestParameters.type, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    getVaultMeta(
+      options?: RawAxiosRequestConfig
+    ): AxiosPromise<GetVaultMetaResponse> {
+      return localVarFp
+        .getVaultMeta(options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {VaultApiImportVaultRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    importVault(
+      requestParameters: VaultApiImportVaultRequest,
+      options?: RawAxiosRequestConfig
+    ): AxiosPromise<ImportVaultResponse> {
+      return localVarFp
+        .importVault(requestParameters.vaultExportV1, options)
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {VaultApiPutVaultBlobRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    putVaultBlob(
+      requestParameters: VaultApiPutVaultBlobRequest,
+      options?: RawAxiosRequestConfig
+    ): AxiosPromise<PutVaultBlobResponse> {
+      return localVarFp
+        .putVaultBlob(
+          requestParameters.type,
+          requestParameters.putVaultBlobRequest,
+          requestParameters.ifMatch,
+          options
+        )
+        .then((request) => request(axios, basePath));
+    },
+    /**
+     *
+     * @param {VaultApiPutVaultMetaRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    putVaultMeta(
+      requestParameters: VaultApiPutVaultMetaRequest,
+      options?: RawAxiosRequestConfig
+    ): AxiosPromise<PutVaultMetaResponse> {
+      return localVarFp
+        .putVaultMeta(
+          requestParameters.putVaultMetaRequest,
+          requestParameters.ifMatch,
+          options
+        )
+        .then((request) => request(axios, basePath));
+    },
+  };
+};
+
+/**
+ * Request parameters for getVaultBlob operation in VaultApi.
+ * @export
+ * @interface VaultApiGetVaultBlobRequest
+ */
+export interface VaultApiGetVaultBlobRequest {
+  /**
+   *
+   * @type {VaultBlobType}
+   * @memberof VaultApiGetVaultBlob
+   */
+  readonly type: VaultBlobType;
+}
+
+/**
+ * Request parameters for importVault operation in VaultApi.
+ * @export
+ * @interface VaultApiImportVaultRequest
+ */
+export interface VaultApiImportVaultRequest {
+  /**
+   *
+   * @type {VaultExportV1}
+   * @memberof VaultApiImportVault
+   */
+  readonly vaultExportV1: VaultExportV1;
+}
+
+/**
+ * Request parameters for putVaultBlob operation in VaultApi.
+ * @export
+ * @interface VaultApiPutVaultBlobRequest
+ */
+export interface VaultApiPutVaultBlobRequest {
+  /**
+   *
+   * @type {VaultBlobType}
+   * @memberof VaultApiPutVaultBlob
+   */
+  readonly type: VaultBlobType;
+
+  /**
+   *
+   * @type {PutVaultBlobRequest}
+   * @memberof VaultApiPutVaultBlob
+   */
+  readonly putVaultBlobRequest: PutVaultBlobRequest;
+
+  /**
+   *
+   * @type {string}
+   * @memberof VaultApiPutVaultBlob
+   */
+  readonly ifMatch?: string;
+}
+
+/**
+ * Request parameters for putVaultMeta operation in VaultApi.
+ * @export
+ * @interface VaultApiPutVaultMetaRequest
+ */
+export interface VaultApiPutVaultMetaRequest {
+  /**
+   *
+   * @type {PutVaultMetaRequest}
+   * @memberof VaultApiPutVaultMeta
+   */
+  readonly putVaultMetaRequest: PutVaultMetaRequest;
+
+  /**
+   *
+   * @type {string}
+   * @memberof VaultApiPutVaultMeta
+   */
+  readonly ifMatch?: string;
+}
+
+/**
+ * VaultApi - object-oriented interface
+ * @export
+ * @class VaultApi
+ * @extends {BaseAPI}
+ */
+export class VaultApi extends BaseAPI {
+  /**
+   *
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof VaultApi
+   */
+  public exportVault(options?: RawAxiosRequestConfig) {
+    return VaultApiFp(this.configuration)
+      .exportVault(options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {VaultApiGetVaultBlobRequest} requestParameters Request parameters.
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof VaultApi
+   */
+  public getVaultBlob(
+    requestParameters: VaultApiGetVaultBlobRequest,
+    options?: RawAxiosRequestConfig
+  ) {
+    return VaultApiFp(this.configuration)
+      .getVaultBlob(requestParameters.type, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof VaultApi
+   */
+  public getVaultMeta(options?: RawAxiosRequestConfig) {
+    return VaultApiFp(this.configuration)
+      .getVaultMeta(options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {VaultApiImportVaultRequest} requestParameters Request parameters.
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof VaultApi
+   */
+  public importVault(
+    requestParameters: VaultApiImportVaultRequest,
+    options?: RawAxiosRequestConfig
+  ) {
+    return VaultApiFp(this.configuration)
+      .importVault(requestParameters.vaultExportV1, options)
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {VaultApiPutVaultBlobRequest} requestParameters Request parameters.
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof VaultApi
+   */
+  public putVaultBlob(
+    requestParameters: VaultApiPutVaultBlobRequest,
+    options?: RawAxiosRequestConfig
+  ) {
+    return VaultApiFp(this.configuration)
+      .putVaultBlob(
+        requestParameters.type,
+        requestParameters.putVaultBlobRequest,
+        requestParameters.ifMatch,
+        options
+      )
+      .then((request) => request(this.axios, this.basePath));
+  }
+
+  /**
+   *
+   * @param {VaultApiPutVaultMetaRequest} requestParameters Request parameters.
+   * @param {*} [options] Override http request option.
+   * @throws {RequiredError}
+   * @memberof VaultApi
+   */
+  public putVaultMeta(
+    requestParameters: VaultApiPutVaultMetaRequest,
+    options?: RawAxiosRequestConfig
+  ) {
+    return VaultApiFp(this.configuration)
+      .putVaultMeta(
+        requestParameters.putVaultMetaRequest,
+        requestParameters.ifMatch,
+        options
+      )
       .then((request) => request(this.axios, this.basePath));
   }
 }
