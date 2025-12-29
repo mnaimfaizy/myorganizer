@@ -1,3 +1,14 @@
 node_modules
 # Keep environment variables out of version control
 .env
+
+# Prisma (generated client)
+src/prisma/prisma-client/
+
+# Prisma engines (generated binaries)
+**/.prisma/
+**/node_modules/.prisma/
+**/node_modules/@prisma/engines/
+src/prisma/query_engine*
+src/prisma/libquery_engine*
+src/prisma/schema-engine*

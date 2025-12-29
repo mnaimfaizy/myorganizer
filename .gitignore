@@ -55,3 +55,14 @@ out
 # Database
 .database
 pgadmin-data
+
+# Prisma (generated client)
+apps/backend/src/prisma/prisma-client/
+
+# Prisma engines (generated binaries)
+**/.prisma/
+**/node_modules/.prisma/
+**/node_modules/@prisma/engines/
+**/prisma/query_engine*
+**/prisma/libquery_engine*
+**/prisma/schema-engine*
