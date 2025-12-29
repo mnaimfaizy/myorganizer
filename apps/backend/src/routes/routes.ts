@@ -4,6 +4,8 @@
 import type { TsoaRoute } from '@tsoa/runtime';
 import { fetchMiddlewares, ExpressTemplateService } from '@tsoa/runtime';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { VaultController } from './../controllers/VaultController';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { UserController } from './../controllers/UserController';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { TodoController } from './../controllers/TodoController';
@@ -28,6 +30,192 @@ const expressAuthenticationRecasted = expressAuthentication as (
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
+  'Record_string.unknown_': {
+    dataType: 'refAlias',
+    type: {
+      dataType: 'nestedObjectLiteral',
+      nestedProperties: {},
+      additionalProperties: { dataType: 'any' },
+      validators: {},
+    },
+  },
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  VaultMetaV1: {
+    dataType: 'refObject',
+    properties: {
+      version: { dataType: 'double', required: true },
+      kdf_name: { dataType: 'string', required: true },
+      kdf_salt: { dataType: 'string', required: true },
+      kdf_params: { ref: 'Record_string.unknown_', required: true },
+      wrapped_mk_passphrase: { dataType: 'any', required: true },
+      wrapped_mk_recovery: { dataType: 'any', required: true },
+    },
+    additionalProperties: { dataType: 'any' },
+  },
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  ErrorResponse: {
+    dataType: 'refAlias',
+    type: {
+      dataType: 'nestedObjectLiteral',
+      nestedProperties: {
+        details: { dataType: 'any' },
+        message: { dataType: 'string', required: true },
+      },
+      validators: {},
+    },
+  },
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  GetVaultMetaResponse: {
+    dataType: 'refAlias',
+    type: {
+      dataType: 'union',
+      subSchemas: [
+        {
+          dataType: 'nestedObjectLiteral',
+          nestedProperties: {
+            etag: { dataType: 'string', required: true },
+            updatedAt: { dataType: 'string', required: true },
+            meta: { ref: 'VaultMetaV1', required: true },
+          },
+        },
+        { ref: 'ErrorResponse' },
+      ],
+      validators: {},
+    },
+  },
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  PutVaultMetaResponse: {
+    dataType: 'refAlias',
+    type: {
+      dataType: 'union',
+      subSchemas: [
+        {
+          dataType: 'nestedObjectLiteral',
+          nestedProperties: {
+            updatedAt: { dataType: 'string', required: true },
+            etag: { dataType: 'string', required: true },
+            ok: { dataType: 'enum', enums: [true], required: true },
+          },
+        },
+        { ref: 'ErrorResponse' },
+      ],
+      validators: {},
+    },
+  },
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  VaultBlobType: {
+    dataType: 'refAlias',
+    type: {
+      dataType: 'union',
+      subSchemas: [
+        { dataType: 'enum', enums: ['addresses'] },
+        { dataType: 'enum', enums: ['mobileNumbers'] },
+      ],
+      validators: {},
+    },
+  },
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  EncryptedBlobV1: {
+    dataType: 'refObject',
+    properties: {
+      version: { dataType: 'double', required: true },
+      iv: { dataType: 'string', required: true },
+      ciphertext: { dataType: 'string', required: true },
+    },
+    additionalProperties: { dataType: 'any' },
+  },
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  GetVaultBlobResponse: {
+    dataType: 'refAlias',
+    type: {
+      dataType: 'union',
+      subSchemas: [
+        {
+          dataType: 'nestedObjectLiteral',
+          nestedProperties: {
+            etag: { dataType: 'string', required: true },
+            updatedAt: { dataType: 'string', required: true },
+            blob: { ref: 'EncryptedBlobV1', required: true },
+            type: { ref: 'VaultBlobType', required: true },
+          },
+        },
+        { ref: 'ErrorResponse' },
+      ],
+      validators: {},
+    },
+  },
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  PutVaultBlobResponse: {
+    dataType: 'refAlias',
+    type: {
+      dataType: 'union',
+      subSchemas: [
+        {
+          dataType: 'nestedObjectLiteral',
+          nestedProperties: {
+            updatedAt: { dataType: 'string', required: true },
+            etag: { dataType: 'string', required: true },
+            ok: { dataType: 'enum', enums: [true], required: true },
+          },
+        },
+        { ref: 'ErrorResponse' },
+      ],
+      validators: {},
+    },
+  },
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  'Partial_Record_VaultBlobType.EncryptedBlobV1__': {
+    dataType: 'refAlias',
+    type: {
+      dataType: 'nestedObjectLiteral',
+      nestedProperties: {
+        addresses: { ref: 'EncryptedBlobV1' },
+        mobileNumbers: { ref: 'EncryptedBlobV1' },
+      },
+      validators: {},
+    },
+  },
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  VaultExportV1: {
+    dataType: 'refObject',
+    properties: {
+      exportVersion: { dataType: 'enum', enums: [1], required: true },
+      exportedAt: { dataType: 'string', required: true },
+      meta: { ref: 'VaultMetaV1', required: true },
+      blobs: {
+        ref: 'Partial_Record_VaultBlobType.EncryptedBlobV1__',
+        required: true,
+      },
+    },
+    additionalProperties: false,
+  },
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  ExportVaultResponse: {
+    dataType: 'refAlias',
+    type: {
+      dataType: 'union',
+      subSchemas: [{ ref: 'VaultExportV1' }, { ref: 'ErrorResponse' }],
+      validators: {},
+    },
+  },
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  ImportVaultResponse: {
+    dataType: 'refAlias',
+    type: {
+      dataType: 'union',
+      subSchemas: [
+        {
+          dataType: 'nestedObjectLiteral',
+          nestedProperties: {
+            ok: { dataType: 'enum', enums: [true], required: true },
+          },
+        },
+        { ref: 'ErrorResponse' },
+      ],
+      validators: {},
+    },
+  },
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
   User: {
     dataType: 'refObject',
     properties: {
@@ -131,6 +319,289 @@ export function RegisterRoutes(app: Router) {
   //      Please look into the "controllerPathGlobs" config option described in the readme: https://github.com/lukeautry/tsoa
   // ###########################################################################################################
 
+  app.get(
+    '/vault',
+    authenticateMiddleware([{ jwt: [] }]),
+    ...fetchMiddlewares<RequestHandler>(VaultController),
+    ...fetchMiddlewares<RequestHandler>(VaultController.prototype.getVaultMeta),
+
+    async function VaultController_getVaultMeta(
+      request: ExRequest,
+      response: ExResponse,
+      next: any
+    ) {
+      const args: Record<string, TsoaRoute.ParameterSchema> = {
+        req: { in: 'request', name: 'req', required: true, dataType: 'object' },
+      };
+
+      // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = templateService.getValidatedArgs({
+          args,
+          request,
+          response,
+        });
+
+        const controller = new VaultController();
+
+        await templateService.apiHandler({
+          methodName: 'getVaultMeta',
+          controller,
+          response,
+          next,
+          validatedArgs,
+          successStatus: undefined,
+        });
+      } catch (err) {
+        return next(err);
+      }
+    }
+  );
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  app.put(
+    '/vault',
+    authenticateMiddleware([{ jwt: [] }]),
+    ...fetchMiddlewares<RequestHandler>(VaultController),
+    ...fetchMiddlewares<RequestHandler>(VaultController.prototype.putVaultMeta),
+
+    async function VaultController_putVaultMeta(
+      request: ExRequest,
+      response: ExResponse,
+      next: any
+    ) {
+      const args: Record<string, TsoaRoute.ParameterSchema> = {
+        req: { in: 'request', name: 'req', required: true, dataType: 'object' },
+        requestBody: {
+          in: 'body',
+          name: 'requestBody',
+          required: true,
+          dataType: 'nestedObjectLiteral',
+          nestedProperties: { meta: { ref: 'VaultMetaV1', required: true } },
+        },
+        ifMatch: { in: 'header', name: 'if-match', dataType: 'string' },
+      };
+
+      // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = templateService.getValidatedArgs({
+          args,
+          request,
+          response,
+        });
+
+        const controller = new VaultController();
+
+        await templateService.apiHandler({
+          methodName: 'putVaultMeta',
+          controller,
+          response,
+          next,
+          validatedArgs,
+          successStatus: undefined,
+        });
+      } catch (err) {
+        return next(err);
+      }
+    }
+  );
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  app.get(
+    '/vault/blob/:type',
+    authenticateMiddleware([{ jwt: [] }]),
+    ...fetchMiddlewares<RequestHandler>(VaultController),
+    ...fetchMiddlewares<RequestHandler>(VaultController.prototype.getVaultBlob),
+
+    async function VaultController_getVaultBlob(
+      request: ExRequest,
+      response: ExResponse,
+      next: any
+    ) {
+      const args: Record<string, TsoaRoute.ParameterSchema> = {
+        req: { in: 'request', name: 'req', required: true, dataType: 'object' },
+        type: {
+          in: 'path',
+          name: 'type',
+          required: true,
+          ref: 'VaultBlobType',
+        },
+      };
+
+      // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = templateService.getValidatedArgs({
+          args,
+          request,
+          response,
+        });
+
+        const controller = new VaultController();
+
+        await templateService.apiHandler({
+          methodName: 'getVaultBlob',
+          controller,
+          response,
+          next,
+          validatedArgs,
+          successStatus: undefined,
+        });
+      } catch (err) {
+        return next(err);
+      }
+    }
+  );
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  app.put(
+    '/vault/blob/:type',
+    authenticateMiddleware([{ jwt: [] }]),
+    ...fetchMiddlewares<RequestHandler>(VaultController),
+    ...fetchMiddlewares<RequestHandler>(VaultController.prototype.putVaultBlob),
+
+    async function VaultController_putVaultBlob(
+      request: ExRequest,
+      response: ExResponse,
+      next: any
+    ) {
+      const args: Record<string, TsoaRoute.ParameterSchema> = {
+        req: { in: 'request', name: 'req', required: true, dataType: 'object' },
+        type: {
+          in: 'path',
+          name: 'type',
+          required: true,
+          ref: 'VaultBlobType',
+        },
+        requestBody: {
+          in: 'body',
+          name: 'requestBody',
+          required: true,
+          dataType: 'nestedObjectLiteral',
+          nestedProperties: {
+            blob: { ref: 'EncryptedBlobV1', required: true },
+            type: { ref: 'VaultBlobType', required: true },
+          },
+        },
+        ifMatch: { in: 'header', name: 'if-match', dataType: 'string' },
+      };
+
+      // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = templateService.getValidatedArgs({
+          args,
+          request,
+          response,
+        });
+
+        const controller = new VaultController();
+
+        await templateService.apiHandler({
+          methodName: 'putVaultBlob',
+          controller,
+          response,
+          next,
+          validatedArgs,
+          successStatus: undefined,
+        });
+      } catch (err) {
+        return next(err);
+      }
+    }
+  );
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  app.post(
+    '/vault/export',
+    authenticateMiddleware([{ jwt: [] }]),
+    ...fetchMiddlewares<RequestHandler>(VaultController),
+    ...fetchMiddlewares<RequestHandler>(VaultController.prototype.exportVault),
+
+    async function VaultController_exportVault(
+      request: ExRequest,
+      response: ExResponse,
+      next: any
+    ) {
+      const args: Record<string, TsoaRoute.ParameterSchema> = {
+        req: { in: 'request', name: 'req', required: true, dataType: 'object' },
+      };
+
+      // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = templateService.getValidatedArgs({
+          args,
+          request,
+          response,
+        });
+
+        const controller = new VaultController();
+
+        await templateService.apiHandler({
+          methodName: 'exportVault',
+          controller,
+          response,
+          next,
+          validatedArgs,
+          successStatus: undefined,
+        });
+      } catch (err) {
+        return next(err);
+      }
+    }
+  );
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+  app.post(
+    '/vault/import',
+    authenticateMiddleware([{ jwt: [] }]),
+    ...fetchMiddlewares<RequestHandler>(VaultController),
+    ...fetchMiddlewares<RequestHandler>(VaultController.prototype.importVault),
+
+    async function VaultController_importVault(
+      request: ExRequest,
+      response: ExResponse,
+      next: any
+    ) {
+      const args: Record<string, TsoaRoute.ParameterSchema> = {
+        req: { in: 'request', name: 'req', required: true, dataType: 'object' },
+        requestBody: {
+          in: 'body',
+          name: 'requestBody',
+          required: true,
+          ref: 'VaultExportV1',
+        },
+      };
+
+      // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+      let validatedArgs: any[] = [];
+      try {
+        validatedArgs = templateService.getValidatedArgs({
+          args,
+          request,
+          response,
+        });
+
+        const controller = new VaultController();
+
+        await templateService.apiHandler({
+          methodName: 'importVault',
+          controller,
+          response,
+          next,
+          validatedArgs,
+          successStatus: undefined,
+        });
+      } catch (err) {
+        return next(err);
+      }
+    }
+  );
+  // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
   app.get(
     '/user',
     authenticateMiddleware([{ jwt: [] }]),

@@ -4,6 +4,16 @@ import request from 'supertest';
 import userController from '../controllers/UserController';
 import userRouter from './user';
 
+jest.mock('../utils/passport', () => ({
+  __esModule: true,
+  default: {
+    authenticate: () => (req: any, _res: any, next: any) => {
+      req.user = { id: 'test-user' };
+      next();
+    },
+  },
+}));
+
 jest.mock('../controllers/UserController');
 
 beforeEach(() => {
