@@ -11,7 +11,6 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@myorganizer/web-ui';
-import { AppSidebar } from '../components/app-sidebar';
 
 export default function Index() {
   return (

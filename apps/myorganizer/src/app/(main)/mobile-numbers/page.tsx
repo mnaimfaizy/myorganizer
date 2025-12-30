@@ -10,8 +10,8 @@ import {
   useToast,
 } from '@myorganizer/web-ui';
 import { useEffect, useMemo, useState } from 'react';
-import VaultGate from '../../components/vault-gate';
-import { loadDecryptedData, saveEncryptedData } from '../../lib/vault/vault';
+import VaultGate from '../../../components/vault-gate';
+import { loadDecryptedData, saveEncryptedData } from '../../../lib/vault/vault';
 
 type MobileNumberItem = {
   id: string;
