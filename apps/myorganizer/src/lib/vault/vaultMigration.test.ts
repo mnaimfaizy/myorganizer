@@ -187,6 +187,25 @@ describe('migrateVaultPhase1ToPhase2', () => {
     expect(serverVaultSync.putServerVaultBlobEtagAware).toHaveBeenCalledTimes(
       1
     );
+
+    const putMetaArgs =
+      serverVaultSync.putServerVaultMetaEtagAware.mock.calls[0][0];
+    expect(putMetaArgs.ifMatch).toBe('server-etag');
+    expect(putMetaArgs.meta.kdf_params.hash).toBe('SHA-256');
+    expect(putMetaArgs.meta.kdf_params.iterations).toBe(310_000);
+    expect(putMetaArgs.onConflict()).toBe('keep-local');
+
+    const putBlobArgs =
+      serverVaultSync.putServerVaultBlobEtagAware.mock.calls[0][0];
+    expect(putBlobArgs.type).toBe(VaultBlobType.Addresses);
+    expect(putBlobArgs.ifMatch).toBe('remote-addr-etag');
+    expect(putBlobArgs.blob).toEqual({
+      version: 1,
+      iv: 'aiv',
+      ciphertext: 'act',
+    });
+    expect(putBlobArgs.onConflict()).toBe('keep-local');
+
     expect(result).toEqual({ kind: 'kept-local-overwrote-server' });
   });
 });

@@ -70,13 +70,23 @@ function isEncryptedBlobV1(value: any): value is EncryptedBlobV1 {
   return (
     value &&
     typeof value === 'object' &&
-    typeof value.version === 'number' &&
+    value.version === 1 &&
     typeof value.iv === 'string' &&
     typeof value.ciphertext === 'string'
   );
 }
 
 function normalizeEncryptedBlobV1(value: any): EncryptedBlobV1 | null {
+  if (
+    value &&
+    typeof value === 'object' &&
+    typeof (value as any).version === 'number' &&
+    (value as any).version !== 1
+  ) {
+    throw new Error(
+      `Unsupported encrypted blob version: ${(value as any).version}`
+    );
+  }
   return isEncryptedBlobV1(value) ? value : null;
 }
 
@@ -136,8 +146,13 @@ function serverMetaToLocalVault(options: {
     throw new Error('Server vault meta is missing wrapped keys');
   }
 
-  const hash: 'SHA-256' =
-    meta.kdf_params?.hash === 'SHA-256' ? 'SHA-256' : 'SHA-256';
+  if (meta.kdf_params?.hash && meta.kdf_params.hash !== 'SHA-256') {
+    throw new Error(
+      `Unsupported KDF hash in server vault meta: ${meta.kdf_params.hash}`
+    );
+  }
+
+  const hash: 'SHA-256' = 'SHA-256';
   const iterations =
     typeof meta.kdf_params?.iterations === 'number'
       ? meta.kdf_params.iterations
@@ -173,6 +188,11 @@ function serverMetaToLocalVault(options: {
 
 function normalizeServerBlob(value: EncryptedBlobV1 | null): object {
   if (!value) return { blob: null };
+
+  if (value.version !== 1) {
+    throw new Error(`Unsupported vault blob version: ${value.version}`);
+  }
+
   return {
     blob: {
       version: value.version,
