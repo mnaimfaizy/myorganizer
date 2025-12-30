@@ -111,6 +111,21 @@ describe('migrateVaultPhase1ToPhase2', () => {
     }
   });
 
+  test('skips when both local and server vault are missing', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue(null);
+
+    const result = await migrateVaultPhase1ToPhase2({
+      api: {} as any,
+      localVault: null,
+      prompt: () => 'keep-server',
+    });
+
+    expect(result).toEqual({ kind: 'skipped-no-local-vault' });
+    expect(serverVaultSync.getServerVaultBlob).not.toHaveBeenCalled();
+    expect(serverVaultSync.putServerVaultMetaEtagAware).not.toHaveBeenCalled();
+    expect(serverVaultSync.putServerVaultBlobEtagAware).not.toHaveBeenCalled();
+  });
+
   test('skips when unauthenticated (401/403)', async () => {
     const error: any = new Error('unauth');
     error.response = { status: 401 };
@@ -123,6 +138,44 @@ describe('migrateVaultPhase1ToPhase2', () => {
     });
 
     expect(result).toEqual({ kind: 'skipped-not-authenticated' });
+  });
+
+  test('noop: does not prompt when local and server vault are already in sync', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: makeServerMeta(),
+    });
+
+    serverVaultSync.getServerVaultBlob.mockImplementation(
+      async (_api: any, type: any) => {
+        if (type === VaultBlobType.Addresses) {
+          return {
+            etag: 'b1',
+            updatedAt: 'bt1',
+            type,
+            blob: { version: 1, iv: 'aiv', ciphertext: 'act' },
+          };
+        }
+        if (type === VaultBlobType.MobileNumbers) {
+          return null;
+        }
+        return null;
+      }
+    );
+
+    const prompt = jest.fn(() => 'keep-server' as const);
+
+    const result = await migrateVaultPhase1ToPhase2({
+      api: {} as any,
+      localVault: makeLocalVault(),
+      prompt,
+    });
+
+    expect(result).toEqual({ kind: 'noop-already-in-sync' });
+    expect(prompt).not.toHaveBeenCalled();
+    expect(serverVaultSync.putServerVaultMetaEtagAware).not.toHaveBeenCalled();
+    expect(serverVaultSync.putServerVaultBlobEtagAware).not.toHaveBeenCalled();
   });
 
   test('conflict: keep-server returns nextLocalVault without overwriting server', async () => {

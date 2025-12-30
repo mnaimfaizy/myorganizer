@@ -4,16 +4,12 @@ import { useToast } from '@myorganizer/web-ui';
 import { useEffect, useRef } from 'react';
 
 import { createVaultApi } from '../lib/api/apiClient';
+import { getHttpStatus } from '../lib/http/getHttpStatus';
 import { loadVault, saveVault } from '../lib/vault/vault';
 import { migrateVaultPhase1ToPhase2 } from '../lib/vault/vaultMigration';
 
-const SESSION_FLAG = 'myorganizer_vault_migration_ran_v1';
-
-function getHttpStatus(error: unknown): number | undefined {
-  const maybeAny = error as any;
-  const status = maybeAny?.response?.status;
-  return typeof status === 'number' ? status : undefined;
-}
+const VAULT_MIGRATION_VERSION = 1;
+const SESSION_FLAG = `myorganizer_vault_migration_ran_v${VAULT_MIGRATION_VERSION}`;
 
 function getUserFacingErrorMessage(error: unknown): string {
   const status = getHttpStatus(error);
@@ -63,7 +59,7 @@ export function VaultMigrationRunner() {
         if (typeof window.confirm !== 'function') return 'keep-server';
 
         const keepLocal = window.confirm(
-          `${message}\n\nOK = Keep LOCAL (overwrite server)\nCancel = Keep SERVER (overwrite local)`
+          `${message}\n\nYour data is different on this device and on the server.\n\nChoose which version to keep:\n\nOK = Keep data on this device (replace the copy on the server)\nCancel = Keep data from the server (replace the copy on this device)`
         );
 
         return keepLocal ? 'keep-local' : 'keep-server';

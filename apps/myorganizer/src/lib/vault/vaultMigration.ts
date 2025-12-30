@@ -5,6 +5,8 @@ import {
   VaultMetaV1,
 } from '@myorganizer/app-api-client';
 
+import { getHttpStatus } from '../http/getHttpStatus';
+
 import {
   getServerVaultBlob,
   getServerVaultMeta,
@@ -38,21 +40,32 @@ export type MigrationResult =
   | { kind: 'kept-server-overwrote-local'; nextLocalVault: VaultStorageV1 }
   | { kind: 'noop-already-in-sync' };
 
-function getHttpStatus(error: unknown): number | undefined {
-  const maybeAny = error as any;
-  const status = maybeAny?.response?.status;
-  return typeof status === 'number' ? status : undefined;
-}
-
 function stableStringify(value: unknown): string {
-  if (value === null || value === undefined) return String(value);
+  if (value === null) return 'null';
+  if (value === undefined) return 'null';
+
+  if (typeof value === 'number') {
+    if (Number.isNaN(value)) {
+      return '{"$number":"NaN"}';
+    }
+    if (value === Number.POSITIVE_INFINITY) {
+      return '{"$number":"Infinity"}';
+    }
+    if (value === Number.NEGATIVE_INFINITY) {
+      return '{"$number":"-Infinity"}';
+    }
+    return JSON.stringify(value);
+  }
+
   if (typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) {
     return `[${value.map((v) => stableStringify(v)).join(',')}]`;
   }
 
   const record = value as Record<string, unknown>;
-  const keys = Object.keys(record).sort();
+  const keys = Object.keys(record)
+    .filter((k) => record[k] !== undefined)
+    .sort();
   return `{${keys
     .map((k) => `${JSON.stringify(k)}:${stableStringify(record[k])}`)
     .join(',')}}`;
@@ -210,6 +223,24 @@ function normalizeLocalBlobAsServerShape(
   return normalizeServerBlob(b);
 }
 
+/**
+ * Migrates a user's encrypted vault from local-only storage (Phase 1) to
+ * server-backed storage (Phase 2).
+ *
+ * Behavior summary:
+ * - If there is no local vault:
+ *   - If unauthenticated (401/403): returns `skipped-not-authenticated`.
+ *   - If the server has a vault: downloads it and returns `downloaded-server-to-local`.
+ *   - If the server has no vault: returns `skipped-no-local-vault`.
+ * - If there is a local vault:
+ *   - If unauthenticated (401/403): returns `skipped-not-authenticated`.
+ *   - If the server has no vault: uploads local vault and returns `uploaded-local-to-server`.
+ *   - If both exist:
+ *     - If they are already equivalent after normalization: returns `noop-already-in-sync`.
+ *     - Otherwise: calls `prompt` to choose which copy to keep.
+ *       - `keep-server`: returns `kept-server-overwrote-local` with a new local vault.
+ *       - `keep-local`: overwrites server using ETag/If-Match and returns `kept-local-overwrote-server`.
+ */
 export async function migrateVaultPhase1ToPhase2(options: {
   api: VaultApiLike;
   localVault: VaultStorageV1 | null;
