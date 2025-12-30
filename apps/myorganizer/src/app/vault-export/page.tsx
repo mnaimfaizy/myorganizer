@@ -67,10 +67,12 @@ export default function VaultExportImportPage() {
   const [exporting, setExporting] = useState(false);
   const [importing, setImporting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [exportServerNote, setExportServerNote] = useState<string | null>(null);
   const [lastServerNote, setLastServerNote] = useState<string | null>(null);
 
   async function handleExport() {
     setExporting(true);
+    setExportServerNote(null);
     setLastServerNote(null);
 
     try {
@@ -96,6 +98,18 @@ export default function VaultExportImportPage() {
             'No local vault found. Create or unlock your vault first.'
           );
         }
+
+        if (serverError) {
+          // eslint-disable-next-line no-console
+          console.error(
+            'Server vault export failed; falling back to local vault export.',
+            serverError
+          );
+          setExportServerNote(
+            'Server vault export failed; exported from local vault instead.'
+          );
+        }
+
         bundle = buildLocalExportBundle({ localVault });
       }
 
@@ -153,6 +167,20 @@ export default function VaultExportImportPage() {
       const text = await selectedFile.text();
       const bundle = validateVaultExportBundleFromText(text);
 
+      const existingLocalVault = loadVault();
+      if (existingLocalVault) {
+        const confirmed = window.confirm(
+          'Importing will replace your current local vault data. Continue?'
+        );
+        if (!confirmed) {
+          toast({
+            title: 'Import canceled',
+            description: 'Your local vault was not changed.',
+          });
+          return;
+        }
+      }
+
       const nextLocalVault = bundleToLocalVault(bundle);
       saveVault(nextLocalVault);
 
@@ -209,6 +237,9 @@ export default function VaultExportImportPage() {
               {exporting ? 'Exporting…' : 'Export vault JSON'}
             </Button>
           </div>
+          {exportServerNote && (
+            <p className="text-sm text-muted-foreground">{exportServerNote}</p>
+          )}
         </CardContent>
       </Card>
 
@@ -227,6 +258,7 @@ export default function VaultExportImportPage() {
               id="vault-import-file"
               type="file"
               accept="application/json"
+              disabled={importing}
               onClick={(event) => {
                 event.currentTarget.value = '';
               }}

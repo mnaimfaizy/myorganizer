@@ -15,7 +15,7 @@ import {
 
 export const VAULT_EXPORT_MAX_BYTES = 1024 * 1024; // 1 MiB guard rail (matches backend)
 
-const BASE64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
+const BASE64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
 
 function byteLengthUtf8(text: string): number {
   if (typeof TextEncoder !== 'undefined') {
@@ -57,10 +57,7 @@ function isBase64String(value: string): boolean {
   return decodeBase64Strict(value) !== null;
 }
 
-function requireEncryptedBlobStrict(
-  value: unknown,
-  label: string
-): EncryptedBlobV1 {
+function requireEncryptedBlob(value: unknown, label: string): EncryptedBlobV1 {
   const normalized = normalizeEncryptedBlobV1(value);
   if (!normalized) {
     throw new Error(`${label} must include version, iv, and ciphertext`);
@@ -96,34 +93,41 @@ function requireMeta(value: unknown): VaultMetaV1 {
     throw new Error('meta.kdf_params must be an object');
   }
 
-  const passphrase = requireEncryptedBlobStrict(
+  const passphrase = requireEncryptedBlob(
     meta.wrapped_mk_passphrase,
     'meta.wrapped_mk_passphrase'
   );
-  const recovery = requireEncryptedBlobStrict(
+  const recovery = requireEncryptedBlob(
     meta.wrapped_mk_recovery,
     'meta.wrapped_mk_recovery'
   );
 
-  const kdfParams: Record<string, unknown> = meta.kdf_params as Record<
-    string,
-    unknown
-  >;
-  const iterations = kdfParams.iterations;
+  const rawKdfParams = meta.kdf_params as Record<string, unknown>;
+  const kdfParams: { hash?: string; iterations?: number } = {};
+
+  const hash = rawKdfParams.hash;
+  if (hash !== undefined) {
+    if (typeof hash !== 'string') {
+      throw new Error('meta.kdf_params.hash must be a string when provided');
+    }
+    kdfParams.hash = hash;
+  }
+
+  const iterations = rawKdfParams.iterations;
   if (iterations !== undefined && typeof iterations !== 'number') {
     throw new Error(
       'meta.kdf_params.iterations must be a number when provided'
     );
+  }
+  if (iterations !== undefined) {
+    kdfParams.iterations = iterations;
   }
 
   return {
     version: meta.version,
     kdf_name: meta.kdf_name,
     kdf_salt: meta.kdf_salt,
-    kdf_params: {
-      ...kdfParams,
-      ...(iterations !== undefined ? { iterations } : {}),
-    },
+    kdf_params: kdfParams,
     wrapped_mk_passphrase: passphrase,
     wrapped_mk_recovery: recovery,
   };
@@ -145,7 +149,11 @@ function requireBlobs(
       key === VaultBlobType.Addresses ||
       key === VaultBlobType.MobileNumbers
     ) {
-      blobs[key] = requireEncryptedBlobStrict(candidate, `blobs.${key}`);
+      blobs[key] = requireEncryptedBlob(candidate, `blobs.${key}`);
+    } else {
+      // Surface unexpected keys while still allowing forward compatibility.
+      // eslint-disable-next-line no-console
+      console.warn(`Unknown blob type key in export bundle: ${key}`);
     }
   }
   return blobs;
