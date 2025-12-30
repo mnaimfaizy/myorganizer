@@ -10,13 +10,13 @@ import {
   useToast,
 } from '@myorganizer/web-ui';
 import { useEffect, useMemo, useState } from 'react';
-import VaultGate from '../../components/vault-gate';
-import { loadDecryptedData, saveEncryptedData } from '../../lib/vault/vault';
+import VaultGate from '../../../components/vault-gate';
+import { loadDecryptedData, saveEncryptedData } from '../../../lib/vault/vault';
 
-type AddressItem = {
+type MobileNumberItem = {
   id: string;
-  label: string; // Home / Office / etc.
-  address: string;
+  label: string; // Personal / Work / etc.
+  mobileNumber: string;
   createdAt: string;
 };
 
@@ -24,23 +24,23 @@ function randomId(): string {
   return crypto.randomUUID();
 }
 
-function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
+function MobileNumbersInner(props: { masterKeyBytes: Uint8Array }) {
   const { toast } = useToast();
 
-  const [items, setItems] = useState<AddressItem[]>([]);
-  const [label, setLabel] = useState('Home');
-  const [address, setAddress] = useState('');
+  const [items, setItems] = useState<MobileNumberItem[]>([]);
+  const [label, setLabel] = useState('Personal');
+  const [mobileNumber, setMobileNumber] = useState('');
 
   useEffect(() => {
-    loadDecryptedData<AddressItem[]>({
+    loadDecryptedData<MobileNumberItem[]>({
       masterKeyBytes: props.masterKeyBytes,
-      type: 'addresses',
+      type: 'mobileNumbers',
       defaultValue: [],
     })
       .then(setItems)
       .catch(() => {
         toast({
-          title: 'Failed to load addresses',
+          title: 'Failed to load mobile numbers',
           description: 'Could not decrypt saved data.',
           variant: 'destructive',
         });
@@ -48,16 +48,16 @@ function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
   }, [props.masterKeyBytes, toast]);
 
   const canAdd = useMemo(
-    () => label.trim().length > 0 && address.trim().length > 0,
-    [label, address]
+    () => label.trim().length > 0 && mobileNumber.trim().length > 0,
+    [label, mobileNumber]
   );
 
-  async function persist(next: AddressItem[]) {
+  async function persist(next: MobileNumberItem[]) {
     setItems(next);
     try {
       await saveEncryptedData({
         masterKeyBytes: props.masterKeyBytes,
-        type: 'addresses',
+        type: 'mobileNumbers',
         value: next,
       });
     } catch (e: any) {
@@ -72,42 +72,42 @@ function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <Card className="p-4">
-        <CardTitle className="text-lg">Add address</CardTitle>
+        <CardTitle className="text-lg">Add mobile number</CardTitle>
         <CardContent className="mt-4 space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="addr-label">Label</Label>
+            <Label htmlFor="mn-label">Label</Label>
             <Input
-              id="addr-label"
+              id="mn-label"
               value={label}
               onChange={(e) => setLabel(e.target.value)}
-              placeholder="Home / Office"
+              placeholder="Personal / Work"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="addr-address">Address</Label>
+            <Label htmlFor="mn-number">Mobile number</Label>
             <Input
-              id="addr-address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Street, city, postal code"
+              id="mn-number"
+              value={mobileNumber}
+              onChange={(e) => setMobileNumber(e.target.value)}
+              placeholder="+1 555 123 4567"
             />
           </div>
 
           <Button
             disabled={!canAdd}
             onClick={async () => {
-              const nextItem: AddressItem = {
+              const nextItem: MobileNumberItem = {
                 id: randomId(),
                 label: label.trim(),
-                address: address.trim(),
+                mobileNumber: mobileNumber.trim(),
                 createdAt: new Date().toISOString(),
               };
               await persist([nextItem, ...items]);
-              setAddress('');
+              setMobileNumber('');
               toast({
                 title: 'Saved',
-                description: 'Address saved (encrypted).',
+                description: 'Mobile number saved (encrypted).',
               });
             }}
           >
@@ -117,10 +117,12 @@ function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
       </Card>
 
       <Card className="p-4">
-        <CardTitle className="text-lg">Your addresses</CardTitle>
+        <CardTitle className="text-lg">Your mobile numbers</CardTitle>
         <CardContent className="mt-4 space-y-3">
           {items.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No addresses yet.</p>
+            <p className="text-sm text-muted-foreground">
+              No mobile numbers yet.
+            </p>
           ) : (
             items.map((item) => (
               <div
@@ -130,7 +132,7 @@ function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
                 <div className="min-w-0">
                   <p className="font-medium truncate">{item.label}</p>
                   <p className="text-sm text-muted-foreground break-words">
-                    {item.address}
+                    {item.mobileNumber}
                   </p>
                 </div>
                 <Button
@@ -140,7 +142,7 @@ function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
                     await persist(next);
                     toast({
                       title: 'Deleted',
-                      description: 'Address removed.',
+                      description: 'Mobile number removed.',
                     });
                   }}
                 >
@@ -155,11 +157,11 @@ function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
   );
 }
 
-export default function AddressesPage() {
+export default function MobileNumbersPage() {
   return (
-    <VaultGate title="Addresses">
+    <VaultGate title="Mobile Numbers">
       {({ masterKeyBytes }) => (
-        <AddressesInner masterKeyBytes={masterKeyBytes} />
+        <MobileNumbersInner masterKeyBytes={masterKeyBytes} />
       )}
     </VaultGate>
   );
