@@ -18,7 +18,7 @@ export function createApiConfiguration(
 ): Configuration {
   return new Configuration({
     basePath: getApiBasePath(),
-    accessToken: () => getAccessToken(),
+    accessToken: (_name?: string, _scopes?: string[]) => getAccessToken() ?? '',
     ...overrides,
   });
 }

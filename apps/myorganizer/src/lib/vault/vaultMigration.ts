@@ -136,10 +136,8 @@ function serverMetaToLocalVault(options: {
     throw new Error('Server vault meta is missing wrapped keys');
   }
 
-  const hash =
-    typeof meta.kdf_params?.hash === 'string'
-      ? meta.kdf_params.hash
-      : 'SHA-256';
+  const hash: 'SHA-256' =
+    meta.kdf_params?.hash === 'SHA-256' ? 'SHA-256' : 'SHA-256';
   const iterations =
     typeof meta.kdf_params?.iterations === 'number'
       ? meta.kdf_params.iterations
