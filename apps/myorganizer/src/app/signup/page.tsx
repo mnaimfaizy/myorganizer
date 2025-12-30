@@ -107,7 +107,7 @@ export default function SignUpPage() {
                         <FormItem>
                           <FormLabel>First Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="john.doe@gmail.com" {...field} />
+                            <Input placeholder="John" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -120,7 +120,7 @@ export default function SignUpPage() {
                         <FormItem>
                           <FormLabel>Last Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="john.doe@gmail.com" {...field} />
+                            <Input placeholder="Doe" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -156,7 +156,7 @@ export default function SignUpPage() {
                           <FormControl>
                             <Input
                               type="tel"
-                              placeholder="john.doe@gmail.com"
+                              placeholder="+1 (555) 000-0000"
                               {...field}
                             />
                           </FormControl>
