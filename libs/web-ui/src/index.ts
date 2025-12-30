@@ -1,5 +1,6 @@
 export * from './lib/components/Button/Button';
 export * from './lib/components/Card/Card';
+export * from './lib/components/Checkbox/Checkbox';
 export * from './lib/components/DropdownMenu/DropdownMenu';
 export * from './lib/components/Tooltip/Tooltip';
 export * from './lib/components/Skeleton/Skeleton';
