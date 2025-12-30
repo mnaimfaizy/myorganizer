@@ -66,3 +66,6 @@ apps/backend/src/prisma/prisma-client/
 **/prisma/query_engine*
 **/prisma/libquery_engine*
 **/prisma/schema-engine*
+
+# Playwright MCP artifacts
+.playwright-mcp/

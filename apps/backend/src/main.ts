@@ -27,6 +27,10 @@ const corsOptions = {
     'http://localhost:3000',
     'http://localhost:4200',
   ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'If-Match'],
+  exposedHeaders: ['ETag'],
 };
 
 // Middleware to parse JSON bodies
