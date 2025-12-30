@@ -383,6 +383,10 @@ export async function migrateVaultPhase1ToPhase2(options: {
     onConflict: () => 'keep-local',
   });
 
+  // Upload local blobs to server. Note: This only uploads blobs that exist locally.
+  // Server blobs that don't exist locally are NOT deleted because the backend API
+  // doesn't provide a DELETE endpoint for vault blobs. This means if the server has
+  // blob types that the local vault doesn't have, they'll remain on the server.
   const remoteAddresses = await getServerVaultBlob(
     options.api,
     VaultBlobType.Addresses
