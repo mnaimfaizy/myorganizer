@@ -7,9 +7,9 @@ import filterUser from '../helpers/filterUser';
 import isOwner from '../middleware/isOwner';
 import { LoginSchema, refreshTokenSchema } from '../schemas/auth.schema';
 import { UserSchema } from '../schemas/user.schema';
+import userService from '../services/UserService';
 import { FilteredUserInterface, UserInterface } from '../types';
 import passport from '../utils/passport';
-import userService from '../services/UserService';
 
 const router = Router();
 
@@ -137,12 +137,13 @@ router.post(
   isOwner,
   async (req, res) => {
     try {
-      const user = req.user;
+      const user = req.user as UserInterface;
 
       if (!user) {
         res.status(404).json({ message: 'User not found' });
         return;
       } else {
+        await userService.sendVerificationMail(user);
         res
           .status(200)
           .json({ message: 'Verification email sent successfully' });
