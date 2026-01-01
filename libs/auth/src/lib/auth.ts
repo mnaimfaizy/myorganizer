@@ -1,8 +1,10 @@
 import {
   AuthenticationApi,
   Configuration,
+  type ConfirmResetPasswordBody,
   type FilteredUserInterface,
   type Login200Response,
+  type ResetPassword200Response,
 } from '@myorganizer/app-api-client';
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
 
@@ -313,5 +315,45 @@ export async function logout(): Promise<void> {
     await api.logout({ userId: user.id });
   } finally {
     clearAuthSession();
+  }
+}
+
+export async function requestPasswordReset(args: {
+  email: string;
+}): Promise<ResetPassword200Response> {
+  const api = getAuthApi();
+  try {
+    const res = await api.resetPassword({
+      resetPasswordRequest: {
+        email: args.email,
+      },
+    });
+
+    return res.data;
+  } catch (err) {
+    throw new Error(extractMessage(err));
+  }
+}
+
+export async function confirmPasswordReset(args: {
+  token: string;
+  password: string;
+  confirmPassword: string;
+}): Promise<ResetPassword200Response> {
+  const api = getAuthApi();
+  try {
+    const body: ConfirmResetPasswordBody = {
+      token: args.token,
+      password: args.password,
+      confirm_password: args.confirmPassword,
+    };
+
+    const res = await api.confirmResetPassword({
+      confirmResetPasswordBody: body,
+    });
+
+    return res.data;
+  } catch (err) {
+    throw new Error(extractMessage(err));
   }
 }
