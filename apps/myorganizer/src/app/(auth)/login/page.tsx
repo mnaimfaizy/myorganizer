@@ -1,20 +1,41 @@
 'use client';
 
-import { Button, Checkbox, Input, Label } from '@myorganizer/web-ui';
+import { login } from '@myorganizer/auth';
+import { Button, Checkbox, Input, Label, useToast } from '@myorganizer/web-ui';
 import { Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement login logic
-    console.log('Login:', { email, password, rememberMe });
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    try {
+      await login({ email, password, rememberMe });
+      toast({ title: 'Logged in' });
+      router.push('/');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Login failed.';
+      toast({
+        title: 'Login failed',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSSOLogin = (provider: string) => {
@@ -136,9 +157,10 @@ export default function LoginPage() {
               {/* Login Button */}
               <Button
                 type="submit"
+                disabled={isSubmitting}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11"
               >
-                Login
+                {isSubmitting ? 'Logging in…' : 'Login'}
               </Button>
 
               {/* Sign Up Link */}

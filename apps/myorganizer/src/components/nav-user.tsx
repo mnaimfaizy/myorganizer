@@ -1,4 +1,6 @@
-"use client"
+'use client';
+
+import { logout } from '@myorganizer/auth';
 
 import {
   BadgeCheck,
@@ -7,7 +9,9 @@ import {
   CreditCard,
   LogOut,
   Sparkles,
-} from "lucide-react"
+} from 'lucide-react';
+
+import { useRouter } from 'next/navigation';
 
 import {
   SidebarMenu,
@@ -24,18 +28,24 @@ import {
   Avatar,
   AvatarFallback,
   AvatarImage,
-} from "@myorganizer/web-ui"
+} from '@myorganizer/web-ui';
 
 export function NavUser({
   user,
 }: {
   user: {
-    name: string
-    email: string
-    avatar: string
-  }
+    name: string;
+    email: string;
+    avatar: string;
+  };
 }) {
-  const { isMobile } = useSidebar()
+  const router = useRouter();
+  const { isMobile } = useSidebar();
+
+  async function handleLogout() {
+    await logout();
+    router.push('/login');
+  }
 
   return (
     <SidebarMenu>
@@ -59,7 +69,7 @@ export function NavUser({
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="w-[--radix-dropdown-menu-trigger-width] min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
+            side={isMobile ? 'bottom' : 'right'}
             align="end"
             sideOffset={4}
           >
@@ -98,7 +108,12 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
+                void handleLogout();
+              }}
+            >
               <LogOut />
               Log out
             </DropdownMenuItem>
@@ -106,5 +121,5 @@ export function NavUser({
         </DropdownMenu>
       </SidebarMenuItem>
     </SidebarMenu>
-  )
+  );
 }
