@@ -6,6 +6,9 @@ export interface LoginTokensInterface {
 export interface UserInterface {
   id: string;
   name: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
   email: string;
   password: string;
   email_verified_at?: Date;
@@ -19,6 +22,9 @@ export interface FilteredUserInterface {
   id: string;
   name: string;
   email: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
 }
 
 export class MyError extends Error {

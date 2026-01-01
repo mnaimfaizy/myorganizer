@@ -41,7 +41,10 @@ class UserService {
     const hashedPassword = await bcrypt.hash(user.password, this.SaltRounds);
     const newUser = await this.prisma.user.create({
       data: {
-        name: user.name,
+        name: user.name ?? `${user.firstName} ${user.lastName}`,
+        first_name: user.firstName,
+        last_name: user.lastName,
+        phone: user.phone,
         email: user.email,
         password: hashedPassword,
       },

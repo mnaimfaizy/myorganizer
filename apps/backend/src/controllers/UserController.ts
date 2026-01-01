@@ -10,10 +10,12 @@ import {
   Tags,
 } from 'tsoa';
 import { Body, ValidateBody } from '../decorators/request-body-validator';
+import filterUser from '../helpers/filterUser';
 import { ValidateErrorJSON } from '../interfaces';
 import { User, UserCreationBody } from '../models/User';
 import { UserSchema } from '../schemas/user.schema';
 import userService from '../services/UserService';
+import { FilteredUserInterface, UserInterface } from '../types';
 import passport from '../utils/passport';
 
 @Tags('Users Management')
@@ -35,11 +37,13 @@ export class UserController extends Controller {
   @Response<ValidateErrorJSON>(422, 'Validation Failed') // Custom error response
   @Response(201, 'Created') // Custom success response
   @ValidateBody(UserSchema)
-  async createUser(@Body() requestBody: UserCreationBody): Promise<User | any> {
+  async createUser(
+    @Body() requestBody: UserCreationBody
+  ): Promise<FilteredUserInterface> {
     const user = await userService.create(requestBody);
     await userService.sendVerificationMail(user);
     this.setStatus(201); // Set return status 201
-    return user;
+    return filterUser(user as UserInterface);
   }
 
   async findUserByEmail(email: string): Promise<User | null> {
