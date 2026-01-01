@@ -12,14 +12,30 @@ All endpoints are under the backend router prefix (see `ROUTER_PREFIX`).
 
 - `POST /auth/register` – creates a user
   - Body: `firstName`, `lastName`, `email`, `password`, optional `phone`
+- Creates the user and sends a verification email
+- Returns a message-based response (e.g. `{ message, user }`)
 - `POST /auth/login` – returns `{ token, expires_in, user }` and sets refresh cookie
 - `POST /auth/refresh` – returns `{ token, expires_in, user }`
   - Refresh token is taken from the refresh cookie (request body is optional)
 - `POST /auth/logout/:userId` – invalidates refresh token and clears refresh cookie
 
+Email verification:
+
+- `PATCH /auth/verify/email` – verifies the email using a token
+  - Body: `{ token: string }`
+- `POST /auth/verify/resend/:userId` – resends the verification email
+
 ## Frontend behavior
 
 Frontend auth logic lives in the monorepo library `@myorganizer/auth`.
+
+### Email verification UX
+
+- After successful registration, the user is redirected to: `/verify/email/sent?email=...`
+- The verification email links to the frontend: `/verify/email?token=...`
+  - This page calls the backend `PATCH /auth/verify/email` endpoint.
+- Login/refresh are blocked until the email is verified.
+  - Backend responds with `403` and a user-friendly message (frontend displays it).
 
 ### Token storage
 
@@ -54,9 +70,17 @@ Examples:
 
 The value should match how the backend is started (notably `ROUTER_PREFIX`).
 
+Backend uses `APP_FRONTEND_URL` to generate links inside emails (verification/reset).
+
+Typical dev defaults:
+
+- Backend: `http://localhost:3000`
+- Frontend: `http://localhost:4200`
+
 ## Security notes
 
 - Refresh token is in an HTTP-only cookie, reducing XSS exposure.
 - Access token in browser storage is still sensitive; keep token TTL short.
 - Ensure CORS allows credentials and restricts origins.
 - In production, refresh cookie should be `Secure` and an appropriate `SameSite`.
+- Email verification is required before issuing tokens.

@@ -118,7 +118,8 @@ Before you begin, ensure you have the following installed:
    ```env
    # Application
    APP_NAME="My Organizer"
-   APP_FRONTEND_URL=http://localhost:3000
+   # Used to build email verification/reset links
+   APP_FRONTEND_URL=http://localhost:4200
    PORT=3000
    NODE_ENV=development
    ROUTER_PREFIX=/api/v1
@@ -142,19 +143,20 @@ Before you begin, ensure you have the following installed:
    # Mail - SMTP Configuration
    MAIL_SERVICE=smtp
    DEFAULT_EMAIL_PROVIDER=smtp
-   MAIL_HOST=your-smtp-host
-   MAIL_PORT=465
-   MAIL_SECURE=true
-   MAIL_USERNAME=your-email@example.com
-   MAIL_PASSWORD=your-email-password
-   EMAIL_SENDER=noreply@myorganizer.com
+   # Dev (MailHog): docker-compose provides SMTP on localhost:1025 and UI on http://localhost:8025
+   MAIL_HOST=localhost
+   MAIL_PORT=1025
+   MAIL_SECURE=false
+   MAIL_USERNAME=
+   MAIL_PASSWORD=
+   EMAIL_SENDER=no-reply@myorganizer.local
    ```
 
    **Important Notes:**
 
    - Generate strong, random secrets for JWT tokens in production
    - Update database credentials if not using default values
-   - Configure SMTP settings for email functionality
+   - Configure SMTP settings for email functionality (MailHog is recommended for local dev)
    - Adjust `DATABASE_URL` if using a different database host/port
 
 ## Database Setup
