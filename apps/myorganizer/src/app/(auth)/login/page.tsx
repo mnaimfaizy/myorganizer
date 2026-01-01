@@ -16,18 +16,31 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailNotVerified, setEmailNotVerified] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
 
     setIsSubmitting(true);
+    setEmailNotVerified(false);
     try {
       await login({ email, password, rememberMe });
       toast({ title: 'Logged in' });
       router.push('/dashboard');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed.';
+
+      if (message.toLowerCase().includes('email not verified')) {
+        setEmailNotVerified(true);
+        toast({
+          title: 'Email not verified',
+          description: 'Please verify your email before logging in.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
       toast({
         title: 'Login failed',
         description: message,
@@ -78,6 +91,31 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
+              {emailNotVerified ? (
+                <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 p-3 text-sm text-gray-700 dark:text-gray-300">
+                  <div className="font-medium">Email not verified</div>
+                  <div className="mt-1">
+                    Check your inbox for the verification email and click the
+                    link inside.
+                    {email ? (
+                      <>
+                        {' '}
+                        You can also visit{' '}
+                        <Link
+                          href={`/verify/email/sent?email=${encodeURIComponent(
+                            email
+                          )}`}
+                          className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-medium"
+                        >
+                          the verification instructions page
+                        </Link>
+                        .
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+
               {/* Email Field */}
               <div className="space-y-2">
                 <Label

@@ -21,6 +21,7 @@ import apiTokens from '../helpers/ApiTokens';
 import filterUser from '../helpers/filterUser';
 import { decodeToken } from '../helpers/jwtHelper';
 import { ValidateErrorJSON } from '../interfaces';
+import { RegisterUserResponse } from '../models/Auth';
 import {
   ConfirmResetPasswordBody,
   UserCreationBody,
@@ -142,10 +143,47 @@ export class AuthController extends Controller {
   @ValidateBody(UserSchema)
   async registerUser(
     @Body() requestBody: UserCreationBody
-  ): Promise<FilteredUserInterface> {
+  ): Promise<RegisterUserResponse> {
+    const existing = await userService.getByEmail(requestBody.email);
+    if (existing) {
+      const isVerified = Boolean(
+        (existing as any)?.email_verification_timestamp
+      );
+      if (isVerified) {
+        this.setStatus(409);
+        return { message: 'Email already registered. Please log in.' };
+      }
+
+      await userService.sendVerificationMail(existing);
+      this.setStatus(409);
+      return {
+        message:
+          "Email already registered but isn't verified yet. We've resent the verification email.",
+        user: filterUser(existing as UserInterface),
+      };
+    }
+
     const user = await userService.create(requestBody);
-    await userService.sendVerificationMail(user);
-    return filterUser(user as UserInterface);
+    try {
+      await userService.sendVerificationMail(user);
+    } catch (err) {
+      try {
+        await userService.deleteById(user.id);
+      } catch {
+        // best-effort rollback
+      }
+      this.setStatus(500);
+      return {
+        message:
+          'Account was not created because we could not send a verification email. Please try again.',
+      };
+    }
+
+    this.setStatus(201);
+    return {
+      message: 'Account created. Verification email sent.',
+      user: filterUser(user as UserInterface),
+    };
   }
 
   @Patch('/verify/email')

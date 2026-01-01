@@ -3,12 +3,12 @@ services:
     image: bitnami/postgresql
     restart: always
     container_name: myorganizer_db
-    env_file: ".env"
+    env_file: '.env'
     user: root
     volumes:
-        - .database:/bitnami/postgresql
+      - .database:/bitnami/postgresql
     ports:
-      - "5453:5432"  # Remove this on production
+      - '5453:5432' # Remove this on production
     expose:
       - 5432
     environment:
@@ -18,12 +18,22 @@ services:
     networks:
       - myorganizer_network
 
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    restart: unless-stopped
+    ports:
+      - '1025:1025' # SMTP
+      - '8025:8025' # Web UI
+    networks:
+      - myorganizer_network
+
   pgadmin:
     image: dpage/pgadmin4
     container_name: pgadmin4_container
     restart: always
     ports:
-      - "8888:80"
+      - '8888:80'
     env_file:
       - .env
     environment:

@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { login, register } from '@myorganizer/auth';
+import { register } from '@myorganizer/auth';
 import {
   Button,
   Card,
@@ -72,7 +72,7 @@ export default function SignUpPage() {
     setIsSubmitting(true);
 
     try {
-      await register({
+      const result = await register({
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
@@ -80,12 +80,32 @@ export default function SignUpPage() {
         ...(data.phoneNumber ? { phone: data.phoneNumber } : {}),
       });
 
-      await login({ email: data.email, password: data.password });
-
-      toast({ title: 'Account created' });
-      router.push('/dashboard');
+      toast({ title: result.message });
+      router.push(`/verify/email/sent?email=${encodeURIComponent(data.email)}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign up failed.';
+
+      const normalized = message.toLowerCase();
+      const isAlreadyRegistered = normalized.includes(
+        'email already registered'
+      );
+      const resentVerification =
+        normalized.includes('resent') && normalized.includes('verification');
+
+      if (resentVerification) {
+        toast({ title: message });
+        router.push(
+          `/verify/email/sent?email=${encodeURIComponent(data.email)}`
+        );
+        return;
+      }
+
+      if (isAlreadyRegistered) {
+        toast({ title: message, variant: 'destructive' });
+        router.push(`/login?email=${encodeURIComponent(data.email)}`);
+        return;
+      }
+
       toast({
         title: 'Sign up failed',
         description: message,

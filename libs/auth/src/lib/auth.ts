@@ -1,10 +1,10 @@
-import axios, { type AxiosError, type AxiosInstance } from 'axios';
 import {
   AuthenticationApi,
   Configuration,
   type FilteredUserInterface,
   type Login200Response,
 } from '@myorganizer/app-api-client';
+import axios, { type AxiosError, type AxiosInstance } from 'axios';
 
 const DEFAULT_API_BASE_URL = 'http://localhost:3000';
 
@@ -270,7 +270,7 @@ export async function register(args: {
   email: string;
   password: string;
   phone?: string;
-}): Promise<AuthUser> {
+}): Promise<{ message: string; user?: AuthUser }> {
   const api = getAuthApi();
   try {
     const res = await api.registerUser({
@@ -282,7 +282,20 @@ export async function register(args: {
         ...(args.phone ? { phone: args.phone } : {}),
       },
     });
-    return res.data;
+
+    const data = res.data as any;
+    if (data && typeof data.message === 'string') {
+      return {
+        message: data.message,
+        user: data.user,
+      };
+    }
+
+    // Backward-compat fallback (older backend returned just the user)
+    return {
+      message: 'Verification email sent. Please check your inbox.',
+      user: data,
+    };
   } catch (err) {
     throw new Error(extractMessage(err));
   }

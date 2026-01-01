@@ -1,6 +1,5 @@
 import { NextFunction, Router } from 'express';
 import authController from '../controllers/AuthController';
-import userController from '../controllers/UserController';
 import apiTokens from '../helpers/ApiTokens';
 import { getExpiry } from '../helpers/cookieHelper';
 import filterUser from '../helpers/filterUser';
@@ -23,42 +22,63 @@ router.post(
       res.status(422).json({ message: 'Validation Failed' });
     }
   },
-  passport.authenticate('local', { session: false, failureMessage: false }),
-  async (req, res, next: NextFunction) => {
-    try {
-      const requestUser = req.user as UserInterface;
-      const { token, refreshToken } = apiTokens.createTokens(requestUser);
+  (req, res, next: NextFunction) => {
+    passport.authenticate(
+      'local',
+      { session: false, failureMessage: false },
+      async (err: unknown, user: unknown, info?: { message?: string }) => {
+        try {
+          if (err) {
+            next(err);
+            return;
+          }
 
-      if (token instanceof Error || refreshToken instanceof Error) {
-        res.status(500).json({ message: 'Failed to create auth tokens' });
-        return;
+          if (!user) {
+            res.status(401).json({ message: info?.message ?? 'Unauthorized' });
+            return;
+          }
+
+          const requestUser = user as UserInterface;
+          const isVerified = Boolean(
+            (requestUser as any)?.email_verification_timestamp
+          );
+
+          if (!isVerified) {
+            res.status(403).json({
+              message: 'Email not verified. Please verify your email first.',
+            });
+            return;
+          }
+
+          const { token, refreshToken } = apiTokens.createTokens(requestUser);
+
+          if (token instanceof Error || refreshToken instanceof Error) {
+            res.status(500).json({ message: 'Failed to create auth tokens' });
+            return;
+          }
+
+          const expiry = getExpiry();
+
+          const filteredUser: FilteredUserInterface = filterUser(requestUser);
+
+          res
+            .cookie('refresh_cookie', refreshToken, {
+              expires: expiry,
+              httpOnly: true,
+              sameSite: 'lax',
+              secure: process.env.NODE_ENV === 'production',
+            })
+            .status(200)
+            .json({
+              token: token,
+              expires_in: 600_000,
+              user: filteredUser,
+            });
+        } catch (caught) {
+          next(caught);
+        }
       }
-
-      const expiry = getExpiry();
-
-      const user: FilteredUserInterface = filterUser(requestUser);
-
-      res
-        .cookie('refresh_cookie', refreshToken, {
-          expires: expiry,
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: process.env.NODE_ENV === 'production',
-        })
-        .status(200)
-        .json({
-          token: token,
-          expires_in: 600_000,
-          user: user,
-        });
-    } catch (err) {
-      console.log('Error: ', err);
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
-      return err;
-    }
+    )(req, res, next);
   }
 );
 
@@ -101,13 +121,84 @@ router.post(
 router.post('/register', async (req, res) => {
   try {
     UserSchema.parse(req.body);
-    const user = await userController.createUser(req.body);
-    res.status(201).json(user);
+
+    const email = (req.body as any)?.email as string | undefined;
+    if (email) {
+      const existing = await userService.getByEmail(email);
+      if (existing) {
+        const isVerified = Boolean(
+          (existing as any)?.email_verification_timestamp
+        );
+        if (isVerified) {
+          res
+            .status(409)
+            .json({ message: 'Email already registered. Please log in.' });
+          return;
+        }
+
+        await userService.sendVerificationMail(existing);
+        res.status(409).json({
+          message:
+            "Email already registered but isn't verified yet. We've resent the verification email.",
+          user: filterUser(existing as UserInterface),
+        });
+        return;
+      }
+    }
+
+    const created = await userService.create(req.body);
+    try {
+      await userService.sendVerificationMail(created);
+    } catch (err) {
+      try {
+        await userService.deleteById(created.id);
+      } catch {
+        // best-effort rollback
+      }
+
+      res.status(500).json({
+        message:
+          'Account was not created because we could not send a verification email. Please try again.',
+      });
+      return;
+    }
+
+    res.status(201).json({
+      message: 'Account created. Verification email sent.',
+      user: filterUser(created as unknown as UserInterface),
+    });
   } catch (error) {
     if (error?.name === 'ZodError') {
       res.status(422).json({ message: 'Validation Failed' });
       return;
     }
+
+    const errorMessage = String((error as any)?.message ?? '');
+    const isUniqueConstraint =
+      (error as any)?.code === 'P2002' ||
+      errorMessage.includes('Unique constraint failed');
+
+    if (isUniqueConstraint) {
+      const email = (req.body as any)?.email as string | undefined;
+      if (email) {
+        const existing = await userService.getByEmail(email);
+        if (existing && !(existing as any)?.email_verification_timestamp) {
+          await userService.sendVerificationMail(existing);
+          res.status(409).json({
+            message:
+              "Email already registered but isn't verified yet. We've resent the verification email.",
+            user: filterUser(existing as UserInterface),
+          });
+          return;
+        }
+      }
+
+      res
+        .status(409)
+        .json({ message: 'Email already registered. Please log in.' });
+      return;
+    }
+
     res
       .status(500)
       .json({ message: `Failed to create user: ${error.message}` });
@@ -187,6 +278,15 @@ router.post('/refresh', async (req, res, next: NextFunction) => {
     const user = await userService.refreshToken(refreshToken);
     if (!user) {
       res.status(404).json({ message: 'User not found' });
+      return;
+    }
+
+    const isVerified = Boolean((user as any)?.email_verification_timestamp);
+    if (!isVerified) {
+      res.clearCookie('refresh_cookie');
+      res.status(403).json({
+        message: 'Email not verified. Please verify your email first.',
+      });
       return;
     }
 

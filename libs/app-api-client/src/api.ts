@@ -571,6 +571,25 @@ export interface RefreshTokenRequest {
 /**
  * 
  * @export
+ * @interface RegisterUserResponse
+ */
+export interface RegisterUserResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof RegisterUserResponse
+     */
+    'message': string;
+    /**
+     * 
+     * @type {FilteredUserInterface}
+     * @memberof RegisterUserResponse
+     */
+    'user'?: FilteredUserInterface;
+}
+/**
+ * 
+ * @export
  * @interface ResetPassword200Response
  */
 export interface ResetPassword200Response {
@@ -1256,7 +1275,7 @@ export const AuthenticationApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async registerUser(userCreationBody: UserCreationBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<FilteredUserInterface>> {
+        async registerUser(userCreationBody: UserCreationBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RegisterUserResponse>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.registerUser(userCreationBody, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AuthenticationApi.registerUser']?.[localVarOperationServerIndex]?.url;
@@ -1350,7 +1369,7 @@ export const AuthenticationApiFactory = function (configuration?: Configuration,
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        registerUser(requestParameters: AuthenticationApiRegisterUserRequest, options?: RawAxiosRequestConfig): AxiosPromise<FilteredUserInterface> {
+        registerUser(requestParameters: AuthenticationApiRegisterUserRequest, options?: RawAxiosRequestConfig): AxiosPromise<RegisterUserResponse> {
             return localVarFp.registerUser(requestParameters.userCreationBody, options).then((request) => request(axios, basePath));
         },
         /**

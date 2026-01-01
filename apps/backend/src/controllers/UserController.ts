@@ -40,8 +40,33 @@ export class UserController extends Controller {
   async createUser(
     @Body() requestBody: UserCreationBody
   ): Promise<FilteredUserInterface> {
+    const existing = await userService.getByEmail(requestBody.email);
+    if (existing) {
+      const isVerified = Boolean(
+        (existing as any)?.email_verification_timestamp
+      );
+      if (isVerified) {
+        this.setStatus(409);
+        throw new Error('Email already registered');
+      }
+
+      await userService.sendVerificationMail(existing);
+      this.setStatus(200);
+      return filterUser(existing as UserInterface);
+    }
+
     const user = await userService.create(requestBody);
-    await userService.sendVerificationMail(user);
+    try {
+      await userService.sendVerificationMail(user);
+    } catch (err) {
+      try {
+        await userService.deleteById(user.id);
+      } catch {
+        // best-effort rollback
+      }
+      throw err;
+    }
+
     this.setStatus(201); // Set return status 201
     return filterUser(user as UserInterface);
   }

@@ -237,6 +237,15 @@
           "name": {
             "type": "string"
           },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
           "email": {
             "type": "string"
           },
@@ -258,6 +267,31 @@
           }
         },
         "required": ["id", "email"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "FilteredUserInterface": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name", "email", "firstName", "lastName"],
         "type": "object",
         "additionalProperties": false
       },
@@ -283,6 +317,15 @@
           "name": {
             "type": "string"
           },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
           "email": {
             "type": "string"
           },
@@ -290,7 +333,7 @@
             "type": "string"
           }
         },
-        "required": ["email", "password"],
+        "required": ["firstName", "lastName", "email", "password"],
         "type": "object",
         "additionalProperties": false
       },
@@ -335,19 +378,16 @@
         "type": "object",
         "additionalProperties": false
       },
-      "FilteredUserInterface": {
+      "RegisterUserResponse": {
         "properties": {
-          "id": {
+          "message": {
             "type": "string"
           },
-          "name": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
+          "user": {
+            "$ref": "#/components/schemas/FilteredUserInterface"
           }
         },
-        "required": ["id", "name", "email"],
+        "required": ["message"],
         "type": "object",
         "additionalProperties": false
       },
@@ -650,12 +690,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/User"
-                    },
-                    {}
-                  ]
+                  "$ref": "#/components/schemas/FilteredUserInterface"
                 }
               }
             }
@@ -807,19 +842,25 @@
               "application/json": {
                 "schema": {
                   "properties": {
-                    "message": {
-                      "type": "string"
+                    "user": {
+                      "$ref": "#/components/schemas/FilteredUserInterface"
                     },
-                    "status_code": {
+                    "expires_in": {
                       "type": "number",
                       "format": "double"
+                    },
+                    "token": {
+                      "type": "string"
                     }
                   },
-                  "required": ["message", "status_code"],
+                  "required": ["user", "expires_in", "token"],
                   "type": "object"
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized"
           }
         },
         "tags": ["Authentication"],
@@ -849,17 +890,16 @@
                   "properties": {
                     "message": {
                       "type": "string"
-                    },
-                    "status": {
-                      "type": "number",
-                      "format": "double"
                     }
                   },
-                  "required": ["message", "status"],
+                  "required": ["message"],
                   "type": "object"
                 }
               }
             }
+          },
+          "401": {
+            "description": "Unauthorized"
           },
           "500": {
             "description": "Failed to logout"
@@ -894,24 +934,53 @@
                 "schema": {
                   "properties": {
                     "user": {
-                      "$ref": "#/components/schemas/User"
+                      "$ref": "#/components/schemas/FilteredUserInterface"
                     },
-                    "message": {
-                      "type": "string"
-                    },
-                    "status": {
+                    "expires_in": {
                       "type": "number",
                       "format": "double"
+                    },
+                    "token": {
+                      "type": "string"
                     }
                   },
-                  "required": ["user", "message", "status"],
+                  "required": ["user", "expires_in", "token"],
                   "type": "object"
                 }
               }
             }
           },
           "401": {
-            "description": "Unauthorized"
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Failed",
@@ -928,7 +997,7 @@
         "security": [],
         "parameters": [],
         "requestBody": {
-          "required": true,
+          "required": false,
           "content": {
             "application/json": {
               "schema": {
@@ -937,7 +1006,6 @@
                     "type": "string"
                   }
                 },
-                "required": ["refresh_token"],
                 "type": "object"
               }
             }
@@ -947,25 +1015,17 @@
     },
     "/auth/register": {
       "post": {
-        "operationId": "CreateUser",
+        "operationId": "RegisterUser",
         "responses": {
-          "200": {
-            "description": "Ok",
+          "201": {
+            "description": "Created",
             "content": {
               "application/json": {
                 "schema": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/components/schemas/User"
-                    },
-                    {}
-                  ]
+                  "$ref": "#/components/schemas/RegisterUserResponse"
                 }
               }
             }
-          },
-          "201": {
-            "description": "Created"
           },
           "422": {
             "description": "Validation Failed",

@@ -62,6 +62,14 @@ class UserService {
     return updatedUser;
   }
 
+  async deleteById(id: string): Promise<void> {
+    await this.prisma.user.delete({
+      where: {
+        id,
+      },
+    });
+  }
+
   async resetPassword(
     id: string,
     password: string,
@@ -85,37 +93,61 @@ class UserService {
 
   async sendVerificationMail(user: User): Promise<void> {
     const token = apiTokens.generateEmailVerificationToken(user.id);
-    const verifyUrl = `${process.env.APP_FRONTEND_URL}/verify/email/?token=${token}`;
+    const frontendBaseUrl = (process.env.APP_FRONTEND_URL || '').replace(
+      /\/+$/,
+      ''
+    );
+    const verifyUrl = `${frontendBaseUrl}/verify/email?token=${token}`;
 
-    // Read the HTML template
-    const templatePath = path.join(__dirname, './templates/verify-email.html');
-    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
+    const htmlTemplate = this.readHtmlTemplate('verify-email.html');
 
     // Replace placeholders with actual values
-    htmlTemplate = htmlTemplate.replace('[Verification Link]', verifyUrl);
-    htmlTemplate = htmlTemplate.replace('[Your Company]', process.env.APP_NAME);
-    htmlTemplate = htmlTemplate.replace('[Your Company]', process.env.APP_NAME);
+    const filledTemplate = htmlTemplate
+      .replace('[Verification Link]', verifyUrl)
+      .replace('[Your Company]', process.env.APP_NAME)
+      .replace('[Your Company]', process.env.APP_NAME);
 
-    await sendEmail(user.email, 'Verify your email', htmlTemplate);
+    await sendEmail(user.email, 'Verify your email', filledTemplate);
   }
 
   async sendPasswordResetMail(user: User): Promise<string | Error> {
     const token = apiTokens.generatePasswordResetToken(user.id);
-    const resetUrl = `${process.env.APP_FRONTEND_URL}/reset/password/?token=${token}`;
-
-    // Read the HTML template
-    const templatePath = path.join(
-      __dirname,
-      './templates/reset-password.html'
+    const frontendBaseUrl = (process.env.APP_FRONTEND_URL || '').replace(
+      /\/+$/,
+      ''
     );
-    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
+    const resetUrl = `${frontendBaseUrl}/reset/password?token=${token}`;
+
+    const htmlTemplate = this.readHtmlTemplate('reset-password.html');
 
     // Replace placeholders with actual values
-    htmlTemplate = htmlTemplate.replace('[Reset Link]', resetUrl);
-    htmlTemplate = htmlTemplate.replace('[Your Company]', process.env.APP_NAME);
+    const filledTemplate = htmlTemplate
+      .replace('[Reset Link]', resetUrl)
+      .replace('[Your Company]', process.env.APP_NAME);
 
-    await sendEmail(user.email, 'Reset your password', htmlTemplate);
+    await sendEmail(user.email, 'Reset your password', filledTemplate);
     return token;
+  }
+
+  private readHtmlTemplate(fileName: string): string {
+    const candidates = [
+      // Nx webpack build output (templates are copied as an asset)
+      path.join(__dirname, 'templates', fileName),
+      // Fallback for alternate runtimes/layouts
+      path.join(__dirname, '../templates', fileName),
+    ];
+
+    for (const templatePath of candidates) {
+      if (fs.existsSync(templatePath)) {
+        return fs.readFileSync(templatePath, 'utf8');
+      }
+    }
+
+    throw new Error(
+      `Email template '${fileName}' not found. Looked in: ${candidates.join(
+        ', '
+      )}`
+    );
   }
 
   async logout(userId: string, refreshToken: string): Promise<User> {
