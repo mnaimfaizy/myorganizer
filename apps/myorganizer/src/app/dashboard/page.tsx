@@ -1,18 +1,4 @@
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbLink,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-  Button,
-  Separator,
-  SidebarInset,
-  SidebarProvider,
-  SidebarTrigger,
-} from '@myorganizer/web-ui';
-
-export default function Index() {
+export default function DashboardHomePage() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <div className="grid auto-rows-min gap-4 md:grid-cols-3">

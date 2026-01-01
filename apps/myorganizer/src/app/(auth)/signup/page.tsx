@@ -1,14 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { login, register } from '@myorganizer/auth';
 import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Form,
   FormControl,
   FormField,
@@ -16,12 +14,14 @@ import {
   FormLabel,
   FormMessage,
   Input,
-  Checkbox,
   useToast,
 } from '@myorganizer/web-ui';
 import { Eye, EyeOff, Facebook, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 
 const signUpSchema = z
   .object({
@@ -83,7 +83,7 @@ export default function SignUpPage() {
       await login({ email: data.email, password: data.password });
 
       toast({ title: 'Account created' });
-      router.push('/');
+      router.push('/dashboard');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Sign up failed.';
       toast({
