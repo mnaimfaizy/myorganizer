@@ -112,6 +112,9 @@ class UserService {
 
   async sendPasswordResetMail(user: User): Promise<string | Error> {
     const token = apiTokens.generatePasswordResetToken(user.id);
+    if (token instanceof Error) {
+      return token;
+    }
     const frontendBaseUrl = (process.env.APP_FRONTEND_URL || '').replace(
       /\/+$/,
       ''
@@ -125,8 +128,12 @@ class UserService {
       .replace('[Reset Link]', resetUrl)
       .replace('[Your Company]', process.env.APP_NAME);
 
-    await sendEmail(user.email, 'Reset your password', filledTemplate);
-    return token;
+    try {
+      await sendEmail(user.email, 'Reset your password', filledTemplate);
+      return token;
+    } catch {
+      return new Error('Failed to send password reset email');
+    }
   }
 
   private readHtmlTemplate(fileName: string): string {

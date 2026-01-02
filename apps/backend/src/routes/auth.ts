@@ -252,7 +252,7 @@ router.post('/password/reset', async (req, res) => {
   res.status(result.status).json({ message: result.message });
 });
 
-router.post('/password/reset/confirm', async (req, res) => {
+router.patch('/password/reset/confirm', async (req, res) => {
   const result = await authController.confirmResetPassword(req.body);
   res.status(result.status).json({ message: result.message });
 });

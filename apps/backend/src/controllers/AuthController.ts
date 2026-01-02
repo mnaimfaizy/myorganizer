@@ -243,17 +243,50 @@ export class AuthController extends Controller {
       return { status: 404, message: 'User not found' };
     }
 
-    const token = await userService.sendPasswordResetMail(user);
+    const existingResetToken = (user as any)?.reset_password_token as
+      | string
+      | null
+      | undefined;
+
+    if (existingResetToken) {
+      const decodedExisting = decodeToken(
+        existingResetToken,
+        process.env.RESET_JWT_SECRET as string
+      );
+
+      // If the existing token is still valid, block resending to prevent spamming.
+      const isExpired = decodedExisting instanceof TokenExpiredError;
+      const isInvalid = decodedExisting instanceof Error;
+
+      if (!isExpired && !isInvalid) {
+        this.setStatus(429);
+        return {
+          status: 429,
+          message:
+            'A password reset email was already sent recently. Please check your inbox and try again later.',
+        };
+      }
+    }
+
+    let token: string | Error;
+    try {
+      token = await userService.sendPasswordResetMail(user);
+    } catch {
+      token = new Error('Failed to send password reset email');
+    }
 
     if (token instanceof Error) {
+      this.setStatus(500);
       return { status: 500, message: 'Failed to reset password' };
     }
 
+    // Persist the reset token only after the email send succeeded.
     const updatedUser = await userService.update(user.id, {
       reset_password_token: token,
     });
 
     if (!updatedUser) {
+      this.setStatus(500);
       return { status: 500, message: 'Failed to reset password' };
     }
     return { status: 200, message: 'Password reset email sent successfully' };

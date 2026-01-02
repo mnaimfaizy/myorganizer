@@ -8,6 +8,14 @@ import userController from '../controllers/UserController';
 import userService from '../services/UserService';
 import passport from '../utils/passport';
 
+import { decodeToken } from '../helpers/jwtHelper';
+
+jest.mock('../helpers/jwtHelper', () => ({
+  __esModule: true,
+  generateToken: jest.fn(),
+  decodeToken: jest.fn(),
+}));
+
 jest.mock('../utils/passport', () => ({
   __esModule: true,
   default: {
@@ -21,6 +29,8 @@ jest.mock('../services/UserService', () => ({
     refreshToken: jest.fn(),
     getByEmail: jest.fn(),
     sendVerificationMail: jest.fn(),
+    sendPasswordResetMail: jest.fn(),
+    update: jest.fn(),
   },
 }));
 
@@ -141,6 +151,75 @@ describe('Auth Routes', () => {
       });
       expect(userService.sendVerificationMail).toHaveBeenCalledTimes(1);
       expect(userController.createUser).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('POST /auth/password/reset', () => {
+    test('returns 429 when a non-expired reset token already exists', async () => {
+      (userService.getByEmail as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        reset_password_token: 'existing-token',
+      });
+      (decodeToken as jest.Mock).mockReturnValue({ userId: 'user-1' });
+
+      const response = await request(app).post('/auth/password/reset').send({
+        email: 'test@example.com',
+      });
+
+      expect(response.status).toBe(429);
+      expect(response.body).toEqual({
+        message:
+          'A password reset email was already sent recently. Please check your inbox and try again later.',
+      });
+      expect(userService.sendPasswordResetMail).not.toHaveBeenCalled();
+      expect(userService.update).not.toHaveBeenCalled();
+    });
+
+    test('does not persist token when email send fails', async () => {
+      (userService.getByEmail as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        reset_password_token: null,
+      });
+      (userService.sendPasswordResetMail as jest.Mock).mockResolvedValue(
+        new Error('smtp down')
+      );
+
+      const response = await request(app).post('/auth/password/reset').send({
+        email: 'test@example.com',
+      });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({ message: 'Failed to reset password' });
+      expect(userService.update).not.toHaveBeenCalled();
+    });
+
+    test('persists token only after email send succeeds', async () => {
+      (userService.getByEmail as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        reset_password_token: null,
+      });
+      (userService.sendPasswordResetMail as jest.Mock).mockResolvedValue(
+        'new-token'
+      );
+      (userService.update as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        reset_password_token: 'new-token',
+      });
+
+      const response = await request(app).post('/auth/password/reset').send({
+        email: 'test@example.com',
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        message: 'Password reset email sent successfully',
+      });
+      expect(userService.update).toHaveBeenCalledWith('user-1', {
+        reset_password_token: 'new-token',
+      });
     });
   });
 });
