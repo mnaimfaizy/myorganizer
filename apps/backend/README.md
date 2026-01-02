@@ -185,9 +185,8 @@ Generate the Prisma client based on your schema:
 # Using Nx
 nx run backend:generate-types
 
-# Or using Prisma directly from the backend src directory
-cd apps/backend/src
-npx prisma generate
+# Or using Prisma directly (schema lives in a folder)
+npx prisma generate --schema apps/backend/src/prisma/schema
 ```
 
 ### 3. Run Database Migrations
@@ -198,9 +197,14 @@ Apply database migrations to create tables:
 # Using Nx
 nx run backend:migrate
 
-# Or using Prisma directly from the backend src directory
-cd apps/backend/src
-npx prisma migrate dev
+# Or using Prisma directly
+npx prisma migrate dev --schema apps/backend/src/prisma/schema
+```
+
+If you are deploying to an existing database (non-dev), apply migrations with:
+
+```bash
+npx prisma migrate deploy --schema apps/backend/src/prisma/schema
 ```
 
 This will:

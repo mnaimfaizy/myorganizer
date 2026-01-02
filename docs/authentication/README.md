@@ -23,7 +23,11 @@ Email verification:
 
 - `PATCH /auth/verify/email` – verifies the email using a token
   - Body: `{ token: string }`
-- `POST /auth/verify/resend/:userId` – resends the verification email
+- `POST /auth/verify/resend` – resends the verification email (public)
+  - Body: `{ email: string }`
+  - Returns `429` if a non-expired verification token already exists (cooldown)
+- `POST /auth/verify/resend/:userId` – resends the verification email (authenticated)
+  - Requires JWT + ownership
 
 ## Frontend behavior
 
@@ -36,6 +40,8 @@ Frontend auth logic lives in the monorepo library `@myorganizer/auth`.
   - This page calls the backend `PATCH /auth/verify/email` endpoint.
 - Login/refresh are blocked until the email is verified.
   - Backend responds with `403` and a user-friendly message (frontend displays it).
+- The login page and the verification instructions page include a **Resend verification email** action.
+  - If a verification email was sent recently, backend returns `429` to prevent spamming.
 
 ### Token storage
 
@@ -84,3 +90,12 @@ Typical dev defaults:
 - Ensure CORS allows credentials and restricts origins.
 - In production, refresh cookie should be `Secure` and an appropriate `SameSite`.
 - Email verification is required before issuing tokens.
+
+## Anti-spam / cooldown behavior
+
+To avoid email flooding, verification resends are guarded:
+
+- Backend stores the last verification token in `User.email_verification_token`.
+- While the token is still valid (currently `10m`, same as `VERIFY_JWT_SECRET` token TTL), resend requests return `429`.
+- The token is persisted **only after** the verification email was sent successfully.
+- When the user verifies (`PATCH /auth/verify/email`), the stored token is cleared.

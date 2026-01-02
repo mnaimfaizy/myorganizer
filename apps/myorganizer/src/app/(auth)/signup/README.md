@@ -106,6 +106,11 @@ Email verification pages:
 - **Verification handler**: `/verify/email?token=...`
 - **Check-your-email**: `/verify/email/sent?email=...`
 
+Resend behavior:
+
+- The login page and the check-your-email page provide a **Resend verification email** action.
+- Backend enforces a cooldown (returns `429`) if a verification email was sent recently.
+
 ## Usage
 
 Users can access the sign-up page by navigating to `/signup`. The page provides:
