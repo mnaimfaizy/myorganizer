@@ -15,16 +15,16 @@ const db = new PrismaClient();
 passport.use(
   new LocalStrategy(
     {
-      usernameField: 'username',
+      usernameField: 'email',
       passwordField: 'password',
     },
     function verify(username, password, done) {
       db.user
-        .findFirstOrThrow({ where: { email: username } })
-        .then((user: User) => {
+        .findFirst({ where: { email: username } })
+        .then((user: User | null) => {
           if (!user) {
             return done(null, false, {
-              message: 'Incorrect username or password!',
+              message: 'Incorrect email or password!',
             });
           }
           bcrypt.compare(password, user.password, (err, result) => {
@@ -33,7 +33,7 @@ passport.use(
             }
             if (!result) {
               return done(null, false, {
-                message: 'Incorrect username or password!',
+                message: 'Incorrect email or password!',
               });
             }
             return done(null, user);

@@ -1,6 +1,9 @@
 export interface User {
   id: string;
   name?: string;
+  first_name?: string;
+  last_name?: string;
+  phone?: string;
   email: string;
   password?: string;
   reset_password_token?: string;
@@ -10,6 +13,9 @@ export interface User {
 
 export interface UserCreationBody {
   name?: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
   email: string;
   password: string;
 }

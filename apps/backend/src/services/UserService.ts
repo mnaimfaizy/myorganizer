@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import fs from 'fs';
-import { JsonWebTokenError, JwtPayload } from 'jsonwebtoken';
+import { JsonWebTokenError, JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 import path from 'path';
 import apiTokens from '../helpers/ApiTokens';
 import { decodeToken } from '../helpers/jwtHelper';
@@ -41,7 +41,10 @@ class UserService {
     const hashedPassword = await bcrypt.hash(user.password, this.SaltRounds);
     const newUser = await this.prisma.user.create({
       data: {
-        name: user.name,
+        name: user.name ?? `${user.firstName} ${user.lastName}`,
+        first_name: user.firstName,
+        last_name: user.lastName,
+        phone: user.phone,
         email: user.email,
         password: hashedPassword,
       },
@@ -57,6 +60,14 @@ class UserService {
       data,
     });
     return updatedUser;
+  }
+
+  async deleteById(id: string): Promise<void> {
+    await this.prisma.user.delete({
+      where: {
+        id,
+      },
+    });
   }
 
   async resetPassword(
@@ -80,39 +91,101 @@ class UserService {
     return updatedUser;
   }
 
-  async sendVerificationMail(user: User): Promise<void> {
-    const token = apiTokens.generateEmailVerificationToken(user.id);
-    const verifyUrl = `${process.env.APP_FRONTEND_URL}/verify/email/?token=${token}`;
+  async sendVerificationMail(user: User): Promise<string | Error> {
+    const isVerified = Boolean((user as any)?.email_verification_timestamp);
+    if (isVerified) {
+      return new Error('Email already verified');
+    }
 
-    // Read the HTML template
-    const templatePath = path.join(__dirname, './templates/verify-email.html');
-    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
+    const existingToken = (user as any)?.email_verification_token as
+      | string
+      | null
+      | undefined;
+
+    if (existingToken) {
+      const decodedExisting = decodeToken(
+        existingToken,
+        process.env.VERIFY_JWT_SECRET as string
+      );
+      const isExpired = decodedExisting instanceof TokenExpiredError;
+      const isInvalid = decodedExisting instanceof Error;
+
+      if (!isExpired && !isInvalid) {
+        return new Error('Verification email already sent recently');
+      }
+    }
+
+    const token = apiTokens.generateEmailVerificationToken(user.id);
+    if (token instanceof Error) {
+      return token;
+    }
+    const frontendBaseUrl = (process.env.APP_FRONTEND_URL || '').replace(
+      /\/+$/,
+      ''
+    );
+    const verifyUrl = `${frontendBaseUrl}/verify/email?token=${token}`;
+
+    const htmlTemplate = this.readHtmlTemplate('verify-email.html');
 
     // Replace placeholders with actual values
-    htmlTemplate = htmlTemplate.replace('[Verification Link]', verifyUrl);
-    htmlTemplate = htmlTemplate.replace('[Your Company]', process.env.APP_NAME);
-    htmlTemplate = htmlTemplate.replace('[Your Company]', process.env.APP_NAME);
+    const filledTemplate = htmlTemplate
+      .replace('[Verification Link]', verifyUrl)
+      .replace('[Your Company]', process.env.APP_NAME)
+      .replace('[Your Company]', process.env.APP_NAME);
 
-    await sendEmail(user.email, 'Verify your email', htmlTemplate);
+    try {
+      await sendEmail(user.email, 'Verify your email', filledTemplate);
+      return token;
+    } catch {
+      return new Error('Failed to send verification email');
+    }
   }
 
   async sendPasswordResetMail(user: User): Promise<string | Error> {
     const token = apiTokens.generatePasswordResetToken(user.id);
-    const resetUrl = `${process.env.APP_FRONTEND_URL}/reset/password/?token=${token}`;
-
-    // Read the HTML template
-    const templatePath = path.join(
-      __dirname,
-      './templates/reset-password.html'
+    if (token instanceof Error) {
+      return token;
+    }
+    const frontendBaseUrl = (process.env.APP_FRONTEND_URL || '').replace(
+      /\/+$/,
+      ''
     );
-    let htmlTemplate = fs.readFileSync(templatePath, 'utf8');
+    const resetUrl = `${frontendBaseUrl}/reset/password?token=${token}`;
+
+    const htmlTemplate = this.readHtmlTemplate('reset-password.html');
 
     // Replace placeholders with actual values
-    htmlTemplate = htmlTemplate.replace('[Reset Link]', resetUrl);
-    htmlTemplate = htmlTemplate.replace('[Your Company]', process.env.APP_NAME);
+    const filledTemplate = htmlTemplate
+      .replace('[Reset Link]', resetUrl)
+      .replace('[Your Company]', process.env.APP_NAME);
 
-    await sendEmail(user.email, 'Reset your password', htmlTemplate);
-    return token;
+    try {
+      await sendEmail(user.email, 'Reset your password', filledTemplate);
+      return token;
+    } catch {
+      return new Error('Failed to send password reset email');
+    }
+  }
+
+  private readHtmlTemplate(fileName: string): string {
+    const candidates = [
+      // Nx webpack build output (templates are copied as an asset)
+      path.join(__dirname, 'templates', fileName),
+      // Fallback for alternate runtimes/layouts
+      path.join(__dirname, '../templates', fileName),
+    ];
+
+    for (const templatePath of candidates) {
+      if (fs.existsSync(templatePath)) {
+        return fs.readFileSync(templatePath, 'utf8');
+      }
+    }
+
+    throw new Error(
+      `Email template '${fileName}' not found. Looked in: ${candidates.join(
+        ', '
+      )}`
+    );
   }
 
   async logout(userId: string, refreshToken: string): Promise<User> {

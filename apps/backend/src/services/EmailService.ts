@@ -14,7 +14,7 @@ interface EmailOptions {
   host?: string;
   port?: number;
   secure?: boolean;
-  auth: {
+  auth?: {
     user: string;
     pass: string;
   };
@@ -52,22 +52,41 @@ const getEmailService = (): EmailService => {
           pass: process.env.GMAIL_PASSWORD,
         },
       }),
-    smtp: () =>
-      new EmailService({
-        host: process.env.MAIL_HOST,
-        port: process.env.MAIL_PORT as unknown as number,
-        auth: {
-          user: process.env.MAIL_USERNAME,
-          pass: process.env.MAIL_PASSWORD,
-        },
+    smtp: () => {
+      const hostFromEnv = process.env.MAIL_HOST?.trim();
+      const host =
+        hostFromEnv ||
+        (process.env.NODE_ENV === 'production' ? undefined : 'localhost');
+
+      const portRaw = process.env.MAIL_PORT?.trim();
+      const portFromEnv = portRaw ? Number.parseInt(portRaw, 10) : undefined;
+      const port =
+        Number.isFinite(portFromEnv) && portFromEnv
+          ? portFromEnv
+          : process.env.NODE_ENV === 'production'
+          ? undefined
+          : 1025;
+
+      const secure = (process.env.MAIL_SECURE ?? '').toLowerCase() === 'true';
+
+      const user = process.env.MAIL_USERNAME;
+      const pass = process.env.MAIL_PASSWORD;
+      const auth = user && pass ? { user, pass } : undefined;
+
+      return new EmailService({
+        host,
+        port,
+        secure,
+        auth,
         tls: {
           rejectUnauthorized: false,
         },
-      }),
+      });
+    },
   };
 
   const defaultEmailProvider =
-    process.env.DEFAULT_EMAIL_PROVIDER?.toLowerCase() || 'mailtrap';
+    process.env.DEFAULT_EMAIL_PROVIDER?.toLowerCase() || 'smtp';
 
   if (!emailProviders[defaultEmailProvider]) {
     throw new Error(

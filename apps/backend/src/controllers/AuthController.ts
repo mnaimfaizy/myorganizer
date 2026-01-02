@@ -8,24 +8,28 @@ import {
   Path,
   Post,
   Request,
+  Res,
   Response,
   Route,
   Security,
   SuccessResponse,
   Tags,
+  TsoaResponse,
 } from 'tsoa';
 import { Body, ValidateBody } from '../decorators/request-body-validator';
+import apiTokens from '../helpers/ApiTokens';
 import filterUser from '../helpers/filterUser';
 import { decodeToken } from '../helpers/jwtHelper';
 import { ValidateErrorJSON } from '../interfaces';
+import { RegisterUserResponse } from '../models/Auth';
 import {
   ConfirmResetPasswordBody,
-  User,
   UserCreationBody,
   UserLoginBody,
 } from '../models/User';
 import {
   refreshTokenSchema,
+  resendVerificationSchema,
   resetPasswordSchema,
   updatePasswordSchema,
   VerifyEmailSchema,
@@ -40,82 +44,168 @@ dotenv.config();
 @Route('/auth')
 export class AuthController extends Controller {
   @Post('/login')
-  @Response(200, 'Success') // Custom success response
+  @Response(200, 'Success')
+  @Response(401, 'Unauthorized')
   @Middlewares([passport.authenticate('local', { session: false })])
   async login(
+    @Request() req: ExRequest,
     @Body() requestBody: UserLoginBody
-  ): Promise<{ status_code: number; message: string }> {
-    const user = await userService.getByEmail(requestBody.email);
-    if (!user) {
-      this.setStatus(401);
-      return { status_code: 401, message: 'Invalid email or password' };
+  ): Promise<{
+    token: string;
+    expires_in: number;
+    user: FilteredUserInterface;
+  }> {
+    void requestBody;
+    const requestUser = req.user as UserInterface;
+    const { token } = apiTokens.createTokens(requestUser);
+    if (token instanceof Error) {
+      this.setStatus(500);
+      throw new Error('Failed to create access token');
     }
+    const user = filterUser(requestUser);
+
+    this.setStatus(200);
+    return { token, expires_in: 600_000, user };
   }
 
   @Post('/logout/{userId}')
   @SuccessResponse(200, 'Logged out successfully')
+  @Response(401, 'Unauthorized')
   @Response(500, 'Failed to logout')
   @Middlewares([passport.authenticate('jwt', { session: false })])
   @Security('jwt')
   async logout(
     @Request() req: ExRequest,
     @Path() userId: string
-  ): Promise<{ status: number; message: string }> {
+  ): Promise<{ message: string }> {
     const user = req.user as UserInterface;
     const refresh_token = req.cookies.refresh_cookie;
 
     if (!user || !refresh_token) {
       this.setStatus(401);
-      return { status: 401, message: 'Unauthorized' };
+      return { message: 'Unauthorized' };
     }
 
     const result = await userService.logout(user.id, refresh_token);
     if (result instanceof Error) {
       this.setStatus(500);
-      return { status: 500, message: 'Failed to logout' };
-    } else {
-      this.setStatus(200);
-      return { status: 200, message: 'Logged out successfully' };
+      return { message: 'Failed to logout' };
     }
+
+    void userId;
+    this.setStatus(200);
+    return { message: 'Logged out successfully' };
   }
 
   @Post('/refresh')
   @Response(401, 'Unauthorized')
+  @Response(404, 'User not found')
   @Response<ValidateErrorJSON>(422, 'Validation Failed') // Custom error response
   @ValidateBody(refreshTokenSchema)
   async refreshToken(
-    @Body() requestBody: { refresh_token: string }
-  ): Promise<{ status: number; message: string; user: User }> {
-    const refresh_token = requestBody.refresh_token;
+    @Request() req: ExRequest,
+    @Res() unauthorized: TsoaResponse<401, { message: string }>,
+    @Res() notFound: TsoaResponse<404, { message: string }>,
+    @Body() requestBody?: { refresh_token?: string }
+  ): Promise<{
+    token: string;
+    expires_in: number;
+    user: FilteredUserInterface;
+  }> {
+    const refresh_token =
+      requestBody?.refresh_token ?? (req.cookies?.refresh_cookie as string);
     if (!refresh_token) {
-      this.setStatus(401);
-      return { status: 401, message: 'Unauthorized', user: null };
+      return unauthorized(401, { message: 'Unauthorized' });
     }
 
     const user = await userService.refreshToken(refresh_token);
     if (user instanceof Error || !user) {
-      this.setStatus(404);
-      return { status: 404, message: 'User not found', user: null };
+      return notFound(404, { message: 'User not found' });
     }
 
     if (user.blacklisted_tokens?.includes(refresh_token)) {
-      this.setStatus(401);
-      return { status: 401, message: 'Unauthorized', user: null };
+      return unauthorized(401, { message: 'Unauthorized' });
     }
 
+    const { token } = apiTokens.createTokens(user as UserInterface);
+    if (token instanceof Error) {
+      this.setStatus(500);
+      throw new Error('Failed to create access token');
+    }
+    const filteredUser = filterUser(user as UserInterface);
+
     this.setStatus(200);
-    return { status: 200, message: 'Success', user };
+    return { token, expires_in: 600_000, user: filteredUser };
   }
 
   @Post('/register')
   @Response<ValidateErrorJSON>(422, 'Validation Failed') // Custom error response
-  @Response(201, 'Created') // Custom success response
+  @SuccessResponse(201, 'Created')
   @ValidateBody(UserSchema)
-  async createUser(@Body() requestBody: UserCreationBody): Promise<User | any> {
+  async registerUser(
+    @Body() requestBody: UserCreationBody
+  ): Promise<RegisterUserResponse> {
+    const existing = await userService.getByEmail(requestBody.email);
+    if (existing) {
+      const isVerified = Boolean(
+        (existing as any)?.email_verification_timestamp
+      );
+      if (isVerified) {
+        this.setStatus(409);
+        return { message: 'Email already registered. Please log in.' };
+      }
+
+      const token = await userService.sendVerificationMail(existing);
+      if (token instanceof Error) {
+        if (token.message.includes('already sent recently')) {
+          this.setStatus(429);
+          return {
+            message:
+              'A verification email was already sent recently. Please check your inbox and try again later.',
+            user: filterUser(existing as UserInterface),
+          };
+        }
+
+        this.setStatus(500);
+        return { message: 'Failed to send verification email.' };
+      }
+
+      await userService.update(existing.id, {
+        email_verification_token: token,
+      });
+
+      this.setStatus(409);
+      return {
+        message:
+          "Email already registered but isn't verified yet. We've resent the verification email.",
+        user: filterUser(existing as UserInterface),
+      };
+    }
+
     const user = await userService.create(requestBody);
-    await userService.sendVerificationMail(user);
-    this.setStatus(201); // Set return status 201
-    return user;
+    const token = await userService.sendVerificationMail(user);
+    if (token instanceof Error) {
+      try {
+        await userService.deleteById(user.id);
+      } catch {
+        // best-effort rollback
+      }
+      this.setStatus(500);
+      return {
+        message:
+          'Account was not created because we could not send a verification email. Please try again.',
+      };
+    }
+
+    await userService.update(user.id, {
+      email_verification_token: token,
+    });
+
+    this.setStatus(201);
+    return {
+      message: 'Account created. Verification email sent.',
+      user: filterUser(user as UserInterface),
+    };
   }
 
   @Patch('/verify/email')
@@ -134,6 +224,7 @@ export class AuthController extends Controller {
 
     const updateUser = await userService.update(userId, {
       email_verification_timestamp: new Date(),
+      email_verification_token: null,
     });
 
     if (!updateUser) {
@@ -151,6 +242,45 @@ export class AuthController extends Controller {
     }
   }
 
+  @Post('/verify/resend')
+  @ValidateBody(resendVerificationSchema)
+  async resendVerificationEmailByEmail(
+    @Body() requestBody: { email: string }
+  ): Promise<{ status: number; message: string }> {
+    const user = await userService.getByEmail(requestBody.email);
+    if (!user) {
+      this.setStatus(404);
+      return { status: 404, message: 'User not found' };
+    }
+
+    const isVerified = Boolean((user as any)?.email_verification_timestamp);
+    if (isVerified) {
+      this.setStatus(409);
+      return { status: 409, message: 'Email already verified. Please log in.' };
+    }
+
+    const token = await userService.sendVerificationMail(user);
+    if (token instanceof Error) {
+      if (token.message.includes('already sent recently')) {
+        this.setStatus(429);
+        return {
+          status: 429,
+          message:
+            'A verification email was already sent recently. Please check your inbox and try again later.',
+        };
+      }
+      this.setStatus(500);
+      return { status: 500, message: 'Failed to send verification email.' };
+    }
+
+    await userService.update(user.id, {
+      email_verification_token: token,
+    });
+
+    this.setStatus(200);
+    return { status: 200, message: 'Verification email sent successfully' };
+  }
+
   @Post('/verify/resend/{userId}')
   @Middlewares([passport.authenticate('local', { session: false })])
   @Security('jwt')
@@ -160,7 +290,22 @@ export class AuthController extends Controller {
       this.setStatus(404);
       throw new Error('User not found');
     } else {
-      await userService.sendVerificationMail(user);
+      const token = await userService.sendVerificationMail(user);
+      if (token instanceof Error) {
+        if (token.message.includes('already sent recently')) {
+          this.setStatus(429);
+          throw new Error(
+            'A verification email was already sent recently. Please try again later.'
+          );
+        }
+
+        this.setStatus(500);
+        throw new Error('Failed to send verification email');
+      }
+
+      await userService.update(user.id, {
+        email_verification_token: token,
+      });
     }
   }
 
@@ -175,17 +320,50 @@ export class AuthController extends Controller {
       return { status: 404, message: 'User not found' };
     }
 
-    const token = await userService.sendPasswordResetMail(user);
+    const existingResetToken = (user as any)?.reset_password_token as
+      | string
+      | null
+      | undefined;
+
+    if (existingResetToken) {
+      const decodedExisting = decodeToken(
+        existingResetToken,
+        process.env.RESET_JWT_SECRET as string
+      );
+
+      // If the existing token is still valid, block resending to prevent spamming.
+      const isExpired = decodedExisting instanceof TokenExpiredError;
+      const isInvalid = decodedExisting instanceof Error;
+
+      if (!isExpired && !isInvalid) {
+        this.setStatus(429);
+        return {
+          status: 429,
+          message:
+            'A password reset email was already sent recently. Please check your inbox and try again later.',
+        };
+      }
+    }
+
+    let token: string | Error;
+    try {
+      token = await userService.sendPasswordResetMail(user);
+    } catch {
+      token = new Error('Failed to send password reset email');
+    }
 
     if (token instanceof Error) {
+      this.setStatus(500);
       return { status: 500, message: 'Failed to reset password' };
     }
 
+    // Persist the reset token only after the email send succeeded.
     const updatedUser = await userService.update(user.id, {
       reset_password_token: token,
     });
 
     if (!updatedUser) {
+      this.setStatus(500);
       return { status: 500, message: 'Failed to reset password' };
     }
     return { status: 200, message: 'Password reset email sent successfully' };

@@ -1,13 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
+import { register } from '@myorganizer/auth';
 import {
   Button,
   Card,
   CardContent,
+  Checkbox,
   Form,
   FormControl,
   FormField,
@@ -15,17 +14,25 @@ import {
   FormLabel,
   FormMessage,
   Input,
-  Checkbox,
+  useToast,
 } from '@myorganizer/web-ui';
 import { Eye, EyeOff, Facebook, Mail } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 
 const signUpSchema = z
   .object({
     firstName: z.string().min(1, 'First name is required'),
     lastName: z.string().min(1, 'Last name is required'),
     email: z.string().email('Invalid email address'),
-    phoneNumber: z.string().min(10, 'Phone number must be at least 10 digits'),
+    phoneNumber: z.preprocess((value) => {
+      if (typeof value !== 'string') return undefined;
+      const trimmed = value.trim();
+      return trimmed.length ? trimmed : undefined;
+    }, z.string().min(10, 'Phone number must be at least 10 digits').optional()),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     confirmPassword: z.string(),
     agreeToTerms: z.boolean().refine((val) => val === true, {
@@ -40,8 +47,12 @@ const signUpSchema = z
 type SignUpFormValues = z.infer<typeof signUpSchema>;
 
 export default function SignUpPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
@@ -56,9 +67,53 @@ export default function SignUpPage() {
     },
   });
 
-  const onSubmit = (data: SignUpFormValues) => {
-    console.log('Form submitted:', data);
-    // Handle form submission logic here
+  const onSubmit = async (data: SignUpFormValues) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+
+    try {
+      const result = await register({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        password: data.password,
+        ...(data.phoneNumber ? { phone: data.phoneNumber } : {}),
+      });
+
+      toast({ title: result.message });
+      router.push(`/verify/email/sent?email=${encodeURIComponent(data.email)}`);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Sign up failed.';
+
+      const normalized = message.toLowerCase();
+      const isAlreadyRegistered = normalized.includes(
+        'email already registered'
+      );
+      const resentVerification =
+        normalized.includes('resent') && normalized.includes('verification');
+
+      if (resentVerification) {
+        toast({ title: message });
+        router.push(
+          `/verify/email/sent?email=${encodeURIComponent(data.email)}`
+        );
+        return;
+      }
+
+      if (isAlreadyRegistered) {
+        toast({ title: message, variant: 'destructive' });
+        router.push(`/login?email=${encodeURIComponent(data.email)}`);
+        return;
+      }
+
+      toast({
+        title: 'Sign up failed',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSSOLogin = (provider: string) => {
@@ -74,7 +129,9 @@ export default function SignUpPage() {
           <div className="w-full max-w-md aspect-square bg-gradient-to-br from-purple-400 to-indigo-500 rounded-3xl shadow-2xl flex items-center justify-center">
             <div className="text-white text-center p-8">
               <div className="text-6xl mb-4">📱</div>
-              <h2 className="text-3xl font-bold mb-2">Welcome to MyOrganizer</h2>
+              <h2 className="text-3xl font-bold mb-2">
+                Welcome to MyOrganizer
+              </h2>
               <p className="text-lg opacity-90">
                 Organize your life, one task at a time
               </p>
@@ -92,12 +149,16 @@ export default function SignUpPage() {
                   Sign up
                 </h1>
                 <p className="text-gray-600">
-                  Let&apos;s get you all set up so you can access your personal account.
+                  Let&apos;s get you all set up so you can access your personal
+                  account.
                 </p>
               </div>
 
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-4"
+                >
                   {/* First Name and Last Name */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -270,9 +331,10 @@ export default function SignUpPage() {
                   {/* Submit Button */}
                   <Button
                     type="submit"
+                    disabled={isSubmitting}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-base font-semibold"
                   >
-                    Create account
+                    {isSubmitting ? 'Creating account…' : 'Create account'}
                   </Button>
 
                   {/* Login Link */}

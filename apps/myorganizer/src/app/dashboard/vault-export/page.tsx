@@ -14,15 +14,15 @@ import {
   useToast,
 } from '@myorganizer/web-ui';
 
-import { createVaultApi } from '../../lib/api/apiClient';
-import { getHttpStatus } from '../../lib/http/getHttpStatus';
-import { loadVault, saveVault } from '../../lib/vault/vault';
+import { createVaultApi } from '../../../lib/api/apiClient';
+import { getHttpStatus } from '../../../lib/http/getHttpStatus';
+import { loadVault, saveVault } from '../../../lib/vault/vault';
 import {
   VAULT_EXPORT_MAX_BYTES,
   buildLocalExportBundle,
   bundleToLocalVault,
   validateVaultExportBundleFromText,
-} from '../../lib/vault/vaultExportImport';
+} from '../../../lib/vault/vaultExportImport';
 
 type ExportSource = 'server' | 'local';
 
@@ -258,39 +258,18 @@ export default function VaultExportImportPage() {
               id="vault-import-file"
               type="file"
               accept="application/json"
-              disabled={importing}
-              onClick={(event) => {
-                event.currentTarget.value = '';
-              }}
-              onChange={(event) => {
-                const file = event.target.files?.[0] ?? null;
-                setSelectedFile(file);
-                setLastServerNote(null);
+              onChange={(e) => {
+                setSelectedFile(e.target.files?.[0] ?? null);
               }}
             />
-            <p className="text-xs text-muted-foreground">
-              Max size {formatBytes(VAULT_EXPORT_MAX_BYTES)}. Only ciphertext
-              and metadata are accepted.
-            </p>
-            {selectedFile && (
-              <p className="text-sm text-muted-foreground">
-                Selected: {selectedFile.name} ({formatBytes(selectedFile.size)})
-              </p>
-            )}
           </div>
 
           <div className="flex gap-2">
-            <Button onClick={handleImport} disabled={importing}>
-              {importing ? 'Importing…' : 'Import bundle'}
-            </Button>
             <Button
-              variant="secondary"
-              onClick={() => {
-                setSelectedFile(null);
-                setLastServerNote(null);
-              }}
+              onClick={handleImport}
+              disabled={importing || !selectedFile}
             >
-              Clear selection
+              {importing ? 'Importing…' : 'Import vault JSON'}
             </Button>
           </div>
 

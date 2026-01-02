@@ -22,27 +22,27 @@ const data = {
   navMain: [
     {
       title: 'Home',
-      url: '/',
+      url: '/dashboard',
       icon: Home,
     },
     {
       title: 'Todos',
-      url: '/todo',
+      url: '/dashboard/todo',
       icon: ListChecks,
     },
     {
       title: 'Addresses',
-      url: '/addresses',
+      url: '/dashboard/addresses',
       icon: MapPin,
     },
     {
       title: 'Mobile Numbers',
-      url: '/mobile-numbers',
+      url: '/dashboard/mobile-numbers',
       icon: Phone,
     },
     {
       title: 'Vault Export/Import',
-      url: '/vault-export',
+      url: '/dashboard/vault-export',
       icon: FileDown,
     },
   ],

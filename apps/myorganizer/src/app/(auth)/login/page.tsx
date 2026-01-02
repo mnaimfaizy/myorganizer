@@ -1,25 +1,83 @@
 'use client';
 
-import { Button, Checkbox, Input, Label } from '@myorganizer/web-ui';
+import { login, resendVerificationEmail } from '@myorganizer/auth';
+import { Button, Checkbox, Input, Label, useToast } from '@myorganizer/web-ui';
 import { Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 export default function LoginPage() {
+  const router = useRouter();
+  const { toast } = useToast();
+
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [emailNotVerified, setEmailNotVerified] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement login logic
-    console.log('Login:', { email, password, rememberMe });
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    setEmailNotVerified(false);
+    try {
+      await login({ email, password, rememberMe });
+      toast({ title: 'Logged in' });
+      router.push('/dashboard');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Login failed.';
+
+      if (message.toLowerCase().includes('email not verified')) {
+        setEmailNotVerified(true);
+        toast({
+          title: 'Email not verified',
+          description: 'Please verify your email before logging in.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      toast({
+        title: 'Login failed',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSSOLogin = (provider: string) => {
     // TODO: Implement SSO login logic
     console.log('SSO Login with:', provider);
+  };
+
+  const handleResendVerification = async () => {
+    if (!email) return;
+    if (isResendingVerification) return;
+
+    setIsResendingVerification(true);
+    try {
+      const res = await resendVerificationEmail(email);
+      toast({
+        title: 'Verification email sent',
+        description: res.message,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Request failed.';
+      toast({
+        title: 'Could not resend verification email',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResendingVerification(false);
+    }
   };
 
   return (
@@ -57,6 +115,44 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleLogin} className="space-y-4">
+              {emailNotVerified ? (
+                <div className="rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-900 p-3 text-sm text-gray-700 dark:text-gray-300">
+                  <div className="font-medium">Email not verified</div>
+                  <div className="mt-1">
+                    Check your inbox for the verification email and click the
+                    link inside.
+                    {email ? (
+                      <>
+                        {' '}
+                        You can also visit{' '}
+                        <Link
+                          href={`/verify/email/sent?email=${encodeURIComponent(
+                            email
+                          )}`}
+                          className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-medium"
+                        >
+                          the verification instructions page
+                        </Link>
+                        .
+                      </>
+                    ) : null}
+                  </div>
+
+                  {email ? (
+                    <div className="mt-3">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={isResendingVerification}
+                        onClick={handleResendVerification}
+                      >
+                        Resend verification email
+                      </Button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
               {/* Email Field */}
               <div className="space-y-2">
                 <Label
@@ -136,9 +232,10 @@ export default function LoginPage() {
               {/* Login Button */}
               <Button
                 type="submit"
+                disabled={isSubmitting}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white h-11"
               >
-                Login
+                {isSubmitting ? 'Logging in…' : 'Login'}
               </Button>
 
               {/* Sign Up Link */}

@@ -5,6 +5,16 @@
   "projectType": "application",
   "tags": [],
   "targets": {
+    "clean": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "commands": [
+          "node -e \"const fs=require('fs'); const path=require('path'); const dirs=['apps/myorganizer/.next','dist/apps/myorganizer']; for (const d of dirs) { fs.rmSync(path.resolve(d), { recursive: true, force: true }); }\""
+        ],
+        "parallel": false
+      }
+    },
     "serve": {
       "executor": "@nx/next:server",
       "options": {
@@ -27,6 +37,7 @@
       "executor": "@nx/next:build",
       "outputs": ["{options.outputPath}"],
       "defaultConfiguration": "production",
+      "dependsOn": ["clean"],
       "options": {
         "outputPath": "dist/apps/myorganizer",
         "postcssConfig": "apps/myorganizer/postcss.config.js"

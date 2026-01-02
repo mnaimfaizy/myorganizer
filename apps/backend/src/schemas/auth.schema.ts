@@ -1,15 +1,21 @@
 import { z } from 'zod';
 
-export const LoginSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(1, 'Password field is required'),
-});
+export const LoginSchema = z
+  .object({
+    email: z.string().email('Invalid email address'),
+    password: z.string().min(1, 'Password field is required'),
+  })
+  .strict();
 
 export const VerifyEmailSchema = z.object({
   token: z.string().min(1, 'Token field is required'),
 });
 
 export const resetPasswordSchema = z.object({
+  email: z.string().trim().email('Invalid email address'),
+});
+
+export const resendVerificationSchema = z.object({
   email: z.string().trim().email('Invalid email address'),
 });
 
@@ -29,6 +35,8 @@ export const updatePasswordSchema = z
     }
   });
 
-export const refreshTokenSchema = z.object({
-  refresh_token: z.string().min(1, 'Refresh token is required'),
-});
+export const refreshTokenSchema = z
+  .object({
+    refresh_token: z.string().min(1, 'Refresh token is required').optional(),
+  })
+  .strict();
