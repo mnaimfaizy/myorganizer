@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt';
 import fs from 'fs';
-import { JsonWebTokenError, JwtPayload } from 'jsonwebtoken';
+import { JsonWebTokenError, JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 import path from 'path';
 import apiTokens from '../helpers/ApiTokens';
 import { decodeToken } from '../helpers/jwtHelper';
@@ -91,8 +91,34 @@ class UserService {
     return updatedUser;
   }
 
-  async sendVerificationMail(user: User): Promise<void> {
+  async sendVerificationMail(user: User): Promise<string | Error> {
+    const isVerified = Boolean((user as any)?.email_verification_timestamp);
+    if (isVerified) {
+      return new Error('Email already verified');
+    }
+
+    const existingToken = (user as any)?.email_verification_token as
+      | string
+      | null
+      | undefined;
+
+    if (existingToken) {
+      const decodedExisting = decodeToken(
+        existingToken,
+        process.env.VERIFY_JWT_SECRET as string
+      );
+      const isExpired = decodedExisting instanceof TokenExpiredError;
+      const isInvalid = decodedExisting instanceof Error;
+
+      if (!isExpired && !isInvalid) {
+        return new Error('Verification email already sent recently');
+      }
+    }
+
     const token = apiTokens.generateEmailVerificationToken(user.id);
+    if (token instanceof Error) {
+      return token;
+    }
     const frontendBaseUrl = (process.env.APP_FRONTEND_URL || '').replace(
       /\/+$/,
       ''
@@ -107,7 +133,12 @@ class UserService {
       .replace('[Your Company]', process.env.APP_NAME)
       .replace('[Your Company]', process.env.APP_NAME);
 
-    await sendEmail(user.email, 'Verify your email', filledTemplate);
+    try {
+      await sendEmail(user.email, 'Verify your email', filledTemplate);
+      return token;
+    } catch {
+      return new Error('Failed to send verification email');
+    }
   }
 
   async sendPasswordResetMail(user: User): Promise<string | Error> {

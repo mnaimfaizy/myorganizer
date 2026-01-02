@@ -1,11 +1,38 @@
 'use client';
 
+import { resendVerificationEmail } from '@myorganizer/auth';
+import { Button, useToast } from '@myorganizer/web-ui';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { useState } from 'react';
 
 export default function VerifyEmailSentPage() {
   const searchParams = useSearchParams();
   const email = searchParams.get('email');
+  const { toast } = useToast();
+  const [isResending, setIsResending] = useState(false);
+
+  const handleResend = async () => {
+    if (!email) return;
+    if (isResending) return;
+    setIsResending(true);
+    try {
+      const res = await resendVerificationEmail(email);
+      toast({
+        title: 'Verification email sent',
+        description: res.message,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Request failed.';
+      toast({
+        title: 'Could not resend verification email',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResending(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-background">
@@ -25,6 +52,15 @@ export default function VerifyEmailSentPage() {
           >
             Go to login
           </Link>
+
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={!email || isResending}
+            onClick={handleResend}
+          >
+            Resend verification email
+          </Button>
         </div>
       </div>
     </div>

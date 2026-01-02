@@ -136,7 +136,27 @@ router.post('/register', async (req, res) => {
           return;
         }
 
-        await userService.sendVerificationMail(existing);
+        const token = await userService.sendVerificationMail(existing);
+        if (token instanceof Error) {
+          if (token.message.includes('already sent recently')) {
+            res.status(429).json({
+              message:
+                'A verification email was already sent recently. Please check your inbox and try again later.',
+              user: filterUser(existing as UserInterface),
+            });
+            return;
+          }
+
+          res.status(500).json({
+            message: 'Failed to send verification email.',
+          });
+          return;
+        }
+
+        await userService.update(existing.id, {
+          email_verification_token: token,
+        });
+
         res.status(409).json({
           message:
             "Email already registered but isn't verified yet. We've resent the verification email.",
@@ -147,9 +167,8 @@ router.post('/register', async (req, res) => {
     }
 
     const created = await userService.create(req.body);
-    try {
-      await userService.sendVerificationMail(created);
-    } catch (err) {
+    const token = await userService.sendVerificationMail(created);
+    if (token instanceof Error) {
       try {
         await userService.deleteById(created.id);
       } catch {
@@ -162,6 +181,10 @@ router.post('/register', async (req, res) => {
       });
       return;
     }
+
+    await userService.update(created.id, {
+      email_verification_token: token,
+    });
 
     res.status(201).json({
       message: 'Account created. Verification email sent.',
@@ -183,7 +206,27 @@ router.post('/register', async (req, res) => {
       if (email) {
         const existing = await userService.getByEmail(email);
         if (existing && !(existing as any)?.email_verification_timestamp) {
-          await userService.sendVerificationMail(existing);
+          const token = await userService.sendVerificationMail(existing);
+          if (token instanceof Error) {
+            if (token.message.includes('already sent recently')) {
+              res.status(429).json({
+                message:
+                  'A verification email was already sent recently. Please check your inbox and try again later.',
+                user: filterUser(existing as UserInterface),
+              });
+              return;
+            }
+
+            res.status(500).json({
+              message: 'Failed to send verification email.',
+            });
+            return;
+          }
+
+          await userService.update(existing.id, {
+            email_verification_token: token,
+          });
+
           res.status(409).json({
             message:
               "Email already registered but isn't verified yet. We've resent the verification email.",
@@ -234,7 +277,34 @@ router.post(
         res.status(404).json({ message: 'User not found' });
         return;
       } else {
-        await userService.sendVerificationMail(user);
+        const token = await userService.sendVerificationMail(user);
+
+        if (token instanceof Error) {
+          if (token.message.includes('already sent recently')) {
+            res.status(429).json({
+              message:
+                'A verification email was already sent recently. Please check your inbox and try again later.',
+            });
+            return;
+          }
+
+          if (token.message.includes('already verified')) {
+            res.status(409).json({
+              message: 'Email already verified. Please log in.',
+            });
+            return;
+          }
+
+          res.status(500).json({
+            message: 'Failed to resend verification email.',
+          });
+          return;
+        }
+
+        await userService.update(user.id, {
+          email_verification_token: token,
+        });
+
         res
           .status(200)
           .json({ message: 'Verification email sent successfully' });
@@ -246,6 +316,11 @@ router.post(
     }
   }
 );
+
+router.post('/verify/resend', async (req, res) => {
+  const result = await authController.resendVerificationEmailByEmail(req.body);
+  res.status(result.status).json({ message: result.message });
+});
 
 router.post('/password/reset', async (req, res) => {
   const result = await authController.resetPassword(req.body);

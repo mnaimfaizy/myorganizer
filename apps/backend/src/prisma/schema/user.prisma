@@ -7,6 +7,7 @@ model User {
     email                           String      @unique
     password                        String
     reset_password_token            String?
+    email_verification_token         String?
     email_verification_timestamp    DateTime? 
     blacklisted_tokens              String[]
 

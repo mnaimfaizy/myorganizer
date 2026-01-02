@@ -1,6 +1,6 @@
 'use client';
 
-import { login } from '@myorganizer/auth';
+import { login, resendVerificationEmail } from '@myorganizer/auth';
 import { Button, Checkbox, Input, Label, useToast } from '@myorganizer/web-ui';
 import { Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
@@ -17,6 +17,7 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailNotVerified, setEmailNotVerified] = useState(false);
+  const [isResendingVerification, setIsResendingVerification] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -54,6 +55,29 @@ export default function LoginPage() {
   const handleSSOLogin = (provider: string) => {
     // TODO: Implement SSO login logic
     console.log('SSO Login with:', provider);
+  };
+
+  const handleResendVerification = async () => {
+    if (!email) return;
+    if (isResendingVerification) return;
+
+    setIsResendingVerification(true);
+    try {
+      const res = await resendVerificationEmail(email);
+      toast({
+        title: 'Verification email sent',
+        description: res.message,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Request failed.';
+      toast({
+        title: 'Could not resend verification email',
+        description: message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResendingVerification(false);
+    }
   };
 
   return (
@@ -113,6 +137,19 @@ export default function LoginPage() {
                       </>
                     ) : null}
                   </div>
+
+                  {email ? (
+                    <div className="mt-3">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        disabled={isResendingVerification}
+                        onClick={handleResendVerification}
+                      >
+                        Resend verification email
+                      </Button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 

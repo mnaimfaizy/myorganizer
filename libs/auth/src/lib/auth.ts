@@ -157,7 +157,8 @@ function isAuthUrl(url: string | undefined): boolean {
   return (
     url.includes('/auth/login') ||
     url.includes('/auth/refresh') ||
-    url.includes('/auth/register')
+    url.includes('/auth/register') ||
+    url.includes('/auth/verify/resend')
   );
 }
 
@@ -248,6 +249,17 @@ export async function login(args: {
     setAccessToken(session.token, args.rememberMe ? 'local' : 'session');
     setCurrentUser(session.user);
     return session;
+  } catch (err) {
+    throw new Error(extractMessage(err));
+  }
+}
+
+export async function resendVerificationEmail(
+  email: string
+): Promise<{ message: string }> {
+  try {
+    const res = await getAuthAxios().post('/auth/verify/resend', { email });
+    return res.data as { message: string };
   } catch (err) {
     throw new Error(extractMessage(err));
   }

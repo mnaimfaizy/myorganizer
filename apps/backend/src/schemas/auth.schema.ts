@@ -15,6 +15,10 @@ export const resetPasswordSchema = z.object({
   email: z.string().trim().email('Invalid email address'),
 });
 
+export const resendVerificationSchema = z.object({
+  email: z.string().trim().email('Invalid email address'),
+});
+
 export const updatePasswordSchema = z
   .object({
     token: z.string().trim().min(1, 'Token field is required'),

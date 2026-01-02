@@ -133,8 +133,14 @@ describe('Auth Routes', () => {
         email_verification_timestamp: null,
       });
       (userService.sendVerificationMail as jest.Mock).mockResolvedValue(
-        undefined
+        'token'
       );
+      (userService.update as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        email_verification_timestamp: null,
+        email_verification_token: 'token',
+      });
 
       const response = await request(app).post('/auth/register').send({
         firstName: 'Test',
@@ -150,7 +156,84 @@ describe('Auth Routes', () => {
         user: expect.any(Object),
       });
       expect(userService.sendVerificationMail).toHaveBeenCalledTimes(1);
+      expect(userService.update).toHaveBeenCalledTimes(1);
       expect(userController.createUser).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('POST /auth/verify/resend', () => {
+    test('returns 429 when a verification email was already sent recently', async () => {
+      (userService.getByEmail as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        email_verification_timestamp: null,
+        email_verification_token: 'existing-verify-token',
+      });
+      (userService.sendVerificationMail as jest.Mock).mockResolvedValue(
+        new Error('Verification email already sent recently')
+      );
+
+      const response = await request(app).post('/auth/verify/resend').send({
+        email: 'test@example.com',
+      });
+
+      expect(response.status).toBe(429);
+      expect(response.body).toEqual({
+        message:
+          'A verification email was already sent recently. Please check your inbox and try again later.',
+      });
+      expect(userService.sendVerificationMail).toHaveBeenCalledTimes(1);
+      expect(userService.update).not.toHaveBeenCalled();
+    });
+
+    test('does not persist token when email send fails', async () => {
+      (userService.getByEmail as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        email_verification_timestamp: null,
+        email_verification_token: null,
+      });
+      (userService.sendVerificationMail as jest.Mock).mockResolvedValue(
+        new Error('smtp down')
+      );
+
+      const response = await request(app).post('/auth/verify/resend').send({
+        email: 'test@example.com',
+      });
+
+      expect(response.status).toBe(500);
+      expect(response.body).toEqual({
+        message: 'Failed to send verification email.',
+      });
+      expect(userService.update).not.toHaveBeenCalled();
+    });
+
+    test('persists token only after email send succeeds', async () => {
+      (userService.getByEmail as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        email_verification_timestamp: null,
+        email_verification_token: null,
+      });
+      (userService.sendVerificationMail as jest.Mock).mockResolvedValue(
+        'new-token'
+      );
+      (userService.update as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        email_verification_token: 'new-token',
+      });
+
+      const response = await request(app).post('/auth/verify/resend').send({
+        email: 'test@example.com',
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        message: 'Verification email sent successfully',
+      });
+      expect(userService.update).toHaveBeenCalledWith('user-1', {
+        email_verification_token: 'new-token',
+      });
     });
   });
 

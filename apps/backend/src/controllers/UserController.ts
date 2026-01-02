@@ -50,22 +50,42 @@ export class UserController extends Controller {
         throw new Error('Email already registered');
       }
 
-      await userService.sendVerificationMail(existing);
+      const token = await userService.sendVerificationMail(existing);
+      if (token instanceof Error) {
+        if (token.message.includes('already sent recently')) {
+          this.setStatus(429);
+          throw new Error(
+            'A verification email was already sent recently. Please try again later.'
+          );
+        }
+
+        this.setStatus(500);
+        throw new Error('Failed to send verification email');
+      }
+
+      await userService.update(existing.id, {
+        email_verification_token: token,
+      });
+
       this.setStatus(200);
       return filterUser(existing as UserInterface);
     }
 
     const user = await userService.create(requestBody);
-    try {
-      await userService.sendVerificationMail(user);
-    } catch (err) {
+    const token = await userService.sendVerificationMail(user);
+    if (token instanceof Error) {
       try {
         await userService.deleteById(user.id);
       } catch {
         // best-effort rollback
       }
-      throw err;
+      this.setStatus(500);
+      throw token;
     }
+
+    await userService.update(user.id, {
+      email_verification_token: token,
+    });
 
     this.setStatus(201); // Set return status 201
     return filterUser(user as UserInterface);
