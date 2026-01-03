@@ -70,3 +70,6 @@ apps/backend/src/prisma/prisma-client/
 # Playwright MCP artifacts
 .playwright-mcp/
 *.tsbuildinfo
+
+
+storybook-static

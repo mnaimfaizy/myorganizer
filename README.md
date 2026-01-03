@@ -29,6 +29,15 @@ Docs:
 
 - Authentication and token strategy: `docs/authentication/README.md`
 - Backend setup notes: `apps/backend/README.md`
+- Storybook and Chromatic setup: `docs/storybook/README.md`
+
+## Storybook
+
+To view and develop UI components in isolation:
+
+```sh
+yarn storybook
+```
 
 [Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/next?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
 

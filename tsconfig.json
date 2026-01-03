@@ -5,5 +5,10 @@
       "@myorganizer/ui-components": ["libs/web-ui/src/index.ts"],
       "@myorganizer/ui-components/*": ["libs/web-ui/src/*"]
     }
+  },
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs"
+    }
   }
 }
