@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test';
 
 test.describe('Authentication', () => {
   test('should allow a user to log in', async ({ page }, testInfo) => {
-    test.setTimeout(120000);
+    test.setTimeout(60000);
 
     // Mock the login API request (including CORS + preflight)
     const loginUrl = /\/auth\/login\/?(\?.*)?$/;
@@ -56,6 +56,9 @@ test.describe('Authentication', () => {
     // Give the app time to hydrate and attach event handlers.
     await page.waitForLoadState('networkidle');
     if (testInfo.project.name === 'webkit') {
+      // WebKit sometimes finishes network requests before the client-side app has fully hydrated
+      // and wired up form event handlers, which can cause flaky failures when submitting the form.
+      // This small, WebKit-only delay stabilizes the test until the underlying issue is resolved.
       await page.waitForTimeout(1500);
     }
 
@@ -64,7 +67,10 @@ test.describe('Authentication', () => {
     await page.fill('input[type="password"]', 'password123');
 
     // Submit the form
-    await page.locator('button[type="submit"]').click({ force: true });
+    const submitButton = page.locator('button[type="submit"]');
+    await expect(submitButton).toBeVisible();
+    await expect(submitButton).toBeEnabled();
+    await submitButton.click();
 
     await expect.poll(() => sawLoginRequest, { timeout: 60000 }).toBeTruthy();
 
