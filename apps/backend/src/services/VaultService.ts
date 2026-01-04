@@ -404,6 +404,19 @@ export class VaultService {
       };
     }
 
+    // Import bundles should be strict about wrapped MK shape.
+    // (PUT /vault remains lenient for backwards compatibility.)
+    if (
+      !isEncryptedBlobV1((meta as any).wrapped_mk_passphrase) ||
+      !isEncryptedBlobV1((meta as any).wrapped_mk_recovery)
+    ) {
+      return {
+        ok: false,
+        status: 422,
+        body: { message: 'Invalid wrapped master key shape' },
+      };
+    }
+
     const blobs = exportBundle.blobs;
     if (blobs !== undefined && !isPlainObject(blobs)) {
       return {

@@ -943,16 +943,17 @@ This keeps a single source of truth: the tsoa controllers.
 
 Phase 1 (Web local-only):
 
-- [x] Sidebar routes for Addresses + Mobile Numbers
-- [x] Vault gate with setup/unlock/recover
-- [x] Addresses page with multi-entry encrypted storage
-- [ ] Mobile Numbers page with multi-entry encrypted storage
+- [x] Sidebar routes for Addresses + Mobile Numbers: `apps/myorganizer/src/components/app-sidebar.tsx`
+- [x] Vault gate with setup/unlock/recover: `apps/myorganizer/src/components/vault-gate.tsx`
+- [x] Addresses page with multi-entry encrypted storage: `apps/myorganizer/src/app/dashboard/addresses/page.tsx`
+- [x] Mobile Numbers page with multi-entry encrypted storage: `apps/myorganizer/src/app/dashboard/mobile-numbers/page.tsx`
+- [x] Vault utilities (encrypt/decrypt + local storage): `apps/myorganizer/src/lib/vault/`
 
 Phase 2 (Sync):
 
-- [ ] Add DB tables for ciphertext blobs
-- [ ] Add API routes to store/retrieve ciphertext
-- [ ] Add export/import flows
+- [x] Add DB tables for ciphertext blobs: `apps/backend/src/prisma/schema/vault.prisma`
+- [x] Add API routes to store/retrieve ciphertext: `apps/backend/src/controllers/VaultController.ts`
+- [x] Add export/import flows (API + UI): `apps/backend/src/controllers/VaultController.ts`, `apps/myorganizer/src/app/dashboard/vault-export/page.tsx`
 
 Phase 3 (Mobile):
 
