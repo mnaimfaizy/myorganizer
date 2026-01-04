@@ -37,6 +37,11 @@ jest.mock('../services/VaultService', () => {
 function makeApp() {
   // Ensure mocks are applied before importing the generated routes.
 
+  // Other test suites may import the generated routes first, which would cache
+  // them without these jest mocks. Resetting modules ensures our require below
+  // re-evaluates with the mocks in place.
+  jest.resetModules();
+
   const { RegisterRoutes } = require('../routes/routes');
 
   const app = express();
