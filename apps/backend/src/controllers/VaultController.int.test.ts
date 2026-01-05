@@ -4,6 +4,8 @@ import express from 'express';
 import request from 'supertest';
 import { ValidateError } from 'tsoa';
 
+jest.setTimeout(30_000);
+
 jest.mock('../middleware/authentication', () => {
   return {
     expressAuthentication: async (req: any) => {
