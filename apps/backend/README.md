@@ -143,7 +143,8 @@ Note: The repo sets `package.json.engines.node` to `>=22.0.0`.
    SESSION_SECRET=your-session-secret-here
 
    # Optional: global API rate limiting (recommended in production)
-   # Uses in-memory counters by default; for multi-instance deployments you should use a shared store.
+   # Uses in-memory counters by default; for multi-instance deployments you should use a shared store (e.g. Redis).
+   # See express-rate-limit store docs: https://express-rate-limit.mintlify.app/reference/stores
    ENABLE_GLOBAL_RATE_LIMIT=false
    RATE_LIMIT_WINDOW_MS=60000
    RATE_LIMIT_MAX=300

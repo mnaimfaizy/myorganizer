@@ -14,10 +14,17 @@ function parseBoolean(value: string | undefined): boolean {
   return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on';
 }
 
-function parseIntOr(value: string | undefined, fallback: number): number {
+function parsePositiveIntOr(
+  value: string | undefined,
+  fallback: number
+): number {
   const raw = (value ?? '').trim();
+  if (!raw) return fallback;
+  if (!/^\d+$/.test(raw)) return fallback;
+
   const parsed = Number.parseInt(raw, 10);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) return fallback;
+  return parsed;
 }
 
 export function getGlobalRateLimitConfigFromEnv(
@@ -25,8 +32,8 @@ export function getGlobalRateLimitConfigFromEnv(
 ): GlobalRateLimitConfig {
   return {
     enabled: parseBoolean(env.ENABLE_GLOBAL_RATE_LIMIT),
-    windowMs: parseIntOr(env.RATE_LIMIT_WINDOW_MS, 60_000),
-    max: parseIntOr(env.RATE_LIMIT_MAX, 300),
+    windowMs: parsePositiveIntOr(env.RATE_LIMIT_WINDOW_MS, 60_000),
+    max: parsePositiveIntOr(env.RATE_LIMIT_MAX, 300),
   };
 }
 

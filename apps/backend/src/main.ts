@@ -226,24 +226,36 @@ const server = app.listen(port, () => {
 });
 server.on('error', console.error);
 
-function shutdown(signal: string) {
+function shutdown(
+  signal: string,
+  opts: { exitCode: number; forceExit: boolean }
+) {
   console.log(`Received ${signal}; shutting down...`);
   server.close(() => {
-    process.exit(0);
+    process.exitCode = opts.exitCode;
+    if (opts.forceExit) {
+      process.exit(opts.exitCode);
+    }
   });
-  // Force shutdown if connections hang.
-  setTimeout(() => process.exit(1), 10_000).unref();
+  if (opts.forceExit) {
+    // Force shutdown if connections hang.
+    setTimeout(() => process.exit(Math.max(opts.exitCode, 1)), 10_000).unref();
+  }
 }
 
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
+process.on('SIGTERM', () =>
+  shutdown('SIGTERM', { exitCode: 0, forceExit: true })
+);
+process.on('SIGINT', () =>
+  shutdown('SIGINT', { exitCode: 0, forceExit: true })
+);
 
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled promise rejection:', reason);
-  shutdown('unhandledRejection');
+  shutdown('unhandledRejection', { exitCode: 1, forceExit: false });
 });
 
 process.on('uncaughtException', (err) => {
   console.error('Uncaught exception:', err);
-  shutdown('uncaughtException');
+  shutdown('uncaughtException', { exitCode: 1, forceExit: false });
 });

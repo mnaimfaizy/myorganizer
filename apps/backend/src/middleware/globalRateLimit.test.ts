@@ -14,6 +14,77 @@ describe('global API rate limiting', () => {
     expect(limiter).toBeNull();
   });
 
+  it('parses ENABLE_GLOBAL_RATE_LIMIT robustly', () => {
+    expect(
+      getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: 'true' })
+        .enabled
+    ).toBe(true);
+    expect(
+      getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: '  YES ' })
+        .enabled
+    ).toBe(true);
+    expect(
+      getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: '1' }).enabled
+    ).toBe(true);
+    expect(
+      getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: 'on' })
+        .enabled
+    ).toBe(true);
+
+    expect(
+      getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: 'false' })
+        .enabled
+    ).toBe(false);
+    expect(
+      getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: '0' }).enabled
+    ).toBe(false);
+    expect(
+      getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: 'off' })
+        .enabled
+    ).toBe(false);
+    expect(
+      getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: 'no' })
+        .enabled
+    ).toBe(false);
+  });
+
+  it('falls back for invalid RATE_LIMIT_* values', () => {
+    const defaults = getGlobalRateLimitConfigFromEnv({});
+
+    expect(
+      getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_WINDOW_MS: 'abc' }).windowMs
+    ).toBe(defaults.windowMs);
+    expect(
+      getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_WINDOW_MS: '-1' }).windowMs
+    ).toBe(defaults.windowMs);
+    expect(
+      getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_WINDOW_MS: '0' }).windowMs
+    ).toBe(defaults.windowMs);
+    expect(
+      getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_WINDOW_MS: '10ms' }).windowMs
+    ).toBe(defaults.windowMs);
+    expect(
+      getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_WINDOW_MS: ' 60000 ' })
+        .windowMs
+    ).toBe(60000);
+
+    expect(getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_MAX: 'abc' }).max).toBe(
+      defaults.max
+    );
+    expect(getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_MAX: '-1' }).max).toBe(
+      defaults.max
+    );
+    expect(getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_MAX: '0' }).max).toBe(
+      defaults.max
+    );
+    expect(getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_MAX: '2.5' }).max).toBe(
+      defaults.max
+    );
+    expect(getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_MAX: ' 2 ' }).max).toBe(
+      2
+    );
+  });
+
   it('returns 429 after exceeding RATE_LIMIT_MAX', async () => {
     const limiter = maybeCreateGlobalApiRateLimiterFromEnv({
       ENABLE_GLOBAL_RATE_LIMIT: 'true',
