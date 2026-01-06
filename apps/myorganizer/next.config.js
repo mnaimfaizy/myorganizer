@@ -10,6 +10,7 @@ const nextConfig = {
   // cPanel-friendly Node deployment.
   // Produces .next/standalone which can run with `node server.js`.
   output: 'standalone',
+  poweredByHeader: false,
   nx: {
     // Set this to true if you would like to use SVGR
     // See: https://github.com/gregberge/svgr

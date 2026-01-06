@@ -31,6 +31,20 @@ Docs:
 - Backend setup notes: `apps/backend/README.md`
 - Storybook and Chromatic setup: `docs/storybook/README.md`
 
+## Production checklist
+
+Before deploying, review `apps/backend/README.md` and ensure the following environment variables are set in your hosting provider (not committed to git):
+
+- `NODE_ENV=production`
+- `SESSION_SECRET` (required in production)
+- JWT secrets: `ACCESS_JWT_SECRET`, `REFRESH_JWT_SECRET`, `VERIFY_JWT_SECRET`, `RESET_JWT_SECRET`
+- `DATABASE_URL`
+- `CORS_ORIGINS` (comma-separated origins, no trailing slashes)
+- Reverse proxy: set `TRUST_PROXY` when behind a proxy/load balancer
+- Optional: enable global API rate limiting with `ENABLE_GLOBAL_RATE_LIMIT=true` and tune `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX`
+
+See `.env.example` for the full list and defaults.
+
 ## Storybook
 
 To view and develop UI components in isolation:
