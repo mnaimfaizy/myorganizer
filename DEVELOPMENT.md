@@ -112,13 +112,21 @@ Before you begin, ensure you have the following installed on your system:
    DATABASE_NAME=myorganizer
    DATABASE_URL=postgresql://postgres:Admin%40123@localhost:5453/myorganizer
 
+   # PgAdmin (for database management GUI)
+   PGADMIN_DEFAULT_EMAIL=admin@myorganizer.com
+   PGADMIN_DEFAULT_PASSWORD=Admin@123
+
    # CORS - Comma-separated list
    CORS_ORIGINS=http://localhost:3000,http://localhost:4200
 
-   # Mail (MailHog for local development)
+   # Mail - SMTP Configuration
+   MAIL_SERVICE=smtp
+   DEFAULT_EMAIL_PROVIDER=smtp
    MAIL_HOST=localhost
    MAIL_PORT=1025
    MAIL_SECURE=false
+   MAIL_USERNAME=
+   MAIL_PASSWORD=
    EMAIL_SENDER=no-reply@myorganizer.local
 
    # Frontend
@@ -812,7 +820,8 @@ describe('Button', () => {
     const handleClick = jest.fn();
     render(<Button onClick={handleClick}>Click me</Button>);
     
-    screen.getByText('Click me').click();
+    const button = screen.getByText('Click me');
+    button.click();
     expect(handleClick).toHaveBeenCalledTimes(1);
   });
 });
