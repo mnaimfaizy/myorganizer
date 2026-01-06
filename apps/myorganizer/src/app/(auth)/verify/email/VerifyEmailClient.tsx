@@ -1,10 +1,9 @@
 'use client';
 
+import { getApiBaseUrl } from '@myorganizer/core';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-
-import { getApiBaseUrl } from '../../../../lib/api/apiBaseUrl';
 
 type VerifyState =
   | { status: 'idle' | 'verifying' }
