@@ -113,6 +113,12 @@ Before you begin, ensure you have the following installed:
    cp .env.example .env
    ```
 
+   On Windows PowerShell:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
 2. **Configure the environment variables** in the `.env` file:
 
    ```env
@@ -124,6 +130,12 @@ Before you begin, ensure you have the following installed:
    NODE_ENV=development
    ROUTER_PREFIX=/api/v1
 
+   # Security (required in production)
+   SESSION_SECRET=your-session-secret-here
+
+   # Comma-separated list of allowed origins (no trailing slashes)
+   CORS_ORIGINS=http://localhost:3000,http://localhost:4200
+
    # JWT Secrets (generate secure random strings)
    ACCESS_JWT_SECRET=your-access-secret-here
    REFRESH_JWT_SECRET=your-refresh-secret-here
@@ -134,7 +146,8 @@ Before you begin, ensure you have the following installed:
    DATABASE_USER=postgres
    DATABASE_PASSWORD=Admin@123
    DATABASE_NAME=myorganizer
-   DATABASE_URL=postgresql://${DATABASE_USER}:${DATABASE_PASSWORD}@localhost:5453/${DATABASE_NAME}
+   # Prisma reads DATABASE_URL directly; dotenv does not expand ${VARS} by default.
+   DATABASE_URL=postgresql://postgres:Admin%40123@localhost:5453/myorganizer
 
    # PgAdmin (if using Docker)
    PGADMIN_DEFAULT_EMAIL=admin@myorganizer.com
@@ -154,10 +167,36 @@ Before you begin, ensure you have the following installed:
 
    **Important Notes:**
 
+   - `yarn start:backend:prod` runs with `NODE_ENV=production` (and will fail fast if required env vars are missing)
+   - `SESSION_SECRET` is required when `NODE_ENV=production`
    - Generate strong, random secrets for JWT tokens in production
    - Update database credentials if not using default values
    - Configure SMTP settings for email functionality (MailHog is recommended for local dev)
    - Adjust `DATABASE_URL` if using a different database host/port
+
+### Local production run (recommended)
+
+Minimum env vars to start the backend in production mode:
+
+- `SESSION_SECRET`
+- `ACCESS_JWT_SECRET`, `REFRESH_JWT_SECRET`, `VERIFY_JWT_SECRET`, `RESET_JWT_SECRET`
+- `DATABASE_URL`
+
+Generate secure random secrets (example):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
+```
+
+Run it once per secret and paste the output into your `.env`.
+
+Then run:
+
+```bash
+yarn start:backend:prod
+```
+
+If you want to test registration/password-reset flows locally, also configure email-related variables (`DEFAULT_EMAIL_PROVIDER`, `MAIL_HOST`/`MAIL_PORT` or Gmail/SMTP creds, and `EMAIL_SENDER`) plus `APP_FRONTEND_URL`.
 
 ## Database Setup
 

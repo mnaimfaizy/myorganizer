@@ -1,5 +1,6 @@
 'use client';
 
+import { getApiBaseUrl } from '@myorganizer/core';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -8,12 +9,6 @@ type VerifyState =
   | { status: 'idle' | 'verifying' }
   | { status: 'success' }
   | { status: 'error'; message: string };
-
-function getApiBaseUrl(): string {
-  const raw =
-    process.env['NEXT_PUBLIC_API_BASE_URL'] ?? 'http://localhost:3000';
-  return raw.replace(/\/+$/, '');
-}
 
 export default function VerifyEmailClient() {
   const searchParams = useSearchParams();

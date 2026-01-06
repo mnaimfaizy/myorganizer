@@ -7,6 +7,7 @@
   "targets": {
     "build": {
       "executor": "@nx/webpack:webpack",
+      "dependsOn": ["generate-types"],
       "options": {
         "webpackConfig": "apps/backend/webpack.config.js",
         "main": "apps/backend/src/main.ts",
@@ -19,6 +20,17 @@
         "outputPath": "dist/apps/backend/",
         "compiler": "tsc",
         "target": "node"
+      }
+    },
+    "package": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "parallel": false,
+        "commands": [
+          "yarn nx run backend:build:production",
+          "node tools/scripts/package-backend-api.mjs"
+        ]
       }
     },
     "serve": {
@@ -43,19 +55,19 @@
       }
     },
     "prisma": {
-      "command": "prisma",
+      "command": "prisma --schema prisma/schema",
       "options": {
         "cwd": "apps/backend/src"
       }
     },
     "migrate": {
-      "command": "prisma migrate dev",
+      "command": "prisma migrate dev --schema prisma/schema",
       "options": {
         "cwd": "apps/backend/src"
       }
     },
     "generate-types": {
-      "command": "prisma generate",
+      "command": "prisma generate --schema prisma/schema",
       "options": {
         "cwd": "apps/backend/src"
       }

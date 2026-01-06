@@ -49,6 +49,18 @@
         }
       }
     },
+    "package": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["clean"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "parallel": false,
+        "commands": [
+          "yarn nx run myorganizer:build:production",
+          "node tools/scripts/package-myorganizer-web.mjs"
+        ]
+      }
+    },
     "lint": {
       "executor": "@nx/eslint:lint",
       "outputs": ["{options.outputFile}"],

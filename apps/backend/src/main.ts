@@ -10,6 +10,7 @@ import session from 'express-session';
 import * as path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { ValidateError } from 'tsoa';
+import { createCorsOptions, getSessionSecret } from './config/http';
 import { vaultRateLimiter } from './middleware/vaultRateLimit';
 import authRouter from './routes/auth';
 import { RegisterRoutes } from './routes/routes';
@@ -17,41 +18,92 @@ import todosRouter from './routes/todo';
 import usersRouter from './routes/user';
 import passport from './utils/passport';
 
-const routerPrefix = process.env.ROUTER_PREFIX || '';
-const app = express();
+function normalizeRouterPrefix(raw: string | undefined): string {
+  const trimmed = (raw ?? '').trim();
+  if (!trimmed) return '';
+  const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  const withoutTrailingSlash = withLeadingSlash.replace(/\/+$/, '');
+  return withoutTrailingSlash === '/' ? '' : withoutTrailingSlash;
+}
 
-// CORS is enabled for the selected origins
-const corsOptions = {
-  origin: [
-    'https://myorganizerapi.mnfprofile.com',
-    'http://localhost:3000',
-    'http://localhost:4200',
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'If-Match'],
-  exposedHeaders: ['ETag'],
-};
+function joinPath(a: string, b: string): string {
+  const left = normalizeRouterPrefix(a);
+  const right = normalizeRouterPrefix(b);
+  if (!left) return right;
+  if (!right) return left;
+  return `${left}${right}`;
+}
+
+const routerPrefix =
+  normalizeRouterPrefix(process.env.ROUTER_PREFIX) || '/api/v1';
+
+// cPanel Passenger can mount the app under a base URI.
+// When configured, requests arrive with that base prefix.
+const passengerBaseUri = normalizeRouterPrefix(process.env.PASSENGER_BASE_URI);
+const app = express();
 
 // Middleware to parse JSON bodies
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json({ limit: '2mb' }));
 
-// Serve the Swagger UI at /docs
-app.use('/docs', swaggerUi.serve, async (_req: ExRequest, res: ExResponse) => {
-  const swaggerDocument = await import('./swagger/swagger.json').then(
-    (module) => module.default
+// Serve Swagger UI.
+function mountSwagger(mountPath: string) {
+  app.use(
+    mountPath,
+    swaggerUi.serve,
+    async (req: ExRequest, res: ExResponse) => {
+      const swaggerDocument = await import('./swagger/swagger.json').then(
+        (module) => module.default
+      );
+
+      // tsoa spec config is generated with a localhost server; override it at runtime
+      // so Swagger "Try it out" targets the actual deployed host.
+      const forwardedProto = (
+        req.headers['x-forwarded-proto'] as string | undefined
+      )
+        ?.split(',')[0]
+        ?.trim();
+      const proto = forwardedProto || req.protocol;
+      const host = req.get('host');
+      const origin = host ? `${proto}://${host}` : '';
+
+      const canonicalApiBase = origin
+        ? `${origin}${joinPath(passengerBaseUri, routerPrefix)}`
+        : '';
+      const doc = JSON.parse(JSON.stringify(swaggerDocument)) as any;
+      const servers: Array<{ url: string; description?: string }> = [];
+      if (canonicalApiBase) {
+        servers.push({ url: canonicalApiBase, description: 'API (prefixed)' });
+      }
+      if (servers.length > 0) {
+        doc.servers = servers;
+      }
+
+      res.send(swaggerUi.generateHTML(doc));
+    }
   );
-  res.send(swaggerUi.generateHTML(swaggerDocument));
-});
+}
+
+// Swagger UI is exposed at common locations.
+// Keep it accessible regardless of router prefix and Passenger base URI.
+const swaggerMounts = new Set<string>();
+swaggerMounts.add('/docs');
+swaggerMounts.add(`${routerPrefix}/docs`);
+if (passengerBaseUri) {
+  swaggerMounts.add(joinPath(passengerBaseUri, '/docs'));
+  swaggerMounts.add(joinPath(passengerBaseUri, `${routerPrefix}/docs`));
+}
+for (const mountPath of swaggerMounts) {
+  mountSwagger(mountPath);
+}
 
 // Enable CORS
-app.use(cors(corsOptions));
+app.use(cors(createCorsOptions()));
 
 // Enable session
 app.use(
   session({
-    secret: 'secret', // TODO: Change this to a secure secret
+    secret: getSessionSecret(),
     resave: false,
     saveUninitialized: true,
     cookie: { secure: process.env.NODE_ENV === 'production' },
@@ -68,16 +120,28 @@ app.use(express.static('templates'));
 // Initialize passport
 app.use(passport.initialize());
 
-// Define the routes
-app.use(`${routerPrefix}/todo`, todosRouter);
-app.use(`${routerPrefix}/user`, usersRouter);
-app.use(`${routerPrefix}/auth`, authRouter);
+// Define the API routes under a single prefix.
+const api = express.Router();
+api.use('/todo', todosRouter);
+api.use('/user', usersRouter);
+api.use('/auth', authRouter);
 
 // Apply additional protections for blind-storage endpoints.
-app.use('/vault', vaultRateLimiter);
+api.use('/vault', vaultRateLimiter);
 
-// Register the routes
-RegisterRoutes(app);
+// Register tsoa routes
+RegisterRoutes(api);
+
+// Mount API routes in a tolerant way to avoid base-path/prefix mismatches
+// across local dev, reverse proxies, and cPanel Passenger.
+const apiMounts = new Set<string>();
+apiMounts.add(routerPrefix || '/');
+if (passengerBaseUri) {
+  apiMounts.add(joinPath(passengerBaseUri, routerPrefix));
+}
+for (const mountPath of apiMounts) {
+  app.use(mountPath, api);
+}
 
 // Error handler for 404 routes
 app.use(function notFoundHandler(_req, res: ExResponse) {
