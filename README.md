@@ -25,8 +25,9 @@ yarn start:backend
 yarn start:myorganizer
 ```
 
-Docs:
+## Documentation
 
+- **[Development Guide](DEVELOPMENT.md)** - Complete guide for developing in the monorepo
 - Authentication and token strategy: `docs/authentication/README.md`
 - Backend setup notes: `apps/backend/README.md`
 - Storybook and Chromatic setup: `docs/storybook/README.md`
