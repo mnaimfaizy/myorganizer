@@ -1,16 +1,20 @@
 import bodyParser from 'body-parser';
+import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
+import 'dotenv/config';
 import express, {
   Request as ExRequest,
   Response as ExResponse,
   NextFunction,
 } from 'express';
 import session from 'express-session';
+import helmet from 'helmet';
 import * as path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { ValidateError } from 'tsoa';
 import { createCorsOptions, getSessionSecret } from './config/http';
+import { maybeCreateGlobalApiRateLimiterFromEnv } from './middleware/globalRateLimit';
 import { vaultRateLimiter } from './middleware/vaultRateLimit';
 import authRouter from './routes/auth';
 import { RegisterRoutes } from './routes/routes';
@@ -41,6 +45,30 @@ const routerPrefix =
 // When configured, requests arrive with that base prefix.
 const passengerBaseUri = normalizeRouterPrefix(process.env.PASSENGER_BASE_URI);
 const app = express();
+
+const isProd = process.env.NODE_ENV === 'production';
+
+function parseTrustProxy(value: string | undefined): boolean | number {
+  const raw = (value ?? '').trim().toLowerCase();
+  if (!raw) return isProd ? 1 : false;
+  if (raw === 'true' || raw === 'yes' || raw === 'on') return true;
+  if (raw === 'false' || raw === 'no' || raw === 'off') return false;
+  const asInt = Number.parseInt(raw, 10);
+  return Number.isFinite(asInt) ? asInt : false;
+}
+
+// Avoid leaking stack traces and enable correct proto/ip detection behind reverse proxies.
+app.disable('x-powered-by');
+app.set('trust proxy', parseTrustProxy(process.env.TRUST_PROXY));
+
+// Production hardening.
+app.use(
+  helmet({
+    // Swagger UI relies on inline scripts/styles; keep CSP off globally for now.
+    contentSecurityPolicy: false,
+  })
+);
+app.use(compression());
 
 // Middleware to parse JSON bodies
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -105,8 +133,13 @@ app.use(
   session({
     secret: getSessionSecret(),
     resave: false,
-    saveUninitialized: true,
-    cookie: { secure: process.env.NODE_ENV === 'production' },
+    saveUninitialized: false,
+    proxy: isProd,
+    cookie: {
+      secure: isProd,
+      httpOnly: true,
+      sameSite: 'lax',
+    },
   })
 );
 
@@ -115,13 +148,19 @@ app.use(cookieParser());
 
 // Serve the static files
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
-app.use(express.static('templates'));
+app.use('/templates', express.static(path.join(__dirname, 'templates')));
 
 // Initialize passport
 app.use(passport.initialize());
 
 // Define the API routes under a single prefix.
 const api = express.Router();
+
+// Optional global API rate limiting (recommended for production).
+// Note: default store is in-memory; for multi-instance deployments use a shared store.
+const globalApiRateLimiter = maybeCreateGlobalApiRateLimiterFromEnv();
+if (globalApiRateLimiter) api.use(globalApiRateLimiter);
+
 api.use('/todo', todosRouter);
 api.use('/user', usersRouter);
 api.use('/auth', authRouter);
@@ -165,6 +204,14 @@ app.use(function errorHandler(
     });
   }
   if (err instanceof Error) {
+    if (isProd) {
+      console.error(
+        `Unhandled error on ${req.method} ${req.path}:`,
+        err.message
+      );
+    } else {
+      console.error(`Unhandled error on ${req.method} ${req.path}:`, err);
+    }
     return res.status(500).json({
       message: 'Internal Server Error',
     });
@@ -178,3 +225,25 @@ const server = app.listen(port, () => {
   console.log(`Listening at: http://localhost:${port}/`);
 });
 server.on('error', console.error);
+
+function shutdown(signal: string) {
+  console.log(`Received ${signal}; shutting down...`);
+  server.close(() => {
+    process.exit(0);
+  });
+  // Force shutdown if connections hang.
+  setTimeout(() => process.exit(1), 10_000).unref();
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason);
+  shutdown('unhandledRejection');
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught exception:', err);
+  shutdown('uncaughtException');
+});
