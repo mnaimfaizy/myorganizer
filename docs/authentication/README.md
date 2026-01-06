@@ -67,7 +67,7 @@ If refresh fails, the session is cleared.
 
 ## Configuration
 
-Frontend expects `NEXT_PUBLIC_API_BASE_URL` to point at the backend base URL.
+Frontend expects an API base URL. In production, prefer setting `API_BASE_URL` at runtime (cPanel env vars). `NEXT_PUBLIC_API_BASE_URL` is still supported as a fallback.
 
 Examples:
 

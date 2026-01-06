@@ -6,9 +6,8 @@ import {
   type Login200Response,
   type ResetPassword200Response,
 } from '@myorganizer/app-api-client';
+import { getApiBaseUrl } from '@myorganizer/core';
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
-
-const DEFAULT_API_BASE_URL = 'http://localhost:3000';
 
 const ACCESS_TOKEN_KEY = 'myorganizer_access_token';
 const USER_KEY = 'myorganizer_user';
@@ -26,41 +25,6 @@ export type AuthSession = {
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
-}
-
-function getApiBasePath(): string {
-  const rawBaseUrl = process.env['NEXT_PUBLIC_API_BASE_URL'];
-
-  if (!rawBaseUrl) {
-    return DEFAULT_API_BASE_URL;
-  }
-
-  try {
-    const parsed = new URL(rawBaseUrl);
-
-    if (
-      process.env['NODE_ENV'] === 'production' &&
-      parsed.protocol !== 'https:'
-    ) {
-      // eslint-disable-next-line no-console
-      console.warn(
-        'NEXT_PUBLIC_API_BASE_URL is not using HTTPS in production. ' +
-          'This may expose sensitive data over an insecure connection:',
-        rawBaseUrl
-      );
-    }
-
-    return parsed.toString().replace(/\/+$/, '');
-  } catch {
-    // eslint-disable-next-line no-console
-    console.warn(
-      'Invalid NEXT_PUBLIC_API_BASE_URL value. Falling back to default:',
-      rawBaseUrl,
-      '(default:',
-      DEFAULT_API_BASE_URL + ')'
-    );
-    return DEFAULT_API_BASE_URL;
-  }
 }
 
 function getPreferredTokenStorageMode(): TokenStorageMode {
@@ -165,7 +129,7 @@ function isAuthUrl(url: string | undefined): boolean {
 export function getAuthAxios(): AxiosInstance {
   if (sharedAxios) return sharedAxios;
 
-  const baseURL = getApiBasePath();
+  const baseURL = getApiBaseUrl();
   const instance = axios.create({
     baseURL,
     withCredentials: true,
@@ -216,7 +180,7 @@ export function getAuthAxios(): AxiosInstance {
 
 export function getAuthApi(): AuthenticationApi {
   const configuration = new Configuration({
-    basePath: getApiBasePath(),
+    basePath: getApiBaseUrl(),
     accessToken: () => getAccessToken() ?? '',
   });
 
