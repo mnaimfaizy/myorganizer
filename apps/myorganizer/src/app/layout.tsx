@@ -17,7 +17,22 @@ export default function RootLayout({
 
   const runtimeConfigJson = JSON.stringify({
     API_BASE_URL: apiBaseUrl,
-  }).replace(/</g, '\\u003c');
+  }).replace(/[<>&\u2028\u2029]/g, (c) => {
+    switch (c) {
+      case '<':
+        return '\\u003c';
+      case '>':
+        return '\\u003e';
+      case '&':
+        return '\\u0026';
+      case '\u2028':
+        return '\\u2028';
+      case '\u2029':
+        return '\\u2029';
+      default:
+        return c;
+    }
+  });
 
   return (
     <html lang="en">

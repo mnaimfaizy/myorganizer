@@ -36,12 +36,17 @@ function readRuntimeApiBaseUrlFromMeta(): string | undefined {
  * then a local default.
  */
 export function getApiBaseUrl(): string {
+  const fromWindow = readRuntimeApiBaseUrlFromWindow();
+  const fromMeta = readRuntimeApiBaseUrlFromMeta();
+  const fromEnv = process.env.API_BASE_URL;
+  const fromPublicEnv = process.env.NEXT_PUBLIC_API_BASE_URL;
+
   const rawBaseUrl =
-    readRuntimeApiBaseUrlFromWindow() ||
-    readRuntimeApiBaseUrlFromMeta() ||
-    process.env.API_BASE_URL ||
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    DEFAULT_API_BASE_URL;
+    fromWindow || fromMeta || fromEnv || fromPublicEnv || DEFAULT_API_BASE_URL;
+
+  const wasExplicitlyConfigured = Boolean(
+    fromWindow || fromMeta || fromEnv || fromPublicEnv
+  );
 
   try {
     const parsed = new URL(rawBaseUrl);
@@ -55,13 +60,23 @@ export function getApiBaseUrl(): string {
     }
 
     return normalizeBaseUrl(parsed.toString());
-  } catch {
-    console.warn(
-      'Invalid API base URL value. Falling back to default:',
-      rawBaseUrl,
-      '(default:',
-      DEFAULT_API_BASE_URL + ')'
-    );
+  } catch (err) {
+    const message =
+      `Invalid API base URL value: ${rawBaseUrl}. ` +
+      `Falling back to default: ${DEFAULT_API_BASE_URL}`;
+
+    // If this is a server-side production render and a base URL was explicitly set,
+    // fail fast so misconfiguration is obvious.
+    if (
+      process.env.NODE_ENV === 'production' &&
+      typeof window === 'undefined' &&
+      wasExplicitlyConfigured
+    ) {
+      throw new Error(message);
+    }
+
+    console.error(message);
+    if (err) console.error(err);
 
     return DEFAULT_API_BASE_URL;
   }

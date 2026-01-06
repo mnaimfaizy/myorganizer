@@ -21,10 +21,6 @@ function copyDir(src, dst) {
   fs.cpSync(src, dst, { recursive: true });
 }
 
-function copyFile(src, dst) {
-  fs.copyFileSync(src, dst);
-}
-
 function exists(p) {
   return fs.existsSync(p);
 }
@@ -115,9 +111,27 @@ function isLinuxX64Compatible(pkgJson) {
   const cpuList =
     typeof cpu === 'string' ? [cpu] : Array.isArray(cpu) ? cpu : undefined;
 
-  if (osList && !osList.includes('linux')) return false;
-  if (cpuList && !cpuList.includes('x64')) return false;
-  return true;
+  const matchesLinux = (value) =>
+    value === 'linux' || value.startsWith('linux-');
+  const matchesX64 = (value) =>
+    value === 'x64' || value === 'x86_64' || value === 'amd64';
+
+  const isAllowed = (list, matcher) => {
+    if (!list) return true;
+
+    const positives = list.filter((v) => !String(v).startsWith('!'));
+    const negatives = list
+      .filter((v) => String(v).startsWith('!'))
+      .map((v) => String(v).slice(1));
+
+    if (positives.length > 0) {
+      return positives.some((v) => matcher(String(v)));
+    }
+
+    return !negatives.some((v) => matcher(String(v)));
+  };
+
+  return isAllowed(osList, matchesLinux) && isAllowed(cpuList, matchesX64);
 }
 
 function listStandalonePackages(nodeModulesDir) {

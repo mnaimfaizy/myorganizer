@@ -51,14 +51,13 @@ function mountSwagger(mountPath: string) {
   app.use(
     mountPath,
     swaggerUi.serve,
-    async (_req: ExRequest, res: ExResponse) => {
+    async (req: ExRequest, res: ExResponse) => {
       const swaggerDocument = await import('./swagger/swagger.json').then(
         (module) => module.default
       );
 
       // tsoa spec config is generated with a localhost server; override it at runtime
       // so Swagger "Try it out" targets the actual deployed host.
-      const req = _req;
       const forwardedProto = (
         req.headers['x-forwarded-proto'] as string | undefined
       )
@@ -71,15 +70,10 @@ function mountSwagger(mountPath: string) {
       const canonicalApiBase = origin
         ? `${origin}${joinPath(passengerBaseUri, routerPrefix)}`
         : '';
-      const rootApiBase = origin ? `${origin}${passengerBaseUri || ''}` : '';
-
       const doc = JSON.parse(JSON.stringify(swaggerDocument)) as any;
       const servers: Array<{ url: string; description?: string }> = [];
       if (canonicalApiBase) {
         servers.push({ url: canonicalApiBase, description: 'API (prefixed)' });
-      }
-      if (rootApiBase && rootApiBase !== canonicalApiBase) {
-        servers.push({ url: rootApiBase, description: 'API (root)' });
       }
       if (servers.length > 0) {
         doc.servers = servers;
@@ -141,14 +135,12 @@ RegisterRoutes(api);
 // Mount API routes in a tolerant way to avoid base-path/prefix mismatches
 // across local dev, reverse proxies, and cPanel Passenger.
 const apiMounts = new Set<string>();
-apiMounts.add(routerPrefix);
-apiMounts.add('');
+apiMounts.add(routerPrefix || '/');
 if (passengerBaseUri) {
-  apiMounts.add(passengerBaseUri);
   apiMounts.add(joinPath(passengerBaseUri, routerPrefix));
 }
 for (const mountPath of apiMounts) {
-  app.use(mountPath || '/', api);
+  app.use(mountPath, api);
 }
 
 // Error handler for 404 routes

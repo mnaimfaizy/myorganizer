@@ -66,7 +66,6 @@ const buildOut = path.join(workspaceRoot, 'dist', 'apps', 'backend');
 const deployRoot = path.join(workspaceRoot, 'dist', 'deploy', 'backend-api');
 
 const prismaSrc = path.join(workspaceRoot, 'apps', 'backend', 'src', 'prisma');
-const prismaClientSrc = path.join(prismaSrc, 'prisma-client');
 
 const backendDistPackageJson = path.join(buildOut, 'package.json');
 
@@ -146,44 +145,78 @@ const deployPkg = {
     start: `node ${distPkg.main || 'main.js'}`,
     'prisma:generate': 'prisma generate --schema prisma/schema',
     'prisma:migrate:deploy': 'prisma migrate deploy --schema prisma/schema',
-    // cPanel/shared-hosting friendly: generate Prisma client for the server OS.
-    // Must be resilient if npm executes scripts from nodevenv/lib (cPanel quirk).
-    postinstall: '__POSTINSTALL__',
   },
   dependencies: Object.fromEntries(
     Object.entries(filteredDeps).sort(([a], [b]) => a.localeCompare(b))
   ),
 };
 
-const postinstallInlineScript = [
-  "const fs=require('fs');",
-  "const path=require('path');",
+// cPanel/shared-hosting friendly: generate Prisma client for the server OS.
+// Must be resilient if npm executes scripts from nodevenv/lib (cPanel quirk).
+const postinstallScriptRelPath = 'scripts/postinstall.cjs';
+const postinstallScriptAbsPath = path.join(
+  deployRoot,
+  ...postinstallScriptRelPath.split('/')
+);
+mkdir(path.dirname(postinstallScriptAbsPath));
+
+const postinstallScript = [
+  "'use strict';",
+  "const fs = require('fs');",
+  "const path = require('path');",
   "const { spawnSync } = require('child_process');",
-  'const npmPackageJson=process.env.npm_package_json;',
-  'const npmPackageDir=npmPackageJson?path.dirname(npmPackageJson):undefined;',
-  'const passengerRoot=process.env.PASSENGER_APP_ROOT;',
-  'const candidates=[npmPackageDir,passengerRoot,process.env.INIT_CWD,process.env.npm_config_local_prefix,process.env.PWD,process.cwd(),__dirname].filter(Boolean);',
-  "const hasPkg=(d)=>fs.existsSync(path.join(d,'package.json'));",
-  "const hasSchema=(d)=>fs.existsSync(path.join(d,'prisma','schema'));",
-  'const appRoot=candidates.find(d=>hasPkg(d)&&hasSchema(d))||candidates.find(hasPkg)||process.cwd();',
-  "const schemaDir=path.join(appRoot,'prisma','schema');",
+  '',
+  'const npmPackageJson = process.env.npm_package_json;',
+  'const npmPackageDir = npmPackageJson ? path.dirname(npmPackageJson) : undefined;',
+  'const passengerRoot = process.env.PASSENGER_APP_ROOT;',
+  '',
+  'const candidates = [',
+  '  npmPackageDir,',
+  '  passengerRoot,',
+  '  process.env.INIT_CWD,',
+  '  process.env.npm_config_local_prefix,',
+  '  process.env.PWD,',
+  '  process.cwd(),',
+  '  __dirname,',
+  '].filter(Boolean);',
+  '',
+  "const hasPkg = (d) => fs.existsSync(path.join(d, 'package.json'));",
+  "const hasSchema = (d) => fs.existsSync(path.join(d, 'prisma', 'schema'));",
+  '',
+  'const appRoot =',
+  '  candidates.find((d) => hasPkg(d) && hasSchema(d)) ||',
+  '  candidates.find(hasPkg) ||',
+  '  process.cwd();',
+  '',
+  "const schemaDir = path.join(appRoot, 'prisma', 'schema');",
   "console.log('[postinstall] appRoot:', appRoot);",
   "console.log('[postinstall] schemaDir:', schemaDir);",
-  "console.log('[postinstall] npm_package_json:', process.env.npm_package_json||'');",
-  "console.log('[postinstall] PASSENGER_APP_ROOT:', process.env.PASSENGER_APP_ROOT||'');",
-  "if(!fs.existsSync(schemaDir)){console.log('[postinstall] Skipping prisma generate: prisma/schema not found at',schemaDir);console.log('[postinstall] cwd:',process.cwd());console.log('[postinstall] npm_package_json:',process.env.npm_package_json||'');console.log('[postinstall] PASSENGER_APP_ROOT:',process.env.PASSENGER_APP_ROOT||'');process.exit(0);}",
-  "const prismaBin=path.join(appRoot,'node_modules','.bin',process.platform==='win32'?'prisma.cmd':'prisma');",
-  "const args=['generate','--schema','prisma/schema'];",
+  "console.log('[postinstall] npm_package_json:', process.env.npm_package_json || '');",
+  "console.log('[postinstall] PASSENGER_APP_ROOT:', process.env.PASSENGER_APP_ROOT || '');",
+  '',
+  'if (!fs.existsSync(schemaDir)) {',
+  "  console.log('[postinstall] Skipping prisma generate: prisma/schema not found at', schemaDir);",
+  "  console.log('[postinstall] cwd:', process.cwd());",
+  '  process.exit(0);',
+  '}',
+  '',
+  "const prismaBin = path.join(appRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'prisma.cmd' : 'prisma');",
+  "const args = ['generate', '--schema', 'prisma/schema'];",
   'let r;',
-  "if(fs.existsSync(prismaBin)){r=spawnSync(prismaBin,args,{stdio:'inherit',cwd:appRoot});}",
-  "else{const npx=process.platform==='win32'?'npx.cmd':'npx';r=spawnSync(npx,['prisma',...args],{stdio:'inherit',cwd:appRoot});}",
-  'process.exit(r.status??1);',
-].join('');
+  '',
+  'if (fs.existsSync(prismaBin)) {',
+  "  r = spawnSync(prismaBin, args, { stdio: 'inherit', cwd: appRoot });",
+  '} else {',
+  "  const npx = process.platform === 'win32' ? 'npx.cmd' : 'npx';",
+  "  r = spawnSync(npx, ['prisma', ...args], { stdio: 'inherit', cwd: appRoot });",
+  '}',
+  '',
+  'process.exit(r.status ?? 1);',
+  '',
+].join('\n');
 
-deployPkg.scripts.postinstall = `node -e "${postinstallInlineScript.replaceAll(
-  '"',
-  '\\"'
-)}"`;
+fs.writeFileSync(postinstallScriptAbsPath, `${postinstallScript}\n`, 'utf8');
+deployPkg.scripts.postinstall = `node ${postinstallScriptRelPath}`;
 
 writeJson(path.join(deployRoot, 'package.json'), deployPkg);
 
