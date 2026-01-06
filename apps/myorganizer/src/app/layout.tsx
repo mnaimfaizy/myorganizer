@@ -36,10 +36,8 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <head>
-        <meta name="myorganizer-api-base-url" content={apiBaseUrl} />
-      </head>
       <body>
+        <meta name="myorganizer-api-base-url" content={apiBaseUrl} />
         <script
           // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{
