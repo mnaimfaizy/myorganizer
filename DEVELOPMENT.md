@@ -931,23 +931,23 @@ yarn build-storybook
 
 ```bash
 # React library
-npx nx g @nx/react:lib my-new-lib
+yarn nx g @nx/react:lib my-new-lib
 
 # Node.js library
-npx nx g @nx/node:lib my-new-lib
+yarn nx g @nx/node:lib my-new-lib
 
 # TypeScript library
-npx nx g @nx/js:lib my-new-lib
+yarn nx g @nx/js:lib my-new-lib
 ```
 
 ### Adding a New Application
 
 ```bash
 # Next.js application
-npx nx g @nx/next:app my-new-app
+yarn nx g @nx/next:app my-new-app
 
 # Express application
-npx nx g @nx/express:app my-new-api
+yarn nx g @nx/express:app my-new-api
 ```
 
 ### Updating Dependencies
