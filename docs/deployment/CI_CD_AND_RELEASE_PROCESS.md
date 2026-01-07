@@ -129,6 +129,7 @@ Backend (cPanel FTP/FTPS):
 - `FTP_HOST`
 - `FTP_USERNAME`
 - `FTP_PASSWORD`
+- `FTP_SERVER_DIR` (remote directory for backend app root)
 
 Frontend (Vercel):
 
