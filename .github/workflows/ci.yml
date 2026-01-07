@@ -1,0 +1,177 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - 'release/**'
+  push:
+    branches:
+      - main
+      - 'release/**'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    outputs:
+      nx_base: ${{ steps.affected.outputs.nx_base }}
+      nx_head: ${{ steps.affected.outputs.nx_head }}
+      affected_projects: ${{ steps.projects.outputs.affected_projects }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Compute affected range
+        id: affected
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+            HEAD="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE="${{ github.event.before }}"
+            HEAD="${{ github.sha }}"
+            if [[ -z "$BASE" || "$BASE" == "0000000000000000000000000000000000000000" ]]; then
+              BASE="$(git rev-parse HEAD~1)"
+            fi
+          fi
+
+          echo "nx_base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "nx_head=$HEAD" >> "$GITHUB_OUTPUT"
+          echo "Using NX_BASE=$BASE"
+          echo "Using NX_HEAD=$HEAD"
+
+      - name: Compute affected projects
+        id: projects
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          BASE='${{ steps.affected.outputs.nx_base }}'
+          HEAD='${{ steps.affected.outputs.nx_head }}'
+
+          if ! AFFECTED_JSON=$(yarn -s nx show projects --affected --base="$BASE" --head="$HEAD" --json | node -e "const fs=require('fs'); const s=fs.readFileSync(0,'utf8'); process.stdout.write(JSON.stringify(JSON.parse(s))); "); then
+            echo "Error: Failed to compute affected projects JSON from Nx output." >&2
+            exit 1
+          fi
+
+          echo "affected_projects=$AFFECTED_JSON" >> "$GITHUB_OUTPUT"
+          echo "Affected projects: $AFFECTED_JSON"
+
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: setup
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint (affected)
+        run: yarn nx affected -t lint --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: setup
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Test (affected)
+        run: yarn nx affected -t test --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
+
+  build-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'backend') }}
+    needs:
+      - setup
+      - lint
+      - test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build backend
+        run: yarn nx build backend
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'myorganizer') }}
+    needs:
+      - setup
+      - lint
+      - test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build frontend
+        run: yarn nx build myorganizer

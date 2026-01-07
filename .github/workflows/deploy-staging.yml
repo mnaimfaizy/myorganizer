@@ -1,0 +1,62 @@
+name: Deploy Staging
+
+on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Package backend (cPanel)
+        run: yarn package:backend:api
+
+      - name: Deploy backend to cPanel (staging)
+        uses: SamKirkland/FTP-Deploy-Action@4.3.3
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: ./dist/deploy/backend-api/
+          server-dir: /
+          timeout: 300000
+
+      - name: Deploy frontend to Vercel (staging)
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          cd apps/myorganizer
+          # NOTE: This workflow deploys to a dedicated Vercel *staging* project.
+          # In that project we use its "production" environment for our staging app,
+          # therefore the --environment=production and --prod flags are intentional.
+          # See VERCEL_FRONTEND_HOSTING.md and CI_CD_AND_RELEASE_PROCESS.md for details.
+          npx vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
+          npx vercel@latest build --prod --token "$VERCEL_TOKEN"
+          npx vercel@latest deploy --prebuilt --prod --token "$VERCEL_TOKEN"
