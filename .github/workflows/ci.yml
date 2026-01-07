@@ -22,6 +22,7 @@ jobs:
     outputs:
       nx_base: ${{ steps.affected.outputs.nx_base }}
       nx_head: ${{ steps.affected.outputs.nx_head }}
+      affected_projects: ${{ steps.projects.outputs.affected_projects }}
 
     steps:
       - name: Checkout
@@ -57,6 +58,18 @@ jobs:
           echo "nx_head=$HEAD" >> "$GITHUB_OUTPUT"
           echo "Using NX_BASE=$BASE"
           echo "Using NX_HEAD=$HEAD"
+
+      - name: Compute affected projects
+        id: projects
+        shell: bash
+        run: |
+          BASE='${{ steps.affected.outputs.nx_base }}'
+          HEAD='${{ steps.affected.outputs.nx_head }}'
+
+          AFFECTED_JSON=$(yarn -s nx show projects --affected --base="$BASE" --head="$HEAD" --json | node -e "const fs=require('fs'); const s=fs.readFileSync(0,'utf8'); process.stdout.write(JSON.stringify(JSON.parse(s))); ")
+
+          echo "affected_projects=$AFFECTED_JSON" >> "$GITHUB_OUTPUT"
+          echo "Affected projects: $AFFECTED_JSON"
 
   lint:
     runs-on: ubuntu-latest
@@ -100,9 +113,10 @@ jobs:
       - name: Test (affected)
         run: yarn nx affected -t test --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
 
-  build:
+  build-backend:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'backend') }}
     needs:
       - setup
       - lint
@@ -121,5 +135,30 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
-      - name: Build (affected)
-        run: yarn nx affected -t build --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
+      - name: Build backend
+        run: yarn nx build backend
+
+  build-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'myorganizer') }}
+    needs:
+      - setup
+      - lint
+      - test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build frontend
+        run: yarn nx build myorganizer
