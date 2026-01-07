@@ -40,6 +40,14 @@ This repo uses GitHub Actions for CI/CD.
 
 Configure these in GitHub:
 
+- At the **repository** level, define shared secrets used across all workflows (for example, build or tooling tokens).
+- At the **environment** level, define deployment-specific secrets used only for that environment.
+
+The exact secrets required for each environment are documented in the sections below:
+
+- **Staging (main)**
+- **Production (release/\*)**
+
 ## GitHub Environments (recommended)
 
 This repo uses two GitHub **Environments**:
@@ -225,4 +233,4 @@ The deploy folders also contain `CPANEL_STARTUP.md` files with the exact startup
 
 ## Hosting the frontend on Vercel
 
-If you want to host the frontend yourself (independent of this repo’s CI/CD), see: [docs/deployment/VERCEL_FRONTEND_HOSTING.md](docs/deployment/VERCEL_FRONTEND_HOSTING.md).
+If you want to host the frontend yourself (independent of this repo’s CI/CD), see: [./VERCEL_FRONTEND_HOSTING.md](./VERCEL_FRONTEND_HOSTING.md).

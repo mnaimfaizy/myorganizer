@@ -5,11 +5,25 @@ on:
 
 concurrency:
   group: deploy-production
+  # Note: deployments are serialized via concurrency; additional runs queue.
   cancel-in-progress: false
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Validate release branch
+        if: ${{ !startsWith(github.ref, 'refs/heads/release/') }}
+        run: |
+          echo "ERROR: Production deploys are only allowed from release/* branches."
+          echo "Current ref: $GITHUB_REF"
+          exit 1
+
   deploy:
     if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 45
     environment: production

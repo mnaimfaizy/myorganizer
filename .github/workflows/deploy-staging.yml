@@ -53,6 +53,10 @@ jobs:
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           cd apps/myorganizer
+          # NOTE: This workflow deploys to a dedicated Vercel *staging* project.
+          # In that project we use its "production" environment for our staging app,
+          # therefore the --environment=production and --prod flags are intentional.
+          # See VERCEL_FRONTEND_HOSTING.md and CI_CD_AND_RELEASE_PROCESS.md for details.
           npx vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
           npx vercel@latest build --prod --token "$VERCEL_TOKEN"
           npx vercel@latest deploy --prebuilt --prod --token "$VERCEL_TOKEN"

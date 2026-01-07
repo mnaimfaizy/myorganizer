@@ -1,5 +1,15 @@
 import { execSync } from 'node:child_process';
 
+function assertNodeVersion() {
+  const major = Number(String(process.versions.node).split('.')[0]);
+  if (!Number.isFinite(major) || major < 22) {
+    console.error(
+      `Node.js v22+ is required to run this script. Current: ${process.versions.node}`
+    );
+    process.exit(1);
+  }
+}
+
 function run(command, options = {}) {
   return execSync(command, { stdio: ['ignore', 'pipe', 'pipe'], ...options })
     .toString('utf8')
@@ -48,7 +58,11 @@ function parseArgs(argv) {
     }
 
     if (token === '--version') {
-      args.version = argv[i + 1];
+      const next = argv[i + 1];
+      if (!next || next.startsWith('-')) {
+        die('Missing value for --version option.');
+      }
+      args.version = next;
       i += 1;
       continue;
     }
@@ -125,10 +139,33 @@ function tagExists(tagName) {
 }
 
 function printHelp() {
-  console.log(
-    `\nRelease helper (git automation)\n\nUsage:\n  node tools/scripts/release.mjs cut --version v1.2.3 [--push] [--tag] [--dry-run]\n  node tools/scripts/release.mjs tag --version v1.2.3 [--push] [--dry-run]\n\nWhat it does:\n  cut:\n    - checks clean working tree\n    - ensures you are on main and up-to-date with origin/main\n    - creates release branch: release/<version> (e.g. release/v1.2.3)\n    - optionally pushes the branch (with --push)\n    - optionally creates + pushes the tag (with --tag --push)\n\n  tag:\n    - checks clean working tree\n    - creates an annotated tag vX.Y.Z (if not exists)\n    - optionally pushes the tag (with --push)\n\nNotes:\n  - This script does NOT trigger GitHub Actions for you.\n  - Production deploy is manual in GitHub Actions (Deploy Production workflow).\n`
-  );
+  const HELP_TEXT = `Release helper (git automation)
+
+Usage:
+  node tools/scripts/release.mjs cut --version v1.2.3 [--push] [--tag] [--dry-run]
+  node tools/scripts/release.mjs tag --version v1.2.3 [--push] [--dry-run]
+
+What it does:
+  cut:
+    - checks clean working tree
+    - ensures you are on main and up-to-date with origin/main
+    - creates release branch: release/<version> (e.g. release/v1.2.3)
+    - optionally pushes the branch (with --push)
+    - optionally creates + pushes the tag (with --tag --push)
+
+  tag:
+    - checks clean working tree
+    - creates an annotated tag vX.Y.Z (if not exists)
+    - optionally pushes the tag (with --push)
+
+Notes:
+  - This script does NOT trigger GitHub Actions for you.
+  - Production deploy is manual in GitHub Actions (Deploy Production workflow).`;
+
+  console.log(`\n${HELP_TEXT}`);
 }
+
+assertNodeVersion();
 
 const args = parseArgs(process.argv.slice(2));
 

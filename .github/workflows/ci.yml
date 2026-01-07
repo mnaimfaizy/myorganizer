@@ -63,10 +63,15 @@ jobs:
         id: projects
         shell: bash
         run: |
+          set -euo pipefail
+
           BASE='${{ steps.affected.outputs.nx_base }}'
           HEAD='${{ steps.affected.outputs.nx_head }}'
 
-          AFFECTED_JSON=$(yarn -s nx show projects --affected --base="$BASE" --head="$HEAD" --json | node -e "const fs=require('fs'); const s=fs.readFileSync(0,'utf8'); process.stdout.write(JSON.stringify(JSON.parse(s))); ")
+          if ! AFFECTED_JSON=$(yarn -s nx show projects --affected --base="$BASE" --head="$HEAD" --json | node -e "const fs=require('fs'); const s=fs.readFileSync(0,'utf8'); process.stdout.write(JSON.stringify(JSON.parse(s))); "); then
+            echo "Error: Failed to compute affected projects JSON from Nx output." >&2
+            exit 1
+          fi
 
           echo "affected_projects=$AFFECTED_JSON" >> "$GITHUB_OUTPUT"
           echo "Affected projects: $AFFECTED_JSON"
