@@ -21,7 +21,7 @@ jobs:
           echo "Current ref: $GITHUB_REF"
           exit 1
 
-  deploy:
+  deploy-backend:
     if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
     needs: validate
     runs-on: ubuntu-latest
@@ -46,9 +46,6 @@ jobs:
       - name: Package backend (cPanel)
         run: yarn package:backend:api
 
-      - name: Package frontend (cPanel)
-        run: yarn package:myorganizer:web
-
       - name: Deploy backend to cPanel (production)
         uses: SamKirkland/FTP-Deploy-Action@4.3.3
         with:
@@ -58,6 +55,31 @@ jobs:
           local-dir: ./dist/deploy/backend-api/
           server-dir: ${{ secrets.FTP_PROD_BACKEND_DIR }}
           timeout: 300000
+
+  deploy-frontend:
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    needs: deploy-backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Package frontend (cPanel)
+        run: yarn package:myorganizer:web
 
       - name: Deploy frontend to cPanel (production)
         uses: SamKirkland/FTP-Deploy-Action@4.3.3
