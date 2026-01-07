@@ -64,7 +64,7 @@ For a **Production** deployment:
 
 - `vercel --prod`
 
-Note: This repo includes `apps/myorganizer/vercel.json` to ensure Vercel runs the install/build commands from the monorepo root (required for Nx).
+Note: This repo includes `apps/myorganizer/vercel.json` to ensure Vercel installs dependencies from the monorepo root, while building the Next.js app inside `apps/myorganizer` (so Vercel finds `.next` / `routes-manifest.json`).
 
 ## Environment variables
 
