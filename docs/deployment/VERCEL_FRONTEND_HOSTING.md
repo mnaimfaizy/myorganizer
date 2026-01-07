@@ -64,6 +64,8 @@ For a **Production** deployment:
 
 - `vercel --prod`
 
+Note: This repo includes `apps/myorganizer/vercel.json` to ensure Vercel runs the install/build commands from the monorepo root (required for Nx).
+
 ## Environment variables
 
 At minimum you must set the API base URL used by the frontend.

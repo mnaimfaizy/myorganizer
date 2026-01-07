@@ -1,0 +1,5 @@
+{
+  "installCommand": "cd ../.. && yarn install --frozen-lockfile",
+  "buildCommand": "cd ../.. && yarn build:myorganizer",
+  "outputDirectory": "dist/apps/myorganizer/.next"
+}
