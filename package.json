@@ -22,6 +22,8 @@
     "package:myorganizer:web": "nx run myorganizer:package",
     "build:backend": "nx run backend:build:production",
     "package:backend:api": "nx run backend:package",
+    "release:cut": "node tools/scripts/release.mjs cut",
+    "release:tag": "node tools/scripts/release.mjs tag",
     "test:backend": "nx test backend",
     "test:myorganizer": "nx test myorganizer",
     "json-api:generate": "yarn run tsoa spec-and-routes -c=apps/backend/tsoa.json",

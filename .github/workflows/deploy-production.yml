@@ -1,0 +1,56 @@
+name: Deploy Production (manual)
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Package backend (cPanel)
+        run: yarn package:backend:api
+
+      - name: Package frontend (cPanel)
+        run: yarn package:myorganizer:web
+
+      - name: Deploy backend to cPanel (production)
+        uses: SamKirkland/FTP-Deploy-Action@4.3.3
+        with:
+          server: ${{ secrets.FTP_PROD_HOST }}
+          username: ${{ secrets.FTP_PROD_BACKEND_USERNAME }}
+          password: ${{ secrets.FTP_PROD_BACKEND_PASSWORD }}
+          local-dir: ./dist/deploy/backend-api/
+          server-dir: ${{ secrets.FTP_PROD_BACKEND_DIR }}
+          timeout: 300000
+
+      - name: Deploy frontend to cPanel (production)
+        uses: SamKirkland/FTP-Deploy-Action@4.3.3
+        with:
+          server: ${{ secrets.FTP_PROD_HOST }}
+          username: ${{ secrets.FTP_PROD_FRONTEND_USERNAME }}
+          password: ${{ secrets.FTP_PROD_FRONTEND_PASSWORD }}
+          local-dir: ./dist/deploy/myorganizer-web/
+          server-dir: ${{ secrets.FTP_PROD_FRONTEND_DIR }}
+          timeout: 300000
