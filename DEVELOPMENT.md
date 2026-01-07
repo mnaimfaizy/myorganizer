@@ -161,7 +161,7 @@ Before you begin, ensure you have the following installed on your system:
 6. **Verify Installation**
 
    ```bash
-   nx graph
+   yarn nx graph
    ```
 
    This opens a visual representation of your project structure and dependencies.
@@ -202,7 +202,7 @@ docker-compose down -v
 yarn start:backend
 
 # Or using Nx directly
-nx serve backend
+yarn nx serve backend
 
 # The backend API will be available at http://localhost:3000
 ```
@@ -219,7 +219,7 @@ The development server features:
 yarn start:myorganizer
 
 # Or using Nx directly
-nx serve myorganizer
+yarn nx serve myorganizer
 
 # The frontend will be available at http://localhost:4200
 ```
@@ -394,10 +394,10 @@ myorganizer/
    yarn format:write
 
    # Lint code
-   nx lint
+   yarn nx lint
 
    # Run tests
-   nx test
+   yarn nx test
    ```
 
 4. **Commit Your Changes**
@@ -519,14 +519,14 @@ This regenerates `libs/app-api-client` based on the OpenAPI spec.
 
 ```bash
 # Lint all code
-nx lint
+yarn nx lint
 
 # Lint specific project
-nx lint backend
-nx lint myorganizer
+yarn nx lint backend
+yarn nx lint myorganizer
 
 # Auto-fix linting issues
-nx lint --fix
+yarn nx lint --fix
 ```
 
 #### Formatting
@@ -539,7 +539,7 @@ yarn format:check
 yarn format:write
 
 # Format specific files
-nx format:write --files=path/to/file.ts
+yarn nx format:write --files=path/to/file.ts
 ```
 
 #### Type Checking
@@ -548,10 +548,10 @@ TypeScript is checked automatically during build, but you can run it manually:
 
 ```bash
 # Check types for backend
-nx run backend:type-check
+yarn nx run backend:type-check
 
 # Check types for frontend
-nx run myorganizer:type-check
+yarn nx run myorganizer:type-check
 ```
 
 ## Creating Issues and Pull Requests
@@ -644,18 +644,18 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
    ```bash
    # Run all tests
-   nx test
+   yarn nx test
 
    # Run specific tests
-   nx test backend
-   nx test myorganizer
+   yarn nx test backend
+   yarn nx test myorganizer
 
    # Run E2E tests
-   nx e2e myorganizer-e2e
+   yarn nx e2e myorganizer-e2e
 
    # Check code quality
    yarn format:write
-   nx lint
+   yarn nx lint
    ```
 
 5. **Commit Your Changes**
@@ -761,18 +761,18 @@ The monorepo uses Jest for unit testing.
 
 ```bash
 # Run all tests
-nx test
+yarn nx test
 
 # Run tests for specific project
-nx test backend
-nx test myorganizer
-nx test web-ui
+yarn nx test backend
+yarn nx test myorganizer
+yarn nx test web-ui
 
 # Run tests in watch mode
-nx test backend --watch
+yarn nx test backend --watch
 
 # Run tests with coverage
-nx test backend --coverage
+yarn nx test backend --coverage
 ```
 
 #### Writing Tests
@@ -833,13 +833,13 @@ End-to-end tests use Playwright and are located in `apps/myorganizer-e2e`.
 
 ```bash
 # Run E2E tests
-nx e2e myorganizer-e2e
+yarn nx e2e myorganizer-e2e
 
 # Run E2E tests in UI mode (interactive)
-nx e2e myorganizer-e2e --ui
+yarn nx e2e myorganizer-e2e --ui
 
 # Run E2E tests for CI
-nx e2e-ci myorganizer-e2e
+yarn nx e2e-ci myorganizer-e2e
 ```
 
 **Writing E2E Tests**:
@@ -863,8 +863,8 @@ test('user can log in', async ({ page }) => {
 
 ```bash
 # Generate coverage report
-nx test backend --coverage
-nx test myorganizer --coverage
+yarn nx test backend --coverage
+yarn nx test myorganizer --coverage
 
 # View coverage in browser
 # Reports are in coverage/ directory
@@ -880,7 +880,7 @@ open coverage/apps/backend/index.html
 yarn build:backend
 
 # Or using Nx
-nx run backend:build:production
+yarn nx run backend:build:production
 
 # Output is in dist/apps/backend/
 ```
@@ -905,7 +905,7 @@ node main.js
 yarn build:myorganizer
 
 # Or using Nx
-nx run myorganizer:build:production
+yarn nx run myorganizer:build:production
 
 # Output is in dist/apps/myorganizer/
 ```
@@ -954,10 +954,10 @@ npx nx g @nx/express:app my-new-api
 
 ```bash
 # Update Nx and plugins
-nx migrate latest
+yarn nx migrate latest
 
 # Apply migrations
-nx migrate --run-migrations
+yarn nx migrate --run-migrations
 
 # Update other dependencies
 yarn upgrade-interactive
@@ -970,10 +970,10 @@ yarn upgrade package-name@latest
 
 ```bash
 # Open dependency graph
-nx graph
+yarn nx graph
 
 # Show affected projects
-nx affected:graph
+yarn nx affected:graph
 ```
 
 ## Troubleshooting
@@ -1045,16 +1045,16 @@ taskkill /PID <pid> /F
 **Problem**: Build fails with type errors
 ```bash
 # Solution: Clean Nx cache and rebuild
-nx reset
+yarn nx reset
 yarn install
-nx build backend --skip-nx-cache
+yarn nx build backend --skip-nx-cache
 ```
 
 **Problem**: Out of memory errors
 ```bash
 # Solution: Increase Node.js memory
 export NODE_OPTIONS="--max-old-space-size=4096"
-nx build backend
+yarn nx build backend
 ```
 
 ### Git Issues
@@ -1077,7 +1077,7 @@ git commit -m "chore: resolve merge conflicts"
 ```bash
 # Solution: Rebuild TypeScript paths
 yarn install
-nx reset
+yarn nx reset
 ```
 
 **Error**: `ENOSPC: System limit for number of file watchers reached`
