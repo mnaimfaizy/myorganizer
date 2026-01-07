@@ -15,9 +15,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
+  setup:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    outputs:
+      nx_base: ${{ steps.affected.outputs.nx_base }}
+      nx_head: ${{ steps.affected.outputs.nx_head }}
 
     steps:
       - name: Checkout
@@ -35,6 +39,7 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Compute affected range
+        id: affected
         shell: bash
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
@@ -48,10 +53,73 @@ jobs:
             fi
           fi
 
-          echo "NX_BASE=$BASE" >> "$GITHUB_ENV"
-          echo "NX_HEAD=$HEAD" >> "$GITHUB_ENV"
+          echo "nx_base=$BASE" >> "$GITHUB_OUTPUT"
+          echo "nx_head=$HEAD" >> "$GITHUB_OUTPUT"
           echo "Using NX_BASE=$BASE"
           echo "Using NX_HEAD=$HEAD"
 
-      - name: Lint, test, build (affected)
-        run: yarn nx affected -t lint test build --base=$NX_BASE --head=$NX_HEAD --parallel=3
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: setup
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Lint (affected)
+        run: yarn nx affected -t lint --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: setup
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Test (affected)
+        run: yarn nx affected -t test --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
+
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs:
+      - setup
+      - lint
+      - test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build (affected)
+        run: yarn nx affected -t build --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
