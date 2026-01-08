@@ -58,13 +58,11 @@ jobs:
           fi
 
           # Auto-select latest origin/release/* using version sort (expects release/vX.Y.Z)
-          latest="$(
-            git for-each-ref --format='%(refname:short)' refs/remotes/origin/release/
-            | sed 's#^origin/##'
-            | sed -n 's#^release/v\([0-9]\+\.[0-9]\+\.[0-9]\+\)$#release/v\1#p'
-            | sort -V
-            | tail -n 1
-          )"
+          latest="$(git for-each-ref --format='%(refname:short)' refs/remotes/origin/release/ \
+            | sed 's#^origin/##' \
+            | sed -n 's#^release/v\([0-9]\+\.[0-9]\+\.[0-9]\+\)$#release/v\1#p' \
+            | sort -V \
+            | tail -n 1)"
 
           if [ -z "${latest}" ]; then
             echo 'ERROR: No release branches found on origin (expected origin/release/vX.Y.Z).'
