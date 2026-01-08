@@ -9,7 +9,9 @@ const { composePlugins, withNx } = require('@nx/next');
 const nextConfig = {
   // cPanel-friendly Node deployment.
   // Produces .next/standalone which can run with `node server.js`.
-  output: 'standalone',
+  // NOTE: Vercel's Next.js builder does not require (and can conflict with) standalone output.
+  // Keep standalone for self-hosted/cPanel deployments, but disable it when building on Vercel.
+  ...(process.env.VERCEL === '1' ? {} : { output: 'standalone' }),
   poweredByHeader: false,
   nx: {
     // Set this to true if you would like to use SVGR
