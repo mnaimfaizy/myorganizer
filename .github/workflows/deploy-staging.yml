@@ -75,20 +75,14 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          cd apps/myorganizer
           # NOTE: This workflow deploys to a dedicated Vercel *staging* project.
           # In that project we use its "production" environment for our staging app,
           # therefore the --environment=production and --prod flags are intentional.
           # See VERCEL_FRONTEND_HOSTING.md and CI_CD_AND_RELEASE_PROCESS.md for details.
+          #
+          # Nx recommends keeping the Vercel project's Root Directory as the workspace root
+          # and setting the Build Command to `npx nx build myorganizer --prod`.
           npx vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
-
-          # Workaround for monorepo/Yarn hoisting with `--prebuilt` deployments:
-          # ensure `apps/myorganizer/node_modules` exists (as a symlink) so file-tracing
-          # does not produce absolute paths like `/node_modules/...` that won't exist
-          # in the uploaded prebuilt bundle.
-          if [ ! -e node_modules ]; then
-            ln -s ../../node_modules node_modules
-          fi
 
           echo '--- Vercel diagnostics (sanitized) ---'
           if [ -d .vercel ]; then
@@ -128,5 +122,6 @@ jobs:
           echo 'NOTE: Not printing any .vercel/.env* files to avoid leaking secrets.'
           echo '--- end Vercel diagnostics ---'
 
-          npx vercel@latest build --prod --token "$VERCEL_TOKEN"
-          npx vercel@latest deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+          # Avoid `--prebuilt`: prebuilt bundles can fail in monorepos due to file-trace
+          # references to paths that are not included in the upload.
+          npx vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"

@@ -36,14 +36,16 @@ Recommended mapping for this project:
 
 ## Option A: Deploy via Vercel dashboard (recommended)
 
+Follow Nx's official guidance for deploying Nx-managed Next.js apps to Vercel:
+
 1. Create a new project in Vercel and import your Git repository.
 2. When configuring the project:
-   - **Root Directory**: `apps/myorganizer`
-   - **Install Command**: `yarn install --frozen-lockfile`
-   - **Build Command**: from the repo root, run `yarn build:myorganizer`
-     - If Vercel forces running inside the root directory, use:
-       - `cd ../.. && yarn build:myorganizer`
-   - **Output Directory**: leave empty (Next.js defaults)
+
+- **Root Directory**: leave empty (workspace root)
+- **Framework Preset**: Next.js
+- **Build Command (override)**: `npx nx build myorganizer --prod`
+- **Output Directory (override)**: `dist/apps/myorganizer/.next`
+
 3. Set the environment variables (see below).
 4. Deploy.
 
@@ -64,9 +66,7 @@ For a **Production** deployment:
 
 - `vercel --prod`
 
-Note: This repo includes `apps/myorganizer/vercel.json` to ensure Vercel installs dependencies from the monorepo root, while building the Next.js app inside `apps/myorganizer` (so Vercel finds `.next` / `routes-manifest.json`).
-
-If you have configured **Output Directory** in the Vercel Project settings, ensure it is either empty or set to `.next`. Do not set it to `dist/...` for this app.
+Note: This repo includes `apps/myorganizer/vercel.json` for Vercel CLI-based deployments used by GitHub Actions.
 
 ## Environment variables
 
