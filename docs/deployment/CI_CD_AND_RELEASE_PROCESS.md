@@ -228,6 +228,7 @@ What this does:
 
 - Creates `release/vX.Y.Z` from `main`
 - Updates root `package.json` version to `X.Y.Z` and commits it (default)
+- Updates `CHANGELOG.md` with generated release notes and commits it (default)
 
 3. Production deploy:
 
@@ -238,8 +239,17 @@ What this does:
 
 - `yarn release:tag --version vX.Y.Z --push`
 
-This prints generated release notes based on commits since the previous tag.
-Use `--no-notes` to disable or `--notes-file <path>` to write them to a file.
+This updates `CHANGELOG.md` with generated notes based on commits since the previous tag.
+Use `--no-notes` to disable or `--notes-file <path>` to also write them to a separate file.
+
+### Release PR automation (optional)
+
+If enabled, a workflow can automatically:
+
+- Create a PR from `release/vX.Y.Z` → `main`
+- Enable GitHub auto-merge so it merges after required checks pass
+
+This requires repository settings to allow auto-merge and that branch protection rules do not require manual approvals.
 
 5. Create the GitHub Release:
 

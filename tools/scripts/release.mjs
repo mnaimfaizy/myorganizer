@@ -372,6 +372,73 @@ function generateReleaseNotesMarkdown({ versionTag, previousTag }) {
   return `${lines.join('\n')}\n`;
 }
 
+function generateChangelogEntryMarkdown({ versionTag, previousTag }) {
+  const fullNotes = generateReleaseNotesMarkdown({ versionTag, previousTag });
+
+  // Convert "# Release vX.Y.Z" -> "## vX.Y.Z - YYYY-MM-DD" (Keep it simple)
+  // Strip the first title line and reuse the remaining sections.
+  const date = new Date().toISOString().slice(0, 10);
+  const lines = fullNotes.split(/\r?\n/);
+  const withoutTitle = lines.slice(1).join('\n').trim();
+  return `## ${versionTag} - ${date}\n\n${withoutTitle}\n`;
+}
+
+function updateChangelogFile({ versionTag, previousTag, dryRun }) {
+  const filePath = 'CHANGELOG.md';
+  const heading = '# Changelog\n\n';
+
+  const entry = generateChangelogEntryMarkdown({
+    versionTag,
+    previousTag,
+  }).trimEnd();
+
+  let existing = '';
+  if (fs.existsSync(filePath)) {
+    existing = fs.readFileSync(filePath, 'utf8');
+  } else {
+    existing = heading;
+  }
+
+  if (!existing.trim()) {
+    existing = heading;
+  }
+
+  if (!existing.startsWith('# Changelog')) {
+    existing = `${heading}${existing.trimStart()}`;
+  }
+
+  // Replace existing section for this version if present; otherwise insert at top.
+  // Section boundaries are "## vX.Y.Z" ... until next "## " or EOF.
+  const escaped = String(versionTag).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const sectionRe = new RegExp(
+    `(^## ${escaped}\\b[\\s\\S]*?)(?=^## \\S|\\Z)`,
+    'm'
+  );
+
+  let nextContent;
+  if (sectionRe.test(existing)) {
+    nextContent = existing.replace(sectionRe, `${entry}\n\n`);
+  } else {
+    // Insert right after the initial heading block.
+    const firstEntryIdx = existing.indexOf('\n## ');
+    if (firstEntryIdx === -1) {
+      nextContent = `${existing.trimEnd()}\n\n${entry}\n`;
+    } else {
+      const head = existing.slice(0, firstEntryIdx).trimEnd();
+      const rest = existing.slice(firstEntryIdx).trimStart();
+      nextContent = `${head}\n\n${entry}\n\n${rest}\n`;
+    }
+  }
+
+  if (dryRun) {
+    console.log(`[dry-run] update ${filePath} for ${versionTag}`);
+    return true;
+  }
+
+  fs.writeFileSync(filePath, nextContent, 'utf8');
+  return true;
+}
+
 function printHelp() {
   const HELP_TEXT = `Release helper (git automation)
 
@@ -388,7 +455,10 @@ What it does:
       - use --no-version-bump to skip
     - optionally pushes the branch (with --push)
     - optionally creates + pushes the tag (with --tag --push)
-    - prints release notes (between previous tag and HEAD)
+    - updates CHANGELOG.md with generated notes and commits it (default)
+      - use --no-notes to skip
+      - use --notes-file <path> to also write the generated notes to a file
+    - prints release notes to stdout if --notes-file is NOT provided
       - use --no-notes to skip
       - use --notes-file <path> to write notes to a file
 
@@ -399,7 +469,10 @@ What it does:
       - use --no-version-bump to skip
     - creates an annotated tag vX.Y.Z (if not exists)
     - optionally pushes the tag (with --push)
-    - prints release notes (between previous tag and HEAD)
+    - updates CHANGELOG.md with generated notes and commits it (default)
+      - use --no-notes to skip
+      - use --notes-file <path> to also write the generated notes to a file
+    - prints release notes to stdout if --notes-file is NOT provided
       - use --no-notes to skip
       - use --notes-file <path> to write notes to a file
 
@@ -453,22 +526,34 @@ if (command === 'cut') {
     runInherit(createBranchCmd);
   }
 
+  let didChangeFiles = false;
+
   if (!args.skipVersionBump) {
-    const didUpdate = updateRootPackageJsonVersion(packageJsonVersion, {
-      dryRun: args.dryRun,
-    });
+    didChangeFiles =
+      updateRootPackageJsonVersion(packageJsonVersion, {
+        dryRun: args.dryRun,
+      }) || didChangeFiles;
+  }
 
-    if (didUpdate) {
-      const addCmd = 'git add package.json';
-      const commitCmd = `git commit -m "chore(release): ${version}"`;
+  if (shouldGenerateNotes) {
+    didChangeFiles =
+      updateChangelogFile({
+        versionTag: version,
+        previousTag,
+        dryRun: args.dryRun,
+      }) || didChangeFiles;
+  }
 
-      if (args.dryRun) {
-        console.log(`[dry-run] ${addCmd}`);
-        console.log(`[dry-run] ${commitCmd}`);
-      } else {
-        runInherit(addCmd);
-        runInherit(commitCmd);
-      }
+  if (didChangeFiles) {
+    const addCmd = 'git add package.json CHANGELOG.md';
+    const commitCmd = `git commit -m "chore(release): ${version}"`;
+
+    if (args.dryRun) {
+      console.log(`[dry-run] ${addCmd}`);
+      console.log(`[dry-run] ${commitCmd}`);
+    } else {
+      runInherit(addCmd);
+      runInherit(commitCmd);
     }
   }
 
@@ -537,22 +622,34 @@ if (command === 'cut') {
 assertOnBranch(releaseBranch);
 assertUpToDateWithOrigin(releaseBranch);
 
+let didTagPreCommitChanges = false;
+
 if (!args.skipVersionBump) {
-  const didUpdate = updateRootPackageJsonVersion(packageJsonVersion, {
-    dryRun: args.dryRun,
-  });
+  didTagPreCommitChanges =
+    updateRootPackageJsonVersion(packageJsonVersion, {
+      dryRun: args.dryRun,
+    }) || didTagPreCommitChanges;
+}
 
-  if (didUpdate) {
-    const addCmd = 'git add package.json';
-    const commitCmd = `git commit -m "chore(release): ${version}"`;
+if (shouldGenerateNotes) {
+  didTagPreCommitChanges =
+    updateChangelogFile({
+      versionTag: version,
+      previousTag,
+      dryRun: args.dryRun,
+    }) || didTagPreCommitChanges;
+}
 
-    if (args.dryRun) {
-      console.log(`[dry-run] ${addCmd}`);
-      console.log(`[dry-run] ${commitCmd}`);
-    } else {
-      runInherit(addCmd);
-      runInherit(commitCmd);
-    }
+if (didTagPreCommitChanges) {
+  const addCmd = 'git add package.json CHANGELOG.md';
+  const commitCmd = `git commit -m "chore(release): ${version}"`;
+
+  if (args.dryRun) {
+    console.log(`[dry-run] ${addCmd}`);
+    console.log(`[dry-run] ${commitCmd}`);
+  } else {
+    runInherit(addCmd);
+    runInherit(commitCmd);
   }
 }
 
