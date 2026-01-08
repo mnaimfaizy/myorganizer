@@ -240,7 +240,14 @@ What this does:
 - `yarn release:tag --version vX.Y.Z --push`
 
 This updates `CHANGELOG.md` with generated notes based on commits since the previous tag.
-Use `--no-notes` to disable or `--notes-file <path>` to also write them to a separate file.
+Use `--no-notes` to disable.
+
+Optional: write a rolling notes file
+
+- `--notes-file` (no value) writes to `RELEASE_NOTES.md`
+- `--notes-file <path>` writes to the provided path
+
+Note: We intentionally avoid generating per-version `release-notes-v*.md` files since `CHANGELOG.md` is the source of truth.
 
 ### Release PR automation (optional)
 
