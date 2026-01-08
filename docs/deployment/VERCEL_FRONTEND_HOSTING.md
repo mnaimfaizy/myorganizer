@@ -66,6 +66,8 @@ For a **Production** deployment:
 
 Note: This repo includes `apps/myorganizer/vercel.json` to ensure Vercel installs dependencies from the monorepo root, while building the Next.js app inside `apps/myorganizer` (so Vercel finds `.next` / `routes-manifest.json`).
 
+If you have configured **Output Directory** in the Vercel Project settings, ensure it is either empty or set to `.next`. Do not set it to `dist/...` for this app.
+
 ## Environment variables
 
 At minimum you must set the API base URL used by the frontend.

@@ -1,4 +1,5 @@
 {
   "installCommand": "cd ../.. && yarn install --frozen-lockfile",
-  "buildCommand": "npx next build"
+  "buildCommand": "npx next build && rm -rf dist/apps/myorganizer/.next && mkdir -p dist/apps/myorganizer && cp -R .next dist/apps/myorganizer/.next",
+  "outputDirectory": ".next"
 }

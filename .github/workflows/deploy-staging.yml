@@ -81,5 +81,44 @@ jobs:
           # therefore the --environment=production and --prod flags are intentional.
           # See VERCEL_FRONTEND_HOSTING.md and CI_CD_AND_RELEASE_PROCESS.md for details.
           npx vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
+
+          echo '--- Vercel diagnostics (sanitized) ---'
+          if [ -d .vercel ]; then
+            echo 'Vercel metadata files (names only):'
+            find .vercel -maxdepth 2 -type f -print
+          else
+            echo 'No .vercel directory found after vercel pull.'
+          fi
+
+          node <<'NODE'
+          const fs = require('fs');
+          const path = '.vercel/project.json';
+          if (!fs.existsSync(path)) {
+            console.log('No .vercel/project.json found (nothing to report).');
+            process.exit(0);
+          }
+
+          const raw = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const settings = raw.settings || {};
+
+          const sanitized = {
+            projectId: raw.projectId,
+            orgId: raw.orgId,
+            settings: {
+              framework: settings.framework,
+              rootDirectory: settings.rootDirectory,
+              installCommand: settings.installCommand,
+              buildCommand: settings.buildCommand,
+              outputDirectory: settings.outputDirectory,
+              nodeVersion: settings.nodeVersion,
+            },
+          };
+
+          console.log(JSON.stringify(sanitized, null, 2));
+          NODE
+
+          echo 'NOTE: Not printing any .vercel/.env* files to avoid leaking secrets.'
+          echo '--- end Vercel diagnostics ---'
+
           npx vercel@latest build --prod --token "$VERCEL_TOKEN"
           npx vercel@latest deploy --prebuilt --prod --token "$VERCEL_TOKEN"
