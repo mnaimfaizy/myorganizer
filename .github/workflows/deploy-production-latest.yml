@@ -27,10 +27,25 @@ jobs:
       - name: Find latest release branch
         id: find
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.event.ref_type }}
+          CREATED_REF: ${{ github.event.ref }}
         run: |
           set -euo pipefail
 
-          echo "Fetching release branches from origin..."
+          if [[ "${EVENT_NAME}" == 'create' && "${REF_TYPE}" == 'branch' ]]; then
+            if [[ ! "${CREATED_REF}" =~ ^release/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Created ref is not a semantic release branch: ${CREATED_REF}" >&2
+              exit 1
+            fi
+
+            echo "Release branch created: ${CREATED_REF}"
+            echo "release_branch=${CREATED_REF}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Selecting latest release branch from origin..."
 
           latest_branch="$(
             git ls-remote --heads origin 'release/v*' \
@@ -59,11 +74,10 @@ jobs:
             echo "- Latest release branch: `${{ steps.find.outputs.release_branch }}`"
             echo "- Trigger: `${{ github.event_name }}`"
             echo
-            echo "This workflow only **dispatches** the production deploy when started manually (workflow_dispatch)."
+            echo "This workflow **dispatches** the production deploy workflow for the selected release branch."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Dispatch production deploy workflow
-        if: ${{ github.event_name == 'workflow_dispatch' }}
         uses: actions/github-script@v7
         with:
           script: |
