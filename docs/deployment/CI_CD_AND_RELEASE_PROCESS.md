@@ -211,6 +211,44 @@ Use a versioned release branch so production deploys are unambiguous:
 
 5. Create a GitHub Release using the tag `v1.2.3` for traceability (release notes + links).
 
+### Release checklist (copy/paste)
+
+Replace `vX.Y.Z` with your version (example: `v0.1.1`).
+
+1. Ensure `main` is healthy:
+
+- CI is green
+- Staging deploy is successful
+
+2. Cut the release branch (recommended):
+
+- `yarn release:cut --version vX.Y.Z --push`
+
+What this does:
+
+- Creates `release/vX.Y.Z` from `main`
+- Updates root `package.json` version to `X.Y.Z` and commits it (default)
+
+3. Production deploy:
+
+- If you have auto-dispatch enabled, creating the release branch may automatically trigger the production deploy workflow.
+- Otherwise: GitHub → Actions → `Deploy Production (manual)` → Run workflow on `release/vX.Y.Z`
+
+4. Tag the release after a successful production deploy:
+
+- `yarn release:tag --version vX.Y.Z --push`
+
+5. Create the GitHub Release:
+
+- GitHub → Releases → Draft a new release
+- Tag: `vX.Y.Z`
+- Target: `release/vX.Y.Z`
+
+Notes:
+
+- If you need to skip bumping `package.json` version for any reason, pass `--no-version-bump`.
+- The scripts enforce strict `vX.Y.Z` (no prerelease strings).
+
 ### Release script notes
 
 The script lives at `tools/scripts/release.mjs` and automates the git steps.

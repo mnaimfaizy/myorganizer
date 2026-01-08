@@ -1,4 +1,5 @@
 import { execSync } from 'node:child_process';
+import fs from 'node:fs';
 
 function assertNodeVersion() {
   const major = Number(String(process.versions.node).split('.')[0]);
@@ -52,6 +53,11 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (token === '--no-version-bump' || token === '--skip-version-bump') {
+      args.skipVersionBump = true;
+      continue;
+    }
+
     if (token.startsWith('--version=')) {
       args.version = token.slice('--version='.length);
       continue;
@@ -85,6 +91,38 @@ function normalizeVersion(input) {
   }
 
   return `v${match[1]}.${match[2]}.${match[3]}`;
+}
+
+function toPackageJsonVersion(tagVersion) {
+  // v1.2.3 -> 1.2.3
+  return String(tagVersion).startsWith('v')
+    ? String(tagVersion).slice(1)
+    : String(tagVersion);
+}
+
+function updateRootPackageJsonVersion(nextVersion, { dryRun }) {
+  const filePath = 'package.json';
+  const content = fs.readFileSync(filePath, 'utf8');
+  const json = JSON.parse(content);
+
+  if (!json || typeof json !== 'object') {
+    die('Failed to parse package.json');
+  }
+
+  if (json.version === nextVersion) {
+    return false;
+  }
+
+  json.version = nextVersion;
+
+  const nextContent = `${JSON.stringify(json, null, 2)}\n`;
+  if (dryRun) {
+    console.log(`[dry-run] update ${filePath} version -> ${nextVersion}`);
+    return true;
+  }
+
+  fs.writeFileSync(filePath, nextContent, 'utf8');
+  return true;
 }
 
 function getCurrentBranch() {
@@ -150,11 +188,16 @@ What it does:
     - checks clean working tree
     - ensures you are on main and up-to-date with origin/main
     - creates release branch: release/<version> (e.g. release/v1.2.3)
+    - updates root package.json version to X.Y.Z and commits it (default)
+      - use --no-version-bump to skip
     - optionally pushes the branch (with --push)
     - optionally creates + pushes the tag (with --tag --push)
 
   tag:
     - checks clean working tree
+    - verifies you are on the release branch (release/<version>)
+    - ensures root package.json version matches X.Y.Z and commits it (default)
+      - use --no-version-bump to skip
     - creates an annotated tag vX.Y.Z (if not exists)
     - optionally pushes the tag (with --push)
 
@@ -187,6 +230,7 @@ if (!version) {
 }
 
 const releaseBranch = `release/${version}`;
+const packageJsonVersion = toPackageJsonVersion(version);
 
 assertCleanTree();
 
@@ -203,6 +247,25 @@ if (command === 'cut') {
     console.log(`[dry-run] ${createBranchCmd}`);
   } else {
     runInherit(createBranchCmd);
+  }
+
+  if (!args.skipVersionBump) {
+    const didUpdate = updateRootPackageJsonVersion(packageJsonVersion, {
+      dryRun: args.dryRun,
+    });
+
+    if (didUpdate) {
+      const addCmd = 'git add package.json';
+      const commitCmd = `git commit -m "chore(release): ${version}"`;
+
+      if (args.dryRun) {
+        console.log(`[dry-run] ${addCmd}`);
+        console.log(`[dry-run] ${commitCmd}`);
+      } else {
+        runInherit(addCmd);
+        runInherit(commitCmd);
+      }
+    }
   }
 
   if (args.push) {
@@ -248,6 +311,28 @@ if (command === 'cut') {
 }
 
 // command === 'tag'
+assertOnBranch(releaseBranch);
+assertUpToDateWithOrigin(releaseBranch);
+
+if (!args.skipVersionBump) {
+  const didUpdate = updateRootPackageJsonVersion(packageJsonVersion, {
+    dryRun: args.dryRun,
+  });
+
+  if (didUpdate) {
+    const addCmd = 'git add package.json';
+    const commitCmd = `git commit -m "chore(release): ${version}"`;
+
+    if (args.dryRun) {
+      console.log(`[dry-run] ${addCmd}`);
+      console.log(`[dry-run] ${commitCmd}`);
+    } else {
+      runInherit(addCmd);
+      runInherit(commitCmd);
+    }
+  }
+}
+
 if (tagExists(version)) {
   die(`Tag already exists: ${version}`);
 }
