@@ -238,6 +238,9 @@ What this does:
 
 - `yarn release:tag --version vX.Y.Z --push`
 
+This prints generated release notes based on commits since the previous tag.
+Use `--no-notes` to disable or `--notes-file <path>` to write them to a file.
+
 5. Create the GitHub Release:
 
 - GitHub → Releases → Draft a new release

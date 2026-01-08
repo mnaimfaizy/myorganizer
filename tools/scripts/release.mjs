@@ -58,6 +58,26 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (token === '--no-notes' || token === '--skip-notes') {
+      args.skipNotes = true;
+      continue;
+    }
+
+    if (token.startsWith('--notes-file=')) {
+      args.notesFile = token.slice('--notes-file='.length);
+      continue;
+    }
+
+    if (token === '--notes-file') {
+      const next = argv[i + 1];
+      if (!next || next.startsWith('-')) {
+        die('Missing value for --notes-file option.');
+      }
+      args.notesFile = next;
+      i += 1;
+      continue;
+    }
+
     if (token.startsWith('--version=')) {
       args.version = token.slice('--version='.length);
       continue;
@@ -176,6 +196,182 @@ function tagExists(tagName) {
   }
 }
 
+function parseSemverTag(tag) {
+  const match = /^v(\d+)\.(\d+)\.(\d+)$/.exec(String(tag));
+  if (!match) return null;
+  return {
+    major: Number(match[1]),
+    minor: Number(match[2]),
+    patch: Number(match[3]),
+  };
+}
+
+function compareSemver(a, b) {
+  if (a.major !== b.major) return a.major - b.major;
+  if (a.minor !== b.minor) return a.minor - b.minor;
+  return a.patch - b.patch;
+}
+
+function listSemverTags() {
+  const raw = run("git tag -l 'v[0-9]*.[0-9]*.[0-9]*'");
+  if (!raw) return [];
+  return raw
+    .split(/\r?\n/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .filter((t) => parseSemverTag(t) !== null);
+}
+
+function getPreviousSemverTag(currentTag) {
+  const current = parseSemverTag(currentTag);
+  if (!current) return null;
+
+  const tags = listSemverTags();
+  const prev = tags
+    .map((t) => ({ tag: t, semver: parseSemverTag(t) }))
+    .filter((x) => x.semver)
+    .filter((x) => compareSemver(x.semver, current) < 0)
+    .sort((a, b) => compareSemver(a.semver, b.semver));
+
+  return prev.length ? prev[prev.length - 1].tag : null;
+}
+
+function getGitHubRepoSlugFromRemote() {
+  try {
+    const url = run('git config --get remote.origin.url');
+    if (!url) return null;
+
+    // https://github.com/owner/repo.git
+    const httpsMatch =
+      /^https?:\/\/github\.com\/([^/]+)\/([^/]+?)(?:\.git)?$/.exec(url);
+    if (httpsMatch) return `${httpsMatch[1]}/${httpsMatch[2]}`;
+
+    // git@github.com:owner/repo.git
+    const sshMatch = /^git@github\.com:([^/]+)\/([^/]+?)(?:\.git)?$/.exec(url);
+    if (sshMatch) return `${sshMatch[1]}/${sshMatch[2]}`;
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function classifyCommit(subject, body) {
+  const s = String(subject || '').trim();
+  const b = String(body || '');
+
+  const hasBreaking = /BREAKING CHANGE:/i.test(b);
+  const m = /^([a-zA-Z]+)(\([^)]*\))?(!)?:\s+(.+)$/.exec(s);
+
+  if (!m) {
+    return {
+      type: 'other',
+      scope: null,
+      description: s || '(no subject)',
+      breaking: hasBreaking,
+    };
+  }
+
+  const type = m[1].toLowerCase();
+  const scope = m[2] ? m[2].slice(1, -1) : null;
+  const bang = Boolean(m[3]);
+  const description = m[4];
+
+  return { type, scope, description, breaking: bang || hasBreaking };
+}
+
+function generateReleaseNotesMarkdown({ versionTag, previousTag }) {
+  const slug = getGitHubRepoSlugFromRemote();
+  const title = `# Release ${versionTag}`;
+  const date = new Date().toISOString().slice(0, 10);
+
+  let rangeLabel = 'Initial release';
+  let compareUrl = null;
+
+  if (previousTag) {
+    rangeLabel = `Changes since ${previousTag}`;
+    if (slug) {
+      compareUrl = `https://github.com/${slug}/compare/${previousTag}...${versionTag}`;
+    }
+  }
+
+  const logRange = previousTag ? `${previousTag}..HEAD` : 'HEAD';
+
+  const raw = run(
+    `git log --no-merges --pretty=format:%H%x1f%s%x1f%b%x1e ${logRange}`
+  );
+
+  const entries = raw
+    ? raw
+        .split('\x1e')
+        .map((chunk) => chunk.trim())
+        .filter(Boolean)
+        .map((chunk) => {
+          const [hash, subject, body] = chunk.split('\x1f');
+          return { hash, subject, body };
+        })
+    : [];
+
+  const sections = {
+    breaking: [],
+    feat: [],
+    fix: [],
+    perf: [],
+    docs: [],
+    refactor: [],
+    test: [],
+    ci: [],
+    chore: [],
+    other: [],
+  };
+
+  for (const e of entries) {
+    const c = classifyCommit(e.subject, e.body);
+    const short = String(e.hash || '').slice(0, 7);
+    const scope = c.scope ? `**${c.scope}**: ` : '';
+    const line = `- ${scope}${c.description} (${short})`;
+
+    if (c.breaking) {
+      sections.breaking.push(line);
+      continue;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(sections, c.type)) {
+      sections[c.type].push(line);
+    } else {
+      sections.other.push(line);
+    }
+  }
+
+  const lines = [title, '', `Date: ${date}`, '', `## ${rangeLabel}`];
+
+  if (compareUrl) {
+    lines.push('', `Compare: ${compareUrl}`);
+  }
+
+  const addSection = (heading, arr) => {
+    if (!arr.length) return;
+    lines.push('', `### ${heading}`, ...arr);
+  };
+
+  addSection('Breaking changes', sections.breaking);
+  addSection('Features', sections.feat);
+  addSection('Fixes', sections.fix);
+  addSection('Performance', sections.perf);
+  addSection('Documentation', sections.docs);
+  addSection('Refactors', sections.refactor);
+  addSection('Tests', sections.test);
+  addSection('CI', sections.ci);
+  addSection('Chores', sections.chore);
+  addSection('Other changes', sections.other);
+
+  if (!entries.length) {
+    lines.push('', '_No changes detected in git log range._');
+  }
+
+  return `${lines.join('\n')}\n`;
+}
+
 function printHelp() {
   const HELP_TEXT = `Release helper (git automation)
 
@@ -192,6 +388,9 @@ What it does:
       - use --no-version-bump to skip
     - optionally pushes the branch (with --push)
     - optionally creates + pushes the tag (with --tag --push)
+    - prints release notes (between previous tag and HEAD)
+      - use --no-notes to skip
+      - use --notes-file <path> to write notes to a file
 
   tag:
     - checks clean working tree
@@ -200,6 +399,9 @@ What it does:
       - use --no-version-bump to skip
     - creates an annotated tag vX.Y.Z (if not exists)
     - optionally pushes the tag (with --push)
+    - prints release notes (between previous tag and HEAD)
+      - use --no-notes to skip
+      - use --notes-file <path> to write notes to a file
 
 Notes:
   - This script does NOT trigger GitHub Actions for you.
@@ -231,6 +433,8 @@ if (!version) {
 
 const releaseBranch = `release/${version}`;
 const packageJsonVersion = toPackageJsonVersion(version);
+const shouldGenerateNotes = !args.skipNotes;
+const previousTag = shouldGenerateNotes ? getPreviousSemverTag(version) : null;
 
 assertCleanTree();
 
@@ -303,6 +507,25 @@ if (command === 'cut') {
     }
   }
 
+  if (shouldGenerateNotes) {
+    const notes = generateReleaseNotesMarkdown({
+      versionTag: version,
+      previousTag,
+    });
+
+    if (args.notesFile) {
+      if (args.dryRun) {
+        console.log(`[dry-run] write release notes -> ${args.notesFile}`);
+      } else {
+        fs.writeFileSync(args.notesFile, notes, 'utf8');
+      }
+      console.log(`\nRelease notes written to: ${args.notesFile}`);
+    } else {
+      console.log(`\n--- RELEASE NOTES (${version}) ---\n`);
+      process.stdout.write(notes);
+    }
+  }
+
   console.log(`\nRelease branch ready: ${releaseBranch}`);
   console.log(
     'Next: run GitHub Actions → Deploy Production (manual) for this branch.'
@@ -330,6 +553,31 @@ if (!args.skipVersionBump) {
       runInherit(addCmd);
       runInherit(commitCmd);
     }
+  }
+}
+
+if (args.push && !args.dryRun) {
+  // If we created a commit (version bump), make sure origin branch also advances.
+  // This keeps the branch/tag aligned for CI/CD and traceability.
+  runInherit(`git push origin ${releaseBranch}`);
+}
+
+if (shouldGenerateNotes) {
+  const notes = generateReleaseNotesMarkdown({
+    versionTag: version,
+    previousTag,
+  });
+
+  if (args.notesFile) {
+    if (args.dryRun) {
+      console.log(`[dry-run] write release notes -> ${args.notesFile}`);
+    } else {
+      fs.writeFileSync(args.notesFile, notes, 'utf8');
+    }
+    console.log(`\nRelease notes written to: ${args.notesFile}`);
+  } else {
+    console.log(`\n--- RELEASE NOTES (${version}) ---\n`);
+    process.stdout.write(notes);
   }
 }
 
