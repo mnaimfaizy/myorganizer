@@ -178,6 +178,20 @@ function assertUpToDateWithOrigin(branch) {
   }
 }
 
+function assertNotBehindOrigin(branch) {
+  runInherit('git fetch origin --prune');
+
+  // Allow local branch to be ahead, but not behind.
+  // Equivalent to: origin/branch must be an ancestor of branch.
+  try {
+    run(`git merge-base --is-ancestor origin/${branch} ${branch}`);
+  } catch {
+    die(
+      `Local ${branch} is behind origin/${branch}. Run: git pull --ff-only before tagging.`
+    );
+  }
+}
+
 function branchExists(branchName) {
   try {
     run(`git rev-parse --verify ${branchName}`);
@@ -620,7 +634,14 @@ if (command === 'cut') {
 
 // command === 'tag'
 assertOnBranch(releaseBranch);
-assertUpToDateWithOrigin(releaseBranch);
+
+// If we plan to push, allow local to be ahead of origin (we'll push before tagging).
+// If not pushing, be strict to avoid creating a tag that only exists locally.
+if (args.push) {
+  assertNotBehindOrigin(releaseBranch);
+} else {
+  assertUpToDateWithOrigin(releaseBranch);
+}
 
 let didTagPreCommitChanges = false;
 
