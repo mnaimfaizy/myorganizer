@@ -1,5 +1,6 @@
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
+import path from 'node:path';
 
 function assertNodeVersion() {
   const major = Number(String(process.versions.node).split('.')[0]);
@@ -19,6 +20,21 @@ function run(command, options = {}) {
 
 function runInherit(command) {
   execSync(command, { stdio: 'inherit' });
+}
+
+function quoteShellArg(value) {
+  const v = String(value);
+  // Minimal, cross-platform-friendly quoting for paths/args.
+  // Wrap in double quotes and escape internal double quotes.
+  return `"${v.replaceAll('"', '\\"')}"`;
+}
+
+function ensureParentDirExists(filePath, { dryRun }) {
+  const dir = path.dirname(filePath);
+  if (!dir || dir === '.' || dir === filePath) return;
+
+  if (dryRun) return;
+  fs.mkdirSync(dir, { recursive: true });
 }
 
 function die(message) {
@@ -542,6 +558,24 @@ if (command === 'cut') {
 
   let didChangeFiles = false;
 
+  let notes = null;
+  if (shouldGenerateNotes) {
+    notes = generateReleaseNotesMarkdown({
+      versionTag: version,
+      previousTag,
+    });
+
+    if (args.notesFile) {
+      ensureParentDirExists(args.notesFile, { dryRun: args.dryRun });
+      if (args.dryRun) {
+        console.log(`[dry-run] write release notes -> ${args.notesFile}`);
+      } else {
+        fs.writeFileSync(args.notesFile, notes, 'utf8');
+      }
+      didChangeFiles = true;
+    }
+  }
+
   if (!args.skipVersionBump) {
     didChangeFiles =
       updateRootPackageJsonVersion(packageJsonVersion, {
@@ -559,7 +593,11 @@ if (command === 'cut') {
   }
 
   if (didChangeFiles) {
-    const addCmd = 'git add package.json CHANGELOG.md';
+    const filesToAdd = ['package.json', 'CHANGELOG.md'];
+    if (args.notesFile) {
+      filesToAdd.push(args.notesFile);
+    }
+    const addCmd = `git add ${filesToAdd.map(quoteShellArg).join(' ')}`;
     const commitCmd = `git commit -m "chore(release): ${version}"`;
 
     if (args.dryRun) {
@@ -607,17 +645,7 @@ if (command === 'cut') {
   }
 
   if (shouldGenerateNotes) {
-    const notes = generateReleaseNotesMarkdown({
-      versionTag: version,
-      previousTag,
-    });
-
     if (args.notesFile) {
-      if (args.dryRun) {
-        console.log(`[dry-run] write release notes -> ${args.notesFile}`);
-      } else {
-        fs.writeFileSync(args.notesFile, notes, 'utf8');
-      }
       console.log(`\nRelease notes written to: ${args.notesFile}`);
     } else {
       console.log(`\n--- RELEASE NOTES (${version}) ---\n`);
@@ -645,6 +673,24 @@ if (args.push) {
 
 let didTagPreCommitChanges = false;
 
+let notes = null;
+if (shouldGenerateNotes) {
+  notes = generateReleaseNotesMarkdown({
+    versionTag: version,
+    previousTag,
+  });
+
+  if (args.notesFile) {
+    ensureParentDirExists(args.notesFile, { dryRun: args.dryRun });
+    if (args.dryRun) {
+      console.log(`[dry-run] write release notes -> ${args.notesFile}`);
+    } else {
+      fs.writeFileSync(args.notesFile, notes, 'utf8');
+    }
+    didTagPreCommitChanges = true;
+  }
+}
+
 if (!args.skipVersionBump) {
   didTagPreCommitChanges =
     updateRootPackageJsonVersion(packageJsonVersion, {
@@ -662,7 +708,11 @@ if (shouldGenerateNotes) {
 }
 
 if (didTagPreCommitChanges) {
-  const addCmd = 'git add package.json CHANGELOG.md';
+  const filesToAdd = ['package.json', 'CHANGELOG.md'];
+  if (args.notesFile) {
+    filesToAdd.push(args.notesFile);
+  }
+  const addCmd = `git add ${filesToAdd.map(quoteShellArg).join(' ')}`;
   const commitCmd = `git commit -m "chore(release): ${version}"`;
 
   if (args.dryRun) {
@@ -681,17 +731,7 @@ if (args.push && !args.dryRun) {
 }
 
 if (shouldGenerateNotes) {
-  const notes = generateReleaseNotesMarkdown({
-    versionTag: version,
-    previousTag,
-  });
-
   if (args.notesFile) {
-    if (args.dryRun) {
-      console.log(`[dry-run] write release notes -> ${args.notesFile}`);
-    } else {
-      fs.writeFileSync(args.notesFile, notes, 'utf8');
-    }
     console.log(`\nRelease notes written to: ${args.notesFile}`);
   } else {
     console.log(`\n--- RELEASE NOTES (${version}) ---\n`);
