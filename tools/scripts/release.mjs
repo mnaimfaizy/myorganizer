@@ -86,11 +86,13 @@ function parseArgs(argv) {
 
     if (token === '--notes-file') {
       const next = argv[i + 1];
+      // Allow "--notes-file" without a value to default to a rolling file.
       if (!next || next.startsWith('-')) {
-        die('Missing value for --notes-file option.');
+        args.notesFile = 'RELEASE_NOTES.md';
+      } else {
+        args.notesFile = next;
+        i += 1;
       }
-      args.notesFile = next;
-      i += 1;
       continue;
     }
 
@@ -243,13 +245,52 @@ function compareSemver(a, b) {
 }
 
 function listSemverTags() {
-  const raw = run("git tag -l 'v[0-9]*.[0-9]*.[0-9]*'");
+  // Use double quotes for cross-platform compatibility (Windows cmd.exe does not treat single quotes as quotes).
+  const raw = run('git tag -l "v[0-9]*.[0-9]*.[0-9]*"');
   if (!raw) return [];
   return raw
     .split(/\r?\n/)
     .map((t) => t.trim())
     .filter(Boolean)
     .filter((t) => parseSemverTag(t) !== null);
+}
+
+function getLatestReachableSemverTag({ excludeTag } = {}) {
+  // Find the most recent semver tag that is reachable from HEAD.
+  // Prefer semantic sort (highest version) then verify ancestry.
+  // This avoids relying on GitHub releases or fragile shell quoting.
+  const raw = run('git tag -l "v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname');
+  if (!raw) return null;
+
+  const tags = raw
+    .split(/\r?\n/)
+    .map((t) => t.trim())
+    .filter(Boolean)
+    .filter((t) => parseSemverTag(t) !== null)
+    .filter((t) => !excludeTag || t !== excludeTag);
+
+  for (const t of tags) {
+    try {
+      run(`git merge-base --is-ancestor ${t} HEAD`);
+      return t;
+    } catch {
+      // Not reachable from current HEAD; skip.
+    }
+  }
+
+  return null;
+}
+
+function normalizeNotesFilePath(notesFile) {
+  if (!notesFile) return notesFile;
+
+  // Discourage accumulating versioned release notes files.
+  // Prefer a single rolling file since CHANGELOG.md is the source of truth.
+  if (/^release-notes-v\d+\.\d+\.\d+\.md$/i.test(path.basename(notesFile))) {
+    return 'RELEASE_NOTES.md';
+  }
+
+  return notesFile;
 }
 
 function getPreviousSemverTag(currentTag) {
@@ -537,7 +578,10 @@ if (!version) {
 const releaseBranch = `release/${version}`;
 const packageJsonVersion = toPackageJsonVersion(version);
 const shouldGenerateNotes = !args.skipNotes;
-const previousTag = shouldGenerateNotes ? getPreviousSemverTag(version) : null;
+args.notesFile = normalizeNotesFilePath(args.notesFile);
+const previousTag = shouldGenerateNotes
+  ? getLatestReachableSemverTag({ excludeTag: version })
+  : null;
 
 assertCleanTree();
 

@@ -1,19 +1,21 @@
 name: Release PR (auto)
 
 on:
-  create:
+  push:
+    branches:
+      - 'release/v*'
+  workflow_dispatch:
 
 permissions:
   contents: write
   pull-requests: write
 
 concurrency:
-  group: release-pr-${{ github.event.ref }}
+  group: release-pr-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
   create-pr:
-    if: ${{ github.event.ref_type == 'branch' && startsWith(github.event.ref, 'release/v') }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -24,7 +26,7 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const releaseBranch = context.payload.ref;
+            const releaseBranch = (context.ref || '').replace('refs/heads/', '');
 
             if (!/^release\/v\d+\.\d+\.\d+$/.test(releaseBranch)) {
               core.info(`Not a semantic release branch: ${releaseBranch}. Skipping.`);
