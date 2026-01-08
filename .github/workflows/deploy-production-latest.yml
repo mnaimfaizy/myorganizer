@@ -2,6 +2,7 @@ name: Deploy Production (latest release)
 
 on:
   workflow_dispatch:
+  create:
 
 permissions:
   contents: read
@@ -13,6 +14,7 @@ concurrency:
 
 jobs:
   dispatch:
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'create' && github.event.ref_type == 'branch' && startsWith(github.event.ref, 'release/v')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -47,7 +49,21 @@ jobs:
           echo "Latest release branch: ${latest_branch}"
           echo "release_branch=${latest_branch}" >> "$GITHUB_OUTPUT"
 
+      - name: Summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo "## Deploy Production (latest release)"
+            echo
+            echo "- Latest release branch: `${{ steps.find.outputs.release_branch }}`"
+            echo "- Trigger: `${{ github.event_name }}`"
+            echo
+            echo "This workflow only **dispatches** the production deploy when started manually (workflow_dispatch)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Dispatch production deploy workflow
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         uses: actions/github-script@v7
         with:
           script: |
