@@ -30,12 +30,13 @@ jobs:
       - name: Validate release branch
         run: |
           set -euo pipefail
-          if [[ "$GITHUB_REF" == refs/heads/release/* || "$GITHUB_REF" == refs/heads/main ]]; then
+          if [[ "$GITHUB_REF" == refs/heads/release/* ]]; then
             exit 0
           fi
 
-          echo "ERROR: Production deploy workflow must be run from main or release/* branches."
+          echo "ERROR: This workflow must be run from a release/* branch due to GitHub Environment protection rules."
           echo "Current ref: $GITHUB_REF"
+          echo "Tip: Use the 'Deploy Production (latest release)' workflow to auto-select the newest release branch."
           exit 1
 
       - name: Select release ref
@@ -73,7 +74,7 @@ jobs:
           echo "release_ref=${latest}" >> "$GITHUB_OUTPUT"
 
   deploy-backend:
-    if: ${{ startsWith(github.ref, 'refs/heads/release/') || github.ref == 'refs/heads/main' }}
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
     needs: validate
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -109,7 +110,7 @@ jobs:
           timeout: 300000
 
   deploy-frontend:
-    if: ${{ startsWith(github.ref, 'refs/heads/release/') || github.ref == 'refs/heads/main' }}
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
     needs: deploy-backend
     runs-on: ubuntu-latest
     timeout-minutes: 45

@@ -1,0 +1,88 @@
+name: Deploy Production (latest release)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: deploy-production-latest
+  cancel-in-progress: false
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Find latest release branch
+        id: find
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const repo = context.repo.repo;
+            const owner = context.repo.owner;
+
+            // Fetch refs under heads/release/ (includes refs/heads/release/vX.Y.Z)
+            const refs = await github.paginate(github.rest.git.getMatchingRefs, {
+              owner,
+              repo,
+              ref: 'heads/release/',
+              per_page: 100,
+            });
+
+            const branches = refs
+              .map((r) => r.ref)
+              .filter(Boolean)
+              .map((ref) => ref.replace('refs/heads/', ''))
+              .filter((name) => /^release\/v\d+\.\d+\.\d+$/.test(name));
+
+            if (branches.length === 0) {
+              core.setFailed('No release branches found (expected release/vX.Y.Z).');
+              return;
+            }
+
+            const parse = (name) => {
+              const m = /^release\/v(\d+)\.(\d+)\.(\d+)$/.exec(name);
+              return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+            };
+
+            const compare = (a, b) => {
+              for (let i = 0; i < 3; i += 1) {
+                if (a[i] !== b[i]) return a[i] - b[i];
+              }
+              return 0;
+            };
+
+            branches.sort((a, b) => compare(parse(a), parse(b)));
+            const latest = branches[branches.length - 1];
+
+            core.info(`Latest release branch: ${latest}`);
+            core.setOutput('release_branch', latest);
+
+      - name: Dispatch production deploy workflow
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const releaseBranch = '${{ steps.find.outputs.release_branch }}';
+
+            if (!releaseBranch) {
+              core.setFailed('No release_branch output was produced.');
+              return;
+            }
+
+            await github.rest.actions.createWorkflowDispatch({
+              owner,
+              repo,
+              workflow_id: 'deploy-production.yml',
+              ref: releaseBranch,
+              inputs: {
+                release_branch: releaseBranch,
+              },
+            });
+
+            core.info(`Dispatched deploy-production.yml on ${releaseBranch}`);
