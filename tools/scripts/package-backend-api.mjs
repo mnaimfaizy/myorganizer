@@ -216,7 +216,12 @@ const postinstallScript = [
 ].join('\n');
 
 fs.writeFileSync(postinstallScriptAbsPath, `${postinstallScript}\n`, 'utf8');
-deployPkg.scripts.postinstall = `node ${postinstallScriptRelPath}`;
+// cPanel sometimes runs npm scripts from nodevenv/.../lib and can set npm_package_json
+// to nodevenv/lib/package.json, so resolving files relative to npm_package_json is unreliable.
+// Instead: locate the deployed bundle root (INIT_CWD / Passenger envs) and require the
+// already-generated scripts/postinstall.cjs from there.
+deployPkg.scripts.postinstall =
+  "node -e \"const fs=require('fs');const path=require('path');const candidates=[process.env.INIT_CWD,process.env.PASSENGER_APP_ROOT,process.env.npm_config_local_prefix,process.env.PWD,process.cwd()].filter(Boolean);const scriptPath=(candidates.map((d)=>path.join(d,'scripts','postinstall.cjs')).find((p)=>fs.existsSync(p)))||path.join(process.cwd(),'scripts','postinstall.cjs');if(!fs.existsSync(scriptPath)){console.log('[postinstall] scripts/postinstall.cjs not found; skipping (likely cPanel ran install from nodevenv/lib)');console.log('[postinstall] cwd:',process.cwd());console.log('[postinstall] INIT_CWD:',process.env.INIT_CWD||'');console.log('[postinstall] PASSENGER_APP_ROOT:',process.env.PASSENGER_APP_ROOT||'');process.exit(0);}require(scriptPath);\"";
 
 writeJson(path.join(deployRoot, 'package.json'), deployPkg);
 
