@@ -82,6 +82,14 @@ jobs:
           # See VERCEL_FRONTEND_HOSTING.md and CI_CD_AND_RELEASE_PROCESS.md for details.
           npx vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
 
+          # Workaround for monorepo/Yarn hoisting with `--prebuilt` deployments:
+          # ensure `apps/myorganizer/node_modules` exists (as a symlink) so file-tracing
+          # does not produce absolute paths like `/node_modules/...` that won't exist
+          # in the uploaded prebuilt bundle.
+          if [ ! -e node_modules ]; then
+            ln -s ../../node_modules node_modules
+          fi
+
           echo '--- Vercel diagnostics (sanitized) ---'
           if [ -d .vercel ]; then
             echo 'Vercel metadata files (names only):'
