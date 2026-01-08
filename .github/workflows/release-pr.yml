@@ -97,7 +97,7 @@ jobs:
           {
             echo "## Release PR automation"
             echo
-            echo "- Branch: \`${{ github.event.ref }}\`"
+            echo "- Branch: \`${{ github.ref_name }}\`"
             echo "- Target: \`main\`"
             echo
             echo "If auto-merge is enabled in repo settings, the PR will merge after required checks pass."
