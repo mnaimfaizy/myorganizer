@@ -17,6 +17,7 @@ import {
   unlockVaultWithPassphrase,
   unlockVaultWithRecoveryKey,
 } from '../lib/vault/vault';
+import { useOptionalVaultSession } from './vault-session';
 
 type VaultGateProps = {
   title: string;
@@ -36,8 +37,15 @@ function downloadTextFile(filename: string, content: string) {
 export default function VaultGate(props: VaultGateProps) {
   const { toast } = useToast();
 
+  const vaultSession = useOptionalVaultSession();
+
   const [vaultExists, setVaultExists] = useState<boolean>(false);
-  const [masterKeyBytes, setMasterKeyBytes] = useState<Uint8Array | null>(null);
+  const [localMasterKeyBytes, setLocalMasterKeyBytes] =
+    useState<Uint8Array | null>(null);
+
+  const masterKeyBytes = vaultSession?.masterKeyBytes ?? localMasterKeyBytes;
+  const setMasterKeyBytes =
+    vaultSession?.setMasterKeyBytes ?? setLocalMasterKeyBytes;
 
   // Setup state
   const [setupPassphrase, setSetupPassphrase] = useState('');
@@ -111,7 +119,6 @@ export default function VaultGate(props: VaultGateProps) {
                     passphrase: setupPassphrase,
                   });
                   setRecoveryKey(result.recoveryKey);
-                  setVaultExists(true);
                   toast({
                     title: 'Vault created',
                     description: 'Save your recovery key now.',
@@ -156,6 +163,19 @@ export default function VaultGate(props: VaultGateProps) {
                     }}
                   >
                     Copy
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => {
+                      setVaultExists(true);
+                      toast({
+                        title: 'Next step',
+                        description: 'Unlock your vault with your passphrase.',
+                      });
+                    }}
+                  >
+                    I saved it
                   </Button>
                 </div>
               </div>
