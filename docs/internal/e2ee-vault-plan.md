@@ -127,6 +127,13 @@ type ProviderPrivateNote = {
 
 If you want to hide even the list of banks/utilities a user has, then encrypt `ProviderLink` too.
 
+Update (Jan 2026): we are treating address/mobile "where used" lists as vault-private.
+
+- Usage locations are stored **inside the encrypted vault blobs** alongside addresses/mobile numbers.
+- Dedicated detail pages render these encrypted usage-location records.
+
+See: `docs/internal/address-mobile-usage-plan.md`.
+
 ---
 
 ## UI Navigation Flow
