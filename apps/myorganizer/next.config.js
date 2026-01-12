@@ -3,6 +3,13 @@
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { composePlugins, withNx } = require('@nx/next');
 
+// Ensure consistent production builds regardless of the caller's environment.
+// Next.js warns (and can behave inconsistently) when NODE_ENV is unset or non-standard.
+// Nx sets NX_TASK_TARGET_TARGET for task runs; only force this for the build target.
+if (process.env.NX_TASK_TARGET_TARGET === 'build') {
+  /** @type {any} */ (process.env).NODE_ENV = 'production';
+}
+
 /**
  * @type {import('@nx/next/plugins/with-nx').WithNxOptions}
  **/

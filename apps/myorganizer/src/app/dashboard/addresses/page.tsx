@@ -9,16 +9,12 @@ import {
   Label,
   useToast,
 } from '@myorganizer/web-ui';
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { AddressRecord, AddressStatusEnum } from '@myorganizer/core';
 import VaultGate from '../../../components/vault-gate';
 import { loadDecryptedData, saveEncryptedData } from '../../../lib/vault/vault';
-
-type AddressItem = {
-  id: string;
-  label: string; // Home / Office / etc.
-  address: string;
-  createdAt: string;
-};
+import { normalizeAddresses } from '../../../lib/vault/contactRecordNormalization';
 
 function randomId(): string {
   return crypto.randomUUID();
@@ -27,17 +23,27 @@ function randomId(): string {
 function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
   const { toast } = useToast();
 
-  const [items, setItems] = useState<AddressItem[]>([]);
+  const [items, setItems] = useState<AddressRecord[]>([]);
   const [label, setLabel] = useState('Home');
   const [address, setAddress] = useState('');
 
   useEffect(() => {
-    loadDecryptedData<AddressItem[]>({
+    loadDecryptedData<unknown>({
       masterKeyBytes: props.masterKeyBytes,
       type: 'addresses',
       defaultValue: [],
     })
-      .then(setItems)
+      .then(async (raw) => {
+        const normalized = normalizeAddresses(raw);
+        setItems(normalized.value);
+        if (normalized.changed) {
+          await saveEncryptedData({
+            masterKeyBytes: props.masterKeyBytes,
+            type: 'addresses',
+            value: normalized.value,
+          });
+        }
+      })
       .catch(() => {
         toast({
           title: 'Failed to load addresses',
@@ -52,7 +58,7 @@ function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
     [label, address]
   );
 
-  async function persist(next: AddressItem[]) {
+  async function persist(next: AddressRecord[]) {
     setItems(next);
     try {
       await saveEncryptedData({
@@ -97,10 +103,12 @@ function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
           <Button
             disabled={!canAdd}
             onClick={async () => {
-              const nextItem: AddressItem = {
+              const nextItem: AddressRecord = {
                 id: randomId(),
                 label: label.trim(),
                 address: address.trim(),
+                status: AddressStatusEnum.Current,
+                usageLocations: [],
                 createdAt: new Date().toISOString(),
               };
               await persist([nextItem, ...items]);
@@ -128,9 +136,20 @@ function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
                 className="flex items-start justify-between gap-4"
               >
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{item.label}</p>
+                  <Link
+                    href={`/dashboard/addresses/${item.id}`}
+                    className="font-medium truncate underline-offset-4 hover:underline"
+                  >
+                    {item.label}
+                  </Link>
                   <p className="text-sm text-muted-foreground break-words">
                     {item.address}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Status: {item.status}
+                    {item.usageLocations.length > 0
+                      ? ` • Used at ${item.usageLocations.length}`
+                      : ''}
                   </p>
                 </div>
                 <Button

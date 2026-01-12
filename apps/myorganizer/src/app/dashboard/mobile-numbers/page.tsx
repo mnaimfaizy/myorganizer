@@ -9,16 +9,12 @@ import {
   Label,
   useToast,
 } from '@myorganizer/web-ui';
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { MobileNumberRecord } from '@myorganizer/core';
 import VaultGate from '../../../components/vault-gate';
 import { loadDecryptedData, saveEncryptedData } from '../../../lib/vault/vault';
-
-type MobileNumberItem = {
-  id: string;
-  label: string; // Personal / Work / etc.
-  mobileNumber: string;
-  createdAt: string;
-};
+import { normalizeMobileNumbers } from '../../../lib/vault/contactRecordNormalization';
 
 function randomId(): string {
   return crypto.randomUUID();
@@ -27,17 +23,27 @@ function randomId(): string {
 function MobileNumbersInner(props: { masterKeyBytes: Uint8Array }) {
   const { toast } = useToast();
 
-  const [items, setItems] = useState<MobileNumberItem[]>([]);
+  const [items, setItems] = useState<MobileNumberRecord[]>([]);
   const [label, setLabel] = useState('Personal');
   const [mobileNumber, setMobileNumber] = useState('');
 
   useEffect(() => {
-    loadDecryptedData<MobileNumberItem[]>({
+    loadDecryptedData<unknown>({
       masterKeyBytes: props.masterKeyBytes,
       type: 'mobileNumbers',
       defaultValue: [],
     })
-      .then(setItems)
+      .then(async (raw) => {
+        const normalized = normalizeMobileNumbers(raw);
+        setItems(normalized.value);
+        if (normalized.changed) {
+          await saveEncryptedData({
+            masterKeyBytes: props.masterKeyBytes,
+            type: 'mobileNumbers',
+            value: normalized.value,
+          });
+        }
+      })
       .catch(() => {
         toast({
           title: 'Failed to load mobile numbers',
@@ -52,7 +58,7 @@ function MobileNumbersInner(props: { masterKeyBytes: Uint8Array }) {
     [label, mobileNumber]
   );
 
-  async function persist(next: MobileNumberItem[]) {
+  async function persist(next: MobileNumberRecord[]) {
     setItems(next);
     try {
       await saveEncryptedData({
@@ -97,10 +103,11 @@ function MobileNumbersInner(props: { masterKeyBytes: Uint8Array }) {
           <Button
             disabled={!canAdd}
             onClick={async () => {
-              const nextItem: MobileNumberItem = {
+              const nextItem: MobileNumberRecord = {
                 id: randomId(),
                 label: label.trim(),
                 mobileNumber: mobileNumber.trim(),
+                usageLocations: [],
                 createdAt: new Date().toISOString(),
               };
               await persist([nextItem, ...items]);
@@ -130,9 +137,19 @@ function MobileNumbersInner(props: { masterKeyBytes: Uint8Array }) {
                 className="flex items-start justify-between gap-4"
               >
                 <div className="min-w-0">
-                  <p className="font-medium truncate">{item.label}</p>
+                  <Link
+                    href={`/dashboard/mobile-numbers/${item.id}`}
+                    className="font-medium truncate underline-offset-4 hover:underline"
+                  >
+                    {item.label}
+                  </Link>
                   <p className="text-sm text-muted-foreground break-words">
                     {item.mobileNumber}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {item.usageLocations.length > 0
+                      ? `Used at ${item.usageLocations.length}`
+                      : 'No usage locations yet.'}
                   </p>
                 </div>
                 <Button
