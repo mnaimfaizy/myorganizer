@@ -1,27 +1,18 @@
 'use client';
 
-import {
-  OrganisationTypeEnum,
-  PriorityEnum,
-  UpdateMethodEnum,
-  UsageLocationRecord,
-} from '@myorganizer/core';
-import { useToast } from '@myorganizer/web-ui';
+import { UsageLocationRecord } from '@myorganizer/core';
+import { Button, useToast } from '@myorganizer/web-ui';
 import {
   loadDecryptedData,
   normalizeMobileNumbers,
   saveEncryptedData,
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
-import { useEffect, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 
-import { zodResolver } from '@hookform/resolvers/zod';
+import { Plus } from 'lucide-react';
 
-import { enumOptions, parseEnumValue, titleCase } from '../utils/enumUtils';
-import { randomId } from '../utils/randomId';
-import { AddUsageLocationCard } from './AddUsageLocationCard';
 import {
   BackToMobileNumbersLink,
   MobileNumberDetailLoading,
@@ -30,22 +21,12 @@ import {
 import { MobileNumberDetailsCard } from './MobileNumberDetailsCard';
 import { UsageLocationsCard } from './UsageLocationsCard';
 
-const addUsageLocationSchema = z.object({
-  orgName: z.string().trim().min(1),
-  orgType: z.string().trim().min(1),
-  updateMethod: z.string().trim().min(1),
-  priority: z.string().trim().min(1),
-  link: z.string().optional(),
-  changed: z.boolean(),
-});
-
-type AddUsageLocationFormValues = z.infer<typeof addUsageLocationSchema>;
-
 function MobileNumberDetailsInner(props: {
   masterKeyBytes: Uint8Array;
   mobileNumberId: string;
 }) {
   const { toast } = useToast();
+  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -55,26 +36,6 @@ function MobileNumberDetailsInner(props: {
   const [usageLocations, setUsageLocations] = useState<UsageLocationRecord[]>(
     []
   );
-
-  const usageForm = useForm<AddUsageLocationFormValues>({
-    resolver: zodResolver(addUsageLocationSchema),
-    defaultValues: {
-      orgName: '',
-      orgType: 'government',
-      updateMethod: 'online',
-      priority: 'normal',
-      link: '',
-      changed: false,
-    },
-    mode: 'onChange',
-  });
-
-  const orgName = usageForm.watch('orgName');
-  const orgType = usageForm.watch('orgType');
-  const updateMethod = usageForm.watch('updateMethod');
-  const priority = usageForm.watch('priority');
-  const link = usageForm.watch('link') ?? '';
-  const changed = usageForm.watch('changed');
 
   useEffect(() => {
     setLoading(true);
@@ -117,47 +78,6 @@ function MobileNumberDetailsInner(props: {
       .finally(() => setLoading(false));
   }, [props.masterKeyBytes, props.mobileNumberId, toast]);
 
-  const orgTypeOptions = useMemo(
-    () =>
-      enumOptions(OrganisationTypeEnum).map((v) => ({
-        value: v,
-        label: titleCase(v),
-      })),
-    []
-  );
-
-  const updateMethodOptions = useMemo(
-    () =>
-      enumOptions(UpdateMethodEnum).map((v) => ({
-        value: v,
-        label: titleCase(v),
-      })),
-    []
-  );
-
-  const canAddUsage = usageForm.formState.isValid;
-
-  async function persistUsage(nextUsage: UsageLocationRecord[]) {
-    const raw = await loadDecryptedData<unknown>({
-      masterKeyBytes: props.masterKeyBytes,
-      type: 'mobileNumbers',
-      defaultValue: [],
-    });
-
-    const normalized = normalizeMobileNumbers(raw);
-    const nextNumbers = normalized.value.map((x) =>
-      x.id === props.mobileNumberId ? { ...x, usageLocations: nextUsage } : x
-    );
-
-    await saveEncryptedData({
-      masterKeyBytes: props.masterKeyBytes,
-      type: 'mobileNumbers',
-      value: nextNumbers,
-    });
-
-    setUsageLocations(nextUsage);
-  }
-
   if (loading) {
     return <MobileNumberDetailLoading />;
   }
@@ -172,86 +92,22 @@ function MobileNumberDetailsInner(props: {
 
       <MobileNumberDetailsCard label={label} mobileNumber={mobileNumber} />
 
-      <UsageLocationsCard usageLocations={usageLocations} />
-
-      <AddUsageLocationCard
-        orgName={orgName}
-        orgType={orgType}
-        updateMethod={updateMethod}
-        priority={priority}
-        link={link}
-        changed={changed}
-        canAddUsage={canAddUsage}
-        orgTypeOptions={orgTypeOptions}
-        updateMethodOptions={updateMethodOptions}
-        onOrgNameChange={(value) =>
-          usageForm.setValue('orgName', value, { shouldValidate: true })
-        }
-        onOrgTypeChange={(value) =>
-          usageForm.setValue('orgType', value, { shouldValidate: true })
-        }
-        onUpdateMethodChange={(value) =>
-          usageForm.setValue('updateMethod', value, { shouldValidate: true })
-        }
-        onPriorityChange={(value) =>
-          usageForm.setValue('priority', value, { shouldValidate: true })
-        }
-        onLinkChange={(value) =>
-          usageForm.setValue('link', value, { shouldValidate: true })
-        }
-        onChangedChange={(value) =>
-          usageForm.setValue('changed', value, { shouldValidate: true })
-        }
-        onAddUsage={usageForm.handleSubmit(async (values) => {
-          const now = new Date().toISOString();
-          const next: UsageLocationRecord = {
-            id: randomId(),
-            organisationName: values.orgName.trim(),
-            organisationType: parseEnumValue(
-              OrganisationTypeEnum,
-              values.orgType,
-              OrganisationTypeEnum.Other
-            ),
-            updateMethod: parseEnumValue(
-              UpdateMethodEnum,
-              values.updateMethod,
-              UpdateMethodEnum.Online
-            ),
-            changed: values.changed,
-            link: values.link?.trim() ? values.link.trim() : undefined,
-            priority: parseEnumValue(
-              PriorityEnum,
-              values.priority,
-              PriorityEnum.Normal
-            ),
-            createdAt: now,
-            changedAt: values.changed ? now : undefined,
-          };
-
-          try {
-            await persistUsage([next, ...usageLocations]);
-            usageForm.reset({
-              orgName: '',
-              orgType: values.orgType,
-              updateMethod: values.updateMethod,
-              priority: values.priority,
-              link: '',
-              changed: false,
-            });
-            toast({
-              title: 'Saved',
-              description: 'Usage location saved (encrypted).',
-            });
-          } catch (e: unknown) {
-            const message = e instanceof Error ? e.message : String(e);
-            toast({
-              title: 'Failed to save',
-              description: message,
-              variant: 'destructive',
-            });
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-semibold">Usage Locations</h2>
+        <Button
+          onClick={() =>
+            router.push(
+              `/dashboard/mobile-numbers/${props.mobileNumberId}/add-location`
+            )
           }
-        })}
-      />
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Add Location
+        </Button>
+      </div>
+
+      <UsageLocationsCard usageLocations={usageLocations} />
     </div>
   );
 }
