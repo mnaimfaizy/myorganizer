@@ -46,7 +46,7 @@ function decodeBase64Strict(value: string): Uint8Array | null {
     const normalizedOutput = decoded.toString('base64').replace(/=+$/, '');
     const normalizedInput = value.replace(/=+$/, '');
     if (normalizedOutput !== normalizedInput) return null;
-    return decoded;
+    return new Uint8Array(decoded);
   } catch {
     return null;
   }
@@ -150,7 +150,6 @@ function requireBlobs(
     ) {
       blobs[key] = requireEncryptedBlob(candidate, `blobs.${key}`);
     } else {
-      // eslint-disable-next-line no-console
       console.warn(`Unknown blob type key in export bundle: ${key}`);
     }
   }
@@ -190,8 +189,9 @@ export function validateVaultExportBundleFromText(text: string): VaultExportV1 {
   let parsed: unknown;
   try {
     parsed = JSON.parse(text);
-  } catch (error: any) {
-    throw new Error(`Invalid JSON: ${error?.message ?? String(error)}`);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Invalid JSON: ${message}`);
   }
 
   return validateVaultExportBundle(parsed);

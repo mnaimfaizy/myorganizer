@@ -186,9 +186,9 @@ async function createVault(passphrase) {
 ## Files / Ownership
 
 - Shared types: `libs/core/src/lib/vault/contactRecords.ts`
-- Normalization: `apps/myorganizer/src/lib/vault/contactRecordNormalization.ts`
+- Normalization: `libs/web-vault/src/lib/vault/contactRecordNormalization.ts`
 - Addresses list: `apps/myorganizer/src/app/dashboard/addresses/page.tsx`
 - Address detail: `apps/myorganizer/src/app/dashboard/addresses/[id]/page.tsx`
 - Mobile list: `apps/myorganizer/src/app/dashboard/mobile-numbers/page.tsx`
 - Mobile detail: `apps/myorganizer/src/app/dashboard/mobile-numbers/[id]/page.tsx`
-- Recovery key UX: `apps/myorganizer/src/components/vault-gate.tsx`
+- Recovery key UX: `libs/web-vault-ui/src/lib/vaultGate.tsx`

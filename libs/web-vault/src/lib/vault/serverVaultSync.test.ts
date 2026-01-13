@@ -10,6 +10,11 @@ import {
   putServerVaultMetaEtagAware,
 } from './serverVaultSync';
 
+type ApiForGetMeta = Parameters<typeof getServerVaultMeta>[0];
+type ApiForPutMeta = Parameters<typeof putServerVaultMetaEtagAware>[0]['api'];
+type ApiForGetBlob = Parameters<typeof getServerVaultBlob>[0];
+type ApiForPutBlob = Parameters<typeof putServerVaultBlobEtagAware>[0]['api'];
+
 function makeMeta(overrides: Partial<VaultMetaV1> = {}): VaultMetaV1 {
   return {
     version: 1,
@@ -19,17 +24,19 @@ function makeMeta(overrides: Partial<VaultMetaV1> = {}): VaultMetaV1 {
     wrapped_mk_passphrase: { iv: 'iv', ciphertext: 'ct' },
     wrapped_mk_recovery: { iv: 'iv', ciphertext: 'ct' },
     ...overrides,
-  } as VaultMetaV1;
+  };
 }
 
 function makeBlob(overrides: Partial<EncryptedBlobV1> = {}): EncryptedBlobV1 {
   return { iv: 'iv', ciphertext: 'ciphertext', ...overrides };
 }
 
-function httpError(status: number): any {
-  const error = new Error(`HTTP ${status}`) as any;
+function httpError(status: number): Error & { response: { status: number } } {
+  const error = new Error(`HTTP ${status}`) as Error & {
+    response?: { status: number };
+  };
   error.response = { status };
-  return error;
+  return error as Error & { response: { status: number } };
 }
 
 describe('serverVaultSync', () => {
@@ -38,7 +45,7 @@ describe('serverVaultSync', () => {
       getVaultMeta: jest.fn().mockResolvedValue({
         data: { etag: 'e1', updatedAt: 't1', meta: makeMeta() },
       }),
-    } as any;
+    } as unknown as ApiForGetMeta;
 
     await expect(getServerVaultMeta(api)).resolves.toEqual({
       etag: 'e1',
@@ -50,7 +57,7 @@ describe('serverVaultSync', () => {
   test('getServerVaultMeta returns null on 404', async () => {
     const api = {
       getVaultMeta: jest.fn().mockRejectedValue(httpError(404)),
-    } as any;
+    } as unknown as ApiForGetMeta;
 
     await expect(getServerVaultMeta(api)).resolves.toBeNull();
   });
@@ -60,7 +67,7 @@ describe('serverVaultSync', () => {
       putVaultMeta: jest.fn().mockResolvedValue({
         data: { ok: true, etag: 'e2', updatedAt: 't2', message: 'ok' },
       }),
-    } as any;
+    } as unknown as ApiForPutMeta;
 
     const result = await putServerVaultMetaEtagAware({
       api,
@@ -82,7 +89,7 @@ describe('serverVaultSync', () => {
       getVaultMeta: jest.fn().mockResolvedValue({
         data: { etag: 'remote-etag', updatedAt: 'rt', meta: makeMeta() },
       }),
-    } as any;
+    } as unknown as ApiForPutMeta;
 
     const result = await putServerVaultMetaEtagAware({
       api,
@@ -108,7 +115,7 @@ describe('serverVaultSync', () => {
       getVaultMeta: jest.fn().mockResolvedValue({
         data: { etag: 'remote-etag', updatedAt: 'rt', meta: makeMeta() },
       }),
-    } as any;
+    } as unknown as ApiForPutMeta;
 
     const meta = makeMeta({ kdf_salt: 'local' });
 
@@ -139,7 +146,7 @@ describe('serverVaultSync', () => {
   test('getServerVaultBlob returns null on 404', async () => {
     const api = {
       getVaultBlob: jest.fn().mockRejectedValue(httpError(404)),
-    } as any;
+    } as unknown as ApiForGetBlob;
 
     await expect(
       getServerVaultBlob(api, VaultBlobType.Addresses)
@@ -162,7 +169,7 @@ describe('serverVaultSync', () => {
           blob: makeBlob({ ciphertext: 'remote' }),
         },
       }),
-    } as any;
+    } as unknown as ApiForPutBlob;
 
     const blob = makeBlob({ ciphertext: 'local' });
 

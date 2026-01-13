@@ -1,7 +1,9 @@
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType, type VaultMetaV1 } from '@myorganizer/app-api-client';
 
 import type { VaultStorageV1 } from './vault';
 import { migrateVaultPhase1ToPhase2 } from './vaultMigration';
+
+type ApiParam = Parameters<typeof migrateVaultPhase1ToPhase2>[0]['api'];
 
 jest.mock('./serverVaultSync', () => ({
   getServerVaultMeta: jest.fn(),
@@ -37,7 +39,7 @@ function makeLocalVault(
   };
 }
 
-function makeServerMeta(): any {
+function makeServerMeta(): VaultMetaV1 {
   return {
     version: 1,
     kdf_name: 'PBKDF2',
@@ -59,7 +61,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
     const localVault = makeLocalVault();
 
     const result = await migrateVaultPhase1ToPhase2({
-      api: {} as any,
+      api: {} as unknown as ApiParam,
       localVault,
       prompt: () => 'keep-local',
     });
@@ -82,7 +84,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
     });
 
     serverVaultSync.getServerVaultBlob.mockImplementation(
-      async (_api: any, type: any) => {
+      async (_api: unknown, type: VaultBlobType) => {
         if (type === VaultBlobType.Addresses) {
           return {
             etag: 'b1',
@@ -96,7 +98,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
     );
 
     const result = await migrateVaultPhase1ToPhase2({
-      api: {} as any,
+      api: {} as unknown as ApiParam,
       localVault: null,
       prompt: () => 'keep-server',
     });
@@ -115,7 +117,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
     serverVaultSync.getServerVaultMeta.mockResolvedValue(null);
 
     const result = await migrateVaultPhase1ToPhase2({
-      api: {} as any,
+      api: {} as unknown as ApiParam,
       localVault: null,
       prompt: () => 'keep-server',
     });
@@ -127,12 +129,14 @@ describe('migrateVaultPhase1ToPhase2', () => {
   });
 
   test('skips when unauthenticated (401/403)', async () => {
-    const error: any = new Error('unauth');
+    const error = new Error('unauth') as Error & {
+      response?: { status: number };
+    };
     error.response = { status: 401 };
     serverVaultSync.getServerVaultMeta.mockRejectedValue(error);
 
     const result = await migrateVaultPhase1ToPhase2({
-      api: {} as any,
+      api: {} as unknown as ApiParam,
       localVault: makeLocalVault(),
       prompt: () => 'keep-local',
     });
@@ -148,7 +152,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
     });
 
     serverVaultSync.getServerVaultBlob.mockImplementation(
-      async (_api: any, type: any) => {
+      async (_api: unknown, type: VaultBlobType) => {
         if (type === VaultBlobType.Addresses) {
           return {
             etag: 'b1',
@@ -167,7 +171,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
     const prompt = jest.fn(() => 'keep-server' as const);
 
     const result = await migrateVaultPhase1ToPhase2({
-      api: {} as any,
+      api: {} as unknown as ApiParam,
       localVault: makeLocalVault(),
       prompt,
     });
@@ -194,7 +198,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
     });
 
     const result = await migrateVaultPhase1ToPhase2({
-      api: {} as any,
+      api: {} as unknown as ApiParam,
       localVault: makeLocalVault(),
       prompt: () => 'keep-server',
     });
@@ -229,7 +233,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       .mockResolvedValueOnce(null);
 
     const result = await migrateVaultPhase1ToPhase2({
-      api: {} as any,
+      api: {} as unknown as ApiParam,
       localVault: makeLocalVault(),
       prompt: () => 'keep-local',
     });

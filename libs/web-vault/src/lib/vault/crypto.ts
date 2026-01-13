@@ -32,10 +32,13 @@ export function randomBytes(length: number): Uint8Array {
 }
 
 export async function importAesGcmKey(rawKey: Uint8Array): Promise<CryptoKey> {
-  return crypto.subtle.importKey('raw', rawKey, { name: 'AES-GCM' }, false, [
-    'encrypt',
-    'decrypt',
-  ]);
+  return crypto.subtle.importKey(
+    'raw',
+    rawKey as unknown as BufferSource,
+    { name: 'AES-GCM' },
+    false,
+    ['encrypt', 'decrypt']
+  );
 }
 
 export async function deriveKeyFromPassphrase(options: {
@@ -45,7 +48,7 @@ export async function deriveKeyFromPassphrase(options: {
 }): Promise<CryptoKey> {
   const baseKey = await crypto.subtle.importKey(
     'raw',
-    utf8ToBytes(options.passphrase),
+    utf8ToBytes(options.passphrase) as unknown as BufferSource,
     'PBKDF2',
     false,
     ['deriveKey']
@@ -54,7 +57,7 @@ export async function deriveKeyFromPassphrase(options: {
   return crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
-      salt: options.salt,
+      salt: options.salt as unknown as BufferSource,
       iterations: options.iterations,
       hash: 'SHA-256',
     },
@@ -71,9 +74,9 @@ export async function aesGcmEncrypt(options: {
   iv: Uint8Array;
 }): Promise<Uint8Array> {
   const out = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: options.iv },
+    { name: 'AES-GCM', iv: options.iv as unknown as BufferSource },
     options.key,
-    options.plaintext
+    options.plaintext as unknown as BufferSource
   );
   return new Uint8Array(out);
 }
@@ -84,9 +87,9 @@ export async function aesGcmDecrypt(options: {
   iv: Uint8Array;
 }): Promise<Uint8Array> {
   const out = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: options.iv },
+    { name: 'AES-GCM', iv: options.iv as unknown as BufferSource },
     options.key,
-    options.ciphertext
+    options.ciphertext as unknown as BufferSource
   );
   return new Uint8Array(out);
 }
