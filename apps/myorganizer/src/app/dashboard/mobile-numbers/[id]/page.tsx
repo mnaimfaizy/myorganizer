@@ -27,12 +27,12 @@ import {
   UsageLocationRecord,
 } from '@myorganizer/core';
 
-import VaultGate from '../../../../components/vault-gate';
+import { VaultGate } from '@myorganizer/web-vault-ui';
+import { normalizeMobileNumbers } from '../../../../lib/vault/contactRecordNormalization';
 import {
   loadDecryptedData,
   saveEncryptedData,
 } from '../../../../lib/vault/vault';
-import { normalizeMobileNumbers } from '../../../../lib/vault/contactRecordNormalization';
 
 function randomId(): string {
   return crypto.randomUUID();

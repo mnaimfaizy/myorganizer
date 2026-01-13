@@ -1,5 +1,6 @@
 'use client';
 
+import { MobileNumberRecord } from '@myorganizer/core';
 import {
   Button,
   Card,
@@ -9,12 +10,11 @@ import {
   Label,
   useToast,
 } from '@myorganizer/web-ui';
+import { VaultGate } from '@myorganizer/web-vault-ui';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { MobileNumberRecord } from '@myorganizer/core';
-import VaultGate from '../../../components/vault-gate';
-import { loadDecryptedData, saveEncryptedData } from '../../../lib/vault/vault';
 import { normalizeMobileNumbers } from '../../../lib/vault/contactRecordNormalization';
+import { loadDecryptedData, saveEncryptedData } from '../../../lib/vault/vault';
 
 function randomId(): string {
   return crypto.randomUUID();

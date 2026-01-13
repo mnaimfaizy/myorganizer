@@ -12,10 +12,15 @@ import {
   Toaster,
 } from '@myorganizer/web-ui';
 
-import { AppSidebar } from '../../components/app-sidebar';
-import { VaultSessionProvider } from '../../components/vault-session';
-import { VaultMigrationRunner } from '../../components/vault-migration-runner';
-import DashboardGuard from './DashboardGuard';
+import {
+  DashboardGuard,
+  DashboardSidebar,
+} from '@myorganizer/web-pages/dashboard';
+
+import {
+  VaultMigrationRunner,
+  VaultSessionProvider,
+} from '@myorganizer/web-vault-ui';
 
 export default function DashboardLayout({
   children,
@@ -27,7 +32,7 @@ export default function DashboardLayout({
       <SidebarProvider>
         <VaultSessionProvider>
           <VaultMigrationRunner />
-          <AppSidebar />
+          <DashboardSidebar />
           <SidebarInset>
             <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
               <div className="flex items-center gap-2 px-4">
