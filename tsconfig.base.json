@@ -24,6 +24,9 @@
         "libs/web/pages/dashboard/src/index.ts"
       ],
       "@myorganizer/web-pages/todos": ["libs/web/pages/todos/src/index.ts"],
+      "@myorganizer/web-pages/vault-export": [
+        "libs/web/pages/vault-export/src/index.ts"
+      ],
       "@myorganizer/web-ui": ["libs/web-ui/src/index.ts"],
       "@myorganizer/web-vault": ["libs/web-vault/src/index.ts"],
       "@myorganizer/web-vault-ui": ["libs/web-vault-ui/src/index.ts"]
