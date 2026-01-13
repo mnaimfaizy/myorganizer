@@ -77,7 +77,7 @@ export function serverMetaToLocalVault(options: {
     );
   }
 
-  const hash: 'SHA-256' = 'SHA-256';
+  const hash = 'SHA-256' as const;
   const iterations =
     typeof meta.kdf_params?.iterations === 'number'
       ? meta.kdf_params.iterations

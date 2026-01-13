@@ -1,15 +1,14 @@
 import {
   AddressRecord,
   AddressStatusEnum,
-  type AddressStatus,
   MobileNumberRecord,
   OrganisationTypeEnum,
-  type OrganisationType,
   PriorityEnum,
-  type Priority,
   UpdateMethodEnum,
-  type UpdateMethod,
   UsageLocationRecord,
+  type OrganisationType,
+  type Priority,
+  type UpdateMethod,
 } from '@myorganizer/core';
 
 type NormalizeResult<T> = {
