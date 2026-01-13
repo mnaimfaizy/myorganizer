@@ -1,0 +1,28 @@
+# Enforce consistent line endings across platforms.
+# Default all text files to LF in the repository.
+* text=auto eol=lf
+
+# Windows-specific scripts keep CRLF for better local UX.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Treat common binary assets as binary (no EOL conversion).
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.7z binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.mp4 binary
+*.mov binary
+*.mp3 binary
+*.wav binary
