@@ -16,6 +16,7 @@ This guide provides comprehensive documentation for developing in the MyOrganize
   - [Accessing Services](#accessing-services)
 - [Monorepo Structure](#monorepo-structure)
   - [Apps](#apps)
+  - [Frontend Architecture (Web Page Libraries)](#frontend-architecture-web-page-libraries)
   - [Libraries (libs)](#libraries-libs)
   - [Documentation](#documentation)
   - [Tools & Configuration](#tools--configuration)
@@ -135,6 +136,7 @@ Before you begin, ensure you have the following installed on your system:
    ```
 
    **Note**: For production, generate secure random secrets using:
+
    ```bash
    node -e "console.log(require('crypto').randomBytes(64).toString('base64'))"
    ```
@@ -191,6 +193,7 @@ docker-compose down -v
 ```
 
 **Services included**:
+
 - **PostgreSQL** (myorganizer_db): Database server on port 5453
 - **MailHog**: Email testing server on ports 1025 (SMTP) and 8025 (Web UI)
 - **PgAdmin**: Database GUI on port 8888
@@ -208,6 +211,7 @@ yarn nx serve backend
 ```
 
 The development server features:
+
 - Hot reload on file changes
 - Automatic TypeScript compilation
 - API documentation at http://localhost:3000/docs
@@ -225,6 +229,7 @@ yarn nx serve myorganizer
 ```
 
 The development server features:
+
 - Fast refresh for React components
 - Hot module replacement
 - Next.js development features
@@ -234,11 +239,13 @@ The development server features:
 For the best development experience, run these in separate terminal windows:
 
 **Terminal 1 - Backend:**
+
 ```bash
 yarn start:backend
 ```
 
 **Terminal 2 - Frontend:**
+
 ```bash
 yarn start:myorganizer
 ```
@@ -259,16 +266,17 @@ For more information, see [docs/storybook/README.md](docs/storybook/README.md).
 
 Once everything is running, you can access:
 
-| Service | URL | Description |
-|---------|-----|-------------|
-| Frontend | http://localhost:4200 | Main application |
-| Backend API | http://localhost:3000/api/v1 | REST API |
-| API Docs | http://localhost:3000/docs | Swagger UI documentation |
-| Storybook | http://localhost:6006 | UI component library |
-| MailHog | http://localhost:8025 | Email testing interface |
-| PgAdmin | http://localhost:8888 | Database management |
+| Service     | URL                          | Description              |
+| ----------- | ---------------------------- | ------------------------ |
+| Frontend    | http://localhost:4200        | Main application         |
+| Backend API | http://localhost:3000/api/v1 | REST API                 |
+| API Docs    | http://localhost:3000/docs   | Swagger UI documentation |
+| Storybook   | http://localhost:6006        | UI component library     |
+| MailHog     | http://localhost:8025        | Email testing interface  |
+| PgAdmin     | http://localhost:8888        | Database management      |
 
 **PgAdmin Credentials** (from .env):
+
 - Email: admin@myorganizer.com
 - Password: Admin@123
 
@@ -287,7 +295,11 @@ myorganizer/
 │   ├── app-api-client/     # Generated API client
 │   ├── auth/               # Authentication utilities
 │   ├── core/               # Core utilities
+│   ├── web/                # Web-specific libraries
+│   │   └── pages/          # Route/page implementations (one library per route)
 │   └── web-ui/             # Shared UI components
+│   ├── web-vault/           # Encrypted vault logic (crypto, storage, sync, migration)
+│   └── web-vault-ui/        # Vault-related UX flows (gate/setup/unlock)
 ├── docs/                    # Documentation
 │   ├── authentication/     # Auth strategy docs
 │   ├── backend/            # Backend docs
@@ -306,6 +318,7 @@ myorganizer/
 ### Apps
 
 #### Backend (`apps/backend`)
+
 - Express.js REST API with TypeScript
 - Prisma ORM for database operations
 - TSOA for API documentation
@@ -313,39 +326,88 @@ myorganizer/
 - See [apps/backend/README.md](apps/backend/README.md) for detailed documentation
 
 #### Frontend (`apps/myorganizer`)
+
 - Next.js 14 with App Router
 - React 18 with TypeScript
 - Tailwind CSS for styling
 - Radix UI components
 - React Hook Form for form handling
 
+## Frontend Architecture (Web Page Libraries)
+
+MyOrganizer enforces a simple rule for the Next.js App Router:
+
+- Files under `apps/myorganizer/src/app/**` are **thin route wrappers** only.
+- All page/domain logic lives in Nx libraries under `libs/web/pages/<route>/`.
+
+This keeps pages reusable and testable, and prevents app-local “shared code” from spreading.
+
+### What goes where
+
+- Route wrappers: `apps/myorganizer/src/app/<route>/page.tsx`
+  - Keep minimal: route segment wiring, metadata, and importing the page component from the library.
+- Page implementation: `libs/web/pages/<route>/src/lib/**`
+  - Actual React components, data fetching (via generated client), form logic, and page-specific helpers.
+- Shared UI primitives: `libs/web-ui/`
+- Encrypted vault logic: `libs/web-vault/` and `libs/web-vault-ui/`
+
+### Adding a new frontend page
+
+1. Create a new React library under `libs/web/pages/<route>/` with import path `@myorganizer/web-pages/<route>`.
+2. Export the page entry from the library’s `src/index.ts`.
+3. Add a thin wrapper at `apps/myorganizer/src/app/<route>/page.tsx` that renders/exports the library page.
+
+### Forms
+
+- Use React Hook Form + Zod for any new form.
+- Prefer keeping the validation schema next to the page feature (inside the page library).
+
 #### E2E Tests (`apps/myorganizer-e2e`)
+
 - Playwright for end-to-end testing
 - Tests for critical user flows
 
 ### Libraries (libs)
 
 #### api-specs
+
 - OpenAPI/Swagger specifications
 - Source of truth for API contracts
 
 #### app-api-client
+
 - Auto-generated TypeScript API client
 - Type-safe API calls for the frontend
 
 #### auth
+
 - Authentication utilities
 - Token management
 - Session handling
 
 #### core
+
 - Common utilities
 - Shared types and interfaces
 
 #### web-ui
+
 - Shared React components
 - UI library built with Storybook
 - Reusable across applications
+
+#### web/pages
+
+- One Nx library per frontend route/page (e.g. `libs/web/pages/todos`)
+- Imported via `@myorganizer/web-pages/<route>`
+
+#### web-vault
+
+- Encrypted vault logic (crypto, storage, sync, migration, export/import)
+
+#### web-vault-ui
+
+- Vault UX flows (vault gate/setup/unlock/recover) that wrap `web-vault`
 
 ### Documentation
 
@@ -375,6 +437,7 @@ myorganizer/
    ```
 
    Branch naming conventions:
+
    - `feature/` - New features
    - `fix/` - Bug fixes
    - `docs/` - Documentation updates
@@ -408,6 +471,7 @@ myorganizer/
    ```
 
    Follow [Conventional Commits](https://www.conventionalcommits.org/) format:
+
    - `feat:` - New feature
    - `fix:` - Bug fix
    - `docs:` - Documentation changes
@@ -456,11 +520,13 @@ This opens Prisma Studio at http://localhost:5555.
 #### Schema Management
 
 Prisma schemas are located in `apps/backend/src/prisma/schema/`:
+
 - `schema.prisma` - Main configuration
 - `user.prisma` - User model
 - `todo.prisma` - Todo model
 
 After modifying schemas, always run:
+
 ```bash
 npx prisma format
 npx prisma generate
@@ -499,6 +565,7 @@ yarn openapi:check
 ```
 
 This ensures:
+
 1. Backend spec is up-to-date
 2. `libs/api-specs` contains the latest spec
 3. `libs/app-api-client` is regenerated with new types
@@ -576,12 +643,13 @@ Good issues help maintainers understand and address problems quickly. Here's how
 4. **Provide a Clear Title**
 
    Good: `Backend API returns 500 error when creating todo with empty title`
-   
+
    Bad: `API broken`
 
 5. **Fill in the Description**
 
    For **Bug Reports**, include:
+
    - **Description**: What is the problem?
    - **Steps to Reproduce**:
      1. Start the backend
@@ -596,12 +664,14 @@ Good issues help maintainers understand and address problems quickly. Here's how
    - **Screenshots/Logs**: Include relevant error messages or screenshots
 
    For **Feature Requests**, include:
+
    - **Description**: What feature do you want?
    - **Use Case**: Why is this feature needed?
    - **Proposed Solution**: How should it work?
    - **Alternatives**: What alternatives have you considered?
 
    For **Documentation**, include:
+
    - **Description**: What needs to be documented?
    - **Location**: Where should this documentation go?
    - **Current Gap**: What's missing or unclear?
@@ -685,33 +755,41 @@ Good issues help maintainers understand and address problems quickly. Here's how
    - Go to your fork on GitHub
    - Click "Compare & pull request"
    - **Write a Clear PR Title**: Same format as commits
+
      - `feat: add user profile settings`
      - `fix: resolve database connection timeout`
      - `docs: update API documentation`
-   
+
    - **Fill in the PR Description**:
+
      ```markdown
      ## Description
+
      Brief description of what this PR does.
 
      ## Related Issue
+
      Closes #123
 
      ## Changes Made
+
      - Added user profile settings page
      - Updated user service to support profile updates
      - Added tests for profile update functionality
 
      ## Testing Done
+
      - [ ] Unit tests pass
      - [ ] E2E tests pass
      - [ ] Manual testing completed
      - [ ] Documentation updated
 
      ## Screenshots (if applicable)
+
      [Add screenshots of UI changes]
 
      ## Checklist
+
      - [ ] Code follows project style guidelines
      - [ ] Self-review completed
      - [ ] Comments added for complex code
@@ -729,17 +807,20 @@ Good issues help maintainers understand and address problems quickly. Here's how
 ### PR Review Process
 
 1. **Automated Checks**
+
    - CI/CD pipeline runs automatically
    - Tests must pass
    - Linting must pass
    - Build must succeed
 
 2. **Code Review**
+
    - Maintainers will review your code
    - Address feedback by pushing new commits
    - Engage in discussion if you disagree
 
 3. **Making Changes After Review**
+
    ```bash
    # Make requested changes
    git add .
@@ -780,6 +861,7 @@ yarn nx test backend --coverage
 Tests are located next to the source files with `.spec.ts` or `.test.ts` extensions.
 
 **Example (Backend)**:
+
 ```typescript
 // apps/backend/src/services/UserService.spec.ts
 import { UserService } from './UserService';
@@ -795,7 +877,7 @@ describe('UserService', () => {
     const user = await userService.createUser({
       email: 'test@example.com',
       password: 'password123',
-      name: 'Test User'
+      name: 'Test User',
     });
 
     expect(user).toBeDefined();
@@ -805,6 +887,7 @@ describe('UserService', () => {
 ```
 
 **Example (Frontend)**:
+
 ```typescript
 // libs/web-ui/src/components/Button.spec.tsx
 import { render, screen } from '@testing-library/react';
@@ -819,7 +902,7 @@ describe('Button', () => {
   it('calls onClick when clicked', () => {
     const handleClick = jest.fn();
     render(<Button onClick={handleClick}>Click me</Button>);
-    
+
     const button = screen.getByText('Click me');
     button.click();
     expect(handleClick).toHaveBeenCalledTimes(1);
@@ -843,17 +926,18 @@ yarn nx e2e-ci myorganizer-e2e
 ```
 
 **Writing E2E Tests**:
+
 ```typescript
 // apps/myorganizer-e2e/src/example.spec.ts
 import { test, expect } from '@playwright/test';
 
 test('user can log in', async ({ page }) => {
   await page.goto('/login');
-  
+
   await page.fill('input[name="email"]', 'test@example.com');
   await page.fill('input[name="password"]', 'password123');
   await page.click('button[type="submit"]');
-  
+
   await expect(page).toHaveURL('/dashboard');
   await expect(page.locator('h1')).toContainText('Dashboard');
 });
@@ -886,6 +970,7 @@ yarn nx run backend:build:production
 ```
 
 **Running Production Build**:
+
 ```bash
 cd dist/apps/backend
 npm install --production
@@ -893,6 +978,7 @@ node main.js
 ```
 
 **Environment Requirements**:
+
 - `NODE_ENV=production`
 - All JWT secrets configured
 - Production database URL
@@ -911,6 +997,7 @@ yarn nx run myorganizer:build:production
 ```
 
 **Running Production Build**:
+
 ```bash
 cd dist/apps/myorganizer
 npm install --production
@@ -981,6 +1068,7 @@ yarn nx affected:graph
 ### Docker Issues
 
 **Problem**: Containers not starting
+
 ```bash
 # Solution: Check Docker is running
 docker ps
@@ -996,6 +1084,7 @@ docker-compose logs -f myorganizer_db
 ### Database Issues
 
 **Problem**: Cannot connect to database
+
 ```bash
 # Solution 1: Check database is running
 docker ps | grep myorganizer_db
@@ -1009,6 +1098,7 @@ docker-compose up -d
 ```
 
 **Problem**: Prisma Client not found
+
 ```bash
 # Solution: Generate Prisma Client
 cd apps/backend/src
@@ -1016,6 +1106,7 @@ npx prisma generate
 ```
 
 **Problem**: Migration fails
+
 ```bash
 # Solution: Check migration files for errors
 # Reset database (WARNING: deletes all data)
@@ -1026,6 +1117,7 @@ npx prisma migrate reset
 ### Port Conflicts
 
 **Problem**: Port already in use
+
 ```bash
 # Solution 1: Change ports in .env
 # For backend, change PORT
@@ -1043,6 +1135,7 @@ taskkill /PID <pid> /F
 ### Build Issues
 
 **Problem**: Build fails with type errors
+
 ```bash
 # Solution: Clean Nx cache and rebuild
 yarn nx reset
@@ -1051,6 +1144,7 @@ yarn nx build backend --skip-nx-cache
 ```
 
 **Problem**: Out of memory errors
+
 ```bash
 # Solution: Increase Node.js memory
 export NODE_OPTIONS="--max-old-space-size=4096"
@@ -1060,6 +1154,7 @@ yarn nx build backend
 ### Git Issues
 
 **Problem**: Merge conflicts
+
 ```bash
 # Solution: Resolve conflicts manually
 git fetch upstream
@@ -1074,6 +1169,7 @@ git commit -m "chore: resolve merge conflicts"
 ### Common Errors
 
 **Error**: `Cannot find module '@myorganizer/...'`
+
 ```bash
 # Solution: Rebuild TypeScript paths
 yarn install
@@ -1081,6 +1177,7 @@ yarn nx reset
 ```
 
 **Error**: `ENOSPC: System limit for number of file watchers reached`
+
 ```bash
 # Solution (Linux): Increase inotify watchers
 echo fs.inotify.max_user_watches=524288 | sudo tee -a /etc/sysctl.conf
@@ -1088,6 +1185,7 @@ sudo sysctl -p
 ```
 
 **Error**: Husky hooks not working
+
 ```bash
 # Solution: Reinstall Husky
 yarn husky install
