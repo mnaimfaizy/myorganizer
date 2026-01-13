@@ -20,8 +20,14 @@
       "@myorganizer/auth": ["libs/auth/src/index.ts"],
       "@myorganizer/core": ["libs/core/src/index.ts"],
       "@myorganizer/vault-core": ["libs/vault-core/src/index.ts"],
+      "@myorganizer/web-pages/addresses": [
+        "libs/web/pages/addresses/src/index.ts"
+      ],
       "@myorganizer/web-pages/dashboard": [
         "libs/web/pages/dashboard/src/index.ts"
+      ],
+      "@myorganizer/web-pages/mobile-numbers": [
+        "libs/web/pages/mobile-numbers/src/index.ts"
       ],
       "@myorganizer/web-pages/todos": ["libs/web/pages/todos/src/index.ts"],
       "@myorganizer/web-pages/vault-export": [

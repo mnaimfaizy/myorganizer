@@ -1,0 +1,23 @@
+{
+  "name": "web-pages-mobile-numbers",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/web/pages/mobile-numbers/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/web/pages/mobile-numbers/src/**/*.{ts,tsx}"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/libs/web/pages/mobile-numbers"],
+      "options": {
+        "jestConfig": "libs/web/pages/mobile-numbers/jest.config.ts",
+        "passWithNoTests": true
+      }
+    }
+  }
+}
