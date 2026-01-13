@@ -74,13 +74,13 @@ function readRuntimeRouterPrefixFromMeta(): string | undefined {
 export function getApiBaseUrl(): string {
   const fromWindow = readRuntimeApiBaseUrlFromWindow();
   const fromMeta = readRuntimeApiBaseUrlFromMeta();
-  const fromEnv = process.env.API_BASE_URL;
-  const fromPublicEnv = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const fromEnv = process.env['API_BASE_URL'];
+  const fromPublicEnv = process.env['NEXT_PUBLIC_API_BASE_URL'];
 
   const routerPrefixFromWindow = readRuntimeRouterPrefixFromWindow();
   const routerPrefixFromMeta = readRuntimeRouterPrefixFromMeta();
-  const routerPrefixFromEnv = process.env.ROUTER_PREFIX;
-  const routerPrefixFromPublicEnv = process.env.NEXT_PUBLIC_ROUTER_PREFIX;
+  const routerPrefixFromEnv = process.env['ROUTER_PREFIX'];
+  const routerPrefixFromPublicEnv = process.env['NEXT_PUBLIC_ROUTER_PREFIX'];
 
   const rawBaseUrl =
     fromWindow || fromMeta || fromEnv || fromPublicEnv || DEFAULT_API_BASE_URL;
@@ -107,7 +107,10 @@ export function getApiBaseUrl(): string {
       parsed.pathname = routerPrefix;
     }
 
-    if (process.env.NODE_ENV === 'production' && parsed.protocol !== 'https:') {
+    if (
+      process.env['NODE_ENV'] === 'production' &&
+      parsed.protocol !== 'https:'
+    ) {
       console.warn(
         'API_BASE_URL is not using HTTPS in production. ' +
           'This may expose sensitive data over an insecure connection:',
@@ -124,7 +127,7 @@ export function getApiBaseUrl(): string {
     // If this is a server-side production render and a base URL was explicitly set,
     // fail fast so misconfiguration is obvious.
     if (
-      process.env.NODE_ENV === 'production' &&
+      process.env['NODE_ENV'] === 'production' &&
       typeof window === 'undefined' &&
       wasExplicitlyConfigured
     ) {
