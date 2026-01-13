@@ -10,6 +10,22 @@ dotenv.config();
 const LocalStrategy = localStrat.Strategy;
 const JwtStrategy = jwtStrat.Strategy;
 
+function getAccessJwtSecret(): string {
+  const configured = process.env.ACCESS_JWT_SECRET;
+  if (configured && configured.trim().length > 0) return configured;
+
+  // In CI/unit tests we don't require real secrets; provide a deterministic default.
+  // This avoids passport-jwt throwing at module import time.
+  if (process.env.NODE_ENV === 'test' || process.env.JEST_WORKER_ID) {
+    return 'test-access-jwt-secret';
+  }
+
+  throw new Error(
+    'ACCESS_JWT_SECRET is required to initialize JWT auth. ' +
+      'Set ACCESS_JWT_SECRET (and other JWT secrets) in the environment.'
+  );
+}
+
 const db = new PrismaClient();
 
 passport.use(
@@ -51,7 +67,7 @@ passport.use(
   new JwtStrategy(
     {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
-      secretOrKey: process.env.ACCESS_JWT_SECRET,
+      secretOrKey: getAccessJwtSecret(),
     },
     function (jwt_payload, done) {
       db.user
