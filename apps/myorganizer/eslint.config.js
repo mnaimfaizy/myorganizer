@@ -19,4 +19,14 @@ module.exports = [
   {
     ignores: ['.next/**/*'],
   },
+  {
+    files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
+    rules: {
+      '@typescript-eslint/no-empty-function': [
+        'error',
+        { allow: ['arrowFunctions', 'functions', 'methods'] },
+      ],
+      '@next/next/no-html-link-for-pages': 'off',
+    },
+  },
 ];

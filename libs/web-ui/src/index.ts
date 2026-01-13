@@ -14,6 +14,10 @@ export * from './lib/components/Form/Form';
 export * from './lib/components/Input/Input';
 export * from './lib/components/Toast/Toast';
 export * from './lib/components/Toaster/Toaster';
+export * from './lib/components/Popover/Popover';
+export * from './lib/components/Command/Command';
+export * from './lib/components/Combobox/Combobox';
+export * from './lib/components/Select/Select';
 
 export * from './lib/hooks/use-media-query';
 export * from './lib/hooks/use-mobile';

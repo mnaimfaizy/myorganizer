@@ -1,0 +1,23 @@
+{
+  "name": "web-pages-addresses",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/web/pages/addresses/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/web/pages/addresses/src/**/*.{ts,tsx}"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/libs/web/pages/addresses"],
+      "options": {
+        "jestConfig": "libs/web/pages/addresses/jest.config.ts",
+        "passWithNoTests": true
+      }
+    }
+  }
+}

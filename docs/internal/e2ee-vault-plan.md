@@ -127,6 +127,13 @@ type ProviderPrivateNote = {
 
 If you want to hide even the list of banks/utilities a user has, then encrypt `ProviderLink` too.
 
+Update (Jan 2026): we are treating address/mobile "where used" lists as vault-private.
+
+- Usage locations are stored **inside the encrypted vault blobs** alongside addresses/mobile numbers.
+- Dedicated detail pages render these encrypted usage-location records.
+
+See: `docs/internal/address-mobile-usage-plan.md`.
+
 ---
 
 ## UI Navigation Flow
@@ -719,11 +726,11 @@ This section anchors the plan to the existing codebase structure.
 Recommended file structure (conceptual):
 
 ```text
-apps/myorganizer/src/lib/vault/
+libs/web-vault/src/lib/vault/
   crypto.ts
   vault.ts
-apps/myorganizer/src/components/
-  vault-gate.tsx
+libs/web-vault-ui/src/lib/
+  vaultGate.tsx
 apps/myorganizer/src/app/
   addresses/page.tsx
   mobile-numbers/page.tsx
@@ -944,10 +951,10 @@ This keeps a single source of truth: the tsoa controllers.
 Phase 1 (Web local-only):
 
 - [x] Sidebar routes for Addresses + Mobile Numbers: `apps/myorganizer/src/components/app-sidebar.tsx`
-- [x] Vault gate with setup/unlock/recover: `apps/myorganizer/src/components/vault-gate.tsx`
+- [x] Vault gate with setup/unlock/recover: `libs/web-vault-ui/src/lib/vaultGate.tsx`
 - [x] Addresses page with multi-entry encrypted storage: `apps/myorganizer/src/app/dashboard/addresses/page.tsx`
 - [x] Mobile Numbers page with multi-entry encrypted storage: `apps/myorganizer/src/app/dashboard/mobile-numbers/page.tsx`
-- [x] Vault utilities (encrypt/decrypt + local storage): `apps/myorganizer/src/lib/vault/`
+- [x] Vault utilities (encrypt/decrypt + local storage): `libs/web-vault/src/lib/vault/`
 
 Phase 2 (Sync):
 

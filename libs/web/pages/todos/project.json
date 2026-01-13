@@ -1,0 +1,23 @@
+{
+  "name": "web-pages-todos",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/web/pages/todos/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/web/pages/todos/src/**/*.{ts,tsx}"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/libs/web/pages/todos"],
+      "options": {
+        "jestConfig": "libs/web/pages/todos/jest.config.ts",
+        "passWithNoTests": true
+      }
+    }
+  }
+}

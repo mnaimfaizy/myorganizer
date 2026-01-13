@@ -1,0 +1,23 @@
+{
+  "name": "web-pages-dashboard",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/web/pages/dashboard/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/web/pages/dashboard/src/**/*.{ts,tsx}"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/libs/web/pages/dashboard"],
+      "options": {
+        "jestConfig": "libs/web/pages/dashboard/jest.config.ts",
+        "passWithNoTests": true
+      }
+    }
+  }
+}

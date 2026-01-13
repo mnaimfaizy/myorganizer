@@ -25,6 +25,16 @@ yarn start:backend
 yarn start:myorganizer
 ```
 
+## Frontend architecture (important)
+
+This repo uses a strict Next.js App Router pattern:
+
+- `apps/myorganizer/src/app/**` must stay as **thin route wrappers** only (routing + metadata + composition).
+- All page/domain logic must live in Nx libraries under `libs/web/pages/<route>/` and be imported via `@myorganizer/web-pages/<route>`.
+- Shared cross-cutting logic must live in `libs/**` (for example, vault logic belongs in `libs/web-vault` and `libs/web-vault-ui`).
+
+See **[Development Guide](DEVELOPMENT.md)** → “Frontend Architecture (Web Page Libraries)”.
+
 ## Documentation
 
 - **[Development Guide](DEVELOPMENT.md)** - Complete guide for developing in the monorepo

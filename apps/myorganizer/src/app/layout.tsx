@@ -15,8 +15,12 @@ export default function RootLayout({
   const apiBaseUrl =
     process.env.API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? '';
 
+  const routerPrefix =
+    process.env.ROUTER_PREFIX ?? process.env.NEXT_PUBLIC_ROUTER_PREFIX ?? '';
+
   const runtimeConfigJson = JSON.stringify({
     API_BASE_URL: apiBaseUrl,
+    ROUTER_PREFIX: routerPrefix,
   }).replace(/[<>&\u2028\u2029]/g, (c) => {
     switch (c) {
       case '<':
@@ -36,16 +40,17 @@ export default function RootLayout({
 
   return (
     <html lang="en">
-      <body>
+      <head>
         <meta name="myorganizer-api-base-url" content={apiBaseUrl} />
+        <meta name="myorganizer-router-prefix" content={routerPrefix} />
         <script
           // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{
             __html: `window.__MYORGANIZER_RUNTIME__=${runtimeConfigJson};window.MYORGANIZER_RUNTIME=window.__MYORGANIZER_RUNTIME__;`,
           }}
         />
-        {children}
-      </body>
+      </head>
+      <body>{children}</body>
     </html>
   );
 }

@@ -49,6 +49,7 @@
     },
     "test": {
       "executor": "@nx/jest:jest",
+      "dependsOn": ["generate-types"],
       "outputs": ["{workspaceRoot}/coverage/apps/backend"],
       "options": {
         "jestConfig": "apps/backend/jest.config.ts"
