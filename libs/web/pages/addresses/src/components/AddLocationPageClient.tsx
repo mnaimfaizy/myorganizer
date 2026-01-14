@@ -13,7 +13,7 @@ import {
   saveEncryptedData,
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -42,12 +42,15 @@ function AddLocationInner(props: {
 }) {
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams?.get('edit');
 
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [usageLocations, setUsageLocations] = useState<UsageLocationRecord[]>(
     []
   );
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const usageForm = useForm<AddUsageLocationFormValues>({
     resolver: zodResolver(addUsageLocationSchema),
@@ -88,6 +91,24 @@ function AddLocationInner(props: {
 
         setUsageLocations(found.usageLocations);
 
+        // If editing, populate form with existing data
+        if (editId) {
+          const locationToEdit = found.usageLocations.find(
+            (l) => l.id === editId
+          );
+          if (locationToEdit) {
+            setIsEditMode(true);
+            usageForm.reset({
+              orgName: locationToEdit.organisationName,
+              orgType: locationToEdit.organisationType,
+              updateMethod: locationToEdit.updateMethod,
+              priority: locationToEdit.priority,
+              link: locationToEdit.link || '',
+              changed: locationToEdit.changed,
+            });
+          }
+        }
+
         if (normalized.changed) {
           await saveEncryptedData({
             masterKeyBytes: props.masterKeyBytes,
@@ -104,7 +125,7 @@ function AddLocationInner(props: {
         });
       })
       .finally(() => setLoading(false));
-  }, [props.addressId, props.masterKeyBytes, toast]);
+  }, [props.addressId, props.masterKeyBytes, toast, editId, usageForm]);
 
   const orgTypeOptions = useMemo(
     () =>
@@ -184,6 +205,7 @@ function AddLocationInner(props: {
         canAddUsage={canAddUsage}
         orgTypeOptions={orgTypeOptions}
         updateMethodOptions={updateMethodOptions}
+        isEditMode={isEditMode}
         onOrgNameChange={(value) =>
           usageForm.setValue('orgName', value, { shouldValidate: true })
         }
@@ -204,43 +226,73 @@ function AddLocationInner(props: {
         }
         onAddUsage={usageForm.handleSubmit(async (values) => {
           const now = new Date().toISOString();
-          const next: UsageLocationRecord = {
-            id: randomId(),
-            organisationName: values.orgName.trim(),
-            organisationType: parseEnumValue(
-              OrganisationTypeEnum,
-              values.orgType,
-              OrganisationTypeEnum.Other
-            ),
-            updateMethod: parseEnumValue(
-              UpdateMethodEnum,
-              values.updateMethod,
-              UpdateMethodEnum.Online
-            ),
-            changed: values.changed,
-            link: values.link?.trim() ? values.link.trim() : undefined,
-            priority: parseEnumValue(
-              PriorityEnum,
-              values.priority,
-              PriorityEnum.Normal
-            ),
-            createdAt: now,
-            changedAt: values.changed ? now : undefined,
-          };
+
+          let updatedLocations: UsageLocationRecord[];
+
+          if (isEditMode && editId) {
+            // Edit existing location
+            updatedLocations = usageLocations.map((loc) =>
+              loc.id === editId
+                ? {
+                    ...loc,
+                    organisationName: values.orgName.trim(),
+                    organisationType: parseEnumValue(
+                      OrganisationTypeEnum,
+                      values.orgType,
+                      OrganisationTypeEnum.Other
+                    ),
+                    updateMethod: parseEnumValue(
+                      UpdateMethodEnum,
+                      values.updateMethod,
+                      UpdateMethodEnum.Online
+                    ),
+                    changed: values.changed,
+                    link: values.link?.trim() ? values.link.trim() : undefined,
+                    priority: parseEnumValue(
+                      PriorityEnum,
+                      values.priority,
+                      PriorityEnum.Normal
+                    ),
+                    changedAt:
+                      values.changed && !loc.changed ? now : loc.changedAt,
+                  }
+                : loc
+            );
+          } else {
+            // Add new location
+            const next: UsageLocationRecord = {
+              id: randomId(),
+              organisationName: values.orgName.trim(),
+              organisationType: parseEnumValue(
+                OrganisationTypeEnum,
+                values.orgType,
+                OrganisationTypeEnum.Other
+              ),
+              updateMethod: parseEnumValue(
+                UpdateMethodEnum,
+                values.updateMethod,
+                UpdateMethodEnum.Online
+              ),
+              changed: values.changed,
+              link: values.link?.trim() ? values.link.trim() : undefined,
+              priority: parseEnumValue(
+                PriorityEnum,
+                values.priority,
+                PriorityEnum.Normal
+              ),
+              createdAt: now,
+              changedAt: values.changed ? now : undefined,
+            };
+            updatedLocations = [next, ...usageLocations];
+          }
 
           try {
-            await persistUsage([next, ...usageLocations]);
-            usageForm.reset({
-              orgName: '',
-              orgType: values.orgType,
-              updateMethod: values.updateMethod,
-              priority: values.priority,
-              link: '',
-              changed: false,
-            });
+            await persistUsage(updatedLocations);
             toast({
-              title: 'Saved',
-              description: 'Usage location saved (encrypted).',
+              title: isEditMode ? 'Updated' : 'Saved',
+              description: isEditMode
+                ? 'Usage location updated successfully (encrypted).'
+                : 'Usage location saved (encrypted).',
             });
             // Navigate back to detail page after successful save
             router.push(`/dashboard/addresses/${props.addressId}`);

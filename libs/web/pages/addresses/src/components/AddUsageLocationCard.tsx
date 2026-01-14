@@ -37,11 +37,12 @@ export function AddUsageLocationCard(props: {
   onLinkChange: (value: string) => void;
   onChangedChange: (value: boolean) => void;
   onAddUsage: () => void | Promise<void>;
+  isEditMode?: boolean;
 }) {
   return (
     <Card className="p-6 shadow-sm border-2">
       <CardTitle className="text-xl font-semibold mb-6">
-        Add location where used
+        {props.isEditMode ? 'Edit location' : 'Add location where used'}
       </CardTitle>
       <CardContent className="space-y-6 p-0">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -154,7 +155,7 @@ export function AddUsageLocationCard(props: {
             size="lg"
             className="w-full md:w-auto px-8 h-11"
           >
-            Add location
+            {props.isEditMode ? 'Update location' : 'Add location'}
           </Button>
         </div>
       </CardContent>
