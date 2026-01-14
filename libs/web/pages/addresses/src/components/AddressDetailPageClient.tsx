@@ -19,7 +19,7 @@ import {
   BackToAddressesLink,
 } from './AddressDetailScaffold';
 import { AddressDetailsCard } from './AddressDetailsCard';
-import { UsageLocationsCard } from './UsageLocationsCard';
+import { UsageLocationsTable } from './UsageLocationsTable';
 
 function AddressDetailsInner(props: {
   masterKeyBytes: Uint8Array;
@@ -78,6 +78,52 @@ function AddressDetailsInner(props: {
       .finally(() => setLoading(false));
   }, [props.addressId, props.masterKeyBytes, toast]);
 
+  async function handleDeleteLocation(locationId: string) {
+    try {
+      const updatedLocations = usageLocations.filter(
+        (l) => l.id !== locationId
+      );
+
+      const raw = await loadDecryptedData<unknown>({
+        masterKeyBytes: props.masterKeyBytes,
+        type: 'addresses',
+        defaultValue: [],
+      });
+
+      const normalized = normalizeAddresses(raw);
+      const nextAddresses = normalized.value.map((x) =>
+        x.id === props.addressId
+          ? { ...x, usageLocations: updatedLocations }
+          : x
+      );
+
+      await saveEncryptedData({
+        masterKeyBytes: props.masterKeyBytes,
+        type: 'addresses',
+        value: nextAddresses,
+      });
+
+      setUsageLocations(updatedLocations);
+      toast({
+        title: 'Deleted',
+        description: 'Usage location deleted successfully.',
+      });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      toast({
+        title: 'Failed to delete',
+        description: message,
+        variant: 'destructive',
+      });
+    }
+  }
+
+  function handleEditLocation(location: UsageLocationRecord) {
+    router.push(
+      `/dashboard/addresses/${props.addressId}/add-location?edit=${location.id}`
+    );
+  }
+
   if (loading) {
     return <AddressDetailLoading />;
   }
@@ -105,7 +151,11 @@ function AddressDetailsInner(props: {
         </Button>
       </div>
 
-      <UsageLocationsCard usageLocations={usageLocations} />
+      <UsageLocationsTable
+        usageLocations={usageLocations}
+        onEdit={handleEditLocation}
+        onDelete={handleDeleteLocation}
+      />
     </div>
   );
 }
