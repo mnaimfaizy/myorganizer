@@ -2,6 +2,7 @@ import { MobileNumberRecord } from '@myorganizer/core';
 import { Badge, Button } from '@myorganizer/web-ui';
 import { Smartphone, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { formatMobileNumber } from '../utils/formatMobileNumber';
 
 export function MobileNumberListItem(props: {
   item: MobileNumberRecord;
@@ -32,7 +33,7 @@ export function MobileNumberListItem(props: {
                 )}
               </div>
               <p className="text-sm text-muted-foreground break-words font-mono">
-                {props.item.mobileNumber}
+                {formatMobileNumber(props.item)}
               </p>
               {usageCount === 0 && (
                 <p className="text-xs text-muted-foreground mt-1">

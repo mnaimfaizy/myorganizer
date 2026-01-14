@@ -175,7 +175,15 @@ export function normalizeAddresses(
     const next: AddressRecord = {
       id: toTrimmedString(raw.id) ?? randomId(),
       label: toTrimmedString(raw.label) ?? 'Address',
-      address: toTrimmedString(raw.address) ?? '',
+      // Legacy single-line address (backward compatibility)
+      address: toTrimmedString(raw.address) ?? undefined,
+      // Structured address fields
+      propertyNumber: toTrimmedString(raw.propertyNumber) ?? undefined,
+      street: toTrimmedString(raw.street) ?? undefined,
+      suburb: toTrimmedString(raw.suburb) ?? undefined,
+      state: toTrimmedString(raw.state) ?? undefined,
+      zipCode: toTrimmedString(raw.zipCode) ?? undefined,
+      country: toTrimmedString(raw.country) ?? undefined,
       status:
         raw.status === AddressStatusEnum.Old
           ? AddressStatusEnum.Old
@@ -187,6 +195,12 @@ export function normalizeAddresses(
     if (next.id !== raw.id) changed = true;
     if (next.label !== raw.label) changed = true;
     if (next.address !== raw.address) changed = true;
+    if (next.propertyNumber !== raw.propertyNumber) changed = true;
+    if (next.street !== raw.street) changed = true;
+    if (next.suburb !== raw.suburb) changed = true;
+    if (next.state !== raw.state) changed = true;
+    if (next.zipCode !== raw.zipCode) changed = true;
+    if (next.country !== raw.country) changed = true;
     if (next.status !== raw.status) changed = true;
     if (!Array.isArray(raw.usageLocations)) changed = true;
     if (next.createdAt !== raw.createdAt) changed = true;
@@ -238,12 +252,22 @@ export function normalizeMobileNumbers(
     const next: _MobileNumberRecord = {
       id: toTrimmedString(raw.id) ?? randomId(),
       label: toTrimmedString(raw.label) ?? 'Mobile',
-      mobileNumber: toTrimmedString(raw.mobileNumber) ?? '',
+      // Legacy single field (backward compatibility)
+      mobileNumber: toTrimmedString(raw.mobileNumber) ?? undefined,
+      // Structured phone fields
+      countryCode: toTrimmedString(raw.countryCode) ?? undefined,
+      phoneNumber: toTrimmedString(raw.phoneNumber) ?? undefined,
       usageLocations: nextUsage,
       createdAt: toTrimmedString(raw.createdAt) ?? isoNow(),
     };
 
     if (next.id !== raw.id) changed = true;
+    if (next.label !== raw.label) changed = true;
+    if (next.mobileNumber !== raw.mobileNumber) changed = true;
+    if (next.countryCode !== raw.countryCode) changed = true;
+    if (next.phoneNumber !== raw.phoneNumber) changed = true;
+    if (!Array.isArray(raw.usageLocations)) changed = true;
+    if (next.createdAt !== raw.createdAt) changed = true;
     if (next.label !== raw.label) changed = true;
     if (next.mobileNumber !== raw.mobileNumber) changed = true;
     if (!Array.isArray(raw.usageLocations)) changed = true;
