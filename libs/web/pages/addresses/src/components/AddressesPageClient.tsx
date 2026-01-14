@@ -19,8 +19,13 @@ import { AddAddressCard } from './AddAddressCard';
 import { AddressListCard } from './AddressListCard';
 
 const addAddressSchema = z.object({
-  label: z.string().trim().min(1),
-  address: z.string().trim().min(1),
+  label: z.string().trim().min(1, 'Label is required'),
+  propertyNumber: z.string().trim().optional(),
+  street: z.string().trim().min(1, 'Street is required'),
+  suburb: z.string().trim().min(1, 'Suburb/City is required'),
+  state: z.string().trim().min(1, 'State/Province is required'),
+  zipCode: z.string().trim().min(1, 'Zip/Postal code is required'),
+  country: z.string().min(1, 'Country is required'),
 });
 
 type AddAddressFormValues = z.infer<typeof addAddressSchema>;
@@ -34,13 +39,23 @@ function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
     resolver: zodResolver(addAddressSchema),
     defaultValues: {
       label: 'Home',
-      address: '',
+      propertyNumber: '',
+      street: '',
+      suburb: '',
+      state: '',
+      zipCode: '',
+      country: '',
     },
     mode: 'onChange',
   });
 
   const label = addForm.watch('label');
-  const address = addForm.watch('address');
+  const propertyNumber = addForm.watch('propertyNumber');
+  const street = addForm.watch('street');
+  const suburb = addForm.watch('suburb');
+  const state = addForm.watch('state');
+  const zipCode = addForm.watch('zipCode');
+  const country = addForm.watch('country');
   const canAdd = addForm.formState.isValid;
 
   useEffect(() => {
@@ -91,19 +106,44 @@ function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <AddAddressCard
         label={label}
-        address={address}
+        propertyNumber={propertyNumber}
+        street={street}
+        suburb={suburb}
+        state={state}
+        zipCode={zipCode}
+        country={country}
         canAdd={canAdd}
         onLabelChange={(value) =>
           addForm.setValue('label', value, { shouldValidate: true })
         }
-        onAddressChange={(value) =>
-          addForm.setValue('address', value, { shouldValidate: true })
+        onPropertyNumberChange={(value) =>
+          addForm.setValue('propertyNumber', value, { shouldValidate: true })
+        }
+        onStreetChange={(value) =>
+          addForm.setValue('street', value, { shouldValidate: true })
+        }
+        onSuburbChange={(value) =>
+          addForm.setValue('suburb', value, { shouldValidate: true })
+        }
+        onStateChange={(value) =>
+          addForm.setValue('state', value, { shouldValidate: true })
+        }
+        onZipCodeChange={(value) =>
+          addForm.setValue('zipCode', value, { shouldValidate: true })
+        }
+        onCountryChange={(value) =>
+          addForm.setValue('country', value, { shouldValidate: true })
         }
         onAdd={addForm.handleSubmit(async (values) => {
           const nextItem: AddressRecord = {
             id: randomId(),
             label: values.label.trim(),
-            address: values.address.trim(),
+            propertyNumber: values.propertyNumber?.trim(),
+            street: values.street.trim(),
+            suburb: values.suburb.trim(),
+            state: values.state.trim(),
+            zipCode: values.zipCode.trim(),
+            country: values.country,
             status: AddressStatusEnum.Current,
             usageLocations: [],
             createdAt: new Date().toISOString(),
@@ -111,7 +151,12 @@ function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
           await persist([nextItem, ...items]);
           addForm.reset({
             label: values.label,
-            address: '',
+            propertyNumber: '',
+            street: '',
+            suburb: '',
+            state: '',
+            zipCode: '',
+            country: '',
           });
           toast({
             title: 'Saved',

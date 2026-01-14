@@ -2,6 +2,7 @@ import { AddressRecord } from '@myorganizer/core';
 import { Badge, Button } from '@myorganizer/web-ui';
 import { MapPin, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { formatAddress } from '../utils/formatAddress';
 
 export function AddressListItem(props: {
   item: AddressRecord;
@@ -32,7 +33,7 @@ export function AddressListItem(props: {
                 )}
               </div>
               <p className="text-sm text-muted-foreground break-words mb-2">
-                {props.item.address}
+                {formatAddress(props.item)}
               </p>
               <div className="flex items-center gap-2">
                 <Badge

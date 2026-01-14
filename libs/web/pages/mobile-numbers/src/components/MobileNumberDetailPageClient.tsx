@@ -1,6 +1,6 @@
 'use client';
 
-import { UsageLocationRecord } from '@myorganizer/core';
+import { MobileNumberRecord, UsageLocationRecord } from '@myorganizer/core';
 import { Button, useToast } from '@myorganizer/web-ui';
 import {
   loadDecryptedData,
@@ -31,8 +31,8 @@ function MobileNumberDetailsInner(props: {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  const [label, setLabel] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('');
+  const [mobileNumberRecord, setMobileNumberRecord] =
+    useState<MobileNumberRecord | null>(null);
   const [usageLocations, setUsageLocations] = useState<UsageLocationRecord[]>(
     []
   );
@@ -56,8 +56,7 @@ function MobileNumberDetailsInner(props: {
           return;
         }
 
-        setLabel(found.label);
-        setMobileNumber(found.mobileNumber);
+        setMobileNumberRecord(found);
         setUsageLocations(found.usageLocations);
 
         if (normalized.changed) {
@@ -128,7 +127,7 @@ function MobileNumberDetailsInner(props: {
     return <MobileNumberDetailLoading />;
   }
 
-  if (notFound) {
+  if (notFound || !mobileNumberRecord) {
     return <MobileNumberDetailNotFound />;
   }
 
@@ -136,7 +135,7 @@ function MobileNumberDetailsInner(props: {
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <BackToMobileNumbersLink />
 
-      <MobileNumberDetailsCard label={label} mobileNumber={mobileNumber} />
+      <MobileNumberDetailsCard mobileNumberRecord={mobileNumberRecord} />
 
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Usage Locations</h2>

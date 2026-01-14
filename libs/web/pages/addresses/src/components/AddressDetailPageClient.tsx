@@ -1,6 +1,6 @@
 'use client';
 
-import { UsageLocationRecord } from '@myorganizer/core';
+import { AddressRecord, UsageLocationRecord } from '@myorganizer/core';
 import { Button, useToast } from '@myorganizer/web-ui';
 import {
   loadDecryptedData,
@@ -31,9 +31,9 @@ function AddressDetailsInner(props: {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
-  const [label, setLabel] = useState('');
-  const [address, setAddress] = useState('');
-  const [status, setStatus] = useState('');
+  const [addressRecord, setAddressRecord] = useState<AddressRecord | null>(
+    null
+  );
   const [usageLocations, setUsageLocations] = useState<UsageLocationRecord[]>(
     []
   );
@@ -55,9 +55,7 @@ function AddressDetailsInner(props: {
           return;
         }
 
-        setLabel(found.label);
-        setAddress(found.address);
-        setStatus(found.status);
+        setAddressRecord(found);
         setUsageLocations(found.usageLocations);
 
         if (normalized.changed) {
@@ -128,7 +126,7 @@ function AddressDetailsInner(props: {
     return <AddressDetailLoading />;
   }
 
-  if (notFound) {
+  if (notFound || !addressRecord) {
     return <AddressDetailNotFound />;
   }
 
@@ -136,7 +134,7 @@ function AddressDetailsInner(props: {
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <BackToAddressesLink />
 
-      <AddressDetailsCard label={label} address={address} status={status} />
+      <AddressDetailsCard addressRecord={addressRecord} />
 
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Usage Locations</h2>

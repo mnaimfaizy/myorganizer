@@ -61,7 +61,15 @@ export type UsageLocationRecord = {
 export type AddressRecord = {
   id: string;
   label: string;
-  address: string;
+  // Legacy single-line address (for backward compatibility)
+  address?: string;
+  // Structured address fields
+  propertyNumber?: string;
+  street?: string;
+  suburb?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
   status: AddressStatus;
   usageLocations: UsageLocationRecord[];
   createdAt: IsoDateTimeString;
@@ -70,7 +78,11 @@ export type AddressRecord = {
 export type MobileNumberRecord = {
   id: string;
   label: string;
-  mobileNumber: string;
+  // Legacy single field (for backward compatibility)
+  mobileNumber?: string;
+  // Structured phone fields
+  countryCode?: string;
+  phoneNumber?: string;
   usageLocations: UsageLocationRecord[];
   createdAt: IsoDateTimeString;
 };

@@ -18,10 +18,29 @@ import { randomId } from '../utils/randomId';
 import { AddMobileNumberCard } from './AddMobileNumberCard';
 import { MobileNumberListCard } from './MobileNumberListCard';
 
-const addMobileNumberSchema = z.object({
-  label: z.string().trim().min(1),
-  mobileNumber: z.string().trim().min(1),
-});
+const addMobileNumberSchema = z
+  .object({
+    label: z.string().trim().min(1, 'Label is required'),
+    countryCode: z.string().min(1, 'Country code is required'),
+    phoneNumber: z
+      .string()
+      .trim()
+      .min(1, 'Phone number is required')
+      .regex(
+        /^[0-9\s\-\(\)]+$/,
+        'Only numbers, spaces, hyphens, and parentheses allowed'
+      ),
+  })
+  .refine(
+    (data) => {
+      const digits = data.phoneNumber.replace(/\D/g, '');
+      return digits.length >= 7 && digits.length <= 15;
+    },
+    {
+      message: 'Phone number must be between 7 and 15 digits',
+      path: ['phoneNumber'],
+    }
+  );
 
 type AddMobileNumberFormValues = z.infer<typeof addMobileNumberSchema>;
 
@@ -34,13 +53,15 @@ function MobileNumbersInner(props: { masterKeyBytes: Uint8Array }) {
     resolver: zodResolver(addMobileNumberSchema),
     defaultValues: {
       label: 'Personal',
-      mobileNumber: '',
+      countryCode: '+1',
+      phoneNumber: '',
     },
     mode: 'onChange',
   });
 
   const label = addForm.watch('label');
-  const mobileNumber = addForm.watch('mobileNumber');
+  const countryCode = addForm.watch('countryCode');
+  const phoneNumber = addForm.watch('phoneNumber');
   const canAdd = addForm.formState.isValid;
 
   useEffect(() => {
@@ -91,19 +112,24 @@ function MobileNumbersInner(props: { masterKeyBytes: Uint8Array }) {
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <AddMobileNumberCard
         label={label}
-        mobileNumber={mobileNumber}
+        countryCode={countryCode}
+        phoneNumber={phoneNumber}
         canAdd={canAdd}
         onLabelChange={(value) =>
           addForm.setValue('label', value, { shouldValidate: true })
         }
-        onMobileNumberChange={(value) =>
-          addForm.setValue('mobileNumber', value, { shouldValidate: true })
+        onCountryCodeChange={(value) =>
+          addForm.setValue('countryCode', value, { shouldValidate: true })
+        }
+        onPhoneNumberChange={(value) =>
+          addForm.setValue('phoneNumber', value, { shouldValidate: true })
         }
         onAdd={addForm.handleSubmit(async (values) => {
           const nextItem: MobileNumberRecord = {
             id: randomId(),
             label: values.label.trim(),
-            mobileNumber: values.mobileNumber.trim(),
+            countryCode: values.countryCode,
+            phoneNumber: values.phoneNumber.trim(),
             usageLocations: [],
             createdAt: new Date().toISOString(),
           };
@@ -111,7 +137,8 @@ function MobileNumbersInner(props: { masterKeyBytes: Uint8Array }) {
           await persist([nextItem, ...items]);
           addForm.reset({
             label: values.label,
-            mobileNumber: '',
+            countryCode: values.countryCode,
+            phoneNumber: '',
           });
           toast({
             title: 'Saved',

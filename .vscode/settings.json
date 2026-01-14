@@ -11,5 +11,8 @@
     "typescriptreact"
   ],
   "editor.formatOnSave": true,
-  "eslint.format.enable": true
+  "eslint.format.enable": true,
+  "chat.tools.terminal.autoApprove": {
+    "git remote": true
+  }
 }
