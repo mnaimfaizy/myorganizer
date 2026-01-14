@@ -19,7 +19,7 @@ import {
   MobileNumberDetailNotFound,
 } from './MobileNumberDetailScaffold';
 import { MobileNumberDetailsCard } from './MobileNumberDetailsCard';
-import { UsageLocationsCard } from './UsageLocationsCard';
+import { UsageLocationsTable } from './UsageLocationsTable';
 
 function MobileNumberDetailsInner(props: {
   masterKeyBytes: Uint8Array;
@@ -78,6 +78,52 @@ function MobileNumberDetailsInner(props: {
       .finally(() => setLoading(false));
   }, [props.masterKeyBytes, props.mobileNumberId, toast]);
 
+  async function handleDeleteLocation(locationId: string) {
+    try {
+      const updatedLocations = usageLocations.filter(
+        (l) => l.id !== locationId
+      );
+
+      const raw = await loadDecryptedData<unknown>({
+        masterKeyBytes: props.masterKeyBytes,
+        type: 'mobileNumbers',
+        defaultValue: [],
+      });
+
+      const normalized = normalizeMobileNumbers(raw);
+      const nextMobileNumbers = normalized.value.map((x) =>
+        x.id === props.mobileNumberId
+          ? { ...x, usageLocations: updatedLocations }
+          : x
+      );
+
+      await saveEncryptedData({
+        masterKeyBytes: props.masterKeyBytes,
+        type: 'mobileNumbers',
+        value: nextMobileNumbers,
+      });
+
+      setUsageLocations(updatedLocations);
+      toast({
+        title: 'Deleted',
+        description: 'Usage location deleted successfully.',
+      });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      toast({
+        title: 'Failed to delete',
+        description: message,
+        variant: 'destructive',
+      });
+    }
+  }
+
+  function handleEditLocation(location: UsageLocationRecord) {
+    router.push(
+      `/dashboard/mobile-numbers/${props.mobileNumberId}/add-location?edit=${location.id}`
+    );
+  }
+
   if (loading) {
     return <MobileNumberDetailLoading />;
   }
@@ -107,7 +153,11 @@ function MobileNumberDetailsInner(props: {
         </Button>
       </div>
 
-      <UsageLocationsCard usageLocations={usageLocations} />
+      <UsageLocationsTable
+        usageLocations={usageLocations}
+        onEdit={handleEditLocation}
+        onDelete={handleDeleteLocation}
+      />
     </div>
   );
 }

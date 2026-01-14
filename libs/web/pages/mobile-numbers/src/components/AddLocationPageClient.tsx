@@ -13,7 +13,7 @@ import {
   saveEncryptedData,
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -42,6 +42,9 @@ function AddLocationInner(props: {
 }) {
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const editId = searchParams.get('edit');
+  const isEditMode = !!editId;
 
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -107,6 +110,22 @@ function AddLocationInner(props: {
       })
       .finally(() => setLoading(false));
   }, [props.mobileNumberId, props.masterKeyBytes, toast]);
+
+  useEffect(() => {
+    if (isEditMode && editId && usageLocations.length > 0) {
+      const locationToEdit = usageLocations.find((l) => l.id === editId);
+      if (locationToEdit) {
+        usageForm.reset({
+          orgName: locationToEdit.organisationName,
+          orgType: locationToEdit.organisationType,
+          updateMethod: locationToEdit.updateMethod,
+          priority: locationToEdit.priority,
+          link: locationToEdit.link ?? '',
+          changed: locationToEdit.changed,
+        });
+      }
+    }
+  }, [editId, isEditMode, usageLocations, usageForm]);
 
   const orgTypeOptions = useMemo(
     () =>
@@ -179,6 +198,7 @@ function AddLocationInner(props: {
       </Button>
 
       <AddUsageLocationCard
+        isEditMode={isEditMode}
         orgName={orgName}
         orgType={orgType}
         updateMethod={updateMethod}
@@ -207,54 +227,97 @@ function AddLocationInner(props: {
           usageForm.setValue('changed', value, { shouldValidate: true })
         }
         onAddUsage={usageForm.handleSubmit(async (values) => {
-          const now = new Date().toISOString();
-          const next: UsageLocationRecord = {
-            id: randomId(),
-            organisationName: values.orgName.trim(),
-            organisationType: parseEnumValue(
-              OrganisationTypeEnum,
-              values.orgType,
-              OrganisationTypeEnum.Other
-            ),
-            updateMethod: parseEnumValue(
-              UpdateMethodEnum,
-              values.updateMethod,
-              UpdateMethodEnum.Online
-            ),
-            changed: values.changed,
-            link: values.link?.trim() ? values.link.trim() : undefined,
-            priority: parseEnumValue(
-              PriorityEnum,
-              values.priority,
-              PriorityEnum.Normal
-            ),
-            createdAt: now,
-            changedAt: values.changed ? now : undefined,
-          };
+          if (isEditMode && editId) {
+            // Update existing location
+            const updatedLocations = usageLocations.map((location) => {
+              if (location.id === editId) {
+                return {
+                  ...location,
+                  organisationName: values.orgName.trim(),
+                  organisationType: parseEnumValue(
+                    OrganisationTypeEnum,
+                    values.orgType,
+                    OrganisationTypeEnum.Other
+                  ),
+                  updateMethod: parseEnumValue(
+                    UpdateMethodEnum,
+                    values.updateMethod,
+                    UpdateMethodEnum.Online
+                  ),
+                  priority: parseEnumValue(
+                    PriorityEnum,
+                    values.priority,
+                    PriorityEnum.Normal
+                  ),
+                  link: values.link?.trim() || '',
+                  changed: values.changed,
+                  updatedAt: new Date().toISOString(),
+                  orgName: values.orgName.trim(),
+                  orgType: values.orgType,
+                };
+              }
+              return location;
+            });
 
-          try {
-            await persistUsage([next, ...usageLocations]);
-            usageForm.reset({
-              orgName: '',
-              orgType: values.orgType,
-              updateMethod: values.updateMethod,
-              priority: values.priority,
-              link: '',
-              changed: false,
-            });
+            await persistUsage(updatedLocations);
+
             toast({
-              title: 'Saved',
-              description: 'Usage location saved (encrypted).',
+              title: 'Updated',
+              description: 'Usage location updated successfully.',
             });
-            // Navigate back to detail page after successful save
+
             router.push(`/dashboard/mobile-numbers/${props.mobileNumberId}`);
-          } catch (e: unknown) {
-            const message = e instanceof Error ? e.message : String(e);
-            toast({
-              title: 'Failed to save',
-              description: message,
-              variant: 'destructive',
-            });
+          } else {
+            // Add new location
+            const now = new Date().toISOString();
+            const next: UsageLocationRecord = {
+              id: randomId(),
+              organisationName: values.orgName.trim(),
+              organisationType: parseEnumValue(
+                OrganisationTypeEnum,
+                values.orgType,
+                OrganisationTypeEnum.Other
+              ),
+              updateMethod: parseEnumValue(
+                UpdateMethodEnum,
+                values.updateMethod,
+                UpdateMethodEnum.Online
+              ),
+              changed: values.changed,
+              link: values.link?.trim() ? values.link.trim() : undefined,
+              priority: parseEnumValue(
+                PriorityEnum,
+                values.priority,
+                PriorityEnum.Normal
+              ),
+              createdAt: now,
+              changedAt: values.changed ? now : undefined,
+            };
+
+            try {
+              await persistUsage([next, ...usageLocations]);
+              usageForm.reset({
+                orgName: '',
+                orgType: values.orgType,
+                updateMethod: values.updateMethod,
+                priority: values.priority,
+                link: '',
+                changed: false,
+              });
+              toast({
+                title: 'Saved',
+                description: 'Usage location saved (encrypted).',
+              });
+              // Navigate back to detail page after successful save
+              router.push(`/dashboard/mobile-numbers/${props.mobileNumberId}`);
+            } catch (e: unknown) {
+              const message = e instanceof Error ? e.message : String(e);
+              toast({
+                title: 'Failed to save',
+                description: message,
+                variant: 'destructive',
+              });
+            }
           }
         })}
       />
