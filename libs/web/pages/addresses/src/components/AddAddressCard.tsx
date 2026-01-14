@@ -16,12 +16,12 @@ import { COUNTRIES } from '../data/countries';
 
 export function AddAddressCard(props: {
   label: string;
-  propertyNumber: string;
-  street: string;
-  suburb: string;
-  state: string;
-  zipCode: string;
-  country: string;
+  propertyNumber?: string;
+  street?: string;
+  suburb?: string;
+  state?: string;
+  zipCode?: string;
+  country?: string;
   canAdd: boolean;
   onLabelChange: (value: string) => void;
   onPropertyNumberChange: (value: string) => void;
@@ -53,7 +53,7 @@ export function AddAddressCard(props: {
             <Label htmlFor="addr-property">Property Number</Label>
             <Input
               id="addr-property"
-              value={props.propertyNumber}
+              value={props.propertyNumber || ''}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 props.onPropertyNumberChange(e.target.value)
               }
@@ -65,7 +65,7 @@ export function AddAddressCard(props: {
             <Label htmlFor="addr-street">Street *</Label>
             <Input
               id="addr-street"
-              value={props.street}
+              value={props.street || ''}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 props.onStreetChange(e.target.value)
               }
@@ -79,7 +79,7 @@ export function AddAddressCard(props: {
             <Label htmlFor="addr-suburb">Suburb/City *</Label>
             <Input
               id="addr-suburb"
-              value={props.suburb}
+              value={props.suburb || ''}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 props.onSuburbChange(e.target.value)
               }
@@ -91,7 +91,7 @@ export function AddAddressCard(props: {
             <Label htmlFor="addr-state">State/Province *</Label>
             <Input
               id="addr-state"
-              value={props.state}
+              value={props.state || ''}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 props.onStateChange(e.target.value)
               }
@@ -105,7 +105,7 @@ export function AddAddressCard(props: {
             <Label htmlFor="addr-zipcode">Zip/Postal Code *</Label>
             <Input
               id="addr-zipcode"
-              value={props.zipCode}
+              value={props.zipCode || ''}
               onChange={(e: ChangeEvent<HTMLInputElement>) =>
                 props.onZipCodeChange(e.target.value)
               }
@@ -115,7 +115,10 @@ export function AddAddressCard(props: {
 
           <div className="space-y-2">
             <Label htmlFor="addr-country">Country *</Label>
-            <Select value={props.country} onValueChange={props.onCountryChange}>
+            <Select
+              value={props.country || ''}
+              onValueChange={props.onCountryChange}
+            >
               <SelectTrigger id="addr-country">
                 <SelectValue placeholder="Select a country" />
               </SelectTrigger>

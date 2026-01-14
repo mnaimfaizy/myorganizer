@@ -176,14 +176,14 @@ export function normalizeAddresses(
       id: toTrimmedString(raw.id) ?? randomId(),
       label: toTrimmedString(raw.label) ?? 'Address',
       // Legacy single-line address (backward compatibility)
-      address: toTrimmedString(raw.address),
+      address: toTrimmedString(raw.address) ?? undefined,
       // Structured address fields
-      propertyNumber: toTrimmedString(raw.propertyNumber),
-      street: toTrimmedString(raw.street),
-      suburb: toTrimmedString(raw.suburb),
-      state: toTrimmedString(raw.state),
-      zipCode: toTrimmedString(raw.zipCode),
-      country: toTrimmedString(raw.country),
+      propertyNumber: toTrimmedString(raw.propertyNumber) ?? undefined,
+      street: toTrimmedString(raw.street) ?? undefined,
+      suburb: toTrimmedString(raw.suburb) ?? undefined,
+      state: toTrimmedString(raw.state) ?? undefined,
+      zipCode: toTrimmedString(raw.zipCode) ?? undefined,
+      country: toTrimmedString(raw.country) ?? undefined,
       status:
         raw.status === AddressStatusEnum.Old
           ? AddressStatusEnum.Old
@@ -253,10 +253,10 @@ export function normalizeMobileNumbers(
       id: toTrimmedString(raw.id) ?? randomId(),
       label: toTrimmedString(raw.label) ?? 'Mobile',
       // Legacy single field (backward compatibility)
-      mobileNumber: toTrimmedString(raw.mobileNumber),
+      mobileNumber: toTrimmedString(raw.mobileNumber) ?? undefined,
       // Structured phone fields
-      countryCode: toTrimmedString(raw.countryCode),
-      phoneNumber: toTrimmedString(raw.phoneNumber),
+      countryCode: toTrimmedString(raw.countryCode) ?? undefined,
+      phoneNumber: toTrimmedString(raw.phoneNumber) ?? undefined,
       usageLocations: nextUsage,
       createdAt: toTrimmedString(raw.createdAt) ?? isoNow(),
     };

@@ -138,7 +138,7 @@ function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
           const nextItem: AddressRecord = {
             id: randomId(),
             label: values.label.trim(),
-            propertyNumber: values.propertyNumber?.trim(),
+            propertyNumber: values.propertyNumber?.trim() || undefined,
             street: values.street.trim(),
             suburb: values.suburb.trim(),
             state: values.state.trim(),
