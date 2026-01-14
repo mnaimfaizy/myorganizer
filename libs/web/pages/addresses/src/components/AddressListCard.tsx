@@ -8,9 +8,11 @@ export function AddressListCard(props: {
   onDelete: (id: string) => void | Promise<void>;
 }) {
   return (
-    <Card className="p-4">
-      <CardTitle className="text-lg">Your addresses</CardTitle>
-      <CardContent className="mt-4 space-y-3">
+    <Card className="p-6">
+      <CardTitle className="text-xl font-semibold mb-4">
+        Your addresses
+      </CardTitle>
+      <CardContent className="space-y-3 p-0">
         {props.items.length === 0 ? (
           <p className="text-sm text-muted-foreground">No addresses yet.</p>
         ) : (
