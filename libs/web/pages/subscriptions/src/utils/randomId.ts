@@ -1,3 +1,1 @@
-export function randomId(): string {
-  return crypto.randomUUID();
-}
+export { randomId } from '@myorganizer/core';

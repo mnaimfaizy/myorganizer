@@ -3,6 +3,7 @@ import {
   AddressStatusEnum,
   OrganisationTypeEnum,
   PriorityEnum,
+  randomId,
   UpdateMethodEnum,
   UsageLocationRecord,
 } from '@myorganizer/core';
@@ -18,14 +19,6 @@ type NormalizeResult<T> = {
   value: T;
   changed: boolean;
 };
-
-function randomId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
 
 function isoNow(): string {
   return new Date().toISOString();

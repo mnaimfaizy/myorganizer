@@ -7,6 +7,7 @@ import {
   SubscriptionStatusEnum,
   SubscriptionTierEnum,
   isSupportedCurrencyCode,
+  randomId,
   type CurrencyCode,
   type SubscriptionBillingCycle,
   type SubscriptionPaymentMethod,
@@ -19,14 +20,6 @@ type NormalizeResult<T> = {
   value: T;
   changed: boolean;
 };
-
-function randomId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
 
 function isoNow(): string {
   return new Date().toISOString();
