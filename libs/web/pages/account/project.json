@@ -1,0 +1,23 @@
+{
+  "name": "web-pages-account",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/web/pages/account/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/web/pages/account/src/**/*.{ts,tsx}"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/libs/web/pages/account"],
+      "options": {
+        "jestConfig": "libs/web/pages/account/jest.config.ts",
+        "passWithNoTests": true
+      }
+    }
+  }
+}

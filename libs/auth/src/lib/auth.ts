@@ -4,10 +4,14 @@ import {
   type ConfirmResetPasswordBody,
   type FilteredUserInterface,
   type Login200Response,
-  type ResetPassword200Response,
 } from '@myorganizer/app-api-client';
 import { getApiBaseUrl } from '@myorganizer/core';
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
+
+export type ResetPasswordResponse = {
+  message: string;
+  status: number;
+};
 
 const ACCESS_TOKEN_KEY = 'myorganizer_access_token';
 const USER_KEY = 'myorganizer_user';
@@ -296,11 +300,11 @@ export async function logout(): Promise<void> {
 
 export async function requestPasswordReset(args: {
   email: string;
-}): Promise<ResetPassword200Response> {
+}): Promise<ResetPasswordResponse> {
   const api = getAuthApi();
   try {
     const res = await api.resetPassword({
-      resetPasswordRequest: {
+      resetPasswordByEmailBody: {
         email: args.email,
       },
     });
@@ -315,7 +319,7 @@ export async function confirmPasswordReset(args: {
   token: string;
   password: string;
   confirmPassword: string;
-}): Promise<ResetPassword200Response> {
+}): Promise<ResetPasswordResponse> {
   const api = getAuthApi();
   try {
     const body: ConfirmResetPasswordBody = {

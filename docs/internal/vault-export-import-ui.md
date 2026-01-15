@@ -23,6 +23,7 @@
 
 - Ensure bundle contains only ciphertext + metadata (no plaintext addresses/phones).
 - Note: address/mobile "usage locations" are embedded in those encrypted blobs, so they are also ciphertext-only.
+- Subscriptions are also stored as an encrypted vault blob; exports/imports must treat them as ciphertext-only.
 - Reject files that are malformed, version-mismatched, or exceed safe size limits.
 
 ## Open questions / TODO

@@ -8,7 +8,14 @@ import {
   SidebarHeader,
   SidebarRail,
 } from '@myorganizer/web-ui';
-import { FileDown, Home, ListChecks, MapPin, Phone } from 'lucide-react';
+import {
+  CreditCard,
+  FileDown,
+  Home,
+  ListChecks,
+  MapPin,
+  Phone,
+} from 'lucide-react';
 import { NavMain } from './nav-main';
 import { NavUser } from './nav-user';
 
@@ -38,6 +45,11 @@ const data = {
       title: 'Mobile Numbers',
       url: '/dashboard/mobile-numbers',
       icon: Phone,
+    },
+    {
+      title: 'Subscriptions',
+      url: '/dashboard/subscriptions',
+      icon: CreditCard,
     },
     {
       title: 'Vault Export/Import',

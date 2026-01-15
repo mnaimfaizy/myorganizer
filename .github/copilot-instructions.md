@@ -79,6 +79,11 @@ MyOrganizer is a full-stack web application built as an Nx monorepo with:
 - Use **React Hook Form** with **Zod** for form validation
 - Use **Radix UI** components as the base for custom components
 
+Common dashboard page libraries:
+
+- `@myorganizer/web-pages/account` (preferred country/currency settings)
+- `@myorganizer/web-pages/subscriptions` (vault-backed subscriptions)
+
 #### Adding a new frontend page
 
 - Create a new page library under `libs/web/pages/<route>/` (React library, Jest enabled)
@@ -91,6 +96,11 @@ MyOrganizer is a full-stack web application built as an Nx monorepo with:
 - Use the **auto-generated API client** from `@myorganizer/app-api-client`
 - Never manually write API calls if the client exists
 - Regenerate client after backend API changes: `yarn api:generate`
+
+When consuming the generated client:
+
+- Avoid depending on brittle, versioned type aliases that can change during regeneration.
+- Prefer local minimal response types for UI needs, or derive types from the client method return type.
 
 ### Database
 
@@ -152,6 +162,12 @@ MyOrganizer is a full-stack web application built as an Nx monorepo with:
 - Never construct raw SQL with string concatenation
 - Hash passwords with **bcrypt** (never store plain text)
 - Use database transactions for multi-step operations
+
+### Vault-backed features (E2EE)
+
+- The server stores **ciphertext only**; plaintext must never leave the client.
+- Adding a new vault blob type requires updates across `libs/web-vault`, `libs/vault-core`, backend vault allowlists/validation, and vault export/import + migration.
+- Current blob types include: `addresses`, `mobileNumbers`, `subscriptions`.
 
 ## Common Patterns
 

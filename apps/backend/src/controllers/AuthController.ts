@@ -24,6 +24,7 @@ import { ValidateErrorJSON } from '../interfaces';
 import { RegisterUserResponse } from '../models/Auth';
 import {
   ConfirmResetPasswordBody,
+  ResetPasswordByEmailBody,
   UserCreationBody,
   UserLoginBody,
 } from '../models/User';
@@ -312,7 +313,7 @@ export class AuthController extends Controller {
   @Post('/password/reset')
   @ValidateBody(resetPasswordSchema)
   async resetPassword(
-    @Body() requestBody: { email: string }
+    @Body() requestBody: ResetPasswordByEmailBody
   ): Promise<{ status: number; message: string }> {
     const user = await userService.getByEmail(requestBody.email);
     if (!user) {

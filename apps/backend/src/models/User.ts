@@ -30,3 +30,7 @@ export interface ConfirmResetPasswordBody {
   password: string;
   confirm_password: string;
 }
+
+export interface ResetPasswordByEmailBody {
+  email: string;
+}

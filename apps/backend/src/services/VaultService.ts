@@ -1,6 +1,6 @@
 import { Prisma, PrismaClient } from '../prisma';
 
-export type VaultBlobType = 'addresses' | 'mobileNumbers';
+export type VaultBlobType = 'addresses' | 'mobileNumbers' | 'subscriptions';
 
 export interface VaultMetaV1 {
   version: number;
@@ -335,7 +335,11 @@ export class VaultService {
 
     const blobMap: Partial<Record<VaultBlobType, EncryptedBlobV1>> = {};
     for (const blobRow of blobs) {
-      if (blobRow.type === 'addresses' || blobRow.type === 'mobileNumbers') {
+      if (
+        blobRow.type === 'addresses' ||
+        blobRow.type === 'mobileNumbers' ||
+        blobRow.type === 'subscriptions'
+      ) {
         blobMap[blobRow.type] = blobRow.blob as EncryptedBlobV1;
       }
     }
@@ -453,7 +457,13 @@ export class VaultService {
 
     if (blobs) {
       for (const [type, blob] of Object.entries(blobs)) {
-        if (type !== 'addresses' && type !== 'mobileNumbers') continue;
+        if (
+          type !== 'addresses' &&
+          type !== 'mobileNumbers' &&
+          type !== 'subscriptions'
+        ) {
+          continue;
+        }
         if (!isEncryptedBlobV1(blob)) {
           return {
             ok: false,

@@ -146,6 +146,9 @@ export async function migrateVaultPhase1ToPhase2(options: {
         [VaultBlobType.MobileNumbers]:
           (await getServerVaultBlob(options.api, VaultBlobType.MobileNumbers))
             ?.blob ?? null,
+        [VaultBlobType.Subscriptions]:
+          (await getServerVaultBlob(options.api, VaultBlobType.Subscriptions))
+            ?.blob ?? null,
       };
 
     const nextLocalVault = serverMetaToLocalVault({
@@ -190,6 +193,14 @@ export async function migrateVaultPhase1ToPhase2(options: {
       });
     }
 
+    if (localVault.data.subscriptions) {
+      await putServerVaultBlobEtagAware({
+        api: options.api,
+        type: VaultBlobType.Subscriptions,
+        blob: toEncryptedBlobV1(localVault.data.subscriptions),
+      });
+    }
+
     return { kind: 'uploaded-local-to-server' };
   }
 
@@ -199,6 +210,9 @@ export async function migrateVaultPhase1ToPhase2(options: {
       null,
     [VaultBlobType.MobileNumbers]:
       (await getServerVaultBlob(options.api, VaultBlobType.MobileNumbers))
+        ?.blob ?? null,
+    [VaultBlobType.Subscriptions]:
+      (await getServerVaultBlob(options.api, VaultBlobType.Subscriptions))
         ?.blob ?? null,
   };
 
@@ -211,6 +225,9 @@ export async function migrateVaultPhase1ToPhase2(options: {
       [VaultBlobType.MobileNumbers]: normalizeLocalBlobAsServerShape(
         localVault.data.mobileNumbers
       ),
+      [VaultBlobType.Subscriptions]: normalizeLocalBlobAsServerShape(
+        localVault.data.subscriptions
+      ),
     },
   };
 
@@ -222,6 +239,9 @@ export async function migrateVaultPhase1ToPhase2(options: {
       ),
       [VaultBlobType.MobileNumbers]: normalizeServerBlob(
         remoteBlobs[VaultBlobType.MobileNumbers] ?? null
+      ),
+      [VaultBlobType.Subscriptions]: normalizeServerBlob(
+        remoteBlobs[VaultBlobType.Subscriptions] ?? null
       ),
     },
   };
@@ -282,6 +302,21 @@ export async function migrateVaultPhase1ToPhase2(options: {
       type: VaultBlobType.MobileNumbers,
       blob: toEncryptedBlobV1(localVault.data.mobileNumbers),
       ifMatch: remoteMobileNumbers?.etag,
+      onConflict: () => 'keep-local',
+    });
+  }
+
+  const remoteSubscriptions = await getServerVaultBlob(
+    options.api,
+    VaultBlobType.Subscriptions
+  );
+
+  if (localVault.data.subscriptions) {
+    await putServerVaultBlobEtagAware({
+      api: options.api,
+      type: VaultBlobType.Subscriptions,
+      blob: toEncryptedBlobV1(localVault.data.subscriptions),
+      ifMatch: remoteSubscriptions?.etag,
       onConflict: () => 'keep-local',
     });
   }

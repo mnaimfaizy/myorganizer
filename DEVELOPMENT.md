@@ -346,7 +346,7 @@ This keeps pages reusable and testable, and prevents app-local “shared code”
 
 - Route wrappers: `apps/myorganizer/src/app/<route>/page.tsx`
   - Keep minimal: route segment wiring, metadata, and importing the page component from the library.
-- Page implementation: `libs/web/pages/<route>/src/lib/**`
+- Page implementation: `libs/web/pages/<route>/src/**`
   - Actual React components, data fetching (via generated client), form logic, and page-specific helpers.
 - Shared UI primitives: `libs/web-ui/`
 - Encrypted vault logic: `libs/web-vault/` and `libs/web-vault-ui/`
@@ -356,6 +356,11 @@ This keeps pages reusable and testable, and prevents app-local “shared code”
 1. Create a new React library under `libs/web/pages/<route>/` with import path `@myorganizer/web-pages/<route>`.
 2. Export the page entry from the library’s `src/index.ts`.
 3. Add a thin wrapper at `apps/myorganizer/src/app/<route>/page.tsx` that renders/exports the library page.
+
+Examples of existing page libraries:
+
+- `@myorganizer/web-pages/account`
+- `@myorganizer/web-pages/subscriptions`
 
 ### Forms
 
