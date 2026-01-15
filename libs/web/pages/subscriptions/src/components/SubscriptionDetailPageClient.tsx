@@ -233,7 +233,7 @@ function SubscriptionDetailInner(props: {
         description: 'Subscription updated (encrypted).',
       });
 
-      router.refresh();
+      router.push(backHref);
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       toast({

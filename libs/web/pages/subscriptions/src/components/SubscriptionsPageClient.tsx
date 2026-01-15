@@ -12,6 +12,7 @@ import {
   formatMoney,
   getAccountSettings,
   getFxRates,
+  randomId,
   subscribeAccountSettings,
   type CurrencyCode,
 } from '@myorganizer/core';
@@ -58,7 +59,6 @@ import {
   getSubscriptionStatusLabel,
   getSubscriptionTierLabel,
 } from '../utils/presentation';
-import { randomId } from '../utils/randomId';
 
 type CycleCurrencySubtotal = {
   billingCycle: SubscriptionRecord['billingCycle'];
@@ -755,8 +755,7 @@ function SubscriptionsInner(props: { masterKeyBytes: Uint8Array }) {
                       {getSubscriptionBillingCycleLabel(s.billingCycle)}
                     </TableCell>
                     <TableCell className="text-right">
-                      {formatMoney({ amount: s.amount, currency: s.currency })}{' '}
-                      {s.currency}
+                      {formatMoney({ amount: s.amount, currency: s.currency })}
                     </TableCell>
                     <TableCell>
                       {formatIsoDateForDisplay(s.nextBillingDate)}
