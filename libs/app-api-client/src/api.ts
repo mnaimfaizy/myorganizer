@@ -628,6 +628,19 @@ export interface ResendVerificationEmailByEmailRequest {
 /**
  * 
  * @export
+ * @interface ResetPasswordByEmailBody
+ */
+export interface ResetPasswordByEmailBody {
+    /**
+     * 
+     * @type {string}
+     * @memberof ResetPasswordByEmailBody
+     */
+    'email': string;
+}
+/**
+ * 
+ * @export
  * @interface Todo
  */
 export interface Todo {
@@ -1185,13 +1198,13 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
         },
         /**
          * 
-         * @param {ResendVerificationEmailByEmailRequest} resendVerificationEmailByEmailRequest 
+         * @param {ResetPasswordByEmailBody} resetPasswordByEmailBody 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        resetPassword: async (resendVerificationEmailByEmailRequest: ResendVerificationEmailByEmailRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'resendVerificationEmailByEmailRequest' is not null or undefined
-            assertParamExists('resetPassword', 'resendVerificationEmailByEmailRequest', resendVerificationEmailByEmailRequest)
+        resetPassword: async (resetPasswordByEmailBody: ResetPasswordByEmailBody, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'resetPasswordByEmailBody' is not null or undefined
+            assertParamExists('resetPassword', 'resetPasswordByEmailBody', resetPasswordByEmailBody)
             const localVarPath = `/auth/password/reset`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -1211,7 +1224,7 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(resendVerificationEmailByEmailRequest, localVarRequestOptions, configuration)
+            localVarRequestOptions.data = serializeDataIfNeeded(resetPasswordByEmailBody, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -1349,12 +1362,12 @@ export const AuthenticationApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
-         * @param {ResendVerificationEmailByEmailRequest} resendVerificationEmailByEmailRequest 
+         * @param {ResetPasswordByEmailBody} resetPasswordByEmailBody 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async resetPassword(resendVerificationEmailByEmailRequest: ResendVerificationEmailByEmailRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ResendVerificationEmailByEmail200Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.resetPassword(resendVerificationEmailByEmailRequest, options);
+        async resetPassword(resetPasswordByEmailBody: ResetPasswordByEmailBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ResendVerificationEmailByEmail200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.resetPassword(resetPasswordByEmailBody, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AuthenticationApi.resetPassword']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -1451,7 +1464,7 @@ export const AuthenticationApiFactory = function (configuration?: Configuration,
          * @throws {RequiredError}
          */
         resetPassword(requestParameters: AuthenticationApiResetPasswordRequest, options?: RawAxiosRequestConfig): AxiosPromise<ResendVerificationEmailByEmail200Response> {
-            return localVarFp.resetPassword(requestParameters.resendVerificationEmailByEmailRequest, options).then((request) => request(axios, basePath));
+            return localVarFp.resetPassword(requestParameters.resetPasswordByEmailBody, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1571,10 +1584,10 @@ export interface AuthenticationApiResendVerificationEmailByEmailRequest {
 export interface AuthenticationApiResetPasswordRequest {
     /**
      * 
-     * @type {ResendVerificationEmailByEmailRequest}
+     * @type {ResetPasswordByEmailBody}
      * @memberof AuthenticationApiResetPassword
      */
-    readonly resendVerificationEmailByEmailRequest: ResendVerificationEmailByEmailRequest
+    readonly resetPasswordByEmailBody: ResetPasswordByEmailBody
 }
 
 /**
@@ -1683,7 +1696,7 @@ export class AuthenticationApi extends BaseAPI {
      * @memberof AuthenticationApi
      */
     public resetPassword(requestParameters: AuthenticationApiResetPasswordRequest, options?: RawAxiosRequestConfig) {
-        return AuthenticationApiFp(this.configuration).resetPassword(requestParameters.resendVerificationEmailByEmailRequest, options).then((request) => request(this.axios, this.basePath));
+        return AuthenticationApiFp(this.configuration).resetPassword(requestParameters.resetPasswordByEmailBody, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

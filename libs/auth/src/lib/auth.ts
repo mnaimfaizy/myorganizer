@@ -304,7 +304,7 @@ export async function requestPasswordReset(args: {
   const api = getAuthApi();
   try {
     const res = await api.resetPassword({
-      resendVerificationEmailByEmailRequest: {
+      resetPasswordByEmailBody: {
         email: args.email,
       },
     });

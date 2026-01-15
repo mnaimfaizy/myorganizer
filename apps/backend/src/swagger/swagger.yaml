@@ -310,6 +310,14 @@ components:
         - message
       type: object
       additionalProperties: false
+    ResetPasswordByEmailBody:
+      properties:
+        email:
+          type: string
+      required:
+        - email
+      type: object
+      additionalProperties: false
     ConfirmResetPasswordBody:
       properties:
         token:
@@ -860,12 +868,7 @@ paths:
         content:
           application/json:
             schema:
-              properties:
-                email:
-                  type: string
-              required:
-                - email
-              type: object
+              $ref: "#/components/schemas/ResetPasswordByEmailBody"
   /auth/password/reset/confirm:
     patch:
       operationId: ConfirmResetPassword
