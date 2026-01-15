@@ -39,7 +39,7 @@ These types are shared from `@myorganizer/core`:
 
 - Local vault ciphertext is stored under localStorage key `myorganizer_vault_v1`.
 - Plaintext is **only** present in memory after unlock.
-- Server sync uses the existing `VaultBlobType.Addresses` and `VaultBlobType.MobileNumbers` blobs.
+- Server sync uses vault blobs (e.g. `addresses`, `mobileNumbers`). Other vault-backed features may use additional blob types (e.g. `subscriptions`).
 - To avoid backend/schema expansion, usage locations are embedded inside the existing blobs.
 
 ## UI Flow

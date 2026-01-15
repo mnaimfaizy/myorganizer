@@ -35,6 +35,19 @@ This repo uses a strict Next.js App Router pattern:
 
 See **[Development Guide](DEVELOPMENT.md)** → “Frontend Architecture (Web Page Libraries)”.
 
+## Dashboard features (vault-backed)
+
+Some dashboard areas store sensitive data inside the client-side encrypted vault (ciphertext-only on the server):
+
+- Addresses (`/dashboard/addresses`)
+- Mobile numbers (`/dashboard/mobile-numbers`)
+- Subscriptions (`/dashboard/subscriptions`)
+- Vault export/import (`/dashboard/vault/export`)
+
+Account preferences used by vault-backed views:
+
+- Account settings (`/dashboard/account`) for preferred country + currency
+
 ## Documentation
 
 - **[Development Guide](DEVELOPMENT.md)** - Complete guide for developing in the monorepo

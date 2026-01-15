@@ -379,7 +379,7 @@ Table EncryptedVault (
 Table EncryptedVaultBlob (
   id uuid pk,
   userId uuid,
-  type text,                 -- 'addresses' | 'mobileNumbers'
+  type text,                 -- 'addresses' | 'mobileNumbers' | 'subscriptions'
   blob jsonb,                -- {iv, ciphertext}
   updatedAt timestamp,
   unique(userId, type)
@@ -510,7 +510,7 @@ Status codes:
 
 #### `GET /vault/blob/:type`
 
-`type ∈ {'addresses','mobileNumbers'}`
+`type ∈ {'addresses','mobileNumbers','subscriptions'}`
 
 Response:
 
@@ -824,7 +824,7 @@ model EncryptedVaultBlob {
 Notes:
 
 - We store `blob`/wrapped keys as JSON to keep the backend blind.
-- Keep `type` constrained in app logic to `addresses | mobileNumbers`.
+- Keep `type` constrained in app logic to `addresses | mobileNumbers | subscriptions`.
 
 #### tsoa Controller skeleton (aligned to existing patterns)
 
@@ -861,7 +861,7 @@ export class VaultController extends Controller {
   // GET /vault/blob/{type}
   @Get('blob/{type}')
   @Security('jwt')
-  public async getBlob(@Request() req: ExRequest, @Path() type: 'addresses' | 'mobileNumbers'): Promise<GetBlobResponse> {
+  public async getBlob(@Request() req: ExRequest, @Path() type: 'addresses' | 'mobileNumbers' | 'subscriptions'): Promise<GetBlobResponse> {
     // prisma.encryptedVaultBlob.findUnique({ where: { userId_type: { userId, type } } })
   }
 
@@ -869,7 +869,7 @@ export class VaultController extends Controller {
   @Put('blob/{type}')
   @Security('jwt')
   @ValidateBody(PutBlobSchema)
-  public async putBlob(@Request() req: ExRequest, @Path() type: 'addresses' | 'mobileNumbers', @Body() body: PutBlobRequest, @Header('If-Match') ifMatch?: string): Promise<OkResponse> {
+  public async putBlob(@Request() req: ExRequest, @Path() type: 'addresses' | 'mobileNumbers' | 'subscriptions', @Body() body: PutBlobRequest, @Header('If-Match') ifMatch?: string): Promise<OkResponse> {
     // validate size/shape; store JSON blob
   }
 
