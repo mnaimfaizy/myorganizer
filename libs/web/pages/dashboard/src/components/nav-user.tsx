@@ -93,7 +93,12 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  router.push('/dashboard/account');
+                }}
+              >
                 <BadgeCheck />
                 Account
               </DropdownMenuItem>

@@ -1,0 +1,23 @@
+{
+  "name": "web-pages-subscriptions",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/web/pages/subscriptions/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/web/pages/subscriptions/src/**/*.{ts,tsx}"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/libs/web/pages/subscriptions"],
+      "options": {
+        "jestConfig": "libs/web/pages/subscriptions/jest.config.ts",
+        "passWithNoTests": true
+      }
+    }
+  }
+}
