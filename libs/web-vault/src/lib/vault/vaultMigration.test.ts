@@ -214,23 +214,19 @@ describe('migrateVaultPhase1ToPhase2', () => {
       meta: makeServerMeta(),
     });
 
-    // first two blob reads for building remoteBlobs
-    serverVaultSync.getServerVaultBlob
-      .mockResolvedValueOnce({
-        etag: 'remote-addr-etag',
-        updatedAt: 'bt1',
-        type: VaultBlobType.Addresses,
-        blob: { version: 1, iv: 'remote', ciphertext: 'remote' },
-      })
-      .mockResolvedValueOnce(null)
-      // extra reads when overwriting
-      .mockResolvedValueOnce({
-        etag: 'remote-addr-etag',
-        updatedAt: 'bt1',
-        type: VaultBlobType.Addresses,
-        blob: { version: 1, iv: 'remote', ciphertext: 'remote' },
-      })
-      .mockResolvedValueOnce(null);
+    serverVaultSync.getServerVaultBlob.mockImplementation(
+      async (_api: unknown, type: VaultBlobType) => {
+        if (type === VaultBlobType.Addresses) {
+          return {
+            etag: 'remote-addr-etag',
+            updatedAt: 'bt1',
+            type,
+            blob: { version: 1, iv: 'remote', ciphertext: 'remote' },
+          };
+        }
+        return null;
+      }
+    );
 
     const result = await migrateVaultPhase1ToPhase2({
       api: {} as unknown as ApiParam,

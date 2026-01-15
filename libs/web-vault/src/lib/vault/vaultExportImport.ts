@@ -146,7 +146,8 @@ function requireBlobs(
   for (const [key, candidate] of Object.entries(record)) {
     if (
       key === VaultBlobType.Addresses ||
-      key === VaultBlobType.MobileNumbers
+      key === VaultBlobType.MobileNumbers ||
+      key === VaultBlobType.Subscriptions
     ) {
       blobs[key] = requireEncryptedBlob(candidate, `blobs.${key}`);
     } else {
@@ -221,6 +222,13 @@ export function buildLocalExportBundle(options: {
             ),
           }
         : {}),
+      ...(localVault.data.subscriptions
+        ? {
+            [VaultBlobType.Subscriptions]: toEncryptedBlobV1(
+              localVault.data.subscriptions
+            ),
+          }
+        : {}),
     },
   };
 }
@@ -229,6 +237,7 @@ export function bundleToLocalVault(bundle: VaultExportV1): VaultStorageV1 {
   const blobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>> = {
     [VaultBlobType.Addresses]: bundle.blobs.addresses ?? null,
     [VaultBlobType.MobileNumbers]: bundle.blobs.mobileNumbers ?? null,
+    [VaultBlobType.Subscriptions]: bundle.blobs.subscriptions ?? null,
   };
 
   return serverMetaToLocalVault({ meta: bundle.meta, blobs });

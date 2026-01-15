@@ -13,7 +13,7 @@ import {
 const VAULT_STORAGE_KEY = 'myorganizer_vault_v1';
 const PBKDF2_ITERATIONS = 310_000;
 
-export type VaultRecordType = 'addresses' | 'mobileNumbers';
+export type VaultRecordType = 'addresses' | 'mobileNumbers' | 'subscriptions';
 
 export type EncryptedBlob = {
   iv: string;
@@ -33,6 +33,7 @@ export type VaultStorageV1 = {
   data: {
     addresses?: EncryptedBlob;
     mobileNumbers?: EncryptedBlob;
+    subscriptions?: EncryptedBlob;
   };
 };
 

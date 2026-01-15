@@ -108,6 +108,11 @@ export function serverMetaToLocalVault(options: {
     next.data.mobileNumbers = serverEncryptedBlobToLocal(mobileNumbers);
   }
 
+  const subscriptions = blobs[VaultBlobType.Subscriptions];
+  if (subscriptions) {
+    next.data.subscriptions = serverEncryptedBlobToLocal(subscriptions);
+  }
+
   return next;
 }
 
