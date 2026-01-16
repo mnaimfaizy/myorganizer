@@ -66,7 +66,7 @@ const editSchema = z.object({
     SubscriptionBillingCycleEnum.TwoYears,
     SubscriptionBillingCycleEnum.ThreeYears,
   ]),
-  amount: z.coerce.number().finite().min(0, 'Amount must be >= 0'),
+  amount: z.number().finite().min(0, 'Amount must be >= 0'),
   currency: z.string().min(1),
   paymentMethod: z.enum([
     SubscriptionPaymentMethodEnum.CreditCard,
@@ -135,7 +135,7 @@ function SubscriptionDetailInner(props: {
       .then(async (raw) => {
         const normalized = normalizeSubscriptions(raw);
         const found = normalized.value.find(
-          (x) => x.id === props.subscriptionId
+          (x) => x.id === props.subscriptionId,
         );
         if (!found) {
           setNotFound(true);
@@ -254,7 +254,7 @@ function SubscriptionDetailInner(props: {
 
       const normalized = normalizeSubscriptions(raw);
       const next = normalized.value.filter(
-        (s) => s.id !== props.subscriptionId
+        (s) => s.id !== props.subscriptionId,
       );
 
       await saveEncryptedData({
@@ -342,7 +342,7 @@ function SubscriptionDetailInner(props: {
                     v as EditValues['billingCycle'],
                     {
                       shouldValidate: true,
-                    }
+                    },
                   )
                 }
               >
@@ -367,7 +367,7 @@ function SubscriptionDetailInner(props: {
                 id="edit-amount"
                 type="number"
                 step="0.01"
-                {...form.register('amount')}
+                {...form.register('amount', { valueAsNumber: true })}
               />
             </div>
 
@@ -461,7 +461,7 @@ function SubscriptionDetailInner(props: {
                     v as EditValues['paymentMethod'],
                     {
                       shouldValidate: true,
-                    }
+                    },
                   )
                 }
               >

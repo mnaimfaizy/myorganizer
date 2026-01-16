@@ -9,7 +9,7 @@ import {
   Label,
   useToast,
 } from '@myorganizer/web-ui';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 
 import {
   hasVault,
@@ -41,7 +41,7 @@ export function VaultGate(props: VaultGateProps) {
 
   const vaultSession = useOptionalVaultSession();
 
-  const [vaultExists, setVaultExists] = useState<boolean>(false);
+  const [vaultExists, setVaultExists] = useState<boolean>(() => hasVault());
   const [localMasterKeyBytes, setLocalMasterKeyBytes] =
     useState<Uint8Array | null>(null);
 
@@ -59,10 +59,6 @@ export function VaultGate(props: VaultGateProps) {
 
   const [newPassphrase, setNewPassphraseState] = useState('');
   const [newPassphraseConfirm, setNewPassphraseConfirm] = useState('');
-
-  useEffect(() => {
-    setVaultExists(hasVault());
-  }, []);
 
   const isUnlocked = masterKeyBytes !== null;
 
@@ -144,7 +140,7 @@ export function VaultGate(props: VaultGateProps) {
                     onClick={() => {
                       downloadTextFile(
                         'myorganizer-recovery-key.txt',
-                        `MyOrganizer Recovery Key\n\n${recoveryKey}\n\nKeep this safe. Anyone with it can decrypt your vault.`
+                        `MyOrganizer Recovery Key\n\n${recoveryKey}\n\nKeep this safe. Anyone with it can decrypt your vault.`,
                       );
                     }}
                   >

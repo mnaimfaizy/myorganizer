@@ -34,12 +34,17 @@ function MobileNumberDetailsInner(props: {
   const [mobileNumberRecord, setMobileNumberRecord] =
     useState<MobileNumberRecord | null>(null);
   const [usageLocations, setUsageLocations] = useState<UsageLocationRecord[]>(
-    []
+    [],
   );
 
   useEffect(() => {
-    setLoading(true);
-    setNotFound(false);
+    let isActive = true;
+
+    queueMicrotask(() => {
+      if (!isActive) return;
+      setLoading(true);
+      setNotFound(false);
+    });
 
     loadDecryptedData<unknown>({
       masterKeyBytes: props.masterKeyBytes,
@@ -47,17 +52,20 @@ function MobileNumberDetailsInner(props: {
       defaultValue: [],
     })
       .then(async (raw) => {
+        if (!isActive) return;
         const normalized = normalizeMobileNumbers(raw);
         const found = normalized.value.find(
-          (x) => x.id === props.mobileNumberId
+          (x) => x.id === props.mobileNumberId,
         );
         if (!found) {
-          setNotFound(true);
+          if (isActive) setNotFound(true);
           return;
         }
 
-        setMobileNumberRecord(found);
-        setUsageLocations(found.usageLocations);
+        if (isActive) {
+          setMobileNumberRecord(found);
+          setUsageLocations(found.usageLocations);
+        }
 
         if (normalized.changed) {
           await saveEncryptedData({
@@ -68,19 +76,26 @@ function MobileNumberDetailsInner(props: {
         }
       })
       .catch(() => {
+        if (!isActive) return;
         toast({
           title: 'Failed to load mobile number',
           description: 'Could not decrypt saved data.',
           variant: 'destructive',
         });
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (isActive) setLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [props.masterKeyBytes, props.mobileNumberId, toast]);
 
   async function handleDeleteLocation(locationId: string) {
     try {
       const updatedLocations = usageLocations.filter(
-        (l) => l.id !== locationId
+        (l) => l.id !== locationId,
       );
 
       const raw = await loadDecryptedData<unknown>({
@@ -93,7 +108,7 @@ function MobileNumberDetailsInner(props: {
       const nextMobileNumbers = normalized.value.map((x) =>
         x.id === props.mobileNumberId
           ? { ...x, usageLocations: updatedLocations }
-          : x
+          : x,
       );
 
       await saveEncryptedData({
@@ -119,7 +134,7 @@ function MobileNumberDetailsInner(props: {
 
   function handleEditLocation(location: UsageLocationRecord) {
     router.push(
-      `/dashboard/mobile-numbers/${props.mobileNumberId}/add-location?edit=${location.id}`
+      `/dashboard/mobile-numbers/${props.mobileNumberId}/add-location?edit=${location.id}`,
     );
   }
 
@@ -142,7 +157,7 @@ function MobileNumberDetailsInner(props: {
         <Button
           onClick={() =>
             router.push(
-              `/dashboard/mobile-numbers/${props.mobileNumberId}/add-location`
+              `/dashboard/mobile-numbers/${props.mobileNumberId}/add-location`,
             )
           }
           className="gap-2"

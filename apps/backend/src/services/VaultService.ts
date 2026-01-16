@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from '../prisma';
+import { Prisma, PrismaClient, createPrismaClient } from '../prisma';
 
 export type VaultBlobType = 'addresses' | 'mobileNumbers' | 'subscriptions';
 
@@ -106,7 +106,7 @@ export class VaultService {
   constructor(private prisma: PrismaClient) {}
 
   public getVaultMeta = async (
-    userId: string
+    userId: string,
   ): Promise<
     ServiceResult<{ meta: VaultMetaV1; updatedAt: string; etag: string }>
   > => {
@@ -140,7 +140,7 @@ export class VaultService {
   public putVaultMeta = async (
     userId: string,
     meta: unknown,
-    ifMatch?: string
+    ifMatch?: string,
   ): Promise<ServiceResult<{ ok: true; etag: string; updatedAt: string }>> => {
     if (!isVaultMetaV1(meta)) {
       return {
@@ -220,7 +220,7 @@ export class VaultService {
 
   public getBlob = async (
     userId: string,
-    type: VaultBlobType
+    type: VaultBlobType,
   ): Promise<
     ServiceResult<{
       type: VaultBlobType;
@@ -257,7 +257,7 @@ export class VaultService {
     userId: string,
     type: VaultBlobType,
     blob: unknown,
-    ifMatch?: string
+    ifMatch?: string,
   ): Promise<ServiceResult<{ ok: true; etag: string; updatedAt: string }>> => {
     if (!isEncryptedBlobV1(blob)) {
       return {
@@ -320,7 +320,7 @@ export class VaultService {
   };
 
   public exportVault = async (
-    userId: string
+    userId: string,
   ): Promise<ServiceResult<VaultExportV1>> => {
     const vault = await this.prisma.encryptedVault.findUnique({
       where: { userId },
@@ -373,7 +373,7 @@ export class VaultService {
 
   public importVault = async (
     userId: string,
-    exportBundle: unknown
+    exportBundle: unknown,
   ): Promise<ServiceResult<{ ok: true }>> => {
     if (!isPlainObject(exportBundle)) {
       return {
@@ -495,5 +495,5 @@ export class VaultService {
   };
 }
 
-const vaultService = new VaultService(new PrismaClient());
+const vaultService = new VaultService(createPrismaClient());
 export default vaultService;

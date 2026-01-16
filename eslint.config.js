@@ -13,6 +13,8 @@ module.exports = [
       'apps/backend/src/prisma/',
       'apps/backend/prisma/prisma-client',
       'apps/backend/prisma/migrations',
+      '**/vite.config.*.timestamp*',
+      '**/vitest.config.*.timestamp*',
     ],
   },
   {

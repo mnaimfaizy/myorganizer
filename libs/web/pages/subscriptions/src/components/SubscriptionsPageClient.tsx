@@ -92,9 +92,9 @@ const addSubscriptionSchema = z.object({
     SubscriptionBillingCycleEnum.TwoYears,
     SubscriptionBillingCycleEnum.ThreeYears,
   ]),
-  amount: z.coerce.number().finite().min(0, 'Amount must be >= 0'),
+  amount: z.number().finite().min(0, 'Amount must be >= 0'),
   currency: z.custom<CurrencyCode>(
-    (v) => typeof v === 'string' && v.length > 0
+    (v) => typeof v === 'string' && v.length > 0,
   ),
   paymentMethod: z.enum([
     SubscriptionPaymentMethodEnum.CreditCard,
@@ -244,7 +244,7 @@ function SubscriptionsInner(props: { masterKeyBytes: Uint8Array }) {
     setConvertedTotals({ enabled: true, loading: true, totals: [] });
     try {
       const fromCurrencies = Array.from(
-        new Set(activeItems.map((s) => s.currency))
+        new Set(activeItems.map((s) => s.currency)),
       );
       const ratesByFrom = new Map<
         CurrencyCode,
@@ -256,7 +256,7 @@ function SubscriptionsInner(props: { masterKeyBytes: Uint8Array }) {
           if (from === preferredCurrency) return;
           const rates = await getFxRates({ base: from });
           ratesByFrom.set(from, rates);
-        })
+        }),
       );
 
       const map = new Map<string, CycleConvertedSubtotal>();
@@ -292,7 +292,7 @@ function SubscriptionsInner(props: { masterKeyBytes: Uint8Array }) {
       }
 
       const totals = [...map.values()].sort((a, b) =>
-        a.billingCycle.localeCompare(b.billingCycle)
+        a.billingCycle.localeCompare(b.billingCycle),
       );
       setConvertedTotals({ enabled: true, loading: false, totals });
     } catch (e: unknown) {
@@ -365,8 +365,8 @@ function SubscriptionsInner(props: { masterKeyBytes: Uint8Array }) {
                       {convertedTotals.loading
                         ? 'Loading FX rates…'
                         : convertedTotals.error
-                        ? convertedTotals.error
-                        : 'No active subscriptions.'}
+                          ? convertedTotals.error
+                          : 'No active subscriptions.'}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -447,7 +447,7 @@ function SubscriptionsInner(props: { masterKeyBytes: Uint8Array }) {
                     v as AddSubscriptionFormValues['status'],
                     {
                       shouldValidate: true,
-                    }
+                    },
                   )
                 }
               >
@@ -472,7 +472,7 @@ function SubscriptionsInner(props: { masterKeyBytes: Uint8Array }) {
                   addForm.setValue(
                     'billingCycle',
                     v as AddSubscriptionFormValues['billingCycle'],
-                    { shouldValidate: true }
+                    { shouldValidate: true },
                   )
                 }
               >
@@ -497,7 +497,7 @@ function SubscriptionsInner(props: { masterKeyBytes: Uint8Array }) {
                 id="sub-amount"
                 type="number"
                 step="0.01"
-                {...addForm.register('amount')}
+                {...addForm.register('amount', { valueAsNumber: true })}
               />
             </div>
 
@@ -511,7 +511,7 @@ function SubscriptionsInner(props: { masterKeyBytes: Uint8Array }) {
                     v as AddSubscriptionFormValues['currency'],
                     {
                       shouldValidate: true,
-                    }
+                    },
                   )
                 }
               >
@@ -581,7 +581,7 @@ function SubscriptionsInner(props: { masterKeyBytes: Uint8Array }) {
                   addForm.setValue(
                     'paymentMethod',
                     v as AddSubscriptionFormValues['paymentMethod'],
-                    { shouldValidate: true }
+                    { shouldValidate: true },
                   )
                 }
               >
@@ -606,7 +606,7 @@ function SubscriptionsInner(props: { masterKeyBytes: Uint8Array }) {
                   addForm.setValue(
                     'renewalType',
                     v as AddSubscriptionFormValues['renewalType'],
-                    { shouldValidate: true }
+                    { shouldValidate: true },
                   )
                 }
               >
@@ -633,7 +633,7 @@ function SubscriptionsInner(props: { masterKeyBytes: Uint8Array }) {
                     v as AddSubscriptionFormValues['tier'],
                     {
                       shouldValidate: true,
-                    }
+                    },
                   )
                 }
               >

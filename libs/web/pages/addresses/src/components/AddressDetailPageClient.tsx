@@ -32,15 +32,20 @@ function AddressDetailsInner(props: {
   const [notFound, setNotFound] = useState(false);
 
   const [addressRecord, setAddressRecord] = useState<AddressRecord | null>(
-    null
+    null,
   );
   const [usageLocations, setUsageLocations] = useState<UsageLocationRecord[]>(
-    []
+    [],
   );
 
   useEffect(() => {
-    setLoading(true);
-    setNotFound(false);
+    let isActive = true;
+
+    queueMicrotask(() => {
+      if (!isActive) return;
+      setLoading(true);
+      setNotFound(false);
+    });
 
     loadDecryptedData<unknown>({
       masterKeyBytes: props.masterKeyBytes,
@@ -48,15 +53,18 @@ function AddressDetailsInner(props: {
       defaultValue: [],
     })
       .then(async (raw) => {
+        if (!isActive) return;
         const normalized = normalizeAddresses(raw);
         const found = normalized.value.find((x) => x.id === props.addressId);
         if (!found) {
-          setNotFound(true);
+          if (isActive) setNotFound(true);
           return;
         }
 
-        setAddressRecord(found);
-        setUsageLocations(found.usageLocations);
+        if (isActive) {
+          setAddressRecord(found);
+          setUsageLocations(found.usageLocations);
+        }
 
         if (normalized.changed) {
           await saveEncryptedData({
@@ -67,19 +75,26 @@ function AddressDetailsInner(props: {
         }
       })
       .catch(() => {
+        if (!isActive) return;
         toast({
           title: 'Failed to load address',
           description: 'Could not decrypt saved data.',
           variant: 'destructive',
         });
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (isActive) setLoading(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [props.addressId, props.masterKeyBytes, toast]);
 
   async function handleDeleteLocation(locationId: string) {
     try {
       const updatedLocations = usageLocations.filter(
-        (l) => l.id !== locationId
+        (l) => l.id !== locationId,
       );
 
       const raw = await loadDecryptedData<unknown>({
@@ -92,7 +107,7 @@ function AddressDetailsInner(props: {
       const nextAddresses = normalized.value.map((x) =>
         x.id === props.addressId
           ? { ...x, usageLocations: updatedLocations }
-          : x
+          : x,
       );
 
       await saveEncryptedData({
@@ -118,7 +133,7 @@ function AddressDetailsInner(props: {
 
   function handleEditLocation(location: UsageLocationRecord) {
     router.push(
-      `/dashboard/addresses/${props.addressId}/add-location?edit=${location.id}`
+      `/dashboard/addresses/${props.addressId}/add-location?edit=${location.id}`,
     );
   }
 

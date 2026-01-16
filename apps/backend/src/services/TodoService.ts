@@ -1,5 +1,5 @@
 import { TodoRequestBody } from '../models/Todo';
-import { PrismaClient } from '../prisma';
+import { PrismaClient, createPrismaClient } from '../prisma';
 
 export class TodoService {
   constructor(private prisma: PrismaClient) {}
@@ -40,5 +40,5 @@ export class TodoService {
   };
 }
 
-const todoService = new TodoService(new PrismaClient());
+const todoService = new TodoService(createPrismaClient());
 export default todoService;

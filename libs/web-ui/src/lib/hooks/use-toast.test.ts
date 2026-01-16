@@ -1,9 +1,17 @@
-import { act, renderHook } from '@testing-library/react-hooks';
+import { act, renderHook } from '@testing-library/react';
 import { useToast } from './use-toast';
 
 const TOAST_REMOVE_DELAY = 1000000;
 
 describe('useToast', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('should add a toast', () => {
     const { result } = renderHook(() => useToast());
 
@@ -19,7 +27,7 @@ describe('useToast', () => {
     const { result } = renderHook(() => useToast());
 
     act(() => {
-      const newToast = result.current.toast({ title: 'Test Toast' });
+      result.current.toast({ title: 'Test Toast' });
     });
 
     act(() => {
@@ -63,6 +71,6 @@ describe('useToast', () => {
       jest.advanceTimersByTime(TOAST_REMOVE_DELAY);
     });
 
-    expect(result.current.toasts).toHaveLength(1);
+    expect(result.current.toasts).toHaveLength(0);
   });
 });

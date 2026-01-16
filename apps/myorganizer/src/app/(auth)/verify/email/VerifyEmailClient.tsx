@@ -19,7 +19,9 @@ export default function VerifyEmailClient() {
 
   useEffect(() => {
     if (!token) {
-      setState({ status: 'error', message: 'Missing token.' });
+      queueMicrotask(() => {
+        setState({ status: 'error', message: 'Missing token.' });
+      });
       return;
     }
 
