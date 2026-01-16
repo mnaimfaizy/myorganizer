@@ -1,4 +1,3 @@
-import dotenv from 'dotenv';
 import { Request as ExRequest } from 'express';
 import { JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 import {
@@ -39,7 +38,6 @@ import { UserSchema } from '../schemas/user.schema';
 import userService from '../services/UserService';
 import { FilteredUserInterface, UserInterface } from '../types';
 import passport from '../utils/passport';
-dotenv.config();
 
 @Tags('Authentication')
 @Route('/auth')
@@ -50,7 +48,7 @@ export class AuthController extends Controller {
   @Middlewares([passport.authenticate('local', { session: false })])
   async login(
     @Request() req: ExRequest,
-    @Body() requestBody: UserLoginBody
+    @Body() requestBody: UserLoginBody,
   ): Promise<{
     token: string;
     expires_in: number;
@@ -77,7 +75,7 @@ export class AuthController extends Controller {
   @Security('jwt')
   async logout(
     @Request() req: ExRequest,
-    @Path() userId: string
+    @Path() userId: string,
   ): Promise<{ message: string }> {
     const user = req.user as UserInterface;
     const refresh_token = req.cookies.refresh_cookie;
@@ -107,7 +105,7 @@ export class AuthController extends Controller {
     @Request() req: ExRequest,
     @Res() unauthorized: TsoaResponse<401, { message: string }>,
     @Res() notFound: TsoaResponse<404, { message: string }>,
-    @Body() requestBody?: { refresh_token?: string }
+    @Body() requestBody?: { refresh_token?: string },
   ): Promise<{
     token: string;
     expires_in: number;
@@ -144,12 +142,12 @@ export class AuthController extends Controller {
   @SuccessResponse(201, 'Created')
   @ValidateBody(UserSchema)
   async registerUser(
-    @Body() requestBody: UserCreationBody
+    @Body() requestBody: UserCreationBody,
   ): Promise<RegisterUserResponse> {
     const existing = await userService.getByEmail(requestBody.email);
     if (existing) {
       const isVerified = Boolean(
-        (existing as any)?.email_verification_timestamp
+        (existing as any)?.email_verification_timestamp,
       );
       if (isVerified) {
         this.setStatus(409);
@@ -214,11 +212,11 @@ export class AuthController extends Controller {
   @Response(200, 'Success') // Custom success response
   @ValidateBody(VerifyEmailSchema)
   async verifyEmail(
-    @Body() requestBody: { token: string }
+    @Body() requestBody: { token: string },
   ): Promise<FilteredUserInterface> {
     const decodedToken = decodeToken(
       requestBody.token,
-      process.env.VERIFY_JWT_SECRET as string
+      process.env.VERIFY_JWT_SECRET as string,
     ) as JwtPayload;
 
     const userId = decodedToken.userId;
@@ -246,7 +244,7 @@ export class AuthController extends Controller {
   @Post('/verify/resend')
   @ValidateBody(resendVerificationSchema)
   async resendVerificationEmailByEmail(
-    @Body() requestBody: { email: string }
+    @Body() requestBody: { email: string },
   ): Promise<{ status: number; message: string }> {
     const user = await userService.getByEmail(requestBody.email);
     if (!user) {
@@ -296,7 +294,7 @@ export class AuthController extends Controller {
         if (token.message.includes('already sent recently')) {
           this.setStatus(429);
           throw new Error(
-            'A verification email was already sent recently. Please try again later.'
+            'A verification email was already sent recently. Please try again later.',
           );
         }
 
@@ -313,7 +311,7 @@ export class AuthController extends Controller {
   @Post('/password/reset')
   @ValidateBody(resetPasswordSchema)
   async resetPassword(
-    @Body() requestBody: ResetPasswordByEmailBody
+    @Body() requestBody: ResetPasswordByEmailBody,
   ): Promise<{ status: number; message: string }> {
     const user = await userService.getByEmail(requestBody.email);
     if (!user) {
@@ -329,7 +327,7 @@ export class AuthController extends Controller {
     if (existingResetToken) {
       const decodedExisting = decodeToken(
         existingResetToken,
-        process.env.RESET_JWT_SECRET as string
+        process.env.RESET_JWT_SECRET as string,
       );
 
       // If the existing token is still valid, block resending to prevent spamming.
@@ -373,11 +371,11 @@ export class AuthController extends Controller {
   @Patch('/password/reset/confirm')
   @ValidateBody(updatePasswordSchema)
   async confirmResetPassword(
-    @Body() requestBody: ConfirmResetPasswordBody
+    @Body() requestBody: ConfirmResetPasswordBody,
   ): Promise<{ status: number; message: string }> {
     const verifiedToken = decodeToken(
       requestBody.token,
-      process.env.RESET_JWT_SECRET as string
+      process.env.RESET_JWT_SECRET as string,
     ) as JwtPayload;
 
     if (verifiedToken instanceof TokenExpiredError) {
@@ -397,7 +395,7 @@ export class AuthController extends Controller {
     const updatedUser = await userService.resetPassword(
       userId,
       requestBody.password,
-      requestBody.token
+      requestBody.token,
     );
 
     if (!updatedUser) {

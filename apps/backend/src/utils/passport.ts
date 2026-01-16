@@ -1,11 +1,9 @@
 import bcrypt from 'bcrypt';
-import dotenv from 'dotenv';
 import passport from 'passport';
 import jwtStrat, { ExtractJwt } from 'passport-jwt';
 import localStrat from 'passport-local';
 import { User } from '../models/User';
 import { createPrismaClient } from '../prisma';
-dotenv.config();
 
 const LocalStrategy = localStrat.Strategy;
 const JwtStrategy = jwtStrat.Strategy;
