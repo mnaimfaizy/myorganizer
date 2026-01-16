@@ -3,7 +3,10 @@ import { defineConfig, env } from 'prisma/config';
 export default defineConfig({
   schema: 'prisma/schema',
   datasource: {
-    url: env('DATABASE_URL'),
+    url:
+      process.env.NODE_ENV === 'production'
+        ? env('DATABASE_URL')
+        : env('DATABASE_URL', 'postgresql://localhost:5432/myorganizer'),
   },
   migrations: {
     path: 'prisma/migrations',
