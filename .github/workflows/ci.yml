@@ -4,11 +4,11 @@ on:
   pull_request:
     branches:
       - main
-      - 'release/**'
+      - "release/**"
   push:
     branches:
       - main
-      - 'release/**'
+      - "release/**"
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -104,6 +104,11 @@ jobs:
     timeout-minutes: 30
     needs: setup
 
+    env:
+      # Required for Prisma v7 config loading during `prisma generate`.
+      # Use a dummy local URL if no secret is configured (generate does not connect).
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://localhost:5432/myorganizer' }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -130,6 +135,9 @@ jobs:
       - setup
       - lint
       - test
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://localhost:5432/myorganizer' }}
 
     steps:
       - name: Checkout
