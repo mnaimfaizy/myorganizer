@@ -143,13 +143,13 @@ See: `docs/internal/address-mobile-usage-plan.md`.
 Sidebar links (already started in app):
 
 - Home (/)
-- Todos (/todo)
-- Addresses (/addresses)
-- Mobile Numbers (/mobile-numbers)
+- Todos (/dashboard/todo)
+- Addresses (/dashboard/addresses)
+- Mobile Numbers (/dashboard/mobile-numbers)
 
 ### Page flows
 
-#### Addresses page (/addresses)
+#### Addresses page (/dashboard/addresses)
 
 1. Vault gate appears if vault is locked/uninitialized.
 2. Once unlocked:
@@ -157,7 +157,7 @@ Sidebar links (already started in app):
    - Form to add a new address
    - Delete an address
 
-#### Mobile numbers page (/mobile-numbers)
+#### Mobile numbers page (/dashboard/mobile-numbers)
 
 1. Vault gate
 2. Once unlocked:

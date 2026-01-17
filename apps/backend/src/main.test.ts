@@ -4,7 +4,6 @@ import express from 'express';
 import request from 'supertest';
 import { createCorsOptions } from './config/http';
 import { RegisterRoutes } from './routes/routes';
-import todosRouter from './routes/todo';
 import usersRouter from './routes/user';
 
 const app = express();
@@ -28,7 +27,6 @@ app.use(bodyParser.json());
 
 const prefix = process.env.ROUTER_PREFIX || '/api/v1';
 const api = express.Router();
-api.use('/todo', todosRouter);
 api.use('/user', usersRouter);
 RegisterRoutes(api);
 app.use(prefix, api);
@@ -39,13 +37,8 @@ describe('Main Application', () => {
       .options('/')
       .set('Origin', 'https://myorganizerapi.mnfprofile.com');
     expect(response.headers['access-control-allow-origin']).toBe(
-      'https://myorganizerapi.mnfprofile.com'
+      'https://myorganizerapi.mnfprofile.com',
     );
-  });
-
-  it('should register /todos route', async () => {
-    const response = await request(app).get('/api/v1/todo');
-    expect(response.status).not.toBe(404);
   });
 
   it('should register /users route', async () => {

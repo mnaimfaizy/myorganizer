@@ -167,7 +167,8 @@ When consuming the generated client:
 
 - The server stores **ciphertext only**; plaintext must never leave the client.
 - Adding a new vault blob type requires updates across `libs/web-vault`, `libs/vault-core`, backend vault allowlists/validation, and vault export/import + migration.
-- Current blob types include: `addresses`, `mobileNumbers`, `subscriptions`.
+- Current blob types include: `addresses`, `mobileNumbers`, `subscriptions`, `todos`.
+- Todos are **vault-backed** (encrypted blob type `todos`); do not add or resurrect plaintext Todo REST endpoints or a Prisma `Todo` model/table.
 
 ## Common Patterns
 

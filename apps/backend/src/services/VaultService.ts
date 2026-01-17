@@ -1,6 +1,10 @@
 import { Prisma, PrismaClient, createPrismaClient } from '../prisma';
 
-export type VaultBlobType = 'addresses' | 'mobileNumbers' | 'subscriptions';
+export type VaultBlobType =
+  | 'addresses'
+  | 'mobileNumbers'
+  | 'subscriptions'
+  | 'todos';
 
 export interface VaultMetaV1 {
   version: number;
@@ -338,7 +342,8 @@ export class VaultService {
       if (
         blobRow.type === 'addresses' ||
         blobRow.type === 'mobileNumbers' ||
-        blobRow.type === 'subscriptions'
+        blobRow.type === 'subscriptions' ||
+        blobRow.type === 'todos'
       ) {
         blobMap[blobRow.type] = blobRow.blob as EncryptedBlobV1;
       }
@@ -460,7 +465,8 @@ export class VaultService {
         if (
           type !== 'addresses' &&
           type !== 'mobileNumbers' &&
-          type !== 'subscriptions'
+          type !== 'subscriptions' &&
+          type !== 'todos'
         ) {
           continue;
         }

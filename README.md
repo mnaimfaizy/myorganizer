@@ -39,10 +39,11 @@ See **[Development Guide](DEVELOPMENT.md)** → “Frontend Architecture (Web Pa
 
 Some dashboard areas store sensitive data inside the client-side encrypted vault (ciphertext-only on the server):
 
+- Todos (`/dashboard/todo`)
 - Addresses (`/dashboard/addresses`)
 - Mobile numbers (`/dashboard/mobile-numbers`)
 - Subscriptions (`/dashboard/subscriptions`)
-- Vault export/import (`/dashboard/vault/export`)
+- Vault export/import (`/dashboard/vault-export`)
 
 Account preferences used by vault-backed views:
 
