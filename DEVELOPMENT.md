@@ -442,7 +442,6 @@ Examples of existing page libraries:
    ```
 
    Branch naming conventions:
-
    - `feature/` - New features
    - `fix/` - Bug fixes
    - `docs/` - Documentation updates
@@ -450,7 +449,6 @@ Examples of existing page libraries:
    - `test/` - Test additions/updates
 
 2. **Make Your Changes**
-
    - Follow the existing code style
    - Write tests for new features
    - Update documentation as needed
@@ -476,7 +474,6 @@ Examples of existing page libraries:
    ```
 
    Follow [Conventional Commits](https://www.conventionalcommits.org/) format:
-
    - `feat:` - New feature
    - `fix:` - Bug fix
    - `docs:` - Documentation changes
@@ -639,7 +636,6 @@ Good issues help maintainers understand and address problems quickly. Here's how
 2. **Click "New Issue"**
 
 3. **Choose an Issue Type** (if templates are available)
-
    - Bug Report
    - Feature Request
    - Documentation
@@ -647,18 +643,17 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
 4. **Provide a Clear Title**
 
-   Good: `Backend API returns 500 error when creating todo with empty title`
+   Good: `Backend API returns 500 error when saving a todos vault blob`
 
    Bad: `API broken`
 
 5. **Fill in the Description**
 
    For **Bug Reports**, include:
-
    - **Description**: What is the problem?
    - **Steps to Reproduce**:
      1. Start the backend
-     2. Send POST request to /api/v1/todo with empty title
+     2. Send `PUT /api/v1/vault/blob/todos` with an invalid payload
      3. Observe 500 error
    - **Expected Behavior**: Should return 400 with validation error
    - **Actual Behavior**: Returns 500 internal server error
@@ -669,20 +664,17 @@ Good issues help maintainers understand and address problems quickly. Here's how
    - **Screenshots/Logs**: Include relevant error messages or screenshots
 
    For **Feature Requests**, include:
-
    - **Description**: What feature do you want?
    - **Use Case**: Why is this feature needed?
    - **Proposed Solution**: How should it work?
    - **Alternatives**: What alternatives have you considered?
 
    For **Documentation**, include:
-
    - **Description**: What needs to be documented?
    - **Location**: Where should this documentation go?
    - **Current Gap**: What's missing or unclear?
 
 6. **Add Labels** (if you have permission)
-
    - `bug` - Something isn't working
    - `enhancement` - New feature or request
    - `documentation` - Documentation improvements
@@ -709,7 +701,6 @@ Good issues help maintainers understand and address problems quickly. Here's how
    ```
 
 3. **Make Your Changes**
-
    - Write clean, readable code
    - Follow existing code style
    - Add tests for new features
@@ -756,11 +747,9 @@ Good issues help maintainers understand and address problems quickly. Here's how
    ```
 
 8. **Create the Pull Request**
-
    - Go to your fork on GitHub
    - Click "Compare & pull request"
    - **Write a Clear PR Title**: Same format as commits
-
      - `feat: add user profile settings`
      - `fix: resolve database connection timeout`
      - `docs: update API documentation`
@@ -812,14 +801,12 @@ Good issues help maintainers understand and address problems quickly. Here's how
 ### PR Review Process
 
 1. **Automated Checks**
-
    - CI/CD pipeline runs automatically
    - Tests must pass
    - Linting must pass
    - Build must succeed
 
 2. **Code Review**
-
    - Maintainers will review your code
    - Address feedback by pushing new commits
    - Engage in discussion if you disagree

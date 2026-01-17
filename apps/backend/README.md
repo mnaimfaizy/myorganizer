@@ -182,7 +182,6 @@ Note: The repo sets `package.json.engines.node` to `>=22.0.0`.
    ```
 
    **Important Notes:**
-
    - `yarn start:backend:prod` runs with `NODE_ENV=production` (and will fail fast if required env vars are missing)
    - `SESSION_SECRET` is required when `NODE_ENV=production`
    - If you are behind a reverse proxy (common in production), set `TRUST_PROXY` so secure cookies and request IP/proto are detected correctly
@@ -411,7 +410,6 @@ apps/backend/
 │   ├── assets/              # Static assets
 │   ├── controllers/         # API controllers (TSOA)
 │   │   ├── AuthController.ts
-│   │   ├── TodoController.ts
 │   │   └── UserController.ts
 │   ├── decorators/          # Custom TypeScript decorators
 │   ├── helpers/             # Utility helper functions
@@ -424,17 +422,16 @@ apps/backend/
 │   │   └── isOwner.ts
 │   ├── models/              # Data models
 │   │   ├── User.ts
-│   │   └── Todo.ts
+│   │   └── (no Todo model; todos are vault-backed)
 │   ├── prisma/              # Prisma ORM files
 │   │   ├── schema/          # Prisma schema files
 │   │   │   ├── schema.prisma
 │   │   │   ├── user.prisma
-│   │   │   └── todo.prisma
+│   │   │   └── vault.prisma
 │   │   ├── migrations/      # Database migrations
 │   │   └── prisma-client/   # Generated Prisma client
 │   ├── routes/              # Express routes
 │   │   ├── auth.ts
-│   │   ├── todo.ts
 │   │   ├── user.ts
 │   │   └── routes.ts        # Auto-generated TSOA routes
 │   ├── schemas/             # Validation schemas (Zod)
@@ -442,7 +439,6 @@ apps/backend/
 │   │   └── user.schema.ts
 │   ├── services/            # Business logic services
 │   │   ├── UserService.ts
-│   │   ├── TodoService.ts
 │   │   └── EmailService.ts
 │   ├── swagger/             # Generated API documentation
 │   │   ├── swagger.json
@@ -571,11 +567,9 @@ The API follows RESTful conventions:
 - `PATCH /user/:id` - Update user
 - `DELETE /user/:id` - Delete user
 
-#### Todo Endpoints (`/todo`)
+#### Todo Endpoints
 
-- `GET /todo` - Get all todos
-- `POST /todo` - Create new todo
-- `DELETE /todo/:id` - Delete todo
+Todos are stored as encrypted vault blobs (`todos`) and are not available as plain REST resources.
 
 ### Authentication
 
@@ -613,17 +607,18 @@ Tests are located alongside the source files with `.test.ts` or `.spec.ts` exten
 The project uses Jest as the testing framework. Example:
 
 ```typescript
-import { TodoController } from './TodoController';
-import todoService from '../services/TodoService';
+import { UserService } from '../services/UserService';
 
-describe('TodoController', () => {
-  it('should create a todo', async () => {
-    const controller = new TodoController();
-    const todo = await controller.createTodo({
-      title: 'Test Todo',
-      completed: false,
+describe('UserService', () => {
+  it('should create a user', async () => {
+    const userService = new UserService();
+    const user = await userService.createUser({
+      firstName: 'Test',
+      lastName: 'User',
+      email: 'test@example.com',
+      password: 'password123',
     });
-    expect(todo).toBeDefined();
+    expect(user).toBeDefined();
   });
 });
 ```
