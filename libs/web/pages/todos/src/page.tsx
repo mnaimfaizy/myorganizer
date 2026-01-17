@@ -1,5 +1,5 @@
-import TodoContent from './components/todo-content';
+import { TodosPageClient } from './components/TodosPageClient';
 
 export default function TodosPage() {
-  return <TodoContent />;
+  return <TodosPageClient />;
 }

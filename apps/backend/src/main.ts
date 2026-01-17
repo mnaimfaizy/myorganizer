@@ -18,7 +18,6 @@ import { maybeCreateGlobalApiRateLimiterFromEnv } from './middleware/globalRateL
 import { vaultRateLimiter } from './middleware/vaultRateLimit';
 import authRouter from './routes/auth';
 import { RegisterRoutes } from './routes/routes';
-import todosRouter from './routes/todo';
 import usersRouter from './routes/user';
 import passport from './utils/passport';
 
@@ -66,7 +65,7 @@ app.use(
   helmet({
     // Swagger UI relies on inline scripts/styles; keep CSP off globally for now.
     contentSecurityPolicy: false,
-  })
+  }),
 );
 app.use(compression());
 
@@ -81,7 +80,7 @@ function mountSwagger(mountPath: string) {
     swaggerUi.serve,
     async (req: ExRequest, res: ExResponse) => {
       const swaggerDocument = await import('./swagger/swagger.json').then(
-        (module) => module.default
+        (module) => module.default,
       );
 
       // tsoa spec config is generated with a localhost server; override it at runtime
@@ -108,7 +107,7 @@ function mountSwagger(mountPath: string) {
       }
 
       res.send(swaggerUi.generateHTML(doc));
-    }
+    },
   );
 }
 
@@ -140,7 +139,7 @@ app.use(
       httpOnly: true,
       sameSite: 'lax',
     },
-  })
+  }),
 );
 
 // Enable cookie parser
@@ -161,7 +160,6 @@ const api = express.Router();
 const globalApiRateLimiter = maybeCreateGlobalApiRateLimiterFromEnv();
 if (globalApiRateLimiter) api.use(globalApiRateLimiter);
 
-api.use('/todo', todosRouter);
 api.use('/user', usersRouter);
 api.use('/auth', authRouter);
 
@@ -194,7 +192,7 @@ app.use(function errorHandler(
   err: unknown,
   req: ExRequest,
   res,
-  next: NextFunction
+  next: NextFunction,
 ) {
   if (err instanceof ValidateError) {
     console.warn(`Caught Validation Error for ${req.path}:`, err.fields);
@@ -207,7 +205,7 @@ app.use(function errorHandler(
     if (isProd) {
       console.error(
         `Unhandled error on ${req.method} ${req.path}:`,
-        err.message
+        err.message,
       );
     } else {
       console.error(`Unhandled error on ${req.method} ${req.path}:`, err);
@@ -228,7 +226,7 @@ server.on('error', console.error);
 
 function shutdown(
   signal: string,
-  opts: { exitCode: number; forceExit: boolean }
+  opts: { exitCode: number; forceExit: boolean },
 ) {
   console.log(`Received ${signal}; shutting down...`);
   server.close(() => {
@@ -244,10 +242,10 @@ function shutdown(
 }
 
 process.on('SIGTERM', () =>
-  shutdown('SIGTERM', { exitCode: 0, forceExit: true })
+  shutdown('SIGTERM', { exitCode: 0, forceExit: true }),
 );
 process.on('SIGINT', () =>
-  shutdown('SIGINT', { exitCode: 0, forceExit: true })
+  shutdown('SIGINT', { exitCode: 0, forceExit: true }),
 );
 
 process.on('unhandledRejection', (reason) => {

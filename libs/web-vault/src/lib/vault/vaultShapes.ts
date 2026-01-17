@@ -22,7 +22,7 @@ export function normalizeEncryptedBlobV1(value: any): EncryptedBlobV1 | null {
     (value as any).version !== 1
   ) {
     throw new Error(
-      `Unsupported encrypted blob version: ${(value as any).version}`
+      `Unsupported encrypted blob version: ${(value as any).version}`,
     );
   }
 
@@ -39,16 +39,16 @@ export function localToServerMeta(vault: VaultStorageV1): VaultMetaV1 {
       iterations: vault.kdf.iterations,
     },
     wrapped_mk_passphrase: toEncryptedBlobV1(
-      vault.masterKeyWrappedWithPassphrase
+      vault.masterKeyWrappedWithPassphrase,
     ),
     wrapped_mk_recovery: toEncryptedBlobV1(
-      vault.masterKeyWrappedWithRecoveryKey
+      vault.masterKeyWrappedWithRecoveryKey,
     ),
   };
 }
 
 export function serverEncryptedBlobToLocal(
-  blob: EncryptedBlobV1
+  blob: EncryptedBlobV1,
 ): EncryptedBlob {
   return {
     iv: blob.iv,
@@ -63,7 +63,7 @@ export function serverMetaToLocalVault(options: {
   const { meta, blobs } = options;
 
   const wrappedPassphrase = normalizeEncryptedBlobV1(
-    meta.wrapped_mk_passphrase
+    meta.wrapped_mk_passphrase,
   );
   const wrappedRecovery = normalizeEncryptedBlobV1(meta.wrapped_mk_recovery);
 
@@ -73,7 +73,7 @@ export function serverMetaToLocalVault(options: {
 
   if (meta.kdf_params?.hash && meta.kdf_params.hash !== 'SHA-256') {
     throw new Error(
-      `Unsupported KDF hash in server vault meta: ${meta.kdf_params.hash}`
+      `Unsupported KDF hash in server vault meta: ${meta.kdf_params.hash}`,
     );
   }
 
@@ -111,6 +111,11 @@ export function serverMetaToLocalVault(options: {
   const subscriptions = blobs[VaultBlobType.Subscriptions];
   if (subscriptions) {
     next.data.subscriptions = serverEncryptedBlobToLocal(subscriptions);
+  }
+
+  const todos = blobs[VaultBlobType.Todos];
+  if (todos) {
+    next.data.todos = serverEncryptedBlobToLocal(todos);
   }
 
   return next;

@@ -427,6 +427,12 @@ export interface PartialRecordVaultBlobTypeEncryptedBlobV1 {
      * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
      */
     'subscriptions'?: EncryptedBlobV1;
+    /**
+     * 
+     * @type {EncryptedBlobV1}
+     * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
+     */
+    'todos'?: EncryptedBlobV1;
 }
 /**
  * 
@@ -641,44 +647,6 @@ export interface ResetPasswordByEmailBody {
 /**
  * 
  * @export
- * @interface Todo
- */
-export interface Todo {
-    /**
-     * 
-     * @type {number}
-     * @memberof Todo
-     */
-    'id': number;
-    /**
-     * 
-     * @type {string}
-     * @memberof Todo
-     */
-    'todo': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof Todo
-     */
-    'createdAt'?: string;
-}
-/**
- * 
- * @export
- * @interface TodoRequestBody
- */
-export interface TodoRequestBody {
-    /**
-     * 
-     * @type {string}
-     * @memberof TodoRequestBody
-     */
-    'todo': string;
-}
-/**
- * 
- * @export
  * @interface User
  */
 export interface User {
@@ -840,7 +808,8 @@ export type ValidateErrorJSONMessageEnum = typeof ValidateErrorJSONMessageEnum[k
 export const VaultBlobType = {
     Addresses: 'addresses',
     MobileNumbers: 'mobileNumbers',
-    Subscriptions: 'subscriptions'
+    Subscriptions: 'subscriptions',
+    Todos: 'todos'
 } as const;
 
 export type VaultBlobType = typeof VaultBlobType[keyof typeof VaultBlobType];
@@ -1708,263 +1677,6 @@ export class AuthenticationApi extends BaseAPI {
      */
     public verifyEmail(requestParameters: AuthenticationApiVerifyEmailRequest, options?: RawAxiosRequestConfig) {
         return AuthenticationApiFp(this.configuration).verifyEmail(requestParameters.verifyEmailRequest, options).then((request) => request(this.axios, this.basePath));
-    }
-}
-
-
-
-/**
- * TodoManagementApi - axios parameter creator
- * @export
- */
-export const TodoManagementApiAxiosParamCreator = function (configuration?: Configuration) {
-    return {
-        /**
-         * 
-         * @param {TodoRequestBody} todoRequestBody 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        createTodo: async (todoRequestBody: TodoRequestBody, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'todoRequestBody' is not null or undefined
-            assertParamExists('createTodo', 'todoRequestBody', todoRequestBody)
-            const localVarPath = `/todo`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            localVarHeaderParameter['Content-Type'] = 'application/json';
-
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(todoRequestBody, localVarRequestOptions, configuration)
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * 
-         * @param {number} todoId 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        deleteTodo: async (todoId: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'todoId' is not null or undefined
-            assertParamExists('deleteTodo', 'todoId', todoId)
-            const localVarPath = `/todo/{todoId}`
-                .replace(`{${"todoId"}}`, encodeURIComponent(String(todoId)));
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getAllTodos: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/todo`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-    }
-};
-
-/**
- * TodoManagementApi - functional programming interface
- * @export
- */
-export const TodoManagementApiFp = function(configuration?: Configuration) {
-    const localVarAxiosParamCreator = TodoManagementApiAxiosParamCreator(configuration)
-    return {
-        /**
-         * 
-         * @param {TodoRequestBody} todoRequestBody 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async createTodo(todoRequestBody: TodoRequestBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Todo>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.createTodo(todoRequestBody, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['TodoManagementApi.createTodo']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
-         * @param {number} todoId 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async deleteTodo(todoId: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.deleteTodo(todoId, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['TodoManagementApi.deleteTodo']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async getAllTodos(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Todo>>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getAllTodos(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['TodoManagementApi.getAllTodos']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-    }
-};
-
-/**
- * TodoManagementApi - factory interface
- * @export
- */
-export const TodoManagementApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
-    const localVarFp = TodoManagementApiFp(configuration)
-    return {
-        /**
-         * 
-         * @param {TodoManagementApiCreateTodoRequest} requestParameters Request parameters.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        createTodo(requestParameters: TodoManagementApiCreateTodoRequest, options?: RawAxiosRequestConfig): AxiosPromise<Todo> {
-            return localVarFp.createTodo(requestParameters.todoRequestBody, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {TodoManagementApiDeleteTodoRequest} requestParameters Request parameters.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        deleteTodo(requestParameters: TodoManagementApiDeleteTodoRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
-            return localVarFp.deleteTodo(requestParameters.todoId, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getAllTodos(options?: RawAxiosRequestConfig): AxiosPromise<Array<Todo>> {
-            return localVarFp.getAllTodos(options).then((request) => request(axios, basePath));
-        },
-    };
-};
-
-/**
- * Request parameters for createTodo operation in TodoManagementApi.
- * @export
- * @interface TodoManagementApiCreateTodoRequest
- */
-export interface TodoManagementApiCreateTodoRequest {
-    /**
-     * 
-     * @type {TodoRequestBody}
-     * @memberof TodoManagementApiCreateTodo
-     */
-    readonly todoRequestBody: TodoRequestBody
-}
-
-/**
- * Request parameters for deleteTodo operation in TodoManagementApi.
- * @export
- * @interface TodoManagementApiDeleteTodoRequest
- */
-export interface TodoManagementApiDeleteTodoRequest {
-    /**
-     * 
-     * @type {number}
-     * @memberof TodoManagementApiDeleteTodo
-     */
-    readonly todoId: number
-}
-
-/**
- * TodoManagementApi - object-oriented interface
- * @export
- * @class TodoManagementApi
- * @extends {BaseAPI}
- */
-export class TodoManagementApi extends BaseAPI {
-    /**
-     * 
-     * @param {TodoManagementApiCreateTodoRequest} requestParameters Request parameters.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof TodoManagementApi
-     */
-    public createTodo(requestParameters: TodoManagementApiCreateTodoRequest, options?: RawAxiosRequestConfig) {
-        return TodoManagementApiFp(this.configuration).createTodo(requestParameters.todoRequestBody, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {TodoManagementApiDeleteTodoRequest} requestParameters Request parameters.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof TodoManagementApi
-     */
-    public deleteTodo(requestParameters: TodoManagementApiDeleteTodoRequest, options?: RawAxiosRequestConfig) {
-        return TodoManagementApiFp(this.configuration).deleteTodo(requestParameters.todoId, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof TodoManagementApi
-     */
-    public getAllTodos(options?: RawAxiosRequestConfig) {
-        return TodoManagementApiFp(this.configuration).getAllTodos(options).then((request) => request(this.axios, this.basePath));
     }
 }
 

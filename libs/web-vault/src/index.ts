@@ -4,6 +4,7 @@ export * from './lib/vault/contactRecordNormalization';
 export * from './lib/vault/crypto';
 export * from './lib/vault/serverVaultSync';
 export * from './lib/vault/subscriptionRecordNormalization';
+export * from './lib/vault/todoNormalization';
 export * from './lib/vault/vault';
 export * from './lib/vault/vaultExportImport';
 export * from './lib/vault/vaultMigration';

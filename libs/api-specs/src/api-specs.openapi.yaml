@@ -80,6 +80,7 @@ components:
         - addresses
         - mobileNumbers
         - subscriptions
+        - todos
     EncryptedBlobV1:
       properties:
         version:
@@ -138,6 +139,8 @@ components:
         mobileNumbers:
           $ref: "#/components/schemas/EncryptedBlobV1"
         subscriptions:
+          $ref: "#/components/schemas/EncryptedBlobV1"
+        todos:
           $ref: "#/components/schemas/EncryptedBlobV1"
       type: object
       description: Make all properties in T optional
@@ -264,29 +267,6 @@ components:
         - lastName
         - email
         - password
-      type: object
-      additionalProperties: false
-    Todo:
-      properties:
-        id:
-          type: number
-          format: double
-        todo:
-          type: string
-        createdAt:
-          type: string
-          format: date-time
-      required:
-        - id
-        - todo
-      type: object
-      additionalProperties: false
-    TodoRequestBody:
-      properties:
-        todo:
-          type: string
-      required:
-        - todo
       type: object
       additionalProperties: false
     UserLoginBody:
@@ -556,57 +536,6 @@ paths:
           required: true
           schema:
             type: string
-  /todo:
-    get:
-      operationId: GetAllTodos
-      responses:
-        "200":
-          description: Ok
-          content:
-            application/json:
-              schema:
-                items:
-                  $ref: "#/components/schemas/Todo"
-                type: array
-      tags:
-        - Todo Management
-      security: []
-      parameters: []
-    post:
-      operationId: CreateTodo
-      responses:
-        "200":
-          description: Ok
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Todo"
-      tags:
-        - Todo Management
-      security: []
-      parameters: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/TodoRequestBody"
-  /todo/{todoId}:
-    delete:
-      operationId: DeleteTodo
-      responses:
-        "204":
-          description: No content
-      tags:
-        - Todo Management
-      security: []
-      parameters:
-        - in: path
-          name: todoId
-          required: true
-          schema:
-            format: double
-            type: number
   /auth/login:
     post:
       operationId: Login

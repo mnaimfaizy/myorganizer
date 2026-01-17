@@ -94,11 +94,11 @@ function requireMeta(value: unknown): VaultMetaV1 {
 
   const passphrase = requireEncryptedBlob(
     meta.wrapped_mk_passphrase,
-    'meta.wrapped_mk_passphrase'
+    'meta.wrapped_mk_passphrase',
   );
   const recovery = requireEncryptedBlob(
     meta.wrapped_mk_recovery,
-    'meta.wrapped_mk_recovery'
+    'meta.wrapped_mk_recovery',
   );
 
   const rawKdfParams = meta.kdf_params as Record<string, unknown>;
@@ -115,7 +115,7 @@ function requireMeta(value: unknown): VaultMetaV1 {
   const iterations = rawKdfParams.iterations;
   if (iterations !== undefined && typeof iterations !== 'number') {
     throw new Error(
-      'meta.kdf_params.iterations must be a number when provided'
+      'meta.kdf_params.iterations must be a number when provided',
     );
   }
   if (iterations !== undefined) {
@@ -133,7 +133,7 @@ function requireMeta(value: unknown): VaultMetaV1 {
 }
 
 function requireBlobs(
-  value: unknown
+  value: unknown,
 ): Partial<Record<VaultBlobType, EncryptedBlobV1>> {
   if (value === undefined) return {};
   if (value === null) return {};
@@ -147,7 +147,8 @@ function requireBlobs(
     if (
       key === VaultBlobType.Addresses ||
       key === VaultBlobType.MobileNumbers ||
-      key === VaultBlobType.Subscriptions
+      key === VaultBlobType.Subscriptions ||
+      key === VaultBlobType.Todos
     ) {
       blobs[key] = requireEncryptedBlob(candidate, `blobs.${key}`);
     } else {
@@ -211,22 +212,27 @@ export function buildLocalExportBundle(options: {
       ...(localVault.data.addresses
         ? {
             [VaultBlobType.Addresses]: toEncryptedBlobV1(
-              localVault.data.addresses
+              localVault.data.addresses,
             ),
           }
         : {}),
       ...(localVault.data.mobileNumbers
         ? {
             [VaultBlobType.MobileNumbers]: toEncryptedBlobV1(
-              localVault.data.mobileNumbers
+              localVault.data.mobileNumbers,
             ),
           }
         : {}),
       ...(localVault.data.subscriptions
         ? {
             [VaultBlobType.Subscriptions]: toEncryptedBlobV1(
-              localVault.data.subscriptions
+              localVault.data.subscriptions,
             ),
+          }
+        : {}),
+      ...(localVault.data.todos
+        ? {
+            [VaultBlobType.Todos]: toEncryptedBlobV1(localVault.data.todos),
           }
         : {}),
     },
@@ -238,6 +244,7 @@ export function bundleToLocalVault(bundle: VaultExportV1): VaultStorageV1 {
     [VaultBlobType.Addresses]: bundle.blobs.addresses ?? null,
     [VaultBlobType.MobileNumbers]: bundle.blobs.mobileNumbers ?? null,
     [VaultBlobType.Subscriptions]: bundle.blobs.subscriptions ?? null,
+    [VaultBlobType.Todos]: (bundle.blobs as any).todos ?? null,
   };
 
   return serverMetaToLocalVault({ meta: bundle.meta, blobs });

@@ -110,7 +110,7 @@ function normalizeServerBlob(value: EncryptedBlobV1 | null): object {
 }
 
 function normalizeLocalBlobAsServerShape(
-  value: EncryptedBlob | undefined
+  value: EncryptedBlob | undefined,
 ): object {
   if (!value) return { blob: null };
   const b = toEncryptedBlobV1(value);
@@ -149,6 +149,9 @@ export async function migrateVaultPhase1ToPhase2(options: {
         [VaultBlobType.Subscriptions]:
           (await getServerVaultBlob(options.api, VaultBlobType.Subscriptions))
             ?.blob ?? null,
+        [VaultBlobType.Todos]:
+          (await getServerVaultBlob(options.api, VaultBlobType.Todos))?.blob ??
+          null,
       };
 
     const nextLocalVault = serverMetaToLocalVault({
@@ -201,6 +204,14 @@ export async function migrateVaultPhase1ToPhase2(options: {
       });
     }
 
+    if (localVault.data.todos) {
+      await putServerVaultBlobEtagAware({
+        api: options.api,
+        type: VaultBlobType.Todos,
+        blob: toEncryptedBlobV1(localVault.data.todos),
+      });
+    }
+
     return { kind: 'uploaded-local-to-server' };
   }
 
@@ -214,19 +225,25 @@ export async function migrateVaultPhase1ToPhase2(options: {
     [VaultBlobType.Subscriptions]:
       (await getServerVaultBlob(options.api, VaultBlobType.Subscriptions))
         ?.blob ?? null,
+    [VaultBlobType.Todos]:
+      (await getServerVaultBlob(options.api, VaultBlobType.Todos))?.blob ??
+      null,
   };
 
   const localComparable = {
     meta: normalizeLocalVaultAsServerShape(localVault),
     blobs: {
       [VaultBlobType.Addresses]: normalizeLocalBlobAsServerShape(
-        localVault.data.addresses
+        localVault.data.addresses,
       ),
       [VaultBlobType.MobileNumbers]: normalizeLocalBlobAsServerShape(
-        localVault.data.mobileNumbers
+        localVault.data.mobileNumbers,
       ),
       [VaultBlobType.Subscriptions]: normalizeLocalBlobAsServerShape(
-        localVault.data.subscriptions
+        localVault.data.subscriptions,
+      ),
+      [VaultBlobType.Todos]: normalizeLocalBlobAsServerShape(
+        localVault.data.todos,
       ),
     },
   };
@@ -235,13 +252,16 @@ export async function migrateVaultPhase1ToPhase2(options: {
     meta: normalizeServerMeta(serverMeta.meta),
     blobs: {
       [VaultBlobType.Addresses]: normalizeServerBlob(
-        remoteBlobs[VaultBlobType.Addresses] ?? null
+        remoteBlobs[VaultBlobType.Addresses] ?? null,
       ),
       [VaultBlobType.MobileNumbers]: normalizeServerBlob(
-        remoteBlobs[VaultBlobType.MobileNumbers] ?? null
+        remoteBlobs[VaultBlobType.MobileNumbers] ?? null,
       ),
       [VaultBlobType.Subscriptions]: normalizeServerBlob(
-        remoteBlobs[VaultBlobType.Subscriptions] ?? null
+        remoteBlobs[VaultBlobType.Subscriptions] ?? null,
+      ),
+      [VaultBlobType.Todos]: normalizeServerBlob(
+        remoteBlobs[VaultBlobType.Todos] ?? null,
       ),
     },
   };
@@ -278,7 +298,7 @@ export async function migrateVaultPhase1ToPhase2(options: {
 
   const remoteAddresses = await getServerVaultBlob(
     options.api,
-    VaultBlobType.Addresses
+    VaultBlobType.Addresses,
   );
 
   if (localVault.data.addresses) {
@@ -293,7 +313,7 @@ export async function migrateVaultPhase1ToPhase2(options: {
 
   const remoteMobileNumbers = await getServerVaultBlob(
     options.api,
-    VaultBlobType.MobileNumbers
+    VaultBlobType.MobileNumbers,
   );
 
   if (localVault.data.mobileNumbers) {
@@ -308,7 +328,7 @@ export async function migrateVaultPhase1ToPhase2(options: {
 
   const remoteSubscriptions = await getServerVaultBlob(
     options.api,
-    VaultBlobType.Subscriptions
+    VaultBlobType.Subscriptions,
   );
 
   if (localVault.data.subscriptions) {
@@ -317,6 +337,21 @@ export async function migrateVaultPhase1ToPhase2(options: {
       type: VaultBlobType.Subscriptions,
       blob: toEncryptedBlobV1(localVault.data.subscriptions),
       ifMatch: remoteSubscriptions?.etag,
+      onConflict: () => 'keep-local',
+    });
+  }
+
+  const remoteTodos = await getServerVaultBlob(
+    options.api,
+    VaultBlobType.Todos,
+  );
+
+  if (localVault.data.todos) {
+    await putServerVaultBlobEtagAware({
+      api: options.api,
+      type: VaultBlobType.Todos,
+      blob: toEncryptedBlobV1(localVault.data.todos),
+      ifMatch: remoteTodos?.etag,
       onConflict: () => 'keep-local',
     });
   }
