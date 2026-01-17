@@ -1,7 +1,5 @@
-import dotenv from 'dotenv';
 import nodemailer, { SendMailOptions } from 'nodemailer';
 import winston from 'winston';
-dotenv.config();
 
 const logger = winston.createLogger({
   level: 'debug',
@@ -64,8 +62,8 @@ const getEmailService = (): EmailService => {
         Number.isFinite(portFromEnv) && portFromEnv
           ? portFromEnv
           : process.env.NODE_ENV === 'production'
-          ? undefined
-          : 1025;
+            ? undefined
+            : 1025;
 
       const secure = (process.env.MAIL_SECURE ?? '').toLowerCase() === 'true';
 
@@ -91,8 +89,8 @@ const getEmailService = (): EmailService => {
   if (!emailProviders[defaultEmailProvider]) {
     throw new Error(
       `Invalid email provider '${defaultEmailProvider}'. Supported providers are ${Object.keys(
-        emailProviders
-      ).join(', ')}`
+        emailProviders,
+      ).join(', ')}`,
     );
   }
 
@@ -102,7 +100,7 @@ const getEmailService = (): EmailService => {
 const sendEmail = async (
   to: string | string[],
   subject: string,
-  html: string
+  html: string,
 ): Promise<void> => {
   const emailService = getEmailService();
 

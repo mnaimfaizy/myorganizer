@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   displayName: 'vault-core',
   preset: '../../jest.preset.js',
   transform: {

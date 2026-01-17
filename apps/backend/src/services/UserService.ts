@@ -5,7 +5,7 @@ import path from 'path';
 import apiTokens from '../helpers/ApiTokens';
 import { decodeToken } from '../helpers/jwtHelper';
 import { User, UserCreationBody } from '../models/User';
-import { PrismaClient } from '../prisma';
+import { PrismaClient, createPrismaClient } from '../prisma';
 import sendEmail from './EmailService';
 
 class UserService {
@@ -73,7 +73,7 @@ class UserService {
   async resetPassword(
     id: string,
     password: string,
-    token: string
+    token: string,
   ): Promise<User> {
     const hashedPassword = await bcrypt.hash(password, this.SaltRounds);
     const data = {
@@ -105,7 +105,7 @@ class UserService {
     if (existingToken) {
       const decodedExisting = decodeToken(
         existingToken,
-        process.env.VERIFY_JWT_SECRET as string
+        process.env.VERIFY_JWT_SECRET as string,
       );
       const isExpired = decodedExisting instanceof TokenExpiredError;
       const isInvalid = decodedExisting instanceof Error;
@@ -121,7 +121,7 @@ class UserService {
     }
     const frontendBaseUrl = (process.env.APP_FRONTEND_URL || '').replace(
       /\/+$/,
-      ''
+      '',
     );
     const verifyUrl = `${frontendBaseUrl}/verify/email?token=${token}`;
 
@@ -148,7 +148,7 @@ class UserService {
     }
     const frontendBaseUrl = (process.env.APP_FRONTEND_URL || '').replace(
       /\/+$/,
-      ''
+      '',
     );
     const resetUrl = `${frontendBaseUrl}/reset/password?token=${token}`;
 
@@ -183,8 +183,8 @@ class UserService {
 
     throw new Error(
       `Email template '${fileName}' not found. Looked in: ${candidates.join(
-        ', '
-      )}`
+        ', ',
+      )}`,
     );
   }
 
@@ -207,7 +207,7 @@ class UserService {
   async refreshToken(refreshToken: string): Promise<User | null> {
     const decodedToken = decodeToken(
       refreshToken,
-      process.env.REFRESH_JWT_SECRET as string
+      process.env.REFRESH_JWT_SECRET as string,
     ) as JwtPayload;
 
     if (
@@ -229,5 +229,5 @@ class UserService {
   }
 }
 
-const userService = new UserService(new PrismaClient());
+const userService = new UserService(createPrismaClient());
 export default userService;

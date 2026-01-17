@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   displayName: 'web-pages-dashboard',
   preset: '../../../../jest.preset.js',
   transform: {

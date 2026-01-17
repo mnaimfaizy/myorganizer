@@ -9,7 +9,7 @@ export function Body() {
   return function (
     target: object,
     propertyKey: string | symbol,
-    parameterIndex: number
+    parameterIndex: number,
   ) {
     const existingMetadata =
       Reflect.getOwnMetadata('Body', target, propertyKey) || [];
@@ -23,7 +23,7 @@ export function ValidateBody(validationSchema: ZodSchema) {
   return function (
     target: object,
     propertyKey: string | symbol,
-    descriptor: PropertyDescriptor
+    descriptor: PropertyDescriptor,
   ) {
     const originalMethod = descriptor.value;
 
@@ -45,13 +45,16 @@ export function ValidateBody(validationSchema: ZodSchema) {
       // now we check if its payload is valid against the passed Zod schema
       const check = await validationSchema.safeParseAsync(args[bodyIndex]);
       if (!check.success) {
-        const errorDetails = check.error.errors.reduce((acc, err) => {
-          acc[err.path.join('.')] = {
-            message: err.message,
-            value: err.code,
-          };
-          return acc;
-        }, {} as Record<string, { message: string; value: string }>);
+        const errorDetails = check.error.issues.reduce(
+          (acc, err) => {
+            acc[err.path.join('.')] = {
+              message: err.message,
+              value: err.code,
+            };
+            return acc;
+          },
+          {} as Record<string, { message: string; value: string }>,
+        );
         const validationErrors =
           BaseError.createInvalidArgumentError(errorDetails);
         express.response.status(422);

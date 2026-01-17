@@ -7,5 +7,6 @@
 # Generated artifacts (keep generator output stable / avoid drift)
 apps/backend/src/routes/routes.ts
 apps/backend/src/swagger/swagger.yaml
+apps/myorganizer/next-env.d.ts
 libs/api-specs/src/api-specs.openapi.yaml
 libs/app-api-client/src

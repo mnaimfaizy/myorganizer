@@ -18,7 +18,6 @@
     ],
     "sharedGlobals": []
   },
-
   "plugins": [
     {
       "plugin": "@nx/next/plugin",

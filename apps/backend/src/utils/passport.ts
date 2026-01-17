@@ -1,11 +1,9 @@
 import bcrypt from 'bcrypt';
-import dotenv from 'dotenv';
 import passport from 'passport';
 import jwtStrat, { ExtractJwt } from 'passport-jwt';
 import localStrat from 'passport-local';
 import { User } from '../models/User';
-import { PrismaClient } from '../prisma';
-dotenv.config();
+import { createPrismaClient } from '../prisma';
 
 const LocalStrategy = localStrat.Strategy;
 const JwtStrategy = jwtStrat.Strategy;
@@ -22,11 +20,11 @@ function getAccessJwtSecret(): string {
 
   throw new Error(
     'ACCESS_JWT_SECRET is required to initialize JWT auth. ' +
-      'Set ACCESS_JWT_SECRET (and other JWT secrets) in the environment.'
+      'Set ACCESS_JWT_SECRET (and other JWT secrets) in the environment.',
   );
 }
 
-const db = new PrismaClient();
+const db = createPrismaClient();
 
 passport.use(
   new LocalStrategy(
@@ -59,8 +57,8 @@ passport.use(
           console.log(err);
           return done(err, false);
         });
-    }
-  )
+    },
+  ),
 );
 
 passport.use(
@@ -85,8 +83,8 @@ passport.use(
         .catch((err: Error) => {
           return done(err, false);
         });
-    }
-  )
+    },
+  ),
 );
 
 export default passport;

@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   displayName: 'web-pages-subscriptions',
   preset: '../../../../jest.preset.js',
   transform: {

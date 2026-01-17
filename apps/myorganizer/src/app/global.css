@@ -1,6 +1,5 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@config "../../tailwind.config.js";
+@import 'tailwindcss';
 
 @layer base {
   :root {
@@ -25,7 +24,7 @@
     --ring: 215 20.2% 65.1%;
     --radius: 0.5rem;
   }
- 
+
   .dark {
     --background: 224 71% 4%;
     --foreground: 213 31% 91%;
@@ -48,7 +47,7 @@
     --ring: 216 34% 17%;
   }
 }
- 
+
 @layer base {
   * {
     @apply border-border;

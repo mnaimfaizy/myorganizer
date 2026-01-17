@@ -20,11 +20,7 @@ const nextConfig = {
   // Keep standalone for self-hosted/cPanel deployments, but disable it when building on Vercel.
   ...(process.env.VERCEL === '1' ? {} : { output: 'standalone' }),
   poweredByHeader: false,
-  nx: {
-    // Set this to true if you would like to use SVGR
-    // See: https://github.com/gregberge/svgr
-    svgr: false,
-  },
+  nx: {},
 };
 
 const plugins = [

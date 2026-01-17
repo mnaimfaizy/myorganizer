@@ -28,16 +28,22 @@ const signUpSchema = z
     firstName: z.string().min(1, 'First name is required'),
     lastName: z.string().min(1, 'Last name is required'),
     email: z.string().email('Invalid email address'),
-    phoneNumber: z.preprocess((value) => {
-      if (typeof value !== 'string') return undefined;
-      const trimmed = value.trim();
-      return trimmed.length ? trimmed : undefined;
-    }, z.string().min(10, 'Phone number must be at least 10 digits').optional()),
+    phoneNumber: z.string().optional(),
     password: z.string().min(8, 'Password must be at least 8 characters'),
     confirmPassword: z.string(),
     agreeToTerms: z.boolean().refine((val) => val === true, {
       message: 'You must agree to the terms and privacy policies',
     }),
+  })
+  .superRefine((data, ctx) => {
+    const trimmed = data.phoneNumber?.trim();
+    if (trimmed && trimmed.length < 10) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Phone number must be at least 10 digits',
+        path: ['phoneNumber'],
+      });
+    }
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
@@ -72,12 +78,13 @@ export default function SignUpPage() {
     setIsSubmitting(true);
 
     try {
+      const phoneNumber = data.phoneNumber?.trim();
       const result = await register({
         firstName: data.firstName,
         lastName: data.lastName,
         email: data.email,
         password: data.password,
-        ...(data.phoneNumber ? { phone: data.phoneNumber } : {}),
+        ...(phoneNumber ? { phone: phoneNumber } : {}),
       });
 
       toast({ title: result.message });
@@ -87,7 +94,7 @@ export default function SignUpPage() {
 
       const normalized = message.toLowerCase();
       const isAlreadyRegistered = normalized.includes(
-        'email already registered'
+        'email already registered',
       );
       const resentVerification =
         normalized.includes('resent') && normalized.includes('verification');
@@ -95,7 +102,7 @@ export default function SignUpPage() {
       if (resentVerification) {
         toast({ title: message });
         router.push(
-          `/verify/email/sent?email=${encodeURIComponent(data.email)}`
+          `/verify/email/sent?email=${encodeURIComponent(data.email)}`,
         );
         return;
       }
