@@ -661,7 +661,7 @@
       }
     },
     "/youtube/callback": {
-      "get": {
+      "post": {
         "operationId": "HandleCallback",
         "responses": {
           "200": {
@@ -691,24 +691,23 @@
             "jwt": []
           }
         ],
-        "parameters": [
-          {
-            "in": "query",
-            "name": "code",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "state",
-            "required": true,
-            "schema": {
-              "type": "string"
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  }
+                },
+                "required": ["code"],
+                "type": "object"
+              }
             }
           }
-        ]
+        }
       }
     },
     "/youtube/status": {

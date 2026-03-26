@@ -112,20 +112,21 @@ export class YouTubeController extends Controller {
   /**
    * OAuth callback — exchanges the authorization code for tokens.
    */
-  @Get('/callback')
+  @Post('/callback')
   @Security('jwt')
   public async handleCallback(
     @Request() req: ExRequest,
-    @Query() code: string,
-    @Query() state: string,
+    @Body() body: { code: string },
   ): Promise<{ ok: boolean; message: string }> {
-    // The state param contains the userId set during getAuthUrl
     const userId = this.getUserId(req);
     if (!userId) {
       this.setStatus(401);
       return { ok: false, message: 'Unauthorized' };
     }
-    const result = await youtubeSyncService.handleOAuthCallback(userId, code);
+    const result = await youtubeSyncService.handleOAuthCallback(
+      userId,
+      body.code,
+    );
     if (!result.ok) {
       this.setStatus(400);
     }

@@ -344,10 +344,9 @@ export function RegisterRoutes(app: Router) {
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsYouTubeController_handleCallback: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                code: {"in":"query","name":"code","required":true,"dataType":"string"},
-                state: {"in":"query","name":"state","required":true,"dataType":"string"},
+                body: {"in":"body","name":"body","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"code":{"dataType":"string","required":true}}},
         };
-        app.get('/youtube/callback',
+        app.post('/youtube/callback',
             authenticateMiddleware([{"jwt":[]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.handleCallback)),
