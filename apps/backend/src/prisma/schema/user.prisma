@@ -12,6 +12,10 @@ model User {
     blacklisted_tokens              String[]
 
     encrypted_vault                  EncryptedVault?
+    youtube_integration              YouTubeIntegration?
+    youtube_subscriptions            YouTubeSubscription[]
+    youtube_videos                   YouTubeVideo[]
+    youtube_notification_settings    YouTubeNotificationSettings?
 
     @@index([email])
 }

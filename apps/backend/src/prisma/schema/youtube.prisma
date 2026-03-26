@@ -1,0 +1,69 @@
+model YouTubeIntegration {
+    id                          String      @id @default(cuid())
+    userId                      String      @unique
+    encrypted_access_token      String
+    encrypted_refresh_token     String
+    token_iv                    String
+    token_auth_tag              String
+    status                      String      @default("connected")
+    createdAt                   DateTime    @default(now())
+    updatedAt                   DateTime    @updatedAt
+
+    user                        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+    subscriptions               YouTubeSubscription[]
+
+    @@index([userId])
+}
+
+model YouTubeSubscription {
+    id                      String      @id @default(cuid())
+    userId                  String
+    channelId               String
+    channelTitle            String
+    channelThumbnail        String?
+    uploadsPlaylistId       String
+    enabled                 Boolean     @default(true)
+    lastSyncedAt            DateTime?
+    createdAt               DateTime    @default(now())
+    updatedAt               DateTime    @updatedAt
+
+    user                    User        @relation(fields: [userId], references: [id], onDelete: Cascade, map: "YouTubeSub_user_fkey")
+    integration             YouTubeIntegration @relation(fields: [userId], references: [userId], onDelete: Cascade, map: "YouTubeSub_integration_fkey")
+    videos                  YouTubeVideo[]
+
+    @@unique([userId, channelId])
+    @@index([userId])
+}
+
+model YouTubeVideo {
+    id                  String      @id @default(cuid())
+    userId              String
+    videoId             String
+    channelId           String
+    title               String
+    thumbnail           String?
+    publishedAt         DateTime
+    createdAt           DateTime    @default(now())
+
+    user                User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+    subscription        YouTubeSubscription @relation(fields: [userId, channelId], references: [userId, channelId], onDelete: Cascade)
+
+    @@unique([userId, videoId])
+    @@index([userId])
+    @@index([userId, channelId])
+    @@index([publishedAt])
+}
+
+model YouTubeNotificationSettings {
+    id              String      @id @default(cuid())
+    userId          String      @unique
+    intervalDays    Int         @default(7)
+    lastNotifiedAt  DateTime?
+    enabled         Boolean     @default(true)
+    createdAt       DateTime    @default(now())
+    updatedAt       DateTime    @updatedAt
+
+    user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId])
+}

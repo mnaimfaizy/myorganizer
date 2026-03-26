@@ -1,0 +1,23 @@
+{
+  "name": "web-pages-youtube",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/web/pages/youtube/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/web/pages/youtube/src/**/*.{ts,tsx}"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/libs/web/pages/youtube"],
+      "options": {
+        "jestConfig": "libs/web/pages/youtube/jest.config.ts",
+        "passWithNoTests": true
+      }
+    }
+  }
+}
