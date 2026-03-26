@@ -2,6 +2,11 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import type { YouTubeSubscription } from '../types';
 import { SubscriptionManager } from './SubscriptionManager';
 
+const mockPush = jest.fn();
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
 // Mock @myorganizer/web-ui
 jest.mock('@myorganizer/web-ui', () => ({
   Button: ({ children, ...props }: any) => (

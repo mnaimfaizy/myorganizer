@@ -3,6 +3,10 @@ import { render, screen } from '@testing-library/react';
 import type { ChannelCarousel } from '../types';
 import { VideoCarousel } from './VideoCarousel';
 
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn() }),
+}));
+
 jest.mock('@myorganizer/web-ui', () => ({
   Button: ({ children, ...props }: any) => (
     <button {...props}>{children}</button>

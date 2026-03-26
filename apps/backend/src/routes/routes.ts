@@ -537,6 +537,7 @@ export function RegisterRoutes(app: Router) {
                 search: {"in":"query","name":"search","dataType":"string"},
                 page: {"in":"query","name":"page","dataType":"double"},
                 limit: {"in":"query","name":"limit","dataType":"double"},
+                channelId: {"in":"query","name":"channelId","dataType":"string"},
         };
         app.get('/youtube/videos',
             authenticateMiddleware([{"jwt":[]}]),

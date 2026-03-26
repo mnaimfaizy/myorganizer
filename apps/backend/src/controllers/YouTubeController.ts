@@ -202,14 +202,15 @@ export class YouTubeController extends Controller {
   @Security('jwt')
   public async syncSubscriptions(
     @Request() req: ExRequest,
-  ): Promise<{ synced: number } | YouTubeErrorResponse> {
+  ): Promise<{ synced: number; videosSynced: number } | YouTubeErrorResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
       this.setStatus(401);
       return { message: 'Unauthorized' };
     }
     const subs = await youtubeSyncService.syncSubscriptions(userId);
-    return { synced: subs.length };
+    const videosSynced = await youtubeSyncService.syncVideosForUser(userId);
+    return { synced: subs.length, videosSynced };
   }
 
   /**
@@ -250,6 +251,7 @@ export class YouTubeController extends Controller {
     @Query() search?: string,
     @Query() page?: number,
     @Query() limit?: number,
+    @Query() channelId?: string,
   ): Promise<VideosPageResponse | YouTubeErrorResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
@@ -261,6 +263,7 @@ export class YouTubeController extends Controller {
       search,
       page,
       limit,
+      channelId,
     });
     return {
       ...result,

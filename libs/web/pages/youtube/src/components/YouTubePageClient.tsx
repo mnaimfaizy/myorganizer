@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
+import { RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import {
   useYouTubeCarousel,
@@ -90,13 +91,29 @@ function ConnectedDashboard({
   const subs = useYouTubeSubscriptions();
   const gridData = useYouTubeVideos();
   const carouselData = useYouTubeCarousel();
+  const [syncing, setSyncing] = useState(false);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      await subs.sync();
+      // Sync also fetches videos on the backend now, refresh both views
+      await Promise.all([gridData.refresh(), carouselData.refresh()]);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const handleRefreshVideos = async () => {
+    await Promise.all([gridData.refresh(), carouselData.refresh()]);
+  };
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <SubscriptionManager
         subscriptions={subs.subscriptions}
-        loading={subs.loading}
-        onSync={subs.sync}
+        loading={subs.loading || syncing}
+        onSync={handleSync}
         onToggle={subs.toggle}
         onDisconnect={onDisconnect}
       />
@@ -105,6 +122,17 @@ function ConnectedDashboard({
         <div className="flex items-center justify-between">
           <CardTitle>Videos</CardTitle>
           <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRefreshVideos}
+              disabled={gridData.loading || carouselData.loading}
+              title="Refresh videos"
+            >
+              <RefreshCw
+                className={`h-4 w-4 ${gridData.loading || carouselData.loading ? 'animate-spin' : ''}`}
+              />
+            </Button>
             <Button
               variant={viewMode === 'grid' ? 'default' : 'outline'}
               size="sm"
@@ -121,6 +149,12 @@ function ConnectedDashboard({
             </Button>
           </div>
         </div>
+        {gridData.total === 0 && !gridData.loading && (
+          <p className="mt-2 text-sm text-gray-500">
+            No videos yet. Click &quot;Sync from YouTube&quot; above to fetch
+            your subscriptions and their latest videos.
+          </p>
+        )}
         <CardContent className="mt-4">
           {viewMode === 'grid' ? (
             <VideoGrid

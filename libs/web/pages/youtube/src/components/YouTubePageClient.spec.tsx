@@ -2,6 +2,16 @@ import { fireEvent, render, screen } from '@testing-library/react';
 
 import { YouTubePageClient } from './YouTubePageClient';
 
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn() }),
+}));
+
+jest.mock('lucide-react', () => ({
+  RefreshCw: (props: Record<string, unknown>) => (
+    <svg data-testid="refresh-icon" {...props} />
+  ),
+}));
+
 // Mock UI components
 jest.mock('@myorganizer/web-ui', () => ({
   Button: ({ children, ...props }: any) => (
@@ -60,6 +70,7 @@ describe('YouTubePageClient', () => {
     setSearch: jest.fn(),
     page: 1,
     setPage: jest.fn(),
+    refresh: jest.fn(),
   };
 
   const defaultCarousel = {

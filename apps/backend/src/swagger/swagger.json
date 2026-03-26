@@ -823,12 +823,16 @@
                   "anyOf": [
                     {
                       "properties": {
+                        "videosSynced": {
+                          "type": "number",
+                          "format": "double"
+                        },
                         "synced": {
                           "type": "number",
                           "format": "double"
                         }
                       },
-                      "required": ["synced"],
+                      "required": ["videosSynced", "synced"],
                       "type": "object"
                     },
                     {
@@ -980,6 +984,14 @@
             "schema": {
               "format": "double",
               "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channelId",
+            "required": false,
+            "schema": {
+              "type": "string"
             }
           }
         ]

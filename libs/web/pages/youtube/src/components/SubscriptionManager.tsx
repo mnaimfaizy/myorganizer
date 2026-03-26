@@ -7,6 +7,7 @@ import {
   CardTitle,
   Skeleton,
 } from '@myorganizer/web-ui';
+import { useRouter } from 'next/navigation';
 import type { YouTubeSubscription } from '../types';
 
 interface SubscriptionManagerProps {
@@ -24,6 +25,8 @@ export function SubscriptionManager({
   onToggle,
   onDisconnect,
 }: SubscriptionManagerProps) {
+  const router = useRouter();
+
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between">
@@ -63,20 +66,30 @@ export function SubscriptionManager({
           <ul className="divide-y divide-gray-100 dark:divide-gray-800">
             {subscriptions.map((sub) => (
               <li key={sub.id} className="flex items-center gap-3 py-3">
-                {sub.channelThumbnail ? (
-                  <img
-                    src={sub.channelThumbnail}
-                    alt={sub.channelTitle}
-                    className="h-8 w-8 rounded-full"
-                  />
-                ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs font-bold dark:bg-gray-700">
-                    {sub.channelTitle.charAt(0)}
-                  </div>
-                )}
-                <span className="flex-1 truncate text-sm font-medium">
-                  {sub.channelTitle}
-                </span>
+                <button
+                  type="button"
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                  onClick={() =>
+                    router.push(
+                      `/dashboard/youtube/channel/${encodeURIComponent(sub.channelId)}`,
+                    )
+                  }
+                >
+                  {sub.channelThumbnail ? (
+                    <img
+                      src={sub.channelThumbnail}
+                      alt={sub.channelTitle}
+                      className="h-8 w-8 rounded-full"
+                    />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs font-bold dark:bg-gray-700">
+                      {sub.channelTitle.charAt(0)}
+                    </div>
+                  )}
+                  <span className="flex-1 truncate text-sm font-medium">
+                    {sub.channelTitle}
+                  </span>
+                </button>
                 <label className="relative inline-flex cursor-pointer items-center">
                   <input
                     type="checkbox"

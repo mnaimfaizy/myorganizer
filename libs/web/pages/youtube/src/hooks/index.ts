@@ -107,7 +107,7 @@ export function useYouTubeSubscriptions() {
   return { subscriptions, loading, sync, toggle, refresh: fetch_ };
 }
 
-export function useYouTubeVideos() {
+export function useYouTubeVideos(channelId?: string) {
   const [videos, setVideos] = useState<YouTubeVideo[]>([]);
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -124,6 +124,7 @@ export function useYouTubeVideos() {
       params.set('page', String(page));
       params.set('limit', '24');
       if (search) params.set('search', search);
+      if (channelId) params.set('channelId', channelId);
       const data = await apiFetch<{
         videos: YouTubeVideo[];
         total: number;
@@ -135,7 +136,7 @@ export function useYouTubeVideos() {
     } finally {
       setLoading(false);
     }
-  }, [sort, search, page]);
+  }, [sort, search, page, channelId]);
 
   useEffect(() => {
     void fetch_();
@@ -152,6 +153,7 @@ export function useYouTubeVideos() {
     setSearch,
     page,
     setPage,
+    refresh: fetch_,
   };
 }
 

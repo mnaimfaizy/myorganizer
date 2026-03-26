@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Skeleton } from '@myorganizer/web-ui';
+import { useRouter } from 'next/navigation';
 import { useRef } from 'react';
 import type { ChannelCarousel } from '../types';
 import { VideoCard } from './VideoCard';
@@ -12,6 +13,7 @@ interface VideoCarouselProps {
 
 function ChannelRow({ channel }: { channel: ChannelCarousel }) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const scroll = (direction: 'left' | 'right') => {
     if (!scrollRef.current) return;
@@ -24,7 +26,15 @@ function ChannelRow({ channel }: { channel: ChannelCarousel }) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-2">
+      <button
+        type="button"
+        className="flex items-center gap-2 rounded-md px-1 py-0.5 transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+        onClick={() =>
+          router.push(
+            `/dashboard/youtube/channel/${encodeURIComponent(channel.channelId)}`,
+          )
+        }
+      >
         {channel.channelThumbnail ? (
           <img
             src={channel.channelThumbnail}
@@ -39,7 +49,7 @@ function ChannelRow({ channel }: { channel: ChannelCarousel }) {
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
           {channel.channelTitle}
         </h3>
-      </div>
+      </button>
 
       <div className="group relative">
         <Button
