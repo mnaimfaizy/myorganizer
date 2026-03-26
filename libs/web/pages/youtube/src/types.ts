@@ -7,6 +7,7 @@ export interface YouTubeVideo {
   thumbnail: string | null;
   publishedAt: string;
   channelTitle?: string;
+  description?: string;
 }
 
 export interface YouTubeSubscription {

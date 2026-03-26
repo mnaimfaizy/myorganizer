@@ -1,6 +1,6 @@
 import { google, youtube_v3 } from 'googleapis';
 import winston from 'winston';
-import { PrismaClient, createPrismaClient } from '../prisma';
+import { Prisma, PrismaClient, createPrismaClient } from '../prisma';
 import {
   EncryptedToken,
   decryptToken,
@@ -20,6 +20,10 @@ function getOAuth2Client() {
     process.env.GOOGLE_REDIRECT_URI,
   );
 }
+
+export type YouTubeVideoWithChannel = Prisma.YouTubeVideoGetPayload<{
+  include: { subscription: { select: { channelTitle: true } } };
+}>;
 
 export interface YouTubeSubscriptionDTO {
   channelId: string;
@@ -153,18 +157,34 @@ class YouTubeSyncService {
         pageToken,
       });
 
-      for (const item of response.data.items ?? []) {
+      const subscriptionItems = response.data.items ?? [];
+      const channelIds = subscriptionItems
+        .map((item) => item.snippet?.resourceId?.channelId)
+        .filter((channelId): channelId is string => Boolean(channelId));
+
+      const uploadsPlaylistByChannelId: Record<string, string> = {};
+
+      if (channelIds.length > 0) {
+        const channelResponse = await youtube.channels.list({
+          part: ['contentDetails'],
+          id: channelIds,
+        });
+
+        for (const channel of channelResponse.data.items ?? []) {
+          const id = channel.id;
+          const uploadsPlaylistId =
+            channel.contentDetails?.relatedPlaylists?.uploads;
+          if (id && uploadsPlaylistId) {
+            uploadsPlaylistByChannelId[id] = uploadsPlaylistId;
+          }
+        }
+      }
+
+      for (const item of subscriptionItems) {
         const channelId = item.snippet?.resourceId?.channelId;
         if (!channelId) continue;
 
-        // Get the channel's uploads playlist ID
-        const channelResponse = await youtube.channels.list({
-          part: ['contentDetails'],
-          id: [channelId],
-        });
-        const uploadsPlaylistId =
-          channelResponse.data.items?.[0]?.contentDetails?.relatedPlaylists
-            ?.uploads;
+        const uploadsPlaylistId = uploadsPlaylistByChannelId[channelId];
         if (!uploadsPlaylistId) continue;
 
         const dto: YouTubeSubscriptionDTO = {
@@ -263,7 +283,13 @@ class YouTubeSyncService {
       limit?: number;
       channelId?: string;
     },
-  ) {
+  ): Promise<{
+    videos: YouTubeVideoWithChannel[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
     const {
       sort = 'latest',
       search,

@@ -15,7 +15,9 @@ import {
   Tags,
 } from 'tsoa';
 import youTubeNotificationService from '../services/YouTubeNotificationService';
-import youtubeSyncService from '../services/YouTubeSyncService';
+import youtubeSyncService, {
+  YouTubeVideoWithChannel,
+} from '../services/YouTubeSyncService';
 import { UserInterface } from '../types';
 
 type YouTubeErrorResponse = { message: string };
@@ -267,14 +269,14 @@ export class YouTubeController extends Controller {
     });
     return {
       ...result,
-      videos: result.videos.map((v) => ({
+      videos: result.videos.map((v: YouTubeVideoWithChannel) => ({
         id: v.id,
         videoId: v.videoId,
         channelId: v.channelId,
         title: v.title,
         thumbnail: v.thumbnail,
         publishedAt: v.publishedAt.toISOString(),
-        channelTitle: (v as any).subscription?.channelTitle ?? undefined,
+        channelTitle: v.subscription?.channelTitle ?? undefined,
       })),
     };
   }

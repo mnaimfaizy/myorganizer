@@ -11,7 +11,18 @@ function getEncryptionKey(): Buffer {
       'YOUTUBE_TOKEN_ENCRYPTION_KEY must be a 64-character hex string (32 bytes).',
     );
   }
-  return Buffer.from(hex, 'hex');
+  if (!/^[0-9a-fA-F]{64}$/.test(hex)) {
+    throw new Error(
+      'YOUTUBE_TOKEN_ENCRYPTION_KEY must contain only hexadecimal characters (0-9, a-f).',
+    );
+  }
+  const key = Buffer.from(hex, 'hex');
+  if (key.length !== 32) {
+    throw new Error(
+      'YOUTUBE_TOKEN_ENCRYPTION_KEY must decode to 32 bytes. Check that it is a valid 64-character hex string.',
+    );
+  }
+  return key;
 }
 
 export interface EncryptedToken {

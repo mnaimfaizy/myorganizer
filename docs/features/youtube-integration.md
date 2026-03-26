@@ -139,7 +139,7 @@ All under `/api/v1/youtube`, JWT-secured unless noted.
 | Method   | Path                     | Description                                                                                   |
 | -------- | ------------------------ | --------------------------------------------------------------------------------------------- |
 | `GET`    | `/auth-url`              | Returns Google OAuth consent URL                                                              |
-| `GET`    | `/callback`              | OAuth callback — exchanges code, stores tokens                                                |
+| `POST`   | `/callback`              | OAuth callback — exchanges `{ code }` JSON body for tokens (JWT-authenticated)                |
 | `GET`    | `/status`                | Returns integration status (`connected`/`disconnected`)                                       |
 | `DELETE` | `/disconnect`            | Revokes tokens and removes integration                                                        |
 | `GET`    | `/subscriptions`         | Lists all user's YouTube channel subscriptions                                                |
