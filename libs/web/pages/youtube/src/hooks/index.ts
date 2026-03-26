@@ -1,5 +1,7 @@
 'use client';
 
+import { getAccessToken } from '@myorganizer/auth';
+import { getApiBaseUrl } from '@myorganizer/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   ChannelCarousel,
@@ -9,13 +11,17 @@ import type {
   YouTubeVideo,
 } from '../types';
 
-const API_BASE = '/api/v1/youtube';
+function getYouTubeApiBase(): string {
+  return `${getApiBaseUrl()}/youtube`;
+}
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const token = getAccessToken();
+  const res = await fetch(`${getYouTubeApiBase()}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
     credentials: 'include',

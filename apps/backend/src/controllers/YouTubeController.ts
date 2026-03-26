@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   Patch,
+  Path,
   Post,
   Put,
   Query,
@@ -17,7 +18,7 @@ import youTubeNotificationService from '../services/YouTubeNotificationService';
 import youtubeSyncService from '../services/YouTubeSyncService';
 import { UserInterface } from '../types';
 
-type ErrorResponse = { message: string };
+type YouTubeErrorResponse = { message: string };
 
 // ─── Response Types ─────────────────────────────────────────────
 
@@ -98,7 +99,7 @@ export class YouTubeController extends Controller {
   @Security('jwt')
   public async getAuthUrl(
     @Request() req: ExRequest,
-  ): Promise<AuthUrlResponse | ErrorResponse> {
+  ): Promise<AuthUrlResponse | YouTubeErrorResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
       this.setStatus(401);
@@ -138,13 +139,18 @@ export class YouTubeController extends Controller {
   @Security('jwt')
   public async getConnectionStatus(
     @Request() req: ExRequest,
-  ): Promise<StatusResponse | ErrorResponse> {
+  ): Promise<StatusResponse | YouTubeErrorResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
       this.setStatus(401);
       return { message: 'Unauthorized' };
     }
-    return youtubeSyncService.getStatus(userId);
+    try {
+      return await youtubeSyncService.getStatus(userId);
+    } catch {
+      this.setStatus(500);
+      return { message: 'Failed to fetch YouTube status' };
+    }
   }
 
   /**
@@ -170,7 +176,7 @@ export class YouTubeController extends Controller {
   @Security('jwt')
   public async getSubscriptions(
     @Request() req: ExRequest,
-  ): Promise<SubscriptionResponse[] | ErrorResponse> {
+  ): Promise<SubscriptionResponse[] | YouTubeErrorResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
       this.setStatus(401);
@@ -195,7 +201,7 @@ export class YouTubeController extends Controller {
   @Security('jwt')
   public async syncSubscriptions(
     @Request() req: ExRequest,
-  ): Promise<{ synced: number } | ErrorResponse> {
+  ): Promise<{ synced: number } | YouTubeErrorResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
       this.setStatus(401);
@@ -212,9 +218,9 @@ export class YouTubeController extends Controller {
   @Security('jwt')
   public async toggleSubscription(
     @Request() req: ExRequest,
-    @Query() subscriptionId: string,
+    @Path() subscriptionId: string,
     @Body() body: { enabled: boolean },
-  ): Promise<{ ok: boolean } | ErrorResponse> {
+  ): Promise<{ ok: boolean } | YouTubeErrorResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
       this.setStatus(401);
@@ -243,7 +249,7 @@ export class YouTubeController extends Controller {
     @Query() search?: string,
     @Query() page?: number,
     @Query() limit?: number,
-  ): Promise<VideosPageResponse | ErrorResponse> {
+  ): Promise<VideosPageResponse | YouTubeErrorResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
       this.setStatus(401);
@@ -276,7 +282,7 @@ export class YouTubeController extends Controller {
   @Security('jwt')
   public async getVideosCarousel(
     @Request() req: ExRequest,
-  ): Promise<ChannelCarouselResponse[] | ErrorResponse> {
+  ): Promise<ChannelCarouselResponse[] | YouTubeErrorResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
       this.setStatus(401);
@@ -305,7 +311,7 @@ export class YouTubeController extends Controller {
   @Security('jwt')
   public async getNotificationSettings(
     @Request() req: ExRequest,
-  ): Promise<NotificationSettingsResponse | ErrorResponse> {
+  ): Promise<NotificationSettingsResponse | YouTubeErrorResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
       this.setStatus(401);
@@ -327,7 +333,7 @@ export class YouTubeController extends Controller {
   public async updateNotificationSettings(
     @Request() req: ExRequest,
     @Body() body: NotificationSettingsBody,
-  ): Promise<NotificationSettingsResponse | ErrorResponse> {
+  ): Promise<NotificationSettingsResponse | YouTubeErrorResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
       this.setStatus(401);
@@ -351,7 +357,7 @@ export class YouTubeController extends Controller {
   @Post('/cron/sync-and-notify')
   public async cronSyncAndNotify(
     @Request() req: ExRequest,
-  ): Promise<CronResultResponse | ErrorResponse> {
+  ): Promise<CronResultResponse | YouTubeErrorResponse> {
     const secret = req.headers['x-cron-secret'];
     const expectedSecret = process.env.YOUTUBE_CRON_SECRET;
 

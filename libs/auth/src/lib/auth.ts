@@ -67,7 +67,7 @@ export function getAccessToken(): string | undefined {
 
 export function setAccessToken(
   token: string | null,
-  mode: TokenStorageMode = getPreferredTokenStorageMode()
+  mode: TokenStorageMode = getPreferredTokenStorageMode(),
 ) {
   if (!isBrowser()) return;
 
@@ -175,7 +175,7 @@ export function getAuthAxios(): AxiosInstance {
         clearAuthSession();
         return Promise.reject(refreshErr);
       }
-    }
+    },
   );
 
   sharedAxios = instance;
@@ -223,7 +223,7 @@ export async function login(args: {
 }
 
 export async function resendVerificationEmail(
-  email: string
+  email: string,
 ): Promise<{ message: string }> {
   try {
     const res = await getAuthAxios().post('/auth/verify/resend', { email });
@@ -293,6 +293,8 @@ export async function logout(): Promise<void> {
 
   try {
     await api.logout({ userId: user.id });
+  } catch {
+    // API call may fail (e.g. network error) — still clear local session
   } finally {
     clearAuthSession();
   }

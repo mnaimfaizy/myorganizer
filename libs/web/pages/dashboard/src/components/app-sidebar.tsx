@@ -15,6 +15,7 @@ import {
   ListChecks,
   MapPin,
   Phone,
+  Youtube,
 } from 'lucide-react';
 import { NavMain } from './nav-main';
 import { NavUser } from './nav-user';
@@ -50,6 +51,11 @@ const data = {
       title: 'Subscriptions',
       url: '/dashboard/subscriptions',
       icon: CreditCard,
+    },
+    {
+      title: 'YouTube',
+      url: '/dashboard/youtube',
+      icon: Youtube,
     },
     {
       title: 'Vault Export/Import',

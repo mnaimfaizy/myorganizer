@@ -1,8 +1,10 @@
 'use client';
 
+import { getAccessToken } from '@myorganizer/auth';
 import {
   COUNTRIES,
   getAccountSettings,
+  getApiBaseUrl,
   setAccountSettings,
   subscribeAccountSettings,
   SUPPORTED_CURRENCIES,
@@ -52,7 +54,10 @@ export function AccountPageClient() {
   useEffect(() => {
     (async () => {
       try {
-        const status = await fetch('/api/v1/youtube/status', {
+        const token = getAccessToken();
+        const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+        const status = await fetch(`${getApiBaseUrl()}/youtube/status`, {
+          headers: authHeaders,
           credentials: 'include',
         });
         if (!status.ok) return;
@@ -60,9 +65,13 @@ export function AccountPageClient() {
         setYtConnected(statusData.connected);
         if (!statusData.connected) return;
 
-        const res = await fetch('/api/v1/youtube/notification-settings', {
-          credentials: 'include',
-        });
+        const res = await fetch(
+          `${getApiBaseUrl()}/youtube/notification-settings`,
+          {
+            headers: authHeaders,
+            credentials: 'include',
+          },
+        );
         if (!res.ok) return;
         const data = await res.json();
         setYtInterval(data.intervalDays);
@@ -76,12 +85,22 @@ export function AccountPageClient() {
   const saveYouTubeSettings = useCallback(async () => {
     setYtLoading(true);
     try {
-      const res = await fetch('/api/v1/youtube/notification-settings', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ intervalDays: ytInterval, enabled: ytEnabled }),
-      });
+      const token = getAccessToken();
+      const res = await fetch(
+        `${getApiBaseUrl()}/youtube/notification-settings`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            intervalDays: ytInterval,
+            enabled: ytEnabled,
+          }),
+        },
+      );
       if (!res.ok) throw new Error('Failed to save');
       toast({
         title: 'Saved',
