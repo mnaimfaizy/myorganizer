@@ -55,7 +55,9 @@ export function AccountPageClient() {
     (async () => {
       try {
         const token = getAccessToken();
-        const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+        const authHeaders = token
+          ? { Authorization: `Bearer ${token}` }
+          : undefined;
         const status = await fetch(`${getApiBaseUrl()}/youtube/status`, {
           headers: authHeaders,
           credentials: 'include',
