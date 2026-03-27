@@ -26,6 +26,50 @@ import { BASE_PATH, COLLECTION_FORMATS, BaseAPI, RequiredError, operationServerM
 /**
  * 
  * @export
+ * @interface AuthUrlResponse
+ */
+export interface AuthUrlResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof AuthUrlResponse
+     */
+    'url': string;
+}
+/**
+ * 
+ * @export
+ * @interface ChannelCarouselResponse
+ */
+export interface ChannelCarouselResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof ChannelCarouselResponse
+     */
+    'channelId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ChannelCarouselResponse
+     */
+    'channelTitle': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ChannelCarouselResponse
+     */
+    'channelThumbnail': string | null;
+    /**
+     * 
+     * @type {Array<VideoResponse>}
+     * @memberof ChannelCarouselResponse
+     */
+    'videos': Array<VideoResponse>;
+}
+/**
+ * 
+ * @export
  * @interface ConfirmResetPasswordBody
  */
 export interface ConfirmResetPasswordBody {
@@ -47,6 +91,50 @@ export interface ConfirmResetPasswordBody {
      * @memberof ConfirmResetPasswordBody
      */
     'confirm_password': string;
+}
+/**
+ * 
+ * @export
+ * @interface CronResultResponse
+ */
+export interface CronResultResponse {
+    /**
+     * 
+     * @type {number}
+     * @memberof CronResultResponse
+     */
+    'usersSynced': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronResultResponse
+     */
+    'notificationsSent': number;
+}
+/**
+ * 
+ * @export
+ * @interface CronSyncAndNotify200Response
+ */
+export interface CronSyncAndNotify200Response {
+    /**
+     * 
+     * @type {number}
+     * @memberof CronSyncAndNotify200Response
+     */
+    'usersSynced': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronSyncAndNotify200Response
+     */
+    'notificationsSent': number;
+    /**
+     * 
+     * @type {string}
+     * @memberof CronSyncAndNotify200Response
+     */
+    'message': string;
 }
 /**
  * 
@@ -186,6 +274,94 @@ export interface FilteredUserInterface {
      * @memberof FilteredUserInterface
      */
     'phone'?: string;
+}
+/**
+ * 
+ * @export
+ * @interface GetAuthUrl200Response
+ */
+export interface GetAuthUrl200Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetAuthUrl200Response
+     */
+    'url': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetAuthUrl200Response
+     */
+    'message': string;
+}
+/**
+ * 
+ * @export
+ * @interface GetConnectionStatus200Response
+ */
+export interface GetConnectionStatus200Response {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof GetConnectionStatus200Response
+     */
+    'connected': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetConnectionStatus200Response
+     */
+    'status': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetConnectionStatus200Response
+     */
+    'message': string;
+}
+/**
+ * 
+ * @export
+ * @interface GetNotificationSettings200Response
+ */
+export interface GetNotificationSettings200Response {
+    /**
+     * 
+     * @type {number}
+     * @memberof GetNotificationSettings200Response
+     */
+    'intervalDays': number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof GetNotificationSettings200Response
+     */
+    'enabled': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetNotificationSettings200Response
+     */
+    'lastNotifiedAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetNotificationSettings200Response
+     */
+    'message': string;
+}
+/**
+ * 
+ * @export
+ * @interface GetSubscriptions200Response
+ */
+export interface GetSubscriptions200Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSubscriptions200Response
+     */
+    'message': string;
 }
 /**
  * 
@@ -330,6 +506,81 @@ export interface GetVaultMetaResponseAnyOf {
 /**
  * 
  * @export
+ * @interface GetVideos200Response
+ */
+export interface GetVideos200Response {
+    /**
+     * 
+     * @type {Array<VideoResponse>}
+     * @memberof GetVideos200Response
+     */
+    'videos': Array<VideoResponse>;
+    /**
+     * 
+     * @type {number}
+     * @memberof GetVideos200Response
+     */
+    'total': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof GetVideos200Response
+     */
+    'page': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof GetVideos200Response
+     */
+    'limit': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof GetVideos200Response
+     */
+    'totalPages': number;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetVideos200Response
+     */
+    'message': string;
+}
+/**
+ * 
+ * @export
+ * @interface GetVideosCarousel200Response
+ */
+export interface GetVideosCarousel200Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetVideosCarousel200Response
+     */
+    'message': string;
+}
+/**
+ * 
+ * @export
+ * @interface HandleCallback200Response
+ */
+export interface HandleCallback200Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof HandleCallback200Response
+     */
+    'message': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof HandleCallback200Response
+     */
+    'ok': boolean;
+}
+/**
+ * 
+ * @export
  * @interface ImportVaultResponse
  */
 export interface ImportVaultResponse {
@@ -402,6 +653,50 @@ export interface Logout200Response {
      * @memberof Logout200Response
      */
     'message': string;
+}
+/**
+ * 
+ * @export
+ * @interface NotificationSettingsBody
+ */
+export interface NotificationSettingsBody {
+    /**
+     * 
+     * @type {number}
+     * @memberof NotificationSettingsBody
+     */
+    'intervalDays'?: number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof NotificationSettingsBody
+     */
+    'enabled'?: boolean;
+}
+/**
+ * 
+ * @export
+ * @interface NotificationSettingsResponse
+ */
+export interface NotificationSettingsResponse {
+    /**
+     * 
+     * @type {number}
+     * @memberof NotificationSettingsResponse
+     */
+    'intervalDays': number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof NotificationSettingsResponse
+     */
+    'enabled': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof NotificationSettingsResponse
+     */
+    'lastNotifiedAt': string | null;
 }
 /**
  * Make all properties in T optional
@@ -643,6 +938,151 @@ export interface ResetPasswordByEmailBody {
      * @memberof ResetPasswordByEmailBody
      */
     'email': string;
+}
+/**
+ * 
+ * @export
+ * @interface StatusResponse
+ */
+export interface StatusResponse {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof StatusResponse
+     */
+    'connected': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof StatusResponse
+     */
+    'status': string;
+}
+/**
+ * 
+ * @export
+ * @interface SubscriptionResponse
+ */
+export interface SubscriptionResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof SubscriptionResponse
+     */
+    'id': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SubscriptionResponse
+     */
+    'channelId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SubscriptionResponse
+     */
+    'channelTitle': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SubscriptionResponse
+     */
+    'channelThumbnail': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SubscriptionResponse
+     */
+    'uploadsPlaylistId': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SubscriptionResponse
+     */
+    'enabled': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof SubscriptionResponse
+     */
+    'lastSyncedAt': string | null;
+}
+/**
+ * 
+ * @export
+ * @interface SyncSubscriptions200Response
+ */
+export interface SyncSubscriptions200Response {
+    /**
+     * 
+     * @type {number}
+     * @memberof SyncSubscriptions200Response
+     */
+    'synced': number;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncSubscriptions200Response
+     */
+    'message': string;
+}
+/**
+ * 
+ * @export
+ * @interface SyncSubscriptions200ResponseAnyOf
+ */
+export interface SyncSubscriptions200ResponseAnyOf {
+    /**
+     * 
+     * @type {number}
+     * @memberof SyncSubscriptions200ResponseAnyOf
+     */
+    'synced': number;
+}
+/**
+ * 
+ * @export
+ * @interface ToggleSubscription200Response
+ */
+export interface ToggleSubscription200Response {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof ToggleSubscription200Response
+     */
+    'ok': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof ToggleSubscription200Response
+     */
+    'message': string;
+}
+/**
+ * 
+ * @export
+ * @interface ToggleSubscription200ResponseAnyOf
+ */
+export interface ToggleSubscription200ResponseAnyOf {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof ToggleSubscription200ResponseAnyOf
+     */
+    'ok': boolean;
+}
+/**
+ * 
+ * @export
+ * @interface ToggleSubscriptionRequest
+ */
+export interface ToggleSubscriptionRequest {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof ToggleSubscriptionRequest
+     */
+    'enabled': boolean;
 }
 /**
  * 
@@ -910,6 +1350,105 @@ export interface VerifyEmailRequest {
      * @memberof VerifyEmailRequest
      */
     'token': string;
+}
+/**
+ * 
+ * @export
+ * @interface VideoResponse
+ */
+export interface VideoResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof VideoResponse
+     */
+    'id': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof VideoResponse
+     */
+    'videoId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof VideoResponse
+     */
+    'channelId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof VideoResponse
+     */
+    'title': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof VideoResponse
+     */
+    'thumbnail': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof VideoResponse
+     */
+    'publishedAt': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof VideoResponse
+     */
+    'channelTitle'?: string;
+}
+/**
+ * 
+ * @export
+ * @interface VideosPageResponse
+ */
+export interface VideosPageResponse {
+    /**
+     * 
+     * @type {Array<VideoResponse>}
+     * @memberof VideosPageResponse
+     */
+    'videos': Array<VideoResponse>;
+    /**
+     * 
+     * @type {number}
+     * @memberof VideosPageResponse
+     */
+    'total': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof VideosPageResponse
+     */
+    'page': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof VideosPageResponse
+     */
+    'limit': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof VideosPageResponse
+     */
+    'totalPages': number;
+}
+/**
+ * 
+ * @export
+ * @interface YouTubeErrorResponse
+ */
+export interface YouTubeErrorResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof YouTubeErrorResponse
+     */
+    'message': string;
 }
 
 /**
@@ -2478,5 +3017,951 @@ export class VaultApi extends BaseAPI {
     }
 }
 
+
+
+/**
+ * YouTubeApi - axios parameter creator
+ * @export
+ */
+export const YouTubeApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * Cron-only endpoint: syncs all users\' videos and sends due notifications. Authenticated via X-Cron-Secret header instead of JWT.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        cronSyncAndNotify: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/cron/sync-and-notify`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Disconnects the user\'s YouTube account after revoking the token.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        disconnect: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/disconnect`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Returns the Google OAuth consent URL for linking YouTube.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getAuthUrl: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/auth-url`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Returns the user\'s YouTube integration status.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getConnectionStatus: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/status`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Returns the user\'s YouTube notification preferences.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getNotificationSettings: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/notification-settings`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Returns the user\'s synced YouTube channel subscriptions.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getSubscriptions: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/subscriptions`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Returns cached videos with sorting, searching, and pagination.
+         * @param {GetVideosSortEnum} [sort] Sort order: latest | oldest | az
+         * @param {string} [search] Filter by video title
+         * @param {number} [page] Page number (1-based)
+         * @param {number} [limit] Items per page
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getVideos: async (sort?: GetVideosSortEnum, search?: string, page?: number, limit?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/videos`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (sort !== undefined) {
+                localVarQueryParameter['sort'] = sort;
+            }
+
+            if (search !== undefined) {
+                localVarQueryParameter['search'] = search;
+            }
+
+            if (page !== undefined) {
+                localVarQueryParameter['page'] = page;
+            }
+
+            if (limit !== undefined) {
+                localVarQueryParameter['limit'] = limit;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Returns videos grouped by channel for the carousel view.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getVideosCarousel: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/videos/carousel`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * OAuth callback — exchanges the authorization code for tokens.
+         * @param {string} code 
+         * @param {string} state 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        handleCallback: async (code: string, state: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'code' is not null or undefined
+            assertParamExists('handleCallback', 'code', code)
+            // verify required parameter 'state' is not null or undefined
+            assertParamExists('handleCallback', 'state', state)
+            const localVarPath = `/youtube/callback`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (code !== undefined) {
+                localVarQueryParameter['code'] = code;
+            }
+
+            if (state !== undefined) {
+                localVarQueryParameter['state'] = state;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Fetches fresh subscriptions from YouTube and syncs to DB.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        syncSubscriptions: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/subscriptions/sync`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PUT', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Toggles a subscription\'s enabled state.
+         * @param {string} subscriptionId 
+         * @param {ToggleSubscriptionRequest} toggleSubscriptionRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        toggleSubscription: async (subscriptionId: string, toggleSubscriptionRequest: ToggleSubscriptionRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'subscriptionId' is not null or undefined
+            assertParamExists('toggleSubscription', 'subscriptionId', subscriptionId)
+            // verify required parameter 'toggleSubscriptionRequest' is not null or undefined
+            assertParamExists('toggleSubscription', 'toggleSubscriptionRequest', toggleSubscriptionRequest)
+            const localVarPath = `/youtube/subscriptions/{subscriptionId}`
+                .replace(`{${"subscriptionId"}}`, encodeURIComponent(String(subscriptionId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PATCH', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(toggleSubscriptionRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Updates the user\'s YouTube notification preferences.
+         * @param {NotificationSettingsBody} notificationSettingsBody 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        updateNotificationSettings: async (notificationSettingsBody: NotificationSettingsBody, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'notificationSettingsBody' is not null or undefined
+            assertParamExists('updateNotificationSettings', 'notificationSettingsBody', notificationSettingsBody)
+            const localVarPath = `/youtube/notification-settings`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PATCH', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(notificationSettingsBody, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * YouTubeApi - functional programming interface
+ * @export
+ */
+export const YouTubeApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = YouTubeApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * Cron-only endpoint: syncs all users\' videos and sends due notifications. Authenticated via X-Cron-Secret header instead of JWT.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async cronSyncAndNotify(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CronSyncAndNotify200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.cronSyncAndNotify(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.cronSyncAndNotify']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Disconnects the user\'s YouTube account after revoking the token.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async disconnect(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<HandleCallback200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.disconnect(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.disconnect']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Returns the Google OAuth consent URL for linking YouTube.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getAuthUrl(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetAuthUrl200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getAuthUrl(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getAuthUrl']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Returns the user\'s YouTube integration status.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getConnectionStatus(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetConnectionStatus200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getConnectionStatus(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getConnectionStatus']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Returns the user\'s YouTube notification preferences.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getNotificationSettings(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetNotificationSettings200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getNotificationSettings(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getNotificationSettings']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Returns the user\'s synced YouTube channel subscriptions.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getSubscriptions(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetSubscriptions200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getSubscriptions(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getSubscriptions']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Returns cached videos with sorting, searching, and pagination.
+         * @param {GetVideosSortEnum} [sort] Sort order: latest | oldest | az
+         * @param {string} [search] Filter by video title
+         * @param {number} [page] Page number (1-based)
+         * @param {number} [limit] Items per page
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getVideos(sort?: GetVideosSortEnum, search?: string, page?: number, limit?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetVideos200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getVideos(sort, search, page, limit, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getVideos']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Returns videos grouped by channel for the carousel view.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getVideosCarousel(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetVideosCarousel200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getVideosCarousel(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getVideosCarousel']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * OAuth callback — exchanges the authorization code for tokens.
+         * @param {string} code 
+         * @param {string} state 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async handleCallback(code: string, state: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<HandleCallback200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.handleCallback(code, state, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.handleCallback']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Fetches fresh subscriptions from YouTube and syncs to DB.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async syncSubscriptions(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SyncSubscriptions200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.syncSubscriptions(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.syncSubscriptions']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Toggles a subscription\'s enabled state.
+         * @param {string} subscriptionId 
+         * @param {ToggleSubscriptionRequest} toggleSubscriptionRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async toggleSubscription(subscriptionId: string, toggleSubscriptionRequest: ToggleSubscriptionRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ToggleSubscription200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.toggleSubscription(subscriptionId, toggleSubscriptionRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.toggleSubscription']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Updates the user\'s YouTube notification preferences.
+         * @param {NotificationSettingsBody} notificationSettingsBody 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async updateNotificationSettings(notificationSettingsBody: NotificationSettingsBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetNotificationSettings200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.updateNotificationSettings(notificationSettingsBody, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.updateNotificationSettings']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * YouTubeApi - factory interface
+ * @export
+ */
+export const YouTubeApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = YouTubeApiFp(configuration)
+    return {
+        /**
+         * Cron-only endpoint: syncs all users\' videos and sends due notifications. Authenticated via X-Cron-Secret header instead of JWT.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        cronSyncAndNotify(options?: RawAxiosRequestConfig): AxiosPromise<CronSyncAndNotify200Response> {
+            return localVarFp.cronSyncAndNotify(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Disconnects the user\'s YouTube account after revoking the token.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        disconnect(options?: RawAxiosRequestConfig): AxiosPromise<HandleCallback200Response> {
+            return localVarFp.disconnect(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Returns the Google OAuth consent URL for linking YouTube.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getAuthUrl(options?: RawAxiosRequestConfig): AxiosPromise<GetAuthUrl200Response> {
+            return localVarFp.getAuthUrl(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Returns the user\'s YouTube integration status.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getConnectionStatus(options?: RawAxiosRequestConfig): AxiosPromise<GetConnectionStatus200Response> {
+            return localVarFp.getConnectionStatus(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Returns the user\'s YouTube notification preferences.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getNotificationSettings(options?: RawAxiosRequestConfig): AxiosPromise<GetNotificationSettings200Response> {
+            return localVarFp.getNotificationSettings(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Returns the user\'s synced YouTube channel subscriptions.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getSubscriptions(options?: RawAxiosRequestConfig): AxiosPromise<GetSubscriptions200Response> {
+            return localVarFp.getSubscriptions(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Returns cached videos with sorting, searching, and pagination.
+         * @param {YouTubeApiGetVideosRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getVideos(requestParameters: YouTubeApiGetVideosRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<GetVideos200Response> {
+            return localVarFp.getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Returns videos grouped by channel for the carousel view.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getVideosCarousel(options?: RawAxiosRequestConfig): AxiosPromise<GetVideosCarousel200Response> {
+            return localVarFp.getVideosCarousel(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * OAuth callback — exchanges the authorization code for tokens.
+         * @param {YouTubeApiHandleCallbackRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        handleCallback(requestParameters: YouTubeApiHandleCallbackRequest, options?: RawAxiosRequestConfig): AxiosPromise<HandleCallback200Response> {
+            return localVarFp.handleCallback(requestParameters.code, requestParameters.state, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Fetches fresh subscriptions from YouTube and syncs to DB.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        syncSubscriptions(options?: RawAxiosRequestConfig): AxiosPromise<SyncSubscriptions200Response> {
+            return localVarFp.syncSubscriptions(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Toggles a subscription\'s enabled state.
+         * @param {YouTubeApiToggleSubscriptionRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        toggleSubscription(requestParameters: YouTubeApiToggleSubscriptionRequest, options?: RawAxiosRequestConfig): AxiosPromise<ToggleSubscription200Response> {
+            return localVarFp.toggleSubscription(requestParameters.subscriptionId, requestParameters.toggleSubscriptionRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Updates the user\'s YouTube notification preferences.
+         * @param {YouTubeApiUpdateNotificationSettingsRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        updateNotificationSettings(requestParameters: YouTubeApiUpdateNotificationSettingsRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetNotificationSettings200Response> {
+            return localVarFp.updateNotificationSettings(requestParameters.notificationSettingsBody, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * Request parameters for getVideos operation in YouTubeApi.
+ * @export
+ * @interface YouTubeApiGetVideosRequest
+ */
+export interface YouTubeApiGetVideosRequest {
+    /**
+     * Sort order: latest | oldest | az
+     * @type {'latest' | 'oldest' | 'az'}
+     * @memberof YouTubeApiGetVideos
+     */
+    readonly sort?: GetVideosSortEnum
+
+    /**
+     * Filter by video title
+     * @type {string}
+     * @memberof YouTubeApiGetVideos
+     */
+    readonly search?: string
+
+    /**
+     * Page number (1-based)
+     * @type {number}
+     * @memberof YouTubeApiGetVideos
+     */
+    readonly page?: number
+
+    /**
+     * Items per page
+     * @type {number}
+     * @memberof YouTubeApiGetVideos
+     */
+    readonly limit?: number
+}
+
+/**
+ * Request parameters for handleCallback operation in YouTubeApi.
+ * @export
+ * @interface YouTubeApiHandleCallbackRequest
+ */
+export interface YouTubeApiHandleCallbackRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof YouTubeApiHandleCallback
+     */
+    readonly code: string
+
+    /**
+     * 
+     * @type {string}
+     * @memberof YouTubeApiHandleCallback
+     */
+    readonly state: string
+}
+
+/**
+ * Request parameters for toggleSubscription operation in YouTubeApi.
+ * @export
+ * @interface YouTubeApiToggleSubscriptionRequest
+ */
+export interface YouTubeApiToggleSubscriptionRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof YouTubeApiToggleSubscription
+     */
+    readonly subscriptionId: string
+
+    /**
+     * 
+     * @type {ToggleSubscriptionRequest}
+     * @memberof YouTubeApiToggleSubscription
+     */
+    readonly toggleSubscriptionRequest: ToggleSubscriptionRequest
+}
+
+/**
+ * Request parameters for updateNotificationSettings operation in YouTubeApi.
+ * @export
+ * @interface YouTubeApiUpdateNotificationSettingsRequest
+ */
+export interface YouTubeApiUpdateNotificationSettingsRequest {
+    /**
+     * 
+     * @type {NotificationSettingsBody}
+     * @memberof YouTubeApiUpdateNotificationSettings
+     */
+    readonly notificationSettingsBody: NotificationSettingsBody
+}
+
+/**
+ * YouTubeApi - object-oriented interface
+ * @export
+ * @class YouTubeApi
+ * @extends {BaseAPI}
+ */
+export class YouTubeApi extends BaseAPI {
+    /**
+     * Cron-only endpoint: syncs all users\' videos and sends due notifications. Authenticated via X-Cron-Secret header instead of JWT.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public cronSyncAndNotify(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).cronSyncAndNotify(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Disconnects the user\'s YouTube account after revoking the token.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public disconnect(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).disconnect(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Returns the Google OAuth consent URL for linking YouTube.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public getAuthUrl(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).getAuthUrl(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Returns the user\'s YouTube integration status.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public getConnectionStatus(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).getConnectionStatus(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Returns the user\'s YouTube notification preferences.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public getNotificationSettings(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).getNotificationSettings(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Returns the user\'s synced YouTube channel subscriptions.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public getSubscriptions(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).getSubscriptions(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Returns cached videos with sorting, searching, and pagination.
+     * @param {YouTubeApiGetVideosRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public getVideos(requestParameters: YouTubeApiGetVideosRequest = {}, options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Returns videos grouped by channel for the carousel view.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public getVideosCarousel(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).getVideosCarousel(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * OAuth callback — exchanges the authorization code for tokens.
+     * @param {YouTubeApiHandleCallbackRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public handleCallback(requestParameters: YouTubeApiHandleCallbackRequest, options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).handleCallback(requestParameters.code, requestParameters.state, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Fetches fresh subscriptions from YouTube and syncs to DB.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public syncSubscriptions(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).syncSubscriptions(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Toggles a subscription\'s enabled state.
+     * @param {YouTubeApiToggleSubscriptionRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public toggleSubscription(requestParameters: YouTubeApiToggleSubscriptionRequest, options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).toggleSubscription(requestParameters.subscriptionId, requestParameters.toggleSubscriptionRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Updates the user\'s YouTube notification preferences.
+     * @param {YouTubeApiUpdateNotificationSettingsRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public updateNotificationSettings(requestParameters: YouTubeApiUpdateNotificationSettingsRequest, options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).updateNotificationSettings(requestParameters.notificationSettingsBody, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+/**
+ * @export
+ */
+export const GetVideosSortEnum = {
+    Latest: 'latest',
+    Oldest: 'oldest',
+    Az: 'az'
+} as const;
+export type GetVideosSortEnum = typeof GetVideosSortEnum[keyof typeof GetVideosSortEnum];
 
 

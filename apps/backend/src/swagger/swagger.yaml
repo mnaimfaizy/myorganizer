@@ -6,6 +6,170 @@ components:
   requestBodies: {}
   responses: {}
   schemas:
+    AuthUrlResponse:
+      properties:
+        url:
+          type: string
+      required:
+        - url
+      type: object
+      additionalProperties: false
+    YouTubeErrorResponse:
+      properties:
+        message:
+          type: string
+      required:
+        - message
+      type: object
+    StatusResponse:
+      properties:
+        connected:
+          type: boolean
+        status:
+          type: string
+      required:
+        - connected
+        - status
+      type: object
+      additionalProperties: false
+    SubscriptionResponse:
+      properties:
+        id:
+          type: string
+        channelId:
+          type: string
+        channelTitle:
+          type: string
+        channelThumbnail:
+          type: string
+          nullable: true
+        uploadsPlaylistId:
+          type: string
+        enabled:
+          type: boolean
+        lastSyncedAt:
+          type: string
+          nullable: true
+      required:
+        - id
+        - channelId
+        - channelTitle
+        - channelThumbnail
+        - uploadsPlaylistId
+        - enabled
+        - lastSyncedAt
+      type: object
+      additionalProperties: false
+    VideoResponse:
+      properties:
+        id:
+          type: string
+        videoId:
+          type: string
+        channelId:
+          type: string
+        title:
+          type: string
+        thumbnail:
+          type: string
+          nullable: true
+        publishedAt:
+          type: string
+        channelTitle:
+          type: string
+      required:
+        - id
+        - videoId
+        - channelId
+        - title
+        - thumbnail
+        - publishedAt
+      type: object
+      additionalProperties: false
+    VideosPageResponse:
+      properties:
+        videos:
+          items:
+            $ref: "#/components/schemas/VideoResponse"
+          type: array
+        total:
+          type: number
+          format: double
+        page:
+          type: number
+          format: double
+        limit:
+          type: number
+          format: double
+        totalPages:
+          type: number
+          format: double
+      required:
+        - videos
+        - total
+        - page
+        - limit
+        - totalPages
+      type: object
+      additionalProperties: false
+    ChannelCarouselResponse:
+      properties:
+        channelId:
+          type: string
+        channelTitle:
+          type: string
+        channelThumbnail:
+          type: string
+          nullable: true
+        videos:
+          items:
+            $ref: "#/components/schemas/VideoResponse"
+          type: array
+      required:
+        - channelId
+        - channelTitle
+        - channelThumbnail
+        - videos
+      type: object
+      additionalProperties: false
+    NotificationSettingsResponse:
+      properties:
+        intervalDays:
+          type: number
+          format: double
+        enabled:
+          type: boolean
+        lastNotifiedAt:
+          type: string
+          nullable: true
+      required:
+        - intervalDays
+        - enabled
+        - lastNotifiedAt
+      type: object
+      additionalProperties: false
+    NotificationSettingsBody:
+      properties:
+        intervalDays:
+          type: number
+          format: double
+        enabled:
+          type: boolean
+      type: object
+      additionalProperties: false
+    CronResultResponse:
+      properties:
+        usersSynced:
+          type: number
+          format: double
+        notificationsSent:
+          type: number
+          format: double
+      required:
+        - usersSynced
+        - notificationsSent
+      type: object
+      additionalProperties: false
     Record_string.unknown_:
       properties: {}
       additionalProperties: {}
@@ -332,6 +496,311 @@ info:
     name: MIT
   contact: {}
 paths:
+  /youtube/auth-url:
+    get:
+      operationId: GetAuthUrl
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/AuthUrlResponse"
+                  - $ref: "#/components/schemas/YouTubeErrorResponse"
+      description: Returns the Google OAuth consent URL for linking YouTube.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      parameters: []
+  /youtube/callback:
+    post:
+      operationId: HandleCallback
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                  ok:
+                    type: boolean
+                required:
+                  - message
+                  - ok
+                type: object
+      description: OAuth callback — exchanges the authorization code for tokens.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                code:
+                  type: string
+              required:
+                - code
+              type: object
+  /youtube/status:
+    get:
+      operationId: GetConnectionStatus
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/StatusResponse"
+                  - $ref: "#/components/schemas/YouTubeErrorResponse"
+      description: Returns the user's YouTube integration status.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      parameters: []
+  /youtube/disconnect:
+    delete:
+      operationId: Disconnect
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                  ok:
+                    type: boolean
+                required:
+                  - message
+                  - ok
+                type: object
+      description: Disconnects the user's YouTube account after revoking the token.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      parameters: []
+  /youtube/subscriptions:
+    get:
+      operationId: GetSubscriptions
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - items:
+                      $ref: "#/components/schemas/SubscriptionResponse"
+                    type: array
+                  - $ref: "#/components/schemas/YouTubeErrorResponse"
+      description: Returns the user's synced YouTube channel subscriptions.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      parameters: []
+  /youtube/subscriptions/sync:
+    put:
+      operationId: SyncSubscriptions
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - properties:
+                      synced:
+                        type: number
+                        format: double
+                    required:
+                      - synced
+                    type: object
+                  - $ref: "#/components/schemas/YouTubeErrorResponse"
+      description: Fetches fresh subscriptions from YouTube and syncs to DB.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      parameters: []
+  /youtube/subscriptions/{subscriptionId}:
+    patch:
+      operationId: ToggleSubscription
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - properties:
+                      ok:
+                        type: boolean
+                    required:
+                      - ok
+                    type: object
+                  - $ref: "#/components/schemas/YouTubeErrorResponse"
+      description: Toggles a subscription's enabled state.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      parameters:
+        - in: path
+          name: subscriptionId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                enabled:
+                  type: boolean
+              required:
+                - enabled
+              type: object
+  /youtube/videos:
+    get:
+      operationId: GetVideos
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/VideosPageResponse"
+                  - $ref: "#/components/schemas/YouTubeErrorResponse"
+      description: Returns cached videos with sorting, searching, and pagination.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      parameters:
+        - description: "Sort order: latest | oldest | az"
+          in: query
+          name: sort
+          required: false
+          schema:
+            type: string
+            enum:
+              - latest
+              - oldest
+              - az
+        - description: Filter by video title
+          in: query
+          name: search
+          required: false
+          schema:
+            type: string
+        - description: Page number (1-based)
+          in: query
+          name: page
+          required: false
+          schema:
+            format: double
+            type: number
+        - description: Items per page
+          in: query
+          name: limit
+          required: false
+          schema:
+            format: double
+            type: number
+  /youtube/videos/carousel:
+    get:
+      operationId: GetVideosCarousel
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - items:
+                      $ref: "#/components/schemas/ChannelCarouselResponse"
+                    type: array
+                  - $ref: "#/components/schemas/YouTubeErrorResponse"
+      description: Returns videos grouped by channel for the carousel view.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      parameters: []
+  /youtube/notification-settings:
+    get:
+      operationId: GetNotificationSettings
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/NotificationSettingsResponse"
+                  - $ref: "#/components/schemas/YouTubeErrorResponse"
+      description: Returns the user's YouTube notification preferences.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      parameters: []
+    patch:
+      operationId: UpdateNotificationSettings
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/NotificationSettingsResponse"
+                  - $ref: "#/components/schemas/YouTubeErrorResponse"
+      description: Updates the user's YouTube notification preferences.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotificationSettingsBody"
+  /youtube/cron/sync-and-notify:
+    post:
+      operationId: CronSyncAndNotify
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/CronResultResponse"
+                  - $ref: "#/components/schemas/YouTubeErrorResponse"
+      description: |-
+        Cron-only endpoint: syncs all users' videos and sends due notifications.
+        Authenticated via X-Cron-Secret header instead of JWT.
+      tags:
+        - YouTube
+      security: []
+      parameters: []
   /vault:
     get:
       operationId: GetVaultMeta
