@@ -6,7 +6,7 @@ packages:
 
 packageManagerStrict: false
 savePrefix: ''
-minimumReleaseAge: 20160
+minimumReleaseAge: 10080
 blockExoticSubdeps: true
 strictDepBuilds: true
 allowBuilds:

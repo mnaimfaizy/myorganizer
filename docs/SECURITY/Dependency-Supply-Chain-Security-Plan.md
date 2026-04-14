@@ -1,6 +1,6 @@
 # Dependency and Supply Chain Security Plan
 
-Last updated: 2026-04-13
+Last updated: 2026-04-14
 
 ## Purpose
 
@@ -11,13 +11,14 @@ This document records the dependency, package-manager, and CI hardening posture 
 - Modern Yarn 4 is the authoritative package manager for this repository.
 - `yarn.lock` is the only lockfile accepted in CI and pull requests.
 - Direct dependencies and devDependencies are pinned to exact reviewed versions.
-- Root `.yarnrc.yml` pins exact-version defaults, hardened mode, the npm registry, and a 14-day dependency age gate with `npmMinimalAgeGate`.
+- Root `.yarnrc.yml` pins exact-version defaults, hardened mode, the npm registry, and a 7-day dependency age gate with `npmMinimalAgeGate`.
 - Root `.npmrc` and `pnpm-workspace.yaml` exist as hardened secondary-manager defaults for developers who intentionally bypass Yarn.
 - Axios guardrails remain in `package.json` through Yarn `resolutions`, npm `overrides`, and pnpm `overrides`, keeping the compromised releases `axios@1.14.1` and `axios@0.30.4` from being selected.
 - CI uses `yarn install --immutable --mode=skip-build` for metadata-only review before regular build and test jobs.
 - CI verifies that `yarn.lock` remains unchanged after every `yarn install --immutable` run.
 - Pull requests are blocked if they introduce or modify `package-lock.json` or `pnpm-lock.yaml`.
-- Dependabot keeps its npm ecosystem cooldown aligned to the same 14-day release-aging policy.
+- Dependabot keeps its npm ecosystem cooldown aligned to the same 7-day release-aging policy.
+- `.yarnrc.yml` carries a temporary `npmAuditIgnoreAdvisories` exception for the two current `undici` advisories because the latest published `@vercel/node` still pins `undici@5.28.4`; this exception must be removed once upstream ships a compatible fix.
 - Dependency manifests, lockfiles, package-manager policy files, workflows, and security documents are protected with `CODEOWNERS` review.
 
 ## Axios 2026 Lessons That Apply Here
@@ -38,7 +39,7 @@ Required takeaways:
 
 1. Keep `yarn.lock` committed at all times.
 2. Keep direct dependencies and devDependencies pinned to exact reviewed versions.
-3. Keep `.yarnrc.yml`, `.npmrc`, and `pnpm-workspace.yaml` aligned with exact-version defaults, registry pinning, 14-day release aging, and secondary-manager guardrails.
+3. Keep `.yarnrc.yml`, `.npmrc`, and `pnpm-workspace.yaml` aligned with exact-version defaults, registry pinning, 7-day release aging, and secondary-manager guardrails.
 4. Review every lockfile diff for newly introduced packages and install-time script entries.
 5. Preserve the Axios Yarn and secondary-manager override guardrails unless there is a documented reason to replace them.
 
@@ -61,6 +62,7 @@ Required takeaways:
 5. For metadata-only dependency review, prefer `yarn install --immutable --mode=skip-build` in disposable environments or dedicated security jobs.
 6. Do not enable a blanket `ignore-scripts=true` setting for normal installs while the current toolchain still relies on reviewed install-time scripts.
 7. GitHub Dependabot still uses the `npm` ecosystem configuration for this JavaScript repository, even though Yarn is the authoritative local and CI package manager.
+8. Keep audit ignores narrowly scoped to specific advisory IDs and only when the latest upstream package still lacks a compatible fix.
 
 ### 4. Approval checklist for new dependencies
 
@@ -104,3 +106,4 @@ rg '"(preinstall|install|postinstall)"' node_modules/**/package.json
 - Review Dependabot PR cadence after a few update cycles and tune grouping or limits if it creates too much churn.
 - Prefer OIDC-based authentication if future workflows need cloud or package-registry access.
 - Keep Yarn and pnpm configs aligned whenever dependency-management settings change.
+- Remove the temporary `undici` audit ignore as soon as `@vercel/node` adopts a fixed `undici` release.

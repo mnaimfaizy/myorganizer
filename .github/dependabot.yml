@@ -7,10 +7,10 @@ updates:
       time: '06:00'
       timezone: UTC
     cooldown:
-      default-days: 14
-      semver-major-days: 14
-      semver-minor-days: 14
-      semver-patch-days: 14
+      default-days: 7
+      semver-major-days: 7
+      semver-minor-days: 7
+      semver-patch-days: 7
     open-pull-requests-limit: 5
     labels:
       - dependencies
