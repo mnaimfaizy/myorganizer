@@ -5,7 +5,6 @@ This repo uses GitHub Actions for CI/CD.
 ## Branch strategy
 
 - `main`
-
   - CI runs on every push.
   - After CI passes, **staging deploy** runs automatically:
     - Frontend deploys to **Vercel** (used as the staging frontend).
@@ -19,12 +18,10 @@ This repo uses GitHub Actions for CI/CD.
 ## Workflows
 
 - `.github/workflows/ci.yml` (name: `CI`)
-
   - Runs `lint`, `test`, `build` using `nx affected`.
   - Triggers on PRs to `main` / `release/*` and on pushes to `main` / `release/*`.
 
 - `.github/workflows/deploy-staging.yml` (name: `Deploy Staging`)
-
   - Runs only after `CI` succeeds on `main`.
   - Packages backend via `yarn package:backend:api` and uploads `dist/deploy/backend-api/`.
   - Deploys frontend to Vercel using the Vercel CLI.
@@ -140,13 +137,14 @@ Frontend (Vercel):
 How to get these values:
 
 - `VERCEL_TOKEN`: Vercel Account Settings → Tokens
-- `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID`: run `npx vercel@latest link` in `apps/myorganizer`, then read `.vercel/project.json`
+- `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID`: run `corepack yarn dlx vercel@latest link` from the repo root, then read `.vercel/project.json`
 
 Note: Vercel may display this as a **Team ID** in the UI (even for personal accounts). That value maps to `VERCEL_ORG_ID`.
 
 Notes:
 
 - The staging workflow uses `vercel ... --prod`. In practice, this means: “deploy to the Production environment of the Vercel project used for staging”.
+- The staging workflow syncs the Vercel project's Install Command, Build Command, Output Directory, and Node.js version before deploying. The token used for `VERCEL_TOKEN` must therefore be allowed to update project settings.
 - If you prefer Vercel Preview deployments for staging instead, change `--prod` to a preview deploy and update the docs accordingly.
 
 ### Production (release/\*)

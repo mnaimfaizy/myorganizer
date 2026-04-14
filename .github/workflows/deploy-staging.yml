@@ -161,32 +161,7 @@ jobs:
             echo 'No .vercel directory found after vercel pull.'
           fi
 
-          node <<'NODE'
-            const fs = require('fs');
-            const path = '.vercel/project.json';
-            if (!fs.existsSync(path)) {
-              console.log('No .vercel/project.json found (nothing to report).');
-              process.exit(0);
-            }
-
-            const raw = JSON.parse(fs.readFileSync(path, 'utf8'));
-            const settings = raw.settings || {};
-
-            const sanitized = {
-              projectId: raw.projectId,
-              orgId: raw.orgId,
-              settings: {
-                framework: settings.framework,
-                rootDirectory: settings.rootDirectory,
-                installCommand: settings.installCommand,
-                buildCommand: settings.buildCommand,
-                outputDirectory: settings.outputDirectory,
-                nodeVersion: settings.nodeVersion,
-              },
-            };
-
-            console.log(JSON.stringify(sanitized, null, 2));
-          NODE
+          node tools/scripts/sync-vercel-project-settings.mjs
 
           echo 'NOTE: Not printing any .vercel/.env* files to avoid leaking secrets.'
           echo '--- end Vercel diagnostics ---'

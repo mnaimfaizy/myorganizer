@@ -20,7 +20,6 @@ It also explains the difference between **Preview** and **Production** environme
 Vercel has two common deployment environments you’ll use:
 
 - **Preview deployments**
-
   - Created for pull requests / non-production branches.
   - Great for testing changes safely.
   - Typically should point to a **staging** backend API.
@@ -43,6 +42,7 @@ Follow Nx's official guidance for deploying Nx-managed Next.js apps to Vercel:
 
 - **Root Directory**: leave empty (workspace root)
 - **Framework Preset**: Next.js
+- **Install Command (override)**: `corepack yarn install --immutable`
 - **Build Command (override)**: `npx nx build myorganizer --prod`
 - **Output Directory (override)**: `dist/apps/myorganizer/.next`
 
@@ -53,20 +53,19 @@ Follow Nx's official guidance for deploying Nx-managed Next.js apps to Vercel:
 
 From the repo root:
 
-- `npm i -g vercel`
-- `vercel login`
-- `cd apps/myorganizer`
-- `vercel` (first deploy)
+- `corepack yarn dlx vercel@latest login`
+- `corepack yarn dlx vercel@latest link`
+- `corepack yarn dlx vercel@latest` (first deploy)
 
 For a **Preview** deployment:
 
-- `vercel`
+- `corepack yarn dlx vercel@latest`
 
 For a **Production** deployment:
 
-- `vercel --prod`
+- `corepack yarn dlx vercel@latest --prod`
 
-Note: This repo includes `apps/myorganizer/vercel.json` for Vercel CLI-based deployments used by GitHub Actions.
+Note: This repo includes a root-level `vercel.json` for repo-root CLI deployments. The staging GitHub Actions workflow also syncs the Vercel project's install/build/output settings before deploying so dashboard drift does not silently break the build.
 
 ## Environment variables
 
@@ -115,8 +114,7 @@ These are only needed if you want GitHub Actions (or your own CI) to deploy to V
   - Create in Vercel: Account Settings → Tokens
 - `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`
   - Easiest way to obtain them is using the Vercel CLI:
-    - `cd apps/myorganizer`
-    - `npx vercel@latest link`
+    - from the repo root, run `corepack yarn dlx vercel@latest link`
     - Then inspect `.vercel/project.json` (it contains `orgId` and `projectId`).
 
 Notes on naming:
