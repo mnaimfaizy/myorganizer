@@ -1,127 +1,139 @@
 name: Deploy Staging
 
 on:
-  workflow_run:
-    workflows: ['CI']
-    types: [completed]
-    branches: [main]
+    workflow_run:
+        workflows: ["CI"]
+        types: [completed]
+        branches: [main]
 
 concurrency:
-  group: deploy-staging
-  cancel-in-progress: true
+    group: deploy-staging
+    cancel-in-progress: true
+
+permissions:
+    contents: read
 
 jobs:
-  deploy-backend:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    environment: staging
+    deploy-backend:
+        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        environment: staging
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  fetch-depth: 0
+                  ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: yarn
+            - name: Setup Node.js 22
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version: "22"
+                  cache: yarn
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
+            - name: Install dependencies
+              run: corepack yarn install --immutable
 
-      - name: Package backend (cPanel)
-        run: yarn package:backend:api
+            - name: Verify frozen lockfile
+              run: git diff --exit-code -- yarn.lock
 
-      - name: Deploy backend to cPanel (staging)
-        uses: SamKirkland/FTP-Deploy-Action@4.3.3
-        with:
-          server: ${{ secrets.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./dist/deploy/backend-api/
-          server-dir: ${{ secrets.FTP_SERVER_DIR }}
-          timeout: 300000
+            - name: Package backend (cPanel)
+              run: corepack yarn package:backend:api
 
-  deploy-frontend:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-    needs: deploy-backend
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    environment: staging
+            - name: Deploy backend to cPanel (staging)
+              uses: samkirkland/ftp-deploy-action@a51268f67f6605236975928ae28b0f7e9971d50a # v4.3.6
+              with:
+                  server: ${{ secrets.FTP_HOST }}
+                  username: ${{ secrets.FTP_USERNAME }}
+                  password: ${{ secrets.FTP_PASSWORD }}
+                  local-dir: ./dist/deploy/backend-api/
+                  server-dir: ${{ secrets.FTP_SERVER_DIR }}
+                  timeout: 300000
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha }}
+    deploy-frontend:
+        if: ${{ github.event.workflow_run.conclusion == 'success' }}
+        needs: deploy-backend
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        environment: staging
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: yarn
+        steps:
+            - name: Checkout
+              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+              with:
+                  fetch-depth: 0
+                  ref: ${{ github.event.workflow_run.head_sha }}
 
-      - name: Install dependencies
-        run: yarn install --frozen-lockfile
+            - name: Setup Node.js 22
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version: "22"
+                  cache: yarn
 
-      - name: Deploy frontend to Vercel (staging)
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          # NOTE: This workflow deploys to a dedicated Vercel *staging* project.
-          # In that project we use its "production" environment for our staging app,
-          # therefore the --environment=production and --prod flags are intentional.
-          # See VERCEL_FRONTEND_HOSTING.md and CI_CD_AND_RELEASE_PROCESS.md for details.
-          #
-          # Nx recommends keeping the Vercel project's Root Directory as the workspace root
-          # and setting the Build Command to `npx nx build myorganizer --prod`.
-          npx vercel@latest pull --yes --environment=production --token "$VERCEL_TOKEN"
+            - name: Install dependencies
+              run: corepack yarn install --immutable
 
-          echo '--- Vercel diagnostics (sanitized) ---'
-          if [ -d .vercel ]; then
-            echo 'Vercel metadata files (names only):'
-            find .vercel -maxdepth 2 -type f -print
-          else
-            echo 'No .vercel directory found after vercel pull.'
-          fi
+            - name: Verify frozen lockfile
+              run: git diff --exit-code -- yarn.lock
 
-          node <<'NODE'
-          const fs = require('fs');
-          const path = '.vercel/project.json';
-          if (!fs.existsSync(path)) {
-            console.log('No .vercel/project.json found (nothing to report).');
-            process.exit(0);
-          }
+            - name: Deploy frontend to Vercel (staging)
+              env:
+                  VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+                  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+                  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+              run: |
+                  # This workflow deploys to a dedicated Vercel staging project.
+                  # In that project we intentionally use the production environment
+                  # for the staging app, so `--environment=production` and `--prod`
+                  # are both expected here.
+                  # See VERCEL_FRONTEND_HOSTING.md and CI_CD_AND_RELEASE_PROCESS.md.
+                  #
+                  # Nx recommends keeping the Vercel project's Root Directory at the
+                  # workspace root and setting the Build Command to `npx nx build myorganizer --prod`.
+                    set -euo pipefail
 
-          const raw = JSON.parse(fs.readFileSync(path, 'utf8'));
-          const settings = raw.settings || {};
+                    corepack yarn vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
 
-          const sanitized = {
-            projectId: raw.projectId,
-            orgId: raw.orgId,
-            settings: {
-              framework: settings.framework,
-              rootDirectory: settings.rootDirectory,
-              installCommand: settings.installCommand,
-              buildCommand: settings.buildCommand,
-              outputDirectory: settings.outputDirectory,
-              nodeVersion: settings.nodeVersion,
-            },
-          };
+                    echo '--- Vercel diagnostics (sanitized) ---'
+                    if [ -d .vercel ]; then
+                      echo 'Vercel metadata files (names only):'
+                      find .vercel -maxdepth 2 -type f -print
+                    else
+                      echo 'No .vercel directory found after vercel pull.'
+                    fi
 
-          console.log(JSON.stringify(sanitized, null, 2));
-          NODE
+                    node <<'NODE'
+                    const fs = require('fs');
+                    const path = '.vercel/project.json';
+                    if (!fs.existsSync(path)) {
+                      console.log('No .vercel/project.json found (nothing to report).');
+                      process.exit(0);
+                    }
 
-          echo 'NOTE: Not printing any .vercel/.env* files to avoid leaking secrets.'
-          echo '--- end Vercel diagnostics ---'
+                    const raw = JSON.parse(fs.readFileSync(path, 'utf8'));
+                    const settings = raw.settings || {};
 
-          # Avoid `--prebuilt`: prebuilt bundles can fail in monorepos due to file-trace
-          # references to paths that are not included in the upload.
-          npx vercel@latest deploy --prod --yes --token "$VERCEL_TOKEN"
+                    const sanitized = {
+                      projectId: raw.projectId,
+                      orgId: raw.orgId,
+                      settings: {
+                        framework: settings.framework,
+                        rootDirectory: settings.rootDirectory,
+                        installCommand: settings.installCommand,
+                        buildCommand: settings.buildCommand,
+                        outputDirectory: settings.outputDirectory,
+                        nodeVersion: settings.nodeVersion,
+                      },
+                    };
+
+                    console.log(JSON.stringify(sanitized, null, 2));
+                    NODE
+
+                    echo 'NOTE: Not printing any .vercel/.env* files to avoid leaking secrets.'
+                    echo '--- end Vercel diagnostics ---'
+
+                    # Avoid `--prebuilt`: prebuilt bundles can fail in monorepos when
+                    # file-trace references point outside the uploaded artifact set.
+                    corepack yarn vercel deploy --prod --yes --token "$VERCEL_TOKEN"

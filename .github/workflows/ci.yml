@@ -4,20 +4,169 @@ on:
   pull_request:
     branches:
       - main
-      - "release/**"
+      - 'release/**'
   push:
     branches:
       - main
-      - "release/**"
+      - 'release/**'
+  workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
+  authoritative-lockfile-policy:
+    name: Authoritative Lockfile Policy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Skip outside pull requests
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          echo 'Lockfile policy runs only for pull_request events.' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Checkout repository
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+
+      - name: Block npm and pnpm lockfiles in pull requests
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          changed_files="$(git diff --name-only --diff-filter=ACMRT "$BASE_SHA" "$HEAD_SHA")"
+
+          {
+            echo '## Lockfile policy'
+            echo
+            echo 'Changed files in PR:'
+            if [ -n "$changed_files" ]; then
+              printf '%s\n' "$changed_files"
+            else
+              echo '(none)'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          disallowed_lockfiles="$(printf '%s\n' "$changed_files" | grep -E '(^|/)(package-lock\.json|pnpm-lock\.yaml)$' || true)"
+
+          if [ -n "$disallowed_lockfiles" ]; then
+            echo '::error title=Disallowed lockfile detected::This repository accepts only yarn.lock in pull requests. Remove package-lock.json and pnpm-lock.yaml changes from the PR.'
+            {
+              echo
+              echo 'Disallowed lockfile changes:'
+              printf '%s\n' "$disallowed_lockfiles"
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+
+          echo >> "$GITHUB_STEP_SUMMARY"
+          echo 'No npm or pnpm lockfiles were introduced or modified in this pull request.' >> "$GITHUB_STEP_SUMMARY"
+
+  dependency-review:
+    name: Dependency Review
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check dependency review API availability
+        id: dependency-review-availability
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          response_file="$(mktemp)"
+          status_code="$(curl --silent --output "$response_file" --write-out '%{http_code}' \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${REPOSITORY}/dependency-graph/compare/${BASE_SHA}...${HEAD_SHA}")"
+
+          if [ "$status_code" = '200' ]; then
+            echo 'supported=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$status_code" = '403' ] || [ "$status_code" = '404' ]; then
+            echo 'supported=false' >> "$GITHUB_OUTPUT"
+            echo "status_code=$status_code" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          cat "$response_file"
+          echo "Unexpected dependency review API response: $status_code" >&2
+          exit 1
+
+      - name: Checkout repository
+        if: steps.dependency-review-availability.outputs.supported == 'true'
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Review dependency changes
+        if: steps.dependency-review-availability.outputs.supported == 'true'
+        uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: moderate
+          fail-on-scopes: development,runtime,unknown
+
+      - name: Explain skipped dependency review
+        if: steps.dependency-review-availability.outputs.supported != 'true'
+        shell: bash
+        env:
+          STATUS_CODE: ${{ steps.dependency-review-availability.outputs.status_code }}
+        run: |
+          echo '::warning title=Dependency review skipped::GitHub dependency review is unavailable for this repository. Enable Dependency graph in repository settings to re-enable this check.'
+          {
+            echo '## Dependency review skipped'
+            echo
+            echo "GitHub's dependency review API returned HTTP ${STATUS_CODE:-unknown} for this repository."
+            echo
+            echo 'Enable Dependency graph in repository settings to re-enable actions/dependency-review-action.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  secure-install-review:
+    name: Secure Install Review
+    runs-on: ubuntu-latest
+    needs: authoritative-lockfile-policy
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+          cache: yarn
+
+      - name: Install dependency metadata without scripts
+        run: corepack yarn install --immutable --mode=skip-build
+
+      - name: Verify frozen lockfile
+        run: git diff --exit-code -- yarn.lock
+
+      - name: Run Yarn npm audit
+        run: corepack yarn npm audit --all --recursive --severity high
+
   setup:
+    name: Setup Affected Context
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    needs: secure-install-review
 
     outputs:
       nx_base: ${{ steps.affected.outputs.nx_base }}
@@ -25,31 +174,36 @@ jobs:
       affected_projects: ${{ steps.projects.outputs.affected_projects }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22
+          node-version: '22'
           cache: yarn
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: corepack yarn install --immutable
+
+      - name: Verify frozen lockfile
+        run: git diff --exit-code -- yarn.lock
 
       - name: Compute affected range
         id: affected
         shell: bash
         run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == 'pull_request' ]]; then
             BASE="${{ github.event.pull_request.base.sha }}"
             HEAD="${{ github.event.pull_request.head.sha }}"
           else
             BASE="${{ github.event.before }}"
             HEAD="${{ github.sha }}"
-            if [[ -z "$BASE" || "$BASE" == "0000000000000000000000000000000000000000" ]]; then
+            if [[ -z "$BASE" || "$BASE" == '0000000000000000000000000000000000000000' ]]; then
               BASE="$(git rev-parse HEAD~1)"
             fi
           fi
@@ -68,8 +222,8 @@ jobs:
           BASE='${{ steps.affected.outputs.nx_base }}'
           HEAD='${{ steps.affected.outputs.nx_head }}'
 
-          if ! AFFECTED_JSON=$(yarn -s nx show projects --affected --base="$BASE" --head="$HEAD" --json | node -e "const fs=require('fs'); const s=fs.readFileSync(0,'utf8'); process.stdout.write(JSON.stringify(JSON.parse(s))); "); then
-            echo "Error: Failed to compute affected projects JSON from Nx output." >&2
+          if ! AFFECTED_JSON="$(corepack yarn -s nx show projects --affected --base="$BASE" --head="$HEAD" --json | node -e "const fs=require('fs'); const input=fs.readFileSync(0,'utf8'); process.stdout.write(JSON.stringify(JSON.parse(input))); ")"; then
+            echo 'Error: Failed to compute affected projects JSON from Nx output.' >&2
             exit 1
           fi
 
@@ -77,57 +231,66 @@ jobs:
           echo "Affected projects: $AFFECTED_JSON"
 
   lint:
+    name: Lint
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: setup
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22
+          node-version: '22'
           cache: yarn
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: corepack yarn install --immutable
 
-      - name: Lint (affected)
-        run: yarn nx affected -t lint --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
+      - name: Verify frozen lockfile
+        run: git diff --exit-code -- yarn.lock
+
+      - name: Lint affected projects
+        run: corepack yarn nx affected -t lint --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
 
   test:
+    name: Test
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: setup
 
     env:
       # Required for Prisma v7 config loading during `prisma generate`.
-      # Use a dummy local URL if no secret is configured (generate does not connect).
-      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://localhost:5432/myorganizer' }}
+      # CI uses a dummy local URL here because generation does not connect.
+      DATABASE_URL: postgresql://localhost:5432/myorganizer
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22
+          node-version: '22'
           cache: yarn
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: corepack yarn install --immutable
 
-      - name: Test (affected)
-        run: yarn nx affected -t test --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
+      - name: Verify frozen lockfile
+        run: git diff --exit-code -- yarn.lock
+
+      - name: Test affected projects
+        run: corepack yarn nx affected -t test --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
 
   build-backend:
+    name: Build Backend
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'backend') }}
@@ -137,27 +300,33 @@ jobs:
       - test
 
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://localhost:5432/myorganizer' }}
+      # Required for Prisma v7 config loading during `prisma generate`.
+      # CI uses a dummy local URL here because generation does not connect.
+      DATABASE_URL: postgresql://localhost:5432/myorganizer
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22
+          node-version: '22'
           cache: yarn
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: corepack yarn install --immutable
+
+      - name: Verify frozen lockfile
+        run: git diff --exit-code -- yarn.lock
 
       - name: Build backend
-        run: yarn nx build backend
+        run: corepack yarn nx build backend
 
   build-frontend:
+    name: Build Frontend
     runs-on: ubuntu-latest
     timeout-minutes: 30
     if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'myorganizer') }}
@@ -167,19 +336,22 @@ jobs:
       - test
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
-      - name: Set up Node
-        uses: actions/setup-node@v4
+      - name: Setup Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 22
+          node-version: '22'
           cache: yarn
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: corepack yarn install --immutable
+
+      - name: Verify frozen lockfile
+        run: git diff --exit-code -- yarn.lock
 
       - name: Build frontend
-        run: yarn nx build myorganizer
+        run: corepack yarn nx build myorganizer

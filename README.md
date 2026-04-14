@@ -12,18 +12,28 @@
 cp .env.example .env
 ```
 
-2. Start dependencies (Postgres + MailHog):
+2. Install dependencies from the authoritative lockfile:
+
+```sh
+corepack yarn install --immutable
+```
+
+3. Start dependencies (Postgres + MailHog):
 
 ```sh
 docker-compose up -d
 ```
 
-3. Start backend and frontend (separate terminals):
+4. Start backend and frontend (separate terminals):
 
 ```sh
 yarn start:backend
 yarn start:myorganizer
 ```
+
+This repository is Yarn-first with modern Yarn 4 via Corepack. Keep `yarn.lock` committed and treat `package-lock.json` and `pnpm-lock.yaml` as non-authoritative secondary-manager artifacts.
+
+If your machine already resolves `yarn` through Corepack, the same commands work without the `corepack` prefix.
 
 ## Frontend architecture (important)
 

@@ -72,7 +72,7 @@ const backendDistPackageJson = path.join(buildOut, 'package.json');
 if (!exists(buildOut) || !exists(backendDistPackageJson)) {
   throw new Error(
     `Expected backend build output at: ${buildOut}. ` +
-      `Run: yarn nx run backend:build:production`
+      `Run: yarn build:backend`,
   );
 }
 
@@ -147,7 +147,7 @@ const deployPkg = {
     'prisma:migrate:deploy': 'prisma migrate deploy --schema prisma/schema',
   },
   dependencies: Object.fromEntries(
-    Object.entries(filteredDeps).sort(([a], [b]) => a.localeCompare(b))
+    Object.entries(filteredDeps).sort(([a], [b]) => a.localeCompare(b)),
   ),
 };
 
@@ -156,7 +156,7 @@ const deployPkg = {
 const postinstallScriptRelPath = 'scripts/postinstall.cjs';
 const postinstallScriptAbsPath = path.join(
   deployRoot,
-  ...postinstallScriptRelPath.split('/')
+  ...postinstallScriptRelPath.split('/'),
 );
 mkdir(path.dirname(postinstallScriptAbsPath));
 
@@ -246,7 +246,7 @@ fs.writeFileSync(
     '- To apply DB migrations on the server, run: `npm run prisma:migrate:deploy`.',
     '',
   ].join('\n'),
-  'utf8'
+  'utf8',
 );
 
 const zipPath = path.join(deployRoot, 'backend-api.zip');

@@ -3,6 +3,7 @@
 /coverage
 /.nx/cache
 /.nx/workspace-data
+.github/CODEOWNERS
 
 # Generated artifacts (keep generator output stable / avoid drift)
 apps/backend/src/routes/routes.ts

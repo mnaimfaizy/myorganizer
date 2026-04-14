@@ -48,6 +48,14 @@ Thumbs.db
 .nx/cache
 .nx/workspace-data
 
+# Yarn Berry local artifacts
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
 # Next.js
 .next
 out
