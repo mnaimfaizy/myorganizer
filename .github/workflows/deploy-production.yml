@@ -1,176 +1,232 @@
 name: Deploy Production (manual)
 
 on:
-    workflow_dispatch:
-        inputs:
-            release_branch:
-                description: "Release branch to deploy (e.g. release/v0.1.0). Leave empty to auto-select the latest release/* branch."
-                required: false
-                type: string
+  workflow_dispatch:
+    inputs:
+      release_branch:
+        description: 'Release branch to deploy (e.g. release/v0.1.0). Leave empty to auto-select the latest release/* branch.'
+        required: false
+        type: string
 
 concurrency:
-    group: deploy-production
-    # Deployments are serialized via concurrency; additional runs queue.
-    cancel-in-progress: false
+  group: deploy-production
+  # Deployments are serialized via concurrency; additional runs queue.
+  cancel-in-progress: false
 
 permissions:
-    contents: read
+  contents: read
 
 jobs:
-    validate:
-        runs-on: ubuntu-latest
-        timeout-minutes: 5
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
 
-        outputs:
-            release_ref: ${{ steps.select_release_ref.outputs.release_ref }}
+    outputs:
+      release_ref: ${{ steps.select_release_ref.outputs.release_ref }}
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-              with:
-                  fetch-depth: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
 
-            - name: Validate release branch
-              run: |
-                  set -euo pipefail
-                  if [[ "$GITHUB_REF" == refs/heads/release/* ]]; then
-                    exit 0
-                  fi
+      - name: Validate release branch
+        run: |
+          set -euo pipefail
+          if [[ "$GITHUB_REF" == refs/heads/release/* ]]; then
+            exit 0
+          fi
 
-                  echo 'ERROR: This workflow must be run from a release/* branch due to GitHub Environment protection rules.'
-                  echo "Current ref: $GITHUB_REF"
-                  echo "Tip: Use the 'Deploy Production (latest release)' workflow to auto-select the newest release branch."
-                  exit 1
+          echo 'ERROR: This workflow must be run from a release/* branch due to GitHub Environment protection rules.'
+          echo "Current ref: $GITHUB_REF"
+          echo "Tip: Use the 'Deploy Production (latest release)' workflow to auto-select the newest release branch."
+          exit 1
 
-            - name: Select release ref
-              id: select_release_ref
-              env:
-                  INPUT_RELEASE_BRANCH: ${{ inputs.release_branch }}
-              run: |
-                  set -euo pipefail
+      - name: Select release ref
+        id: select_release_ref
+        env:
+          INPUT_RELEASE_BRANCH: ${{ inputs.release_branch }}
+        run: |
+          set -euo pipefail
 
-                  git fetch origin --prune
+          git fetch origin --prune
 
-                  if [ -n "${INPUT_RELEASE_BRANCH:-}" ]; then
-                    candidate="${INPUT_RELEASE_BRANCH}"
-                    if ! git show-ref --verify --quiet "refs/remotes/origin/${candidate}"; then
-                      echo "ERROR: release_branch '${candidate}' not found on origin."
-                      exit 1
-                    fi
-                    echo "release_ref=${candidate}" >> "$GITHUB_OUTPUT"
-                    exit 0
-                  fi
+          if [ -n "${INPUT_RELEASE_BRANCH:-}" ]; then
+            candidate="${INPUT_RELEASE_BRANCH}"
+            if ! git show-ref --verify --quiet "refs/remotes/origin/${candidate}"; then
+              echo "ERROR: release_branch '${candidate}' not found on origin."
+              exit 1
+            fi
+            echo "release_ref=${candidate}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-                  # Auto-select the latest origin/release/* branch using version sort.
-                  # The expected branch format is release/vX.Y.Z.
-                  latest="$(git for-each-ref --format='%(refname:short)' refs/remotes/origin/release/ \
-                    | sed 's#^origin/##' \
-                    | sed -n 's#^release/v\([0-9]\+\.[0-9]\+\.[0-9]\+\)$#release/v\1#p' \
-                    | sort -V \
-                    | tail -n 1)"
+          # Auto-select the latest origin/release/* branch using version sort.
+          # The expected branch format is release/vX.Y.Z.
+          latest="$(git for-each-ref --format='%(refname:short)' refs/remotes/origin/release/ \
+            | sed 's#^origin/##' \
+            | sed -n 's#^release/v\([0-9]\+\.[0-9]\+\.[0-9]\+\)$#release/v\1#p' \
+            | sort -V \
+            | tail -n 1)"
 
-                  if [ -z "${latest}" ]; then
-                    echo 'ERROR: No release branches found on origin (expected origin/release/vX.Y.Z).'
-                    exit 1
-                  fi
+          if [ -z "${latest}" ]; then
+            echo 'ERROR: No release branches found on origin (expected origin/release/vX.Y.Z).'
+            exit 1
+          fi
 
-                  echo "Selected latest release branch: ${latest}"
-                  echo "release_ref=${latest}" >> "$GITHUB_OUTPUT"
+          echo "Selected latest release branch: ${latest}"
+          echo "release_ref=${latest}" >> "$GITHUB_OUTPUT"
 
-    deploy-backend:
-        if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
-        needs: validate
-        runs-on: ubuntu-latest
-        timeout-minutes: 45
-        environment: production
+  prepare-dependencies:
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    name: Prepare Dependency Cache
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-              with:
-                  fetch-depth: 0
-                  ref: ${{ needs.validate.outputs.release_ref }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.validate.outputs.release_ref }}
 
-            - name: Setup Node.js 22
-              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-              with:
-                  node-version: "22"
-                  cache: yarn
+      - name: Setup Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
 
-            - name: Install dependencies
-              run: corepack yarn install --immutable
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
 
-            - name: Verify frozen lockfile
-              run: git diff --exit-code -- yarn.lock
+      - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: corepack yarn install --immutable
 
-            - name: Package backend (cPanel)
-              run: corepack yarn package:backend:api
+      - name: Verify frozen lockfile
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: git diff --exit-code -- yarn.lock
 
-            - name: Deploy backend to cPanel (production)
-              uses: samkirkland/ftp-deploy-action@a51268f67f6605236975928ae28b0f7e9971d50a # v4.3.6
-              with:
-                  server: ${{ secrets.FTP_PROD_HOST }}
-                  username: ${{ secrets.FTP_PROD_BACKEND_USERNAME }}
-                  password: ${{ secrets.FTP_PROD_BACKEND_PASSWORD }}
-                  local-dir: ./dist/deploy/backend-api/
-                  server-dir: ${{ secrets.FTP_PROD_BACKEND_DIR }}
-                  timeout: 300000
+  deploy-backend:
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    needs: [validate, prepare-dependencies]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
 
-    deploy-frontend:
-        if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
-        needs: [validate, deploy-backend]
-        runs-on: ubuntu-latest
-        timeout-minutes: 45
-        environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.validate.outputs.release_ref }}
 
-        steps:
-            - name: Checkout
-              uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-              with:
-                  fetch-depth: 0
-                  ref: ${{ needs.validate.outputs.release_ref }}
+      - name: Setup Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
 
-            - name: Setup Node.js 22
-              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-              with:
-                  node-version: "22"
-                  cache: yarn
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
 
-            - name: Install dependencies
-              run: corepack yarn install --immutable
+      - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: corepack yarn install --immutable
 
-            - name: Verify frozen lockfile
-              run: git diff --exit-code -- yarn.lock
+      - name: Verify frozen lockfile
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: git diff --exit-code -- yarn.lock
 
-            - name: Validate production frontend FTP secrets
-              env:
-                  FTP_PROD_HOST: ${{ secrets.FTP_PROD_HOST }}
-                  FTP_PROD_FRONTEND_USERNAME: ${{ secrets.FTP_PROD_FRONTEND_USERNAME }}
-                  FTP_PROD_FRONTEND_PASSWORD: ${{ secrets.FTP_PROD_FRONTEND_PASSWORD }}
-                  FTP_PROD_FRONTEND_DIR: ${{ secrets.FTP_PROD_FRONTEND_DIR }}
-              run: |
-                  set -euo pipefail
-                  missing=0
+      - name: Package backend (cPanel)
+        run: corepack yarn package:backend:api
 
-                  if [ -z "$FTP_PROD_HOST" ]; then echo 'Missing secret: FTP_PROD_HOST'; missing=1; fi
-                  if [ -z "$FTP_PROD_FRONTEND_USERNAME" ]; then echo 'Missing secret: FTP_PROD_FRONTEND_USERNAME'; missing=1; fi
-                  if [ -z "$FTP_PROD_FRONTEND_PASSWORD" ]; then echo 'Missing secret: FTP_PROD_FRONTEND_PASSWORD'; missing=1; fi
-                  if [ -z "$FTP_PROD_FRONTEND_DIR" ]; then echo 'Missing secret: FTP_PROD_FRONTEND_DIR'; missing=1; fi
+      - name: Deploy backend to cPanel (production)
+        uses: samkirkland/ftp-deploy-action@a51268f67f6605236975928ae28b0f7e9971d50a # v4.3.6
+        with:
+          server: ${{ secrets.FTP_PROD_HOST }}
+          username: ${{ secrets.FTP_PROD_BACKEND_USERNAME }}
+          password: ${{ secrets.FTP_PROD_BACKEND_PASSWORD }}
+          local-dir: ./dist/deploy/backend-api/
+          server-dir: ${{ secrets.FTP_PROD_BACKEND_DIR }}
+          timeout: 300000
 
-                  if [ "$missing" -ne 0 ]; then
-                    echo 'One or more required production frontend FTP secrets are not set (or are empty).'
-                    exit 1
-                  fi
+  deploy-frontend:
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    needs: [validate, prepare-dependencies, deploy-backend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
 
-            - name: Package frontend (cPanel)
-              run: corepack yarn package:myorganizer:web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.validate.outputs.release_ref }}
 
-            - name: Deploy frontend to cPanel (production)
-              uses: samkirkland/ftp-deploy-action@a51268f67f6605236975928ae28b0f7e9971d50a # v4.3.6
-              with:
-                  server: ${{ secrets.FTP_PROD_HOST }}
-                  username: ${{ secrets.FTP_PROD_FRONTEND_USERNAME }}
-                  password: ${{ secrets.FTP_PROD_FRONTEND_PASSWORD }}
-                  local-dir: ./dist/deploy/myorganizer-web/
-                  server-dir: ${{ secrets.FTP_PROD_FRONTEND_DIR }}
-                  timeout: 300000
+      - name: Setup Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
+
+      - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: corepack yarn install --immutable
+
+      - name: Verify frozen lockfile
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: git diff --exit-code -- yarn.lock
+
+      - name: Validate production frontend FTP secrets
+        env:
+          FTP_PROD_HOST: ${{ secrets.FTP_PROD_HOST }}
+          FTP_PROD_FRONTEND_USERNAME: ${{ secrets.FTP_PROD_FRONTEND_USERNAME }}
+          FTP_PROD_FRONTEND_PASSWORD: ${{ secrets.FTP_PROD_FRONTEND_PASSWORD }}
+          FTP_PROD_FRONTEND_DIR: ${{ secrets.FTP_PROD_FRONTEND_DIR }}
+        run: |
+          set -euo pipefail
+          missing=0
+
+          if [ -z "$FTP_PROD_HOST" ]; then echo 'Missing secret: FTP_PROD_HOST'; missing=1; fi
+          if [ -z "$FTP_PROD_FRONTEND_USERNAME" ]; then echo 'Missing secret: FTP_PROD_FRONTEND_USERNAME'; missing=1; fi
+          if [ -z "$FTP_PROD_FRONTEND_PASSWORD" ]; then echo 'Missing secret: FTP_PROD_FRONTEND_PASSWORD'; missing=1; fi
+          if [ -z "$FTP_PROD_FRONTEND_DIR" ]; then echo 'Missing secret: FTP_PROD_FRONTEND_DIR'; missing=1; fi
+
+          if [ "$missing" -ne 0 ]; then
+            echo 'One or more required production frontend FTP secrets are not set (or are empty).'
+            exit 1
+          fi
+
+      - name: Package frontend (cPanel)
+        run: corepack yarn package:myorganizer:web
+
+      - name: Deploy frontend to cPanel (production)
+        uses: samkirkland/ftp-deploy-action@a51268f67f6605236975928ae28b0f7e9971d50a # v4.3.6
+        with:
+          server: ${{ secrets.FTP_PROD_HOST }}
+          username: ${{ secrets.FTP_PROD_FRONTEND_USERNAME }}
+          password: ${{ secrets.FTP_PROD_FRONTEND_PASSWORD }}
+          local-dir: ./dist/deploy/myorganizer-web/
+          server-dir: ${{ secrets.FTP_PROD_FRONTEND_DIR }}
+          timeout: 300000

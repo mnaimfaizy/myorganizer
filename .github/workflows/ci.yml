@@ -151,7 +151,6 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
-          cache: yarn
 
       - name: Install dependency metadata without scripts
         run: corepack yarn install --immutable --mode=skip-build
@@ -162,11 +161,46 @@ jobs:
       - name: Run Yarn npm audit
         run: corepack yarn npm audit --all --recursive --severity high
 
+  prepare-dependencies:
+    name: Prepare Dependency Cache
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: secure-install-review
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '22'
+
+      # We intentionally avoid setup-node's Yarn cache integration here.
+      # In this repo it can invoke the runner's global Yarn 1 binary before
+      # Corepack has a chance to resolve the pinned Yarn 4 version.
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
+
+      - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: corepack yarn install --immutable
+
+      - name: Verify frozen lockfile
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: git diff --exit-code -- yarn.lock
+
   setup:
     name: Setup Affected Context
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    needs: secure-install-review
+    needs: prepare-dependencies
 
     outputs:
       nx_base: ${{ steps.affected.outputs.nx_base }}
@@ -183,12 +217,22 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
-          cache: yarn
+
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
 
       - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: corepack yarn install --immutable
 
       - name: Verify frozen lockfile
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: git diff --exit-code -- yarn.lock
 
       - name: Compute affected range
@@ -246,12 +290,22 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
-          cache: yarn
+
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
 
       - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: corepack yarn install --immutable
 
       - name: Verify frozen lockfile
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: git diff --exit-code -- yarn.lock
 
       - name: Lint affected projects
@@ -278,12 +332,22 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
-          cache: yarn
+
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
 
       - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: corepack yarn install --immutable
 
       - name: Verify frozen lockfile
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: git diff --exit-code -- yarn.lock
 
       - name: Test affected projects
@@ -314,12 +378,22 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
-          cache: yarn
+
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
 
       - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: corepack yarn install --immutable
 
       - name: Verify frozen lockfile
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: git diff --exit-code -- yarn.lock
 
       - name: Build backend
@@ -345,12 +419,22 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: '22'
-          cache: yarn
+
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
 
       - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: corepack yarn install --immutable
 
       - name: Verify frozen lockfile
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: git diff --exit-code -- yarn.lock
 
       - name: Build frontend
