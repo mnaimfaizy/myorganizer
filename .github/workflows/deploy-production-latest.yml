@@ -20,7 +20,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
@@ -45,19 +45,17 @@ jobs:
             exit 0
           fi
 
-          echo "Selecting latest release branch from origin..."
+          echo 'Selecting latest release branch from origin...'
 
-          latest_branch="$(
-            git ls-remote --heads origin 'release/v*' \
-              | awk '{print $2}' \
-              | sed 's#refs/heads/##' \
-              | grep -E '^release/v[0-9]+\.[0-9]+\.[0-9]+$' \
-              | sort -V \
-              | tail -n 1
-          )"
+          latest_branch="$(git ls-remote --heads origin 'release/v*' \
+            | awk '{print $2}' \
+            | sed 's#refs/heads/##' \
+            | grep -E '^release/v[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V \
+            | tail -n 1)"
 
           if [[ -z "${latest_branch}" ]]; then
-            echo "No release branches found (expected release/vX.Y.Z)." >&2
+            echo 'No release branches found (expected release/vX.Y.Z).' >&2
             exit 1
           fi
 
@@ -69,16 +67,16 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo "## Deploy Production (latest release)"
+            echo '## Deploy Production (latest release)'
             echo
-            echo "- Latest release branch: `${{ steps.find.outputs.release_branch }}`"
-            echo "- Trigger: `${{ github.event_name }}`"
+            echo "- Latest release branch: \`${{ steps.find.outputs.release_branch }}\`"
+            echo "- Trigger: \`${{ github.event_name }}\`"
             echo
-            echo "This workflow **dispatches** the production deploy workflow for the selected release branch."
+            echo 'This workflow dispatches the production deploy workflow for the selected release branch.'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Dispatch production deploy workflow
-        uses: actions/github-script@v7
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           script: |
             const owner = context.repo.owner;

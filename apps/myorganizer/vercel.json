@@ -1,5 +1,5 @@
 {
-  "installCommand": "cd ../.. && yarn install --frozen-lockfile",
+  "installCommand": "cd ../.. && corepack yarn install --immutable",
   "buildCommand": "VERCEL=1 npx next build && rm -rf dist/apps/myorganizer/.next && mkdir -p dist/apps/myorganizer && cp -R .next dist/apps/myorganizer/.next",
   "outputDirectory": ".next"
 }
