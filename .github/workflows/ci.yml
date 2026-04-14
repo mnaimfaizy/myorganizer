@@ -181,7 +181,7 @@ jobs:
       # Corepack has a chance to resolve the pinned Yarn 4 version.
       - name: Restore dependency cache
         id: dependency-cache
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             .yarn/install-state.gz
@@ -220,7 +220,7 @@ jobs:
 
       - name: Restore dependency cache
         id: dependency-cache
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             .yarn/install-state.gz
@@ -293,7 +293,7 @@ jobs:
 
       - name: Restore dependency cache
         id: dependency-cache
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             .yarn/install-state.gz
@@ -335,7 +335,7 @@ jobs:
 
       - name: Restore dependency cache
         id: dependency-cache
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             .yarn/install-state.gz
@@ -381,7 +381,7 @@ jobs:
 
       - name: Restore dependency cache
         id: dependency-cache
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             .yarn/install-state.gz
@@ -422,7 +422,7 @@ jobs:
 
       - name: Restore dependency cache
         id: dependency-cache
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: |
             .yarn/install-state.gz
