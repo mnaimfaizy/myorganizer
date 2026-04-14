@@ -266,7 +266,7 @@ jobs:
           BASE='${{ steps.affected.outputs.nx_base }}'
           HEAD='${{ steps.affected.outputs.nx_head }}'
 
-          if ! AFFECTED_JSON="$(corepack yarn -s nx show projects --affected --base="$BASE" --head="$HEAD" --json | node -e "const fs=require('fs'); const input=fs.readFileSync(0,'utf8'); process.stdout.write(JSON.stringify(JSON.parse(input))); ")"; then
+          if ! AFFECTED_JSON="$(corepack yarn nx show projects --affected --base="$BASE" --head="$HEAD" --json | node -e "const fs=require('fs'); const input=fs.readFileSync(0,'utf8'); process.stdout.write(JSON.stringify(JSON.parse(input))); ")"; then
             echo 'Error: Failed to compute affected projects JSON from Nx output.' >&2
             exit 1
           fi
