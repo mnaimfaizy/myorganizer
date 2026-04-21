@@ -8,3 +8,6 @@ command_exists () {
 if command_exists winpty && test -t 1; then
   exec < /dev/tty
 fi
+
+# NOTE: yarn commands in hooks use `corepack yarn` directly to bypass the need
+# for `corepack enable` shims (which require admin rights on Windows).
