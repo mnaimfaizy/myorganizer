@@ -18,7 +18,7 @@ This document records the dependency, package-manager, and CI hardening posture 
 - CI verifies that `yarn.lock` remains unchanged after every `yarn install --immutable` run.
 - Pull requests are blocked if they introduce or modify `package-lock.json` or `pnpm-lock.yaml`.
 - Dependabot keeps its npm ecosystem cooldown aligned to the same 7-day release-aging policy.
-- GitHub Actions deploys to Vercel via a pinned ephemeral CLI invocation (`corepack yarn dlx -p vercel@41.7.8 vercel`) so the Vercel builder packages do not live in the primary repository lockfile.
+- GitHub Actions deploys to Vercel via a pinned ephemeral CLI invocation (`corepack yarn dlx -p vercel@50.1.1 vercel`) so the Vercel builder packages do not live in the primary repository lockfile.
 - Dependency manifests, lockfiles, package-manager policy files, workflows, and security documents are protected with `CODEOWNERS` review.
 
 ## Axios 2026 Lessons That Apply Here
