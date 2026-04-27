@@ -42,3 +42,14 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - Do not store vault plaintext on the server or add plaintext todo APIs.
 - Do not hand-edit generated API client code.
 - Do not commit secrets or production credentials.
+
+## Spec-driven changes (OpenSpec)
+
+For non-trivial features and refactors, draft an OpenSpec change before coding.
+
+- Config and project context: [openspec/config.yaml](openspec/config.yaml).
+- Changes live under `openspec/changes/<name>/` and are archived on completion.
+- Copilot Chat slash commands: `/opsx-propose`, `/opsx-apply`, `/opsx-archive`, `/opsx-explore` (see [.github/prompts](.github/prompts)).
+- Skills under [.github/skills](.github/skills) (`openspec-*`) auto-load when relevant.
+- Skip OpenSpec for trivial fixes (typos, one-line bugs) — open a PR directly.
+- OpenSpec describes _what_ to build; existing `.github/skills/*` describe _how_ (vault, backend API, frontend pages, prisma, e2e, auth, youtube, release).

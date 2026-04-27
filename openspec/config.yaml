@@ -1,0 +1,65 @@
+schema: spec-driven
+
+# Project context shown to the AI when generating OpenSpec artifacts.
+context: |
+  Project: MyOrganizer — a personal organizer web app.
+  Repo type: Nx monorepo managed with Corepack-pinned Yarn 4 (Node >= 22).
+
+  Stack:
+    - Frontend: Next.js 14 (App Router), React 18, TypeScript, Tailwind CSS,
+      Radix UI, React Hook Form + Zod.
+    - Backend: Express.js + TSOA (decorators -> OpenAPI) + Prisma ORM,
+      Winston logging, Passport/JWT auth, router prefix /api/v1.
+    - Shared libs: libs/core, libs/auth, libs/vault-core, libs/web-ui,
+      libs/web-vault, libs/web-vault-ui, libs/web/pages/<route>,
+      libs/api-specs, libs/app-api-client (generated).
+    - Tests: Jest (unit), Playwright (e2e in apps/myorganizer-e2e).
+    - Storybook for UI dev.
+
+  Architectural rules:
+    - apps/myorganizer/src/app/** must be thin Next.js route wrappers.
+      Page logic lives in libs/web/pages/<route> and shared code in libs/**.
+      Never add helpers under apps/myorganizer/src/lib/**.
+    - Use path aliases from tsconfig.base.json (e.g. @myorganizer/web-ui,
+      @myorganizer/web-pages/<route>).
+    - Use the generated @myorganizer/app-api-client; never hand-edit it.
+      After backend contract changes run: yarn openapi:sync && yarn api:generate.
+    - Vault-backed features are end-to-end encrypted: the server stores
+      ciphertext only. Current blob types: addresses, mobileNumbers,
+      subscriptions, todos. Never add plaintext Todo REST endpoints or
+      a Prisma Todo model.
+    - Prisma schemas live in apps/backend/src/prisma/schema/. Use
+      `npx prisma migrate dev --name <desc>`; never hand-edit migrations.
+
+  Conventions:
+    - Conventional Commits (feat:, fix:, docs:, refactor:, test:, chore:).
+    - Single quotes, ES2015 target, no `any`, no `var`, no console.log.
+    - Prefer Nx libs over app-local helpers. Respect Nx module boundaries.
+    - Existing skills under .github/skills/* describe HOW to do common
+      changes (vault, backend API, frontend page, prisma, e2e, auth,
+      youtube, release). Reference them in design.md when relevant.
+
+  Useful commands:
+    - yarn start:backend | yarn start:myorganizer | yarn storybook
+    - yarn nx test <project> | yarn nx lint <project> | yarn format:write
+    - yarn openapi:sync | yarn openapi:check | yarn api:generate
+
+# Per-artifact rules.
+rules:
+  proposal:
+    - Keep it under ~400 words.
+    - Always include a "Non-goals" section.
+    - Call out any vault / E2EE, auth, or generated-API-client impact explicitly.
+  design:
+    - Identify which Nx libs/apps are touched and why.
+    - For backend changes, list the new/changed TSOA endpoints and Prisma
+      models, and note required regen steps (openapi:sync, api:generate,
+      prisma migrate).
+    - For vault changes, describe the blob type, schema version, and
+      export/import + migration impact.
+    - Reference relevant .github/skills/* by name when applicable.
+  tasks:
+    - Break work into small, independently reviewable steps.
+    - 'Include explicit steps for: tests (Jest/Playwright), lint, format,
+      and any codegen (openapi/api/prisma).'
+    - End with a verification checklist (build, lint, tests pass).
