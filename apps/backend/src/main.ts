@@ -47,6 +47,23 @@ const app = express();
 
 const isProd = process.env.NODE_ENV === 'production';
 
+type HttpLikeError = Error & {
+  status?: unknown;
+  statusCode?: unknown;
+};
+
+function getHttpErrorStatus(err: unknown): number | undefined {
+  if (!err || typeof err !== 'object') return undefined;
+
+  const maybeErr = err as HttpLikeError;
+  const rawStatus = maybeErr.status ?? maybeErr.statusCode;
+  if (typeof rawStatus !== 'number') return undefined;
+  if (!Number.isInteger(rawStatus)) return undefined;
+  if (rawStatus < 400 || rawStatus > 599) return undefined;
+
+  return rawStatus;
+}
+
 function parseTrustProxy(value: string | undefined): boolean | number {
   const raw = (value ?? '').trim().toLowerCase();
   if (!raw) return isProd ? 1 : false;
@@ -201,6 +218,13 @@ app.use(function errorHandler(
       details: err?.fields,
     });
   }
+
+  const httpStatus = getHttpErrorStatus(err);
+  if (httpStatus) {
+    const message = err instanceof Error ? err.message : 'Request failed';
+    return res.status(httpStatus).json({ message });
+  }
+
   if (err instanceof Error) {
     if (isProd) {
       console.error(

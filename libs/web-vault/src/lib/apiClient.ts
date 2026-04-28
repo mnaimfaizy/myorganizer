@@ -1,27 +1,29 @@
 import {
   Configuration,
   VaultApi,
+  VaultBackupsApi,
   type ConfigurationParameters,
 } from '@myorganizer/app-api-client';
+import { getAccessToken } from '@myorganizer/auth';
 import { getApiBaseUrl } from '@myorganizer/core';
 
-function getAccessToken(): string | undefined {
-  if (typeof window === 'undefined') return undefined;
-  return window.localStorage.getItem('myorganizer_access_token') || undefined;
-}
-
 export function createApiConfiguration(
-  overrides: Partial<ConfigurationParameters> = {}
+  overrides: Partial<ConfigurationParameters> = {},
 ): Configuration {
-  const accessToken = getAccessToken();
-
+  // Pass `accessToken` as a function so the latest value is read on each
+  // request (covers token refresh and the localStorage/sessionStorage split
+  // between "remember me" and "session-only" modes).
   return new Configuration({
     basePath: getApiBaseUrl(),
-    ...(accessToken ? { accessToken } : {}),
+    accessToken: () => getAccessToken() ?? '',
     ...overrides,
   });
 }
 
 export function createVaultApi(): VaultApi {
   return new VaultApi(createApiConfiguration());
+}
+
+export function createVaultBackupsApi(): VaultBackupsApi {
+  return new VaultBackupsApi(createApiConfiguration());
 }

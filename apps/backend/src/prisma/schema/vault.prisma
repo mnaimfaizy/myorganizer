@@ -33,3 +33,22 @@ model EncryptedVaultBlob {
     @@unique([userId, type])
     @@index([userId])
 }
+
+model VaultBackupRecord {
+    id              String      @id @default(cuid())
+    userId          String
+
+    event           String
+    source          String
+    status          String
+    errorCode       String?
+    schemaVersion   Int
+    blobTypes       String[]
+    sizeBytes       Int
+
+    createdAt       DateTime    @default(now())
+
+    user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@index([userId, createdAt])
+}

@@ -10,6 +10,7 @@ import {
   SUPPORTED_CURRENCIES,
   type CurrencyCode,
 } from '@myorganizer/core';
+import { useLatestBackup } from '@myorganizer/web-pages/vault-settings';
 import {
   Button,
   Card,
@@ -24,6 +25,8 @@ import {
   SelectValue,
   useToast,
 } from '@myorganizer/web-ui';
+import { LastBackupCard } from '@myorganizer/web-vault-ui';
+import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 export function AccountPageClient() {
@@ -121,6 +124,14 @@ export function AccountPageClient() {
 
   const countries = useMemo(() => COUNTRIES, []);
 
+  const latestBackup = useLatestBackup();
+  const latestBackupRecord =
+    latestBackup.status === 'loaded'
+      ? latestBackup.record
+      : latestBackup.status === 'empty'
+        ? null
+        : undefined;
+
   function persist(next: {
     countryCode: string;
     preferredCurrency: CurrencyCode;
@@ -134,8 +145,20 @@ export function AccountPageClient() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+      <div className="flex flex-col gap-2">
+        <LastBackupCard
+          record={latestBackupRecord}
+          isLoading={latestBackup.status === 'loading'}
+        />
+        <Link
+          href="/dashboard/account/vault"
+          className="text-sm text-primary underline"
+        >
+          Manage vault export &amp; import →
+        </Link>
+      </div>
       <Card className="p-4">
-        <CardTitle className="text-lg">Settings</CardTitle>
+        <CardTitle className="text-lg">Settings</CardTitle>{' '}
         <CardContent className="mt-4 space-y-4">
           <div className="space-y-2">
             <Label>Country</Label>

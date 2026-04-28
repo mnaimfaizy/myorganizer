@@ -105,8 +105,10 @@ When consuming the generated client:
 ### Database
 
 - Prisma schemas in `apps/backend/src/prisma/schema/`
-- Run `npx prisma generate` after schema changes
-- Create migrations: `npx prisma migrate dev --name description`
+- Prefer Nx targets for Prisma workflows: `yarn nx run backend:generate-types` and `yarn nx run backend:migrate`
+- If running Prisma manually, run from `apps/backend/src` and include schema path:
+  - `npx prisma generate --schema prisma/schema`
+  - `npx prisma migrate dev --schema prisma/schema --name description`
 - Never edit migration files manually
 
 ## Testing

@@ -18,6 +18,8 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - Lint: `yarn nx lint <project-name>` or `yarn lint`.
 - Format: `yarn format:write`.
 - API sync after backend contract changes: `yarn openapi:sync`; check drift with `yarn openapi:check`.
+- Prisma (backend): prefer Nx targets `yarn nx run backend:migrate` and `yarn nx run backend:generate-types`.
+- Prisma (manual): run from `apps/backend/src` and pass schema path, e.g. `npx prisma migrate dev --schema prisma/schema --name <migration_name>` and `npx prisma generate --schema prisma/schema`.
 
 ## Architecture
 
