@@ -12,6 +12,7 @@ model User {
     blacklisted_tokens              String[]
 
     encrypted_vault                  EncryptedVault?
+    vault_backup_records             VaultBackupRecord[]
     youtube_integration              YouTubeIntegration?
     youtube_subscriptions            YouTubeSubscription[]
     youtube_videos                   YouTubeVideo[]

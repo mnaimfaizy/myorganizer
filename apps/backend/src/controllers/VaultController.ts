@@ -19,8 +19,7 @@ import vaultService, {
   VaultMetaV1,
 } from '../services/VaultService';
 import { UserInterface } from '../types';
-
-type ErrorResponse = { message: string; details?: unknown };
+import { ErrorResponse } from './ErrorResponse';
 
 type GetVaultMetaResponse =
   | { meta: VaultMetaV1; updatedAt: string; etag: string }
@@ -58,7 +57,7 @@ export class VaultController extends Controller {
 
   @Get()
   public async getVaultMeta(
-    @Request() req: ExRequest
+    @Request() req: ExRequest,
   ): Promise<GetVaultMetaResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
@@ -75,7 +74,7 @@ export class VaultController extends Controller {
   public async putVaultMeta(
     @Request() req: ExRequest,
     @Body() requestBody: { meta: VaultMetaV1 },
-    @Header('if-match') ifMatch?: string
+    @Header('if-match') ifMatch?: string,
   ): Promise<PutVaultMetaResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
@@ -86,7 +85,7 @@ export class VaultController extends Controller {
     const result = await vaultService.putVaultMeta(
       userId,
       requestBody?.meta,
-      ifMatch
+      ifMatch,
     );
     this.setStatus(result.status);
     return result.body as PutVaultMetaResponse;
@@ -95,7 +94,7 @@ export class VaultController extends Controller {
   @Get('/blob/{type}')
   public async getVaultBlob(
     @Request() req: ExRequest,
-    @Path() type: VaultBlobType
+    @Path() type: VaultBlobType,
   ): Promise<GetVaultBlobResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
@@ -113,7 +112,7 @@ export class VaultController extends Controller {
     @Request() req: ExRequest,
     @Path() type: VaultBlobType,
     @Body() requestBody: { type: VaultBlobType; blob: EncryptedBlobV1 },
-    @Header('if-match') ifMatch?: string
+    @Header('if-match') ifMatch?: string,
   ): Promise<PutVaultBlobResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
@@ -130,7 +129,7 @@ export class VaultController extends Controller {
       userId,
       type,
       requestBody?.blob,
-      ifMatch
+      ifMatch,
     );
     this.setStatus(result.status);
     return result.body as PutVaultBlobResponse;
@@ -138,7 +137,7 @@ export class VaultController extends Controller {
 
   @Post('/export')
   public async exportVault(
-    @Request() req: ExRequest
+    @Request() req: ExRequest,
   ): Promise<ExportVaultResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
@@ -154,7 +153,7 @@ export class VaultController extends Controller {
   @Post('/import')
   public async importVault(
     @Request() req: ExRequest,
-    @Body() requestBody: VaultExportV1
+    @Body() requestBody: VaultExportV1,
   ): Promise<ImportVaultResponse> {
     const userId = this.getUserId(req);
     if (!userId) {

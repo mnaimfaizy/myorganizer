@@ -248,13 +248,14 @@
       },
       "ErrorResponse": {
         "properties": {
-          "details": {},
           "message": {
             "type": "string"
-          }
+          },
+          "details": {}
         },
         "required": ["message"],
-        "type": "object"
+        "type": "object",
+        "additionalProperties": false
       },
       "GetVaultMetaResponse": {
         "anyOf": [
@@ -433,6 +434,165 @@
             },
             "required": ["ok"],
             "type": "object"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "VaultBackupEvent": {
+        "type": "string",
+        "enum": ["export", "import"]
+      },
+      "VaultBackupSource": {
+        "type": "string",
+        "enum": ["local-file"],
+        "nullable": false
+      },
+      "VaultBackupStatus": {
+        "type": "string",
+        "enum": ["success", "failed"]
+      },
+      "VaultBackupBlobType": {
+        "type": "string",
+        "enum": ["addresses", "mobileNumbers", "subscriptions", "todos"]
+      },
+      "VaultBackupRecordDto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "event": {
+            "$ref": "#/components/schemas/VaultBackupEvent"
+          },
+          "source": {
+            "$ref": "#/components/schemas/VaultBackupSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VaultBackupStatus"
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "schemaVersion": {
+            "type": "number",
+            "format": "double"
+          },
+          "blobTypes": {
+            "items": {
+              "$ref": "#/components/schemas/VaultBackupBlobType"
+            },
+            "type": "array"
+          },
+          "sizeBytes": {
+            "type": "number",
+            "format": "double"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "event",
+          "source",
+          "status",
+          "errorCode",
+          "schemaVersion",
+          "blobTypes",
+          "sizeBytes",
+          "createdAt"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "RecordVaultBackupResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/VaultBackupRecordDto"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "RecordVaultBackupRequest": {
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/VaultBackupEvent"
+          },
+          "source": {
+            "$ref": "#/components/schemas/VaultBackupSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VaultBackupStatus"
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "schemaVersion": {
+            "type": "number",
+            "format": "double"
+          },
+          "blobTypes": {
+            "items": {
+              "$ref": "#/components/schemas/VaultBackupBlobType"
+            },
+            "type": "array"
+          },
+          "sizeBytes": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "event",
+          "source",
+          "status",
+          "schemaVersion",
+          "blobTypes",
+          "sizeBytes"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "GetLatestVaultBackupResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/VaultBackupRecordDto"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "VaultBackupHistoryPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/VaultBackupRecordDto"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": ["items", "nextCursor"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ListVaultBackupsResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/VaultBackupHistoryPage"
           },
           {
             "$ref": "#/components/schemas/ErrorResponse"
@@ -1350,6 +1510,113 @@
             }
           }
         }
+      }
+    },
+    "/vault/backups": {
+      "post": {
+        "operationId": "RecordBackup",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordVaultBackupResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["VaultBackups"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordVaultBackupRequest"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "ListBackups",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListVaultBackupsResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["VaultBackups"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "format": "double",
+              "type": "number"
+            }
+          }
+        ]
+      }
+    },
+    "/vault/backups/latest": {
+      "get": {
+        "operationId": "GetLatestBackup",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetLatestVaultBackupResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["VaultBackups"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/VaultBackupStatus"
+            }
+          }
+        ]
       }
     },
     "/user": {
