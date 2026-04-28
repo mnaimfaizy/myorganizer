@@ -171,16 +171,16 @@ export interface EncryptedBlobV1 {
 export interface ErrorResponse {
     /**
      * 
-     * @type {any}
-     * @memberof ErrorResponse
-     */
-    'details'?: any;
-    /**
-     * 
      * @type {string}
      * @memberof ErrorResponse
      */
     'message': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof ErrorResponse
+     */
+    'details'?: any;
 }
 /**
  * 
@@ -214,16 +214,16 @@ export interface ExportVaultResponse {
     'blobs': PartialRecordVaultBlobTypeEncryptedBlobV1;
     /**
      * 
-     * @type {any}
-     * @memberof ExportVaultResponse
-     */
-    'details'?: any;
-    /**
-     * 
      * @type {string}
      * @memberof ExportVaultResponse
      */
     'message': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof ExportVaultResponse
+     */
+    'details'?: any;
 }
 
 export const ExportVaultResponseExportVersionEnum = {
@@ -322,6 +322,87 @@ export interface GetConnectionStatus200Response {
 /**
  * 
  * @export
+ * @interface GetLatestVaultBackupResponse
+ */
+export interface GetLatestVaultBackupResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetLatestVaultBackupResponse
+     */
+    'id': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetLatestVaultBackupResponse
+     */
+    'userId': string;
+    /**
+     * 
+     * @type {VaultBackupEvent}
+     * @memberof GetLatestVaultBackupResponse
+     */
+    'event': VaultBackupEvent;
+    /**
+     * 
+     * @type {VaultBackupSource}
+     * @memberof GetLatestVaultBackupResponse
+     */
+    'source': VaultBackupSource;
+    /**
+     * 
+     * @type {VaultBackupStatus}
+     * @memberof GetLatestVaultBackupResponse
+     */
+    'status': VaultBackupStatus;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetLatestVaultBackupResponse
+     */
+    'errorCode': string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof GetLatestVaultBackupResponse
+     */
+    'schemaVersion': number;
+    /**
+     * 
+     * @type {Array<VaultBackupBlobType>}
+     * @memberof GetLatestVaultBackupResponse
+     */
+    'blobTypes': Array<VaultBackupBlobType>;
+    /**
+     * 
+     * @type {number}
+     * @memberof GetLatestVaultBackupResponse
+     */
+    'sizeBytes': number;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetLatestVaultBackupResponse
+     */
+    'createdAt': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetLatestVaultBackupResponse
+     */
+    'message': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof GetLatestVaultBackupResponse
+     */
+    'details'?: any;
+}
+
+
+/**
+ * 
+ * @export
  * @interface GetNotificationSettings200Response
  */
 export interface GetNotificationSettings200Response {
@@ -395,16 +476,16 @@ export interface GetVaultBlobResponse {
     'type': VaultBlobType;
     /**
      * 
-     * @type {any}
-     * @memberof GetVaultBlobResponse
-     */
-    'details'?: any;
-    /**
-     * 
      * @type {string}
      * @memberof GetVaultBlobResponse
      */
     'message': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof GetVaultBlobResponse
+     */
+    'details'?: any;
 }
 
 
@@ -467,16 +548,16 @@ export interface GetVaultMetaResponse {
     'meta': VaultMetaV1;
     /**
      * 
-     * @type {any}
-     * @memberof GetVaultMetaResponse
-     */
-    'details'?: any;
-    /**
-     * 
      * @type {string}
      * @memberof GetVaultMetaResponse
      */
     'message': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof GetVaultMetaResponse
+     */
+    'details'?: any;
 }
 /**
  * 
@@ -581,6 +662,19 @@ export interface HandleCallback200Response {
 /**
  * 
  * @export
+ * @interface HandleCallbackRequest
+ */
+export interface HandleCallbackRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof HandleCallbackRequest
+     */
+    'code': string;
+}
+/**
+ * 
+ * @export
  * @interface ImportVaultResponse
  */
 export interface ImportVaultResponse {
@@ -592,16 +686,16 @@ export interface ImportVaultResponse {
     'ok': boolean;
     /**
      * 
-     * @type {any}
-     * @memberof ImportVaultResponse
-     */
-    'details'?: any;
-    /**
-     * 
      * @type {string}
      * @memberof ImportVaultResponse
      */
     'message': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof ImportVaultResponse
+     */
+    'details'?: any;
 }
 /**
  * 
@@ -615,6 +709,37 @@ export interface ImportVaultResponseAnyOf {
      * @memberof ImportVaultResponseAnyOf
      */
     'ok': boolean;
+}
+/**
+ * 
+ * @export
+ * @interface ListVaultBackupsResponse
+ */
+export interface ListVaultBackupsResponse {
+    /**
+     * 
+     * @type {Array<VaultBackupRecordDto>}
+     * @memberof ListVaultBackupsResponse
+     */
+    'items': Array<VaultBackupRecordDto>;
+    /**
+     * 
+     * @type {string}
+     * @memberof ListVaultBackupsResponse
+     */
+    'nextCursor': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof ListVaultBackupsResponse
+     */
+    'message': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof ListVaultBackupsResponse
+     */
+    'details'?: any;
 }
 /**
  * 
@@ -776,16 +901,16 @@ export interface PutVaultBlobResponse {
     'ok': boolean;
     /**
      * 
-     * @type {any}
-     * @memberof PutVaultBlobResponse
-     */
-    'details'?: any;
-    /**
-     * 
      * @type {string}
      * @memberof PutVaultBlobResponse
      */
     'message': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof PutVaultBlobResponse
+     */
+    'details'?: any;
 }
 /**
  * 
@@ -826,16 +951,16 @@ export interface PutVaultMetaResponse {
     'ok': boolean;
     /**
      * 
-     * @type {any}
-     * @memberof PutVaultMetaResponse
-     */
-    'details'?: any;
-    /**
-     * 
      * @type {string}
      * @memberof PutVaultMetaResponse
      */
     'message': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof PutVaultMetaResponse
+     */
+    'details'?: any;
 }
 /**
  * 
@@ -862,6 +987,138 @@ export interface PutVaultMetaResponseAnyOf {
      */
     'ok': boolean;
 }
+/**
+ * 
+ * @export
+ * @interface RecordVaultBackupRequest
+ */
+export interface RecordVaultBackupRequest {
+    /**
+     * 
+     * @type {VaultBackupEvent}
+     * @memberof RecordVaultBackupRequest
+     */
+    'event': VaultBackupEvent;
+    /**
+     * 
+     * @type {VaultBackupSource}
+     * @memberof RecordVaultBackupRequest
+     */
+    'source': VaultBackupSource;
+    /**
+     * 
+     * @type {VaultBackupStatus}
+     * @memberof RecordVaultBackupRequest
+     */
+    'status': VaultBackupStatus;
+    /**
+     * 
+     * @type {string}
+     * @memberof RecordVaultBackupRequest
+     */
+    'errorCode'?: string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof RecordVaultBackupRequest
+     */
+    'schemaVersion': number;
+    /**
+     * 
+     * @type {Array<VaultBackupBlobType>}
+     * @memberof RecordVaultBackupRequest
+     */
+    'blobTypes': Array<VaultBackupBlobType>;
+    /**
+     * 
+     * @type {number}
+     * @memberof RecordVaultBackupRequest
+     */
+    'sizeBytes': number;
+}
+
+
+/**
+ * 
+ * @export
+ * @interface RecordVaultBackupResponse
+ */
+export interface RecordVaultBackupResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof RecordVaultBackupResponse
+     */
+    'id': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof RecordVaultBackupResponse
+     */
+    'userId': string;
+    /**
+     * 
+     * @type {VaultBackupEvent}
+     * @memberof RecordVaultBackupResponse
+     */
+    'event': VaultBackupEvent;
+    /**
+     * 
+     * @type {VaultBackupSource}
+     * @memberof RecordVaultBackupResponse
+     */
+    'source': VaultBackupSource;
+    /**
+     * 
+     * @type {VaultBackupStatus}
+     * @memberof RecordVaultBackupResponse
+     */
+    'status': VaultBackupStatus;
+    /**
+     * 
+     * @type {string}
+     * @memberof RecordVaultBackupResponse
+     */
+    'errorCode': string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof RecordVaultBackupResponse
+     */
+    'schemaVersion': number;
+    /**
+     * 
+     * @type {Array<VaultBackupBlobType>}
+     * @memberof RecordVaultBackupResponse
+     */
+    'blobTypes': Array<VaultBackupBlobType>;
+    /**
+     * 
+     * @type {number}
+     * @memberof RecordVaultBackupResponse
+     */
+    'sizeBytes': number;
+    /**
+     * 
+     * @type {string}
+     * @memberof RecordVaultBackupResponse
+     */
+    'createdAt': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof RecordVaultBackupResponse
+     */
+    'message': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof RecordVaultBackupResponse
+     */
+    'details'?: any;
+}
+
+
 /**
  * 
  * @export
@@ -1018,6 +1275,12 @@ export interface SyncSubscriptions200Response {
      * @type {number}
      * @memberof SyncSubscriptions200Response
      */
+    'videosSynced': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof SyncSubscriptions200Response
+     */
     'synced': number;
     /**
      * 
@@ -1032,6 +1295,12 @@ export interface SyncSubscriptions200Response {
  * @interface SyncSubscriptions200ResponseAnyOf
  */
 export interface SyncSubscriptions200ResponseAnyOf {
+    /**
+     * 
+     * @type {number}
+     * @memberof SyncSubscriptions200ResponseAnyOf
+     */
+    'videosSynced': number;
     /**
      * 
      * @type {number}
@@ -1238,6 +1507,151 @@ export const ValidateErrorJSONMessageEnum = {
 } as const;
 
 export type ValidateErrorJSONMessageEnum = typeof ValidateErrorJSONMessageEnum[keyof typeof ValidateErrorJSONMessageEnum];
+
+/**
+ * 
+ * @export
+ * @enum {string}
+ */
+
+export const VaultBackupBlobType = {
+    Addresses: 'addresses',
+    MobileNumbers: 'mobileNumbers',
+    Subscriptions: 'subscriptions',
+    Todos: 'todos'
+} as const;
+
+export type VaultBackupBlobType = typeof VaultBackupBlobType[keyof typeof VaultBackupBlobType];
+
+
+/**
+ * 
+ * @export
+ * @enum {string}
+ */
+
+export const VaultBackupEvent = {
+    Export: 'export',
+    Import: 'import'
+} as const;
+
+export type VaultBackupEvent = typeof VaultBackupEvent[keyof typeof VaultBackupEvent];
+
+
+/**
+ * 
+ * @export
+ * @interface VaultBackupHistoryPage
+ */
+export interface VaultBackupHistoryPage {
+    /**
+     * 
+     * @type {Array<VaultBackupRecordDto>}
+     * @memberof VaultBackupHistoryPage
+     */
+    'items': Array<VaultBackupRecordDto>;
+    /**
+     * 
+     * @type {string}
+     * @memberof VaultBackupHistoryPage
+     */
+    'nextCursor': string | null;
+}
+/**
+ * 
+ * @export
+ * @interface VaultBackupRecordDto
+ */
+export interface VaultBackupRecordDto {
+    /**
+     * 
+     * @type {string}
+     * @memberof VaultBackupRecordDto
+     */
+    'id': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof VaultBackupRecordDto
+     */
+    'userId': string;
+    /**
+     * 
+     * @type {VaultBackupEvent}
+     * @memberof VaultBackupRecordDto
+     */
+    'event': VaultBackupEvent;
+    /**
+     * 
+     * @type {VaultBackupSource}
+     * @memberof VaultBackupRecordDto
+     */
+    'source': VaultBackupSource;
+    /**
+     * 
+     * @type {VaultBackupStatus}
+     * @memberof VaultBackupRecordDto
+     */
+    'status': VaultBackupStatus;
+    /**
+     * 
+     * @type {string}
+     * @memberof VaultBackupRecordDto
+     */
+    'errorCode': string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof VaultBackupRecordDto
+     */
+    'schemaVersion': number;
+    /**
+     * 
+     * @type {Array<VaultBackupBlobType>}
+     * @memberof VaultBackupRecordDto
+     */
+    'blobTypes': Array<VaultBackupBlobType>;
+    /**
+     * 
+     * @type {number}
+     * @memberof VaultBackupRecordDto
+     */
+    'sizeBytes': number;
+    /**
+     * 
+     * @type {string}
+     * @memberof VaultBackupRecordDto
+     */
+    'createdAt': string;
+}
+
+
+/**
+ * 
+ * @export
+ * @enum {string}
+ */
+
+export const VaultBackupSource = {
+    LocalFile: 'local-file'
+} as const;
+
+export type VaultBackupSource = typeof VaultBackupSource[keyof typeof VaultBackupSource];
+
+
+/**
+ * 
+ * @export
+ * @enum {string}
+ */
+
+export const VaultBackupStatus = {
+    Success: 'success',
+    Failed: 'failed'
+} as const;
+
+export type VaultBackupStatus = typeof VaultBackupStatus[keyof typeof VaultBackupStatus];
+
 
 /**
  * 
@@ -3020,6 +3434,311 @@ export class VaultApi extends BaseAPI {
 
 
 /**
+ * VaultBackupsApi - axios parameter creator
+ * @export
+ */
+export const VaultBackupsApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * 
+         * @param {VaultBackupStatus} [status] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getLatestBackup: async (status?: VaultBackupStatus, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/vault/backups/latest`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (status !== undefined) {
+                localVarQueryParameter['status'] = status;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {string} [cursor] 
+         * @param {number} [limit] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listBackups: async (cursor?: string, limit?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/vault/backups`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (cursor !== undefined) {
+                localVarQueryParameter['cursor'] = cursor;
+            }
+
+            if (limit !== undefined) {
+                localVarQueryParameter['limit'] = limit;
+            }
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @param {RecordVaultBackupRequest} recordVaultBackupRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        recordBackup: async (recordVaultBackupRequest: RecordVaultBackupRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'recordVaultBackupRequest' is not null or undefined
+            assertParamExists('recordBackup', 'recordVaultBackupRequest', recordVaultBackupRequest)
+            const localVarPath = `/vault/backups`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(recordVaultBackupRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * VaultBackupsApi - functional programming interface
+ * @export
+ */
+export const VaultBackupsApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = VaultBackupsApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * 
+         * @param {VaultBackupStatus} [status] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getLatestBackup(status?: VaultBackupStatus, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetLatestVaultBackupResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getLatestBackup(status, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['VaultBackupsApi.getLatestBackup']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {string} [cursor] 
+         * @param {number} [limit] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listBackups(cursor?: string, limit?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListVaultBackupsResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listBackups(cursor, limit, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['VaultBackupsApi.listBackups']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
+         * @param {RecordVaultBackupRequest} recordVaultBackupRequest 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async recordBackup(recordVaultBackupRequest: RecordVaultBackupRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RecordVaultBackupResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.recordBackup(recordVaultBackupRequest, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['VaultBackupsApi.recordBackup']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * VaultBackupsApi - factory interface
+ * @export
+ */
+export const VaultBackupsApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = VaultBackupsApiFp(configuration)
+    return {
+        /**
+         * 
+         * @param {VaultBackupsApiGetLatestBackupRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getLatestBackup(requestParameters: VaultBackupsApiGetLatestBackupRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<GetLatestVaultBackupResponse> {
+            return localVarFp.getLatestBackup(requestParameters.status, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {VaultBackupsApiListBackupsRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listBackups(requestParameters: VaultBackupsApiListBackupsRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<ListVaultBackupsResponse> {
+            return localVarFp.listBackups(requestParameters.cursor, requestParameters.limit, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @param {VaultBackupsApiRecordBackupRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        recordBackup(requestParameters: VaultBackupsApiRecordBackupRequest, options?: RawAxiosRequestConfig): AxiosPromise<RecordVaultBackupResponse> {
+            return localVarFp.recordBackup(requestParameters.recordVaultBackupRequest, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * Request parameters for getLatestBackup operation in VaultBackupsApi.
+ * @export
+ * @interface VaultBackupsApiGetLatestBackupRequest
+ */
+export interface VaultBackupsApiGetLatestBackupRequest {
+    /**
+     * 
+     * @type {VaultBackupStatus}
+     * @memberof VaultBackupsApiGetLatestBackup
+     */
+    readonly status?: VaultBackupStatus
+}
+
+/**
+ * Request parameters for listBackups operation in VaultBackupsApi.
+ * @export
+ * @interface VaultBackupsApiListBackupsRequest
+ */
+export interface VaultBackupsApiListBackupsRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof VaultBackupsApiListBackups
+     */
+    readonly cursor?: string
+
+    /**
+     * 
+     * @type {number}
+     * @memberof VaultBackupsApiListBackups
+     */
+    readonly limit?: number
+}
+
+/**
+ * Request parameters for recordBackup operation in VaultBackupsApi.
+ * @export
+ * @interface VaultBackupsApiRecordBackupRequest
+ */
+export interface VaultBackupsApiRecordBackupRequest {
+    /**
+     * 
+     * @type {RecordVaultBackupRequest}
+     * @memberof VaultBackupsApiRecordBackup
+     */
+    readonly recordVaultBackupRequest: RecordVaultBackupRequest
+}
+
+/**
+ * VaultBackupsApi - object-oriented interface
+ * @export
+ * @class VaultBackupsApi
+ * @extends {BaseAPI}
+ */
+export class VaultBackupsApi extends BaseAPI {
+    /**
+     * 
+     * @param {VaultBackupsApiGetLatestBackupRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VaultBackupsApi
+     */
+    public getLatestBackup(requestParameters: VaultBackupsApiGetLatestBackupRequest = {}, options?: RawAxiosRequestConfig) {
+        return VaultBackupsApiFp(this.configuration).getLatestBackup(requestParameters.status, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {VaultBackupsApiListBackupsRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VaultBackupsApi
+     */
+    public listBackups(requestParameters: VaultBackupsApiListBackupsRequest = {}, options?: RawAxiosRequestConfig) {
+        return VaultBackupsApiFp(this.configuration).listBackups(requestParameters.cursor, requestParameters.limit, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {VaultBackupsApiRecordBackupRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VaultBackupsApi
+     */
+    public recordBackup(requestParameters: VaultBackupsApiRecordBackupRequest, options?: RawAxiosRequestConfig) {
+        return VaultBackupsApiFp(this.configuration).recordBackup(requestParameters.recordVaultBackupRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
  * YouTubeApi - axios parameter creator
  * @export
  */
@@ -3225,10 +3944,11 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
          * @param {string} [search] Filter by video title
          * @param {number} [page] Page number (1-based)
          * @param {number} [limit] Items per page
+         * @param {string} [channelId] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        getVideos: async (sort?: GetVideosSortEnum, search?: string, page?: number, limit?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        getVideos: async (sort?: GetVideosSortEnum, search?: string, page?: number, limit?: number, channelId?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/youtube/videos`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3259,6 +3979,10 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
 
             if (limit !== undefined) {
                 localVarQueryParameter['limit'] = limit;
+            }
+
+            if (channelId !== undefined) {
+                localVarQueryParameter['channelId'] = channelId;
             }
 
 
@@ -3307,16 +4031,13 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * OAuth callback — exchanges the authorization code for tokens.
-         * @param {string} code 
-         * @param {string} state 
+         * @param {HandleCallbackRequest} handleCallbackRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        handleCallback: async (code: string, state: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'code' is not null or undefined
-            assertParamExists('handleCallback', 'code', code)
-            // verify required parameter 'state' is not null or undefined
-            assertParamExists('handleCallback', 'state', state)
+        handleCallback: async (handleCallbackRequest: HandleCallbackRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'handleCallbackRequest' is not null or undefined
+            assertParamExists('handleCallback', 'handleCallbackRequest', handleCallbackRequest)
             const localVarPath = `/youtube/callback`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3325,7 +4046,7 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
                 baseOptions = configuration.baseOptions;
             }
 
-            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
@@ -3333,19 +4054,14 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
-            if (code !== undefined) {
-                localVarQueryParameter['code'] = code;
-            }
-
-            if (state !== undefined) {
-                localVarQueryParameter['state'] = state;
-            }
-
 
     
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(handleCallbackRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -3549,11 +4265,12 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
          * @param {string} [search] Filter by video title
          * @param {number} [page] Page number (1-based)
          * @param {number} [limit] Items per page
+         * @param {string} [channelId] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async getVideos(sort?: GetVideosSortEnum, search?: string, page?: number, limit?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetVideos200Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getVideos(sort, search, page, limit, options);
+        async getVideos(sort?: GetVideosSortEnum, search?: string, page?: number, limit?: number, channelId?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetVideos200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getVideos(sort, search, page, limit, channelId, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getVideos']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -3571,13 +4288,12 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
         },
         /**
          * OAuth callback — exchanges the authorization code for tokens.
-         * @param {string} code 
-         * @param {string} state 
+         * @param {HandleCallbackRequest} handleCallbackRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async handleCallback(code: string, state: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<HandleCallback200Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.handleCallback(code, state, options);
+        async handleCallback(handleCallbackRequest: HandleCallbackRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<HandleCallback200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.handleCallback(handleCallbackRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['YouTubeApi.handleCallback']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -3683,7 +4399,7 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
          * @throws {RequiredError}
          */
         getVideos(requestParameters: YouTubeApiGetVideosRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<GetVideos200Response> {
-            return localVarFp.getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, options).then((request) => request(axios, basePath));
+            return localVarFp.getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, requestParameters.channelId, options).then((request) => request(axios, basePath));
         },
         /**
          * Returns videos grouped by channel for the carousel view.
@@ -3700,7 +4416,7 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
          * @throws {RequiredError}
          */
         handleCallback(requestParameters: YouTubeApiHandleCallbackRequest, options?: RawAxiosRequestConfig): AxiosPromise<HandleCallback200Response> {
-            return localVarFp.handleCallback(requestParameters.code, requestParameters.state, options).then((request) => request(axios, basePath));
+            return localVarFp.handleCallback(requestParameters.handleCallbackRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * Fetches fresh subscriptions from YouTube and syncs to DB.
@@ -3764,6 +4480,13 @@ export interface YouTubeApiGetVideosRequest {
      * @memberof YouTubeApiGetVideos
      */
     readonly limit?: number
+
+    /**
+     * 
+     * @type {string}
+     * @memberof YouTubeApiGetVideos
+     */
+    readonly channelId?: string
 }
 
 /**
@@ -3774,17 +4497,10 @@ export interface YouTubeApiGetVideosRequest {
 export interface YouTubeApiHandleCallbackRequest {
     /**
      * 
-     * @type {string}
+     * @type {HandleCallbackRequest}
      * @memberof YouTubeApiHandleCallback
      */
-    readonly code: string
-
-    /**
-     * 
-     * @type {string}
-     * @memberof YouTubeApiHandleCallback
-     */
-    readonly state: string
+    readonly handleCallbackRequest: HandleCallbackRequest
 }
 
 /**
@@ -3897,7 +4613,7 @@ export class YouTubeApi extends BaseAPI {
      * @memberof YouTubeApi
      */
     public getVideos(requestParameters: YouTubeApiGetVideosRequest = {}, options?: RawAxiosRequestConfig) {
-        return YouTubeApiFp(this.configuration).getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, options).then((request) => request(this.axios, this.basePath));
+        return YouTubeApiFp(this.configuration).getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, requestParameters.channelId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3918,7 +4634,7 @@ export class YouTubeApi extends BaseAPI {
      * @memberof YouTubeApi
      */
     public handleCallback(requestParameters: YouTubeApiHandleCallbackRequest, options?: RawAxiosRequestConfig) {
-        return YouTubeApiFp(this.configuration).handleCallback(requestParameters.code, requestParameters.state, options).then((request) => request(this.axios, this.basePath));
+        return YouTubeApiFp(this.configuration).handleCallback(requestParameters.handleCallbackRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

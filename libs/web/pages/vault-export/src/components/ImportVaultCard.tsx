@@ -15,14 +15,14 @@ import {
 } from '@myorganizer/web-ui';
 
 import {
-  bundleToLocalVault,
-  createVaultApi,
-  getHttpStatus,
+  createDefaultAuditReporter,
+  createDefaultReplayTracker,
+  importVault,
+  isVaultImportError,
   loadVault,
-  saveVault,
-  validateVaultExportBundleFromText,
-  VAULT_EXPORT_MAX_BYTES,
+  VAULT_CORE_EXPORT_MAX_BYTES,
 } from '@myorganizer/web-vault';
+import { getVaultImportErrorMessage } from '@myorganizer/web-vault-ui';
 
 import { formatBytes } from '../utils/formatBytes';
 import { getErrorMessage } from '../utils/getErrorMessage';
@@ -43,11 +43,11 @@ export function ImportVaultCard() {
       return;
     }
 
-    if (selectedFile.size > VAULT_EXPORT_MAX_BYTES) {
+    if (selectedFile.size > VAULT_CORE_EXPORT_MAX_BYTES) {
       toast({
         title: 'File too large',
         description: `Max supported size is ${formatBytes(
-          VAULT_EXPORT_MAX_BYTES
+          VAULT_CORE_EXPORT_MAX_BYTES,
         )}.`,
         variant: 'destructive',
       });
@@ -59,12 +59,11 @@ export function ImportVaultCard() {
 
     try {
       const text = await selectedFile.text();
-      const bundle = validateVaultExportBundleFromText(text);
 
       const existingLocalVault = loadVault();
       if (existingLocalVault) {
         const confirmed = window.confirm(
-          'Importing will replace your current local vault data. Continue?'
+          'Importing will replace your current local vault data. Continue?',
         );
         if (!confirmed) {
           toast({
@@ -75,35 +74,36 @@ export function ImportVaultCard() {
         }
       }
 
-      const nextLocalVault = bundleToLocalVault(bundle);
-      saveVault(nextLocalVault);
+      // Hardened import: parse → validate → migrate → stage → atomic commit.
+      // The default audit reporter records a success/failed event with the
+      // classified VaultImportError code; the default replay tracker rejects
+      // re-importing the same envelope within the recent window.
+      // For import, audit reporting stays non-strict: by the time the audit
+      // POST runs the local vault has already been committed, so a strict
+      // throw would surface "Import failed" while the user's data is in fact
+      // updated. The default reporter logs failures via console.warn.
+      await importVault({
+        text,
+        source: 'local-file',
+        replayTracker: createDefaultReplayTracker(),
+        auditReporter: createDefaultAuditReporter(),
+      });
 
-      let serverNote = 'Imported locally.';
-
-      try {
-        const api = createVaultApi();
-        await api.importVault({ vaultExportV1: bundle });
-        serverNote = 'Imported locally and synced to server.';
-      } catch (error) {
-        const status = getHttpStatus(error);
-        if (status === 401 || status === 403) {
-          serverNote = 'Imported locally. Sign in to sync with the server.';
-        } else {
-          serverNote = 'Imported locally. Server sync failed; try again later.';
-        }
-      }
-
-      setLastServerNote(serverNote);
+      const note = 'Imported locally. Audit recorded on server.';
+      setLastServerNote(note);
       toast({
         title: 'Import complete',
-        description: serverNote,
+        description: note,
       });
 
       setSelectedFile(null);
     } catch (error) {
+      const description = isVaultImportError(error)
+        ? getVaultImportErrorMessage(error.code)
+        : getErrorMessage(error);
       toast({
         title: 'Import failed',
-        description: getErrorMessage(error),
+        description,
         variant: 'destructive',
       });
     } finally {
@@ -125,6 +125,7 @@ export function ImportVaultCard() {
           <Label htmlFor="vault-import-file">Vault export file (.json)</Label>
           <Input
             id="vault-import-file"
+            data-testid="import-vault-file"
             type="file"
             accept="application/json"
             onChange={(e) => {
@@ -134,7 +135,11 @@ export function ImportVaultCard() {
         </div>
 
         <div className="flex gap-2">
-          <Button onClick={handleImport} disabled={importing || !selectedFile}>
+          <Button
+            data-testid="import-vault-button"
+            onClick={handleImport}
+            disabled={importing || !selectedFile}
+          >
             {importing ? 'Importing…' : 'Import vault JSON'}
           </Button>
         </div>

@@ -1,0 +1,23 @@
+{
+  "name": "web-pages-vault-settings",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/web/pages/vault-settings/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/web/pages/vault-settings/src/**/*.{ts,tsx}"]
+      }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/libs/web/pages/vault-settings"],
+      "options": {
+        "jestConfig": "libs/web/pages/vault-settings/jest.config.ts",
+        "passWithNoTests": true
+      }
+    }
+  }
+}

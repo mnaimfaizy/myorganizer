@@ -37,6 +37,9 @@
       "@myorganizer/web-pages/vault-export": [
         "libs/web/pages/vault-export/src/index.ts"
       ],
+      "@myorganizer/web-pages/vault-settings": [
+        "libs/web/pages/vault-settings/src/index.ts"
+      ],
       "@myorganizer/web-pages/youtube": ["libs/web/pages/youtube/src/index.ts"],
       "@myorganizer/web-ui": ["libs/web-ui/src/index.ts"],
       "@myorganizer/web-vault": ["libs/web-vault/src/index.ts"],

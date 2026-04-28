@@ -4,8 +4,20 @@ import {
   VaultExportV1,
   VaultMetaV1,
 } from '@myorganizer/app-api-client';
+import {
+  CURRENT_VAULT_EXPORT_SCHEMA_VERSION,
+  isVaultImportError,
+  migrateEnvelope,
+  parseVaultExportEnvelope,
+  VAULT_EXPORT_MAX_BYTES as VAULT_CORE_EXPORT_MAX_BYTES,
+  VAULT_EXPORT_BLOB_TYPES,
+  VaultExportEnvelope,
+  VaultImportError,
+} from '@myorganizer/vault-core';
 
-import { VaultStorageV1 } from './vault';
+import { AuditReporter, noopAuditReporter } from './auditReporter';
+import { ReplayTracker } from './replayTracker';
+import { saveVault, VaultStorageV1 } from './vault';
 import {
   localToServerMeta,
   normalizeEncryptedBlobV1,
@@ -249,3 +261,298 @@ export function bundleToLocalVault(bundle: VaultExportV1): VaultStorageV1 {
 
   return serverMetaToLocalVault({ meta: bundle.meta, blobs });
 }
+
+// ---------------------------------------------------------------------------
+// Hardened export / import (stage-then-commit + audit + replay tracking).
+// ---------------------------------------------------------------------------
+
+export const VAULT_CURRENT_SCHEMA_VERSION = CURRENT_VAULT_EXPORT_SCHEMA_VERSION;
+
+function generateExportId(): string {
+  const cryptoApi: { randomUUID?: () => string } | undefined =
+    typeof globalThis !== 'undefined'
+      ? (globalThis as { crypto?: { randomUUID?: () => string } }).crypto
+      : undefined;
+
+  if (cryptoApi && typeof cryptoApi.randomUUID === 'function') {
+    return cryptoApi.randomUUID();
+  }
+
+  // RFC4122-compliant v4 fallback for environments without crypto.randomUUID.
+  const bytes = new Uint8Array(16);
+  for (let i = 0; i < 16; i += 1) {
+    bytes[i] = Math.floor(Math.random() * 256);
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0'));
+  return `${hex.slice(0, 4).join('')}-${hex.slice(4, 6).join('')}-${hex
+    .slice(6, 8)
+    .join('')}-${hex.slice(8, 10).join('')}-${hex.slice(10, 16).join('')}`;
+}
+
+function envelopeBlobTypes(envelope: VaultExportEnvelope): VaultBlobType[] {
+  const out: VaultBlobType[] = [];
+  if (envelope.blobs.addresses) out.push(VaultBlobType.Addresses);
+  if (envelope.blobs.mobileNumbers) out.push(VaultBlobType.MobileNumbers);
+  if (envelope.blobs.subscriptions) out.push(VaultBlobType.Subscriptions);
+  if (envelope.blobs.todos) out.push(VaultBlobType.Todos);
+  return out;
+}
+
+function envelopeFromLocalVault(
+  localVault: VaultStorageV1,
+  options: { exportedAt?: string; exportId?: string } = {},
+): VaultExportEnvelope {
+  const blobs: VaultExportEnvelope['blobs'] = {};
+  if (localVault.data.addresses) {
+    blobs.addresses = toEncryptedBlobV1(localVault.data.addresses);
+  }
+  if (localVault.data.mobileNumbers) {
+    blobs.mobileNumbers = toEncryptedBlobV1(localVault.data.mobileNumbers);
+  }
+  if (localVault.data.subscriptions) {
+    blobs.subscriptions = toEncryptedBlobV1(localVault.data.subscriptions);
+  }
+  if (localVault.data.todos) {
+    blobs.todos = toEncryptedBlobV1(localVault.data.todos);
+  }
+
+  return {
+    schemaVersion: CURRENT_VAULT_EXPORT_SCHEMA_VERSION,
+    exportId: options.exportId ?? generateExportId(),
+    exportedAt: options.exportedAt ?? new Date().toISOString(),
+    meta: localToServerMeta(localVault),
+    blobs,
+  };
+}
+
+function envelopeToLocalVault(envelope: VaultExportEnvelope): VaultStorageV1 {
+  const blobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>> = {
+    [VaultBlobType.Addresses]: envelope.blobs.addresses
+      ? normalizeEncryptedBlobV1(envelope.blobs.addresses)
+      : null,
+    [VaultBlobType.MobileNumbers]: envelope.blobs.mobileNumbers
+      ? normalizeEncryptedBlobV1(envelope.blobs.mobileNumbers)
+      : null,
+    [VaultBlobType.Subscriptions]: envelope.blobs.subscriptions
+      ? normalizeEncryptedBlobV1(envelope.blobs.subscriptions)
+      : null,
+    [VaultBlobType.Todos]: envelope.blobs.todos
+      ? normalizeEncryptedBlobV1(envelope.blobs.todos)
+      : null,
+  };
+  return serverMetaToLocalVault({
+    meta: envelope.meta as VaultMetaV1,
+    blobs,
+  });
+}
+
+function envelopeBlobTypesAsBackup(
+  envelope: VaultExportEnvelope,
+): ('addresses' | 'mobileNumbers' | 'subscriptions' | 'todos')[] {
+  return envelopeBlobTypes(envelope) as (
+    | 'addresses'
+    | 'mobileNumbers'
+    | 'subscriptions'
+    | 'todos'
+  )[];
+}
+
+export interface ExportVaultOptions {
+  localVault: VaultStorageV1;
+  source?: 'local-file';
+  auditReporter?: AuditReporter;
+  exportedAt?: string;
+  exportId?: string;
+}
+
+export interface ExportVaultResult {
+  envelope: VaultExportEnvelope;
+  /** Pretty-printed JSON text suitable for download. */
+  text: string;
+  /** Size of `text` in UTF-8 bytes. */
+  sizeBytes: number;
+}
+
+/**
+ * Build and serialize a hardened vault export envelope and report a
+ * `success` audit record. On any failure prior to serialization, a `failed`
+ * audit record is emitted and the original error is re-thrown.
+ *
+ * Audit reporting is non-blocking: failures inside the audit reporter are
+ * caught and logged by the reporter itself.
+ */
+export async function exportVault(
+  options: ExportVaultOptions,
+): Promise<ExportVaultResult> {
+  const reporter = options.auditReporter ?? noopAuditReporter;
+  const source = options.source ?? 'local-file';
+
+  let envelope: VaultExportEnvelope;
+  try {
+    envelope = envelopeFromLocalVault(options.localVault, {
+      exportedAt: options.exportedAt,
+      exportId: options.exportId,
+    });
+
+    if (envelopeBlobTypes(envelope).length === 0) {
+      throw new VaultImportError(
+        'empty-envelope',
+        'Local vault has no blobs to export',
+      );
+    }
+  } catch (error) {
+    await reporter({
+      event: 'export',
+      source,
+      status: 'failed',
+      errorCode: isVaultImportError(error) ? error.code : 'corrupt-file',
+      schemaVersion: CURRENT_VAULT_EXPORT_SCHEMA_VERSION,
+      blobTypes: [],
+      sizeBytes: 0,
+    });
+    throw error;
+  }
+
+  const text = JSON.stringify(envelope, null, 2);
+  const sizeBytes =
+    typeof TextEncoder !== 'undefined'
+      ? new TextEncoder().encode(text).length
+      : Buffer.byteLength(text, 'utf8');
+
+  await reporter({
+    event: 'export',
+    source,
+    status: 'success',
+    errorCode: null,
+    schemaVersion: envelope.schemaVersion,
+    blobTypes: envelopeBlobTypesAsBackup(envelope),
+    sizeBytes,
+  });
+
+  return { envelope, text, sizeBytes };
+}
+
+export interface ImportVaultOptions {
+  text: string;
+  source?: 'local-file';
+  replayTracker?: ReplayTracker;
+  auditReporter?: AuditReporter;
+}
+
+export interface ImportVaultResult {
+  envelope: VaultExportEnvelope;
+  nextLocalVault: VaultStorageV1;
+  sizeBytes: number;
+}
+
+/**
+ * Validate, migrate, and atomically commit a vault export envelope to the
+ * local store. Always reports an audit record (`success` or `failed`).
+ *
+ * Phases:
+ * 1. Parse & validate (`parseVaultExportEnvelope`)
+ * 2. Replay-detection lookup
+ * 3. Forward migration to current schema version (`migrateEnvelope`)
+ * 4. Stage to in-memory `VaultStorageV1` (no localStorage writes yet)
+ * 5. Atomic commit via `saveVault` (single localStorage write)
+ * 6. Record this `exportId` in the replay tracker
+ *
+ * If any step fails the local vault is not mutated and a `failed` audit
+ * record is emitted with the classified `VaultImportError.code`.
+ */
+export async function importVault(
+  options: ImportVaultOptions,
+): Promise<ImportVaultResult> {
+  const reporter = options.auditReporter ?? noopAuditReporter;
+  const source = options.source ?? 'local-file';
+  const sizeBytes =
+    typeof TextEncoder !== 'undefined'
+      ? new TextEncoder().encode(options.text).length
+      : Buffer.byteLength(options.text, 'utf8');
+
+  let envelope: VaultExportEnvelope | null = null;
+
+  const reportFailure = async (
+    code: string,
+    schemaVersion: number,
+    blobTypes: ('addresses' | 'mobileNumbers' | 'subscriptions' | 'todos')[],
+  ): Promise<void> => {
+    await reporter({
+      event: 'import',
+      source,
+      status: 'failed',
+      errorCode: code,
+      schemaVersion,
+      blobTypes,
+      sizeBytes,
+    });
+  };
+
+  try {
+    // Phase 1: parse & validate.
+    envelope = parseVaultExportEnvelope(options.text);
+
+    // Phase 2: replay detection.
+    if (options.replayTracker) {
+      const seen = await options.replayTracker.has(envelope.exportId);
+      if (seen) {
+        throw new VaultImportError(
+          'replay-detected',
+          'This envelope has already been imported recently',
+        );
+      }
+    }
+
+    // Phase 3: forward migration. Throws on downgrade or unsupported.
+    const migrated = migrateEnvelope(
+      envelope,
+      CURRENT_VAULT_EXPORT_SCHEMA_VERSION,
+    );
+
+    // Phase 4: stage in memory. Re-parse migrated envelope to recover the
+    // narrow `VaultExportEnvelope` type after the registry's `Record` return.
+    const stagedEnvelope = parseVaultExportEnvelope(JSON.stringify(migrated));
+    const staged = envelopeToLocalVault(stagedEnvelope);
+
+    // Phase 5: atomic commit.
+    saveVault(staged);
+
+    // Phase 6: record exportId.
+    if (options.replayTracker) {
+      await options.replayTracker.remember(stagedEnvelope.exportId);
+    }
+
+    await reporter({
+      event: 'import',
+      source,
+      status: 'success',
+      errorCode: null,
+      schemaVersion: stagedEnvelope.schemaVersion,
+      blobTypes: envelopeBlobTypesAsBackup(stagedEnvelope),
+      sizeBytes,
+    });
+
+    return { envelope: stagedEnvelope, nextLocalVault: staged, sizeBytes };
+  } catch (error) {
+    const code = isVaultImportError(error) ? error.code : 'corrupt-file';
+    const schemaVersion =
+      envelope?.schemaVersion ?? CURRENT_VAULT_EXPORT_SCHEMA_VERSION;
+    const blobTypes = envelope ? envelopeBlobTypesAsBackup(envelope) : [];
+    await reportFailure(code, schemaVersion, blobTypes);
+    throw error;
+  }
+}
+
+// Re-export vault-core symbols that are part of the new public surface so
+// consumers can import them from `@myorganizer/web-vault` without a direct
+// vault-core dependency.
+export {
+  CURRENT_VAULT_EXPORT_SCHEMA_VERSION,
+  isVaultImportError,
+  VAULT_CORE_EXPORT_MAX_BYTES,
+  VAULT_EXPORT_BLOB_TYPES,
+  VaultImportError,
+};
+export type { VaultExportEnvelope };

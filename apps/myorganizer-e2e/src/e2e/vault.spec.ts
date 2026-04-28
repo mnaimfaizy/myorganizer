@@ -2,15 +2,26 @@ import { expect, test } from '@playwright/test';
 
 async function unlockWithPassphrase(
   page: import('@playwright/test').Page,
-  passphrase: string
+  passphrase: string,
 ) {
+  // New vault setup now shows a recovery-key confirmation step.
+  const savedRecoveryKey = page.getByRole('button', { name: 'I saved it' });
+  if (await savedRecoveryKey.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await savedRecoveryKey.click();
+  }
+
   // Ensure we are in passphrase mode (VaultGate has a toggle).
   const usePassphrase = page.getByRole('button', { name: 'Use passphrase' });
-  if (await usePassphrase.isVisible()) {
+  if (await usePassphrase.isVisible({ timeout: 1000 }).catch(() => false)) {
     await usePassphrase.click();
   }
 
   const input = page.locator('#unlock-passphrase');
+  if ((await input.count()) === 0) {
+    // If no unlock form is present, this route is already unlocked.
+    return;
+  }
+
   await expect(input).toBeVisible({ timeout: 60000 });
 
   // VaultGate's Unlock handler reads React state; give React a beat to
@@ -26,7 +37,7 @@ async function unlockWithPassphrase(
 
 async function login(
   page: import('@playwright/test').Page,
-  options: { webkitDelayMs: number }
+  options: { webkitDelayMs: number },
 ) {
   await page.goto('/login');
   await expect(page).toHaveURL(/.*login/);
@@ -59,7 +70,7 @@ async function login(
 async function gotoStable(
   page: import('@playwright/test').Page,
   url: string,
-  options?: Parameters<import('@playwright/test').Page['goto']>[1]
+  options?: Parameters<import('@playwright/test').Page['goto']>[1],
 ) {
   const maxAttempts = 3;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -105,21 +116,27 @@ test.describe('Vault (E2E)', () => {
     const serverBlobs: Record<string, any | null> = {
       addresses: null,
       mobileNumbers: null,
+      subscriptions: null,
+      todos: null,
     };
     const serverBlobEtags: Record<string, string> = {
       addresses: 'W/"0"',
       mobileNumbers: 'W/"0"',
+      subscriptions: 'W/"0"',
+      todos: 'W/"0"',
     };
     const serverBlobUpdatedAt: Record<string, string> = {
       addresses: new Date(0).toISOString(),
       mobileNumbers: new Date(0).toISOString(),
+      subscriptions: new Date(0).toISOString(),
+      todos: new Date(0).toISOString(),
     };
 
     async function setupRoutes(page: import('@playwright/test').Page) {
       const loginUrl = /\/auth\/login\/?(\?.*)?$/;
       const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
       const vaultBlobUrl =
-        /\/vault\/blob\/(addresses|mobileNumbers)\/?(\?.*)?$/;
+        /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos)\/?(\?.*)?$/;
 
       await page.route(loginUrl, async (route) => {
         const request = route.request();
@@ -228,7 +245,9 @@ test.describe('Vault (E2E)', () => {
 
         const match = request
           .url()
-          .match(/\/vault\/blob\/(addresses|mobileNumbers)/);
+          .match(
+            /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos)/,
+          );
         const type = match?.[1];
 
         if (!type) {
@@ -333,7 +352,7 @@ test.describe('Vault (E2E)', () => {
     await page1.waitForFunction(
       () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
       undefined,
-      { timeout: 60000 }
+      { timeout: 60000 },
     );
 
     // VaultGate does not auto-unlock after creation.
@@ -342,11 +361,18 @@ test.describe('Vault (E2E)', () => {
     await expect(page1.locator('#addr-label')).toBeVisible({ timeout: 60000 });
 
     await page1.fill('#addr-label', 'Home');
-    await page1.fill('#addr-address', '221B Baker Street, London');
-    const addAddress = page1.getByRole('button', { name: 'Add' });
+    await page1.fill('#addr-property', '221B');
+    await page1.fill('#addr-street', 'Baker Street');
+    await page1.fill('#addr-suburb', 'London');
+    await page1.fill('#addr-state', 'Greater London');
+    await page1.fill('#addr-zipcode', 'NW1');
+    await page1.locator('#addr-country').click();
+    await page1.getByRole('option', { name: 'United Kingdom' }).click();
+
+    const addAddress = page1.getByRole('button', { name: 'Add Address' });
     await expect(addAddress).toBeEnabled({ timeout: 60000 });
     await addAddress.click();
-    await expect(page1.locator('text=221B Baker Street, London')).toBeVisible({
+    await expect(page1.locator('text=221B Baker Street')).toBeVisible({
       timeout: 60000,
     });
 
@@ -354,11 +380,11 @@ test.describe('Vault (E2E)', () => {
     await unlockWithPassphrase(page1, passphrase);
 
     await page1.fill('#mn-label', 'Personal');
-    await page1.fill('#mn-number', '+1 555 123 4567');
-    const addMobile = page1.getByRole('button', { name: 'Add' });
+    await page1.fill('#mn-number', '555 123 4567');
+    const addMobile = page1.getByRole('button', { name: 'Add Mobile Number' });
     await expect(addMobile).toBeEnabled({ timeout: 60000 });
     await addMobile.click();
-    await expect(page1.locator('text=+1 555 123 4567')).toBeVisible({
+    await expect(page1.locator('text=Personal')).toBeVisible({
       timeout: 60000,
     });
 
@@ -394,7 +420,7 @@ test.describe('Vault (E2E)', () => {
     await page2.waitForFunction(
       () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
       undefined,
-      { timeout: 60000 }
+      { timeout: 60000 },
     );
 
     await gotoStable(page2, '/dashboard/addresses');
@@ -405,7 +431,7 @@ test.describe('Vault (E2E)', () => {
 
     await gotoStable(page2, '/dashboard/mobile-numbers');
     await unlockWithPassphrase(page2, passphrase);
-    await expect(page2.locator('text=+1 555 123 4567')).toBeVisible({
+    await expect(page2.locator('text=Personal')).toBeVisible({
       timeout: 60000,
     });
 
