@@ -153,7 +153,7 @@ jobs:
         run: corepack yarn package:backend:api
 
       - name: Deploy backend to cPanel (production)
-        uses: samkirkland/ftp-deploy-action@a51268f67f6605236975928ae28b0f7e9971d50a # v4.3.6
+        uses: samkirkland/ftp-deploy-action@110f9186c050f71550953127052e77650219c287 # v4.4.0
         with:
           server: ${{ secrets.FTP_PROD_HOST }}
           username: ${{ secrets.FTP_PROD_BACKEND_USERNAME }}
@@ -222,7 +222,7 @@ jobs:
         run: corepack yarn package:myorganizer:web
 
       - name: Deploy frontend to cPanel (production)
-        uses: samkirkland/ftp-deploy-action@a51268f67f6605236975928ae28b0f7e9971d50a # v4.3.6
+        uses: samkirkland/ftp-deploy-action@110f9186c050f71550953127052e77650219c287 # v4.4.0
         with:
           server: ${{ secrets.FTP_PROD_HOST }}
           username: ${{ secrets.FTP_PROD_FRONTEND_USERNAME }}
