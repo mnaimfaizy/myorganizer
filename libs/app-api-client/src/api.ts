@@ -1633,7 +1633,8 @@ export interface VaultBackupRecordDto {
  */
 
 export const VaultBackupSource = {
-    LocalFile: 'local-file'
+    LocalFile: 'local-file',
+    GoogleDrive: 'google-drive'
 } as const;
 
 export type VaultBackupSource = typeof VaultBackupSource[keyof typeof VaultBackupSource];
@@ -3442,10 +3443,11 @@ export const VaultBackupsApiAxiosParamCreator = function (configuration?: Config
         /**
          * 
          * @param {VaultBackupStatus} [status] 
+         * @param {VaultBackupSource} [source] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        getLatestBackup: async (status?: VaultBackupStatus, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        getLatestBackup: async (status?: VaultBackupStatus, source?: VaultBackupSource, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/vault/backups/latest`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3466,6 +3468,10 @@ export const VaultBackupsApiAxiosParamCreator = function (configuration?: Config
                 localVarQueryParameter['status'] = status;
             }
 
+            if (source !== undefined) {
+                localVarQueryParameter['source'] = source;
+            }
+
 
     
             setSearchParams(localVarUrlObj, localVarQueryParameter);
@@ -3481,10 +3487,11 @@ export const VaultBackupsApiAxiosParamCreator = function (configuration?: Config
          * 
          * @param {string} [cursor] 
          * @param {number} [limit] 
+         * @param {VaultBackupSource} [source] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        listBackups: async (cursor?: string, limit?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        listBackups: async (cursor?: string, limit?: number, source?: VaultBackupSource, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/vault/backups`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3507,6 +3514,10 @@ export const VaultBackupsApiAxiosParamCreator = function (configuration?: Config
 
             if (limit !== undefined) {
                 localVarQueryParameter['limit'] = limit;
+            }
+
+            if (source !== undefined) {
+                localVarQueryParameter['source'] = source;
             }
 
 
@@ -3572,11 +3583,12 @@ export const VaultBackupsApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @param {VaultBackupStatus} [status] 
+         * @param {VaultBackupSource} [source] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async getLatestBackup(status?: VaultBackupStatus, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetLatestVaultBackupResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getLatestBackup(status, options);
+        async getLatestBackup(status?: VaultBackupStatus, source?: VaultBackupSource, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetLatestVaultBackupResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getLatestBackup(status, source, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['VaultBackupsApi.getLatestBackup']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -3585,11 +3597,12 @@ export const VaultBackupsApiFp = function(configuration?: Configuration) {
          * 
          * @param {string} [cursor] 
          * @param {number} [limit] 
+         * @param {VaultBackupSource} [source] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async listBackups(cursor?: string, limit?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListVaultBackupsResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.listBackups(cursor, limit, options);
+        async listBackups(cursor?: string, limit?: number, source?: VaultBackupSource, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ListVaultBackupsResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listBackups(cursor, limit, source, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['VaultBackupsApi.listBackups']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -3623,7 +3636,7 @@ export const VaultBackupsApiFactory = function (configuration?: Configuration, b
          * @throws {RequiredError}
          */
         getLatestBackup(requestParameters: VaultBackupsApiGetLatestBackupRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<GetLatestVaultBackupResponse> {
-            return localVarFp.getLatestBackup(requestParameters.status, options).then((request) => request(axios, basePath));
+            return localVarFp.getLatestBackup(requestParameters.status, requestParameters.source, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3632,7 +3645,7 @@ export const VaultBackupsApiFactory = function (configuration?: Configuration, b
          * @throws {RequiredError}
          */
         listBackups(requestParameters: VaultBackupsApiListBackupsRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<ListVaultBackupsResponse> {
-            return localVarFp.listBackups(requestParameters.cursor, requestParameters.limit, options).then((request) => request(axios, basePath));
+            return localVarFp.listBackups(requestParameters.cursor, requestParameters.limit, requestParameters.source, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3658,6 +3671,13 @@ export interface VaultBackupsApiGetLatestBackupRequest {
      * @memberof VaultBackupsApiGetLatestBackup
      */
     readonly status?: VaultBackupStatus
+
+    /**
+     * 
+     * @type {VaultBackupSource}
+     * @memberof VaultBackupsApiGetLatestBackup
+     */
+    readonly source?: VaultBackupSource
 }
 
 /**
@@ -3679,6 +3699,13 @@ export interface VaultBackupsApiListBackupsRequest {
      * @memberof VaultBackupsApiListBackups
      */
     readonly limit?: number
+
+    /**
+     * 
+     * @type {VaultBackupSource}
+     * @memberof VaultBackupsApiListBackups
+     */
+    readonly source?: VaultBackupSource
 }
 
 /**
@@ -3710,7 +3737,7 @@ export class VaultBackupsApi extends BaseAPI {
      * @memberof VaultBackupsApi
      */
     public getLatestBackup(requestParameters: VaultBackupsApiGetLatestBackupRequest = {}, options?: RawAxiosRequestConfig) {
-        return VaultBackupsApiFp(this.configuration).getLatestBackup(requestParameters.status, options).then((request) => request(this.axios, this.basePath));
+        return VaultBackupsApiFp(this.configuration).getLatestBackup(requestParameters.status, requestParameters.source, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3721,7 +3748,7 @@ export class VaultBackupsApi extends BaseAPI {
      * @memberof VaultBackupsApi
      */
     public listBackups(requestParameters: VaultBackupsApiListBackupsRequest = {}, options?: RawAxiosRequestConfig) {
-        return VaultBackupsApiFp(this.configuration).listBackups(requestParameters.cursor, requestParameters.limit, options).then((request) => request(this.axios, this.basePath));
+        return VaultBackupsApiFp(this.configuration).listBackups(requestParameters.cursor, requestParameters.limit, requestParameters.source, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

@@ -361,7 +361,7 @@ function envelopeBlobTypesAsBackup(
 
 export interface ExportVaultOptions {
   localVault: VaultStorageV1;
-  source?: 'local-file';
+  source?: 'local-file' | 'google-drive';
   auditReporter?: AuditReporter;
   exportedAt?: string;
   exportId?: string;
@@ -436,7 +436,7 @@ export async function exportVault(
 
 export interface ImportVaultOptions {
   text: string;
-  source?: 'local-file';
+  source?: 'local-file' | 'google-drive';
   replayTracker?: ReplayTracker;
   auditReporter?: AuditReporter;
 }

@@ -446,8 +446,7 @@
       },
       "VaultBackupSource": {
         "type": "string",
-        "enum": ["local-file"],
-        "nullable": false
+        "enum": ["local-file", "google-drive"]
       },
       "VaultBackupStatus": {
         "type": "string",
@@ -1582,6 +1581,14 @@
               "format": "double",
               "type": "number"
             }
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/VaultBackupSource"
+            }
           }
         ]
       }
@@ -1614,6 +1621,14 @@
             "required": false,
             "schema": {
               "$ref": "#/components/schemas/VaultBackupStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/VaultBackupSource"
             }
           }
         ]

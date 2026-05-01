@@ -208,6 +208,7 @@ export class VaultBackupService {
   async getLatest(
     userId: string,
     status?: string,
+    source?: string,
   ): Promise<ServiceResult<VaultBackupRecordDto>> {
     if (status !== undefined && !isVaultBackupStatus(status)) {
       return {
@@ -216,9 +217,20 @@ export class VaultBackupService {
         body: { message: 'Invalid status filter' },
       };
     }
+    if (source !== undefined && !isVaultBackupSource(source)) {
+      return {
+        ok: false,
+        status: 422,
+        body: { message: 'Invalid source filter' },
+      };
+    }
 
     const row = await this.prisma.vaultBackupRecord.findFirst({
-      where: { userId, ...(status ? { status } : {}) },
+      where: {
+        userId,
+        ...(status ? { status } : {}),
+        ...(source ? { source } : {}),
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -231,7 +243,7 @@ export class VaultBackupService {
 
   async listHistory(
     userId: string,
-    options: { cursor?: string; limit?: number } = {},
+    options: { cursor?: string; limit?: number; source?: string } = {},
   ): Promise<
     ServiceResult<{ items: VaultBackupRecordDto[]; nextCursor: string | null }>
   > {
@@ -249,9 +261,16 @@ export class VaultBackupService {
         },
       };
     }
+    if (options.source !== undefined && !isVaultBackupSource(options.source)) {
+      return {
+        ok: false,
+        status: 422,
+        body: { message: 'Invalid source filter' },
+      };
+    }
 
     const rows = await this.prisma.vaultBackupRecord.findMany({
-      where: { userId },
+      where: { userId, ...(options.source ? { source: options.source } : {}) },
       orderBy: { createdAt: 'desc' },
       take: limitRaw + 1,
       ...(options.cursor ? { cursor: { id: options.cursor }, skip: 1 } : {}),

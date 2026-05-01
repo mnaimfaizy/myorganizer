@@ -1,4 +1,5 @@
 export * from './lib/apiClient';
+export * from './lib/cloud';
 export * from './lib/http/getHttpStatus';
 export * from './lib/vault/auditReporter';
 export * from './lib/vault/contactRecordNormalization';

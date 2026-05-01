@@ -1,3 +1,4 @@
+export * from './lib/CloudBackupCard';
 export * from './lib/LastBackupCard';
 export * from './lib/migrationRunner';
 export * from './lib/session';

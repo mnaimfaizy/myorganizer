@@ -72,6 +72,7 @@ export class VaultBackupController extends Controller {
   public async getLatestBackup(
     @Request() req: ExRequest,
     @Query() status?: VaultBackupStatus,
+    @Query() source?: VaultBackupSource,
   ): Promise<GetLatestVaultBackupResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
@@ -79,7 +80,7 @@ export class VaultBackupController extends Controller {
       return { message: 'Unauthorized' };
     }
 
-    const result = await vaultBackupService.getLatest(userId, status);
+    const result = await vaultBackupService.getLatest(userId, status, source);
     this.setStatus(result.status);
     return result.body as GetLatestVaultBackupResponse;
   }
@@ -89,6 +90,7 @@ export class VaultBackupController extends Controller {
     @Request() req: ExRequest,
     @Query() cursor?: string,
     @Query() limit?: number,
+    @Query() source?: VaultBackupSource,
   ): Promise<ListVaultBackupsResponse> {
     const userId = this.getUserId(req);
     if (!userId) {
@@ -99,6 +101,7 @@ export class VaultBackupController extends Controller {
     const result = await vaultBackupService.listHistory(userId, {
       cursor,
       limit,
+      source,
     });
     this.setStatus(result.status);
     return result.body as ListVaultBackupsResponse;

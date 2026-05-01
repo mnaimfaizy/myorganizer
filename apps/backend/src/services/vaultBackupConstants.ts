@@ -1,7 +1,7 @@
 export const VAULT_BACKUP_EVENTS = ['export', 'import'] as const;
 export type VaultBackupEvent = (typeof VAULT_BACKUP_EVENTS)[number];
 
-export const VAULT_BACKUP_SOURCES = ['local-file'] as const;
+export const VAULT_BACKUP_SOURCES = ['local-file', 'google-drive'] as const;
 export type VaultBackupSource = (typeof VAULT_BACKUP_SOURCES)[number];
 
 export const VAULT_BACKUP_STATUSES = ['success', 'failed'] as const;

@@ -219,7 +219,7 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "VaultBackupSource": {
         "dataType": "refAlias",
-        "type": {"dataType":"enum","enums":["local-file"],"validators":{}},
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["local-file"]},{"dataType":"enum","enums":["google-drive"]}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "VaultBackupStatus": {
@@ -1000,6 +1000,7 @@ export function RegisterRoutes(app: Router) {
         const argsVaultBackupController_getLatestBackup: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 status: {"in":"query","name":"status","ref":"VaultBackupStatus"},
+                source: {"in":"query","name":"source","ref":"VaultBackupSource"},
         };
         app.get('/vault/backups/latest',
             authenticateMiddleware([{"jwt":[]}]),
@@ -1033,6 +1034,7 @@ export function RegisterRoutes(app: Router) {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 cursor: {"in":"query","name":"cursor","dataType":"string"},
                 limit: {"in":"query","name":"limit","dataType":"double"},
+                source: {"in":"query","name":"source","ref":"VaultBackupSource"},
         };
         app.get('/vault/backups',
             authenticateMiddleware([{"jwt":[]}]),
