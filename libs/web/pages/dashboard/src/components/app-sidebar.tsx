@@ -10,6 +10,7 @@ import {
   SidebarRail,
 } from '@myorganizer/web-ui';
 import {
+  CloudUpload,
   CreditCard,
   FileDown,
   Home,
@@ -56,6 +57,11 @@ const navMain = [
     title: 'Vault Export/Import',
     url: '/dashboard/vault-export',
     icon: FileDown,
+  },
+  {
+    title: 'Vault Settings',
+    url: '/dashboard/account/vault',
+    icon: CloudUpload,
   },
 ];
 

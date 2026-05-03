@@ -65,6 +65,10 @@ Account preferences used by vault-backed views:
 - Authentication and token strategy: `docs/authentication/README.md`
 - Backend setup notes: `apps/backend/README.md`
 - Storybook and Chromatic setup: `docs/storybook/README.md`
+- Feature integrations (index): [`docs/features/README.md`](docs/features/README.md)
+  - Google Drive vault cloud backup: [`docs/features/vault-cloud-backup-google-drive.md`](docs/features/vault-cloud-backup-google-drive.md)
+  - YouTube OAuth setup: [`docs/features/google-youtube-oauth-setup.md`](docs/features/google-youtube-oauth-setup.md)
+  - YouTube integration architecture: [`docs/features/youtube-integration.md`](docs/features/youtube-integration.md)
 
 ## Production checklist
 

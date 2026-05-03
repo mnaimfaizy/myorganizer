@@ -1,4 +1,4 @@
-## ADDED Requirements
+## MODIFIED Requirements
 
 ### Requirement: Persist vault backup audit records
 
@@ -27,12 +27,12 @@ The system SHALL persist a metadata-only audit record for every vault export or 
 #### Scenario: Reject record from unauthenticated request
 
 - **WHEN** an unauthenticated request calls `POST /api/v1/vault/backups`
-- **THEN** the system responds with HTTP 401 and does not create a record.
+- **THEN** the system responds with HTTP 401 and does not create a record
 
 #### Scenario: Reject record with disallowed source
 
 - **WHEN** a request body contains a `source` value not in the allowlist
-- **THEN** the system responds with HTTP 422 and does not create a record.
+- **THEN** the system responds with HTTP 422 and does not create a record
 
 ### Requirement: Expose latest backup record per user
 
@@ -71,21 +71,3 @@ The system SHALL provide a cursor-paginated history endpoint scoped to the authe
 
 - **WHEN** a request specifies a `source` filter outside the allowlist
 - **THEN** the system responds with HTTP 422
-
-### Requirement: Rate-limit backup record writes
-
-The system SHALL rate-limit `POST /api/v1/vault/backups` per authenticated user to prevent audit-table flooding from repeated failed imports.
-
-#### Scenario: Excessive write attempts
-
-- **WHEN** an authenticated user exceeds the configured per-user rate limit on `POST /api/v1/vault/backups`
-- **THEN** the system responds with HTTP 429 and does not create a record.
-
-### Requirement: Cascade delete with user
-
-`VaultBackupRecord` rows SHALL be deleted when the owning user account is deleted.
-
-#### Scenario: User deletion
-
-- **WHEN** a user account is deleted
-- **THEN** all `VaultBackupRecord` rows referencing that user are removed (Prisma `onDelete: Cascade`).

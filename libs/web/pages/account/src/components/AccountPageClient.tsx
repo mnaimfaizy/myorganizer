@@ -154,7 +154,7 @@ export function AccountPageClient() {
           href="/dashboard/account/vault"
           className="text-sm text-primary underline"
         >
-          Manage vault export &amp; import →
+          Manage vault settings &amp; cloud backup →
         </Link>
       </div>
       <Card className="p-4">

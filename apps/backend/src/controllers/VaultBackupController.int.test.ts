@@ -215,7 +215,7 @@ describe('VaultBackupController (HTTP integration)', () => {
       .set('Authorization', 'Bearer user-1');
 
     expect(res.status).toBe(200);
-    expect(svc.getLatest).toHaveBeenCalledWith('user-1', 'success');
+    expect(svc.getLatest).toHaveBeenCalledWith('user-1', 'success', undefined);
   });
 
   test('cross-user isolation: user-2 only sees user-2 records', async () => {
@@ -281,5 +281,99 @@ describe('VaultBackupController (HTTP integration)', () => {
       .set('Authorization', 'Bearer user-1');
 
     expect(res.status).toBe(422);
+  });
+
+  test('records a successful Google Drive backup', async () => {
+    const app = makeApp();
+    const svc = require('../services/VaultBackupService').default;
+    const body = { ...validBody, source: 'google-drive' };
+    svc.recordEvent.mockResolvedValueOnce({
+      ok: true,
+      status: 201,
+      body: {
+        id: 'rec-gd-1',
+        userId: 'user-1',
+        ...body,
+        errorCode: null,
+        createdAt: new Date().toISOString(),
+      },
+    });
+
+    const res = await request(app)
+      .post('/vault/backups')
+      .set('Authorization', 'Bearer user-1')
+      .send(body);
+
+    expect(res.status).toBe(201);
+    expect(res.body.source).toBe('google-drive');
+    expect(svc.recordEvent).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ source: 'google-drive' }),
+    );
+  });
+
+  test('returns latest record filtered by source=google-drive', async () => {
+    const app = makeApp();
+    const svc = require('../services/VaultBackupService').default;
+    svc.getLatest.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      body: {
+        id: 'rec-gd-2',
+        userId: 'user-1',
+        event: 'export',
+        source: 'google-drive',
+        status: 'success',
+        errorCode: null,
+        schemaVersion: 1,
+        blobTypes: ['todos'],
+        sizeBytes: 4096,
+        createdAt: new Date().toISOString(),
+      },
+    });
+
+    const res = await request(app)
+      .get('/vault/backups/latest?status=success&source=google-drive')
+      .set('Authorization', 'Bearer user-1');
+
+    expect(res.status).toBe(200);
+    expect(res.body.source).toBe('google-drive');
+    expect(svc.getLatest).toHaveBeenCalledWith(
+      'user-1',
+      'success',
+      'google-drive',
+    );
+  });
+
+  test('filters history by source=google-drive', async () => {
+    const app = makeApp();
+    const svc = require('../services/VaultBackupService').default;
+    svc.listHistory.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      body: { items: [], nextCursor: null },
+    });
+
+    const res = await request(app)
+      .get('/vault/backups?source=google-drive')
+      .set('Authorization', 'Bearer user-1');
+
+    expect(res.status).toBe(200);
+    expect(svc.listHistory).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ source: 'google-drive' }),
+    );
+  });
+
+  test('rejects unknown source filter on /latest', async () => {
+    const app = makeApp();
+    const svc = require('../services/VaultBackupService').default;
+
+    const res = await request(app)
+      .get('/vault/backups/latest?source=cloud-magic')
+      .set('Authorization', 'Bearer user-1');
+
+    expect(res.status).toBe(400);
+    expect(svc.getLatest).not.toHaveBeenCalled();
   });
 });

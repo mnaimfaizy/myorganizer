@@ -354,7 +354,7 @@ components:
       type: string
       enum:
         - local-file
-      nullable: false
+        - google-drive
     VaultBackupStatus:
       type: string
       enum:
@@ -1115,6 +1115,11 @@ paths:
           schema:
             format: double
             type: number
+        - in: query
+          name: source
+          required: false
+          schema:
+            $ref: "#/components/schemas/VaultBackupSource"
   /vault/backups/latest:
     get:
       operationId: GetLatestBackup
@@ -1135,6 +1140,11 @@ paths:
           required: false
           schema:
             $ref: "#/components/schemas/VaultBackupStatus"
+        - in: query
+          name: source
+          required: false
+          schema:
+            $ref: "#/components/schemas/VaultBackupSource"
   /user:
     get:
       operationId: GetAllUsers
