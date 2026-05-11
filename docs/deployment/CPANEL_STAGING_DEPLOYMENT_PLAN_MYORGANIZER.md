@@ -169,16 +169,14 @@ Ensure `main.js` is at the root of the Node.js app directory.
 
 #### Step 4: Install dependencies
 
-In cPanel Node.js App UI:
-
-- Click **Run NPM Install**
-
-Or via SSH:
+Use SSH or the cPanel Terminal from the backend app root:
 
 ```bash
 cd ~/myorganizer-api
-npm ci --production || npm install --production
+npm ci --omit=dev
 ```
+
+The backend package includes a deploy-only `package-lock.json` and npm guardrail config generated from the reviewed Yarn-based build output. Do not use the cPanel **Run NPM Install** button for backend staging or production unless your host lets you override it to `npm ci --omit=dev`; a plain `npm install` can re-resolve dependencies.
 
 #### Step 5: Configure environment variables
 
@@ -214,7 +212,7 @@ RESET_JWT_SECRET=<strong-random>
 
 Notes:
 
-- `npm install` runs `prisma generate` automatically (via `postinstall`) so Prisma is built for the server OS.
+- `npm ci --omit=dev` runs `prisma generate` automatically (via `postinstall`) so Prisma is built for the server OS.
 - Run migrations after `DATABASE_URL` is configured.
 
 Via SSH:
@@ -367,7 +365,7 @@ If Prisma fails to connect or migrate:
 - Ensure migrations were deployed (`prisma/migrations` exists)
 - Re-run:
 
-If you see `Could not load --schema ... prisma/schema: file or directory not found`, you are likely running `npm install` from the **wrong directory**. Ensure your current folder contains `package.json` **and** the uploaded `prisma/` folder (the cPanel “Run NPM Install” button runs in the app root).
+If you see `Could not load --schema ... prisma/schema: file or directory not found`, you are likely running `npm ci --omit=dev` from the **wrong directory**. Ensure your current folder contains `package.json`, `package-lock.json`, **and** the uploaded `prisma/` folder.
 
 ```bash
 npm run prisma:generate
@@ -380,7 +378,7 @@ Check:
 
 - `stderr.log` / `stdout.log` in app folder
 - Missing env vars (especially `SESSION_SECRET`)
-- Run `npm ci --production` again if dependencies are missing
+- Run `npm ci --omit=dev` again if dependencies are missing
 
 ---
 
@@ -403,7 +401,7 @@ Backup recommendations:
 
 Once manual deploy is stable, we can automate:
 
-- Backend: build + scp + npm ci + prisma migrate + restart
+- Backend: build + scp + npm ci --omit=dev + prisma migrate + restart
 - Frontend: build + package + upload bundle + restart Node.js app
 
 Prerequisites:

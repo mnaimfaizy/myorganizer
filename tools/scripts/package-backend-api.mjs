@@ -1,4 +1,5 @@
 import archiver from 'archiver';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -38,6 +39,16 @@ function writeJson(file, obj) {
 
 function log(msg) {
   console.log(msg);
+}
+
+function runNpm(args, cwd) {
+  const npmCmd = 'npm';
+  log(`> ${npmCmd} ${args.join(' ')}`);
+  execFileSync(npmCmd, args, {
+    cwd,
+    shell: process.platform === 'win32',
+    stdio: 'inherit',
+  });
 }
 
 function createZipFromDir({ dir, outFile }) {
@@ -141,6 +152,7 @@ const deployPkg = {
   name: 'backend-api',
   private: true,
   main: distPkg.main || 'main.js',
+  engines: rootPkg?.engines?.node ? { node: rootPkg.engines.node } : undefined,
   scripts: {
     start: `node ${distPkg.main || 'main.js'}`,
     'prisma:generate': 'prisma generate --schema prisma/schema',
@@ -149,7 +161,14 @@ const deployPkg = {
   dependencies: Object.fromEntries(
     Object.entries(filteredDeps).sort(([a], [b]) => a.localeCompare(b)),
   ),
+  overrides: rootPkg.overrides,
 };
+
+for (const key of Object.keys(deployPkg)) {
+  if (deployPkg[key] === undefined) {
+    delete deployPkg[key];
+  }
+}
 
 // cPanel/shared-hosting friendly: generate Prisma client for the server OS.
 // Must be resilient if npm executes scripts from nodevenv/lib (cPanel quirk).
@@ -225,6 +244,25 @@ deployPkg.scripts.postinstall =
 
 writeJson(path.join(deployRoot, 'package.json'), deployPkg);
 
+const rootNpmrc = path.join(workspaceRoot, '.npmrc');
+if (exists(rootNpmrc)) {
+  copyFile(rootNpmrc, path.join(deployRoot, '.npmrc'));
+}
+
+// Generate a deploy-only npm lockfile for cPanel. The source repo remains
+// Yarn-authoritative; this lockfile exists only inside dist/deploy/backend-api
+// so cPanel can install deterministically with `npm ci --omit=dev`.
+runNpm(
+  ['install', '--package-lock-only', '--ignore-scripts', '--omit=dev'],
+  deployRoot,
+);
+
+if (!exists(path.join(deployRoot, 'package-lock.json'))) {
+  throw new Error(
+    'Expected npm to generate package-lock.json for backend deploy bundle.',
+  );
+}
+
 fs.writeFileSync(
   path.join(deployRoot, 'CPANEL_STARTUP.md'),
   [
@@ -232,7 +270,7 @@ fs.writeFileSync(
     '',
     '- Startup file: `main.js`',
     '- Node.js app root: this folder',
-    '- Run: `npm install` (required; this bundle does not include `node_modules`)',
+    '- Run: `npm ci --omit=dev` (required; this bundle includes a deploy-only `package-lock.json`, npm guardrail config, and no `node_modules`)',
     '- Recommended env vars:',
     '  - `NODE_ENV=production`',
     '  - `PORT=3000` (or set by cPanel)',
@@ -241,8 +279,9 @@ fs.writeFileSync(
     '  - `CORS_ORIGINS=https://myorganiser.app`',
     '',
     'Notes:',
-    '- `postinstall` runs `prisma generate` (when `prisma/schema` exists) so Prisma is built for the server OS.',
+    '- `npm ci --omit=dev` runs `postinstall`, which runs `prisma generate` (when `prisma/schema` exists) so Prisma is built for the server OS.',
     '- `postinstall` is resilient to cPanel running npm scripts from `nodevenv/.../lib` by using `INIT_CWD`/prefix envs.',
+    '- Do not replace `npm ci --omit=dev` with `npm install` for staging or production deployments.',
     '- To apply DB migrations on the server, run: `npm run prisma:migrate:deploy`.',
     '',
   ].join('\n'),

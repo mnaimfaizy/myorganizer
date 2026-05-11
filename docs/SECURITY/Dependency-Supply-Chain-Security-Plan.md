@@ -17,6 +17,7 @@ This document records the dependency, package-manager, and CI hardening posture 
 - CI uses `yarn install --immutable --mode=skip-build` for metadata-only review before regular build and test jobs.
 - CI verifies that `yarn.lock` remains unchanged after every `yarn install --immutable` run.
 - Pull requests are blocked if they introduce or modify `package-lock.json` or `pnpm-lock.yaml`.
+- Backend cPanel deploy artifacts include generated npm guardrail config and a deploy-only `package-lock.json` under `dist/deploy/backend-api` so shared hosting can run `npm ci --omit=dev` without making npm authoritative for the source repository.
 - Dependabot keeps its npm ecosystem cooldown aligned to the same 7-day release-aging policy.
 - GitHub Actions deploys to Vercel via a pinned ephemeral CLI invocation (`corepack yarn dlx -p vercel@50.1.1 vercel`) so the Vercel builder packages do not live in the primary repository lockfile.
 - Dependency manifests, lockfiles, package-manager policy files, workflows, and security documents are protected with `CODEOWNERS` review.
@@ -58,7 +59,7 @@ Required takeaways:
 1. Use `corepack yarn install --immutable` in CI, automation, and documented setup steps.
 2. Avoid `yarn upgrade`, `yarn upgrade --latest`, and ad-hoc lockfile rewrites inside CI.
 3. npm and pnpm are secondary local workflows only. Their checked-in configs are guardrails, not a signal to replace Yarn.
-4. Do not add or rely on `package-lock.json` or `pnpm-lock.yaml` unless the repository is formally migrated.
+4. Do not add or rely on source-controlled `package-lock.json` or `pnpm-lock.yaml` unless the repository is formally migrated. The generated backend cPanel artifact lockfile is the only exception, and it must stay under `dist/deploy/backend-api`.
 5. For metadata-only dependency review, prefer `yarn install --immutable --mode=skip-build` in disposable environments or dedicated security jobs.
 6. Do not enable a blanket `ignore-scripts=true` setting for normal installs while the current toolchain still relies on reviewed install-time scripts.
 7. GitHub Dependabot still uses the `npm` ecosystem configuration for this JavaScript repository, even though Yarn is the authoritative local and CI package manager.
