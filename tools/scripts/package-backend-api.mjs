@@ -155,8 +155,8 @@ const deployPkg = {
   engines: rootPkg?.engines?.node ? { node: rootPkg.engines.node } : undefined,
   scripts: {
     start: `node ${distPkg.main || 'main.js'}`,
-    'prisma:generate': 'prisma generate --schema prisma/schema',
-    'prisma:migrate:deploy': 'prisma migrate deploy --schema prisma/schema',
+    'prisma:generate': 'prisma generate --config prisma.config.cjs',
+    'prisma:migrate:deploy': 'prisma migrate deploy --config prisma.config.cjs',
   },
   dependencies: Object.fromEntries(
     Object.entries(filteredDeps).sort(([a], [b]) => a.localeCompare(b)),
@@ -220,7 +220,7 @@ const postinstallScript = [
   '}',
   '',
   "const prismaBin = path.join(appRoot, 'node_modules', '.bin', process.platform === 'win32' ? 'prisma.cmd' : 'prisma');",
-  "const args = ['generate', '--schema', 'prisma/schema'];",
+  "const args = ['generate', '--config', 'prisma.config.cjs'];",
   'let r;',
   '',
   'if (fs.existsSync(prismaBin)) {',
@@ -235,6 +235,35 @@ const postinstallScript = [
 ].join('\n');
 
 fs.writeFileSync(postinstallScriptAbsPath, `${postinstallScript}\n`, 'utf8');
+
+const deployPrismaConfig = [
+  "'use strict';",
+  "require('dotenv/config');",
+  "const { defineConfig, env } = require('prisma/config');",
+  '',
+  "const isGenerate = process.argv.includes('generate');",
+  'const datasourceUrl =',
+  '  process.env.DATABASE_URL ||',
+  "  (isGenerate ? 'postgresql://localhost:5432/myorganizer' : env('DATABASE_URL'));",
+  '',
+  'module.exports = defineConfig({',
+  "  schema: 'prisma/schema',",
+  '  datasource: {',
+  '    url: datasourceUrl,',
+  '  },',
+  '  migrations: {',
+  "    path: 'prisma/migrations',",
+  '  },',
+  '});',
+  '',
+].join('\n');
+
+fs.writeFileSync(
+  path.join(deployRoot, 'prisma.config.cjs'),
+  deployPrismaConfig,
+  'utf8',
+);
+
 // cPanel sometimes runs npm scripts from nodevenv/.../lib and can set npm_package_json
 // to nodevenv/lib/package.json, so resolving files relative to npm_package_json is unreliable.
 // Instead: locate the deployed bundle root (INIT_CWD / Passenger envs) and require the
@@ -280,6 +309,8 @@ fs.writeFileSync(
     '',
     'Notes:',
     '- `npm ci --omit=dev` runs `postinstall`, which runs `prisma generate` (when `prisma/schema` exists) so Prisma is built for the server OS.',
+    '- `prisma.config.cjs` reads `DATABASE_URL` from the process environment or an app-root `.env` file for migrations.',
+    '- If you run Prisma commands from SSH, make sure that shell can read `DATABASE_URL`; cPanel app environment variables may not be inherited by SSH sessions.',
     '- `postinstall` is resilient to cPanel running npm scripts from `nodevenv/.../lib` by using `INIT_CWD`/prefix envs.',
     '- Do not replace `npm ci --omit=dev` with `npm install` for staging or production deployments.',
     '- To apply DB migrations on the server, run: `npm run prisma:migrate:deploy`.',

@@ -213,12 +213,17 @@ RESET_JWT_SECRET=<strong-random>
 Notes:
 
 - `npm ci --omit=dev` runs `prisma generate` automatically (via `postinstall`) so Prisma is built for the server OS.
+- The backend bundle includes `prisma.config.cjs`; `npm run prisma:migrate:deploy` reads `DATABASE_URL` from the process environment or an app-root `.env` file.
+- If you run migrations from SSH and cPanel app environment variables are not inherited, export `DATABASE_URL` in that shell session or create an app-root `.env` file with restricted permissions.
 - Run migrations after `DATABASE_URL` is configured.
 
 Via SSH:
 
 ```bash
 cd ~/myorganizer-api
+
+# Optional SSH check without printing the secret
+if [ -z "$DATABASE_URL" ]; then echo "DATABASE_URL is not set in this shell"; else echo "DATABASE_URL is set"; fi
 
 # Apply migrations
 npm run prisma:migrate:deploy

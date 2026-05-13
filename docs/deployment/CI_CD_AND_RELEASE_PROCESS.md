@@ -280,7 +280,7 @@ The script lives at `tools/scripts/release.mjs` and automates the git steps.
 
 Both deploy bundles are designed for cPanel shared hosting:
 
-- Backend bundle includes a deploy-ready `package.json`, npm guardrail config, and `prisma/` folder.
+- Backend bundle includes a deploy-ready `package.json`, npm guardrail config, `prisma.config.cjs`, and `prisma/` folder.
   - It also includes a deploy-only `package-lock.json` generated during packaging.
   - After upload, run `npm ci --omit=dev` in the backend app root.
   - Prisma client generation runs via `postinstall`.
