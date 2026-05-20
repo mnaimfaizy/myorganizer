@@ -168,7 +168,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          changed_files="$(git diff --name-only --diff-filter=ACMRT "$BASE_SHA" "$HEAD_SHA")"
+          changed_files="$(git diff --name-only --diff-filter=ACDMRT "$BASE_SHA" "$HEAD_SHA")"
 
           if printf '%s\n' "$changed_files" | grep -Eq '(^|/)(package\.json|yarn\.lock|\.yarnrc\.yml)$'; then
             echo 'run_audit=true' >> "$GITHUB_OUTPUT"
