@@ -158,8 +158,34 @@ jobs:
       - name: Verify frozen lockfile
         run: git diff --exit-code -- yarn.lock
 
+      - name: Check whether dependency manifests changed
+        id: dependency-files
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          changed_files="$(git diff --name-only --diff-filter=ACMRT "$BASE_SHA" "$HEAD_SHA")"
+
+          if printf '%s\n' "$changed_files" | grep -Eq '(^|/)(package\.json|yarn\.lock|\.yarnrc\.yml)$'; then
+            echo 'run_audit=true' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo 'run_audit=false' >> "$GITHUB_OUTPUT"
+
       - name: Run Yarn npm audit
+        if: github.event_name != 'pull_request' || steps.dependency-files.outputs.run_audit == 'true'
         run: corepack yarn npm audit --all --recursive --severity high
+
+      - name: Explain skipped npm audit
+        if: github.event_name == 'pull_request' && steps.dependency-files.outputs.run_audit != 'true'
+        shell: bash
+        run: |
+          echo 'Skipped npm audit because no dependency manifests changed in this pull request.' >> "$GITHUB_STEP_SUMMARY"
 
   prepare-dependencies:
     name: Prepare Dependency Cache
