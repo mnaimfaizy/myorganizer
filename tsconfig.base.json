@@ -27,6 +27,7 @@
       "@myorganizer/web-pages/dashboard": [
         "libs/web/pages/dashboard/src/index.ts"
       ],
+      "@myorganizer/web-pages/home": ["libs/web/pages/home/src/index.ts"],
       "@myorganizer/web-pages/mobile-numbers": [
         "libs/web/pages/mobile-numbers/src/index.ts"
       ],
