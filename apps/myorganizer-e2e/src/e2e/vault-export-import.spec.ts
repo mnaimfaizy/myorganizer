@@ -378,20 +378,21 @@ async function setupVaultWithSampleData(page: Page) {
 
   await unlockWithPassphrase(page, passphrase);
 
-  await expect(page.locator('#addr-label')).toBeVisible({ timeout: 60000 });
-  await page.fill('#addr-label', 'Home');
+  await page.getByRole('button', { name: 'Add address' }).first().click();
+  await expect(page.getByLabel('Label')).toBeVisible({ timeout: 60000 });
+  await page.getByLabel('Label').fill('Home');
   await page.fill('#addr-property', '221B');
   await page.fill('#addr-street', 'Baker Street');
   await page.fill('#addr-suburb', 'London');
   await page.fill('#addr-state', 'Greater London');
   await page.fill('#addr-zipcode', 'NW1');
   await page.locator('#addr-country').click();
-  await page.getByRole('option', { name: 'United Kingdom' }).click();
+  await page.getByText('United Kingdom (GB)').click();
 
-  const addAddress = page.getByRole('button', { name: 'Add Address' });
+  const addAddress = page.getByRole('button', { name: 'Save address' });
   await expect(addAddress).toBeEnabled({ timeout: 60000 });
   await addAddress.click();
-  await expect(page.locator('text=221B Baker Street')).toBeVisible({
+  await expect(page.getByText('221B Baker Street').first()).toBeVisible({
     timeout: 60000,
   });
 

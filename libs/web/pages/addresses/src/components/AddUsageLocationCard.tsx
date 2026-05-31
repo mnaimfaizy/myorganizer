@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@myorganizer/web-ui';
+import { AlertTriangle } from 'lucide-react';
 import { ChangeEvent } from 'react';
 
 import { enumOptions, titleCase } from '../utils/enumUtils';
@@ -28,6 +29,13 @@ export function AddUsageLocationCard(props: {
   link: string;
   changed: boolean;
   canAddUsage: boolean;
+  duplicateOrganisationName?: string;
+  duplicateAcknowledged?: boolean;
+  fieldErrors?: {
+    orgName?: string;
+    link?: string;
+  };
+  submitLabel?: string;
   orgTypeOptions: SelectOption[];
   updateMethodOptions: SelectOption[];
   onOrgNameChange: (value: string) => void;
@@ -59,6 +67,11 @@ export function AddUsageLocationCard(props: {
               placeholder="ATO / Comm Bank"
               className="h-11"
             />
+            {props.fieldErrors?.orgName && (
+              <p className="text-sm font-medium text-destructive">
+                {props.fieldErrors.orgName}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -118,6 +131,27 @@ export function AddUsageLocationCard(props: {
           </div>
         </div>
 
+        {props.duplicateOrganisationName && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5" />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold">
+                  This organisation is already attached to this address.
+                </p>
+                <p className="text-sm">
+                  Existing entry: {props.duplicateOrganisationName}
+                </p>
+                {props.duplicateAcknowledged && (
+                  <p className="text-sm">
+                    Select save again to keep this as a separate location.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label htmlFor="usage-link" className="text-sm font-medium">
             Link to change (optional)
@@ -131,6 +165,11 @@ export function AddUsageLocationCard(props: {
             placeholder="https://example.com"
             className="h-11"
           />
+          {props.fieldErrors?.link && (
+            <p className="text-sm font-medium text-destructive">
+              {props.fieldErrors.link}
+            </p>
+          )}
         </div>
 
         <div className="flex items-center gap-3 py-2">
@@ -155,7 +194,8 @@ export function AddUsageLocationCard(props: {
             size="lg"
             className="w-full md:w-auto px-8 h-11"
           >
-            {props.isEditMode ? 'Update location' : 'Add location'}
+            {props.submitLabel ??
+              (props.isEditMode ? 'Update location' : 'Add location')}
           </Button>
         </div>
       </CardContent>
