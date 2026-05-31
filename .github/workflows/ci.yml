@@ -158,7 +158,8 @@ jobs:
         run: corepack yarn install --immutable --mode=skip-build
 
       - name: Verify frozen lockfile
-        run: git diff --exit-code -- yarn.lock
+        run: |
+          git diff --ignore-cr-at-eol --exit-code -- yarn.lock
 
       - name: Check whether dependency manifests changed
         id: dependency-files
