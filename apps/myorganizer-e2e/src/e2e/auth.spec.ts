@@ -85,4 +85,63 @@ test.describe('Authentication', () => {
     // After login, the app should navigate to the dashboard.
     await expect(page).toHaveURL(/.*dashboard/, { timeout: 60000 });
   });
+
+  test('redirects authenticated users from / to /dashboard', async ({
+    page,
+  }) => {
+    test.setTimeout(60000);
+
+    // Seed an access token before any app code runs so the root gate sees an
+    // authenticated session on first paint.
+    await page.addInitScript(() => {
+      const user = {
+        id: '1',
+        name: 'Test User',
+        email: 'testuser@example.com',
+        firstName: 'Test',
+        lastName: 'User',
+      };
+      window.localStorage.setItem('myorganizer_access_token', 'fake-jwt-token');
+      window.localStorage.setItem('myorganizer_token_storage', 'local');
+      window.localStorage.setItem('myorganizer_user', JSON.stringify(user));
+    });
+
+    // Stub /auth/refresh in case the dashboard guard chooses to re-validate.
+    const refreshUrl = /\/auth\/refresh\/?(\?.*)?$/;
+    await page.route(refreshUrl, async (route) => {
+      const origin = new URL(page.url() || 'http://localhost:3000').origin;
+      const corsHeaders = {
+        'access-control-allow-origin': origin,
+        'access-control-allow-credentials': 'true',
+        'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+        'access-control-allow-headers': 'content-type,authorization',
+      };
+
+      if (route.request().method() === 'OPTIONS') {
+        await route.fulfill({ status: 204, headers: corsHeaders });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        headers: corsHeaders,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          token: 'fake-jwt-token',
+          expires_in: 3600,
+          user: {
+            id: '1',
+            name: 'Test User',
+            email: 'testuser@example.com',
+            firstName: 'Test',
+            lastName: 'User',
+          },
+        }),
+      });
+    });
+
+    await page.goto('/');
+
+    await expect(page).toHaveURL(/.*dashboard/, { timeout: 60000 });
+  });
 });

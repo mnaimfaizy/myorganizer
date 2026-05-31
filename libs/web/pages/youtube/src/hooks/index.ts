@@ -1,6 +1,6 @@
 'use client';
 
-import { getAccessToken } from '@myorganizer/auth';
+import { clearAuthSession, getAccessToken, refresh } from '@myorganizer/auth';
 import { getApiBaseUrl } from '@myorganizer/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
@@ -15,9 +15,11 @@ function getYouTubeApiBase(): string {
   return `${getApiBaseUrl()}/youtube`;
 }
 
-async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+let refreshInFlight: Promise<unknown> | null = null;
+
+async function doFetch(path: string, options?: RequestInit): Promise<Response> {
   const token = getAccessToken();
-  const res = await fetch(`${getYouTubeApiBase()}${path}`, {
+  return fetch(`${getYouTubeApiBase()}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -26,6 +28,27 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
     },
     credentials: 'include',
   });
+}
+
+async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
+  let res = await doFetch(path, options);
+
+  if (res.status === 401) {
+    try {
+      if (!refreshInFlight) {
+        refreshInFlight = refresh();
+      }
+      await refreshInFlight;
+    } catch {
+      clearAuthSession();
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.message ?? `Request failed: ${res.status}`);
+    } finally {
+      refreshInFlight = null;
+    }
+    res = await doFetch(path, options);
+  }
+
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new Error(body.message ?? `Request failed: ${res.status}`);
