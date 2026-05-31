@@ -1,6 +1,6 @@
 import { AddressRecord } from '@myorganizer/core';
 import { Badge, Button } from '@myorganizer/web-ui';
-import { MapPin, Trash2 } from 'lucide-react';
+import { ArrowRight, MapPin, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { formatAddress } from '../utils/formatAddress';
 
@@ -11,7 +11,7 @@ export function AddressListItem(props: {
   const usageCount = props.item.usageLocations.length;
 
   return (
-    <div className="group relative border rounded-lg p-4 transition-all duration-200 hover:shadow-md hover:border-primary/50 bg-card">
+    <div className="group relative rounded-lg border bg-card p-4 transition-all duration-200 hover:border-primary/50 hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <Link
           href={`/dashboard/addresses/${props.item.id}`}
@@ -23,7 +23,7 @@ export function AddressListItem(props: {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-base truncate group-hover:text-primary transition-colors">
+                <h3 className="truncate text-base font-semibold transition-colors group-hover:text-primary">
                   {props.item.label}
                 </h3>
                 {usageCount > 0 && (
@@ -32,10 +32,10 @@ export function AddressListItem(props: {
                   </Badge>
                 )}
               </div>
-              <p className="text-sm text-muted-foreground break-words mb-2">
+              <p className="mb-2 text-sm text-muted-foreground wrap-break-word">
                 {formatAddress(props.item)}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Badge
                   variant={
                     props.item.status === 'current' ? 'default' : 'outline'
@@ -44,6 +44,10 @@ export function AddressListItem(props: {
                 >
                   {props.item.status}
                 </Badge>
+                <span className="inline-flex items-center gap-1 text-xs text-primary">
+                  Open
+                  <ArrowRight className="h-3 w-3" />
+                </span>
               </div>
             </div>
           </div>
@@ -52,7 +56,8 @@ export function AddressListItem(props: {
         <Button
           variant="ghost"
           size="icon"
-          className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
+          aria-label={`Delete ${props.item.label}`}
+          className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
           onClick={(e) => {
             e.preventDefault();
             props.onDelete(props.item.id);

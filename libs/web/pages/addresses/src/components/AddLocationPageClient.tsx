@@ -26,11 +26,17 @@ import { randomId } from '../utils/randomId';
 import { AddUsageLocationCard } from './AddUsageLocationCard';
 
 const addUsageLocationSchema = z.object({
-  orgName: z.string().trim().min(1),
+  orgName: z.string().trim().min(1, 'Organisation name is required'),
   orgType: z.string().trim().min(1),
   updateMethod: z.string().trim().min(1),
   priority: z.string().trim().min(1),
-  link: z.string().optional(),
+  link: z
+    .string()
+    .trim()
+    .refine((value) => !value || isHttpUrl(value), {
+      message: 'Enter a valid URL, including http:// or https://',
+    })
+    .optional(),
   changed: z.boolean(),
 });
 
@@ -48,9 +54,10 @@ function AddLocationInner(props: {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [usageLocations, setUsageLocations] = useState<UsageLocationRecord[]>(
-    []
+    [],
   );
   const [isEditMode, setIsEditMode] = useState(false);
+  const [duplicateAcknowledged, setDuplicateAcknowledged] = useState(false);
 
   const usageForm = useForm<AddUsageLocationFormValues>({
     resolver: zodResolver(addUsageLocationSchema),
@@ -94,7 +101,7 @@ function AddLocationInner(props: {
         // If editing, populate form with existing data
         if (editId) {
           const locationToEdit = found.usageLocations.find(
-            (l) => l.id === editId
+            (l) => l.id === editId,
           );
           if (locationToEdit) {
             setIsEditMode(true);
@@ -133,7 +140,7 @@ function AddLocationInner(props: {
         value: v,
         label: titleCase(v),
       })),
-    []
+    [],
   );
 
   const updateMethodOptions = useMemo(
@@ -142,10 +149,27 @@ function AddLocationInner(props: {
         value: v,
         label: titleCase(v),
       })),
-    []
+    [],
   );
 
   const canAddUsage = usageForm.formState.isValid;
+  const duplicateOrganisation = useMemo(() => {
+    const normalizedOrgName = normalizeOrganisationName(orgName);
+    if (!normalizedOrgName) return null;
+
+    return (
+      usageLocations.find(
+        (location) =>
+          location.id !== editId &&
+          normalizeOrganisationName(location.organisationName) ===
+            normalizedOrgName,
+      ) ?? null
+    );
+  }, [editId, orgName, usageLocations]);
+
+  useEffect(() => {
+    setDuplicateAcknowledged(false);
+  }, [orgName]);
 
   async function persistUsage(nextUsage: UsageLocationRecord[]) {
     const raw = await loadDecryptedData<unknown>({
@@ -156,7 +180,7 @@ function AddLocationInner(props: {
 
     const normalized = normalizeAddresses(raw);
     const nextAddresses = normalized.value.map((x) =>
-      x.id === props.addressId ? { ...x, usageLocations: nextUsage } : x
+      x.id === props.addressId ? { ...x, usageLocations: nextUsage } : x,
     );
 
     await saveEncryptedData({
@@ -203,6 +227,17 @@ function AddLocationInner(props: {
         link={link}
         changed={changed}
         canAddUsage={canAddUsage}
+        duplicateOrganisationName={duplicateOrganisation?.organisationName}
+        duplicateAcknowledged={duplicateAcknowledged}
+        fieldErrors={{
+          orgName: usageForm.formState.errors.orgName?.message,
+          link: usageForm.formState.errors.link?.message,
+        }}
+        submitLabel={
+          duplicateOrganisation && !duplicateAcknowledged
+            ? 'Review duplicate'
+            : undefined
+        }
         orgTypeOptions={orgTypeOptions}
         updateMethodOptions={updateMethodOptions}
         isEditMode={isEditMode}
@@ -225,6 +260,11 @@ function AddLocationInner(props: {
           usageForm.setValue('changed', value, { shouldValidate: true })
         }
         onAddUsage={usageForm.handleSubmit(async (values) => {
+          if (duplicateOrganisation && !duplicateAcknowledged) {
+            setDuplicateAcknowledged(true);
+            return;
+          }
+
           const now = new Date().toISOString();
 
           let updatedLocations: UsageLocationRecord[];
@@ -239,24 +279,24 @@ function AddLocationInner(props: {
                     organisationType: parseEnumValue(
                       OrganisationTypeEnum,
                       values.orgType,
-                      OrganisationTypeEnum.Other
+                      OrganisationTypeEnum.Other,
                     ),
                     updateMethod: parseEnumValue(
                       UpdateMethodEnum,
                       values.updateMethod,
-                      UpdateMethodEnum.Online
+                      UpdateMethodEnum.Online,
                     ),
                     changed: values.changed,
                     link: values.link?.trim() ? values.link.trim() : undefined,
                     priority: parseEnumValue(
                       PriorityEnum,
                       values.priority,
-                      PriorityEnum.Normal
+                      PriorityEnum.Normal,
                     ),
                     changedAt:
                       values.changed && !loc.changed ? now : loc.changedAt,
                   }
-                : loc
+                : loc,
             );
           } else {
             // Add new location
@@ -266,19 +306,19 @@ function AddLocationInner(props: {
               organisationType: parseEnumValue(
                 OrganisationTypeEnum,
                 values.orgType,
-                OrganisationTypeEnum.Other
+                OrganisationTypeEnum.Other,
               ),
               updateMethod: parseEnumValue(
                 UpdateMethodEnum,
                 values.updateMethod,
-                UpdateMethodEnum.Online
+                UpdateMethodEnum.Online,
               ),
               changed: values.changed,
               link: values.link?.trim() ? values.link.trim() : undefined,
               priority: parseEnumValue(
                 PriorityEnum,
                 values.priority,
-                PriorityEnum.Normal
+                PriorityEnum.Normal,
               ),
               createdAt: now,
               changedAt: values.changed ? now : undefined,
@@ -308,6 +348,24 @@ function AddLocationInner(props: {
       />
     </div>
   );
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function normalizeOrganisationName(value: string | undefined): string {
+  return (value ?? '')
+    .normalize('NFKD')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
 }
 
 export function AddLocationPageClient(props: { params: { id: string } }) {

@@ -1,8 +1,18 @@
 'use client';
 
-import { useToast } from '@myorganizer/web-ui';
-import { useEffect, useRef } from 'react';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  useToast,
+} from '@myorganizer/web-ui';
+import { useEffect, useRef, useState } from 'react';
 
+import type { MigrationDecision } from '@myorganizer/web-vault';
 import {
   createVaultApi,
   getHttpStatus,
@@ -13,6 +23,11 @@ import {
 
 const VAULT_MIGRATION_VERSION = 1;
 const SESSION_FLAG = `myorganizer_vault_migration_ran_v${VAULT_MIGRATION_VERSION}`;
+
+type PendingVaultConflictPrompt = {
+  message: string;
+  resolve: (decision: MigrationDecision) => void;
+};
 
 function getUserFacingErrorMessage(error: unknown): string {
   const status = getHttpStatus(error);
@@ -29,7 +44,10 @@ function getUserFacingErrorMessage(error: unknown): string {
     return `Vault sync failed (HTTP ${status}). Your local data is unchanged.`;
   }
 
-  const message = (error as any)?.message;
+  const message =
+    typeof error === 'object' && error !== null && 'message' in error
+      ? error.message
+      : undefined;
   if (typeof message === 'string' && message.trim()) {
     return message;
   }
@@ -40,6 +58,9 @@ function getUserFacingErrorMessage(error: unknown): string {
 export function VaultMigrationRunner() {
   const { toast } = useToast();
   const toastRef = useRef(toast);
+  const pendingPromptRef = useRef<PendingVaultConflictPrompt | null>(null);
+  const [pendingPrompt, setPendingPrompt] =
+    useState<PendingVaultConflictPrompt | null>(null);
 
   useEffect(() => {
     toastRef.current = toast;
@@ -58,13 +79,13 @@ export function VaultMigrationRunner() {
       api,
       localVault,
       prompt: async ({ message }) => {
-        if (typeof window.confirm !== 'function') return 'keep-server';
+        if (cancelled) return 'keep-server';
 
-        const keepLocal = window.confirm(
-          `${message}\n\nYour data is different on this device and on the server.\n\nChoose which version to keep:\n\nOK = Keep data on this device (replace the copy on the server)\nCancel = Keep data from the server (replace the copy on this device)`
-        );
-
-        return keepLocal ? 'keep-local' : 'keep-server';
+        return new Promise<MigrationDecision>((resolve) => {
+          const nextPrompt = { message, resolve };
+          pendingPromptRef.current = nextPrompt;
+          setPendingPrompt(nextPrompt);
+        });
       },
     })
       .then((result) => {
@@ -100,7 +121,7 @@ export function VaultMigrationRunner() {
           });
         }
       })
-      .catch((e: any) => {
+      .catch((e: unknown) => {
         if (cancelled) return;
 
         window.sessionStorage.setItem(SESSION_FLAG, '1');
@@ -114,8 +135,65 @@ export function VaultMigrationRunner() {
 
     return () => {
       cancelled = true;
+      if (pendingPromptRef.current) {
+        pendingPromptRef.current.resolve('keep-server');
+        pendingPromptRef.current = null;
+      }
     };
   }, []);
 
-  return null;
+  function resolvePendingPrompt(decision: MigrationDecision) {
+    const prompt = pendingPromptRef.current;
+    if (!prompt) return;
+
+    pendingPromptRef.current = null;
+    setPendingPrompt(null);
+    prompt.resolve(decision);
+  }
+
+  return (
+    <Dialog
+      open={Boolean(pendingPrompt)}
+      onOpenChange={(open) => {
+        if (!open) resolvePendingPrompt('keep-server');
+      }}
+    >
+      <DialogContent showCloseButton={false}>
+        <DialogHeader>
+          <DialogTitle>Choose vault data to keep</DialogTitle>
+          <DialogDescription>{pendingPrompt?.message}</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 text-sm text-muted-foreground">
+          <p>Your data is different on this device and on the server.</p>
+          <div className="rounded-md border bg-muted/30 p-3 text-foreground">
+            <p>
+              <span className="font-medium">OK</span> keeps the encrypted data
+              on this device and replaces the copy on the server.
+            </p>
+            <p className="mt-2">
+              <span className="font-medium">Cancel</span> keeps the encrypted
+              data from the server and replaces the copy on this device.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => resolvePendingPrompt('keep-server')}
+          >
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            onClick={() => resolvePendingPrompt('keep-local')}
+          >
+            OK
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }

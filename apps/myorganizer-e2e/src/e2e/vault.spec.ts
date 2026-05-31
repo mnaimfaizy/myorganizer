@@ -358,23 +358,29 @@ test.describe('Vault (E2E)', () => {
     // VaultGate does not auto-unlock after creation.
     await unlockWithPassphrase(page1, passphrase);
 
-    await expect(page1.locator('#addr-label')).toBeVisible({ timeout: 60000 });
+    await page1.getByRole('button', { name: 'Add address' }).first().click();
+    await expect(page1.getByLabel('Label')).toBeVisible({ timeout: 60000 });
 
-    await page1.fill('#addr-label', 'Home');
+    await page1.getByLabel('Label').fill('Home');
     await page1.fill('#addr-property', '221B');
     await page1.fill('#addr-street', 'Baker Street');
     await page1.fill('#addr-suburb', 'London');
     await page1.fill('#addr-state', 'Greater London');
     await page1.fill('#addr-zipcode', 'NW1');
     await page1.locator('#addr-country').click();
-    await page1.getByRole('option', { name: 'United Kingdom' }).click();
+    await page1.getByText('United Kingdom (GB)').click();
 
-    const addAddress = page1.getByRole('button', { name: 'Add Address' });
+    const addAddress = page1.getByRole('button', { name: 'Save address' });
     await expect(addAddress).toBeEnabled({ timeout: 60000 });
     await addAddress.click();
-    await expect(page1.locator('text=221B Baker Street')).toBeVisible({
+    await expect(page1.getByText('221B Baker Street').first()).toBeVisible({
       timeout: 60000,
     });
+    await page1.getByRole('button', { name: 'View address' }).click();
+    await expect(page1.getByText('Full Address')).toBeVisible({
+      timeout: 60000,
+    });
+    await expect(page1.getByText('Address not found.')).toHaveCount(0);
 
     await gotoStable(page1, '/dashboard/mobile-numbers');
     await unlockWithPassphrase(page1, passphrase);
