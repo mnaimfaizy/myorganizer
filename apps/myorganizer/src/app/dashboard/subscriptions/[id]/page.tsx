@@ -1,5 +1,7 @@
 import { SubscriptionDetailPage } from '@myorganizer/web-pages/subscriptions';
 
-export default function Page(props: { params: { id: string } }) {
-  return <SubscriptionDetailPage params={props.params} />;
+export default async function Page(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+
+  return <SubscriptionDetailPage params={params} />;
 }

@@ -1,5 +1,7 @@
 import { AddressDetailPage } from '@myorganizer/web-pages/addresses';
 
-export default function Page(props: { params: { id: string } }) {
-  return <AddressDetailPage params={props.params} />;
+export default async function Page(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
+
+  return <AddressDetailPage params={params} />;
 }
