@@ -2,9 +2,9 @@
  * One-shot script to generate apps/myorganizer/public/images/og-image.png
  * Usage: node tools/scripts/generate-og-image.mjs
  */
+import { unlinkSync, writeFileSync } from 'fs';
+import { dirname, resolve } from 'path';
 import { chromium } from 'playwright';
-import { writeFileSync, unlinkSync } from 'fs';
-import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

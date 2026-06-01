@@ -9,6 +9,7 @@ import {
   SidebarContent,
   SidebarHeader,
   SidebarRail,
+  useSidebar,
 } from '@myorganizer/web-ui';
 import {
   CloudUpload,
@@ -73,21 +74,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     email: currentUser?.email ?? '',
     avatar: '',
   };
+  const { state } = useSidebar();
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <div className="flex items-center px-2 py-3 group-data-[collapsible=icon]:justify-center">
+        <div className="flex items-center px-2 py-3">
           <AppLogo
-            variant="full"
+            variant={state === 'collapsed' ? 'icon' : 'full'}
             height={28}
-            className="group-data-[collapsible=icon]:hidden"
-          />
-          <AppLogo
-            variant="icon"
-            height={28}
-            className="hidden group-data-[collapsible=icon]:block"
-            aria-hidden
           />
         </div>
         <NavUser user={user} />
