@@ -22,6 +22,7 @@ import {
   colorSurfaceContainer,
   fontDisplay,
 } from '@myorganizer/design-tokens';
+import { AppLogo } from '@myorganizer/web-ui';
 
 import MobileMenu from './MobileMenu';
 import Reveal from './Reveal';
@@ -127,12 +128,8 @@ function TopNav() {
     >
       <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 md:px-6">
         <div className="flex items-center gap-6">
-          <Link
-            href="/"
-            className="text-xl font-bold tracking-tight md:text-2xl"
-            style={{ color: palette.primary }}
-          >
-            MyOrganizer
+          <Link href="/" aria-label="MyOrganiser home">
+            <AppLogo variant="full" height={32} aria-hidden />
           </Link>
           <div className="hidden gap-4 md:flex">
             {navLinks.map((link) => (
@@ -370,7 +367,7 @@ function Security() {
           Your Data, Your Keys.
         </h2>
         <p className="max-w-2xl text-base" style={{ color: palette.muted }}>
-          MyOrganizer uses client-side encryption. We only see ciphertext; your
+          MyOrganiser uses client-side encryption. We only see ciphertext; your
           sensitive data is decrypted only on your device. Your privacy is
           mathematically guaranteed.
         </p>
@@ -493,18 +490,13 @@ function Footer() {
       }}
     >
       <div className="mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-4 px-4 py-12 md:flex-row md:px-6">
-        <div className="flex flex-col items-center gap-1 md:items-start">
-          <span
-            className="text-lg font-bold"
-            style={{ color: palette.primary }}
-          >
-            MyOrganizer
-          </span>
+        <div className="flex flex-col items-center gap-2 md:items-start">
+          <AppLogo variant="full" height={28} aria-hidden />
           <span
             className="text-xs uppercase tracking-wide"
             style={{ color: palette.muted }}
           >
-            © {new Date().getFullYear()} MyOrganizer. Secure by design.
+            © {new Date().getFullYear()} MyOrganiser. Secure by design.
           </span>
         </div>
         <div className="flex flex-wrap justify-center gap-4">

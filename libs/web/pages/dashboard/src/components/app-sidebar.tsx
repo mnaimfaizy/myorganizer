@@ -4,6 +4,7 @@ import * as React from 'react';
 
 import { getCurrentUser } from '@myorganizer/auth';
 import {
+  AppLogo,
   Sidebar,
   SidebarContent,
   SidebarHeader,
@@ -76,6 +77,19 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
+        <div className="flex items-center px-2 py-3 group-data-[collapsible=icon]:justify-center">
+          <AppLogo
+            variant="full"
+            height={28}
+            className="group-data-[collapsible=icon]:hidden"
+          />
+          <AppLogo
+            variant="icon"
+            height={28}
+            className="hidden group-data-[collapsible=icon]:block"
+            aria-hidden
+          />
+        </div>
         <NavUser user={user} />
       </SidebarHeader>
       <SidebarContent>
