@@ -17,6 +17,8 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - Test one project: `yarn nx test <project-name>`.
 - Lint: `yarn nx lint <project-name>` or `yarn lint`.
 - Format: `yarn format:write`.
+- AI commit workflow: `corepack yarn ai:commit --message-file <path>` (or pipe the message on stdin).
+- AI PR workflow: `corepack yarn ai:create-pr [--reviewer <login>]`.
 - API sync after backend contract changes: `yarn openapi:sync`; check drift with `yarn openapi:check`.
 - Prisma (backend): prefer Nx targets `yarn nx run backend:migrate` and `yarn nx run backend:generate-types`.
 - Prisma (manual): run from `apps/backend/src` and pass schema path, e.g. `npx prisma migrate dev --schema prisma/schema --name <migration_name>` and `npx prisma generate --schema prisma/schema`.
@@ -44,6 +46,9 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - Use the generated API client when it covers the endpoint.
 - Add or update focused tests for changed behavior.
 - Keep docs concise and link to existing docs when possible.
+- Use the `Commit` sub-agent only to draft Conventional Commit messages; execute commits through the shared AI workflow so Husky is allowed to finish.
+- For commit requests, wait for `git commit` to return before continuing. If Husky fails, fix the reported issue and rerun the narrow validation before retrying the commit.
+- For PR requests, gather commit history from the current branch, push upstream if needed, create or reuse the PR, assign the authenticated GitHub user, and leave reviewers empty unless the user explicitly names them.
 
 ## Do Not
 
@@ -52,6 +57,8 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - Do not store vault plaintext on the server or add plaintext todo APIs.
 - Do not hand-edit generated API client code.
 - Do not commit secrets or production credentials.
+- Do not cancel, background, or abandon a running `git commit` while Husky checks are still executing.
+- Do not open pull requests from `main` or another base branch directly.
 
 ## Spec-driven changes (OpenSpec)
 

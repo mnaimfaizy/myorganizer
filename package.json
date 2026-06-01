@@ -42,6 +42,8 @@
     "format:check": "nx format:check",
     "format:write": "nx format:write",
     "format": "nx format",
+    "ai:commit": "node tools/scripts/ai/commit-change.mjs",
+    "ai:create-pr": "node tools/scripts/ai/create-pr.mjs",
     "nx": "nx",
     "postinstall": "husky"
   },

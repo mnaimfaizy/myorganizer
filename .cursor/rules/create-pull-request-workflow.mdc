@@ -1,0 +1,12 @@
+---
+description: Create or reuse a MyOrganizer pull request from the current branch with the shared ai:create-pr runner, upstream push, authenticated-user assignment, and optional reviewers.
+alwaysApply: false
+---
+
+# Create Pull Request Workflow
+
+- Base the PR content on commits in the current branch relative to the base branch.
+- Run `corepack yarn ai:create-pr`.
+- If reviewers are explicitly provided, pass `--reviewer <login>` for each one.
+- Push upstream if needed, assign the authenticated GitHub user, and leave reviewers empty otherwise.
+- Return only the PR URL on success.

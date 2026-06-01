@@ -728,10 +728,12 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
    ```bash
    git add .
-   git commit -m "feat: add user profile settings page"
+   corepack yarn ai:commit --message "feat: add user profile settings page"
    ```
 
    Use [Conventional Commits](https://www.conventionalcommits.org/) format.
+   The shared commit workflow waits for Husky pre-commit checks to finish and uses static Nx output so lint failures stay readable in terminal-based AI tools.
+   If Husky fails, fix the reported formatting, linting, test, or typecheck issue before retrying the commit.
 
 6. **Keep Your Branch Up to Date**
 
@@ -747,54 +749,25 @@ Good issues help maintainers understand and address problems quickly. Here's how
    ```
 
 8. **Create the Pull Request**
-   - Go to your fork on GitHub
-   - Click "Compare & pull request"
-   - **Write a Clear PR Title**: Same format as commits
-     - `feat: add user profile settings`
-     - `fix: resolve database connection timeout`
-     - `docs: update API documentation`
+   - Use the shared PR workflow:
 
-   - **Fill in the PR Description**:
-
-     ```markdown
-     ## Description
-
-     Brief description of what this PR does.
-
-     ## Related Issue
-
-     Closes #123
-
-     ## Changes Made
-
-     - Added user profile settings page
-     - Updated user service to support profile updates
-     - Added tests for profile update functionality
-
-     ## Testing Done
-
-     - [ ] Unit tests pass
-     - [ ] E2E tests pass
-     - [ ] Manual testing completed
-     - [ ] Documentation updated
-
-     ## Screenshots (if applicable)
-
-     [Add screenshots of UI changes]
-
-     ## Checklist
-
-     - [ ] Code follows project style guidelines
-     - [ ] Self-review completed
-     - [ ] Comments added for complex code
-     - [ ] Documentation updated
-     - [ ] Tests added/updated
-     - [ ] All tests passing
-     - [ ] No new warnings introduced
+     ```bash
+     corepack yarn ai:create-pr
      ```
 
-   - **Request Reviewers** (if you have permission)
-   - **Add Labels** (if you have permission)
+   - Add reviewers only when you need them:
+
+     ```bash
+     corepack yarn ai:create-pr --reviewer teammate-login
+     ```
+
+   - The shared PR workflow:
+     - gathers the commits in the current branch relative to the default base branch
+     - pushes the branch upstream if it is not already tracked
+     - creates the PR description from the branch commits
+     - assigns the authenticated GitHub user to the PR
+     - leaves reviewers empty unless you explicitly pass one
+     - returns only the PR URL on success
 
 9. **Submit the Pull Request**
 
@@ -816,7 +789,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
    ```bash
    # Make requested changes
    git add .
-   git commit -m "fix: address review feedback"
+   corepack yarn ai:commit --message "fix: address review feedback"
    git push origin feature/your-feature-name
    ```
 

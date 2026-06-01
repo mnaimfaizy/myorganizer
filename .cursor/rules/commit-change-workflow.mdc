@@ -1,0 +1,12 @@
+---
+description: Commit staged MyOrganizer changes safely by reusing the Commit sub-agent for the message and the shared ai:commit runner for execution.
+alwaysApply: false
+---
+
+# Commit Change Workflow
+
+- Use the existing `Commit` sub-agent to draft the Conventional Commit message from the staged diff.
+- Run the actual commit with `corepack yarn ai:commit`.
+- Wait for `git commit` to finish. Do not cancel or background the process while Husky is running.
+- If Husky fails, fix the reported formatting, lint, typecheck, or test issue, rerun the narrow validation, and then retry the commit.
+- Do not auto-stage unrelated files.
