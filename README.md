@@ -1,169 +1,301 @@
-# Myorganizer
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="apps/myorganizer/public/images/logo-shield-dark.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="apps/myorganizer/public/images/logo-shield.svg" />
+    <img src="apps/myorganizer/public/images/logo-shield.svg" alt="MyOrganizer logo" width="220" />
+  </picture>
+</p>
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+<h1 align="center">MyOrganizer</h1>
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is almost ready ✨.
+<p align="center">
+  A full-stack, privacy-first personal organizer with end-to-end encrypted storage.
+</p>
 
-## Quickstart (dev)
+<p align="center">
+  <a href="https://myorganizer-seven.vercel.app" target="_blank"><strong>Live Demo →</strong></a>
+  &nbsp;·&nbsp;
+  <a href="DEVELOPMENT.md">Developer Guide</a>
+  &nbsp;·&nbsp;
+  <a href="docs/features/README.md">Feature Docs</a>
+</p>
 
-1. Copy environment file:
+<p align="center">
+  <a href="https://github.com/mnaimfaizy/myorganizer/actions/workflows/ci.yml">
+    <img src="https://github.com/mnaimfaizy/myorganizer/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  </a>
+  <a href="https://myorganizer-seven.vercel.app">
+    <img src="https://img.shields.io/badge/demo-live-brightgreen?logo=vercel" alt="Live Demo" />
+  </a>
+  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" />
+  <img src="https://img.shields.io/badge/node-%3E%3D22-brightgreen?logo=node.js" alt="Node >=22" />
+  <img src="https://img.shields.io/badge/TypeScript-5.x-blue?logo=typescript" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/yarn-4.x-2C8EBB?logo=yarn" alt="Yarn 4" />
+</p>
 
-```sh
-cp .env.example .env
+---
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [Technology Stack](#technology-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Available Scripts](#available-scripts)
+- [Frontend Architecture](#frontend-architecture)
+- [E2E Encrypted Vault](#e2e-encrypted-vault)
+- [Production Checklist](#production-checklist)
+- [Documentation](#documentation)
+
+---
+
+## Overview
+
+MyOrganizer is a full-stack personal organizer built as an **Nx monorepo**. It lets you securely manage your todos, addresses, phone numbers, subscriptions, and YouTube watchlist — with sensitive data protected by a client-side end-to-end encrypted vault (the server only ever stores ciphertext).
+
+The application is deployed at **[myorganizer-seven.vercel.app](https://myorganizer-seven.vercel.app)** (frontend on Vercel, backend on cPanel/VPS).
+
+---
+
+## Features
+
+| Area                 | Details                                                                              |
+| -------------------- | ------------------------------------------------------------------------------------ |
+| **Authentication**   | JWT access + refresh tokens, email verification, password reset, session management  |
+| **E2EE Vault**       | Client-side AES-GCM encryption — todos, addresses, mobile numbers, subscriptions     |
+| **Vault Backup**     | Export/import vault blob; optional Google Drive cloud backup (browser-side GIS flow) |
+| **Subscriptions**    | Track recurring subscriptions with currency + country preferences                    |
+| **YouTube**          | OAuth server-side sync of YouTube subscriptions and cached video feed                |
+| **Account Settings** | Preferred country + currency stored server-side for vault-backed views               |
+| **UI Library**       | Storybook-driven Radix UI component library with design tokens                       |
+| **API Docs**         | Auto-generated Swagger/OpenAPI via TSOA, viewable at `/docs`                         |
+
+---
+
+## Technology Stack
+
+### Frontend
+
+| Technology                                                                       | Purpose                                  |
+| -------------------------------------------------------------------------------- | ---------------------------------------- |
+| [Next.js 16](https://nextjs.org) (App Router)                                    | React framework — SSR, routing, metadata |
+| [React 19](https://react.dev)                                                    | UI rendering                             |
+| [TypeScript](https://www.typescriptlang.org)                                     | Type safety across the stack             |
+| [Tailwind CSS](https://tailwindcss.com)                                          | Utility-first styling                    |
+| [Radix UI](https://www.radix-ui.com)                                             | Accessible headless component primitives |
+| [React Hook Form](https://react-hook-form.com) + [Zod](https://zod.dev)          | Form management and validation           |
+| [WebCrypto API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API) | Client-side AES-GCM vault encryption     |
+
+### Backend
+
+| Technology                                           | Purpose                                      |
+| ---------------------------------------------------- | -------------------------------------------- |
+| [Express.js](https://expressjs.com)                  | REST API framework                           |
+| [TypeScript](https://www.typescriptlang.org)         | Typed server-side code                       |
+| [TSOA](https://tsoa-community.github.io/docs/)       | Decorator-based routing + OpenAPI generation |
+| [Prisma](https://www.prisma.io)                      | Type-safe ORM and migrations                 |
+| [PostgreSQL](https://www.postgresql.org)             | Relational database                          |
+| [Passport.js](https://www.passportjs.org)            | Authentication (local + JWT strategies)      |
+| [bcrypt](https://github.com/kelektiv/node.bcrypt.js) | Password hashing                             |
+| [Winston](https://github.com/winstonjs/winston)      | Structured logging                           |
+| [Nodemailer](https://nodemailer.com)                 | Transactional email                          |
+| [Zod](https://zod.dev)                               | Runtime schema validation                    |
+| [Helmet.js](https://helmetjs.github.io)              | HTTP security headers                        |
+
+### Monorepo & Tooling
+
+| Technology                                                     | Purpose                                                       |
+| -------------------------------------------------------------- | ------------------------------------------------------------- |
+| [Nx](https://nx.dev)                                           | Monorepo build system, task orchestration, affected detection |
+| [Yarn 4](https://yarnpkg.com) (Corepack)                       | Package manager                                               |
+| [Node.js 22](https://nodejs.org)                               | JavaScript runtime                                            |
+| [Jest](https://jestjs.io)                                      | Unit testing                                                  |
+| [Playwright](https://playwright.dev)                           | End-to-end testing                                            |
+| [Storybook](https://storybook.js.org)                          | UI component development and documentation                    |
+| [Docker](https://www.docker.com)                               | Local PostgreSQL and MailHog services                         |
+| [ESLint](https://eslint.org) + [Prettier](https://prettier.io) | Code linting and formatting                                   |
+
+---
+
+## Project Structure
+
+```
+myorganizer/
+├── apps/
+│   ├── backend/          # Express.js REST API (TypeScript, TSOA, Prisma)
+│   ├── myorganizer/      # Next.js 16 frontend (App Router)
+│   └── myorganizer-e2e/  # Playwright end-to-end tests
+├── libs/
+│   ├── api-specs/        # OpenAPI spec source of truth
+│   ├── app-api-client/   # Auto-generated API client (do not edit manually)
+│   ├── auth/             # Shared auth helpers (JWT, session)
+│   ├── core/             # Shared utilities and types
+│   ├── design-tokens/    # W3C DTCG design tokens → CSS + TypeScript + Tailwind
+│   ├── vault-core/       # Encryption primitives (AES-GCM, WebCrypto)
+│   ├── web/
+│   │   └── pages/        # One Nx library per route (e.g. todos, subscriptions)
+│   ├── web-ui/           # Shared Radix UI component library
+│   ├── web-vault/        # Browser vault state and sync logic
+│   └── web-vault-ui/     # Vault-specific UI components
+├── docs/                 # Architecture and feature documentation
+├── openspec/             # Spec-driven change proposals
+└── tools/                # Build and release scripts
 ```
 
-2. Install dependencies from the authoritative lockfile:
+---
+
+## Getting Started
+
+### Prerequisites
+
+- **Node.js** ≥ 22
+- **Yarn** ≥ 4 (via [Corepack](https://nodejs.org/api/corepack.html))
+- **Docker** (for local Postgres + MailHog)
+
+Enable Corepack if not already done:
 
 ```sh
-corepack yarn install --immutable
+corepack enable
 ```
 
-3. Start dependencies (Postgres + MailHog):
+### Installation
 
-```sh
-docker-compose up -d
-```
+1. **Clone the repository**
 
-4. Start backend and frontend (separate terminals):
+   ```sh
+   git clone https://github.com/mnaimfaizy/myorganizer.git
+   cd myorganizer
+   ```
 
-```sh
-yarn start:backend
-yarn start:myorganizer
-```
+2. **Copy the environment file**
 
-This repository is Yarn-first with modern Yarn 4 via Corepack. Keep `yarn.lock` committed and treat `package-lock.json` and `pnpm-lock.yaml` as non-authoritative secondary-manager artifacts.
+   ```sh
+   cp .env.example .env
+   ```
 
-If your machine already resolves `yarn` through Corepack, the same commands work without the `corepack` prefix.
+   Edit `.env` and fill in your local values (database credentials, JWT secrets, etc.).
 
-## Frontend architecture (important)
+3. **Install dependencies**
 
-This repo uses a strict Next.js App Router pattern:
+   ```sh
+   corepack yarn install --immutable
+   ```
 
-- `apps/myorganizer/src/app/**` must stay as **thin route wrappers** only (routing + metadata + composition).
-- All page/domain logic must live in Nx libraries under `libs/web/pages/<route>/` and be imported via `@myorganizer/web-pages/<route>`.
-- Shared cross-cutting logic must live in `libs/**` (for example, vault logic belongs in `libs/web-vault` and `libs/web-vault-ui`).
+4. **Start local services** (Postgres + MailHog)
 
-See **[Development Guide](DEVELOPMENT.md)** → “Frontend Architecture (Web Page Libraries)”.
+   ```sh
+   docker-compose up -d
+   ```
 
-## Dashboard features (vault-backed)
+5. **Run database migrations**
 
-Some dashboard areas store sensitive data inside the client-side encrypted vault (ciphertext-only on the server):
+   ```sh
+   yarn nx run backend:migrate
+   ```
 
-- Todos (`/dashboard/todo`)
-- Addresses (`/dashboard/addresses`)
-- Mobile numbers (`/dashboard/mobile-numbers`)
-- Subscriptions (`/dashboard/subscriptions`)
-- Vault export/import (`/dashboard/vault-export`)
+6. **Start the applications** (separate terminals)
 
-Account preferences used by vault-backed views:
+   ```sh
+   yarn start:backend       # http://localhost:3000
+   yarn start:myorganizer   # http://localhost:4200
+   ```
 
-- Account settings (`/dashboard/account`) for preferred country + currency
+   API docs are available at **http://localhost:3000/docs** once the backend is running.
+
+---
+
+## Available Scripts
+
+| Command                  | Description                                  |
+| ------------------------ | -------------------------------------------- |
+| `yarn start:backend`     | Start backend in development mode            |
+| `yarn start:myorganizer` | Start frontend in development mode           |
+| `yarn build:backend`     | Production build of the backend              |
+| `yarn build:myorganizer` | Production build of the frontend             |
+| `yarn nx test <project>` | Run unit tests for a project                 |
+| `yarn nx lint <project>` | Lint a project                               |
+| `yarn format:write`      | Format all files with Prettier               |
+| `yarn storybook`         | Launch Storybook on http://localhost:6006    |
+| `yarn api-docs:generate` | Regenerate OpenAPI spec from TSOA decorators |
+| `yarn api:generate`      | Regenerate the API client from the spec      |
+| `yarn openapi:check`     | Check for drift between spec and client      |
+| `yarn nx dep-graph`      | Visualize the project dependency graph       |
+
+---
+
+## Frontend Architecture
+
+This repo enforces a strict **thin-wrapper** pattern for the Next.js App Router:
+
+- `apps/myorganizer/src/app/**` — route wrappers only (routing, metadata, layout composition).
+- `libs/web/pages/<route>/` — all page logic, imported via `@myorganizer/web-pages/<route>`.
+- `libs/**` — all shared cross-cutting code (vault, UI components, auth helpers).
+
+Never put feature logic or shared helpers inside `apps/myorganizer/src/lib/**`.
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the full architecture guide.
+
+---
+
+## E2E Encrypted Vault
+
+MyOrganizer stores sensitive personal data in a **client-side encrypted vault** using the browser's native WebCrypto API (AES-256-GCM). The server receives and stores only opaque ciphertext — plaintext never leaves the browser.
+
+**Vault-backed features:**
+
+| Route                       | Data                       |
+| --------------------------- | -------------------------- |
+| `/dashboard/todo`           | Todos                      |
+| `/dashboard/addresses`      | Addresses                  |
+| `/dashboard/mobile-numbers` | Mobile phone numbers       |
+| `/dashboard/subscriptions`  | Recurring subscriptions    |
+| `/dashboard/vault-export`   | Full vault export / import |
+
+**Optional cloud backup:** The vault blob can be backed up to your personal Google Drive using the browser-side Google Identity Services (GIS) flow. See [vault-cloud-backup-google-drive.md](docs/features/vault-cloud-backup-google-drive.md).
+
+---
+
+## Production Checklist
+
+Before deploying, ensure these environment variables are set in your hosting provider (do **not** commit them to git):
+
+| Variable                   | Notes                                                |
+| -------------------------- | ---------------------------------------------------- |
+| `NODE_ENV`                 | Set to `production`                                  |
+| `SESSION_SECRET`           | Strong random string                                 |
+| `ACCESS_JWT_SECRET`        | Strong random string                                 |
+| `REFRESH_JWT_SECRET`       | Strong random string                                 |
+| `VERIFY_JWT_SECRET`        | Strong random string                                 |
+| `RESET_JWT_SECRET`         | Strong random string                                 |
+| `DATABASE_URL`             | PostgreSQL connection string                         |
+| `CORS_ORIGINS`             | Comma-separated allowed origins, no trailing slashes |
+| `TRUST_PROXY`              | Set when behind a reverse proxy or load balancer     |
+| `ENABLE_GLOBAL_RATE_LIMIT` | `true` to enable API rate limiting                   |
+
+See [`.env.example`](.env.example) for the full list and [apps/backend/README.md](apps/backend/README.md) for deployment notes.
+
+---
 
 ## Documentation
 
-- **[Development Guide](DEVELOPMENT.md)** - Complete guide for developing in the monorepo
-- Authentication and token strategy: `docs/authentication/README.md`
-- Backend setup notes: `apps/backend/README.md`
-- Storybook and Chromatic setup: `docs/storybook/README.md`
-- Feature integrations (index): [`docs/features/README.md`](docs/features/README.md)
-  - Google Drive vault cloud backup: [`docs/features/vault-cloud-backup-google-drive.md`](docs/features/vault-cloud-backup-google-drive.md)
-  - YouTube OAuth setup: [`docs/features/google-youtube-oauth-setup.md`](docs/features/google-youtube-oauth-setup.md)
-  - YouTube integration architecture: [`docs/features/youtube-integration.md`](docs/features/youtube-integration.md)
+| Document                                                                                             | Description                                              |
+| ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| [DEVELOPMENT.md](DEVELOPMENT.md)                                                                     | Complete developer guide — setup, workflow, architecture |
+| [apps/backend/README.md](apps/backend/README.md)                                                     | Backend API reference and deployment                     |
+| [docs/authentication/README.md](docs/authentication/README.md)                                       | JWT + session auth strategy                              |
+| [docs/storybook/README.md](docs/storybook/README.md)                                                 | Storybook and Chromatic setup                            |
+| [docs/features/README.md](docs/features/README.md)                                                   | Feature integration index                                |
+| [docs/features/vault-cloud-backup-google-drive.md](docs/features/vault-cloud-backup-google-drive.md) | Google Drive vault backup                                |
+| [docs/features/google-youtube-oauth-setup.md](docs/features/google-youtube-oauth-setup.md)           | Google / YouTube OAuth setup                             |
+| [docs/features/youtube-integration.md](docs/features/youtube-integration.md)                         | YouTube subscription sync architecture                   |
+| [libs/design-tokens/DESIGN.md](libs/design-tokens/DESIGN.md)                                         | Design system and token reference                        |
 
-## Production checklist
+---
 
-Before deploying, review `apps/backend/README.md` and ensure the following environment variables are set in your hosting provider (not committed to git):
-
-- `NODE_ENV=production`
-- `SESSION_SECRET` (required in production)
-- JWT secrets: `ACCESS_JWT_SECRET`, `REFRESH_JWT_SECRET`, `VERIFY_JWT_SECRET`, `RESET_JWT_SECRET`
-- `DATABASE_URL`
-- `CORS_ORIGINS` (comma-separated origins, no trailing slashes)
-- Reverse proxy: set `TRUST_PROXY` when behind a proxy/load balancer
-- Optional: enable global API rate limiting with `ENABLE_GLOBAL_RATE_LIMIT=true` and tune `RATE_LIMIT_WINDOW_MS`, `RATE_LIMIT_MAX`
-
-See `.env.example` for the full list and defaults.
-
-## Storybook
-
-To view and develop UI components in isolation:
-
-```sh
-yarn storybook
-```
-
-[Learn more about this workspace setup and its capabilities](https://nx.dev/nx-api/next?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
-
-## Finish your remote caching setup
-
-[Click here to finish setting up your workspace!](https://cloud.nx.app/connect/kwi4WA2ULH)
-
-## Run tasks
-
-To run the dev server for your app, use:
-
-```sh
-npx nx dev myorganizer
-```
-
-To create a production bundle:
-
-```sh
-npx nx build myorganizer
-```
-
-To see all available targets to run for a project, run:
-
-```sh
-npx nx show project myorganizer
-```
-
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
-
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Add new projects
-
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
-
-Use the plugin's generator to create new projects.
-
-To generate a new application, use:
-
-```sh
-npx nx g @nx/next:app demo
-```
-
-To generate a new library, use:
-
-```sh
-npx nx g @nx/react:lib mylib
-```
-
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
-
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Install Nx Console
-
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
-
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-## Useful links
-
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/nx-api/next?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+<p align="center">
+  <a href="https://nx.dev" target="_blank" rel="noreferrer">
+    <img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="32" alt="Nx" />
+  </a>
+  &nbsp; Built with <a href="https://nx.dev">Nx</a> · Licensed under <a href="LICENSE">MIT</a>
+</p>
