@@ -118,7 +118,28 @@ function normalizeReviewers(reviewers) {
   return reviewers
     .flatMap((reviewer) => reviewer.split(','))
     .map((reviewer) => reviewer.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((reviewer) => {
+      if (reviewer.startsWith('@') && !/^@(copilot|me)$/i.test(reviewer)) {
+        return reviewer.slice(1);
+      }
+
+      return reviewer;
+    });
+}
+
+function validateReviewers(reviewers) {
+  const unsupportedReviewers = reviewers.filter((reviewer) =>
+    /^@(copilot|me)$/i.test(reviewer),
+  );
+
+  if (unsupportedReviewers.length === 0) {
+    return;
+  }
+
+  fail(
+    'GitHub review requests do not support @copilot or @me as reviewer handles through this workflow. Use a real GitHub login for --reviewer, or keep Copilot in the IDE/web review flow instead.',
+  );
 }
 
 function ensureGhAvailable() {
@@ -250,6 +271,22 @@ function extractCommitBodyBullets(body) {
     .filter(Boolean);
 }
 
+function buildFallbackWhy(commits, branch, baseBranch) {
+  const primaryIntent = toSentence(stripConventionalPrefix(commits[0].subject));
+
+  if (commits.length === 1) {
+    return primaryIntent;
+  }
+
+  const followUpLabel =
+    commits.length === 2 ? 'A follow-up commit' : 'Follow-up commits';
+
+  return [
+    primaryIntent,
+    `${followUpLabel} refine the branch before merging \`${branch}\` into \`${baseBranch}\`.`,
+  ].join(' ');
+}
+
 function buildFallbackTitle(commits, branch) {
   const commitSubjects = commits.map((commit) => commit.subject);
 
@@ -262,26 +299,21 @@ function buildFallbackTitle(commits, branch) {
 }
 
 function buildFallbackBody(commits, branch, baseBranch) {
-  const summary =
-    commits.length === 1
-      ? toSentence(stripConventionalPrefix(commits[0].subject))
-      : `This PR includes ${commits.length} commits from \`${branch}\` into \`${baseBranch}\`.`;
-
   const detailBullets = commits.flatMap((commit) =>
     extractCommitBodyBullets(commit.body),
   );
 
-  const whatChangedLines =
+  const changeLines =
     detailBullets.length > 0
       ? detailBullets.map((detail) => `- ${detail}`)
       : commits.map((commit) => `- ${commit.subject}`);
 
   return [
-    '## Summary',
-    summary,
+    '## Why',
+    buildFallbackWhy(commits, branch, baseBranch),
     '',
-    '## What Changed',
-    ...whatChangedLines,
+    '## Changes',
+    ...changeLines,
     '',
     '## Validation',
     `- Generated from ${commits.length} commit(s) on \`${branch}\`.`,
@@ -442,6 +474,7 @@ const reviewers = normalizeReviewers(options.reviewers);
 const commits = getBranchCommits(baseBranch);
 
 ensureNotBaseBranch(branch, baseBranch);
+validateReviewers(reviewers);
 ensureUpstreamBranch();
 
 if (commits.length === 0) {
