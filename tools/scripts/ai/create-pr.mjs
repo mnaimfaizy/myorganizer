@@ -163,6 +163,27 @@ function ensureUpstreamBranch() {
   );
 
   if (upstreamResult.status === 0) {
+    const aheadBehind = trimStdout('git', [
+      'rev-list',
+      '--left-right',
+      '--count',
+      '@{u}...HEAD',
+    ]);
+    const [behindCountText = '0', aheadCountText = '0'] =
+      aheadBehind.split(/\s+/);
+    const behindCount = Number.parseInt(behindCountText, 10);
+    const aheadCount = Number.parseInt(aheadCountText, 10);
+
+    if (Number.isInteger(aheadCount) && aheadCount > 0) {
+      run('git', ['push', 'origin', 'HEAD']);
+    }
+
+    if (Number.isInteger(behindCount) && behindCount > 0 && aheadCount === 0) {
+      fail(
+        'The local branch is behind its upstream branch. Pull or rebase before creating the PR.',
+      );
+    }
+
     return;
   }
 
@@ -232,7 +253,7 @@ function extractCommitBodyBullets(body) {
 function buildFallbackTitle(commits, branch) {
   const commitSubjects = commits.map((commit) => commit.subject);
 
-  if (commitSubjects.length === 1) {
+  if (commitSubjects.length >= 1) {
     return commitSubjects[0];
   }
 
