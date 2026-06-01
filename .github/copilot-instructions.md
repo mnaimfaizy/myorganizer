@@ -249,7 +249,21 @@ When consuming the generated client:
 - Add descriptions to endpoints with `@Example` and `@Description`
 - View docs at http://localhost:3000/docs
 
+## Design Tokens
+
+The single source of truth for colors, typography, spacing, radii, and shadows lives in `libs/design-tokens/src/tokens.json` (W3C DTCG format). Do **not** hard-code hex colors, font stacks, or magic spacing values in components.
+
+- Edit `libs/design-tokens/src/tokens.json` to change any design value.
+- Rebuild with `yarn nx run design-tokens:build-tokens` — this regenerates:
+  - `src/generated/tokens.css` — CSS custom properties on `:root` (`--color-primary`, `--space-md`, etc.) imported by `apps/myorganizer/src/app/global.css`.
+  - `src/generated/tokens.ts` — typed constants (`colorPrimary`, `colorPrimaryVar`) re-exported from `@myorganizer/design-tokens`.
+  - `src/generated/tailwind-preset.js` — optional Tailwind preset using the CSS variables.
+- Never edit anything under `src/generated/` — it is regenerated from `tokens.json`.
+- Prefer importing TS constants from `@myorganizer/design-tokens` over inline literals.
+
 ## Commit Messages
+
+## Common Anti-Patterns to Avoid
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/) format:
 

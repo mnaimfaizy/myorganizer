@@ -19,6 +19,7 @@
       "@myorganizer/app-api-client": ["libs/app-api-client/src/index.ts"],
       "@myorganizer/auth": ["libs/auth/src/index.ts"],
       "@myorganizer/core": ["libs/core/src/index.ts"],
+      "@myorganizer/design-tokens": ["libs/design-tokens/src/index.ts"],
       "@myorganizer/vault-core": ["libs/vault-core/src/index.ts"],
       "@myorganizer/web-pages/account": ["libs/web/pages/account/src/index.ts"],
       "@myorganizer/web-pages/addresses": [
