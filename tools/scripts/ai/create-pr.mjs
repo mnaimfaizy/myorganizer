@@ -182,46 +182,93 @@ function resolveBaseRef(baseBranch) {
   return baseBranch;
 }
 
-function getBranchCommitSubjects(baseBranch) {
+function getBranchCommits(baseBranch) {
   const baseRef = resolveBaseRef(baseBranch);
   const mergeBase = trimStdout('git', ['merge-base', baseRef, 'HEAD']);
   const logOutput = trimStdout('git', [
     'log',
-    '--format=%s',
+    '--format=%s%x1f%b%x1e',
     '--reverse',
     `${mergeBase}..HEAD`,
   ]);
 
   return logOutput
+    .split('\x1e')
+    .map((record) => record.trim())
+    .filter(Boolean)
+    .map((record) => {
+      const [subject = '', body = ''] = record.split('\x1f');
+
+      return {
+        body: body.trim(),
+        subject: subject.trim(),
+      };
+    })
+    .filter((commit) => Boolean(commit.subject));
+}
+
+function stripConventionalPrefix(subject) {
+  return subject.replace(/^[a-z]+(?:\([^)]+\))?!?:\s*/i, '').trim();
+}
+
+function toSentence(text) {
+  if (!text) {
+    return '';
+  }
+
+  const normalizedText = `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
+  return /[.!?]$/.test(normalizedText) ? normalizedText : `${normalizedText}.`;
+}
+
+function extractCommitBodyBullets(body) {
+  return body
     .split('\n')
-    .map((subject) => subject.trim())
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => line.replace(/^[-*]\s+/, '').trim())
     .filter(Boolean);
 }
 
-function buildFallbackTitle(commitSubjects, branch) {
+function buildFallbackTitle(commits, branch) {
+  const commitSubjects = commits.map((commit) => commit.subject);
+
   if (commitSubjects.length === 1) {
     return commitSubjects[0];
   }
 
-  const normalizedBranch = branch.replace(/[\/_-]+/g, ' ').trim();
+  const normalizedBranch = branch.replace(/[/_-]+/g, ' ').trim();
   return normalizedBranch ? `Update ${normalizedBranch}` : commitSubjects[0];
 }
 
-function buildFallbackBody(commitSubjects, baseBranch) {
-  const summaryLines = commitSubjects
-    .map((subject) => `- ${subject}`)
-    .join('\n');
+function buildFallbackBody(commits, branch, baseBranch) {
+  const summary =
+    commits.length === 1
+      ? toSentence(stripConventionalPrefix(commits[0].subject))
+      : `This PR includes ${commits.length} commits from \`${branch}\` into \`${baseBranch}\`.`;
+
+  const detailBullets = commits.flatMap((commit) =>
+    extractCommitBodyBullets(commit.body),
+  );
+
+  const whatChangedLines =
+    detailBullets.length > 0
+      ? detailBullets.map((detail) => `- ${detail}`)
+      : commits.map((commit) => `- ${commit.subject}`);
 
   return [
     '## Summary',
-    summaryLines,
+    summary,
+    '',
+    '## What Changed',
+    ...whatChangedLines,
     '',
     '## Validation',
-    `- Derived from commits targeting ${baseBranch}.`,
+    `- Generated from ${commits.length} commit(s) on \`${branch}\`.`,
+    `- Compared against base branch \`${baseBranch}\`.`,
   ].join('\n');
 }
 
-function readBody(options, commitSubjects, branch, baseBranch) {
+function readBody(options, commits, branch, baseBranch) {
   if (options.body && options.bodyFile) {
     fail('Provide either --body or --body-file, not both.');
   }
@@ -231,7 +278,7 @@ function readBody(options, commitSubjects, branch, baseBranch) {
   }
 
   const bodyText =
-    options.body ?? buildFallbackBody(commitSubjects, baseBranch);
+    options.body ?? buildFallbackBody(commits, branch, baseBranch);
   const tempDir = mkdtempSync(join(tmpdir(), 'myorganizer-ai-pr-'));
   const bodyPath = join(
     tempDir,
@@ -264,7 +311,7 @@ function findExistingPullRequest(branch, baseBranch) {
     '--state',
     'open',
     '--json',
-    'number,url',
+    'number,url,reviewRequests',
   ]);
 
   if (!response) {
@@ -275,17 +322,40 @@ function findExistingPullRequest(branch, baseBranch) {
   return pullRequests[0] ?? null;
 }
 
-function updateExistingPullRequest(pullRequestNumber, assignee, reviewers) {
+function updateExistingPullRequest(
+  pullRequest,
+  assignee,
+  reviewers,
+  title,
+  bodyPath,
+) {
+  const existingReviewers = (pullRequest.reviewRequests ?? [])
+    .map((reviewRequest) => reviewRequest.login)
+    .filter(Boolean);
+  const reviewersToAdd = reviewers.filter(
+    (reviewer) => !existingReviewers.includes(reviewer),
+  );
+  const reviewersToRemove = existingReviewers.filter(
+    (reviewer) => !reviewers.includes(reviewer),
+  );
   const editArgs = [
     'pr',
     'edit',
-    String(pullRequestNumber),
+    String(pullRequest.number),
+    '--title',
+    title,
+    '--body-file',
+    bodyPath,
     '--add-assignee',
     assignee,
   ];
 
-  reviewers.forEach((reviewer) => {
+  reviewersToAdd.forEach((reviewer) => {
     editArgs.push('--add-reviewer', reviewer);
+  });
+
+  reviewersToRemove.forEach((reviewer) => {
+    editArgs.push('--remove-reviewer', reviewer);
   });
 
   run('gh', editArgs);
@@ -348,27 +418,49 @@ ensureGhAvailable();
 const branch = getCurrentBranch();
 const baseBranch = options.base ?? getDefaultBaseBranch();
 const reviewers = normalizeReviewers(options.reviewers);
+const commits = getBranchCommits(baseBranch);
 
 ensureNotBaseBranch(branch, baseBranch);
 ensureUpstreamBranch();
+
+if (commits.length === 0) {
+  fail(`No commits found between ${baseBranch} and ${branch}.`);
+}
+
+const title = options.title ?? buildFallbackTitle(commits, branch);
+const bodySource = readBody(options, commits, branch, baseBranch);
 
 const assignee = getAuthenticatedLogin();
 const existingPullRequest = findExistingPullRequest(branch, baseBranch);
 
 if (existingPullRequest) {
-  updateExistingPullRequest(existingPullRequest.number, assignee, reviewers);
+  if (typeof bodySource === 'string') {
+    updateExistingPullRequest(
+      existingPullRequest,
+      assignee,
+      reviewers,
+      title,
+      bodySource,
+    );
+    process.stdout.write(`${existingPullRequest.url}\n`);
+    process.exit(0);
+  }
+
+  try {
+    updateExistingPullRequest(
+      existingPullRequest,
+      assignee,
+      reviewers,
+      title,
+      bodySource.bodyPath,
+    );
+  } finally {
+    rmSync(bodySource.tempDir, { force: true, recursive: true });
+  }
+
   process.stdout.write(`${existingPullRequest.url}\n`);
   process.exit(0);
 }
-
-const commitSubjects = getBranchCommitSubjects(baseBranch);
-
-if (commitSubjects.length === 0) {
-  fail(`No commits found between ${baseBranch} and ${branch}.`);
-}
-
-const title = options.title ?? buildFallbackTitle(commitSubjects, branch);
-const bodySource = readBody(options, commitSubjects, branch, baseBranch);
 
 if (typeof bodySource === 'string') {
   const pullRequestUrl = createPullRequest(
