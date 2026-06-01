@@ -1,7 +1,14 @@
 'use client';
 
 import { login, resendVerificationEmail } from '@myorganizer/auth';
-import { Button, Checkbox, Input, Label, useToast } from '@myorganizer/web-ui';
+import {
+  AppLogo,
+  Button,
+  Checkbox,
+  Input,
+  Label,
+  useToast,
+} from '@myorganizer/web-ui';
 import { Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -87,20 +94,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md space-y-8">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                className="w-6 h-6 text-white"
-                stroke="currentColor"
-                strokeWidth="2"
-              >
-                <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                <path d="M2 17l10 5 10-5" />
-                <path d="M2 12l10 5 10-5" />
-              </svg>
-            </div>
-            <span className="text-2xl font-bold">Your Logo</span>
+            <AppLogo variant="full" height={36} />
           </div>
 
           {/* Login Form */}
@@ -127,7 +121,7 @@ export default function LoginPage() {
                         You can also visit{' '}
                         <Link
                           href={`/verify/email/sent?email=${encodeURIComponent(
-                            email
+                            email,
                           )}`}
                           className="text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 font-medium"
                         >

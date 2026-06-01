@@ -3,6 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { register } from '@myorganizer/auth';
 import {
+  AppLogo,
   Button,
   Card,
   CardContent,
@@ -131,16 +132,23 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
       <div className="w-full max-w-6xl flex gap-8 items-center">
-        {/* Left side - Illustration placeholder */}
+        {/* Left side – branded panel */}
         <div className="hidden lg:flex flex-1 items-center justify-center">
-          <div className="w-full max-w-md aspect-square bg-gradient-to-br from-purple-400 to-indigo-500 rounded-3xl shadow-2xl flex items-center justify-center">
-            <div className="text-white text-center p-8">
-              <div className="text-6xl mb-4">📱</div>
+          <div
+            className="w-full max-w-md aspect-square rounded-3xl shadow-2xl flex flex-col items-center justify-center gap-6 p-10"
+            style={{
+              background:
+                'linear-gradient(135deg, #0F172A 0%, #7C3AED 60%, #0F766E 100%)',
+            }}
+          >
+            <AppLogo variant="icon" height={80} aria-hidden />
+            <div className="text-white text-center">
               <h2 className="text-3xl font-bold mb-2">
-                Welcome to MyOrganizer
+                Welcome to MyOrganiser
               </h2>
-              <p className="text-lg opacity-90">
-                Organize your life, one task at a time
+              <p className="text-base opacity-80">
+                Organize your life, secure your data—protected by client-side
+                encryption.
               </p>
             </div>
           </div>
@@ -152,6 +160,9 @@ export default function SignUpPage() {
             <CardContent className="p-8">
               {/* Header */}
               <div className="mb-8">
+                <div className="mb-4">
+                  <AppLogo variant="full" height={30} />
+                </div>
                 <h1 className="text-4xl font-bold text-gray-900 mb-2">
                   Sign up
                 </h1>

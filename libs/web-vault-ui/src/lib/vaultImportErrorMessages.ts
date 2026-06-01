@@ -11,13 +11,13 @@ export const VAULT_IMPORT_ERROR_MESSAGES: Record<VaultImportErrorCode, string> =
     'corrupt-file':
       'This file is not a valid vault export. Make sure you selected the file you downloaded from the export step and try again.',
     'schema-version-unsupported':
-      'This vault export uses a format this version of MyOrganizer does not understand. Update the app and try again.',
+      'This vault export uses a format this version of MyOrganiser does not understand. Update the app and try again.',
     'schema-version-downgrade':
-      'This vault export was created by a newer version of MyOrganizer. Update the app to import it.',
+      'This vault export was created by a newer version of MyOrganiser. Update the app to import it.',
     oversize:
       'This vault export is larger than the 10 MB limit. Reduce the size of your vault or contact support if this is unexpected.',
     'unknown-blob-type':
-      'This vault export contains data this version of MyOrganizer does not recognize. Update the app and try again.',
+      'This vault export contains data this version of MyOrganiser does not recognise. Update the app and try again.',
     'decrypt-failed':
       'Could not decrypt this vault export. Check that you entered the correct passphrase or recovery key.',
     'replay-detected':

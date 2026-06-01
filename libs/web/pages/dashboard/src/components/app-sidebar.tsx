@@ -4,10 +4,12 @@ import * as React from 'react';
 
 import { getCurrentUser } from '@myorganizer/auth';
 import {
+  AppLogo,
   Sidebar,
   SidebarContent,
   SidebarHeader,
   SidebarRail,
+  useSidebar,
 } from '@myorganizer/web-ui';
 import {
   CloudUpload,
@@ -72,10 +74,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     email: currentUser?.email ?? '',
     avatar: '',
   };
+  const { state } = useSidebar();
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
+        <div className="flex items-center px-2 py-3">
+          <AppLogo
+            variant={state === 'collapsed' ? 'icon' : 'full'}
+            height={28}
+          />
+        </div>
         <NavUser user={user} />
       </SidebarHeader>
       <SidebarContent>

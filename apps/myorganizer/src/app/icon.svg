@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" role="img" aria-label="MyOrganizer icon">
+  <title>MyOrganizer</title>
+  <defs>
+    <linearGradient id="fav-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#7C3AED"/>
+      <stop offset="100%" stop-color="#0F766E"/>
+    </linearGradient>
+    <!-- Subtle top-left highlight to give depth -->
+    <radialGradient id="fav-shine" cx="35%" cy="25%" r="55%">
+      <stop offset="0%"   stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!--
+    Classic heraldic shield:
+    Flat top edge, straight sides, lower corners curve inward,
+    and the base comes to a centred point.
+  -->
+  <path d="M4 3 L28 3 L28 19 Q28 30 16 31 Q4 30 4 19 Z"
+        fill="url(#fav-grad)"/>
+  <!-- Depth highlight -->
+  <path d="M4 3 L28 3 L28 19 Q28 30 16 31 Q4 30 4 19 Z"
+        fill="url(#fav-shine)"/>
+
+  <!--
+    Bold single checkmark — easy to read at 16 × 16 and up.
+    Strokes are thick (3 px) with round caps for max legibility.
+  -->
+  <path d="M8 17 L13.5 22.5 L24 11"
+        stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

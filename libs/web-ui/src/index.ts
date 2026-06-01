@@ -1,3 +1,4 @@
+export * from './lib/components/AppLogo/AppLogo';
 export * from './lib/components/Avatar/Avatar';
 export * from './lib/components/Badge/Badge';
 export * from './lib/components/Breadcrumb/Breadcrumb';

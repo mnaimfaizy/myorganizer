@@ -139,8 +139,8 @@ export function VaultGate(props: VaultGateProps) {
                     type="button"
                     onClick={() => {
                       downloadTextFile(
-                        'myorganizer-recovery-key.txt',
-                        `MyOrganizer Recovery Key\n\n${recoveryKey}\n\nKeep this safe. Anyone with it can decrypt your vault.`,
+                        'myorganiser-recovery-key.txt',
+                        `MyOrganiser Recovery Key\n\n${recoveryKey}\n\nKeep this safe. Anyone with it can decrypt your vault.`,
                       );
                     }}
                   >
