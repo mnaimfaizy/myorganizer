@@ -1,6 +1,13 @@
 @config "../../tailwind.config.js";
 @import 'tailwindcss';
 
+/*
+ * MyOrganizer design tokens (Secure Modernism).
+ * Source: libs/design-tokens/src/tokens.json — never edit the generated CSS.
+ * Exposes --color-*, --space-*, --radius-*, --font-*, --shadow-* on :root.
+ */
+@import '../../../../libs/design-tokens/src/generated/tokens.css';
+
 @layer base {
   :root {
     --background: 0 0% 100%;

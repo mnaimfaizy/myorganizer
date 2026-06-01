@@ -29,6 +29,14 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - Vault-backed features are end-to-end encrypted; the server stores ciphertext only.
 - Treat `libs/app-api-client` and API specs as generated/synced outputs.
 
+## Design Tokens
+
+- The design reference lives in `libs/design-tokens/DESIGN.md`; use it together with `libs/design-tokens/src/tokens.json` when changing colors, typography, spacing, radii, or shadows.
+- `libs/design-tokens/src/tokens.json` is the single source of truth for design values; do not hard-code hex colors, font stacks, or magic spacing values in components when a token should exist.
+- Regenerate token outputs with `yarn nx run design-tokens:build-tokens` after editing tokens.
+- Never edit files under `libs/design-tokens/src/generated/` directly; they are regenerated from `tokens.json`.
+- Prefer importing token constants from `@myorganizer/design-tokens` over introducing inline styling literals in application code.
+
 ## Do
 
 - Follow existing TypeScript, Tailwind, Jest, and Nx patterns.
