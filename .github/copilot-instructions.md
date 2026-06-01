@@ -232,6 +232,17 @@ When consuming the generated client:
 - Ensure tests pass: `yarn nx test`
 - Check TypeScript types (automatic during build)
 
+### Commit And PR Workflows
+
+- When the user asks to commit changes, use the repo-local commit workflow skill and the existing `Commit` sub-agent together:
+  - The `Commit` sub-agent drafts the Conventional Commit message only.
+  - The actual commit must run through `corepack yarn ai:commit`.
+- The commit workflow must wait for `git commit` to finish. Do not cancel, background, or move on while Husky pre-commit checks are still running.
+- If Husky fails because of linting, tests, formatting, or another validation issue, fix the reported problem first, rerun the narrow validation for that slice, and only then retry the commit.
+- Commit-time Nx output should remain readable. The Husky hook uses static output for Nx task execution; preserve that behavior when editing the hook.
+- When the user asks to open or create a PR, use `corepack yarn ai:create-pr` unless an IDE-native integration can satisfy the exact same behavior.
+- PR creation should gather the commit history from the current branch, push upstream if needed, assign the authenticated GitHub user, keep reviewers empty unless the user explicitly names one, and return only success plus the PR link.
+
 ## API Development
 
 ### Adding New Endpoints

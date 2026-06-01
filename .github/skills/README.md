@@ -20,6 +20,11 @@ Committed third wave:
 
 - `nx-monorepo-workflow`
 
+Committed fourth wave:
+
+- `commit-change-workflow`
+- `create-pull-request-workflow`
+
 These skills capture project-specific workflows that are easy for agents to miss even after reading the general repo instructions.
 
 Note: these are VS Code workspace skills stored in `.github/skills`. They are intended for agent discovery inside the editor. They may not appear in `npx skills list`, which focuses on skills installed through the `skills` CLI.

@@ -1,8 +1,9 @@
 . .husky/common.sh
 
 corepack yarn format:write --uncommitted
-corepack yarn affected:lint --uncommitted
+corepack yarn affected:lint --uncommitted --outputStyle=static
 
 # .husky/pre-commit
+
 corepack yarn prettier $(git diff --cached --name-only --diff-filter=ACMR | sed 's| |\ |g') --write --ignore-unknown
 git update-index --again
