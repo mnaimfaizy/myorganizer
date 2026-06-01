@@ -2,7 +2,7 @@
 description: 'Use when the user asks to write, draft, generate, or suggest a Conventional Commit message based on staged or unstaged changes. Read-only — produces the message text only and does not create the commit.'
 name: 'Commit'
 tools: [read, search, execute]
-model: ['GPT-5 mini (copilot)', 'GPT-5.4 (copilot)', 'Grok Code Fast 1 (copilot)']
+model: ['GPT-5 mini (copilot)', 'GPT-5.4 (copilot)', 'Claude Haiku 4.5 (copilot)']
 user-invocable: true
 argument-hint: 'Optional: scope hint or area of change'
 ---
