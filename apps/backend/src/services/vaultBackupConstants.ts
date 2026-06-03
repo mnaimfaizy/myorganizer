@@ -9,6 +9,7 @@ export type VaultBackupStatus = (typeof VAULT_BACKUP_STATUSES)[number];
 
 export const VAULT_BACKUP_BLOB_TYPES = [
   'addresses',
+  'groceries',
   'mobileNumbers',
   'subscriptions',
   'todos',
