@@ -120,6 +120,7 @@ When consuming the generated client:
 - Test files should mirror the structure of source files
 - Mock external dependencies
 - Aim for meaningful test coverage, not just high percentages
+- When a task requires creating or changing unit tests, route through `.github/skills/unit-test-delegation-workflow/SKILL.md` and delegate implementation to `TestScaffold`; review output for happy path, side effects, failure paths, boundaries, and security-sensitive behavior coverage. Use `docs/testing/README.md` for per-project tooling, environments, and mock patterns.
 
 ### E2E Tests
 
