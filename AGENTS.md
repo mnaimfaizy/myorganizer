@@ -53,6 +53,7 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - For commit requests, wait for `git commit` to return before continuing. If Husky fails, fix the reported issue and rerun the narrow validation before retrying the commit.
 - For PR requests, gather commit history from the current branch, push upstream if needed, create or reuse the PR, assign the authenticated GitHub user, and leave reviewers empty unless the user explicitly names them.
 - For issue creation requests, follow `.github/skills/github-issue-creation-workflow/SKILL.md` and delegate to `IssueCreator` so duplicate checks, required details, and label validation are handled consistently.
+- For unit-test creation or update requests, follow `.github/skills/unit-test-delegation-workflow/SKILL.md` and delegate implementation to `TestScaffold` first; main agent must review coverage quality (happy path, side effects, failures, boundaries, security-sensitive paths) before finalizing. Use `docs/testing/README.md` as the project-aware tooling reference.
 - For release requests, follow the `.github/skills/release-and-deploy-workflow/SKILL.md` skill. Delegate: pre-flight → `PreflightCheck` agent, version proposal → `VersionBump` agent, notes drafting → `ReleaseNotes` agent.
 
 ## Do Not
