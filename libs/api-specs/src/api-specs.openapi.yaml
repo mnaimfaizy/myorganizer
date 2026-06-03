@@ -243,6 +243,7 @@ components:
       type: string
       enum:
         - addresses
+        - groceries
         - mobileNumbers
         - subscriptions
         - todos
@@ -300,6 +301,8 @@ components:
     Partial_Record_VaultBlobType.EncryptedBlobV1__:
       properties:
         addresses:
+          $ref: "#/components/schemas/EncryptedBlobV1"
+        groceries:
           $ref: "#/components/schemas/EncryptedBlobV1"
         mobileNumbers:
           $ref: "#/components/schemas/EncryptedBlobV1"
@@ -364,6 +367,7 @@ components:
       type: string
       enum:
         - addresses
+        - groceries
         - mobileNumbers
         - subscriptions
         - todos
@@ -610,7 +614,7 @@ components:
       description: JWT Access Token only
 info:
   title: "@myorganizer/source"
-  version: 0.1.3
+  version: 0.2.0
   license:
     name: MIT
   contact: {}
