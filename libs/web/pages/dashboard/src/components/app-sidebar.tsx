@@ -19,6 +19,7 @@ import {
   ListChecks,
   MapPin,
   Phone,
+  ShoppingCart,
   Youtube,
 } from 'lucide-react';
 import { NavMain } from './nav-main';
@@ -34,6 +35,11 @@ const navMain = [
     title: 'Todos',
     url: '/dashboard/todo',
     icon: ListChecks,
+  },
+  {
+    title: 'Groceries',
+    url: '/dashboard/groceries',
+    icon: ShoppingCart,
   },
   {
     title: 'Addresses',

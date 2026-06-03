@@ -1,11 +1,19 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@myorganizer/web-ui';
-import { CreditCard, ListChecks, MapPin, Phone, Zap } from 'lucide-react';
+import {
+  CreditCard,
+  ListChecks,
+  MapPin,
+  Phone,
+  ShoppingCart,
+  Zap,
+} from 'lucide-react';
 import Link from 'next/link';
 
 const actions = [
   { label: 'Todos', href: '/dashboard/todo', icon: ListChecks },
+  { label: 'Groceries', href: '/dashboard/groceries', icon: ShoppingCart },
   { label: 'Addresses', href: '/dashboard/addresses', icon: MapPin },
   {
     label: 'Subscriptions',
