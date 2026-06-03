@@ -2,6 +2,7 @@ import { Prisma, PrismaClient, createPrismaClient } from '../prisma';
 
 export type VaultBlobType =
   | 'addresses'
+  | 'groceries'
   | 'mobileNumbers'
   | 'subscriptions'
   | 'todos';
@@ -341,6 +342,7 @@ export class VaultService {
     for (const blobRow of blobs) {
       if (
         blobRow.type === 'addresses' ||
+        blobRow.type === 'groceries' ||
         blobRow.type === 'mobileNumbers' ||
         blobRow.type === 'subscriptions' ||
         blobRow.type === 'todos'

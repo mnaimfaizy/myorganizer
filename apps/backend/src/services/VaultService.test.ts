@@ -175,7 +175,7 @@ describe('VaultService', () => {
       'user-1',
       'addresses',
       blob,
-      'W/"999"'
+      'W/"999"',
     );
 
     expect(result.ok).toBe(false);
@@ -290,6 +290,113 @@ describe('VaultService', () => {
       },
       blobs: {
         addresses: wrapped,
+      },
+    };
+
+    const result = await service.importVault('user-1', bundle);
+
+    expect(result.ok).toBe(true);
+    if (result.ok === true) {
+      expect(result.status).toBe(200);
+      expect(result.body.ok).toBe(true);
+    }
+  });
+
+  test('getBlob returns groceries blob with correct type', async () => {
+    const expectedBlob = {
+      version: 1,
+      iv: IV_12B_BASE64,
+      ciphertext: CT_BASE64,
+    };
+    prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+      type: 'groceries',
+      blob: expectedBlob,
+      updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+    });
+
+    const result = await service.getBlob('user-1', 'groceries');
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.status).toBe(200);
+      expect(result.body.type).toBe('groceries');
+      expect(result.body.blob).toEqual(expectedBlob);
+    }
+  });
+
+  test('putBlob stores and returns groceries blob with etag', async () => {
+    prisma.encryptedVault.findUnique.mockResolvedValue({ userId: 'user-1' });
+    prisma.encryptedVaultBlob.findUnique.mockResolvedValue(null);
+    prisma.encryptedVaultBlob.upsert.mockResolvedValue({
+      type: 'groceries',
+      updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+    });
+
+    const blob = { version: 1, iv: IV_12B_BASE64, ciphertext: CT_BASE64 };
+    const result = await service.putBlob('user-1', 'groceries', blob);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.status).toBe(201);
+      expect(result.body.ok).toBe(true);
+      expect(result.body.etag).toContain('W/');
+    }
+  });
+
+  test('exportVault includes groceries key when blob exists', async () => {
+    const groceriesBlob = {
+      version: 1,
+      iv: IV_12B_BASE64,
+      ciphertext: CT_BASE64,
+    };
+    prisma.encryptedVault.findUnique.mockResolvedValue({
+      userId: 'user-1',
+      version: 1,
+      kdf_name: 'PBKDF2',
+      kdf_salt: 'salt',
+      kdf_params: { iterations: 1 },
+      wrapped_mk_passphrase: { v: 1 },
+      wrapped_mk_recovery: { v: 1 },
+    });
+    prisma.encryptedVaultBlob.findMany.mockResolvedValue([
+      {
+        type: 'groceries',
+        blob: groceriesBlob,
+      },
+    ]);
+
+    const result = await service.exportVault('user-1');
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.status).toBe(200);
+      expect(result.body.blobs).toHaveProperty('groceries');
+      expect(result.body.blobs.groceries).toEqual(groceriesBlob);
+    }
+  });
+
+  test('importVault accepts groceries blob in bundle', async () => {
+    prisma.encryptedVault.upsert.mockResolvedValue({ updatedAt: new Date() });
+
+    const wrapped = { version: 1, iv: IV_12B_BASE64, ciphertext: CT_BASE64 };
+    const groceriesBlob = {
+      version: 1,
+      iv: IV_12B_BASE64,
+      ciphertext: CT_BASE64,
+    };
+    const bundle = {
+      exportVersion: 1,
+      exportedAt: new Date().toISOString(),
+      meta: {
+        version: 1,
+        kdf_name: 'PBKDF2',
+        kdf_salt: 'salt',
+        kdf_params: { iterations: 1 },
+        wrapped_mk_passphrase: wrapped,
+        wrapped_mk_recovery: wrapped,
+      },
+      blobs: {
+        groceries: groceriesBlob,
       },
     };
 
