@@ -4,6 +4,7 @@ export * from './lib/http/getHttpStatus';
 export * from './lib/vault/auditReporter';
 export * from './lib/vault/contactRecordNormalization';
 export * from './lib/vault/crypto';
+export * from './lib/vault/groceriesNormalization';
 export * from './lib/vault/replayTracker';
 export * from './lib/vault/serverVaultSync';
 export * from './lib/vault/subscriptionRecordNormalization';

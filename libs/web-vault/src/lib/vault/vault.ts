@@ -15,6 +15,7 @@ const PBKDF2_ITERATIONS = 310_000;
 
 export type VaultRecordType =
   | 'addresses'
+  | 'groceries'
   | 'mobileNumbers'
   | 'subscriptions'
   | 'todos';
@@ -36,6 +37,7 @@ export type VaultStorageV1 = {
   masterKeyWrappedWithRecoveryKey: EncryptedBlob;
   data: {
     addresses?: EncryptedBlob;
+    groceries?: EncryptedBlob;
     mobileNumbers?: EncryptedBlob;
     subscriptions?: EncryptedBlob;
     todos?: EncryptedBlob;
