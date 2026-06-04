@@ -51,7 +51,6 @@ export function useGroceriesVault({
   const [loading, setLoading] = useState(true);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
 
   // Load lists from vault on mount
   useEffect(() => {
@@ -87,7 +86,6 @@ export function useGroceriesVault({
   // Persist lists to vault
   const persistLists = useCallback(
     async (nextLists: GroceryList[]) => {
-      setSaving(true);
       setError(null);
       try {
         await saveEncryptedData({
@@ -100,8 +98,6 @@ export function useGroceriesVault({
         console.error('Failed to save grocery lists to vault:', err);
         setError('Failed to save your changes. Please try again.');
         throw err;
-      } finally {
-        setSaving(false);
       }
     },
     [masterKeyBytes],

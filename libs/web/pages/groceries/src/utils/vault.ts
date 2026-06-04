@@ -3,6 +3,9 @@
  * Provides consistent error handling and common patterns.
  */
 
+import type { GroceryList } from '@myorganizer/core';
+import { randomId } from '@myorganizer/core';
+
 /**
  * Friendly error message for vault operations.
  * Maps technical errors to user-friendly messages.
@@ -43,8 +46,7 @@ export function validateGroceryListName(name: string): string | null {
  * @param name The list name
  * @returns A new GroceryList object
  */
-export function createEmptyGroceryList(name: string) {
-  const { randomId } = require('@myorganizer/core');
+export function createEmptyGroceryList(name: string): GroceryList {
   return {
     id: randomId(),
     name,
