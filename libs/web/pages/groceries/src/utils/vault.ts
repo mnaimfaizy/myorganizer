@@ -12,13 +12,14 @@ import { randomId } from '@myorganizer/core';
  */
 export function getVaultErrorMessage(error: unknown): string {
   if (error instanceof Error) {
-    if (error.message.includes('decrypt')) {
+    const lowerMessage = error.message.toLowerCase();
+    if (lowerMessage.includes('decrypt')) {
       return 'Unable to decrypt your data. Your vault key may be invalid.';
     }
-    if (error.message.includes('network')) {
+    if (lowerMessage.includes('network')) {
       return 'Network error. Please check your connection and try again.';
     }
-    if (error.message.includes('timeout')) {
+    if (lowerMessage.includes('timeout')) {
       return 'Request timed out. Please try again.';
     }
   }
