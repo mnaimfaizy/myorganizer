@@ -212,6 +212,100 @@ Each page library has its own `jest.config.ts` with a path-corrected preset dept
 - Use React Testing Library for component integration.
 - See `libs/web/pages/addresses/src/utils/addressForm.spec.ts` for a reference form-validation spec.
 
+### Async Hook Testing Pattern (libs/web/pages/\*)
+
+For page libraries that expose custom hooks with async operations (e.g., vault saves, API calls):
+
+**Requirements:**
+
+- Mock all external async functions (`loadDecryptedData`, `saveEncryptedData`, API client methods, etc.).
+- Call `mockReset()` **inside `beforeEach()`** — never in `beforeAll()`.
+- Use `act()` only for direct state-setter calls (e.g. `result.current.setFoo(val)`).
+- Use `waitFor()` for **all** assertions that follow an async effect or async state update.
+
+```typescript
+jest.mock('@myorganizer/web-vault');
+jest.mock('@myorganizer/core');
+
+// Imports AFTER jest.mock() calls (see Nx lazy-loading rule below)
+import { renderHook, act, waitFor } from '@testing-library/react';
+import { loadDecryptedData, saveEncryptedData } from '@myorganizer/web-vault';
+import { useMyHook } from './useMyHook';
+
+describe('useMyHook', () => {
+  beforeEach(() => {
+    (loadDecryptedData as jest.Mock).mockReset();
+    (loadDecryptedData as jest.Mock).mockResolvedValue([]);
+    (saveEncryptedData as jest.Mock).mockReset();
+    (saveEncryptedData as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  it('should load and update state', async () => {
+    (loadDecryptedData as jest.Mock).mockResolvedValue([{ id: '1', name: 'Item' }]);
+    const { result } = renderHook(() => useMyHook({ masterKeyBytes: new Uint8Array(32) }));
+
+    // Wait for async load effect to settle
+    await waitFor(() => {
+      expect(result.current.items).toHaveLength(1);
+    });
+  });
+
+  it('should persist on mutation and update state', async () => {
+    const { result } = renderHook(() => useMyHook({ masterKeyBytes: new Uint8Array(32) }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    act(() => {
+      result.current.addItem('New Item');
+    });
+
+    // Wait for both state update AND the async persist side effect
+    await waitFor(() => {
+      expect(result.current.items).toContainEqual(expect.objectContaining({ name: 'New Item' }));
+    });
+    await waitFor(() => {
+      expect(saveEncryptedData as jest.Mock).toHaveBeenCalled();
+    });
+  });
+});
+```
+
+**Common mistakes:**
+
+- ❌ Asserting on state immediately after `act()` when the hook has async effects — use `waitFor()`.
+- ❌ Using `beforeAll()` for mock setup — mocks retain state between tests.
+- ❌ Forgetting `mockReset()` in `beforeEach()` — previous test's mock return value bleeds in.
+
+---
+
+### Nx Lazy-Loading & jest.mock() Ordering
+
+Nx enforces module boundary rules at **lint time** (before Jest transformation). jest.mock() hoisting only takes effect at **runtime**. This creates a subtle trap:
+
+**Rule: Place ALL `jest.mock()` calls before any imports — including `import type`.**
+
+```typescript
+// ❌ WRONG — linting flags the static import as a boundary violation
+import type { GroceryList } from '@myorganizer/core';
+jest.mock('@myorganizer/core');
+
+// ✅ CORRECT — mocks first, then imports
+jest.mock('@myorganizer/core', () => ({
+  ...jest.requireActual('@myorganizer/core'),
+  randomId: jest.fn(),
+}));
+jest.mock('@myorganizer/web-vault');
+
+import type { GroceryList } from '@myorganizer/core';
+import { loadDecryptedData } from '@myorganizer/web-vault';
+import { useMyHook } from './useMyHook';
+```
+
+Known lazy-loaded libraries (verify against `nx.json` when new libs are added):
+
+- `@myorganizer/core`
+- `@myorganizer/auth`
+- `@myorganizer/vault-core`
+
 ---
 
 ## `apps/myorganizer-e2e`
@@ -273,8 +367,37 @@ describe('MyService', () => {
 ### Mock discipline
 
 - Keep mocks minimal — only stub what the unit under test actually calls.
-- Reset mocks in `beforeEach` (use `jest.clearAllMocks()` or `afterAll`).
+- Reset mocks in `beforeEach` — use `jest.clearAllMocks()` or call `mockReset()` on each mock individually. **Never** use `beforeAll()` for mock setup; it prevents per-test isolation.
 - Never rely on mock call order across test cases.
+- Only type-cast mocks that are explicitly referenced in assertions or setup: `const mockFn = fn as jest.Mock;`. Delete unused casts to avoid `no-unused-vars` linting errors.
+
+### Mock state isolation
+
+Mocks retain their `.mockResolvedValue()` / `.mockReturnValue()` implementations across tests unless explicitly reset. Signs of state leakage:
+
+- A test passes in isolation (`yarn nx test <project> --testNamePattern="My Test"`) but fails when run with others.
+- Tests pass on a fresh `--clearCache` run but fail on the second run.
+
+**Fix:**
+
+```typescript
+// ✅ Reset all mocks before every test
+beforeEach(() => {
+  jest.clearAllMocks();
+  // Then apply test-specific return values
+  (mockFn as jest.Mock).mockResolvedValue(defaultData);
+});
+```
+
+### Dead code detection during testing
+
+When implementing or reviewing a hook or utility, flag any state or functions that:
+
+- Are declared but never returned from the hook.
+- Are never referenced in any test assertion.
+- Are never exported or called externally.
+
+These are dead code and must be removed before committing. ESLint's `no-unused-vars` rule will surface them — run `yarn nx lint <project> --fix` to confirm.
 
 ### Coverage target
 
