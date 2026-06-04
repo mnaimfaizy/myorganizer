@@ -1,6 +1,6 @@
 # Gemini Workflows
 
-Use these repo-local workflows for commit, pull request, and unit test tasks.
+Use these repo-local workflows for commit, pull request, unit test, and Storybook tasks.
 
 ## Commit Changes
 
@@ -41,3 +41,25 @@ When a task requires unit tests to be created or updated, delegate to the `test-
 - `.github/agents/test-scaffold.agent.md` — Copilot-CLI version of the same agent
 - `.github/skills/unit-test-delegation-workflow/SKILL.md` — full workflow skill
 - `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md` — delegation brief template
+
+## Storybook Delegation
+
+When a task requires Storybook creation or updates (`*.stories.tsx`), delegate to the `storybook-curator` sub-agent (`.gemini/agents/storybook-curator.md`) rather than editing stories inline.
+
+- Build a complete delegation brief before invoking the sub-agent:
+  - requirement summary and desired UX outcome
+  - component file path(s)
+  - story file path(s) to create/update
+  - required states/variants and relevant references
+- Require the sub-agent to perform requirement-readiness analysis before file edits.
+- If the sub-agent reports missing requirements, ask the human-in-the-loop for clarification before continuing.
+- Allow the sub-agent to challenge weak requirements and recommend additional story scenarios when needed for quality.
+- Accept only when story coverage is meaningful and UX/a11y concerns are addressed.
+
+### References
+
+- `.gemini/agents/storybook-curator.md` — StorybookCurator sub-agent (Gemini CLI native format, model: gemini-2.5-flash-lite)
+- `.github/agents/storybook-curator.agent.md` — Copilot-CLI version of the same agent
+- `.github/skills/storybook-delegation-workflow/SKILL.md` — full workflow skill
+- `.github/skills/storybook-delegation-workflow/references/delegation-runbook.md` — delegation brief template
+- `docs/storybook/README.md` — Storybook usage and conventions

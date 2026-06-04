@@ -13,7 +13,7 @@ Shared React component library styled with Tailwind and developed with Storybook
 ## Do
 
 - Use accessible Radix-based patterns and existing component conventions.
-- Add or update `.stories.tsx` files for reusable visual components.
+- For Storybook creation or updates, delegate through `.github/skills/storybook-delegation-workflow/SKILL.md` to `StorybookCurator` and review its requirement-readiness + UX/a11y coverage output before accepting.
 - Export public components from `src/index.ts`.
 
 ## Do Not
