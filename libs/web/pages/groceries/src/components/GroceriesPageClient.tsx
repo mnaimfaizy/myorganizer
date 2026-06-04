@@ -1,16 +1,10 @@
 'use client';
 
-import type { GroceryList } from '@myorganizer/core';
-import { randomId } from '@myorganizer/core';
 import { Button, Skeleton } from '@myorganizer/web-ui';
-import {
-  loadDecryptedData,
-  normalizeGroceries,
-  saveEncryptedData,
-} from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import { Plus } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useGroceriesVault } from '../hooks';
 import { CreateListDialog } from './CreateListDialog';
 import { DeleteListConfirmDialog } from './DeleteListConfirmDialog';
 import { GroceryListSelector } from './GroceryListSelector';
@@ -28,101 +22,10 @@ interface DialogState {
 }
 
 function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
-  const [lists, setLists] = useState<GroceryList[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [dialog, setDialog] = useState<DialogState>({ type: null });
-  const [saving, setSaving] = useState(false);
+  const vault = useGroceriesVault({ masterKeyBytes });
 
-  // Load lists from vault on mount
-  useEffect(() => {
-    loadDecryptedData<unknown>({
-      masterKeyBytes,
-      type: 'groceries',
-      defaultValue: [],
-    })
-      .then(async (raw) => {
-        const normalized = normalizeGroceries(raw);
-        setLists(normalized.value);
-        if (normalized.value.length > 0) {
-          setSelectedListId(normalized.value[0].id);
-        }
-        if (normalized.changed) {
-          await saveEncryptedData({
-            masterKeyBytes,
-            type: 'groceries',
-            value: normalized.value,
-          });
-        }
-        setLoading(false);
-      })
-      .catch(() => {
-        setLoading(false);
-      });
-  }, [masterKeyBytes]);
-
-  // Persist lists to vault
-  const persistLists = useCallback(
-    async (nextLists: GroceryList[]) => {
-      setSaving(true);
-      try {
-        await saveEncryptedData({
-          masterKeyBytes,
-          type: 'groceries',
-          value: nextLists,
-        });
-        setLists(nextLists);
-      } finally {
-        setSaving(false);
-      }
-    },
-    [masterKeyBytes],
-  );
-
-  // Handlers
-  const handleCreateList = useCallback(
-    async (name: string) => {
-      const newList: GroceryList = {
-        id: randomId(),
-        name,
-        items: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-      const nextLists = [...lists, newList];
-      await persistLists(nextLists);
-      setSelectedListId(newList.id);
-      setDialog({ type: null });
-    },
-    [lists, persistLists],
-  );
-
-  const handleRenameList = useCallback(
-    async (listId: string, newName: string) => {
-      const nextLists = lists.map((list) =>
-        list.id === listId
-          ? { ...list, name: newName, updatedAt: new Date().toISOString() }
-          : list,
-      );
-      await persistLists(nextLists);
-      setDialog({ type: null });
-    },
-    [lists, persistLists],
-  );
-
-  const handleDeleteList = useCallback(
-    async (listId: string) => {
-      const nextLists = lists.filter((list) => list.id !== listId);
-      await persistLists(nextLists);
-      if (selectedListId === listId) {
-        setSelectedListId(nextLists.length > 0 ? nextLists[0].id : null);
-      }
-      setDialog({ type: null });
-    },
-    [lists, selectedListId, persistLists],
-  );
-
-  if (loading) {
+  if (vault.loading) {
     return (
       <div className="min-h-screen bg-surface">
         <div className="mx-auto max-w-6xl p-4 md:p-6">
@@ -146,6 +49,36 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
   return (
     <div className="min-h-screen bg-surface">
       <div className="mx-auto max-w-6xl p-4 md:p-6">
+        {/* Error banner */}
+        {vault.error && (
+          <div className="mb-4 flex items-start gap-3 rounded-lg border border-error bg-error-container p-4 text-error md:mb-6">
+            <svg
+              className="mt-0.5 h-5 w-5 flex-shrink-0"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4v2m0 4v2m0-12a9 9 0 110-18 9 9 0 010 18z"
+              />
+            </svg>
+            <div className="flex-1">
+              <p className="font-medium text-on-error-container">
+                {vault.error}
+              </p>
+              <button
+                onClick={() => vault.setError(null)}
+                className="mt-2 text-sm font-medium text-on-error-container underline hover:no-underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
           <div>
@@ -160,6 +93,7 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
             size="lg"
             className="w-full gap-2 md:w-auto"
             onClick={() => setDialog({ type: 'create' })}
+            disabled={vault.loading}
           >
             <Plus className="h-5 w-5" />
             New List
@@ -176,7 +110,7 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
         </div>
 
         {/* Lists section */}
-        {lists.length === 0 ? (
+        {vault.lists.length === 0 ? (
           // Empty state
           <div className="rounded-lg border-2 border-dashed border-outline-variant bg-surface-container-low p-8 text-center md:p-12">
             <div className="mb-4 inline-block rounded-full bg-secondary-container p-3">
@@ -209,11 +143,11 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
           </div>
         ) : (
           <GroceryListSelector
-            lists={lists}
-            selectedListId={selectedListId}
-            onSelectList={setSelectedListId}
+            lists={vault.lists}
+            selectedListId={vault.selectedListId}
+            onSelectList={vault.setSelectedListId}
             onRenameList={(listId) => {
-              const list = lists.find((l) => l.id === listId);
+              const list = vault.lists.find((l) => l.id === listId);
               if (list) {
                 setDialog({
                   type: 'rename',
@@ -223,7 +157,7 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
               }
             }}
             onDeleteList={(listId) => {
-              const list = lists.find((l) => l.id === listId);
+              const list = vault.lists.find((l) => l.id === listId);
               if (list) {
                 setDialog({
                   type: 'delete',
@@ -233,7 +167,7 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
                 });
               }
             }}
-            isLoading={saving}
+            isLoading={vault.loading}
           />
         )}
       </div>
@@ -242,8 +176,11 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
       <CreateListDialog
         isOpen={dialog.type === 'create'}
         onClose={() => setDialog({ type: null })}
-        onSubmit={handleCreateList}
-        isLoading={saving}
+        onSubmit={async (name) => {
+          await vault.createList(name);
+          setDialog({ type: null });
+        }}
+        isLoading={vault.loading}
       />
 
       {dialog.type === 'rename' && (
@@ -251,8 +188,11 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
           isOpen={true}
           currentName={dialog.listName || ''}
           onClose={() => setDialog({ type: null })}
-          onSubmit={(newName) => handleRenameList(dialog.listId!, newName)}
-          isLoading={saving}
+          onSubmit={async (newName) => {
+            await vault.renameList(dialog.listId!, newName);
+            setDialog({ type: null });
+          }}
+          isLoading={vault.loading}
         />
       )}
 
@@ -262,8 +202,11 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
           listName={dialog.listName || ''}
           itemCount={dialog.itemCount || 0}
           onClose={() => setDialog({ type: null })}
-          onConfirm={() => handleDeleteList(dialog.listId!)}
-          isLoading={saving}
+          onConfirm={async () => {
+            await vault.deleteList(dialog.listId!);
+            setDialog({ type: null });
+          }}
+          isLoading={vault.loading}
         />
       )}
     </div>
