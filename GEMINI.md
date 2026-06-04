@@ -1,6 +1,6 @@
 # Gemini Workflows
 
-Use these repo-local workflows for commit, pull request, and unit test tasks.
+Use these repo-local workflows for commit, pull request, and test-suite tasks.
 
 ## Commit Changes
 
@@ -18,26 +18,34 @@ Use these repo-local workflows for commit, pull request, and unit test tasks.
 - Leave reviewers empty unless the user explicitly supplies them with `--reviewer <login>`.
 - Return only the PR URL on success.
 
-## Unit Test Delegation
+## Jest Test Delegation
 
-When a task requires unit tests to be created or updated, delegate to the `test-scaffold` sub-agent (`.gemini/agents/test-scaffold.md`) rather than writing tests inline. The agent runs on `gemini-2.5-flash-lite` to keep costs low.
+When a task requires Jest unit tests or Jest integration tests to be created or updated, delegate to the `test-scaffold` sub-agent (`.gemini/agents/test-scaffold.md`) rather than writing tests inline. The agent runs on `gemini-2.5-flash` to keep costs low.
+
+Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs in `apps/myorganizer-e2e`.
 
 - Consult `docs/testing/README.md` first — it is the canonical Nx-aware guide for per-project tooling, environments, and mock patterns.
 - Build a complete delegation brief before invoking the sub-agent:
+  - Test type (`unit`, `Jest integration`, `React hook integration`, `component integration`, etc.)
   - Source and test file paths
-  - Behavior matrix: happy path, error path, side effects, boundary values, security-sensitive paths
+  - Implementation notes from reading the actual code under test
+  - Behavior matrix: happy path, error path, side effects, boundary values, security-sensitive paths, unsupported behavior
   - Project name (backend / myorganizer / web-ui / auth / vault-core / web-vault / web-pages/\*)
   - Relevant mocking constraints (Prisma inline factory, API client mock, Next.js router, vault stubs)
+  - In-scope and out-of-scope scenarios
+  - Acceptance assertions and validation commands
 - Invoke the agent explicitly with `@test-scaffold` or let the main agent route automatically.
 - Do **not** accept happy-path-only tests when error paths, side effects, boundaries, or security-sensitive misuse paths exist.
-- After the sub-agent delivers output, review for: concrete assertions, negative paths, side-effect contracts, boundary inputs, and security-relevant scenarios.
+- Do **not** accept tests for retry, recovery, concurrency, timeout, or thrown-error behavior unless the implementation actually supports it.
+- After the sub-agent delivers output, review for: concrete assertions, negative paths, side-effect contracts, boundary inputs, security-relevant scenarios, deterministic mocks, and duplicate/syntax checks.
 - If coverage gaps remain, send a targeted refinement request back.
 - Accept only when meaningful behavior coverage is achieved.
 
 ### References
 
 - `docs/testing/README.md` — canonical Nx-aware testing guide
-- `.gemini/agents/test-scaffold.md` — TestScaffold sub-agent (Gemini CLI native format, model: gemini-2.5-flash-lite)
+- `.gemini/agents/test-scaffold.md` — TestScaffold sub-agent (Gemini CLI native format, model: gemini-2.5-flash)
 - `.github/agents/test-scaffold.agent.md` — Copilot-CLI version of the same agent
 - `.github/skills/unit-test-delegation-workflow/SKILL.md` — full workflow skill
 - `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md` — delegation brief template
+- `.github/skills/playwright-e2e-workflow/SKILL.md` — Playwright E2E workflow

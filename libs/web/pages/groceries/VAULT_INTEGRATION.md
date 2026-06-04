@@ -213,14 +213,16 @@ This ensures data consistency and graceful handling of schema changes.
 - Test `useGroceriesVault` hook in isolation
 - Mock `loadDecryptedData` and `saveEncryptedData`
 - Verify state updates on load/save
-- Test error handling
+- Test only error states the hook actually sets
 - Test handlers (create/rename/delete)
 
 ### Integration Tests
 
-- Test vault operations with real encryption (if available)
+- Build a behavior matrix from the hook implementation before adding tests
+- Test core workflows: load, create, rename, delete, persist, and state consistency
 - Test data migration/normalization
-- Test error recovery
+- Test retry/recovery, concurrency, timeout, or thrown-error behavior only if the hook explicitly implements it
+- Prefer deterministic vault mocks over brittle ID or timing mocks
 
 ### E2E Tests
 

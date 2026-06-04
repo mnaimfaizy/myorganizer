@@ -13,6 +13,8 @@ Playwright end-to-end tests for the MyOrganizer frontend.
 ## Do
 
 - Test critical user flows and use stable selectors or user-facing queries.
+- Build a flow matrix before adding or changing specs: route, preconditions, user steps, selectors, network/data expectations, side effects, and unsupported behavior to avoid.
+- Trace the route wrapper into the owning page library before choosing selectors or assertions.
 - Keep fixtures deterministic and avoid real third-party services.
 - Add focused e2e coverage for meaningful route or workflow changes.
 
@@ -20,4 +22,5 @@ Playwright end-to-end tests for the MyOrganizer frontend.
 
 - Do not depend on live Google, email, or external APIs.
 - Do not write brittle tests tied to incidental styling.
+- Do not test retry, recovery, timeout, or concurrency behavior unless the UI implements it.
 - Do not leave generated traces or screenshots committed unless intentionally added.

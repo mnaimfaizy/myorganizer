@@ -110,7 +110,7 @@ The application is deployed at **[myorganizer-seven.vercel.app](https://myorgani
 | [Nx](https://nx.dev)                                           | Monorepo build system, task orchestration, affected detection |
 | [Yarn 4](https://yarnpkg.com) (Corepack)                       | Package manager                                               |
 | [Node.js 22](https://nodejs.org)                               | JavaScript runtime                                            |
-| [Jest](https://jestjs.io)                                      | Unit testing                                                  |
+| [Jest](https://jestjs.io)                                      | Unit and local integration testing                            |
 | [Playwright](https://playwright.dev)                           | End-to-end testing                                            |
 | [Storybook](https://storybook.js.org)                          | UI component development and documentation                    |
 | [Docker](https://www.docker.com)                               | Local PostgreSQL and MailHog services                         |
@@ -207,20 +207,21 @@ corepack enable
 
 ## Available Scripts
 
-| Command                  | Description                                  |
-| ------------------------ | -------------------------------------------- |
-| `yarn start:backend`     | Start backend in development mode            |
-| `yarn start:myorganizer` | Start frontend in development mode           |
-| `yarn build:backend`     | Production build of the backend              |
-| `yarn build:myorganizer` | Production build of the frontend             |
-| `yarn nx test <project>` | Run unit tests for a project                 |
-| `yarn nx lint <project>` | Lint a project                               |
-| `yarn format:write`      | Format all files with Prettier               |
-| `yarn storybook`         | Launch Storybook on http://localhost:6006    |
-| `yarn api-docs:generate` | Regenerate OpenAPI spec from TSOA decorators |
-| `yarn api:generate`      | Regenerate the API client from the spec      |
-| `yarn openapi:check`     | Check for drift between spec and client      |
-| `yarn nx dep-graph`      | Visualize the project dependency graph       |
+| Command                       | Description                                   |
+| ----------------------------- | --------------------------------------------- |
+| `yarn start:backend`          | Start backend in development mode             |
+| `yarn start:myorganizer`      | Start frontend in development mode            |
+| `yarn build:backend`          | Production build of the backend               |
+| `yarn build:myorganizer`      | Production build of the frontend              |
+| `yarn nx test <project>`      | Run Jest unit/integration tests for a project |
+| `yarn nx e2e myorganizer-e2e` | Run Playwright E2E tests                      |
+| `yarn nx lint <project>`      | Lint a project                                |
+| `yarn format:write`           | Format all files with Prettier                |
+| `yarn storybook`              | Launch Storybook on http://localhost:6006     |
+| `yarn api-docs:generate`      | Regenerate OpenAPI spec from TSOA decorators  |
+| `yarn api:generate`           | Regenerate the API client from the spec       |
+| `yarn openapi:check`          | Check for drift between spec and client       |
+| `yarn nx dep-graph`           | Visualize the project dependency graph        |
 
 ---
 

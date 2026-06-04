@@ -113,20 +113,24 @@ When consuming the generated client:
 
 ## Testing
 
-### Unit Tests
+### Jest Unit and Integration Tests
 
 - Write tests alongside source files with `.spec.ts` or `.test.ts` extensions
-- Use **Jest** for unit testing
+- Use **Jest** for unit and local integration testing
 - Test files should mirror the structure of source files
 - Mock external dependencies
 - Aim for meaningful test coverage, not just high percentages
-- When a task requires creating or changing unit tests, route through `.github/skills/unit-test-delegation-workflow/SKILL.md` and delegate implementation to `TestScaffold`; review output for happy path, side effects, failure paths, boundaries, and security-sensitive behavior coverage. Use `docs/testing/README.md` for per-project tooling, environments, and mock patterns.
+- When a task requires creating or changing Jest unit or integration tests, route through `.github/skills/unit-test-delegation-workflow/SKILL.md` and delegate implementation to `TestScaffold`.
+- Test delegation briefs must include a behavior matrix from reading the actual implementation, plus explicit in-scope and out-of-scope scenarios. Do not ask for vague "comprehensive tests".
+- Review TestScaffold output for behavior correctness, side effects, reachable failure paths, boundaries, security-sensitive behavior, deterministic mocks, duplicate generated content, and validation results. Use `docs/testing/README.md` for per-project tooling, integration scope, environments, and mock patterns.
 
 ### E2E Tests
 
 - Use **Playwright** for end-to-end testing
 - E2E tests in `apps/myorganizer-e2e/`
 - Test critical user flows and happy paths
+- Build a flow matrix before creating or changing specs: route, preconditions, user steps, selectors, network/data expectations, side effects, and unsupported behavior to avoid.
+- Use `.github/skills/playwright-e2e-workflow/SKILL.md`; use `E2EPlanner` for broad flows and delegate implementation to `TestScaffold` only with a precise E2E brief.
 - Run E2E tests before merging significant features
 
 ### Test Naming

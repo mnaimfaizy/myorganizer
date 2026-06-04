@@ -5,18 +5,77 @@ All agents (automated and human) must use this as the source of truth for decidi
 
 ## Quick Reference
 
-| Target                 | Test type      | Runner                             | Command                       |
-| ---------------------- | -------------- | ---------------------------------- | ----------------------------- |
-| `apps/backend`         | Jest unit      | `ts-jest` + `node` env             | `yarn nx test backend`        |
-| `apps/myorganizer`     | Jest unit      | `babel-jest` + `jsdom` env         | `yarn nx test myorganizer`    |
-| `libs/web-ui`          | Jest unit      | `babel-jest` + `jsdom` env (React) | `yarn nx test web-ui`         |
-| `libs/auth`            | Jest unit      | `ts-jest` + `jsdom` env            | `yarn nx test auth`           |
-| `libs/core`            | Jest unit      | `ts-jest` or `babel-jest`          | `yarn nx test core`           |
-| `libs/vault-core`      | Jest unit      | `babel-jest` + `jsdom` env         | `yarn nx test vault-core`     |
-| `libs/web-vault`       | Jest unit      | `babel-jest` + `jsdom` env (React) | `yarn nx test web-vault`      |
-| `libs/web-vault-ui`    | Jest unit      | `babel-jest` + `jsdom` env (React) | `yarn nx test web-vault-ui`   |
-| `libs/web/pages/*`     | Jest unit      | `babel-jest` + `jsdom` env (React) | `yarn nx test <lib-name>`     |
-| `apps/myorganizer-e2e` | Playwright E2E | `@playwright/test`                 | `yarn nx e2e myorganizer-e2e` |
+| Target                 | Test type             | Runner                             | Command                       |
+| ---------------------- | --------------------- | ---------------------------------- | ----------------------------- |
+| `apps/backend`         | Jest unit/integration | `ts-jest` + `node` env             | `yarn nx test backend`        |
+| `apps/myorganizer`     | Jest unit/integration | `babel-jest` + `jsdom` env         | `yarn nx test myorganizer`    |
+| `libs/web-ui`          | Jest unit/integration | `babel-jest` + `jsdom` env (React) | `yarn nx test web-ui`         |
+| `libs/auth`            | Jest unit/integration | `ts-jest` + `jsdom` env            | `yarn nx test auth`           |
+| `libs/core`            | Jest unit             | `ts-jest` or `babel-jest`          | `yarn nx test core`           |
+| `libs/vault-core`      | Jest unit/integration | `babel-jest` + `jsdom` env         | `yarn nx test vault-core`     |
+| `libs/web-vault`       | Jest unit/integration | `babel-jest` + `jsdom` env (React) | `yarn nx test web-vault`      |
+| `libs/web-vault-ui`    | Jest unit/integration | `babel-jest` + `jsdom` env (React) | `yarn nx test web-vault-ui`   |
+| `libs/web/pages/*`     | Jest unit/integration | `babel-jest` + `jsdom` env (React) | `yarn nx test <lib-name>`     |
+| `apps/myorganizer-e2e` | Playwright E2E        | `@playwright/test`                 | `yarn nx e2e myorganizer-e2e` |
+
+## Test Generation Contract
+
+Any agent or human creating tests must analyze first, scope second, write third, and validate last. This applies to Jest unit tests, Jest integration tests, React hook/component integration tests, and Playwright E2E specs.
+
+### 1. Analyze the implementation
+
+Read the full code under test before writing assertions. Do not infer behavior from exported types, names, or a generic testing template.
+
+For hooks, async workflows, services, and controllers, trace:
+
+- where state is set;
+- which helper sets `error`, `loading`, or status values;
+- whether public methods throw, catch, swallow, or rethrow;
+- which collaborators are called and with what payload shape;
+- whether retry, timeout, cancellation, or concurrency behavior actually exists;
+- what should remain unchanged on failure.
+
+### 2. Build a behavior matrix
+
+Create a compact matrix before editing tests:
+
+| Operation/flow | Inputs/preconditions | Observable output/state | Side effects/collaborators | Error behavior | Unsupported behavior |
+| -------------- | -------------------- | ----------------------- | -------------------------- | -------------- | -------------------- |
+
+Only write tests for scenarios that are possible through the public surface. If requested behavior is not implemented, record it as out of scope or a follow-up instead of asserting it.
+
+### 3. Scope by test type
+
+| Type             | Purpose                                                                                                                                                  | Boundaries                                                                  |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Unit             | Isolate one function, component, hook, service, or utility                                                                                               | Mock external dependencies and assert local behavior precisely              |
+| Jest integration | Verify connected local behavior such as hook + vault adapter boundary, component + form validation, controller + service, or service + mocked repository | Mock network, DB, email, Google, and other infrastructure                   |
+| Playwright E2E   | Verify a user-visible browser journey                                                                                                                    | Use deterministic auth/data/network setup; no live third-party dependencies |
+
+For one focused Jest integration suite, 8-15 tests is usually enough. More tests require a behavior-matrix reason. More than 20 tests or multiple files should be split into batches.
+
+### 4. Avoid unsupported scenarios
+
+Do not test these unless the implementation explicitly supports them:
+
+- retry or recovery flows;
+- concurrent `Promise.all()` mutations;
+- timeout or timing-window behavior;
+- thrown errors from public methods that catch and swallow;
+- real network, database, email, Google, or third-party behavior.
+
+### 5. Validate output structure
+
+Before accepting generated tests, check for:
+
+- duplicate helper functions;
+- duplicate `describe` blocks;
+- appended second copies of the suite;
+- unused mock casts or imports;
+- assertions that contradict the behavior matrix;
+- tests that would pass if the implementation were broken.
+
+TestScaffold delegations must follow `.github/agents/test-scaffold.agent.md` and `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md`.
 
 ## How to Identify the Right Config
 
@@ -274,6 +333,12 @@ describe('useMyHook', () => {
 - ❌ Asserting on state immediately after `act()` when the hook has async effects — use `waitFor()`.
 - ❌ Using `beforeAll()` for mock setup — mocks retain state between tests.
 - ❌ Forgetting `mockReset()` in `beforeEach()` — previous test's mock return value bleeds in.
+- ❌ Testing retry or recovery paths unless the hook exposes a retry entry point or documented repeat-call behavior.
+- ❌ Testing concurrent `Promise.all()` mutations unless the hook implements concurrency handling.
+- ❌ Using `mockReturnValueOnce()` queues for async ID generation or multi-call workflows; prefer an order-independent `mockImplementation()`.
+- ❌ Expecting a public hook method to throw when the implementation catches and logs the error.
+
+When a hook delegates persistence to a helper, trace the error path before writing assertions. If the helper sets error state and throws, but the public method catches the error, the valid assertion is usually state/error behavior, not caller-visible throwing.
 
 ---
 
@@ -330,8 +395,12 @@ apps/myorganizer-e2e/src/e2e/<flow>.spec.ts
 
 - Use `@playwright/test` (`test`, `expect`) — not Jest.
 - Prefer `getByRole`, `getByLabel`, `getByText` selectors.
+- Build a flow matrix before writing the spec: route, preconditions, user steps, selectors, network/data expectations, side effects, and unsupported behavior to avoid.
+- Trace the route wrapper into the owning page library before choosing selectors or assertions.
+- Keep auth, vault unlock state, seed data, and network boundaries deterministic.
 - Do not commit traces, screenshots, or generated artifacts.
 - For vault flows, the full unlock/lock cycle must be included in preconditions.
+- Do not test retry, recovery, timeout, or concurrency behavior unless the UI implements it.
 - See `.github/skills/playwright-e2e-workflow/SKILL.md` for selector and mocking rules.
 
 ### Commands
@@ -369,6 +438,9 @@ describe('MyService', () => {
 - Keep mocks minimal — only stub what the unit under test actually calls.
 - Reset mocks in `beforeEach` — use `jest.clearAllMocks()` or call `mockReset()` on each mock individually. **Never** use `beforeAll()` for mock setup; it prevents per-test isolation.
 - Never rely on mock call order across test cases.
+- Avoid relying on mock queue order inside async or concurrent operations. Use `mockImplementation()` when multiple calls need deterministic dynamic values.
+- Mock the external boundary first. For example, prefer mocking vault load/save behavior over asserting incidental ID-generation details unless IDs are part of the behavior contract.
+- Mock every module whose functions are configured or cast in the test. If a test configures `randomId`, explicitly mock `@myorganizer/core` before imports.
 - Only type-cast mocks that are explicitly referenced in assertions or setup: `const mockFn = fn as jest.Mock;`. Delete unused casts to avoid `no-unused-vars` linting errors.
 
 ### Mock state isolation
