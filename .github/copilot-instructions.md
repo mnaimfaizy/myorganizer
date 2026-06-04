@@ -121,6 +121,7 @@ When consuming the generated client:
 - Mock external dependencies
 - Aim for meaningful test coverage, not just high percentages
 - When a task requires creating or changing unit tests, route through `.github/skills/unit-test-delegation-workflow/SKILL.md` and delegate implementation to `TestScaffold`; review output for happy path, side effects, failure paths, boundaries, and security-sensitive behavior coverage. Use `docs/testing/README.md` for per-project tooling, environments, and mock patterns.
+- When a task requires creating or changing Storybook stories (`*.stories.tsx`), route through `.github/skills/storybook-delegation-workflow/SKILL.md` and delegate implementation to `StorybookCurator`; require requirement-readiness analysis first, then review for UX/a11y coverage, scenario completeness, and clarification gaps before finalizing.
 
 ### E2E Tests
 
