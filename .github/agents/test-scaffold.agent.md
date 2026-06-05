@@ -112,6 +112,38 @@ Do not include these unless the implementation explicitly supports them:
 
 For E2E implementation, follow `.github/skills/playwright-e2e-workflow/SKILL.md` and its runbook.
 
+**Critical rules:**
+
+1. **Read component implementation first** — Inspect the actual component code in `libs/web/pages/<route>` to understand:
+   - Which interactive elements have semantic roles (`role="article"`, `role="button"`, etc.)
+   - Which elements are hidden by default (e.g., Radix DropdownMenu buttons with `opacity-0` becoming visible on `group-hover`)
+   - Which interactions use Radix UI patterns (hover to show, click to open, etc.) vs standard HTML
+   - Which state changes trigger async operations (vault unlock, API calls, etc.)
+
+2. **Understand Playwright API boundaries** — Never violate these:
+   - ✅ Use Playwright APIs (`page.locator()`, `page.click()`, etc.) in test code
+   - ✅ Use browser-native APIs (`document.querySelector()`, `window`, `localStorage`) inside `page.waitForFunction()` and `page.evaluate()`
+   - ❌ Do NOT call `page.locator()` inside `page.waitForFunction()` — browser context cannot access Playwright APIs
+   - ❌ Do NOT use `input.press('Enter')` for form submission in Firefox — explicitly click the submit button instead
+   - ❌ Do NOT assume standard HTML context menus exist in Radix UI components
+
+3. **Handle vault-backed flows** — If the flow involves vault data:
+   - Plan for async vault initialization — use content-based waits (`waitForFunction`) for vault operations, not network-only waits
+   - Passphrase input timing: Firefox needs additional delays after clicking "Use passphrase" button
+   - Vault unlock completion: wait for the unlock input to disappear or page content to appear, not just button click
+   - Do NOT rely on Enter key for form submission — explicitly click the unlock button
+
+4. **Parallel execution safety** — Tests that run in parallel must:
+   - Avoid strict `waitForLoadState('networkidle')` — use timeout + fallback to `domcontentloaded` instead
+   - Use deterministic fixtures (no shared state between tests)
+   - Document network expectations in the test comment
+
+5. **Cross-browser patterns** — Account for browser differences:
+   - Firefox: keyboard events may not trigger form submission; use explicit button clicks
+   - Firefox: additional delays needed after state changes or button clicks
+   - WebKit: timing may be different; be generous with timeouts
+   - All browsers: use role-based selectors, never rely on incidental CSS classes
+
 - Start from the smallest affected user journey.
 - Identify route, auth state, seeded data, vault unlock state, network expectations, and cleanup.
 - Reuse an existing focused spec when possible.

@@ -391,24 +391,172 @@ browsers: chromium, firefox, webkit
 apps/myorganizer-e2e/src/e2e/<flow>.spec.ts
 ```
 
+### Pre-test Requirements
+
+Before writing E2E tests, verify:
+
+1. **Component implementation is complete** — Manually test the flow end-to-end
+2. **Semantic HTML roles are defined** — All interactive elements have proper roles (`role="article"`, `role="button"`, etc.)
+3. **API contracts are stable** — All endpoints used in the flow are defined and can be mocked
+4. **Vault architecture is documented** — For vault-backed features, confirm unlock/decrypt patterns
+
 ### Rules
 
 - Use `@playwright/test` (`test`, `expect`) — not Jest.
+- Read the component code first — inspect `libs/web/pages/<route>` to understand interactive patterns.
 - Prefer `getByRole`, `getByLabel`, `getByText` selectors.
 - Build a flow matrix before writing the spec: route, preconditions, user steps, selectors, network/data expectations, side effects, and unsupported behavior to avoid.
 - Trace the route wrapper into the owning page library before choosing selectors or assertions.
 - Keep auth, vault unlock state, seed data, and network boundaries deterministic.
+- Test on all three browsers (Chromium, Firefox, WebKit) — browser-specific patterns exist and must be validated.
 - Do not commit traces, screenshots, or generated artifacts.
 - For vault flows, the full unlock/lock cycle must be included in preconditions.
 - Do not test retry, recovery, timeout, or concurrency behavior unless the UI implements it.
 - See `.github/skills/playwright-e2e-workflow/SKILL.md` for selector and mocking rules.
 
+### E2E-Specific Patterns
+
+#### Context Menus (Radix DropdownMenu)
+
+Radix DropdownMenu buttons are hidden by default with TailwindCSS `opacity-0` and become visible on `group-hover`. Use hover + click, not native context menu dispatch:
+
+```typescript
+// ❌ Wrong — won't find the hidden button
+await page.dispatchEvent('contextmenu');
+
+// ✅ Correct — hover reveals the button, then click
+const card = page.locator('xpath=//div[contains(., "Item Name")]').first();
+await card.hover();
+const menuButton = card.locator('button').first();
+await menuButton.click();
+```
+
+#### Vault Unlock (Firefox-Compatible)
+
+Vault decryption is asynchronous. Firefox requires explicit button clicks and additional delays:
+
+```typescript
+// ✅ Correct pattern
+await page.getByRole('button', { name: 'Use passphrase' }).click();
+await page.waitForTimeout(1000); // Firefox animation delay
+
+const input = page.locator('#unlock-passphrase');
+await input.fill(passphrase);
+
+// ❌ Don't use .press('Enter') — Firefox doesn't reliably submit forms this way
+// ✅ Click the button instead
+await page.getByRole('button', { name: /^Unlock$/i }).click();
+
+// Wait for unlock to complete
+await page.locator('#unlock-passphrase').isHidden({ timeout: 30000 });
+```
+
+#### Async Component Initialization
+
+Vault and Next.js hydration introduce client-side async delays. Don't rely on network waits:
+
+```typescript
+// ❌ Wrong — network might be idle but React still initializing
+await page.waitForLoadState('networkidle');
+
+// ✅ Correct — wait for actual content
+await page.waitForFunction(
+  () => {
+    const emptyState = document.querySelector('h2')?.textContent?.includes('No items yet');
+    const items = document.querySelectorAll('div[role="article"]').length > 0;
+    return emptyState || items;
+  },
+  { timeout: 30000 },
+);
+```
+
+#### API Mocking with CORS Preflight
+
+Mocked endpoints must handle OPTIONS (CORS preflight) requests:
+
+```typescript
+await page.route(/\/auth\/login\/?(\?.*)?$/, async (route) => {
+  const request = route.request();
+  const origin = new URL(page.url()).origin;
+
+  if (request.method() === 'OPTIONS') {
+    // Preflight response
+    await route.fulfill({
+      status: 204,
+      headers: {
+        'access-control-allow-origin': origin,
+        'access-control-allow-credentials': 'true',
+        'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+        'access-control-allow-headers': 'content-type,authorization,if-match',
+      },
+    });
+    return;
+  }
+
+  // Actual response
+  await route.fulfill({
+    status: 200,
+    body: JSON.stringify({ token: 'fake-jwt', ... }),
+  });
+});
+```
+
+#### Parallel Test Execution
+
+Multiple tests running concurrently can saturate the network. Use resilient wait strategies:
+
+```typescript
+// ❌ Wrong in parallel execution — multiple tests block on networkidle
+await page.waitForLoadState('networkidle');
+
+// ✅ Correct — timeout + fallback
+try {
+  await page.waitForLoadState('networkidle', { timeout: 10000 });
+} catch {
+  try {
+    await page.waitForLoadState('domcontentloaded');
+  } catch {
+    // Continue — page is ready enough
+  }
+}
+```
+
+#### Playwright API Boundaries
+
+`page.waitForFunction()` executes in the browser context — only browser-native APIs are available:
+
+```typescript
+// ❌ Wrong — Playwright APIs not available in browser context
+await page.waitForFunction(() => {
+  return page.locator('#input').isVisible();
+});
+
+// ✅ Correct — use browser-native APIs only
+await page.waitForFunction(() => {
+  return !!document.querySelector('#input');
+});
+```
+
+### E2E Anti-Patterns to Avoid
+
+| Anti-Pattern                                            | Why It's Wrong                                         | Correct Approach                               |
+| ------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------- |
+| Using `role="button"` for non-buttons                   | Semantic HTML violation; breaks accessibility          | Use `role="article"` for cards with checkboxes |
+| Relying on `input.press('Enter')` for form submission   | Firefox doesn't reliably trigger; breaks cross-browser | Explicitly click the submit button             |
+| Calling `page.locator()` inside `waitForFunction()`     | Browser context has no Playwright APIs                 | Use `document` API only in browser context     |
+| Assuming standard HTML context menus                    | Radix DropdownMenu is not native; buttons are hidden   | Use hover + click pattern                      |
+| Using `waitForLoadState('networkidle')` for async React | Client-side async (vault, hydration) not captured      | Use content-based `waitForFunction()`          |
+| Strict networkidle in parallel test suites              | Network saturation blocks all tests                    | Use timeout + fallback strategy                |
+| Testing on one browser only                             | Firefox and WebKit have different patterns             | Test on all three browsers                     |
+| Not mocking CORS preflight                              | Tests fail with CORS errors                            | Handle OPTIONS requests in route mocks         |
+
 ### Commands
 
 ```bash
-yarn nx e2e myorganizer-e2e             # headless
+yarn nx e2e myorganizer-e2e             # headless, all browsers
 yarn nx e2e myorganizer-e2e --ui        # interactive UI mode
 yarn nx e2e-ci myorganizer-e2e          # CI mode (no reuse of existing server)
+yarn nx e2e myorganizer-e2e --testFile=<path>.spec.ts  # single test file
 ```
 
 ---
