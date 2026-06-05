@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "bash": "node tools/scripts/copilot-hooks/post-tool-use.mjs",
+        "powershell": "node tools/scripts/copilot-hooks/post-tool-use.mjs",
+        "cwd": ".",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}
