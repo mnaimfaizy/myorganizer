@@ -145,6 +145,7 @@ export function GroceryListSelector({
                     <DropdownMenuTrigger
                       className="rounded p-1 opacity-0 transition-opacity hover:bg-surface-container group-hover:opacity-100"
                       onClick={(e) => e.stopPropagation()}
+                      aria-label={`More actions for ${list.name}`}
                     >
                       <MoreVertical className="h-4 w-4 text-on-surface-variant" />
                     </DropdownMenuTrigger>

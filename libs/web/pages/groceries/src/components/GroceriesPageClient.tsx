@@ -28,7 +28,11 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
 
   if (vault.loading) {
     return (
-      <div className="min-h-screen bg-surface">
+      <div
+        className="min-h-screen bg-surface"
+        aria-busy="true"
+        aria-label="Loading groceries list"
+      >
         <div className="mx-auto max-w-6xl p-4 md:p-6">
           {/* Header skeleton */}
           <div className="mb-6 space-y-2">
@@ -52,7 +56,11 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
       <div className="mx-auto max-w-6xl p-4 md:p-6">
         {/* Error banner */}
         {vault.error && (
-          <div className="mb-4 flex items-start gap-3 rounded-lg border border-error bg-error-container p-4 text-error md:mb-6">
+          <div
+            className="mb-4 flex items-start gap-3 rounded-lg border border-error bg-error-container p-4 text-error md:mb-6"
+            role="alert"
+            aria-live="polite"
+          >
             <svg
               className="mt-0.5 h-5 w-5 flex-shrink-0"
               fill="none"
@@ -106,6 +114,7 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
           <input
             type="text"
             placeholder="Search your lists..."
+            aria-label="Search grocery lists by name"
             className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-on-surface placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-secondary md:max-w-md"
           />
         </div>
@@ -113,7 +122,11 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
         {/* Lists section */}
         {vault.lists.length === 0 ? (
           // Empty state
-          <div className="rounded-lg border-2 border-dashed border-outline-variant bg-surface-container-low p-8 text-center md:p-12">
+          <div
+            className="rounded-lg border-2 border-dashed border-outline-variant bg-surface-container-low p-8 text-center md:p-12"
+            role="status"
+            aria-live="polite"
+          >
             <div className="mb-4 inline-block rounded-full bg-secondary-container p-3">
               <svg
                 className="h-8 w-8 text-on-secondary"

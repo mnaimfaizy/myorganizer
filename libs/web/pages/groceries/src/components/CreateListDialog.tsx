@@ -93,7 +93,11 @@ export function CreateListDialog({
               autoFocus
             />
             {error && <p className="text-xs text-error">{error}</p>}
-            <p className="text-xs text-text-muted">
+            <p
+              className="text-xs text-text-muted"
+              aria-live="polite"
+              aria-label={`${name.length} out of 100 characters entered`}
+            >
               {name.length} / 100 characters
             </p>
           </div>
