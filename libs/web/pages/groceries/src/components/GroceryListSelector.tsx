@@ -12,8 +12,8 @@ import { useState } from 'react';
 
 interface GroceryListSelectorProps {
   lists: GroceryList[];
-  selectedListId: string | null;
-  onSelectList: (id: string) => void;
+  selectedListIds: string[];
+  onSelectLists: (ids: string[]) => void;
   onRenameList: (id: string) => void;
   onDeleteList: (id: string) => void;
   isLoading?: boolean;
@@ -65,13 +65,21 @@ function formatRelativeTime(dateString: string): string {
 
 export function GroceryListSelector({
   lists,
-  selectedListId,
-  onSelectList,
+  selectedListIds,
+  onSelectLists,
   onRenameList,
   onDeleteList,
   isLoading = false,
 }: GroceryListSelectorProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  const handleToggleSelect = (listId: string) => {
+    if (selectedListIds.includes(listId)) {
+      onSelectLists(selectedListIds.filter((id) => id !== listId));
+    } else {
+      onSelectLists([...selectedListIds, listId]);
+    }
+  };
 
   return (
     <div className="space-y-3">
@@ -85,7 +93,7 @@ export function GroceryListSelector({
           const dominantCategory = getDominantCategory(list.items);
           const icon = CATEGORY_ICONS[dominantCategory];
           const checkedCount = list.items.filter((item) => item.checked).length;
-          const isSelected = selectedListId === list.id;
+          const isSelected = selectedListIds.includes(list.id);
           const progressPercent =
             list.items.length > 0
               ? Math.round((checkedCount / list.items.length) * 100)
@@ -94,25 +102,26 @@ export function GroceryListSelector({
           return (
             <div
               key={list.id}
-              className={`group relative cursor-pointer rounded-lg border-2 bg-surface-container-lowest p-4 transition-all md:p-5 ${
+              className={`group relative rounded-lg border-2 bg-surface-container-lowest p-4 transition-all md:p-5 ${
                 isSelected
                   ? 'border-secondary shadow-md'
                   : 'border-surface-variant hover:border-secondary/50 hover:bg-surface-container-low'
               } ${isLoading ? 'opacity-60 pointer-events-none' : ''}`}
-              onClick={() => onSelectList(list.id)}
-              role="button"
-              tabIndex={0}
+              role="article"
             >
-              {/* Selected indicator */}
-              {isSelected && (
-                <div className="absolute inset-0 -m-0.5 rounded-lg border-2 border-secondary opacity-30" />
-              )}
-
               {/* Content */}
               <div className="relative">
-                {/* Header with icon and menu */}
+                {/* Header with checkbox and menu */}
                 <div className="mb-3 flex items-start justify-between">
                   <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleToggleSelect(list.id)}
+                      className="h-5 w-5 cursor-pointer rounded border-2 border-on-surface-variant accent-secondary"
+                      aria-label={`Select ${list.name}`}
+                      disabled={isLoading}
+                    />
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary-container text-xl">
                       {icon}
                     </div>
@@ -182,11 +191,6 @@ export function GroceryListSelector({
                   />
                 </div>
               </div>
-
-              {/* Selected indicator dot (mobile) */}
-              {isSelected && (
-                <div className="absolute -right-3 -top-3 h-2 w-2 rounded-full bg-secondary md:hidden" />
-              )}
             </div>
           );
         })}
