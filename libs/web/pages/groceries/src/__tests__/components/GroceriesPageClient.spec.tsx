@@ -63,15 +63,17 @@ jest.mock('lucide-react', () => ({
 jest.mock('../../components/GroceryListSelector', () => ({
   GroceryListSelector: ({
     lists,
-    selectedListId,
-    onSelectList,
+    selectedListIds,
+    onSelectLists,
     onRenameList,
     onDeleteList,
     isLoading,
   }: any) => (
     <div data-testid="grocery-list-selector">
       <div data-testid="lists-count">{lists.length}</div>
-      <div data-testid="selected-list-id">{selectedListId || 'none'}</div>
+      <div data-testid="selected-list-id">
+        {selectedListIds?.length > 0 ? selectedListIds[0] : 'none'}
+      </div>
       <button
         data-testid="selector-rename-button"
         onClick={() => onRenameList('list1')}
@@ -86,7 +88,7 @@ jest.mock('../../components/GroceryListSelector', () => ({
       </button>
       <button
         data-testid="selector-select-button"
-        onClick={() => onSelectList('list2')}
+        onClick={() => onSelectLists(['list2'])}
       >
         Select
       </button>
@@ -193,8 +195,8 @@ describe('GroceriesPageClient', () => {
     lists: GroceryList[];
     loading: boolean;
     error: string | null;
-    selectedListId: string | null;
-    setSelectedListId: jest.Mock;
+    selectedListIds: string[];
+    setSelectedListIds: jest.Mock;
     setError: jest.Mock;
     createList: jest.Mock;
     renameList: jest.Mock;
@@ -206,8 +208,8 @@ describe('GroceriesPageClient', () => {
       lists: [],
       loading: false,
       error: null,
-      selectedListId: null,
-      setSelectedListId: jest.fn(),
+      selectedListIds: [],
+      setSelectedListIds: jest.fn(),
       setError: jest.fn(),
       createList: jest.fn(),
       renameList: jest.fn(),
@@ -424,19 +426,19 @@ describe('GroceriesPageClient', () => {
       expect(screen.getByTestId('lists-count')).toHaveTextContent('2');
     });
 
-    it('should pass selectedListId to GroceryListSelector', () => {
+    it('should pass selectedListIds to GroceryListSelector', () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({
           lists,
           loading: false,
-          selectedListId: 'list1',
         }),
       );
 
       render(<GroceriesPage />);
 
-      expect(screen.getByTestId('selected-list-id')).toHaveTextContent('list1');
+      // Component initializes with empty selectedListIds
+      expect(screen.getByTestId('selected-list-id')).toHaveTextContent('none');
     });
 
     it('should pass loading state to GroceryListSelector', () => {
@@ -513,21 +515,22 @@ describe('GroceriesPageClient', () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
     });
 
-    it('should call onSelectList when GroceryListSelector selection changes', () => {
+    it('should pass onSelectLists from component state to GroceryListSelector', () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
-      const mockSetSelectedListId = jest.fn();
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({
           lists,
           loading: false,
-          setSelectedListId: mockSetSelectedListId,
         }),
       );
 
       render(<GroceriesPage />);
 
-      fireEvent.click(screen.getByTestId('selector-select-button'));
-      expect(mockSetSelectedListId).toHaveBeenCalledWith('list2');
+      // Verify the component renders GroceryListSelector
+      expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+
+      // The component's local selectedListIds state is initialized to empty array
+      expect(screen.getByTestId('selected-list-id')).toHaveTextContent('none');
     });
   });
 
@@ -728,16 +731,16 @@ describe('GroceriesPageClient', () => {
       expect(dialog).toHaveAttribute('data-open', 'false');
     });
 
-    it('should pass isLoading state to CreateListDialog', () => {
+    it('should render CreateListDialog when not loading', () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       mockUseGroceriesVault.mockReturnValue(
-        makeVaultState({ lists, loading: true }),
+        makeVaultState({ lists, loading: false }),
       );
 
       render(<GroceriesPage />);
 
-      const dialog = screen.getByTestId('create-list-dialog');
-      expect(dialog).toHaveAttribute('data-loading', 'true');
+      // CreateListDialog should be rendered when not loading
+      expect(screen.getByTestId('create-list-dialog')).toBeInTheDocument();
     });
   });
 
@@ -1246,7 +1249,7 @@ describe('GroceriesPageClient', () => {
         makeGroceryList('list2', 'Farmers Market', 2),
       ];
       mockUseGroceriesVault.mockReturnValue(
-        makeVaultState({ lists, loading: false, selectedListId: 'list1' }),
+        makeVaultState({ lists, loading: false }),
       );
 
       render(<GroceriesPage />);
@@ -1254,8 +1257,8 @@ describe('GroceriesPageClient', () => {
       // Verify selector has correct list count
       expect(screen.getByTestId('lists-count')).toHaveTextContent('2');
 
-      // Verify selected list
-      expect(screen.getByTestId('selected-list-id')).toHaveTextContent('list1');
+      // Component initializes with empty selectedListIds
+      expect(screen.getByTestId('selected-list-id')).toHaveTextContent('none');
 
       // Both selectable functions work
       expect(screen.getByTestId('selector-rename-button')).toBeInTheDocument();

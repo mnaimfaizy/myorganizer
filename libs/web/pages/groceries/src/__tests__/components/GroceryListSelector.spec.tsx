@@ -125,8 +125,8 @@ describe('GroceryListSelector', () => {
     render(
       <GroceryListSelector
         lists={lists}
-        selectedListId={null}
-        onSelectList={onSelect}
+        selectedListIds={[]}
+        onSelectLists={onSelect}
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
       />,
@@ -145,17 +145,20 @@ describe('GroceryListSelector', () => {
     // Progress bar for first list should be 50% (1/2)
     const cardA = screen
       .getByText('Groceries A')
-      .closest('[role="button"]') as HTMLElement;
+      .closest('[role="article"]') as HTMLElement;
     const progressInner = cardA.querySelector('div[style]') as HTMLElement;
     expect(progressInner).toBeTruthy();
     expect(progressInner.style.width).toBe('50%');
 
-    // Clicking card calls onSelectList
-    fireEvent.click(cardA);
-    expect(onSelect).toHaveBeenCalledWith('l1');
+    // Clicking checkbox calls onSelectLists with array
+    const checkbox = cardA.querySelector(
+      'input[type="checkbox"]',
+    ) as HTMLInputElement;
+    fireEvent.click(checkbox);
+    expect(onSelect).toHaveBeenCalledWith(['l1']);
   });
 
-  it('shows selected styling when selectedListId matches', () => {
+  it('shows selected styling when selectedListIds contains the list', () => {
     const lists = [
       makeList({
         id: 'sel',
@@ -168,8 +171,8 @@ describe('GroceryListSelector', () => {
     render(
       <GroceryListSelector
         lists={lists}
-        selectedListId={'sel'}
-        onSelectList={jest.fn()}
+        selectedListIds={['sel']}
+        onSelectLists={jest.fn()}
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
       />,
@@ -177,7 +180,7 @@ describe('GroceryListSelector', () => {
 
     const card = screen
       .getByText('Selected List')
-      .closest('[role="button"]') as HTMLElement;
+      .closest('[role="article"]') as HTMLElement;
     expect(card.className).toContain('border-secondary');
     expect(card.className).toContain('shadow-md');
 
@@ -190,8 +193,8 @@ describe('GroceryListSelector', () => {
     render(
       <GroceryListSelector
         lists={[]}
-        selectedListId={null}
-        onSelectList={jest.fn()}
+        selectedListIds={[]}
+        onSelectLists={jest.fn()}
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
       />,
@@ -225,8 +228,8 @@ describe('GroceryListSelector', () => {
     render(
       <GroceryListSelector
         lists={lists}
-        selectedListId={null}
-        onSelectList={jest.fn()}
+        selectedListIds={[]}
+        onSelectLists={jest.fn()}
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
       />,
@@ -234,17 +237,17 @@ describe('GroceryListSelector', () => {
 
     const noItemsCard = screen
       .getByText('No Items')
-      .closest('[role="button"]') as HTMLElement;
+      .closest('[role="article"]') as HTMLElement;
     expect(noItemsCard.querySelector('div[style]')!.style.width).toBe('0%');
 
     const s1 = screen
       .getByText('SingleChecked')
-      .closest('[role="button"]') as HTMLElement;
+      .closest('[role="article"]') as HTMLElement;
     expect(s1.querySelector('div[style]')!.style.width).toBe('100%');
 
     const s2 = screen
       .getByText('SingleUnchecked')
-      .closest('[role="button"]') as HTMLElement;
+      .closest('[role="article"]') as HTMLElement;
     expect(s2.querySelector('div[style]')!.style.width).toBe('0%');
   });
 
@@ -265,8 +268,8 @@ describe('GroceryListSelector', () => {
     render(
       <GroceryListSelector
         lists={lists}
-        selectedListId={null}
-        onSelectList={onSelect}
+        selectedListIds={[]}
+        onSelectLists={onSelect}
         onRenameList={onRename}
         onDeleteList={onDelete}
       />,
@@ -274,7 +277,7 @@ describe('GroceryListSelector', () => {
 
     const card = screen
       .getByText('MenuList')
-      .closest('[role="button"]') as HTMLElement;
+      .closest('[role="article"]') as HTMLElement;
     const dropdown = within(card).getByTestId('dropdown');
     const trigger = within(card).getByTestId('dropdown-trigger');
 
@@ -320,8 +323,8 @@ describe('GroceryListSelector', () => {
     render(
       <GroceryListSelector
         lists={many}
-        selectedListId={null}
-        onSelectList={jest.fn()}
+        selectedListIds={[]}
+        onSelectLists={jest.fn()}
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
       />,
@@ -370,8 +373,8 @@ describe('GroceryListSelector', () => {
     render(
       <GroceryListSelector
         lists={lists}
-        selectedListId={null}
-        onSelectList={jest.fn()}
+        selectedListIds={[]}
+        onSelectLists={jest.fn()}
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
       />,
