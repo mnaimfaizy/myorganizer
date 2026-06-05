@@ -14,7 +14,8 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 ## Commands
 
 - Build: `yarn build:backend`, `yarn build:myorganizer`.
-- Test one project: `yarn nx test <project-name>`.
+- Test one Jest project: `yarn nx test <project-name>`.
+- E2E: `yarn nx e2e myorganizer-e2e`.
 - Lint: `yarn nx lint <project-name>` or `yarn lint`.
 - Format: `yarn format:write`.
 - AI commit workflow: `corepack yarn ai:commit --message-file <path>` (or pipe the message on stdin).
@@ -53,8 +54,8 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - For commit requests, wait for `git commit` to return before continuing. If Husky fails, fix the reported issue and rerun the narrow validation before retrying the commit.
 - For PR requests, gather commit history from the current branch, push upstream if needed, create or reuse the PR, assign the authenticated GitHub user, and leave reviewers empty unless the user explicitly names them.
 - For issue creation requests, follow `.github/skills/github-issue-creation-workflow/SKILL.md` and delegate to `IssueCreator` so duplicate checks, required details, and label validation are handled consistently.
-- For unit-test creation or update requests, follow `.github/skills/unit-test-delegation-workflow/SKILL.md` and delegate implementation to `TestScaffold` first; main agent must review coverage quality (happy path, side effects, failures, boundaries, security-sensitive paths) before finalizing. Use `docs/testing/README.md` as the project-aware tooling reference.
-- For Storybook creation or updates, follow `.github/skills/storybook-delegation-workflow/SKILL.md` and delegate implementation to `StorybookCurator` first; the main agent must review requirement-readiness analysis, UX/a11y coverage, and clarification requests before finalizing.
+- For Jest unit or integration test creation/update requests, follow `.github/skills/unit-test-delegation-workflow/SKILL.md` and delegate implementation to `TestScaffold` first. The brief must include a behavior matrix from the actual implementation plus explicit in-scope and out-of-scope scenarios. Main agent must review behavior correctness, side effects, failures, boundaries, security-sensitive paths, mock hygiene, duplicate output, and validation before finalizing. Use `docs/testing/README.md` as the project-aware tooling reference.
+- For Playwright E2E creation/update requests, follow `.github/skills/playwright-e2e-workflow/SKILL.md`; use `E2EPlanner` for broad flows and delegate implementation to `TestScaffold` only with a precise flow matrix.
 - For release requests, follow the `.github/skills/release-and-deploy-workflow/SKILL.md` skill. Delegate: pre-flight → `PreflightCheck` agent, version proposal → `VersionBump` agent, notes drafting → `ReleaseNotes` agent.
 
 ## Do Not

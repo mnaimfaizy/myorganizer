@@ -5,18 +5,77 @@ All agents (automated and human) must use this as the source of truth for decidi
 
 ## Quick Reference
 
-| Target                 | Test type      | Runner                             | Command                       |
-| ---------------------- | -------------- | ---------------------------------- | ----------------------------- |
-| `apps/backend`         | Jest unit      | `ts-jest` + `node` env             | `yarn nx test backend`        |
-| `apps/myorganizer`     | Jest unit      | `babel-jest` + `jsdom` env         | `yarn nx test myorganizer`    |
-| `libs/web-ui`          | Jest unit      | `babel-jest` + `jsdom` env (React) | `yarn nx test web-ui`         |
-| `libs/auth`            | Jest unit      | `ts-jest` + `jsdom` env            | `yarn nx test auth`           |
-| `libs/core`            | Jest unit      | `ts-jest` or `babel-jest`          | `yarn nx test core`           |
-| `libs/vault-core`      | Jest unit      | `babel-jest` + `jsdom` env         | `yarn nx test vault-core`     |
-| `libs/web-vault`       | Jest unit      | `babel-jest` + `jsdom` env (React) | `yarn nx test web-vault`      |
-| `libs/web-vault-ui`    | Jest unit      | `babel-jest` + `jsdom` env (React) | `yarn nx test web-vault-ui`   |
-| `libs/web/pages/*`     | Jest unit      | `babel-jest` + `jsdom` env (React) | `yarn nx test <lib-name>`     |
-| `apps/myorganizer-e2e` | Playwright E2E | `@playwright/test`                 | `yarn nx e2e myorganizer-e2e` |
+| Target                 | Test type             | Runner                             | Command                       |
+| ---------------------- | --------------------- | ---------------------------------- | ----------------------------- |
+| `apps/backend`         | Jest unit/integration | `ts-jest` + `node` env             | `yarn nx test backend`        |
+| `apps/myorganizer`     | Jest unit/integration | `babel-jest` + `jsdom` env         | `yarn nx test myorganizer`    |
+| `libs/web-ui`          | Jest unit/integration | `babel-jest` + `jsdom` env (React) | `yarn nx test web-ui`         |
+| `libs/auth`            | Jest unit/integration | `ts-jest` + `jsdom` env            | `yarn nx test auth`           |
+| `libs/core`            | Jest unit             | `ts-jest` or `babel-jest`          | `yarn nx test core`           |
+| `libs/vault-core`      | Jest unit/integration | `babel-jest` + `jsdom` env         | `yarn nx test vault-core`     |
+| `libs/web-vault`       | Jest unit/integration | `babel-jest` + `jsdom` env (React) | `yarn nx test web-vault`      |
+| `libs/web-vault-ui`    | Jest unit/integration | `babel-jest` + `jsdom` env (React) | `yarn nx test web-vault-ui`   |
+| `libs/web/pages/*`     | Jest unit/integration | `babel-jest` + `jsdom` env (React) | `yarn nx test <lib-name>`     |
+| `apps/myorganizer-e2e` | Playwright E2E        | `@playwright/test`                 | `yarn nx e2e myorganizer-e2e` |
+
+## Test Generation Contract
+
+Any agent or human creating tests must analyze first, scope second, write third, and validate last. This applies to Jest unit tests, Jest integration tests, React hook/component integration tests, and Playwright E2E specs.
+
+### 1. Analyze the implementation
+
+Read the full code under test before writing assertions. Do not infer behavior from exported types, names, or a generic testing template.
+
+For hooks, async workflows, services, and controllers, trace:
+
+- where state is set;
+- which helper sets `error`, `loading`, or status values;
+- whether public methods throw, catch, swallow, or rethrow;
+- which collaborators are called and with what payload shape;
+- whether retry, timeout, cancellation, or concurrency behavior actually exists;
+- what should remain unchanged on failure.
+
+### 2. Build a behavior matrix
+
+Create a compact matrix before editing tests:
+
+| Operation/flow | Inputs/preconditions | Observable output/state | Side effects/collaborators | Error behavior | Unsupported behavior |
+| -------------- | -------------------- | ----------------------- | -------------------------- | -------------- | -------------------- |
+
+Only write tests for scenarios that are possible through the public surface. If requested behavior is not implemented, record it as out of scope or a follow-up instead of asserting it.
+
+### 3. Scope by test type
+
+| Type             | Purpose                                                                                                                                                  | Boundaries                                                                  |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Unit             | Isolate one function, component, hook, service, or utility                                                                                               | Mock external dependencies and assert local behavior precisely              |
+| Jest integration | Verify connected local behavior such as hook + vault adapter boundary, component + form validation, controller + service, or service + mocked repository | Mock network, DB, email, Google, and other infrastructure                   |
+| Playwright E2E   | Verify a user-visible browser journey                                                                                                                    | Use deterministic auth/data/network setup; no live third-party dependencies |
+
+For one focused Jest integration suite, 8-15 tests is usually enough. More tests require a behavior-matrix reason. More than 20 tests or multiple files should be split into batches.
+
+### 4. Avoid unsupported scenarios
+
+Do not test these unless the implementation explicitly supports them:
+
+- retry or recovery flows;
+- concurrent `Promise.all()` mutations;
+- timeout or timing-window behavior;
+- thrown errors from public methods that catch and swallow;
+- real network, database, email, Google, or third-party behavior.
+
+### 5. Validate output structure
+
+Before accepting generated tests, check for:
+
+- duplicate helper functions;
+- duplicate `describe` blocks;
+- appended second copies of the suite;
+- unused mock casts or imports;
+- assertions that contradict the behavior matrix;
+- tests that would pass if the implementation were broken.
+
+TestScaffold delegations must follow `.github/agents/test-scaffold.agent.md` and `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md`.
 
 ## How to Identify the Right Config
 
@@ -212,6 +271,106 @@ Each page library has its own `jest.config.ts` with a path-corrected preset dept
 - Use React Testing Library for component integration.
 - See `libs/web/pages/addresses/src/utils/addressForm.spec.ts` for a reference form-validation spec.
 
+### Async Hook Testing Pattern (libs/web/pages/\*)
+
+For page libraries that expose custom hooks with async operations (e.g., vault saves, API calls):
+
+**Requirements:**
+
+- Mock all external async functions (`loadDecryptedData`, `saveEncryptedData`, API client methods, etc.).
+- Call `mockReset()` **inside `beforeEach()`** — never in `beforeAll()`.
+- Use `act()` only for direct state-setter calls (e.g. `result.current.setFoo(val)`).
+- Use `waitFor()` for **all** assertions that follow an async effect or async state update.
+
+```typescript
+jest.mock('@myorganizer/web-vault');
+jest.mock('@myorganizer/core');
+
+// Imports AFTER jest.mock() calls (see Nx lazy-loading rule below)
+import { renderHook, act, waitFor } from '@testing-library/react';
+import { loadDecryptedData, saveEncryptedData } from '@myorganizer/web-vault';
+import { useMyHook } from './useMyHook';
+
+describe('useMyHook', () => {
+  beforeEach(() => {
+    (loadDecryptedData as jest.Mock).mockReset();
+    (loadDecryptedData as jest.Mock).mockResolvedValue([]);
+    (saveEncryptedData as jest.Mock).mockReset();
+    (saveEncryptedData as jest.Mock).mockResolvedValue(undefined);
+  });
+
+  it('should load and update state', async () => {
+    (loadDecryptedData as jest.Mock).mockResolvedValue([{ id: '1', name: 'Item' }]);
+    const { result } = renderHook(() => useMyHook({ masterKeyBytes: new Uint8Array(32) }));
+
+    // Wait for async load effect to settle
+    await waitFor(() => {
+      expect(result.current.items).toHaveLength(1);
+    });
+  });
+
+  it('should persist on mutation and update state', async () => {
+    const { result } = renderHook(() => useMyHook({ masterKeyBytes: new Uint8Array(32) }));
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    act(() => {
+      result.current.addItem('New Item');
+    });
+
+    // Wait for both state update AND the async persist side effect
+    await waitFor(() => {
+      expect(result.current.items).toContainEqual(expect.objectContaining({ name: 'New Item' }));
+    });
+    await waitFor(() => {
+      expect(saveEncryptedData as jest.Mock).toHaveBeenCalled();
+    });
+  });
+});
+```
+
+**Common mistakes:**
+
+- ❌ Asserting on state immediately after `act()` when the hook has async effects — use `waitFor()`.
+- ❌ Using `beforeAll()` for mock setup — mocks retain state between tests.
+- ❌ Forgetting `mockReset()` in `beforeEach()` — previous test's mock return value bleeds in.
+- ❌ Testing retry or recovery paths unless the hook exposes a retry entry point or documented repeat-call behavior.
+- ❌ Testing concurrent `Promise.all()` mutations unless the hook implements concurrency handling.
+- ❌ Using `mockReturnValueOnce()` queues for async ID generation or multi-call workflows; prefer an order-independent `mockImplementation()`.
+- ❌ Expecting a public hook method to throw when the implementation catches and logs the error.
+
+When a hook delegates persistence to a helper, trace the error path before writing assertions. If the helper sets error state and throws, but the public method catches the error, the valid assertion is usually state/error behavior, not caller-visible throwing.
+
+---
+
+### Nx Lazy-Loading & jest.mock() Ordering
+
+Nx enforces module boundary rules at **lint time** (before Jest transformation). jest.mock() hoisting only takes effect at **runtime**. This creates a subtle trap:
+
+**Rule: Place ALL `jest.mock()` calls before any imports — including `import type`.**
+
+```typescript
+// ❌ WRONG — linting flags the static import as a boundary violation
+import type { GroceryList } from '@myorganizer/core';
+jest.mock('@myorganizer/core');
+
+// ✅ CORRECT — mocks first, then imports
+jest.mock('@myorganizer/core', () => ({
+  ...jest.requireActual('@myorganizer/core'),
+  randomId: jest.fn(),
+}));
+jest.mock('@myorganizer/web-vault');
+
+import type { GroceryList } from '@myorganizer/core';
+import { loadDecryptedData } from '@myorganizer/web-vault';
+import { useMyHook } from './useMyHook';
+```
+
+Known lazy-loaded libraries (verify against `nx.json` when new libs are added):
+
+- `@myorganizer/core`
+- `@myorganizer/auth`
+- `@myorganizer/vault-core`
+
 ---
 
 ## `apps/myorganizer-e2e`
@@ -232,20 +391,172 @@ browsers: chromium, firefox, webkit
 apps/myorganizer-e2e/src/e2e/<flow>.spec.ts
 ```
 
+### Pre-test Requirements
+
+Before writing E2E tests, verify:
+
+1. **Component implementation is complete** — Manually test the flow end-to-end
+2. **Semantic HTML roles are defined** — All interactive elements have proper roles (`role="article"`, `role="button"`, etc.)
+3. **API contracts are stable** — All endpoints used in the flow are defined and can be mocked
+4. **Vault architecture is documented** — For vault-backed features, confirm unlock/decrypt patterns
+
 ### Rules
 
 - Use `@playwright/test` (`test`, `expect`) — not Jest.
+- Read the component code first — inspect `libs/web/pages/<route>` to understand interactive patterns.
 - Prefer `getByRole`, `getByLabel`, `getByText` selectors.
+- Build a flow matrix before writing the spec: route, preconditions, user steps, selectors, network/data expectations, side effects, and unsupported behavior to avoid.
+- Trace the route wrapper into the owning page library before choosing selectors or assertions.
+- Keep auth, vault unlock state, seed data, and network boundaries deterministic.
+- Test on all three browsers (Chromium, Firefox, WebKit) — browser-specific patterns exist and must be validated.
 - Do not commit traces, screenshots, or generated artifacts.
 - For vault flows, the full unlock/lock cycle must be included in preconditions.
+- Do not test retry, recovery, timeout, or concurrency behavior unless the UI implements it.
 - See `.github/skills/playwright-e2e-workflow/SKILL.md` for selector and mocking rules.
+
+### E2E-Specific Patterns
+
+#### Context Menus (Radix DropdownMenu)
+
+Radix DropdownMenu buttons are hidden by default with TailwindCSS `opacity-0` and become visible on `group-hover`. Use hover + click, not native context menu dispatch:
+
+```typescript
+// ❌ Wrong — won't find the hidden button
+await page.dispatchEvent('contextmenu');
+
+// ✅ Correct — hover reveals the button, then click
+const card = page.locator('xpath=//div[contains(., "Item Name")]').first();
+await card.hover();
+const menuButton = card.locator('button').first();
+await menuButton.click();
+```
+
+#### Vault Unlock (Firefox-Compatible)
+
+Vault decryption is asynchronous. Firefox requires explicit button clicks and additional delays:
+
+```typescript
+// ✅ Correct pattern
+await page.getByRole('button', { name: 'Use passphrase' }).click();
+await page.waitForTimeout(1000); // Firefox animation delay
+
+const input = page.locator('#unlock-passphrase');
+await input.fill(passphrase);
+
+// ❌ Don't use .press('Enter') — Firefox doesn't reliably submit forms this way
+// ✅ Click the button instead
+await page.getByRole('button', { name: /^Unlock$/i }).click();
+
+// Wait for unlock to complete
+await page.locator('#unlock-passphrase').isHidden({ timeout: 30000 });
+```
+
+#### Async Component Initialization
+
+Vault and Next.js hydration introduce client-side async delays. Don't rely on network waits:
+
+```typescript
+// ❌ Wrong — network might be idle but React still initializing
+await page.waitForLoadState('networkidle');
+
+// ✅ Correct — wait for actual content
+await page.waitForFunction(
+  () => {
+    const emptyState = document.querySelector('h2')?.textContent?.includes('No items yet');
+    const items = document.querySelectorAll('div[role="article"]').length > 0;
+    return emptyState || items;
+  },
+  { timeout: 30000 },
+);
+```
+
+#### API Mocking with CORS Preflight
+
+Mocked endpoints must handle OPTIONS (CORS preflight) requests:
+
+```typescript
+await page.route(/\/auth\/login\/?(\?.*)?$/, async (route) => {
+  const request = route.request();
+  const origin = new URL(page.url()).origin;
+
+  if (request.method() === 'OPTIONS') {
+    // Preflight response
+    await route.fulfill({
+      status: 204,
+      headers: {
+        'access-control-allow-origin': origin,
+        'access-control-allow-credentials': 'true',
+        'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+        'access-control-allow-headers': 'content-type,authorization,if-match',
+      },
+    });
+    return;
+  }
+
+  // Actual response
+  await route.fulfill({
+    status: 200,
+    body: JSON.stringify({ token: 'fake-jwt', ... }),
+  });
+});
+```
+
+#### Parallel Test Execution
+
+Multiple tests running concurrently can saturate the network. Use resilient wait strategies:
+
+```typescript
+// ❌ Wrong in parallel execution — multiple tests block on networkidle
+await page.waitForLoadState('networkidle');
+
+// ✅ Correct — timeout + fallback
+try {
+  await page.waitForLoadState('networkidle', { timeout: 10000 });
+} catch {
+  try {
+    await page.waitForLoadState('domcontentloaded');
+  } catch {
+    // Continue — page is ready enough
+  }
+}
+```
+
+#### Playwright API Boundaries
+
+`page.waitForFunction()` executes in the browser context — only browser-native APIs are available:
+
+```typescript
+// ❌ Wrong — Playwright APIs not available in browser context
+await page.waitForFunction(() => {
+  return page.locator('#input').isVisible();
+});
+
+// ✅ Correct — use browser-native APIs only
+await page.waitForFunction(() => {
+  return !!document.querySelector('#input');
+});
+```
+
+### E2E Anti-Patterns to Avoid
+
+| Anti-Pattern                                            | Why It's Wrong                                         | Correct Approach                               |
+| ------------------------------------------------------- | ------------------------------------------------------ | ---------------------------------------------- |
+| Using `role="button"` for non-buttons                   | Semantic HTML violation; breaks accessibility          | Use `role="article"` for cards with checkboxes |
+| Relying on `input.press('Enter')` for form submission   | Firefox doesn't reliably trigger; breaks cross-browser | Explicitly click the submit button             |
+| Calling `page.locator()` inside `waitForFunction()`     | Browser context has no Playwright APIs                 | Use `document` API only in browser context     |
+| Assuming standard HTML context menus                    | Radix DropdownMenu is not native; buttons are hidden   | Use hover + click pattern                      |
+| Using `waitForLoadState('networkidle')` for async React | Client-side async (vault, hydration) not captured      | Use content-based `waitForFunction()`          |
+| Strict networkidle in parallel test suites              | Network saturation blocks all tests                    | Use timeout + fallback strategy                |
+| Testing on one browser only                             | Firefox and WebKit have different patterns             | Test on all three browsers                     |
+| Not mocking CORS preflight                              | Tests fail with CORS errors                            | Handle OPTIONS requests in route mocks         |
 
 ### Commands
 
 ```bash
-yarn nx e2e myorganizer-e2e             # headless
+yarn nx e2e myorganizer-e2e             # headless, all browsers
 yarn nx e2e myorganizer-e2e --ui        # interactive UI mode
 yarn nx e2e-ci myorganizer-e2e          # CI mode (no reuse of existing server)
+yarn nx e2e myorganizer-e2e --testFile=<path>.spec.ts  # single test file
 ```
 
 ---
@@ -273,8 +584,40 @@ describe('MyService', () => {
 ### Mock discipline
 
 - Keep mocks minimal — only stub what the unit under test actually calls.
-- Reset mocks in `beforeEach` (use `jest.clearAllMocks()` or `afterAll`).
+- Reset mocks in `beforeEach` — use `jest.clearAllMocks()` or call `mockReset()` on each mock individually. **Never** use `beforeAll()` for mock setup; it prevents per-test isolation.
 - Never rely on mock call order across test cases.
+- Avoid relying on mock queue order inside async or concurrent operations. Use `mockImplementation()` when multiple calls need deterministic dynamic values.
+- Mock the external boundary first. For example, prefer mocking vault load/save behavior over asserting incidental ID-generation details unless IDs are part of the behavior contract.
+- Mock every module whose functions are configured or cast in the test. If a test configures `randomId`, explicitly mock `@myorganizer/core` before imports.
+- Only type-cast mocks that are explicitly referenced in assertions or setup: `const mockFn = fn as jest.Mock;`. Delete unused casts to avoid `no-unused-vars` linting errors.
+
+### Mock state isolation
+
+Mocks retain their `.mockResolvedValue()` / `.mockReturnValue()` implementations across tests unless explicitly reset. Signs of state leakage:
+
+- A test passes in isolation (`yarn nx test <project> --testNamePattern="My Test"`) but fails when run with others.
+- Tests pass on a fresh `--clearCache` run but fail on the second run.
+
+**Fix:**
+
+```typescript
+// ✅ Reset all mocks before every test
+beforeEach(() => {
+  jest.clearAllMocks();
+  // Then apply test-specific return values
+  (mockFn as jest.Mock).mockResolvedValue(defaultData);
+});
+```
+
+### Dead code detection during testing
+
+When implementing or reviewing a hook or utility, flag any state or functions that:
+
+- Are declared but never returned from the hook.
+- Are never referenced in any test assertion.
+- Are never exported or called externally.
+
+These are dead code and must be removed before committing. ESLint's `no-unused-vars` rule will surface them — run `yarn nx lint <project> --fix` to confirm.
 
 ### Coverage target
 

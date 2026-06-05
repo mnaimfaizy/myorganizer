@@ -69,7 +69,7 @@ describe('vaultExportImport helpers', () => {
 
   test('validateVaultExportBundleFromText rejects invalid JSON with readable message', () => {
     expect(() => validateVaultExportBundleFromText('{')).toThrow(
-      'Invalid JSON'
+      'Invalid JSON',
     );
   });
 
@@ -81,7 +81,7 @@ describe('vaultExportImport helpers', () => {
     invalid.exportVersion = 2;
 
     expect(() =>
-      validateVaultExportBundleFromText(JSON.stringify(invalid))
+      validateVaultExportBundleFromText(JSON.stringify(invalid)),
     ).toThrow('Unsupported exportVersion');
   });
 
@@ -93,14 +93,14 @@ describe('vaultExportImport helpers', () => {
     invalid.exportedAt = null;
 
     expect(() =>
-      validateVaultExportBundleFromText(JSON.stringify(invalid))
+      validateVaultExportBundleFromText(JSON.stringify(invalid)),
     ).toThrow('exportedAt must be a string');
   });
 
   test('validateVaultExportBundleFromText size guard triggers before JSON parse', () => {
     const tooLarge = 'a'.repeat(VAULT_EXPORT_MAX_BYTES + 1);
     expect(() => validateVaultExportBundleFromText(tooLarge)).toThrow(
-      'Bundle is too large to import'
+      'Bundle is too large to import',
     );
   });
 
@@ -116,12 +116,14 @@ describe('vaultExportImport helpers', () => {
 
     // Should pass size check but fail schema validation.
     expect(() => validateVaultExportBundleFromText(text)).toThrow(
-      'Unsupported exportVersion'
+      'Unsupported exportVersion',
     );
   });
 
   test('validateVaultExportBundleFromText warns on unknown blob type keys', () => {
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const warnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => undefined);
     try {
       const bundle = buildLocalExportBundle({
         localVault: sampleVault,
@@ -153,10 +155,10 @@ describe('vaultExportImport helpers', () => {
 
     expect(restored.kdf.salt).toBe(sampleVault.kdf.salt);
     expect(restored.data.addresses?.ciphertext).toBe(
-      sampleVault.data.addresses?.ciphertext
+      sampleVault.data.addresses?.ciphertext,
     );
     expect(restored.data.mobileNumbers?.ciphertext).toBe(
-      sampleVault.data.mobileNumbers?.ciphertext
+      sampleVault.data.mobileNumbers?.ciphertext,
     );
     expect(Object.keys(restored.data)).toEqual([
       VaultBlobType.Addresses,

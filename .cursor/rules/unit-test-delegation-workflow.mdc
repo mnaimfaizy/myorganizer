@@ -1,51 +1,116 @@
 ---
-description: Delegate unit-test creation or updates to the TestScaffold sub-agent when a task requires new or changed Jest tests in MyOrganizer. Main agent reviews for coverage completeness before accepting.
+description: Delegate Jest unit and integration test creation or updates to the TestScaffold sub-agent when a task requires new or changed Jest tests in MyOrganizer. Main agent reviews behavior correctness, scope, mocks, duplicate output, and validation before accepting.
 alwaysApply: false
 ---
 
-# Unit Test Delegation Workflow
+# Jest Test Delegation Workflow
 
 ## When to Use
 
-- A new feature, bug fix, or refactor requires unit tests to be created or updated.
-- An existing test file needs to be extended to cover new behavior.
-- Any task that includes a test-writing step — delegate it rather than writing tests inline.
+- A new feature, bug fix, or refactor requires Jest tests to be created or updated.
+- An existing Jest unit, hook integration, component integration, service integration, or controller integration suite needs changed coverage.
+- Any task includes a Jest test-writing step. Delegate it instead of writing tests inline.
+
+Use the Playwright E2E workflow for specs in `apps/myorganizer-e2e`.
 
 ## Core Rules
 
-- Do **not** write unit tests inline in the main context. Delegate to a focused sub-context or sub-agent invocation.
-- Always send a complete delegation brief — never just "add tests".
-- Happy-path-only coverage is **not acceptable** when error paths, side effects, boundary values, or security-sensitive misuse paths exist.
-- **Model note:** Cursor does not support per-rule model assignment. Model selection is global in Cursor Settings — prefer a lower-cost model (Flash/Haiku tier) when test delegation is the primary task.
-- The main agent reviews sub-agent output and must challenge weak coverage or incorrect mock patterns.
+- Do not write Jest tests inline in the main context. Delegate to a focused sub-context or `TestScaffold` invocation.
+- Always send a complete delegation brief; never just "add comprehensive tests".
+- Build the brief from the actual implementation, not only type signatures or desired behavior.
+- Include unsupported behavior to avoid testing, such as retry, concurrency, timeout, or thrown-error expectations that the code does not provide.
+- Happy-path-only coverage is not acceptable when reachable error paths, side effects, boundary values, or security-sensitive misuse paths exist.
+- The main agent acts as quality reviewer and must challenge weak coverage, incorrect mock patterns, duplicate generated content, and vacuous tests.
 
 ## Workflow
 
-1. Identify the files under test and the behaviors that need coverage.
-2. Build a delegation brief containing:
-   - Source file path(s) and test file path(s)
-   - Behavior matrix: happy path, error path, side effects, boundary values, security-sensitive paths
-   - Project name (backend / myorganizer / web-ui / auth / vault-core / web-vault / web-vault-ui / web-pages/<route>)
-   - Any project-specific mocking constraints (Prisma, API client, Next.js router, vault)
-3. Delegate to `TestScaffold` with the full brief.
-4. Review the output against the checklist below.
-5. If coverage gaps remain, send a targeted refinement request back to `TestScaffold`.
-6. Accept only when all meaningful behavior paths are covered.
+1. Identify the files under test and behaviors that need coverage.
+2. Read the full implementation and neighboring tests.
+3. Read the owning project's `jest.config.ts` and `docs/testing/README.md`.
+4. Assess suite size before delegating:
+   - 8-15 tests is the default upper range for one focused integration suite.
+   - More than 15 tests requires a behavior-matrix reason.
+   - More than 20 tests or multiple files requires logical batches.
+5. Build a delegation brief containing:
+   - test type (`unit`, `Jest integration`, `React hook integration`, `component integration`, etc.);
+   - source file path(s) and test file path(s);
+   - project name and run command;
+   - behavior matrix: happy path, error path, side effects, boundary values, security-sensitive paths, unsupported behavior;
+   - project-specific mocking constraints;
+   - in-scope and out-of-scope scenarios;
+   - acceptance assertions and validation commands.
+6. Delegate to `TestScaffold` with the full brief.
+7. Pause and review quality before accepting or requesting refinement.
+8. If gaps remain, send a targeted refinement request back to `TestScaffold`.
+9. For multi-batch suites, verify each batch passes before delegating the next.
+10. Accept only when meaningful behavior paths are covered and linting is clean.
+
+## Integration-Test Scope Guardrails
+
+Prefer testing:
+
+- load and initialization behavior;
+- create/update/delete or equivalent mutation workflows;
+- state consistency after operations;
+- persistence/API/repository collaborator calls;
+- validation and error states that the implementation actually sets;
+- security-sensitive boundaries such as auth checks and ciphertext-only vault rules.
+
+Do not test unless implemented:
+
+- retry or recovery flows;
+- concurrent `Promise.all()` mutations;
+- timeout or timing-window behavior;
+- thrown errors from public methods that catch and swallow;
+- live network, database, email, Google, or third-party behavior.
+
+## Incremental Implementation (within a session)
+
+Instruct `TestScaffold` to follow this loop. Do not accept a batch that was written all at once without running:
+
+1. Write 2-3 tests, then run focused tests and fix failures.
+2. Write the next focused batch, then run and fix.
+3. Run the full affected file/project after all batches.
+4. Run lint.
+5. Inspect for duplicate helpers, duplicate `describe` blocks, unused casts, and invalid syntax.
 
 ## Review Checklist
 
-- [ ] Each important behavior has a concrete assertion (not just `toBeTruthy`)
-- [ ] Negative / error paths are covered, not only success flows
-- [ ] Side effects and call contracts are asserted (`toHaveBeenCalledWith`)
-- [ ] Boundary values and invalid inputs are exercised
-- [ ] Security-sensitive paths (auth bypass, unsafe input, secret leakage) are tested when in scope
-- [ ] Mocks are deterministic, minimal, and match existing project patterns
+### Behavior correctness
+
+- [ ] Did the sub-agent read the full implementation and produce a behavior matrix?
+- [ ] Does each test scenario exist in the actual code path?
+- [ ] Are unsupported retry, recovery, timeout, concurrency, or thrown-error expectations excluded?
+- [ ] Do test names accurately describe the asserted behavior?
+- [ ] Would the tests fail if the implementation were broken?
+
+### Coverage quality
+
+- [ ] Concrete assertions on important behaviors, not just `toBeTruthy` or `toBeDefined`
+- [ ] Reachable negative/error paths covered
+- [ ] Side effects and call contracts asserted with concrete arguments where possible
+- [ ] Boundary and invalid inputs tested when branching exists
+- [ ] Security-sensitive paths covered when applicable
+- [ ] Mocks deterministic and minimal
+
+### Technical hygiene
+
+- [ ] All `jest.mock()` calls appear before imports, including `import type`
+- [ ] Every configured mock module is explicitly mocked
+- [ ] Mocks reset in `beforeEach()`, not `beforeAll()`
+- [ ] Async state assertions use `waitFor()` where needed
+- [ ] No brittle `mockReturnValueOnce()` queues for async/concurrent ordering-sensitive behavior
+- [ ] No duplicate helper functions, duplicate `describe` blocks, or appended suite copies
+- [ ] No unused type-cast mock variables
+- [ ] Linting passes with `yarn nx lint <project>`
+- [ ] Full affected test run passes, not just isolated tests
 
 ## References
 
-- `docs/testing/README.md` — canonical Nx-aware testing guide (tooling, environments, mock patterns per project)
-- `.github/agents/test-scaffold.agent.md` — TestScaffold sub-agent (Copilot CLI, model: gpt-5-mini)
-- `.claude/agents/test-scaffold.md` — TestScaffold sub-agent (Claude Code, model: haiku)
-- `.gemini/agents/test-scaffold.md` — TestScaffold sub-agent (Gemini CLI, model: gemini-2.5-flash-lite)
-- `.github/skills/unit-test-delegation-workflow/SKILL.md` — full workflow skill
-- `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md` — delegation brief template
+- `docs/testing/README.md` - canonical Nx-aware testing guide
+- `.github/agents/test-scaffold.agent.md` - Copilot TestScaffold agent
+- `.claude/agents/test-scaffold.md` - Claude Code TestScaffold agent
+- `.gemini/agents/test-scaffold.md` - Gemini TestScaffold agent
+- `.github/skills/unit-test-delegation-workflow/SKILL.md` - full workflow skill
+- `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md` - delegation brief template
+- `.github/skills/playwright-e2e-workflow/SKILL.md` - Playwright E2E workflow

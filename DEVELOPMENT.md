@@ -803,6 +803,8 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
 The monorepo uses Jest for unit testing.
 
+For Jest unit tests, Jest integration tests, React hook/component integration tests, and Playwright E2E rules, use `docs/testing/README.md` as the canonical guide. Before writing or delegating tests, read the implementation under test, build a behavior matrix, and avoid unsupported retry, concurrency, timeout, or thrown-error scenarios.
+
 #### Running Tests
 
 ```bash
@@ -824,6 +826,8 @@ yarn nx test backend --coverage
 #### Writing Tests
 
 Tests are located next to the source files with `.spec.ts` or `.test.ts` extensions.
+
+For generated or delegated suites, require focused tests, deterministic mocks, duplicate `describe`/helper checks, the full affected run, and linting before accepting the change.
 
 **Example (Backend)**:
 
