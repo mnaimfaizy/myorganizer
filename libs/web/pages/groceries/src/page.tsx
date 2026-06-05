@@ -1,4 +1,4 @@
-import { GroceriesPage } from './components/GroceriesPageClient';
+import { GroceriesPage } from './GroceriesPageClient';
 
 export default function GroceriesServerPage() {
   return <GroceriesPage />;

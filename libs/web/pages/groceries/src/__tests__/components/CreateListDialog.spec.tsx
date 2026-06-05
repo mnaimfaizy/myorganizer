@@ -105,7 +105,7 @@ jest.mock('@myorganizer/web-ui', () => {
 
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { CreateListDialog } from '../../components/CreateListDialog';
+import { CreateListDialog } from '../../pages/lists/components/CreateListDialog';
 
 describe('CreateListDialog', () => {
   const mockOnClose = jest.fn();

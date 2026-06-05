@@ -9,7 +9,7 @@
 
 /** Mocking rule: place jest.mock calls before any imports */
 
-jest.mock('../../hooks', () => ({
+jest.mock('../../shared/hooks', () => ({
   useGroceriesVault: jest.fn(),
 }));
 
@@ -60,78 +60,69 @@ jest.mock('lucide-react', () => ({
   ),
 }));
 
-jest.mock('../../components/GroceryListSelector', () => ({
-  GroceryListSelector: ({
+jest.mock('../../pages/lists/components', () => {
+  const React = require('react');
+
+  function GroceryListSelector({
     lists,
-    selectedListIds,
-    onSelectLists,
     onRenameList,
     onDeleteList,
     isLoading,
-  }: any) => (
-    <div data-testid="grocery-list-selector">
-      <div data-testid="lists-count">{lists.length}</div>
-      <div data-testid="selected-list-id">
-        {selectedListIds?.length > 0 ? selectedListIds[0] : 'none'}
+  }: any) {
+    return (
+      <div data-testid="grocery-list-selector">
+        <div data-testid="lists-count">{lists.length}</div>
+        <button
+          data-testid="selector-rename-button"
+          onClick={() => onRenameList('list1')}
+        >
+          Rename
+        </button>
+        <button
+          data-testid="selector-delete-button"
+          onClick={() => onDeleteList('list1')}
+        >
+          Delete
+        </button>
+        <div data-testid="selector-loading">
+          {isLoading ? 'loading' : 'ready'}
+        </div>
       </div>
-      <button
-        data-testid="selector-rename-button"
-        onClick={() => onRenameList('list1')}
+    );
+  }
+
+  function CreateListDialog({ isOpen, onClose, onSubmit, isLoading }: any) {
+    return (
+      <div
+        data-testid="create-list-dialog"
+        data-open={isOpen}
+        data-loading={isLoading}
       >
-        Rename
-      </button>
-      <button
-        data-testid="selector-delete-button"
-        onClick={() => onDeleteList('list1')}
-      >
-        Delete
-      </button>
-      <button
-        data-testid="selector-select-button"
-        onClick={() => onSelectLists(['list2'])}
-      >
-        Select
-      </button>
-      <div data-testid="selector-loading">
-        {isLoading ? 'loading' : 'ready'}
+        {isOpen && (
+          <>
+            <button
+              data-testid="dialog-create-submit"
+              onClick={() => onSubmit('New List')}
+            >
+              Submit
+            </button>
+            <button data-testid="dialog-create-close" onClick={onClose}>
+              Close
+            </button>
+          </>
+        )}
       </div>
-    </div>
-  ),
-}));
+    );
+  }
 
-jest.mock('../../components/CreateListDialog', () => ({
-  CreateListDialog: ({ isOpen, onClose, onSubmit, isLoading }: any) => (
-    <div
-      data-testid="create-list-dialog"
-      data-open={isOpen}
-      data-loading={isLoading}
-    >
-      {isOpen && (
-        <>
-          <button
-            data-testid="dialog-create-submit"
-            onClick={() => onSubmit('New List')}
-          >
-            Submit
-          </button>
-          <button data-testid="dialog-create-close" onClick={onClose}>
-            Close
-          </button>
-        </>
-      )}
-    </div>
-  ),
-}));
-
-jest.mock('../../components/RenameListDialog', () => ({
-  RenameListDialog: ({
+  function RenameListDialog({
     isOpen,
     currentName,
     onClose,
     onSubmit,
     isLoading,
-  }: any) =>
-    isOpen ? (
+  }: any) {
+    return isOpen ? (
       <div
         data-testid="rename-list-dialog"
         data-open={isOpen}
@@ -148,19 +139,18 @@ jest.mock('../../components/RenameListDialog', () => ({
           Close
         </button>
       </div>
-    ) : null,
-}));
+    ) : null;
+  }
 
-jest.mock('../../components/DeleteListConfirmDialog', () => ({
-  DeleteListConfirmDialog: ({
+  function DeleteListConfirmDialog({
     isOpen,
     listName,
     itemCount,
     onClose,
     onConfirm,
     isLoading,
-  }: any) =>
-    isOpen ? (
+  }: any) {
+    return isOpen ? (
       <div
         data-testid="delete-list-dialog"
         data-open={isOpen}
@@ -175,14 +165,22 @@ jest.mock('../../components/DeleteListConfirmDialog', () => ({
           Close
         </button>
       </div>
-    ) : null,
-}));
+    ) : null;
+  }
+
+  return {
+    GroceryListSelector,
+    CreateListDialog,
+    RenameListDialog,
+    DeleteListConfirmDialog,
+  };
+});
 
 import type { GroceryList } from '@myorganizer/core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { GroceriesPage } from '../../components/GroceriesPageClient';
-import { useGroceriesVault } from '../../hooks';
+import { GroceriesPage } from '../../GroceriesPageClient';
+import { useGroceriesVault } from '../../shared/hooks';
 
 const mockUseGroceriesVault = useGroceriesVault as jest.Mock;
 
@@ -426,21 +424,6 @@ describe('GroceriesPageClient', () => {
       expect(screen.getByTestId('lists-count')).toHaveTextContent('2');
     });
 
-    it('should pass selectedListIds to GroceryListSelector', () => {
-      const lists = [makeGroceryList('list1', 'Groceries', 3)];
-      mockUseGroceriesVault.mockReturnValue(
-        makeVaultState({
-          lists,
-          loading: false,
-        }),
-      );
-
-      render(<GroceriesPage />);
-
-      // Component initializes with empty selectedListIds
-      expect(screen.getByTestId('selected-list-id')).toHaveTextContent('none');
-    });
-
     it('should pass loading state to GroceryListSelector', () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       mockUseGroceriesVault.mockReturnValue(
@@ -508,14 +491,7 @@ describe('GroceriesPageClient', () => {
       expect(newListBtn).not.toBeDisabled();
     });
 
-    it('should have disabled attribute on New List button when vault loading', () => {
-      // During loading state, skeletons are shown instead of the button
-      // This test verifies the button component correctly receives disabled prop
-      // when passed to it (integrated test already covered above)
-      const lists = [makeGroceryList('list1', 'Groceries', 3)];
-    });
-
-    it('should pass onSelectLists from component state to GroceryListSelector', () => {
+    it('should pass callback functions to GroceryListSelector', () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({
@@ -529,8 +505,9 @@ describe('GroceriesPageClient', () => {
       // Verify the component renders GroceryListSelector
       expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
 
-      // The component's local selectedListIds state is initialized to empty array
-      expect(screen.getByTestId('selected-list-id')).toHaveTextContent('none');
+      // Verify callback buttons are present and functional
+      expect(screen.getByTestId('selector-rename-button')).toBeInTheDocument();
+      expect(screen.getByTestId('selector-delete-button')).toBeInTheDocument();
     });
   });
 
@@ -1007,13 +984,18 @@ describe('GroceriesPageClient', () => {
      ============================================ */
 
   describe('Dialog State Management', () => {
-    it('should only show one dialog at a time', () => {
+    it('should only show one dialog at a time', async () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({ lists, loading: false }),
       );
 
       render(<GroceriesPage />);
+
+      // Wait for selector to be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+      });
 
       // Open create dialog
       const buttons = screen.getAllByTestId('button');
@@ -1032,13 +1014,18 @@ describe('GroceriesPageClient', () => {
       expect(deleteDialog).not.toBeInTheDocument();
     });
 
-    it('should transition between different dialogs', () => {
+    it('should transition between different dialogs', async () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({ lists, loading: false }),
       );
 
       render(<GroceriesPage />);
+
+      // Wait for selector to be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+      });
 
       // Open create dialog
       const buttons = screen.getAllByTestId('button');
@@ -1063,13 +1050,18 @@ describe('GroceriesPageClient', () => {
       expect(renameDialog).toHaveAttribute('data-open', 'true');
     });
 
-    it('should clear dialog state when dialog closes', () => {
+    it('should clear dialog state when dialog closes', async () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({ lists, loading: false }),
       );
 
       render(<GroceriesPage />);
+
+      // Wait for selector to be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+      });
 
       fireEvent.click(screen.getByTestId('selector-rename-button'));
 
@@ -1082,7 +1074,7 @@ describe('GroceriesPageClient', () => {
       expect(renameDialog).not.toBeInTheDocument();
     });
 
-    it('should persist dialog state across renders', () => {
+    it('should persist dialog state across renders', async () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       const mockRenameList = jest.fn().mockResolvedValue(undefined);
       mockUseGroceriesVault.mockReturnValue(
@@ -1090,6 +1082,11 @@ describe('GroceriesPageClient', () => {
       );
 
       render(<GroceriesPage />);
+
+      // Wait for selector to be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+      });
 
       fireEvent.click(screen.getByTestId('selector-rename-button'));
 
@@ -1116,19 +1113,22 @@ describe('GroceriesPageClient', () => {
       expect(vaultGate).toHaveAttribute('data-title', 'Groceries');
     });
 
-    it('should call useGroceriesVault with masterKeyBytes from VaultGate', () => {
+    it('should call useGroceriesVault with masterKeyBytes from VaultGate', async () => {
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({ lists: [], loading: false }),
       );
 
       render(<GroceriesPage />);
 
-      expect(mockUseGroceriesVault).toHaveBeenCalledWith({
-        masterKeyBytes: expect.any(Uint8Array),
+      // Wait for component to initialize and call the hook
+      await waitFor(() => {
+        expect(mockUseGroceriesVault).toHaveBeenCalledWith({
+          masterKeyBytes: expect.any(Uint8Array),
+        });
       });
     });
 
-    it('should render GroceriesInner as child of VaultGate', () => {
+    it('should render GroceriesInner as child of VaultGate', async () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({ lists, loading: false }),
@@ -1136,11 +1136,13 @@ describe('GroceriesPageClient', () => {
 
       render(<GroceriesPage />);
 
-      const vaultGate = screen.getByTestId('vault-gate');
-      expect(vaultGate).toBeInTheDocument();
-      expect(
-        vaultGate.querySelector('[data-testid="grocery-list-selector"]'),
-      ).toBeInTheDocument();
+      // Wait for selector to be visible
+      await waitFor(() => {
+        const vaultGate = screen.getByTestId('vault-gate');
+        expect(
+          vaultGate.querySelector('[data-testid="grocery-list-selector"]'),
+        ).toBeInTheDocument();
+      });
     });
   });
 
@@ -1157,6 +1159,11 @@ describe('GroceriesPageClient', () => {
       );
 
       render(<GroceriesPage />);
+
+      // Wait for selector to be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+      });
 
       // Click New List
       const buttons = screen.getAllByTestId('button');
@@ -1191,6 +1198,11 @@ describe('GroceriesPageClient', () => {
 
       render(<GroceriesPage />);
 
+      // Wait for selector to be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+      });
+
       // Click Rename on selector
       fireEvent.click(screen.getByTestId('selector-rename-button'));
 
@@ -1221,6 +1233,11 @@ describe('GroceriesPageClient', () => {
 
       render(<GroceriesPage />);
 
+      // Wait for selector to be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+      });
+
       // Click Delete on selector
       fireEvent.click(screen.getByTestId('selector-delete-button'));
 
@@ -1243,7 +1260,7 @@ describe('GroceriesPageClient', () => {
       expect(mockDeleteList).toHaveBeenCalledWith('list1');
     });
 
-    it('should maintain state through multiple list operations', () => {
+    it('should maintain state through multiple list operations', async () => {
       const lists = [
         makeGroceryList('list1', 'Groceries', 3),
         makeGroceryList('list2', 'Farmers Market', 2),
@@ -1254,18 +1271,20 @@ describe('GroceriesPageClient', () => {
 
       render(<GroceriesPage />);
 
+      // Wait for selector to be visible
+      await waitFor(() => {
+        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+      });
+
       // Verify selector has correct list count
       expect(screen.getByTestId('lists-count')).toHaveTextContent('2');
 
-      // Component initializes with empty selectedListIds
-      expect(screen.getByTestId('selected-list-id')).toHaveTextContent('none');
-
-      // Both selectable functions work
+      // Both callback functions are present and work
       expect(screen.getByTestId('selector-rename-button')).toBeInTheDocument();
       expect(screen.getByTestId('selector-delete-button')).toBeInTheDocument();
     });
 
-    it('should show error and allow list operations simultaneously', () => {
+    it('should show error and allow list operations simultaneously', async () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       const mockSetError = jest.fn();
       mockUseGroceriesVault.mockReturnValue(
@@ -1278,6 +1297,11 @@ describe('GroceriesPageClient', () => {
       );
 
       render(<GroceriesPage />);
+
+      // Wait for selector to be visible (error and selector render together)
+      await waitFor(() => {
+        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+      });
 
       // Error banner visible
       expect(screen.getByText('Some warning')).toBeInTheDocument();

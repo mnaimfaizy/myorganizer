@@ -3,7 +3,7 @@ import {
   createEmptyGroceryList,
   getVaultErrorMessage,
   validateGroceryListName,
-} from '../../utils/vault';
+} from '../../shared/utils/vault';
 
 describe('vault utilities', () => {
   describe('validateGroceryListName', () => {

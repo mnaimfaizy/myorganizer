@@ -14,7 +14,7 @@ jest.mock('@myorganizer/core', () => ({
 }));
 
 import type { GroceryList } from '@myorganizer/core';
-import { useGroceriesVault } from '../../hooks/useGroceriesVault';
+import { useGroceriesVault } from '../../shared/hooks/useGroceriesVault';
 
 // Import mocked functions for setup
 import { randomId } from '@myorganizer/core';

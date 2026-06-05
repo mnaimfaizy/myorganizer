@@ -31,7 +31,7 @@ import {
 } from '@myorganizer/web-vault';
 import { act, renderHook, waitFor } from '@testing-library/react';
 
-import { useGroceriesVault } from '../../hooks/useGroceriesVault';
+import { useGroceriesVault } from '../../shared/hooks/useGroceriesVault';
 
 // -----------------------------
 // Test Helpers

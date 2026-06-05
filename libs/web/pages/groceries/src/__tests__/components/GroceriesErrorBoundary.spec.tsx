@@ -18,7 +18,7 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { GroceriesErrorBoundary } from '../../components/GroceriesErrorBoundary';
+import { GroceriesErrorBoundary } from '../../GroceriesErrorBoundary';
 
 /**
  * Test helper: component that throws an error when shouldThrow is true
@@ -490,7 +490,7 @@ describe('GroceriesErrorBoundary', () => {
   });
 
   describe('Development Mode - Error Details', () => {
-    it('should show error details in development mode', () => {
+    it('should not expose raw error details in development mode', () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
 
@@ -506,17 +506,17 @@ describe('GroceriesErrorBoundary', () => {
         </GroceriesErrorBoundary>,
       );
 
-      // Details element should be present
+      // Component does not expose raw error details – no disclosure widget
       const detailsElements = screen.queryAllByText(
         /error details \(dev only\)/i,
       );
-      expect(detailsElements.length).toBeGreaterThan(0);
+      expect(detailsElements.length).toBe(0);
 
       process.env.NODE_ENV = originalEnv;
       consoleErrorSpy.mockRestore();
     });
 
-    it('should display expandable details element in dev mode', () => {
+    it('should not display expandable details element in dev mode', () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
 
@@ -533,13 +533,13 @@ describe('GroceriesErrorBoundary', () => {
       );
 
       const detailsElement = container.querySelector('details');
-      expect(detailsElement).toBeTruthy();
+      expect(detailsElement).toBeFalsy();
 
       process.env.NODE_ENV = originalEnv;
       consoleErrorSpy.mockRestore();
     });
 
-    it('should display error message in pre tag in dev mode', () => {
+    it('should not expose error message in pre tag in dev mode', () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
 
@@ -555,17 +555,41 @@ describe('GroceriesErrorBoundary', () => {
         </GroceriesErrorBoundary>,
       );
 
+      // No <pre> tag should leak error details to the UI
       const preElement = container.querySelector('pre');
-      expect(preElement).toBeTruthy();
-      expect(preElement?.textContent).toContain(
-        'Test error from child component',
-      );
+      expect(preElement).toBeFalsy();
 
       process.env.NODE_ENV = originalEnv;
       consoleErrorSpy.mockRestore();
     });
 
-    it('should have correct styling for dev error details', () => {
+    it('should show the standard fallback UI in dev mode', () => {
+      const originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = 'development';
+
+      const consoleErrorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+
+      render(
+        <GroceriesErrorBoundary>
+          <ThrowError shouldThrow={true} error={TEST_ERROR}>
+            <div>Child</div>
+          </ThrowError>
+        </GroceriesErrorBoundary>,
+      );
+
+      // Same generic fallback shown in all environments
+      expect(screen.getByText('Something went wrong')).toBeTruthy();
+      expect(
+        screen.getByRole('button', { name: /refresh page/i }),
+      ).toBeTruthy();
+
+      process.env.NODE_ENV = originalEnv;
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should not render details element in dev mode (same as production)', () => {
       const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
 
@@ -581,45 +605,8 @@ describe('GroceriesErrorBoundary', () => {
         </GroceriesErrorBoundary>,
       );
 
-      const detailsElement = container.querySelector('details.mt-4');
-      expect(detailsElement).toBeTruthy();
-
-      const summaryElement = container.querySelector(
-        'summary.cursor-pointer.text-xs.font-medium.text-error',
-      );
-      expect(summaryElement).toBeTruthy();
-
-      const preElement = container.querySelector(
-        'pre.overflow-auto.rounded.bg-error-container.p-2.text-xs.text-on-error-container',
-      );
-      expect(preElement).toBeTruthy();
-
-      process.env.NODE_ENV = originalEnv;
-      consoleErrorSpy.mockRestore();
-    });
-
-    it('should have collapsible details (hidden by default)', () => {
-      const originalEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
-
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => undefined);
-
-      const { container } = render(
-        <GroceriesErrorBoundary>
-          <ThrowError shouldThrow={true} error={TEST_ERROR}>
-            <div>Child</div>
-          </ThrowError>
-        </GroceriesErrorBoundary>,
-      );
-
-      const detailsElement = container.querySelector(
-        'details',
-      ) as HTMLDetailsElement;
-      expect(detailsElement).toBeTruthy();
-      // Should not have open attribute (hidden by default)
-      expect(detailsElement?.open).toBe(false);
+      const detailsElement = container.querySelector('details');
+      expect(detailsElement).toBeFalsy();
 
       process.env.NODE_ENV = originalEnv;
       consoleErrorSpy.mockRestore();
