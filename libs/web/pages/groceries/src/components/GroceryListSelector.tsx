@@ -8,12 +8,11 @@ import {
   DropdownMenuTrigger,
 } from '@myorganizer/web-ui';
 import { MoreVertical, Trash2 } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 
 interface GroceryListSelectorProps {
   lists: GroceryList[];
-  selectedListIds: string[];
-  onSelectLists: (ids: string[]) => void;
   onRenameList: (id: string) => void;
   onDeleteList: (id: string) => void;
   isLoading?: boolean;
@@ -65,19 +64,18 @@ function formatRelativeTime(dateString: string): string {
 
 export function GroceryListSelector({
   lists,
-  selectedListIds,
-  onSelectLists,
   onRenameList,
   onDeleteList,
   isLoading = false,
 }: GroceryListSelectorProps) {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
 
   const handleToggleSelect = (listId: string) => {
     if (selectedListIds.includes(listId)) {
-      onSelectLists(selectedListIds.filter((id) => id !== listId));
+      setSelectedListIds(selectedListIds.filter((id) => id !== listId));
     } else {
-      onSelectLists([...selectedListIds, listId]);
+      setSelectedListIds([...selectedListIds, listId]);
     }
   };
 
@@ -104,36 +102,42 @@ export function GroceryListSelector({
               key={list.id}
               className={`group relative rounded-lg border-2 bg-surface-container-lowest p-4 transition-all md:p-5 ${
                 isSelected
-                  ? 'border-secondary shadow-md'
+                  ? 'border-error shadow-md'
                   : 'border-surface-variant hover:border-secondary/50 hover:bg-surface-container-low'
               } ${isLoading ? 'opacity-60 pointer-events-none' : ''}`}
               role="article"
             >
               {/* Content */}
               <div className="relative">
-                {/* Header with checkbox and menu */}
-                <div className="mb-3 flex items-start justify-between">
+                {/* Header with checkbox and title link and menu */}
+                <div className="mb-3 flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <input
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => handleToggleSelect(list.id)}
-                      className="h-5 w-5 cursor-pointer rounded border-2 border-on-surface-variant accent-secondary"
-                      aria-label={`Select ${list.name}`}
+                      className="h-5 w-5 cursor-pointer rounded border-2 border-on-surface-variant accent-error"
+                      aria-label={`Select ${list.name} for deletion`}
                       disabled={isLoading}
                     />
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary-container text-xl">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-secondary-container text-xl">
                       {icon}
                     </div>
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-on-surface md:text-sm">
-                        {list.name}
-                      </h3>
-                      <p className="text-xs text-text-muted md:text-xs">
-                        {dominantCategory.replace('-', ' ')}
-                      </p>
-                    </div>
                   </div>
+
+                  {/* Title as link - clickable */}
+                  <Link
+                    href={`/dashboard/groceries/${list.id}`}
+                    className="flex-1 rounded-lg px-2 py-1 transition-colors hover:bg-secondary-container/30"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <h3 className="font-semibold text-on-surface md:text-sm hover:underline">
+                      {list.name}
+                    </h3>
+                    <p className="text-xs text-text-muted md:text-xs">
+                      {dominantCategory.replace('-', ' ')}
+                    </p>
+                  </Link>
 
                   {/* Context menu */}
                   <DropdownMenu
@@ -143,7 +147,7 @@ export function GroceryListSelector({
                     }
                   >
                     <DropdownMenuTrigger
-                      className="rounded p-1 opacity-0 transition-opacity hover:bg-surface-container group-hover:opacity-100"
+                      className="flex-shrink-0 rounded p-1 opacity-0 transition-opacity hover:bg-surface-container group-hover:opacity-100"
                       onClick={(e) => e.stopPropagation()}
                       aria-label={`More actions for ${list.name}`}
                     >

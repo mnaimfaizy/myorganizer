@@ -23,7 +23,6 @@ interface DialogState {
 
 function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
   const [dialog, setDialog] = useState<DialogState>({ type: null });
-  const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
   const vault = useGroceriesVault({ masterKeyBytes });
 
   if (vault.loading) {
@@ -119,7 +118,7 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
           />
         </div>
 
-        {/* Lists section */}
+        {/* Lists section or selected list view */}
         {vault.lists.length === 0 ? (
           // Empty state
           <div
@@ -156,10 +155,9 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
             </Button>
           </div>
         ) : (
+          // List selector
           <GroceryListSelector
             lists={vault.lists}
-            selectedListIds={selectedListIds}
-            onSelectLists={setSelectedListIds}
             onRenameList={(listId) => {
               const list = vault.lists.find((l) => l.id === listId);
               if (list) {
@@ -192,10 +190,6 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
         onClose={() => setDialog({ type: null })}
         onSubmit={async (name) => {
           await vault.createList(name);
-          // Auto-select newly created list (hook already sets vault.selectedListId)
-          if (vault.selectedListId) {
-            setSelectedListIds([vault.selectedListId]);
-          }
           setDialog({ type: null });
         }}
         isLoading={vault.loading}
