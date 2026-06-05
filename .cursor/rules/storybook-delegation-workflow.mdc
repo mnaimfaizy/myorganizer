@@ -1,0 +1,42 @@
+---
+description: Delegate Storybook creation or updates to the StorybookCurator sub-agent when a task requires creating or editing `*.stories.tsx` files for MyOrganizer components.
+alwaysApply: false
+---
+
+# Storybook Delegation Workflow
+
+## When to Use
+
+- A component needs a new Storybook story.
+- An existing component change requires Storybook updates.
+- A story requires UX-focused state expansion (loading/error/disabled/edge states).
+
+## Core Rules
+
+- Do **not** edit `*.stories.tsx` inline in the main context.
+- Delegate implementation to `StorybookCurator`.
+- Send a complete delegation brief:
+  - requirement summary
+  - component file path(s)
+  - target story file path(s)
+  - expected scenarios + references
+- Require requirement-readiness analysis before edits.
+- If requirements are incomplete, stop and return clarification questions to the human-in-the-loop.
+- Allow the sub-agent to reject or challenge weak requests and explain why.
+- **Model note:** Cursor does not support per-rule model assignment. Prefer a lower-cost model tier when Storybook delegation is the primary task.
+
+## Review Checklist
+
+- [ ] Requirement readiness analysis happened before edits
+- [ ] Story coverage includes meaningful states, not only happy path
+- [ ] Accessibility/UX concerns were addressed or explicitly called out
+- [ ] Clarification questions are concrete when scope is ambiguous
+- [ ] Suggested extra scenarios were considered where quality would otherwise be weak
+
+## References
+
+- `.github/skills/storybook-delegation-workflow/SKILL.md`
+- `.github/agents/storybook-curator.agent.md`
+- `.claude/agents/storybook-curator.md`
+- `.gemini/agents/storybook-curator.md`
+- `docs/storybook/README.md`

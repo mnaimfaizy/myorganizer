@@ -123,6 +123,7 @@ When consuming the generated client:
 - When a task requires creating or changing Jest unit or integration tests, route through `.github/skills/unit-test-delegation-workflow/SKILL.md` and delegate implementation to `TestScaffold`.
 - Test delegation briefs must include a behavior matrix from reading the actual implementation, plus explicit in-scope and out-of-scope scenarios. Do not ask for vague "comprehensive tests".
 - Review TestScaffold output for behavior correctness, side effects, reachable failure paths, boundaries, security-sensitive behavior, deterministic mocks, duplicate generated content, and validation results. Use `docs/testing/README.md` for per-project tooling, integration scope, environments, and mock patterns.
+- When a task requires creating or changing Storybook stories (`*.stories.tsx`), route through `.github/skills/storybook-delegation-workflow/SKILL.md` and delegate implementation to `StorybookCurator`; require requirement-readiness analysis first, then review for UX/a11y coverage, scenario completeness, and clarification gaps before finalizing.
 
 ### E2E Tests
 

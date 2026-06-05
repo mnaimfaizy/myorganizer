@@ -34,6 +34,17 @@ The static files will be generated in `libs/web-ui/storybook-static/`.
 
 Stories are located alongside components in the `libs/web-ui/src/lib/components/` directory.
 
+### AI Delegation Workflow
+
+When using AI agents for Storybook tasks, route requests through the Storybook delegation workflow instead of editing stories inline in the main agent context.
+
+- Skill: `.github/skills/storybook-delegation-workflow/SKILL.md`
+- Copilot sub-agent: `.github/agents/storybook-curator.agent.md`
+- Claude sub-agent: `.claude/agents/storybook-curator.md`
+- Gemini sub-agent: `.gemini/agents/storybook-curator.md`
+
+The sub-agent must analyze requirement quality before file edits, request clarification when requirements are incomplete, and may challenge weak requirements to keep UX/accessibility quality high.
+
 ### Example Story Structure
 
 Create a file with the `.stories.tsx` extension next to your component:
@@ -104,7 +115,6 @@ libs/web-ui/
 The following addons are pre-configured:
 
 - **@storybook/addon-essentials**: Essential addons including:
-
   - Controls: Dynamic component prop editing
   - Actions: UI feedback for component events
   - Docs: Auto-generated documentation
