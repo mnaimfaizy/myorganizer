@@ -70,6 +70,7 @@ const PROTECTED_PATTERNS = [
   },
   {
     pattern: /(^|[^a-z0-9])(?:\.env(?:\.[^\/]+)?|[^\/]+\.env)(?:$|[^a-z0-9])/i,
+    exclude: (normalized) => /\.env\.example(?:$|[^a-z0-9])/.test(normalized),
     reason:
       'Direct edits to environment files are blocked. Keep secrets in local env files or managed secret storage.',
   },
@@ -141,6 +142,10 @@ function getProtectedPathReason(text) {
   const normalized = normalizeText(text);
 
   for (const rule of PROTECTED_PATTERNS) {
+    if (typeof rule.exclude === 'function' && rule.exclude(normalized)) {
+      continue;
+    }
+
     if (rule.pattern.test(normalized)) {
       return rule.reason;
     }
