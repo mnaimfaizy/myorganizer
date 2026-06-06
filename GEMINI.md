@@ -66,6 +66,21 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs i
 - `.github/skills/unit-test-delegation-workflow/SKILL.md` — full workflow skill
 - `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md` — delegation brief template
 
+## Codebase Exploration
+
+When a task requires locating files, symbols, or patterns in the codebase, delegate to the `CodeExplorer` sub-agent rather than searching inline — especially before issuing 3 or more consecutive read/search operations.
+
+- Delegate to `@code-explorer` (`.gemini/agents/explore.md`) with an Explore Request.
+- The request must include a `Goal` sentence. All other fields are optional: `Known Locations`, `Search Hints`, `Out of Scope`, `Expected Output`.
+- CodeExplorer runs on `gemini-2.5-flash` and returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
+- Use the `Relevant Paths` section to decide which files to read next. Trust `[found]` findings directly; verify `[inferred]` findings before acting on them.
+
+### References
+
+- `.gemini/agents/explore.md` — CodeExplorer sub-agent (Gemini CLI native format, model: gemini-2.5-flash)
+- `.github/agents/explore.agent.md` — canonical definition and Copilot-CLI version
+- `docs/adr/0001-codeexplorer-custom-agent.md` — why a custom agent over inline exploration
+
 ## Storybook Delegation
 
 When a task requires Storybook creation or updates (`*.stories.tsx`), delegate to the `storybook-curator` sub-agent (`.gemini/agents/storybook-curator.md`) rather than editing stories inline.
