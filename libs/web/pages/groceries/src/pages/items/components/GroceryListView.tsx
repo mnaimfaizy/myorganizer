@@ -7,15 +7,15 @@ import type {
 } from '@myorganizer/core';
 import { randomId } from '@myorganizer/core';
 import { Button, useToast } from '@myorganizer/web-ui';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { CategoryFilterBar } from '../../../shared/components/CategoryFilterBar';
 import {
-  CATEGORY_EMOJIS,
   CATEGORY_LABELS,
   CATEGORY_ORDER,
 } from '../../../shared/constants/categories';
-import { AddItemInlineForm } from './AddItemInlineForm';
+import type { AddItemFormResult } from './AddItemDialog';
+import { AddItemDialog } from './AddItemDialog';
 import { EditItemDialog } from './EditItemDialog';
 import { GroceryItemRow } from './GroceryItemRow';
 
@@ -42,6 +42,7 @@ export function GroceryListView({
 }: GroceryListViewProps) {
   const { toast } = useToast();
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<
     GroceryCategoryType | 'all'
@@ -92,11 +93,16 @@ export function GroceryListView({
    * Add a new item to the list
    */
   const handleAddItem = useCallback(
-    async (name: string) => {
+    async (values: AddItemFormResult) => {
       const newItem: GroceryItem = {
         id: randomId(),
-        name,
-        category: 'other',
+        name: values.name,
+        category: values.category,
+        amount: values.amount,
+        price: values.price,
+        notes: values.notes,
+        imageUrl: values.imageUrl,
+        links: values.links,
         checked: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -111,7 +117,7 @@ export function GroceryListView({
       await persistChanges(updated);
       toast({
         title: 'Item added',
-        description: `"${name}" has been added to your list.`,
+        description: `"${values.name}" has been added to your list.`,
       });
     },
     [list, persistChanges, toast],
@@ -299,8 +305,15 @@ export function GroceryListView({
         </div>
       </div>
 
-      {/* Add Item Form */}
-      <AddItemInlineForm onAdd={handleAddItem} isLoading={isLoading} />
+      {/* Add Item Button */}
+      <Button
+        onClick={() => setIsAddDialogOpen(true)}
+        disabled={isLoading}
+        className="w-full gap-2 sm:w-auto"
+      >
+        <Plus className="h-4 w-4" />
+        Add Item
+      </Button>
 
       {/* Category Filter Tabs */}
       <div className="-mx-md px-md border-b border-outline-variant">
@@ -364,14 +377,13 @@ export function GroceryListView({
             <div key={group.category}>
               {/* Category Header */}
               {selectedCategory === 'all' && (
-                <h3 className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider px-md py-md">
-                  {CATEGORY_EMOJIS[group.category]}{' '}
+                <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1 pb-1">
                   {CATEGORY_LABELS[group.category]}
                 </h3>
               )}
 
               {/* Items in this category */}
-              <div className="bg-surface-container-lowest border border-outline-variant rounded-xl overflow-hidden divide-y divide-outline-variant shadow-sm">
+              <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border shadow-sm">
                 {group.items.map((item) => (
                   <GroceryItemRow
                     key={item.id}
@@ -386,6 +398,14 @@ export function GroceryListView({
           ))}
         </div>
       )}
+
+      {/* Add Item Dialog */}
+      <AddItemDialog
+        isOpen={isAddDialogOpen}
+        onClose={() => setIsAddDialogOpen(false)}
+        onAdd={handleAddItem}
+        isLoading={isLoading}
+      />
 
       {/* Edit Item Dialog — keyed by editingItemId so useForm re-initialises per item */}
       <EditItemDialog

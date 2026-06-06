@@ -1,10 +1,10 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { GroceryItem } from '@myorganizer/core';
+import type { GroceryCategoryType } from '@myorganizer/core';
+import { GROCERY_PREDEFINED_CATEGORIES } from '@myorganizer/core';
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   Input,
@@ -12,93 +12,100 @@ import {
   cn,
 } from '@myorganizer/web-ui';
 import { Info, Lock } from 'lucide-react';
-import { useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
+import { z } from 'zod';
 import {
   CATEGORY_EMOJIS,
   CATEGORY_LABELS,
   CATEGORY_ORDER,
 } from '../../../shared/constants/categories';
-import { editItemSchema, type EditItemFormValues } from '../schemas';
 import { LinksInput } from './LinksInput';
 
-interface EditItemDialogProps {
-  item: GroceryItem | null;
+const addItemSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Item name is required')
+    .max(200, 'Item name must be 200 characters or less'),
+  category: z.enum(GROCERY_PREDEFINED_CATEGORIES),
+  amount: z.string().max(50, 'Amount must be 50 characters or less'),
+  price: z
+    .string()
+    .refine(
+      (val) => val === '' || !isNaN(parseFloat(val)),
+      'Price must be a valid number',
+    )
+    .refine((val) => {
+      if (val === '') return true;
+      const num = parseFloat(val);
+      return num >= 0 && num < 100_000;
+    }, 'Price must be between 0 and 99,999'),
+  notes: z.string().max(1000, 'Notes must be 1000 characters or less'),
+  imageUrl: z.string().url('Must be a valid URL').or(z.literal('')),
+  links: z
+    .array(z.string().url('Each link must be a valid URL'))
+    .max(10, 'Maximum 10 links allowed'),
+});
+
+type AddItemFormValues = z.infer<typeof addItemSchema>;
+
+export interface AddItemFormResult {
+  name: string;
+  category: GroceryCategoryType;
+  amount?: string;
+  price?: number;
+  notes?: string;
+  imageUrl?: string;
+  links?: string[];
+}
+
+interface AddItemDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (updated: Partial<GroceryItem> & { id: string }) => Promise<void>;
+  onAdd: (values: AddItemFormResult) => Promise<void>;
   isLoading?: boolean;
 }
 
 /**
- * Complete edit item dialog
- * Handles all item fields: core (name, checked), category, and extended fields (amount, price, notes, image, links)
+ * Rich "Add New Item" dialog matching the Secure Modernism design.
+ * Fields: name (required), category (icon grid), amount, price, notes.
  */
-export function EditItemDialog({
-  item,
+export function AddItemDialog({
   isOpen,
   onClose,
-  onSave,
+  onAdd,
   isLoading = false,
-}: EditItemDialogProps) {
-  const form = useForm<EditItemFormValues>({
+}: AddItemDialogProps) {
+  const form = useForm<AddItemFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(editItemSchema) as any,
+    resolver: zodResolver(addItemSchema) as any,
     mode: 'onChange',
-
-    defaultValues: (item
-      ? {
-          name: item.name,
-          checked: item.checked,
-          category: item.category,
-          amount: item.amount ?? '',
-          price: item.price ? item.price.toString() : '',
-          notes: item.notes ?? '',
-          imageUrl: item.imageUrl ?? '',
-          links: item.links ?? [],
-        }
-      : {
-          name: '',
-          checked: false,
-          category: 'other',
-          amount: '',
-          price: '',
-          notes: '',
-          imageUrl: '',
-          links: [],
-        }) as any,
+    defaultValues: {
+      name: '',
+      category: 'other',
+      amount: '',
+      price: '',
+      notes: '',
+      imageUrl: '',
+      links: [],
+    },
   });
 
   const handleSubmit = form.handleSubmit(async (values) => {
-    if (!item) return;
-
     try {
-      // Only send changed fields
-      const changes: Partial<GroceryItem> & { id: string } = {
-        id: item.id,
-      };
-
-      if (values.name !== item.name) changes.name = values.name;
-      if (values.checked !== item.checked) changes.checked = values.checked;
-      if (values.category !== item.category) changes.category = values.category;
-      if (values.amount !== item.amount)
-        changes.amount = values.amount || undefined;
-
-      // Convert price string to number
-      const priceNum = values.price ? parseFloat(values.price) : undefined;
-      if (priceNum !== item.price) changes.price = priceNum;
-
-      if (values.notes !== item.notes)
-        changes.notes = values.notes || undefined;
-      if (values.imageUrl !== item.imageUrl)
-        changes.imageUrl = values.imageUrl || undefined;
-      if (JSON.stringify(values.links) !== JSON.stringify(item.links ?? []))
-        changes.links = values.links?.length ? values.links : undefined;
-
-      await onSave(changes);
+      await onAdd({
+        name: values.name,
+        category: values.category,
+        amount: values.amount || undefined,
+        price: values.price ? parseFloat(values.price) : undefined,
+        notes: values.notes || undefined,
+        imageUrl: values.imageUrl || undefined,
+        links: values.links?.length ? values.links : undefined,
+      });
+      form.reset();
       onClose();
     } catch (err) {
-      console.error('Failed to save item:', err);
+      console.error('Failed to add item:', err);
     }
   });
 
@@ -108,30 +115,6 @@ export function EditItemDialog({
       onClose();
     }
   };
-
-  // Re-initialise form values whenever the item prop changes.
-  // shouldValidate: true ensures isValid reflects the new values immediately,
-  // so the Save button enables as soon as any field is dirtied.
-  useEffect(() => {
-    if (item) {
-      form.reset(
-        {
-          name: item.name,
-          checked: item.checked,
-          category: item.category,
-          amount: item.amount ?? '',
-          price: item.price ? item.price.toString() : '',
-          notes: item.notes ?? '',
-          imageUrl: item.imageUrl ?? '',
-          links: item.links ?? [],
-        },
-        { keepDirty: false, keepErrors: false },
-      );
-      // Trigger validation so isValid is set correctly before any user interaction
-      form.trigger();
-    }
-    // Safe: form reference is stable and won't change; we only want to reset when item changes
-  }, [item?.id, form]);
 
   const selectedCategory = form.watch('category');
   const watchImageUrl = form.watch('imageUrl');
@@ -144,7 +127,9 @@ export function EditItemDialog({
           {/* Header */}
           <div className="px-6 py-5 border-b border-border-muted">
             <div className="flex items-start gap-3 mb-1">
-              <h2 className="text-xl font-semibold text-primary">Edit Item</h2>
+              <h2 className="text-xl font-semibold text-primary">
+                Add New Item
+              </h2>
               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-container text-action-cyan rounded-full border border-action-cyan/20 text-[10px] font-bold tracking-wider uppercase shrink-0 mt-0.5">
                 <Lock className="w-3 h-3" />
                 Encrypted Data
@@ -160,14 +145,14 @@ export function EditItemDialog({
             {/* Item Name */}
             <div className="space-y-1.5">
               <Label
-                htmlFor="item-name"
+                htmlFor="add-item-name"
                 className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide"
               >
                 Item Name <span className="text-error">*</span>
               </Label>
               <Input
-                id="item-name"
-                placeholder="e.g., Organic Bananas"
+                id="add-item-name"
+                placeholder="e.g. Organic Almond Milk"
                 {...form.register('name')}
                 disabled={isLoading}
                 maxLength={200}
@@ -181,7 +166,7 @@ export function EditItemDialog({
               )}
             </div>
 
-            {/* Category icon grid */}
+            {/* Category */}
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
                 Category
@@ -227,14 +212,14 @@ export function EditItemDialog({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label
-                  htmlFor="item-amount"
+                  htmlFor="add-item-amount"
                   className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide"
                 >
                   Quantity / Amount
                 </Label>
                 <Input
-                  id="item-amount"
-                  placeholder="e.g., 2L, 1 dozen"
+                  id="add-item-amount"
+                  placeholder="e.g. 2, 500g"
                   {...form.register('amount')}
                   disabled={isLoading}
                   className="text-base md:text-sm"
@@ -248,7 +233,7 @@ export function EditItemDialog({
 
               <div className="space-y-1.5">
                 <Label
-                  htmlFor="item-price"
+                  htmlFor="add-item-price"
                   className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide"
                 >
                   Estimated Price
@@ -258,7 +243,7 @@ export function EditItemDialog({
                     $
                   </span>
                   <Input
-                    id="item-price"
+                    id="add-item-price"
                     placeholder="0.00"
                     type="number"
                     step="0.01"
@@ -279,14 +264,14 @@ export function EditItemDialog({
             {/* Notes */}
             <div className="space-y-1.5">
               <Label
-                htmlFor="item-notes"
+                htmlFor="add-item-notes"
                 className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide"
               >
                 Notes
               </Label>
               <textarea
-                id="item-notes"
-                placeholder="e.g., Get organic if available"
+                id="add-item-notes"
+                placeholder="Add specific brands, sizes or dietary requirements..."
                 {...form.register('notes')}
                 disabled={isLoading}
                 rows={3}
@@ -303,7 +288,7 @@ export function EditItemDialog({
             {/* Image URL */}
             <div className="space-y-1.5">
               <Label
-                htmlFor="item-imageUrl"
+                htmlFor="add-item-imageUrl"
                 className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide"
               >
                 Image URL{' '}
@@ -312,7 +297,7 @@ export function EditItemDialog({
                 </span>
               </Label>
               <Input
-                id="item-imageUrl"
+                id="add-item-imageUrl"
                 placeholder="https://example.com/image.jpg"
                 type="url"
                 {...form.register('imageUrl')}
@@ -324,7 +309,6 @@ export function EditItemDialog({
                   {form.formState.errors.imageUrl.message}
                 </p>
               )}
-              {/* Image preview */}
               {isValidImageUrl && (
                 <div className="mt-2 rounded-lg overflow-hidden border border-outline-variant">
                   <img
@@ -354,21 +338,6 @@ export function EditItemDialog({
                 </p>
               )}
             </div>
-
-            {/* Mark as done (edit-only) */}
-            <div className="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg border border-outline-variant">
-              <Checkbox
-                id="item-checked"
-                {...form.register('checked')}
-                disabled={isLoading}
-              />
-              <Label
-                htmlFor="item-checked"
-                className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide cursor-pointer grow"
-              >
-                Mark as done
-              </Label>
-            </div>
           </div>
 
           {/* Footer */}
@@ -390,14 +359,10 @@ export function EditItemDialog({
               </Button>
               <Button
                 type="submit"
-                disabled={
-                  isLoading ||
-                  !form.formState.isDirty ||
-                  !form.formState.isValid
-                }
+                disabled={isLoading || !form.formState.isValid}
                 className="gap-2"
               >
-                {isLoading ? 'Saving...' : 'Save Changes'}
+                Add to List
               </Button>
             </div>
           </div>

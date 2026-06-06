@@ -39,81 +39,98 @@ export function GroceryItemRow({
 
   return (
     <div
-      className={`flex items-center px-md py-lg hover:bg-surface-container transition-colors group ${
-        item.checked
-          ? 'bg-surface-container-low opacity-60'
-          : 'bg-surface-container-lowest'
+      data-testid={`item-row-${item.name}`}
+      className={`flex items-center px-4 py-3 hover:bg-muted/40 transition-colors group cursor-pointer ${
+        item.checked ? 'bg-muted/20' : 'bg-card'
       }`}
     >
-      <div className="flex items-center gap-md grow">
+      <div className="flex items-center gap-3 grow min-w-0">
         {/* Checkbox */}
         <input
           type="checkbox"
           checked={item.checked}
           onChange={() => onToggleChecked(item.id)}
-          className="h-5 w-5 rounded border-2 border-outline-variant accent-secondary cursor-pointer"
+          className="h-5 w-5 shrink-0 rounded border-2 border-border accent-secondary cursor-pointer"
           aria-label={`Toggle ${item.name}`}
         />
 
-        {/* Category emoji */}
-        <span className="text-lg" aria-hidden="true">
-          {categoryEmoji}
-        </span>
-
-        {/* Item details */}
-        <div className="grow">
-          <span
-            className={`text-body-base font-body-medium transition-all block ${
-              item.checked ? 'line-through text-text-muted' : 'text-on-surface'
-            }`}
-          >
-            {item.name}
+        {/* Emoji + details */}
+        <div className="flex items-center gap-2 min-w-0 grow">
+          <span className="text-lg shrink-0 leading-none" aria-hidden="true">
+            {categoryEmoji}
           </span>
-          {/* Amount and price details */}
-          {(item.amount || item.price !== undefined) && (
+
+          <div className="flex flex-col min-w-0">
+            {/* Item name */}
             <span
-              className={`text-xs transition-all ${
-                item.checked ? 'text-text-muted' : 'text-on-surface-variant'
+              className={`text-sm font-semibold leading-snug transition-all ${
+                item.checked
+                  ? 'line-through text-muted-foreground'
+                  : 'text-foreground'
               }`}
             >
-              {item.amount && <span>{item.amount}</span>}
-              {item.amount && item.price !== undefined && <span> • </span>}
-              {item.price !== undefined && (
-                <span>${item.price.toFixed(2)}</span>
-              )}
+              {item.name}
             </span>
-          )}
-          {/* Notes preview */}
-          {item.notes && (
-            <div
-              className={`text-xs italic transition-all mt-1 ${
-                item.checked ? 'text-text-muted' : 'text-on-surface-variant'
-              }`}
-            >
-              📝 {item.notes.substring(0, 50)}
-              {item.notes.length > 50 ? '...' : ''}
-            </div>
-          )}
+
+            {/* Amount • Price */}
+            {(item.amount || item.price !== undefined) && (
+              <div
+                className={`flex items-center gap-1 mt-0.5 transition-all ${
+                  item.checked ? 'opacity-50' : ''
+                }`}
+              >
+                {item.amount && (
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    {item.amount}
+                  </span>
+                )}
+                {item.amount && item.price !== undefined && (
+                  <span className="text-[11px] text-muted-foreground select-none">
+                    •
+                  </span>
+                )}
+                {item.price !== undefined && (
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    ${item.price.toFixed(2)}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Notes preview */}
+            {item.notes && (
+              <div
+                className={`text-[11px] italic mt-0.5 transition-all ${
+                  item.checked
+                    ? 'text-muted-foreground/50'
+                    : 'text-muted-foreground'
+                }`}
+              >
+                📝 {item.notes.substring(0, 50)}
+                {item.notes.length > 50 ? '...' : ''}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Action buttons - show on hover or always visible */}
-      <div className="flex items-center gap-sm opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Action buttons — visible on row hover */}
+      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
         <button
           onClick={() => onEdit(item.id)}
-          className="p-sm hover:bg-surface-container-high rounded-lg text-on-surface-variant transition-colors"
+          className="p-1.5 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground transition-colors"
           aria-label={`Edit ${item.name}`}
           type="button"
         >
-          <Edit2 className="h-5 w-5" />
+          <Edit2 className="h-4 w-4" />
         </button>
 
         <button
           onClick={handleDelete}
-          className={`p-sm rounded-lg transition-colors ${
+          className={`p-1.5 rounded-lg transition-colors ${
             isDeleting
-              ? 'bg-error/10 text-error'
-              : 'hover:bg-error/10 text-on-surface-variant hover:text-error'
+              ? 'bg-destructive/10 text-destructive'
+              : 'hover:bg-destructive/10 text-muted-foreground hover:text-destructive'
           }`}
           aria-label={
             isDeleting ? `Confirm delete ${item.name}` : `Delete ${item.name}`
@@ -121,7 +138,7 @@ export function GroceryItemRow({
           title={isDeleting ? 'Click again to confirm' : 'Delete item'}
           type="button"
         >
-          <Trash2 className="h-5 w-5" />
+          <Trash2 className="h-4 w-4" />
         </button>
       </div>
     </div>

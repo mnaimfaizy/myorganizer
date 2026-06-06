@@ -286,20 +286,27 @@ async function openListByName(
   );
 }
 
-async function addItemInline(
+async function addItemViaDialog(
   page: import('@playwright/test').Page,
   name: string,
 ) {
-  const input = page.getByPlaceholder('Add to list...');
-  await expect(input).toBeVisible({ timeout: 30000 });
-  await input.fill(name);
+  // Click the "Add Item" button to open the Add New Item dialog
+  await page.getByRole('button', { name: 'Add Item' }).click();
 
-  // Click the button with the Plus icon (Add button)
-  const addBtn = page.getByRole('button').filter({ hasText: 'Add' }).first();
-  await expect(addBtn).toBeVisible({ timeout: 10000 });
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible({ timeout: 30000 });
+
+  const nameInput = page.locator('#add-item-name');
+  await expect(nameInput).toBeVisible({ timeout: 10000 });
+  await nameInput.fill(name);
+
+  // Click "Add to List" to submit
+  const addBtn = dialog.getByRole('button', { name: 'Add to List' });
+  await expect(addBtn).toBeEnabled({ timeout: 10000 });
   await addBtn.click();
 
-  // Wait for the item to appear
+  // Wait for dialog to close and item to appear in the list
+  await expect(dialog).toHaveCount(0, { timeout: 30000 });
   await expect(page.getByText(name, { exact: true })).toBeVisible({
     timeout: 30000,
   });
@@ -341,8 +348,8 @@ test.describe('Groceries Items (E2E)', () => {
     await createListViaUI(page, 'Single Item List');
     await openListByName(page, 'Single Item List', passphrase);
 
-    // Add item via inline form
-    await addItemInline(page, 'Organic Bananas');
+    // Add item via dialog
+    await addItemViaDialog(page, 'Organic Bananas');
 
     // Open edit dialog by clicking the edit button using aria-label
     await page.getByRole('button', { name: /Edit Organic Bananas/ }).click();
@@ -354,27 +361,8 @@ test.describe('Groceries Items (E2E)', () => {
     await expect(nameInput).toBeVisible({ timeout: 30000 });
     await nameInput.fill('Organic Bananas - Ripe');
 
-    // Select Category: Produce
-    // The CategorySelect component uses Radix UI Select, look for the trigger combobox
-    // Try finding by combobox role first, or fallback to button in dialog
-    let categoryBtn = dialog.locator('[role="combobox"]').first();
-    let isCombobox = await categoryBtn
-      .isVisible({ timeout: 5000 })
-      .catch(() => false);
-
-    if (!isCombobox) {
-      // Fallback: find button that likely triggers category select (after the Category label)
-      categoryBtn = dialog
-        .locator('button')
-        .filter({ has: dialog.locator('svg') })
-        .first();
-    }
-
-    await expect(categoryBtn).toBeVisible({ timeout: 30000 });
-    await categoryBtn.click();
-
-    // Click on Produce option
-    await page.getByRole('option', { name: /Produce/ }).click();
+    // Select Category: Produce — click the icon grid button
+    await dialog.getByRole('button', { name: 'Produce' }).click();
 
     // Price and amount and notes
     await page.fill('#item-amount', '1 dozen');
@@ -417,7 +405,7 @@ test.describe('Groceries Items (E2E)', () => {
     await openListByName(page, 'Multiple Items List', passphrase);
 
     const items = ['Milk', 'Eggs', 'Bread'];
-    for (const it of items) await addItemInline(page, it);
+    for (const it of items) await addItemViaDialog(page, it);
 
     // Verify visible - wait for list items to render (not notifications)
     // Use getByRole to find item rows specifically
@@ -472,9 +460,9 @@ test.describe('Groceries Items (E2E)', () => {
     await openListByName(page, 'Filter List', passphrase);
 
     // Add three items
-    await addItemInline(page, 'Cheddar Cheese');
-    await addItemInline(page, 'Organic Apples');
-    await addItemInline(page, 'Greek Yogurt');
+    await addItemViaDialog(page, 'Cheddar Cheese');
+    await addItemViaDialog(page, 'Organic Apples');
+    await addItemViaDialog(page, 'Greek Yogurt');
 
     // Set categories: Cheddar -> Dairy, Apples -> Produce, Yogurt -> Dairy
     await page.getByRole('button', { name: /Edit Cheddar Cheese/ }).click();
@@ -482,20 +470,8 @@ test.describe('Groceries Items (E2E)', () => {
     await expect(dialog).toBeVisible({ timeout: 30000 });
     await page.waitForLoadState('networkidle');
 
-    // Set category to Dairy
-    let categoryBtn = dialog.locator('[role="combobox"]').first();
-    let isCombobox = await categoryBtn
-      .isVisible({ timeout: 5000 })
-      .catch(() => false);
-    if (!isCombobox) {
-      categoryBtn = dialog
-        .locator('button')
-        .filter({ has: dialog.locator('svg') })
-        .first();
-    }
-    await expect(categoryBtn).toBeVisible({ timeout: 30000 });
-    await categoryBtn.click();
-    await page.getByRole('option', { name: /Dairy/ }).click();
+    // Set category to Dairy — click icon grid button
+    await dialog.getByRole('button', { name: 'Dairy' }).click();
     await page.waitForTimeout(300);
 
     let saveBtn = dialog.getByRole('button', { name: /Save/ });
@@ -508,20 +484,8 @@ test.describe('Groceries Items (E2E)', () => {
     await expect(dialog).toBeVisible({ timeout: 30000 });
     await page.waitForLoadState('networkidle');
 
-    // Set category to Produce
-    categoryBtn = dialog.locator('[role="combobox"]').first();
-    isCombobox = await categoryBtn
-      .isVisible({ timeout: 5000 })
-      .catch(() => false);
-    if (!isCombobox) {
-      categoryBtn = dialog
-        .locator('button')
-        .filter({ has: dialog.locator('svg') })
-        .first();
-    }
-    await expect(categoryBtn).toBeVisible({ timeout: 30000 });
-    await categoryBtn.click();
-    await page.getByRole('option', { name: /Produce/ }).click();
+    // Set category to Produce — click icon grid button
+    await dialog.getByRole('button', { name: 'Produce' }).click();
     await page.waitForTimeout(300);
 
     saveBtn = dialog.getByRole('button', { name: /Save/ });
@@ -534,20 +498,8 @@ test.describe('Groceries Items (E2E)', () => {
     await expect(dialog).toBeVisible({ timeout: 30000 });
     await page.waitForLoadState('networkidle');
 
-    // Set category to Dairy
-    categoryBtn = dialog.locator('[role="combobox"]').first();
-    isCombobox = await categoryBtn
-      .isVisible({ timeout: 5000 })
-      .catch(() => false);
-    if (!isCombobox) {
-      categoryBtn = dialog
-        .locator('button')
-        .filter({ has: dialog.locator('svg') })
-        .first();
-    }
-    await expect(categoryBtn).toBeVisible({ timeout: 30000 });
-    await categoryBtn.click();
-    await page.getByRole('option', { name: /Dairy/ }).click();
+    // Set category to Dairy — click icon grid button
+    await dialog.getByRole('button', { name: 'Dairy' }).click();
     await page.waitForTimeout(300);
 
     saveBtn = dialog.getByRole('button', { name: /Save/ });
@@ -555,8 +507,8 @@ test.describe('Groceries Items (E2E)', () => {
     await saveBtn.click();
     await page.waitForLoadState('networkidle');
 
-    // Click category filter: Dairy
-    await page.getByRole('button', { name: 'Dairy' }).click();
+    // Click category filter: Dairy (tabs use role="tab" with aria-label)
+    await page.getByRole('tab', { name: 'Filter by Dairy' }).click();
     await expect(
       page.locator(`[data-testid="item-row-Cheddar Cheese"]`).or(
         page
@@ -582,7 +534,7 @@ test.describe('Groceries Items (E2E)', () => {
     });
 
     // Click All to reset
-    await page.getByRole('button', { name: 'All' }).click();
+    await page.getByRole('tab', { name: 'Show all items' }).click();
     await expect(page.getByText('Organic Apples')).toBeVisible({
       timeout: 30000,
     });
@@ -608,26 +560,16 @@ test.describe('Groceries Items (E2E)', () => {
     await createListViaUI(page, 'Edit Flow List');
     await openListByName(page, 'Edit Flow List', passphrase);
 
-    await addItemInline(page, 'Cherry Tomatoes');
+    await addItemViaDialog(page, 'Cherry Tomatoes');
     await page.getByRole('button', { name: /Edit Cherry Tomatoes/ }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible({ timeout: 30000 });
 
     await page.fill('#item-name', 'Cherry Tomatoes - Sweet');
     await page.waitForLoadState('networkidle');
-    let categoryBtn = dialog.locator('[role="combobox"]').first();
-    let isCombobox = await categoryBtn
-      .isVisible({ timeout: 5000 })
-      .catch(() => false);
-    if (!isCombobox) {
-      categoryBtn = dialog
-        .locator('button')
-        .filter({ has: dialog.locator('svg') })
-        .first();
-    }
-    await expect(categoryBtn).toBeVisible({ timeout: 30000 });
-    await categoryBtn.click();
-    await page.getByRole('option', { name: /Produce/ }).click();
+
+    // Set category to Produce — click icon grid button
+    await dialog.getByRole('button', { name: 'Produce' }).click();
     await page.fill('#item-price', '2.99');
     await dialog.getByRole('button', { name: /Save/ }).click();
 
@@ -657,7 +599,7 @@ test.describe('Groceries Items (E2E)', () => {
     await createListViaUI(page, 'Done State List');
     await openListByName(page, 'Done State List', passphrase);
 
-    await addItemInline(page, 'Cucumber');
+    await addItemViaDialog(page, 'Cucumber');
 
     // Find and check the checkbox by aria-label
     const checkbox = page.getByRole('checkbox', { name: /Toggle Cucumber/ });
@@ -694,7 +636,7 @@ test.describe('Groceries Items (E2E)', () => {
     await createListViaUI(page, 'Delete Item List');
     await openListByName(page, 'Delete Item List', passphrase);
 
-    await addItemInline(page, 'Chips');
+    await addItemViaDialog(page, 'Chips');
 
     // Click delete button once to enable confirm state
     const delBtn = page.getByRole('button', { name: /Delete Chips/ });
@@ -732,7 +674,7 @@ test.describe('Groceries Items (E2E)', () => {
     await openListByName(page, 'Full CRUD List', passphrase);
 
     // Create
-    await addItemInline(page, 'Alpha');
+    await addItemViaDialog(page, 'Alpha');
 
     // Edit
     await page.getByRole('button', { name: /Edit Alpha/ }).click();
@@ -753,7 +695,7 @@ test.describe('Groceries Items (E2E)', () => {
     await expect(page.getByText('Alpha v2')).toBeVisible({ timeout: 30000 });
 
     // Filter (All should show it)
-    await page.getByRole('button', { name: 'All' }).click();
+    await page.getByRole('tab', { name: 'Show all items' }).click();
     await expect(page.getByText('Alpha v2')).toBeVisible({ timeout: 30000 });
 
     // Check then uncheck
@@ -790,8 +732,8 @@ test.describe('Groceries Items (E2E)', () => {
     await createListViaUI(page, 'Persistence List');
     await openListByName(page, 'Persistence List', passphrase);
 
-    await addItemInline(page, 'Persistent One');
-    await addItemInline(page, 'Persistent Two');
+    await addItemViaDialog(page, 'Persistent One');
+    await addItemViaDialog(page, 'Persistent Two');
 
     // Reload and unlock then re-open
     await page.reload();
@@ -831,23 +773,26 @@ test.describe('Groceries Items (E2E)', () => {
     await createListViaUI(page, 'Validation List');
     await openListByName(page, 'Validation List', passphrase);
 
-    await addItemInline(page, 'To Be Invalid');
+    await addItemViaDialog(page, 'To Be Invalid');
     await page.getByRole('button', { name: /Edit To Be Invalid/ }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible({ timeout: 30000 });
 
-    // Clear required name field and verify save button becomes disabled (form validation)
+    // Clear the required name field and submit — proves validation blocks save
     const nameInput = page.locator('#item-name');
-    // Select all text and delete it
-    await nameInput.click();
-    await nameInput.press('Control+A');
-    await nameInput.press('Backspace');
-    // Trigger blur to activate validation
+    await expect(nameInput).toBeVisible({ timeout: 10000 });
+    await nameInput.fill('');
     await nameInput.blur();
-    await page.waitForTimeout(500);
 
-    // Verify save button is disabled (form is invalid due to empty name)
+    // Click Save regardless of disabled state to trigger submit-time validation
     const saveBtn = dialog.getByRole('button', { name: /Save/ });
-    await expect(saveBtn).toBeDisabled({ timeout: 10000 });
+    await saveBtn.click({ force: true });
+
+    // Validation error must appear, proving submission was blocked
+    await expect(dialog.getByText('Item name is required')).toBeVisible({
+      timeout: 10000,
+    });
+    // Dialog remains open — onSave was not called
+    await expect(dialog).toBeVisible();
   });
 });
