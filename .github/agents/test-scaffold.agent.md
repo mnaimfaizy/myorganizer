@@ -138,11 +138,42 @@ For E2E implementation, follow `.github/skills/playwright-e2e-workflow/SKILL.md`
    - Use deterministic fixtures (no shared state between tests)
    - Document network expectations in the test comment
 
-5. **Cross-browser patterns** — Account for browser differences:
+5. **Form-state verification** (critical from production E2E incidents):
+   - For form-based flows, add explicit assertions about button enable/disable state
+   - Create helpers like `waitForFormValid(form)` or `waitForButtonEnabled(button)` with explicit conditions, not arbitrary waits
+   - Verify form state transitions: does button become enabled when expected? Are validation errors visible?
+   - Use `aria-invalid` attributes if available to detect form errors reliably
+   - For flows that switch between items or dialogs, verify form state resets: are defaultValues fresh? Is validation re-run?
+   - Document expected form library behavior: react-hook-form mode must be specified in test comments or asserted via component code review
+   - If form state doesn't transition as expected, do NOT try different interaction patterns (keyboard vs fill methods) — stop and investigate component architecture (remounting, reset logic, form mode)
+   - Add debug output (button disabled state, form validation errors, element visibility) before concluding an interaction is correct
+
+6. **Parallel execution safety** — Tests that run in parallel must:
+   - Avoid strict `waitForLoadState('networkidle')` — use timeout + fallback to `domcontentloaded` instead
+   - Use deterministic fixtures (no shared state between tests)
+   - Document network expectations in the test comment
+
+7. **Cross-browser patterns** — Account for browser differences:
    - Firefox: keyboard events may not trigger form submission; use explicit button clicks
    - Firefox: additional delays needed after state changes or button clicks
+   - Firefox: for form state changes, add extra timeout after state change before asserting button enable status
    - WebKit: timing may be different; be generous with timeouts
    - All browsers: use role-based selectors, never rely on incidental CSS classes
+   - For form flows: verify that form state transitions (isDirty, isValid, button enable/disable) work consistently across browsers
+
+**Early error detection for form-based E2E:**
+
+When implementing form-based E2E tests, catch issues early by:
+
+1. Before writing all test steps, verify that the test can reach the first form assertion (dialog opens, fields visible)
+2. After filling form fields, explicitly assert button state BEFORE attempting to click it
+3. If button doesn't change state after field modification:
+   - Do NOT try different fill methods (keyboard vs page.fill vs selectAll+type) — wrong layer
+   - STOP and investigate component architecture issues (does dialog remount? Is form.reset() called? Is form mode 'onChange'?)
+   - Check component code for useEffect dependencies watching item/form changes
+   - Verify that form library configuration matches test expectations
+4. Use `page.screenshot()` or `page.locator().screenshot()` to debug UI state when selectors fail
+5. Add `aria-live` regions or debug helpers to surface form state changes
 
 - Start from the smallest affected user journey.
 - Identify route, auth state, seeded data, vault unlock state, network expectations, and cleanup.

@@ -39,28 +39,67 @@ Before starting any E2E plan, verify these prerequisites — if not met, report 
 
 3. Trace the flow through selectors and interactions based on actual component code.
 
-4. **For vault-backed flows**:
+4. **For form-based flows** (critical from production incident):
+   - Document the form library and validation mode (e.g., react-hook-form mode: 'onChange' vs 'onSubmit')
+   - Specify when each button becomes enabled/disabled (e.g., "Save button disabled when !isDirty || !isValid")
+   - Document component remounting strategy (e.g., "EditItemDialog remounts per item via key={itemId}")
+   - Trace form state transitions: when defaultValues refresh, when validation runs, when form resets
+   - Note minimum field modifications needed for buttons to enable
+
+5. **For component lifecycle flows** (dialogs, modals, context menu patterns):
+   - Specify if component remounts when props/state changes
+   - Document form reset behavior: does form clear, reset to previous values, or keep user input?
+   - Note useEffect dependencies and when they trigger
+   - Plan for async operations that complete after state changes (vault unlock, form save)
+
+6. **For vault-backed flows**:
    - Document the vault unlock pattern (passphrase entry, unlock button click)
    - Note that vault decryption is async — use content-based waits, not network waits
    - Plan for multiple browser testing (Firefox has different keyboard handling)
 
-5. Prefer role/label/text selectors (`getByRole`, `getByLabel`); flag any place that needs a `data-testid` to be added.
+7. Prefer role/label/text selectors (`getByRole`, `getByLabel`); flag any place that needs a `data-testid` to be added.
 
-6. **API mocking strategy**:
+8. **API mocking strategy**:
    - Which endpoints need to be mocked (auth, vault, feature-specific APIs)
    - Document CORS preflight requirements (OPTIONS requests with proper headers)
    - Which endpoints can passthrough (external third-party services should always be mocked)
 
-7. **Cross-browser considerations**:
-   - Note Firefox-specific patterns (keyboard events, form submission, input handling)
+9. **Cross-browser considerations**:
+   - Note Firefox-specific patterns (keyboard events, form submission, input handling, animation delays)
    - Note WebKit-specific patterns (timing, accessibility features)
    - Flag any selectors that might break on specific browsers
+   - For form state flows: Firefox may need additional delays after state changes or button clicks
 
-8. List network calls expected and which to intercept vs let through.
+10. List network calls expected and which to intercept vs let through.
 
-9. Identify unsupported behaviors that should not be asserted by the spec.
+11. Identify unsupported behaviors that should not be asserted by the spec.
 
-10. Identify cleanup steps and parallelization safety (parallel test execution can saturate network — document if networkidle waits are needed).
+12. Identify cleanup steps and parallelization safety (parallel test execution can saturate network — document if networkidle waits are needed).
+
+## Clarifying Questions (Ask Before Finalizing)
+
+Before completing the plan, ask the component developer:
+
+1. **Form-based flows**: "What form library is used? What validation mode (onChange vs onSubmit)? When should [button name] become enabled/disabled?"
+2. **Dialog/modal flows**: "Will this component remount when [prop] changes? How does the form reset between interactions?"
+3. **Component lifecycle**: "What useEffect dependencies should I document? Are there async state updates I need to wait for?"
+4. **Accessibility**: "Are there aria-live or aria-busy attributes I should monitor for state changes?"
+
+## Form Flow Template (For Any Form-Based E2E)
+
+If the flow involves forms, include this section:
+
+```
+## Form State Specification
+- Form library: <react-hook-form, formik, etc.>
+- Validation mode: <onChange | onSubmit | onBlur>
+- Submit button disabled when: <condition, e.g., !isDirty || !isValid>
+- Submit button enabled when: <condition, e.g., isDirty && isValid>
+- Validation errors appear: <timing, e.g., onBlur or onChange>
+- Form reset: <when and how, e.g., useEffect watches item?.id, calls form.reset()>
+- Component lifecycle: <remount strategy, e.g., key={itemId} in parent>
+- Field modifications needed for enable: <minimum field changes, e.g., change category from 'other' to specific>
+```
 
 ## Output Format
 
@@ -80,8 +119,14 @@ Return:
 - <any hidden elements that appear on hover/state>
 
 ## Flow matrix
-| Step | Action | Expected user-visible result | Selector | Component/interaction pattern | Network/data expectation | Unsupported behavior to avoid |
-| ---- | ------ | ---------------------------- | -------- | ----------------------------- | ------------------------ | ----------------------------- |
+| Step | Action | Expected user-visible result | Selector | Component/interaction pattern | Form state (if applicable) | Network/data expectation | Unsupported behavior to avoid |
+| ---- | ------ | ---------------------------- | -------- | ----------------------------- | -------------------------- | ------------------------ | ----------------------------- |
+
+## Form State Specification (if form-based)
+- Form library: <...>
+- Validation mode: <...>
+- Submit button disabled when: <...>
+- Component lifecycle: <...>
 
 ## Selectors required
 - getByRole(...) — <where>

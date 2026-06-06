@@ -164,7 +164,12 @@ try {
 ❌ **Using `role="button"` for non-button elements** — Creates semantic HTML violations; use `role="article"` or `role="listitem"`  
 ❌ **Relying on `waitForLoadState('networkidle')` for vault operations** — Vault initialization is client-side async; use content waits  
 ❌ **Running strict networkidle waits in parallel test suites** — Use timeout + fallback strategy instead  
-❌ **Not testing on all browsers** — Firefox and WebKit have different patterns; test during implementation, not after
+❌ **Not testing on all browsers** — Firefox and WebKit have different patterns; test during implementation, not after  
+❌ **Trying different interaction patterns (keyboard vs fill methods) when form buttons don't enable** — Wrong layer; issue is likely component architecture (remounting, form reset, form mode), not the test approach  
+❌ **Using arbitrary `page.waitForTimeout()` delays** — Wait for explicit form state changes: button enable/disable, validation errors appear, element visibility changes  
+❌ **Not verifying form state transitions explicitly** — Test that buttons become enabled/disabled at expected times; add assertions for form isDirty/isValid if testing form library behavior  
+❌ **Assuming form defaultValues are fresh after dialog reopens** — Verify component uses `key={itemId}` or `useEffect` to reset form on item change  
+❌ **Not testing component lifecycle** — Dialogs/modals that edit items must reset form state when switching items; add tests for this interaction pattern
 
 ## Review Checklist
 
