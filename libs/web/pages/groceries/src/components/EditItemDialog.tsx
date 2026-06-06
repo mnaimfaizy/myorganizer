@@ -62,7 +62,7 @@ export function EditItemDialog({
           notes: '',
           imageUrl: '',
           links: [],
-        }) as any,
+        }) as EditItemFormValues,
   });
 
   const handleSubmit = form.handleSubmit(async (values) => {
@@ -110,7 +110,7 @@ export function EditItemDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
-      <DialogContent className="w-[calc(100%-2rem)] max-h-[90vh] overflow-y-auto md:max-w-md">
+      <DialogContent className="w-[calc(100%-1rem)] max-h-[90vh] overflow-y-auto sm:max-w-md mx-auto">
         <form onSubmit={handleSubmit} className="space-y-6">
           <DialogHeader>
             <DialogTitle>Edit Item</DialogTitle>
@@ -131,11 +131,14 @@ export function EditItemDialog({
                 {...form.register('name')}
                 disabled={isLoading}
                 maxLength={200}
-                className="text-base md:text-sm"
+                className="text-base sm:text-sm"
+                aria-describedby={
+                  form.formState.errors.name ? 'name-error' : undefined
+                }
                 autoFocus
               />
               {form.formState.errors.name && (
-                <p className="text-xs text-error">
+                <p id="name-error" className="text-xs text-error" role="alert">
                   {form.formState.errors.name.message}
                 </p>
               )}
@@ -162,10 +165,17 @@ export function EditItemDialog({
                   placeholder="e.g., 2L, 1 dozen"
                   {...form.register('amount')}
                   disabled={isLoading}
-                  className="text-base md:text-sm"
+                  className="text-base sm:text-sm"
+                  aria-describedby={
+                    form.formState.errors.amount ? 'amount-error' : undefined
+                  }
                 />
                 {form.formState.errors.amount && (
-                  <p className="text-xs text-error">
+                  <p
+                    id="amount-error"
+                    className="text-xs text-error"
+                    role="alert"
+                  >
                     {form.formState.errors.amount.message}
                   </p>
                 )}
@@ -190,11 +200,14 @@ export function EditItemDialog({
                   min="0"
                   {...form.register('price')}
                   disabled={isLoading}
-                  className="pl-6 text-base md:text-sm"
+                  className="pl-6 text-base sm:text-sm"
+                  aria-describedby={
+                    form.formState.errors.price ? 'price-error' : undefined
+                  }
                 />
               </div>
               {form.formState.errors.price && (
-                <p className="text-xs text-error">
+                <p id="price-error" className="text-xs text-error" role="alert">
                   {form.formState.errors.price.message}
                 </p>
               )}
@@ -212,10 +225,13 @@ export function EditItemDialog({
                 {...form.register('notes')}
                 disabled={isLoading}
                 rows={3}
-                className="w-full px-3 py-2 border border-outline-variant rounded-lg text-base md:text-sm resize-none"
+                className="w-full px-3 py-2 border border-outline-variant rounded-lg text-base sm:text-sm resize-none"
+                aria-describedby={
+                  form.formState.errors.notes ? 'notes-error' : undefined
+                }
               />
               {form.formState.errors.notes && (
-                <p className="text-xs text-error">
+                <p id="notes-error" className="text-xs text-error" role="alert">
                   {form.formState.errors.notes.message}
                 </p>
               )}
@@ -236,10 +252,17 @@ export function EditItemDialog({
                 type="url"
                 {...form.register('imageUrl')}
                 disabled={isLoading}
-                className="text-base md:text-sm"
+                className="text-base sm:text-sm"
+                aria-describedby={
+                  form.formState.errors.imageUrl ? 'imageUrl-error' : undefined
+                }
               />
               {form.formState.errors.imageUrl && (
-                <p className="text-xs text-error">
+                <p
+                  id="imageUrl-error"
+                  className="text-xs text-error"
+                  role="alert"
+                >
                   {form.formState.errors.imageUrl.message}
                 </p>
               )}

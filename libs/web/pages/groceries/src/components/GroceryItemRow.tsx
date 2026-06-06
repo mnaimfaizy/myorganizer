@@ -2,7 +2,7 @@
 
 import type { GroceryItem } from '@myorganizer/core';
 import { Edit2, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { getCategoryEmoji } from '../utils/category';
 
 interface GroceryItemRowProps {
@@ -16,7 +16,7 @@ interface GroceryItemRowProps {
  * Individual grocery item row component
  * Renders a single item with checkbox, name, and action buttons
  */
-export function GroceryItemRow({
+function GroceryItemRowComponent({
   item,
   onToggleChecked,
   onEdit,
@@ -127,3 +127,5 @@ export function GroceryItemRow({
     </div>
   );
 }
+
+export const GroceryItemRow = memo(GroceryItemRowComponent);

@@ -63,7 +63,7 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
             aria-live="polite"
           >
             <svg
-              className="mt-0.5 h-5 w-5 flex-shrink-0"
+              className="mt-0.5 h-5 w-5 shrink-0"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"

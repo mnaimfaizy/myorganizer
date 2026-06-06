@@ -8,7 +8,7 @@ import type {
 import { randomId } from '@myorganizer/core';
 import { Button, useToast } from '@myorganizer/web-ui';
 import { ArrowLeft, Trash2 } from 'lucide-react';
-import { useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import {
   CATEGORY_EMOJIS,
   CATEGORY_LABELS,
@@ -32,14 +32,13 @@ interface GroceryListViewProps {
  * Main grocery list view component
  * Displays and manages items within a selected list
  */
-export function GroceryListView({
+function GroceryListViewComponent({
   list,
-  masterKeyBytes,
   onListUpdated,
   onClose,
   persistLists,
   allLists,
-}: GroceryListViewProps) {
+}: Omit<GroceryListViewProps, 'masterKeyBytes'>) {
   const { toast } = useToast();
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -233,7 +232,7 @@ export function GroceryListView({
 
   // Group items by category in the order defined
   const groupedItems = useMemo(() => {
-    const groups: Record<GroceryCategoryType, GroceryItem[]> = {};
+    const groups: Partial<Record<GroceryCategoryType, GroceryItem[]>> = {};
 
     // Initialize all categories
     CATEGORY_ORDER.forEach((cat) => {
@@ -246,14 +245,16 @@ export function GroceryListView({
       if (!groups[category]) {
         groups[category] = [];
       }
-      groups[category].push(item);
+      if (groups[category]) {
+        groups[category].push(item);
+      }
     });
 
     // Return only non-empty categories in order
-    return CATEGORY_ORDER.filter((cat) => groups[cat].length > 0).map(
+    return CATEGORY_ORDER.filter((cat) => (groups[cat]?.length ?? 0) > 0).map(
       (cat) => ({
         category: cat,
-        items: groups[cat],
+        items: groups[cat] || [],
       }),
     );
   }, [filteredItems]);
@@ -261,23 +262,14 @@ export function GroceryListView({
   const checkedCount = filteredItems.filter((item) => item.checked).length;
   const hasCheckedItems = checkedCount > 0;
 
-  // Get all categories that have items in this list
-  const categoriesWithItems = useMemo(() => {
-    const cats = new Set<GroceryCategoryType>();
-    list.items.forEach((item) => {
-      cats.add((item.category as GroceryCategoryType) || 'other');
-    });
-    return Array.from(cats);
-  }, [list.items]);
-
   return (
-    <div className="space-y-lg px-md">
+    <div className="space-y-md sm:space-y-lg px-sm sm:px-md">
       {/* Header */}
-      <div className="flex items-center justify-between gap-md pb-md border-b border-outline-variant">
+      <div className="flex items-center justify-between gap-sm sm:gap-md pb-md border-b border-outline-variant">
         <div className="flex items-center gap-md grow">
           <button
             onClick={onClose}
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-secondary hover:bg-secondary-container/20 transition-colors"
+            className="inline-flex items-center gap-2 rounded-lg px-2 sm:px-3 py-2 text-sm font-medium text-secondary hover:bg-secondary-container/20 transition-colors"
             aria-label="Back to groceries"
             type="button"
           >
@@ -285,8 +277,8 @@ export function GroceryListView({
             <span className="hidden sm:inline">Back</span>
           </button>
 
-          <div>
-            <h2 className="text-lg font-semibold text-on-surface md:text-xl">
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-semibold text-on-surface md:text-xl truncate">
               {list.name}
             </h2>
             <p className="text-xs text-on-surface-variant">
@@ -300,7 +292,7 @@ export function GroceryListView({
       <AddItemInlineForm onAdd={handleAddItem} isLoading={isLoading} />
 
       {/* Category Filter Tabs */}
-      <div className="-mx-md px-md border-b border-outline-variant">
+      <div className="-mx-sm sm:-mx-md px-sm sm:px-md border-b border-outline-variant">
         <CategoryFilterBar
           items={list.items}
           activeCategory={selectedCategory}
@@ -395,3 +387,5 @@ export function GroceryListView({
     </div>
   );
 }
+
+export const GroceryListView = memo(GroceryListViewComponent);

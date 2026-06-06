@@ -55,7 +55,10 @@ export function AddItemInlineForm({
 
   return (
     <div className="space-y-2">
-      <form onSubmit={handleSubmit} className="flex gap-sm">
+      <form
+        onSubmit={handleSubmit}
+        className="flex gap-sm flex-col sm:flex-row"
+      >
         <Input
           ref={inputRef}
           type="text"
@@ -67,14 +70,16 @@ export function AddItemInlineForm({
           }}
           disabled={isSubmitting || isLoading}
           maxLength={200}
-          className="grow"
+          className="grow text-base sm:text-sm"
+          aria-describedby={error ? 'add-item-error' : undefined}
+          aria-label="Item name"
           autoFocus
         />
         <Button
           type="submit"
           disabled={isSubmitting || isLoading || !name.trim()}
           size="sm"
-          className="gap-2"
+          className="gap-2 w-full sm:w-auto"
         >
           <Plus className="h-4 w-4" />
           <span className="hidden sm:inline">Add</span>
@@ -82,7 +87,12 @@ export function AddItemInlineForm({
       </form>
 
       {error && (
-        <p className="text-xs text-error" role="alert">
+        <p
+          id="add-item-error"
+          className="text-xs text-error"
+          role="alert"
+          aria-live="polite"
+        >
           {error}
         </p>
       )}

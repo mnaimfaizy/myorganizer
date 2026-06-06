@@ -2,6 +2,7 @@
 
 import { Button, Input } from '@myorganizer/web-ui';
 import { Plus, Trash2 } from 'lucide-react';
+import { memo } from 'react';
 import { useFieldArray } from 'react-hook-form';
 
 interface LinksInputProps {
@@ -12,8 +13,9 @@ interface LinksInputProps {
 /**
  * Dynamic links input component
  * Allows adding/removing up to 10 URL links for grocery items
+ * Keyboard accessible: Tab through links, Enter to add, Delete button to remove
  */
-export function LinksInput({ control }: LinksInputProps) {
+function LinksInputComponent({ control }: LinksInputProps) {
   const { fields, append, remove } = useFieldArray({
     control,
     name: 'links',
@@ -28,8 +30,9 @@ export function LinksInput({ control }: LinksInputProps) {
           <Input
             placeholder="https://example.com"
             {...control.register(`links.${index}`)}
-            className="flex-1 text-base md:text-sm"
+            className="flex-1 text-base sm:text-sm"
             type="url"
+            aria-label={`Link ${index + 1}`}
           />
           <Button
             type="button"
@@ -37,7 +40,7 @@ export function LinksInput({ control }: LinksInputProps) {
             size="sm"
             onClick={() => remove(index)}
             aria-label={`Remove link ${index + 1}`}
-            className="text-destructive hover:text-destructive"
+            className="text-destructive hover:text-destructive shrink-0"
           >
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -58,8 +61,12 @@ export function LinksInput({ control }: LinksInputProps) {
       )}
 
       {fields.length >= 10 && (
-        <p className="text-xs text-text-muted">Maximum 10 links reached</p>
+        <p className="text-xs text-text-muted" role="status">
+          Maximum 10 links reached
+        </p>
       )}
     </div>
   );
 }
+
+export const LinksInput = memo(LinksInputComponent);

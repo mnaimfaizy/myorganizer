@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@myorganizer/web-ui';
+import { memo } from 'react';
 import { Controller } from 'react-hook-form';
 import { CATEGORY_LABELS, getCategoryEmoji } from '../constants/categories';
 
@@ -19,15 +20,16 @@ interface CategorySelectProps {
 /**
  * Category selector component for grocery items
  * Renders all predefined categories with emoji labels
+ * Accessible: Full keyboard navigation, ARIA labels
  */
-export function CategorySelect({ control }: CategorySelectProps) {
+function CategorySelectComponent({ control }: CategorySelectProps) {
   return (
     <Controller
       control={control}
       name="category"
       render={({ field }) => (
         <Select value={field.value} onValueChange={field.onChange}>
-          <SelectTrigger>
+          <SelectTrigger id="item-category" aria-label="Select a category">
             <SelectValue placeholder="Select a category" />
           </SelectTrigger>
           <SelectContent>
@@ -37,7 +39,7 @@ export function CategorySelect({ control }: CategorySelectProps) {
               return (
                 <SelectItem key={category} value={category}>
                   <span className="flex items-center gap-2">
-                    <span>{emoji}</span>
+                    <span aria-hidden="true">{emoji}</span>
                     <span>{label}</span>
                   </span>
                 </SelectItem>
@@ -49,3 +51,5 @@ export function CategorySelect({ control }: CategorySelectProps) {
     />
   );
 }
+
+export const CategorySelect = memo(CategorySelectComponent);
