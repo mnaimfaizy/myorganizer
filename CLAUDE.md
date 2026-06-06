@@ -11,6 +11,10 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 - Jest test implementation is delegated to the `TestScaffold` sub-agent (`.github/agents/test-scaffold.agent.md` and `.claude/agents/test-scaffold.md`). Always provide a behavior matrix from the actual implementation, including unsupported scenarios to avoid. Consult `docs/testing/README.md` for per-project tooling, integration scope, mock patterns, and validation checks.
 - Storybook implementation is delegated to the `StorybookCurator` sub-agent (`.claude/agents/storybook-curator.md`); require requirement-readiness analysis before edits and route clarification questions to the human-in-the-loop.
 
+## Codebase Exploration
+
+Before issuing 3 or more consecutive Glob/Grep/Read calls to locate something in the codebase, stop and delegate to the `CodeExplorer` sub-agent (`.claude/agents/explore.md`) instead. Provide an Explore Request with a `Goal` sentence; optionally include `Known Locations`, `Search Hints`, `Out of Scope`, and `Expected Output`. CodeExplorer runs on Haiku and returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths — saving frontier-model tokens for reasoning, not searching.
+
 ## Design & Planning Workflows
 
 When you need to stress-test a plan against the project's domain model and documented decisions, use the **grill-with-docs** skill:

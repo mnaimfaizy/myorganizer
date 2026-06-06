@@ -140,6 +140,10 @@ When consuming the generated client:
 - Group related tests with `describe()` blocks
 - Use `beforeEach()` for test setup
 
+## Codebase Exploration
+
+Before issuing 3 or more consecutive read/search operations to locate something in the codebase, stop and delegate to `CodeExplorer` (`.github/agents/explore.agent.md`) instead. Provide an Explore Request with a `Goal` sentence; optionally include `Known Locations`, `Search Hints`, `Out of Scope`, and `Expected Output`. CodeExplorer runs on a cheap model and returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
+
 ## Design & Planning
 
 ### Grilling Sessions with Documentation
@@ -153,11 +157,13 @@ When designing new features or making architectural decisions, use the **grill-w
 - Create Architecture Decision Records (ADRs) in `docs/adr/` for major decisions
 
 **When to use:**
+
 - You have a plan and want to validate it against MyOrganizer's language and architecture
 - You're designing a new feature that introduces new domain terms or concepts
 - You want to capture why architectural decisions were made
 
 **Key artifacts:**
+
 - `CONTEXT.md` — Single source of truth for domain language (what terms mean, what to avoid)
 - `docs/adr/` — Records of hard-to-reverse decisions with trade-off context
 
