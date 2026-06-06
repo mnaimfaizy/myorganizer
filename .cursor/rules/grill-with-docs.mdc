@@ -1,0 +1,91 @@
+---
+description: Grill-with-docs skill for stress-testing plans against the project's domain model, terminology, and documented decisions. Use when you have a design or feature plan that needs validation.
+alwaysApply: false
+---
+
+# Grill-with-Docs Skill
+
+## When to Use
+
+- You have a design or feature plan and want to stress-test it against MyOrganizer's existing domain model and terminology
+- You're making architectural decisions and want to document them alongside the planning process
+- You need to sharpen fuzzy requirements or resolve ambiguous concepts before implementation
+- You want to capture why certain decisions were made for future context
+
+## Core Approach
+
+1. **Interview relentlessly** — Ask one question at a time, providing recommended answers
+2. **Explore the codebase** — When questions can be answered by code inspection, do that instead of asking
+3. **Challenge terminology** — Check terminology against existing glossary in `CONTEXT.md`
+4. **Stress-test scenarios** — Invent edge cases that probe the boundaries between concepts
+5. **Update documentation inline** — Capture domain terms and architectural decisions as they're resolved
+
+## Key Artifacts
+
+### CONTEXT.md (Domain Glossary)
+
+Single source of truth for domain language in your project:
+
+```md
+# MyOrganizer Domain
+
+**Vault**: End-to-end encrypted storage for sensitive data on client; server stores ciphertext only.
+
+**Todo**: A task or item to organize (vault-backed in current architecture).
+_Avoid_: Task, item, note
+```
+
+- One-sentence definitions only
+- Include "Avoid" list for synonyms to reject
+- Purely conceptual, no implementation details
+- Create lazily — only when the first term is resolved
+
+### Architecture Decision Records (ADRs)
+
+Records of hard-to-reverse decisions with trade-off context:
+
+```md
+# We use vault encryption for sensitive data
+
+End-to-end encryption on the client side ensures plaintext never leaves the user's browser.
+The server stores ciphertext only and has no decryption keys, protecting user privacy even
+from internal systems.
+
+Considered: Server-side encryption, plaintext with TLS-only. Selected vault E2EE because
+privacy requirements demand zero-knowledge architecture.
+```
+
+- Live in `docs/adr/` with sequential numbering (`0001-*.md`, `0002-*.md`)
+- Only create ADRs when all three are true:
+  1. Hard to reverse (meaningful cost to change later)
+  2. Surprising without context (future reader would wonder "why?")
+  3. Result of a real trade-off (alternatives were considered)
+- Create lazily — only when an ADR is actually needed
+
+## MyOrganizer-specific Context
+
+Key domain terms already established:
+
+- **Vault** — End-to-end encrypted storage (ciphertext-only on server)
+- **Todo** — Task or item to organize (vault-backed)
+- **Subscription** — Recurring task or reminder (vault-backed)
+- **User** — Authenticated account holder
+- **Organization** — Group for organizing shared resources
+- **Ciphertext** — Encrypted blob format
+
+Tech stack to keep in mind:
+
+- Frontend: Next.js 14, React 18, TypeScript, Tailwind CSS
+- Backend: Express.js, Prisma ORM, TSOA (for OpenAPI docs)
+- Database: PostgreSQL
+- Monorepo: Nx with path aliases
+- Key constraint: Vault implies ciphertext-only on server (no plaintext indexing)
+
+## Skill Files
+
+- `SKILL.md` — Full skill definition and interview approach
+- `CONTEXT-FORMAT.md` — How to write domain glossaries
+- `ADR-FORMAT.md` — How to write architecture decision records
+- `README.md` — Quick reference guide
+
+See `.github/skills/grill-with-docs/` for details.

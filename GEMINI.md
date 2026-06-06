@@ -18,6 +18,23 @@ Use these repo-local workflows for commit, pull request, test, and Storybook-sui
 - Leave reviewers empty unless the user explicitly supplies them with `--reviewer <login>`.
 - Return only the PR URL on success.
 
+## Design & Planning Workflows
+
+When you need to stress-test a plan against the project's domain model and documented decisions, use the **grill-with-docs** skill:
+
+- **Skill location**: `.github/skills/grill-with-docs/SKILL.md`
+- **When to use**: You have a design or feature plan that needs validation against MyOrganizer's terminology, architecture, and existing decisions.
+- **What it does**:
+  - Interviews relentlessly to sharpen fuzzy requirements and terminology
+  - Challenges plans against the domain glossary in `CONTEXT.md`
+  - Cross-references claims with actual codebase implementation
+  - Creates or updates `CONTEXT.md` to document domain language
+  - Proposes Architecture Decision Records (ADRs) for hard-to-reverse decisions
+- **Key documents to maintain**:
+  - `CONTEXT.md` — Domain language glossary (one-sentence definitions, preferred terms, what to avoid)
+  - `docs/adr/` — Architecture Decision Records for major design choices
+- **Reference formats**: See `CONTEXT-FORMAT.md` and `ADR-FORMAT.md` in the skill directory
+
 ## Jest Test Delegation
 
 When a task requires Jest unit tests or Jest integration tests to be created or updated, delegate to the `test-scaffold` sub-agent (`.gemini/agents/test-scaffold.md`) rather than writing tests inline. The agent runs on `gemini-2.5-flash` to keep costs low.

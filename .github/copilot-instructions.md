@@ -140,6 +140,29 @@ When consuming the generated client:
 - Group related tests with `describe()` blocks
 - Use `beforeEach()` for test setup
 
+## Design & Planning
+
+### Grilling Sessions with Documentation
+
+When designing new features or making architectural decisions, use the **grill-with-docs** skill (`.github/skills/grill-with-docs/SKILL.md`) to:
+
+- Stress-test plans against the project's existing domain model and terminology
+- Sharpen fuzzy language and resolve ambiguous concepts
+- Challenge assumptions through concrete scenario discussions
+- Create or update `CONTEXT.md` to document domain language and glossary
+- Create Architecture Decision Records (ADRs) in `docs/adr/` for major decisions
+
+**When to use:**
+- You have a plan and want to validate it against MyOrganizer's language and architecture
+- You're designing a new feature that introduces new domain terms or concepts
+- You want to capture why architectural decisions were made
+
+**Key artifacts:**
+- `CONTEXT.md` — Single source of truth for domain language (what terms mean, what to avoid)
+- `docs/adr/` — Records of hard-to-reverse decisions with trade-off context
+
+See `.github/skills/grill-with-docs/` for templates and detailed guidance.
+
 ## Security Best Practices
 
 ### Environment Variables
