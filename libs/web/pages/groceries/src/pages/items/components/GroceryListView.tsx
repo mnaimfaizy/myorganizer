@@ -387,8 +387,9 @@ export function GroceryListView({
         </div>
       )}
 
-      {/* Edit Item Dialog */}
+      {/* Edit Item Dialog — keyed by editingItemId so useForm re-initialises per item */}
       <EditItemDialog
+        key={editingItemId ?? 'none'}
         item={editingItem || null}
         isOpen={editingItemId !== null}
         onClose={() => setEditingItemId(null)}

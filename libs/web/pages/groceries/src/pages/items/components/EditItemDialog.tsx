@@ -14,6 +14,7 @@ import {
   Input,
   Label,
 } from '@myorganizer/web-ui';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { CategorySelect } from '../../../shared/components/CategorySelect';
 import { editItemSchema, type EditItemFormValues } from '../schemas';
@@ -41,6 +42,7 @@ export function EditItemDialog({
   const form = useForm<EditItemFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(editItemSchema) as any,
+    mode: 'onChange',
 
     defaultValues: (item
       ? {
@@ -104,6 +106,30 @@ export function EditItemDialog({
       onClose();
     }
   };
+
+  // Re-initialise form values whenever the item prop changes.
+  // shouldValidate: true ensures isValid reflects the new values immediately,
+  // so the Save button enables as soon as any field is dirtied.
+  useEffect(() => {
+    if (item) {
+      form.reset(
+        {
+          name: item.name,
+          checked: item.checked,
+          category: item.category,
+          amount: item.amount ?? '',
+          price: item.price ? item.price.toString() : '',
+          notes: item.notes ?? '',
+          imageUrl: item.imageUrl ?? '',
+          links: item.links ?? [],
+        },
+        { keepDirty: false, keepErrors: false },
+      );
+      // Trigger validation so isValid is set correctly before any user interaction
+      form.trigger();
+    }
+    // Safe: form reference is stable and won't change; we only want to reset when item changes
+  }, [item?.id, form]);
 
   const watchImageUrl = form.watch('imageUrl');
   const isValidImageUrl = watchImageUrl && watchImageUrl.startsWith('http');
