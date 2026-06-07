@@ -43,7 +43,7 @@ export function EditItemDialog({
 }: EditItemDialogProps) {
   const form = useForm<EditItemFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(editItemSchema) as any,
+    resolver: zodResolver(editItemSchema, undefined, { mode: 'sync' }) as any,
     mode: 'onChange',
 
     defaultValues: (item
@@ -110,8 +110,11 @@ export function EditItemDialog({
   };
 
   // Re-initialise form values whenever the item prop changes.
-  // shouldValidate: true ensures isValid reflects the new values immediately,
-  // so the Save button enables as soon as any field is dirtied.
+  // isValid is re-evaluated by RHF on the first onChange interaction; the Save
+  // button is also guarded by !isDirty so the initial isValid=false state is
+  // not visible to users. Calling form.trigger() here caused async Zod
+  // validation to run outside React's act() boundary in tests, hanging the
+  // Jest runner.
   useEffect(() => {
     if (item) {
       form.reset(
@@ -127,8 +130,6 @@ export function EditItemDialog({
         },
         { keepDirty: false, keepErrors: false },
       );
-      // Trigger validation so isValid is set correctly before any user interaction
-      form.trigger();
     }
     // Safe: form reference is stable and won't change; we only want to reset when item changes
   }, [item?.id, form]);

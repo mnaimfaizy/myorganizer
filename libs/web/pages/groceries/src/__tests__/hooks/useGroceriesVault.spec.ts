@@ -189,6 +189,9 @@ describe('useGroceriesVault - Load Behavior', () => {
   });
 
   test('sets error and loading=false on load failure', async () => {
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(jest.fn());
     const mockLoadDecryptedData = loadDecryptedData as jest.Mock;
     mockLoadDecryptedData.mockRejectedValue(new Error('Vault load failed'));
 
@@ -204,6 +207,7 @@ describe('useGroceriesVault - Load Behavior', () => {
       'Failed to load your grocery lists. Please try again.',
     );
     expect(result.current.lists).toEqual([]);
+    consoleSpy.mockRestore();
   });
 
   test('starts with empty array when vault is empty', async () => {
@@ -343,6 +347,9 @@ describe('useGroceriesVault - Create Operation', () => {
   });
 
   test('handles save error by setting error state', async () => {
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(jest.fn());
     // Setup basic successful load, but failing save
     const { mockSaveEncryptedData } = setupVaultMocks([]);
 
@@ -373,6 +380,7 @@ describe('useGroceriesVault - Create Operation', () => {
     expect(result.current.error).toBe(
       'Failed to save your changes. Please try again.',
     );
+    consoleSpy.mockRestore();
   });
 });
 
@@ -476,6 +484,9 @@ describe('useGroceriesVault - Rename Operation', () => {
   });
 
   test('handles save error on rename', async () => {
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(jest.fn());
     const list = mockGroceryList({ id: 'list-1' });
     const { mockSaveEncryptedData } = setupVaultMocks([list]);
 
@@ -500,6 +511,7 @@ describe('useGroceriesVault - Rename Operation', () => {
         'Failed to save your changes. Please try again.',
       );
     });
+    consoleSpy.mockRestore();
   });
 });
 
@@ -627,6 +639,9 @@ describe('useGroceriesVault - Error States', () => {
   });
 
   test('clears error when a new operation succeeds', async () => {
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(jest.fn());
     // First setup: failed load to trigger error
     (loadDecryptedData as jest.Mock).mockRejectedValueOnce(
       new Error('Load failed'),
@@ -659,16 +674,23 @@ describe('useGroceriesVault - Error States', () => {
 
     // Error should be cleared by setError(null) at the start of persistLists
     expect(result.current.error).toBeNull();
+    consoleSpy.mockRestore();
   });
 
   test('error persists until explicitly dismissed via setError', async () => {
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(jest.fn());
     setupVaultMocks([]);
     (loadDecryptedData as jest.Mock).mockRejectedValue(
       new Error('Load failed'),
     );
 
+    // Use a stable key reference so the useEffect doesn't re-run after the
+    // .catch() triggers a re-render (new Uint8Array on each render !== itself).
+    const stableKeyBytes = mockKeyBytes();
     const { result } = renderHook(() =>
-      useGroceriesVault({ masterKeyBytes: mockKeyBytes() }),
+      useGroceriesVault({ masterKeyBytes: stableKeyBytes }),
     );
 
     await waitFor(() => {
@@ -689,6 +711,7 @@ describe('useGroceriesVault - Error States', () => {
     });
 
     expect(result.current.error).toBeNull();
+    consoleSpy.mockRestore();
   });
 
   test('latest error overwrites previous error', async () => {
@@ -752,12 +775,15 @@ describe('useGroceriesVault - State Management', () => {
     setupVaultMocks([list1]);
 
     const keyBytes1 = mockKeyBytes();
-    const { rerender } = renderHook(
+    const { result, rerender } = renderHook(
       ({ keyBytes }) => useGroceriesVault({ masterKeyBytes: keyBytes }),
       {
         initialProps: { keyBytes: keyBytes1 },
       },
     );
+
+    // Wait for the initial load to settle before asserting or re-rendering
+    await waitFor(() => expect(result.current.loading).toBe(false));
 
     const mockLoadDecryptedData = loadDecryptedData as jest.Mock;
     expect(mockLoadDecryptedData).toHaveBeenCalledWith({
@@ -770,8 +796,19 @@ describe('useGroceriesVault - State Management', () => {
     const keyBytes2 = new Uint8Array(32);
     keyBytes2[0] = 1; // Different from keyBytes1
 
+    // Re-configure the mock so the second load resolves cleanly; without this
+    // the mock returns undefined after mockClear(), causing the hook's .catch()
+    // to fire outside act() and produce spurious act() warnings.
     mockLoadDecryptedData.mockClear();
-    rerender({ keyBytes: keyBytes2 });
+    mockLoadDecryptedData.mockResolvedValue([list1]);
+    (normalizeGroceries as jest.Mock).mockReturnValue({
+      value: [list1],
+      changed: false,
+    });
+
+    await act(async () => {
+      rerender({ keyBytes: keyBytes2 });
+    });
 
     await waitFor(() => {
       expect(mockLoadDecryptedData).toHaveBeenCalled();

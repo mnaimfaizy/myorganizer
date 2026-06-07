@@ -62,7 +62,7 @@ describe('CategoryFilterBar', () => {
         />,
       );
 
-      const allBtn = screen.getByRole('button', { name: /All/i });
+      const allBtn = screen.getByRole('tab', { name: /Show all items/i });
       expect(allBtn).toBeInTheDocument();
       expect(allBtn).toHaveClass('bg-secondary');
       expect(allBtn).toHaveClass('text-on-secondary');
@@ -99,7 +99,7 @@ describe('CategoryFilterBar', () => {
       // container should be horizontally scrollable
       expect(container.firstChild).toHaveClass('overflow-x-auto');
 
-      const buttons = screen.getAllByRole('button');
+      const buttons = screen.getAllByRole('tab');
       // First button is All
       expect(buttons[0]).toHaveTextContent('All');
 
@@ -143,7 +143,7 @@ describe('CategoryFilterBar', () => {
         />,
       );
 
-      const allBtn = screen.getByRole('button', { name: /All/i });
+      const allBtn = screen.getByRole('tab', { name: /Show all items/i });
       // All should not be highlighted when a category is active
       expect(allBtn).toHaveClass('bg-secondary-container');
       expect(allBtn).not.toHaveClass('bg-secondary');
@@ -153,20 +153,20 @@ describe('CategoryFilterBar', () => {
       const dairyBtn = dairyLabelEl.closest('button') as HTMLElement;
       expect(dairyBtn).toBeTruthy();
       expect(dairyBtn).toHaveClass('bg-secondary');
-      expect(dairyBtn).toHaveAttribute('aria-pressed', 'true');
+      expect(dairyBtn).toHaveAttribute('aria-selected', 'true');
 
-      // Other category buttons should not be pressed
+      // Other category buttons should not be selected
       const produceBtn = screen
         .getByText(CATEGORY_LABELS.produce)
         .closest('button') as HTMLElement;
       const bakeryBtn = screen
         .getByText(CATEGORY_LABELS.bakery)
         .closest('button') as HTMLElement;
-      expect(produceBtn).toHaveAttribute('aria-pressed', 'false');
-      expect(bakeryBtn).toHaveAttribute('aria-pressed', 'false');
+      expect(produceBtn).toHaveAttribute('aria-selected', 'false');
+      expect(bakeryBtn).toHaveAttribute('aria-selected', 'false');
 
-      // Only one highlighted button
-      const allButtons = screen.getAllByRole('button');
+      // Only one highlighted tab
+      const allButtons = screen.getAllByRole('tab');
       const highlighted = allButtons.filter((b) =>
         (b as HTMLElement).classList.contains('bg-secondary'),
       );
@@ -186,7 +186,7 @@ describe('CategoryFilterBar', () => {
         />,
       );
 
-      const allBtn = screen.getByRole('button', { name: /All/i });
+      const allBtn = screen.getByRole('tab', { name: /Show all items/i });
       fireEvent.click(allBtn);
       expect(onChange).toHaveBeenCalledWith('all');
     });
@@ -310,7 +310,7 @@ describe('CategoryFilterBar', () => {
       );
 
       // All + categories
-      const buttons = screen.getAllByRole('button');
+      const buttons = screen.getAllByRole('tab');
       expect(buttons).toHaveLength(cats.length + 1);
 
       // Ensure order matches CATEGORY_ORDER
@@ -348,11 +348,11 @@ describe('CategoryFilterBar', () => {
         .getByText(CATEGORY_LABELS.dairy)
         .closest('button') as HTMLElement;
 
-      expect(produceBtn).toHaveAttribute('aria-pressed', 'true');
-      expect(dairyBtn).toHaveAttribute('aria-pressed', 'false');
+      expect(produceBtn).toHaveAttribute('aria-selected', 'true');
+      expect(dairyBtn).toHaveAttribute('aria-selected', 'false');
 
-      const allBtn = screen.getByRole('button', {
-        name: /All/i,
+      const allBtn = screen.getByRole('tab', {
+        name: /Show all items/i,
       }) as HTMLElement;
       allBtn.focus();
       expect(document.activeElement).toBe(allBtn);

@@ -337,6 +337,15 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: git diff --exit-code -- yarn.lock
 
+      - name: Restore Nx computation cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .nx/cache
+          key: ${{ runner.os }}-nx-22-lint-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-nx-22-lint-
+            ${{ runner.os }}-nx-22-
+
       - name: Lint affected projects
         run: corepack yarn nx affected -t lint --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
 
@@ -378,6 +387,15 @@ jobs:
       - name: Verify frozen lockfile
         if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: git diff --exit-code -- yarn.lock
+
+      - name: Restore Nx computation cache
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: .nx/cache
+          key: ${{ runner.os }}-nx-22-test-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-nx-22-test-
+            ${{ runner.os }}-nx-22-
 
       - name: Test affected projects
         run: corepack yarn nx affected -t test --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}

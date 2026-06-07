@@ -78,7 +78,7 @@ export function AddItemDialog({
 }: AddItemDialogProps) {
   const form = useForm<AddItemFormValues>({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolver: zodResolver(addItemSchema) as any,
+    resolver: zodResolver(addItemSchema, undefined, { mode: 'sync' }) as any,
     mode: 'onChange',
     defaultValues: {
       name: '',

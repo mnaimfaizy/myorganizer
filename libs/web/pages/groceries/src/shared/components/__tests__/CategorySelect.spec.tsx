@@ -61,12 +61,13 @@ jest.mock('@myorganizer/web-ui', () => {
   function SelectItem({ value, children, ...props }: any) {
     const ctx = React.useContext(SelectContext);
     const ref = React.useRef<any>(null);
+    const registerItem = ctx?.registerItem;
 
     React.useEffect(() => {
       if (ref.current && typeof value !== 'undefined') {
-        ctx.registerItem?.(value, ref.current.textContent ?? String(value));
+        registerItem?.(value, ref.current.textContent ?? String(value));
       }
-    }, [ref.current, value, ctx]);
+    }, [value, registerItem]);
 
     return (
       <button
