@@ -78,7 +78,7 @@ This backend application is built with the following technologies:
 
 Before you begin, ensure you have the following installed:
 
-- **Node.js** (v18 or higher)
+- **Node.js** (see [TECH_STACK.md](../../TECH_STACK.md) for required version)
 - **Yarn** (package manager)
 - **PostgreSQL** (v12 or higher)
 - **Docker & Docker Compose** (optional, for containerized database)

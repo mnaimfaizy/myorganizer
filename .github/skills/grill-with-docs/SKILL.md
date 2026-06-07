@@ -90,7 +90,9 @@ Refer to `CONTEXT.md` (if present) for canonical definitions.
 
 ### Technology Stack
 
-- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS, React Hook Form + Zod
+> For current package versions see [TECH_STACK.md](../../../TECH_STACK.md).
+
+- **Frontend**: Next.js with App Router, React, TypeScript, Tailwind CSS, React Hook Form + Zod
 - **Backend**: Express.js, Prisma ORM, TSOA (decorators for API docs)
 - **Database**: PostgreSQL (Prisma as data access layer)
 - **Monorepo**: Nx with path aliases
@@ -98,6 +100,7 @@ Refer to `CONTEXT.md` (if present) for canonical definitions.
 - **Architecture**: DDD-influenced with vault-backed end-to-end encryption
 
 When making architectural decisions, consider:
+
 - Vault implications (ciphertext-only sync, no plaintext server-side indexing)
 - Database schema impact (Prisma migrations, model shape)
 - API contract surface (TSOA controllers, OpenAPI spec generation)

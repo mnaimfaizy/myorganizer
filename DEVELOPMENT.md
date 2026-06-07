@@ -327,8 +327,10 @@ myorganizer/
 
 #### Frontend (`apps/myorganizer`)
 
-- Next.js 14 with App Router
-- React 18 with TypeScript
+> For current package versions see [TECH_STACK.md](./TECH_STACK.md).
+
+- Next.js with App Router
+- React with TypeScript
 - Tailwind CSS for styling
 - Radix UI components
 - React Hook Form for form handling
