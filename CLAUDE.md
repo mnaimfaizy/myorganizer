@@ -13,6 +13,40 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 - React component creation or editing (UI Primitives in `libs/web-ui/` or Feature Components in `libs/web/pages/<route>/`) must use the ComponentBuilder → ComponentReviewer workflow — see **UI Component Workflows** below.
 - After any `yarn add`, `yarn remove`, or package upgrade, run `/dep-sync` to keep `TECH_STACK.md` current — see **Dependency Sync** below.
 
+## ⚠️ Mandatory Delegation Rules (NO EXCEPTIONS)
+
+**ALWAYS delegate tasks for these file types.** Do NOT skip delegation even if the change seems small or obvious.
+
+| File Pattern                    | Skill                                                   | Agent Flow                           | Rule                   |
+| ------------------------------- | ------------------------------------------------------- | ------------------------------------ | ---------------------- |
+| `*.spec.ts` (Playwright E2E)    | `.github/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold            | ✅ **Always delegate** |
+| `*.test.ts` (Jest tests)        | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold                         | ✅ **Always delegate** |
+| `*.stories.tsx` (Storybook)     | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                     | ✅ **Always delegate** |
+| Components in `libs/web-ui/`    | Component workflow (below)                              | ComponentBuilder → ComponentReviewer | ✅ **Always delegate** |
+| Components in `libs/web/pages/` | Component workflow (below)                              | ComponentBuilder → ComponentReviewer | ✅ **Always delegate** |
+
+### Key Anti-Pattern to Avoid
+
+❌ **DO NOT do this:**
+
+```
+"I see a bug in an E2E test. Let me read the similar test, find the pattern, and fix it directly."
+```
+
+✅ **DO THIS INSTEAD:**
+
+```
+"I see a bug in an E2E test. This is an E2E test UPDATE.
+1. Read .github/skills/playwright-e2e-workflow/SKILL.md
+2. Use E2EPlanner to outline the fix
+3. Delegate to TestScaffold with a precise brief
+4. Apply changes from TestScaffold output"
+```
+
+### Before You Edit Any File
+
+Use the decision tree in **`.claude/checklist.md`** to verify you're not skipping delegation.
+
 ## UI Component Workflows
 
 When creating or editing any React component in `libs/web-ui/` (UI Primitives) or `libs/web/pages/<route>/` (Feature Components), follow this chain exactly:
