@@ -1,4 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
+import os from 'node:os';
+import path from 'node:path';
 
 /**
  * Section 9 — End-to-end tests for hardened vault export/import.
@@ -116,18 +118,21 @@ function setupBackend(page: Page) {
     mobileNumbers: null,
     subscriptions: null,
     todos: null,
+    groceries: null,
   };
   const serverBlobEtags: Record<string, string> = {
     addresses: 'W/"0"',
     mobileNumbers: 'W/"0"',
     subscriptions: 'W/"0"',
     todos: 'W/"0"',
+    groceries: 'W/"0"',
   };
   const serverBlobUpdatedAt: Record<string, string> = {
     addresses: new Date(0).toISOString(),
     mobileNumbers: new Date(0).toISOString(),
     subscriptions: new Date(0).toISOString(),
     todos: new Date(0).toISOString(),
+    groceries: new Date(0).toISOString(),
   };
 
   const backupRecords: BackupRecord[] = [];
@@ -135,7 +140,7 @@ function setupBackend(page: Page) {
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
   const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
   const vaultBlobUrl =
-    /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos)\/?(\?.*)?$/;
+    /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos|groceries)\/?(\?.*)?$/;
   const backupsRecordUrl = /\/vault\/backups\/?(\?.*)?$/;
   const backupsLatestUrl = /\/vault\/backups\/latest\/?(\?.*)?$/;
 
@@ -301,7 +306,9 @@ function setupBackend(page: Page) {
 
     const match = request
       .url()
-      .match(/\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos)/);
+      .match(
+        /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos|groceries)/,
+      );
     const type = match?.[1];
     if (!type) {
       await route.fulfill({ status: 400, headers });
@@ -393,6 +400,71 @@ async function setupVaultWithSampleData(page: Page) {
   await expect(addAddress).toBeEnabled({ timeout: 60000 });
   await addAddress.click();
   await expect(page.getByText('221B Baker Street').first()).toBeVisible({
+    timeout: 60000,
+  });
+
+  return passphrase;
+}
+
+async function setupVaultWithGroceryData(page: Page) {
+  const passphrase = 'correct horse battery staple';
+
+  await gotoStable(page, '/dashboard/addresses');
+  await page.fill('#setup-passphrase', passphrase);
+  await page.fill('#setup-confirm', passphrase);
+  await page.getByRole('button', { name: 'Create encrypted vault' }).click();
+
+  await page.waitForFunction(
+    () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
+    undefined,
+    { timeout: 60000 },
+  );
+
+  await unlockWithPassphrase(page, passphrase);
+
+  // Navigate to groceries page and ensure vault is unlocked
+  await gotoStable(page, '/dashboard/groceries');
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(500);
+
+  // Check if unlock screen is shown and unlock if needed
+  const unlockButton = page.getByRole('button', { name: 'Use passphrase' });
+  const isLocked = await unlockButton
+    .isVisible({ timeout: 10000 })
+    .catch(() => false);
+
+  if (isLocked) {
+    await unlockWithPassphrase(page, passphrase);
+  }
+
+  // Wait for the groceries page content to render after unlock
+  await page.waitForFunction(
+    () => {
+      const pageContent = document.body.innerText;
+      const hasNewListBtn = !!document
+        .querySelector('button')
+        ?.textContent?.includes('New List');
+      const hasPageTitle =
+        pageContent.includes('Groceries') || pageContent.includes('grocery');
+      return hasNewListBtn || hasPageTitle;
+    },
+    { timeout: 30000 },
+  );
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForTimeout(1000);
+
+  // Create a grocery list
+  await page.getByRole('button', { name: 'New List' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.getByPlaceholder('e.g., Weekly Shopping').fill('Backup Test List');
+
+  // Click the create button
+  await page.getByRole('button', { name: 'Create List' }).click();
+
+  // Wait for dialog to close and list to appear
+  await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 60000 });
+  await expect(page.getByText('Backup Test List')).toBeVisible({
     timeout: 60000,
   });
 
@@ -536,6 +608,146 @@ test.describe('Vault export/import (E2E)', () => {
       window.localStorage.getItem('myorganizer_vault_v1'),
     );
     expect(afterVault).toBe(beforeVault);
+
+    await ctx.close();
+  });
+
+  test('groceries are included in vault export', async ({
+    browser,
+  }, testInfo) => {
+    test.setTimeout(120000);
+
+    const ctx = await browser.newContext({
+      acceptDownloads: true,
+    });
+    const page = await ctx.newPage();
+    setupBackend(page);
+
+    await login(page, {
+      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
+    });
+
+    await setupVaultWithGroceryData(page);
+
+    // Trigger export and capture the downloaded JSON
+    await gotoStable(page, '/dashboard/vault-export');
+    if (
+      await page
+        .locator('#unlock-passphrase')
+        .isVisible({ timeout: 1000 })
+        .catch(() => false)
+    ) {
+      await unlockWithPassphrase(page, 'correct horse battery staple');
+    }
+
+    const exportButton = page.getByTestId('export-vault-button');
+    await expect(exportButton).toBeVisible({ timeout: 60000 });
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      exportButton.click(),
+    ]);
+    const downloadPath = path.join(
+      os.tmpdir(),
+      `vault-export-${Date.now()}.json`,
+    );
+    await download.saveAs(downloadPath);
+    const fs = await import('node:fs/promises');
+    const exportedText = await fs.readFile(downloadPath, 'utf8');
+    const parsed = JSON.parse(exportedText) as {
+      schemaVersion: number;
+      blobs?: Record<string, unknown>;
+      exportId: string;
+      exportedAt: string;
+    };
+
+    // Verify groceries blob is included in export
+    expect(parsed.blobs?.groceries).toBeDefined();
+    expect(parsed.schemaVersion).toBe(1);
+
+    await ctx.close();
+  });
+
+  test('groceries are restored from vault import', async ({
+    browser,
+  }, testInfo) => {
+    test.setTimeout(180000);
+
+    const ctx = await browser.newContext({
+      acceptDownloads: true,
+    });
+    const page = await ctx.newPage();
+    setupBackend(page);
+
+    await login(page, {
+      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
+    });
+
+    await setupVaultWithGroceryData(page);
+
+    // Export vault with groceries
+    await gotoStable(page, '/dashboard/vault-export');
+    if (
+      await page
+        .locator('#unlock-passphrase')
+        .isVisible({ timeout: 1000 })
+        .catch(() => false)
+    ) {
+      await unlockWithPassphrase(page, 'correct horse battery staple');
+    }
+
+    const exportButton = page.getByTestId('export-vault-button');
+    await expect(exportButton).toBeVisible({ timeout: 60000 });
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      exportButton.click(),
+    ]);
+    const downloadPath = path.join(
+      os.tmpdir(),
+      `vault-export-${Date.now()}.json`,
+    );
+    await download.saveAs(downloadPath);
+    const fs = await import('node:fs/promises');
+    const exportedText = await fs.readFile(downloadPath, 'utf8');
+
+    // Reset local vault to simulate a fresh device
+    await page.evaluate(() => {
+      window.localStorage.removeItem('myorganizer_vault_v1');
+    });
+
+    // Reload and perform import
+    await gotoStable(page, '/dashboard/vault-export');
+
+    const importInput = page.getByTestId('import-vault-file');
+    await expect(importInput).toBeVisible({ timeout: 60000 });
+
+    await importInput.setInputFiles({
+      name: 'vault-export.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(exportedText, 'utf8'),
+    });
+
+    const importButton = page.getByTestId('import-vault-button');
+    await expect(importButton).toBeEnabled({ timeout: 60000 });
+    page.once('dialog', (d) => d.accept());
+    await importButton.click();
+
+    // Wait for import to complete and vault to be restored
+    await page.waitForFunction(
+      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
+      undefined,
+      { timeout: 60000 },
+    );
+
+    // Navigate to groceries and verify the list was restored
+    await gotoStable(page, '/dashboard/groceries');
+    await unlockWithPassphrase(page, 'correct horse battery staple');
+
+    // Verify the grocery list is still present
+    await expect(page.getByText('Backup Test List')).toBeVisible({
+      timeout: 60000,
+    });
 
     await ctx.close();
   });
