@@ -1,0 +1,75 @@
+---
+description: Synchronise TECH_STACK.md and authoritative files after a dependency is installed, updated, or removed. Propose changes and require user confirmation before writing.
+alwaysApply: false
+---
+
+# DepSync — Dependency Synchronisation Workflow
+
+## When to Use
+
+- A package was added, removed, or upgraded in `package.json`.
+- `TECH_STACK.md` may be out of date.
+- You want to audit whether any authoritative file has drifted back to making direct version claims.
+
+## Fixed Scope — Files You May Write
+
+| File | What you update |
+|---|---|
+| `TECH_STACK.md` | The canonical version table — add, update, or remove package rows |
+| `DEVELOPMENT.md` | Drift check only — remove any version claim that crept back in |
+| `.github/copilot-instructions.md` | Drift check only |
+| `GEMINI.md` | Drift check only |
+| `AGENTS.md` | Drift check only |
+| `.github/skills/grill-with-docs/SKILL.md` | Drift check only |
+
+Never touch source code, test files, lock files, or any file outside this list.
+
+## Workflow
+
+1. **Read** `package.json` (both `dependencies` and `devDependencies`) in full.
+2. **Read** `TECH_STACK.md` in full.
+3. **Diff** — categorise every difference as NEW, REMOVED, or VERSION_BUMP.
+4. **Classify** new packages into the correct `TECH_STACK.md` section.
+5. **Flag** new packages not imported anywhere in source as potentially temporary.
+6. **Check** each authoritative file for version number patterns that crept back in.
+7. **Present** the Sync Proposal — do NOT write yet.
+8. **Write** only after the user confirms.
+
+## Sync Proposal Format
+
+```
+## DepSync Proposal
+
+### Summary
+- <N> new packages to document
+- <N> packages removed
+- <N> version bumps
+- <N> version drift findings
+
+### New Packages
+| Package | Version | Proposed Section | Potentially Temporary? |
+
+### Removed Packages
+| Package | Was In Section | Action |
+
+### Version Bumps
+| Package | Current in TECH_STACK.md | New in package.json | Section |
+
+### Version Drift in Authoritative Files
+| File | Line | Current Text | Proposed Fix |
+
+Apply these changes? (yes / no / edit)
+```
+
+## Rules
+
+- Nothing is written until the user confirms.
+- Never remove a package from `TECH_STACK.md` unless it is confirmed gone from `package.json`.
+- Never mark a package as canonical if no source imports are found for it.
+- Update the `Last synced` date in `TECH_STACK.md` after every write.
+
+## References
+
+- Full skill: `.github/skills/dep-sync/SKILL.md`
+- ADR: `docs/adr/0001-tech-stack-single-source-of-truth.md`
+- CONTEXT.md — DepSync definition

@@ -6,7 +6,7 @@ This file provides custom instructions for GitHub Copilot when working on the My
 
 MyOrganizer is a full-stack web application built as an Nx monorepo with:
 
-- **Frontend**: Next.js 14 with React 18, TypeScript, and Tailwind CSS
+- **Frontend**: Next.js with React, TypeScript, and Tailwind CSS (see [TECH_STACK.md](../TECH_STACK.md) for current versions)
 - **Backend**: Express.js REST API with TypeScript, Prisma ORM, and TSOA
 - **Shared Libraries**: Reusable components, utilities, and auto-generated API clients
 - **Development Tools**: Storybook for UI development, Docker for local services
@@ -69,7 +69,7 @@ MyOrganizer is a full-stack web application built as an Nx monorepo with:
 
 ### Frontend (Next.js)
 
-- Use **App Router** (Next.js 14)
+- Use **App Router** (see [TECH_STACK.md](../TECH_STACK.md) for current Next.js version)
 - Server components by default, client components when needed
 - Use `'use client'` directive only when necessary (interactivity, hooks)
 - Route wrappers live in `apps/myorganizer/src/app/`
