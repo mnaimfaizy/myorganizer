@@ -494,7 +494,13 @@ export async function importVault(
   const reportFailure = async (
     code: string,
     schemaVersion: number,
-    blobTypes: ('addresses' | 'mobileNumbers' | 'subscriptions' | 'todos')[],
+    blobTypes: (
+      | 'addresses'
+      | 'groceries'
+      | 'mobileNumbers'
+      | 'subscriptions'
+      | 'todos'
+    )[],
   ): Promise<void> => {
     await reporter({
       event: 'import',

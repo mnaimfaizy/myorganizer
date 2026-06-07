@@ -2,18 +2,13 @@
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Bash",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node",
-            "args": [
-              "-e",
-              "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);const cmd=(j.tool_input&&j.tool_input.command)||'';if(/yarn (add|remove|up|upgrade)|npm (install|uninstall|update)/i.test(cmd)){process.stdout.write(JSON.stringify({systemMessage:'package.json may have changed - run /dep-sync to update TECH_STACK.md.'})+String.fromCharCode(10));}}catch(e){}});"
-            ],
-            "timeout": 5
-          }
-        ]
+        "type": "command",
+        "command": "node",
+        "args": [
+          "-e",
+          "let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{try{const j=JSON.parse(d);const cmd=(j.tool_input&&j.tool_input.command)||'';if(/yarn (add|remove|up|upgrade)|npm (install|uninstall|update)/i.test(cmd)){process.stdout.write(JSON.stringify({systemMessage:'package.json may have changed - run /dep-sync to update TECH_STACK.md.'})+String.fromCharCode(10));}}catch(e){}});"
+        ],
+        "timeout": 5
       }
     ]
   }
