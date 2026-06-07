@@ -3,6 +3,7 @@ import { VaultImportError } from './vaultImportError';
 
 export const VAULT_EXPORT_BLOB_TYPES = [
   'addresses',
+  'groceries',
   'mobileNumbers',
   'subscriptions',
   'todos',
@@ -46,6 +47,7 @@ const VaultMetaSchema = z
 const BlobsSchema = z
   .object({
     addresses: EncryptedBlobSchema.optional(),
+    groceries: EncryptedBlobSchema.optional(),
     mobileNumbers: EncryptedBlobSchema.optional(),
     subscriptions: EncryptedBlobSchema.optional(),
     todos: EncryptedBlobSchema.optional(),
