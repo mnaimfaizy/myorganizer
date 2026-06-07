@@ -161,6 +161,7 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     ``,
     `## Instructions`,
     ``,
+    `- Run \`corepack yarn install --immutable\` before making any changes.`,
     `- Read CLAUDE.md, CONTEXT.md, and TECH_STACK.md before making any changes.`,
     `- Implement this vertical slice end-to-end (schema → API → UI → tests where applicable).`,
     `- Your working branch is \`${sliceBranch}\` (based on \`${featureBranch}\`). Do not switch branches.`,
