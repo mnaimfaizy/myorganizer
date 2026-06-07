@@ -17,13 +17,15 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 
 **ALWAYS delegate tasks for these file types.** Do NOT skip delegation even if the change seems small or obvious.
 
-| File Pattern                    | Skill                                                   | Agent Flow                           | Rule                   |
-| ------------------------------- | ------------------------------------------------------- | ------------------------------------ | ---------------------- |
-| `*.spec.ts` (Playwright E2E)    | `.github/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold            | ✅ **Always delegate** |
-| `*.test.ts` (Jest tests)        | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold                         | ✅ **Always delegate** |
-| `*.stories.tsx` (Storybook)     | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                     | ✅ **Always delegate** |
-| Components in `libs/web-ui/`    | Component workflow (below)                              | ComponentBuilder → ComponentReviewer | ✅ **Always delegate** |
-| Components in `libs/web/pages/` | Component workflow (below)                              | ComponentBuilder → ComponentReviewer | ✅ **Always delegate** |
+| File Pattern                    | Skill                                                   | Agent Flow                           | Rule                                     |
+| ------------------------------- | ------------------------------------------------------- | ------------------------------------ | ---------------------------------------- |
+| `*.spec.ts` (Playwright E2E)    | `.github/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold            | ✅ **Always delegate**                   |
+| `*.test.ts` (Jest tests)        | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold                         | ✅ **Always delegate**                   |
+| `*.stories.tsx` (Storybook)     | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                     | ✅ **Always delegate**                   |
+| Components in `libs/web-ui/`    | Component workflow (below)                              | ComponentBuilder → ComponentReviewer | ✅ **Always delegate**                   |
+| Components in `libs/web/pages/` | Component workflow (below)                              | ComponentBuilder → ComponentReviewer | ✅ **Always delegate**                   |
+| New planned feature (PRD)       | `.github/skills/to-prd/SKILL.md`                        | to-prd                               | ✅ **Always use for planned features**   |
+| Slice breakdown from PRD        | `.github/skills/to-issues/SKILL.md`                     | to-issues                            | ✅ **Always use after PRD is published** |
 
 ### Key Anti-Pattern to Avoid
 
@@ -134,6 +136,55 @@ ADR: `docs/adr/0001-tech-stack-single-source-of-truth.md`
 ## Codebase Exploration
 
 Before issuing 3 or more consecutive Glob/Grep/Read calls to locate something in the codebase, stop and delegate to the `CodeExplorer` sub-agent (`.claude/agents/explore.md`) instead. Provide an Explore Request with a `Goal` sentence; optionally include `Known Locations`, `Search Hints`, `Out of Scope`, and `Expected Output`. CodeExplorer runs on Haiku and returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths — saving frontier-model tokens for reasoning, not searching.
+
+## Planned Feature Workflow
+
+Use this workflow when building a new feature end-to-end, from idea to autonomous agent handoff. The user must be present for Steps 1 and 2; Step 3 is the walk-away handoff point.
+
+### Step 1 — Write the PRD (user present)
+
+```
+/to-prd
+```
+
+Explores the codebase, sketches test seams (requires your approval), writes the PRD, and publishes it as a GitHub Issue labelled `prd` + `ready-for-agent`.
+
+**Prerequisite:** Run `yarn ai:create-labels` once to create all required labels in the repo.
+
+### Step 2 — Break into Slice Issues (user present)
+
+```
+/to-issues <prd-issue-number>
+```
+
+Fetches the PRD, drafts vertical slices (AFK / HITL + complexity), quizzes you on the breakdown, then publishes each slice with the full label set. Updates the PRD `## Slices` section.
+
+⚠️ **HITL slices** will be skipped by `dispatch-agents` until you unblock them manually.
+
+### Step 3 — Dispatch autonomous agents (walk away)
+
+```
+yarn dispatch-agents --prd <prd-issue-number>
+```
+
+The orchestrator:
+
+1. Creates `feat/<feature-slug>` from `origin/main` (if it doesn't exist)
+2. Fans out one sandcastle agent per AFK slice, each on its own `slice/N-slug` branch in Docker isolation
+3. Routes the model from the `complexity:*` label (Haiku → Sonnet → Opus)
+4. On completion: applies `status:done`, creates a PR from slice branch → feature branch, posts a comment on the issue
+5. Sends a desktop notification when the full batch is done
+
+### Step 4 — Review and merge (user returns)
+
+Review each slice PR targeting `feat/<slug>`. After all slice PRs are merged, open a final PR from `feat/<slug>` to `main`.
+
+### Key distinctions
+
+- **Planned feature** → always start with `/to-prd` + `/to-issues`
+- **Ad-hoc bug or one-off task** → use the `github-issue-creation-workflow` skill directly (no PRD needed)
+
+---
 
 ## Design & Planning Workflows
 

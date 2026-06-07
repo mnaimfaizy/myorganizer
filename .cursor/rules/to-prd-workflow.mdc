@@ -1,0 +1,32 @@
+---
+description: Plan a new MyOrganizer feature by writing a PRD and publishing it as a GitHub Issue. Use when the user wants to spec out a feature, write a product requirements document, or prepare work for autonomous agents.
+alwaysApply: false
+---
+
+# To PRD Workflow
+
+## When to Use
+
+- The user wants to plan a new feature, capability, or significant change to MyOrganizer.
+- The user asks to write a PRD, create a feature spec, or turn an idea into a structured plan.
+- The user wants to prepare work for `yarn dispatch-agents`.
+
+## Core Approach
+
+Read and follow `.github/skills/to-prd/SKILL.md` exactly.
+
+Key points:
+- Read `config.md` and `CONTEXT.md` first.
+- Delegate codebase exploration to `CodeExplorer` (`.github/agents/explore.agent.md`).
+- Present test seams to the user for approval — this is the only interactive step.
+- Publish the PRD Issue via `gh issue create` directly (not via IssueCreator).
+- Run `yarn ai:create-labels` first if any required labels are missing.
+
+## Next Step
+
+After the PRD Issue is published, use the **to-issues** skill to break it into Slice Issues, then `yarn dispatch-agents --prd <issue-number>` to hand off to autonomous agents.
+
+## Skill Files
+
+- `.github/skills/to-prd/SKILL.md` — full skill definition
+- `.github/skills/to-prd/config.md` — label vocabulary and issue formats

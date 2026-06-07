@@ -1,0 +1,34 @@
+---
+description: Break a PRD Issue into vertical Slice Issues for autonomous agents. Use when a PRD Issue exists and needs to be decomposed into independently-grabbable implementation tickets.
+alwaysApply: false
+---
+
+# To Issues Workflow
+
+## When to Use
+
+- A PRD Issue exists and needs to be broken into Slice Issues.
+- The user asks to decompose a PRD, create implementation tickets, or break down a planned feature.
+- Preparing work for `yarn dispatch-agents`.
+
+## Core Approach
+
+Read and follow `.github/skills/to-issues/SKILL.md` exactly.
+
+Key points:
+- Ask the user for the PRD Issue number if not already provided.
+- Fetch the PRD Issue body via `gh issue view <N>` — never work from memory.
+- Each slice must be a thin vertical slice through all layers (schema → API → UI → tests).
+- Every slice body must start with `PRD: #<parent-issue-number>` — required by `dispatch-agents`.
+- Flag `type:hitl` slices with ⚠️ in the quiz — they will be skipped by `dispatch-agents`.
+- Publish issues in dependency order; update PRD `## Slices` section afterwards.
+- Run `yarn ai:create-labels` first if any required labels are missing.
+
+## Next Step
+
+After slices are published, run `yarn dispatch-agents --prd <issue-number>` to hand off AFK slices to autonomous agents.
+
+## Skill Files
+
+- `.github/skills/to-issues/SKILL.md` — full skill definition
+- `.github/skills/to-issues/config.md` — label vocabulary and issue formats

@@ -41,6 +41,12 @@ testem.log
 .env.test
 .env.production
 
+# Sandcastle
+.sandcastle/.env
+.sandcastle/logs/
+.sandcastle/worktrees/
+.sandcastle/patches/
+
 # System Files
 .DS_Store
 Thumbs.db
