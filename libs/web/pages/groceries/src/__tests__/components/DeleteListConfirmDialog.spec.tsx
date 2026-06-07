@@ -62,7 +62,7 @@ jest.mock('lucide-react', () => ({
 
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { DeleteListConfirmDialog } from '../../components/DeleteListConfirmDialog';
+import { DeleteListConfirmDialog } from '../../pages/lists/components/DeleteListConfirmDialog';
 
 describe('DeleteListConfirmDialog', () => {
   const defaultProps = {

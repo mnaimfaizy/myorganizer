@@ -550,6 +550,170 @@ await page.waitForFunction(() => {
 | Testing on one browser only                             | Firefox and WebKit have different patterns             | Test on all three browsers                     |
 | Not mocking CORS preflight                              | Tests fail with CORS errors                            | Handle OPTIONS requests in route mocks         |
 
+### Form-Based E2E Flows (React Hook Form + Zod)
+
+**Background:** Production incidents with form-based E2E tests revealed gaps between test expectations and component implementation. This section documents best practices to prevent failures at the component lifecycle layer.
+
+#### Pre-Implementation Checklist
+
+Before writing form-based E2E tests, verify these with the component developer:
+
+- [ ] Form library specified (react-hook-form, formik, etc.)
+- [ ] Form validation mode specified (onChange vs onSubmit vs onBlur)
+- [ ] Component remounting strategy documented (e.g., `key={itemId}` for dialogs)
+- [ ] Form reset behavior documented (useEffect watching which dependencies?)
+- [ ] When each button becomes enabled/disabled (conditions like `!isDirty || !isValid`)
+- [ ] How validation errors appear (timing and visibility)
+
+#### MyOrganizer Form Defaults
+
+```typescript
+// All editable forms in MyOrganizer use these patterns:
+
+// EditItemDialog pattern
+const form = useForm<ItemData>({
+  mode: 'onChange',  // ← Real-time validation; REQUIRED for save button UX
+  resolver: zodResolver(itemSchema),
+  defaultValues: itemData,
+});
+
+// Parent component ensures form state resets per item
+<EditItemDialog
+  key={editingItemId ?? 'none'}  // ← Forces remount per item; REQUIRED
+  item={editingItem || null}
+  // ...
+/>
+
+// EditItemDialog useEffect for fresh defaultValues and validation
+useEffect(() => {
+  if (item) {
+    form.reset(itemData, { keepDirty: false, keepErrors: false });
+    form.trigger(); // Run validation immediately
+  }
+}, [item?.id, form]);
+
+// Save button logic
+<Button
+  disabled={isLoading || !form.formState.isDirty || !form.formState.isValid}
+>
+  Save
+</Button>
+```
+
+#### Common E2E Test Patterns for Forms
+
+**Pattern 1: Verify button enable/disable on field change**
+
+```typescript
+it('should enable Save button when valid field is modified', async () => {
+  await page.click('[aria-label="Edit Item"]');
+  // Wait for dialog to open
+  await page.waitForSelector('[role="dialog"]');
+
+  // Get initial button state
+  const saveButton = page.locator('button', { hasText: 'Save' });
+  const initiallyDisabled = await saveButton.isDisabled();
+  expect(initiallyDisabled).toBe(true); // Form not dirty yet
+
+  // Modify a field
+  const nameInput = page.locator('input[placeholder="Item Name"]');
+  await nameInput.fill('Updated Item');
+
+  // ✅ CRITICAL: Assert button becomes enabled, don't just wait and hope
+  await expect(saveButton).toBeEnabled({ timeout: 5000 });
+});
+```
+
+**Pattern 2: Verify form validation errors block submission**
+
+```typescript
+it('should prevent save when required field is empty', async () => {
+  await page.click('[aria-label="Edit Item"]');
+  await page.waitForSelector('[role="dialog"]');
+
+  // Clear required field
+  const nameInput = page.locator('input[aria-label="Item Name *"]');
+  await nameInput.fill('');
+
+  // ✅ Assert validation error appears and button stays disabled
+  const errorMsg = page.locator('text=/Item name is required/');
+  await expect(errorMsg).toBeVisible({ timeout: 5000 });
+
+  const saveButton = page.locator('button', { hasText: 'Save' });
+  await expect(saveButton).toBeDisabled();
+});
+```
+
+**Pattern 3: Verify form resets when switching items**
+
+```typescript
+it('should reset form when editing different item', async () => {
+  // Edit first item
+  await page.click('[aria-label="Edit Item 1"]');
+  await page.waitForSelector('[role="dialog"]');
+  const nameInput = page.locator('input[placeholder="Item Name"]');
+  await nameInput.fill('Modified Name');
+
+  // Save and close
+  await page.click('button:has-text("Save")');
+  await page.waitForSelector('[role="dialog"]', { state: 'hidden' });
+
+  // Edit second item
+  await page.click('[aria-label="Edit Item 2"]');
+  await page.waitForSelector('[role="dialog"]');
+
+  // ✅ Form should have fresh defaultValues for item 2, not modified name
+  const nameInput2 = page.locator('input[placeholder="Item Name"]');
+  const currentValue = await nameInput2.inputValue();
+  expect(currentValue).toBe('Item 2 Original Name'); // Not "Modified Name"
+});
+```
+
+**Pattern 4: Create form state verification helper**
+
+```typescript
+// Reusable helper for form state checks
+async function waitForFormValid(page: Page, timeout = 5000) {
+  const button = page.locator('button[type="submit"]:not(:disabled)');
+  await expect(button).toBeEnabled({ timeout });
+}
+
+async function waitForFormInvalid(page: Page, timeout = 5000) {
+  const button = page.locator('button[type="submit"]');
+  await expect(button).toBeDisabled({ timeout });
+}
+
+// Usage in tests
+it('should enable and disable save button correctly', async () => {
+  await openEditDialog(page, 'Item 1');
+  await waitForFormValid(page); // Should be disabled initially, then timeout
+
+  await page.fill('input[aria-label="Category"]', 'Dairy');
+  await waitForFormValid(page); // Now enabled
+});
+```
+
+#### Debugging Form State Issues
+
+When form buttons don't change state as expected:
+
+1. **Do NOT try different interaction patterns** (keyboard vs fill vs selectAll+type) — wrong layer
+2. **Do investigate component architecture:**
+   - Is dialog remounting per item? Check for `key={itemId}` in parent
+   - Does form reset on item change? Check useEffect watching `item?.id`
+   - Is form mode set to 'onChange'? Check useForm config
+3. **Add debug output:**
+   - Take screenshot of dialog state: `await page.screenshot({ path: 'dialog.png' })`
+   - Log button disabled state: `console.log('Save disabled:', await button.isDisabled())`
+   - Check for validation errors: `expect(page.locator('[aria-invalid="true"]')).toBeVisible()`
+
+#### Cross-Browser Considerations for Forms
+
+- **Firefox:** Add extra timeout after form state changes before asserting button enable status
+- **Firefox:** Use explicit button clicks, not Enter key for form submission
+- **WebKit:** Be generous with timeouts (may be slower on some systems)
+- **All browsers:** Verify button enable/disable state works consistently by running tests on all three browsers
+
 ### Commands
 
 ```bash

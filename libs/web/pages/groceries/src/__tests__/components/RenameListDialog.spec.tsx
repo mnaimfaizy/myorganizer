@@ -34,7 +34,7 @@ jest.mock('@myorganizer/web-ui', () => ({
 
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { RenameListDialog } from '../../components/RenameListDialog';
+import { RenameListDialog } from '../../pages/lists/components/RenameListDialog';
 
 describe('RenameListDialog', () => {
   const mockOnClose = jest.fn();

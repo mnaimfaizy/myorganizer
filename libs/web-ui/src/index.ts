@@ -29,3 +29,5 @@ export * from './lib/components/Tooltip/Tooltip';
 export * from './lib/hooks/use-media-query';
 export * from './lib/hooks/use-mobile';
 export * from './lib/hooks/use-toast';
+
+export * from './lib/utils';

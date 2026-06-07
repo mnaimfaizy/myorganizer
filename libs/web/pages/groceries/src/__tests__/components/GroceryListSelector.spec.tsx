@@ -74,7 +74,7 @@ jest.mock('@myorganizer/web-ui', () => {
 });
 
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { GroceryListSelector } from '../../components/GroceryListSelector';
+import { GroceryListSelector } from '../../pages/lists/components/GroceryListSelector';
 
 describe('GroceryListSelector', () => {
   const NOW_ISO = '2026-06-04T12:00:00.000Z';
@@ -125,8 +125,6 @@ describe('GroceryListSelector', () => {
     render(
       <GroceryListSelector
         lists={lists}
-        selectedListIds={[]}
-        onSelectLists={onSelect}
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
       />,
@@ -150,15 +148,16 @@ describe('GroceryListSelector', () => {
     expect(progressInner).toBeTruthy();
     expect(progressInner.style.width).toBe('50%');
 
-    // Clicking checkbox calls onSelectLists with array
+    // Clicking checkbox toggles internal selection (shows border-error shadow-md)
     const checkbox = cardA.querySelector(
       'input[type="checkbox"]',
     ) as HTMLInputElement;
     fireEvent.click(checkbox);
-    expect(onSelect).toHaveBeenCalledWith(['l1']);
+    expect(cardA.className).toContain('border-error');
+    expect(cardA.className).toContain('shadow-md');
   });
 
-  it('shows selected styling when selectedListIds contains the list', () => {
+  it('shows selected styling when list checkbox is clicked', () => {
     const lists = [
       makeList({
         id: 'sel',
@@ -171,8 +170,6 @@ describe('GroceryListSelector', () => {
     render(
       <GroceryListSelector
         lists={lists}
-        selectedListIds={['sel']}
-        onSelectLists={jest.fn()}
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
       />,
@@ -181,7 +178,14 @@ describe('GroceryListSelector', () => {
     const card = screen
       .getByText('Selected List')
       .closest('[role="article"]') as HTMLElement;
-    expect(card.className).toContain('border-secondary');
+
+    // Click checkbox to trigger internal selection
+    const checkbox = card.querySelector(
+      'input[type="checkbox"]',
+    ) as HTMLInputElement;
+    fireEvent.click(checkbox);
+
+    expect(card.className).toContain('border-error');
     expect(card.className).toContain('shadow-md');
 
     // Progress 100% for single checked item
