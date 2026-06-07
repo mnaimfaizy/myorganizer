@@ -2,6 +2,15 @@
 
 End-to-end developer documentation for individual product features.
 
+## Features Index
+
+| Feature       | Status | Vault-backed | Docs                           |
+| ------------- | ------ | ------------ | ------------------------------ |
+| Todos         | ✅     | Yes          | —                              |
+| Subscriptions | ✅     | Yes          | —                              |
+| Addresses     | ✅     | Yes          | —                              |
+| Groceries     | ✅     | Yes          | [groceries.md](./groceries.md) |
+
 ## Google integrations
 
 MyOrganizer integrates with two distinct Google APIs. They share Google Cloud
