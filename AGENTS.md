@@ -60,6 +60,40 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - For design and planning sessions, use `.github/skills/grill-with-docs/SKILL.md` to stress-test plans against the domain model, sharpen terminology, and document decisions. This skill helps create/update `CONTEXT.md` (domain glossary) and `docs/adr/` (architecture decisions).
 - Before issuing 3 or more consecutive read/search operations to locate something in the codebase, stop and delegate to `CodeExplorer` (`.github/agents/explore.agent.md`) instead. Provide an Explore Request with a `Goal` sentence; optionally include `Known Locations`, `Search Hints`, `Out of Scope`, and `Expected Output`. CodeExplorer returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
 
+## ⚠️ Mandatory Delegation Rules (NO EXCEPTIONS)
+
+**ALWAYS delegate tasks for these file types.** Do NOT skip delegation even if the change seems small or obvious.
+
+| File Pattern                    | Skill                                                   | Agent Flow                           | Rule                   |
+| ------------------------------- | ------------------------------------------------------- | ------------------------------------ | ---------------------- |
+| `*.spec.ts` (Playwright E2E)    | `.github/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold            | ✅ **Always delegate** |
+| `*.test.ts` (Jest tests)        | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold                         | ✅ **Always delegate** |
+| `*.stories.tsx` (Storybook)     | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                     | ✅ **Always delegate** |
+| Components in `libs/web-ui/`    | Component workflow                                      | ComponentBuilder → ComponentReviewer | ✅ **Always delegate** |
+| Components in `libs/web/pages/` | Component workflow                                      | ComponentBuilder → ComponentReviewer | ✅ **Always delegate** |
+
+### Key Anti-Pattern to Avoid
+
+❌ **DO NOT do this:**
+
+```
+"I see a bug in an E2E test. Let me read the similar test, find the pattern, and fix it directly."
+```
+
+✅ **DO THIS INSTEAD:**
+
+```
+"I see a bug in an E2E test. This is an E2E test UPDATE.
+1. Read .github/skills/playwright-e2e-workflow/SKILL.md
+2. Use E2EPlanner to outline the fix
+3. Delegate to TestScaffold with a precise brief
+4. Apply changes from TestScaffold output"
+```
+
+### Before You Edit Any File
+
+Use the decision tree in [`.claude/checklist.md`](.claude/checklist.md) to verify you're not skipping delegation.
+
 ## Do Not
 
 - Do not introduce `package-lock.json` or `pnpm-lock.yaml` changes.
