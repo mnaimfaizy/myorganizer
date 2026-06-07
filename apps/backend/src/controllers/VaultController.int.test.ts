@@ -36,6 +36,17 @@ jest.mock('../services/VaultService', () => {
   };
 });
 
+// Prevent module-level createPrismaClient() calls in YouTube services from
+// attempting a real DB connection during Vault integration tests.
+jest.mock('../services/YouTubeNotificationService', () => ({
+  __esModule: true,
+  default: {},
+}));
+jest.mock('../services/YouTubeSyncService', () => ({
+  __esModule: true,
+  default: {},
+}));
+
 function makeApp() {
   // Ensure mocks are applied before importing the generated routes.
 
@@ -54,7 +65,7 @@ function makeApp() {
     err: unknown,
     _req: any,
     res: any,
-    next: any
+    next: any,
   ) {
     if (err instanceof ValidateError) {
       return res.status(422).json({
@@ -154,7 +165,7 @@ describe('VaultController (HTTP integration)', () => {
     expect(vaultService.putVaultMeta).toHaveBeenCalledWith(
       'user-1',
       meta,
-      'W/"0"'
+      'W/"0"',
     );
   });
 
