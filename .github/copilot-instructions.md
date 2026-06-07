@@ -6,7 +6,7 @@ This file provides custom instructions for GitHub Copilot when working on the My
 
 MyOrganizer is a full-stack web application built as an Nx monorepo with:
 
-- **Frontend**: Next.js 14 with React 18, TypeScript, and Tailwind CSS
+- **Frontend**: Next.js with React, TypeScript, and Tailwind CSS (see [TECH_STACK.md](../TECH_STACK.md) for current versions)
 - **Backend**: Express.js REST API with TypeScript, Prisma ORM, and TSOA
 - **Shared Libraries**: Reusable components, utilities, and auto-generated API clients
 - **Development Tools**: Storybook for UI development, Docker for local services
@@ -69,7 +69,7 @@ MyOrganizer is a full-stack web application built as an Nx monorepo with:
 
 ### Frontend (Next.js)
 
-- Use **App Router** (Next.js 14)
+- Use **App Router** (see [TECH_STACK.md](../TECH_STACK.md) for current Next.js version)
 - Server components by default, client components when needed
 - Use `'use client'` directive only when necessary (interactivity, hooks)
 - Route wrappers live in `apps/myorganizer/src/app/`
@@ -139,6 +139,35 @@ When consuming the generated client:
 - Use descriptive test names: `it('should create a user with valid credentials', ...)`
 - Group related tests with `describe()` blocks
 - Use `beforeEach()` for test setup
+
+## Codebase Exploration
+
+Before issuing 3 or more consecutive read/search operations to locate something in the codebase, stop and delegate to `CodeExplorer` (`.github/agents/explore.agent.md`) instead. Provide an Explore Request with a `Goal` sentence; optionally include `Known Locations`, `Search Hints`, `Out of Scope`, and `Expected Output`. CodeExplorer runs on a cheap model and returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
+
+## Design & Planning
+
+### Grilling Sessions with Documentation
+
+When designing new features or making architectural decisions, use the **grill-with-docs** skill (`.github/skills/grill-with-docs/SKILL.md`) to:
+
+- Stress-test plans against the project's existing domain model and terminology
+- Sharpen fuzzy language and resolve ambiguous concepts
+- Challenge assumptions through concrete scenario discussions
+- Create or update `CONTEXT.md` to document domain language and glossary
+- Create Architecture Decision Records (ADRs) in `docs/adr/` for major decisions
+
+**When to use:**
+
+- You have a plan and want to validate it against MyOrganizer's language and architecture
+- You're designing a new feature that introduces new domain terms or concepts
+- You want to capture why architectural decisions were made
+
+**Key artifacts:**
+
+- `CONTEXT.md` — Single source of truth for domain language (what terms mean, what to avoid)
+- `docs/adr/` — Records of hard-to-reverse decisions with trade-off context
+
+See `.github/skills/grill-with-docs/` for templates and detailed guidance.
 
 ## Security Best Practices
 

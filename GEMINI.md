@@ -18,6 +18,23 @@ Use these repo-local workflows for commit, pull request, test, and Storybook-sui
 - Leave reviewers empty unless the user explicitly supplies them with `--reviewer <login>`.
 - Return only the PR URL on success.
 
+## Design & Planning Workflows
+
+When you need to stress-test a plan against the project's domain model and documented decisions, use the **grill-with-docs** skill:
+
+- **Skill location**: `.github/skills/grill-with-docs/SKILL.md`
+- **When to use**: You have a design or feature plan that needs validation against MyOrganizer's terminology, architecture, and existing decisions.
+- **What it does**:
+  - Interviews relentlessly to sharpen fuzzy requirements and terminology
+  - Challenges plans against the domain glossary in `CONTEXT.md`
+  - Cross-references claims with actual codebase implementation
+  - Creates or updates `CONTEXT.md` to document domain language
+  - Proposes Architecture Decision Records (ADRs) for hard-to-reverse decisions
+- **Key documents to maintain**:
+  - `CONTEXT.md` — Domain language glossary (one-sentence definitions, preferred terms, what to avoid)
+  - `docs/adr/` — Architecture Decision Records for major design choices
+- **Reference formats**: See `CONTEXT-FORMAT.md` and `ADR-FORMAT.md` in the skill directory
+
 ## Jest Test Delegation
 
 When a task requires Jest unit tests or Jest integration tests to be created or updated, delegate to the `test-scaffold` sub-agent (`.gemini/agents/test-scaffold.md`) rather than writing tests inline. The agent runs on `gemini-2.5-flash` to keep costs low.
@@ -48,6 +65,21 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs i
 - `.github/agents/test-scaffold.agent.md` — Copilot-CLI version of the same agent
 - `.github/skills/unit-test-delegation-workflow/SKILL.md` — full workflow skill
 - `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md` — delegation brief template
+
+## Codebase Exploration
+
+When a task requires locating files, symbols, or patterns in the codebase, delegate to the `CodeExplorer` sub-agent rather than searching inline — especially before issuing 3 or more consecutive read/search operations.
+
+- Delegate to `@code-explorer` (`.gemini/agents/explore.md`) with an Explore Request.
+- The request must include a `Goal` sentence. All other fields are optional: `Known Locations`, `Search Hints`, `Out of Scope`, `Expected Output`.
+- CodeExplorer runs on `gemini-2.5-flash` and returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
+- Use the `Relevant Paths` section to decide which files to read next. Trust `[found]` findings directly; verify `[inferred]` findings before acting on them.
+
+### References
+
+- `.gemini/agents/explore.md` — CodeExplorer sub-agent (Gemini CLI native format, model: gemini-2.5-flash)
+- `.github/agents/explore.agent.md` — canonical definition and Copilot-CLI version
+- `docs/adr/0001-codeexplorer-custom-agent.md` — why a custom agent over inline exploration
 
 ## Storybook Delegation
 
