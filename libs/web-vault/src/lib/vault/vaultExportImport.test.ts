@@ -165,4 +165,69 @@ describe('vaultExportImport helpers', () => {
       VaultBlobType.MobileNumbers,
     ]);
   });
+
+  test('buildLocalExportBundle includes groceries blob when present', () => {
+    const vaultWithGroceries: VaultStorageV1 = {
+      ...sampleVault,
+      data: {
+        ...sampleVault.data,
+        groceries: {
+          iv: 'Z3JvY2VyaWVzLWl2LTEyMzQ=',
+          ciphertext: 'Z3JvY2VyaWVzLWN0LTEyMzQ=',
+        },
+      },
+    };
+
+    const bundle = buildLocalExportBundle({
+      localVault: vaultWithGroceries,
+      exportedAt: '2025-01-01T00:00:00Z',
+    });
+
+    expect(bundle.blobs.groceries).toBeDefined();
+    expect(bundle.blobs.groceries?.version).toBe(1);
+    expect(bundle.blobs.groceries?.ciphertext).toBe('Z3JvY2VyaWVzLWN0LTEyMzQ=');
+  });
+
+  test('buildLocalExportBundle omits groceries blob when not present', () => {
+    const bundle = buildLocalExportBundle({
+      localVault: sampleVault,
+      exportedAt: '2025-01-01T00:00:00Z',
+    });
+
+    expect(bundle.blobs.groceries).toBeUndefined();
+  });
+
+  test('bundleToLocalVault handles groceries blob in round-trip', () => {
+    const vaultWithGroceries: VaultStorageV1 = {
+      ...sampleVault,
+      data: {
+        ...sampleVault.data,
+        groceries: {
+          iv: 'Z3JvY2VyaWVzLWl2LTEyMzQ=',
+          ciphertext: 'Z3JvY2VyaWVzLWN0LTEyMzQ=',
+        },
+      },
+    };
+
+    const bundle = buildLocalExportBundle({
+      localVault: vaultWithGroceries,
+      exportedAt: '2025-01-01T00:00:00Z',
+    });
+    const restored = bundleToLocalVault(bundle);
+
+    expect(restored.data.groceries?.ciphertext).toBe(
+      vaultWithGroceries.data.groceries?.ciphertext,
+    );
+    expect(Object.keys(restored.data)).toContain(VaultBlobType.Groceries);
+  });
+
+  test('bundleToLocalVault handles missing groceries blob gracefully', () => {
+    const bundle = buildLocalExportBundle({
+      localVault: sampleVault,
+      exportedAt: '2025-01-01T00:00:00Z',
+    });
+    const restored = bundleToLocalVault(bundle);
+
+    expect(restored.data.groceries).toBeUndefined();
+  });
 });

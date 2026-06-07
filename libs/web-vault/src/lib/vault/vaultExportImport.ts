@@ -158,6 +158,7 @@ function requireBlobs(
   for (const [key, candidate] of Object.entries(record)) {
     if (
       key === VaultBlobType.Addresses ||
+      key === VaultBlobType.Groceries ||
       key === VaultBlobType.MobileNumbers ||
       key === VaultBlobType.Subscriptions ||
       key === VaultBlobType.Todos
@@ -228,6 +229,13 @@ export function buildLocalExportBundle(options: {
             ),
           }
         : {}),
+      ...(localVault.data.groceries
+        ? {
+            [VaultBlobType.Groceries]: toEncryptedBlobV1(
+              localVault.data.groceries,
+            ),
+          }
+        : {}),
       ...(localVault.data.mobileNumbers
         ? {
             [VaultBlobType.MobileNumbers]: toEncryptedBlobV1(
@@ -254,6 +262,7 @@ export function buildLocalExportBundle(options: {
 export function bundleToLocalVault(bundle: VaultExportV1): VaultStorageV1 {
   const blobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>> = {
     [VaultBlobType.Addresses]: bundle.blobs.addresses ?? null,
+    [VaultBlobType.Groceries]: (bundle.blobs as any).groceries ?? null,
     [VaultBlobType.MobileNumbers]: bundle.blobs.mobileNumbers ?? null,
     [VaultBlobType.Subscriptions]: bundle.blobs.subscriptions ?? null,
     [VaultBlobType.Todos]: (bundle.blobs as any).todos ?? null,
@@ -294,6 +303,7 @@ function generateExportId(): string {
 function envelopeBlobTypes(envelope: VaultExportEnvelope): VaultBlobType[] {
   const out: VaultBlobType[] = [];
   if (envelope.blobs.addresses) out.push(VaultBlobType.Addresses);
+  if (envelope.blobs.groceries) out.push(VaultBlobType.Groceries);
   if (envelope.blobs.mobileNumbers) out.push(VaultBlobType.MobileNumbers);
   if (envelope.blobs.subscriptions) out.push(VaultBlobType.Subscriptions);
   if (envelope.blobs.todos) out.push(VaultBlobType.Todos);
@@ -307,6 +317,9 @@ function envelopeFromLocalVault(
   const blobs: VaultExportEnvelope['blobs'] = {};
   if (localVault.data.addresses) {
     blobs.addresses = toEncryptedBlobV1(localVault.data.addresses);
+  }
+  if (localVault.data.groceries) {
+    blobs.groceries = toEncryptedBlobV1(localVault.data.groceries);
   }
   if (localVault.data.mobileNumbers) {
     blobs.mobileNumbers = toEncryptedBlobV1(localVault.data.mobileNumbers);
@@ -332,6 +345,9 @@ function envelopeToLocalVault(envelope: VaultExportEnvelope): VaultStorageV1 {
     [VaultBlobType.Addresses]: envelope.blobs.addresses
       ? normalizeEncryptedBlobV1(envelope.blobs.addresses)
       : null,
+    [VaultBlobType.Groceries]: envelope.blobs.groceries
+      ? normalizeEncryptedBlobV1(envelope.blobs.groceries)
+      : null,
     [VaultBlobType.MobileNumbers]: envelope.blobs.mobileNumbers
       ? normalizeEncryptedBlobV1(envelope.blobs.mobileNumbers)
       : null,
@@ -350,9 +366,10 @@ function envelopeToLocalVault(envelope: VaultExportEnvelope): VaultStorageV1 {
 
 function envelopeBlobTypesAsBackup(
   envelope: VaultExportEnvelope,
-): ('addresses' | 'mobileNumbers' | 'subscriptions' | 'todos')[] {
+): ('addresses' | 'groceries' | 'mobileNumbers' | 'subscriptions' | 'todos')[] {
   return envelopeBlobTypes(envelope) as (
     | 'addresses'
+    | 'groceries'
     | 'mobileNumbers'
     | 'subscriptions'
     | 'todos'
