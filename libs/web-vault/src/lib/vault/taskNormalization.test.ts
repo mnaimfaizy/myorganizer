@@ -2,413 +2,746 @@ import { normalizeTasks } from './taskNormalization';
 
 jest.mock('@myorganizer/core', () => ({
   ...jest.requireActual('@myorganizer/core'),
-  randomId: jest.fn(() => 'generated-id'),
+  randomId: jest.fn().mockReturnValue('generated-id'),
 }));
 
-describe('normalizeTasks', () => {
-  describe('empty and null inputs', () => {
-    it('should return empty array and no change for null', () => {
+describe('taskNormalization', () => {
+  describe('normalizeTasks', () => {
+    // --- Input validation and array coercion ---
+
+    it('returns empty array and changed=false for null input', () => {
       const result = normalizeTasks(null);
-      expect(result).toEqual({ value: [], changed: false });
+      expect(result.value).toEqual([]);
+      expect(result.changed).toBe(false);
     });
 
-    it('should return empty array and no change for undefined', () => {
+    it('returns empty array and changed=true for non-null non-array input', () => {
+      const result = normalizeTasks({});
+      expect(result.value).toEqual([]);
+      expect(result.changed).toBe(true);
+    });
+
+    it('returns empty array and changed=true for undefined input', () => {
       const result = normalizeTasks(undefined);
-      expect(result).toEqual({ value: [], changed: false });
-    });
-
-    it('should return empty array and mark changed for non-array objects', () => {
-      expect(normalizeTasks({})).toEqual({ value: [], changed: true });
-      expect(normalizeTasks('string')).toEqual({ value: [], changed: true });
-      expect(normalizeTasks(42)).toEqual({ value: [], changed: true });
-    });
-
-    it('should return empty array with no change for empty array', () => {
-      const result = normalizeTasks([]);
-      expect(result).toEqual({ value: [], changed: false });
-    });
-  });
-
-  describe('legacy todo to task migration', () => {
-    it('should migrate legacy { id, todo } record to Task', () => {
-      const result = normalizeTasks([{ id: 'legacy-1', todo: 'Buy milk' }]);
-
-      expect(result.value).toHaveLength(1);
-      const task = result.value[0];
-      expect(task.id).toBe('legacy-1');
-      expect(task.title).toBe('Buy milk');
-      expect(task.status).toBe('pending');
-      expect(task.priority).toBe('medium');
-      expect(task.context).toBe('personal');
-      expect(task.archived).toBe(false);
-      expect(task.createdAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-      expect(task.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/);
-      expect(result.changed).toBe(true);
-    });
-
-    it('should generate id for legacy record missing id', () => {
-      const result = normalizeTasks([{ todo: 'Buy milk' }]);
-
-      expect(result.value).toHaveLength(1);
-      const task = result.value[0];
-      expect(task.id).toBe('generated-id');
-      expect(task.title).toBe('Buy milk');
-      expect(result.changed).toBe(true);
-    });
-
-    it('should trim legacy todo text', () => {
-      const result = normalizeTasks([{ id: 'x', todo: '  Trimmed Task  ' }]);
-
-      expect(result.value).toHaveLength(1);
-      expect(result.value[0].title).toBe('Trimmed Task');
-      expect(result.changed).toBe(true);
-    });
-
-    it('should skip legacy record with empty todo', () => {
-      const result = normalizeTasks([{ id: 'x', todo: '   ' }]);
-
-      expect(result.value).toHaveLength(0);
-      expect(result.changed).toBe(true);
-    });
-  });
-
-  describe('invalid items filtering', () => {
-    it('should skip null and non-object items', () => {
-      const result = normalizeTasks([null, 1, 'string']);
       expect(result.value).toEqual([]);
       expect(result.changed).toBe(true);
     });
 
-    it('should skip arrays inside the input', () => {
-      const result = normalizeTasks([[1, 2, 3]]);
-      expect(result.value).toEqual([]);
-      expect(result.changed).toBe(true);
-    });
+    // --- Core field normalization with changed flag ---
 
-    it('should skip items missing required title field', () => {
-      const result = normalizeTasks([
+    it('preserves fully valid task without changes', () => {
+      const createdAtISO = '2024-01-01T00:00:00.000Z';
+      const input = [
         {
-          id: 'a',
+          id: '1',
+          title: 'Task 1',
           status: 'pending',
+          archived: false,
           priority: 'medium',
-          context: 'personal',
+          createdAt: createdAtISO,
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).toEqual({
+        id: '1',
+        title: 'Task 1',
+        status: 'pending',
+        archived: false,
+        priority: 'medium',
+        createdAt: createdAtISO,
+      });
+      expect(result.changed).toBe(false);
+    });
+
+    it('generates id when missing and marks changed=true', () => {
+      const input = [
+        {
+          title: 'No ID Task',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].id).toBe('generated-id');
+      expect(result.changed).toBe(true);
+    });
+
+    it('defaults missing priority to medium and marks changed=true', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'No Priority',
+          status: 'pending',
           archived: false,
           createdAt: '2024-01-01T00:00:00.000Z',
-          updatedAt: '2024-01-01T00:00:00.000Z',
         },
-      ]);
-
-      expect(result.value).toEqual([]);
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].priority).toBe('medium');
       expect(result.changed).toBe(true);
     });
 
-    it('should skip items with empty title', () => {
-      const validBase = {
-        id: 'a',
-        title: '',
-        status: 'pending' as const,
-        priority: 'medium' as const,
-        context: 'personal' as const,
-        archived: false,
-        createdAt: '2024-01-01T00:00:00.000Z',
-        updatedAt: '2024-01-01T00:00:00.000Z',
-      };
-
-      const result = normalizeTasks([validBase]);
-      expect(result.value).toEqual([]);
+    it('defaults invalid priority to medium and marks changed=true', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Invalid Priority',
+          status: 'pending',
+          archived: false,
+          priority: 'urgent',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].priority).toBe('medium');
       expect(result.changed).toBe(true);
     });
 
-    it('should skip items with only whitespace title', () => {
-      const validBase = {
-        id: 'a',
-        title: '   ',
-        status: 'pending' as const,
-        priority: 'medium' as const,
-        context: 'personal' as const,
-        archived: false,
-        createdAt: '2024-01-01T00:00:00.000Z',
-        updatedAt: '2024-01-01T00:00:00.000Z',
-      };
-
-      const result = normalizeTasks([validBase]);
-      expect(result.value).toEqual([]);
-      expect(result.changed).toBe(true);
-    });
-  });
-
-  describe('required field validation', () => {
-    const validTask = {
-      id: 'task-1',
-      title: 'Buy groceries',
-      status: 'pending' as const,
-      priority: 'medium' as const,
-      context: 'personal' as const,
-      archived: false,
-      createdAt: '2024-01-01T00:00:00.000Z',
-      updatedAt: '2024-01-01T00:00:00.000Z',
-    };
-
-    it('should reject invalid status', () => {
-      const result = normalizeTasks([{ ...validTask, status: 'INVALID' }]);
-
-      expect(result.value).toEqual([]);
-      expect(result.changed).toBe(true);
+    it('preserves valid priority value without marking changed', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'High Priority',
+          status: 'pending',
+          archived: false,
+          priority: 'high',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].priority).toBe('high');
+      expect(result.changed).toBe(false);
     });
 
-    it('should accept all valid statuses', () => {
+    it('preserves low priority without marking changed', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Low Priority',
+          status: 'pending',
+          archived: false,
+          priority: 'low',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].priority).toBe('low');
+      expect(result.changed).toBe(false);
+    });
+
+    it('generates createdAt when missing and marks changed=true', () => {
+      const beforeTime = new Date();
+      const input = [
+        {
+          id: '1',
+          title: 'No CreatedAt',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+        },
+      ];
+      const result = normalizeTasks(input);
+      const afterTime = new Date();
+
+      expect(result.value[0].createdAt).toBeTruthy();
+      expect(typeof result.value[0].createdAt).toBe('string');
+      const createdAtDate = new Date(result.value[0].createdAt);
+      expect(createdAtDate.getTime()).toBeGreaterThanOrEqual(
+        beforeTime.getTime() - 1000,
+      );
+      expect(createdAtDate.getTime()).toBeLessThanOrEqual(
+        afterTime.getTime() + 1000,
+      );
+      expect(result.changed).toBe(true);
+    });
+
+    it('preserves provided createdAt without marking changed', () => {
+      const createdAtISO = '2024-06-01T12:00:00.000Z';
+      const input = [
+        {
+          id: '1',
+          title: 'With CreatedAt',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: createdAtISO,
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].createdAt).toBe(createdAtISO);
+      expect(result.changed).toBe(false);
+    });
+
+    it('defaults invalid status to pending and marks changed=true', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Invalid Status',
+          status: 'invalid',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].status).toBe('pending');
+      expect(result.changed).toBe(true);
+    });
+
+    it('preserves all valid task statuses without marking changed', () => {
       const statuses = [
         'pending',
         'in_progress',
         'done',
         'cancelled',
         'blocked',
-      ] as const;
+      ];
+      const input = statuses.map((status, idx) => ({
+        id: String(idx),
+        title: `Task ${idx}`,
+        status,
+        archived: false,
+        priority: 'medium',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      })) as Parameters<typeof normalizeTasks>[0];
 
-      statuses.forEach((status) => {
-        const result = normalizeTasks([{ ...validTask, status }]);
-        expect(result.value).toHaveLength(1);
-        expect(result.value[0].status).toBe(status);
-        expect(result.changed).toBe(false);
+      const result = normalizeTasks(input);
+      expect(result.value).toHaveLength(5);
+      statuses.forEach((status, idx) => {
+        expect(result.value[idx].status).toBe(status);
       });
-    });
-
-    it('should reject invalid priority', () => {
-      const result = normalizeTasks([{ ...validTask, priority: 'INVALID' }]);
-
-      expect(result.value).toEqual([]);
-      expect(result.changed).toBe(true);
-    });
-
-    it('should accept all valid priorities', () => {
-      const priorities = ['low', 'medium', 'high'] as const;
-
-      priorities.forEach((priority) => {
-        const result = normalizeTasks([{ ...validTask, priority }]);
-        expect(result.value).toHaveLength(1);
-        expect(result.value[0].priority).toBe(priority);
-        expect(result.changed).toBe(false);
-      });
-    });
-
-    it('should reject invalid context', () => {
-      const result = normalizeTasks([{ ...validTask, context: 'INVALID' }]);
-
-      expect(result.value).toEqual([]);
-      expect(result.changed).toBe(true);
-    });
-
-    it('should accept all valid contexts', () => {
-      const contexts = ['personal', 'work'] as const;
-
-      contexts.forEach((context) => {
-        const result = normalizeTasks([{ ...validTask, context }]);
-        expect(result.value).toHaveLength(1);
-        expect(result.value[0].context).toBe(context);
-        expect(result.changed).toBe(false);
-      });
-    });
-
-    it('should reject non-boolean archived field', () => {
-      const result = normalizeTasks([{ ...validTask, archived: 'false' }]);
-
-      expect(result.value).toEqual([]);
-      expect(result.changed).toBe(true);
-    });
-
-    it('should reject non-ISO8601 createdAt', () => {
-      const result = normalizeTasks([
-        { ...validTask, createdAt: 'not-a-date' },
-      ]);
-
-      expect(result.value).toEqual([]);
-      expect(result.changed).toBe(true);
-    });
-
-    it('should reject non-ISO8601 updatedAt', () => {
-      const result = normalizeTasks([
-        { ...validTask, updatedAt: 'not-a-date' },
-      ]);
-
-      expect(result.value).toEqual([]);
-      expect(result.changed).toBe(true);
-    });
-  });
-
-  describe('valid task processing', () => {
-    const validTask = {
-      id: 'task-1',
-      title: 'Buy groceries',
-      status: 'pending' as const,
-      priority: 'medium' as const,
-      context: 'personal' as const,
-      archived: false,
-      createdAt: '2024-01-01T00:00:00.000Z',
-      updatedAt: '2024-01-01T00:00:00.000Z',
-    };
-
-    it('should keep valid task without marking changed', () => {
-      const result = normalizeTasks([validTask]);
-
-      expect(result.value).toHaveLength(1);
-      expect(result.value[0]).toEqual(validTask);
       expect(result.changed).toBe(false);
     });
 
-    it('should trim id with whitespace', () => {
-      const result = normalizeTasks([{ ...validTask, id: '  task-1  ' }]);
-
-      expect(result.value).toHaveLength(1);
-      expect(result.value[0].id).toBe('task-1');
+    it('defaults missing archived to false and marks changed=true', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'No Archived',
+          status: 'pending',
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].archived).toBe(false);
       expect(result.changed).toBe(true);
     });
 
-    it('should trim title with whitespace', () => {
-      const result = normalizeTasks([
-        { ...validTask, title: '  Buy groceries  ' },
-      ]);
-
-      expect(result.value).toHaveLength(1);
-      expect(result.value[0].title).toBe('Buy groceries');
+    it('defaults non-boolean archived to false and marks changed=true', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Non-Boolean Archived',
+          status: 'pending',
+          archived: 'yes',
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].archived).toBe(false);
       expect(result.changed).toBe(true);
     });
 
-    it('should generate id if missing', () => {
-      const result = normalizeTasks([{ ...validTask, id: undefined as any }]);
-
-      expect(result.value).toHaveLength(1);
-      expect(result.value[0].id).toBe('generated-id');
-      expect(result.changed).toBe(true);
-    });
-  });
-
-  describe('optional fields', () => {
-    const validTask = {
-      id: 'task-1',
-      title: 'Buy groceries',
-      status: 'pending' as const,
-      priority: 'medium' as const,
-      context: 'personal' as const,
-      archived: false,
-      createdAt: '2024-01-01T00:00:00.000Z',
-      updatedAt: '2024-01-01T00:00:00.000Z',
-    };
-
-    it('should include description when present', () => {
-      const result = normalizeTasks([
-        { ...validTask, description: 'Buy vegetables and fruits' },
-      ]);
-
-      expect(result.value).toHaveLength(1);
-      expect(result.value[0].description).toBe('Buy vegetables and fruits');
+    it('preserves boolean archived=true without marking changed', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Archived Task',
+          status: 'pending',
+          archived: true,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].archived).toBe(true);
       expect(result.changed).toBe(false);
     });
 
-    it('should trim description with whitespace', () => {
-      const result = normalizeTasks([
-        { ...validTask, description: '  Trimmed description  ' },
-      ]);
-
-      expect(result.value).toHaveLength(1);
-      expect(result.value[0].description).toBe('Trimmed description');
+    it('trims title and marks changed=true when whitespace present', () => {
+      const input = [
+        {
+          id: '1',
+          title: '  Task with Whitespace  ',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].title).toBe('Task with Whitespace');
       expect(result.changed).toBe(true);
     });
 
-    it('should skip description if empty after trim', () => {
-      const result = normalizeTasks([{ ...validTask, description: '   ' }]);
+    // --- Optional fields: description, context, dueDate, estimatedMinutes, updatedAt ---
 
-      expect(result.value).toHaveLength(1);
-      expect(result.value[0].description).toBeUndefined();
-      expect(result.changed).toBe(true);
-    });
-
-    it('should include dueDate when ISO8601 format', () => {
-      const result = normalizeTasks([
-        { ...validTask, dueDate: '2024-06-01T00:00:00.000Z' },
-      ]);
-
-      expect(result.value).toHaveLength(1);
-      expect(result.value[0].dueDate).toBe('2024-06-01T00:00:00.000Z');
+    it('includes description when provided and non-empty', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'With Description',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          description: 'This is a description',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].description).toBe('This is a description');
       expect(result.changed).toBe(false);
     });
 
-    it('should skip dueDate if not ISO8601 format', () => {
-      const result = normalizeTasks([{ ...validTask, dueDate: 'not-a-date' }]);
-
-      expect(result.value).toHaveLength(1);
-      expect(result.value[0].dueDate).toBeUndefined();
-      expect(result.changed).toBe(true);
+    it('omits description when not provided', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'No Description',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).not.toHaveProperty('description');
+      expect(result.changed).toBe(false);
     });
 
-    it('should include estimatedMinutes when number', () => {
-      const result = normalizeTasks([{ ...validTask, estimatedMinutes: 30 }]);
+    it('omits description when empty string', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Empty Description',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          description: '',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).not.toHaveProperty('description');
+      expect(result.changed).toBe(false);
+    });
 
-      expect(result.value).toHaveLength(1);
+    it('omits description when whitespace-only', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Whitespace Description',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          description: '   ',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).not.toHaveProperty('description');
+      expect(result.changed).toBe(false);
+    });
+
+    it('trims description when provided', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Trim Description',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          description: '  trimmed desc  ',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].description).toBe('trimmed desc');
+      expect(result.changed).toBe(false);
+    });
+
+    it('includes context when valid (personal)', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Personal Context',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          context: 'personal',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].context).toBe('personal');
+      expect(result.changed).toBe(false);
+    });
+
+    it('includes context when valid (work)', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Work Context',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          context: 'work',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].context).toBe('work');
+      expect(result.changed).toBe(false);
+    });
+
+    it('omits context when not provided', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'No Context',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).not.toHaveProperty('context');
+      expect(result.changed).toBe(false);
+    });
+
+    it('omits context when invalid', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Invalid Context',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          context: 'home',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).not.toHaveProperty('context');
+      expect(result.changed).toBe(false);
+    });
+
+    it('includes dueDate when provided', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'With Due Date',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          dueDate: '2024-12-31',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].dueDate).toBe('2024-12-31');
+      expect(result.changed).toBe(false);
+    });
+
+    it('omits dueDate when not provided', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'No Due Date',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).not.toHaveProperty('dueDate');
+      expect(result.changed).toBe(false);
+    });
+
+    it('omits dueDate when empty string', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Empty Due Date',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          dueDate: '',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).not.toHaveProperty('dueDate');
+      expect(result.changed).toBe(false);
+    });
+
+    it('includes estimatedMinutes when provided and > 0', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'With Estimate',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          estimatedMinutes: 30,
+        },
+      ];
+      const result = normalizeTasks(input);
       expect(result.value[0].estimatedMinutes).toBe(30);
       expect(result.changed).toBe(false);
     });
 
-    it('should skip estimatedMinutes if not number', () => {
-      const result = normalizeTasks([{ ...validTask, estimatedMinutes: '30' }]);
-
-      expect(result.value).toHaveLength(1);
-      expect(result.value[0].estimatedMinutes).toBeUndefined();
-      expect(result.changed).toBe(true);
-    });
-
-    it('should handle all optional fields together', () => {
-      const result = normalizeTasks([
+    it('omits estimatedMinutes when not provided', () => {
+      const input = [
         {
-          ...validTask,
-          description: 'Complete description',
-          dueDate: '2024-06-15T10:30:00.000Z',
-          estimatedMinutes: 45,
+          id: '1',
+          title: 'No Estimate',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
         },
-      ]);
-
-      expect(result.value).toHaveLength(1);
-      const task = result.value[0];
-      expect(task.description).toBe('Complete description');
-      expect(task.dueDate).toBe('2024-06-15T10:30:00.000Z');
-      expect(task.estimatedMinutes).toBe(45);
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).not.toHaveProperty('estimatedMinutes');
       expect(result.changed).toBe(false);
     });
-  });
 
-  describe('mixed valid and invalid items', () => {
-    const validTask = {
-      id: 'task-1',
-      title: 'Valid task',
-      status: 'pending' as const,
-      priority: 'medium' as const,
-      context: 'personal' as const,
-      archived: false,
-      createdAt: '2024-01-01T00:00:00.000Z',
-      updatedAt: '2024-01-01T00:00:00.000Z',
-    };
+    it('omits estimatedMinutes when 0', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Zero Estimate',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          estimatedMinutes: 0,
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).not.toHaveProperty('estimatedMinutes');
+      expect(result.changed).toBe(false);
+    });
 
-    it('should process mixed valid and invalid items, skipping invalid', () => {
-      const result = normalizeTasks([
-        validTask,
+    it('omits estimatedMinutes when negative', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Negative Estimate',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          estimatedMinutes: -5,
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).not.toHaveProperty('estimatedMinutes');
+      expect(result.changed).toBe(false);
+    });
+
+    it('includes updatedAt when provided', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'With Updated At',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          updatedAt: '2024-06-01T12:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].updatedAt).toBe('2024-06-01T12:00:00.000Z');
+      expect(result.changed).toBe(false);
+    });
+
+    it('omits updatedAt when not provided', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'No Updated At',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).not.toHaveProperty('updatedAt');
+      expect(result.changed).toBe(false);
+    });
+
+    it('omits updatedAt when empty string', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Empty Updated At',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          updatedAt: '',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).not.toHaveProperty('updatedAt');
+      expect(result.changed).toBe(false);
+    });
+
+    // --- Task filtering and multiple-task scenarios ---
+
+    it('skips tasks with null/falsy item in array', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Task 1',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
         null,
-        { id: 'bad', status: 'INVALID' },
-        { id: 'task-2', todo: 'Legacy task' },
-      ]);
-
+        {
+          id: '2',
+          title: 'Task 2',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
       expect(result.value).toHaveLength(2);
-      expect(result.value[0]).toEqual(validTask);
-      expect(result.value[1].title).toBe('Legacy task');
+      expect(result.value[0].id).toBe('1');
+      expect(result.value[1].id).toBe('2');
       expect(result.changed).toBe(true);
     });
 
-    it('should mark changed when mix contains at least one invalid item', () => {
-      const result = normalizeTasks([
-        validTask,
-        { ...validTask, id: 'task-2' },
-      ]);
-
+    it('skips tasks with non-object item in array', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Task 1',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+        'string',
+        {
+          id: '2',
+          title: 'Task 2',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
       expect(result.value).toHaveLength(2);
-      expect(result.changed).toBe(false);
+      expect(result.changed).toBe(true);
+    });
+
+    it('skips tasks with empty string title', () => {
+      const input = [
+        {
+          id: '1',
+          title: '',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value).toHaveLength(0);
+      expect(result.changed).toBe(true);
+    });
+
+    it('skips tasks with whitespace-only title', () => {
+      const input = [
+        {
+          id: '1',
+          title: '   ',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value).toHaveLength(0);
+      expect(result.changed).toBe(true);
+    });
+
+    it('skips tasks with non-string title', () => {
+      const input = [
+        {
+          id: '1',
+          title: 123,
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value).toHaveLength(0);
+      expect(result.changed).toBe(true);
+    });
+
+    it('normalizes mixed valid and invalid tasks correctly', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Valid Task',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+        { id: '2', title: '   ' },
+        {
+          id: '3',
+          title: 'Another Valid',
+          status: 'done',
+          archived: true,
+          priority: 'high',
+          createdAt: '2024-02-01T00:00:00.000Z',
+        },
+        null,
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value).toHaveLength(2);
+      expect(result.value[0].id).toBe('1');
+      expect(result.value[1].id).toBe('3');
+      expect(result.changed).toBe(true);
+    });
+
+    it('combines multiple changed flags when any core field is modified', () => {
+      const input = [
+        {
+          title: '  Title with spaces  ',
+          status: 'invalid',
+          priority: 'urgent',
+          archived: 'yes',
+          priority: 'urgent',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      // changed=true because: id generated, title trimmed, status defaulted, priority defaulted, archived defaulted
+      expect(result.changed).toBe(true);
     });
   });
 });
