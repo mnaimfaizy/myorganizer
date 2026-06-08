@@ -45,16 +45,16 @@ Before calling `replace_string_in_file` or `create_file`, check for these patter
 
 ## Step 3: Task Classification Matrix
 
-| File Pattern               | Operation         | Skill/Agent                                                                    | Delegated?                                  |
-| -------------------------- | ----------------- | ------------------------------------------------------------------------------ | ------------------------------------------- |
-| `*.spec.ts` (E2E)          | Create/Update/Fix | `.github/skills/playwright-e2e-workflow/SKILL.md` → E2EPlanner + TestScaffold  | ✅ **Always**                               |
-| `*.test.ts` (Jest)         | Create/Update/Fix | `.github/skills/unit-test-delegation-workflow/SKILL.md` → TestScaffold         | ✅ **Always**                               |
-| `*.stories.tsx`            | Create/Update     | `.github/skills/storybook-delegation-workflow/SKILL.md` → StorybookCurator     | ✅ **Always**                               |
-| Component (libs/web-ui)    | Create/Edit       | `.claude/commands/component-builder.md` → ComponentBuilder → ComponentReviewer | ✅ **Always**                               |
-| Component (libs/web/pages) | Create/Edit       | `.claude/commands/component-builder.md` → ComponentBuilder → ComponentReviewer | ✅ **Always**                               |
-| Config/Infrastructure      | Edit              | Direct edit OK                                                                 | ⚠️ Only if no test/component files involved |
-| Docs/README                | Create/Update     | Direct edit OK                                                                 | ⚠️ Can delegate to Docs agent if complex    |
-| Type definitions           | Create/Update     | Direct edit OK                                                                 | ⚠️ Unless tests need updating too           |
+| File Pattern               | Operation         | Skill/Agent                                                                                                    | Delegated?                                  |
+| -------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| `*.spec.ts` (E2E)          | Create/Update/Fix | `.github/skills/playwright-e2e-workflow/SKILL.md` → E2EPlanner + TestScaffold → TestReviewer (structural only) | ✅ **Always**                               |
+| `*.test.ts` (Jest)         | Create/Update/Fix | `.github/skills/unit-test-delegation-workflow/SKILL.md` → TestScaffold → TestReviewer → TestRunner             | ✅ **Always**                               |
+| `*.stories.tsx`            | Create/Update     | `.github/skills/storybook-delegation-workflow/SKILL.md` → StorybookCurator                                     | ✅ **Always**                               |
+| Component (libs/web-ui)    | Create/Edit       | `.claude/commands/component-builder.md` → ComponentBuilder → ComponentReviewer                                 | ✅ **Always**                               |
+| Component (libs/web/pages) | Create/Edit       | `.claude/commands/component-builder.md` → ComponentBuilder → ComponentReviewer                                 | ✅ **Always**                               |
+| Config/Infrastructure      | Edit              | Direct edit OK                                                                                                 | ⚠️ Only if no test/component files involved |
+| Docs/README                | Create/Update     | Direct edit OK                                                                                                 | ⚠️ Can delegate to Docs agent if complex    |
+| Type definitions           | Create/Update     | Direct edit OK                                                                                                 | ⚠️ Unless tests need updating too           |
 
 ---
 
@@ -69,8 +69,8 @@ Before calling `replace_string_in_file` or `create_file`, check for these patter
 
 2. **Jest Test Changes** (`.test.ts` files)
    - Skill: `.github/skills/unit-test-delegation-workflow/SKILL.md`
-   - Agent flow: TestScaffold (with behavior matrix)
-   - What this means: Any test creation, update, or fix uses TestScaffold
+   - Agent flow: TestScaffold → TestReviewer → TestRunner (max 3 retries before escalating to main agent)
+   - What this means: Any test creation, update, or fix uses the full three-stage pipeline
 
 3. **Storybook Stories** (`*.stories.tsx` files)
    - Skill: `.github/skills/storybook-delegation-workflow/SKILL.md`
@@ -119,15 +119,15 @@ Before calling `replace_string_in_file` or `create_file`, check for these patter
 
 ## Quick Reference: What to Do Next
 
-| Scenario                         | Action                                                                                  |
-| -------------------------------- | --------------------------------------------------------------------------------------- |
-| "Fix a bug in an E2E test"       | → Read `.github/skills/playwright-e2e-workflow/SKILL.md`, use E2EPlanner + TestScaffold |
-| "Update a Jest test"             | → Read `.github/skills/unit-test-delegation-workflow/SKILL.md`, use TestScaffold        |
-| "Create a new Storybook story"   | → Read `.github/skills/storybook-delegation-workflow/SKILL.md`, use StorybookCurator    |
-| "Edit a React component"         | → Build Structured Spec, use ComponentBuilder → ComponentReviewer                       |
-| "Explore codebase for a pattern" | → Use CodeExplorer (not 3+ manual reads)                                                |
-| "Fix a config file"              | → Direct edit OK (but check for tests that might break)                                 |
-| "Update documentation"           | → Direct edit OK (or use Docs agent for complex docs)                                   |
+| Scenario                         | Action                                                                                                       |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| "Fix a bug in an E2E test"       | → Read `.github/skills/playwright-e2e-workflow/SKILL.md`, use E2EPlanner + TestScaffold                      |
+| "Update a Jest test"             | → Read `.github/skills/unit-test-delegation-workflow/SKILL.md`, use TestScaffold → TestReviewer → TestRunner |
+| "Create a new Storybook story"   | → Read `.github/skills/storybook-delegation-workflow/SKILL.md`, use StorybookCurator                         |
+| "Edit a React component"         | → Build Structured Spec, use ComponentBuilder → ComponentReviewer                                            |
+| "Explore codebase for a pattern" | → Use CodeExplorer (not 3+ manual reads)                                                                     |
+| "Fix a config file"              | → Direct edit OK (but check for tests that might break)                                                      |
+| "Update documentation"           | → Direct edit OK (or use Docs agent for complex docs)                                                        |
 
 ---
 

@@ -19,7 +19,7 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright specs in `a
 - Always delegate Jest test implementation to the `TestScaffold` custom agent.
 - Send a complete requirement brief; never ask for generic "comprehensive tests".
 - The brief must include a behavior matrix based on the actual implementation, not desired behavior from a template.
-- The main agent is the quality reviewer. It must reject tests that assert unsupported behavior, duplicate generated content, rely on brittle mocks, or pass without proving the named behavior.
+- After `TestScaffold` reports, delegate the output to `TestReviewer` — it is the static quality gate (checklist verification, `tsc --noEmit`, `eslint`). After `TestReviewer` approves, delegate to `TestRunner` for execution. The main agent handles escalation only.
 - Happy-path-only tests are not acceptable when reachable side effects, error paths, boundaries, or security-sensitive misuse paths exist.
 
 ## Workflow
@@ -46,9 +46,18 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright specs in `a
    - mocking boundaries;
    - in-scope and out-of-scope scenarios;
    - acceptance checks and validation commands.
-8. After `TestScaffold` reports back, pause and review quality before accepting or requesting refinement.
-9. For multi-batch suites, verify and review each batch before delegating the next.
-10. Finalize only after focused tests, the full affected run, linting, and duplicate/syntax checks are clean or clearly reported as not run with a reason.
+8. After `TestScaffold` reports back, delegate the full output to `TestReviewer` with the test file path and project name.
+9. Handle `TestReviewer` verdict:
+   - **APPROVED** → proceed to step 10.
+   - **REJECTED** → send a targeted revision brief back to `TestScaffold` listing the specific failing checklist items (counts as one retry; max 3 retries total before escalating to the main agent with full history).
+10. Delegate the `TestReviewer`-approved output to `TestRunner`.
+11. Handle `TestRunner` verdict:
+    - **PASS** → accept; report to main agent.
+    - **FAIL(test_wrong)** → send diagnosis back to `TestScaffold` as a revision brief (retry counter applies; max 3 total).
+    - **FAIL(code_broken)** → escalate to main agent with full report; do not retry.
+    - **ESCALATE** → escalate to main agent with full context.
+    - **NEEDS_HUMAN_REVIEW** → relay PR comment and `needs-e2e-review` label action; accept result.
+12. For multi-batch suites, complete one full batch (TestScaffold → TestReviewer → TestRunner PASS) before delegating the next batch.
 
 ## Integration-Test Scope Guardrails
 
@@ -89,43 +98,36 @@ Example split for a hook with 22 justified tests:
 | 3       | Async persist + side effects    | 13-18 |
 | 4       | Security + reachable edge cases | 19-22 |
 
-## Review Checklist (Main Agent)
+## Pipeline Chain & Retry Rules
 
-### Behavior correctness
+```
+TestScaffold → TestReviewer → TestRunner → main agent
+     ↑              |
+     └──────────────┘
+      REJECTED: max 3 retries total
+     ↑
+     └──── FAIL(test_wrong) also counts toward the same 3-retry cap
+```
 
-- [ ] Did the sub-agent read the full implementation and produce a behavior matrix?
-- [ ] Does each test scenario exist in the actual code path?
-- [ ] Are retry, recovery, timeout, concurrency, or thrown-error expectations excluded unless implemented?
-- [ ] Do test names accurately describe the assertions?
-- [ ] Would the tests fail if the implementation were broken?
+**Retry cap**: Each `REJECTED` from TestReviewer or `FAIL(test_wrong)` from TestRunner that sends back to TestScaffold increments the retry counter. After **3 total retries**, escalate to the main agent with the full chain history.
 
-### Coverage quality
+**Escalate to main agent when**:
 
-- [ ] Are important behaviors covered with concrete assertions, not only `toBeTruthy` or `toBeDefined`?
-- [ ] Are reachable negative/error paths covered?
-- [ ] Are side effects and collaborator call contracts asserted?
-- [ ] Are boundary values and invalid inputs handled when branching exists?
-- [ ] Are security-sensitive paths tested when in scope?
-- [ ] Are mocks deterministic and minimal?
+- TestRunner returns `FAIL(code_broken)` — the implementation needs fixing, not the test
+- TestRunner returns `ESCALATE` — tests hung and one-at-a-time recovery failed
+- Retry counter reaches 3 — recurring issues need human judgment
 
-### Technical hygiene
+**Accept and pass to main agent when**:
 
-- [ ] All `jest.mock()` calls appear before imports, including `import type`?
-- [ ] Every configured mock module is explicitly mocked?
-- [ ] Mocks are reset in `beforeEach()`, not `beforeAll()`?
-- [ ] Async React state assertions use `waitFor()` where needed?
-- [ ] No brittle `mockReturnValueOnce()` queues for concurrent or async ordering-sensitive behavior?
-- [ ] No duplicate helper functions, duplicate `describe` blocks, or appended copy of the suite?
-- [ ] No unused type-cast mock variables?
-- [ ] Linting passes with `yarn nx lint <project>`?
-- [ ] The full affected test run passes, not only isolated tests?
-
-If any checklist item fails, send a targeted refinement brief back to `TestScaffold` with concrete gaps.
+- TestRunner returns `PASS`
+- TestRunner returns `NEEDS_HUMAN_REVIEW` — relay PR comment and `needs-e2e-review` label
 
 ## References
 
 - `./references/delegation-runbook.md`
 - `.github/agents/test-scaffold.agent.md`
+- `.github/agents/test-reviewer.agent.md`
+- `.github/agents/test-runner.agent.md`
 - `.github/skills/playwright-e2e-workflow/SKILL.md`
 - `docs/testing/README.md` - canonical Nx-aware testing guide
 - `AGENTS.md`

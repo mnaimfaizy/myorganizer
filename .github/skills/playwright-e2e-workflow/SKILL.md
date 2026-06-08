@@ -11,6 +11,18 @@ description: 'Use when adding or changing Playwright end-to-end tests, validatin
 - Validating critical route flows after frontend or auth changes
 - Debugging browser behavior that is hard to cover with unit tests alone
 
+## Autonomous Agent Execution Policy
+
+**In autonomous contexts (sandcastle, CI without a human in the loop), E2E tests must never be executed:**
+
+- DO NOT run `yarn nx e2e myorganizer-e2e`. Playwright requires browser, server, and human visual verification.
+- After TestScaffold completes, delegate to TestReviewer in structural-only mode (`tsc --noEmit` + `eslint` + selector/API rule check).
+- TestReviewer will return `E2E_NEEDS_HUMAN_REVIEW: true`.
+- Post a PR comment: _"E2E tests written but not executed — requires human verification before merge. Run: `yarn nx e2e myorganizer-e2e`"_
+- Apply label `needs-e2e-review` to the PR.
+
+**In human-in-the-loop sessions (interactive, human present), follow the full procedure below.**
+
 ## Critical Prerequisites (Before Planning)
 
 Verify these before starting E2E planning — if not met, recommend a PR to complete them first:

@@ -120,9 +120,9 @@ When consuming the generated client:
 - Test files should mirror the structure of source files
 - Mock external dependencies
 - Aim for meaningful test coverage, not just high percentages
-- When a task requires creating or changing Jest unit or integration tests, route through `.github/skills/unit-test-delegation-workflow/SKILL.md` and delegate implementation to `TestScaffold`.
+- When a task requires creating or changing Jest unit or integration tests, route through `.github/skills/unit-test-delegation-workflow/SKILL.md`. The pipeline is: `TestScaffold` (implementation) → `TestReviewer` (static gate: checklist verification, `tsc --noEmit`, `eslint`) → `TestRunner` (execution with hang detection and one-at-a-time recovery). Max 3 retries before escalating to the main agent.
 - Test delegation briefs must include a behavior matrix from reading the actual implementation, plus explicit in-scope and out-of-scope scenarios. Do not ask for vague "comprehensive tests".
-- Review TestScaffold output for behavior correctness, side effects, reachable failure paths, boundaries, security-sensitive behavior, deterministic mocks, duplicate generated content, and validation results. Use `docs/testing/README.md` for per-project tooling, integration scope, environments, and mock patterns.
+- Use `docs/testing/README.md` for per-project tooling, integration scope, environments, and mock patterns.
 - When a task requires creating or changing Storybook stories (`*.stories.tsx`), route through `.github/skills/storybook-delegation-workflow/SKILL.md` and delegate implementation to `StorybookCurator`; require requirement-readiness analysis first, then review for UX/a11y coverage, scenario completeness, and clarification gaps before finalizing.
 
 ### E2E Tests
@@ -132,7 +132,7 @@ When consuming the generated client:
 - Test critical user flows and happy paths
 - Build a flow matrix before creating or changing specs: route, preconditions, user steps, selectors, network/data expectations, side effects, and unsupported behavior to avoid.
 - Use `.github/skills/playwright-e2e-workflow/SKILL.md`; use `E2EPlanner` for broad flows and delegate implementation to `TestScaffold` only with a precise E2E brief.
-- Run E2E tests before merging significant features
+- **Autonomous agents must never execute E2E tests.** After `TestScaffold` completes, delegate to `TestReviewer` in structural-only mode. `TestReviewer` returns `E2E_NEEDS_HUMAN_REVIEW: true`. Apply label `needs-e2e-review` and post a PR comment. Human verifies and runs before merge.
 
 ### Test Naming
 

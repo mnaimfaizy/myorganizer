@@ -26,6 +26,7 @@ Before starting any E2E plan, verify these prerequisites — if not met, report 
 - DO NOT include retry, recovery, timeout, or concurrency assertions unless the UI flow actually implements them.
 - DO NOT assume standard HTML patterns — account for Radix UI, TailwindCSS visibility classes, and Next.js hydration.
 - ONLY return the plan.
+- DO NOT trigger E2E test execution in autonomous agent contexts. If running without a human present, include `E2E_NEEDS_HUMAN_REVIEW: true` in your output to signal the main agent to apply the `needs-e2e-review` PR label instead of executing.
 
 ## Approach
 

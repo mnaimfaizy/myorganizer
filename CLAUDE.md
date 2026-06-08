@@ -8,7 +8,7 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 - Storybook creation or updates should use `.claude/commands/storybook.md`.
 - Playwright E2E creation/updates should follow `.github/skills/playwright-e2e-workflow/SKILL.md`.
 - Commit-message drafting still belongs to the existing `Commit` sub-agent; commit execution belongs to the shared `ai:commit` runner.
-- Jest test implementation is delegated to the `TestScaffold` sub-agent (`.github/agents/test-scaffold.agent.md` and `.claude/agents/test-scaffold.md`). Always provide a behavior matrix from the actual implementation, including unsupported scenarios to avoid. Consult `docs/testing/README.md` for per-project tooling, integration scope, mock patterns, and validation checks.
+- Jest test implementation uses a three-stage pipeline: `TestScaffold` (writes tests) → `TestReviewer` (static gate: checklist, tsc, eslint) → `TestRunner` (execution with hang detection). Always provide a behavior matrix from the actual implementation, including unsupported scenarios to avoid. Consult `docs/testing/README.md` for per-project tooling, integration scope, mock patterns, and validation checks. Max 3 retries before escalating to the main agent.
 - Storybook implementation is delegated to the `StorybookCurator` sub-agent (`.claude/agents/storybook-curator.md`); require requirement-readiness analysis before edits and route clarification questions to the human-in-the-loop.
 - React component creation or editing (UI Primitives in `libs/web-ui/` or Feature Components in `libs/web/pages/<route>/`) must use the ComponentBuilder → ComponentReviewer workflow — see **UI Component Workflows** below.
 - After any `yarn add`, `yarn remove`, or package upgrade, run `/dep-sync` to keep `TECH_STACK.md` current — see **Dependency Sync** below.
@@ -17,15 +17,15 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 
 **ALWAYS delegate tasks for these file types.** Do NOT skip delegation even if the change seems small or obvious.
 
-| File Pattern                    | Skill                                                   | Agent Flow                           | Rule                                     |
-| ------------------------------- | ------------------------------------------------------- | ------------------------------------ | ---------------------------------------- |
-| `*.spec.ts` (Playwright E2E)    | `.github/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold            | ✅ **Always delegate**                   |
-| `*.test.ts` (Jest tests)        | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold                         | ✅ **Always delegate**                   |
-| `*.stories.tsx` (Storybook)     | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                     | ✅ **Always delegate**                   |
-| Components in `libs/web-ui/`    | Component workflow (below)                              | ComponentBuilder → ComponentReviewer | ✅ **Always delegate**                   |
-| Components in `libs/web/pages/` | Component workflow (below)                              | ComponentBuilder → ComponentReviewer | ✅ **Always delegate**                   |
-| New planned feature (PRD)       | `.github/skills/to-prd/SKILL.md`                        | to-prd                               | ✅ **Always use for planned features**   |
-| Slice breakdown from PRD        | `.github/skills/to-issues/SKILL.md`                     | to-issues                            | ✅ **Always use after PRD is published** |
+| File Pattern                    | Skill                                                   | Agent Flow                                                                             | Rule                                     |
+| ------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `*.spec.ts` (Playwright E2E)    | `.github/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold → TestReviewer (structural only; never execute autonomously) | ✅ **Always delegate**                   |
+| `*.test.ts` (Jest tests)        | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold → TestReviewer → TestRunner                                               | ✅ **Always delegate**                   |
+| `*.stories.tsx` (Storybook)     | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                                                                       | ✅ **Always delegate**                   |
+| Components in `libs/web-ui/`    | Component workflow (below)                              | ComponentBuilder → ComponentReviewer                                                   | ✅ **Always delegate**                   |
+| Components in `libs/web/pages/` | Component workflow (below)                              | ComponentBuilder → ComponentReviewer                                                   | ✅ **Always delegate**                   |
+| New planned feature (PRD)       | `.github/skills/to-prd/SKILL.md`                        | to-prd                                                                                 | ✅ **Always use for planned features**   |
+| Slice breakdown from PRD        | `.github/skills/to-issues/SKILL.md`                     | to-issues                                                                              | ✅ **Always use after PRD is published** |
 
 ### Key Anti-Pattern to Avoid
 
