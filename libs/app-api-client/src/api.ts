@@ -1531,6 +1531,7 @@ export const VaultBackupBlobType = {
     Groceries: 'groceries',
     MobileNumbers: 'mobileNumbers',
     Subscriptions: 'subscriptions',
+    Tasks: 'tasks',
     Todos: 'todos'
 } as const;
 
