@@ -9,7 +9,7 @@ import { MobileNumbersCountCard } from './widgets/MobileNumbersCountCard';
 import { QuickActionsCard } from './widgets/QuickActionsCard';
 import { RecentYouTubeCard } from './widgets/RecentYouTubeCard';
 import { SubscriptionsOverviewCard } from './widgets/SubscriptionsOverviewCard';
-import { TodosSummaryCard } from './widgets/TodosSummaryCard';
+import { TasksSummaryCard } from './widgets/TasksSummaryCard';
 import { WelcomeCard } from './widgets/WelcomeCard';
 
 export function DashboardHomeClient() {
@@ -24,7 +24,7 @@ export function DashboardHomeClient() {
       <QuickActionsCard />
 
       {/* Row 2: Vault stat cards */}
-      <TodosSummaryCard masterKeyBytes={masterKeyBytes} />
+      <TasksSummaryCard masterKeyBytes={masterKeyBytes} />
       <SubscriptionsOverviewCard masterKeyBytes={masterKeyBytes} />
       <AddressesCountCard masterKeyBytes={masterKeyBytes} />
       <MobileNumbersCountCard masterKeyBytes={masterKeyBytes} />

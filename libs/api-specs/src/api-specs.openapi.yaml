@@ -246,6 +246,7 @@ components:
         - groceries
         - mobileNumbers
         - subscriptions
+        - tasks
         - todos
     EncryptedBlobV1:
       properties:
