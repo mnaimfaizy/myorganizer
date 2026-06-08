@@ -9,7 +9,6 @@ export * from './lib/vault/replayTracker';
 export * from './lib/vault/serverVaultSync';
 export * from './lib/vault/subscriptionRecordNormalization';
 export * from './lib/vault/taskNormalization';
-export * from './lib/vault/todoNormalization';
 export * from './lib/vault/vault';
 export * from './lib/vault/vaultExportImport';
 export * from './lib/vault/vaultMigration';
