@@ -203,6 +203,34 @@ SUCCESS | BLOCKED
 - Linting: PASS | FAIL | NOT RUN (<reason>)
 - Duplicate/syntax check: PASS | FAIL
 
+## Review Checklist
+
+### Behavior Correctness
+
+- [x] Behavior matrix built from actual implementation
+- [x] Every test scenario exists in actual code path
+- [x] Retry/recovery/timeout/concurrency excluded unless implemented
+- [x] Test names accurately describe assertions
+- [x] Tests would fail if implementation were broken
+
+### Coverage Quality
+
+- [x] Concrete assertions (not just toBeTruthy/toBeDefined)
+- [x] Reachable error/negative paths covered
+- [x] Side effects and collaborator calls asserted
+- [x] Boundary values handled when branching exists
+- [x] Security-sensitive paths covered when in scope
+
+### Technical Hygiene
+
+- [x] All jest.mock() before imports (including import type)
+- [x] Every configured mock module explicitly mocked
+- [x] Mocks reset in beforeEach(), not beforeAll()
+- [x] Async React state uses waitFor()
+- [x] No brittle mockReturnValueOnce() queues
+- [x] No duplicate helpers/describe blocks/suite copies
+- [x] No unused type-cast mock variables
+
 ## Rationale
 
 <why these tests match the implementation and any requested scenarios intentionally excluded>

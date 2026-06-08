@@ -36,9 +36,18 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs i
    - Acceptance assertions and validation commands
    - Batch scope (if splitting a large suite)
 5. Invoke `TestScaffold` with the full brief.
-6. Review the output against **both** checklists below before accepting or requesting refinement.
-7. For multi-batch suites, verify each batch passes before delegating the next.
-8. Accept only when the full behavior matrix is meaningfully covered, duplicate/syntax checks are clean, tests pass, and linting is clean.
+6. Delegate `TestScaffold` output to `TestReviewer` (`.claude/agents/test-reviewer.md`).
+7. Handle `TestReviewer` verdict:
+   - **APPROVED** → proceed to step 8.
+   - **REJECTED** → send revision brief to `TestScaffold` listing the specific failing checklist items (counts as one retry; max 3 retries total before escalating to the main agent).
+8. Delegate `TestReviewer`-approved output to `TestRunner` (`.claude/agents/test-runner.md`).
+9. Handle `TestRunner` verdict:
+   - **PASS** → report result to main agent.
+   - **FAIL(test_wrong)** → send diagnosis to `TestScaffold` as revision brief (retry counter applies; max 3 total).
+   - **FAIL(code_broken)** → escalate to main agent with full TestRunner report; do not retry.
+   - **ESCALATE** → escalate to main agent with full context.
+   - **NEEDS_HUMAN_REVIEW** → relay PR comment and `needs-e2e-review` label to main agent; accept result.
+10. For multi-batch suites: complete one full batch through TestScaffold → TestReviewer → TestRunner PASS before delegating the next batch.
 
 ## Integration-Test Guardrails
 
@@ -47,37 +56,24 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs i
 - Prefer deterministic external-boundary mocks over mocking incidental implementation details.
 - Avoid `mockReturnValueOnce()` queues for async or concurrent ordering-sensitive behavior; prefer `mockImplementation()`.
 
-## Review Checklist
+## Retry & Escalation Rules
 
-### Coverage quality
+**Retry cap**: Each `REJECTED` from TestReviewer or `FAIL(test_wrong)` from TestRunner that routes back to TestScaffold counts as one retry. After **3 total retries**, escalate to the main agent with the full history — do not attempt a 4th retry.
 
-- [ ] Concrete assertions on all important behaviors (not just `toBeTruthy`)
-- [ ] Negative and error paths covered?
-- [ ] Side effects and call contracts asserted (`toHaveBeenCalledWith`)?
-- [ ] Boundary and invalid inputs tested?
-- [ ] Security-sensitive paths covered when applicable?
-- [ ] Unsupported retry/concurrency/timing/throw expectations excluded unless implemented?
-- [ ] Test names accurately describe the asserted behavior?
-- [ ] Tests would fail if the implementation were broken (no vacuous tests)?
-
-### Technical hygiene
-
-- [ ] All `jest.mock()` calls appear **before** any imports (including `import type`) — Nx lazy-loading rule
-- [ ] Every configured mock module is explicitly mocked?
-- [ ] Mocks reset in `beforeEach()`, not `beforeAll()`
-- [ ] Async state assertions use `waitFor()` (not bare `expect()` after `act()`)
-- [ ] No brittle mock queues for async/concurrent operations?
-- [ ] No duplicate helpers, duplicate `describe` blocks, or appended suite copies?
-- [ ] No unused type-cast mock variables
-- [ ] Linting passes: `yarn nx lint <project>`
-- [ ] All tests pass in the full suite run, not just in isolation
+**Escalate immediately** (no retry) when TestRunner returns `FAIL(code_broken)` or `ESCALATE`.
 
 ## References
 
 - `docs/testing/README.md` — canonical Nx-aware testing guide
-- `.claude/agents/test-scaffold.md` — TestScaffold sub-agent (Claude Code, model: haiku)
-- `.github/agents/test-scaffold.agent.md` — Copilot version (model: `GPT-5 mini (copilot)`)
-- `.gemini/agents/test-scaffold.md` — Gemini version (model: `gemini-2.5-flash`)
+- `.claude/agents/test-scaffold.md` — TestScaffold (Claude Code, model: haiku)
+- `.claude/agents/test-reviewer.md` — TestReviewer (Claude Code, model: haiku)
+- `.claude/agents/test-runner.md` — TestRunner (Claude Code, model: inherit)
+- `.github/agents/test-scaffold.agent.md` — Copilot TestScaffold
+- `.github/agents/test-reviewer.agent.md` — Copilot TestReviewer
+- `.github/agents/test-runner.agent.md` — Copilot TestRunner
+- `.gemini/agents/test-scaffold.md` — Gemini TestScaffold
+- `.gemini/agents/test-reviewer.md` — Gemini TestReviewer
+- `.gemini/agents/test-runner.md` — Gemini TestRunner
 - `.github/skills/unit-test-delegation-workflow/SKILL.md` — shared Jest test delegation skill
 - `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md` — delegation brief template
 - `.github/skills/playwright-e2e-workflow/SKILL.md` — Playwright E2E workflow
