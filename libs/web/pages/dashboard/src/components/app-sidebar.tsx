@@ -17,7 +17,6 @@ import {
   CreditCard,
   FileDown,
   Home,
-  ListChecks,
   MapPin,
   Phone,
   ShoppingCart,
@@ -31,11 +30,6 @@ const navMain = [
     title: 'Home',
     url: '/dashboard',
     icon: Home,
-  },
-  {
-    title: 'Todos',
-    url: '/dashboard/todo',
-    icon: ListChecks,
   },
   {
     title: 'Tasks',

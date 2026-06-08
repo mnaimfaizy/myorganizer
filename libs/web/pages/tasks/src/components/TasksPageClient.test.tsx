@@ -5,7 +5,6 @@ import {
   loadDecryptedData,
   migrateFromTodos,
   normalizeTasks,
-  normalizeTodos,
   saveEncryptedData,
 } from '@myorganizer/web-vault';
 import { useToast } from '@myorganizer/web-ui';
@@ -77,7 +76,6 @@ jest.mock('./task-item', () => ({
 const mockLoadDecryptedData = loadDecryptedData as jest.Mock;
 const mockSaveEncryptedData = saveEncryptedData as jest.Mock;
 const mockNormalizeTasks = normalizeTasks as jest.Mock;
-const mockNormalizeTodos = normalizeTodos as jest.Mock;
 const mockMigrateFromTodos = migrateFromTodos as jest.Mock;
 const mockUseToast = useToast as jest.Mock;
 const mockToast = jest.fn();
@@ -91,6 +89,8 @@ describe('TasksPageClient', () => {
         id: 't1',
         title: 'Task 1',
         priority: 'medium',
+        status: 'pending',
+        archived: false,
         createdAt: '2024-01-01T00:00:00.000Z',
       } as Task,
     ]);
@@ -99,18 +99,19 @@ describe('TasksPageClient', () => {
       value: Array.isArray(raw) ? raw : [],
       changed: false,
     }));
-    mockNormalizeTodos.mockImplementation((raw) => ({
-      value: Array.isArray(raw) ? raw : [],
-      changed: false,
-    }));
     mockMigrateFromTodos.mockImplementation((todos) =>
       Array.isArray(todos)
-        ? todos.map((t: { id: string; todo: string }) => ({
-            id: t.id,
-            title: t.todo,
-            priority: 'medium' as const,
-            createdAt: '2024-01-01T00:00:00.000Z',
-          }))
+        ? todos.map((t: unknown) => {
+            const item = t as { id: string; todo: string };
+            return {
+              id: item.id,
+              title: item.todo,
+              priority: 'medium' as const,
+              status: 'pending' as const,
+              archived: false,
+              createdAt: '2024-01-01T00:00:00.000Z',
+            };
+          })
         : [],
     );
   });
@@ -121,6 +122,8 @@ describe('TasksPageClient', () => {
         id: 't1',
         title: 'Task One',
         priority: 'medium',
+        status: 'pending',
+        archived: false,
         createdAt: '2024-01-01T00:00:00.000Z',
       },
     ];
@@ -152,13 +155,11 @@ describe('TasksPageClient', () => {
         id: 'todo1',
         title: 'Migrate me',
         priority: 'medium',
+        status: 'pending',
+        archived: false,
         createdAt: '2024-01-01T00:00:00.000Z',
       },
     ];
-    mockNormalizeTodos.mockReturnValue({
-      value: [{ id: 'todo1', todo: 'Migrate me' }],
-      changed: false,
-    });
     mockMigrateFromTodos.mockReturnValue(migratedTasks);
 
     render(<TasksPageClient />);
@@ -170,7 +171,9 @@ describe('TasksPageClient', () => {
     expect(mockLoadDecryptedData).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'todos', defaultValue: [] }),
     );
-    expect(mockMigrateFromTodos).toHaveBeenCalled();
+    expect(mockMigrateFromTodos).toHaveBeenCalledWith([
+      { id: 'todo1', todo: 'Migrate me' },
+    ]);
     expect(mockSaveEncryptedData).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'tasks', value: migratedTasks }),
     );
@@ -214,10 +217,24 @@ describe('TasksPageClient', () => {
 
   it('should re-save when normalization reports changed=true', async () => {
     const rawTasks = [
-      { id: 't1', title: 'Task One', priority: 'high', createdAt: '...' },
+      {
+        id: 't1',
+        title: 'Task One',
+        priority: 'high',
+        status: 'pending',
+        archived: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      },
     ];
     const normalizedTasks: Task[] = [
-      { id: 't1', title: 'Task One', priority: 'high', createdAt: '...' },
+      {
+        id: 't1',
+        title: 'Task One',
+        priority: 'high',
+        status: 'pending',
+        archived: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      },
     ];
     mockLoadDecryptedData.mockResolvedValue(rawTasks);
     mockNormalizeTasks.mockReturnValue({
@@ -240,18 +257,24 @@ describe('TasksPageClient', () => {
         id: 'low',
         title: 'Low Priority',
         priority: 'low',
+        status: 'pending',
+        archived: false,
         createdAt: '2024-01-01T00:00:00.000Z',
       },
       {
         id: 'high',
         title: 'High Priority',
         priority: 'high',
+        status: 'pending',
+        archived: false,
         createdAt: '2024-01-01T00:00:00.000Z',
       },
       {
         id: 'medium',
         title: 'Medium Priority',
         priority: 'medium',
+        status: 'pending',
+        archived: false,
         createdAt: '2024-01-01T00:00:00.000Z',
       },
     ];
@@ -303,6 +326,8 @@ describe('TasksPageClient', () => {
       id: 't1',
       title: 'Task to delete',
       priority: 'medium',
+      status: 'pending',
+      archived: false,
       createdAt: '2024-01-01T00:00:00.000Z',
     };
     mockLoadDecryptedData.mockResolvedValue([task]);
