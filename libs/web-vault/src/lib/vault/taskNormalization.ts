@@ -5,90 +5,153 @@ type NormalizeResult<T> = {
   changed: boolean;
 };
 
+const VALID_STATUSES = new Set<string>([
+  'pending',
+  'in_progress',
+  'done',
+  'cancelled',
+  'blocked',
+]);
+
+const VALID_PRIORITIES = new Set<string>(['low', 'medium', 'high']);
+
+const VALID_CONTEXTS = new Set<string>(['personal', 'work']);
+
 function toTrimmedString(value: unknown): string | null {
   return typeof value === 'string' ? value.trim() : null;
 }
 
-function isValidTaskStatus(value: unknown): value is Task['status'] {
-  return (
-    value === 'pending' ||
-    value === 'in_progress' ||
-    value === 'done' ||
-    value === 'cancelled' ||
-    value === 'blocked'
-  );
-}
-
-function isValidPriority(value: unknown): value is Task['priority'] {
-  return value === 'high' || value === 'medium' || value === 'low';
-}
-
-function isValidContext(value: unknown): value is Task['context'] {
-  return value === 'personal' || value === 'work';
+function isIso8601(value: unknown): value is string {
+  if (typeof value !== 'string') return false;
+  return !isNaN(new Date(value).getTime());
 }
 
 export function normalizeTasks(value: unknown): NormalizeResult<Task[]> {
-  if (!Array.isArray(value)) return { value: [], changed: value != null };
+  if (value == null) return { value: [], changed: false };
+  if (!Array.isArray(value)) return { value: [], changed: true };
 
   let changed = false;
   const normalized: Task[] = [];
+  const migrationTimestamp = new Date().toISOString();
 
   for (const item of value) {
-    if (!item || typeof item !== 'object') {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) {
       changed = true;
       continue;
     }
 
     const raw = item as Record<string, unknown>;
 
+    // Legacy { id, todo } migration
+    if (typeof raw['todo'] === 'string' && (raw['todo'] as string).trim()) {
+      const id = toTrimmedString(raw['id']) ?? randomId();
+      const task: Task = {
+        id,
+        title: (raw['todo'] as string).trim(),
+        status: 'pending',
+        priority: 'medium',
+        context: 'personal',
+        archived: false,
+        createdAt: migrationTimestamp,
+        updatedAt: migrationTimestamp,
+      };
+      normalized.push(task);
+      changed = true;
+      continue;
+    }
+
+    // Required field: id
+    const id = toTrimmedString(raw['id']) ?? randomId();
+
+    // Required field: title
     const title = toTrimmedString(raw['title']);
     if (!title) {
       changed = true;
       continue;
     }
 
-    const rawId = toTrimmedString(raw['id']);
-    const id = rawId ?? randomId();
-    const status = isValidTaskStatus(raw['status']) ? raw['status'] : 'pending';
-    const archived =
-      typeof raw['archived'] === 'boolean' ? raw['archived'] : false;
-    const priority = isValidPriority(raw['priority'])
-      ? raw['priority']
-      : 'medium';
-    const createdAt =
-      typeof raw['createdAt'] === 'string' && raw['createdAt']
-        ? raw['createdAt']
-        : new Date().toISOString();
+    // Required field: status
+    if (!VALID_STATUSES.has(raw['status'] as string)) {
+      changed = true;
+      continue;
+    }
+    const status = raw['status'] as Task['status'];
 
-    const next: Task = { id, title, status, archived, priority, createdAt };
+    // Required field: priority
+    if (!VALID_PRIORITIES.has(raw['priority'] as string)) {
+      changed = true;
+      continue;
+    }
+    const priority = raw['priority'] as Task['priority'];
 
-    if (typeof raw['description'] === 'string' && raw['description'].trim()) {
-      next.description = raw['description'].trim();
+    // Required field: context
+    if (!VALID_CONTEXTS.has(raw['context'] as string)) {
+      changed = true;
+      continue;
     }
-    if (isValidContext(raw['context'])) {
-      next.context = raw['context'];
+    const context = raw['context'] as Task['context'];
+
+    // Required field: archived
+    if (typeof raw['archived'] !== 'boolean') {
+      changed = true;
+      continue;
     }
-    if (typeof raw['dueDate'] === 'string' && raw['dueDate']) {
-      next.dueDate = raw['dueDate'];
+    const archived = raw['archived'];
+
+    // Required field: createdAt
+    if (!isIso8601(raw['createdAt'])) {
+      changed = true;
+      continue;
     }
-    if (
-      typeof raw['estimatedMinutes'] === 'number' &&
-      raw['estimatedMinutes'] > 0
-    ) {
-      next.estimatedMinutes = raw['estimatedMinutes'];
+    const createdAt = raw['createdAt'] as string;
+
+    // Required field: updatedAt
+    if (!isIso8601(raw['updatedAt'])) {
+      changed = true;
+      continue;
     }
-    if (typeof raw['updatedAt'] === 'string' && raw['updatedAt']) {
-      next.updatedAt = raw['updatedAt'];
+    const updatedAt = raw['updatedAt'] as string;
+
+    const task: Task = {
+      id,
+      title,
+      status,
+      priority,
+      context,
+      archived,
+      createdAt,
+      updatedAt,
+    };
+
+    // Optional field: description
+    if (raw['description'] !== undefined) {
+      const description = toTrimmedString(raw['description']);
+      if (description) task.description = description;
+      if (task.description !== raw['description']) changed = true;
     }
 
-    if (rawId !== id) changed = true;
-    if (raw['title'] !== title) changed = true;
-    if (raw['status'] !== status) changed = true;
-    if (raw['archived'] !== archived) changed = true;
-    if (raw['priority'] !== priority) changed = true;
-    if (!raw['createdAt']) changed = true;
+    // Optional field: dueDate
+    if (raw['dueDate'] !== undefined) {
+      if (isIso8601(raw['dueDate'])) {
+        task.dueDate = raw['dueDate'] as string;
+      } else {
+        changed = true;
+      }
+    }
 
-    normalized.push(next);
+    // Optional field: estimatedMinutes
+    if (raw['estimatedMinutes'] !== undefined) {
+      if (typeof raw['estimatedMinutes'] === 'number') {
+        task.estimatedMinutes = raw['estimatedMinutes'];
+      } else {
+        changed = true;
+      }
+    }
+
+    if (task.id !== raw['id']) changed = true;
+    if (task.title !== raw['title']) changed = true;
+
+    normalized.push(task);
   }
 
   return { value: normalized, changed };
