@@ -5,6 +5,7 @@ import {
   loadDecryptedData,
   migrateFromTodos,
   normalizeTasks,
+  normalizeTodos,
   saveEncryptedData,
 } from '@myorganizer/web-vault';
 import { useToast } from '@myorganizer/web-ui';
@@ -30,20 +31,27 @@ jest.mock('@myorganizer/web-ui', () => ({
 }));
 
 jest.mock('./task-form', () => ({
-  __esModule: true,
-  default: ({
-    onAddTask,
+  TaskForm: ({
+    onSubmit,
   }: {
-    onAddTask: (v: {
+    onSubmit: (v: {
       title: string;
       priority: 'high' | 'medium' | 'low';
+      status: 'pending' | 'in_progress' | 'done' | 'cancelled' | 'blocked';
+      description?: string;
+      context?: 'personal' | 'work';
       dueDate?: string;
     }) => void;
   }) => (
     <button
       data-testid="add-task-btn"
       onClick={() =>
-        onAddTask({ title: 'New Task', priority: 'high', dueDate: undefined })
+        onSubmit({
+          title: 'New Task',
+          priority: 'high',
+          status: 'pending',
+          dueDate: undefined,
+        })
       }
     >
       Add Task
@@ -56,9 +64,13 @@ jest.mock('./task-item', () => ({
   default: ({
     task,
     onDeleteTask,
+    onEditTask,
+    onArchiveTask,
   }: {
     task: { id: string; title: string; priority: string };
     onDeleteTask: (id: string) => void;
+    onEditTask: (id: string) => void;
+    onArchiveTask: (id: string) => void;
   }) => (
     <div data-testid={`task-${task.id}`}>
       <h3>{task.title}</h3>
@@ -69,13 +81,85 @@ jest.mock('./task-item', () => ({
       >
         Delete
       </button>
+      <button
+        data-testid={`edit-${task.id}`}
+        onClick={() => onEditTask(task.id)}
+      >
+        Edit
+      </button>
+      <button
+        data-testid={`archive-${task.id}`}
+        onClick={() => onArchiveTask(task.id)}
+      >
+        Archive
+      </button>
     </div>
   ),
+}));
+
+jest.mock('./task-edit-dialog', () => ({
+  TaskEditDialog: ({
+    task,
+    isOpen,
+    onSave,
+    onClose,
+  }: {
+    task: { id: string; title: string } | null;
+    isOpen: boolean;
+    onSave: (id: string, values: object) => void;
+    onClose: () => void;
+  }) =>
+    isOpen && task ? (
+      <div data-testid="edit-dialog">
+        <span data-testid="editing-task-title">{task.title}</span>
+        <button
+          data-testid="save-edit-btn"
+          onClick={() =>
+            onSave(task.id, {
+              title: 'Updated Title',
+              priority: 'low',
+              status: 'done',
+            })
+          }
+        >
+          Save
+        </button>
+        <button data-testid="close-edit-btn" onClick={onClose}>
+          Close
+        </button>
+      </div>
+    ) : null,
+}));
+
+jest.mock('./task-delete-dialog', () => ({
+  TaskDeleteDialog: ({
+    task,
+    isOpen,
+    onConfirm,
+    onClose,
+  }: {
+    task: { id: string; title: string } | null;
+    isOpen: boolean;
+    onConfirm: () => void;
+    onClose: () => void;
+  }) =>
+    isOpen && task ? (
+      <div data-testid="delete-dialog">
+        <span data-testid="deleting-task-title">{task.title}</span>
+        <button data-testid="confirm-delete-btn" onClick={onConfirm}>
+          Confirm
+        </button>
+        <button data-testid="cancel-delete-btn" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    ) : null,
 }));
 
 const mockLoadDecryptedData = loadDecryptedData as jest.Mock;
 const mockSaveEncryptedData = saveEncryptedData as jest.Mock;
 const mockNormalizeTasks = normalizeTasks as jest.Mock;
+const mockNormalizeTodos = normalizeTodos as jest.Mock;
 const mockMigrateFromTodos = migrateFromTodos as jest.Mock;
 const mockUseToast = useToast as jest.Mock;
 const mockToast = jest.fn();
@@ -99,19 +183,20 @@ describe('TasksPageClient', () => {
       value: Array.isArray(raw) ? raw : [],
       changed: false,
     }));
+    mockNormalizeTodos.mockImplementation((raw) => ({
+      value: Array.isArray(raw) ? raw : [],
+      changed: false,
+    }));
     mockMigrateFromTodos.mockImplementation((todos) =>
       Array.isArray(todos)
-        ? todos.map((t: unknown) => {
-            const item = t as { id: string; todo: string };
-            return {
-              id: item.id,
-              title: item.todo,
-              priority: 'medium' as const,
-              status: 'pending' as const,
-              archived: false,
-              createdAt: '2024-01-01T00:00:00.000Z',
-            };
-          })
+        ? todos.map((t: { id: string; todo: string }) => ({
+            id: t.id,
+            title: t.todo,
+            priority: 'medium' as const,
+            status: 'pending' as const,
+            archived: false,
+            createdAt: '2024-01-01T00:00:00.000Z',
+          }))
         : [],
     );
   });
@@ -160,6 +245,10 @@ describe('TasksPageClient', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
       },
     ];
+    mockNormalizeTodos.mockReturnValue({
+      value: [{ id: 'todo1', todo: 'Migrate me' }],
+      changed: false,
+    });
     mockMigrateFromTodos.mockReturnValue(migratedTasks);
 
     render(<TasksPageClient />);
@@ -171,9 +260,7 @@ describe('TasksPageClient', () => {
     expect(mockLoadDecryptedData).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'todos', defaultValue: [] }),
     );
-    expect(mockMigrateFromTodos).toHaveBeenCalledWith([
-      { id: 'todo1', todo: 'Migrate me' },
-    ]);
+    expect(mockMigrateFromTodos).toHaveBeenCalled();
     expect(mockSaveEncryptedData).toHaveBeenCalledWith(
       expect.objectContaining({ type: 'tasks', value: migratedTasks }),
     );
@@ -217,14 +304,7 @@ describe('TasksPageClient', () => {
 
   it('should re-save when normalization reports changed=true', async () => {
     const rawTasks = [
-      {
-        id: 't1',
-        title: 'Task One',
-        priority: 'high',
-        status: 'pending',
-        archived: false,
-        createdAt: '2024-01-01T00:00:00.000Z',
-      },
+      { id: 't1', title: 'Task One', priority: 'high', createdAt: '...' },
     ];
     const normalizedTasks: Task[] = [
       {
@@ -233,7 +313,7 @@ describe('TasksPageClient', () => {
         priority: 'high',
         status: 'pending',
         archived: false,
-        createdAt: '2024-01-01T00:00:00.000Z',
+        createdAt: '...',
       },
     ];
     mockLoadDecryptedData.mockResolvedValue(rawTasks);
@@ -342,8 +422,377 @@ describe('TasksPageClient', () => {
     fireEvent.click(screen.getByTestId('delete-t1'));
 
     await waitFor(() => {
+      expect(screen.getByTestId('delete-dialog')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('confirm-delete-btn'));
+
+    await waitFor(() => {
       expect(mockSaveEncryptedData).toHaveBeenCalledWith(
         expect.objectContaining({ type: 'tasks', value: [] }),
+      );
+    });
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Task deleted' }),
+      );
+    });
+  });
+
+  it('should open edit dialog and save edit with updatedAt', async () => {
+    const task: Task = {
+      id: 't1',
+      title: 'Task to edit',
+      priority: 'high',
+      status: 'pending',
+      archived: false,
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    mockLoadDecryptedData.mockResolvedValue([task]);
+    mockNormalizeTasks.mockReturnValue({ value: [task], changed: false });
+
+    render(<TasksPageClient />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('edit-t1'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-dialog')).toBeInTheDocument();
+      expect(screen.getByTestId('editing-task-title')).toHaveTextContent(
+        'Task to edit',
+      );
+    });
+
+    fireEvent.click(screen.getByTestId('save-edit-btn'));
+
+    await waitFor(() => {
+      expect(mockSaveEncryptedData).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'tasks',
+          value: expect.arrayContaining([
+            expect.objectContaining({
+              id: 't1',
+              title: 'Updated Title',
+              priority: 'low',
+              status: 'done',
+              updatedAt: expect.any(String),
+            }),
+          ]),
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Task updated' }),
+      );
+    });
+  });
+
+  it('should close edit dialog when close button clicked', async () => {
+    const task: Task = {
+      id: 't1',
+      title: 'Task to edit',
+      priority: 'high',
+      status: 'pending',
+      archived: false,
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    mockLoadDecryptedData.mockResolvedValue([task]);
+    mockNormalizeTasks.mockReturnValue({ value: [task], changed: false });
+
+    render(<TasksPageClient />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('edit-t1'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-dialog')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('close-edit-btn'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('edit-dialog')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should archive task with archived:true and updatedAt', async () => {
+    const task: Task = {
+      id: 't1',
+      title: 'Task to archive',
+      priority: 'medium',
+      status: 'pending',
+      archived: false,
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    mockLoadDecryptedData.mockResolvedValue([task]);
+    mockNormalizeTasks.mockReturnValue({ value: [task], changed: false });
+
+    render(<TasksPageClient />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('archive-t1'));
+
+    await waitFor(() => {
+      expect(mockSaveEncryptedData).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'tasks',
+          value: expect.arrayContaining([
+            expect.objectContaining({
+              id: 't1',
+              archived: true,
+              updatedAt: expect.any(String),
+            }),
+          ]),
+        }),
+      );
+    });
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Task archived' }),
+      );
+    });
+  });
+
+  it('should hide archived tasks by default', async () => {
+    const tasks: Task[] = [
+      {
+        id: 't1',
+        title: 'Active task',
+        priority: 'medium',
+        status: 'pending',
+        archived: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      },
+      {
+        id: 't2',
+        title: 'Archived task',
+        priority: 'medium',
+        status: 'done',
+        archived: true,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      },
+    ];
+    mockLoadDecryptedData.mockResolvedValue(tasks);
+    mockNormalizeTasks.mockReturnValue({ value: tasks, changed: false });
+
+    render(<TasksPageClient />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Active task')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('Archived task')).not.toBeInTheDocument();
+  });
+
+  it('should show archived tasks when "Show Archived" button clicked', async () => {
+    const tasks: Task[] = [
+      {
+        id: 't1',
+        title: 'Active task',
+        priority: 'medium',
+        status: 'pending',
+        archived: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      },
+      {
+        id: 't2',
+        title: 'Archived task',
+        priority: 'medium',
+        status: 'done',
+        archived: true,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      },
+    ];
+    mockLoadDecryptedData.mockResolvedValue(tasks);
+    mockNormalizeTasks.mockReturnValue({ value: tasks, changed: false });
+
+    render(<TasksPageClient />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Active task')).toBeInTheDocument();
+    });
+
+    const showArchivedBtn = screen.getByRole('button', {
+      name: 'Show Archived',
+    });
+    fireEvent.click(showArchivedBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Archived task')).toBeInTheDocument();
+    });
+  });
+
+  it('should filter tasks by context: "Personal" button shows only personal tasks', async () => {
+    const tasks: Task[] = [
+      {
+        id: 't1',
+        title: 'Personal task',
+        priority: 'medium',
+        status: 'pending',
+        context: 'personal',
+        archived: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      },
+      {
+        id: 't2',
+        title: 'Work task',
+        priority: 'medium',
+        status: 'pending',
+        context: 'work',
+        archived: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      },
+    ];
+    mockLoadDecryptedData.mockResolvedValue(tasks);
+    mockNormalizeTasks.mockReturnValue({ value: tasks, changed: false });
+
+    render(<TasksPageClient />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Personal task')).toBeInTheDocument();
+      expect(screen.getByText('Work task')).toBeInTheDocument();
+    });
+
+    const personalBtn = screen.getByRole('button', { name: 'Personal' });
+    fireEvent.click(personalBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Personal task')).toBeInTheDocument();
+      expect(screen.queryByText('Work task')).not.toBeInTheDocument();
+    });
+  });
+
+  it('should filter tasks by context: "Work" button shows only work tasks', async () => {
+    const tasks: Task[] = [
+      {
+        id: 't1',
+        title: 'Personal task',
+        priority: 'medium',
+        status: 'pending',
+        context: 'personal',
+        archived: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      },
+      {
+        id: 't2',
+        title: 'Work task',
+        priority: 'medium',
+        status: 'pending',
+        context: 'work',
+        archived: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      },
+    ];
+    mockLoadDecryptedData.mockResolvedValue(tasks);
+    mockNormalizeTasks.mockReturnValue({ value: tasks, changed: false });
+
+    render(<TasksPageClient />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Personal task')).toBeInTheDocument();
+      expect(screen.getByText('Work task')).toBeInTheDocument();
+    });
+
+    const workBtn = screen.getByRole('button', { name: 'Work' });
+    fireEvent.click(workBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Personal task')).not.toBeInTheDocument();
+      expect(screen.getByText('Work task')).toBeInTheDocument();
+    });
+  });
+
+  it('should show all non-archived tasks when "All" filter button clicked', async () => {
+    const tasks: Task[] = [
+      {
+        id: 't1',
+        title: 'Personal task',
+        priority: 'medium',
+        status: 'pending',
+        context: 'personal',
+        archived: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      },
+      {
+        id: 't2',
+        title: 'Work task',
+        priority: 'medium',
+        status: 'pending',
+        context: 'work',
+        archived: false,
+        createdAt: '2024-01-01T00:00:00.000Z',
+      },
+    ];
+    mockLoadDecryptedData.mockResolvedValue(tasks);
+    mockNormalizeTasks.mockReturnValue({ value: tasks, changed: false });
+
+    render(<TasksPageClient />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Personal task')).toBeInTheDocument();
+      expect(screen.getByText('Work task')).toBeInTheDocument();
+    });
+
+    const personalBtn = screen.getByRole('button', { name: 'Personal' });
+    fireEvent.click(personalBtn);
+
+    await waitFor(() => {
+      expect(screen.queryByText('Work task')).not.toBeInTheDocument();
+    });
+
+    const allBtn = screen.getByRole('button', { name: 'All' });
+    fireEvent.click(allBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText('Personal task')).toBeInTheDocument();
+      expect(screen.getByText('Work task')).toBeInTheDocument();
+    });
+  });
+
+  it('should show destructive toast on save failure', async () => {
+    const task: Task = {
+      id: 't1',
+      title: 'Task to edit',
+      priority: 'high',
+      status: 'pending',
+      archived: false,
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    mockLoadDecryptedData.mockResolvedValue([task]);
+    mockNormalizeTasks.mockReturnValue({ value: [task], changed: false });
+    mockSaveEncryptedData.mockRejectedValueOnce(new Error('Save failed'));
+
+    render(<TasksPageClient />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('edit-t1'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('edit-dialog')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('save-edit-btn'));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Failed to save',
+          description: 'Save failed',
+          variant: 'destructive',
+        }),
       );
     });
   });

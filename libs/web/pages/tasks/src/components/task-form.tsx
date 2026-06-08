@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,44 +19,83 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@myorganizer/web-ui';
-import { TaskPriority } from '@myorganizer/core';
+import { TaskPriority, TaskStatus, TaskContext } from '@myorganizer/core';
 
 interface TaskFormProps {
-  onAddTask: (values: {
+  onSubmit: (values: {
     title: string;
+    description?: string;
     priority: TaskPriority;
+    status: TaskStatus;
+    context?: TaskContext;
     dueDate?: string;
   }) => void;
+  initialValues?: {
+    title?: string;
+    description?: string;
+    priority?: TaskPriority;
+    status?: TaskStatus;
+    context?: TaskContext;
+    dueDate?: string;
+  };
+  submitLabel?: string;
 }
 
 const taskFormSchema = z.object({
   title: z.string().min(1, 'Title is required'),
+  description: z.string().optional(),
   priority: z.enum(['high', 'medium', 'low']),
+  status: z.enum(['pending', 'in_progress', 'done', 'cancelled', 'blocked']),
+  context: z.string().optional(),
   dueDate: z.string().optional(),
 });
 
 type TaskFormValues = z.infer<typeof taskFormSchema>;
 
-export default function TaskForm({ onAddTask }: TaskFormProps) {
+export function TaskForm({
+  onSubmit,
+  initialValues,
+  submitLabel = 'Add Task',
+}: TaskFormProps) {
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskFormSchema),
     defaultValues: {
-      title: '',
-      priority: 'medium',
-      dueDate: '',
+      title: initialValues?.title ?? '',
+      description: initialValues?.description ?? '',
+      priority: initialValues?.priority ?? 'medium',
+      status: initialValues?.status ?? 'pending',
+      context: initialValues?.context ?? '',
+      dueDate: initialValues?.dueDate ?? '',
     },
   });
 
+  useEffect(() => {
+    form.reset({
+      title: initialValues?.title ?? '',
+      description: initialValues?.description ?? '',
+      priority: initialValues?.priority ?? 'medium',
+      status: initialValues?.status ?? 'pending',
+      context: initialValues?.context ?? '',
+      dueDate: initialValues?.dueDate ?? '',
+    });
+  }, [initialValues, form]);
+
   const handleSubmit = useCallback(
     (values: TaskFormValues) => {
-      onAddTask({
+      const payload = {
         title: values.title,
+        description: values.description || undefined,
         priority: values.priority,
+        status: values.status as TaskStatus,
+        context: (values.context || undefined) as TaskContext | undefined,
         dueDate: values.dueDate || undefined,
-      });
-      form.reset();
+      };
+      onSubmit(payload);
+      if (!initialValues) {
+        form.reset();
+      }
     },
-    [onAddTask, form],
+    [onSubmit, form, initialValues],
   );
 
   return (
@@ -70,6 +109,20 @@ export default function TaskForm({ onAddTask }: TaskFormProps) {
               <FormLabel>Title</FormLabel>
               <FormControl>
                 <Input placeholder="Enter task title" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter task description" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -101,6 +154,54 @@ export default function TaskForm({ onAddTask }: TaskFormProps) {
 
         <FormField
           control={form.control}
+          name="status"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Status</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="done">Done</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                  <SelectItem value="blocked">Blocked</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="context"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Context</FormLabel>
+              <Select value={field.value} onValueChange={field.onChange}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="personal">Personal</SelectItem>
+                  <SelectItem value="work">Work</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
           name="dueDate"
           render={({ field }) => (
             <FormItem>
@@ -113,7 +214,7 @@ export default function TaskForm({ onAddTask }: TaskFormProps) {
           )}
         />
 
-        <Button type="submit">Add Task</Button>
+        <Button type="submit">{submitLabel}</Button>
       </form>
     </Form>
   );
