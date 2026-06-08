@@ -1,35 +1,22 @@
-import {
-  randomId,
-  type Task,
-  type TaskPriority,
-  type Todo,
-} from '@myorganizer/core';
+import { randomId, type Task } from '@myorganizer/core';
 
 type NormalizeResult<T> = {
   value: T;
   changed: boolean;
 };
 
-const VALID_PRIORITIES: TaskPriority[] = ['high', 'medium', 'low'];
-
 function toTrimmedString(value: unknown): string | null {
   return typeof value === 'string' ? value.trim() : null;
 }
 
-function toValidPriority(value: unknown): TaskPriority {
-  if (
-    typeof value === 'string' &&
-    (VALID_PRIORITIES as string[]).includes(value)
-  ) {
-    return value as TaskPriority;
-  }
-  return 'medium';
-}
-
-function toValidDate(value: unknown): string | undefined {
-  if (typeof value !== 'string' || !value.trim()) return undefined;
-  const d = new Date(value);
-  return isNaN(d.getTime()) ? undefined : value.trim();
+function isValidTaskStatus(value: unknown): value is Task['status'] {
+  return (
+    value === 'pending' ||
+    value === 'in_progress' ||
+    value === 'done' ||
+    value === 'cancelled' ||
+    value === 'blocked'
+  );
 }
 
 export function normalizeTasks(value: unknown): NormalizeResult<Task[]> {
@@ -44,37 +31,27 @@ export function normalizeTasks(value: unknown): NormalizeResult<Task[]> {
       continue;
     }
 
-    const raw = item as Record<string, unknown>;
-    const title = toTrimmedString(raw['title']);
+    const raw = item as any;
+
+    const title = toTrimmedString(raw.title);
     if (!title) {
       changed = true;
       continue;
     }
 
-    const id = toTrimmedString(raw['id']) ?? randomId();
-    const priority = toValidPriority(raw['priority']);
-    const dueDate = toValidDate(raw['dueDate']);
-    const createdAt = toValidDate(raw['createdAt']) ?? new Date().toISOString();
+    const id = toTrimmedString(raw.id) ?? randomId();
+    const status = isValidTaskStatus(raw.status) ? raw.status : 'pending';
+    const archived = typeof raw.archived === 'boolean' ? raw.archived : false;
 
-    const next: Task = { id, title, priority, createdAt };
-    if (dueDate !== undefined) next.dueDate = dueDate;
+    const next: Task = { id, title, status, archived };
 
-    if (id !== raw['id']) changed = true;
-    if (title !== raw['title']) changed = true;
-    if (priority !== raw['priority']) changed = true;
+    if (next.id !== raw.id) changed = true;
+    if (next.title !== raw.title) changed = true;
+    if (next.status !== raw.status) changed = true;
+    if (next.archived !== raw.archived) changed = true;
 
     normalized.push(next);
   }
 
   return { value: normalized, changed };
-}
-
-export function migrateFromTodos(todos: Todo[]): Task[] {
-  const now = new Date().toISOString();
-  return todos.map((todo) => ({
-    id: todo.id,
-    title: todo.todo,
-    priority: 'medium' as TaskPriority,
-    createdAt: now,
-  }));
 }
