@@ -12,6 +12,7 @@ import {
   useSidebar,
 } from '@myorganizer/web-ui';
 import {
+  ClipboardList,
   CloudUpload,
   CreditCard,
   FileDown,
@@ -35,6 +36,11 @@ const navMain = [
     title: 'Todos',
     url: '/dashboard/todo',
     icon: ListChecks,
+  },
+  {
+    title: 'Tasks',
+    url: '/dashboard/tasks',
+    icon: ClipboardList,
   },
   {
     title: 'Groceries',
