@@ -215,6 +215,22 @@ function TasksInner(props: { masterKeyBytes: Uint8Array }) {
     [tasks, persist, toast],
   );
 
+  const handleUnarchiveTask = useCallback(
+    async (id: string) => {
+      const next = tasks.map((t) =>
+        t.id === id
+          ? { ...t, archived: false, updatedAt: new Date().toISOString() }
+          : t,
+      );
+      await persist(next);
+      toast({
+        title: 'Task restored',
+        description: 'Task moved back to active.',
+      });
+    },
+    [tasks, persist, toast],
+  );
+
   const displayedTasks = tasks.filter((t) => {
     if (!showArchived && t.archived) return false;
     if (contextFilter !== 'all' && t.context !== contextFilter) return false;
@@ -269,6 +285,7 @@ function TasksInner(props: { masterKeyBytes: Uint8Array }) {
               onDeleteTask={handleRequestDelete}
               onEditTask={handleRequestEdit}
               onArchiveTask={handleArchiveTask}
+              onUnarchiveTask={handleUnarchiveTask}
             />
           ))}
         </div>

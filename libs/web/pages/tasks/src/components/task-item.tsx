@@ -1,7 +1,12 @@
 'use client';
 
 import { Task, TaskStatus } from '@myorganizer/core';
-import { ArchiveIcon, PencilIcon, TrashIcon } from 'lucide-react';
+import {
+  ArchiveIcon,
+  ArchiveRestoreIcon,
+  PencilIcon,
+  TrashIcon,
+} from 'lucide-react';
 import { useCallback } from 'react';
 
 interface TaskItemProps {
@@ -9,6 +14,7 @@ interface TaskItemProps {
   onDeleteTask: (id: string) => void;
   onEditTask: (id: string) => void;
   onArchiveTask: (id: string) => void;
+  onUnarchiveTask: (id: string) => void;
 }
 
 const priorityStyles: Record<Task['priority'], string> = {
@@ -35,6 +41,7 @@ const TaskItem = ({
   onDeleteTask,
   onEditTask,
   onArchiveTask,
+  onUnarchiveTask,
 }: TaskItemProps) => {
   const handleEditTask = useCallback(() => {
     onEditTask(task.id);
@@ -43,6 +50,10 @@ const TaskItem = ({
   const handleArchiveTask = useCallback(() => {
     onArchiveTask(task.id);
   }, [task.id, onArchiveTask]);
+
+  const handleUnarchiveTask = useCallback(() => {
+    onUnarchiveTask(task.id);
+  }, [task.id, onUnarchiveTask]);
 
   const handleDeleteTask = useCallback(() => {
     onDeleteTask(task.id);
@@ -94,7 +105,15 @@ const TaskItem = ({
         >
           <PencilIcon />
         </button>
-        {!task.archived && (
+        {task.archived ? (
+          <button
+            aria-label="Restore from archive"
+            className="cursor-pointer"
+            onClick={handleUnarchiveTask}
+          >
+            <ArchiveRestoreIcon />
+          </button>
+        ) : (
           <button
             aria-label="Archive task"
             className="cursor-pointer"
