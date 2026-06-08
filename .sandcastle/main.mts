@@ -1,6 +1,8 @@
 import { run, claudeCode } from '@ai-hero/sandcastle';
 import { docker } from '@ai-hero/sandcastle/sandboxes/docker';
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 const REPO = 'mnaimfaizy/myorganizer';
 
@@ -97,10 +99,18 @@ if (!remoteBranchExists) {
   if (create.status !== 0 && !create.stdout.includes('already_exists')) {
     fail(`Failed to create ${featureBranch}: ${create.stderr.trim()}`);
   }
-  console.log(`Branch ${featureBranch} created.\n`);
-} else {
-  console.log(`Branch ${featureBranch} already exists.\n`);
+  console.log(`Branch ${featureBranch} created.`);
 }
+
+// Fetch the feature branch from origin.
+gitCmd(['fetch', 'origin', featureBranch]);
+console.log(`Fetched ${featureBranch} from origin.`);
+
+// Pre-create all slice branches locally from origin/<featureBranch> before
+// dispatching. This lets sandcastle's first `git worktree add <path> <slice>`
+// succeed directly — avoiding the fallback that tries to checkout featureBranch
+// itself, which would only work for one worktree at a time (race condition).
+// Branch creation is best-effort: ignore if already exists.
 
 // ─── Fetch AFK slice issues for this PRD ─────────────────────────────────────
 
@@ -129,6 +139,59 @@ if (slices.length === 0) {
       `Run /to-issues ${prdNumber} to create them first.`,
   );
 }
+
+// Pre-create slice branches AND worktrees so sandcastle reuses them on first try,
+// then mirror node_modules from the main repo into each worktree so Docker agents
+// skip the slow yarn install (yarn --immutable exits in <5s when node_modules is
+// already present and .yarn-state.yml matches the lockfile).
+const worktreesDir = join(process.cwd(), '.sandcastle', 'worktrees');
+const mainNodeModules = join(process.cwd(), 'node_modules');
+
+for (const issue of slices) {
+  const sb = sliceBranchFor(issue);
+
+  // 1. Ensure local branch exists.
+  const branchExists = spawnSync('git', ['rev-parse', '--verify', sb], {
+    encoding: 'utf8', windowsHide: true,
+  }).status === 0;
+  if (!branchExists) {
+    spawnSync('git', ['branch', sb, `origin/${featureBranch}`], {
+      encoding: 'utf8', windowsHide: true,
+    });
+    console.log(`  Pre-created branch ${sb}`);
+  }
+
+  // 2. Ensure the worktree directory exists so sandcastle reuses it.
+  const worktreeName = sb.replace(/\//g, '-');
+  const worktreePath = join(worktreesDir, worktreeName);
+  if (!existsSync(worktreePath)) {
+    const wt = spawnSync('git', ['worktree', 'add', worktreePath, sb], {
+      encoding: 'utf8', windowsHide: true,
+    });
+    if (wt.status !== 0) {
+      console.error(`  Warning: could not create worktree for ${sb}: ${wt.stderr.trim()}`);
+    } else {
+      console.log(`  Pre-created worktree  ${worktreeName}`);
+    }
+  }
+
+  // 3. Mirror node_modules if absent. robocopy exit 1 = "files copied" (not an error).
+  const destNodeModules = join(worktreePath, 'node_modules');
+  if (existsSync(worktreePath) && !existsSync(destNodeModules) && existsSync(mainNodeModules)) {
+    console.log(`  Mirroring node_modules → ${worktreeName} (one-time, ~30s)...`);
+    const rc = spawnSync(
+      'robocopy',
+      [mainNodeModules, destNodeModules, '/E', '/MT:16', '/NFL', '/NDL', '/NJH', '/NJS', '/NC', '/NS'],
+      { encoding: 'utf8', windowsHide: true },
+    );
+    if (rc.status !== null && rc.status > 1) {
+      console.error(`  robocopy warning (exit ${rc.status}) — agents will fall back to yarn install`);
+    } else {
+      console.log(`  node_modules ready.`);
+    }
+  }
+}
+console.log();
 
 console.log(`Dispatching ${slices.length} slice(s) in parallel...\n`);
 
@@ -161,7 +224,7 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     ``,
     `## Instructions`,
     ``,
-    `- Run \`corepack yarn install --immutable\` before making any changes.`,
+    `- node_modules is pre-mirrored into this worktree. Run \`corepack yarn install --immutable\` once to validate it (should complete in <10s). If it hangs for more than 30s, kill it and proceed — node_modules is already usable.`,
     `- Read CLAUDE.md, CONTEXT.md, and TECH_STACK.md before making any changes.`,
     `- Implement this vertical slice end-to-end (schema → API → UI → tests where applicable).`,
     `- Your working branch is \`${sliceBranch}\` (based on \`${featureBranch}\`). Do not switch branches.`,
@@ -206,7 +269,7 @@ const results = await Promise.allSettled<SliceResult>(
         branch: sliceBranch,
         baseBranch: featureBranch,
       },
-      maxIterations: 10,
+      maxIterations: 25,
       prompt: buildPrompt(issue, sliceBranch),
     });
 

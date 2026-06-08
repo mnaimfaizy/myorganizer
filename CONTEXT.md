@@ -12,9 +12,9 @@ _Avoid_: Encrypted storage, secure store, lockbox
 The encrypted blob format produced by the Vault for all vault-backed data types.
 _Avoid_: Encrypted data, encrypted blob
 
-**Todo**:
-A discrete task or reminder the user tracks.
-_Avoid_: Task, item, reminder
+**Task**:
+A structured work item the user creates to track personal or professional goals. Can have a status, priority, context, due date, effort estimate, and can be archived.
+_Avoid_: Todo, to-do, item, reminder
 
 **Subscription**:
 A recurring financial commitment the user monitors.
