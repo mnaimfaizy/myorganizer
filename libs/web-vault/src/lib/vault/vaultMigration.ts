@@ -149,6 +149,9 @@ export async function migrateVaultPhase1ToPhase2(options: {
         [VaultBlobType.Subscriptions]:
           (await getServerVaultBlob(options.api, VaultBlobType.Subscriptions))
             ?.blob ?? null,
+        [VaultBlobType.Tasks]:
+          (await getServerVaultBlob(options.api, VaultBlobType.Tasks))?.blob ??
+          null,
         [VaultBlobType.Todos]:
           (await getServerVaultBlob(options.api, VaultBlobType.Todos))?.blob ??
           null,
@@ -204,6 +207,14 @@ export async function migrateVaultPhase1ToPhase2(options: {
       });
     }
 
+    if (localVault.data.tasks) {
+      await putServerVaultBlobEtagAware({
+        api: options.api,
+        type: VaultBlobType.Tasks,
+        blob: toEncryptedBlobV1(localVault.data.tasks),
+      });
+    }
+
     if (localVault.data.todos) {
       await putServerVaultBlobEtagAware({
         api: options.api,
@@ -225,6 +236,9 @@ export async function migrateVaultPhase1ToPhase2(options: {
     [VaultBlobType.Subscriptions]:
       (await getServerVaultBlob(options.api, VaultBlobType.Subscriptions))
         ?.blob ?? null,
+    [VaultBlobType.Tasks]:
+      (await getServerVaultBlob(options.api, VaultBlobType.Tasks))?.blob ??
+      null,
     [VaultBlobType.Todos]:
       (await getServerVaultBlob(options.api, VaultBlobType.Todos))?.blob ??
       null,
@@ -241,6 +255,9 @@ export async function migrateVaultPhase1ToPhase2(options: {
       ),
       [VaultBlobType.Subscriptions]: normalizeLocalBlobAsServerShape(
         localVault.data.subscriptions,
+      ),
+      [VaultBlobType.Tasks]: normalizeLocalBlobAsServerShape(
+        localVault.data.tasks,
       ),
       [VaultBlobType.Todos]: normalizeLocalBlobAsServerShape(
         localVault.data.todos,
@@ -259,6 +276,9 @@ export async function migrateVaultPhase1ToPhase2(options: {
       ),
       [VaultBlobType.Subscriptions]: normalizeServerBlob(
         remoteBlobs[VaultBlobType.Subscriptions] ?? null,
+      ),
+      [VaultBlobType.Tasks]: normalizeServerBlob(
+        remoteBlobs[VaultBlobType.Tasks] ?? null,
       ),
       [VaultBlobType.Todos]: normalizeServerBlob(
         remoteBlobs[VaultBlobType.Todos] ?? null,
@@ -337,6 +357,21 @@ export async function migrateVaultPhase1ToPhase2(options: {
       type: VaultBlobType.Subscriptions,
       blob: toEncryptedBlobV1(localVault.data.subscriptions),
       ifMatch: remoteSubscriptions?.etag,
+      onConflict: () => 'keep-local',
+    });
+  }
+
+  const remoteTasks = await getServerVaultBlob(
+    options.api,
+    VaultBlobType.Tasks,
+  );
+
+  if (localVault.data.tasks) {
+    await putServerVaultBlobEtagAware({
+      api: options.api,
+      type: VaultBlobType.Tasks,
+      blob: toEncryptedBlobV1(localVault.data.tasks),
+      ifMatch: remoteTasks?.etag,
       onConflict: () => 'keep-local',
     });
   }

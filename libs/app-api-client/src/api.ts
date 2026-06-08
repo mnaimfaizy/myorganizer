@@ -848,13 +848,19 @@ export interface PartialRecordVaultBlobTypeEncryptedBlobV1 {
      */
     'mobileNumbers'?: EncryptedBlobV1;
     /**
-     * 
+     *
      * @type {EncryptedBlobV1}
      * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
      */
     'subscriptions'?: EncryptedBlobV1;
     /**
-     * 
+     *
+     * @type {EncryptedBlobV1}
+     * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
+     */
+    'tasks'?: EncryptedBlobV1;
+    /**
+     *
      * @type {EncryptedBlobV1}
      * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
      */
@@ -1672,6 +1678,7 @@ export const VaultBlobType = {
     Groceries: 'groceries',
     MobileNumbers: 'mobileNumbers',
     Subscriptions: 'subscriptions',
+    Tasks: 'tasks',
     Todos: 'todos'
 } as const;
 

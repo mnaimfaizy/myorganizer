@@ -118,6 +118,11 @@ export function serverMetaToLocalVault(options: {
     next.data.groceries = serverEncryptedBlobToLocal(groceries);
   }
 
+  const tasks = blobs[VaultBlobType.Tasks];
+  if (tasks) {
+    next.data.tasks = serverEncryptedBlobToLocal(tasks);
+  }
+
   const todos = blobs[VaultBlobType.Todos];
   if (todos) {
     next.data.todos = serverEncryptedBlobToLocal(todos);
