@@ -518,6 +518,7 @@ export async function importVault(
       | 'groceries'
       | 'mobileNumbers'
       | 'subscriptions'
+      | 'tasks'
       | 'todos'
     )[],
   ): Promise<void> => {
