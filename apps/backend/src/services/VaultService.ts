@@ -5,6 +5,7 @@ export type VaultBlobType =
   | 'groceries'
   | 'mobileNumbers'
   | 'subscriptions'
+  | 'tasks'
   | 'todos';
 
 export interface VaultMetaV1 {
@@ -345,6 +346,7 @@ export class VaultService {
         blobRow.type === 'groceries' ||
         blobRow.type === 'mobileNumbers' ||
         blobRow.type === 'subscriptions' ||
+        blobRow.type === 'tasks' ||
         blobRow.type === 'todos'
       ) {
         blobMap[blobRow.type] = blobRow.blob as EncryptedBlobV1;
@@ -468,6 +470,7 @@ export class VaultService {
           type !== 'addresses' &&
           type !== 'mobileNumbers' &&
           type !== 'subscriptions' &&
+          type !== 'tasks' &&
           type !== 'todos'
         ) {
           continue;
