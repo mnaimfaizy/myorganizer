@@ -5,7 +5,6 @@ import {
   loadDecryptedData,
   migrateFromTodos,
   normalizeTasks,
-  normalizeTodos,
   saveEncryptedData,
 } from '@myorganizer/web-vault';
 import { useToast } from '@myorganizer/web-ui';
@@ -66,11 +65,13 @@ jest.mock('./task-item', () => ({
     onDeleteTask,
     onEditTask,
     onArchiveTask,
+    _onUnarchiveTask,
   }: {
     task: { id: string; title: string; priority: string };
     onDeleteTask: (id: string) => void;
     onEditTask: (id: string) => void;
     onArchiveTask: (id: string) => void;
+    _onUnarchiveTask: (id: string) => void;
   }) => (
     <div data-testid={`task-${task.id}`}>
       <h3>{task.title}</h3>
@@ -159,7 +160,6 @@ jest.mock('./task-delete-dialog', () => ({
 const mockLoadDecryptedData = loadDecryptedData as jest.Mock;
 const mockSaveEncryptedData = saveEncryptedData as jest.Mock;
 const mockNormalizeTasks = normalizeTasks as jest.Mock;
-const mockNormalizeTodos = normalizeTodos as jest.Mock;
 const mockMigrateFromTodos = migrateFromTodos as jest.Mock;
 const mockUseToast = useToast as jest.Mock;
 const mockToast = jest.fn();
@@ -180,10 +180,6 @@ describe('TasksPageClient', () => {
     ]);
     mockSaveEncryptedData.mockResolvedValue(undefined);
     mockNormalizeTasks.mockImplementation((raw) => ({
-      value: Array.isArray(raw) ? raw : [],
-      changed: false,
-    }));
-    mockNormalizeTodos.mockImplementation((raw) => ({
       value: Array.isArray(raw) ? raw : [],
       changed: false,
     }));
@@ -245,10 +241,6 @@ describe('TasksPageClient', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
       },
     ];
-    mockNormalizeTodos.mockReturnValue({
-      value: [{ id: 'todo1', todo: 'Migrate me' }],
-      changed: false,
-    });
     mockMigrateFromTodos.mockReturnValue(migratedTasks);
 
     render(<TasksPageClient />);

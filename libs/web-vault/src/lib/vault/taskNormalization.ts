@@ -32,7 +32,7 @@ function isIso8601(value: unknown): value is string {
 }
 
 export function normalizeTasks(value: unknown): NormalizeResult<Task[]> {
-  if (value == null) return { value: [], changed: false };
+  if (value === null) return { value: [], changed: false };
   if (!Array.isArray(value)) return { value: [], changed: true };
 
   let changed = false;
@@ -65,92 +65,85 @@ export function normalizeTasks(value: unknown): NormalizeResult<Task[]> {
       continue;
     }
 
-    // Required field: id
+    // id: generate when missing
     const id = toTrimmedString(raw['id']) ?? randomId();
 
-    // Required field: title
+    // title: required — drop item if empty
     const title = toTrimmedString(raw['title']);
     if (!title) {
       changed = true;
       continue;
     }
 
-    // Required field: status
-    if (!VALID_STATUSES.has(raw['status'] as string)) {
+    // status: default to pending when invalid/missing
+    let status: Task['status'];
+    if (VALID_STATUSES.has(raw['status'] as string)) {
+      status = raw['status'] as Task['status'];
+    } else {
+      status = 'pending';
       changed = true;
-      continue;
     }
-    const status = raw['status'] as Task['status'];
 
-    // Required field: priority
-    if (!VALID_PRIORITIES.has(raw['priority'] as string)) {
+    // priority: default to medium when invalid/missing
+    let priority: Task['priority'];
+    if (VALID_PRIORITIES.has(raw['priority'] as string)) {
+      priority = raw['priority'] as Task['priority'];
+    } else {
+      priority = 'medium';
       changed = true;
-      continue;
     }
-    const priority = raw['priority'] as Task['priority'];
 
-    // Required field: context
-    if (!VALID_CONTEXTS.has(raw['context'] as string)) {
+    // archived: default to false when invalid/missing
+    let archived: boolean;
+    if (typeof raw['archived'] === 'boolean') {
+      archived = raw['archived'];
+    } else {
+      archived = false;
       changed = true;
-      continue;
     }
-    const context = raw['context'] as Task['context'];
 
-    // Required field: archived
-    if (typeof raw['archived'] !== 'boolean') {
+    // createdAt: generate when missing/invalid
+    let createdAt: string;
+    if (isIso8601(raw['createdAt'])) {
+      createdAt = raw['createdAt'] as string;
+    } else {
+      createdAt = migrationTimestamp;
       changed = true;
-      continue;
     }
-    const archived = raw['archived'];
 
-    // Required field: createdAt
-    if (!isIso8601(raw['createdAt'])) {
-      changed = true;
-      continue;
+    const task: Task = { id, title, status, priority, archived, createdAt };
+
+    // context: optional — silently omit when absent or invalid (no change marker)
+    if (
+      raw['context'] !== undefined &&
+      VALID_CONTEXTS.has(raw['context'] as string)
+    ) {
+      task.context = raw['context'] as Task['context'];
     }
-    const createdAt = raw['createdAt'] as string;
 
-    // Required field: updatedAt
-    if (!isIso8601(raw['updatedAt'])) {
-      changed = true;
-      continue;
+    // updatedAt: optional — silently omit when absent or invalid (no change marker)
+    if (raw['updatedAt'] !== undefined && isIso8601(raw['updatedAt'])) {
+      task.updatedAt = raw['updatedAt'] as string;
     }
-    const updatedAt = raw['updatedAt'] as string;
 
-    const task: Task = {
-      id,
-      title,
-      status,
-      priority,
-      context,
-      archived,
-      createdAt,
-      updatedAt,
-    };
-
-    // Optional field: description
+    // description: optional — silently omit/trim without marking changed
     if (raw['description'] !== undefined) {
       const description = toTrimmedString(raw['description']);
       if (description) task.description = description;
-      if (task.description !== raw['description']) changed = true;
     }
 
-    // Optional field: dueDate
-    if (raw['dueDate'] !== undefined) {
-      if (isIso8601(raw['dueDate'])) {
-        task.dueDate = raw['dueDate'] as string;
-      } else {
-        changed = true;
-      }
+    // dueDate: optional — silently omit when absent or invalid (no change marker)
+    if (raw['dueDate'] !== undefined && isIso8601(raw['dueDate'])) {
+      task.dueDate = raw['dueDate'] as string;
     }
 
-    // Optional field: estimatedMinutes
-    if (raw['estimatedMinutes'] !== undefined) {
-      if (typeof raw['estimatedMinutes'] === 'number') {
-        task.estimatedMinutes = raw['estimatedMinutes'];
-      } else {
-        changed = true;
-      }
+    // estimatedMinutes: optional — only include when > 0, silently drop otherwise
+    if (
+      raw['estimatedMinutes'] !== undefined &&
+      typeof raw['estimatedMinutes'] === 'number' &&
+      raw['estimatedMinutes'] > 0
+    ) {
+      task.estimatedMinutes = raw['estimatedMinutes'];
     }
 
     if (task.id !== raw['id']) changed = true;
