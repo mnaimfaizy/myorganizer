@@ -250,19 +250,3 @@
 | Package               | Version | Purpose                                                                      |
 | --------------------- | ------- | ---------------------------------------------------------------------------- |
 | `@ai-hero/sandcastle` | 0.7.0   | Runs Claude Code agents in Docker sandboxes — used by `yarn dispatch-agents` |
-
----
-
-## ⚠️ Pending Removal
-
-These packages are installed but have no active use in the codebase. They should be removed in a dedicated cleanup task.
-
-| Package                    | Version | Reason                                                     |
-| -------------------------- | ------- | ---------------------------------------------------------- |
-| `@nestjs/common`           | 11.1.19 | Backend is Express — NestJS was never adopted              |
-| `@nestjs/core`             | 11.1.19 | Same as above                                              |
-| `@nestjs/platform-express` | 11.1.19 | Same as above                                              |
-| `@nestjs/schematics`       | 11.0.9  | Same as above                                              |
-| `@nestjs/testing`          | 11.1.19 | Same as above                                              |
-| `@nx/nest`                 | 22.3.3  | Nx NestJS plugin — not needed without NestJS               |
-| `rxjs`                     | 7.8.2   | Required by NestJS — verify no other usage before removing |

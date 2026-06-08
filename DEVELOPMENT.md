@@ -59,8 +59,8 @@ MyOrganizer is a full-stack web application built as an Nx monorepo. It consists
 
 Before you begin, ensure you have the following installed on your system:
 
-- **Node.js** (v22 or higher) - [Download](https://nodejs.org/)
-- **Corepack-managed Yarn** (repo pinned to Yarn `4.13.0`) - Use `corepack yarn ...` directly, or enable Corepack shims if your installation permits it
+- **Node.js** - [Download](https://nodejs.org/)
+- **Corepack-managed Yarn** - Use `corepack yarn ...` directly, or enable Corepack shims if your installation permits it
 - **Git** - [Download](https://git-scm.com/)
 - **Docker & Docker Compose** - [Download](https://www.docker.com/get-started)
 - **Code Editor** - We recommend [VS Code](https://code.visualstudio.com/) with the Nx Console extension

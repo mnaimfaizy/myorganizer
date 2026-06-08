@@ -6,7 +6,7 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 
 ## Setup
 
-- Use Node >=22 and Corepack-managed Yarn 4.
+- Use Node and Corepack-managed Yarn.
 - Install with `corepack yarn install --immutable`.
 - Start local services with `docker-compose up -d`.
 - Start apps with `yarn start:backend` and `yarn start:myorganizer`.
