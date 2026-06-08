@@ -1,21 +1,21 @@
 {
-  "name": "web-pages-todos",
+  "name": "web-pages-tasks",
   "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "libs/web/pages/todos/src",
+  "sourceRoot": "libs/web/pages/tasks/src",
   "projectType": "library",
   "tags": [],
   "targets": {
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": ["libs/web/pages/todos/src/**/*.{ts,tsx}"]
+        "lintFilePatterns": ["libs/web/pages/tasks/src/**/*.{ts,tsx}"]
       }
     },
     "test": {
       "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/libs/web/pages/todos"],
+      "outputs": ["{workspaceRoot}/coverage/libs/web/pages/tasks"],
       "options": {
-        "jestConfig": "libs/web/pages/todos/jest.config.ts",
+        "jestConfig": "libs/web/pages/tasks/jest.config.ts",
         "passWithNoTests": true
       }
     }

@@ -6,6 +6,7 @@ export const VAULT_EXPORT_BLOB_TYPES = [
   'groceries',
   'mobileNumbers',
   'subscriptions',
+  'tasks',
   'todos',
 ] as const;
 
@@ -50,6 +51,7 @@ const BlobsSchema = z
     groceries: EncryptedBlobSchema.optional(),
     mobileNumbers: EncryptedBlobSchema.optional(),
     subscriptions: EncryptedBlobSchema.optional(),
+    tasks: EncryptedBlobSchema.optional(),
     todos: EncryptedBlobSchema.optional(),
   })
   .strict();

@@ -12,11 +12,11 @@ import {
   useSidebar,
 } from '@myorganizer/web-ui';
 import {
+  ClipboardList,
   CloudUpload,
   CreditCard,
   FileDown,
   Home,
-  ListChecks,
   MapPin,
   Phone,
   ShoppingCart,
@@ -32,9 +32,9 @@ const navMain = [
     icon: Home,
   },
   {
-    title: 'Todos',
-    url: '/dashboard/todo',
-    icon: ListChecks,
+    title: 'Tasks',
+    url: '/dashboard/tasks',
+    icon: ClipboardList,
   },
   {
     title: 'Groceries',

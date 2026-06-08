@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@myorganizer/web-ui';
 import {
   CreditCard,
-  ListChecks,
+  ClipboardList,
   MapPin,
   Phone,
   ShoppingCart,
@@ -12,7 +12,7 @@ import {
 import Link from 'next/link';
 
 const actions = [
-  { label: 'Todos', href: '/dashboard/todo', icon: ListChecks },
+  { label: 'Tasks', href: '/dashboard/tasks', icon: ClipboardList },
   { label: 'Groceries', href: '/dashboard/groceries', icon: ShoppingCart },
   { label: 'Addresses', href: '/dashboard/addresses', icon: MapPin },
   {

@@ -20,7 +20,7 @@ const serverVaultSync = jest.requireMock('./serverVaultSync') as {
 };
 
 function makeLocalVault(
-  overrides: Partial<VaultStorageV1> = {}
+  overrides: Partial<VaultStorageV1> = {},
 ): VaultStorageV1 {
   return {
     version: 1,
@@ -67,10 +67,10 @@ describe('migrateVaultPhase1ToPhase2', () => {
     });
 
     expect(serverVaultSync.putServerVaultMetaEtagAware).toHaveBeenCalledTimes(
-      1
+      1,
     );
     expect(serverVaultSync.putServerVaultBlobEtagAware).toHaveBeenCalledTimes(
-      1
+      1,
     );
 
     expect(result).toEqual({ kind: 'uploaded-local-to-server' });
@@ -94,7 +94,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
           };
         }
         return null;
-      }
+      },
     );
 
     const result = await migrateVaultPhase1ToPhase2({
@@ -165,7 +165,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
           return null;
         }
         return null;
-      }
+      },
     );
 
     const prompt = jest.fn(() => 'keep-server' as const);
@@ -225,7 +225,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
           };
         }
         return null;
-      }
+      },
     );
 
     const result = await migrateVaultPhase1ToPhase2({
@@ -235,10 +235,10 @@ describe('migrateVaultPhase1ToPhase2', () => {
     });
 
     expect(serverVaultSync.putServerVaultMetaEtagAware).toHaveBeenCalledTimes(
-      1
+      1,
     );
     expect(serverVaultSync.putServerVaultBlobEtagAware).toHaveBeenCalledTimes(
-      1
+      1,
     );
 
     const putMetaArgs =
@@ -259,6 +259,130 @@ describe('migrateVaultPhase1ToPhase2', () => {
     });
     expect(putBlobArgs.onConflict()).toBe('keep-local');
 
+    expect(result).toEqual({ kind: 'kept-local-overwrote-server' });
+  });
+
+  test('uploads tasks blob when local vault has tasks data and server is empty', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue(null);
+
+    const localVault = makeLocalVault({
+      data: {
+        addresses: { iv: 'aiv', ciphertext: 'act' },
+        tasks: { iv: 'tiv', ciphertext: 'tct' },
+      },
+    });
+
+    const result = await migrateVaultPhase1ToPhase2({
+      api: {} as unknown as ApiParam,
+      localVault,
+      prompt: () => 'keep-local',
+    });
+
+    expect(serverVaultSync.putServerVaultBlobEtagAware).toHaveBeenCalledTimes(
+      2,
+    );
+    expect(
+      serverVaultSync.putServerVaultBlobEtagAware.mock.calls.some(
+        (call) => call[0].type === VaultBlobType.Tasks,
+      ),
+    ).toBe(true);
+    expect(result).toEqual({ kind: 'uploaded-local-to-server' });
+  });
+
+  test('downloads includes tasks blob when server has it', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: makeServerMeta(),
+    });
+
+    serverVaultSync.getServerVaultBlob.mockImplementation(
+      async (_api: unknown, type: VaultBlobType) => {
+        if (type === VaultBlobType.Tasks) {
+          return {
+            etag: 't1',
+            updatedAt: 'tt1',
+            type,
+            blob: { version: 1, iv: 'tiv', ciphertext: 'tct' },
+          };
+        }
+        if (type === VaultBlobType.Addresses) {
+          return {
+            etag: 'b1',
+            updatedAt: 'bt1',
+            type,
+            blob: { version: 1, iv: 'aiv', ciphertext: 'act' },
+          };
+        }
+        return null;
+      },
+    );
+
+    const result = await migrateVaultPhase1ToPhase2({
+      api: {} as unknown as ApiParam,
+      localVault: null,
+      prompt: () => 'keep-server',
+    });
+
+    expect(result.kind).toBe('downloaded-server-to-local');
+    if (result.kind === 'downloaded-server-to-local') {
+      expect(result.nextLocalVault.data.tasks).toEqual({
+        iv: 'tiv',
+        ciphertext: 'tct',
+      });
+    }
+  });
+
+  test('tasks blob included in keep-local comparison when both have tasks data', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'server-etag',
+      updatedAt: 't1',
+      meta: makeServerMeta(),
+    });
+
+    serverVaultSync.getServerVaultBlob.mockImplementation(
+      async (_api: unknown, type: VaultBlobType) => {
+        if (type === VaultBlobType.Tasks) {
+          return {
+            etag: 'remote-task-etag',
+            updatedAt: 'bt1',
+            type,
+            blob: { version: 1, iv: 'remote-tiv', ciphertext: 'remote-tct' },
+          };
+        }
+        if (type === VaultBlobType.Addresses) {
+          return {
+            etag: 'remote-addr-etag',
+            updatedAt: 'bt1',
+            type,
+            blob: { version: 1, iv: 'remote', ciphertext: 'remote' },
+          };
+        }
+        return null;
+      },
+    );
+
+    const localVault = makeLocalVault({
+      data: {
+        addresses: { iv: 'local-aiv', ciphertext: 'local-act' },
+        tasks: { iv: 'local-tiv', ciphertext: 'local-tct' },
+      },
+    });
+
+    const result = await migrateVaultPhase1ToPhase2({
+      api: {} as unknown as ApiParam,
+      localVault,
+      prompt: () => 'keep-local',
+    });
+
+    expect(serverVaultSync.putServerVaultBlobEtagAware).toHaveBeenCalledTimes(
+      2,
+    );
+    expect(
+      serverVaultSync.putServerVaultBlobEtagAware.mock.calls.some(
+        (call) => call[0].type === VaultBlobType.Tasks,
+      ),
+    ).toBe(true);
     expect(result).toEqual({ kind: 'kept-local-overwrote-server' });
   });
 });
