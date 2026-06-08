@@ -42,6 +42,28 @@ _Avoid_: Page component, route component, smart component
 The handoff document the main agent passes to ComponentBuilder. Contains: component name, target path, scope (UI Primitive or Feature Component), props interface, state ownership, Zod schema if applicable, and relevant guideline references.
 _Avoid_: Component brief, component plan, design spec
 
+## Planning & Orchestration
+
+**PRD Issue**:
+A GitHub issue containing the full Product Requirements Document for a feature. Created by `to-prd`. Serves as the parent to all Slice Issues for that feature. Never closed or modified by agents.
+_Avoid_: Epic, parent ticket, feature issue
+
+**Slice Issue**:
+A thin vertical-slice GitHub issue created by `to-issues`. References its PRD Issue as parent. Tagged `type:afk` or `type:hitl` and a `complexity:*` label. Each slice is independently demoable end-to-end.
+_Avoid_: Sub-issue, task, child ticket
+
+**AFK Slice**:
+A Slice Issue the autonomous agent can implement and merge without human interaction. Picked up by `dispatch-agents`.
+_Avoid_: Autonomous issue, agent task
+
+**HITL Slice**:
+A Slice Issue requiring a human decision before an agent can proceed. Skipped by `dispatch-agents` until a human unblocks it.
+_Avoid_: Blocked issue, human task
+
+**dispatch-agents**:
+The `yarn dispatch-agents --prd <issue-number>` command that triggers the sandcastle orchestrator. Reads AFK Slice Issues labelled `ready-for-agent`, creates the feature branch, and fans out one sandcastle agent per slice running in Docker isolation.
+_Avoid_: Agent runner, orchestrator command, run-agents
+
 ## Agent Roles
 
 **ComponentBuilder**:

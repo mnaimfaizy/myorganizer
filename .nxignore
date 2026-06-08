@@ -1,1 +1,4 @@
 apps/backend/src/prisma/prisma-client
+.sandcastle/logs/
+.sandcastle/worktrees/
+.sandcastle/patches/

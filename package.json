@@ -44,6 +44,8 @@
     "format": "nx format",
     "ai:commit": "node tools/scripts/ai/commit-change.mjs",
     "ai:create-pr": "node tools/scripts/ai/create-pr.mjs",
+    "ai:create-labels": "node tools/scripts/ai/create-labels.mjs",
+    "dispatch-agents": "npx tsx .sandcastle/main.mts",
     "nx": "nx",
     "postinstall": "husky"
   },
@@ -273,6 +275,7 @@
     }
   },
   "devDependencies": {
+    "@ai-hero/sandcastle": "0.7.0",
     "@babel/core": "7.28.6",
     "@babel/preset-react": "7.28.5",
     "@driimus/nx-plugin-openapi": "3.1.2",

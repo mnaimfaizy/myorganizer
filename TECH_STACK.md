@@ -3,7 +3,7 @@
 > **Single source of truth** for installed package versions and canonical technology choices.
 > All agent instruction files and documentation must reference this file rather than declaring versions inline.
 > Owned and kept current by the **DepSync** agent/skill — do not edit versions manually.
-> Last synced from `package.json` on 2026-06-07.
+> Last synced from `package.json` on 2026-06-08.
 
 ---
 
@@ -242,6 +242,14 @@
 | `eslint-plugin-unused-imports` | 4.3.0   | Detects and removes unused imports                |
 | `prettier`                     | 3.8.0   | Code formatter                                    |
 | `husky`                        | 9.1.7   | Git hooks — runs lint and format checks on commit |
+
+---
+
+## AI Orchestration
+
+| Package               | Version | Purpose                                                                      |
+| --------------------- | ------- | ---------------------------------------------------------------------------- |
+| `@ai-hero/sandcastle` | 0.7.0   | Runs Claude Code agents in Docker sandboxes — used by `yarn dispatch-agents` |
 
 ---
 

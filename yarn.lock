@@ -12,6 +12,25 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@ai-hero/sandcastle@npm:0.7.0":
+  version: 0.7.0
+  resolution: "@ai-hero/sandcastle@npm:0.7.0"
+  dependencies:
+    "@clack/prompts": "npm:^1.1.0"
+  peerDependencies:
+    "@daytona/sdk": ^0.164.0
+    "@vercel/sandbox": ">=1.0.0"
+  peerDependenciesMeta:
+    "@daytona/sdk":
+      optional: true
+    "@vercel/sandbox":
+      optional: true
+  bin:
+    sandcastle: dist/main.js
+  checksum: 10c0/ae8c44075bb2cd6510c9dc05d464bfdbb82449fbb0f743514cb073bf9aceed68d214fdf853521dff01d287f798b9b82f51965231c0cc9f3585b23b51dbbf1d90
+  languageName: node
+  linkType: hard
+
 "@alloc/quick-lru@npm:^5.2.0":
   version: 5.2.0
   resolution: "@alloc/quick-lru@npm:5.2.0"
@@ -2152,6 +2171,28 @@ __metadata:
   version: 10.5.0
   resolution: "@chevrotain/utils@npm:10.5.0"
   checksum: 10c0/a7d99b8e9ecc8ceb0d46b5f194710768055c2b932aca316a5f1e77d8c1a6ecb8f4c5b39e4bac4dcd7189dfa5025dcdc112903511037b03a4ea88d216b68b4708
+  languageName: node
+  linkType: hard
+
+"@clack/core@npm:1.4.0":
+  version: 1.4.0
+  resolution: "@clack/core@npm:1.4.0"
+  dependencies:
+    fast-wrap-ansi: "npm:^0.2.0"
+    sisteransi: "npm:^1.0.5"
+  checksum: 10c0/7d287da15943018439967b1fff83f718e87ea3a7ea7f54a549f5d3828147873acbb67a659824d84702fa3a1e709785ded9af3e5ef0ce14484fe1d484ea3415bb
+  languageName: node
+  linkType: hard
+
+"@clack/prompts@npm:^1.1.0":
+  version: 1.5.0
+  resolution: "@clack/prompts@npm:1.5.0"
+  dependencies:
+    "@clack/core": "npm:1.4.0"
+    fast-string-width: "npm:^3.0.2"
+    fast-wrap-ansi: "npm:^0.2.0"
+    sisteransi: "npm:^1.0.5"
+  checksum: 10c0/5f50c4b2c8b07c6125b75b7431b4aabdeae285e6934db7dfc11f283fc7b6ccc1ef3e812839035b92fac843523d96b80f4658f83a0e8aa10e5f6c56950adfc765
   languageName: node
   linkType: hard
 
@@ -4879,6 +4920,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@myorganizer/source@workspace:."
   dependencies:
+    "@ai-hero/sandcastle": "npm:0.7.0"
     "@babel/core": "npm:7.28.6"
     "@babel/preset-react": "npm:7.28.5"
     "@driimus/nx-plugin-openapi": "npm:3.1.2"
@@ -15274,10 +15316,35 @@ __metadata:
   languageName: node
   linkType: hard
 
+"fast-string-truncated-width@npm:^3.0.2":
+  version: 3.0.3
+  resolution: "fast-string-truncated-width@npm:3.0.3"
+  checksum: 10c0/043b8663397d14a3880ce4f3407bcda60b40db9bbeafe62863a35d1f9c69ea17c8da3fcd72de235553e6c9cd053128cde9e24ca0d4a7463208f48db3cd23d981
+  languageName: node
+  linkType: hard
+
+"fast-string-width@npm:^3.0.2":
+  version: 3.0.2
+  resolution: "fast-string-width@npm:3.0.2"
+  dependencies:
+    fast-string-truncated-width: "npm:^3.0.2"
+  checksum: 10c0/c8822d175315bb353ebe782b65214ac53b13e3bf704e03b132ea7bdfa8de6a636375b3ab7a4097545393d109381c37c4f387c72a462c90b61412dbc4632f39a7
+  languageName: node
+  linkType: hard
+
 "fast-uri@npm:3.1.2":
   version: 3.1.2
   resolution: "fast-uri@npm:3.1.2"
   checksum: 10c0/5b35641895959f3f7ab7a7b1b5542bded159346f25ec9f256817b206d50b64eda5828e90d605a2e2fc645c90519a7259c2bab2c942ee728c88b88e5be21b090d
+  languageName: node
+  linkType: hard
+
+"fast-wrap-ansi@npm:^0.2.0":
+  version: 0.2.2
+  resolution: "fast-wrap-ansi@npm:0.2.2"
+  dependencies:
+    fast-string-width: "npm:^3.0.2"
+  checksum: 10c0/1aa7be4f7cb86f4bdb14691cb6bcc0b8df8b3b89df142ade3ae1602332dcf6f990cd750a923cd581ca0847808cb4ec1aa5afaafa7a72f849e87a2a62c98fa370
   languageName: node
   linkType: hard
 

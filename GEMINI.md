@@ -35,6 +35,30 @@ When you need to stress-test a plan against the project's domain model and docum
   - `docs/adr/` — Architecture Decision Records for major design choices
 - **Reference formats**: See `CONTEXT-FORMAT.md` and `ADR-FORMAT.md` in the skill directory
 
+## Feature Planning Workflows
+
+Use these skills when planning a new feature end-to-end, from idea to autonomous agent handoff.
+
+### to-prd — Write a PRD Issue
+
+- **Skill location**: `.github/skills/to-prd/SKILL.md`
+- **When to use**: The user wants to plan a new feature. Explores the codebase, sketches test seams (with user approval), writes a PRD, and publishes it as a GitHub Issue labelled `prd` + `ready-for-agent`.
+- **Prerequisite**: Run `yarn ai:create-labels` once if labels are missing from the repo.
+- **User must be present**: One interactive step — test seam approval before the PRD is written.
+
+### to-issues — Break a PRD into Slice Issues
+
+- **Skill location**: `.github/skills/to-issues/SKILL.md`
+- **When to use**: A PRD Issue exists and needs to be decomposed into independently-grabbable implementation tickets. Supply the PRD Issue number.
+- **What it does**: Fetches the PRD, drafts vertical slices (AFK/HITL + complexity), quizzes the user, publishes each slice with the full label set, and updates the PRD `## Slices` section.
+- **After publishing**: Run `yarn dispatch-agents --prd <issue-number>` to hand off AFK slices to autonomous agents running in Docker isolation.
+
+### Workflow order
+
+1. `/to-prd` — write and publish the PRD Issue (user present)
+2. `/to-issues <prd-number>` — break it into Slice Issues (user present)
+3. `yarn dispatch-agents --prd <number>` — hand off to autonomous agents (user walks away)
+
 ## Jest Test Delegation
 
 When a task requires Jest unit tests or Jest integration tests to be created or updated, delegate to the `test-scaffold` sub-agent (`.gemini/agents/test-scaffold.md`) rather than writing tests inline. The agent runs on `gemini-2.5-flash` to keep costs low.
