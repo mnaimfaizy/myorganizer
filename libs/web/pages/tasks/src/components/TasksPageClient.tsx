@@ -7,7 +7,6 @@ import {
   loadDecryptedData,
   migrateFromTodos,
   normalizeTasks,
-  normalizeTodos,
   saveEncryptedData,
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
@@ -60,8 +59,7 @@ function TasksInner(props: { masterKeyBytes: Uint8Array }) {
           });
 
           if (Array.isArray(todos) && todos.length > 0) {
-            const normalized = normalizeTodos(todos);
-            const migrated = migrateFromTodos(normalized.value);
+            const migrated = migrateFromTodos(todos);
             await saveEncryptedData({
               masterKeyBytes: props.masterKeyBytes,
               type: 'tasks',

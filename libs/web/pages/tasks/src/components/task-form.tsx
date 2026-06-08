@@ -64,7 +64,7 @@ export function TaskForm({
       description: initialValues?.description ?? '',
       priority: initialValues?.priority ?? 'medium',
       status: initialValues?.status ?? 'pending',
-      context: initialValues?.context ?? '',
+      context: initialValues?.context ?? 'none',
       dueDate: initialValues?.dueDate ?? '',
     },
   });
@@ -75,7 +75,7 @@ export function TaskForm({
       description: initialValues?.description ?? '',
       priority: initialValues?.priority ?? 'medium',
       status: initialValues?.status ?? 'pending',
-      context: initialValues?.context ?? '',
+      context: initialValues?.context ?? 'none',
       dueDate: initialValues?.dueDate ?? '',
     });
   }, [initialValues, form]);
@@ -87,7 +87,9 @@ export function TaskForm({
         description: values.description || undefined,
         priority: values.priority,
         status: values.status as TaskStatus,
-        context: (values.context || undefined) as TaskContext | undefined,
+        context: (values.context && values.context !== 'none'
+          ? values.context
+          : undefined) as TaskContext | undefined,
         dueDate: values.dueDate || undefined,
       };
       onSubmit(payload);
@@ -190,7 +192,7 @@ export function TaskForm({
                   </SelectTrigger>
                 </FormControl>
                 <SelectContent>
-                  <SelectItem value="">None</SelectItem>
+                  <SelectItem value="none">None</SelectItem>
                   <SelectItem value="personal">Personal</SelectItem>
                   <SelectItem value="work">Work</SelectItem>
                 </SelectContent>
