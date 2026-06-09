@@ -387,6 +387,30 @@ const results = await Promise.allSettled<SliceResult>(
         ? prCreate.stdout.trim()
         : `(PR creation failed: ${prCreate.stderr.trim().slice(0, 80)})`;
 
+    // Merge the slice PR into the feature branch and delete the slice branch.
+    // The feature branch → main PR is where the real review happens.
+    if (prCreate.status === 0) {
+      const prMerge = spawnSync(
+        'gh',
+        [
+          'pr',
+          'merge',
+          prUrl,
+          '--squash',
+          '--delete-branch',
+          '--yes',
+          '--repo',
+          REPO,
+        ],
+        { encoding: 'utf8', stdio: 'inherit', windowsHide: true },
+      );
+      if (prMerge.status !== 0) {
+        console.error(
+          `  Warning: auto-merge failed for ${prUrl} — merge manually before opening the feature PR.`,
+        );
+      }
+    }
+
     // Post completion comment on issue
     ghSilent([
       'issue',
