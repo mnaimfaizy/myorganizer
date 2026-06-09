@@ -327,8 +327,14 @@ const results = await Promise.allSettled<SliceResult>(
         // node_modules instantly — `yarn install --immutable` exits in <5s.
         mounts: [
           {
-            hostPath: '.sandcastle/node_modules_linux_cache',
-            sandboxPath: 'node_modules',
+            // Absolute host path — relative paths lose the drive letter on Windows.
+            // Absolute Linux container path — relative paths get a D: prefix on Windows.
+            hostPath: join(
+              process.cwd(),
+              '.sandcastle',
+              'node_modules_linux_cache',
+            ),
+            sandboxPath: '/home/agent/workspace/node_modules',
           },
         ],
       }),
