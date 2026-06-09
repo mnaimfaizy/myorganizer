@@ -40,7 +40,10 @@ export function GroceriesListDetailClient({
 
   const list = vault.lists.find((l) => l.id === listId);
 
-  const handleListUpdated = useCallback((_updated: GroceryList) => {}, []);
+  const handleListUpdated = useCallback(
+    (updated: GroceryList) => void updated,
+    [],
+  );
   const handleClose = useCallback(() => {
     router.push('/dashboard/groceries');
   }, [router]);
