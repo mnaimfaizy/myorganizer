@@ -284,6 +284,7 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     `- Your working branch is \`${sliceBranch}\` (based on \`${featureBranch}\`). Do not switch branches.`,
     `- Follow all mandatory delegation rules in CLAUDE.md (tests → TestScaffold, components → ComponentBuilder, etc.).`,
     `- Commit your changes using Conventional Commit messages (\`corepack yarn ai:commit\`).`,
+    `- After committing, push your branch: \`git push origin ${sliceBranch}\`.`,
     `- When implementation is complete, output <promise>COMPLETE</promise>.`,
   ].join('\n');
 }
