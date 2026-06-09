@@ -56,6 +56,10 @@ download a backup.
 - The server never has access to plaintext grocery data.
 - Vault blob type: `groceries`
 
+### What the server can see
+
+Despite E2EE, the server retains limited metadata: the blob type identifier (`'groceries'`), the approximate blob size, and the last-updated timestamp. Item names, amounts, prices, and notes are never exposed.
+
 ## Vault Blob Schema (developer reference)
 
 ```typescript
@@ -120,3 +124,155 @@ The `'groceries'` blob type is registered in:
 
 - `libs/core/src/lib/types/vault.ts` → `VaultBlobType` enum/union
 - `libs/web-vault/src/lib/vault/vaultShapes.ts` → blob handling in `serverEncryptedBlobToLocal()`
+
+---
+
+## Component Reference
+
+### GroceriesPageClient
+
+Main page container. Manages dialog state and composes all sub-components. Receives `masterKeyBytes` via `VaultGate` context — no external props.
+
+```typescript
+interface DialogState {
+  type: 'create' | 'rename' | 'delete' | null;
+  listId?: string;
+  listName?: string;
+  itemCount?: number;
+}
+```
+
+### GroceryListSelector
+
+```typescript
+interface GroceryListSelectorProps {
+  lists: GroceryList[];
+  selectedListIds: string[];
+  onSelectLists: (ids: string[]) => void;
+  onRenameList: (id: string) => void;
+  onDeleteList: (id: string) => void;
+  isLoading?: boolean;
+}
+```
+
+### CreateListDialog
+
+```typescript
+interface CreateListDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (name: string) => Promise<void>;
+  isLoading?: boolean;
+}
+```
+
+Validation: name required, 1–100 characters, whitespace trimmed.
+
+### RenameListDialog
+
+```typescript
+interface RenameListDialogProps {
+  isOpen: boolean;
+  currentName: string;
+  onClose: () => void;
+  onSubmit: (newName: string) => Promise<void>;
+  isLoading?: boolean;
+}
+```
+
+Submit is disabled when the value is unchanged from `currentName`.
+
+### DeleteListConfirmDialog
+
+```typescript
+interface DeleteListConfirmDialogProps {
+  isOpen: boolean;
+  listName: string;
+  itemCount: number;
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+  isLoading?: boolean;
+}
+```
+
+### GroceriesErrorBoundary
+
+Wraps the groceries page to catch React render errors and show a fallback UI.
+
+---
+
+## `useGroceriesVault` Hook
+
+**Location:** `@myorganizer/web-pages/groceries` → `src/groceries-page/hooks/useGroceriesVault.ts`
+
+```typescript
+const vault = useGroceriesVault({ masterKeyBytes });
+```
+
+**Return type:**
+
+```typescript
+interface UseGroceriesVaultReturn {
+  lists: GroceryList[];
+  loading: boolean;
+  error: string | null;
+  selectedListId: string | null;
+
+  createList: (name: string) => Promise<void>;
+  renameList: (id: string, newName: string) => Promise<void>;
+  deleteList: (id: string) => Promise<void>;
+  persistLists: (lists: GroceryList[]) => Promise<void>; // low-level direct save
+
+  setError: (error: string | null) => void;
+  setSelectedListId: (id: string | null) => void;
+}
+```
+
+Errors are caught internally and stored in `vault.error`. All mutations are idempotent — safe to retry. On load error the user can retry by refreshing; on save error the previous state is preserved.
+
+---
+
+## Vault Utilities
+
+**Location:** `src/groceries-page/utils/vault.ts`
+
+| Function                        | Description                                                                |
+| ------------------------------- | -------------------------------------------------------------------------- |
+| `getVaultErrorMessage(error)`   | Converts caught errors to user-friendly strings                            |
+| `validateGroceryListName(name)` | Validates 1–100 chars with whitespace trimming                             |
+| `createEmptyGroceryList(name)`  | Factory: returns a new `GroceryList` with a UUID v4 id and empty `items[]` |
+
+---
+
+## Schema Migration
+
+When the `GroceryList` or `GroceryItem` shape needs to change:
+
+1. Update the types in `libs/core/src/lib/types/` (`GroceryList`, `GroceryItem`, `GroceryCategoryType`)
+2. Update `GroceryListSchema` in `libs/web-vault/src/lib/vault/groceriesNormalization.ts`
+3. Add a migration step inside `normalizeGroceries()` for the shape change
+4. Existing vault blobs auto-migrate on next load — `normalizeGroceries()` returns `changed: true` and the hook re-persists the updated blob
+
+---
+
+## Troubleshooting
+
+### Lists not loading (vault locked)
+
+If the empty state appears but the user expects data: confirm the VaultGate unlock screen was completed. Verify `localStorage` contains `myorganizer_vault_v1`.
+
+### Form submission hangs
+
+If a dialog shows "Creating…" indefinitely: check the browser console for errors and inspect the network tab for a failed request to `/api/v1/vault/blob/groceries`. Dismiss the error banner and retry.
+
+### List disappears after creation
+
+If a newly created list appears briefly then vanishes: a page refresh will restore it if the data was saved. If not saved, the error banner shows the failure reason.
+
+### Dialog won't close
+
+If Escape or the close button has no effect: confirm a form submission is not still in progress. Clicking outside the dialog should dismiss it. Refresh if stuck.
+
+### Characters don't appear in the name input
+
+Confirm the input is not disabled (look for reduced opacity). Try clicking to re-focus. In Safari, clear the browser cache if autofocus misbehaves.
