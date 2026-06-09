@@ -3,8 +3,8 @@
 import type { GroceryList } from '@myorganizer/core';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
-import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useCallback } from 'react';
 
 import { useGroceriesVault } from '../shared/hooks';
 import { GroceryListView } from './components';
@@ -20,6 +20,14 @@ export function GroceriesListDetailClient({
 }: GroceriesListDetailClientProps) {
   const router = useRouter();
   const vault = useGroceriesVault({ masterKeyBytes });
+
+  const handleListUpdated = useCallback(
+    (updated: GroceryList) => void updated,
+    [],
+  );
+  const handleClose = useCallback(() => {
+    router.push('/dashboard/groceries');
+  }, [router]);
 
   if (vault.loading) {
     return (
@@ -39,14 +47,6 @@ export function GroceriesListDetailClient({
   }
 
   const list = vault.lists.find((l) => l.id === listId);
-
-  const handleListUpdated = useCallback(
-    (updated: GroceryList) => void updated,
-    [],
-  );
-  const handleClose = useCallback(() => {
-    router.push('/dashboard/groceries');
-  }, [router]);
 
   if (!list) {
     return (

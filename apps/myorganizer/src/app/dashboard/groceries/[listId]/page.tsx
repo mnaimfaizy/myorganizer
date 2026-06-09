@@ -1,12 +1,9 @@
 import { GroceriesListDetailPage } from '@myorganizer/web-pages/groceries';
 
-interface GroceriesDetailPageProps {
+export default async function GroceriesDetailPage(props: {
   params: Promise<{ listId: string }>;
-}
+}) {
+  const { listId } = await props.params;
 
-export default async function GroceriesDetailPage({
-  params,
-}: GroceriesDetailPageProps) {
-  const { listId } = await params;
   return <GroceriesListDetailPage listId={listId} />;
 }

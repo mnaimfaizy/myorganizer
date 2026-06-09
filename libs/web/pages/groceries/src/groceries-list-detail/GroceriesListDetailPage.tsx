@@ -1,3 +1,5 @@
+'use client';
+
 import { VaultGate } from '@myorganizer/web-vault-ui';
 
 import { GroceriesListDetailClient } from './GroceriesListDetailClient';

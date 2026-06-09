@@ -129,7 +129,6 @@ export function GroceryListSelector({
                   <Link
                     href={`/dashboard/groceries/${list.id}`}
                     className="flex-1 rounded-lg px-2 py-1 transition-colors hover:bg-secondary-container/30"
-                    onClick={(e) => e.stopPropagation()}
                   >
                     <h3 className="font-semibold text-on-surface md:text-sm hover:underline">
                       {list.name}
