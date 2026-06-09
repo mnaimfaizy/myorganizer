@@ -1,7 +1,8 @@
 import { run, claudeCode } from '@ai-hero/sandcastle';
 import { docker } from '@ai-hero/sandcastle/sandboxes/docker';
+import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const REPO = 'mnaimfaizy/myorganizer';
@@ -140,23 +141,89 @@ if (slices.length === 0) {
   );
 }
 
-// Pre-create slice branches AND worktrees so sandcastle reuses them on first try,
-// then mirror node_modules from the main repo into each worktree so Docker agents
-// skip the slow yarn install (yarn --immutable exits in <5s when node_modules is
-// already present and .yarn-state.yml matches the lockfile).
+// ─── Linux node_modules cache ─────────────────────────────────────────────────
+// We maintain a Linux-native node_modules at .sandcastle/node_modules_linux_cache/.
+// It is seeded once via a short-lived Docker container and then BIND-MOUNTED into
+// every agent container at /home/agent/workspace/node_modules. Agents call
+// `yarn install --immutable` which exits in <5s (node_modules already present and
+// correct for Linux). The cache is invalidated when yarn.lock changes.
+
+const linuxNmCache = join(
+  process.cwd(),
+  '.sandcastle',
+  'node_modules_linux_cache',
+);
+const cacheHashFile = join(linuxNmCache, '.cache-lockfile-hash');
+const lockfilePath = join(process.cwd(), 'yarn.lock');
+
+function lockfileHash(): string {
+  return createHash('sha256')
+    .update(readFileSync(lockfilePath))
+    .digest('hex')
+    .slice(0, 16);
+}
+
+function cacheIsValid(): boolean {
+  if (!existsSync(join(linuxNmCache, '.yarn-state.yml'))) return false;
+  if (!existsSync(cacheHashFile)) return false;
+  return readFileSync(cacheHashFile, 'utf8').trim() === lockfileHash();
+}
+
+if (!cacheIsValid()) {
+  console.log(
+    'Linux node_modules cache missing or stale — seeding via Docker (one-time, ~10-15 min)...',
+  );
+  mkdirSync(linuxNmCache, { recursive: true });
+  const hash = lockfileHash();
+  const seed = spawnSync(
+    'docker',
+    [
+      'run',
+      '--rm',
+      '--entrypoint',
+      '/bin/bash',
+      '--user',
+      '1000:1000',
+      '-v',
+      `${process.cwd()}:/home/agent/workspace`,
+      '-v',
+      `${linuxNmCache}:/home/agent/workspace/node_modules`,
+      'sandcastle:myorganizer',
+      '-c',
+      `cd /home/agent/workspace && corepack yarn install 2>&1 && echo ${hash} > /home/agent/workspace/node_modules/.cache-lockfile-hash`,
+    ],
+    { encoding: 'utf8', stdio: 'inherit', windowsHide: true, timeout: 1800000 },
+  );
+  if (seed.status !== 0) {
+    console.error(
+      'Warning: cache seed failed — agents will run yarn install themselves (slow).',
+    );
+  } else {
+    writeFileSync(cacheHashFile, hash);
+    console.log('Linux node_modules cache ready.\n');
+  }
+} else {
+  console.log(
+    'Linux node_modules cache valid — agents start with node_modules pre-populated.\n',
+  );
+}
+
+// Pre-create slice branches and worktrees so sandcastle reuses them on first try.
 const worktreesDir = join(process.cwd(), '.sandcastle', 'worktrees');
-const mainNodeModules = join(process.cwd(), 'node_modules');
 
 for (const issue of slices) {
   const sb = sliceBranchFor(issue);
 
   // 1. Ensure local branch exists.
-  const branchExists = spawnSync('git', ['rev-parse', '--verify', sb], {
-    encoding: 'utf8', windowsHide: true,
-  }).status === 0;
+  const branchExists =
+    spawnSync('git', ['rev-parse', '--verify', sb], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).status === 0;
   if (!branchExists) {
     spawnSync('git', ['branch', sb, `origin/${featureBranch}`], {
-      encoding: 'utf8', windowsHide: true,
+      encoding: 'utf8',
+      windowsHide: true,
     });
     console.log(`  Pre-created branch ${sb}`);
   }
@@ -166,28 +233,15 @@ for (const issue of slices) {
   const worktreePath = join(worktreesDir, worktreeName);
   if (!existsSync(worktreePath)) {
     const wt = spawnSync('git', ['worktree', 'add', worktreePath, sb], {
-      encoding: 'utf8', windowsHide: true,
+      encoding: 'utf8',
+      windowsHide: true,
     });
     if (wt.status !== 0) {
-      console.error(`  Warning: could not create worktree for ${sb}: ${wt.stderr.trim()}`);
+      console.error(
+        `  Warning: could not create worktree for ${sb}: ${wt.stderr.trim()}`,
+      );
     } else {
       console.log(`  Pre-created worktree  ${worktreeName}`);
-    }
-  }
-
-  // 3. Mirror node_modules if absent. robocopy exit 1 = "files copied" (not an error).
-  const destNodeModules = join(worktreePath, 'node_modules');
-  if (existsSync(worktreePath) && !existsSync(destNodeModules) && existsSync(mainNodeModules)) {
-    console.log(`  Mirroring node_modules → ${worktreeName} (one-time, ~30s)...`);
-    const rc = spawnSync(
-      'robocopy',
-      [mainNodeModules, destNodeModules, '/E', '/MT:16', '/NFL', '/NDL', '/NJH', '/NJS', '/NC', '/NS'],
-      { encoding: 'utf8', windowsHide: true },
-    );
-    if (rc.status !== null && rc.status > 1) {
-      console.error(`  robocopy warning (exit ${rc.status}) — agents will fall back to yarn install`);
-    } else {
-      console.log(`  node_modules ready.`);
     }
   }
 }
@@ -224,7 +278,7 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     ``,
     `## Instructions`,
     ``,
-    `- node_modules is pre-mirrored into this worktree. Run \`corepack yarn install --immutable\` once to validate it (should complete in <10s). If it hangs for more than 30s, kill it and proceed — node_modules is already usable.`,
+    `- Run \`corepack yarn install --immutable\` as your first step (expect ~3 min — node_modules is pre-seeded with Linux-native binaries so no compilation occurs, but yarn still fetches and links). Do not skip or interrupt this step.`,
     `- Read CLAUDE.md, CONTEXT.md, and TECH_STACK.md before making any changes.`,
     `- Implement this vertical slice end-to-end (schema → API → UI → tests where applicable).`,
     `- Your working branch is \`${sliceBranch}\` (based on \`${featureBranch}\`). Do not switch branches.`,
@@ -262,7 +316,22 @@ const results = await Promise.allSettled<SliceResult>(
 
     const result = await run({
       agent: claudeCode(model),
-      sandbox: docker(),
+      sandbox: docker({
+        env: {
+          NX_DAEMON: 'false',
+          NX_ISOLATE_PLUGINS: 'false',
+          NX_SKIP_NX_CACHE: 'true',
+        },
+        // Mount the pre-seeded Linux node_modules cache over the worktree's
+        // node_modules directory. This gives agents a working Linux-native
+        // node_modules instantly — `yarn install --immutable` exits in <5s.
+        mounts: [
+          {
+            hostPath: '.sandcastle/node_modules_linux_cache',
+            sandboxPath: 'node_modules',
+          },
+        ],
+      }),
       name: `#${issue.number}`,
       branchStrategy: {
         type: 'branch',

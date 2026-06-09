@@ -42,6 +42,18 @@ ENV PATH="/home/agent/.local/bin:$PATH"
 
 WORKDIR /home/agent
 
+# Prevent Nx from connecting to a background daemon or spawning a plugin-isolation
+# worker process. Both code paths try to load nx/src/native (WASM via @napi-rs/wasm-runtime),
+# which hangs on worker-thread creation inside Docker when the Linux-native Nx binding
+# (@nx/nx-linux-x64-gnu) is absent. These vars are belt-and-suspenders alongside the
+# fix in main.mts that skips the Windows node_modules mirror so yarn install fetches
+# the correct Linux binary instead.
+ENV NX_DAEMON=false
+ENV NX_ISOLATE_PLUGINS=false
+ENV NX_SKIP_NX_CACHE=true
+
 # Sandcastle bind-mounts the git worktree at /home/agent/workspace at container start.
-# The agent should run `corepack yarn install --immutable` as its first step.
+# The agent must run `corepack yarn install` (without --immutable) as its first step so
+# Yarn resolves the Linux-native optional packages (e.g. @nx/nx-linux-x64-gnu) rather
+# than falling back to the WASM path that hangs in this environment.
 ENTRYPOINT ["sleep", "infinity"]
