@@ -93,6 +93,38 @@ type GroceryCategoryType = 'produce' | 'dairy' | 'meat' | 'seafood' | 'bakery' |
 - **Vault blob type**: `'groceries'` (registered in `VaultRecordType`, `VaultBlobType`)
 - **Route**: `/groceries` ([apps/myorganizer/src/app/groceries/page.tsx](../../apps/myorganizer/src/app/groceries/page.tsx))
 
+## `useGroceriesVault` Hook API
+
+```typescript
+const vault = useGroceriesVault({ masterKeyBytes });
+
+// State
+vault.lists           // GroceryList[]
+vault.loading         // boolean
+vault.error           // string | null
+
+// Actions
+await vault.createList(name: string)
+await vault.renameList(id: string, name: string)
+await vault.deleteList(id: string)
+await vault.persistLists(lists: GroceryList[])  // low-level direct save
+
+// Utilities
+vault.setError(msg)   // set or clear error message
+```
+
+Errors are caught internally and stored in `vault.error`. The UI displays friendly error messages; handlers re-throw after setting the error state.
+
+## Security Considerations
+
+| What is encrypted | What the server can observe |
+| --- | --- |
+| All grocery data (list names, item names, prices, notes, links) | Blob type identifier (`'groceries'`) |
+| | Approximate data volume (blob size) |
+| | Last modification timestamp |
+
+The server never has access to plaintext grocery data. Encryption derives from the user's master key (AES-GCM, client-side only).
+
 ## Implementation Details
 
 ### Data Flow
