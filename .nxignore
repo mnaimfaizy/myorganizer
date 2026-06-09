@@ -2,3 +2,4 @@ apps/backend/src/prisma/prisma-client
 .sandcastle/logs/
 .sandcastle/worktrees/
 .sandcastle/patches/
+.sandcastle/node_modules_linux_cache/

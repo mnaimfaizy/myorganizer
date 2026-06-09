@@ -1,1 +1,0 @@
-export { useGroceriesVault } from './useGroceriesVault';

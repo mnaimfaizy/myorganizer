@@ -329,7 +329,9 @@ Choose the lowest level that satisfies the requirement:
 
 ### 5.6 Handlers and callbacks
 
-Wrap handlers passed as props to child components in `useCallback` to prevent unnecessary re-renders.
+**Every handler passed as a prop to a child component must be wrapped in `useCallback`. No exceptions.**
+
+Before finishing a component, grep the file for every prop passed to a child (`<Child onX={...} />`), confirm each handler is wrapped in `useCallback`, and verify the function signature (parameter names, types, return type) matches the child component's props interface exactly.
 
 ```typescript
 const handleDelete = useCallback((id: string) => {
