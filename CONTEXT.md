@@ -42,6 +42,24 @@ _Avoid_: Page component, route component, smart component
 The handoff document the main agent passes to ComponentBuilder. Contains: component name, target path, scope (UI Primitive or Feature Component), props interface, state ownership, Zod schema if applicable, and relevant guideline references.
 _Avoid_: Component brief, component plan, design spec
 
+## Mobile
+
+**Mobile App**:
+The React Native client in `apps/mobile`, sharing domain logic with the web app through cross-platform libraries. Feature code lives under `libs/mobile/*`.
+_Avoid_: native app, RN app, the app
+
+**Platform Adapter**:
+A thin implementation of a shared abstract interface (e.g. `VaultCrypto`, `VaultStorage`, token storage) that supplies platform-specific behavior to otherwise platform-agnostic code.
+_Avoid_: shim, wrapper, provider
+
+**Vault Unlock**:
+The client-side action of deriving the Master Key from the User's passphrase so vault Ciphertext can be decrypted for the session. No plaintext or key leaves the device.
+_Avoid_: vault login, decrypt vault, open vault
+
+**Master Key**:
+The symmetric key derived from the passphrase (PBKDF2 → AES-GCM) that decrypts vault Ciphertext. Never sent to the server.
+_Avoid_: vault key, encryption key, secret key
+
 ## Planning & Orchestration
 
 **PRD Issue**:

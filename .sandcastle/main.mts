@@ -268,6 +268,138 @@ function sliceBranchFor(issue: Issue): string {
   return `slice/${issue.number}-${slug}`;
 }
 
+// ─── Build gate ───────────────────────────────────────────────────────────────
+// Before a slice PR is merged into the feature branch, lint its affected projects
+// in a Docker container. Fail closed: if the gate cannot run or does not pass, the
+// slice is NOT merged and NOT marked status:done, so dispatch-waves halts rather
+// than branching dependent slices off broken code. Disable with SLICE_GATE=off.
+
+// Serialize gate execution so multiple parallel slices never run
+// `yarn install` into the shared node_modules cache mount at the same time.
+let gateLock: Promise<void> = Promise.resolve();
+async function gated<T>(fn: () => T): Promise<T> {
+  const prev = gateLock;
+  let release!: () => void;
+  gateLock = new Promise<void>((r) => (release = r));
+  await prev;
+  try {
+    return fn();
+  } finally {
+    release();
+  }
+}
+
+function runSliceGate(issue: Issue, sliceBranch: string): boolean {
+  if ((process.env.SLICE_GATE ?? '').toLowerCase() === 'off') {
+    console.log(
+      `  [#${issue.number}] gate disabled (SLICE_GATE=off) — merging without verification.`,
+    );
+    return true;
+  }
+
+  const targets = (process.env.SLICE_GATE_TARGETS || 'lint').trim();
+  const worktreeName = sliceBranch.replace(/\//g, '-');
+  const worktreePath = join(
+    process.cwd(),
+    '.sandcastle',
+    'worktrees',
+    worktreeName,
+  );
+
+  if (!existsSync(worktreePath)) {
+    console.error(
+      `  [#${issue.number}] gate: worktree ${worktreeName} missing — failing closed.`,
+    );
+    return false;
+  }
+
+  // Sync the host worktree to exactly what the agent pushed, so we gate the code
+  // that would be merged. Host git works in worktrees (shared object store).
+  spawnSync('git', ['-C', worktreePath, 'fetch', 'origin', sliceBranch], {
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  const reset = spawnSync(
+    'git',
+    ['-C', worktreePath, 'reset', '--hard', `origin/${sliceBranch}`],
+    { encoding: 'utf8', windowsHide: true },
+  );
+  if (reset.status !== 0) {
+    console.error(
+      `  [#${issue.number}] gate: could not sync worktree — failing closed.`,
+    );
+    return false;
+  }
+
+  // Compute affected projects on the host (git history + node_modules available).
+  const show = spawnSync(
+    'npx',
+    [
+      'nx',
+      'show',
+      'projects',
+      '--affected',
+      `--base=origin/${featureBranch}`,
+      `--head=origin/${sliceBranch}`,
+    ],
+    {
+      encoding: 'utf8',
+      windowsHide: true,
+      shell: true,
+      env: { ...process.env, NX_DAEMON: 'false' },
+    },
+  );
+  if (show.status !== 0) {
+    console.error(
+      `  [#${issue.number}] gate: nx could not compute affected projects — failing closed.\n${show.stderr}`,
+    );
+    return false;
+  }
+  const projects = (show.stdout || '')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter((s) => s && !s.includes(' '));
+  if (projects.length === 0) {
+    console.log(`  [#${issue.number}] gate: no affected projects — pass.`);
+    return true;
+  }
+
+  console.log(
+    `  [#${issue.number}] gate: running '${targets}' on ${projects.join(', ')} ...`,
+  );
+  // Lint the slice's code in Docker. Explicit --projects means no git is needed
+  // inside the container (the worktree's .git link does not resolve there).
+  const gate = spawnSync(
+    'docker',
+    [
+      'run',
+      '--rm',
+      '--entrypoint',
+      '/bin/bash',
+      '--user',
+      '1000:1000',
+      '-e',
+      'NX_DAEMON=false',
+      '-e',
+      'NX_ISOLATE_PLUGINS=false',
+      '-e',
+      'NX_SKIP_NX_CACHE=true',
+      '-v',
+      `${worktreePath}:/home/agent/workspace`,
+      '-v',
+      `${linuxNmCache}:/home/agent/workspace/node_modules`,
+      'sandcastle:myorganizer',
+      '-c',
+      `cd /home/agent/workspace && corepack yarn install --immutable && npx nx run-many -t ${targets} --projects=${projects.join(',')} --skip-nx-cache`,
+    ],
+    { encoding: 'utf8', stdio: 'inherit', windowsHide: true, timeout: 1200000 },
+  );
+
+  const ok = gate.status === 0;
+  console.log(`  [#${issue.number}] gate: ${ok ? 'PASS' : 'FAIL'}.`);
+  return ok;
+}
+
 function buildPrompt(issue: Issue, sliceBranch: string): string {
   return [
     `You are implementing GitHub Issue #${issue.number}: ${issue.title}`,
@@ -321,6 +453,7 @@ type SliceResult = {
   sliceBranch: string;
   prUrl: string;
   commits: number;
+  merged: boolean;
 };
 
 const results = await Promise.allSettled<SliceResult>(
@@ -374,19 +507,6 @@ const results = await Promise.allSettled<SliceResult>(
       prompt: buildPrompt(issue, sliceBranch),
     });
 
-    // Update labels
-    ghSilent([
-      'issue',
-      'edit',
-      String(issue.number),
-      '--repo',
-      REPO,
-      '--remove-label',
-      'status:in-progress',
-      '--add-label',
-      'status:done',
-    ]);
-
     // Create PR from slice branch → feature branch
     const prCreate = spawnSync(
       'gh',
@@ -412,9 +532,29 @@ const results = await Promise.allSettled<SliceResult>(
         ? prCreate.stdout.trim()
         : `(PR creation failed: ${prCreate.stderr.trim().slice(0, 80)})`;
 
-    // Merge the slice PR into the feature branch and delete the slice branch.
-    // The feature branch → main PR is where the real review happens.
-    if (prCreate.status === 0) {
+    // Build gate before merge. Serialized so parallel slices never run
+    // `yarn install` into the shared node_modules cache mount concurrently.
+    const gatePassed =
+      prCreate.status === 0
+        ? await gated(() => runSliceGate(issue, sliceBranch))
+        : false;
+
+    const merged = prCreate.status === 0 && gatePassed;
+
+    if (merged) {
+      // Gate green → mark done and squash-merge into the feature branch.
+      ghSilent([
+        'issue',
+        'edit',
+        String(issue.number),
+        '--repo',
+        REPO,
+        '--remove-label',
+        'status:in-progress',
+        '--add-label',
+        'status:done',
+      ]);
+
       const prMerge = spawnSync(
         'gh',
         [
@@ -434,45 +574,90 @@ const results = await Promise.allSettled<SliceResult>(
           `  Warning: auto-merge failed for ${prUrl} — merge manually before opening the feature PR.`,
         );
       }
+
+      ghSilent([
+        'issue',
+        'comment',
+        String(issue.number),
+        '--repo',
+        REPO,
+        '--body',
+        `Agent completed and the build gate passed. ${result.commits.length} commit(s) on \`${sliceBranch}\`.\nMerged into \`${featureBranch}\`. PR: ${prUrl}`,
+      ]);
+    } else {
+      // PR failed OR gate failed → do NOT merge, do NOT mark status:done, so the
+      // wave-runner halts instead of branching dependents off broken code.
+      ghSilent([
+        'issue',
+        'edit',
+        String(issue.number),
+        '--repo',
+        REPO,
+        '--remove-label',
+        'status:in-progress',
+      ]);
+
+      const reason =
+        prCreate.status !== 0
+          ? 'the PR could not be created'
+          : `the build gate (${process.env.SLICE_GATE_TARGETS || 'lint'}) failed`;
+      ghSilent([
+        'issue',
+        'comment',
+        String(issue.number),
+        '--repo',
+        REPO,
+        '--body',
+        `Agent finished but ${reason} — slice was NOT merged into \`${featureBranch}\`. ` +
+          `Branch \`${sliceBranch}\` and its PR are left open for inspection: ${prUrl}\n\n` +
+          `Dependent waves are halted. Fix the slice, then re-run \`yarn dispatch-waves\` (completed waves are skipped).`,
+      ]);
     }
 
-    // Post completion comment on issue
-    ghSilent([
-      'issue',
-      'comment',
-      String(issue.number),
-      '--repo',
-      REPO,
-      '--body',
-      `Agent completed. ${result.commits.length} commit(s) on \`${sliceBranch}\`.\nPR: ${prUrl}`,
-    ]);
-
-    return { issue, sliceBranch, prUrl, commits: result.commits.length };
+    return {
+      issue,
+      sliceBranch,
+      prUrl,
+      commits: result.commits.length,
+      merged,
+    };
   }),
 );
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
-const succeeded = results.filter(
+const fulfilled = results.filter(
   (r): r is PromiseFulfilledResult<SliceResult> => r.status === 'fulfilled',
 );
+const merged = fulfilled.filter((r) => r.value.merged);
+const blocked = fulfilled.filter((r) => !r.value.merged);
 const failed = results.filter(
   (r): r is PromiseRejectedResult => r.status === 'rejected',
 );
 
 console.log(`\n${'─'.repeat(55)}`);
 console.log(
-  `Batch done: ${succeeded.length} succeeded, ${failed.length} failed.\n`,
+  `Batch done: ${merged.length} merged, ${blocked.length} blocked (gate/PR), ${failed.length} crashed.\n`,
 );
 
-for (const r of succeeded) {
-  console.log(`  ✓ #${r.value.issue.number} — ${r.value.prUrl}`);
+for (const r of merged) {
+  console.log(`  ✓ #${r.value.issue.number} merged — ${r.value.prUrl}`);
+}
+for (const r of blocked) {
+  console.error(
+    `  ⚠ #${r.value.issue.number} NOT merged (gate failed / PR open) — ${r.value.prUrl}`,
+  );
 }
 for (const r of failed) {
   console.error(`  ✗ ${String(r.reason)}`);
 }
 
-if (succeeded.length > 0) {
+if (blocked.length > 0 || failed.length > 0) {
+  console.log(
+    `\nOne or more slices did not merge. Dependent waves will halt until resolved.`,
+  );
+}
+if (merged.length > 0) {
   console.log(`\nNext step: review slice PRs targeting \`${featureBranch}\`,`);
   console.log(`then open a final PR from \`${featureBranch}\` to \`main\`.`);
 }
@@ -487,7 +672,7 @@ spawnSync(
     [
       'Add-Type -AssemblyName System.Windows.Forms;',
       `[System.Windows.Forms.MessageBox]::Show(`,
-      `  '${succeeded.length} agent(s) done, ${failed.length} failed.` +
+      `  '${merged.length} merged, ${blocked.length} blocked, ${failed.length} crashed.` +
         `\\nPRD #${prdNumber}: ${safeTitle}',`,
       `  'dispatch-agents complete', 'OK', 'Information'`,
       `)`,
