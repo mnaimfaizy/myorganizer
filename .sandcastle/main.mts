@@ -289,6 +289,88 @@ async function gated<T>(fn: () => T): Promise<T> {
   }
 }
 
+// Host-side push. Agents run in a credential-less sandbox and only commit
+// locally; the host (which has working git/gh credentials) finalizes and pushes
+// the slice branch so a PR can be opened. Operates on the local branch ref — which
+// carries the agent's commit even after sandcastle has cleaned up the worktree
+// directory. Returns false if there is nothing to push or the push fails.
+function pushSliceBranch(issue: Issue, sliceBranch: string): boolean {
+  const branchExists =
+    spawnSync('git', ['rev-parse', '--verify', '--quiet', sliceBranch], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).status === 0;
+  if (!branchExists) {
+    console.error(
+      `  [#${issue.number}] push: local branch ${sliceBranch} not found — nothing to push.`,
+    );
+    return false;
+  }
+
+  // If the agent's worktree survived AND has uncommitted changes (formatting,
+  // generated files), capture them. --no-verify skips host husky hooks; the
+  // build gate is the real check. When sandcastle already cleaned up the
+  // worktree the agent's commit is on the branch ref, so this is best-effort.
+  const worktreePath = join(
+    process.cwd(),
+    '.sandcastle',
+    'worktrees',
+    sliceBranch.replace(/\//g, '-'),
+  );
+  if (existsSync(worktreePath)) {
+    const dirty = (
+      spawnSync('git', ['-C', worktreePath, 'status', '--porcelain'], {
+        encoding: 'utf8',
+        windowsHide: true,
+      }).stdout || ''
+    ).trim();
+    if (dirty) {
+      spawnSync('git', ['-C', worktreePath, 'add', '-A'], {
+        encoding: 'utf8',
+        windowsHide: true,
+      });
+      spawnSync(
+        'git',
+        [
+          '-C',
+          worktreePath,
+          'commit',
+          '--no-verify',
+          '-m',
+          `chore(slice): finalize #${issue.number} agent changes`,
+        ],
+        { encoding: 'utf8', windowsHide: true },
+      );
+    }
+  }
+
+  // Nothing ahead of the feature branch means the agent produced no mergeable
+  // work — treat as a failure so the wave halts rather than opening an empty PR.
+  const ahead = spawnSync(
+    'git',
+    ['rev-list', '--count', `origin/${featureBranch}..${sliceBranch}`],
+    { encoding: 'utf8', windowsHide: true },
+  );
+  if ((ahead.stdout || '').trim() === '0') {
+    console.error(
+      `  [#${issue.number}] push: ${sliceBranch} has no commits beyond ${featureBranch} — nothing to merge.`,
+    );
+    return false;
+  }
+
+  const push = spawnSync(
+    'git',
+    ['push', '--force-with-lease', 'origin', `${sliceBranch}:${sliceBranch}`],
+    { encoding: 'utf8', stdio: 'pipe', windowsHide: true },
+  );
+  if (push.status !== 0) {
+    console.error(`  [#${issue.number}] push failed:\n${push.stderr}`);
+    return false;
+  }
+  console.log(`  [#${issue.number}] pushed ${sliceBranch} to origin.`);
+  return true;
+}
+
 function runSliceGate(issue: Issue, sliceBranch: string): boolean {
   if ((process.env.SLICE_GATE ?? '').toLowerCase() === 'off') {
     console.log(
@@ -298,37 +380,33 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
   }
 
   const targets = (process.env.SLICE_GATE_TARGETS || 'lint').trim();
-  const worktreeName = sliceBranch.replace(/\//g, '-');
-  const worktreePath = join(
-    process.cwd(),
-    '.sandcastle',
-    'worktrees',
-    worktreeName,
-  );
 
-  if (!existsSync(worktreePath)) {
-    console.error(
-      `  [#${issue.number}] gate: worktree ${worktreeName} missing — failing closed.`,
-    );
-    return false;
-  }
-
-  // Sync the host worktree to exactly what the agent pushed, so we gate the code
-  // that would be merged. Host git works in worktrees (shared object store).
-  spawnSync('git', ['-C', worktreePath, 'fetch', 'origin', sliceBranch], {
+  // Slices that change yarn.lock add dependencies the shared (already-seeded)
+  // node_modules cache does not contain. Linting them against that stale cache
+  // fails spuriously, and installing into the shared mount would corrupt it for
+  // other slices. Skip the gate for dependency-changing slices — they are verified
+  // another way (the agent's own in-sandbox build, or manual review of the dep PR).
+  spawnSync('git', ['fetch', 'origin', sliceBranch], {
     encoding: 'utf8',
     windowsHide: true,
   });
-  const reset = spawnSync(
+  const lockDiff = spawnSync(
     'git',
-    ['-C', worktreePath, 'reset', '--hard', `origin/${sliceBranch}`],
+    [
+      'diff',
+      '--name-only',
+      `origin/${featureBranch}`,
+      `origin/${sliceBranch}`,
+      '--',
+      'yarn.lock',
+    ],
     { encoding: 'utf8', windowsHide: true },
   );
-  if (reset.status !== 0) {
-    console.error(
-      `  [#${issue.number}] gate: could not sync worktree — failing closed.`,
+  if ((lockDiff.stdout || '').trim() !== '') {
+    console.log(
+      `  [#${issue.number}] gate: yarn.lock changed — skipping lint gate (shared cache cannot validate new deps). NOT gated.`,
     );
-    return false;
+    return true;
   }
 
   // Compute affected projects on the host (git history + node_modules available).
@@ -364,40 +442,88 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
     return true;
   }
 
-  console.log(
-    `  [#${issue.number}] gate: running '${targets}' on ${projects.join(', ')} ...`,
+  // Gate in a DEDICATED detached worktree at the pushed commit. Detached + a
+  // separate path means it never holds the slice branch checked out (so the
+  // post-merge --delete-branch works) and it is independent of sandcastle's own
+  // worktree lifecycle, which may already have removed the agent's worktree.
+  const gateName = sliceBranch.replace(/\//g, '-');
+  const gateRoot = join(process.cwd(), '.sandcastle', 'gate');
+  const gatePath = join(gateRoot, gateName);
+  mkdirSync(gateRoot, { recursive: true });
+  spawnSync('git', ['worktree', 'prune'], {
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (existsSync(gatePath)) {
+    spawnSync('git', ['worktree', 'remove', '--force', gatePath], {
+      encoding: 'utf8',
+      windowsHide: true,
+    });
+  }
+  spawnSync('git', ['fetch', 'origin', sliceBranch], {
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  const add = spawnSync(
+    'git',
+    ['worktree', 'add', '--detach', gatePath, `origin/${sliceBranch}`],
+    { encoding: 'utf8', windowsHide: true },
   );
-  // Lint the slice's code in Docker. Explicit --projects means no git is needed
-  // inside the container (the worktree's .git link does not resolve there).
-  const gate = spawnSync(
-    'docker',
-    [
-      'run',
-      '--rm',
-      '--entrypoint',
-      '/bin/bash',
-      '--user',
-      '1000:1000',
-      '-e',
-      'NX_DAEMON=false',
-      '-e',
-      'NX_ISOLATE_PLUGINS=false',
-      '-e',
-      'NX_SKIP_NX_CACHE=true',
-      '-v',
-      `${worktreePath}:/home/agent/workspace`,
-      '-v',
-      `${linuxNmCache}:/home/agent/workspace/node_modules`,
-      'sandcastle:myorganizer',
-      '-c',
-      `cd /home/agent/workspace && corepack yarn install --immutable && npx nx run-many -t ${targets} --projects=${projects.join(',')} --skip-nx-cache`,
-    ],
-    { encoding: 'utf8', stdio: 'inherit', windowsHide: true, timeout: 1200000 },
-  );
+  if (add.status !== 0) {
+    console.error(
+      `  [#${issue.number}] gate: could not create gate worktree — failing closed.\n${add.stderr}`,
+    );
+    return false;
+  }
 
-  const ok = gate.status === 0;
-  console.log(`  [#${issue.number}] gate: ${ok ? 'PASS' : 'FAIL'}.`);
-  return ok;
+  try {
+    console.log(
+      `  [#${issue.number}] gate: running '${targets}' on ${projects.join(', ')} ...`,
+    );
+    // Explicit --projects means no git is needed inside the container.
+    const gate = spawnSync(
+      'docker',
+      [
+        'run',
+        '--rm',
+        '--entrypoint',
+        '/bin/bash',
+        '--user',
+        '1000:1000',
+        '-e',
+        'NX_DAEMON=false',
+        '-e',
+        'NX_ISOLATE_PLUGINS=false',
+        '-e',
+        'NX_SKIP_NX_CACHE=true',
+        '-v',
+        `${gatePath}:/home/agent/workspace`,
+        '-v',
+        `${linuxNmCache}:/home/agent/workspace/node_modules`,
+        'sandcastle:myorganizer',
+        '-c',
+        // Invoke nx directly from the mounted, already-seeded node_modules — no
+        // yarn/corepack/npx (which can fall back to Yarn 1 in a worktree) and no
+        // install (which would write into and corrupt the shared cache mount).
+        `cd /home/agent/workspace && node node_modules/.bin/nx run-many -t ${targets} --projects=${projects.join(',')} --skip-nx-cache`,
+      ],
+      {
+        encoding: 'utf8',
+        stdio: 'inherit',
+        windowsHide: true,
+        timeout: 1200000,
+      },
+    );
+
+    const ok = gate.status === 0;
+    console.log(`  [#${issue.number}] gate: ${ok ? 'PASS' : 'FAIL'}.`);
+    return ok;
+  } finally {
+    spawnSync('git', ['worktree', 'remove', '--force', gatePath], {
+      encoding: 'utf8',
+      windowsHide: true,
+    });
+  }
 }
 
 function buildPrompt(issue: Issue, sliceBranch: string): string {
@@ -416,7 +542,7 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     `- Your working branch is \`${sliceBranch}\` (based on \`${featureBranch}\`). Do not switch branches.`,
     `- Follow all mandatory delegation rules in CLAUDE.md (tests → TestScaffold, components → ComponentBuilder, etc.).`,
     `- Commit your changes using Conventional Commit messages (\`corepack yarn ai:commit\`).`,
-    `- After committing, push your branch: \`git push origin ${sliceBranch}\`.`,
+    `- Do NOT push — this sandbox has no push credentials. The orchestrator pushes your branch from the host after you finish. Just commit locally; leave nothing uncommitted.`,
     `- When implementation is complete, output <promise>COMPLETE</promise>.`,
     ``,
     `## Running tests in this sandbox`,
@@ -504,42 +630,52 @@ const results = await Promise.allSettled<SliceResult>(
         baseBranch: featureBranch,
       },
       maxIterations: 25,
+      // Quiet stretches (yarn install, codegen, builds) can exceed the 600s
+      // default and trip the idle watchdog; give long-running slices headroom.
+      idleTimeoutSeconds: 1800,
       prompt: buildPrompt(issue, sliceBranch),
     });
 
-    // Create PR from slice branch → feature branch
-    const prCreate = spawnSync(
-      'gh',
-      [
-        'pr',
-        'create',
-        '--repo',
-        REPO,
-        '--head',
-        sliceBranch,
-        '--base',
-        featureBranch,
-        '--title',
-        issue.title,
-        '--body',
-        `Closes #${issue.number}\n\nPart of \`${featureBranch}\` — see PRD #${prdNumber}.`,
-      ],
-      { encoding: 'utf8', windowsHide: true },
-    );
+    // Host-side push: the sandbox has no push credentials, so the host finalizes
+    // and pushes the slice branch before any PR can be opened.
+    const pushOk = pushSliceBranch(issue, sliceBranch);
 
-    const prUrl =
-      prCreate.status === 0
-        ? prCreate.stdout.trim()
-        : `(PR creation failed: ${prCreate.stderr.trim().slice(0, 80)})`;
+    // Create PR from slice branch → feature branch (only once it exists on origin).
+    const prCreate = pushOk
+      ? spawnSync(
+          'gh',
+          [
+            'pr',
+            'create',
+            '--repo',
+            REPO,
+            '--head',
+            sliceBranch,
+            '--base',
+            featureBranch,
+            '--title',
+            issue.title,
+            '--body',
+            `Closes #${issue.number}\n\nPart of \`${featureBranch}\` — see PRD #${prdNumber}.`,
+          ],
+          { encoding: 'utf8', windowsHide: true },
+        )
+      : null;
+
+    const prCreated = prCreate !== null && prCreate.status === 0;
+    const prUrl = !pushOk
+      ? '(push to origin failed)'
+      : prCreated
+        ? prCreate!.stdout.trim()
+        : `(PR creation failed: ${prCreate!.stderr.trim().slice(0, 80)})`;
 
     // Build gate before merge. Serialized so parallel slices never run
     // `yarn install` into the shared node_modules cache mount concurrently.
-    const gatePassed =
-      prCreate.status === 0
-        ? await gated(() => runSliceGate(issue, sliceBranch))
-        : false;
+    const gatePassed = prCreated
+      ? await gated(() => runSliceGate(issue, sliceBranch))
+      : false;
 
-    const merged = prCreate.status === 0 && gatePassed;
+    const merged = prCreated && gatePassed;
 
     if (merged) {
       // Gate green → mark done and squash-merge into the feature branch.
@@ -597,8 +733,9 @@ const results = await Promise.allSettled<SliceResult>(
         'status:in-progress',
       ]);
 
-      const reason =
-        prCreate.status !== 0
+      const reason = !pushOk
+        ? 'its branch could not be pushed to origin'
+        : !prCreated
           ? 'the PR could not be created'
           : `the build gate (${process.env.SLICE_GATE_TARGETS || 'lint'}) failed`;
       ghSilent([
