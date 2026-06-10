@@ -156,7 +156,8 @@
     "svgo@^3.2.0": "3.3.3",
     "tar@7.5.7": "7.5.13",
     "tmp": "0.2.6",
-    "validator": "13.15.22"
+    "validator": "13.15.22",
+    "shell-quote": "1.8.4"
   },
   "overrides": {
     "@babel/plugin-transform-modules-systemjs": "7.29.4",
@@ -211,7 +212,8 @@
     "svgo@^3.2.0": "3.3.3",
     "tar@7.5.7": "7.5.13",
     "tmp": "0.2.6",
-    "validator": "13.15.22"
+    "validator": "13.15.22",
+    "shell-quote": "1.8.4"
   },
   "pnpm": {
     "overrides": {
@@ -267,7 +269,8 @@
       "svgo@^3.2.0": "3.3.3",
       "tar@7.5.7": "7.5.13",
       "tmp": "0.2.6",
-      "validator": "13.15.22"
+      "validator": "13.15.22",
+      "shell-quote": "1.8.4"
     }
   },
   "devDependencies": {

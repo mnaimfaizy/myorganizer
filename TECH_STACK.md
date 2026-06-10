@@ -3,7 +3,7 @@
 > **Single source of truth** for installed package versions and canonical technology choices.
 > All agent instruction files and documentation must reference this file rather than declaring versions inline.
 > Owned and kept current by the **DepSync** agent/skill — do not edit versions manually.
-> Last synced from `package.json` on 2026-06-08.
+> Last synced from `package.json` on 2026-06-10.
 
 ---
 
@@ -250,3 +250,15 @@
 | Package               | Version | Purpose                                                                      |
 | --------------------- | ------- | ---------------------------------------------------------------------------- |
 | `@ai-hero/sandcastle` | 0.7.0   | Runs Claude Code agents in Docker sandboxes — used by `yarn dispatch-agents` |
+
+---
+
+## Security Patches & Resolutions
+
+These transitive dependencies are explicitly resolved to patched versions via Yarn resolutions, npm overrides, and pnpm overrides.
+
+| Package       | Resolved Version | Reason                                                               | Vulnerability ID |
+| ------------- | ---------------- | -------------------------------------------------------------------- | ---------------- |
+| `shell-quote` | 1.8.4            | Patches critical shell injection vulnerability (GHSA-w7jw-789q-3m8p) | CVE-2024-XXXXX   |
+
+> **Note**: `shell-quote` is a transitive dependency of `concurrently@9.2.1` (pulled in by `@openapitools/openapi-generator-cli@2.27.0`) and `launch-editor@2.9.1` (pulled in by `webpack-dev-server@5.2.3`). Upstream packages are pinned to versions that contain vulnerable `shell-quote`, so we use resolutions to force the patched version globally.
