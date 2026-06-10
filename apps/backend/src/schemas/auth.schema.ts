@@ -4,6 +4,7 @@ export const LoginSchema = z
   .object({
     email: z.string().email('Invalid email address'),
     password: z.string().min(1, 'Password field is required'),
+    client_type: z.enum(['mobile', 'web']).optional(),
   })
   .strict();
 

@@ -61,6 +61,21 @@ router.post(
 
           const filteredUser: FilteredUserInterface = filterUser(requestUser);
 
+          const isMobile =
+            (req.body as { client_type?: string })?.client_type === 'mobile';
+
+          const responseBody: {
+            token: string;
+            expires_in: number;
+            user: FilteredUserInterface;
+            refresh_token?: string;
+          } = {
+            token: token,
+            expires_in: 600_000,
+            user: filteredUser,
+            ...(isMobile ? { refresh_token: refreshToken } : {}),
+          };
+
           res
             .cookie('refresh_cookie', refreshToken, {
               expires: expiry,
@@ -69,11 +84,7 @@ router.post(
               secure: process.env.NODE_ENV === 'production',
             })
             .status(200)
-            .json({
-              token: token,
-              expires_in: 600_000,
-              user: filteredUser,
-            });
+            .json(responseBody);
         } catch (caught) {
           next(caught);
         }

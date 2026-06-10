@@ -760,14 +760,20 @@ export interface Login200Response {
      */
     'expires_in': number;
     /**
-     * 
+     *
      * @type {string}
      * @memberof Login200Response
      */
     'token': string;
+    /**
+     * Present only when the request was made with client_type \"mobile\".
+     * @type {string}
+     * @memberof Login200Response
+     */
+    'refresh_token'?: string;
 }
 /**
- * 
+ *
  * @export
  * @interface Logout200Response
  */
@@ -1488,14 +1494,26 @@ export interface UserLoginBody {
      */
     'email': string;
     /**
-     * 
+     *
      * @type {string}
      * @memberof UserLoginBody
      */
     'password': string;
+    /**
+     * Indicates the client type. When set to \"mobile\", the refresh token is included in the response body.
+     * @type {string}
+     * @memberof UserLoginBody
+     */
+    'client_type'?: UserLoginBodyClientTypeEnum;
 }
+
+export const UserLoginBodyClientTypeEnum = {
+    Mobile: 'mobile',
+    Web: 'web'
+} as const;
+export type UserLoginBodyClientTypeEnum = typeof UserLoginBodyClientTypeEnum[keyof typeof UserLoginBodyClientTypeEnum];
 /**
- * 
+ *
  * @export
  * @interface ValidateErrorJSON
  */

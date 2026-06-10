@@ -246,6 +246,7 @@ components:
         - groceries
         - mobileNumbers
         - subscriptions
+        - tasks
         - todos
     EncryptedBlobV1:
       properties:
@@ -307,6 +308,8 @@ components:
         mobileNumbers:
           $ref: "#/components/schemas/EncryptedBlobV1"
         subscriptions:
+          $ref: "#/components/schemas/EncryptedBlobV1"
+        tasks:
           $ref: "#/components/schemas/EncryptedBlobV1"
         todos:
           $ref: "#/components/schemas/EncryptedBlobV1"
@@ -562,6 +565,11 @@ components:
           type: string
         password:
           type: string
+        client_type:
+          type: string
+          enum:
+            - mobile
+            - web
       required:
         - email
         - password
@@ -1224,6 +1232,8 @@ paths:
             application/json:
               schema:
                 properties:
+                  refresh_token:
+                    type: string
                   user:
                     $ref: "#/components/schemas/FilteredUserInterface"
                   expires_in:
