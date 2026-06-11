@@ -1,44 +1,56 @@
 import React from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { ScreenContainer, ThemedText, ThemedButton } from '@myorganizer/mobile/ui';
+import { useAuth } from '@myorganizer/mobile/feat-auth';
+import { theme } from '@myorganizer/mobile/ui';
+import { LoginScreen } from './LoginScreen';
+import { HomeScreen } from './HomeScreen';
 
 export type RootStackParamList = {
-  Placeholder: undefined;
+  Login: undefined;
+  Home: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-/**
- * Placeholder landing screen for the foundation slice. Feature slices replace
- * this stack with the Login → Unlock → Tasks flow.
- */
-function PlaceholderScreen(): React.JSX.Element {
+/** Full-screen spinner shown while the auth session is being restored. */
+function LoadingScreen(): React.JSX.Element {
   return (
-    <ScreenContainer style={{ alignItems: 'center', justifyContent: 'center' }}>
-      <ThemedText variant="heading">MyOrganizer</ThemedText>
-      <ThemedText variant="body" style={{ marginTop: 8 }}>
-        Mobile foundation ready.
-      </ThemedText>
-      <ThemedButton
-        label="Get Started"
-        variant="primary"
-        style={{ marginTop: 24, alignSelf: 'stretch' }}
-        onPress={() => undefined}
-      />
-    </ScreenContainer>
+    <View
+      style={{
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: theme.colors.surface,
+      }}
+    >
+      <ActivityIndicator color={theme.colors.primary} />
+    </View>
   );
 }
 
+/**
+ * Root navigation. The visible stack is driven by the auth session: while the
+ * session restores we show a spinner, an unauthenticated User sees Login, and
+ * an authenticated User lands on Home. Switching `status` swaps the stack, so
+ * login and logout navigate implicitly.
+ */
 export function RootNavigator(): React.JSX.Element {
+  const { status } = useAuth();
+
+  if (status === 'loading') {
+    return <LoadingScreen />;
+  }
+
   return (
     <NavigationContainer>
-      <Stack.Navigator id="RootStack">
-        <Stack.Screen
-          name="Placeholder"
-          component={PlaceholderScreen}
-          options={{ title: 'MyOrganizer' }}
-        />
+      <Stack.Navigator id="RootStack" screenOptions={{ headerShown: false }}>
+        {status === 'authenticated' ? (
+          <Stack.Screen name="Home" component={HomeScreen} />
+        ) : (
+          <Stack.Screen name="Login" component={LoginScreen} />
+        )}
       </Stack.Navigator>
     </NavigationContainer>
   );
