@@ -24,9 +24,14 @@ function fail(message: string, code = 1): never {
  * cannot introduce lint errors in unchanged downstream files.
  */
 function changedProjects(base: string, head: string): string[] {
+  // Three-dot range: diff the slice head against the MERGE-BASE, i.e. only the
+  // files the slice itself introduced — not files where the slice is merely
+  // behind an advanced base (e.g. another wave-mate already merged into the
+  // feature branch). A two-dot diff would over-report those, dragging unrelated
+  // projects into the gate.
   const diff = spawnSync(
     'git',
-    ['diff', '--name-only', base, head],
+    ['diff', '--name-only', `${base}...${head}`],
     { encoding: 'utf8', windowsHide: true },
   );
   const files = (diff.stdout || '')
