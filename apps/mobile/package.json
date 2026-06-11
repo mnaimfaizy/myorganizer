@@ -1,0 +1,14 @@
+{
+  "name": "mobile",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "@react-native/metro-config": "*",
+    "react": "*",
+    "react-native": "*",
+    "react-native-svg": "*",
+    "@testing-library/react-native": "*",
+    "react-test-renderer": "*",
+    "metro-config": "*"
+  }
+}

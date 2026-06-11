@@ -1,0 +1,15 @@
+{
+  "name": "mobile-screens",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/mobile/screens/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/mobile/screens/src/**/*.{ts,tsx}"]
+      }
+    }
+  }
+}
