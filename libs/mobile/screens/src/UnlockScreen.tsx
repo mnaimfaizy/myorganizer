@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { useAuth } from '@myorganizer/mobile/feat-auth';
 import { useVaultSession } from '@myorganizer/mobile/feat-vault';
 import {
   ScreenContainer,
@@ -37,6 +38,7 @@ function describeUnlockError(err: unknown): string {
  */
 export function UnlockScreen(): React.JSX.Element {
   const { unlock } = useVaultSession();
+  const { logout } = useAuth();
   const theme = useTheme();
   const [passphrase, setPassphrase] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +91,13 @@ export function UnlockScreen(): React.JSX.Element {
           onPress={() => void handleSubmit()}
           disabled={!canSubmit}
           style={{ marginTop: theme.spacing.sm }}
+        />
+
+        <ThemedButton
+          label="Sign out"
+          variant="ghost"
+          onPress={() => void logout()}
+          disabled={submitting}
         />
       </View>
     </ScreenContainer>

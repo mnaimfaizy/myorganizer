@@ -7,12 +7,12 @@ import { useVaultSession } from '@myorganizer/mobile/feat-vault';
 import { theme } from '@myorganizer/mobile/ui';
 import { LoginScreen } from './LoginScreen';
 import { UnlockScreen } from './UnlockScreen';
-import { HomeScreen } from './HomeScreen';
+import { TasksScreen } from './TasksScreen';
 
 export type RootStackParamList = {
   Login: undefined;
   Unlock: undefined;
-  Home: undefined;
+  Tasks: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -55,7 +55,7 @@ export function RootNavigator(): React.JSX.Element {
         ) : vaultStatus === 'locked' ? (
           <Stack.Screen name="Unlock" component={UnlockScreen} />
         ) : (
-          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Tasks" component={TasksScreen} />
         )}
       </Stack.Navigator>
     </NavigationContainer>

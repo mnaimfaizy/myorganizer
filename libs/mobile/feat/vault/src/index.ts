@@ -16,5 +16,6 @@ export {
   MASTER_KEY_LENGTH,
 } from './constants';
 export { createVaultApi } from './api';
+export { pullDecryptedBlob } from './sync';
 export { VaultProvider, useVaultSession } from './context/VaultSessionContext';
 export type { VaultStatus } from './context/VaultSessionContext';

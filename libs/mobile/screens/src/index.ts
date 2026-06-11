@@ -3,4 +3,4 @@ export { RootNavigator } from './RootNavigator';
 export type { RootStackParamList } from './RootNavigator';
 export { LoginScreen } from './LoginScreen';
 export { UnlockScreen } from './UnlockScreen';
-export { HomeScreen } from './HomeScreen';
+export { TasksScreen } from './TasksScreen';
