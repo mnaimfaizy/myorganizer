@@ -3,12 +3,15 @@ import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '@myorganizer/mobile/feat-auth';
+import { useVaultSession } from '@myorganizer/mobile/feat-vault';
 import { theme } from '@myorganizer/mobile/ui';
 import { LoginScreen } from './LoginScreen';
+import { UnlockScreen } from './UnlockScreen';
 import { HomeScreen } from './HomeScreen';
 
 export type RootStackParamList = {
   Login: undefined;
+  Unlock: undefined;
   Home: undefined;
 };
 
@@ -38,6 +41,7 @@ function LoadingScreen(): React.JSX.Element {
  */
 export function RootNavigator(): React.JSX.Element {
   const { status } = useAuth();
+  const { status: vaultStatus } = useVaultSession();
 
   if (status === 'loading') {
     return <LoadingScreen />;
@@ -46,10 +50,12 @@ export function RootNavigator(): React.JSX.Element {
   return (
     <NavigationContainer>
       <Stack.Navigator id="RootStack" screenOptions={{ headerShown: false }}>
-        {status === 'authenticated' ? (
-          <Stack.Screen name="Home" component={HomeScreen} />
-        ) : (
+        {status !== 'authenticated' ? (
           <Stack.Screen name="Login" component={LoginScreen} />
+        ) : vaultStatus === 'locked' ? (
+          <Stack.Screen name="Unlock" component={UnlockScreen} />
+        ) : (
+          <Stack.Screen name="Home" component={HomeScreen} />
         )}
       </Stack.Navigator>
     </NavigationContainer>

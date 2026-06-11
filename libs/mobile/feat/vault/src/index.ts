@@ -15,3 +15,6 @@ export {
   IV_LENGTH,
   MASTER_KEY_LENGTH,
 } from './constants';
+export { createVaultApi } from './api';
+export { VaultProvider, useVaultSession } from './context/VaultSessionContext';
+export type { VaultStatus } from './context/VaultSessionContext';
