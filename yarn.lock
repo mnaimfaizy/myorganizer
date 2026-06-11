@@ -6069,7 +6069,7 @@ __metadata:
     postcss: "npm:8.5.6"
     prettier: "npm:3.8.0"
     prisma: "npm:7.2.0"
-    react: "npm:19.0.0"
+    react: "npm:19.2.3"
     react-day-picker: "npm:9.13.0"
     react-dom: "npm:19.2.3"
     react-hook-form: "npm:7.71.1"
@@ -26596,10 +26596,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react@npm:19.0.0":
-  version: 19.0.0
-  resolution: "react@npm:19.0.0"
-  checksum: 10c0/9cad8f103e8e3a16d15cb18a0d8115d8bd9f9e1ce3420310aea381eb42aa0a4f812cf047bb5441349257a05fba8a291515691e3cb51267279b2d2c3253f38471
+"react@npm:19.2.3":
+  version: 19.2.3
+  resolution: "react@npm:19.2.3"
+  checksum: 10c0/094220b3ba3a76c1b668f972ace1dd15509b157aead1b40391d1c8e657e720c201d9719537375eff08f5e0514748c0319063392a6f000e31303aafc4471f1436
   languageName: node
   linkType: hard
 

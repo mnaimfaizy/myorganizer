@@ -20,4 +20,5 @@ module.exports = {
       require.resolve('react-native/jest/assetFileTransformer.js'),
   },
   coverageDirectory: '../../coverage/apps/mobile',
+  passWithNoTests: true,
 };
