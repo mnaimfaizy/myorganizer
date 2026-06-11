@@ -1,8 +1,7 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { theme } from '@myorganizer/mobile/ui';
+import { ScreenContainer, ThemedText, ThemedButton } from '@myorganizer/mobile/ui';
 
 export type RootStackParamList = {
   Placeholder: undefined;
@@ -16,10 +15,18 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
  */
 function PlaceholderScreen(): React.JSX.Element {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>MyOrganizer</Text>
-      <Text style={styles.subtitle}>Mobile foundation ready.</Text>
-    </View>
+    <ScreenContainer style={{ alignItems: 'center', justifyContent: 'center' }}>
+      <ThemedText variant="heading">MyOrganizer</ThemedText>
+      <ThemedText variant="body" style={{ marginTop: 8 }}>
+        Mobile foundation ready.
+      </ThemedText>
+      <ThemedButton
+        label="Get Started"
+        variant="primary"
+        style={{ marginTop: 24, alignSelf: 'stretch' }}
+        onPress={() => undefined}
+      />
+    </ScreenContainer>
   );
 }
 
@@ -36,22 +43,3 @@ export function RootNavigator(): React.JSX.Element {
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.surface,
-    padding: theme.spacing.lg,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: theme.colors.primary,
-  },
-  subtitle: {
-    marginTop: theme.spacing.sm,
-    color: theme.colors.muted,
-  },
-});
