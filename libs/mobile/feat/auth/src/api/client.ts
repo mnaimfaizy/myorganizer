@@ -1,17 +1,21 @@
+import { AuthenticationApi, Configuration } from '@myorganizer/app-api-client';
 import axios, {
-  AxiosInstance,
   AxiosError,
+  AxiosInstance,
   InternalAxiosRequestConfig,
 } from 'axios';
-import { AuthenticationApi, Configuration } from '@myorganizer/app-api-client';
+import { Platform } from 'react-native';
 import {
+  clearRefreshToken,
   getRefreshToken,
   saveRefreshToken,
-  clearRefreshToken,
 } from '../storage/keychain';
 import type { AuthTokens, Login200Response } from './types';
 
-const BASE_PATH = 'http://localhost:3000/api/v1';
+// On Android emulators, 10.0.2.2 routes to the host machine's localhost.
+// On iOS simulators and physical devices, localhost/127.0.0.1 works directly.
+const DEV_HOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+const BASE_PATH = `http://${DEV_HOST}:3000/api/v1`;
 
 type TokenRefreshCallback = (tokens: AuthTokens | null) => void;
 

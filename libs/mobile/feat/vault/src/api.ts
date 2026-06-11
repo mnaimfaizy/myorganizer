@@ -1,7 +1,9 @@
-import { VaultApi, Configuration } from '@myorganizer/app-api-client';
+import { Configuration, VaultApi } from '@myorganizer/app-api-client';
 import type { AxiosInstance } from 'axios';
+import { Platform } from 'react-native';
 
-const BASE_PATH = 'http://localhost:3000/api/v1';
+const DEV_HOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
+const BASE_PATH = `http://${DEV_HOST}:3000/api/v1`;
 
 /**
  * Builds the generated Vault API client bound to an already-configured Axios
