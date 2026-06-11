@@ -1,0 +1,15 @@
+{
+  "name": "mobile-ui",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/mobile/ui/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/mobile/ui/src/**/*.{ts,tsx}"]
+      }
+    }
+  }
+}

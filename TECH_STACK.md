@@ -88,6 +88,27 @@
 
 ---
 
+## Frontend — Mobile App
+
+> Bare React Native via `@nx/react-native` (ADR-0005). Styling uses React Native
+> `StyleSheet` over a `@myorganizer/design-tokens`-derived theme (ADR-0008) — no
+> NativeWind/Tailwind on mobile (incompatible with the repo's Tailwind v4).
+
+| Package                          | Version  | Purpose                                         |
+| -------------------------------- | -------- | ----------------------------------------------- |
+| `react-native`                   | ~0.79.3  | Mobile app runtime                              |
+| `@nx/react-native`               | 22.3.3   | Nx plugin for React Native apps/libs            |
+| `@react-navigation/native`       | 7.2.5    | Navigation core                                 |
+| `@react-navigation/native-stack` | 7.16.0   | Native stack navigator                          |
+| `react-native-screens`           | 4.11.1   | Native screen primitives (pinned for RN 0.79)   |
+| `react-native-safe-area-context` | 5.8.0    | Safe-area insets                                |
+| `react-native-keychain`          | 10.0.0   | Secure token storage (mobile auth)              |
+| `react-native-quick-crypto`      | 1.1.5    | JSI WebCrypto-compatible crypto (vault adapter) |
+| `react-native-mmkv`              | 4.3.1    | Fast key-value storage (vault blobs)            |
+| `react-native-svg`               | ~15.11.2 | SVG rendering                                   |
+
+---
+
 ## Backend — API Server
 
 ### Framework & Middleware

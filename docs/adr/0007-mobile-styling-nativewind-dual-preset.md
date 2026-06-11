@@ -1,6 +1,12 @@
 ---
-status: accepted
+status: superseded by ADR-0008
 ---
+
+> **Superseded by [ADR-0008](./0008-mobile-styling-stylesheet-theme.md).** NativeWind
+> (via `react-native-css-interop`) requires Tailwind CSS v3, but the repo is on
+> Tailwind v4; the two cannot coexist in one `package.json`. Mobile uses a
+> StyleSheet + token-derived theme instead. The #141 native preset is retained as
+> theme data.
 
 # Mobile styling uses NativeWind over a generated native token preset
 
