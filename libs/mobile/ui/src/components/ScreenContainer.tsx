@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, View, type ViewProps } from 'react-native';
+import { StyleSheet, type ViewProps } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { theme } from '../theme';
 
 export interface ScreenContainerProps extends ViewProps {
@@ -14,12 +15,12 @@ export function ScreenContainer({
   ...rest
 }: ScreenContainerProps): React.JSX.Element {
   return (
-    <View
+    <SafeAreaView
       style={[styles.base, !noPadding && styles.padded, style]}
       {...rest}
     >
       {children}
-    </View>
+    </SafeAreaView>
   );
 }
 

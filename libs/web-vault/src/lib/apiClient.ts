@@ -4,7 +4,7 @@ import {
   VaultBackupsApi,
   type ConfigurationParameters,
 } from '@myorganizer/app-api-client';
-import { getAccessToken } from '@myorganizer/auth';
+import { getAccessToken, getAuthAxios } from '@myorganizer/auth';
 import { getApiBaseUrl } from '@myorganizer/core';
 
 export function createApiConfiguration(
@@ -21,9 +21,14 @@ export function createApiConfiguration(
 }
 
 export function createVaultApi(): VaultApi {
-  return new VaultApi(createApiConfiguration());
+  // Use getAuthAxios() so the 401→refresh interceptor handles expired tokens.
+  return new VaultApi(createApiConfiguration(), undefined, getAuthAxios());
 }
 
 export function createVaultBackupsApi(): VaultBackupsApi {
-  return new VaultBackupsApi(createApiConfiguration());
+  return new VaultBackupsApi(
+    createApiConfiguration(),
+    undefined,
+    getAuthAxios(),
+  );
 }
