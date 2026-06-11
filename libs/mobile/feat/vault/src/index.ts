@@ -1,2 +1,17 @@
-// @myorganizer/mobile/feat-vault — scaffolded by #143. Feature slices populate this module.
-export {};
+export {
+  MobileVaultCrypto,
+  mobileVaultCrypto,
+  bytesToBase64,
+  base64ToBytes,
+  utf8ToBytes,
+  bytesToUtf8,
+} from './crypto';
+export { MobileVaultStorage, mobileVaultStorage } from './storage';
+export {
+  VAULT_STORAGE_KEY,
+  PBKDF2_ITERATIONS,
+  PBKDF2_HASH,
+  SALT_LENGTH,
+  IV_LENGTH,
+  MASTER_KEY_LENGTH,
+} from './constants';
