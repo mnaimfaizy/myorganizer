@@ -48,7 +48,14 @@
       "@myorganizer/web-vault-ui": ["libs/web-vault-ui/src/index.ts"],
       "@myorganizer/web-pages/groceries": [
         "libs/web/pages/groceries/src/index.ts"
-      ]
+      ],
+      "@myorganizer/mobile/core": ["libs/mobile/core/src/index.ts"],
+      "@myorganizer/mobile/ui": ["libs/mobile/ui/src/index.ts"],
+      "@myorganizer/mobile/utils": ["libs/mobile/utils/src/index.ts"],
+      "@myorganizer/mobile/hooks": ["libs/mobile/hooks/src/index.ts"],
+      "@myorganizer/mobile/screens": ["libs/mobile/screens/src/index.ts"],
+      "@myorganizer/mobile/feat-auth": ["libs/mobile/feat/auth/src/index.ts"],
+      "@myorganizer/mobile/feat-vault": ["libs/mobile/feat/vault/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp", "**/Pods/**", "dist", "ios", "android"]

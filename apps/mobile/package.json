@@ -1,0 +1,21 @@
+{
+  "name": "mobile",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "@react-native/metro-config": "*",
+    "react": "*",
+    "react-native": "*",
+    "react-native-keychain": "*",
+    "react-native-mmkv": "*",
+    "react-native-nitro-modules": "*",
+    "react-native-quick-base64": "3.0.0",
+    "react-native-quick-crypto": "0.7.17",
+    "react-native-safe-area-context": "*",
+    "react-native-screens": "*",
+    "react-native-svg": "*",
+    "@testing-library/react-native": "*",
+    "react-test-renderer": "*",
+    "metro-config": "*"
+  }
+}

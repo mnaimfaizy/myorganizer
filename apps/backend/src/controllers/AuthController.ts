@@ -53,18 +53,27 @@ export class AuthController extends Controller {
     token: string;
     expires_in: number;
     user: FilteredUserInterface;
+    refresh_token?: string;
   }> {
     void requestBody;
     const requestUser = req.user as UserInterface;
-    const { token } = apiTokens.createTokens(requestUser);
+    const { token, refreshToken } = apiTokens.createTokens(requestUser);
     if (token instanceof Error) {
       this.setStatus(500);
       throw new Error('Failed to create access token');
     }
     const user = filterUser(requestUser);
+    const isMobile = requestBody.client_type === 'mobile';
 
     this.setStatus(200);
-    return { token, expires_in: 600_000, user };
+    return {
+      token,
+      expires_in: 600_000,
+      user,
+      ...(isMobile && !(refreshToken instanceof Error)
+        ? { refresh_token: refreshToken }
+        : {}),
+    };
   }
 
   @Post('/logout/{userId}')

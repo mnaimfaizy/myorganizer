@@ -14,6 +14,54 @@ function fail(message: string, code = 1): never {
   process.exit(code);
 }
 
+/**
+ * Maps the files a slice changed (between base and head) to the Nx projects that
+ * OWN them — the project rooted at the nearest ancestor `project.json` for each
+ * file. Unlike `nx show projects --affected`, this excludes transitive dependents:
+ * a change to shared `vault-core` returns only `vault-core` (+ any other project
+ * whose own files changed), NOT every web page that imports it. This is the
+ * correct scope for a LINT gate, where lint is per-file and an upstream change
+ * cannot introduce lint errors in unchanged downstream files.
+ */
+function changedProjects(base: string, head: string): string[] {
+  // Three-dot range: diff the slice head against the MERGE-BASE, i.e. only the
+  // files the slice itself introduced — not files where the slice is merely
+  // behind an advanced base (e.g. another wave-mate already merged into the
+  // feature branch). A two-dot diff would over-report those, dragging unrelated
+  // projects into the gate.
+  const diff = spawnSync(
+    'git',
+    ['diff', '--name-only', `${base}...${head}`],
+    { encoding: 'utf8', windowsHide: true },
+  );
+  const files = (diff.stdout || '')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const names = new Set<string>();
+  for (const file of files) {
+    // Walk up the path segments looking for the nearest project.json.
+    const segments = file.split('/');
+    for (let i = segments.length - 1; i > 0; i--) {
+      const dir = segments.slice(0, i).join('/');
+      const pjPath = join(process.cwd(), dir, 'project.json');
+      if (existsSync(pjPath)) {
+        try {
+          const pj = JSON.parse(readFileSync(pjPath, 'utf8')) as {
+            name?: string;
+          };
+          if (pj.name) names.add(pj.name);
+        } catch {
+          /* ignore unparseable project.json */
+        }
+        break;
+      }
+    }
+  }
+  return [...names];
+}
+
 function ghJson<T>(args: string[]): T {
   const r = spawnSync('gh', args, { encoding: 'utf8', windowsHide: true });
   if (r.error) fail(`gh error: ${r.error.message}`);
@@ -132,7 +180,13 @@ const allIssues = ghJson<Issue[]>([
   '100',
 ]);
 
-const slices = allIssues.filter((i) => i.body?.includes(`PRD: #${prdNumber}`));
+const slices = allIssues.filter(
+  (i) =>
+    i.body?.includes(`PRD: #${prdNumber}`) &&
+    // Skip slices already merged into the feature branch so re-runs are
+    // idempotent — only undone work in the wave is re-dispatched.
+    !i.labels.some((l) => l.name === 'status:done'),
+);
 
 if (slices.length === 0) {
   fail(
@@ -409,36 +463,19 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
     return true;
   }
 
-  // Compute affected projects on the host (git history + node_modules available).
-  const show = spawnSync(
-    'npx',
-    [
-      'nx',
-      'show',
-      'projects',
-      '--affected',
-      `--base=origin/${featureBranch}`,
-      `--head=origin/${sliceBranch}`,
-    ],
-    {
-      encoding: 'utf8',
-      windowsHide: true,
-      shell: true,
-      env: { ...process.env, NX_DAEMON: 'false' },
-    },
+  // Gate only the projects whose OWN files this slice changed — not their
+  // transitive dependents. For a per-file lint gate, an upstream change cannot
+  // introduce lint errors downstream, so linting dependents just adds slowness
+  // and couples the slice to unrelated projects' lint state (which produced a
+  // spurious 14-project sweep + blind failure before this change).
+  const projects = changedProjects(
+    `origin/${featureBranch}`,
+    `origin/${sliceBranch}`,
   );
-  if (show.status !== 0) {
-    console.error(
-      `  [#${issue.number}] gate: nx could not compute affected projects — failing closed.\n${show.stderr}`,
-    );
-    return false;
-  }
-  const projects = (show.stdout || '')
-    .split('\n')
-    .map((s) => s.trim())
-    .filter((s) => s && !s.includes(' '));
   if (projects.length === 0) {
-    console.log(`  [#${issue.number}] gate: no affected projects — pass.`);
+    console.log(
+      `  [#${issue.number}] gate: no project files changed — pass.`,
+    );
     return true;
   }
 
@@ -677,8 +714,27 @@ const results = await Promise.allSettled<SliceResult>(
 
     const merged = prCreated && gatePassed;
 
+    let mergeOk = false;
     if (merged) {
-      // Gate green → mark done and squash-merge into the feature branch.
+      // Gate green → squash-merge into the feature branch. `gh pr merge` is
+      // non-interactive when a merge-method flag is given and stdin isn't a TTY;
+      // there is no `--yes` flag (passing it aborts the merge).
+      const prMerge = spawnSync(
+        'gh',
+        ['pr', 'merge', prUrl, '--squash', '--delete-branch', '--repo', REPO],
+        { encoding: 'utf8', stdio: 'inherit', windowsHide: true },
+      );
+      mergeOk = prMerge.status === 0;
+      if (!mergeOk) {
+        console.error(
+          `  Warning: auto-merge failed for ${prUrl} — merge manually before opening the feature PR.`,
+        );
+      }
+    }
+
+    if (mergeOk) {
+      // Only mark done once the slice is actually on the feature branch, so a
+      // failed merge doesn't make the wave-runner skip an unmerged slice.
       ghSilent([
         'issue',
         'edit',
@@ -690,26 +746,6 @@ const results = await Promise.allSettled<SliceResult>(
         '--add-label',
         'status:done',
       ]);
-
-      const prMerge = spawnSync(
-        'gh',
-        [
-          'pr',
-          'merge',
-          prUrl,
-          '--squash',
-          '--delete-branch',
-          '--yes',
-          '--repo',
-          REPO,
-        ],
-        { encoding: 'utf8', stdio: 'inherit', windowsHide: true },
-      );
-      if (prMerge.status !== 0) {
-        console.error(
-          `  Warning: auto-merge failed for ${prUrl} — merge manually before opening the feature PR.`,
-        );
-      }
 
       ghSilent([
         'issue',
@@ -737,7 +773,9 @@ const results = await Promise.allSettled<SliceResult>(
         ? 'its branch could not be pushed to origin'
         : !prCreated
           ? 'the PR could not be created'
-          : `the build gate (${process.env.SLICE_GATE_TARGETS || 'lint'}) failed`;
+          : !merged
+            ? `the build gate (${process.env.SLICE_GATE_TARGETS || 'lint'}) failed`
+            : 'the gate passed but the auto-merge command failed';
       ghSilent([
         'issue',
         'comment',
@@ -756,7 +794,7 @@ const results = await Promise.allSettled<SliceResult>(
       sliceBranch,
       prUrl,
       commits: result.commits.length,
-      merged,
+      merged: mergeOk,
     };
   }),
 );

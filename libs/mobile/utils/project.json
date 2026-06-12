@@ -1,0 +1,15 @@
+{
+  "name": "mobile-utils",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/mobile/utils/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/mobile/utils/src/**/*.{ts,tsx}"]
+      }
+    }
+  }
+}

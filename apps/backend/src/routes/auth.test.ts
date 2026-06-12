@@ -41,6 +41,33 @@ jest.mock('../controllers/UserController', () => ({
   },
 }));
 
+jest.mock('../helpers/ApiTokens', () => ({
+  __esModule: true,
+  default: {
+    createTokens: jest.fn(() => ({
+      token: 'access-token',
+      refreshToken: 'refresh-token',
+    })),
+  },
+}));
+
+jest.mock('../helpers/filterUser', () => ({
+  __esModule: true,
+  default: jest.fn((user: any) => ({
+    id: user.id,
+    name: user.name || 'Test User',
+    email: user.email,
+    firstName: user.first_name || 'Test',
+    lastName: user.last_name || 'User',
+    phone: user.phone,
+  })),
+}));
+
+jest.mock('../helpers/cookieHelper', () => ({
+  __esModule: true,
+  getExpiry: jest.fn(() => new Date('2026-06-17')),
+}));
+
 describe('Auth Routes', () => {
   const app = express();
   app.use(bodyParser.json());
@@ -49,6 +76,7 @@ describe('Auth Routes', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.setTimeout(30000);
   });
 
   describe('POST /auth/login', () => {
@@ -70,6 +98,169 @@ describe('Auth Routes', () => {
       expect(response.body).toEqual({
         message: 'Email not verified. Please verify your email first.',
       });
+    });
+
+    test('returns 200 with refresh_token in body when client_type is mobile', async () => {
+      const verifiedUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        email_verification_timestamp: new Date(),
+        name: 'Test User',
+        first_name: 'Test',
+        last_name: 'User',
+      };
+
+      (passport.authenticate as jest.Mock).mockImplementation(
+        (_strategy: string, _options: any, cb: any) => {
+          return (_req: any, _res: any, _next: any) => {
+            cb(null, verifiedUser, undefined);
+          };
+        }
+      );
+
+      const response = await request(app).post('/auth/login').send({
+        email: 'test@example.com',
+        password: 'password',
+        client_type: 'mobile',
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        token: 'access-token',
+        expires_in: 600_000,
+        user: expect.objectContaining({
+          id: 'user-1',
+          email: 'test@example.com',
+        }),
+        refresh_token: 'refresh-token',
+      });
+    });
+
+    test('returns 200 without refresh_token in body when client_type is web', async () => {
+      const verifiedUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        email_verification_timestamp: new Date(),
+        name: 'Test User',
+        first_name: 'Test',
+        last_name: 'User',
+      };
+
+      (passport.authenticate as jest.Mock).mockImplementation(
+        (_strategy: string, _options: any, cb: any) => {
+          return (_req: any, _res: any, _next: any) => {
+            cb(null, verifiedUser, undefined);
+          };
+        }
+      );
+
+      const response = await request(app).post('/auth/login').send({
+        email: 'test@example.com',
+        password: 'password',
+        client_type: 'web',
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        token: 'access-token',
+        expires_in: 600_000,
+        user: expect.objectContaining({
+          id: 'user-1',
+          email: 'test@example.com',
+        }),
+      });
+      expect(response.body).not.toHaveProperty('refresh_token');
+    });
+
+    test('returns 200 without refresh_token in body when client_type is not provided', async () => {
+      const verifiedUser = {
+        id: 'user-2',
+        email: 'user2@example.com',
+        email_verification_timestamp: new Date(),
+        name: 'Another User',
+        first_name: 'Another',
+        last_name: 'User',
+      };
+
+      (passport.authenticate as jest.Mock).mockImplementation(
+        (_strategy: string, _options: any, cb: any) => {
+          return (_req: any, _res: any, _next: any) => {
+            cb(null, verifiedUser, undefined);
+          };
+        }
+      );
+
+      const response = await request(app).post('/auth/login').send({
+        email: 'user2@example.com',
+        password: 'password',
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        token: 'access-token',
+        expires_in: 600_000,
+        user: expect.objectContaining({
+          id: 'user-2',
+          email: 'user2@example.com',
+        }),
+      });
+      expect(response.body).not.toHaveProperty('refresh_token');
+    });
+
+    test('returns 422 validation error when client_type is invalid enum value', async () => {
+      const response = await request(app).post('/auth/login').send({
+        email: 'test@example.com',
+        password: 'password',
+        client_type: 'desktop',
+      });
+
+      expect(response.status).toBe(422);
+      expect(response.body).toEqual({
+        message: 'Validation Failed',
+      });
+    });
+
+    test('sets httpOnly refresh_cookie regardless of client_type', async () => {
+      const verifiedUser = {
+        id: 'user-3',
+        email: 'mobile@example.com',
+        email_verification_timestamp: new Date(),
+        name: 'Mobile User',
+        first_name: 'Mobile',
+        last_name: 'User',
+      };
+
+      (passport.authenticate as jest.Mock).mockImplementation(
+        (_strategy: string, _options: any, cb: any) => {
+          return (_req: any, _res: any, _next: any) => {
+            cb(null, verifiedUser, undefined);
+          };
+        }
+      );
+
+      const response = await request(app).post('/auth/login').send({
+        email: 'mobile@example.com',
+        password: 'password',
+        client_type: 'mobile',
+      });
+
+      expect(response.status).toBe(200);
+
+      const setCookieHeaders = response.headers['set-cookie'];
+      const cookieArray = Array.isArray(setCookieHeaders)
+        ? setCookieHeaders
+        : setCookieHeaders
+        ? [setCookieHeaders]
+        : [];
+
+      const refreshCookie = cookieArray.find((c) =>
+        c.startsWith('refresh_cookie=')
+      );
+
+      expect(refreshCookie).toBeDefined();
+      expect(refreshCookie).toContain('refresh_cookie=refresh-token');
+      expect(refreshCookie).toContain('HttpOnly');
+      expect(refreshCookie).toContain('SameSite=Lax');
     });
   });
 

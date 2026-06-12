@@ -1,0 +1,15 @@
+{
+  "name": "mobile-feat-vault",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/mobile/feat/vault/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "options": {
+        "lintFilePatterns": ["libs/mobile/feat/vault/src/**/*.{ts,tsx}"]
+      }
+    }
+  }
+}

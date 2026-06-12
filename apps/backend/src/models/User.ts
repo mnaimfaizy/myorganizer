@@ -23,6 +23,7 @@ export interface UserCreationBody {
 export interface UserLoginBody {
   email: string;
   password: string;
+  client_type?: 'mobile' | 'web';
 }
 
 export interface ConfirmResetPasswordBody {

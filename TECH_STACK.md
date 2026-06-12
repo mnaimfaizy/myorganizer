@@ -3,7 +3,7 @@
 > **Single source of truth** for installed package versions and canonical technology choices.
 > All agent instruction files and documentation must reference this file rather than declaring versions inline.
 > Owned and kept current by the **DepSync** agent/skill — do not edit versions manually.
-> Last synced from `package.json` on 2026-06-10.
+> Last synced from `package.json` on 2026-06-11.
 
 ---
 
@@ -88,6 +88,50 @@
 
 ---
 
+## Frontend — Mobile App
+
+> Bare React Native via `@nx/react-native` (ADR-0005). Styling uses React Native
+> `StyleSheet` over a `@myorganizer/design-tokens`-derived theme (ADR-0008) — no
+> NativeWind/Tailwind on mobile (incompatible with the repo's Tailwind v4).
+
+| Package                          | Version  | Purpose                                         |
+| -------------------------------- | -------- | ----------------------------------------------- |
+| `react-native`                   | ~0.79.3  | Mobile app runtime                              |
+| `@nx/react-native`               | 22.3.3   | Nx plugin for React Native apps/libs            |
+| `@react-navigation/native`       | 7.2.5    | Navigation core                                 |
+| `@react-navigation/native-stack` | 7.16.0   | Native stack navigator                          |
+| `react-native-screens`           | 4.11.1   | Native screen primitives (pinned for RN 0.79)   |
+| `react-native-safe-area-context` | 5.8.0    | Safe-area insets                                |
+| `react-native-keychain`          | 10.0.0   | Secure token storage (mobile auth)              |
+| `react-native-quick-base64`      | 3.0.0    | Base64 helpers (peer dep of quick-crypto)       |
+| `react-native-quick-crypto`      | 1.1.5    | JSI WebCrypto-compatible crypto (vault adapter) |
+| `react-native-mmkv`              | 4.3.1    | Fast key-value storage (vault blobs)            |
+| `react-native-nitro-modules`     | 0.35.0   | Nitro modules runtime (required by MMKV v4)     |
+| `react-native-url-polyfill`      | 3.0.0    | URL polyfill for fetch/API client on RN         |
+| `react-native-svg`               | ~15.11.2 | SVG rendering                                   |
+
+### Metro & React Native Tooling
+
+| Package                                        | Version | Purpose                          |
+| ---------------------------------------------- | ------- | -------------------------------- |
+| `@react-native-community/cli`                  | ~18.0.0 | React Native CLI                 |
+| `@react-native-community/cli-platform-android` | ~18.0.0 | Android platform tooling         |
+| `@react-native-community/cli-platform-ios`     | ~18.0.0 | iOS platform tooling             |
+| `@react-native/babel-preset`                   | ~0.79.3 | Babel preset for React Native    |
+| `@react-native/metro-config`                   | ~0.79.3 | Default Metro configuration      |
+| `metro-config`                                 | ~0.82.4 | Metro bundler configuration      |
+| `metro-resolver`                               | ~0.82.4 | Metro module resolver            |
+| `react-native-svg-transformer`                 | ~1.5.1  | SVG import transformer for Metro |
+
+### Web Target (Nx Vite)
+
+| Package                | Version | Purpose                                |
+| ---------------------- | ------- | -------------------------------------- |
+| `react-native-web`     | ~0.20.0 | Web rendering target for RN components |
+| `react-native-svg-web` | ~1.0.9  | SVG web shim for `react-native-svg`    |
+
+---
+
 ## Backend — API Server
 
 ### Framework & Middleware
@@ -166,6 +210,7 @@
 | `nx`                         | 22.3.3  | Monorepo build system and task orchestration                        |
 | `@nx/next`                   | 22.3.3  | Nx plugin for Next.js                                               |
 | `@nx/react`                  | 22.3.3  | Nx plugin for React libraries                                       |
+| `@nx/react-native`           | 22.3.3  | Nx plugin for React Native apps and libraries                       |
 | `@nx/express`                | 22.3.3  | Nx plugin for Express                                               |
 | `@nx/node`                   | 22.3.3  | Nx plugin for Node.js                                               |
 | `@nx/js`                     | 22.3.3  | Nx plugin for plain TypeScript libraries                            |
@@ -182,20 +227,25 @@
 
 ## Testing
 
-| Package                  | Version | Purpose                                              |
-| ------------------------ | ------- | ---------------------------------------------------- |
-| `jest`                   | 30.2.0  | Unit and integration test runner — canonical choice  |
-| `@nx/jest`               | 22.3.3  | Nx/Jest integration                                  |
-| `jest-environment-jsdom` | 30.2.0  | DOM environment for React component tests            |
-| `jest-environment-node`  | 30.2.0  | Node environment for backend tests                   |
-| `ts-jest`                | 29.4.9  | TypeScript preprocessor for Jest                     |
-| `babel-jest`             | 30.2.0  | Babel transform for Jest                             |
-| `@testing-library/react` | 16.3.1  | React component testing utilities                    |
-| `@testing-library/dom`   | 10.4.1  | DOM testing utilities                                |
-| `@playwright/test`       | 1.57.0  | End-to-end test runner                               |
-| `supertest`              | 7.2.2   | HTTP assertion library for Express integration tests |
+| Package                         | Version | Purpose                                              |
+| ------------------------------- | ------- | ---------------------------------------------------- |
+| `jest`                          | 30.2.0  | Unit and integration test runner — canonical choice  |
+| `@nx/jest`                      | 22.3.3  | Nx/Jest integration                                  |
+| `jest-environment-jsdom`        | 30.2.0  | DOM environment for React component tests            |
+| `jest-environment-node`         | 30.2.0  | Node environment for backend tests                   |
+| `ts-jest`                       | 29.4.9  | TypeScript preprocessor for Jest                     |
+| `babel-jest`                    | 30.2.0  | Babel transform for Jest                             |
+| `@testing-library/react`        | 16.3.1  | React component testing utilities                    |
+| `@testing-library/react-native` | ~13.2.0 | React Native component testing utilities             |
+| `@testing-library/dom`          | 10.4.1  | DOM testing utilities                                |
+| `react-test-renderer`           | 19.0.0  | Test renderer for React Native/Jest tests            |
+| `jsdom`                         | ~22.1.0 | DOM environment for Jest tests                       |
+| `vitest`                        | 4.1.8   | Vite-native test runner (via `@nx/vitest`)           |
+| `@vitest/ui`                    | 4.1.8   | Vitest browser UI                                    |
+| `@playwright/test`              | 1.57.0  | End-to-end test runner                               |
+| `supertest`                     | 7.2.2   | HTTP assertion library for Express integration tests |
 
-> **Note**: `@nx/vitest` is installed as part of the Nx plugin suite but Vitest is not in active use. Jest is the canonical test runner.
+> **Note**: Jest is the canonical unit test runner for web and mobile. Vitest is installed for Vite-based projects via `@nx/vitest`.
 
 ---
 
@@ -210,7 +260,7 @@
 | `@storybook/test`        | 8.6.17  | Storybook testing utilities (interaction tests) |
 | `@storybook/test-runner` | 0.23.0  | Runs Storybook stories as tests via Playwright  |
 | `chromatic`              | 13.3.5  | Visual regression testing and Storybook hosting |
-| `vite`                   | 6.4.2   | Build tool — used exclusively by Storybook      |
+| `vite`                   | 6.4.2   | Build tool — used by Storybook and mobile web   |
 
 ---
 
@@ -257,8 +307,10 @@
 
 These transitive dependencies are explicitly resolved to patched versions via Yarn resolutions, npm overrides, and pnpm overrides.
 
-| Package       | Resolved Version | Reason                                                               | Vulnerability ID |
-| ------------- | ---------------- | -------------------------------------------------------------------- | ---------------- |
-| `shell-quote` | 1.8.4            | Patches critical shell injection vulnerability (GHSA-w7jw-789q-3m8p) | CVE-2024-XXXXX   |
+| Package                     | Resolved Version | Reason                                                                            | Vulnerability ID |
+| --------------------------- | ---------------- | --------------------------------------------------------------------------------- | ---------------- |
+| `shell-quote`               | 1.8.4            | Patches critical shell injection vulnerability (GHSA-w7jw-789q-3m8p)              | CVE-2024-XXXXX   |
+| `fast-xml-parser`           | 5.7.3            | Patches XMLBuilder comment/CDATA injection (GHSA-gh4j-gqv2-49f6)                  | CVE-2026-41650   |
+| `react-native-quick-base64` | 3.0.0            | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto) | —                |
 
 > **Note**: `shell-quote` is a transitive dependency of `concurrently@9.2.1` (pulled in by `@openapitools/openapi-generator-cli@2.27.0`) and `launch-editor@2.9.1` (pulled in by `webpack-dev-server@5.2.3`). Upstream packages are pinned to versions that contain vulnerable `shell-quote`, so we use resolutions to force the patched version globally.
