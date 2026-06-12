@@ -310,6 +310,7 @@ These transitive dependencies are explicitly resolved to patched versions via Ya
 | Package                     | Resolved Version | Reason                                                                            | Vulnerability ID |
 | --------------------------- | ---------------- | --------------------------------------------------------------------------------- | ---------------- |
 | `shell-quote`               | 1.8.4            | Patches critical shell injection vulnerability (GHSA-w7jw-789q-3m8p)              | CVE-2024-XXXXX   |
+| `fast-xml-parser`           | 5.7.3            | Patches XMLBuilder comment/CDATA injection (GHSA-gh4j-gqv2-49f6)                  | CVE-2026-41650   |
 | `react-native-quick-base64` | 3.0.0            | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto) | —                |
 
 > **Note**: `shell-quote` is a transitive dependency of `concurrently@9.2.1` (pulled in by `@openapitools/openapi-generator-cli@2.27.0`) and `launch-editor@2.9.1` (pulled in by `webpack-dev-server@5.2.3`). Upstream packages are pinned to versions that contain vulnerable `shell-quote`, so we use resolutions to force the patched version globally.
