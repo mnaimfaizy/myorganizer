@@ -160,3 +160,8 @@ yarn-error.log
 
 
 vite.config.*.timestamp*
+
+# Graphify knowledge-graph artifacts (generated; rebuild via docs/graphify.md).
+# .mcp.json and .graphifyignore are committed; the generated graph is not.
+graphify-out/
+**/graphify-out/
