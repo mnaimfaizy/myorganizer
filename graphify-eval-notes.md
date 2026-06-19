@@ -297,3 +297,36 @@ Chose to make the integration prove itself rather than concede yet:
 - Spike (`spike/notes-field`) reverted: discarded the uncommitted notes-field + mobile-screen
   edits, deleted the branch. It was always throwaway.
   Next: gather a few CodeExplorer `Graphify Usage` logs from real tasks, then keep-or-kill on evidence.
+
+### PROBATION EVIDENCE — spike 2 (2026-06-19): alter a REST/generated-client feature + new mobile screen
+
+Second clean-session spike (FilteredUserInterface / profile-area field, routed through the REST
+generated client — deliberately hitting the codegen boundary). This time the probation wiring
+WORKED: CodeExplorer actually invoked Graphify and reported a usage verdict.
+
+- **Invoked: YES** (unlike spike 1). CodeExplorer used Graphify on the relationship question.
+- **Got right:** the import graph — `FilteredUserInterface` node present, imports traced
+  accurately to AuthContext.tsx, auth.ts, account components.
+- **Got wrong/missed:** (a) **type-member level is invisible** — it cannot say which fields
+  `FilteredUserInterface` has, or that `createdAt` exists on `UserInterface` but not on the
+  filtered type. That field-level fact was THE decisive fact for the task, and only a direct
+  read of `types/index.ts` gave it. (b) **No awareness of generation-chain direction**
+  (TSOA decorators → OpenAPI → generated client) — required reading `filterUser.ts` + auth lib.
+- **Net verdict: `redundant`** (agent's words: _"Accurate but not additive. Every node it
+  surfaced was one `grep -r FilteredUserInterface` away; it didn't surface anything that grep +
+  targeted reads missed."_). No confidently-wrong answer.
+
+### KEEP-OR-KILL TALLY (real-workflow evidence)
+
+| Spike                            | Invoked?     | Verdict       | Notes                                                                                            |
+| -------------------------------- | ------------ | ------------- | ------------------------------------------------------------------------------------------------ |
+| 1 — Subscriptions (vault-blob)   | not directly | unmeasurable  | value hidden inside CodeExplorer; sidestepped the boundary                                       |
+| 2 — profile field (REST/codegen) | yes          | **redundant** | accurate import graph but reproducible by `grep -r`; decisive type-member fact outside its model |
+
+Two real tasks, **zero clear `helped`**. The one thing Graphify does well (in-package symbol
+import neighborhoods) is reproduced by `grep -r` in this monorepo, and the facts that actually
+decide real edits (type members, codegen-chain direction, HTTP-boundary impact) are all outside
+its AST-symbol model. Against this sits a real cost: manual rebuilds + staleness, the `--with mcp`
+dependency, and an extra indirection in CodeExplorer. Per the documented kill criterion
+(consistent `redundant`/`wrong-missed` → drop it), the evidence now points to **KILL the
+adoption**. Tool verdict (no-go as primary exploration/impact engine) is unchanged and reinforced.
