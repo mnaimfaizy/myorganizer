@@ -45,34 +45,42 @@ Which sections of the Explore Summary matter most for this request.
 3. Use your own judgment to look one level deeper into related files/folders when the direct search is insufficient to answer the Goal.
 4. Stop when you can answer the Goal confidently, or when you have clearly documented in Gaps why you cannot.
 
-## Optional: Graphify structural index (MCP)
+## Graphify structural index (MCP) — query FIRST for relationship questions
 
 A pre-built code knowledge graph is available via the `graphify` MCP tools, backed by
-`graphify-out/graph.json`. Use it as a **fast first lookup**, then confirm against the
-actual files — it is a supplement to grep, not a replacement.
+`graphify-out/graph.json`. We are measuring whether it earns its keep, so usage is **deliberate
+and logged**, not optional.
 
-**Use it for (its proven strengths):**
+**REQUIRED — when the Goal is a relationship/consumer question** ("what calls / imports /
+consumes / is connected to symbol X?", or "what are the core abstractions here?"), your FIRST
+action after orienting MUST be a Graphify query, before any grep:
 
-- "What directly calls / imports / consumes symbol X?" → `get_neighbors` (instant, accurate
-  for in-package call/import edges). Example win: `saveEncryptedData` returns all 20 consumers.
-- "What are the core abstractions / most-connected nodes?" → `god_nodes` (good orientation).
-- Broad "what relates to X" context → `query_graph`.
+- "What calls / imports / consumes symbol X?" → `get_neighbors` (then confirm with grep/read).
+- "Core abstractions / most-connected nodes?" → `god_nodes`.
+- Broad "what relates to X" → `query_graph`.
 
-**Do NOT rely on it for (proven blind spots):**
+Then verify against the actual files. Graphify is a fast first lookup, not the source of truth.
+
+**Do NOT use it for (proven blind spots) — go straight to the better tool:**
 
 - Cross-package / cross-HTTP-boundary impact (e.g. "what breaks if `VaultController` changes"):
   the graph is AST-only and has **no edge across the OpenAPI/codegen seam** — it returns empty
   or partial. Use `nx affected --files=<path>` for authoritative cross-project impact instead.
 - TypeScript **type**-reference blast radius (type usages are not edges; nodes show degree ~1).
-- Any symbol whose name appears in more than one file (the graph cannot disambiguate it).
+- Any symbol whose name appears in more than one file (`get_node` picks an arbitrary match and
+  silently returns the wrong one — prefer `query_graph`, then disambiguate by reading files).
 
 **Trust rules:**
 
-- The graph can be **stale** (it is rebuilt manually, not on every commit). Treat any graph
-  result as `[inferred]` until you confirm the exact location with `Read`/`Grep`, then upgrade
-  to `[found]` with the file:line citation.
-- If the MCP tools are unavailable (graph not built), fall back to Glob/Grep silently — do not
-  error. Build/refresh instructions live in `docs/graphify.md`.
+- The graph can be **stale** (rebuilt manually, not on every commit — see `docs/graphify.md`).
+  Treat any graph result as `[inferred]` until you confirm the exact location with `Read`/`Grep`,
+  then upgrade to `[found]` with the file:line citation.
+- If the MCP tools are unavailable (graph not built), fall back to Glob/Grep — do not error, but
+  record it in the Graphify Usage block below so the gap is visible.
+
+**Measurement (REQUIRED every run):** record what Graphify did in the `Graphify Usage` section of
+your output (see Output Format). This is how we judge whether to keep it — be honest: if it added
+nothing over grep, say so; if grep found something Graphify missed, say that too.
 
 ## Evidence Tagging
 
@@ -108,6 +116,17 @@ File paths and line numbers the main agent should read next, ranked by relevance
 ### Gaps / Unknowns
 
 What could NOT be determined and why.
+
+### Graphify Usage
+
+Honest, factual log of whether the structural index helped (omit only if the Goal was not a
+relationship question AND Graphify was not applicable — otherwise always include it):
+
+- **Queried**: tool(s) + argument(s) run, or "not applicable — <reason>" / "unavailable — graph not built".
+- **Result**: what it returned (counts, key nodes), or empty/wrong.
+- **Verdict**: `helped` (found something faster/that grep would have missed),
+  `redundant` (grep/read would have been just as fast), or `wrong/missed` (returned a wrong or
+  incomplete answer — name what it got wrong vs the verified file evidence).
 
 ### Recommendation
 

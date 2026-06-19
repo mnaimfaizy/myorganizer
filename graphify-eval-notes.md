@@ -256,3 +256,44 @@ Smoke test on clean graph: `saveEncryptedData` still degree 20, community now ni
 
 Tracked footprint: M .claude/agents/explore.md, M .gitignore, + .graphifyignore, .mcp.json,
 docs/graphify.md (and this notes file). Everything on the research branch.
+
+## REAL-WORKFLOW STRESS TEST (2026-06-19) — spike: alter Subscriptions + new mobile screen
+
+A separate clean-session agent (unaware Graphify was under test) implemented a small spike:
+add a `notes` field to Subscriptions (backend + web) and a new mobile screen. Its tooling retro:
+
+- **Graphify was NOT directly used.** The agent loaded the MCP tool schemas but defaulted to
+  CodeExplorer (×2) + grep + direct Reads. It never invoked a graphify tool itself.
+- **Value is now UNOBSERVABLE.** Because we wired Graphify _into_ CodeExplorer, the agent could
+  only say CodeExplorer "may have used them internally." The accurate cross-layer map it got
+  (blob type → page lib → mobile lib) is indistinguishable from plain grep+read output — no
+  evidence Graphify contributed. Wiring it inside CodeExplorer hid whether it adds value.
+- **Main friction was CodeExplorer's format, not Graphify:** prose + _approximate_ line numbers
+  meant the agent re-read every target file anyway. Flagged as a bottleneck for 20+ file refactors.
+  (Graphify's coarse `source_location` would feed the same imprecision.)
+- **Architectural nuance missed:** the mobile navigator uses conditional rendering, not a push
+  stack — a _pattern_, not a symbol edge, so structurally outside Graphify's AST model. Consistent
+  with the blind-spot findings.
+- **Caveat — boundary not exercised:** the agent chose a Vault-blob-backed feature
+  (`VaultBlobType.Subscriptions`), so data flowed through the encrypted blob, NOT a generated
+  REST endpoint. The spike sidestepped the HTTP/codegen seam (Graphify's worst case); the
+  "no wrong answers" outcome does not clear it there.
+
+**Implication for the adoption:** a "narrow win" that the main agent never invokes, and whose
+contribution inside CodeExplorer is unmeasurable, is close to dead weight in practice. Either make
+its use deliberate + logged (call graphify first for "who consumes X", record hits) to prove value,
+or concede the adoption isn't earning its maintenance cost (manual rebuilds + staleness). Verdict
+on the tool itself is unchanged; the integration design is the open question.
+
+### DECISION (2026-06-19): put it on probation — deliberate + measurable
+
+Chose to make the integration prove itself rather than concede yet:
+
+- `.claude/agents/explore.md`: for relationship/consumer Goals, CodeExplorer MUST query Graphify
+  FIRST (before grep), and MUST emit a `Graphify Usage` block every run with a verdict of
+  `helped` / `redundant` / `wrong/missed` vs verified file evidence. Makes the value observable.
+- `docs/graphify.md`: documented the "on probation — usage is measured" stance and the kill
+  criterion (consistent `redundant`/`wrong/missed` → drop it).
+- Spike (`spike/notes-field`) reverted: discarded the uncommitted notes-field + mobile-screen
+  edits, deleted the branch. It was always throwaway.
+  Next: gather a few CodeExplorer `Graphify Usage` logs from real tasks, then keep-or-kill on evidence.

@@ -28,6 +28,15 @@ limited because of measured blind spots (below).
 
 Always confirm a graph result against the actual file before trusting it — the graph can be stale.
 
+## On probation — usage is measured
+
+This integration is **on probation**: a real-workflow spike showed an agent never invoked it
+directly and its contribution (buried inside CodeExplorer) was unmeasurable. So CodeExplorer now
+**queries Graphify first** for relationship questions and **logs the outcome** (`helped` /
+`redundant` / `wrong/missed`) in a `Graphify Usage` block on every run. If those logs show it is
+consistently `redundant` or `wrong/missed`, drop the integration — it is not worth the manual
+rebuild + staleness cost. Keep it only if it earns a clear `helped` track record.
+
 ## Build / refresh
 
 The graph is **not committed** (it's generated and goes stale). Build it once locally; the
