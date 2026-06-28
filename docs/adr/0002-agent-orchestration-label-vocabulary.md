@@ -13,7 +13,7 @@ The full label vocabulary:
 | `type:afk`           | Agent can implement and merge without human interaction               |
 | `type:hitl`          | Human decision required before agent can proceed — orchestrator skips |
 | `status:in-progress` | Agent has picked up the issue                                         |
-| `status:done`        | Agent finished; PR opened                                             |
+| `status:done`        | Agent finished; slice integrated into the local feature branch        |
 
 `to-issues` applies `ready-for-agent` + `type:*` + `complexity:*` at creation time. The orchestrator filters on `ready-for-agent` + `type:afk` and reads `complexity:*` to select the model.
 

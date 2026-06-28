@@ -19,7 +19,7 @@ GitHub Issues
 | `type:afk`           | Agent can implement and merge without human interaction |
 | `type:hitl`          | Human decision required before agent can proceed        |
 | `status:in-progress` | Agent has picked up the issue                           |
-| `status:done`        | Agent finished; PR opened                               |
+| `status:done`        | Agent finished; integrated into local feature branch    |
 | `prd`                | Parent PRD Issue for a planned feature                  |
 
 ## Model Routing
@@ -46,11 +46,11 @@ GitHub Issues
 - **Body**: Must include `PRD: #<parent-issue-number>` on the first line. Then acceptance criteria, affected libs, test seams.
 - **Created by**: `to-issues` skill via IssueCreator agent.
 
-## PR Strategy (Hybrid)
+## Integration Strategy (local-only)
 
-1. `dispatch-agents` creates a feature branch (`feat/<slugified-prd-title>`) from `main` at run-start.
-2. Each AFK Slice agent opens a PR targeting the feature branch (not `main`).
-3. After all slice PRs are reviewed and merged into the feature branch, a final PR from the feature branch to `main` is created manually.
+1. `dispatch-agents` creates the feature branch (`feat/<slugified-prd-title>`) from `origin/main` **locally — it is never pushed**.
+2. AFK slices run one at a time; each agent commits on its slice branch and the orchestrator **fast-forwards it into the local feature branch** after a lint gate. No per-slice push, no per-slice PR.
+3. After QA, the feature branch is pushed and **one** PR from it to `main` is created manually; CI runs there. See `docs/adr/0010`.
 
 ## Trigger Command
 

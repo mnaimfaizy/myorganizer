@@ -1,17 +1,19 @@
 /**
  * dispatch-waves — autonomous, dependency-aware driver around dispatch-agents.
  *
- * The base orchestrator (.sandcastle/main.mts) dispatches every ready AFK slice
- * for a PRD IN PARALLEL, each branched from the feature branch at run-start, and
- * squash-merges every finished slice PR back into the feature branch. Siblings in
- * the same run therefore never see each other's work — only a *later* run, which
- * re-branches from the updated feature branch, does.
+ * The base orchestrator (.sandcastle/main.mts) dispatches a PRD's ready AFK slices
+ * ONE BY ONE, each branched from the CURRENT local feature head, and fast-forwards
+ * every finished slice into the LOCAL feature branch (no push, no PR). Within a
+ * single run, a slice already sees the work of every earlier slice in that run.
  *
- * This driver exploits that: it topologically sorts the PRD's slices by their
- * `## Blocked by` sections into dependency waves, then runs ONE dispatch-agents
- * pass per wave — gating the `ready-for-agent` label so only the current wave is
- * picked up. Each wave's auto-merged output becomes the base for the next wave.
- * No human interaction between waves.
+ * This driver adds explicit dependency ORDERING across runs: it topologically sorts
+ * the PRD's slices by their `## Blocked by` sections into dependency waves, then runs
+ * ONE dispatch-agents pass per wave — gating the `ready-for-agent` label so only the
+ * current wave is picked up. Each wave's integrated output (on the local feature
+ * branch) becomes the base for the next wave. No human interaction between waves.
+ *
+ * Nothing is pushed and no PRs are opened — after all waves complete you QA the
+ * local feature branch, then push it and open ONE PR to `main` by hand.
  *
  * Usage: npx tsx .sandcastle/dispatch-waves.mts --prd <issue-number>
  */
@@ -200,7 +202,8 @@ for (let i = 0; i < waves.length; i++) {
   }
 
   // Invoke the existing orchestrator. It branches each ready slice from the
-  // (now updated) feature branch, runs the agent, and auto-merges the PR.
+  // (now updated) local feature branch, runs the agent, and fast-forwards the
+  // slice into the local feature branch.
   const dispatch = spawnSync(
     'npx',
     ['tsx', '.sandcastle/main.mts', '--prd', String(prdNumber)],
@@ -238,5 +241,6 @@ for (let i = 0; i < waves.length; i++) {
 console.log(`\n${'─'.repeat(55)}`);
 console.log(`All ${waves.length} waves complete for PRD #${prdNumber}.`);
 console.log(
-  `Review the feature branch, then open the final PR from it to main.\n`,
+  `The local feature branch now contains every slice. QA it, then push it and\n` +
+    `open ONE PR to main by hand:  git push -u origin <feature-branch> && gh pr create --base main\n`,
 );

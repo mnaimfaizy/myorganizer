@@ -44,16 +44,20 @@ WORKDIR /home/agent
 
 # Prevent Nx from connecting to a background daemon or spawning a plugin-isolation
 # worker process. Both code paths try to load nx/src/native (WASM via @napi-rs/wasm-runtime),
-# which hangs on worker-thread creation inside Docker when the Linux-native Nx binding
-# (@nx/nx-linux-x64-gnu) is absent. These vars are belt-and-suspenders alongside the
-# fix in main.mts that skips the Windows node_modules mirror so yarn install fetches
-# the correct Linux binary instead.
+# which hangs on worker-thread creation inside Docker. These vars are belt-and-suspenders;
+# the Linux-native Nx binding (@nx/nx-linux-x64-gnu) is resolved by the in-container
+# `yarn install` (below), which runs on this image's linux/x64 platform.
 ENV NX_DAEMON=false
 ENV NX_ISOLATE_PLUGINS=false
 ENV NX_SKIP_NX_CACHE=true
 
 # Sandcastle bind-mounts the git worktree at /home/agent/workspace at container start.
-# The agent must run `corepack yarn install` (without --immutable) as its first step so
-# Yarn resolves the Linux-native optional packages (e.g. @nx/nx-linux-x64-gnu) rather
-# than falling back to the WASM path that hangs in this environment.
+# Dependencies are installed IN THIS CONTAINER by the orchestrator's
+# `hooks.sandbox.onSandboxReady` hook (`corepack yarn install --immutable`) BEFORE the
+# agent runs — so native binaries (bcrypt, prisma, @swc/core) are built for this Linux
+# platform regardless of the host OS (WSL2/Linux/macOS). The agent does NOT run
+# `yarn install`. Yarn's global cache is bind-mounted at /home/agent/.yarn-cache (set
+# via YARN_GLOBAL_FOLDER) so installs are incremental across slices. The worktree must
+# live on a native host fs (ext4/APFS) — see docs/adr/0009 and
+# docs/sandcastle/RUNBOOK.md.
 ENTRYPOINT ["sleep", "infinity"]

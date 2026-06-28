@@ -11,10 +11,12 @@
 
 You are implementing a vertical slice for MyOrganizer.
 
+- Dependencies are **already installed** in this sandbox before you start (a setup hook runs `corepack yarn install --immutable`). Do NOT run `yarn install` yourself.
 - Read `CLAUDE.md`, `CONTEXT.md`, and `TECH_STACK.md` before making any changes.
 - Follow all mandatory delegation rules in `CLAUDE.md` (tests → TestScaffold, components → ComponentBuilder, etc.).
 - Work only on the branch you were given. Do not switch branches.
 - Commit with Conventional Commit messages (`corepack yarn ai:commit`).
+- Do NOT push and do NOT open a PR — the sandbox has no credentials. Just commit locally; the orchestrator integrates your branch into the feature branch on the host.
 
 # Task
 

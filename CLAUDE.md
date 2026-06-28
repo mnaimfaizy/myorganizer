@@ -167,17 +167,19 @@ Fetches the PRD, drafts vertical slices (AFK / HITL + complexity), quizzes you o
 yarn dispatch-agents --prd <prd-issue-number>
 ```
 
-The orchestrator:
+The orchestrator (integration is **local-only** — see `docs/adr/0010`):
 
-1. Creates `feat/<feature-slug>` from `origin/main` (if it doesn't exist)
-2. Fans out one sandcastle agent per AFK slice, each on its own `slice/N-slug` branch in Docker isolation
+1. Creates `feat/<feature-slug>` from `origin/main` **locally and never pushes it** (if it doesn't exist)
+2. Runs one sandcastle agent per AFK slice **one at a time** in Docker isolation, each slice branched from the _current_ local feature head (so a slice sees earlier slices' work)
 3. Routes the model from the `complexity:*` label (Haiku → Sonnet → Opus)
-4. On completion: applies `status:done`, creates a PR from slice branch → feature branch, posts a comment on the issue
+4. Per slice: runs a Docker lint gate, then **fast-forwards the slice into the local feature branch** (no per-slice push, no per-slice PR); applies `status:done` and posts a comment on the issue
 5. Sends a desktop notification when the full batch is done
+
+GitHub is touched only to **read** issues and **write** status labels + a completion comment. Nothing is pushed to origin.
 
 ### Step 4 — Review and merge (user returns)
 
-Review each slice PR targeting `feat/<slug>`. After all slice PRs are merged, open a final PR from `feat/<slug>` to `main`.
+QA the local `feat/<slug>` branch — it now contains every integrated slice. When satisfied, push it and open **one** PR from `feat/<slug>` to `main`; CI runs there, then merge it on GitHub. There are no per-slice PRs.
 
 ### Key distinctions
 

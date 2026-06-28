@@ -46,6 +46,9 @@ testem.log
 .sandcastle/logs/
 .sandcastle/worktrees/
 .sandcastle/patches/
+.sandcastle/gate/
+.sandcastle/.yarn-cache/
+.sandcastle/node_modules_linux_cache/
 
 # System Files
 .DS_Store
