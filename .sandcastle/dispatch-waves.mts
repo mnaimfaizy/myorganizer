@@ -57,6 +57,9 @@ type Issue = {
 };
 
 function fetchSlices(): Issue[] {
+  // --state all: the orchestrator CLOSES a slice on successful integration, so a
+  // completed slice must still be visible here (for blocker resolution and wave
+  // verification). isDone() below treats a closed slice as complete.
   const all = ghJson<Issue[]>([
     'issue',
     'list',
@@ -65,7 +68,7 @@ function fetchSlices(): Issue[] {
     '--label',
     'type:afk',
     '--state',
-    'open',
+    'all',
     '--json',
     'number,title,labels,body,state',
     '--limit',
@@ -127,7 +130,12 @@ function computeWaves(): number[][] {
 const waves = computeWaves();
 
 function isDone(issue: Issue): boolean {
-  return issue.labels.some((l) => l.name === 'status:done');
+  // A slice is complete if it carries status:done OR has been closed (the
+  // orchestrator closes slices on successful local integration).
+  return (
+    issue.state === 'CLOSED' ||
+    issue.labels.some((l) => l.name === 'status:done')
+  );
 }
 
 // ─── Plan summary ─────────────────────────────────────────────────────────────

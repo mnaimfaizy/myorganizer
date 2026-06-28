@@ -8,7 +8,8 @@ branch off a frozen base (they never saw each other's work — the whole reason 
 existed).
 
 We are reducing GitHub's role to the minimum: **read** the PRD + slice issues, and **write**
-status labels + a completion comment back to each slice. Integration becomes entirely local.
+status labels + a completion comment back to each slice (and **close** each slice once it
+integrates). Integration becomes entirely local.
 
 ## Decision
 
@@ -21,6 +22,11 @@ status labels + a completion comment back to each slice. Integration becomes ent
   slice (`git branch -f`). Serial execution guarantees the slice is a pure descendant, so the
   fast-forward never conflicts and adds no merge commit.
 - **No per-slice push, no per-slice PR, no `gh pr merge`.**
+- On successful integration the orchestrator **closes the slice issue** (reason: completed) in
+  addition to labelling it `status:done`. `status:done` + closed makes re-runs idempotent — both
+  `main.mts` (open + `type:afk` filter) and `dispatch-waves` (which fetches `--state all` and treats
+  a closed slice as done) skip an already-integrated slice. The PRD issue stays open until the
+  manual PRD PR merges.
 - After the run, the human QAs the local feature branch, then pushes it once and opens **one** PR
   to `main` so CI runs there and the PRD lands as a single review unit.
 

@@ -627,15 +627,21 @@ for (const issue of slices) {
         '--add-label',
         'status:done',
       ]);
+      // Close the slice on successful local integration. status:done + closed
+      // makes re-runs idempotent — both this orchestrator's open+afk filter and
+      // dispatch-waves treat a closed slice as complete and skip it. The work is
+      // on the local feature branch and reaches `main` via the manual PRD PR.
       ghSilent([
         'issue',
-        'comment',
+        'close',
         String(issue.number),
         '--repo',
         REPO,
-        '--body',
+        '--reason',
+        'completed',
+        '--comment',
         `Agent completed and the build gate passed. ${result.commits.length} commit(s) on \`${sliceBranch}\`.\n` +
-          `Integrated into the local \`${featureBranch}\` (fast-forward, not pushed). ` +
+          `Integrated into the local \`${featureBranch}\` (fast-forward, not pushed) and closed as completed. ` +
           `It will reach \`main\` via the manual PRD PR.`,
       ]);
     } else {

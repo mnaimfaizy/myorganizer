@@ -172,7 +172,7 @@ The orchestrator (integration is **local-only** — see `docs/adr/0010`):
 1. Creates `feat/<feature-slug>` from `origin/main` **locally and never pushes it** (if it doesn't exist)
 2. Runs one sandcastle agent per AFK slice **one at a time** in Docker isolation, each slice branched from the _current_ local feature head (so a slice sees earlier slices' work)
 3. Routes the model from the `complexity:*` label (Haiku → Sonnet → Opus)
-4. Per slice: runs a Docker lint gate, then **fast-forwards the slice into the local feature branch** (no per-slice push, no per-slice PR); applies `status:done` and posts a comment on the issue
+4. Per slice: runs a Docker lint gate, then **fast-forwards the slice into the local feature branch** (no per-slice push, no per-slice PR); applies `status:done`, **closes the slice issue** (reason: completed), and posts a comment on it
 5. Sends a desktop notification when the full batch is done
 
 GitHub is touched only to **read** issues and **write** status labels + a completion comment. Nothing is pushed to origin.

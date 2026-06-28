@@ -77,7 +77,8 @@ locally → the host runs the **gate** (a Docker container that installs the sli
 onto the slice. No per-slice push, no per-slice PR.
 
 GitHub is touched only to **read** the PRD/slice issues and **write** status labels + a completion
-comment back to each slice.
+comment back to each slice, then **close** each slice that integrates successfully (reason:
+completed). The PRD issue stays open until you merge the manual PRD PR.
 
 When the run finishes, **you** finish the loop by hand:
 
