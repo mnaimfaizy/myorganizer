@@ -1,0 +1,31 @@
+---
+description: Build a throwaway prototype to answer a design question quickly. Use when validating logic/state behavior or comparing UI directions before production implementation.
+alwaysApply: false
+---
+
+# Prototype Workflow
+
+## When to Use
+
+- The user needs a fast proof-of-concept to validate an idea.
+- Logic/state transitions are unclear and need interactive validation.
+- Multiple UI directions need visual comparison before committing.
+
+## Core Approach
+
+Read and follow `.github/skills/prototype/SKILL.md` exactly.
+
+Key points:
+
+- Pick the correct branch:
+  - logic/state -> `.github/skills/prototype/LOGIC.md`
+  - UI direction -> `.github/skills/prototype/UI.md`
+- Keep prototype code explicitly throwaway and removable.
+- Use existing MyOrganizer conventions and structure.
+- Capture the decision and clean up prototype artifacts after learning.
+
+## Skill Files
+
+- `.github/skills/prototype/SKILL.md`
+- `.github/skills/prototype/LOGIC.md`
+- `.github/skills/prototype/UI.md`
