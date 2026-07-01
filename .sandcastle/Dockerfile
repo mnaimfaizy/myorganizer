@@ -32,12 +32,16 @@ ARG AGENT_GID=1000
 
 # Rename the base image's "node" user to "agent" and align UID/GID.
 RUN groupmod -o -g $AGENT_GID node && usermod -o -u $AGENT_UID -g $AGENT_GID -d /home/agent -m -l agent node
-USER ${AGENT_UID}:${AGENT_GID}
 
-# Install Claude Code CLI
+# Install the supported agent CLIs
+# Copilot installs globally before we drop to the agent user; Cursor and Claude
+# install into the agent home directory and share the same PATH entry.
+RUN npm install -g @github/copilot
+USER ${AGENT_UID}:${AGENT_GID}
+RUN curl https://cursor.com/install -fsS | bash
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# Add Claude to PATH
+# Add Cursor/Claude to PATH
 ENV PATH="/home/agent/.local/bin:$PATH"
 
 WORKDIR /home/agent

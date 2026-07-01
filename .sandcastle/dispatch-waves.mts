@@ -17,13 +17,34 @@
  *
  * Usage: npx tsx .sandcastle/dispatch-waves.mts --prd <issue-number>
  */
+import dotenv from 'dotenv';
 import { spawnSync } from 'node:child_process';
+import { join } from 'node:path';
+
+dotenv.config({ path: join(process.cwd(), '.sandcastle', '.env') });
 
 const REPO = 'mnaimfaizy/myorganizer';
 
 function fail(message: string, code = 1): never {
   console.error(`\nError: ${message}`);
   process.exit(code);
+}
+
+function printHelp(): void {
+  console.log(`
+Usage:
+  npx tsx .sandcastle/dispatch-waves.mts --prd <issue-number> [--agent claude|cursor|copilot] [--model <model>]
+
+Flags:
+  --prd <issue-number>   PRD issue number to dispatch
+  --agent <name>         Forwarded to dispatch-agents
+  --model <model>        Forwarded to dispatch-agents
+  --plan                 Preview wave ordering only
+  --help                 Show this help text
+
+Environment:
+  .sandcastle/.env is loaded automatically.
+`);
 }
 
 function ghJson<T>(args: string[]): T {
@@ -39,12 +60,30 @@ function ghSilent(args: string[]): void {
 
 // ─── Parse --prd <N> ─────────────────────────────────────────────────────────
 
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+  printHelp();
+  process.exit(0);
+}
+
 const prdFlag = process.argv.indexOf('--prd');
 if (prdFlag === -1 || !process.argv[prdFlag + 1]) {
   fail('Usage: npx tsx .sandcastle/dispatch-waves.mts --prd <issue-number>');
 }
 const prdNumber = parseInt(process.argv[prdFlag + 1], 10);
 if (isNaN(prdNumber)) fail('--prd must be a number.');
+
+const forwardedArgs: string[] = [];
+for (let i = 2; i < process.argv.length; i++) {
+  const arg = process.argv[i];
+  if (arg === '--prd') {
+    i += 1;
+    continue;
+  }
+  if (arg === '--plan') {
+    continue;
+  }
+  forwardedArgs.push(arg);
+}
 
 // ─── Fetch all AFK slices for this PRD ────────────────────────────────────────
 
@@ -214,7 +253,13 @@ for (let i = 0; i < waves.length; i++) {
   // slice into the local feature branch.
   const dispatch = spawnSync(
     'npx',
-    ['tsx', '.sandcastle/main.mts', '--prd', String(prdNumber)],
+    [
+      'tsx',
+      '.sandcastle/main.mts',
+      '--prd',
+      String(prdNumber),
+      ...forwardedArgs,
+    ],
     { encoding: 'utf8', stdio: 'inherit', windowsHide: true, shell: true },
   );
   if (dispatch.status !== 0) {

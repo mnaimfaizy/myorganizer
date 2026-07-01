@@ -27,8 +27,11 @@ pipeline.
 2. **Docker:** a running Docker engine the dispatch shell can reach (`docker info` works).
 3. **Auth:** `gh auth status` green and `git config user.name/.email` set, for the dispatch host.
 4. **Secrets:** `cp .sandcastle/.env.example .sandcastle/.env` and set `ANTHROPIC_API_KEY`
-   (`GH_TOKEN` optional; otherwise the host's `gh` session is used).
-5. The `sandcastle:myorganizer` image builds automatically on first run if missing.
+   (`GH_TOKEN` optional; otherwise the host's `gh` session is used). The launcher loads
+   `.sandcastle/.env` itself.
+5. The `sandcastle:myorganizer` image builds automatically on first run if missing. It
+   already bakes in Claude Code, Cursor, and GitHub Copilot CLI so the `--agent` flag only
+   switches which provider Sandcastle launches.
 
 The dispatch host does **not** need native build tools — compilation happens in-container.
 
@@ -66,7 +69,15 @@ Windows-native dispatch (from PowerShell, repo on `D:\`) works but is ~29 min/in
 ```bash
 corepack yarn dispatch-agents --prd <issue-number>   # all ready AFK slices, one by one
 corepack yarn dispatch-waves  --prd <issue-number>   # dependency-ordered across waves
+corepack yarn dispatch-agents --prd <issue-number> --agent cursor
+corepack yarn dispatch-agents --prd <issue-number> --agent copilot --model claude-sonnet-4.5
 ```
+
+Provider switching is optional: the default agent can live in `.sandcastle/.env` as
+`SANDCASTLE_AGENT=claude|cursor|copilot`. Per-provider model defaults can also live there
+(`SANDCASTLE_CLAUDE_MODEL`, `SANDCASTLE_CURSOR_MODEL`, `SANDCASTLE_COPILOT_MODEL`), and
+`--model` always overrides them for a single run. Claude keeps the existing complexity-based
+model routing when no override is set.
 
 **Integration is local-only** (see `docs/adr/0010`). The feature branch `feat/<slug>` is created
 from `origin/main` **locally and is never pushed**. Slices run **one by one**: each branches off
