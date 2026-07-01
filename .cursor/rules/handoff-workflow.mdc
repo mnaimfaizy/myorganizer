@@ -1,0 +1,28 @@
+---
+description: Compact the current conversation into a handoff document for a fresh session or agent. Use when crossing context windows or pausing work for continuation.
+alwaysApply: false
+---
+
+# Handoff Workflow
+
+## When to Use
+
+- The session is transitioning to another context window.
+- Work is being paused and needs a robust restart point.
+- A branch/prototype thread needs to be handed back to a main thread.
+
+## Core Approach
+
+Read and follow `.github/skills/handoff/SKILL.md` exactly.
+
+Key points:
+
+- Write handoff in OS temp/session storage, not repo workspace.
+- Include current status, open decisions, next steps, verification state.
+- Include suggested skills for the next session.
+- Reference existing artifacts (issues/PRDs/ADRs/commits) instead of duplicating content.
+- Redact sensitive data.
+
+## Skill Files
+
+- `.github/skills/handoff/SKILL.md`

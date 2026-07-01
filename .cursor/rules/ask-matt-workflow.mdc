@@ -1,0 +1,27 @@
+---
+description: Route ambiguous requests to the right MyOrganizer skill flow. Use when it is unclear which workflow should run next.
+alwaysApply: false
+---
+
+# Ask Matt Workflow
+
+## When to Use
+
+- The next workflow/skill is unclear.
+- A request could fit multiple paths (planned feature, ad-hoc task, testing, architecture, release).
+
+## Core Approach
+
+Read and follow `.github/skills/ask-matt/SKILL.md` exactly.
+
+Routing highlights:
+
+- Planned feature -> `to-prd` then `to-issues`
+- Design ambiguity -> `grill-with-docs`
+- Runnable validation required -> `prototype` (+ `handoff` if crossing sessions)
+- Jest/Playwright work -> matching test delegation workflow
+- Release preparation -> `release-and-deploy-workflow`
+
+## Skill Files
+
+- `.github/skills/ask-matt/SKILL.md`
