@@ -35,6 +35,39 @@ When you need to stress-test a plan against the project's domain model and docum
   - `docs/adr/` — Architecture Decision Records for major design choices
 - **Reference formats**: See `CONTEXT-FORMAT.md` and `ADR-FORMAT.md` in the skill directory
 
+### codebase-design — Deep-module vocabulary
+
+- **Skill location**: `.github/skills/codebase-design/SKILL.md`
+- **When to use**: Whenever you are designing or evaluating a module's interface, or when the `improve-codebase-architecture` skill is active.
+- **Companion files**:
+  - `DEEPENING.md` — dependency categories and seam discipline
+  - `DESIGN-IT-TWICE.md` — parallel sub-agent pattern for alternative interface exploration
+- **Vocabulary defined here**: module, interface, depth, seam, adapter, leverage, locality. Load this skill before using those terms.
+
+### domain-modeling — Build and sharpen the domain model
+
+- **Skill location**: `.github/skills/domain-modeling/SKILL.md`
+- **When to use**: You are _changing_ the domain model — adding new terms, resolving conflicting language, recording ADRs, or cross-referencing stated assumptions against code. Invoked inline by `improve-codebase-architecture` and `grill-with-docs` when new terms crystallise.
+- **What it does**:
+  - Challenges glossary conflicts the moment they surface
+  - Sharpens vague/overloaded terms into precise canonical definitions
+  - Stress-tests domain boundaries with concrete edge-case scenarios
+  - Cross-references stated assumptions against the actual codebase
+  - Updates `CONTEXT.md` inline (format: `CONTEXT-FORMAT.md`) — never batched
+  - Offers ADRs sparingly using the three-condition gate (format: `ADR-FORMAT.md`)
+
+### improve-codebase-architecture — Surface architectural friction
+
+- **Skill location**: `.github/skills/improve-codebase-architecture/SKILL.md`
+- **Depends on**: `codebase-design` skill above — load it first.
+- **When to use**: You want to find shallow modules, seam leaks, or testability gaps before planning a refactor.
+- **What it does**:
+  - Reads `codebase-design/SKILL.md` for vocabulary, `codebase-design/DEEPENING.md` for dependency classification
+  - Delegates a codebase walk to `CodeExplorer` using the deletion test and depth heuristics
+  - Generates a self-contained HTML report (`%TEMP%/architecture-review-<timestamp>.html`) with before/after diagrams per candidate
+  - Opens a grilling loop with `grill-with-docs`; when new domain terms or ADRs crystallise, delegates to `domain-modeling`
+  - If alternative interfaces are needed, uses `codebase-design/DESIGN-IT-TWICE.md`
+
 ## Feature Planning Workflows
 
 Use these skills when planning a new feature end-to-end, from idea to autonomous agent handoff.
@@ -62,6 +95,16 @@ Use these skills when planning a new feature end-to-end, from idea to autonomous
 ## Jest Test Delegation
 
 When a task requires Jest unit tests or Jest integration tests to be created or updated, delegate to the `test-scaffold` sub-agent (`.gemini/agents/test-scaffold.md`) rather than writing tests inline. The agent runs on `gemini-2.5-flash` to keep costs low.
+
+## TDD — Test-Driven Development
+
+When the user wants to build features or fix bugs test-first, use the **tdd** skill:
+
+- **Skill location**: `.github/skills/tdd/SKILL.md`
+- **When to use**: User mentions "red-green-refactor", wants integration-style tests written before implementation, or asks to build a feature test-first.
+- **What it does**: Plans the behavior list with the user, works in vertical tracer-bullet slices (one test → one implementation → repeat), and deepens modules during the Refactor step (with help from `codebase-design/SKILL.md`).
+- **Companion files**: `tests.md` (good/bad test examples), `mocking.md` (mock boundary discipline), `refactoring.md` (refactor candidates checklist).
+- **Never** write all tests before any implementation (horizontal slicing produces tests that are insensitive to real behavior changes).
 
 Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs in `apps/myorganizer-e2e`.
 
