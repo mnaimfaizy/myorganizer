@@ -79,7 +79,7 @@ A Slice Issue requiring a human decision before an agent can proceed. Skipped by
 _Avoid_: Blocked issue, human task
 
 **dispatch-agents**:
-The `yarn dispatch-agents --prd <issue-number>` command that triggers the sandcastle orchestrator. Reads AFK Slice Issues labelled `ready-for-agent`, creates the feature branch, and fans out one sandcastle agent per slice running in Docker isolation.
+The `yarn dispatch-agents --prd <issue-number>` command that triggers the sandcastle orchestrator. Reads AFK Slice Issues labelled `ready-for-agent`, creates the feature branch **locally (never pushed)**, and runs one sandcastle agent per slice — one at a time, in Docker isolation — fast-forwarding each finished slice into the local feature branch and closing the slice issue. Integration is local: you push the feature branch and open one PR to `main` by hand.
 _Avoid_: Agent runner, orchestrator command, run-agents
 
 ## Agent Roles

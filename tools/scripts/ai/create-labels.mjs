@@ -45,7 +45,8 @@ const LABELS = [
   {
     name: 'status:done',
     color: '0e8a16',
-    description: 'Agent finished; PR opened',
+    description:
+      'Agent finished; slice integrated into the local feature branch',
   },
   {
     name: 'prd',

@@ -1,0 +1,60 @@
+# Graphify ignore — pilot rerun (issue #158), corrected config.
+# Goal: graph all AUTHORED + GENERATED source the agent must reason about.
+# NOTE: we intentionally NO LONGER exclude libs/app-api-client — the generated
+# API client is part of the real impact chain (VaultController → VaultApi) and
+# excluding it last time made R5 fail by our own hand.
+
+# Dependencies / package manager
+node_modules/
+.yarn/
+.pnp.*
+
+# Build & framework output (not source)
+dist/
+build/
+.next/
+out/
+tmp/
+.nx/
+**/.cache/
+
+# Test / coverage artifacts
+coverage/
+playwright-report/
+test-results/
+.playwright/
+
+# Raw OpenAPI spec blobs (data, not code — would skew the graph)
+**/openapi.json
+**/openapi.yaml
+
+# Build/tool config — NOT domain knowledge. Excluding these removes the 57%
+# "TypeScript Config"/"Nx Project Config" community noise so the labeled graph
+# surfaces real feature domains. Project structure lives in `nx graph`, not here.
+**/tsconfig*.json
+**/project.json
+**/package.json
+**/jest.config.*
+**/jest.preset.*
+**/.eslintrc*
+**/eslint.config.*
+**/*.config.js
+**/*.config.ts
+**/*.config.mjs
+**/*.config.cjs
+**/babel.config.*
+**/.babelrc*
+**/metro.config.*
+**/webpack.config.*
+# Native mobile build trees (not the TS/JS knowledge graph)
+apps/mobile/android/
+apps/mobile/ios/
+
+# Graphify's own output
+graphify-out/
+
+# Lockfiles & misc noise
+yarn.lock
+package-lock.json
+pnpm-lock.yaml
+*.log

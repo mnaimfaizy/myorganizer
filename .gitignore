@@ -46,6 +46,9 @@ testem.log
 .sandcastle/logs/
 .sandcastle/worktrees/
 .sandcastle/patches/
+.sandcastle/gate/
+.sandcastle/.yarn-cache/
+.sandcastle/node_modules_linux_cache/
 
 # System Files
 .DS_Store
@@ -160,3 +163,8 @@ yarn-error.log
 
 
 vite.config.*.timestamp*
+
+# Graphify knowledge-graph artifacts (generated; rebuild via docs/graphify.md).
+# .mcp.json and .graphifyignore are committed; the generated graph is not.
+graphify-out/
+**/graphify-out/
