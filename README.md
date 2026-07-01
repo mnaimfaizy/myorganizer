@@ -139,7 +139,6 @@ myorganizer/
 │   ├── web-vault/        # Browser vault state and sync logic
 │   └── web-vault-ui/     # Vault-specific UI components
 ├── docs/                 # Architecture and feature documentation
-├── openspec/             # Spec-driven change proposals
 └── tools/                # Build and release scripts
 ```
 

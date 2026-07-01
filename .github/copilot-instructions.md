@@ -121,6 +121,7 @@ When consuming the generated client:
 - Mock external dependencies
 - Aim for meaningful test coverage, not just high percentages
 - When a task requires creating or changing Jest unit or integration tests, route through `.github/skills/unit-test-delegation-workflow/SKILL.md`. The pipeline is: `TestScaffold` (implementation) → `TestReviewer` (static gate: checklist verification, `tsc --noEmit`, `eslint`) → `TestRunner` (execution with hang detection and one-at-a-time recovery). Max 3 retries before escalating to the main agent.
+- When a task requires building features or fixing bugs test-first, use `.github/skills/tdd/SKILL.md`. Plan the behavior list before writing any code, work in vertical tracer-bullet slices (one test → one implementation → repeat), consult `.github/skills/codebase-design/SKILL.md` for deep-module vocabulary during the refactor step.
 - Test delegation briefs must include a behavior matrix from reading the actual implementation, plus explicit in-scope and out-of-scope scenarios. Do not ask for vague "comprehensive tests".
 - Use `docs/testing/README.md` for per-project tooling, integration scope, environments, and mock patterns.
 - When a task requires creating or changing Storybook stories (`*.stories.tsx`), route through `.github/skills/storybook-delegation-workflow/SKILL.md` and delegate implementation to `StorybookCurator`; require requirement-readiness analysis first, then review for UX/a11y coverage, scenario completeness, and clarification gaps before finalizing.
@@ -168,6 +169,29 @@ When designing new features or making architectural decisions, use the **grill-w
 - `docs/adr/` — Records of hard-to-reverse decisions with trade-off context
 
 See `.github/skills/grill-with-docs/` for templates and detailed guidance.
+
+### Domain Modeling
+
+When you need to **actively build or update the domain model** (adding new glossary terms to `CONTEXT.md`, recording an ADR, resolving conflicting terminology, cross-referencing stated assumptions against code), use the **domain-modeling** skill (`.github/skills/domain-modeling/SKILL.md`):
+
+- This is the _active_ discipline — for when you are _changing_ the model, not just reading it.
+- Challenges glossary conflicts immediately; sharpens vague/overloaded terms into precise canonical definitions
+- Stress-tests domain boundaries with concrete edge-case scenarios
+- Updates `CONTEXT.md` inline (format: `.github/skills/domain-modeling/CONTEXT-FORMAT.md`) — never batched
+- Offers ADRs sparingly using the three-condition gate (format: `.github/skills/domain-modeling/ADR-FORMAT.md`)
+- Invoked inline by `improve-codebase-architecture` and `grill-with-docs` when new terms crystallise
+
+### Architectural Reviews
+
+When you need to find **shallow modules**, **seam leaks**, or **testability gaps** before planning a refactor, use the **improve-codebase-architecture** skill (`.github/skills/improve-codebase-architecture/SKILL.md`):
+
+- Loads `.github/skills/codebase-design/SKILL.md` for the shared vocabulary and principles. Companion files: `DEEPENING.md` (dependency categories, seam discipline) and `DESIGN-IT-TWICE.md` (parallel interface exploration).
+- Delegates a codebase walk to `CodeExplorer` using the deletion test and depth heuristics
+- Produces a self-contained HTML report (written to the OS temp dir) with before/after diagrams for each candidate
+- Opens a grilling loop with `grill-with-docs`; when new domain terms or ADRs crystallise, delegates to `domain-modeling`
+- If alternative interfaces are needed, uses `DESIGN-IT-TWICE.md`
+
+**Vocabulary** (use exactly — no substitutions): module, interface, depth, seam, adapter, leverage, locality.
 
 ## Security Best Practices
 

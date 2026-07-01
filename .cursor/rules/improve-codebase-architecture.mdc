@@ -1,0 +1,59 @@
+---
+description: Scan the codebase for architectural deepening opportunities and present them as a visual HTML report. Use when you want to find shallow modules, seam leaks, or testability gaps before planning a refactor.
+alwaysApply: false
+---
+
+# Improve Codebase Architecture Skill
+
+## When to Use
+
+- You want to find **shallow modules** — where the interface is nearly as complex as the implementation
+- You need to identify where logic **leaks across seams** in the Nx library boundaries
+- You're investigating parts of the codebase that are **hard to test** through their current interface
+- You want a structured before/after visual review before committing to any refactor
+
+## Core Vocabulary
+
+**Always load `.github/skills/codebase-design/SKILL.md` first** — it is the authoritative source for all terms below. Also read its companions:
+
+- `codebase-design/DEEPENING.md` — dependency categories (in-process / local-substitutable / ports & adapters / mock), seam discipline, and replace-don't-layer testing strategy
+- `codebase-design/DESIGN-IT-TWICE.md` — parallel sub-agent pattern for alternative interface exploration
+
+Use these terms exactly — never substitute:
+
+| Use                    | Never use                |
+| ---------------------- | ------------------------ |
+| module                 | component, service, unit |
+| interface              | API, signature           |
+| seam                   | boundary                 |
+| depth / deep / shallow | thin, fat, heavy, light  |
+| adapter                | wrapper, layer           |
+| leverage               | reuse                    |
+| locality               | cohesion                 |
+
+## Process
+
+1. **Read** `CONTEXT.md` and any relevant ADRs in `docs/adr/` before touching the codebase.
+2. **Delegate** the codebase walk to `CodeExplorer` (`.cursor/agents/explore.md`) — never issue 3+ consecutive file reads directly.
+3. **Identify candidates** using the deletion test: would deleting this module concentrate complexity, or just move it?
+4. **Write the HTML report** to the OS temp dir (`%TEMP%\architecture-review-<timestamp>.html` on Windows) and open it. Full scaffold in `.github/skills/improve-codebase-architecture/HTML-REPORT.md`.
+5. **Ask** the user: "Which of these would you like to explore?" — do NOT propose implementation yet.
+6. **Grill** the chosen candidate using the `grill-with-docs` rule (`.cursor/rules/grill-with-docs.mdc`).
+
+## Side effects during the grilling loop
+
+- New domain term? → Add it to `CONTEXT.md` immediately.
+- User rejects candidate with a load-bearing reason? → Offer to record it as an ADR in `docs/adr/`.
+- Candidate contradicts an existing ADR? → Surface it with a warning; only re-litigate when the friction is real.
+
+## MyOrganizer focal areas
+
+| Nx Library / App                | Friction to look for                              |
+| ------------------------------- | ------------------------------------------------- |
+| `apps/backend/src/controllers/` | Controllers doing service-level work              |
+| `apps/backend/src/services/`    | Services leaking across domain seams              |
+| `libs/vault-core/`              | Crypto / sync seam                                |
+| `libs/web-vault/`               | Client vault state vs. UI seam                    |
+| `libs/web/pages/*/`             | Shallow page orchestrators                        |
+| `libs/web-ui/`                  | Logic leaking into presentational modules         |
+| `libs/auth/`                    | Shared auth utilities crossing library boundaries |

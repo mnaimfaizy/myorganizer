@@ -55,9 +55,12 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - For PR requests, gather commit history from the current branch, push upstream if needed, create or reuse the PR, assign the authenticated GitHub user, and leave reviewers empty unless the user explicitly names them.
 - For issue creation requests, follow `.github/skills/github-issue-creation-workflow/SKILL.md` and delegate to `IssueCreator` so duplicate checks, required details, and label validation are handled consistently.
 - For Jest unit or integration test creation/update requests, follow `.github/skills/unit-test-delegation-workflow/SKILL.md` and delegate implementation to `TestScaffold` first. The brief must include a behavior matrix from the actual implementation plus explicit in-scope and out-of-scope scenarios. Main agent must review behavior correctness, side effects, failures, boundaries, security-sensitive paths, mock hygiene, duplicate output, and validation before finalizing. Use `docs/testing/README.md` as the project-aware tooling reference.
+- For building features or fixing bugs test-first (red-green-refactor), use `.github/skills/tdd/SKILL.md`. Plan the behavior list with the user before writing any code, work in vertical tracer-bullet slices (one test → one implementation → repeat), and consult `.github/skills/codebase-design/SKILL.md` for deep-module vocabulary during the refactor step.
 - For Playwright E2E creation/update requests, follow `.github/skills/playwright-e2e-workflow/SKILL.md`; use `E2EPlanner` for broad flows and delegate implementation to `TestScaffold` only with a precise flow matrix.
 - For release requests, follow the `.github/skills/release-and-deploy-workflow/SKILL.md` skill. Delegate: pre-flight → `PreflightCheck` agent, version proposal → `VersionBump` agent, notes drafting → `ReleaseNotes` agent.
 - For design and planning sessions, use `.github/skills/grill-with-docs/SKILL.md` to stress-test plans against the domain model, sharpen terminology, and document decisions. This skill helps create/update `CONTEXT.md` (domain glossary) and `docs/adr/` (architecture decisions).
+- For actively building or updating the domain model (adding glossary terms, recording ADRs, resolving fuzzy language, cross-referencing terms with code), use `.github/skills/domain-modeling/SKILL.md`. This is the _active_ discipline that owns `CONTEXT.md` and `docs/adr/` writes — invoked by `improve-codebase-architecture` and `grill-with-docs` when the model needs to change.
+- For architectural reviews — finding shallow modules, seam leaks, or testability gaps — use `.github/skills/improve-codebase-architecture/SKILL.md`. It loads `.github/skills/codebase-design/SKILL.md` (vocabulary + principles) and its companion files (`DEEPENING.md` for dependency classification, `DESIGN-IT-TWICE.md` for alternative interface exploration). It produces a visual HTML report with before/after diagrams for each candidate, then opens a grilling loop on whichever candidate you pick.
 - For new planned feature work, use `.github/skills/to-prd/SKILL.md` to write and publish a PRD Issue. The user must be present — there is one interactive step (test seam approval). Do not use IssueCreator for PRD Issues; create them directly via `gh issue create`.
 - To break a PRD Issue into Slice Issues, use `.github/skills/to-issues/SKILL.md`. The user must supply the PRD Issue number. Every slice body must start with `PRD: #<N>`. Flag `type:hitl` slices prominently — `dispatch-agents` skips them. After publishing, remind the user to run `yarn dispatch-agents --prd <N>`.
 - Before issuing 3 or more consecutive read/search operations to locate something in the codebase, stop and delegate to `CodeExplorer` (`.github/agents/explore.agent.md`) instead. Provide an Explore Request with a `Goal` sentence; optionally include `Known Locations`, `Search Hints`, `Out of Scope`, and `Expected Output`. CodeExplorer returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
@@ -105,14 +108,3 @@ Use the decision tree in [`.claude/checklist.md`](.claude/checklist.md) to verif
 - Do not commit secrets or production credentials.
 - Do not cancel, background, or abandon a running `git commit` while Husky checks are still executing.
 - Do not open pull requests from `main` or another base branch directly.
-
-## Spec-driven changes (OpenSpec)
-
-For non-trivial features and refactors, draft an OpenSpec change before coding.
-
-- Config and project context: [openspec/config.yaml](openspec/config.yaml).
-- Changes live under `openspec/changes/<name>/` and are archived on completion.
-- Copilot Chat slash commands: `/opsx-propose`, `/opsx-apply`, `/opsx-archive`, `/opsx-explore` (see [.github/prompts](.github/prompts)).
-- Skills under [.github/skills](.github/skills) (`openspec-*`) auto-load when relevant.
-- Skip OpenSpec for trivial fixes (typos, one-line bugs) — open a PR directly.
-- OpenSpec describes _what_ to build; existing `.github/skills/*` describe _how_ (vault, backend API, frontend pages, prisma, e2e, auth, youtube, release).

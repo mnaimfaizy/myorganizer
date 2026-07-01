@@ -5,6 +5,7 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 - Commit requests should use `.claude/commands/commit.md`.
 - PR requests should use `.claude/commands/create-pr.md`.
 - Jest unit or integration test creation/updates should use `.claude/commands/unit-test.md`.
+- For building features or fixing bugs test-first (red-green-refactor), use `.claude/commands/tdd.md` (`.github/skills/tdd/SKILL.md`). Plan the behavior list with the user before writing any code, work in vertical tracer-bullet slices (one test → one implementation → repeat), and consult `.github/skills/codebase-design/SKILL.md` for deep-module vocabulary during the refactor step.
 - Storybook creation or updates should use `.claude/commands/storybook.md`.
 - Playwright E2E creation/updates should follow `.github/skills/playwright-e2e-workflow/SKILL.md`.
 - Commit-message drafting still belongs to the existing `Commit` sub-agent; commit execution belongs to the shared `ai:commit` runner.
@@ -204,3 +205,30 @@ When you need to stress-test a plan against the project's domain model and docum
   - `CONTEXT.md` — Domain language glossary (one-sentence definitions, preferred terms, what to avoid)
   - `docs/adr/` — Architecture Decision Records for major design choices
 - **Reference formats**: See `CONTEXT-FORMAT.md` and `ADR-FORMAT.md` in the skill directory
+
+When you need to **actively build or update** the domain model (adding new terms to `CONTEXT.md`, recording a new ADR, resolving conflicting terminology, cross-referencing a stated assumption with code), use the **domain-modeling** skill:
+
+- **Claude command**: `/domain-modeling` (`.claude/commands/domain-modeling.md`)
+- **Skill location**: `.github/skills/domain-modeling/SKILL.md`
+- **When to use**: You are _changing_ the domain model, not just reading it. Invoked inline by `improve-codebase-architecture` and `grill-with-docs` when new terms crystallise.
+- **What it does**:
+  - Challenges glossary conflicts immediately
+  - Sharpens vague/overloaded terms into precise canonical definitions
+  - Stress-tests domain boundaries with concrete edge-case scenarios
+  - Cross-references stated assumptions against the actual codebase
+  - Updates `CONTEXT.md` inline (format: `CONTEXT-FORMAT.md`) — never batched
+  - Offers ADRs sparingly using the three-condition gate (format: `ADR-FORMAT.md`)
+
+When you need to find shallow modules, seam leaks, or testability gaps before planning a refactor, use the **improve-codebase-architecture** skill:
+
+- **Claude command**: `/improve-architecture` (`.claude/commands/improve-architecture.md`)
+- **Skill location**: `.github/skills/improve-codebase-architecture/SKILL.md`
+- **Depends on**: `.github/skills/codebase-design/SKILL.md` — the skill loads this automatically for vocabulary and principles. Companion files: `DEEPENING.md` (dependency categories and seam discipline) and `DESIGN-IT-TWICE.md` (parallel interface exploration).
+- **When to use**: You want a structured architectural review — before committing to any specific refactor.
+- **What it does**:
+  - Reads `codebase-design/SKILL.md` for the shared vocabulary, `DEEPENING.md` to classify each candidate's dependencies
+  - Delegates a codebase walk to `CodeExplorer` using the deletion test and depth/seam heuristics
+  - Generates a self-contained HTML report in the OS temp dir with before/after diagrams per candidate
+  - Opens a grilling loop with `grill-with-docs`; when new domain terms or ADRs crystallise, delegates to `domain-modeling`
+  - If alternative interfaces are needed, uses `DESIGN-IT-TWICE.md`
+- **Vocabulary to enforce**: module, interface, depth, seam, adapter, leverage, locality — never component, service, boundary.
