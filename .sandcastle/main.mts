@@ -1,10 +1,13 @@
-import { run, claudeCode } from '@ai-hero/sandcastle';
+import dotenv from 'dotenv';
+import { run, claudeCode, cursor, copilot } from '@ai-hero/sandcastle';
 import { docker } from '@ai-hero/sandcastle/sandboxes/docker';
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const REPO = 'mnaimfaizy/myorganizer';
+
+dotenv.config({ path: join(process.cwd(), '.sandcastle', '.env') });
 
 // ─── Integration model (local-only) ───────────────────────────────────────────
 // GitHub coupling is deliberately minimal: we READ the PRD + slice issues and
@@ -103,12 +106,56 @@ function gitRefExists(ref: string): boolean {
 
 // ─── Parse --prd <N> ─────────────────────────────────────────────────────────
 
-const prdFlag = process.argv.indexOf('--prd');
-if (prdFlag === -1 || !process.argv[prdFlag + 1]) {
-  fail('Usage: yarn dispatch-agents --prd <issue-number>');
+function getArgValue(name: string): string | undefined {
+  const prefix = `--${name}=`;
+  const withEquals = process.argv.find((arg) => arg.startsWith(prefix));
+  if (withEquals) return withEquals.slice(prefix.length);
+
+  const index = process.argv.indexOf(`--${name}`);
+  if (index === -1) return undefined;
+
+  const value = process.argv[index + 1];
+  return value && !value.startsWith('--') ? value : undefined;
 }
-const prdNumber = parseInt(process.argv[prdFlag + 1], 10);
+
+function printHelp(): void {
+  console.log(`
+Usage:
+  yarn dispatch-agents --prd <issue-number> [--agent claude|cursor|copilot] [--model <model>]
+
+Flags:
+  --prd <issue-number>   PRD issue number to dispatch
+  --agent <name>         Agent provider to use (default: SANDCASTLE_AGENT or claude)
+  --model <model>        Override the model for this run (default: env/provider routing)
+  --help                 Show this help text
+
+Environment:
+  .sandcastle/.env is loaded automatically.
+  SANDCASTLE_AGENT
+  SANDCASTLE_MODEL
+  SANDCASTLE_CLAUDE_MODEL
+  SANDCASTLE_CURSOR_MODEL
+  SANDCASTLE_COPILOT_MODEL
+`);
+}
+
+if (process.argv.includes('--help') || process.argv.includes('-h')) {
+  printHelp();
+  process.exit(0);
+}
+
+const prdValue = getArgValue('prd');
+if (!prdValue) {
+  fail(
+    'Usage: yarn dispatch-agents --prd <issue-number> [--agent claude|cursor|copilot] [--model <model>]',
+  );
+}
+
+const prdNumber = parseInt(prdValue, 10);
 if (isNaN(prdNumber)) fail('--prd must be a number.');
+
+const agentFlag = getArgValue('agent');
+const modelFlag = getArgValue('model');
 
 // ─── Fetch PRD issue ──────────────────────────────────────────────────────────
 
@@ -235,11 +282,47 @@ console.log(`Dispatching ${slices.length} slice(s) one by one...\n`);
 
 // ─── Model routing ────────────────────────────────────────────────────────────
 
+type AgentKind = 'claude' | 'cursor' | 'copilot';
+
 function modelFor(issue: Issue): string {
   const labels = issue.labels.map((l) => l.name);
   if (labels.includes('complexity:high')) return 'claude-opus-4-5';
   if (labels.includes('complexity:medium')) return 'claude-sonnet-4-6';
   return 'claude-haiku-4-5';
+}
+
+function resolveAgentKind(): AgentKind {
+  const raw = (agentFlag ?? process.env.SANDCASTLE_AGENT ?? 'claude').trim();
+  if (raw === 'claude' || raw === 'cursor' || raw === 'copilot') {
+    return raw;
+  }
+
+  fail(`Unknown agent "${raw}". Available: claude, cursor, copilot.`);
+}
+
+function resolveModel(issue: Issue, agentKind: AgentKind): string {
+  const explicitModel = modelFlag ?? process.env.SANDCASTLE_MODEL;
+  if (explicitModel) return explicitModel;
+
+  switch (agentKind) {
+    case 'claude':
+      return process.env.SANDCASTLE_CLAUDE_MODEL ?? modelFor(issue);
+    case 'cursor':
+      return process.env.SANDCASTLE_CURSOR_MODEL ?? 'composer-2';
+    case 'copilot':
+      return process.env.SANDCASTLE_COPILOT_MODEL ?? 'claude-sonnet-4.5';
+  }
+}
+
+function buildAgent(agentKind: AgentKind, model: string) {
+  switch (agentKind) {
+    case 'claude':
+      return claudeCode(model);
+    case 'cursor':
+      return cursor(model);
+    case 'copilot':
+      return copilot(model);
+  }
 }
 
 function sliceBranchFor(issue: Issue): string {
@@ -515,9 +598,11 @@ type SliceResult = {
 
 const results: SliceResult[] = [];
 const crashed: Array<{ issue: Issue; error: string }> = [];
+const agentKind = resolveAgentKind();
 
 for (const issue of slices) {
-  const model = modelFor(issue);
+  const model = resolveModel(issue, agentKind);
+  const agent = buildAgent(agentKind, model);
   const sliceBranch = sliceBranchFor(issue);
 
   ghSilent([
@@ -531,7 +616,9 @@ for (const issue of slices) {
   ]);
 
   try {
-    console.log(`\n  → #${issue.number} on ${sliceBranch} (${model})`);
+    console.log(
+      `\n  → #${issue.number} on ${sliceBranch} (${agentKind}:${model})`,
+    );
 
     // Fresh slice branch + worktree off the CURRENT local feature head, so this
     // slice (processed one by one) builds on every previously-integrated slice.
@@ -568,7 +655,7 @@ for (const issue of slices) {
     }
 
     const result = await run({
-      agent: claudeCode(model),
+      agent,
       sandbox: docker({
         env: {
           NX_DAEMON: 'false',
