@@ -6,14 +6,40 @@ import { ValidateError } from 'tsoa';
 
 jest.setTimeout(30_000);
 
+jest.mock('../helpers/PlatformTokenHandler', () => ({
+  __esModule: true,
+  PlatformTokenHandler: {
+    buildLoginResponse: jest.fn(),
+  },
+  default: {
+    buildLoginResponse: jest.fn(),
+  },
+}));
+
+jest.mock('../utils/passport', () => ({
+  __esModule: true,
+  default: {
+    authenticate: () => (_req: any, _res: any, next: any) => next(),
+  },
+}));
+
 jest.mock('../middleware/authentication', () => {
   return {
     expressAuthentication: async (req: any) => {
       const authHeader = req?.headers?.authorization;
       if (!authHeader) {
-        const err: any = new Error('No token provided');
+        const err = new Error('Unauthorized') as Error & { status?: number };
         err.status = 401;
         throw err;
+      }
+
+      const token = authHeader.startsWith('Bearer ')
+        ? authHeader.slice('Bearer '.length)
+        : authHeader;
+
+      if (token === 'no-id') {
+        req.user = {};
+        return req.user;
       }
 
       req.user = { id: 'user-1' };
@@ -35,6 +61,16 @@ jest.mock('../services/VaultService', () => {
     },
   };
 });
+
+jest.mock('../services/VaultBackupService', () => ({
+  __esModule: true,
+  default: {},
+}));
+
+jest.mock('../services/UserService', () => ({
+  __esModule: true,
+  default: {},
+}));
 
 // Prevent module-level createPrismaClient() calls in YouTube services from
 // attempting a real DB connection during Vault integration tests.
@@ -113,12 +149,89 @@ describe('VaultController (HTTP integration)', () => {
     jest.clearAllMocks();
   });
 
-  test('requires auth for GET /vault', async () => {
-    const app = makeApp();
+  describe('auth requirements', () => {
+    test('requires auth for GET /vault', async () => {
+      const app = makeApp();
+      const vaultService = require('../services/VaultService').default;
 
-    const res = await request(app).get('/vault');
+      const res = await request(app).get('/vault');
 
-    expect(res.status).toBe(401);
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Unauthorized' });
+      expect(vaultService.getVaultMeta).not.toHaveBeenCalled();
+    });
+
+    test('requires auth for PUT /vault', async () => {
+      const app = makeApp();
+      const vaultService = require('../services/VaultService').default;
+
+      const res = await request(app).put('/vault').send({ meta });
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Unauthorized' });
+      expect(vaultService.putVaultMeta).not.toHaveBeenCalled();
+    });
+
+    test('requires auth for GET /vault/blob/:type', async () => {
+      const app = makeApp();
+      const vaultService = require('../services/VaultService').default;
+
+      const res = await request(app).get('/vault/blob/addresses');
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Unauthorized' });
+      expect(vaultService.getBlob).not.toHaveBeenCalled();
+    });
+
+    test('requires auth for PUT /vault/blob/:type', async () => {
+      const app = makeApp();
+      const vaultService = require('../services/VaultService').default;
+
+      const res = await request(app)
+        .put('/vault/blob/addresses')
+        .send({ type: 'addresses', blob });
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Unauthorized' });
+      expect(vaultService.putBlob).not.toHaveBeenCalled();
+    });
+
+    test('requires auth for POST /vault/export', async () => {
+      const app = makeApp();
+      const vaultService = require('../services/VaultService').default;
+
+      const res = await request(app).post('/vault/export');
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Unauthorized' });
+      expect(vaultService.exportVault).not.toHaveBeenCalled();
+    });
+
+    test('requires auth for POST /vault/import', async () => {
+      const app = makeApp();
+      const vaultService = require('../services/VaultService').default;
+
+      const res = await request(app)
+        .post('/vault/import')
+        .send({ version: 1, meta, blobs: {} });
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Unauthorized' });
+      expect(vaultService.importVault).not.toHaveBeenCalled();
+    });
+
+    test('returns 401 with Unauthorized when authenticated user has no id', async () => {
+      const app = makeApp();
+      const vaultService = require('../services/VaultService').default;
+
+      const res = await request(app)
+        .get('/vault')
+        .set('Authorization', 'Bearer no-id');
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Unauthorized' });
+      expect(vaultService.getVaultMeta).not.toHaveBeenCalled();
+    });
   });
 
   test('returns 404 on missing vault meta', async () => {

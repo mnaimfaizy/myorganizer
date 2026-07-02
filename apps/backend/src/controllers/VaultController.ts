@@ -12,13 +12,13 @@ import {
   Security,
   Tags,
 } from 'tsoa';
+import { requireUserId } from '../guards/AuthGuard';
 import vaultService, {
   EncryptedBlobV1,
   VaultBlobType,
   VaultExportV1,
   VaultMetaV1,
 } from '../services/VaultService';
-import { UserInterface } from '../types';
 import { ErrorResponse } from './ErrorResponse';
 
 type GetVaultMetaResponse =
@@ -50,20 +50,11 @@ type ImportVaultResponse = { ok: true } | ErrorResponse;
 @Route('/vault')
 @Security('jwt')
 export class VaultController extends Controller {
-  private getUserId(req: ExRequest): string {
-    const user = req.user as UserInterface;
-    return user?.id;
-  }
-
   @Get()
   public async getVaultMeta(
     @Request() req: ExRequest,
   ): Promise<GetVaultMetaResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
 
     const result = await vaultService.getVaultMeta(userId);
     this.setStatus(result.status);
@@ -76,11 +67,7 @@ export class VaultController extends Controller {
     @Body() requestBody: { meta: VaultMetaV1 },
     @Header('if-match') ifMatch?: string,
   ): Promise<PutVaultMetaResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
 
     const result = await vaultService.putVaultMeta(
       userId,
@@ -96,11 +83,7 @@ export class VaultController extends Controller {
     @Request() req: ExRequest,
     @Path() type: VaultBlobType,
   ): Promise<GetVaultBlobResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
 
     const result = await vaultService.getBlob(userId, type);
     this.setStatus(result.status);
@@ -114,11 +97,7 @@ export class VaultController extends Controller {
     @Body() requestBody: { type: VaultBlobType; blob: EncryptedBlobV1 },
     @Header('if-match') ifMatch?: string,
   ): Promise<PutVaultBlobResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
 
     if (requestBody?.type && requestBody.type !== type) {
       this.setStatus(422);
@@ -139,11 +118,7 @@ export class VaultController extends Controller {
   public async exportVault(
     @Request() req: ExRequest,
   ): Promise<ExportVaultResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
 
     const result = await vaultService.exportVault(userId);
     this.setStatus(result.status);
@@ -155,11 +130,7 @@ export class VaultController extends Controller {
     @Request() req: ExRequest,
     @Body() requestBody: VaultExportV1,
   ): Promise<ImportVaultResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
 
     const result = await vaultService.importVault(userId, requestBody);
     this.setStatus(result.status);

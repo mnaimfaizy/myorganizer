@@ -10,6 +10,7 @@ import {
   Security,
   Tags,
 } from 'tsoa';
+import { requireUserId } from '../guards/AuthGuard';
 import vaultBackupService, {
   VaultBackupRecordDto,
 } from '../services/VaultBackupService';
@@ -19,7 +20,6 @@ import {
   VaultBackupSource,
   VaultBackupStatus,
 } from '../services/vaultBackupConstants';
-import { UserInterface } from '../types';
 import { ErrorResponse } from './ErrorResponse';
 
 export interface RecordVaultBackupRequest {
@@ -47,21 +47,12 @@ type ListVaultBackupsResponse = VaultBackupHistoryPage | ErrorResponse;
 @Route('/vault/backups')
 @Security('jwt')
 export class VaultBackupController extends Controller {
-  private getUserId(req: ExRequest): string {
-    const user = req.user as UserInterface;
-    return user?.id;
-  }
-
   @Post()
   public async recordBackup(
     @Request() req: ExRequest,
     @Body() body: RecordVaultBackupRequest,
   ): Promise<RecordVaultBackupResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
 
     const result = await vaultBackupService.recordEvent(userId, body);
     this.setStatus(result.status);
@@ -74,11 +65,7 @@ export class VaultBackupController extends Controller {
     @Query() status?: VaultBackupStatus,
     @Query() source?: VaultBackupSource,
   ): Promise<GetLatestVaultBackupResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
 
     const result = await vaultBackupService.getLatest(userId, status, source);
     this.setStatus(result.status);
@@ -92,11 +79,7 @@ export class VaultBackupController extends Controller {
     @Query() limit?: number,
     @Query() source?: VaultBackupSource,
   ): Promise<ListVaultBackupsResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
 
     const result = await vaultBackupService.listHistory(userId, {
       cursor,
