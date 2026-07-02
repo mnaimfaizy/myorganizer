@@ -1,42 +1,23 @@
 'use client';
 
-import type { Task, TaskPriority } from '@myorganizer/core';
-import { randomId } from '@myorganizer/core';
+import type { Task } from '@myorganizer/core';
 import { useToast } from '@myorganizer/web-ui';
-import {
-  loadDecryptedData,
-  migrateFromTodos,
-  normalizeTasks,
-  saveEncryptedData,
-} from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import { useCallback, useEffect, useState } from 'react';
 
+import { useTasksWorkflow } from '../workflow';
 import { TaskDeleteDialog } from './task-delete-dialog';
 import { TaskEditDialog } from './task-edit-dialog';
 import { TaskForm } from './task-form';
 import TaskItem from './task-item';
 
-const PRIORITY_ORDER: Record<TaskPriority, number> = {
-  high: 0,
-  medium: 1,
-  low: 2,
-};
-
-function sortTasks(tasks: Task[]): Task[] {
-  return [...tasks].sort((a, b) => {
-    const pa = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
-    if (pa !== 0) return pa;
-    const da = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
-    const db = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
-    if (da !== db) return da - db;
-    return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-  });
+interface TasksInnerProps {
+  masterKeyBytes: Uint8Array;
 }
 
-function TasksInner(props: { masterKeyBytes: Uint8Array }) {
+function TasksInner({ masterKeyBytes }: TasksInnerProps) {
   const { toast } = useToast();
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const workflow = useTasksWorkflow({ masterKeyBytes });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -45,193 +26,130 @@ function TasksInner(props: { masterKeyBytes: Uint8Array }) {
   >('all');
 
   useEffect(() => {
-    loadDecryptedData<unknown>({
-      masterKeyBytes: props.masterKeyBytes,
-      type: 'tasks',
-      defaultValue: null,
-    })
-      .then(async (raw) => {
-        if (raw === null) {
-          const todos = await loadDecryptedData<unknown>({
-            masterKeyBytes: props.masterKeyBytes,
-            type: 'todos',
-            defaultValue: [],
-          });
-
-          if (Array.isArray(todos) && todos.length > 0) {
-            const migrated = migrateFromTodos(todos);
-            await saveEncryptedData({
-              masterKeyBytes: props.masterKeyBytes,
-              type: 'tasks',
-              value: migrated,
-            });
-            setTasks(sortTasks(migrated));
-          } else {
-            setTasks([]);
-          }
-        } else {
-          const normalized = normalizeTasks(raw);
-          if (normalized.changed) {
-            await saveEncryptedData({
-              masterKeyBytes: props.masterKeyBytes,
-              type: 'tasks',
-              value: normalized.value,
-            });
-          }
-          setTasks(sortTasks(normalized.value));
-        }
-      })
-      .catch(() => {
-        toast({
-          title: 'Failed to load tasks',
-          description: 'Could not decrypt saved data.',
-          variant: 'destructive',
-        });
+    if (workflow.loadError) {
+      toast({
+        title: 'Failed to load tasks',
+        description: 'Could not decrypt saved data.',
+        variant: 'destructive',
       });
-  }, [props.masterKeyBytes, toast]);
+    }
+  }, [workflow.loadError, toast]);
 
-  const persist = useCallback(
-    async (next: Task[]) => {
-      const sorted = sortTasks(next);
-      setTasks(sorted);
-      try {
-        await saveEncryptedData({
-          masterKeyBytes: props.masterKeyBytes,
-          type: 'tasks',
-          value: sorted,
+  const handleAddTask = useCallback(
+    async (formData: Parameters<typeof workflow.addTask>[0]) => {
+      const result = await workflow.addTask(formData);
+      if (result.ok && result.kind === 'created') {
+        toast({
+          title: 'Task created',
+          description: 'Your task has been saved (encrypted).',
         });
-      } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : String(e);
+      } else if (!result.ok && result.error.code === 'save_failed') {
         toast({
           title: 'Failed to save',
-          description: message,
+          description: result.error.message,
           variant: 'destructive',
         });
       }
     },
-    [props.masterKeyBytes, toast],
-  );
-
-  const handleAddTask = useCallback(
-    async (formData: {
-      title: string;
-      description?: string;
-      priority: TaskPriority;
-      status: Task['status'];
-      context?: Task['context'];
-      dueDate?: string;
-    }) => {
-      const newTask: Task = {
-        id: randomId(),
-        title: formData.title,
-        description: formData.description,
-        priority: formData.priority,
-        status: formData.status,
-        context: formData.context,
-        dueDate: formData.dueDate,
-        archived: false,
-        createdAt: new Date().toISOString(),
-      };
-      await persist([newTask, ...tasks]);
-      toast({
-        title: 'Task created',
-        description: 'Your task has been saved (encrypted).',
-      });
-    },
-    [persist, tasks, toast],
+    [workflow, toast],
   );
 
   const handleRequestDelete = useCallback(
     (id: string) => {
-      const task = tasks.find((t) => t.id === id);
+      const task = workflow.tasks.find((t) => t.id === id);
       if (task) setDeletingTask(task);
     },
-    [tasks],
+    [workflow.tasks],
   );
 
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingTask) return;
-    const next = tasks.filter((t) => t.id !== deletingTask.id);
-    await persist(next);
-    toast({
-      title: 'Task deleted',
-      description: 'Your task has been deleted.',
-    });
+    const result = await workflow.deleteTask(deletingTask.id);
+    if (result.ok && result.kind === 'deleted') {
+      toast({
+        title: 'Task deleted',
+        description: 'Your task has been deleted.',
+      });
+    } else if (!result.ok && result.error.code === 'save_failed') {
+      toast({
+        title: 'Failed to save',
+        description: result.error.message,
+        variant: 'destructive',
+      });
+    }
     setDeletingTask(null);
-  }, [deletingTask, tasks, persist, toast]);
+  }, [deletingTask, workflow, toast]);
 
   const handleRequestEdit = useCallback(
     (id: string) => {
-      const task = tasks.find((t) => t.id === id);
+      const task = workflow.tasks.find((t) => t.id === id);
       if (task) setEditingTask(task);
     },
-    [tasks],
+    [workflow.tasks],
   );
 
   const handleSaveEdit = useCallback(
     async (
       taskId: string,
-      values: {
-        title: string;
-        description?: string;
-        priority: Task['priority'];
-        status: Task['status'];
-        context?: Task['context'];
-        dueDate?: string;
-      },
+      values: Parameters<typeof workflow.updateTask>[1],
     ) => {
-      const next = tasks.map((t) =>
-        t.id === taskId
-          ? {
-              ...t,
-              ...values,
-              updatedAt: new Date().toISOString(),
-            }
-          : t,
-      );
-      await persist(next);
-      toast({
-        title: 'Task updated',
-        description: 'Changes saved (encrypted).',
-      });
+      const result = await workflow.updateTask(taskId, values);
+      if (result.ok && result.kind === 'updated') {
+        toast({
+          title: 'Task updated',
+          description: 'Changes saved (encrypted).',
+        });
+      } else if (!result.ok && result.error.code === 'save_failed') {
+        toast({
+          title: 'Failed to save',
+          description: result.error.message,
+          variant: 'destructive',
+        });
+      }
       setEditingTask(null);
     },
-    [tasks, persist, toast],
+    [workflow, toast],
   );
 
   const handleArchiveTask = useCallback(
     async (id: string) => {
-      const next = tasks.map((t) =>
-        t.id === id
-          ? { ...t, archived: true, updatedAt: new Date().toISOString() }
-          : t,
-      );
-      await persist(next);
-      toast({
-        title: 'Task archived',
-        description: 'Task moved to archive.',
-      });
+      const result = await workflow.archiveTask(id);
+      if (result.ok && result.kind === 'archived') {
+        toast({
+          title: 'Task archived',
+          description: 'Task moved to archive.',
+        });
+      } else if (!result.ok && result.error.code === 'save_failed') {
+        toast({
+          title: 'Failed to save',
+          description: result.error.message,
+          variant: 'destructive',
+        });
+      }
     },
-    [tasks, persist, toast],
+    [workflow, toast],
   );
 
   const handleUnarchiveTask = useCallback(
     async (id: string) => {
-      const next = tasks.map((t) =>
-        t.id === id
-          ? { ...t, archived: false, updatedAt: new Date().toISOString() }
-          : t,
-      );
-      await persist(next);
-      toast({
-        title: 'Task restored',
-        description: 'Task moved back to active.',
-      });
+      const result = await workflow.unarchiveTask(id);
+      if (result.ok && result.kind === 'unarchived') {
+        toast({
+          title: 'Task restored',
+          description: 'Task moved back to active.',
+        });
+      } else if (!result.ok && result.error.code === 'save_failed') {
+        toast({
+          title: 'Failed to save',
+          description: result.error.message,
+          variant: 'destructive',
+        });
+      }
     },
-    [tasks, persist, toast],
+    [workflow, toast],
   );
 
-  const displayedTasks = tasks.filter((t) => {
+  const displayedTasks = workflow.tasks.filter((t) => {
     if (!showArchived && t.archived) return false;
     if (contextFilter !== 'all' && t.context !== contextFilter) return false;
     return true;

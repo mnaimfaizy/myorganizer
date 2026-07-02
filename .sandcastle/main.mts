@@ -1,8 +1,8 @@
-import dotenv from 'dotenv';
-import { run, claudeCode, cursor, copilot } from '@ai-hero/sandcastle';
+import { claudeCode, copilot, cursor, run } from '@ai-hero/sandcastle';
 import { docker } from '@ai-hero/sandcastle/sandboxes/docker';
+import dotenv from 'dotenv';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const REPO = 'mnaimfaizy/myorganizer';
@@ -524,11 +524,68 @@ function integrateSlice(issue: Issue, sliceBranch: string): boolean {
     );
     return false;
   }
+
+  const findCheckedOutWorktreeForBranch = (branch: string): string | null => {
+    const wt = spawnSync('git', ['worktree', 'list', '--porcelain'], {
+      encoding: 'utf8',
+      windowsHide: true,
+    });
+    if (wt.status !== 0 || !wt.stdout.trim()) return null;
+
+    let worktreePath: string | null = null;
+    for (const line of wt.stdout.split('\n')) {
+      if (!line.trim()) {
+        worktreePath = null;
+        continue;
+      }
+      if (line.startsWith('worktree ')) {
+        worktreePath = line.slice('worktree '.length).trim();
+        continue;
+      }
+      if (
+        line === `branch refs/heads/${branch}` &&
+        typeof worktreePath === 'string'
+      ) {
+        return worktreePath;
+      }
+    }
+    return null;
+  };
+
+  const mergeInCheckedOutWorktree = (): boolean => {
+    const worktreePath = findCheckedOutWorktreeForBranch(featureBranch);
+    if (!worktreePath) return false;
+
+    const ffMerge = spawnSync(
+      'git',
+      ['-C', worktreePath, 'merge', '--ff-only', sliceBranch],
+      {
+        encoding: 'utf8',
+        windowsHide: true,
+      },
+    );
+
+    if (ffMerge.status !== 0) {
+      console.error(
+        `  [#${issue.number}] integrate: failed to fast-forward ${featureBranch} in checked-out worktree ${worktreePath}.\n${ffMerge.stderr}`,
+      );
+      return false;
+    }
+
+    console.log(
+      `  [#${issue.number}] integrated into local ${featureBranch} (fast-forward in checked-out worktree).`,
+    );
+    return true;
+  };
+
   const ff = spawnSync('git', ['branch', '-f', featureBranch, sliceBranch], {
     encoding: 'utf8',
     windowsHide: true,
   });
   if (ff.status !== 0) {
+    if (ff.stderr.includes('cannot force update the branch')) {
+      return mergeInCheckedOutWorktree();
+    }
     console.error(
       `  [#${issue.number}] integrate: failed to advance ${featureBranch}.\n${ff.stderr}`,
     );
