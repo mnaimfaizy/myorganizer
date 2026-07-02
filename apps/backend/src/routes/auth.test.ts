@@ -86,7 +86,7 @@ describe('Auth Routes', () => {
           return (_req: any, _res: any, _next: any) => {
             cb(null, { id: 'user-1', email: 'test@example.com' }, undefined);
           };
-        }
+        },
       );
 
       const response = await request(app).post('/auth/login').send({
@@ -115,7 +115,7 @@ describe('Auth Routes', () => {
           return (_req: any, _res: any, _next: any) => {
             cb(null, verifiedUser, undefined);
           };
-        }
+        },
       );
 
       const response = await request(app).post('/auth/login').send({
@@ -151,7 +151,7 @@ describe('Auth Routes', () => {
           return (_req: any, _res: any, _next: any) => {
             cb(null, verifiedUser, undefined);
           };
-        }
+        },
       );
 
       const response = await request(app).post('/auth/login').send({
@@ -187,7 +187,7 @@ describe('Auth Routes', () => {
           return (_req: any, _res: any, _next: any) => {
             cb(null, verifiedUser, undefined);
           };
-        }
+        },
       );
 
       const response = await request(app).post('/auth/login').send({
@@ -235,7 +235,7 @@ describe('Auth Routes', () => {
           return (_req: any, _res: any, _next: any) => {
             cb(null, verifiedUser, undefined);
           };
-        }
+        },
       );
 
       const response = await request(app).post('/auth/login').send({
@@ -250,11 +250,11 @@ describe('Auth Routes', () => {
       const cookieArray = Array.isArray(setCookieHeaders)
         ? setCookieHeaders
         : setCookieHeaders
-        ? [setCookieHeaders]
-        : [];
+          ? [setCookieHeaders]
+          : [];
 
       const refreshCookie = cookieArray.find((c) =>
-        c.startsWith('refresh_cookie=')
+        c.startsWith('refresh_cookie='),
       );
 
       expect(refreshCookie).toBeDefined();
@@ -289,10 +289,167 @@ describe('Auth Routes', () => {
       const setCookie = Array.isArray(rawSetCookie)
         ? rawSetCookie
         : rawSetCookie
-        ? [rawSetCookie]
-        : [];
+          ? [rawSetCookie]
+          : [];
 
       expect(setCookie.some((c) => c.startsWith('refresh_cookie='))).toBe(true);
+    });
+
+    test('returns 401 when no refresh token in cookie or body', async () => {
+      const response = await request(app).post('/auth/refresh').send({});
+
+      expect(response.status).toBe(401);
+      expect(response.body).toEqual({
+        message: 'Unauthorized',
+      });
+
+      expect(userService.refreshToken).not.toHaveBeenCalled();
+    });
+
+    test('accepts refresh token from cookie and returns 200 with new token', async () => {
+      const verifiedUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        email_verification_timestamp: new Date(),
+        name: 'Test User',
+        first_name: 'Test',
+        last_name: 'User',
+        blacklisted_tokens: [],
+      };
+
+      (userService.refreshToken as jest.Mock).mockResolvedValue(verifiedUser);
+
+      const response = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', ['refresh_cookie=old-refresh-token']);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        token: 'access-token',
+        expires_in: 600_000,
+        user: expect.objectContaining({
+          id: 'user-1',
+          email: 'test@example.com',
+        }),
+      });
+      expect(response.body).not.toHaveProperty('refresh_token');
+
+      const setCookieHeaders = response.headers['set-cookie'];
+      const cookieArray = Array.isArray(setCookieHeaders)
+        ? setCookieHeaders
+        : setCookieHeaders
+          ? [setCookieHeaders]
+          : [];
+
+      const refreshCookie = cookieArray.find((c) =>
+        c.startsWith('refresh_cookie='),
+      );
+
+      expect(refreshCookie).toBeDefined();
+      expect(refreshCookie).toContain('refresh_cookie=refresh-token');
+      expect(refreshCookie).toContain('HttpOnly');
+      expect(refreshCookie).toContain('SameSite=Lax');
+    });
+
+    test('accepts refresh token from request body (mobile) and returns 200 with new token', async () => {
+      const verifiedUser = {
+        id: 'user-1',
+        email: 'mobile@example.com',
+        email_verification_timestamp: new Date(),
+        name: 'Mobile User',
+        first_name: 'Mobile',
+        last_name: 'User',
+        blacklisted_tokens: [],
+      };
+
+      (userService.refreshToken as jest.Mock).mockResolvedValue(verifiedUser);
+
+      const response = await request(app).post('/auth/refresh').send({
+        refresh_token: 'mobile-refresh-token',
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        token: 'access-token',
+        expires_in: 600_000,
+        user: expect.objectContaining({
+          id: 'user-1',
+          email: 'mobile@example.com',
+        }),
+      });
+      expect(response.body).not.toHaveProperty('refresh_token');
+
+      expect(userService.refreshToken).toHaveBeenCalledWith(
+        'mobile-refresh-token',
+      );
+    });
+
+    test('prefers body refresh_token over cookie when both present', async () => {
+      const verifiedUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        email_verification_timestamp: new Date(),
+        name: 'Test User',
+        first_name: 'Test',
+        last_name: 'User',
+        blacklisted_tokens: [],
+      };
+
+      (userService.refreshToken as jest.Mock).mockResolvedValue(verifiedUser);
+
+      const response = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', ['refresh_cookie=cookie-token'])
+        .send({
+          refresh_token: 'body-token',
+        });
+
+      expect(response.status).toBe(200);
+      expect(userService.refreshToken).toHaveBeenCalledWith('body-token');
+    });
+
+    test('does not include refresh_token in response body for web client', async () => {
+      const verifiedUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        email_verification_timestamp: new Date(),
+        name: 'Test User',
+        first_name: 'Test',
+        last_name: 'User',
+        blacklisted_tokens: [],
+      };
+
+      (userService.refreshToken as jest.Mock).mockResolvedValue(verifiedUser);
+
+      const response = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', ['refresh_cookie=token']);
+
+      expect(response.status).toBe(200);
+      expect(response.body).not.toHaveProperty('refresh_token');
+    });
+
+    test('returns 401 when refresh token is blacklisted', async () => {
+      const user = {
+        id: 'user-1',
+        email: 'test@example.com',
+        email_verification_timestamp: new Date(),
+        name: 'Test User',
+        first_name: 'Test',
+        last_name: 'User',
+        blacklisted_tokens: ['old-refresh-token'],
+      };
+
+      (userService.refreshToken as jest.Mock).mockResolvedValue(user);
+
+      const response = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', ['refresh_cookie=old-refresh-token']);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toEqual({
+        message: 'Unauthorized',
+      });
     });
   });
 
@@ -324,7 +481,7 @@ describe('Auth Routes', () => {
         email_verification_timestamp: null,
       });
       (userService.sendVerificationMail as jest.Mock).mockResolvedValue(
-        'token'
+        'token',
       );
       (userService.update as jest.Mock).mockResolvedValue({
         id: 'user-1',
@@ -361,7 +518,7 @@ describe('Auth Routes', () => {
         email_verification_token: 'existing-verify-token',
       });
       (userService.sendVerificationMail as jest.Mock).mockResolvedValue(
-        new Error('Verification email already sent recently')
+        new Error('Verification email already sent recently'),
       );
 
       const response = await request(app).post('/auth/verify/resend').send({
@@ -385,7 +542,7 @@ describe('Auth Routes', () => {
         email_verification_token: null,
       });
       (userService.sendVerificationMail as jest.Mock).mockResolvedValue(
-        new Error('smtp down')
+        new Error('smtp down'),
       );
 
       const response = await request(app).post('/auth/verify/resend').send({
@@ -407,7 +564,7 @@ describe('Auth Routes', () => {
         email_verification_token: null,
       });
       (userService.sendVerificationMail as jest.Mock).mockResolvedValue(
-        'new-token'
+        'new-token',
       );
       (userService.update as jest.Mock).mockResolvedValue({
         id: 'user-1',
@@ -457,7 +614,7 @@ describe('Auth Routes', () => {
         reset_password_token: null,
       });
       (userService.sendPasswordResetMail as jest.Mock).mockResolvedValue(
-        new Error('smtp down')
+        new Error('smtp down'),
       );
 
       const response = await request(app).post('/auth/password/reset').send({
@@ -476,7 +633,7 @@ describe('Auth Routes', () => {
         reset_password_token: null,
       });
       (userService.sendPasswordResetMail as jest.Mock).mockResolvedValue(
-        'new-token'
+        'new-token',
       );
       (userService.update as jest.Mock).mockResolvedValue({
         id: 'user-1',

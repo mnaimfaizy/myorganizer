@@ -9,6 +9,12 @@ import React, {
 import type { ReactNode } from 'react';
 import type { FilteredUserInterface } from '@myorganizer/app-api-client';
 import {
+  buildLoginUserBody,
+  buildRefreshTokenRequest,
+  extractRefreshTokenFromLoginResponse,
+  resolveRefreshTokenAfterRefresh,
+} from '@myorganizer/auth';
+import {
   saveRefreshToken,
   getRefreshToken,
   clearRefreshToken,
@@ -80,12 +86,19 @@ export function AuthProvider({
 
         const authApi = createAuthApi();
         const response = await authApi.refreshToken({
-          refreshTokenRequest: { refresh_token: storedRefreshToken },
+          refreshTokenRequest: buildRefreshTokenRequest(
+            'mobile',
+            storedRefreshToken,
+          ),
         });
 
         const data = response.data;
         const newAccessToken = data.token;
-        const newRefreshToken = data.refresh_token;
+        const newRefreshToken = resolveRefreshTokenAfterRefresh(
+          'mobile',
+          data,
+          storedRefreshToken,
+        );
 
         if (!newAccessToken) {
           await clearSession();
@@ -102,7 +115,7 @@ export function AuthProvider({
           user: data.user,
           tokens: {
             accessToken: newAccessToken,
-            refreshToken: newRefreshToken || storedRefreshToken,
+            refreshToken: newRefreshToken ?? storedRefreshToken,
             expiresIn: data.expires_in,
           },
         });
@@ -119,20 +132,18 @@ export function AuthProvider({
     async (email: string, password: string): Promise<void> => {
       const authApi = createAuthApi();
       const response = await authApi.login({
-        userLoginBody: {
-          email,
-          password,
-          client_type: 'mobile',
-        },
+        userLoginBody: buildLoginUserBody(
+          {
+            email,
+            password,
+          },
+          'mobile',
+        ),
       });
 
       const data = response.data;
       const newAccessToken = data.token;
-      const refreshToken = data.refresh_token;
-
-      if (!refreshToken) {
-        throw new Error('Server did not return refresh token');
-      }
+      const refreshToken = extractRefreshTokenFromLoginResponse('mobile', data);
 
       setAccessToken(newAccessToken);
       await saveRefreshToken(refreshToken);

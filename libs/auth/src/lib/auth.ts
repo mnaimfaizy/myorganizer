@@ -1,25 +1,21 @@
-import {
-  AuthenticationApi,
-  Configuration,
-  type ConfirmResetPasswordBody,
-  type FilteredUserInterface,
-  type Login200Response,
-} from '@myorganizer/app-api-client';
-import { getApiBaseUrl } from '@myorganizer/core';
-import axios, { type AxiosError, type AxiosInstance } from 'axios';
+import type { AxiosInstance } from 'axios';
 
+import { AuthenticationApi } from '@myorganizer/app-api-client';
+
+import {
+  createAuthSessionModule,
+  type AuthSessionModule,
+} from './auth-session-module';
+import type { AuthSessionStorageAdapter } from './auth-session-storage-adapter';
+import { createBrowserAuthSessionStorageAdapter } from './auth-session-storage-adapter';
+import { createAuthSessionTransportAdapter } from './auth-session-transport-adapter';
+import type { AuthUser } from './auth-session-types';
+
+export type { AuthUser } from './auth-session-types';
 export type ResetPasswordResponse = {
   message: string;
   status: number;
 };
-
-const ACCESS_TOKEN_KEY = 'myorganizer_access_token';
-const USER_KEY = 'myorganizer_user';
-const TOKEN_STORAGE_KEY = 'myorganizer_token_storage';
-
-type TokenStorageMode = 'local' | 'session';
-
-export type AuthUser = FilteredUserInterface;
 
 export type AuthSession = {
   token: string;
@@ -27,175 +23,43 @@ export type AuthSession = {
   user: AuthUser;
 };
 
-function isBrowser(): boolean {
-  return typeof window !== 'undefined';
-}
+const defaultStorage = createBrowserAuthSessionStorageAdapter();
+const defaultTransport = createAuthSessionTransportAdapter(defaultStorage);
 
-function getPreferredTokenStorageMode(): TokenStorageMode {
-  if (!isBrowser()) return 'local';
-  const stored = window.localStorage.getItem(TOKEN_STORAGE_KEY);
-  return stored === 'session' ? 'session' : 'local';
-}
-
-function setPreferredTokenStorageMode(mode: TokenStorageMode) {
-  if (!isBrowser()) return;
-  window.localStorage.setItem(TOKEN_STORAGE_KEY, mode);
-}
-
-function getStorage(mode: TokenStorageMode): Storage | undefined {
-  if (!isBrowser()) return undefined;
-  return mode === 'session' ? window.sessionStorage : window.localStorage;
-}
+export const authSession: AuthSessionModule = createAuthSessionModule({
+  storage: defaultStorage,
+  transport: defaultTransport,
+});
 
 export function getAccessToken(): string | undefined {
-  if (!isBrowser()) return undefined;
-
-  const preferred = getPreferredTokenStorageMode();
-  const preferredStorage = getStorage(preferred);
-  const tokenFromPreferred = preferredStorage?.getItem(ACCESS_TOKEN_KEY) || '';
-  if (tokenFromPreferred) return tokenFromPreferred;
-
-  const tokenFromSession =
-    window.sessionStorage.getItem(ACCESS_TOKEN_KEY) || '';
-  if (tokenFromSession) return tokenFromSession;
-
-  const tokenFromLocal = window.localStorage.getItem(ACCESS_TOKEN_KEY) || '';
-  if (tokenFromLocal) return tokenFromLocal;
-
-  return undefined;
+  return defaultStorage.getAccessToken();
 }
 
 export function setAccessToken(
   token: string | null,
-  mode: TokenStorageMode = getPreferredTokenStorageMode(),
+  mode?: 'local' | 'session',
 ) {
-  if (!isBrowser()) return;
-
-  window.localStorage.removeItem(ACCESS_TOKEN_KEY);
-  window.sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-
-  if (!token) {
-    return;
-  }
-
-  setPreferredTokenStorageMode(mode);
-  const storage = getStorage(mode);
-  storage?.setItem(ACCESS_TOKEN_KEY, token);
+  defaultStorage.setAccessToken(token, mode);
 }
 
 export function getCurrentUser(): AuthUser | undefined {
-  if (!isBrowser()) return undefined;
-  const raw = window.localStorage.getItem(USER_KEY);
-  if (!raw) return undefined;
-
-  try {
-    return JSON.parse(raw) as AuthUser;
-  } catch {
-    return undefined;
-  }
+  return defaultStorage.getCurrentUser();
 }
 
 export function setCurrentUser(user: AuthUser | null) {
-  if (!isBrowser()) return;
-  if (!user) {
-    window.localStorage.removeItem(USER_KEY);
-    return;
-  }
-  window.localStorage.setItem(USER_KEY, JSON.stringify(user));
+  defaultStorage.setCurrentUser(user);
 }
 
 export function clearAuthSession() {
-  setAccessToken(null);
-  setCurrentUser(null);
-}
-
-function toSession(response: Login200Response): AuthSession {
-  return {
-    token: response.token,
-    expiresIn: response.expires_in,
-    user: response.user,
-  };
-}
-
-let sharedAxios: AxiosInstance | null = null;
-let refreshInFlight: Promise<AuthSession> | null = null;
-
-function isAuthUrl(url: string | undefined): boolean {
-  if (!url) return false;
-  return (
-    url.includes('/auth/login') ||
-    url.includes('/auth/refresh') ||
-    url.includes('/auth/register') ||
-    url.includes('/auth/verify/resend')
-  );
+  defaultStorage.clearSession();
 }
 
 export function getAuthAxios(): AxiosInstance {
-  if (sharedAxios) return sharedAxios;
-
-  const baseURL = getApiBaseUrl();
-  const instance = axios.create({
-    baseURL,
-    withCredentials: true,
-  });
-
-  instance.interceptors.response.use(
-    (res) => res,
-    async (error: AxiosError) => {
-      const status = error.response?.status;
-      const originalRequest = error.config as
-        | (typeof error.config & {
-            _retry?: boolean;
-          })
-        | null;
-
-      if (!originalRequest || status !== 401) {
-        return Promise.reject(error);
-      }
-
-      if (originalRequest._retry) {
-        return Promise.reject(error);
-      }
-
-      if (isAuthUrl(originalRequest.url)) {
-        return Promise.reject(error);
-      }
-
-      originalRequest._retry = true;
-
-      try {
-        if (!refreshInFlight) {
-          refreshInFlight = refresh();
-        }
-        await refreshInFlight;
-        refreshInFlight = null;
-        return instance(originalRequest);
-      } catch (refreshErr) {
-        refreshInFlight = null;
-        clearAuthSession();
-        return Promise.reject(refreshErr);
-      }
-    },
-  );
-
-  sharedAxios = instance;
-  return instance;
+  return defaultTransport.getAuthAxios();
 }
 
 export function getAuthApi(): AuthenticationApi {
-  const configuration = new Configuration({
-    basePath: getApiBaseUrl(),
-    accessToken: () => getAccessToken() ?? '',
-  });
-
-  return new AuthenticationApi(configuration, undefined, getAuthAxios());
-}
-
-function extractMessage(err: unknown): string {
-  if (!axios.isAxiosError(err)) return 'Unexpected error.';
-  const data = err.response?.data as any;
-  if (data?.message && typeof data.message === 'string') return data.message;
-  return err.message || 'Request failed.';
+  return defaultTransport.getAuthApi();
 }
 
 export async function login(args: {
@@ -203,47 +67,29 @@ export async function login(args: {
   password: string;
   rememberMe?: boolean;
 }): Promise<AuthSession> {
-  const api = getAuthApi();
-
-  try {
-    const res = await api.login({
-      userLoginBody: {
-        email: args.email,
-        password: args.password,
-      },
-    });
-
-    const session = toSession(res.data);
-    setAccessToken(session.token, args.rememberMe ? 'local' : 'session');
-    setCurrentUser(session.user);
-    return session;
-  } catch (err) {
-    throw new Error(extractMessage(err));
+  const result = await authSession.signIn(args);
+  if (!result.ok) {
+    throw new Error(result.error.message);
   }
+  return result.value;
 }
 
 export async function resendVerificationEmail(
   email: string,
 ): Promise<{ message: string }> {
-  try {
-    const res = await getAuthAxios().post('/auth/verify/resend', { email });
-    return res.data as { message: string };
-  } catch (err) {
-    throw new Error(extractMessage(err));
+  const result = await authSession.resendVerificationEmail(email);
+  if (!result.ok) {
+    throw new Error(result.error.message);
   }
+  return result.value;
 }
 
 export async function refresh(): Promise<AuthSession> {
-  const api = getAuthApi();
-  try {
-    const res = await api.refreshToken({});
-    const session = toSession(res.data);
-    setAccessToken(session.token);
-    setCurrentUser(session.user);
-    return session;
-  } catch (err) {
-    throw new Error(extractMessage(err));
+  const result = await authSession.refreshAccessToken();
+  if (!result.ok) {
+    throw new Error(result.error.message);
   }
+  return result.value;
 }
 
 export async function register(args: {
@@ -253,68 +99,25 @@ export async function register(args: {
   password: string;
   phone?: string;
 }): Promise<{ message: string; user?: AuthUser }> {
-  const api = getAuthApi();
-  try {
-    const res = await api.registerUser({
-      userCreationBody: {
-        firstName: args.firstName,
-        lastName: args.lastName,
-        email: args.email,
-        password: args.password,
-        ...(args.phone ? { phone: args.phone } : {}),
-      },
-    });
-
-    const data = res.data as any;
-    if (data && typeof data.message === 'string') {
-      return {
-        message: data.message,
-        user: data.user,
-      };
-    }
-
-    // Backward-compat fallback (older backend returned just the user)
-    return {
-      message: 'Verification email sent. Please check your inbox.',
-      user: data,
-    };
-  } catch (err) {
-    throw new Error(extractMessage(err));
+  const result = await authSession.signUp(args);
+  if (!result.ok) {
+    throw new Error(result.error.message);
   }
+  return result.value;
 }
 
 export async function logout(): Promise<void> {
-  const api = getAuthApi();
-  const user = getCurrentUser();
-  if (!user?.id) {
-    clearAuthSession();
-    return;
-  }
-
-  try {
-    await api.logout({ userId: user.id });
-  } catch {
-    // API call may fail (e.g. network error) — still clear local session
-  } finally {
-    clearAuthSession();
-  }
+  await authSession.signOut();
 }
 
 export async function requestPasswordReset(args: {
   email: string;
 }): Promise<ResetPasswordResponse> {
-  const api = getAuthApi();
-  try {
-    const res = await api.resetPassword({
-      resetPasswordByEmailBody: {
-        email: args.email,
-      },
-    });
-
-    return res.data;
-  } catch (err) {
-    throw new Error(extractMessage(err));
+  const result = await authSession.requestPasswordReset(args);
+  if (!result.ok) {
+    throw new Error(result.error.message);
   }
+  return result.value;
 }
 
 export async function confirmPasswordReset(args: {
@@ -322,20 +125,12 @@ export async function confirmPasswordReset(args: {
   password: string;
   confirmPassword: string;
 }): Promise<ResetPasswordResponse> {
-  const api = getAuthApi();
-  try {
-    const body: ConfirmResetPasswordBody = {
-      token: args.token,
-      password: args.password,
-      confirm_password: args.confirmPassword,
-    };
-
-    const res = await api.confirmResetPassword({
-      confirmResetPasswordBody: body,
-    });
-
-    return res.data;
-  } catch (err) {
-    throw new Error(extractMessage(err));
+  const result = await authSession.confirmPasswordReset(args);
+  if (!result.ok) {
+    throw new Error(result.error.message);
   }
+  return result.value;
 }
+
+export { createBrowserAuthSessionStorageAdapter };
+export type { AuthSessionStorageAdapter };
