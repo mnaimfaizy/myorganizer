@@ -45,6 +45,8 @@
     "ai:commit": "node tools/scripts/ai/commit-change.mjs",
     "ai:create-pr": "node tools/scripts/ai/create-pr.mjs",
     "ai:create-labels": "node tools/scripts/ai/create-labels.mjs",
+    "agents:sync": "node tools/scripts/sync-subagents.mjs --apply",
+    "agents:sync:check": "node tools/scripts/sync-subagents.mjs --check",
     "dispatch-agents": "npx tsx .sandcastle/main.mts",
     "dispatch-waves": "npx tsx .sandcastle/dispatch-waves.mts",
     "nx": "nx",

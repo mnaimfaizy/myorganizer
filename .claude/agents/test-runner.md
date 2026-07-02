@@ -79,7 +79,7 @@ If the full-file run hangs, extract test names from the file and run each indivi
 
 ```bash
 # Extract test names
-grep -n "it(\|test(" <path> | head -30
+grep -n "it\(\|test\(" <path> | head -30
 
 # Run each test individually
 yarn nx test <project> --testNamePattern="<exact test name>" --forceExit 2>&1

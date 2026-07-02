@@ -77,14 +77,14 @@ Before writing any code, orient yourself:
 
 **For a UI Primitive:**
 
-- Glob `libs/web-ui/src/lib/components/` to see existing components and avoid naming collisions.
-- Read one or two structurally similar existing components (e.g., `Card/Card.tsx` for a compound component, `Button/Button.tsx` for a single component with CVA).
+- List `libs/web-ui/src/lib/components/` to see existing components and avoid naming collisions.
+- Read one or two structurally similar existing components (e.g., `Card/Card.tsx` for compound, `Button/Button.tsx` for single with CVA).
 - Read `libs/web-ui/src/index.ts` to understand the barrel export pattern.
 
 **For a Feature Component:**
 
-- Glob the target route's `components/` folder to understand what already exists.
-- Read the route's `page.tsx` and the main page client file to understand the feature's shape.
+- List the target route's `components/` folder to understand what already exists.
+- Read the route's `page.tsx` and main page client file to understand the feature's shape.
 - If editing an existing component, read it in full.
 - If the spec references a Zod schema in `src/schemas/`, read it.
 
@@ -102,14 +102,6 @@ Apply `docs/ui/GUIDELINES.md §3` to decide between compound and single componen
 
 - No named slots — purely a styled wrapper or interactive control.
 - All variation is expressed through props or CVA variants, not structural composition.
-
-If using compound, list the sub-components before writing any code:
-
-```
-Root: <ComponentName>
-Sub-components: <ComponentName>Header, <ComponentName>Content, <ComponentName>Footer
-Context: <ComponentName>Context (if sub-components share state)
-```
 
 ## Step 4 — Write the Component
 
@@ -131,16 +123,12 @@ Apply all applicable rules from `docs/ui/GUIDELINES.md`. The most critical:
 - All imports from `@myorganizer/web-ui` — never from internal lib paths.
 - React Hook Form + `zodResolver` for every form, no exceptions.
 - Explicit named `interface` for props — no inline object types.
-- `useCallback` on ALL handlers passed as props to child components — NO EXCEPTIONS.
-  After writing the component, grep your own file for every prop being passed to a child
-  component and confirm each handler is wrapped in `useCallback` with the correct type
-  signature matching the child's props interface exactly.
+- `useCallback` on handlers passed as props to child components.
 - Zod schema inline if single-use; extracted to `src/schemas/` if shared.
 
 ### Both scopes
 
 - No inline comments explaining what the code does.
-- No TODOs or placeholder implementations.
 - No `any` types — use `unknown` or proper generic types.
 - TypeScript must be valid — no `@ts-ignore`.
 
@@ -165,21 +153,9 @@ Before finishing, verify the component satisfies `docs/ui/GUIDELINES.md §7`:
 - [ ] Icon-only buttons have `aria-label` or `sr-only` text.
 - [ ] `displayName` set on every `forwardRef` component.
 
-## Step 6b — Performance & Correctness Self-Check
-
-Before writing the Completion Report, scan your own written file and confirm each item:
-
-- [ ] Every handler passed as a prop to a child component is wrapped in `useCallback`
-- [ ] Every `useCallback` has a correct dependency array (no missing or unnecessary deps)
-- [ ] For each `useCallback` handler: read the receiving child component's props interface and
-      confirm the function signature matches exactly — parameter names, types, and return type
-- [ ] Expensive computed values passed to children are wrapped in `useMemo` where relevant
-
-If any item fails, fix it before proceeding. Do not issue the Completion Report until all four pass.
-
 ## Output — Completion Report
 
-After all files are written, return this report to the main agent. This report is the input ComponentReviewer needs:
+After all files are written, return this report to the main agent:
 
 ```markdown
 ## ComponentBuilder Report

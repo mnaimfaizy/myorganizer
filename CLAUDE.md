@@ -13,6 +13,8 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 - Storybook implementation is delegated to the `StorybookCurator` sub-agent (`.claude/agents/storybook-curator.md`); require requirement-readiness analysis before edits and route clarification questions to the human-in-the-loop.
 - React component creation or editing (UI Primitives in `libs/web-ui/` or Feature Components in `libs/web/pages/<route>/`) must use the ComponentBuilder → ComponentReviewer workflow — see **UI Component Workflows** below.
 - After any `yarn add`, `yarn remove`, or package upgrade, run `/dep-sync` to keep `TECH_STACK.md` current — see **Dependency Sync** below.
+- After any sub-agent change in any harness (`.github`, `.claude`, `.cursor`, `.gemini`), run `yarn agents:sync` and then `yarn agents:sync:check`.
+- Use `.github/skills/sub-agent-sync-workflow/SKILL.md` as the required workflow for sub-agent synchronization.
 
 ## ⚠️ Mandatory Delegation Rules (NO EXCEPTIONS)
 
@@ -131,6 +133,23 @@ When `package.json` changes (a Claude Code hook will fire automatically after `y
 
 Full workflow: `.github/skills/dep-sync/SKILL.md`
 ADR: `docs/adr/0001-tech-stack-single-source-of-truth.md`
+
+---
+
+## Sub-Agent Sync
+
+When any sub-agent file changes, keep all harnesses synchronized with `.github/agents` as canonical source:
+
+1. Run `yarn agents:sync`.
+2. Run `yarn agents:sync:check` and require exit code 0.
+3. Confirm `.cursor/agents/explore.md` remains `model: composer`.
+
+References:
+
+- Workflow skill: `.github/skills/sub-agent-sync-workflow/SKILL.md`
+- Automation script: `tools/scripts/sync-subagents.mjs`
+- Cursor rule: `.cursor/rules/sub-agent-sync-workflow.mdc`
+- Gemini command: `.gemini/commands/sync-subagents.md`
 
 ---
 

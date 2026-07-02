@@ -148,6 +148,28 @@ When a task requires locating files, symbols, or patterns in the codebase, deleg
 - `.github/agents/explore.agent.md` — canonical definition and Copilot-CLI version
 - `docs/adr/0001-codeexplorer-custom-agent.md` — why a custom agent over inline exploration
 
+## Sub-Agent Synchronization
+
+When any sub-agent file changes in `.github`, `.claude`, `.cursor`, or `.gemini`, synchronize all harness directories immediately.
+
+- Canonical source: `.github/agents/*.agent.md`
+- Required commands:
+  - `yarn agents:sync`
+  - `yarn agents:sync:check`
+- Ensure `.cursor/agents/explore.md` remains `model: composer`.
+
+Use these references:
+
+- `.github/skills/sub-agent-sync-workflow/SKILL.md`
+- `.gemini/commands/sync-subagents.md`
+- `tools/scripts/sync-subagents.mjs`
+
+Model policy:
+
+- Prefer low-cost defaults for high-frequency delegations.
+- Upgrade model strength only when the agent is synthesis-heavy.
+- Keep default model mapping centralized in `tools/scripts/sync-subagents.mjs`.
+
 ## Storybook Delegation
 
 When a task requires Storybook creation or updates (`*.stories.tsx`), delegate to the `storybook-curator` sub-agent (`.gemini/agents/storybook-curator.md`) rather than editing stories inline.

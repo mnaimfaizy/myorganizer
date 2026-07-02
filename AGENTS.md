@@ -26,6 +26,8 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - Release dry-run (preview only): `yarn release:cut --version vX.Y.Z --dry-run`.
 - Prisma (backend): prefer Nx targets `yarn nx run backend:migrate` and `yarn nx run backend:generate-types`.
 - Prisma (manual): run from `apps/backend/src` and pass schema path, e.g. `npx prisma migrate dev --schema prisma/schema --name <migration_name>` and `npx prisma generate --schema prisma/schema`.
+- Sub-agent sync check: `yarn agents:sync:check`.
+- Sub-agent sync apply: `yarn agents:sync`.
 
 ## Architecture
 
@@ -61,6 +63,9 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - For design and planning sessions, use `.github/skills/grill-with-docs/SKILL.md` to stress-test plans against the domain model, sharpen terminology, and document decisions. This skill helps create/update `CONTEXT.md` (domain glossary) and `docs/adr/` (architecture decisions).
 - For actively building or updating the domain model (adding glossary terms, recording ADRs, resolving fuzzy language, cross-referencing terms with code), use `.github/skills/domain-modeling/SKILL.md`. This is the _active_ discipline that owns `CONTEXT.md` and `docs/adr/` writes — invoked by `improve-codebase-architecture` and `grill-with-docs` when the model needs to change.
 - For architectural reviews — finding shallow modules, seam leaks, or testability gaps — use `.github/skills/improve-codebase-architecture/SKILL.md`. It loads `.github/skills/codebase-design/SKILL.md` (vocabulary + principles) and its companion files (`DEEPENING.md` for dependency classification, `DESIGN-IT-TWICE.md` for alternative interface exploration). It produces a visual HTML report with before/after diagrams for each candidate, then opens a grilling loop on whichever candidate you pick.
+- For any sub-agent update (content, add/remove, model change), use `.github/skills/sub-agent-sync-workflow/SKILL.md` and run `yarn agents:sync` so `.claude/agents`, `.cursor/agents`, and `.gemini/agents` stay aligned with `.github/agents`.
+- Keep `.github/agents` as the canonical body source; avoid manual copy/paste sync across harnesses when `tools/scripts/sync-subagents.mjs` is available.
+- Keep `CodeExplorer` in `.cursor/agents/explore.md` on `model: composer`.
 - For new planned feature work, use `.github/skills/to-prd/SKILL.md` to write and publish a PRD Issue. The user must be present — there is one interactive step (test seam approval). Do not use IssueCreator for PRD Issues; create them directly via `gh issue create`.
 - To break a PRD Issue into Slice Issues, use `.github/skills/to-issues/SKILL.md`. The user must supply the PRD Issue number. Every slice body must start with `PRD: #<N>`. Flag `type:hitl` slices prominently — `dispatch-agents` skips them. After publishing, remind the user to run `yarn dispatch-agents --prd <N>`.
 - Before issuing 3 or more consecutive read/search operations to locate something in the codebase, stop and delegate to `CodeExplorer` (`.github/agents/explore.agent.md`) instead. Provide an Explore Request with a `Goal` sentence; optionally include `Known Locations`, `Search Hints`, `Out of Scope`, and `Expected Output`. CodeExplorer returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
@@ -108,3 +113,4 @@ Use the decision tree in [`.claude/checklist.md`](.claude/checklist.md) to verif
 - Do not commit secrets or production credentials.
 - Do not cancel, background, or abandon a running `git commit` while Husky checks are still executing.
 - Do not open pull requests from `main` or another base branch directly.
+- Do not leave harness-only agent additions/removals unsynchronized. If one agent is added/removed in canonical, propagate to all harnesses via `yarn agents:sync`.

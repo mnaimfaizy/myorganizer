@@ -145,6 +145,28 @@ When consuming the generated client:
 
 Before issuing 3 or more consecutive read/search operations to locate something in the codebase, stop and delegate to `CodeExplorer` (`.github/agents/explore.agent.md`) instead. Provide an Explore Request with a `Goal` sentence; optionally include `Known Locations`, `Search Hints`, `Out of Scope`, and `Expected Output`. CodeExplorer runs on a cheap model and returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
 
+## Sub-Agent Synchronization
+
+Sub-agent definitions must stay synchronized across harnesses.
+
+- Canonical source: `.github/agents/*.agent.md`
+- Target mirrors: `.claude/agents/*.md`, `.cursor/agents/*.md`, `.gemini/agents/*.md`
+
+When any sub-agent content, model, or file inventory changes in any harness:
+
+1. Run `yarn agents:sync`.
+2. Run `yarn agents:sync:check` and require a clean result.
+3. Ensure `.cursor/agents/explore.md` keeps `model: composer`.
+
+Use `.github/skills/sub-agent-sync-workflow/SKILL.md` for the full policy and `tools/scripts/sync-subagents.mjs` for automation.
+
+Model assignment policy for sub-agents:
+
+- Prefer low-cost models for exploration, triage, and repetitive delegation.
+- Upgrade only for synthesis/research-heavy agents.
+- Use harness-supported model syntax only (single model where required; priority list only where supported).
+- Keep defaults centralized in `tools/scripts/sync-subagents.mjs`.
+
 ## Design & Planning
 
 ### Grilling Sessions with Documentation

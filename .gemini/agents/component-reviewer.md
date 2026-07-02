@@ -44,7 +44,7 @@ Read every file listed under `Files Written` in the ComponentBuilder Report. If 
 
 ## Step 2 — Guidelines Compliance Check
 
-Check the component against every applicable section of `docs/ui/GUIDELINES.md`. Record each finding as PASS, WARN, or FAIL.
+Check the component against every applicable section of `docs/ui/GUIDELINES.md`. Record each finding as PASS, WARN, or FAIL with the guideline reference and a one-line explanation.
 
 ### §1 — Scope Placement
 
@@ -118,7 +118,7 @@ Check the component against every applicable section of `docs/ui/GUIDELINES.md`.
 ### Design
 
 - JSX stays within ~150 lines; flag sections that should be extracted.
-- Component does not mix too many concerns.
+- Component does not mix too many concerns (data fetching + form state + presentation).
 
 ## Step 4 — Direct Importer Scan
 

@@ -1,0 +1,50 @@
+---
+description: Synchronize sub-agents across .github, .claude, .cursor, and .gemini whenever any sub-agent changes, including add/remove/model updates.
+alwaysApply: false
+---
+
+# Sub-Agent Sync Workflow
+
+## Canonical Source
+
+- Canonical agents live in `.github/agents/*.agent.md`.
+- Target harness folders:
+  - `.claude/agents/*.md`
+  - `.cursor/agents/*.md`
+  - `.gemini/agents/*.md`
+
+## Required Commands
+
+- Drift check:
+  - `yarn agents:sync:check`
+- Apply sync:
+  - `yarn agents:sync`
+
+## Trigger Conditions
+
+Run the sync workflow after any of these:
+
+- Any edit in `.github/agents/**`
+- Any edit in `.claude/agents/**`, `.cursor/agents/**`, `.gemini/agents/**`
+- Any sub-agent added or removed
+- Any sub-agent model changed
+
+## Rules
+
+1. Keep `.github/agents` as canonical source for instruction body content.
+2. Preserve existing harness-specific frontmatter where file already exists.
+3. Create missing harness files from canonical using harness defaults.
+4. Prune extra harness files when canonical file no longer exists (default apply behavior).
+5. `CodeExplorer` in Cursor must stay `model: composer`.
+
+## Model Policy
+
+- Cursor defaults: `claude-haiku-4-5`
+- Cursor `CodeExplorer`: `composer`
+- Prefer low-cost models unless explicit quality needs require a stronger model.
+- Keep model mapping centralized in `tools/scripts/sync-subagents.mjs`.
+
+## Reference
+
+- Skill: `.github/skills/sub-agent-sync-workflow/SKILL.md`
+- Script: `tools/scripts/sync-subagents.mjs`
