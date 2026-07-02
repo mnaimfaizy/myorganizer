@@ -14,11 +14,11 @@ import {
   Security,
   Tags,
 } from 'tsoa';
+import { requireUserId } from '../guards/AuthGuard';
 import youTubeNotificationService from '../services/YouTubeNotificationService';
 import youtubeSyncService, {
   YouTubeVideoWithChannel,
 } from '../services/YouTubeSyncService';
-import { UserInterface } from '../types';
 
 type YouTubeErrorResponse = { message: string };
 
@@ -89,11 +89,6 @@ interface CronResultResponse {
 @Tags('YouTube')
 @Route('/youtube')
 export class YouTubeController extends Controller {
-  private getUserId(req: ExRequest): string {
-    const user = req.user as UserInterface;
-    return user?.id;
-  }
-
   /**
    * Returns the Google OAuth consent URL for linking YouTube.
    */
@@ -102,11 +97,7 @@ export class YouTubeController extends Controller {
   public async getAuthUrl(
     @Request() req: ExRequest,
   ): Promise<AuthUrlResponse | YouTubeErrorResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
     const url = youtubeSyncService.getAuthUrl(userId);
     return { url };
   }
@@ -120,11 +111,7 @@ export class YouTubeController extends Controller {
     @Request() req: ExRequest,
     @Body() body: { code: string },
   ): Promise<{ ok: boolean; message: string }> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { ok: false, message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
     const result = await youtubeSyncService.handleOAuthCallback(
       userId,
       body.code,
@@ -143,11 +130,7 @@ export class YouTubeController extends Controller {
   public async getConnectionStatus(
     @Request() req: ExRequest,
   ): Promise<StatusResponse | YouTubeErrorResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
     try {
       return await youtubeSyncService.getStatus(userId);
     } catch {
@@ -164,11 +147,7 @@ export class YouTubeController extends Controller {
   public async disconnect(
     @Request() req: ExRequest,
   ): Promise<{ ok: boolean; message: string }> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { ok: false, message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
     return youtubeSyncService.disconnect(userId);
   }
 
@@ -180,11 +159,7 @@ export class YouTubeController extends Controller {
   public async getSubscriptions(
     @Request() req: ExRequest,
   ): Promise<SubscriptionResponse[] | YouTubeErrorResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
     const subs = await youtubeSyncService.getSubscriptions(userId);
     return subs.map((s) => ({
       id: s.id,
@@ -205,11 +180,7 @@ export class YouTubeController extends Controller {
   public async syncSubscriptions(
     @Request() req: ExRequest,
   ): Promise<{ synced: number; videosSynced: number } | YouTubeErrorResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
     const subs = await youtubeSyncService.syncSubscriptions(userId);
     const videosSynced = await youtubeSyncService.syncVideosForUser(userId);
     return { synced: subs.length, videosSynced };
@@ -225,11 +196,7 @@ export class YouTubeController extends Controller {
     @Path() subscriptionId: string,
     @Body() body: { enabled: boolean },
   ): Promise<{ ok: boolean } | YouTubeErrorResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
     await youtubeSyncService.toggleSubscription(
       userId,
       subscriptionId,
@@ -255,11 +222,7 @@ export class YouTubeController extends Controller {
     @Query() limit?: number,
     @Query() channelId?: string,
   ): Promise<VideosPageResponse | YouTubeErrorResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
     const result = await youtubeSyncService.getVideos(userId, {
       sort,
       search,
@@ -289,11 +252,7 @@ export class YouTubeController extends Controller {
   public async getVideosCarousel(
     @Request() req: ExRequest,
   ): Promise<ChannelCarouselResponse[] | YouTubeErrorResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
     const grouped = await youtubeSyncService.getVideosGroupedByChannel(userId);
     return grouped.map((g) => ({
       channelId: g.channelId,
@@ -318,11 +277,7 @@ export class YouTubeController extends Controller {
   public async getNotificationSettings(
     @Request() req: ExRequest,
   ): Promise<NotificationSettingsResponse | YouTubeErrorResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
     const settings = await youtubeSyncService.getNotificationSettings(userId);
     return {
       intervalDays: settings.intervalDays,
@@ -340,11 +295,7 @@ export class YouTubeController extends Controller {
     @Request() req: ExRequest,
     @Body() body: NotificationSettingsBody,
   ): Promise<NotificationSettingsResponse | YouTubeErrorResponse> {
-    const userId = this.getUserId(req);
-    if (!userId) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
+    const userId = requireUserId(req);
     const updated = await youtubeSyncService.updateNotificationSettings(
       userId,
       body,
@@ -361,17 +312,10 @@ export class YouTubeController extends Controller {
    * Authenticated via X-Cron-Secret header instead of JWT.
    */
   @Post('/cron/sync-and-notify')
-  public async cronSyncAndNotify(
-    @Request() req: ExRequest,
-  ): Promise<CronResultResponse | YouTubeErrorResponse> {
-    const secret = req.headers['x-cron-secret'];
-    const expectedSecret = process.env.YOUTUBE_CRON_SECRET;
-
-    if (!expectedSecret || secret !== expectedSecret) {
-      this.setStatus(401);
-      return { message: 'Unauthorized' };
-    }
-
+  @Security('cron-secret')
+  public async cronSyncAndNotify(): Promise<
+    CronResultResponse | YouTubeErrorResponse
+  > {
     const result = await youTubeNotificationService.syncAndNotifyAll();
     return result;
   }

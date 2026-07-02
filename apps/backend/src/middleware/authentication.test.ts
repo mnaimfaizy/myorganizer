@@ -32,6 +32,7 @@ describe('expressAuthentication (tsoa jwt)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.ACCESS_JWT_SECRET = 'secret';
+    delete process.env.YOUTUBE_CRON_SECRET;
   });
 
   test('rejects when no token provided', async () => {
@@ -39,12 +40,12 @@ describe('expressAuthentication (tsoa jwt)', () => {
 
     await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
       'status',
-      401
+      401,
     );
 
     await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
       'message',
-      'No token provided'
+      'Unauthorized',
     );
   });
 
@@ -53,12 +54,12 @@ describe('expressAuthentication (tsoa jwt)', () => {
 
     await expect(expressAuthentication(req, 'api_key')).rejects.toHaveProperty(
       'status',
-      401
+      401,
     );
 
     await expect(expressAuthentication(req, 'api_key')).rejects.toHaveProperty(
       'message',
-      'Unsupported security scheme'
+      'Unsupported security scheme',
     );
   });
 
@@ -92,12 +93,12 @@ describe('expressAuthentication (tsoa jwt)', () => {
 
     await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
       'status',
-      401
+      401,
     );
 
     await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
       'message',
-      'No token provided'
+      'Unauthorized',
     );
   });
 
@@ -108,12 +109,12 @@ describe('expressAuthentication (tsoa jwt)', () => {
 
     await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
       'status',
-      401
+      401,
     );
 
     await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
       'message',
-      'Invalid token'
+      'Unauthorized',
     );
   });
 
@@ -124,12 +125,12 @@ describe('expressAuthentication (tsoa jwt)', () => {
 
     await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
       'status',
-      401
+      401,
     );
 
     await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
       'message',
-      'Invalid token'
+      'Unauthorized',
     );
   });
 
@@ -141,12 +142,60 @@ describe('expressAuthentication (tsoa jwt)', () => {
 
     await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
       'status',
-      401
+      401,
     );
 
     await expect(expressAuthentication(req, 'jwt')).rejects.toHaveProperty(
       'message',
-      'User not found'
+      'Unauthorized',
     );
+  });
+});
+
+describe('expressAuthentication (tsoa cron-secret)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.YOUTUBE_CRON_SECRET = 'cron-secret-value';
+  });
+
+  test('accepts matching X-Cron-Secret header', async () => {
+    const req = makeReq({ headers: { 'x-cron-secret': 'cron-secret-value' } });
+
+    await expect(
+      expressAuthentication(req, 'cron-secret'),
+    ).resolves.toBeUndefined();
+  });
+
+  test('rejects missing header', async () => {
+    const req = makeReq();
+
+    await expect(
+      expressAuthentication(req, 'cron-secret'),
+    ).rejects.toHaveProperty('status', 401);
+
+    await expect(
+      expressAuthentication(req, 'cron-secret'),
+    ).rejects.toHaveProperty('message', 'Unauthorized');
+  });
+
+  test('rejects wrong secret', async () => {
+    const req = makeReq({ headers: { 'x-cron-secret': 'wrong' } });
+
+    await expect(
+      expressAuthentication(req, 'cron-secret'),
+    ).rejects.toHaveProperty('status', 401);
+
+    await expect(
+      expressAuthentication(req, 'cron-secret'),
+    ).rejects.toHaveProperty('message', 'Unauthorized');
+  });
+
+  test('rejects when YOUTUBE_CRON_SECRET env is unset', async () => {
+    delete process.env.YOUTUBE_CRON_SECRET;
+    const req = makeReq({ headers: { 'x-cron-secret': 'cron-secret-value' } });
+
+    await expect(
+      expressAuthentication(req, 'cron-secret'),
+    ).rejects.toHaveProperty('status', 401);
   });
 });

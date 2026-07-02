@@ -744,9 +744,9 @@ export function RegisterRoutes(app: Router) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsYouTubeController_cronSyncAndNotify: Record<string, TsoaRoute.ParameterSchema> = {
-                req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.post('/youtube/cron/sync-and-notify',
+            authenticateMiddleware([{"cron-secret":[]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.cronSyncAndNotify)),
 

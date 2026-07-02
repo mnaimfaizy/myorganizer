@@ -1,2416 +1,2201 @@
 {
-	"openapi": "3.0.0",
-	"components": {
-		"examples": {},
-		"headers": {},
-		"parameters": {},
-		"requestBodies": {},
-		"responses": {},
-		"schemas": {
-			"AuthUrlResponse": {
-				"properties": {
-					"url": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"url"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"YouTubeErrorResponse": {
-				"properties": {
-					"message": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"message"
-				],
-				"type": "object"
-			},
-			"StatusResponse": {
-				"properties": {
-					"connected": {
-						"type": "boolean"
-					},
-					"status": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"connected",
-					"status"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"SubscriptionResponse": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"channelId": {
-						"type": "string"
-					},
-					"channelTitle": {
-						"type": "string"
-					},
-					"channelThumbnail": {
-						"type": "string",
-						"nullable": true
-					},
-					"uploadsPlaylistId": {
-						"type": "string"
-					},
-					"enabled": {
-						"type": "boolean"
-					},
-					"lastSyncedAt": {
-						"type": "string",
-						"nullable": true
-					}
-				},
-				"required": [
-					"id",
-					"channelId",
-					"channelTitle",
-					"channelThumbnail",
-					"uploadsPlaylistId",
-					"enabled",
-					"lastSyncedAt"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"VideoResponse": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"videoId": {
-						"type": "string"
-					},
-					"channelId": {
-						"type": "string"
-					},
-					"title": {
-						"type": "string"
-					},
-					"thumbnail": {
-						"type": "string",
-						"nullable": true
-					},
-					"publishedAt": {
-						"type": "string"
-					},
-					"channelTitle": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"videoId",
-					"channelId",
-					"title",
-					"thumbnail",
-					"publishedAt"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"VideosPageResponse": {
-				"properties": {
-					"videos": {
-						"items": {
-							"$ref": "#/components/schemas/VideoResponse"
-						},
-						"type": "array"
-					},
-					"total": {
-						"type": "number",
-						"format": "double"
-					},
-					"page": {
-						"type": "number",
-						"format": "double"
-					},
-					"limit": {
-						"type": "number",
-						"format": "double"
-					},
-					"totalPages": {
-						"type": "number",
-						"format": "double"
-					}
-				},
-				"required": [
-					"videos",
-					"total",
-					"page",
-					"limit",
-					"totalPages"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"ChannelCarouselResponse": {
-				"properties": {
-					"channelId": {
-						"type": "string"
-					},
-					"channelTitle": {
-						"type": "string"
-					},
-					"channelThumbnail": {
-						"type": "string",
-						"nullable": true
-					},
-					"videos": {
-						"items": {
-							"$ref": "#/components/schemas/VideoResponse"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"channelId",
-					"channelTitle",
-					"channelThumbnail",
-					"videos"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"NotificationSettingsResponse": {
-				"properties": {
-					"intervalDays": {
-						"type": "number",
-						"format": "double"
-					},
-					"enabled": {
-						"type": "boolean"
-					},
-					"lastNotifiedAt": {
-						"type": "string",
-						"nullable": true
-					}
-				},
-				"required": [
-					"intervalDays",
-					"enabled",
-					"lastNotifiedAt"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"NotificationSettingsBody": {
-				"properties": {
-					"intervalDays": {
-						"type": "number",
-						"format": "double"
-					},
-					"enabled": {
-						"type": "boolean"
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
-			"CronResultResponse": {
-				"properties": {
-					"usersSynced": {
-						"type": "number",
-						"format": "double"
-					},
-					"notificationsSent": {
-						"type": "number",
-						"format": "double"
-					}
-				},
-				"required": [
-					"usersSynced",
-					"notificationsSent"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"Record_string.unknown_": {
-				"properties": {},
-				"additionalProperties": {},
-				"type": "object",
-				"description": "Construct a type with a set of properties K of type T"
-			},
-			"VaultMetaV1": {
-				"properties": {
-					"version": {
-						"type": "number",
-						"format": "double"
-					},
-					"kdf_name": {
-						"type": "string"
-					},
-					"kdf_salt": {
-						"type": "string"
-					},
-					"kdf_params": {
-						"$ref": "#/components/schemas/Record_string.unknown_"
-					},
-					"wrapped_mk_passphrase": {},
-					"wrapped_mk_recovery": {}
-				},
-				"required": [
-					"version",
-					"kdf_name",
-					"kdf_salt",
-					"kdf_params",
-					"wrapped_mk_passphrase",
-					"wrapped_mk_recovery"
-				],
-				"type": "object",
-				"additionalProperties": {}
-			},
-			"ErrorResponse": {
-				"properties": {
-					"message": {
-						"type": "string"
-					},
-					"details": {}
-				},
-				"required": [
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"GetVaultMetaResponse": {
-				"anyOf": [
-					{
-						"properties": {
-							"etag": {
-								"type": "string"
-							},
-							"updatedAt": {
-								"type": "string"
-							},
-							"meta": {
-								"$ref": "#/components/schemas/VaultMetaV1"
-							}
-						},
-						"required": [
-							"etag",
-							"updatedAt",
-							"meta"
-						],
-						"type": "object"
-					},
-					{
-						"$ref": "#/components/schemas/ErrorResponse"
-					}
-				]
-			},
-			"PutVaultMetaResponse": {
-				"anyOf": [
-					{
-						"properties": {
-							"updatedAt": {
-								"type": "string"
-							},
-							"etag": {
-								"type": "string"
-							},
-							"ok": {
-								"type": "boolean",
-								"enum": [
-									true
-								],
-								"nullable": false
-							}
-						},
-						"required": [
-							"updatedAt",
-							"etag",
-							"ok"
-						],
-						"type": "object"
-					},
-					{
-						"$ref": "#/components/schemas/ErrorResponse"
-					}
-				]
-			},
-			"VaultBlobType": {
-				"type": "string",
-				"enum": [
-					"addresses",
-					"groceries",
-					"mobileNumbers",
-					"subscriptions",
-					"tasks",
-					"todos"
-				]
-			},
-			"EncryptedBlobV1": {
-				"properties": {
-					"version": {
-						"type": "number",
-						"format": "double"
-					},
-					"iv": {
-						"type": "string"
-					},
-					"ciphertext": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"version",
-					"iv",
-					"ciphertext"
-				],
-				"type": "object",
-				"additionalProperties": {}
-			},
-			"GetVaultBlobResponse": {
-				"anyOf": [
-					{
-						"properties": {
-							"etag": {
-								"type": "string"
-							},
-							"updatedAt": {
-								"type": "string"
-							},
-							"blob": {
-								"$ref": "#/components/schemas/EncryptedBlobV1"
-							},
-							"type": {
-								"$ref": "#/components/schemas/VaultBlobType"
-							}
-						},
-						"required": [
-							"etag",
-							"updatedAt",
-							"blob",
-							"type"
-						],
-						"type": "object"
-					},
-					{
-						"$ref": "#/components/schemas/ErrorResponse"
-					}
-				]
-			},
-			"PutVaultBlobResponse": {
-				"anyOf": [
-					{
-						"properties": {
-							"updatedAt": {
-								"type": "string"
-							},
-							"etag": {
-								"type": "string"
-							},
-							"ok": {
-								"type": "boolean",
-								"enum": [
-									true
-								],
-								"nullable": false
-							}
-						},
-						"required": [
-							"updatedAt",
-							"etag",
-							"ok"
-						],
-						"type": "object"
-					},
-					{
-						"$ref": "#/components/schemas/ErrorResponse"
-					}
-				]
-			},
-			"Partial_Record_VaultBlobType.EncryptedBlobV1__": {
-				"properties": {
-					"addresses": {
-						"$ref": "#/components/schemas/EncryptedBlobV1"
-					},
-					"groceries": {
-						"$ref": "#/components/schemas/EncryptedBlobV1"
-					},
-					"mobileNumbers": {
-						"$ref": "#/components/schemas/EncryptedBlobV1"
-					},
-					"subscriptions": {
-						"$ref": "#/components/schemas/EncryptedBlobV1"
-					},
-					"tasks": {
-						"$ref": "#/components/schemas/EncryptedBlobV1"
-					},
-					"todos": {
-						"$ref": "#/components/schemas/EncryptedBlobV1"
-					}
-				},
-				"type": "object",
-				"description": "Make all properties in T optional"
-			},
-			"VaultExportV1": {
-				"properties": {
-					"exportVersion": {
-						"type": "number",
-						"enum": [
-							1
-						],
-						"nullable": false
-					},
-					"exportedAt": {
-						"type": "string"
-					},
-					"meta": {
-						"$ref": "#/components/schemas/VaultMetaV1"
-					},
-					"blobs": {
-						"$ref": "#/components/schemas/Partial_Record_VaultBlobType.EncryptedBlobV1__"
-					}
-				},
-				"required": [
-					"exportVersion",
-					"exportedAt",
-					"meta",
-					"blobs"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"ExportVaultResponse": {
-				"anyOf": [
-					{
-						"$ref": "#/components/schemas/VaultExportV1"
-					},
-					{
-						"$ref": "#/components/schemas/ErrorResponse"
-					}
-				]
-			},
-			"ImportVaultResponse": {
-				"anyOf": [
-					{
-						"properties": {
-							"ok": {
-								"type": "boolean",
-								"enum": [
-									true
-								],
-								"nullable": false
-							}
-						},
-						"required": [
-							"ok"
-						],
-						"type": "object"
-					},
-					{
-						"$ref": "#/components/schemas/ErrorResponse"
-					}
-				]
-			},
-			"VaultBackupEvent": {
-				"type": "string",
-				"enum": [
-					"export",
-					"import"
-				]
-			},
-			"VaultBackupSource": {
-				"type": "string",
-				"enum": [
-					"local-file",
-					"google-drive"
-				]
-			},
-			"VaultBackupStatus": {
-				"type": "string",
-				"enum": [
-					"success",
-					"failed"
-				]
-			},
-			"VaultBackupBlobType": {
-				"type": "string",
-				"enum": [
-					"addresses",
-					"groceries",
-					"mobileNumbers",
-					"subscriptions",
-					"todos"
-				]
-			},
-			"VaultBackupRecordDto": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"userId": {
-						"type": "string"
-					},
-					"event": {
-						"$ref": "#/components/schemas/VaultBackupEvent"
-					},
-					"source": {
-						"$ref": "#/components/schemas/VaultBackupSource"
-					},
-					"status": {
-						"$ref": "#/components/schemas/VaultBackupStatus"
-					},
-					"errorCode": {
-						"type": "string",
-						"nullable": true
-					},
-					"schemaVersion": {
-						"type": "number",
-						"format": "double"
-					},
-					"blobTypes": {
-						"items": {
-							"$ref": "#/components/schemas/VaultBackupBlobType"
-						},
-						"type": "array"
-					},
-					"sizeBytes": {
-						"type": "number",
-						"format": "double"
-					},
-					"createdAt": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"userId",
-					"event",
-					"source",
-					"status",
-					"errorCode",
-					"schemaVersion",
-					"blobTypes",
-					"sizeBytes",
-					"createdAt"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"RecordVaultBackupResponse": {
-				"anyOf": [
-					{
-						"$ref": "#/components/schemas/VaultBackupRecordDto"
-					},
-					{
-						"$ref": "#/components/schemas/ErrorResponse"
-					}
-				]
-			},
-			"RecordVaultBackupRequest": {
-				"properties": {
-					"event": {
-						"$ref": "#/components/schemas/VaultBackupEvent"
-					},
-					"source": {
-						"$ref": "#/components/schemas/VaultBackupSource"
-					},
-					"status": {
-						"$ref": "#/components/schemas/VaultBackupStatus"
-					},
-					"errorCode": {
-						"type": "string",
-						"nullable": true
-					},
-					"schemaVersion": {
-						"type": "number",
-						"format": "double"
-					},
-					"blobTypes": {
-						"items": {
-							"$ref": "#/components/schemas/VaultBackupBlobType"
-						},
-						"type": "array"
-					},
-					"sizeBytes": {
-						"type": "number",
-						"format": "double"
-					}
-				},
-				"required": [
-					"event",
-					"source",
-					"status",
-					"schemaVersion",
-					"blobTypes",
-					"sizeBytes"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"GetLatestVaultBackupResponse": {
-				"anyOf": [
-					{
-						"$ref": "#/components/schemas/VaultBackupRecordDto"
-					},
-					{
-						"$ref": "#/components/schemas/ErrorResponse"
-					}
-				]
-			},
-			"VaultBackupHistoryPage": {
-				"properties": {
-					"items": {
-						"items": {
-							"$ref": "#/components/schemas/VaultBackupRecordDto"
-						},
-						"type": "array"
-					},
-					"nextCursor": {
-						"type": "string",
-						"nullable": true
-					}
-				},
-				"required": [
-					"items",
-					"nextCursor"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"ListVaultBackupsResponse": {
-				"anyOf": [
-					{
-						"$ref": "#/components/schemas/VaultBackupHistoryPage"
-					},
-					{
-						"$ref": "#/components/schemas/ErrorResponse"
-					}
-				]
-			},
-			"User": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"name": {
-						"type": "string"
-					},
-					"first_name": {
-						"type": "string"
-					},
-					"last_name": {
-						"type": "string"
-					},
-					"phone": {
-						"type": "string"
-					},
-					"email": {
-						"type": "string"
-					},
-					"password": {
-						"type": "string"
-					},
-					"reset_password_token": {
-						"type": "string"
-					},
-					"email_verification_timestamp": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"blacklisted_tokens": {
-						"items": {
-							"type": "string"
-						},
-						"type": "array"
-					}
-				},
-				"required": [
-					"id",
-					"email"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"FilteredUserInterface": {
-				"properties": {
-					"id": {
-						"type": "string"
-					},
-					"name": {
-						"type": "string"
-					},
-					"email": {
-						"type": "string"
-					},
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
-						"type": "string"
-					},
-					"phone": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"id",
-					"name",
-					"email",
-					"firstName",
-					"lastName"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"ValidateErrorJSON": {
-				"properties": {
-					"message": {
-						"type": "string",
-						"enum": [
-							"Validation failed"
-						],
-						"nullable": false
-					},
-					"details": {
-						"properties": {},
-						"additionalProperties": {},
-						"type": "object"
-					}
-				},
-				"required": [
-					"message",
-					"details"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"UserCreationBody": {
-				"properties": {
-					"name": {
-						"type": "string"
-					},
-					"firstName": {
-						"type": "string"
-					},
-					"lastName": {
-						"type": "string"
-					},
-					"phone": {
-						"type": "string"
-					},
-					"email": {
-						"type": "string"
-					},
-					"password": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"firstName",
-					"lastName",
-					"email",
-					"password"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"UserLoginBody": {
-				"properties": {
-					"email": {
-						"type": "string"
-					},
-					"password": {
-						"type": "string"
-					},
-					"client_type": {
-						"type": "string",
-						"enum": [
-							"mobile",
-							"web"
-						]
-					}
-				},
-				"required": [
-					"email",
-					"password"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"RegisterUserResponse": {
-				"properties": {
-					"message": {
-						"type": "string"
-					},
-					"user": {
-						"$ref": "#/components/schemas/FilteredUserInterface"
-					}
-				},
-				"required": [
-					"message"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"ResetPasswordByEmailBody": {
-				"properties": {
-					"email": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"email"
-				],
-				"type": "object",
-				"additionalProperties": false
-			},
-			"ConfirmResetPasswordBody": {
-				"properties": {
-					"token": {
-						"type": "string"
-					},
-					"password": {
-						"type": "string"
-					},
-					"confirm_password": {
-						"type": "string"
-					}
-				},
-				"required": [
-					"token",
-					"password",
-					"confirm_password"
-				],
-				"type": "object",
-				"additionalProperties": false
-			}
-		},
-		"securitySchemes": {
-			"OAuth2PasswordSecurity": {
-				"type": "oauth2",
-				"description": "OAuth2 Password Grant",
-				"flows": {
-					"password": {
-						"tokenUrl": "http://localhost:3000/api/v1/auth/login",
-						"scopes": {}
-					}
-				}
-			},
-			"jwt": {
-				"type": "http",
-				"scheme": "bearer",
-				"bearerFormat": "JWT",
-				"description": "JWT Access Token only"
-			}
-		}
-	},
-	"info": {
-		"title": "@myorganizer/source",
-		"version": "0.2.0",
-		"license": {
-			"name": "MIT"
-		},
-		"contact": {}
-	},
-	"paths": {
-		"/youtube/auth-url": {
-			"get": {
-				"operationId": "GetAuthUrl",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"anyOf": [
-										{
-											"$ref": "#/components/schemas/AuthUrlResponse"
-										},
-										{
-											"$ref": "#/components/schemas/YouTubeErrorResponse"
-										}
-									]
-								}
-							}
-						}
-					}
-				},
-				"description": "Returns the Google OAuth consent URL for linking YouTube.",
-				"tags": [
-					"YouTube"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/youtube/callback": {
-			"post": {
-				"operationId": "HandleCallback",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"message": {
-											"type": "string"
-										},
-										"ok": {
-											"type": "boolean"
-										}
-									},
-									"required": [
-										"message",
-										"ok"
-									],
-									"type": "object"
-								}
-							}
-						}
-					}
-				},
-				"description": "OAuth callback — exchanges the authorization code for tokens.",
-				"tags": [
-					"YouTube"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"code": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"code"
-								],
-								"type": "object"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/youtube/status": {
-			"get": {
-				"operationId": "GetConnectionStatus",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"anyOf": [
-										{
-											"$ref": "#/components/schemas/StatusResponse"
-										},
-										{
-											"$ref": "#/components/schemas/YouTubeErrorResponse"
-										}
-									]
-								}
-							}
-						}
-					}
-				},
-				"description": "Returns the user's YouTube integration status.",
-				"tags": [
-					"YouTube"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/youtube/disconnect": {
-			"delete": {
-				"operationId": "Disconnect",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"message": {
-											"type": "string"
-										},
-										"ok": {
-											"type": "boolean"
-										}
-									},
-									"required": [
-										"message",
-										"ok"
-									],
-									"type": "object"
-								}
-							}
-						}
-					}
-				},
-				"description": "Disconnects the user's YouTube account after revoking the token.",
-				"tags": [
-					"YouTube"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/youtube/subscriptions": {
-			"get": {
-				"operationId": "GetSubscriptions",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"anyOf": [
-										{
-											"items": {
-												"$ref": "#/components/schemas/SubscriptionResponse"
-											},
-											"type": "array"
-										},
-										{
-											"$ref": "#/components/schemas/YouTubeErrorResponse"
-										}
-									]
-								}
-							}
-						}
-					}
-				},
-				"description": "Returns the user's synced YouTube channel subscriptions.",
-				"tags": [
-					"YouTube"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/youtube/subscriptions/sync": {
-			"put": {
-				"operationId": "SyncSubscriptions",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"anyOf": [
-										{
-											"properties": {
-												"videosSynced": {
-													"type": "number",
-													"format": "double"
-												},
-												"synced": {
-													"type": "number",
-													"format": "double"
-												}
-											},
-											"required": [
-												"videosSynced",
-												"synced"
-											],
-											"type": "object"
-										},
-										{
-											"$ref": "#/components/schemas/YouTubeErrorResponse"
-										}
-									]
-								}
-							}
-						}
-					}
-				},
-				"description": "Fetches fresh subscriptions from YouTube and syncs to DB.",
-				"tags": [
-					"YouTube"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/youtube/subscriptions/{subscriptionId}": {
-			"patch": {
-				"operationId": "ToggleSubscription",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"anyOf": [
-										{
-											"properties": {
-												"ok": {
-													"type": "boolean"
-												}
-											},
-											"required": [
-												"ok"
-											],
-											"type": "object"
-										},
-										{
-											"$ref": "#/components/schemas/YouTubeErrorResponse"
-										}
-									]
-								}
-							}
-						}
-					}
-				},
-				"description": "Toggles a subscription's enabled state.",
-				"tags": [
-					"YouTube"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "subscriptionId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"enabled": {
-										"type": "boolean"
-									}
-								},
-								"required": [
-									"enabled"
-								],
-								"type": "object"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/youtube/videos": {
-			"get": {
-				"operationId": "GetVideos",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"anyOf": [
-										{
-											"$ref": "#/components/schemas/VideosPageResponse"
-										},
-										{
-											"$ref": "#/components/schemas/YouTubeErrorResponse"
-										}
-									]
-								}
-							}
-						}
-					}
-				},
-				"description": "Returns cached videos with sorting, searching, and pagination.",
-				"tags": [
-					"YouTube"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"description": "Sort order: latest | oldest | az",
-						"in": "query",
-						"name": "sort",
-						"required": false,
-						"schema": {
-							"type": "string",
-							"enum": [
-								"latest",
-								"oldest",
-								"az"
-							]
-						}
-					},
-					{
-						"description": "Filter by video title",
-						"in": "query",
-						"name": "search",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"description": "Page number (1-based)",
-						"in": "query",
-						"name": "page",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"description": "Items per page",
-						"in": "query",
-						"name": "limit",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "channelId",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/youtube/videos/carousel": {
-			"get": {
-				"operationId": "GetVideosCarousel",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"anyOf": [
-										{
-											"items": {
-												"$ref": "#/components/schemas/ChannelCarouselResponse"
-											},
-											"type": "array"
-										},
-										{
-											"$ref": "#/components/schemas/YouTubeErrorResponse"
-										}
-									]
-								}
-							}
-						}
-					}
-				},
-				"description": "Returns videos grouped by channel for the carousel view.",
-				"tags": [
-					"YouTube"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/youtube/notification-settings": {
-			"get": {
-				"operationId": "GetNotificationSettings",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"anyOf": [
-										{
-											"$ref": "#/components/schemas/NotificationSettingsResponse"
-										},
-										{
-											"$ref": "#/components/schemas/YouTubeErrorResponse"
-										}
-									]
-								}
-							}
-						}
-					}
-				},
-				"description": "Returns the user's YouTube notification preferences.",
-				"tags": [
-					"YouTube"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			},
-			"patch": {
-				"operationId": "UpdateNotificationSettings",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"anyOf": [
-										{
-											"$ref": "#/components/schemas/NotificationSettingsResponse"
-										},
-										{
-											"$ref": "#/components/schemas/YouTubeErrorResponse"
-										}
-									]
-								}
-							}
-						}
-					}
-				},
-				"description": "Updates the user's YouTube notification preferences.",
-				"tags": [
-					"YouTube"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/NotificationSettingsBody"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/youtube/cron/sync-and-notify": {
-			"post": {
-				"operationId": "CronSyncAndNotify",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"anyOf": [
-										{
-											"$ref": "#/components/schemas/CronResultResponse"
-										},
-										{
-											"$ref": "#/components/schemas/YouTubeErrorResponse"
-										}
-									]
-								}
-							}
-						}
-					}
-				},
-				"description": "Cron-only endpoint: syncs all users' videos and sends due notifications.\nAuthenticated via X-Cron-Secret header instead of JWT.",
-				"tags": [
-					"YouTube"
-				],
-				"security": [],
-				"parameters": []
-			}
-		},
-		"/vault": {
-			"get": {
-				"operationId": "GetVaultMeta",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/GetVaultMetaResponse"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Vault"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			},
-			"put": {
-				"operationId": "PutVaultMeta",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/PutVaultMetaResponse"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Vault"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "header",
-						"name": "if-match",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"meta": {
-										"$ref": "#/components/schemas/VaultMetaV1"
-									}
-								},
-								"required": [
-									"meta"
-								],
-								"type": "object"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/vault/blob/{type}": {
-			"get": {
-				"operationId": "GetVaultBlob",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/GetVaultBlobResponse"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Vault"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "type",
-						"required": true,
-						"schema": {
-							"$ref": "#/components/schemas/VaultBlobType"
-						}
-					}
-				]
-			},
-			"put": {
-				"operationId": "PutVaultBlob",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/PutVaultBlobResponse"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Vault"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "type",
-						"required": true,
-						"schema": {
-							"$ref": "#/components/schemas/VaultBlobType"
-						}
-					},
-					{
-						"in": "header",
-						"name": "if-match",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					}
-				],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"blob": {
-										"$ref": "#/components/schemas/EncryptedBlobV1"
-									},
-									"type": {
-										"$ref": "#/components/schemas/VaultBlobType"
-									}
-								},
-								"required": [
-									"blob",
-									"type"
-								],
-								"type": "object"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/vault/export": {
-			"post": {
-				"operationId": "ExportVault",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ExportVaultResponse"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Vault"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			}
-		},
-		"/vault/import": {
-			"post": {
-				"operationId": "ImportVault",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ImportVaultResponse"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Vault"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/VaultExportV1"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/vault/backups": {
-			"post": {
-				"operationId": "RecordBackup",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/RecordVaultBackupResponse"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"VaultBackups"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/RecordVaultBackupRequest"
-							}
-						}
-					}
-				}
-			},
-			"get": {
-				"operationId": "ListBackups",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ListVaultBackupsResponse"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"VaultBackups"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "query",
-						"name": "cursor",
-						"required": false,
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"in": "query",
-						"name": "limit",
-						"required": false,
-						"schema": {
-							"format": "double",
-							"type": "number"
-						}
-					},
-					{
-						"in": "query",
-						"name": "source",
-						"required": false,
-						"schema": {
-							"$ref": "#/components/schemas/VaultBackupSource"
-						}
-					}
-				]
-			}
-		},
-		"/vault/backups/latest": {
-			"get": {
-				"operationId": "GetLatestBackup",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/GetLatestVaultBackupResponse"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"VaultBackups"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "query",
-						"name": "status",
-						"required": false,
-						"schema": {
-							"$ref": "#/components/schemas/VaultBackupStatus"
-						}
-					},
-					{
-						"in": "query",
-						"name": "source",
-						"required": false,
-						"schema": {
-							"$ref": "#/components/schemas/VaultBackupSource"
-						}
-					}
-				]
-			}
-		},
-		"/user": {
-			"get": {
-				"operationId": "GetAllUsers",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"items": {
-										"$ref": "#/components/schemas/User"
-									},
-									"type": "array"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Users Management"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": []
-			},
-			"post": {
-				"operationId": "CreateUser",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/FilteredUserInterface"
-								}
-							}
-						}
-					},
-					"201": {
-						"description": "Created"
-					},
-					"422": {
-						"description": "Validation Failed",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ValidateErrorJSON"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Users Management"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/UserCreationBody"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/user/{userId}": {
-			"get": {
-				"operationId": "GetUserById",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"allOf": [
-										{
-											"$ref": "#/components/schemas/User"
-										}
-									],
-									"nullable": true
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Users Management"
-				],
-				"security": [],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "userId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/auth/login": {
-			"post": {
-				"operationId": "Login",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"refresh_token": {
-											"type": "string"
-										},
-										"user": {
-											"$ref": "#/components/schemas/FilteredUserInterface"
-										},
-										"expires_in": {
-											"type": "number",
-											"format": "double"
-										},
-										"token": {
-											"type": "string"
-										}
-									},
-									"required": [
-										"user",
-										"expires_in",
-										"token"
-									],
-									"type": "object"
-								}
-							}
-						}
-					},
-					"401": {
-						"description": "Unauthorized"
-					}
-				},
-				"tags": [
-					"Authentication"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/UserLoginBody"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/auth/logout/{userId}": {
-			"post": {
-				"operationId": "Logout",
-				"responses": {
-					"200": {
-						"description": "Logged out successfully",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"message": {
-											"type": "string"
-										}
-									},
-									"required": [
-										"message"
-									],
-									"type": "object"
-								}
-							}
-						}
-					},
-					"401": {
-						"description": "Unauthorized"
-					},
-					"500": {
-						"description": "Failed to logout"
-					}
-				},
-				"tags": [
-					"Authentication"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "userId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/auth/refresh": {
-			"post": {
-				"operationId": "RefreshToken",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"user": {
-											"$ref": "#/components/schemas/FilteredUserInterface"
-										},
-										"expires_in": {
-											"type": "number",
-											"format": "double"
-										},
-										"token": {
-											"type": "string"
-										}
-									},
-									"required": [
-										"user",
-										"expires_in",
-										"token"
-									],
-									"type": "object"
-								}
-							}
-						}
-					},
-					"401": {
-						"description": "",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"message": {
-											"type": "string"
-										}
-									},
-									"required": [
-										"message"
-									],
-									"type": "object"
-								}
-							}
-						}
-					},
-					"404": {
-						"description": "",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"message": {
-											"type": "string"
-										}
-									},
-									"required": [
-										"message"
-									],
-									"type": "object"
-								}
-							}
-						}
-					},
-					"422": {
-						"description": "Validation Failed",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ValidateErrorJSON"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Authentication"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": false,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"refresh_token": {
-										"type": "string"
-									}
-								},
-								"type": "object"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/auth/register": {
-			"post": {
-				"operationId": "RegisterUser",
-				"responses": {
-					"201": {
-						"description": "Created",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/RegisterUserResponse"
-								}
-							}
-						}
-					},
-					"422": {
-						"description": "Validation Failed",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ValidateErrorJSON"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Authentication"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/UserCreationBody"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/auth/verify/email": {
-			"patch": {
-				"operationId": "VerifyEmail",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/FilteredUserInterface"
-								}
-							}
-						}
-					},
-					"422": {
-						"description": "Validation Failed",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ValidateErrorJSON"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Authentication"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"token": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"token"
-								],
-								"type": "object"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/auth/verify/resend": {
-			"post": {
-				"operationId": "ResendVerificationEmailByEmail",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"message": {
-											"type": "string"
-										},
-										"status": {
-											"type": "number",
-											"format": "double"
-										}
-									},
-									"required": [
-										"message",
-										"status"
-									],
-									"type": "object"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Authentication"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"properties": {
-									"email": {
-										"type": "string"
-									}
-								},
-								"required": [
-									"email"
-								],
-								"type": "object"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/auth/verify/resend/{userId}": {
-			"post": {
-				"operationId": "ResendVerificationEmail",
-				"responses": {
-					"204": {
-						"description": "No content"
-					}
-				},
-				"tags": [
-					"Authentication"
-				],
-				"security": [
-					{
-						"jwt": []
-					}
-				],
-				"parameters": [
-					{
-						"in": "path",
-						"name": "userId",
-						"required": true,
-						"schema": {
-							"type": "string"
-						}
-					}
-				]
-			}
-		},
-		"/auth/password/reset": {
-			"post": {
-				"operationId": "ResetPassword",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"message": {
-											"type": "string"
-										},
-										"status": {
-											"type": "number",
-											"format": "double"
-										}
-									},
-									"required": [
-										"message",
-										"status"
-									],
-									"type": "object"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Authentication"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/ResetPasswordByEmailBody"
-							}
-						}
-					}
-				}
-			}
-		},
-		"/auth/password/reset/confirm": {
-			"patch": {
-				"operationId": "ConfirmResetPassword",
-				"responses": {
-					"200": {
-						"description": "Ok",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"message": {
-											"type": "string"
-										},
-										"status": {
-											"type": "number",
-											"format": "double"
-										}
-									},
-									"required": [
-										"message",
-										"status"
-									],
-									"type": "object"
-								}
-							}
-						}
-					}
-				},
-				"tags": [
-					"Authentication"
-				],
-				"security": [],
-				"parameters": [],
-				"requestBody": {
-					"required": true,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/ConfirmResetPasswordBody"
-							}
-						}
-					}
-				}
-			}
-		}
-	},
-	"servers": [
-		{
-			"url": "http://localhost:3000/api/v1/",
-			"description": "Local server"
-		}
-	]
+  "openapi": "3.0.0",
+  "components": {
+    "examples": {},
+    "headers": {},
+    "parameters": {},
+    "requestBodies": {},
+    "responses": {},
+    "schemas": {
+      "AuthUrlResponse": {
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": ["url"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "YouTubeErrorResponse": {
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": ["message"],
+        "type": "object"
+      },
+      "StatusResponse": {
+        "properties": {
+          "connected": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          }
+        },
+        "required": ["connected", "status"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "SubscriptionResponse": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "channelTitle": {
+            "type": "string"
+          },
+          "channelThumbnail": {
+            "type": "string",
+            "nullable": true
+          },
+          "uploadsPlaylistId": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "lastSyncedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "channelId",
+          "channelTitle",
+          "channelThumbnail",
+          "uploadsPlaylistId",
+          "enabled",
+          "lastSyncedAt"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "VideoResponse": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "videoId": {
+            "type": "string"
+          },
+          "channelId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "thumbnail": {
+            "type": "string",
+            "nullable": true
+          },
+          "publishedAt": {
+            "type": "string"
+          },
+          "channelTitle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "videoId",
+          "channelId",
+          "title",
+          "thumbnail",
+          "publishedAt"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "VideosPageResponse": {
+        "properties": {
+          "videos": {
+            "items": {
+              "$ref": "#/components/schemas/VideoResponse"
+            },
+            "type": "array"
+          },
+          "total": {
+            "type": "number",
+            "format": "double"
+          },
+          "page": {
+            "type": "number",
+            "format": "double"
+          },
+          "limit": {
+            "type": "number",
+            "format": "double"
+          },
+          "totalPages": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["videos", "total", "page", "limit", "totalPages"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ChannelCarouselResponse": {
+        "properties": {
+          "channelId": {
+            "type": "string"
+          },
+          "channelTitle": {
+            "type": "string"
+          },
+          "channelThumbnail": {
+            "type": "string",
+            "nullable": true
+          },
+          "videos": {
+            "items": {
+              "$ref": "#/components/schemas/VideoResponse"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["channelId", "channelTitle", "channelThumbnail", "videos"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "NotificationSettingsResponse": {
+        "properties": {
+          "intervalDays": {
+            "type": "number",
+            "format": "double"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "lastNotifiedAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": ["intervalDays", "enabled", "lastNotifiedAt"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "NotificationSettingsBody": {
+        "properties": {
+          "intervalDays": {
+            "type": "number",
+            "format": "double"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "type": "object",
+        "additionalProperties": false
+      },
+      "CronResultResponse": {
+        "properties": {
+          "usersSynced": {
+            "type": "number",
+            "format": "double"
+          },
+          "notificationsSent": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": ["usersSynced", "notificationsSent"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "Record_string.unknown_": {
+        "properties": {},
+        "additionalProperties": {},
+        "type": "object",
+        "description": "Construct a type with a set of properties K of type T"
+      },
+      "VaultMetaV1": {
+        "properties": {
+          "version": {
+            "type": "number",
+            "format": "double"
+          },
+          "kdf_name": {
+            "type": "string"
+          },
+          "kdf_salt": {
+            "type": "string"
+          },
+          "kdf_params": {
+            "$ref": "#/components/schemas/Record_string.unknown_"
+          },
+          "wrapped_mk_passphrase": {},
+          "wrapped_mk_recovery": {}
+        },
+        "required": [
+          "version",
+          "kdf_name",
+          "kdf_salt",
+          "kdf_params",
+          "wrapped_mk_passphrase",
+          "wrapped_mk_recovery"
+        ],
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "ErrorResponse": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "details": {}
+        },
+        "required": ["message"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "GetVaultMetaResponse": {
+        "anyOf": [
+          {
+            "properties": {
+              "etag": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "meta": {
+                "$ref": "#/components/schemas/VaultMetaV1"
+              }
+            },
+            "required": ["etag", "updatedAt", "meta"],
+            "type": "object"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "PutVaultMetaResponse": {
+        "anyOf": [
+          {
+            "properties": {
+              "updatedAt": {
+                "type": "string"
+              },
+              "etag": {
+                "type": "string"
+              },
+              "ok": {
+                "type": "boolean",
+                "enum": [true],
+                "nullable": false
+              }
+            },
+            "required": ["updatedAt", "etag", "ok"],
+            "type": "object"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "VaultBlobType": {
+        "type": "string",
+        "enum": [
+          "addresses",
+          "groceries",
+          "mobileNumbers",
+          "subscriptions",
+          "tasks",
+          "todos"
+        ]
+      },
+      "EncryptedBlobV1": {
+        "properties": {
+          "version": {
+            "type": "number",
+            "format": "double"
+          },
+          "iv": {
+            "type": "string"
+          },
+          "ciphertext": {
+            "type": "string"
+          }
+        },
+        "required": ["version", "iv", "ciphertext"],
+        "type": "object",
+        "additionalProperties": {}
+      },
+      "GetVaultBlobResponse": {
+        "anyOf": [
+          {
+            "properties": {
+              "etag": {
+                "type": "string"
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "blob": {
+                "$ref": "#/components/schemas/EncryptedBlobV1"
+              },
+              "type": {
+                "$ref": "#/components/schemas/VaultBlobType"
+              }
+            },
+            "required": ["etag", "updatedAt", "blob", "type"],
+            "type": "object"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "PutVaultBlobResponse": {
+        "anyOf": [
+          {
+            "properties": {
+              "updatedAt": {
+                "type": "string"
+              },
+              "etag": {
+                "type": "string"
+              },
+              "ok": {
+                "type": "boolean",
+                "enum": [true],
+                "nullable": false
+              }
+            },
+            "required": ["updatedAt", "etag", "ok"],
+            "type": "object"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "Partial_Record_VaultBlobType.EncryptedBlobV1__": {
+        "properties": {
+          "addresses": {
+            "$ref": "#/components/schemas/EncryptedBlobV1"
+          },
+          "groceries": {
+            "$ref": "#/components/schemas/EncryptedBlobV1"
+          },
+          "mobileNumbers": {
+            "$ref": "#/components/schemas/EncryptedBlobV1"
+          },
+          "subscriptions": {
+            "$ref": "#/components/schemas/EncryptedBlobV1"
+          },
+          "tasks": {
+            "$ref": "#/components/schemas/EncryptedBlobV1"
+          },
+          "todos": {
+            "$ref": "#/components/schemas/EncryptedBlobV1"
+          }
+        },
+        "type": "object",
+        "description": "Make all properties in T optional"
+      },
+      "VaultExportV1": {
+        "properties": {
+          "exportVersion": {
+            "type": "number",
+            "enum": [1],
+            "nullable": false
+          },
+          "exportedAt": {
+            "type": "string"
+          },
+          "meta": {
+            "$ref": "#/components/schemas/VaultMetaV1"
+          },
+          "blobs": {
+            "$ref": "#/components/schemas/Partial_Record_VaultBlobType.EncryptedBlobV1__"
+          }
+        },
+        "required": ["exportVersion", "exportedAt", "meta", "blobs"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ExportVaultResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/VaultExportV1"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "ImportVaultResponse": {
+        "anyOf": [
+          {
+            "properties": {
+              "ok": {
+                "type": "boolean",
+                "enum": [true],
+                "nullable": false
+              }
+            },
+            "required": ["ok"],
+            "type": "object"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "VaultBackupEvent": {
+        "type": "string",
+        "enum": ["export", "import"]
+      },
+      "VaultBackupSource": {
+        "type": "string",
+        "enum": ["local-file", "google-drive"]
+      },
+      "VaultBackupStatus": {
+        "type": "string",
+        "enum": ["success", "failed"]
+      },
+      "VaultBackupBlobType": {
+        "type": "string",
+        "enum": [
+          "addresses",
+          "groceries",
+          "mobileNumbers",
+          "subscriptions",
+          "todos"
+        ]
+      },
+      "VaultBackupRecordDto": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "event": {
+            "$ref": "#/components/schemas/VaultBackupEvent"
+          },
+          "source": {
+            "$ref": "#/components/schemas/VaultBackupSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VaultBackupStatus"
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "schemaVersion": {
+            "type": "number",
+            "format": "double"
+          },
+          "blobTypes": {
+            "items": {
+              "$ref": "#/components/schemas/VaultBackupBlobType"
+            },
+            "type": "array"
+          },
+          "sizeBytes": {
+            "type": "number",
+            "format": "double"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "event",
+          "source",
+          "status",
+          "errorCode",
+          "schemaVersion",
+          "blobTypes",
+          "sizeBytes",
+          "createdAt"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "RecordVaultBackupResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/VaultBackupRecordDto"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "RecordVaultBackupRequest": {
+        "properties": {
+          "event": {
+            "$ref": "#/components/schemas/VaultBackupEvent"
+          },
+          "source": {
+            "$ref": "#/components/schemas/VaultBackupSource"
+          },
+          "status": {
+            "$ref": "#/components/schemas/VaultBackupStatus"
+          },
+          "errorCode": {
+            "type": "string",
+            "nullable": true
+          },
+          "schemaVersion": {
+            "type": "number",
+            "format": "double"
+          },
+          "blobTypes": {
+            "items": {
+              "$ref": "#/components/schemas/VaultBackupBlobType"
+            },
+            "type": "array"
+          },
+          "sizeBytes": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "event",
+          "source",
+          "status",
+          "schemaVersion",
+          "blobTypes",
+          "sizeBytes"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "GetLatestVaultBackupResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/VaultBackupRecordDto"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "VaultBackupHistoryPage": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/VaultBackupRecordDto"
+            },
+            "type": "array"
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": ["items", "nextCursor"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ListVaultBackupsResponse": {
+        "anyOf": [
+          {
+            "$ref": "#/components/schemas/VaultBackupHistoryPage"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          }
+        ]
+      },
+      "User": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "first_name": {
+            "type": "string"
+          },
+          "last_name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "reset_password_token": {
+            "type": "string"
+          },
+          "email_verification_timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "blacklisted_tokens": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["id", "email"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "FilteredUserInterface": {
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name", "email", "firstName", "lastName"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ValidateErrorJSON": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "enum": ["Validation failed"],
+            "nullable": false
+          },
+          "details": {
+            "properties": {},
+            "additionalProperties": {},
+            "type": "object"
+          }
+        },
+        "required": ["message", "details"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "UserCreationBody": {
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": ["firstName", "lastName", "email", "password"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "UserLoginBody": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "client_type": {
+            "type": "string",
+            "enum": ["mobile", "web"]
+          }
+        },
+        "required": ["email", "password"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "RegisterUserResponse": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/FilteredUserInterface"
+          }
+        },
+        "required": ["message"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ResetPasswordByEmailBody": {
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": ["email"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "ConfirmResetPasswordBody": {
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "confirm_password": {
+            "type": "string"
+          }
+        },
+        "required": ["token", "password", "confirm_password"],
+        "type": "object",
+        "additionalProperties": false
+      }
+    },
+    "securitySchemes": {
+      "OAuth2PasswordSecurity": {
+        "type": "oauth2",
+        "description": "OAuth2 Password Grant",
+        "flows": {
+          "password": {
+            "tokenUrl": "http://localhost:3000/api/v1/auth/login",
+            "scopes": {}
+          }
+        }
+      },
+      "jwt": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "JWT Access Token only"
+      },
+      "cron-secret": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-Cron-Secret",
+        "description": "Shared secret for cron-triggered endpoints"
+      }
+    }
+  },
+  "info": {
+    "title": "@myorganizer/source",
+    "version": "0.2.0",
+    "license": {
+      "name": "MIT"
+    },
+    "contact": {}
+  },
+  "paths": {
+    "/youtube/auth-url": {
+      "get": {
+        "operationId": "GetAuthUrl",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/AuthUrlResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/YouTubeErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Returns the Google OAuth consent URL for linking YouTube.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/youtube/callback": {
+      "post": {
+        "operationId": "HandleCallback",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["message", "ok"],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "description": "OAuth callback — exchanges the authorization code for tokens.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "code": {
+                    "type": "string"
+                  }
+                },
+                "required": ["code"],
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/youtube/status": {
+      "get": {
+        "operationId": "GetConnectionStatus",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/StatusResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/YouTubeErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Returns the user's YouTube integration status.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/youtube/disconnect": {
+      "delete": {
+        "operationId": "Disconnect",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "ok": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["message", "ok"],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "description": "Disconnects the user's YouTube account after revoking the token.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/youtube/subscriptions": {
+      "get": {
+        "operationId": "GetSubscriptions",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "items": {
+                        "$ref": "#/components/schemas/SubscriptionResponse"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "$ref": "#/components/schemas/YouTubeErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Returns the user's synced YouTube channel subscriptions.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/youtube/subscriptions/sync": {
+      "put": {
+        "operationId": "SyncSubscriptions",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "videosSynced": {
+                          "type": "number",
+                          "format": "double"
+                        },
+                        "synced": {
+                          "type": "number",
+                          "format": "double"
+                        }
+                      },
+                      "required": ["videosSynced", "synced"],
+                      "type": "object"
+                    },
+                    {
+                      "$ref": "#/components/schemas/YouTubeErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Fetches fresh subscriptions from YouTube and syncs to DB.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/youtube/subscriptions/{subscriptionId}": {
+      "patch": {
+        "operationId": "ToggleSubscription",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "properties": {
+                        "ok": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["ok"],
+                      "type": "object"
+                    },
+                    {
+                      "$ref": "#/components/schemas/YouTubeErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Toggles a subscription's enabled state.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "subscriptionId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": ["enabled"],
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/youtube/videos": {
+      "get": {
+        "operationId": "GetVideos",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/VideosPageResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/YouTubeErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Returns cached videos with sorting, searching, and pagination.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "description": "Sort order: latest | oldest | az",
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["latest", "oldest", "az"]
+            }
+          },
+          {
+            "description": "Filter by video title",
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page number (1-based)",
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          {
+            "description": "Items per page",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "channelId",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/youtube/videos/carousel": {
+      "get": {
+        "operationId": "GetVideosCarousel",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "items": {
+                        "$ref": "#/components/schemas/ChannelCarouselResponse"
+                      },
+                      "type": "array"
+                    },
+                    {
+                      "$ref": "#/components/schemas/YouTubeErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Returns videos grouped by channel for the carousel view.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/youtube/notification-settings": {
+      "get": {
+        "operationId": "GetNotificationSettings",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/NotificationSettingsResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/YouTubeErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Returns the user's YouTube notification preferences.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": []
+      },
+      "patch": {
+        "operationId": "UpdateNotificationSettings",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/NotificationSettingsResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/YouTubeErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Updates the user's YouTube notification preferences.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationSettingsBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/youtube/cron/sync-and-notify": {
+      "post": {
+        "operationId": "CronSyncAndNotify",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CronResultResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/YouTubeErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Cron-only endpoint: syncs all users' videos and sends due notifications.\nAuthenticated via X-Cron-Secret header instead of JWT.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "cron-secret": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/vault": {
+      "get": {
+        "operationId": "GetVaultMeta",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetVaultMetaResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Vault"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": []
+      },
+      "put": {
+        "operationId": "PutVaultMeta",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PutVaultMetaResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Vault"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "meta": {
+                    "$ref": "#/components/schemas/VaultMetaV1"
+                  }
+                },
+                "required": ["meta"],
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vault/blob/{type}": {
+      "get": {
+        "operationId": "GetVaultBlob",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetVaultBlobResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Vault"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/VaultBlobType"
+            }
+          }
+        ]
+      },
+      "put": {
+        "operationId": "PutVaultBlob",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PutVaultBlobResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Vault"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "type",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/VaultBlobType"
+            }
+          },
+          {
+            "in": "header",
+            "name": "if-match",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "blob": {
+                    "$ref": "#/components/schemas/EncryptedBlobV1"
+                  },
+                  "type": {
+                    "$ref": "#/components/schemas/VaultBlobType"
+                  }
+                },
+                "required": ["blob", "type"],
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vault/export": {
+      "post": {
+        "operationId": "ExportVault",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportVaultResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Vault"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/vault/import": {
+      "post": {
+        "operationId": "ImportVault",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportVaultResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Vault"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VaultExportV1"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/vault/backups": {
+      "post": {
+        "operationId": "RecordBackup",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordVaultBackupResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["VaultBackups"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordVaultBackupRequest"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "ListBackups",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListVaultBackupsResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["VaultBackups"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "format": "double",
+              "type": "number"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/VaultBackupSource"
+            }
+          }
+        ]
+      }
+    },
+    "/vault/backups/latest": {
+      "get": {
+        "operationId": "GetLatestBackup",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetLatestVaultBackupResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["VaultBackups"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/VaultBackupStatus"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/VaultBackupSource"
+            }
+          }
+        ]
+      }
+    },
+    "/user": {
+      "get": {
+        "operationId": "GetAllUsers",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/User"
+                  },
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Users Management"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": []
+      },
+      "post": {
+        "operationId": "CreateUser",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilteredUserInterface"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created"
+          },
+          "422": {
+            "description": "Validation Failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateErrorJSON"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Users Management"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreationBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/user/{userId}": {
+      "get": {
+        "operationId": "GetUserById",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  ],
+                  "nullable": true
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Users Management"],
+        "security": [],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "operationId": "Login",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "refresh_token": {
+                      "type": "string"
+                    },
+                    "user": {
+                      "$ref": "#/components/schemas/FilteredUserInterface"
+                    },
+                    "expires_in": {
+                      "type": "number",
+                      "format": "double"
+                    },
+                    "token": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["user", "expires_in", "token"],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserLoginBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout/{userId}": {
+      "post": {
+        "operationId": "Logout",
+        "responses": {
+          "200": {
+            "description": "Logged out successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized"
+          },
+          "500": {
+            "description": "Failed to logout"
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "operationId": "RefreshToken",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "user": {
+                      "$ref": "#/components/schemas/FilteredUserInterface"
+                    },
+                    "expires_in": {
+                      "type": "number",
+                      "format": "double"
+                    },
+                    "token": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["user", "expires_in", "token"],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    }
+                  },
+                  "required": ["message"],
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateErrorJSON"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "refresh_token": {
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "operationId": "RegisterUser",
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterUserResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateErrorJSON"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserCreationBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify/email": {
+      "patch": {
+        "operationId": "VerifyEmail",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FilteredUserInterface"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateErrorJSON"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "token": {
+                    "type": "string"
+                  }
+                },
+                "required": ["token"],
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify/resend": {
+      "post": {
+        "operationId": "ResendVerificationEmailByEmail",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number",
+                      "format": "double"
+                    }
+                  },
+                  "required": ["message", "status"],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "email": {
+                    "type": "string"
+                  }
+                },
+                "required": ["email"],
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify/resend/{userId}": {
+      "post": {
+        "operationId": "ResendVerificationEmail",
+        "responses": {
+          "204": {
+            "description": "No content"
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/auth/password/reset": {
+      "post": {
+        "operationId": "ResetPassword",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number",
+                      "format": "double"
+                    }
+                  },
+                  "required": ["message", "status"],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordByEmailBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/password/reset/confirm": {
+      "patch": {
+        "operationId": "ConfirmResetPassword",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number",
+                      "format": "double"
+                    }
+                  },
+                  "required": ["message", "status"],
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "tags": ["Authentication"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmResetPasswordBody"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api/v1/",
+      "description": "Local server"
+    }
+  ]
 }
