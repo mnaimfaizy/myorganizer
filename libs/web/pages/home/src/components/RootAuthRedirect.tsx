@@ -1,11 +1,6 @@
 'use client';
 
-import {
-  clearAuthSession,
-  getAccessToken,
-  getCurrentUser,
-  refresh,
-} from '@myorganizer/auth';
+import { authSession, resolveInboundGuard } from '@myorganizer/auth';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
 
@@ -19,26 +14,12 @@ export default function RootAuthRedirect(props: { children: ReactNode }) {
     let cancelled = false;
 
     async function resolveSession() {
-      const token = getAccessToken();
-      if (token) {
+      const outcome = await resolveInboundGuard(authSession);
+
+      if (outcome.kind === 'redirect_dashboard') {
         if (!cancelled) setState('redirecting');
         router.replace('/dashboard');
-        return;
-      }
-
-      const storedUser = getCurrentUser();
-      if (!storedUser) {
-        if (!cancelled) setState('guest');
-        return;
-      }
-
-      try {
-        await refresh();
-        if (cancelled) return;
-        setState('redirecting');
-        router.replace('/dashboard');
-      } catch {
-        clearAuthSession();
+      } else if (outcome.kind === 'show_guest') {
         if (!cancelled) setState('guest');
       }
     }
