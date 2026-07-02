@@ -1,21 +1,9 @@
-import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { Task } from '@myorganizer/core';
-import {
-  loadDecryptedData,
-  migrateFromTodos,
-  normalizeTasks,
-  saveEncryptedData,
-} from '@myorganizer/web-vault';
-import { useToast } from '@myorganizer/web-ui';
-import { TasksPageClient } from './TasksPageClient';
+/** Mocking rule: place jest.mock calls before any imports */
+/* eslint-disable import/first -- jest.mock must precede application imports */
 
-jest.mock('@myorganizer/core', () => ({
-  ...jest.requireActual('@myorganizer/core'),
-  randomId: jest.fn(() => 'mock-task-id'),
+jest.mock('@myorganizer/web-ui', () => ({
+  useToast: jest.fn(),
 }));
-
-jest.mock('@myorganizer/web-vault');
 
 jest.mock('@myorganizer/web-vault-ui', () => ({
   VaultGate: ({
@@ -25,9 +13,7 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
   }) => children({ masterKeyBytes: new Uint8Array(32) }) as React.ReactElement,
 }));
 
-jest.mock('@myorganizer/web-ui', () => ({
-  useToast: jest.fn(),
-}));
+jest.mock('../workflow');
 
 jest.mock('./task-form', () => ({
   TaskForm: ({
@@ -157,243 +143,153 @@ jest.mock('./task-delete-dialog', () => ({
     ) : null,
 }));
 
-const mockLoadDecryptedData = loadDecryptedData as jest.Mock;
-const mockSaveEncryptedData = saveEncryptedData as jest.Mock;
-const mockNormalizeTasks = normalizeTasks as jest.Mock;
-const mockMigrateFromTodos = migrateFromTodos as jest.Mock;
+import React from 'react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { Task } from '@myorganizer/core';
+import { useToast } from '@myorganizer/web-ui';
+import { TasksPageClient } from './TasksPageClient';
+import { useTasksWorkflow } from '../workflow';
+
 const mockUseToast = useToast as jest.Mock;
+const mockUseTasksWorkflow = useTasksWorkflow as jest.Mock;
+
 const mockToast = jest.fn();
+
+function makeWorkflowState(
+  overrides?: Partial<ReturnType<typeof useTasksWorkflow>>,
+) {
+  return {
+    tasks: [] as Task[],
+    loading: false,
+    loadError: null,
+    addTask: jest.fn(),
+    updateTask: jest.fn(),
+    deleteTask: jest.fn(),
+    archiveTask: jest.fn(),
+    unarchiveTask: jest.fn(),
+    ...overrides,
+  };
+}
 
 describe('TasksPageClient', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseToast.mockReturnValue({ toast: mockToast });
-    mockLoadDecryptedData.mockResolvedValue([
-      {
-        id: 't1',
-        title: 'Task 1',
-        priority: 'medium',
-        status: 'pending',
-        archived: false,
-        createdAt: '2024-01-01T00:00:00.000Z',
-      } as Task,
-    ]);
-    mockSaveEncryptedData.mockResolvedValue(undefined);
-    mockNormalizeTasks.mockImplementation((raw) => ({
-      value: Array.isArray(raw) ? raw : [],
-      changed: false,
-    }));
-    mockMigrateFromTodos.mockImplementation((todos) =>
-      Array.isArray(todos)
-        ? todos.map((t: { id: string; todo: string }) => ({
-            id: t.id,
-            title: t.todo,
-            priority: 'medium' as const,
-            status: 'pending' as const,
-            archived: false,
-            createdAt: '2024-01-01T00:00:00.000Z',
-          }))
-        : [],
-    );
+    mockUseTasksWorkflow.mockReturnValue(makeWorkflowState());
   });
 
-  it('should load tasks from vault on mount and call loadDecryptedData with type tasks', async () => {
+  it('renders page with task list section', () => {
+    render(<TasksPageClient />);
+    expect(screen.getByText('Create task')).toBeInTheDocument();
+    expect(screen.getByText('Task List')).toBeInTheDocument();
+  });
+
+  it('renders tasks from workflow', () => {
     const tasks: Task[] = [
       {
         id: 't1',
         title: 'Task One',
-        priority: 'medium',
+        priority: 'high',
         status: 'pending',
         archived: false,
         createdAt: '2024-01-01T00:00:00.000Z',
       },
-    ];
-    mockLoadDecryptedData.mockResolvedValue(tasks);
-    mockNormalizeTasks.mockReturnValue({ value: tasks, changed: false });
-
-    render(<TasksPageClient />);
-
-    await waitFor(() => {
-      expect(screen.getByText('Task One')).toBeInTheDocument();
-    });
-
-    expect(mockLoadDecryptedData).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'tasks', defaultValue: null }),
-    );
-  });
-
-  it('should auto-migrate from todos when tasks blob is null and todos exist', async () => {
-    mockLoadDecryptedData.mockImplementation(
-      (opts: { type: string; defaultValue: unknown }) => {
-        if (opts.type === 'tasks') return Promise.resolve(null);
-        if (opts.type === 'todos')
-          return Promise.resolve([{ id: 'todo1', todo: 'Migrate me' }]);
-        return Promise.resolve(opts.defaultValue);
-      },
-    );
-    const migratedTasks: Task[] = [
       {
-        id: 'todo1',
-        title: 'Migrate me',
+        id: 't2',
+        title: 'Task Two',
         priority: 'medium',
         status: 'pending',
         archived: false,
         createdAt: '2024-01-01T00:00:00.000Z',
       },
     ];
-    mockMigrateFromTodos.mockReturnValue(migratedTasks);
+    mockUseTasksWorkflow.mockReturnValue(makeWorkflowState({ tasks }));
 
     render(<TasksPageClient />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Migrate me')).toBeInTheDocument();
-    });
-
-    expect(mockLoadDecryptedData).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'todos', defaultValue: [] }),
-    );
-    expect(mockMigrateFromTodos).toHaveBeenCalled();
-    expect(mockSaveEncryptedData).toHaveBeenCalledWith(
-      expect.objectContaining({ type: 'tasks', value: migratedTasks }),
-    );
+    expect(screen.getByText('Task One')).toBeInTheDocument();
+    expect(screen.getByText('Task Two')).toBeInTheDocument();
   });
 
-  it('should not save when tasks blob is null and todos are empty', async () => {
-    mockLoadDecryptedData.mockImplementation(
-      (opts: { type: string; defaultValue: unknown }) => {
-        if (opts.type === 'tasks') return Promise.resolve(null);
-        if (opts.type === 'todos') return Promise.resolve([]);
-        return Promise.resolve(opts.defaultValue);
-      },
-    );
-
+  it('calls useTasksWorkflow with masterKeyBytes from VaultGate', () => {
     render(<TasksPageClient />);
 
-    await waitFor(() => {
-      expect(mockLoadDecryptedData).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'todos' }),
-      );
-    });
-
-    expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+    expect(mockUseTasksWorkflow).toHaveBeenCalledWith(
+      expect.objectContaining({
+        masterKeyBytes: expect.any(Uint8Array),
+      }),
+    );
   });
 
-  it('should show destructive toast on load failure', async () => {
-    mockLoadDecryptedData.mockRejectedValue(new Error('Decryption failed'));
+  it('shows load error toast when workflow.loadError is set', async () => {
+    const loadError = { code: 'load_failed' as const, message: 'Vault error' };
+    mockUseTasksWorkflow.mockReturnValue(makeWorkflowState({ loadError }));
 
     render(<TasksPageClient />);
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          variant: 'destructive',
           title: 'Failed to load tasks',
           description: 'Could not decrypt saved data.',
+          variant: 'destructive',
         }),
       );
     });
   });
 
-  it('should re-save when normalization reports changed=true', async () => {
-    const rawTasks = [
-      { id: 't1', title: 'Task One', priority: 'high', createdAt: '...' },
-    ];
-    const normalizedTasks: Task[] = [
-      {
-        id: 't1',
-        title: 'Task One',
-        priority: 'high',
-        status: 'pending',
-        archived: false,
-        createdAt: '...',
-      },
-    ];
-    mockLoadDecryptedData.mockResolvedValue(rawTasks);
-    mockNormalizeTasks.mockReturnValue({
-      value: normalizedTasks,
-      changed: true,
+  it('calls addTask on form submit and shows success toast', async () => {
+    const mockAddTask = jest.fn().mockResolvedValue({
+      ok: true,
+      kind: 'created',
     });
+    mockUseTasksWorkflow.mockReturnValue(
+      makeWorkflowState({ addTask: mockAddTask }),
+    );
 
     render(<TasksPageClient />);
-
-    await waitFor(() => {
-      expect(mockSaveEncryptedData).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'tasks', value: normalizedTasks }),
-      );
-    });
-  });
-
-  it('should render tasks sorted by priority: high before medium before low', async () => {
-    const tasks: Task[] = [
-      {
-        id: 'low',
-        title: 'Low Priority',
-        priority: 'low',
-        status: 'pending',
-        archived: false,
-        createdAt: '2024-01-01T00:00:00.000Z',
-      },
-      {
-        id: 'high',
-        title: 'High Priority',
-        priority: 'high',
-        status: 'pending',
-        archived: false,
-        createdAt: '2024-01-01T00:00:00.000Z',
-      },
-      {
-        id: 'medium',
-        title: 'Medium Priority',
-        priority: 'medium',
-        status: 'pending',
-        archived: false,
-        createdAt: '2024-01-01T00:00:00.000Z',
-      },
-    ];
-    mockLoadDecryptedData.mockResolvedValue(tasks);
-    mockNormalizeTasks.mockReturnValue({ value: tasks, changed: false });
-
-    render(<TasksPageClient />);
-
-    await waitFor(() => {
-      const titles = screen
-        .getAllByRole('heading', { level: 3 })
-        .map((el) => el.textContent);
-      expect(titles).toEqual([
-        'High Priority',
-        'Medium Priority',
-        'Low Priority',
-      ]);
-    });
-  });
-
-  it('should save vault and show task in list after form submit', async () => {
-    mockLoadDecryptedData.mockResolvedValue([]);
-    mockNormalizeTasks.mockReturnValue({ value: [], changed: false });
-
-    render(<TasksPageClient />);
-
-    await waitFor(() => {
-      expect(mockLoadDecryptedData).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'tasks' }),
-      );
-    });
 
     fireEvent.click(screen.getByTestId('add-task-btn'));
 
     await waitFor(() => {
-      expect(mockSaveEncryptedData).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'tasks' }),
-      );
+      expect(mockAddTask).toHaveBeenCalled();
     });
+
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Task created' }),
+        expect.objectContaining({
+          title: 'Task created',
+          description: 'Your task has been saved (encrypted).',
+        }),
       );
     });
   });
 
-  it('should remove task and save vault after delete', async () => {
+  it('shows save_failed toast when addTask mutation fails', async () => {
+    const mockAddTask = jest.fn().mockResolvedValue({
+      ok: false,
+      error: { code: 'save_failed' as const, message: 'Save error' },
+    });
+    mockUseTasksWorkflow.mockReturnValue(
+      makeWorkflowState({ addTask: mockAddTask }),
+    );
+
+    render(<TasksPageClient />);
+
+    fireEvent.click(screen.getByTestId('add-task-btn'));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Failed to save',
+          description: 'Save error',
+          variant: 'destructive',
+        }),
+      );
+    });
+  });
+
+  it('opens delete dialog when delete button clicked', async () => {
     const task: Task = {
       id: 't1',
       title: 'Task to delete',
@@ -402,14 +298,38 @@ describe('TasksPageClient', () => {
       archived: false,
       createdAt: '2024-01-01T00:00:00.000Z',
     };
-    mockLoadDecryptedData.mockResolvedValue([task]);
-    mockNormalizeTasks.mockReturnValue({ value: [task], changed: false });
+    mockUseTasksWorkflow.mockReturnValue(makeWorkflowState({ tasks: [task] }));
 
     render(<TasksPageClient />);
 
+    fireEvent.click(screen.getByTestId('delete-t1'));
+
     await waitFor(() => {
-      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
+      expect(screen.getByTestId('delete-dialog')).toBeInTheDocument();
+      expect(screen.getByTestId('deleting-task-title')).toHaveTextContent(
+        'Task to delete',
+      );
     });
+  });
+
+  it('calls deleteTask on delete confirmation and shows success toast', async () => {
+    const task: Task = {
+      id: 't1',
+      title: 'Task to delete',
+      priority: 'medium',
+      status: 'pending',
+      archived: false,
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    const mockDeleteTask = jest.fn().mockResolvedValue({
+      ok: true,
+      kind: 'deleted',
+    });
+    mockUseTasksWorkflow.mockReturnValue(
+      makeWorkflowState({ tasks: [task], deleteTask: mockDeleteTask }),
+    );
+
+    render(<TasksPageClient />);
 
     fireEvent.click(screen.getByTestId('delete-t1'));
 
@@ -420,18 +340,46 @@ describe('TasksPageClient', () => {
     fireEvent.click(screen.getByTestId('confirm-delete-btn'));
 
     await waitFor(() => {
-      expect(mockSaveEncryptedData).toHaveBeenCalledWith(
-        expect.objectContaining({ type: 'tasks', value: [] }),
-      );
+      expect(mockDeleteTask).toHaveBeenCalledWith('t1');
     });
+
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Task deleted' }),
+        expect.objectContaining({
+          title: 'Task deleted',
+          description: 'Your task has been deleted.',
+        }),
       );
     });
   });
 
-  it('should open edit dialog and save edit with updatedAt', async () => {
+  it('closes delete dialog on cancel', async () => {
+    const task: Task = {
+      id: 't1',
+      title: 'Task to delete',
+      priority: 'medium',
+      status: 'pending',
+      archived: false,
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    mockUseTasksWorkflow.mockReturnValue(makeWorkflowState({ tasks: [task] }));
+
+    render(<TasksPageClient />);
+
+    fireEvent.click(screen.getByTestId('delete-t1'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('delete-dialog')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('cancel-delete-btn'));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('delete-dialog')).not.toBeInTheDocument();
+    });
+  });
+
+  it('opens edit dialog when edit button clicked', async () => {
     const task: Task = {
       id: 't1',
       title: 'Task to edit',
@@ -440,14 +388,9 @@ describe('TasksPageClient', () => {
       archived: false,
       createdAt: '2024-01-01T00:00:00.000Z',
     };
-    mockLoadDecryptedData.mockResolvedValue([task]);
-    mockNormalizeTasks.mockReturnValue({ value: [task], changed: false });
+    mockUseTasksWorkflow.mockReturnValue(makeWorkflowState({ tasks: [task] }));
 
     render(<TasksPageClient />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
-    });
 
     fireEvent.click(screen.getByTestId('edit-t1'));
 
@@ -457,33 +400,9 @@ describe('TasksPageClient', () => {
         'Task to edit',
       );
     });
-
-    fireEvent.click(screen.getByTestId('save-edit-btn'));
-
-    await waitFor(() => {
-      expect(mockSaveEncryptedData).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'tasks',
-          value: expect.arrayContaining([
-            expect.objectContaining({
-              id: 't1',
-              title: 'Updated Title',
-              priority: 'low',
-              status: 'done',
-              updatedAt: expect.any(String),
-            }),
-          ]),
-        }),
-      );
-    });
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Task updated' }),
-      );
-    });
   });
 
-  it('should close edit dialog when close button clicked', async () => {
+  it('calls updateTask on edit save and shows success toast', async () => {
     const task: Task = {
       id: 't1',
       title: 'Task to edit',
@@ -492,14 +411,54 @@ describe('TasksPageClient', () => {
       archived: false,
       createdAt: '2024-01-01T00:00:00.000Z',
     };
-    mockLoadDecryptedData.mockResolvedValue([task]);
-    mockNormalizeTasks.mockReturnValue({ value: [task], changed: false });
+    const mockUpdateTask = jest.fn().mockResolvedValue({
+      ok: true,
+      kind: 'updated',
+    });
+    mockUseTasksWorkflow.mockReturnValue(
+      makeWorkflowState({ tasks: [task], updateTask: mockUpdateTask }),
+    );
 
     render(<TasksPageClient />);
 
+    fireEvent.click(screen.getByTestId('edit-t1'));
+
     await waitFor(() => {
-      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-dialog')).toBeInTheDocument();
     });
+
+    fireEvent.click(screen.getByTestId('save-edit-btn'));
+
+    await waitFor(() => {
+      expect(mockUpdateTask).toHaveBeenCalledWith('t1', {
+        title: 'Updated Title',
+        priority: 'low',
+        status: 'done',
+      });
+    });
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Task updated',
+          description: 'Changes saved (encrypted).',
+        }),
+      );
+    });
+  });
+
+  it('closes edit dialog on close button click', async () => {
+    const task: Task = {
+      id: 't1',
+      title: 'Task to edit',
+      priority: 'high',
+      status: 'pending',
+      archived: false,
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    mockUseTasksWorkflow.mockReturnValue(makeWorkflowState({ tasks: [task] }));
+
+    render(<TasksPageClient />);
 
     fireEvent.click(screen.getByTestId('edit-t1'));
 
@@ -514,7 +473,7 @@ describe('TasksPageClient', () => {
     });
   });
 
-  it('should archive task with archived:true and updatedAt', async () => {
+  it('calls archiveTask and shows success toast', async () => {
     const task: Task = {
       id: 't1',
       title: 'Task to archive',
@@ -523,39 +482,33 @@ describe('TasksPageClient', () => {
       archived: false,
       createdAt: '2024-01-01T00:00:00.000Z',
     };
-    mockLoadDecryptedData.mockResolvedValue([task]);
-    mockNormalizeTasks.mockReturnValue({ value: [task], changed: false });
+    const mockArchiveTask = jest.fn().mockResolvedValue({
+      ok: true,
+      kind: 'archived',
+    });
+    mockUseTasksWorkflow.mockReturnValue(
+      makeWorkflowState({ tasks: [task], archiveTask: mockArchiveTask }),
+    );
 
     render(<TasksPageClient />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
-    });
 
     fireEvent.click(screen.getByTestId('archive-t1'));
 
     await waitFor(() => {
-      expect(mockSaveEncryptedData).toHaveBeenCalledWith(
+      expect(mockArchiveTask).toHaveBeenCalledWith('t1');
+    });
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'tasks',
-          value: expect.arrayContaining([
-            expect.objectContaining({
-              id: 't1',
-              archived: true,
-              updatedAt: expect.any(String),
-            }),
-          ]),
+          title: 'Task archived',
+          description: 'Task moved to archive.',
         }),
       );
     });
-    await waitFor(() => {
-      expect(mockToast).toHaveBeenCalledWith(
-        expect.objectContaining({ title: 'Task archived' }),
-      );
-    });
   });
 
-  it('should hide archived tasks by default', async () => {
+  it('hides archived tasks by default', () => {
     const tasks: Task[] = [
       {
         id: 't1',
@@ -574,19 +527,15 @@ describe('TasksPageClient', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
       },
     ];
-    mockLoadDecryptedData.mockResolvedValue(tasks);
-    mockNormalizeTasks.mockReturnValue({ value: tasks, changed: false });
+    mockUseTasksWorkflow.mockReturnValue(makeWorkflowState({ tasks }));
 
     render(<TasksPageClient />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Active task')).toBeInTheDocument();
-    });
-
+    expect(screen.getByText('Active task')).toBeInTheDocument();
     expect(screen.queryByText('Archived task')).not.toBeInTheDocument();
   });
 
-  it('should show archived tasks when "Show Archived" button clicked', async () => {
+  it('shows archived tasks when Show Archived button clicked', async () => {
     const tasks: Task[] = [
       {
         id: 't1',
@@ -605,26 +554,18 @@ describe('TasksPageClient', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
       },
     ];
-    mockLoadDecryptedData.mockResolvedValue(tasks);
-    mockNormalizeTasks.mockReturnValue({ value: tasks, changed: false });
+    mockUseTasksWorkflow.mockReturnValue(makeWorkflowState({ tasks }));
 
     render(<TasksPageClient />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Active task')).toBeInTheDocument();
-    });
-
-    const showArchivedBtn = screen.getByRole('button', {
-      name: 'Show Archived',
-    });
-    fireEvent.click(showArchivedBtn);
+    fireEvent.click(screen.getByRole('button', { name: 'Show Archived' }));
 
     await waitFor(() => {
       expect(screen.getByText('Archived task')).toBeInTheDocument();
     });
   });
 
-  it('should filter tasks by context: "Personal" button shows only personal tasks', async () => {
+  it('filters to personal context only when Personal button clicked', async () => {
     const tasks: Task[] = [
       {
         id: 't1',
@@ -645,18 +586,11 @@ describe('TasksPageClient', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
       },
     ];
-    mockLoadDecryptedData.mockResolvedValue(tasks);
-    mockNormalizeTasks.mockReturnValue({ value: tasks, changed: false });
+    mockUseTasksWorkflow.mockReturnValue(makeWorkflowState({ tasks }));
 
     render(<TasksPageClient />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Personal task')).toBeInTheDocument();
-      expect(screen.getByText('Work task')).toBeInTheDocument();
-    });
-
-    const personalBtn = screen.getByRole('button', { name: 'Personal' });
-    fireEvent.click(personalBtn);
+    fireEvent.click(screen.getByRole('button', { name: 'Personal' }));
 
     await waitFor(() => {
       expect(screen.getByText('Personal task')).toBeInTheDocument();
@@ -664,7 +598,7 @@ describe('TasksPageClient', () => {
     });
   });
 
-  it('should filter tasks by context: "Work" button shows only work tasks', async () => {
+  it('filters to work context only when Work button clicked', async () => {
     const tasks: Task[] = [
       {
         id: 't1',
@@ -685,18 +619,11 @@ describe('TasksPageClient', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
       },
     ];
-    mockLoadDecryptedData.mockResolvedValue(tasks);
-    mockNormalizeTasks.mockReturnValue({ value: tasks, changed: false });
+    mockUseTasksWorkflow.mockReturnValue(makeWorkflowState({ tasks }));
 
     render(<TasksPageClient />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Personal task')).toBeInTheDocument();
-      expect(screen.getByText('Work task')).toBeInTheDocument();
-    });
-
-    const workBtn = screen.getByRole('button', { name: 'Work' });
-    fireEvent.click(workBtn);
+    fireEvent.click(screen.getByRole('button', { name: 'Work' }));
 
     await waitFor(() => {
       expect(screen.queryByText('Personal task')).not.toBeInTheDocument();
@@ -704,7 +631,7 @@ describe('TasksPageClient', () => {
     });
   });
 
-  it('should show all non-archived tasks when "All" filter button clicked', async () => {
+  it('shows all tasks when All filter button clicked after context filter', async () => {
     const tasks: Task[] = [
       {
         id: 't1',
@@ -725,25 +652,17 @@ describe('TasksPageClient', () => {
         createdAt: '2024-01-01T00:00:00.000Z',
       },
     ];
-    mockLoadDecryptedData.mockResolvedValue(tasks);
-    mockNormalizeTasks.mockReturnValue({ value: tasks, changed: false });
+    mockUseTasksWorkflow.mockReturnValue(makeWorkflowState({ tasks }));
 
     render(<TasksPageClient />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Personal task')).toBeInTheDocument();
-      expect(screen.getByText('Work task')).toBeInTheDocument();
-    });
-
-    const personalBtn = screen.getByRole('button', { name: 'Personal' });
-    fireEvent.click(personalBtn);
+    fireEvent.click(screen.getByRole('button', { name: 'Personal' }));
 
     await waitFor(() => {
       expect(screen.queryByText('Work task')).not.toBeInTheDocument();
     });
 
-    const allBtn = screen.getByRole('button', { name: 'All' });
-    fireEvent.click(allBtn);
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
 
     await waitFor(() => {
       expect(screen.getByText('Personal task')).toBeInTheDocument();
@@ -751,7 +670,7 @@ describe('TasksPageClient', () => {
     });
   });
 
-  it('should show destructive toast on save failure', async () => {
+  it('shows save_failed toast when updateTask mutation fails', async () => {
     const task: Task = {
       id: 't1',
       title: 'Task to edit',
@@ -760,15 +679,15 @@ describe('TasksPageClient', () => {
       archived: false,
       createdAt: '2024-01-01T00:00:00.000Z',
     };
-    mockLoadDecryptedData.mockResolvedValue([task]);
-    mockNormalizeTasks.mockReturnValue({ value: [task], changed: false });
-    mockSaveEncryptedData.mockRejectedValueOnce(new Error('Save failed'));
+    const mockUpdateTask = jest.fn().mockResolvedValue({
+      ok: false,
+      error: { code: 'save_failed' as const, message: 'Network error' },
+    });
+    mockUseTasksWorkflow.mockReturnValue(
+      makeWorkflowState({ tasks: [task], updateTask: mockUpdateTask }),
+    );
 
     render(<TasksPageClient />);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('task-t1')).toBeInTheDocument();
-    });
 
     fireEvent.click(screen.getByTestId('edit-t1'));
 
@@ -777,6 +696,38 @@ describe('TasksPageClient', () => {
     });
 
     fireEvent.click(screen.getByTestId('save-edit-btn'));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Failed to save',
+          description: 'Network error',
+          variant: 'destructive',
+        }),
+      );
+    });
+  });
+
+  it('shows save_failed toast when archiveTask mutation fails', async () => {
+    const task: Task = {
+      id: 't1',
+      title: 'Task to archive',
+      priority: 'medium',
+      status: 'pending',
+      archived: false,
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    const mockArchiveTask = jest.fn().mockResolvedValue({
+      ok: false,
+      error: { code: 'save_failed' as const, message: 'Save failed' },
+    });
+    mockUseTasksWorkflow.mockReturnValue(
+      makeWorkflowState({ tasks: [task], archiveTask: mockArchiveTask }),
+    );
+
+    render(<TasksPageClient />);
+
+    fireEvent.click(screen.getByTestId('archive-t1'));
 
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(
