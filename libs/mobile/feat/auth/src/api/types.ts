@@ -1,7 +1,4 @@
-import type {
-  Login200Response,
-  FilteredUserInterface,
-} from '@myorganizer/app-api-client';
+import type { FilteredUserInterface } from '@myorganizer/app-api-client';
 
 export interface AuthTokens {
   accessToken: string;
@@ -14,4 +11,4 @@ export interface AuthSession {
   tokens: AuthTokens;
 }
 
-export type { Login200Response, FilteredUserInterface };
+export type { FilteredUserInterface };

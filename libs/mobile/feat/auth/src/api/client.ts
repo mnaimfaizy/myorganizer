@@ -1,4 +1,8 @@
 import { AuthenticationApi, Configuration } from '@myorganizer/app-api-client';
+import {
+  buildRefreshTokenRequest,
+  resolveRefreshTokenAfterRefresh,
+} from '@myorganizer/auth';
 import axios, {
   AxiosError,
   AxiosInstance,
@@ -10,7 +14,7 @@ import {
   getRefreshToken,
   saveRefreshToken,
 } from '../storage/keychain';
-import type { AuthTokens, Login200Response } from './types';
+import type { AuthTokens } from './types';
 
 // On Android emulators, 10.0.2.2 routes to the host machine's localhost.
 // On iOS simulators and physical devices, localhost/127.0.0.1 works directly.
@@ -104,12 +108,19 @@ apiClient.interceptors.response.use(
       );
 
       const response = await refreshApi.refreshToken({
-        refreshTokenRequest: { refresh_token: storedRefreshToken },
+        refreshTokenRequest: buildRefreshTokenRequest(
+          'mobile',
+          storedRefreshToken,
+        ),
       });
 
-      const data: Login200Response = response.data;
+      const data = response.data;
       const newAccessToken = data.token;
-      const newRefreshToken = data.refresh_token;
+      const newRefreshToken = resolveRefreshTokenAfterRefresh(
+        'mobile',
+        data,
+        storedRefreshToken,
+      );
 
       if (!newAccessToken) {
         throw new Error('No access token in refresh response');
@@ -123,7 +134,7 @@ apiClient.interceptors.response.use(
 
       const tokens: AuthTokens = {
         accessToken: newAccessToken,
-        refreshToken: newRefreshToken || storedRefreshToken,
+        refreshToken: newRefreshToken ?? storedRefreshToken,
         expiresIn: data.expires_in,
       };
 

@@ -8,6 +8,12 @@ import {
 import { getApiBaseUrl } from '@myorganizer/core';
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
 
+import {
+  buildLoginUserBody,
+  buildRefreshTokenRequest,
+  shouldSendCredentials,
+} from './refresh-client-contract';
+
 export type ResetPasswordResponse = {
   message: string;
   status: number;
@@ -136,7 +142,7 @@ export function getAuthAxios(): AxiosInstance {
   const baseURL = getApiBaseUrl();
   const instance = axios.create({
     baseURL,
-    withCredentials: true,
+    withCredentials: shouldSendCredentials('web'),
   });
 
   instance.interceptors.response.use(
@@ -207,10 +213,13 @@ export async function login(args: {
 
   try {
     const res = await api.login({
-      userLoginBody: {
-        email: args.email,
-        password: args.password,
-      },
+      userLoginBody: buildLoginUserBody(
+        {
+          email: args.email,
+          password: args.password,
+        },
+        'web',
+      ),
     });
 
     const session = toSession(res.data);
@@ -236,7 +245,9 @@ export async function resendVerificationEmail(
 export async function refresh(): Promise<AuthSession> {
   const api = getAuthApi();
   try {
-    const res = await api.refreshToken({});
+    const res = await api.refreshToken({
+      refreshTokenRequest: buildRefreshTokenRequest('web'),
+    });
     const session = toSession(res.data);
     setAccessToken(session.token);
     setCurrentUser(session.user);
