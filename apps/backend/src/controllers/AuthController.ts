@@ -18,6 +18,7 @@ import {
 import { Body, ValidateBody } from '../decorators/request-body-validator';
 import apiTokens from '../helpers/ApiTokens';
 import filterUser from '../helpers/filterUser';
+import PlatformTokenHandler from '../helpers/PlatformTokenHandler';
 import { decodeToken } from '../helpers/jwtHelper';
 import { ValidateErrorJSON } from '../interfaces';
 import { RegisterUserResponse } from '../models/Auth';
@@ -57,23 +58,18 @@ export class AuthController extends Controller {
   }> {
     void requestBody;
     const requestUser = req.user as UserInterface;
-    const { token, refreshToken } = apiTokens.createTokens(requestUser);
-    if (token instanceof Error) {
+
+    try {
+      const response = PlatformTokenHandler.buildLoginResponse(
+        requestUser,
+        requestBody.client_type,
+      );
+      this.setStatus(200);
+      return response;
+    } catch {
       this.setStatus(500);
       throw new Error('Failed to create access token');
     }
-    const user = filterUser(requestUser);
-    const isMobile = requestBody.client_type === 'mobile';
-
-    this.setStatus(200);
-    return {
-      token,
-      expires_in: 600_000,
-      user,
-      ...(isMobile && !(refreshToken instanceof Error)
-        ? { refresh_token: refreshToken }
-        : {}),
-    };
   }
 
   @Post('/logout/{userId}')

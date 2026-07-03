@@ -6,20 +6,43 @@ import { ValidateError } from 'tsoa';
 
 jest.setTimeout(120_000);
 
+jest.mock('../helpers/PlatformTokenHandler', () => ({
+  __esModule: true,
+  PlatformTokenHandler: {
+    buildLoginResponse: jest.fn(),
+  },
+  default: {
+    buildLoginResponse: jest.fn(),
+  },
+}));
+
+jest.mock('../utils/passport', () => ({
+  __esModule: true,
+  default: {
+    authenticate: () => (_req: any, _res: any, next: any) => next(),
+  },
+}));
+
 jest.mock('../middleware/authentication', () => {
   return {
     expressAuthentication: async (req: any) => {
       const authHeader = req?.headers?.authorization;
       if (!authHeader) {
-        const err: any = new Error('No token provided');
+        const err = new Error('Unauthorized') as Error & { status?: number };
         err.status = 401;
         throw err;
       }
 
-      const userId = authHeader.startsWith('Bearer ')
+      const token = authHeader.startsWith('Bearer ')
         ? authHeader.slice('Bearer '.length)
-        : 'user-1';
-      req.user = { id: userId || 'user-1' };
+        : authHeader;
+
+      if (token === 'no-id') {
+        req.user = {};
+        return req.user;
+      }
+
+      req.user = { id: token || 'user-1' };
       return req.user;
     },
   };
@@ -41,6 +64,27 @@ jest.mock('../services/VaultBackupService', () => {
     ],
   };
 });
+
+jest.mock('../services/VaultService', () => ({
+  __esModule: true,
+  default: {},
+}));
+
+jest.mock('../services/UserService', () => ({
+  __esModule: true,
+  default: {},
+}));
+
+// Prevent module-level createPrismaClient() calls in YouTube services from
+// attempting a real DB connection during VaultBackup integration tests.
+jest.mock('../services/YouTubeNotificationService', () => ({
+  __esModule: true,
+  default: {},
+}));
+jest.mock('../services/YouTubeSyncService', () => ({
+  __esModule: true,
+  default: {},
+}));
 
 function makeApp() {
   jest.resetModules();
@@ -90,10 +134,53 @@ describe('VaultBackupController (HTTP integration)', () => {
     jest.clearAllMocks();
   });
 
-  test('requires auth for POST /vault/backups', async () => {
-    const app = makeApp();
-    const res = await request(app).post('/vault/backups').send(validBody);
-    expect(res.status).toBe(401);
+  describe('auth requirements', () => {
+    test('requires auth for POST /vault/backups', async () => {
+      const app = makeApp();
+      const svc = require('../services/VaultBackupService').default;
+
+      const res = await request(app).post('/vault/backups').send(validBody);
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Unauthorized' });
+      expect(svc.recordEvent).not.toHaveBeenCalled();
+    });
+
+    test('requires auth for GET /vault/backups/latest', async () => {
+      const app = makeApp();
+      const svc = require('../services/VaultBackupService').default;
+
+      const res = await request(app).get('/vault/backups/latest');
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Unauthorized' });
+      expect(svc.getLatest).not.toHaveBeenCalled();
+    });
+
+    test('requires auth for GET /vault/backups', async () => {
+      const app = makeApp();
+      const svc = require('../services/VaultBackupService').default;
+
+      const res = await request(app).get('/vault/backups');
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Unauthorized' });
+      expect(svc.listHistory).not.toHaveBeenCalled();
+    });
+
+    test('returns 401 with Unauthorized when authenticated user has no id', async () => {
+      const app = makeApp();
+      const svc = require('../services/VaultBackupService').default;
+
+      const res = await request(app)
+        .post('/vault/backups')
+        .set('Authorization', 'Bearer no-id')
+        .send(validBody);
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Unauthorized' });
+      expect(svc.recordEvent).not.toHaveBeenCalled();
+    });
   });
 
   test('returns 201 when recording a successful backup', async () => {

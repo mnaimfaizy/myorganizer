@@ -620,6 +620,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: JWT Access Token only
+    cron-secret:
+      type: apiKey
+      in: header
+      name: X-Cron-Secret
+      description: Shared secret for cron-triggered endpoints
 info:
   title: "@myorganizer/source"
   version: 0.2.0
@@ -940,7 +945,8 @@ paths:
         Authenticated via X-Cron-Secret header instead of JWT.
       tags:
         - YouTube
-      security: []
+      security:
+        - cron-secret: []
       parameters: []
   /vault:
     get:
