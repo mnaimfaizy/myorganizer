@@ -8,6 +8,7 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 - For building features or fixing bugs test-first (red-green-refactor), use `.claude/commands/tdd.md` (`.github/skills/tdd/SKILL.md`). Plan the behavior list with the user before writing any code, work in vertical tracer-bullet slices (one test → one implementation → repeat), and consult `.github/skills/codebase-design/SKILL.md` for deep-module vocabulary during the refactor step.
 - Storybook creation or updates should use `.claude/commands/storybook.md`.
 - Playwright E2E creation/updates should follow `.github/skills/playwright-e2e-workflow/SKILL.md`.
+- Issue/PR triage requests should use `.claude/commands/triage.md` (`.github/skills/triage/SKILL.md`).
 - Commit-message drafting still belongs to the existing `Commit` sub-agent; commit execution belongs to the shared `ai:commit` runner.
 - Jest test implementation uses a three-stage pipeline: `TestScaffold` (writes tests) → `TestReviewer` (static gate: checklist, tsc, eslint) → `TestRunner` (execution with hang detection). Always provide a behavior matrix from the actual implementation, including unsupported scenarios to avoid. Consult `docs/testing/README.md` for per-project tooling, integration scope, mock patterns, and validation checks. Max 3 retries before escalating to the main agent.
 - Storybook implementation is delegated to the `StorybookCurator` sub-agent (`.claude/agents/storybook-curator.md`); require requirement-readiness analysis before edits and route clarification questions to the human-in-the-loop.

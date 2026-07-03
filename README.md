@@ -43,6 +43,7 @@
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
 - [Available Scripts](#available-scripts)
+- [AI Triage Quick Start](#ai-triage-quick-start)
 - [Frontend Architecture](#frontend-architecture)
 - [E2E Encrypted Vault](#e2e-encrypted-vault)
 - [Production Checklist](#production-checklist)
@@ -221,6 +222,23 @@ corepack enable
 | `yarn api:generate`           | Regenerate the API client from the spec       |
 | `yarn openapi:check`          | Check for drift between spec and client       |
 | `yarn nx dep-graph`           | Visualize the project dependency graph        |
+
+---
+
+## AI Triage Quick Start
+
+Use the new triage skill to classify and move issues/PRs through triage states.
+
+| Harness | Where to start                      | Backing skill                    |
+| ------- | ----------------------------------- | -------------------------------- |
+| Claude  | `.claude/commands/triage.md`        | `.github/skills/triage/SKILL.md` |
+| Gemini  | `.gemini/commands/triage.md`        | `.github/skills/triage/SKILL.md` |
+| Cursor  | `.cursor/rules/triage-workflow.mdc` | `.github/skills/triage/SKILL.md` |
+
+Supporting references:
+
+- `.github/skills/triage/AGENT-BRIEF.md` - Template and rules for `ready-for-agent` briefs.
+- `.github/skills/triage/OUT-OF-SCOPE.md` - How to maintain `.out-of-scope/` for rejected enhancements.
 
 ---
 

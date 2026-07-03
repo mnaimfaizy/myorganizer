@@ -18,6 +18,13 @@ Use these repo-local workflows for commit, pull request, test, and Storybook-sui
 - Leave reviewers empty unless the user explicitly supplies them with `--reviewer <login>`.
 - Return only the PR URL on success.
 
+## Triage Issues And PRs
+
+- Use `.gemini/commands/triage.md` for issue/PR triage requests.
+- The canonical workflow lives in `.github/skills/triage/SKILL.md`.
+- Use `.github/skills/triage/AGENT-BRIEF.md` when moving work to `ready-for-agent`.
+- Use `.github/skills/triage/OUT-OF-SCOPE.md` when rejecting enhancements as `wontfix`.
+
 ## Design & Planning Workflows
 
 When you need to stress-test a plan against the project's domain model and documented decisions, use the **grill-with-docs** skill:
