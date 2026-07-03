@@ -2,7 +2,7 @@
 description: 'Use when creating or editing a React component in the MyOrganizer web app. Accepts a Structured Spec from the main agent, reads project guidelines, and writes the component following docs/ui/GUIDELINES.md and TECH_STACK.md. Always prefers the compound/composition pattern.'
 name: 'ComponentBuilder'
 tools: [read, search, edit, create]
-model: ['GPT-5 mini (copilot)', 'Claude Haiku 4.5 (copilot)']
+model: ['GPT-5 mini (copilot)', 'Kimi K2.7 Code (Preview) (copilot)', 'MAI-Code-1-Flash (copilot)', 'Claude Haiku 4.5 (copilot)']
 user-invocable: false
 argument-hint: 'Structured Spec block (Component Name, Target Path, Action, Props Interface, State, Zod Schema, Composition)'
 ---

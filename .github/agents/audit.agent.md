@@ -2,7 +2,7 @@
 description: 'Use when the user asks to audit, scan, review, or check the codebase for issues like unused exports, `any` usage, missing tests, OWASP Top 10 risks, Nx module boundary violations, or dead code. Read-only — returns a prioritized list.'
 name: 'Audit'
 tools: [read, search, execute]
-model: ['Claude Sonnet 4.6 (copilot)', 'GPT-5.4 (copilot)']
+model: ['Kimi K2.7 Code (Preview) (copilot)', 'Claude Haiku 4.5 (copilot)', 'GPT-5.3-Codex (copilot)']
 user-invocable: true
 argument-hint: "Audit scope (project, library, or 'full repo') and focus area"
 ---

@@ -2,7 +2,7 @@
 description: 'Use when the user asks to validate, check, or confirm that the repo is ready to cut a release in MyOrganizer. Returns a structured pass/fail checklist.'
 name: 'PreflightCheck'
 tools: [execute]
-model: ['GPT-5 mini (copilot)', 'Claude Haiku 4.5 (copilot)']
+model: ['GPT-5 mini (copilot)', 'Gemini 3.5 Flash (copilot)', 'Claude Haiku 4.5 (copilot)']
 user-invocable: true
 argument-hint: 'Optional: target version (e.g. v1.3.0) for version-consistency check'
 ---

@@ -2,7 +2,7 @@
 description: 'Use when creating or updating Storybook stories for MyOrganizer UI components. This agent must analyze requirement quality before editing, challenge incomplete or weak requests, and deliver UX/a11y-aware stories.'
 name: 'StorybookCurator'
 tools: [read, search, edit]
-model: ['gpt-5-mini', 'claude-haiku-4.5']
+model: ['Gemini 3.5 Flash (copilot)', 'Claude Haiku 4.5 (copilot)', 'GPT-5 mini (copilot)']
 user-invocable: true
 argument-hint: 'Requirement summary + component/story paths + expected states'
 ---

@@ -2,7 +2,7 @@
 description: 'Use when the user asks to determine, suggest, or propose the next semantic version number based on commit history in MyOrganizer.'
 name: 'VersionBump'
 tools: [execute]
-model: ['GPT-5 mini (copilot)', 'Claude Haiku 4.5 (copilot)']
+model: ['GPT-5 mini (copilot)', 'Gemini 3 Flash (Preview) (copilot)', 'MAI-Code-1-Flash (copilot)']
 user-invocable: true
 argument-hint: 'Optional: explicit commit range (defaults to latest-tag..HEAD)'
 ---

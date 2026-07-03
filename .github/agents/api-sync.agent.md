@@ -2,7 +2,7 @@
 description: 'Use when the user asks to verify, regenerate, or check drift in the OpenAPI spec or generated API client (libs/app-api-client) after backend contract changes in MyOrganizer.'
 name: 'ApiSync'
 tools: [read, search, execute]
-model: ['Claude Sonnet 4.6 (copilot)', 'GPT-5.4 (copilot)']
+model: ['Gemini 3 Flash (Preview) (copilot)', 'GPT-5 mini (copilot)', 'GPT-5.3-Codex (copilot)']
 user-invocable: true
 argument-hint: "Optional: 'check' (default) or 'regenerate'"
 ---

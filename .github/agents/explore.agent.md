@@ -2,7 +2,7 @@
 description: 'Read-only codebase exploration specialist for MyOrganizer. Delegate when the main agent would issue 3 or more consecutive file read/search operations to locate something in the codebase.'
 name: 'CodeExplorer'
 tools: [read, search]
-model: ['Claude Haiku 4.5 (copilot)', 'GPT-5 mini (copilot)']
+model: ['Gemini 3.5 Flash (copilot)', 'GPT-5 mini (copilot)', 'Claude Haiku 4.5 (copilot)']
 user-invocable: false
 argument-hint: 'Explore Request with Goal (required) + optional Known Locations, Search Hints, Out of Scope, Expected Output'
 ---

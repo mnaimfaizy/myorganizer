@@ -2,7 +2,7 @@
 description: 'Use when the user asks to draft release notes, CHANGELOG entries, or summarize commits between two refs/tags for MyOrganizer.'
 name: 'ReleaseNotes'
 tools: [read, search, execute]
-model: ['GPT-5 mini (copilot)', 'Claude Haiku 4.5 (copilot)']
+model: ['GPT-5 mini (copilot)', 'Gemini 3.5 Flash (copilot)', 'Claude Haiku 4.5 (copilot)']
 user-invocable: true
 argument-hint: '<from-ref>..<to-ref> (defaults to last tag..HEAD)'
 ---

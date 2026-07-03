@@ -2,7 +2,7 @@
 description: 'Use when the user asks to write, update, or expand long-form documentation, READMEs, ADRs, feature docs, or guides under docs/ or library README files in MyOrganizer. Produces Markdown content; main agent decides where to write it.'
 name: 'Docs'
 tools: [read, search]
-model: ['Claude Sonnet 4.6 (copilot)', 'GPT-5.4 (copilot)']
+model: ['Gemini 3.5 Flash (copilot)', 'Claude Haiku 4.5 (copilot)', 'GPT-5.3-Codex (copilot)']
 user-invocable: true
 argument-hint: 'Topic + target audience + (optional) target file'
 ---

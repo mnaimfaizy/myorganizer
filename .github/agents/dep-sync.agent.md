@@ -2,7 +2,7 @@
 description: 'Synchronise TECH_STACK.md and authoritative files when dependencies are installed, updated, or removed. Proposes changes and requires user confirmation before writing anything.'
 name: 'DepSync'
 tools: [read, search, edit]
-model: ['GPT-5 mini (copilot)', 'Claude Haiku 4.5 (copilot)']
+model: ['GPT-5 mini (copilot)', 'Claude Haiku 4.5 (copilot)', 'Gemini 3.5 Flash (copilot)']
 user-invocable: true
 argument-hint: 'Optional: "added <package>", "removed <package>", or blank for a full diff'
 ---

@@ -2,7 +2,7 @@
 description: 'Use when the user asks to audit dependencies, check for outdated packages, scan for vulnerabilities, or review dependency upgrade risk in MyOrganizer.'
 name: 'DepAudit'
 tools: [read, search, execute]
-model: ['GPT-5 mini (copilot)', 'Claude Sonnet 4.6 (copilot)']
+model: ['GPT-5.3-Codex (copilot)', 'Claude Haiku 4.5 (copilot)']
 user-invocable: true
 argument-hint: "Optional: 'security' | 'outdated' | 'all' (default)"
 ---
