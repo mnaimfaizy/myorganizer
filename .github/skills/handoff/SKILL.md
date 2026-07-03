@@ -1,7 +1,7 @@
 ---
 name: handoff
-description: Compact the current conversation into a handoff document for another session or agent to continue from.
-argument-hint: 'What will the next session focus on?'
+description: Compact the current conversation into a handoff document for another agent to pick up.
+argument-hint: 'What will the next session be used for?'
 disable-model-invocation: true
 ---
 
@@ -9,13 +9,14 @@ disable-model-invocation: true
 
 Adapted from `mattpocock/skills` for MyOrganizer workflows.
 
-Write a handoff document that allows a fresh session to continue work with minimal drift.
+Write a handoff document summarizing the current conversation so a fresh agent can continue the work.
 
-## Requirements
+Save it to the temporary directory of the user's OS, not the current workspace.
 
-- Save the handoff document to the OS temporary/session area, **not** the repository workspace.
-- Include: context summary, current status, open decisions, next concrete steps, and verification state.
-- Include a **Suggested Skills** section listing relevant repo skills (for example: `to-prd`, `to-issues`, `unit-test-delegation-workflow`, `playwright-e2e-workflow`, `release-and-deploy-workflow`, `grill-with-docs`).
-- Do not duplicate full content already present in PRDs/issues/ADRs/commits/diffs; reference those paths or URLs instead.
-- Redact sensitive data (tokens, passwords, keys, personal data).
-- If arguments are provided, tailor the handoff toward that next-session focus.
+Include a Suggested Skills section in the document with relevant repo-local skills (for example: `to-prd`, `to-issues`, `unit-test-delegation-workflow`, `playwright-e2e-workflow`, `release-and-deploy-workflow`, `grill-with-docs`).
+
+Do not duplicate content already captured in other artifacts (PRDs, plans, ADRs, issues, commits, diffs). Reference those artifacts by path or URL.
+
+Redact sensitive information such as API keys, passwords, tokens, or personally identifiable data.
+
+If arguments are provided, treat them as what the next session will focus on and tailor the handoff accordingly.

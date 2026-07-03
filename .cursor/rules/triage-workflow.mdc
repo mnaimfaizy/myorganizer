@@ -1,0 +1,30 @@
+---
+description: Triage issues and external PRs through a consistent state machine, then write an agent brief, request more info, or close with durable rationale.
+alwaysApply: false
+---
+
+# Triage Workflow
+
+## When to Use
+
+- A maintainer asks what needs triage attention.
+- A specific issue or PR needs categorisation and state progression.
+- You need to prepare an item for autonomous implementation.
+
+## Core Approach
+
+Read and follow `.github/skills/triage/SKILL.md` exactly.
+
+Key points:
+
+- Maintain exactly one category role and one state role.
+- Verify bug/PR claims before recommending `ready-for-agent` when possible.
+- Use `.github/skills/triage/AGENT-BRIEF.md` for `ready-for-agent` handoff comments.
+- Use `.github/skills/triage/OUT-OF-SCOPE.md` when rejecting enhancements as `wontfix`.
+- Prefix every triage-generated tracker comment with the AI disclaimer from the skill.
+
+## Skill Files
+
+- `.github/skills/triage/SKILL.md`
+- `.github/skills/triage/AGENT-BRIEF.md`
+- `.github/skills/triage/OUT-OF-SCOPE.md`
