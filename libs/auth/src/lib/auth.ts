@@ -9,7 +9,7 @@ import {
 import type { AuthSessionStorageAdapter } from './auth-session-storage-adapter';
 import { createBrowserAuthSessionStorageAdapter } from './auth-session-storage-adapter';
 import { createAuthSessionTransportAdapter } from './auth-session-transport-adapter';
-import type { AuthUser } from './auth-session-types';
+import type { AuthOperationResult, AuthUser } from './auth-session-types';
 
 export type { AuthUser } from './auth-session-types';
 export type ResetPasswordResponse = {
@@ -62,34 +62,33 @@ export function getAuthApi(): AuthenticationApi {
   return defaultTransport.getAuthApi();
 }
 
+function unwrapAuthResult<T>(result: AuthOperationResult<T>): T {
+  if ('error' in result) {
+    throw new Error(result.error.message);
+  }
+
+  return result.value;
+}
+
 export async function login(args: {
   email: string;
   password: string;
   rememberMe?: boolean;
 }): Promise<AuthSession> {
   const result = await authSession.signIn(args);
-  if (!result.ok) {
-    throw new Error(result.error.message);
-  }
-  return result.value;
+  return unwrapAuthResult(result);
 }
 
 export async function resendVerificationEmail(
   email: string,
 ): Promise<{ message: string }> {
   const result = await authSession.resendVerificationEmail(email);
-  if (!result.ok) {
-    throw new Error(result.error.message);
-  }
-  return result.value;
+  return unwrapAuthResult(result);
 }
 
 export async function refresh(): Promise<AuthSession> {
   const result = await authSession.refreshAccessToken();
-  if (!result.ok) {
-    throw new Error(result.error.message);
-  }
-  return result.value;
+  return unwrapAuthResult(result);
 }
 
 export async function register(args: {
@@ -100,10 +99,7 @@ export async function register(args: {
   phone?: string;
 }): Promise<{ message: string; user?: AuthUser }> {
   const result = await authSession.signUp(args);
-  if (!result.ok) {
-    throw new Error(result.error.message);
-  }
-  return result.value;
+  return unwrapAuthResult(result);
 }
 
 export async function logout(): Promise<void> {
@@ -114,10 +110,7 @@ export async function requestPasswordReset(args: {
   email: string;
 }): Promise<ResetPasswordResponse> {
   const result = await authSession.requestPasswordReset(args);
-  if (!result.ok) {
-    throw new Error(result.error.message);
-  }
-  return result.value;
+  return unwrapAuthResult(result);
 }
 
 export async function confirmPasswordReset(args: {
@@ -126,10 +119,7 @@ export async function confirmPasswordReset(args: {
   confirmPassword: string;
 }): Promise<ResetPasswordResponse> {
   const result = await authSession.confirmPasswordReset(args);
-  if (!result.ok) {
-    throw new Error(result.error.message);
-  }
-  return result.value;
+  return unwrapAuthResult(result);
 }
 
 export { createBrowserAuthSessionStorageAdapter };
