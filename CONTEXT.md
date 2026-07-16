@@ -24,6 +24,18 @@ _Avoid_: Recurring payment, recurring task, bill
 The authenticated account holder.
 _Avoid_: Account, member, customer, person
 
+**Platform Admin**:
+A User with elevated privilege to manage other Users' account metadata across the MyOrganizer service. Cannot access Vault plaintext or Master Keys.
+_Avoid_: Admin, superuser, staff, operator, system admin
+
+**Disabled User**:
+A User whose account is blocked from authenticating; their Vault Ciphertext and profile remain until separately deleted or purged.
+_Avoid_: Banned user, suspended user, deactivated account, soft-deleted user
+
+**Admin Audit Log**:
+A durable record of Platform Admin actions on Users (who acted, what changed, which User was affected, when).
+_Avoid_: Activity log, admin history, audit trail, event log
+
 **Organization**:
 A group that allows multiple Users to share resources. Emerging — not fully implemented.
 _Avoid_: Team, group, workspace
