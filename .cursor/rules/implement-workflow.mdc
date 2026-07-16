@@ -1,0 +1,28 @@
+---
+description: Implement agreed work from a spec, PRD, or tickets in the current session. Use when moving from planning into hands-on delivery.
+alwaysApply: false
+---
+
+# Implement Workflow
+
+## When to Use
+
+- A spec, PRD, slice issue, or ticket set is ready and the user wants it built now.
+- Planned work is scoped for single-session or ad-hoc delivery (not the full `to-prd` → `dispatch-agents` path).
+
+## Core Approach
+
+Read and follow `.github/skills/implement/SKILL.md` exactly.
+
+Key points:
+
+- Confirm the spec source and read relevant `AGENTS.md` files first.
+- Use `/tdd` at pre-agreed seams; otherwise ship in small vertical slices.
+- Route tests, Storybook, E2E, and React components through mandatory delegation workflows.
+- Run lint and focused tests while iterating; run the full relevant suite at the end.
+- Review the diff with `/code-review` before finishing.
+- Commit and open PRs only when the user explicitly asks.
+
+## Skill Files
+
+- `.github/skills/implement/SKILL.md`

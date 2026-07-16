@@ -5,6 +5,8 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 - Commit requests should use `.claude/commands/commit.md`.
 - PR requests should use `.claude/commands/create-pr.md`.
 - Jest unit or integration test creation/updates should use `.claude/commands/unit-test.md`.
+- For implementing agreed work from a spec, PRD, or tickets in the current session, use `.claude/commands/implement.md` (`.github/skills/implement/SKILL.md`).
+- For reviewing branch or WIP changes against repo standards and the originating spec, use `.claude/commands/code-review.md` (`.github/skills/code-review/SKILL.md`).
 - For building features or fixing bugs test-first (red-green-refactor), use `.claude/commands/tdd.md` (`.github/skills/tdd/SKILL.md`). Plan the behavior list with the user before writing any code, work in vertical tracer-bullet slices (one test → one implementation → repeat), and consult `.github/skills/codebase-design/SKILL.md` for deep-module vocabulary during the refactor step.
 - Storybook creation or updates should use `.claude/commands/storybook.md`.
 - Playwright E2E creation/updates should follow `.github/skills/playwright-e2e-workflow/SKILL.md`.

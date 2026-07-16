@@ -25,7 +25,7 @@ Use this as a **router** when you are unsure which workflow to run.
 
 4. **Ad-hoc or single-shot implementation**
    - If request is issue creation: `/github-issue-creation-workflow`
-   - If request is direct implementation in current session: implement with relevant domain workflow skill (for example `/frontend-page-library-workflow`, `/backend-api-contract-change`, `/vault-feature-workflow`, `/youtube-integration-workflow`)
+   - If request is direct implementation in current session: **`/implement`**, then pull in domain workflow skills as needed (for example `/frontend-page-library-workflow`, `/backend-api-contract-change`, `/vault-feature-workflow`, `/youtube-integration-workflow`)
 
 ## Quality and delivery routing
 
@@ -35,6 +35,7 @@ Use this as a **router** when you are unsure which workflow to run.
 - Prisma/schema/migrations -> `/prisma-migration-workflow`
 - Release/deploy preparation -> `/release-and-deploy-workflow`
 - Architecture deepening pass -> `/improve-codebase-architecture`
+- Review branch or WIP changes -> `/code-review`
 
 ## Session transitions
 

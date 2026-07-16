@@ -17,10 +17,12 @@ Read and follow `.github/skills/ask-matt/SKILL.md` exactly.
 Routing highlights:
 
 - Planned feature -> `to-prd` then `to-issues`
+- Agreed spec ready to build -> `implement`
 - Design ambiguity -> `grill-with-docs`
 - Runnable validation required -> `prototype` (+ `handoff` if crossing sessions)
 - Jest/Playwright work -> matching test delegation workflow
 - Release preparation -> `release-and-deploy-workflow`
+- Review branch or WIP changes -> `code-review`
 
 ## Skill Files
 

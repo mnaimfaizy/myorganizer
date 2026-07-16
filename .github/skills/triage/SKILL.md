@@ -22,6 +22,7 @@ Every comment or issue body posted during triage must start with:
 
 - [AGENT-BRIEF.md](AGENT-BRIEF.md) - how to write durable agent briefs
 - [OUT-OF-SCOPE.md](OUT-OF-SCOPE.md) - how to maintain `.out-of-scope/` memory for rejected enhancements
+- `docs/agents/issue-tracker.md` - GitHub issue fetch/create conventions (`mnaimfaizy/myorganizer`)
 
 ## Roles
 

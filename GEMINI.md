@@ -99,6 +99,24 @@ Use these skills when planning a new feature end-to-end, from idea to autonomous
 2. `/to-issues <prd-number>` — break it into Slice Issues (user present)
 3. `yarn dispatch-agents --prd <number>` — hand off to autonomous agents (user walks away)
 
+## Implement — Hands-on delivery
+
+When agreed work from a spec, PRD, or tickets should be built in the current session, use the **implement** skill:
+
+- **Command**: `.gemini/commands/implement.md`
+- **Skill location**: `.github/skills/implement/SKILL.md`
+- **When to use**: The user has a scoped spec or ticket set and wants implementation now (ad-hoc or single-session delivery).
+- **What it does**: Implements against the spec using TDD at pre-agreed seams, routes file types through mandatory delegation, validates with Nx lint/test targets, reviews with `/code-review`, and commits or opens PRs only when the user explicitly asks.
+
+## Code Review — Two-axis diff review
+
+When the user wants to review changes since a fixed point (commit, branch, tag, or merge-base), use the **code-review** skill:
+
+- **Command**: `.gemini/commands/code-review.md`
+- **Skill location**: `.github/skills/code-review/SKILL.md`
+- **When to use**: Review a branch, PR, WIP changes, or after `/implement` before opening a PR.
+- **What it does**: Runs parallel Standards and Spec sub-agents against a three-dot diff, then aggregates findings under separate headings. Fetches issues via `docs/agents/issue-tracker.md`.
+
 ## Jest Test Delegation
 
 When a task requires Jest unit tests or Jest integration tests to be created or updated, delegate to the `test-scaffold` sub-agent (`.gemini/agents/test-scaffold.md`) rather than writing tests inline. The agent runs on `gemini-2.5-flash` to keep costs low.

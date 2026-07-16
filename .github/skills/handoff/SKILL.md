@@ -13,7 +13,7 @@ Write a handoff document summarizing the current conversation so a fresh agent c
 
 Save it to the temporary directory of the user's OS, not the current workspace.
 
-Include a Suggested Skills section in the document with relevant repo-local skills (for example: `to-prd`, `to-issues`, `unit-test-delegation-workflow`, `playwright-e2e-workflow`, `release-and-deploy-workflow`, `grill-with-docs`).
+Include a Suggested Skills section in the document with relevant repo-local skills (for example: `implement`, `code-review`, `to-prd`, `to-issues`, `unit-test-delegation-workflow`, `playwright-e2e-workflow`, `release-and-deploy-workflow`, `grill-with-docs`).
 
 Do not duplicate content already captured in other artifacts (PRDs, plans, ADRs, issues, commits, diffs). Reference those artifacts by path or URL.
 

@@ -1,0 +1,29 @@
+---
+description: Review branch or WIP changes along Standards and Spec axes using parallel sub-agents. Use when reviewing since a commit, branch, tag, or merge-base.
+alwaysApply: false
+---
+
+# Code Review Workflow
+
+## When to Use
+
+- The user wants to review a branch, PR, or work-in-progress changes.
+- After `/implement` or before opening a PR.
+- The user asks to "review since X" (commit, branch, tag, `main`, etc.).
+
+## Core Approach
+
+Read and follow `.github/skills/code-review/SKILL.md` exactly.
+
+Key points:
+
+- Pin a fixed point; use three-dot diff (`git diff <fixed-point>...HEAD`).
+- Fetch spec from issue references, user path, or PRD files.
+- Standards sources: `AGENTS.md`, `CLAUDE.md`, `docs/ui/GUIDELINES.md`, `docs/testing/README.md`, `CONTEXT.md`, ADRs, vault rules.
+- Spawn Standards and Spec sub-agents in parallel via `Task` (`generalPurpose`).
+- Aggregate under separate `## Standards` and `## Spec` headings — do not merge findings.
+
+## Skill Files
+
+- `.github/skills/code-review/SKILL.md`
+- `docs/agents/issue-tracker.md`
