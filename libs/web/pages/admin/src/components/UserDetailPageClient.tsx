@@ -13,6 +13,7 @@ import {
   formatUserDisplayName,
   formatUserRole,
 } from '../lib/formatUserIdentity';
+import { UserLifecycleActions } from './UserLifecycleActions';
 
 interface UserIdentityFieldProps {
   label: string;
@@ -109,6 +110,8 @@ export function UserDetailPageClient() {
               value={formatBooleanLabel(user.emailVerified)}
             />
           </dl>
+
+          <UserLifecycleActions user={user} onUserUpdated={setUser} />
         </>
       ) : null}
     </div>
