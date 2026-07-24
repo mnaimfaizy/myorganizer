@@ -58,8 +58,10 @@ jest.mock('../services/VaultBackupService', () => {
     VaultBackupService: jest.fn(),
     VAULT_BACKUP_BLOB_TYPES: [
       'addresses',
+      'groceries',
       'mobileNumbers',
       'subscriptions',
+      'tasks',
       'todos',
     ],
   };

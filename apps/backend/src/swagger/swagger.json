@@ -617,46 +617,9 @@
           }
         ]
       },
-      "User": {
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "first_name": {
-            "type": "string"
-          },
-          "last_name": {
-            "type": "string"
-          },
-          "phone": {
-            "type": "string"
-          },
-          "email": {
-            "type": "string"
-          },
-          "password": {
-            "type": "string"
-          },
-          "reset_password_token": {
-            "type": "string"
-          },
-          "email_verification_timestamp": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "blacklisted_tokens": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          }
-        },
-        "required": ["id", "email"],
-        "type": "object",
-        "additionalProperties": false
+      "UserRole": {
+        "type": "string",
+        "enum": ["user", "platform_admin"]
       },
       "FilteredUserInterface": {
         "properties": {
@@ -677,9 +640,40 @@
           },
           "phone": {
             "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "disabled": {
+            "type": "boolean"
           }
         },
-        "required": ["id", "name", "email", "firstName", "lastName"],
+        "required": [
+          "id",
+          "name",
+          "email",
+          "firstName",
+          "lastName",
+          "role",
+          "disabled"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "UserLoginBody": {
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          },
+          "client_type": {
+            "type": "string",
+            "enum": ["mobile", "web"]
+          }
+        },
+        "required": ["email", "password"],
         "type": "object",
         "additionalProperties": false
       },
@@ -697,6 +691,19 @@
           }
         },
         "required": ["message", "details"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "RegisterUserResponse": {
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/FilteredUserInterface"
+          }
+        },
+        "required": ["message"],
         "type": "object",
         "additionalProperties": false
       },
@@ -725,36 +732,6 @@
         "type": "object",
         "additionalProperties": false
       },
-      "UserLoginBody": {
-        "properties": {
-          "email": {
-            "type": "string"
-          },
-          "password": {
-            "type": "string"
-          },
-          "client_type": {
-            "type": "string",
-            "enum": ["mobile", "web"]
-          }
-        },
-        "required": ["email", "password"],
-        "type": "object",
-        "additionalProperties": false
-      },
-      "RegisterUserResponse": {
-        "properties": {
-          "message": {
-            "type": "string"
-          },
-          "user": {
-            "$ref": "#/components/schemas/FilteredUserInterface"
-          }
-        },
-        "required": ["message"],
-        "type": "object",
-        "additionalProperties": false
-      },
       "ResetPasswordByEmailBody": {
         "properties": {
           "email": {
@@ -778,6 +755,50 @@
           }
         },
         "required": ["token", "password", "confirm_password"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "AdminUserIdentity": {
+        "description": "Identity-only User projection for Platform Admin directory APIs.",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "firstName": {
+            "type": "string"
+          },
+          "lastName": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/UserRole"
+          },
+          "disabled": {
+            "type": "boolean"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "email",
+          "firstName",
+          "lastName",
+          "role",
+          "disabled",
+          "emailVerified"
+        ],
         "type": "object",
         "additionalProperties": false
       }
@@ -1667,108 +1688,6 @@
         ]
       }
     },
-    "/user": {
-      "get": {
-        "operationId": "GetAllUsers",
-        "responses": {
-          "200": {
-            "description": "Ok",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/User"
-                  },
-                  "type": "array"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["Users Management"],
-        "security": [
-          {
-            "jwt": []
-          }
-        ],
-        "parameters": []
-      },
-      "post": {
-        "operationId": "CreateUser",
-        "responses": {
-          "200": {
-            "description": "Ok",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/FilteredUserInterface"
-                }
-              }
-            }
-          },
-          "201": {
-            "description": "Created"
-          },
-          "422": {
-            "description": "Validation Failed",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ValidateErrorJSON"
-                }
-              }
-            }
-          }
-        },
-        "tags": ["Users Management"],
-        "security": [],
-        "parameters": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UserCreationBody"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/user/{userId}": {
-      "get": {
-        "operationId": "GetUserById",
-        "responses": {
-          "200": {
-            "description": "Ok",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/User"
-                    }
-                  ],
-                  "nullable": true
-                }
-              }
-            }
-          }
-        },
-        "tags": ["Users Management"],
-        "security": [],
-        "parameters": [
-          {
-            "in": "path",
-            "name": "userId",
-            "required": true,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ]
-      }
-    },
     "/auth/login": {
       "post": {
         "operationId": "Login",
@@ -2189,6 +2108,82 @@
             }
           }
         }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "operationId": "ListUsers",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AdminUserIdentity"
+                  },
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "List/search Users (identity fields only). Platform Admin only.",
+        "tags": ["Platform Admin"],
+        "security": [
+          {
+            "jwt": ["platform_admin"]
+          }
+        ],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/admin/users/{userId}": {
+      "get": {
+        "operationId": "GetUserById",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/AdminUserIdentity"
+                    }
+                  ],
+                  "nullable": true
+                }
+              }
+            }
+          }
+        },
+        "description": "Get a User by id (identity fields only). Platform Admin only.",
+        "tags": ["Platform Admin"],
+        "security": [
+          {
+            "jwt": ["platform_admin"]
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "userId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
       }
     }
   },

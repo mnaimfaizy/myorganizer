@@ -30,6 +30,8 @@ describe('auth.refresh', () => {
             name: 'Test User',
             firstName: 'Test',
             lastName: 'User',
+            role: 'user',
+            disabled: false,
           },
         },
       });
@@ -51,6 +53,8 @@ describe('auth.refresh', () => {
         name: 'Test User',
         firstName: 'Test',
         lastName: 'User',
+        role: 'user' as const,
+        disabled: false,
       };
 
       (AuthenticationApi.prototype.refreshToken as jest.Mock).mockResolvedValue(
@@ -75,6 +79,8 @@ describe('auth.refresh', () => {
         name: 'Test User',
         firstName: 'Test',
         lastName: 'User',
+        role: 'user' as const,
+        disabled: false,
       };
 
       (AuthenticationApi.prototype.refreshToken as jest.Mock).mockResolvedValue(
@@ -99,6 +105,8 @@ describe('auth.refresh', () => {
         name: 'Test User',
         firstName: 'Test',
         lastName: 'User',
+        role: 'user' as const,
+        disabled: false,
       };
 
       (AuthenticationApi.prototype.refreshToken as jest.Mock).mockResolvedValue(

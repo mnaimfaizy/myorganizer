@@ -1,3 +1,5 @@
+export type UserRole = 'user' | 'platform_admin';
+
 export interface User {
   id: string;
   name?: string;
@@ -8,7 +10,10 @@ export interface User {
   password?: string;
   reset_password_token?: string;
   email_verification_timestamp?: Date;
+  email_verification_token?: string | null;
   blacklisted_tokens?: string[];
+  role?: UserRole;
+  disabled?: boolean;
 }
 
 export interface UserCreationBody {

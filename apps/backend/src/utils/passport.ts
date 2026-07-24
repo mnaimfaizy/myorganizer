@@ -41,6 +41,11 @@ passport.use(
               message: 'Incorrect email or password!',
             });
           }
+          if ((user as { disabled?: boolean }).disabled) {
+            return done(null, false, {
+              message: 'Account disabled',
+            });
+          }
           bcrypt.compare(password, user.password, (err, result) => {
             if (err) {
               return done(err);
@@ -72,13 +77,14 @@ passport.use(
         .findFirst({
           where: { id: jwt_payload.userId },
         })
-        .then((user: User) => {
-          // if (user) {
-          //   return done(null, user)
-          // } else {
-          //   return done(null, false)
-          // }
-          return done(null, user || false);
+        .then((user: User | null) => {
+          if (!user) {
+            return done(null, false);
+          }
+          if ((user as { disabled?: boolean }).disabled) {
+            return done(null, false);
+          }
+          return done(null, user);
         })
         .catch((err: Error) => {
           return done(err, false);

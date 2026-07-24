@@ -5,19 +5,31 @@ import path from 'path';
 import apiTokens from '../helpers/ApiTokens';
 import { decodeToken } from '../helpers/jwtHelper';
 import { User, UserCreationBody } from '../models/User';
-import { PrismaClient, createPrismaClient } from '../prisma';
+import { Prisma, PrismaClient, createPrismaClient } from '../prisma';
 import sendEmail from './EmailService';
+
+/** Fields safe to return from Platform Admin directory APIs. */
+const ADMIN_IDENTITY_SELECT = {
+  id: true,
+  name: true,
+  first_name: true,
+  last_name: true,
+  phone: true,
+  email: true,
+  role: true,
+  disabled: true,
+  email_verification_timestamp: true,
+} as const;
+
+export type AdminIdentityUser = Prisma.UserGetPayload<{
+  select: typeof ADMIN_IDENTITY_SELECT;
+}>;
 
 class UserService {
   Users: User[] = [];
   SaltRounds = 10;
 
   constructor(private prisma: PrismaClient) {}
-
-  async getAll(): Promise<User[]> {
-    this.Users = await this.prisma.user.findMany();
-    return this.Users;
-  }
 
   async getById(id: string): Promise<User | null> {
     const user = await this.prisma.user.findUnique({
@@ -35,6 +47,64 @@ class UserService {
       },
     });
     return user;
+  }
+
+  /**
+   * List/search Users for Platform Admin directory (identity fields only).
+   * Optional `q` matches email, name, first_name, or last_name (case-insensitive).
+   */
+  async listIdentityUsers(q?: string): Promise<AdminIdentityUser[]> {
+    const query = (q ?? '').trim();
+    const where: Prisma.UserWhereInput = query
+      ? {
+          OR: [
+            { email: { contains: query, mode: 'insensitive' } },
+            { name: { contains: query, mode: 'insensitive' } },
+            { first_name: { contains: query, mode: 'insensitive' } },
+            { last_name: { contains: query, mode: 'insensitive' } },
+          ],
+        }
+      : {};
+
+    return this.prisma.user.findMany({
+      where,
+      select: ADMIN_IDENTITY_SELECT,
+      orderBy: [{ email: 'asc' }],
+    });
+  }
+
+  async getIdentityById(id: string): Promise<AdminIdentityUser | null> {
+    return this.prisma.user.findUnique({
+      where: { id },
+      select: ADMIN_IDENTITY_SELECT,
+    });
+  }
+
+  /**
+   * Elevate an existing User to platform_admin by email.
+   * Idempotent: no-op if already platform_admin. Returns null if no User matches.
+   */
+  async elevateToPlatformAdminByEmail(
+    email: string,
+  ): Promise<AdminIdentityUser | null> {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return null;
+
+    const existing = await this.prisma.user.findFirst({
+      where: { email: { equals: normalized, mode: 'insensitive' } },
+      select: ADMIN_IDENTITY_SELECT,
+    });
+    if (!existing) return null;
+
+    if (existing.role === 'platform_admin') {
+      return existing;
+    }
+
+    return this.prisma.user.update({
+      where: { id: existing.id },
+      data: { role: 'platform_admin' },
+      select: ADMIN_IDENTITY_SELECT,
+    });
   }
 
   async create(user: UserCreationBody): Promise<User> {

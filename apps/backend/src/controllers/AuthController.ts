@@ -50,6 +50,7 @@ export class AuthController extends Controller {
   async login(
     @Request() req: ExRequest,
     @Body() requestBody: UserLoginBody,
+    @Res() unauthorized: TsoaResponse<401, { message: string }>,
   ): Promise<{
     token: string;
     expires_in: number;
@@ -58,6 +59,10 @@ export class AuthController extends Controller {
   }> {
     void requestBody;
     const requestUser = req.user as UserInterface;
+
+    if (requestUser?.disabled) {
+      return unauthorized(401, { message: 'Account disabled' });
+    }
 
     try {
       const response = PlatformTokenHandler.buildLoginResponse(
@@ -125,6 +130,10 @@ export class AuthController extends Controller {
     const user = await userService.refreshToken(refresh_token);
     if (user instanceof Error || !user) {
       return notFound(404, { message: 'User not found' });
+    }
+
+    if ((user as { disabled?: boolean }).disabled) {
+      return unauthorized(401, { message: 'Account disabled' });
     }
 
     if (user.blacklisted_tokens?.includes(refresh_token)) {
