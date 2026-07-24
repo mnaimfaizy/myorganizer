@@ -10,6 +10,8 @@ describe('createBrowserAuthSessionStorageAdapter', () => {
     name: 'Test User',
     firstName: 'Test',
     lastName: 'User',
+    role: 'user' as const,
+    disabled: false,
   };
 
   beforeEach(() => {

@@ -18,6 +18,8 @@ describe('createAuthSessionModule', () => {
     name: 'Test User',
     firstName: 'Test',
     lastName: 'User',
+    role: 'user',
+    disabled: false,
   };
 
   const mockSessionData = {

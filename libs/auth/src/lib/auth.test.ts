@@ -16,7 +16,7 @@ describe('auth storage', () => {
     expect(getAccessToken()).toBe('abc');
     expect(window.localStorage.getItem('myorganizer_access_token')).toBe('abc');
     expect(window.sessionStorage.getItem('myorganizer_access_token')).toBe(
-      null
+      null,
     );
   });
 
@@ -24,7 +24,7 @@ describe('auth storage', () => {
     setAccessToken('def', 'session');
     expect(getAccessToken()).toBe('def');
     expect(window.sessionStorage.getItem('myorganizer_access_token')).toBe(
-      'def'
+      'def',
     );
     expect(window.localStorage.getItem('myorganizer_access_token')).toBe(null);
   });
@@ -36,6 +36,8 @@ describe('auth storage', () => {
       name: 'A',
       firstName: 'A',
       lastName: 'B',
+      role: 'user',
+      disabled: false,
     });
 
     const user = getCurrentUser();
