@@ -9,6 +9,12 @@ function unauthorized(message = 'Unauthorized') {
   return err;
 }
 
+function forbidden(message = 'Forbidden') {
+  const err = new Error(message) as Error & { status?: number };
+  err.status = 403;
+  return err;
+}
+
 function getBearerToken(request: express.Request): string | undefined {
   const header = request.headers.authorization;
   if (typeof header !== 'string') return undefined;
@@ -74,6 +80,16 @@ export function expressAuthentication(
       throw unauthorized();
     }
 
+    if ((user as { disabled?: boolean }).disabled) {
+      throw unauthorized('Account disabled');
+    }
+
+    if (scopes?.includes('platform_admin')) {
+      if ((user as { role?: string }).role !== 'platform_admin') {
+        throw forbidden('Platform Admin role required');
+      }
+    }
+
     // Ensure downstream authZ can consistently rely on request.user.
     (request as any).user = user;
 
@@ -88,7 +104,8 @@ export function expressAuthentication(
       err &&
       typeof err === 'object' &&
       'status' in err &&
-      (err as { status?: unknown }).status === 401
+      ((err as { status?: unknown }).status === 401 ||
+        (err as { status?: unknown }).status === 403)
     ) {
       throw err;
     }

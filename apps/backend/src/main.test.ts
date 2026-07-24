@@ -42,8 +42,9 @@ describe('Main Application', () => {
     );
   });
 
-  it('should register /users route', async () => {
+  it('returns 404 for legacy /user route (closed per ADR-0011)', async () => {
     const response = await request(app).get('/api/v1/user');
-    expect(response.status).not.toBe(404);
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ message: 'Not Found' });
   });
 });

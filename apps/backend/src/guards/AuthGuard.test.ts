@@ -2,7 +2,10 @@ import { describe, expect, test } from '@jest/globals';
 import type * as express from 'express';
 
 import {
+  ForbiddenError,
   getAuthenticatedUser,
+  isPlatformAdmin,
+  requirePlatformAdmin,
   requireUserId,
   UnauthorizedError,
 } from './AuthGuard';
@@ -38,6 +41,76 @@ describe('UnauthorizedError', () => {
     expect(error.status).toBe(401);
     expect(error.name).toBe('UnauthorizedError');
     expect(error.message).toBe('Unauthorized');
+  });
+});
+
+describe('ForbiddenError', () => {
+  test('has status 403, name, and default message', () => {
+    const error = new ForbiddenError();
+
+    expect(error).toBeInstanceOf(Error);
+    expect(error).toBeInstanceOf(ForbiddenError);
+    expect(error.status).toBe(403);
+    expect(error.name).toBe('ForbiddenError');
+    expect(error.message).toBe('Forbidden');
+  });
+});
+
+describe('isPlatformAdmin', () => {
+  test('returns true when role is platform_admin', () => {
+    expect(isPlatformAdmin({ role: 'platform_admin' })).toBe(true);
+  });
+
+  test('returns false for user role or missing role', () => {
+    expect(isPlatformAdmin({ role: 'user' })).toBe(false);
+    expect(isPlatformAdmin({})).toBe(false);
+  });
+});
+
+describe('requirePlatformAdmin', () => {
+  test('returns user when role is platform_admin and not disabled', () => {
+    const user = makeUser({ role: 'platform_admin', disabled: false });
+    const req = makeReq();
+    (req as express.Request & { user?: UserInterface }).user = user;
+
+    expect(requirePlatformAdmin(req)).toBe(user);
+  });
+
+  test('throws ForbiddenError when role is user', () => {
+    const user = makeUser({ role: 'user' });
+    const req = makeReq();
+    (req as express.Request & { user?: UserInterface }).user = user;
+
+    expect(() => requirePlatformAdmin(req)).toThrow(ForbiddenError);
+    expect(() => requirePlatformAdmin(req)).toThrow(
+      expect.objectContaining({
+        status: 403,
+        message: 'Platform Admin role required',
+      }),
+    );
+  });
+
+  test('throws UnauthorizedError when platform_admin is disabled', () => {
+    const user = makeUser({ role: 'platform_admin', disabled: true });
+    const req = makeReq();
+    (req as express.Request & { user?: UserInterface }).user = user;
+
+    expect(() => requirePlatformAdmin(req)).toThrow(UnauthorizedError);
+    expect(() => requirePlatformAdmin(req)).toThrow(
+      expect.objectContaining({
+        status: 401,
+        message: 'Account disabled',
+      }),
+    );
+  });
+
+  test('throws UnauthorizedError when no user is present', () => {
+    const req = makeReq();
+
+    expect(() => requirePlatformAdmin(req)).toThrow(UnauthorizedError);
+    expect(() => requirePlatformAdmin(req)).toThrow(
+      expect.objectContaining({ status: 401, message: 'Unauthorized' }),
+    );
   });
 });
 

@@ -150,6 +150,55 @@ describe('expressAuthentication (tsoa jwt)', () => {
       'Unauthorized',
     );
   });
+
+  test('rejects disabled user with 401 Account disabled', async () => {
+    decodeTokenMock.mockReturnValue({ userId: 'u1' });
+    getByIdMock.mockResolvedValue({ id: 'u1', disabled: true });
+
+    const req = makeReq({ headers: { authorization: 'Bearer abc' } });
+
+    await expect(expressAuthentication(req, 'jwt')).rejects.toMatchObject({
+      status: 401,
+      message: 'Account disabled',
+    });
+  });
+
+  test('rejects non-admin when scopes include platform_admin', async () => {
+    decodeTokenMock.mockReturnValue({ userId: 'u1' });
+    getByIdMock.mockResolvedValue({ id: 'u1', role: 'user', disabled: false });
+
+    const req = makeReq({ headers: { authorization: 'Bearer abc' } });
+
+    await expect(
+      expressAuthentication(req, 'jwt', ['platform_admin']),
+    ).rejects.toMatchObject({
+      status: 403,
+      message: 'Platform Admin role required',
+    });
+  });
+
+  test('allows platform_admin when scopes include platform_admin', async () => {
+    decodeTokenMock.mockReturnValue({ userId: 'admin-1' });
+    getByIdMock.mockResolvedValue({
+      id: 'admin-1',
+      role: 'platform_admin',
+      disabled: false,
+    });
+
+    const req = makeReq({ headers: { authorization: 'Bearer abc' } });
+    const user = await expressAuthentication(req, 'jwt', ['platform_admin']);
+
+    expect(user).toEqual({
+      id: 'admin-1',
+      role: 'platform_admin',
+      disabled: false,
+    });
+    expect((req as any).user).toEqual({
+      id: 'admin-1',
+      role: 'platform_admin',
+      disabled: false,
+    });
+  });
 });
 
 describe('expressAuthentication (tsoa cron-secret)', () => {

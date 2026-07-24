@@ -24,6 +24,69 @@ import type { RequestArgs } from './base';
 import { BASE_PATH, COLLECTION_FORMATS, BaseAPI, RequiredError, operationServerMap } from './base';
 
 /**
+ * Identity-only User projection for Platform Admin directory APIs.
+ * @export
+ * @interface AdminUserIdentity
+ */
+export interface AdminUserIdentity {
+    /**
+     * 
+     * @type {string}
+     * @memberof AdminUserIdentity
+     */
+    'id': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AdminUserIdentity
+     */
+    'name': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AdminUserIdentity
+     */
+    'email': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AdminUserIdentity
+     */
+    'firstName': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AdminUserIdentity
+     */
+    'lastName': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AdminUserIdentity
+     */
+    'phone'?: string;
+    /**
+     * 
+     * @type {UserRole}
+     * @memberof AdminUserIdentity
+     */
+    'role': UserRole;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof AdminUserIdentity
+     */
+    'disabled': boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof AdminUserIdentity
+     */
+    'emailVerified': boolean;
+}
+
+
+/**
  * 
  * @export
  * @interface AuthUrlResponse
@@ -274,7 +337,21 @@ export interface FilteredUserInterface {
      * @memberof FilteredUserInterface
      */
     'phone'?: string;
+    /**
+     * 
+     * @type {UserRole}
+     * @memberof FilteredUserInterface
+     */
+    'role': UserRole;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof FilteredUserInterface
+     */
+    'disabled': boolean;
 }
+
+
 /**
  * 
  * @export
@@ -749,6 +826,12 @@ export interface ListVaultBackupsResponse {
 export interface Login200Response {
     /**
      * 
+     * @type {string}
+     * @memberof Login200Response
+     */
+    'refresh_token'?: string;
+    /**
+     * 
      * @type {FilteredUserInterface}
      * @memberof Login200Response
      */
@@ -760,28 +843,22 @@ export interface Login200Response {
      */
     'expires_in': number;
     /**
-     *
+     * 
      * @type {string}
      * @memberof Login200Response
      */
     'token': string;
-    /**
-     * Present only when the request was made with client_type \"mobile\".
-     * @type {string}
-     * @memberof Login200Response
-     */
-    'refresh_token'?: string;
 }
 /**
- *
+ * 
  * @export
- * @interface Logout200Response
+ * @interface Login401Response
  */
-export interface Logout200Response {
+export interface Login401Response {
     /**
      * 
      * @type {string}
-     * @memberof Logout200Response
+     * @memberof Login401Response
      */
     'message': string;
 }
@@ -854,19 +931,19 @@ export interface PartialRecordVaultBlobTypeEncryptedBlobV1 {
      */
     'mobileNumbers'?: EncryptedBlobV1;
     /**
-     *
+     * 
      * @type {EncryptedBlobV1}
      * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
      */
     'subscriptions'?: EncryptedBlobV1;
     /**
-     *
+     * 
      * @type {EncryptedBlobV1}
      * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
      */
     'tasks'?: EncryptedBlobV1;
     /**
-     *
+     * 
      * @type {EncryptedBlobV1}
      * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
      */
@@ -1140,6 +1217,31 @@ export interface RecordVaultBackupResponse {
 /**
  * 
  * @export
+ * @interface RefreshToken200Response
+ */
+export interface RefreshToken200Response {
+    /**
+     * 
+     * @type {FilteredUserInterface}
+     * @memberof RefreshToken200Response
+     */
+    'user': FilteredUserInterface;
+    /**
+     * 
+     * @type {number}
+     * @memberof RefreshToken200Response
+     */
+    'expires_in': number;
+    /**
+     * 
+     * @type {string}
+     * @memberof RefreshToken200Response
+     */
+    'token': string;
+}
+/**
+ * 
+ * @export
  * @interface RefreshTokenRequest
  */
 export interface RefreshTokenRequest {
@@ -1374,73 +1476,6 @@ export interface ToggleSubscriptionRequest {
 /**
  * 
  * @export
- * @interface User
- */
-export interface User {
-    /**
-     * 
-     * @type {string}
-     * @memberof User
-     */
-    'id': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof User
-     */
-    'name'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof User
-     */
-    'first_name'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof User
-     */
-    'last_name'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof User
-     */
-    'phone'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof User
-     */
-    'email': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof User
-     */
-    'password'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof User
-     */
-    'reset_password_token'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof User
-     */
-    'email_verification_timestamp'?: string;
-    /**
-     * 
-     * @type {Array<string>}
-     * @memberof User
-     */
-    'blacklisted_tokens'?: Array<string>;
-}
-/**
- * 
- * @export
  * @interface UserCreationBody
  */
 export interface UserCreationBody {
@@ -1494,13 +1529,13 @@ export interface UserLoginBody {
      */
     'email': string;
     /**
-     *
+     * 
      * @type {string}
      * @memberof UserLoginBody
      */
     'password': string;
     /**
-     * Indicates the client type. When set to \"mobile\", the refresh token is included in the response body.
+     * 
      * @type {string}
      * @memberof UserLoginBody
      */
@@ -1511,9 +1546,25 @@ export const UserLoginBodyClientTypeEnum = {
     Mobile: 'mobile',
     Web: 'web'
 } as const;
+
 export type UserLoginBodyClientTypeEnum = typeof UserLoginBodyClientTypeEnum[keyof typeof UserLoginBodyClientTypeEnum];
+
 /**
- *
+ * 
+ * @export
+ * @enum {string}
+ */
+
+export const UserRole = {
+    User: 'user',
+    PlatformAdmin: 'platform_admin'
+} as const;
+
+export type UserRole = typeof UserRole[keyof typeof UserRole];
+
+
+/**
+ * 
  * @export
  * @interface ValidateErrorJSON
  */
@@ -1549,7 +1600,6 @@ export const VaultBackupBlobType = {
     Groceries: 'groceries',
     MobileNumbers: 'mobileNumbers',
     Subscriptions: 'subscriptions',
-    Tasks: 'tasks',
     Todos: 'todos'
 } as const;
 
@@ -2263,7 +2313,7 @@ export const AuthenticationApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async logout(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Logout200Response>> {
+        async logout(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Login401Response>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.logout(userId, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AuthenticationApi.logout']?.[localVarOperationServerIndex]?.url;
@@ -2275,7 +2325,7 @@ export const AuthenticationApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async refreshToken(refreshTokenRequest?: RefreshTokenRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Login200Response>> {
+        async refreshToken(refreshTokenRequest?: RefreshTokenRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RefreshToken200Response>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.refreshToken(refreshTokenRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AuthenticationApi.refreshToken']?.[localVarOperationServerIndex]?.url;
@@ -2375,7 +2425,7 @@ export const AuthenticationApiFactory = function (configuration?: Configuration,
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        logout(requestParameters: AuthenticationApiLogoutRequest, options?: RawAxiosRequestConfig): AxiosPromise<Logout200Response> {
+        logout(requestParameters: AuthenticationApiLogoutRequest, options?: RawAxiosRequestConfig): AxiosPromise<Login401Response> {
             return localVarFp.logout(requestParameters.userId, options).then((request) => request(axios, basePath));
         },
         /**
@@ -2384,7 +2434,7 @@ export const AuthenticationApiFactory = function (configuration?: Configuration,
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        refreshToken(requestParameters: AuthenticationApiRefreshTokenRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<Login200Response> {
+        refreshToken(requestParameters: AuthenticationApiRefreshTokenRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<RefreshToken200Response> {
             return localVarFp.refreshToken(requestParameters.refreshTokenRequest, options).then((request) => request(axios, basePath));
         },
         /**
@@ -2671,53 +2721,22 @@ export class AuthenticationApi extends BaseAPI {
 
 
 /**
- * UsersManagementApi - axios parameter creator
+ * PlatformAdminApi - axios parameter creator
  * @export
  */
-export const UsersManagementApiAxiosParamCreator = function (configuration?: Configuration) {
+export const PlatformAdminApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
         /**
-         * 
-         * @param {UserCreationBody} userCreationBody 
+         * Get a User by id (identity fields only). Platform Admin only.
+         * @param {string} userId 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        createUser: async (userCreationBody: UserCreationBody, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'userCreationBody' is not null or undefined
-            assertParamExists('createUser', 'userCreationBody', userCreationBody)
-            const localVarPath = `/user`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            localVarHeaderParameter['Content-Type'] = 'application/json';
-
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(userCreationBody, localVarRequestOptions, configuration)
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getAllUsers: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/user`;
+        getUserById: async (userId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'userId' is not null or undefined
+            assertParamExists('getUserById', 'userId', userId)
+            const localVarPath = `/admin/users/{userId}`
+                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -2745,16 +2764,13 @@ export const UsersManagementApiAxiosParamCreator = function (configuration?: Con
             };
         },
         /**
-         * 
-         * @param {string} userId 
+         * List/search Users (identity fields only). Platform Admin only.
+         * @param {string} [q] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        getUserById: async (userId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'userId' is not null or undefined
-            assertParamExists('getUserById', 'userId', userId)
-            const localVarPath = `/user/{userId}`
-                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+        listUsers: async (q?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/admin/users`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -2765,6 +2781,14 @@ export const UsersManagementApiAxiosParamCreator = function (configuration?: Con
             const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (q !== undefined) {
+                localVarQueryParameter['q'] = q;
+            }
 
 
     
@@ -2781,151 +2805,122 @@ export const UsersManagementApiAxiosParamCreator = function (configuration?: Con
 };
 
 /**
- * UsersManagementApi - functional programming interface
+ * PlatformAdminApi - functional programming interface
  * @export
  */
-export const UsersManagementApiFp = function(configuration?: Configuration) {
-    const localVarAxiosParamCreator = UsersManagementApiAxiosParamCreator(configuration)
+export const PlatformAdminApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = PlatformAdminApiAxiosParamCreator(configuration)
     return {
         /**
-         * 
-         * @param {UserCreationBody} userCreationBody 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async createUser(userCreationBody: UserCreationBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<FilteredUserInterface>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.createUser(userCreationBody, options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['UsersManagementApi.createUser']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async getAllUsers(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<User>>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getAllUsers(options);
-            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['UsersManagementApi.getAllUsers']?.[localVarOperationServerIndex]?.url;
-            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
-        },
-        /**
-         * 
+         * Get a User by id (identity fields only). Platform Admin only.
          * @param {string} userId 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async getUserById(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<User>> {
+        async getUserById(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AdminUserIdentity>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.getUserById(userId, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['UsersManagementApi.getUserById']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.getUserById']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * List/search Users (identity fields only). Platform Admin only.
+         * @param {string} [q] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listUsers(q?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<AdminUserIdentity>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listUsers(q, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.listUsers']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
     }
 };
 
 /**
- * UsersManagementApi - factory interface
+ * PlatformAdminApi - factory interface
  * @export
  */
-export const UsersManagementApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
-    const localVarFp = UsersManagementApiFp(configuration)
+export const PlatformAdminApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = PlatformAdminApiFp(configuration)
     return {
         /**
-         * 
-         * @param {UsersManagementApiCreateUserRequest} requestParameters Request parameters.
+         * Get a User by id (identity fields only). Platform Admin only.
+         * @param {PlatformAdminApiGetUserByIdRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        createUser(requestParameters: UsersManagementApiCreateUserRequest, options?: RawAxiosRequestConfig): AxiosPromise<FilteredUserInterface> {
-            return localVarFp.createUser(requestParameters.userCreationBody, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getAllUsers(options?: RawAxiosRequestConfig): AxiosPromise<Array<User>> {
-            return localVarFp.getAllUsers(options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @param {UsersManagementApiGetUserByIdRequest} requestParameters Request parameters.
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        getUserById(requestParameters: UsersManagementApiGetUserByIdRequest, options?: RawAxiosRequestConfig): AxiosPromise<User> {
+        getUserById(requestParameters: PlatformAdminApiGetUserByIdRequest, options?: RawAxiosRequestConfig): AxiosPromise<AdminUserIdentity> {
             return localVarFp.getUserById(requestParameters.userId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * List/search Users (identity fields only). Platform Admin only.
+         * @param {PlatformAdminApiListUsersRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listUsers(requestParameters: PlatformAdminApiListUsersRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<Array<AdminUserIdentity>> {
+            return localVarFp.listUsers(requestParameters.q, options).then((request) => request(axios, basePath));
         },
     };
 };
 
 /**
- * Request parameters for createUser operation in UsersManagementApi.
+ * Request parameters for getUserById operation in PlatformAdminApi.
  * @export
- * @interface UsersManagementApiCreateUserRequest
+ * @interface PlatformAdminApiGetUserByIdRequest
  */
-export interface UsersManagementApiCreateUserRequest {
-    /**
-     * 
-     * @type {UserCreationBody}
-     * @memberof UsersManagementApiCreateUser
-     */
-    readonly userCreationBody: UserCreationBody
-}
-
-/**
- * Request parameters for getUserById operation in UsersManagementApi.
- * @export
- * @interface UsersManagementApiGetUserByIdRequest
- */
-export interface UsersManagementApiGetUserByIdRequest {
+export interface PlatformAdminApiGetUserByIdRequest {
     /**
      * 
      * @type {string}
-     * @memberof UsersManagementApiGetUserById
+     * @memberof PlatformAdminApiGetUserById
      */
     readonly userId: string
 }
 
 /**
- * UsersManagementApi - object-oriented interface
+ * Request parameters for listUsers operation in PlatformAdminApi.
  * @export
- * @class UsersManagementApi
+ * @interface PlatformAdminApiListUsersRequest
+ */
+export interface PlatformAdminApiListUsersRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof PlatformAdminApiListUsers
+     */
+    readonly q?: string
+}
+
+/**
+ * PlatformAdminApi - object-oriented interface
+ * @export
+ * @class PlatformAdminApi
  * @extends {BaseAPI}
  */
-export class UsersManagementApi extends BaseAPI {
+export class PlatformAdminApi extends BaseAPI {
     /**
-     * 
-     * @param {UsersManagementApiCreateUserRequest} requestParameters Request parameters.
+     * Get a User by id (identity fields only). Platform Admin only.
+     * @param {PlatformAdminApiGetUserByIdRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof UsersManagementApi
+     * @memberof PlatformAdminApi
      */
-    public createUser(requestParameters: UsersManagementApiCreateUserRequest, options?: RawAxiosRequestConfig) {
-        return UsersManagementApiFp(this.configuration).createUser(requestParameters.userCreationBody, options).then((request) => request(this.axios, this.basePath));
+    public getUserById(requestParameters: PlatformAdminApiGetUserByIdRequest, options?: RawAxiosRequestConfig) {
+        return PlatformAdminApiFp(this.configuration).getUserById(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
-     * 
+     * List/search Users (identity fields only). Platform Admin only.
+     * @param {PlatformAdminApiListUsersRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof UsersManagementApi
+     * @memberof PlatformAdminApi
      */
-    public getAllUsers(options?: RawAxiosRequestConfig) {
-        return UsersManagementApiFp(this.configuration).getAllUsers(options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @param {UsersManagementApiGetUserByIdRequest} requestParameters Request parameters.
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof UsersManagementApi
-     */
-    public getUserById(requestParameters: UsersManagementApiGetUserByIdRequest, options?: RawAxiosRequestConfig) {
-        return UsersManagementApiFp(this.configuration).getUserById(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
+    public listUsers(requestParameters: PlatformAdminApiListUsersRequest = {}, options?: RawAxiosRequestConfig) {
+        return PlatformAdminApiFp(this.configuration).listUsers(requestParameters.q, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
@@ -3822,6 +3817,9 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
+
+            // authentication cron-secret required
+            await setApiKeyToObject(localVarHeaderParameter, "X-Cron-Secret", configuration)
 
 
     

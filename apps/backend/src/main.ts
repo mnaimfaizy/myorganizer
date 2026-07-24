@@ -16,6 +16,7 @@ import { ValidateError } from 'tsoa';
 import { createCorsOptions, getSessionSecret } from './config/http';
 import { maybeCreateGlobalApiRateLimiterFromEnv } from './middleware/globalRateLimit';
 import { vaultRateLimiter } from './middleware/vaultRateLimit';
+import { bootstrapPlatformAdminFromEnv } from './bootstrap/platformAdminBootstrap';
 import authRouter from './routes/auth';
 import { RegisterRoutes } from './routes/routes';
 import usersRouter from './routes/user';
@@ -245,6 +246,7 @@ app.use(function errorHandler(
 const port = process.env.PORT || 3000;
 const server = app.listen(port, () => {
   console.log(`Listening at: http://localhost:${port}/`);
+  void bootstrapPlatformAdminFromEnv();
 });
 server.on('error', console.error);
 

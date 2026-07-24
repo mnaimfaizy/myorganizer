@@ -39,8 +39,14 @@ router.post(
           }
 
           const requestUser = user as UserInterface;
+
+          if (requestUser.disabled) {
+            res.status(401).json({ message: 'Account disabled' });
+            return;
+          }
+
           const isVerified = Boolean(
-            (requestUser as any)?.email_verification_timestamp
+            (requestUser as any)?.email_verification_timestamp,
           );
 
           if (!isVerified) {
@@ -88,9 +94,9 @@ router.post(
         } catch (caught) {
           next(caught);
         }
-      }
+      },
     )(req, res, next);
-  }
+  },
 );
 
 router.post(
@@ -126,7 +132,7 @@ router.post(
     } catch (err) {
       next(err);
     }
-  }
+  },
 );
 
 router.post('/register', async (req, res) => {
@@ -138,7 +144,7 @@ router.post('/register', async (req, res) => {
       const existing = await userService.getByEmail(email);
       if (existing) {
         const isVerified = Boolean(
-          (existing as any)?.email_verification_timestamp
+          (existing as any)?.email_verification_timestamp,
         );
         if (isVerified) {
           res
@@ -325,7 +331,7 @@ router.post(
         message: `Failed to resend verification email: ${error.message}`,
       });
     }
-  }
+  },
 );
 
 router.post('/verify/resend', async (req, res) => {
@@ -367,6 +373,12 @@ router.post('/refresh', async (req, res, next: NextFunction) => {
       return;
     }
 
+    if ((user as { disabled?: boolean }).disabled) {
+      res.clearCookie('refresh_cookie');
+      res.status(401).json({ message: 'Account disabled' });
+      return;
+    }
+
     const isVerified = Boolean((user as any)?.email_verification_timestamp);
     if (!isVerified) {
       res.clearCookie('refresh_cookie');
@@ -382,7 +394,7 @@ router.post('/refresh', async (req, res, next: NextFunction) => {
     }
 
     const { token, refreshToken: newRefreshToken } = apiTokens.createTokens(
-      user as unknown as UserInterface
+      user as unknown as UserInterface,
     );
 
     if (token instanceof Error || newRefreshToken instanceof Error) {
@@ -391,7 +403,7 @@ router.post('/refresh', async (req, res, next: NextFunction) => {
     }
 
     const filteredUser: FilteredUserInterface = filterUser(
-      user as unknown as UserInterface
+      user as unknown as UserInterface,
     );
 
     const expiry = getExpiry();

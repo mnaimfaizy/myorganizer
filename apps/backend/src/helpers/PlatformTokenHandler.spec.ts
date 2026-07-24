@@ -38,6 +38,8 @@ describe('PlatformTokenHandler', () => {
     email: 'test@example.com',
     firstName: 'Test',
     lastName: 'User',
+    role: 'user',
+    disabled: false,
   };
 
   beforeEach(() => {

@@ -4,6 +4,7 @@ import express from 'express';
 import request from 'supertest';
 import authRouter from './auth';
 
+import apiTokens from '../helpers/ApiTokens';
 import userController from '../controllers/UserController';
 import userService from '../services/UserService';
 import passport from '../utils/passport';
@@ -60,6 +61,8 @@ jest.mock('../helpers/filterUser', () => ({
     firstName: user.first_name || 'Test',
     lastName: user.last_name || 'User',
     phone: user.phone,
+    role: user.role === 'platform_admin' ? 'platform_admin' : 'user',
+    disabled: Boolean(user.disabled),
   })),
 }));
 
@@ -98,6 +101,93 @@ describe('Auth Routes', () => {
       expect(response.body).toEqual({
         message: 'Email not verified. Please verify your email first.',
       });
+    });
+
+    test('returns 401 when user account is disabled even if email is verified', async () => {
+      (passport.authenticate as jest.Mock).mockImplementation(
+        (_strategy: string, _options: any, cb: any) => {
+          return (_req: any, _res: any, _next: any) => {
+            cb(
+              null,
+              {
+                id: 'user-disabled',
+                email: 'disabled@example.com',
+                email_verification_timestamp: new Date(),
+                disabled: true,
+              },
+              undefined,
+            );
+          };
+        },
+      );
+
+      const response = await request(app).post('/auth/login').send({
+        email: 'disabled@example.com',
+        password: 'password',
+      });
+
+      expect(response.status).toBe(401);
+      expect(response.body).toEqual({ message: 'Account disabled' });
+      expect(apiTokens.createTokens).not.toHaveBeenCalled();
+      expect(response.headers['set-cookie']).toBeUndefined();
+    });
+
+    test('returns 200 with platform_admin role and disabled false in user payload', async () => {
+      const platformAdminUser = {
+        id: 'admin-1',
+        email: 'admin@example.com',
+        email_verification_timestamp: new Date(),
+        name: 'Platform Admin',
+        first_name: 'Platform',
+        last_name: 'Admin',
+        role: 'platform_admin',
+        disabled: false,
+      };
+
+      (passport.authenticate as jest.Mock).mockImplementation(
+        (_strategy: string, _options: any, cb: any) => {
+          return (_req: any, _res: any, _next: any) => {
+            cb(null, platformAdminUser, undefined);
+          };
+        },
+      );
+
+      const response = await request(app).post('/auth/login').send({
+        email: 'admin@example.com',
+        password: 'password',
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.user.role).toBe('platform_admin');
+      expect(response.body.user.disabled).toBe(false);
+    });
+
+    test('returns 200 with default role user and disabled false when role and disabled are omitted', async () => {
+      const verifiedUser = {
+        id: 'user-default',
+        email: 'default@example.com',
+        email_verification_timestamp: new Date(),
+        name: 'Default User',
+        first_name: 'Default',
+        last_name: 'User',
+      };
+
+      (passport.authenticate as jest.Mock).mockImplementation(
+        (_strategy: string, _options: any, cb: any) => {
+          return (_req: any, _res: any, _next: any) => {
+            cb(null, verifiedUser, undefined);
+          };
+        },
+      );
+
+      const response = await request(app).post('/auth/login').send({
+        email: 'default@example.com',
+        password: 'password',
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body.user.role).toBe('user');
+      expect(response.body.user.disabled).toBe(false);
     });
 
     test('returns 200 with refresh_token in body when client_type is mobile', async () => {
@@ -265,6 +355,60 @@ describe('Auth Routes', () => {
   });
 
   describe('POST /auth/refresh', () => {
+    test('returns 401 and clears refresh cookie when user account is disabled', async () => {
+      (userService.refreshToken as jest.Mock).mockResolvedValue({
+        id: 'user-disabled',
+        email: 'disabled@example.com',
+        email_verification_timestamp: new Date(),
+        disabled: true,
+        blacklisted_tokens: [],
+      });
+
+      const response = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', ['refresh_cookie=refresh-token']);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toEqual({ message: 'Account disabled' });
+
+      const rawSetCookie = response.headers['set-cookie'] as
+        | string
+        | string[]
+        | undefined;
+      const setCookie = Array.isArray(rawSetCookie)
+        ? rawSetCookie
+        : rawSetCookie
+          ? [rawSetCookie]
+          : [];
+
+      expect(setCookie.some((c) => c.startsWith('refresh_cookie='))).toBe(true);
+      expect(apiTokens.createTokens).not.toHaveBeenCalled();
+    });
+
+    test('returns 200 with role and disabled in user payload', async () => {
+      const verifiedUser = {
+        id: 'user-1',
+        email: 'test@example.com',
+        email_verification_timestamp: new Date(),
+        name: 'Test User',
+        first_name: 'Test',
+        last_name: 'User',
+        role: 'user',
+        disabled: false,
+        blacklisted_tokens: [],
+      };
+
+      (userService.refreshToken as jest.Mock).mockResolvedValue(verifiedUser);
+
+      const response = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', ['refresh_cookie=old-refresh-token']);
+
+      expect(response.status).toBe(200);
+      expect(response.body.user.role).toBe('user');
+      expect(response.body.user.disabled).toBe(false);
+    });
+
     test('returns 403 and clears refresh cookie when user email is not verified', async () => {
       (userService.refreshToken as jest.Mock).mockResolvedValue({
         id: 'user-1',
@@ -505,7 +649,7 @@ describe('Auth Routes', () => {
       });
       expect(userService.sendVerificationMail).toHaveBeenCalledTimes(1);
       expect(userService.update).toHaveBeenCalledTimes(1);
-      expect(userController.createUser).not.toHaveBeenCalled();
+      expect((userController as any).createUser).not.toHaveBeenCalled();
     });
   });
 
