@@ -2,10 +2,22 @@ import bcrypt from 'bcrypt';
 import fs from 'fs';
 import { JsonWebTokenError, JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 import path from 'path';
+import {
+  EmailAlreadyVerifiedError,
+  LastPlatformAdminError,
+  UserNotFoundError,
+  VerificationCooldownError,
+  VerificationSendFailedError,
+} from '../errors/AdminLifecycleErrors';
 import apiTokens from '../helpers/ApiTokens';
 import { decodeToken } from '../helpers/jwtHelper';
 import { User, UserCreationBody } from '../models/User';
-import { Prisma, PrismaClient, createPrismaClient } from '../prisma';
+import {
+  AdminAuditAction,
+  Prisma,
+  PrismaClient,
+  createPrismaClient,
+} from '../prisma';
 import sendEmail from './EmailService';
 
 /** Fields safe to return from Platform Admin directory APIs. */
@@ -24,6 +36,14 @@ const ADMIN_IDENTITY_SELECT = {
 export type AdminIdentityUser = Prisma.UserGetPayload<{
   select: typeof ADMIN_IDENTITY_SELECT;
 }>;
+
+export type AdminAuditLogRow = {
+  id: string;
+  actor_user_id: string;
+  target_user_id: string;
+  action: AdminAuditAction;
+  created_at: Date;
+};
 
 class UserService {
   Users: User[] = [];
@@ -83,6 +103,7 @@ class UserService {
   /**
    * Elevate an existing User to platform_admin by email.
    * Idempotent: no-op if already platform_admin. Returns null if no User matches.
+   * Bootstrap path only — does not write an Admin Audit Log entry.
    */
   async elevateToPlatformAdminByEmail(
     email: string,
@@ -104,6 +125,220 @@ class UserService {
       where: { id: existing.id },
       data: { role: 'platform_admin' },
       select: ADMIN_IDENTITY_SELECT,
+    });
+  }
+
+  private async writeAdminAuditLog(
+    tx: Prisma.TransactionClient,
+    actorUserId: string,
+    targetUserId: string,
+    action: AdminAuditAction,
+  ): Promise<void> {
+    await tx.adminAuditLog.create({
+      data: {
+        actor_user_id: actorUserId,
+        target_user_id: targetUserId,
+        action,
+      },
+    });
+  }
+
+  private async requireIdentityUser(
+    userId: string,
+  ): Promise<AdminIdentityUser> {
+    const user = await this.getIdentityById(userId);
+    if (!user) {
+      throw new UserNotFoundError();
+    }
+    return user;
+  }
+
+  /**
+   * Soft-block a User and invalidate active refresh/access sessions immediately.
+   */
+  async disableUser(
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<AdminIdentityUser> {
+    await this.requireIdentityUser(targetUserId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: targetUserId },
+        data: {
+          disabled: true,
+          sessions_invalidated_at: new Date(),
+        },
+        select: ADMIN_IDENTITY_SELECT,
+      });
+      await this.writeAdminAuditLog(tx, actorUserId, targetUserId, 'disable');
+      return updated;
+    });
+  }
+
+  /**
+   * Re-enable a Disabled User so authentication works again.
+   * Does not restore previously invalidated sessions.
+   */
+  async enableUser(
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<AdminIdentityUser> {
+    await this.requireIdentityUser(targetUserId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: targetUserId },
+        data: { disabled: false },
+        select: ADMIN_IDENTITY_SELECT,
+      });
+      await this.writeAdminAuditLog(tx, actorUserId, targetUserId, 'enable');
+      return updated;
+    });
+  }
+
+  /**
+   * Invalidate all refresh/access sessions without disabling the account.
+   */
+  async forceLogoutUser(
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<AdminIdentityUser> {
+    await this.requireIdentityUser(targetUserId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: targetUserId },
+        data: { sessions_invalidated_at: new Date() },
+        select: ADMIN_IDENTITY_SELECT,
+      });
+      await this.writeAdminAuditLog(
+        tx,
+        actorUserId,
+        targetUserId,
+        'force_logout',
+      );
+      return updated;
+    });
+  }
+
+  /**
+   * Promote a User to Platform Admin. Idempotent if already platform_admin.
+   */
+  async promoteUser(
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<AdminIdentityUser> {
+    const existing = await this.requireIdentityUser(targetUserId);
+
+    if (existing.role === 'platform_admin') {
+      await this.prisma.$transaction(async (tx) => {
+        await this.writeAdminAuditLog(tx, actorUserId, targetUserId, 'promote');
+      });
+      return existing;
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: targetUserId },
+        data: { role: 'platform_admin' },
+        select: ADMIN_IDENTITY_SELECT,
+      });
+      await this.writeAdminAuditLog(tx, actorUserId, targetUserId, 'promote');
+      return updated;
+    });
+  }
+
+  /**
+   * Demote a Platform Admin to a normal User.
+   * Rejects when the target is the last Platform Admin.
+   */
+  async demoteUser(
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<AdminIdentityUser> {
+    const existing = await this.requireIdentityUser(targetUserId);
+
+    if (existing.role !== 'platform_admin') {
+      await this.prisma.$transaction(async (tx) => {
+        await this.writeAdminAuditLog(tx, actorUserId, targetUserId, 'demote');
+      });
+      return existing;
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const adminCount = await tx.user.count({
+        where: { role: 'platform_admin' },
+      });
+      if (adminCount <= 1) {
+        throw new LastPlatformAdminError();
+      }
+
+      const updated = await tx.user.update({
+        where: { id: targetUserId },
+        data: { role: 'user' },
+        select: ADMIN_IDENTITY_SELECT,
+      });
+      await this.writeAdminAuditLog(tx, actorUserId, targetUserId, 'demote');
+      return updated;
+    });
+  }
+
+  /**
+   * Admin-triggered verification email resend.
+   * Reuses public cooldown / already-verified semantics.
+   */
+  async adminResendVerification(
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<AdminIdentityUser> {
+    const identity = await this.requireIdentityUser(targetUserId);
+    const user = await this.getById(targetUserId);
+    if (!user) {
+      throw new UserNotFoundError();
+    }
+
+    const token = await this.sendVerificationMail(user);
+    if (token instanceof Error) {
+      if (token.message.includes('already verified')) {
+        throw new EmailAlreadyVerifiedError();
+      }
+      if (token.message.includes('already sent recently')) {
+        throw new VerificationCooldownError();
+      }
+      throw new VerificationSendFailedError();
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      await tx.user.update({
+        where: { id: targetUserId },
+        data: { email_verification_token: token },
+      });
+      await this.writeAdminAuditLog(
+        tx,
+        actorUserId,
+        targetUserId,
+        'resend_verification',
+      );
+      return identity;
+    });
+  }
+
+  /**
+   * List recent Admin Audit Log entries (newest first).
+   */
+  async listAdminAuditLogs(limit = 50): Promise<AdminAuditLogRow[]> {
+    const take = Math.min(Math.max(limit, 1), 200);
+    return this.prisma.adminAuditLog.findMany({
+      take,
+      orderBy: { created_at: 'desc' },
+      select: {
+        id: true,
+        actor_user_id: true,
+        target_user_id: true,
+        action: true,
+        created_at: true,
+      },
     });
   }
 

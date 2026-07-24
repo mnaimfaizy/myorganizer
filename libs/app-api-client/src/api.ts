@@ -24,6 +24,63 @@ import type { RequestArgs } from './base';
 import { BASE_PATH, COLLECTION_FORMATS, BaseAPI, RequiredError, operationServerMap } from './base';
 
 /**
+ * 
+ * @export
+ * @enum {string}
+ */
+
+export const AdminAuditAction = {
+    Disable: 'disable',
+    Enable: 'enable',
+    ForceLogout: 'force_logout',
+    ResendVerification: 'resend_verification',
+    Promote: 'promote',
+    Demote: 'demote'
+} as const;
+
+export type AdminAuditAction = typeof AdminAuditAction[keyof typeof AdminAuditAction];
+
+
+/**
+ * Platform Admin Audit Log entry returned by list APIs.
+ * @export
+ * @interface AdminAuditLogEntry
+ */
+export interface AdminAuditLogEntry {
+    /**
+     * 
+     * @type {string}
+     * @memberof AdminAuditLogEntry
+     */
+    'id': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AdminAuditLogEntry
+     */
+    'actorUserId': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof AdminAuditLogEntry
+     */
+    'targetUserId': string;
+    /**
+     * 
+     * @type {AdminAuditAction}
+     * @memberof AdminAuditLogEntry
+     */
+    'action': AdminAuditAction;
+    /**
+     * 
+     * @type {string}
+     * @memberof AdminAuditLogEntry
+     */
+    'createdAt': string;
+}
+
+
+/**
  * Identity-only User projection for Platform Admin directory APIs.
  * @export
  * @interface AdminUserIdentity
@@ -2728,6 +2785,154 @@ export class AuthenticationApi extends BaseAPI {
 export const PlatformAdminApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
         /**
+         * Demote a Platform Admin to a normal User. Rejects demotion of the last Platform Admin.
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        demoteUser: async (userId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'userId' is not null or undefined
+            assertParamExists('demoteUser', 'userId', userId)
+            const localVarPath = `/admin/users/{userId}/demote`
+                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Disable a User (soft-block) and invalidate active sessions immediately.
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        disableUser: async (userId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'userId' is not null or undefined
+            assertParamExists('disableUser', 'userId', userId)
+            const localVarPath = `/admin/users/{userId}/disable`
+                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Re-enable a Disabled User so authentication works again.
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        enableUser: async (userId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'userId' is not null or undefined
+            assertParamExists('enableUser', 'userId', userId)
+            const localVarPath = `/admin/users/{userId}/enable`
+                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Force logout a User without disabling the account.
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        forceLogoutUser: async (userId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'userId' is not null or undefined
+            assertParamExists('forceLogoutUser', 'userId', userId)
+            const localVarPath = `/admin/users/{userId}/force-logout`
+                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Get a User by id (identity fields only). Platform Admin only.
          * @param {string} userId 
          * @param {*} [options] Override http request option.
@@ -2752,6 +2957,44 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // authentication jwt required
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * List recent Admin Audit Log entries (newest first). Platform Admin only.
+         * @param {number} [limit] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listAuditLogs: async (limit?: number, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/admin/audit-logs`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            if (limit !== undefined) {
+                localVarQueryParameter['limit'] = limit;
+            }
 
 
     
@@ -2802,6 +3045,80 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
                 options: localVarRequestOptions,
             };
         },
+        /**
+         * Promote a User to Platform Admin.
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        promoteUser: async (userId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'userId' is not null or undefined
+            assertParamExists('promoteUser', 'userId', userId)
+            const localVarPath = `/admin/users/{userId}/promote`
+                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Resend verification email for an unverified User (existing cooldown rules).
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        resendVerification: async (userId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'userId' is not null or undefined
+            assertParamExists('resendVerification', 'userId', userId)
+            const localVarPath = `/admin/users/{userId}/resend-verification`
+                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
     }
 };
 
@@ -2813,6 +3130,54 @@ export const PlatformAdminApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = PlatformAdminApiAxiosParamCreator(configuration)
     return {
         /**
+         * Demote a Platform Admin to a normal User. Rejects demotion of the last Platform Admin.
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async demoteUser(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AdminUserIdentity>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.demoteUser(userId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.demoteUser']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Disable a User (soft-block) and invalidate active sessions immediately.
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async disableUser(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AdminUserIdentity>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.disableUser(userId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.disableUser']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Re-enable a Disabled User so authentication works again.
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async enableUser(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AdminUserIdentity>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.enableUser(userId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.enableUser']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Force logout a User without disabling the account.
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async forceLogoutUser(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AdminUserIdentity>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.forceLogoutUser(userId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.forceLogoutUser']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Get a User by id (identity fields only). Platform Admin only.
          * @param {string} userId 
          * @param {*} [options] Override http request option.
@@ -2822,6 +3187,18 @@ export const PlatformAdminApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.getUserById(userId, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.getUserById']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * List recent Admin Audit Log entries (newest first). Platform Admin only.
+         * @param {number} [limit] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async listAuditLogs(limit?: number, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<AdminAuditLogEntry>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.listAuditLogs(limit, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.listAuditLogs']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -2836,6 +3213,30 @@ export const PlatformAdminApiFp = function(configuration?: Configuration) {
             const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.listUsers']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
+        /**
+         * Promote a User to Platform Admin.
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async promoteUser(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AdminUserIdentity>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.promoteUser(userId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.promoteUser']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Resend verification email for an unverified User (existing cooldown rules).
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async resendVerification(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Login401Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.resendVerification(userId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.resendVerification']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
     }
 };
 
@@ -2847,6 +3248,42 @@ export const PlatformAdminApiFactory = function (configuration?: Configuration, 
     const localVarFp = PlatformAdminApiFp(configuration)
     return {
         /**
+         * Demote a Platform Admin to a normal User. Rejects demotion of the last Platform Admin.
+         * @param {PlatformAdminApiDemoteUserRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        demoteUser(requestParameters: PlatformAdminApiDemoteUserRequest, options?: RawAxiosRequestConfig): AxiosPromise<AdminUserIdentity> {
+            return localVarFp.demoteUser(requestParameters.userId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Disable a User (soft-block) and invalidate active sessions immediately.
+         * @param {PlatformAdminApiDisableUserRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        disableUser(requestParameters: PlatformAdminApiDisableUserRequest, options?: RawAxiosRequestConfig): AxiosPromise<AdminUserIdentity> {
+            return localVarFp.disableUser(requestParameters.userId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Re-enable a Disabled User so authentication works again.
+         * @param {PlatformAdminApiEnableUserRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        enableUser(requestParameters: PlatformAdminApiEnableUserRequest, options?: RawAxiosRequestConfig): AxiosPromise<AdminUserIdentity> {
+            return localVarFp.enableUser(requestParameters.userId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Force logout a User without disabling the account.
+         * @param {PlatformAdminApiForceLogoutUserRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        forceLogoutUser(requestParameters: PlatformAdminApiForceLogoutUserRequest, options?: RawAxiosRequestConfig): AxiosPromise<AdminUserIdentity> {
+            return localVarFp.forceLogoutUser(requestParameters.userId, options).then((request) => request(axios, basePath));
+        },
+        /**
          * Get a User by id (identity fields only). Platform Admin only.
          * @param {PlatformAdminApiGetUserByIdRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -2854,6 +3291,15 @@ export const PlatformAdminApiFactory = function (configuration?: Configuration, 
          */
         getUserById(requestParameters: PlatformAdminApiGetUserByIdRequest, options?: RawAxiosRequestConfig): AxiosPromise<AdminUserIdentity> {
             return localVarFp.getUserById(requestParameters.userId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * List recent Admin Audit Log entries (newest first). Platform Admin only.
+         * @param {PlatformAdminApiListAuditLogsRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        listAuditLogs(requestParameters: PlatformAdminApiListAuditLogsRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<Array<AdminAuditLogEntry>> {
+            return localVarFp.listAuditLogs(requestParameters.limit, options).then((request) => request(axios, basePath));
         },
         /**
          * List/search Users (identity fields only). Platform Admin only.
@@ -2864,8 +3310,82 @@ export const PlatformAdminApiFactory = function (configuration?: Configuration, 
         listUsers(requestParameters: PlatformAdminApiListUsersRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<Array<AdminUserIdentity>> {
             return localVarFp.listUsers(requestParameters.q, options).then((request) => request(axios, basePath));
         },
+        /**
+         * Promote a User to Platform Admin.
+         * @param {PlatformAdminApiPromoteUserRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        promoteUser(requestParameters: PlatformAdminApiPromoteUserRequest, options?: RawAxiosRequestConfig): AxiosPromise<AdminUserIdentity> {
+            return localVarFp.promoteUser(requestParameters.userId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Resend verification email for an unverified User (existing cooldown rules).
+         * @param {PlatformAdminApiResendVerificationRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        resendVerification(requestParameters: PlatformAdminApiResendVerificationRequest, options?: RawAxiosRequestConfig): AxiosPromise<Login401Response> {
+            return localVarFp.resendVerification(requestParameters.userId, options).then((request) => request(axios, basePath));
+        },
     };
 };
+
+/**
+ * Request parameters for demoteUser operation in PlatformAdminApi.
+ * @export
+ * @interface PlatformAdminApiDemoteUserRequest
+ */
+export interface PlatformAdminApiDemoteUserRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof PlatformAdminApiDemoteUser
+     */
+    readonly userId: string
+}
+
+/**
+ * Request parameters for disableUser operation in PlatformAdminApi.
+ * @export
+ * @interface PlatformAdminApiDisableUserRequest
+ */
+export interface PlatformAdminApiDisableUserRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof PlatformAdminApiDisableUser
+     */
+    readonly userId: string
+}
+
+/**
+ * Request parameters for enableUser operation in PlatformAdminApi.
+ * @export
+ * @interface PlatformAdminApiEnableUserRequest
+ */
+export interface PlatformAdminApiEnableUserRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof PlatformAdminApiEnableUser
+     */
+    readonly userId: string
+}
+
+/**
+ * Request parameters for forceLogoutUser operation in PlatformAdminApi.
+ * @export
+ * @interface PlatformAdminApiForceLogoutUserRequest
+ */
+export interface PlatformAdminApiForceLogoutUserRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof PlatformAdminApiForceLogoutUser
+     */
+    readonly userId: string
+}
 
 /**
  * Request parameters for getUserById operation in PlatformAdminApi.
@@ -2879,6 +3399,20 @@ export interface PlatformAdminApiGetUserByIdRequest {
      * @memberof PlatformAdminApiGetUserById
      */
     readonly userId: string
+}
+
+/**
+ * Request parameters for listAuditLogs operation in PlatformAdminApi.
+ * @export
+ * @interface PlatformAdminApiListAuditLogsRequest
+ */
+export interface PlatformAdminApiListAuditLogsRequest {
+    /**
+     * 
+     * @type {number}
+     * @memberof PlatformAdminApiListAuditLogs
+     */
+    readonly limit?: number
 }
 
 /**
@@ -2896,12 +3430,84 @@ export interface PlatformAdminApiListUsersRequest {
 }
 
 /**
+ * Request parameters for promoteUser operation in PlatformAdminApi.
+ * @export
+ * @interface PlatformAdminApiPromoteUserRequest
+ */
+export interface PlatformAdminApiPromoteUserRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof PlatformAdminApiPromoteUser
+     */
+    readonly userId: string
+}
+
+/**
+ * Request parameters for resendVerification operation in PlatformAdminApi.
+ * @export
+ * @interface PlatformAdminApiResendVerificationRequest
+ */
+export interface PlatformAdminApiResendVerificationRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof PlatformAdminApiResendVerification
+     */
+    readonly userId: string
+}
+
+/**
  * PlatformAdminApi - object-oriented interface
  * @export
  * @class PlatformAdminApi
  * @extends {BaseAPI}
  */
 export class PlatformAdminApi extends BaseAPI {
+    /**
+     * Demote a Platform Admin to a normal User. Rejects demotion of the last Platform Admin.
+     * @param {PlatformAdminApiDemoteUserRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof PlatformAdminApi
+     */
+    public demoteUser(requestParameters: PlatformAdminApiDemoteUserRequest, options?: RawAxiosRequestConfig) {
+        return PlatformAdminApiFp(this.configuration).demoteUser(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Disable a User (soft-block) and invalidate active sessions immediately.
+     * @param {PlatformAdminApiDisableUserRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof PlatformAdminApi
+     */
+    public disableUser(requestParameters: PlatformAdminApiDisableUserRequest, options?: RawAxiosRequestConfig) {
+        return PlatformAdminApiFp(this.configuration).disableUser(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Re-enable a Disabled User so authentication works again.
+     * @param {PlatformAdminApiEnableUserRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof PlatformAdminApi
+     */
+    public enableUser(requestParameters: PlatformAdminApiEnableUserRequest, options?: RawAxiosRequestConfig) {
+        return PlatformAdminApiFp(this.configuration).enableUser(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Force logout a User without disabling the account.
+     * @param {PlatformAdminApiForceLogoutUserRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof PlatformAdminApi
+     */
+    public forceLogoutUser(requestParameters: PlatformAdminApiForceLogoutUserRequest, options?: RawAxiosRequestConfig) {
+        return PlatformAdminApiFp(this.configuration).forceLogoutUser(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
+    }
+
     /**
      * Get a User by id (identity fields only). Platform Admin only.
      * @param {PlatformAdminApiGetUserByIdRequest} requestParameters Request parameters.
@@ -2914,6 +3520,17 @@ export class PlatformAdminApi extends BaseAPI {
     }
 
     /**
+     * List recent Admin Audit Log entries (newest first). Platform Admin only.
+     * @param {PlatformAdminApiListAuditLogsRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof PlatformAdminApi
+     */
+    public listAuditLogs(requestParameters: PlatformAdminApiListAuditLogsRequest = {}, options?: RawAxiosRequestConfig) {
+        return PlatformAdminApiFp(this.configuration).listAuditLogs(requestParameters.limit, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * List/search Users (identity fields only). Platform Admin only.
      * @param {PlatformAdminApiListUsersRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
@@ -2922,6 +3539,28 @@ export class PlatformAdminApi extends BaseAPI {
      */
     public listUsers(requestParameters: PlatformAdminApiListUsersRequest = {}, options?: RawAxiosRequestConfig) {
         return PlatformAdminApiFp(this.configuration).listUsers(requestParameters.q, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Promote a User to Platform Admin.
+     * @param {PlatformAdminApiPromoteUserRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof PlatformAdminApi
+     */
+    public promoteUser(requestParameters: PlatformAdminApiPromoteUserRequest, options?: RawAxiosRequestConfig) {
+        return PlatformAdminApiFp(this.configuration).promoteUser(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Resend verification email for an unverified User (existing cooldown rules).
+     * @param {PlatformAdminApiResendVerificationRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof PlatformAdminApi
+     */
+    public resendVerification(requestParameters: PlatformAdminApiResendVerificationRequest, options?: RawAxiosRequestConfig) {
+        return PlatformAdminApiFp(this.configuration).resendVerification(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

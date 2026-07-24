@@ -20,6 +20,7 @@ import apiTokens from '../helpers/ApiTokens';
 import filterUser from '../helpers/filterUser';
 import PlatformTokenHandler from '../helpers/PlatformTokenHandler';
 import { decodeToken } from '../helpers/jwtHelper';
+import { isTokenIssuedBeforeInvalidation } from '../helpers/sessionInvalidation';
 import { ValidateErrorJSON } from '../interfaces';
 import { RegisterUserResponse } from '../models/Auth';
 import {
@@ -134,6 +135,23 @@ export class AuthController extends Controller {
 
     if ((user as { disabled?: boolean }).disabled) {
       return unauthorized(401, { message: 'Account disabled' });
+    }
+
+    const refreshPayload = decodeToken(
+      refresh_token,
+      process.env.REFRESH_JWT_SECRET as string,
+    );
+    if (
+      refreshPayload &&
+      !(refreshPayload instanceof Error) &&
+      typeof refreshPayload === 'object' &&
+      isTokenIssuedBeforeInvalidation(
+        (refreshPayload as { iat?: number }).iat,
+        (user as { sessions_invalidated_at?: Date | null })
+          .sessions_invalidated_at,
+      )
+    ) {
+      return unauthorized(401, { message: 'Session invalidated' });
     }
 
     if (user.blacklisted_tokens?.includes(refresh_token)) {

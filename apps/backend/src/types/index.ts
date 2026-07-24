@@ -47,6 +47,23 @@ export interface AdminUserIdentity {
   emailVerified: boolean;
 }
 
+export type AdminAuditAction =
+  | 'disable'
+  | 'enable'
+  | 'force_logout'
+  | 'resend_verification'
+  | 'promote'
+  | 'demote';
+
+/** Platform Admin Audit Log entry returned by list APIs. */
+export interface AdminAuditLogEntry {
+  id: string;
+  actorUserId: string;
+  targetUserId: string;
+  action: AdminAuditAction;
+  createdAt: Date;
+}
+
 export class MyError extends Error {
   public statusCode;
   public data;
