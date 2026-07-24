@@ -385,6 +385,46 @@ describe('Auth Routes', () => {
       expect(apiTokens.createTokens).not.toHaveBeenCalled();
     });
 
+    test('returns 401 and clears refresh cookie when session was invalidated after token was issued', async () => {
+      const sessionsInvalidatedAt = new Date('2025-06-01T12:00:00.000Z');
+      const iatSeconds = Math.floor(
+        sessionsInvalidatedAt.getTime() / 1000 - 60,
+      );
+
+      (userService.refreshToken as jest.Mock).mockResolvedValue({
+        id: 'user-1',
+        email: 'test@example.com',
+        email_verification_timestamp: new Date(),
+        disabled: false,
+        sessions_invalidated_at: sessionsInvalidatedAt,
+        blacklisted_tokens: [],
+      });
+      (decodeToken as jest.Mock).mockReturnValue({
+        userId: 'user-1',
+        iat: iatSeconds,
+      });
+
+      const response = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', ['refresh_cookie=refresh-token']);
+
+      expect(response.status).toBe(401);
+      expect(response.body).toEqual({ message: 'Session invalidated' });
+
+      const rawSetCookie = response.headers['set-cookie'] as
+        | string
+        | string[]
+        | undefined;
+      const setCookie = Array.isArray(rawSetCookie)
+        ? rawSetCookie
+        : rawSetCookie
+          ? [rawSetCookie]
+          : [];
+
+      expect(setCookie.some((c) => c.startsWith('refresh_cookie='))).toBe(true);
+      expect(apiTokens.createTokens).not.toHaveBeenCalled();
+    });
+
     test('returns 200 with role and disabled in user payload', async () => {
       const verifiedUser = {
         id: 'user-1',

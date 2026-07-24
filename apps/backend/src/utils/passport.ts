@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt';
 import passport from 'passport';
 import jwtStrat, { ExtractJwt } from 'passport-jwt';
 import localStrat from 'passport-local';
+import { isTokenIssuedBeforeInvalidation } from '../helpers/sessionInvalidation';
 import { User } from '../models/User';
 import { createPrismaClient } from '../prisma';
 
@@ -82,6 +83,15 @@ passport.use(
             return done(null, false);
           }
           if ((user as { disabled?: boolean }).disabled) {
+            return done(null, false);
+          }
+          if (
+            isTokenIssuedBeforeInvalidation(
+              jwt_payload.iat,
+              (user as { sessions_invalidated_at?: Date | null })
+                .sessions_invalidated_at,
+            )
+          ) {
             return done(null, false);
           }
           return done(null, user);

@@ -1,6 +1,7 @@
 import * as express from 'express';
 import { JwtPayload } from 'jsonwebtoken';
 import { decodeToken } from '../helpers/jwtHelper';
+import { isTokenIssuedBeforeInvalidation } from '../helpers/sessionInvalidation';
 import userService from '../services/UserService';
 
 function unauthorized(message = 'Unauthorized') {
@@ -82,6 +83,16 @@ export function expressAuthentication(
 
     if ((user as { disabled?: boolean }).disabled) {
       throw unauthorized('Account disabled');
+    }
+
+    if (
+      isTokenIssuedBeforeInvalidation(
+        payload.iat,
+        (user as { sessions_invalidated_at?: Date | null })
+          .sessions_invalidated_at,
+      )
+    ) {
+      throw unauthorized('Session invalidated');
     }
 
     if (scopes?.includes('platform_admin')) {

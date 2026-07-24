@@ -3,6 +3,8 @@ import authController from '../controllers/AuthController';
 import apiTokens from '../helpers/ApiTokens';
 import { getExpiry } from '../helpers/cookieHelper';
 import filterUser from '../helpers/filterUser';
+import { decodeToken } from '../helpers/jwtHelper';
+import { isTokenIssuedBeforeInvalidation } from '../helpers/sessionInvalidation';
 import isOwner from '../middleware/isOwner';
 import { LoginSchema, refreshTokenSchema } from '../schemas/auth.schema';
 import { UserSchema } from '../schemas/user.schema';
@@ -385,6 +387,25 @@ router.post('/refresh', async (req, res, next: NextFunction) => {
       res.status(403).json({
         message: 'Email not verified. Please verify your email first.',
       });
+      return;
+    }
+
+    const refreshPayload = decodeToken(
+      refreshToken,
+      process.env.REFRESH_JWT_SECRET as string,
+    );
+    if (
+      refreshPayload &&
+      !(refreshPayload instanceof Error) &&
+      typeof refreshPayload === 'object' &&
+      isTokenIssuedBeforeInvalidation(
+        (refreshPayload as { iat?: number }).iat,
+        (user as { sessions_invalidated_at?: Date | null })
+          .sessions_invalidated_at,
+      )
+    ) {
+      res.clearCookie('refresh_cookie');
+      res.status(401).json({ message: 'Session invalidated' });
       return;
     }
 

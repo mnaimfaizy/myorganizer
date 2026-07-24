@@ -621,6 +621,37 @@ components:
         - emailVerified
       type: object
       additionalProperties: false
+    AdminAuditAction:
+      type: string
+      enum:
+        - disable
+        - enable
+        - force_logout
+        - resend_verification
+        - promote
+        - demote
+    AdminAuditLogEntry:
+      description: Platform Admin Audit Log entry returned by list APIs.
+      properties:
+        id:
+          type: string
+        actorUserId:
+          type: string
+        targetUserId:
+          type: string
+        action:
+          $ref: "#/components/schemas/AdminAuditAction"
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - actorUserId
+        - targetUserId
+        - action
+        - createdAt
+      type: object
+      additionalProperties: false
   securitySchemes:
     OAuth2PasswordSecurity:
       type: oauth2
@@ -1536,6 +1567,270 @@ paths:
           required: true
           schema:
             type: string
+  /admin/users/{userId}/disable:
+    post:
+      operationId: DisableUser
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserIdentity"
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+      description: Disable a User (soft-block) and invalidate active sessions immediately.
+      tags:
+        - Platform Admin
+      security:
+        - jwt:
+            - platform_admin
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+  /admin/users/{userId}/enable:
+    post:
+      operationId: EnableUser
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserIdentity"
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+      description: Re-enable a Disabled User so authentication works again.
+      tags:
+        - Platform Admin
+      security:
+        - jwt:
+            - platform_admin
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+  /admin/users/{userId}/force-logout:
+    post:
+      operationId: ForceLogoutUser
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserIdentity"
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+      description: Force logout a User without disabling the account.
+      tags:
+        - Platform Admin
+      security:
+        - jwt:
+            - platform_admin
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+  /admin/users/{userId}/resend-verification:
+    post:
+      operationId: ResendVerification
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+        "409":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+        "429":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+      description: Resend verification email for an unverified User (existing cooldown
+        rules).
+      tags:
+        - Platform Admin
+      security:
+        - jwt:
+            - platform_admin
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+  /admin/users/{userId}/promote:
+    post:
+      operationId: PromoteUser
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserIdentity"
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+      description: Promote a User to Platform Admin.
+      tags:
+        - Platform Admin
+      security:
+        - jwt:
+            - platform_admin
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+  /admin/users/{userId}/demote:
+    post:
+      operationId: DemoteUser
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserIdentity"
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+        "409":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+      description: |-
+        Demote a Platform Admin to a normal User.
+        Rejects demotion of the last Platform Admin.
+      tags:
+        - Platform Admin
+      security:
+        - jwt:
+            - platform_admin
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+  /admin/audit-logs:
+    get:
+      operationId: ListAuditLogs
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: "#/components/schemas/AdminAuditLogEntry"
+                type: array
+      description: List recent Admin Audit Log entries (newest first). Platform Admin only.
+      tags:
+        - Platform Admin
+      security:
+        - jwt:
+            - platform_admin
+      parameters:
+        - in: query
+          name: limit
+          required: false
+          schema:
+            format: double
+            type: number
 servers:
   - url: http://localhost:3000/api/v1/
     description: Local server

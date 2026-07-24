@@ -163,6 +163,51 @@ describe('expressAuthentication (tsoa jwt)', () => {
     });
   });
 
+  test('rejects when token was issued before sessions were invalidated', async () => {
+    const sessionsInvalidatedAt = new Date('2025-06-01T12:00:00.000Z');
+    const iatSeconds = Math.floor(sessionsInvalidatedAt.getTime() / 1000 - 60);
+
+    decodeTokenMock.mockReturnValue({ userId: 'u1', iat: iatSeconds });
+    getByIdMock.mockResolvedValue({
+      id: 'u1',
+      disabled: false,
+      sessions_invalidated_at: sessionsInvalidatedAt,
+    });
+
+    const req = makeReq({ headers: { authorization: 'Bearer abc' } });
+
+    await expect(expressAuthentication(req, 'jwt')).rejects.toMatchObject({
+      status: 401,
+      message: 'Session invalidated',
+    });
+  });
+
+  test('allows when token was issued after sessions were invalidated', async () => {
+    const sessionsInvalidatedAt = new Date('2025-06-01T12:00:00.000Z');
+    const iatSeconds = Math.floor(sessionsInvalidatedAt.getTime() / 1000 + 60);
+
+    decodeTokenMock.mockReturnValue({ userId: 'u1', iat: iatSeconds });
+    getByIdMock.mockResolvedValue({
+      id: 'u1',
+      disabled: false,
+      sessions_invalidated_at: sessionsInvalidatedAt,
+    });
+
+    const req = makeReq({ headers: { authorization: 'Bearer abc' } });
+    const user = await expressAuthentication(req, 'jwt');
+
+    expect(user).toEqual({
+      id: 'u1',
+      disabled: false,
+      sessions_invalidated_at: sessionsInvalidatedAt,
+    });
+    expect((req as any).user).toEqual({
+      id: 'u1',
+      disabled: false,
+      sessions_invalidated_at: sessionsInvalidatedAt,
+    });
+  });
+
   test('rejects non-admin when scopes include platform_admin', async () => {
     decodeTokenMock.mockReturnValue({ userId: 'u1' });
     getByIdMock.mockResolvedValue({ id: 'u1', role: 'user', disabled: false });
