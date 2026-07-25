@@ -1,3 +1,4 @@
+import { AUTH_HERO_ASSETS } from './authHeroAssets';
 import type { AuthHeroScreen } from './authHero';
 
 type AuthHeroPlaceholderProps = {
@@ -6,13 +7,55 @@ type AuthHeroPlaceholderProps = {
 };
 
 /**
- * CSS/SVG stand-in until generated hero images are added.
- * Replace the inner frame with an <img> when assets land.
+ * Auth hero panel: generated image when available, otherwise SVG placeholder.
+ * Images are cropped to 4:5 and framed to match Option A split-screen.
  */
 export function AuthHeroPlaceholder({
   screen,
   className = '',
 }: AuthHeroPlaceholderProps) {
+  const asset = AUTH_HERO_ASSETS[screen];
+
+  if (asset) {
+    return (
+      <div
+        className={`relative overflow-hidden rounded-3xl shadow-xl ring-1 ring-[var(--color-border,#E2E8F0)] ${className}`}
+      >
+        {/* Soft brand wash so the panel sits with navy/purple/teal auth chrome */}
+        <div
+          className="pointer-events-none absolute inset-0 z-[1] opacity-25"
+          style={{
+            background:
+              'linear-gradient(160deg, rgba(15,23,42,0.35) 0%, rgba(124,58,237,0.15) 45%, rgba(15,118,110,0.25) 100%)',
+          }}
+          aria-hidden
+        />
+        <picture>
+          <source srcSet={asset.webp} type="image/webp" />
+          <img
+            src={asset.jpg}
+            alt={asset.alt}
+            className="relative z-0 h-full min-h-[420px] w-full object-cover object-center"
+            width={800}
+            height={1000}
+            decoding="async"
+            fetchPriority="low"
+          />
+        </picture>
+      </div>
+    );
+  }
+
+  return <SvgPlaceholder screen={screen} className={className} />;
+}
+
+function SvgPlaceholder({
+  screen,
+  className = '',
+}: {
+  screen: AuthHeroScreen;
+  className?: string;
+}) {
   const accent = '#A78BFA';
   const accent2 = '#5EEAD4';
 
