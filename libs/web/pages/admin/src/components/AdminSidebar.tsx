@@ -29,6 +29,7 @@ import {
   ChevronsUpDown,
   Home,
   LogOut,
+  ScrollText,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -49,6 +50,11 @@ const adminNavItems: {
     title: 'Users',
     url: '/admin/users',
     icon: Users,
+  },
+  {
+    title: 'Audit Log',
+    url: '/admin/audit-logs',
+    icon: ScrollText,
   },
 ];
 
@@ -146,7 +152,7 @@ export function AdminSidebar({ ...props }: AdminSidebarProps) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Directory</SidebarGroupLabel>
+          <SidebarGroupLabel>Admin</SidebarGroupLabel>
           <SidebarMenu>
             {adminNavItems.map((item) => (
               <SidebarMenuItem key={item.title}>
