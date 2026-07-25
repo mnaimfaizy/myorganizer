@@ -79,7 +79,9 @@ export default function VerifyEmailClient() {
       ? 'Please wait while we confirm your email address.'
       : state.status === 'success'
         ? 'Your email is confirmed. You can sign in to MyOrganiser.'
-        : state.message;
+        : state.status === 'error'
+          ? state.message
+          : '';
 
   return (
     <AuthSplitShell screen="verify" title={title} description={description}>
