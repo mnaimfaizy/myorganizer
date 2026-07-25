@@ -3,10 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { register } from '@myorganizer/auth';
 import {
-  AppLogo,
   Button,
-  Card,
-  CardContent,
   Checkbox,
   Form,
   FormControl,
@@ -17,12 +14,17 @@ import {
   Input,
   useToast,
 } from '@myorganizer/web-ui';
-import { Eye, EyeOff, Facebook, Mail } from 'lucide-react';
-import Link from 'next/link';
+import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
+
+import { AuthSplitShell, AuthTextLink } from '../_components/AuthSplitShell';
+import {
+  AuthSocialButtons,
+  type AuthSocialProvider,
+} from '../_components/AuthSocialButtons';
 
 const signUpSchema = z
   .object({
@@ -124,301 +126,216 @@ export default function SignUpPage() {
     }
   };
 
-  const handleSSOLogin = (provider: string) => {
+  const handleSSOLogin = (provider: AuthSocialProvider) => {
     console.log(`SSO login with ${provider}`);
-    // Handle SSO login logic here
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <div className="w-full max-w-6xl flex gap-8 items-center">
-        {/* Left side – branded panel */}
-        <div className="hidden lg:flex flex-1 items-center justify-center">
-          <div
-            className="w-full max-w-md aspect-square rounded-3xl shadow-2xl flex flex-col items-center justify-center gap-6 p-10"
-            style={{
-              background:
-                'linear-gradient(135deg, #0F172A 0%, #7C3AED 60%, #0F766E 100%)',
-            }}
-          >
-            <AppLogo variant="icon" height={80} aria-hidden />
-            <div className="text-white text-center">
-              <h2 className="text-3xl font-bold mb-2">
-                Welcome to MyOrganiser
-              </h2>
-              <p className="text-base opacity-80">
-                Organize your life, secure your data—protected by client-side
-                encryption.
-              </p>
+    <AuthSplitShell
+      screen="signup"
+      title="Sign up"
+      description="Let's get you set up so you can access your personal account."
+      formMaxWidthClassName="max-w-lg"
+      footer={
+        <div className="space-y-4">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="bg-[var(--color-surface,#F8FAFC)] px-2 text-muted-foreground">
+                Or sign up with
+              </span>
             </div>
           </div>
+          <AuthSocialButtons
+            providers={['facebook', 'google', 'apple']}
+            onProviderClick={handleSSOLogin}
+          />
         </div>
+      }
+    >
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="firstName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>First name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Jane" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="lastName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Last name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="Doe" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
 
-        {/* Right side - Sign up form */}
-        <div className="flex-1 w-full max-w-xl">
-          <Card className="shadow-2xl border-0">
-            <CardContent className="p-8">
-              {/* Header */}
-              <div className="mb-8">
-                <div className="mb-4">
-                  <AppLogo variant="full" height={30} />
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <FormField
+              control={form.control}
+              name="email"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Email</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="email"
+                      placeholder="jane.doe@email.com"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="phoneNumber"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Phone number</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="tel"
+                      placeholder="+1 (555) 000-0000"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Password</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="••••••••••••••••"
+                      className="pr-10"
+                      {...field}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={
+                        showPassword ? 'Hide password' : 'Show password'
+                      }
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="confirmPassword"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Confirm password</FormLabel>
+                <FormControl>
+                  <div className="relative">
+                    <Input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      placeholder="••••••••••••••••"
+                      className="pr-10"
+                      {...field}
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setShowConfirmPassword(!showConfirmPassword)
+                      }
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={
+                        showConfirmPassword
+                          ? 'Hide confirm password'
+                          : 'Show confirm password'
+                      }
+                    >
+                      {showConfirmPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="agreeToTerms"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="leading-none">
+                  <FormLabel className="text-sm font-normal">
+                    I agree to all the{' '}
+                    <AuthTextLink href="/terms">Terms</AuthTextLink> and{' '}
+                    <AuthTextLink href="/privacy">
+                      Privacy Policies
+                    </AuthTextLink>
+                  </FormLabel>
+                  <FormMessage />
                 </div>
-                <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                  Sign up
-                </h1>
-                <p className="text-gray-600">
-                  Let&apos;s get you all set up so you can access your personal
-                  account.
-                </p>
-              </div>
+              </FormItem>
+            )}
+          />
 
-              <Form {...form}>
-                <form
-                  onSubmit={form.handleSubmit(onSubmit)}
-                  className="space-y-4"
-                >
-                  {/* First Name and Last Name */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="firstName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>First Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="John" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="lastName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Last Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Doe" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="h-11 w-full text-base font-semibold"
+          >
+            {isSubmitting ? 'Creating account…' : 'Create account'}
+          </Button>
 
-                  {/* Email and Phone Number */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="email"
-                              placeholder="john.doe@gmail.com"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="phoneNumber"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone Number</FormLabel>
-                          <FormControl>
-                            <Input
-                              type="tel"
-                              placeholder="+1 (555) 000-0000"
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  {/* Password */}
-                  <FormField
-                    control={form.control}
-                    name="password"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              type={showPassword ? 'text' : 'password'}
-                              placeholder="••••••••••••••••"
-                              {...field}
-                            />
-                            <button
-                              type="button"
-                              onClick={() => setShowPassword(!showPassword)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                            >
-                              {showPassword ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
-                            </button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Confirm Password */}
-                  <FormField
-                    control={form.control}
-                    name="confirmPassword"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <Input
-                              type={showConfirmPassword ? 'text' : 'password'}
-                              placeholder="••••••••••••••••"
-                              {...field}
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setShowConfirmPassword(!showConfirmPassword)
-                              }
-                              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                            >
-                              {showConfirmPassword ? (
-                                <EyeOff className="h-4 w-4" />
-                              ) : (
-                                <Eye className="h-4 w-4" />
-                              )}
-                            </button>
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Terms and Conditions */}
-                  <FormField
-                    control={form.control}
-                    name="agreeToTerms"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div className="leading-none">
-                          <FormLabel className="text-sm font-normal">
-                            I agree to all the{' '}
-                            <Link
-                              href="/terms"
-                              className="text-red-500 hover:underline"
-                            >
-                              Terms
-                            </Link>{' '}
-                            and{' '}
-                            <Link
-                              href="/privacy"
-                              className="text-red-500 hover:underline"
-                            >
-                              Privacy Policies
-                            </Link>
-                          </FormLabel>
-                          <FormMessage />
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Submit Button */}
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white h-12 text-base font-semibold"
-                  >
-                    {isSubmitting ? 'Creating account…' : 'Create account'}
-                  </Button>
-
-                  {/* Login Link */}
-                  <div className="text-center text-sm">
-                    <span className="text-gray-600">
-                      Already have an account?{' '}
-                    </span>
-                    <Link
-                      href="/login"
-                      className="text-red-500 hover:underline font-medium"
-                    >
-                      Login
-                    </Link>
-                  </div>
-
-                  {/* Divider */}
-                  <div className="relative my-6">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-gray-300"></div>
-                    </div>
-                    <div className="relative flex justify-center text-sm">
-                      <span className="px-4 bg-white text-gray-500">
-                        Or Sign up with
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* SSO Buttons */}
-                  <div className="grid grid-cols-3 gap-4">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleSSOLogin('facebook')}
-                      className="h-12 border-blue-200 hover:bg-blue-50"
-                    >
-                      <Facebook className="h-5 w-5 text-blue-600" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleSSOLogin('google')}
-                      className="h-12 border-red-200 hover:bg-red-50"
-                    >
-                      <Mail className="h-5 w-5 text-red-600" />
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => handleSSOLogin('apple')}
-                      className="h-12 border-gray-200 hover:bg-gray-50"
-                    >
-                      <svg
-                        className="h-5 w-5"
-                        viewBox="0 0 24 24"
-                        fill="currentColor"
-                      >
-                        <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
-                      </svg>
-                    </Button>
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    </div>
+          <p className="text-center text-sm text-muted-foreground">
+            Already have an account?{' '}
+            <AuthTextLink href="/login">Login</AuthTextLink>
+          </p>
+        </form>
+      </Form>
+    </AuthSplitShell>
   );
 }

@@ -2,9 +2,12 @@
 
 import { resendVerificationEmail } from '@myorganizer/auth';
 import { Button, useToast } from '@myorganizer/web-ui';
+import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+
+import { AuthSplitShell } from '../../../_components/AuthSplitShell';
 
 export default function VerifyEmailSentClient() {
   const searchParams = useSearchParams();
@@ -35,34 +38,45 @@ export default function VerifyEmailSentClient() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-background">
-      <div className="w-full max-w-lg space-y-4">
-        <h1 className="text-2xl font-semibold">Check your email</h1>
-        <p className="text-muted-foreground">
-          We’ve sent a verification email{email ? ` to ${email}` : ''}. Please
-          click the link in that email to verify your account.
-        </p>
-        <p className="text-muted-foreground">
-          After verifying, come back and log in.
-        </p>
-        <div className="flex gap-3">
-          <Link
-            href="/login"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-primary-foreground"
-          >
-            Go to login
-          </Link>
-
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={!email || isResending}
-            onClick={handleResend}
-          >
-            Resend verification email
-          </Button>
-        </div>
+    <AuthSplitShell
+      screen="check-email"
+      title="Check your email"
+      description={
+        <>
+          We&apos;ve sent a verification email
+          {email ? (
+            <>
+              {' '}
+              to <span className="font-medium text-foreground">{email}</span>
+            </>
+          ) : null}
+          . Open the link inside to verify your account.
+        </>
+      }
+      beforeTitle={
+        <Link
+          href="/login"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to login
+        </Link>
+      }
+    >
+      <div className="space-y-3">
+        <Button asChild className="h-11 w-full">
+          <Link href="/login">Go to login</Link>
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={!email || isResending}
+          onClick={handleResend}
+          className="h-11 w-full"
+        >
+          {isResending ? 'Sending…' : 'Resend verification email'}
+        </Button>
       </div>
-    </div>
+    </AuthSplitShell>
   );
 }
