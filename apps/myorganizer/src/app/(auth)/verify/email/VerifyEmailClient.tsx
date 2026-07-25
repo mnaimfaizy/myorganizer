@@ -1,9 +1,12 @@
 'use client';
 
 import { getApiBaseUrl } from '@myorganizer/core';
+import { Button } from '@myorganizer/web-ui';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+
+import { AuthSplitShell } from '../../_components/AuthSplitShell';
 
 type VerifyState =
   | { status: 'idle' | 'verifying' }
@@ -39,7 +42,7 @@ export default function VerifyEmailClient() {
         if (!res.ok) {
           let message = 'Failed to verify email.';
           try {
-            const data = (await res.json()) as any;
+            const data = (await res.json()) as { message?: string };
             if (typeof data?.message === 'string') message = data.message;
           } catch {
             // ignore
@@ -64,41 +67,44 @@ export default function VerifyEmailClient() {
     };
   }, [apiBase, token]);
 
+  const title =
+    state.status === 'success'
+      ? 'Email verified'
+      : state.status === 'error'
+        ? 'Verification failed'
+        : 'Verify your email';
+
+  const description =
+    state.status === 'idle' || state.status === 'verifying'
+      ? 'Please wait while we confirm your email address.'
+      : state.status === 'success'
+        ? 'Your email is confirmed. You can sign in to MyOrganiser.'
+        : state.status === 'error'
+          ? state.message
+          : '';
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-background">
-      <div className="w-full max-w-lg space-y-4">
-        <h1 className="text-2xl font-semibold">Verify your email</h1>
+    <AuthSplitShell screen="verify" title={title} description={description}>
+      {state.status === 'idle' || state.status === 'verifying' ? (
+        <p className="text-sm text-muted-foreground">Verifying…</p>
+      ) : null}
 
-        {state.status === 'idle' || state.status === 'verifying' ? (
-          <p className="text-muted-foreground">Verifying…</p>
-        ) : null}
+      {state.status === 'success' ? (
+        <div className="space-y-4">
+          <div className="rounded-lg border border-teal-200 bg-teal-50 px-3 py-3 text-sm text-teal-900">
+            Success — your email address has been verified.
+          </div>
+          <Button asChild className="h-11 w-full">
+            <Link href="/login">Continue to login</Link>
+          </Button>
+        </div>
+      ) : null}
 
-        {state.status === 'success' ? (
-          <>
-            <p className="text-muted-foreground">
-              Your email has been verified. You can now log in.
-            </p>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-primary-foreground"
-            >
-              Go to login
-            </Link>
-          </>
-        ) : null}
-
-        {state.status === 'error' ? (
-          <>
-            <p className="text-muted-foreground">{state.message}</p>
-            <Link
-              href="/login"
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-primary-foreground"
-            >
-              Go to login
-            </Link>
-          </>
-        ) : null}
-      </div>
-    </div>
+      {state.status === 'error' ? (
+        <Button asChild className="h-11 w-full">
+          <Link href="/login">Go to login</Link>
+        </Button>
+      ) : null}
+    </AuthSplitShell>
   );
 }
