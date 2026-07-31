@@ -40,6 +40,38 @@ _Avoid_: Activity log, admin history, audit trail, event log
 A group that allows multiple Users to share resources. Emerging — not fully implemented.
 _Avoid_: Team, group, workspace
 
+**Grocery List**:
+A named trip-oriented collection of grocery lines the User shops against on the web Groceries experience.
+_Avoid_: Shopping list (as the product name), cart, basket
+
+**Checked Item**:
+A grocery line marked bought on the current trip; it remains on the Grocery List and can be unchecked.
+_Avoid_: Completed item (ambiguous with remove/clear), purchased row, done item
+
+**Uncheck All**:
+The Grocery List action that turns every Checked Item back to unchecked so the same list can be reused for another trip. Does not remove lines.
+_Avoid_: Reset trip, clear checked, keep for next shop
+
+**Remove Checked From List**:
+The Grocery List action that drops Checked Items from that list only. Does not destroy the Catalog Item.
+_Avoid_: Clear checked, finish trip, delete purchased, clear list
+
+**Delete List Line**:
+Removing one grocery line from a Grocery List (checked or not). Does not destroy the Catalog Item.
+_Avoid_: Delete item (ambiguous with catalog), remove forever, trash item
+
+**Delete From Catalog**:
+Permanently destroying a durable grocery item identity so it is gone from the catalog and from every Grocery List that referenced it. Requires strong confirmation.
+_Avoid_: Clear, remove checked, delete list line
+
+**Catalog Item**:
+A durable, user-owned grocery identity in the vault catalog (name, category, default price, notes, image, links). Grocery Lists reference it; it is not owned by a single list.
+_Avoid_: Pool item, master item, product, favorite (unless UI label), template
+
+**List Line**:
+A Grocery List’s reference to a Catalog Item for a trip, carrying trip-local state such as checked and quantity/amount. The same Catalog Item may appear on multiple Grocery Lists at once.
+_Avoid_: Embedded item, list-owned item, row (as domain name)
+
 ## Frontend Architecture
 
 **UI Primitive**:
