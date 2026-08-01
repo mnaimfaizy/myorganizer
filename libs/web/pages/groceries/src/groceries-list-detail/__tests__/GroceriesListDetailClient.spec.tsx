@@ -34,7 +34,11 @@ jest.mock('../components', () => ({
 
 jest.mock('lucide-react', () => ({
   ArrowLeft: ({ className }: Record<string, unknown>) => (
-    <svg data-testid="arrow-left-icon" className={className as string} viewBox="0 0 24 24" />
+    <svg
+      data-testid="arrow-left-icon"
+      className={className as string}
+      viewBox="0 0 24 24"
+    />
   ),
 }));
 
@@ -56,18 +60,20 @@ describe('GroceriesListDetailClient', () => {
     name: string,
     itemCount = 0,
   ): GroceryList {
+    const now = new Date().toISOString();
     return {
       id,
       name,
-      items: Array.from({ length: itemCount }, (_, i) => ({
-        id: `item-${i}`,
-        name: `Item ${i}`,
-        completed: false,
-        quantity: 1,
-        unit: '',
+      lines: Array.from({ length: itemCount }, (_, i) => ({
+        id: `line-${i}`,
+        catalogItemId: `catalog-${i}`,
+        checked: false,
+        amount: '1',
+        createdAt: now,
+        updatedAt: now,
       })),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      createdAt: now,
+      updatedAt: now,
     };
   }
 
@@ -115,9 +121,7 @@ describe('GroceriesListDetailClient', () => {
         />,
       );
 
-      expect(
-        screen.queryByTestId('grocery-list-view'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('grocery-list-view')).not.toBeInTheDocument();
     });
 
     it('should not render "List not found" message during loading state', () => {
@@ -175,9 +179,7 @@ describe('GroceriesListDetailClient', () => {
       );
 
       expect(
-        screen.getByText(
-          "The grocery list you're looking for doesn't exist.",
-        ),
+        screen.getByText("The grocery list you're looking for doesn't exist."),
       ).toBeInTheDocument();
     });
 
@@ -216,9 +218,7 @@ describe('GroceriesListDetailClient', () => {
         />,
       );
 
-      expect(
-        screen.queryByTestId('grocery-list-view'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('grocery-list-view')).not.toBeInTheDocument();
     });
   });
 
@@ -278,9 +278,7 @@ describe('GroceriesListDetailClient', () => {
         />,
       );
 
-      expect(
-        screen.queryByText('List not found'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByText('List not found')).not.toBeInTheDocument();
     });
 
     it('should render back link when list is found', () => {
