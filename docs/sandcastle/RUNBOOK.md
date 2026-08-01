@@ -26,9 +26,19 @@ pipeline.
 1. **Toolchain:** Node 22 + corepack (`corepack enable` → provides `yarn` pinned to 4.13.0).
 2. **Docker:** a running Docker engine the dispatch shell can reach (`docker info` works).
 3. **Auth:** `gh auth status` green and `git config user.name/.email` set, for the dispatch host.
-4. **Secrets:** `cp .sandcastle/.env.example .sandcastle/.env` and set `ANTHROPIC_API_KEY`
-   (`GH_TOKEN` optional; otherwise the host's `gh` session is used). The launcher loads
-   `.sandcastle/.env` itself.
+4. **Secrets:** Prefer a 1Password Environment. Install the 1Password CLI, enable its
+   desktop-app integration, and copy the Environment ID from **Developer > View
+   Environments**. Then run dispatch with `OP_ENVIRONMENT_ID`:
+   ```bash
+   export OP_ENVIRONMENT_ID=<your-1password-environment-id>
+   corepack yarn dispatch-agents:1password --prd <issue-number>
+   # or:
+   corepack yarn dispatch-waves:1password --prd <issue-number>
+   ```
+   The CLI authenticates through the unlocked 1Password desktop app and injects the
+   Environment variables only into the dispatch process. Do not put API keys in
+   `.sandcastle/.env`. The legacy dotenv workflow remains available for local-only
+   setups, but `.sandcastle/.env` is ignored and must never be committed.
 5. The `sandcastle:myorganizer` image builds automatically on first run if missing. It
    already bakes in Claude Code, Cursor, and GitHub Copilot CLI so the `--agent` flag only
    switches which provider Sandcastle launches.
@@ -78,6 +88,12 @@ Provider switching is optional: the default agent can live in `.sandcastle/.env`
 (`SANDCASTLE_CLAUDE_MODEL`, `SANDCASTLE_CURSOR_MODEL`, `SANDCASTLE_COPILOT_MODEL`), and
 `--model` always overrides them for a single run. Claude keeps the existing complexity-based
 model routing when no override is set.
+
+With 1Password Environments, put the same variable names in the Environment instead. For
+example, use `SANDCASTLE_AGENT`, `SANDCASTLE_CLAUDE_MODEL`, and the provider credential
+(`ANTHROPIC_API_KEY`, `CURSOR_API_KEY`, or `COPILOT_GITHUB_TOKEN`) as Environment variables.
+1Password Environments are currently beta functionality, and 1Password notes that
+`op run --environment` may take longer to start on Apple silicon Macs.
 
 **Integration is local-only** (see `docs/adr/0010`). The feature branch `feat/<slug>` is created
 from `origin/main` **locally and is never pushed**. Slices run **one by one**: each branches off

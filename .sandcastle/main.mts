@@ -121,10 +121,11 @@ function getArgValue(name: string): string | undefined {
 function printHelp(): void {
   console.log(`
 Usage:
-  yarn dispatch-agents --prd <issue-number> [--agent claude|cursor|copilot] [--model <model>]
+  yarn dispatch-agents --prd <issue-number> [--issue <slice-number>] [--agent claude|cursor|copilot] [--model <model>]
 
 Flags:
   --prd <issue-number>   PRD issue number to dispatch
+  --issue <slice-number> Dispatch only this slice issue
   --agent <name>         Agent provider to use (default: SANDCASTLE_AGENT or claude)
   --model <model>        Override the model for this run (default: env/provider routing)
   --help                 Show this help text
@@ -147,12 +148,18 @@ if (process.argv.includes('--help') || process.argv.includes('-h')) {
 const prdValue = getArgValue('prd');
 if (!prdValue) {
   fail(
-    'Usage: yarn dispatch-agents --prd <issue-number> [--agent claude|cursor|copilot] [--model <model>]',
+    'Usage: yarn dispatch-agents --prd <issue-number> [--issue <slice-number>] [--agent claude|cursor|copilot] [--model <model>]',
   );
 }
 
 const prdNumber = parseInt(prdValue, 10);
 if (isNaN(prdNumber)) fail('--prd must be a number.');
+
+const issueValue = getArgValue('issue');
+const issueNumber = issueValue ? parseInt(issueValue, 10) : undefined;
+if (issueValue && isNaN(issueNumber as number)) {
+  fail('--issue must be a number.');
+}
 
 const agentFlag = getArgValue('agent');
 const modelFlag = getArgValue('model');
@@ -225,6 +232,7 @@ const allIssues = ghJson<Issue[]>([
 const slices = allIssues.filter(
   (i) =>
     i.body?.includes(`PRD: #${prdNumber}`) &&
+    (issueNumber === undefined || i.number === issueNumber) &&
     // Skip slices already merged into the feature branch so re-runs are
     // idempotent — only undone work in the wave is re-dispatched.
     !i.labels.some((l) => l.name === 'status:done'),
@@ -232,8 +240,11 @@ const slices = allIssues.filter(
 
 if (slices.length === 0) {
   fail(
-    `No open AFK slice issues found for PRD #${prdNumber}.\n` +
-      `Run /to-issues ${prdNumber} to create them first.`,
+    issueNumber === undefined
+      ? `No open AFK slice issues found for PRD #${prdNumber}.\n` +
+          `Run /to-issues ${prdNumber} to create them first.`
+      : `Slice issue #${issueNumber} was not found as an open AFK slice for PRD #${prdNumber}.\n` +
+          `Check its labels and PRD reference before retrying.`,
   );
 }
 

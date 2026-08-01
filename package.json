@@ -49,6 +49,8 @@
     "agents:sync:check": "node tools/scripts/sync-subagents.mjs --check",
     "dispatch-agents": "npx tsx .sandcastle/main.mts",
     "dispatch-waves": "npx tsx .sandcastle/dispatch-waves.mts",
+    "dispatch-agents:1password": "op run --environment \"$OP_ENVIRONMENT_ID\" -- corepack yarn dispatch-agents",
+    "dispatch-waves:1password": "op run --environment \"$OP_ENVIRONMENT_ID\" -- corepack yarn dispatch-waves",
     "nx": "nx",
     "postinstall": "husky"
   },
