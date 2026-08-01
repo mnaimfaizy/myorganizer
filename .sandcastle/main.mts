@@ -2,10 +2,11 @@ import { claudeCode, copilot, cursor, run } from '@ai-hero/sandcastle';
 import { docker } from '@ai-hero/sandcastle/sandboxes/docker';
 import dotenv from 'dotenv';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const REPO = 'mnaimfaizy/myorganizer';
+const SANDBOX_IMAGE = 'sandcastle:myorganizer';
 
 dotenv.config({ path: join(process.cwd(), '.sandcastle', '.env') });
 
@@ -30,6 +31,53 @@ function fail(message: string, code = 1): never {
   console.error(`\nError: ${message}`);
   process.exit(code);
 }
+
+function ensureSandboxImage(): void {
+  const image = spawnSync('docker', ['image', 'inspect', SANDBOX_IMAGE], {
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+
+  if (image.status === 0) return;
+
+  console.log(
+    `Sandbox image ${SANDBOX_IMAGE} is missing; building it before dispatch...`,
+  );
+  const build = spawnSync(
+    'corepack',
+    [
+      'yarn',
+      'sandcastle',
+      'docker',
+      'build-image',
+      '--image-name',
+      SANDBOX_IMAGE,
+    ],
+    { encoding: 'utf8', stdio: 'inherit', windowsHide: true },
+  );
+
+  if (build.status !== 0) {
+    fail(
+      `Could not build ${SANDBOX_IMAGE}. Check that Docker is running and the active Docker context can build images.`,
+    );
+  }
+
+  const verification = spawnSync(
+    'docker',
+    ['image', 'inspect', SANDBOX_IMAGE],
+    {
+      encoding: 'utf8',
+      windowsHide: true,
+    },
+  );
+  if (verification.status !== 0) {
+    fail(
+      `Docker image ${SANDBOX_IMAGE} was reported built but is not available.`,
+    );
+  }
+}
+
+ensureSandboxImage();
 
 /**
  * Maps the files a slice changed (between base and head) to the Nx projects that
@@ -169,9 +217,26 @@ const modelFlag = getArgValue('model');
 type Issue = {
   number: number;
   title: string;
+  state: 'OPEN' | 'CLOSED';
   labels: Array<{ name: string }>;
   body: string;
 };
+
+function isCompleted(issue: Issue): boolean {
+  return (
+    issue.state === 'CLOSED' ||
+    issue.labels.some((label) => label.name === 'status:done')
+  );
+}
+
+function blockedBy(issue: Issue): number[] {
+  const section = issue.body.match(
+    /##\s+Blocked by\s*([\s\S]*?)(?=\n##\s|$)/i,
+  )?.[1];
+  if (!section || /^\s*-\s*None\s*$/im.test(section)) return [];
+
+  return [...section.matchAll(/#(\d+)/g)].map((match) => Number(match[1]));
+}
 
 const prd = ghJson<Pick<Issue, 'title' | 'body'>>([
   'issue',
@@ -217,26 +282,48 @@ const allIssues = ghJson<Issue[]>([
   'list',
   '--repo',
   REPO,
-  '--label',
-  'ready-for-agent',
-  '--label',
-  'type:afk',
   '--state',
-  'open',
+  'all',
   '--json',
-  'number,title,labels,body',
+  'number,title,state,labels,body',
   '--limit',
   '100',
 ]);
 
+const isAfkSlice = (issue: Issue): boolean =>
+  issue.labels.some((label) => label.name === 'ready-for-agent') &&
+  issue.labels.some((label) => label.name === 'type:afk');
+
 const slices = allIssues.filter(
   (i) =>
     i.body?.includes(`PRD: #${prdNumber}`) &&
+    isAfkSlice(i) &&
     (issueNumber === undefined || i.number === issueNumber) &&
+    !i.labels.some((label) => label.name === 'status:blocked') &&
+    i.state === 'OPEN' &&
     // Skip slices already merged into the feature branch so re-runs are
     // idempotent — only undone work in the wave is re-dispatched.
-    !i.labels.some((l) => l.name === 'status:done'),
+    !isCompleted(i),
 );
+
+const completedIssueNumbers = new Set(
+  allIssues
+    .filter(
+      (issue) =>
+        issue.body?.includes(`PRD: #${prdNumber}`) && isCompleted(issue),
+    )
+    .map((issue) => issue.number),
+);
+
+function nextReadySlice(pending: Issue[]): Issue | undefined {
+  return pending
+    .filter((issue) =>
+      blockedBy(issue).every((dependency) =>
+        completedIssueNumbers.has(dependency),
+      ),
+    )
+    .sort((left, right) => left.number - right.number)[0];
+}
 
 if (slices.length === 0) {
   fail(
@@ -512,7 +599,7 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
         `${yarnCacheDir}:/home/agent/.yarn-cache`,
         '--entrypoint',
         '/bin/bash',
-        'sandcastle:myorganizer',
+        SANDBOX_IMAGE,
         '-c',
         `cd /home/agent/workspace && corepack yarn install --immutable && node node_modules/.bin/nx run-many -t ${targetList.join(' ')} --projects=${projects.join(',')} --skip-nx-cache`,
       ],
@@ -682,11 +769,88 @@ type SliceResult = {
   reason: string;
 };
 
+function logRunUsage(
+  issueNumber: number,
+  agentKind: AgentKind,
+  model: string,
+  result: Awaited<ReturnType<typeof run>>,
+): void {
+  const writeLog = (message: string): void => {
+    console.log(message);
+    if (result.logFilePath) {
+      appendFileSync(result.logFilePath, `\n${message}\n`);
+    }
+  };
+
+  const usage = result.iterations
+    .map((iteration) => iteration.usage)
+    .filter(
+      (iterationUsage): iterationUsage is NonNullable<typeof iterationUsage> =>
+        iterationUsage !== undefined,
+    );
+
+  if (usage.length === 0) {
+    writeLog(
+      `  [#${issueNumber}] ${agentKind}:${model} usage unavailable (the provider did not return token telemetry).`,
+    );
+    return;
+  }
+
+  const totals = usage.reduce(
+    (total, iterationUsage) => ({
+      inputTokens: total.inputTokens + iterationUsage.inputTokens,
+      cacheCreationInputTokens:
+        total.cacheCreationInputTokens +
+        iterationUsage.cacheCreationInputTokens,
+      cacheReadInputTokens:
+        total.cacheReadInputTokens + iterationUsage.cacheReadInputTokens,
+      outputTokens: total.outputTokens + iterationUsage.outputTokens,
+    }),
+    {
+      inputTokens: 0,
+      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: 0,
+      outputTokens: 0,
+    },
+  );
+
+  writeLog(
+    `  [#${issueNumber}] ${agentKind}:${model} tokens — ` +
+      `input ${totals.inputTokens}, ` +
+      `cache-write ${totals.cacheCreationInputTokens}, ` +
+      `cache-read ${totals.cacheReadInputTokens}, ` +
+      `output ${totals.outputTokens}.`,
+  );
+}
+
 const results: SliceResult[] = [];
 const crashed: Array<{ issue: Issue; error: string }> = [];
 const agentKind = resolveAgentKind();
+const pendingSlices = [...slices];
 
-for (const issue of slices) {
+while (pendingSlices.length > 0) {
+  const issue = nextReadySlice(pendingSlices);
+  if (!issue) {
+    for (const blockedIssue of pendingSlices) {
+      const dependencies = blockedBy(blockedIssue).filter(
+        (dependency) => !completedIssueNumbers.has(dependency),
+      );
+      const reason = `blocked by unfinished slice(s): ${dependencies
+        .map((dependency) => `#${dependency}`)
+        .join(', ')}`;
+      console.error(`  ⚠ #${blockedIssue.number} ${reason}`);
+      results.push({
+        issue: blockedIssue,
+        sliceBranch: sliceBranchFor(blockedIssue),
+        commits: 0,
+        merged: false,
+        reason,
+      });
+    }
+    break;
+  }
+
+  pendingSlices.splice(pendingSlices.indexOf(issue), 1);
   const model = resolveModel(issue, agentKind);
   const agent = buildAgent(agentKind, model);
   const sliceBranch = sliceBranchFor(issue);
@@ -784,6 +948,8 @@ for (const issue of slices) {
       prompt: buildPrompt(issue, sliceBranch),
     });
 
+    logRunUsage(issue.number, agentKind, model, result);
+
     // Finalize → gate → integrate, all LOCAL. No push, no PR.
     const hasWork = finalizeSliceBranch(issue, sliceBranch);
     const gatePassed = hasWork ? runSliceGate(issue, sliceBranch) : false;
@@ -861,6 +1027,7 @@ for (const issue of slices) {
       merged: true,
       reason: 'integrated',
     });
+    completedIssueNumbers.add(issue.number);
   } catch (e) {
     ghSilent([
       'issue',
