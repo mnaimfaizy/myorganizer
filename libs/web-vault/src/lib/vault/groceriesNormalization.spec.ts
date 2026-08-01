@@ -1,4 +1,5 @@
 import { normalizeGroceries } from './groceriesNormalization';
+import type { GroceriesVaultPayload } from '@myorganizer/core';
 
 describe('normalizeGroceries', () => {
   beforeEach(() => {
@@ -11,128 +12,202 @@ describe('normalizeGroceries', () => {
   });
 
   describe('null/undefined input', () => {
-    it('should return empty list for null without marking changed', () => {
-      expect(normalizeGroceries(null)).toEqual({ value: [], changed: false });
+    it('should return empty payload for null without marking changed', () => {
+      const result = normalizeGroceries(null);
+      expect(result).toEqual({
+        value: { catalog: [], lists: [] },
+        changed: false,
+      });
     });
 
-    it('should return empty list for undefined without marking changed', () => {
-      expect(normalizeGroceries(undefined)).toEqual({
-        value: [],
+    it('should return empty payload for undefined without marking changed', () => {
+      const result = normalizeGroceries(undefined);
+      expect(result).toEqual({
+        value: { catalog: [], lists: [] },
         changed: false,
       });
     });
   });
 
-  describe('non-array input', () => {
-    it('should return empty list for non-array and mark changed', () => {
-      expect(normalizeGroceries({})).toEqual({ value: [], changed: true });
-      expect(normalizeGroceries('string')).toEqual({
-        value: [],
+  describe('unrecognized shape input', () => {
+    it('should return empty payload for empty object and mark changed', () => {
+      const result = normalizeGroceries({});
+      expect(result).toEqual({
+        value: { catalog: [], lists: [] },
         changed: true,
       });
-      expect(normalizeGroceries(123)).toEqual({ value: [], changed: true });
+    });
+
+    it('should return empty payload for string and mark changed', () => {
+      const result = normalizeGroceries('string');
+      expect(result).toEqual({
+        value: { catalog: [], lists: [] },
+        changed: true,
+      });
+    });
+
+    it('should return empty payload for number and mark changed', () => {
+      const result = normalizeGroceries(123);
+      expect(result).toEqual({
+        value: { catalog: [], lists: [] },
+        changed: true,
+      });
+    });
+
+    it('should return empty payload for object with wrong keys and mark changed', () => {
+      const result = normalizeGroceries({ wrongKey: 'value' });
+      expect(result).toEqual({
+        value: { catalog: [], lists: [] },
+        changed: true,
+      });
     });
   });
 
-  describe('empty array', () => {
-    it('should return empty array without marking changed', () => {
-      expect(normalizeGroceries([])).toEqual({ value: [], changed: false });
+  describe('new shape: valid catalog and lists', () => {
+    it('should preserve already-normalized payload without marking changed', () => {
+      const input: GroceriesVaultPayload = {
+        catalog: [
+          {
+            id: 'catalog-1',
+            name: 'Milk',
+            category: 'dairy',
+            price: 3.5,
+            notes: 'Whole milk',
+            imageUrl: 'https://example.com/milk.jpg',
+            links: ['https://store.com/milk'],
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        lists: [
+          {
+            id: 'list-1',
+            name: 'Weekly Shopping',
+            lines: [
+              {
+                id: 'line-1',
+                catalogItemId: 'catalog-1',
+                checked: false,
+                amount: '1L',
+                createdAt: '2026-01-01T00:00:00.000Z',
+                updatedAt: '2026-01-01T00:00:00.000Z',
+              },
+            ],
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      };
+
+      const result = normalizeGroceries(input);
+      expect(result.value).toEqual(input);
+      expect(result.changed).toBe(false);
     });
-  });
 
-  describe('valid GroceryList', () => {
-    it('should preserve exact normalized data without marking changed', () => {
-      const input = [
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Weekly Shopping',
-          items: [
-            {
-              id: '550e8400-e29b-41d4-a716-446655440001',
-              name: 'Milk',
-              amount: '1L',
-              price: 3.5,
-              category: 'dairy',
-              checked: false,
-              notes: 'Whole milk',
-              imageUrl: 'https://example.com/milk.jpg',
-              links: ['https://store.com/milk'],
-              createdAt: '2026-01-01T00:00:00.000Z',
-              updatedAt: '2026-01-01T00:00:00.000Z',
-            },
-          ],
-          createdAt: '2026-01-01T00:00:00.000Z',
-          updatedAt: '2026-01-01T00:00:00.000Z',
-        },
-      ];
+    it('should generate IDs and timestamps for missing fields', () => {
+      const input = {
+        catalog: [{ name: 'Apples' }],
+        lists: [
+          {
+            name: 'Shopping',
+            lines: [{ catalogItemId: 'will-be-dropped' }],
+          },
+        ],
+      };
 
+      const result = normalizeGroceries(input);
+
+      expect(result.value.catalog).toHaveLength(1);
+      const catalogItem = result.value.catalog[0];
+      expect(typeof catalogItem.id).toBe('string');
+      expect(catalogItem.id.length).toBeGreaterThan(0);
+      expect(catalogItem.name).toBe('Apples');
+      expect(catalogItem.category).toBe('other');
+      expect(catalogItem.createdAt).toBe('2026-01-01T00:00:00.000Z');
+      expect(catalogItem.updatedAt).toBe('2026-01-01T00:00:00.000Z');
+
+      expect(result.value.lists).toHaveLength(1);
+      const list = result.value.lists[0];
+      expect(typeof list.id).toBe('string');
+      expect(list.id.length).toBeGreaterThan(0);
+      expect(list.name).toBe('Shopping');
+      expect(list.createdAt).toBe('2026-01-01T00:00:00.000Z');
+      expect(list.updatedAt).toBe('2026-01-01T00:00:00.000Z');
+
+      // Line with invalid catalogItemId should be dropped
+      expect(list.lines).toHaveLength(0);
+
+      expect(result.changed).toBe(true);
+    });
+
+    it('should normalize empty catalog and lists arrays without marking changed', () => {
+      const input = { catalog: [], lists: [] };
       const result = normalizeGroceries(input);
       expect(result.value).toEqual(input);
       expect(result.changed).toBe(false);
     });
   });
 
-  describe('item missing required fields', () => {
-    it('should generate id for item without id', () => {
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Weekly Shopping',
-          items: [{ name: 'Apples' }],
-        },
-      ]);
+  describe('new shape: catalog item validation', () => {
+    it('should drop catalog item without name', () => {
+      const input = {
+        catalog: [{ id: 'catalog-1' }, { id: 'catalog-2', name: 'Valid Item' }],
+        lists: [],
+      };
 
-      expect(res.value).toHaveLength(1);
-      expect(res.value[0].items).toHaveLength(1);
-      expect(typeof res.value[0].items[0].id).toBe('string');
-      expect(res.changed).toBe(true);
+      const result = normalizeGroceries(input);
+      expect(result.value.catalog).toHaveLength(1);
+      expect(result.value.catalog[0].name).toBe('Valid Item');
+      expect(result.changed).toBe(true);
     });
 
-    it('should reject item without name and drop it', () => {
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Weekly Shopping',
-          items: [{ id: '550e8400-e29b-41d4-a716-446655440001' }],
-        },
-      ]);
+    it('should drop catalog item with empty name', () => {
+      const input = {
+        catalog: [{ name: '   ' }, { name: 'Valid Item' }],
+        lists: [],
+      };
 
-      expect(res.value).toHaveLength(1);
-      expect(res.value[0].items).toHaveLength(0);
-      expect(res.changed).toBe(true);
+      const result = normalizeGroceries(input);
+      expect(result.value.catalog).toHaveLength(1);
+      expect(result.value.catalog[0].name).toBe('Valid Item');
+      expect(result.changed).toBe(true);
     });
-  });
 
-  describe('category validation and coercion', () => {
+    it('should trim whitespace from catalog item names', () => {
+      const input = {
+        catalog: [{ name: '  Milk  ' }],
+        lists: [],
+      };
+
+      const result = normalizeGroceries(input);
+      expect(result.value.catalog[0].name).toBe('Milk');
+      expect(result.changed).toBe(true);
+    });
+
     it('should coerce invalid category to "other"', () => {
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Shopping',
-          items: [
-            {
-              name: 'Item',
-              category: 'invalid_category',
-            },
-          ],
-        },
-      ]);
+      const input = {
+        catalog: [
+          { name: 'Item1', category: 'invalid-category' },
+          { name: 'Item2', category: 'dairy' },
+        ],
+        lists: [],
+      };
 
-      expect(res.value[0].items[0].category).toBe('other');
-      expect(res.changed).toBe(true);
+      const result = normalizeGroceries(input);
+      expect(result.value.catalog[0].category).toBe('other');
+      expect(result.value.catalog[1].category).toBe('dairy');
+      expect(result.changed).toBe(true);
     });
 
-    it('should use default category "other" when not specified', () => {
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Shopping',
-          items: [{ name: 'Item' }],
-        },
-      ]);
+    it('should default missing category to "other"', () => {
+      const input = {
+        catalog: [{ name: 'Item' }],
+        lists: [],
+      };
 
-      expect(res.value[0].items[0].category).toBe('other');
-      expect(res.changed).toBe(true);
+      const result = normalizeGroceries(input);
+      expect(result.value.catalog[0].category).toBe('other');
+      expect(result.changed).toBe(true);
     });
 
     it('should accept all valid categories', () => {
@@ -151,357 +226,572 @@ describe('normalizeGroceries', () => {
         'other',
       ];
 
-      for (const category of categories) {
-        const res = normalizeGroceries([
+      const input = {
+        catalog: categories.map((cat) => ({
+          name: `Item-${cat}`,
+          category: cat,
+        })),
+        lists: [],
+      };
+
+      const result = normalizeGroceries(input);
+      result.value.catalog.forEach((item, i) => {
+        expect(item.category).toBe(categories[i]);
+      });
+    });
+
+    it('should remove invalid imageUrl', () => {
+      const input = {
+        catalog: [
+          { name: 'Item1', imageUrl: 'not-a-url' },
+          { name: 'Item2', imageUrl: '' },
+          { name: 'Item3', imageUrl: 'https://example.com/valid.jpg' },
+        ],
+        lists: [],
+      };
+
+      const result = normalizeGroceries(input);
+      expect(result.value.catalog[0].imageUrl).toBeUndefined();
+      expect(result.value.catalog[1].imageUrl).toBeUndefined();
+      expect(result.value.catalog[2].imageUrl).toBe(
+        'https://example.com/valid.jpg',
+      );
+      expect(result.changed).toBe(true);
+    });
+
+    it('should remove links array if any URL is invalid', () => {
+      const input = {
+        catalog: [
+          { name: 'Item1', links: ['https://valid.com', 'not-a-url'] },
           {
-            id: '550e8400-e29b-41d4-a716-446655440000',
-            name: 'Shopping',
-            items: [{ name: 'Item', category }],
+            name: 'Item2',
+            links: ['https://valid1.com', 'https://valid2.com'],
           },
-        ]);
+        ],
+        lists: [],
+      };
 
-        expect(res.value[0].items[0].category).toBe(category);
-      }
+      const result = normalizeGroceries(input);
+      expect(result.value.catalog[0].links).toBeUndefined();
+      expect(result.value.catalog[1].links).toEqual([
+        'https://valid1.com',
+        'https://valid2.com',
+      ]);
+      expect(result.changed).toBe(true);
+    });
+
+    it('should remove negative price', () => {
+      const input = {
+        catalog: [
+          { name: 'Item1', price: -5 },
+          { name: 'Item2', price: 0 },
+          { name: 'Item3', price: 12.99 },
+        ],
+        lists: [],
+      };
+
+      const result = normalizeGroceries(input);
+      expect(result.value.catalog[0].price).toBeUndefined();
+      expect(result.value.catalog[1].price).toBe(0);
+      expect(result.value.catalog[2].price).toBe(12.99);
+      expect(result.changed).toBe(true);
+    });
+
+    it('should preserve optional notes field', () => {
+      const input = {
+        catalog: [{ name: 'Item1', notes: 'Some notes' }, { name: 'Item2' }],
+        lists: [],
+      };
+
+      const result = normalizeGroceries(input);
+      expect(result.value.catalog[0].notes).toBe('Some notes');
+      expect(result.value.catalog[1].notes).toBeUndefined();
     });
   });
 
-  describe('checked field defaults', () => {
-    it('should default checked to false when not specified', () => {
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Shopping',
-          items: [{ name: 'Item' }],
-        },
-      ]);
+  describe('new shape: list line validation', () => {
+    it('should drop list lines with missing catalogItemId', () => {
+      const input = {
+        catalog: [{ id: 'catalog-1', name: 'Item' }],
+        lists: [
+          {
+            name: 'List',
+            lines: [
+              { checked: false },
+              { catalogItemId: 'catalog-1', checked: true },
+            ],
+          },
+        ],
+      };
 
-      expect(res.value[0].items[0].checked).toBe(false);
-      expect(res.changed).toBe(true);
+      const result = normalizeGroceries(input);
+      expect(result.value.lists[0].lines).toHaveLength(1);
+      expect(result.value.lists[0].lines[0].catalogItemId).toBe('catalog-1');
+      expect(result.changed).toBe(true);
     });
 
-    it('should preserve checked value when specified', () => {
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Shopping',
-          items: [{ name: 'Item', checked: true }],
-        },
-      ]);
+    it('should drop list lines with invalid catalogItemId reference', () => {
+      const input = {
+        catalog: [{ id: 'catalog-1', name: 'Item' }],
+        lists: [
+          {
+            name: 'List',
+            lines: [
+              { catalogItemId: 'catalog-1', checked: false },
+              { catalogItemId: 'non-existent', checked: false },
+              { catalogItemId: 'catalog-1', checked: true },
+            ],
+          },
+        ],
+      };
 
-      expect(res.value[0].items[0].checked).toBe(true);
-      expect(res.changed).toBe(true);
-    });
-  });
-
-  describe('optional field handling', () => {
-    it('should remove invalid imageUrl (non-URL string)', () => {
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Shopping',
-          items: [
-            {
-              name: 'Item',
-              imageUrl: 'not-a-url',
-            },
-          ],
-        },
-      ]);
-
-      expect(res.value[0].items[0].imageUrl).toBeUndefined();
-      expect(res.changed).toBe(true);
+      const result = normalizeGroceries(input);
+      expect(result.value.lists[0].lines).toHaveLength(2);
+      expect(result.value.lists[0].lines[0].catalogItemId).toBe('catalog-1');
+      expect(result.value.lists[0].lines[1].catalogItemId).toBe('catalog-1');
+      expect(result.changed).toBe(true);
     });
 
-    it('should convert empty string imageUrl to undefined', () => {
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Shopping',
-          items: [
-            {
-              name: 'Item',
-              imageUrl: '',
-            },
-          ],
-        },
-      ]);
+    it('should default checked to false', () => {
+      const input = {
+        catalog: [{ id: 'catalog-1', name: 'Item' }],
+        lists: [
+          {
+            name: 'List',
+            lines: [
+              { catalogItemId: 'catalog-1' },
+              { catalogItemId: 'catalog-1', checked: true },
+            ],
+          },
+        ],
+      };
 
-      expect(res.value[0].items[0].imageUrl).toBeUndefined();
-      expect(res.changed).toBe(true);
+      const result = normalizeGroceries(input);
+      expect(result.value.lists[0].lines[0].checked).toBe(false);
+      expect(result.value.lists[0].lines[1].checked).toBe(true);
     });
 
-    it('should preserve valid imageUrl', () => {
-      const url = 'https://example.com/image.jpg';
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Shopping',
-          items: [
-            {
-              name: 'Item',
-              imageUrl: url,
-            },
-          ],
-        },
-      ]);
+    it('should preserve optional amount field', () => {
+      const input = {
+        catalog: [{ id: 'catalog-1', name: 'Item' }],
+        lists: [
+          {
+            name: 'List',
+            lines: [
+              { catalogItemId: 'catalog-1', amount: '2 kg' },
+              { catalogItemId: 'catalog-1' },
+            ],
+          },
+        ],
+      };
 
-      expect(res.value[0].items[0].imageUrl).toBe(url);
+      const result = normalizeGroceries(input);
+      expect(result.value.lists[0].lines[0].amount).toBe('2 kg');
+      expect(result.value.lists[0].lines[1].amount).toBeUndefined();
     });
 
-    it('should validate links as URL arrays', () => {
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Shopping',
-          items: [
-            {
-              name: 'Item',
-              links: ['https://example.com', 'not-a-url'],
-            },
-          ],
-        },
-      ]);
+    it('should generate IDs and timestamps for list lines', () => {
+      const input = {
+        catalog: [{ id: 'catalog-1', name: 'Item' }],
+        lists: [
+          {
+            name: 'List',
+            lines: [{ catalogItemId: 'catalog-1' }],
+          },
+        ],
+      };
 
-      // Should reject the entire links array if any URL is invalid
-      expect(res.value[0].items[0].links).toBeUndefined();
-      expect(res.changed).toBe(true);
-    });
-
-    it('should preserve valid links array', () => {
-      const links = ['https://example.com', 'https://store.com'];
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Shopping',
-          items: [
-            {
-              name: 'Item',
-              links,
-            },
-          ],
-        },
-      ]);
-
-      expect(res.value[0].items[0].links).toEqual(links);
+      const result = normalizeGroceries(input);
+      const line = result.value.lists[0].lines[0];
+      expect(typeof line.id).toBe('string');
+      expect(line.id.length).toBeGreaterThan(0);
+      expect(line.createdAt).toBe('2026-01-01T00:00:00.000Z');
+      expect(line.updatedAt).toBe('2026-01-01T00:00:00.000Z');
+      expect(result.changed).toBe(true);
     });
   });
 
-  describe('price validation', () => {
-    it('should reject negative price', () => {
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Shopping',
-          items: [
-            {
-              name: 'Item',
-              price: -5,
-            },
-          ],
-        },
-      ]);
+  describe('new shape: grocery list validation', () => {
+    it('should drop list without name', () => {
+      const input = {
+        catalog: [{ id: 'catalog-1', name: 'Item' }],
+        lists: [{ lines: [] }, { name: 'Valid List', lines: [] }],
+      };
 
-      expect(res.value[0].items[0].price).toBeUndefined();
-      expect(res.changed).toBe(true);
+      const result = normalizeGroceries(input);
+      expect(result.value.lists).toHaveLength(1);
+      expect(result.value.lists[0].name).toBe('Valid List');
+      expect(result.changed).toBe(true);
     });
 
-    it('should accept zero price', () => {
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Shopping',
-          items: [
-            {
-              name: 'Item',
-              price: 0,
-            },
-          ],
-        },
-      ]);
+    it('should drop list with empty name', () => {
+      const input = {
+        catalog: [],
+        lists: [
+          { name: '   ', lines: [] },
+          { name: 'Valid List', lines: [] },
+        ],
+      };
 
-      expect(res.value[0].items[0].price).toBe(0);
+      const result = normalizeGroceries(input);
+      expect(result.value.lists).toHaveLength(1);
+      expect(result.value.lists[0].name).toBe('Valid List');
+      expect(result.changed).toBe(true);
     });
 
-    it('should accept positive price', () => {
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Shopping',
-          items: [
-            {
-              name: 'Item',
-              price: 12.99,
-            },
-          ],
-        },
-      ]);
+    it('should trim whitespace from list names', () => {
+      const input = {
+        catalog: [],
+        lists: [{ name: '  Shopping List  ', lines: [] }],
+      };
 
-      expect(res.value[0].items[0].price).toBe(12.99);
+      const result = normalizeGroceries(input);
+      expect(result.value.lists[0].name).toBe('Shopping List');
+      expect(result.changed).toBe(true);
+    });
+
+    it('should handle lists with no lines', () => {
+      const input = {
+        catalog: [{ id: 'catalog-1', name: 'Item' }],
+        lists: [{ name: 'Empty List' }],
+      };
+
+      const result = normalizeGroceries(input);
+      expect(result.value.lists).toHaveLength(1);
+      expect(result.value.lists[0].lines).toEqual([]);
     });
   });
 
-  describe('timestamps', () => {
-    it('should generate ISO 8601 timestamps for missing fields', () => {
-      const res = normalizeGroceries([
+  describe('legacy migration: array of lists with embedded items', () => {
+    it('should migrate legacy array to catalog+lists structure', () => {
+      const legacyInput = [
         {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Shopping',
-          items: [{ name: 'Item' }],
-        },
-      ]);
-
-      expect(res.value[0].items[0].createdAt).toBe('2026-01-01T00:00:00.000Z');
-      expect(res.value[0].items[0].updatedAt).toBe('2026-01-01T00:00:00.000Z');
-      expect(res.changed).toBe(true);
-    });
-
-    it('should preserve valid ISO 8601 timestamps', () => {
-      const timestamp = '2025-12-31T12:30:45.000Z';
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          name: 'Shopping',
-          items: [
-            {
-              name: 'Item',
-              createdAt: timestamp,
-              updatedAt: timestamp,
-            },
-          ],
-        },
-      ]);
-
-      expect(res.value[0].items[0].createdAt).toBe(timestamp);
-      expect(res.value[0].items[0].updatedAt).toBe(timestamp);
-    });
-  });
-
-  describe('multiple items and lists', () => {
-    it('should handle multiple lists with multiple items', () => {
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
+          id: 'list-1',
           name: 'Weekly Shopping',
           items: [
-            { name: 'Milk', category: 'dairy' },
-            { name: 'Bread', category: 'bakery' },
+            {
+              id: 'item-1',
+              name: 'Milk',
+              amount: '1L',
+              price: 3.5,
+              category: 'dairy',
+              checked: false,
+              notes: 'Whole milk',
+              imageUrl: 'https://example.com/milk.jpg',
+              links: ['https://store.com/milk'],
+              createdAt: '2025-12-01T00:00:00.000Z',
+              updatedAt: '2025-12-01T00:00:00.000Z',
+            },
+          ],
+          createdAt: '2025-12-01T00:00:00.000Z',
+          updatedAt: '2025-12-01T00:00:00.000Z',
+        },
+      ];
+
+      const result = normalizeGroceries(legacyInput);
+
+      // Should have catalog entry
+      expect(result.value.catalog).toHaveLength(1);
+      const catalogItem = result.value.catalog[0];
+      expect(catalogItem.name).toBe('Milk');
+      expect(catalogItem.category).toBe('dairy');
+      expect(catalogItem.price).toBe(3.5);
+      expect(catalogItem.notes).toBe('Whole milk');
+      expect(catalogItem.imageUrl).toBe('https://example.com/milk.jpg');
+      expect(catalogItem.links).toEqual(['https://store.com/milk']);
+      expect(catalogItem.createdAt).toBe('2025-12-01T00:00:00.000Z');
+      expect(catalogItem.updatedAt).toBe('2025-12-01T00:00:00.000Z');
+
+      // Should have list with line referencing catalog
+      expect(result.value.lists).toHaveLength(1);
+      const list = result.value.lists[0];
+      expect(list.id).toBe('list-1');
+      expect(list.name).toBe('Weekly Shopping');
+      expect(list.lines).toHaveLength(1);
+
+      const line = list.lines[0];
+      expect(line.catalogItemId).toBe(catalogItem.id);
+      expect(line.checked).toBe(false);
+      expect(line.amount).toBe('1L');
+      expect(line.createdAt).toBe('2025-12-01T00:00:00.000Z');
+      expect(line.updatedAt).toBe('2025-12-01T00:00:00.000Z');
+
+      expect(result.changed).toBe(true);
+    });
+
+    it('should deduplicate items across multiple lists by item.id', () => {
+      const legacyInput = [
+        {
+          name: 'List 1',
+          items: [
+            { id: 'item-1', name: 'Milk', category: 'dairy', checked: false },
           ],
         },
         {
-          id: '550e8400-e29b-41d4-a716-446655440001',
-          name: 'Dinner Planning',
-          items: [{ name: 'Chicken', category: 'meat' }],
+          name: 'List 2',
+          items: [
+            { id: 'item-1', name: 'Milk', category: 'dairy', checked: true },
+            { id: 'item-2', name: 'Bread', category: 'bakery', checked: false },
+          ],
         },
-      ]);
+      ];
 
-      expect(res.value).toHaveLength(2);
-      expect(res.value[0].items).toHaveLength(2);
-      expect(res.value[1].items).toHaveLength(1);
-      expect(res.changed).toBe(true);
+      const result = normalizeGroceries(legacyInput);
+
+      // Should have 2 catalog items (item-1 and item-2)
+      expect(result.value.catalog).toHaveLength(2);
+      const milkCatalogId = result.value.catalog.find(
+        (c) => c.name === 'Milk',
+      )?.id;
+      const breadCatalogId = result.value.catalog.find(
+        (c) => c.name === 'Bread',
+      )?.id;
+      expect(milkCatalogId).toBeDefined();
+      expect(breadCatalogId).toBeDefined();
+
+      // List 1 should have 1 line referencing milk
+      expect(result.value.lists[0].lines).toHaveLength(1);
+      expect(result.value.lists[0].lines[0].catalogItemId).toBe(milkCatalogId);
+      expect(result.value.lists[0].lines[0].checked).toBe(false);
+
+      // List 2 should have 2 lines referencing milk and bread
+      expect(result.value.lists[1].lines).toHaveLength(2);
+      expect(result.value.lists[1].lines[0].catalogItemId).toBe(milkCatalogId);
+      expect(result.value.lists[1].lines[0].checked).toBe(true);
+      expect(result.value.lists[1].lines[1].catalogItemId).toBe(breadCatalogId);
+
+      expect(result.changed).toBe(true);
     });
-  });
 
-  describe('item-by-item recovery', () => {
-    it('should drop invalid lists and keep valid ones', () => {
-      const res = normalizeGroceries([
-        null,
+    it('should drop legacy items without name during migration', () => {
+      const legacyInput = [
         {
-          id: '550e8400-e29b-41d4-a716-446655440000',
           name: 'Shopping',
+          items: [
+            { id: 'item-1' }, // no name
+            { id: 'item-2', name: 'Valid Item' },
+          ],
+        },
+      ];
+
+      const result = normalizeGroceries(legacyInput);
+
+      expect(result.value.catalog).toHaveLength(1);
+      expect(result.value.catalog[0].name).toBe('Valid Item');
+      expect(result.value.lists[0].lines).toHaveLength(1);
+      expect(result.changed).toBe(true);
+    });
+
+    it('should drop legacy lists without name during migration', () => {
+      const legacyInput = [
+        {
           items: [{ name: 'Item' }],
         },
-        'invalid',
         {
-          id: '550e8400-e29b-41d4-a716-446655440001',
-          name: 'Another List',
+          name: 'Valid List',
           items: [{ name: 'Another Item' }],
         },
-      ]);
+      ];
 
-      expect(res.value).toHaveLength(2);
-      expect(res.changed).toBe(true);
+      const result = normalizeGroceries(legacyInput);
+
+      expect(result.value.lists).toHaveLength(1);
+      expect(result.value.lists[0].name).toBe('Valid List');
+      expect(result.changed).toBe(true);
     });
 
-    it('should drop list without name', () => {
-      const res = normalizeGroceries([
+    it('should apply all validation rules during legacy migration', () => {
+      const legacyInput = [
         {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          items: [{ name: 'Item' }],
-        },
-      ]);
-
-      expect(res.value).toHaveLength(0);
-      expect(res.changed).toBe(true);
-    });
-  });
-
-  describe('unknown fields', () => {
-    it('should strip unknown extra fields from items and mark changed', () => {
-      const res = normalizeGroceries([
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
           name: 'Shopping',
           items: [
             {
-              name: 'Item',
-              unknownField: 'should be removed',
-              anotherUnknown: 123,
+              id: 'item-1',
+              name: 'Item1',
+              category: 'invalid',
+              price: -5,
+              imageUrl: 'not-a-url',
+              links: ['https://valid.com', 'invalid'],
+              checked: false,
             },
           ],
         },
-      ]);
+      ];
 
-      const item = res.value[0].items[0];
-      expect('unknownField' in item).toBe(false);
-      expect('anotherUnknown' in item).toBe(false);
-      expect(res.changed).toBe(true);
+      const result = normalizeGroceries(legacyInput);
+
+      const catalogItem = result.value.catalog[0];
+      expect(catalogItem.category).toBe('other');
+      expect(catalogItem.price).toBeUndefined();
+      expect(catalogItem.imageUrl).toBeUndefined();
+      expect(catalogItem.links).toBeUndefined();
+      expect(result.changed).toBe(true);
     });
 
-    it('should strip unknown fields from lists and mark changed', () => {
-      const res = normalizeGroceries([
+    it('should generate timestamps for legacy items and lists missing them', () => {
+      const legacyInput = [
         {
-          id: '550e8400-e29b-41d4-a716-446655440000',
           name: 'Shopping',
-          items: [],
-          unknownListField: 'should be removed',
+          items: [{ name: 'Item' }],
         },
-      ]);
+      ];
 
-      const list = res.value[0];
-      expect('unknownListField' in list).toBe(false);
-      expect(res.changed).toBe(true);
+      const result = normalizeGroceries(legacyInput);
+
+      const catalogItem = result.value.catalog[0];
+      expect(catalogItem.createdAt).toBe('2026-01-01T00:00:00.000Z');
+      expect(catalogItem.updatedAt).toBe('2026-01-01T00:00:00.000Z');
+
+      const list = result.value.lists[0];
+      expect(list.createdAt).toBe('2026-01-01T00:00:00.000Z');
+      expect(list.updatedAt).toBe('2026-01-01T00:00:00.000Z');
+
+      const line = list.lines[0];
+      expect(line.createdAt).toBe('2026-01-01T00:00:00.000Z');
+      expect(line.updatedAt).toBe('2026-01-01T00:00:00.000Z');
+
+      expect(result.changed).toBe(true);
+    });
+
+    it('should migrate empty legacy array to empty payload', () => {
+      const result = normalizeGroceries([]);
+      expect(result.value).toEqual({ catalog: [], lists: [] });
+      expect(result.changed).toBe(true);
     });
   });
 
-  describe('complex scenarios', () => {
-    it('should normalize all defaults for minimal input', () => {
-      const res = normalizeGroceries([
+  describe('changed flag accuracy', () => {
+    it('should mark changed: false for null/undefined', () => {
+      expect(normalizeGroceries(null).changed).toBe(false);
+      expect(normalizeGroceries(undefined).changed).toBe(false);
+    });
+
+    it('should mark changed: true for unrecognized shapes', () => {
+      expect(normalizeGroceries({}).changed).toBe(true);
+      expect(normalizeGroceries('string').changed).toBe(true);
+      expect(normalizeGroceries(123).changed).toBe(true);
+    });
+
+    it('should mark changed: false for already-normalized new shape', () => {
+      const input: GroceriesVaultPayload = {
+        catalog: [
+          {
+            id: 'catalog-1',
+            name: 'Item',
+            category: 'other',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        lists: [
+          {
+            id: 'list-1',
+            name: 'List',
+            lines: [],
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      };
+      expect(normalizeGroceries(input).changed).toBe(false);
+    });
+
+    it('should mark changed: true for new shape with missing IDs', () => {
+      const input = {
+        catalog: [{ name: 'Item' }],
+        lists: [],
+      };
+      expect(normalizeGroceries(input).changed).toBe(true);
+    });
+
+    it('should mark changed: true for new shape with invalid entries dropped', () => {
+      const input = {
+        catalog: [{ name: 'Valid' }, { id: 'no-name' }],
+        lists: [],
+      };
+      expect(normalizeGroceries(input).changed).toBe(true);
+    });
+
+    it('should mark changed: true for new shape with coerced values', () => {
+      const input = {
+        catalog: [{ name: 'Item', category: 'invalid' }],
+        lists: [],
+      };
+      expect(normalizeGroceries(input).changed).toBe(true);
+    });
+
+    it('should mark changed: true for legacy migration', () => {
+      const input = [
         {
-          name: 'Minimal List',
-          items: [{ name: 'Apples' }],
+          name: 'List',
+          items: [{ name: 'Item', category: 'dairy', checked: false }],
         },
-      ]);
+      ];
+      expect(normalizeGroceries(input).changed).toBe(true);
+    });
+  });
 
-      expect(res.value).toHaveLength(1);
-      const list = res.value[0];
-      expect(typeof list.id).toBe('string');
-      expect(list.name).toBe('Minimal List');
-      expect(list.items).toHaveLength(1);
-      expect(typeof list.createdAt).toBe('string');
-      expect(typeof list.updatedAt).toBe('string');
+  describe('complex multi-list scenarios', () => {
+    it('should handle multiple catalog items and lists with cross-references', () => {
+      const input = {
+        catalog: [
+          { id: 'cat-1', name: 'Milk', category: 'dairy' },
+          { id: 'cat-2', name: 'Bread', category: 'bakery' },
+          { id: 'cat-3', name: 'Apples', category: 'produce' },
+        ],
+        lists: [
+          {
+            name: 'Weekly',
+            lines: [
+              { catalogItemId: 'cat-1', checked: false },
+              { catalogItemId: 'cat-2', checked: true },
+            ],
+          },
+          {
+            name: 'Daily',
+            lines: [
+              { catalogItemId: 'cat-1', checked: false, amount: '2L' },
+              { catalogItemId: 'cat-3', checked: false, amount: '1 kg' },
+            ],
+          },
+        ],
+      };
 
-      const item = list.items[0];
-      expect(typeof item.id).toBe('string');
-      expect(item.name).toBe('Apples');
-      expect(item.category).toBe('other');
-      expect(item.checked).toBe(false);
-      expect(item.amount).toBeUndefined();
-      expect(item.price).toBeUndefined();
-      expect(item.notes).toBeUndefined();
-      expect(item.imageUrl).toBeUndefined();
-      expect(item.links).toBeUndefined();
+      const result = normalizeGroceries(input);
 
-      expect(res.changed).toBe(true);
+      expect(result.value.catalog).toHaveLength(3);
+      expect(result.value.lists).toHaveLength(2);
+      expect(result.value.lists[0].lines).toHaveLength(2);
+      expect(result.value.lists[1].lines).toHaveLength(2);
+
+      // Verify catalog item can be referenced by multiple lists
+      expect(result.value.lists[0].lines[0].catalogItemId).toBe('cat-1');
+      expect(result.value.lists[1].lines[0].catalogItemId).toBe('cat-1');
+    });
+
+    it('should filter out lines referencing deleted catalog items', () => {
+      const input = {
+        catalog: [
+          { id: 'cat-1', name: 'Milk' },
+          { id: 'cat-2' }, // no name, will be dropped
+        ],
+        lists: [
+          {
+            name: 'Shopping',
+            lines: [
+              { catalogItemId: 'cat-1', checked: false },
+              { catalogItemId: 'cat-2', checked: false }, // ref to dropped item
+            ],
+          },
+        ],
+      };
+
+      const result = normalizeGroceries(input);
+
+      expect(result.value.catalog).toHaveLength(1);
+      expect(result.value.lists[0].lines).toHaveLength(1);
+      expect(result.value.lists[0].lines[0].catalogItemId).toBe('cat-1');
+      expect(result.changed).toBe(true);
     });
   });
 });

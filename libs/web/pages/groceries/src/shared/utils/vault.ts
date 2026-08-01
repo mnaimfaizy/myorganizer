@@ -3,7 +3,7 @@
  * Provides consistent error handling and common patterns.
  */
 
-import type { GroceryList } from '@myorganizer/core';
+import type { GroceryList, GroceriesVaultPayload } from '@myorganizer/core';
 import { randomId } from '@myorganizer/core';
 
 /**
@@ -51,8 +51,19 @@ export function createEmptyGroceryList(name: string): GroceryList {
   return {
     id: randomId(),
     name,
-    items: [],
+    lines: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Creates a fresh empty groceries vault payload.
+ * @returns A new GroceriesVaultPayload with empty catalog and lists
+ */
+export function createFreshGroceriesPayload(): GroceriesVaultPayload {
+  return {
+    catalog: [],
+    lists: [],
   };
 }
