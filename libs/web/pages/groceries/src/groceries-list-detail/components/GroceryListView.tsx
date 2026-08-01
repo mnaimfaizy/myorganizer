@@ -12,6 +12,9 @@ import { DeleteCatalogItemDialog } from './DeleteCatalogItemDialog';
 import { TripBoardLifecycleToolbar } from './TripBoardLifecycleToolbar';
 import { TripBoardLineRow } from './TripBoardLineRow';
 import { TripBoardSpendFooter } from './TripBoardSpendFooter';
+import { CatalogItemEditDialog } from './CatalogItemEditDialog';
+import type { CatalogItemEditChanges } from './CatalogItemEditDialog';
+import { ListLineEditDialog } from './ListLineEditDialog';
 
 interface GroceryListViewProps {
   list: GroceryList;
@@ -33,6 +36,11 @@ interface GroceryListViewProps {
     amount?: string,
   ) => Promise<string[]>;
   onDeleteFromCatalog: (catalogItemId: string) => Promise<void>;
+  onUpdateCatalogItem: (changes: CatalogItemEditChanges) => Promise<void>;
+  onUpdateListLine: (
+    listId: string,
+    changes: { id: string; amount?: string },
+  ) => Promise<void>;
 }
 
 /**
@@ -51,6 +59,8 @@ export function GroceryListView({
   onAddItem,
   onAddExistingItem,
   onDeleteFromCatalog,
+  onUpdateCatalogItem,
+  onUpdateListLine,
 }: GroceryListViewProps) {
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
@@ -58,6 +68,9 @@ export function GroceryListView({
   const [catalogItemPendingDelete, setCatalogItemPendingDelete] =
     useState<CatalogItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [linePendingEdit, setLinePendingEdit] = useState<ListLine | null>(null);
+  const [catalogItemPendingEdit, setCatalogItemPendingEdit] =
+    useState<CatalogItem | null>(null);
 
   const active = useMemo(
     () => list.lines.filter((line) => !line.checked),
@@ -236,6 +249,64 @@ export function GroceryListView({
     [catalog],
   );
 
+  const handleUpdateCatalogItem = useCallback(
+    async (changes: CatalogItemEditChanges) => {
+      setIsLoading(true);
+      try {
+        await onUpdateCatalogItem(changes);
+        setCatalogItemPendingEdit(null);
+      } catch (err) {
+        console.error('Failed to update catalog item:', err);
+        showErrorToast();
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [onUpdateCatalogItem, showErrorToast],
+  );
+
+  const handleUpdateListLine = useCallback(
+    async (changes: { id: string; amount?: string }) => {
+      setIsLoading(true);
+      try {
+        await onUpdateListLine(list.id, changes);
+        setLinePendingEdit(null);
+      } catch (err) {
+        console.error('Failed to update list line:', err);
+        showErrorToast();
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [list.id, onUpdateListLine, showErrorToast],
+  );
+
+  const handleEditListLine = useCallback(
+    (lineId: string) => {
+      setLinePendingEdit(list.lines.find((line) => line.id === lineId) ?? null);
+    },
+    [list.lines],
+  );
+
+  const handleEditCatalogItem = useCallback(
+    (catalogItemId: string) => {
+      setCatalogItemPendingEdit(
+        catalog.find((item) => item.id === catalogItemId) ?? null,
+      );
+    },
+    [catalog],
+  );
+
+  const handleCloseCatalogEdit = useCallback(() => {
+    setCatalogItemPendingEdit(null);
+  }, []);
+
+  const handleCloseLineEdit = useCallback(() => {
+    setLinePendingEdit(null);
+  }, []);
+
   const handleCloseDeleteCatalogDialog = useCallback(() => {
     setCatalogItemPendingDelete(null);
   }, []);
@@ -322,6 +393,8 @@ export function GroceryListView({
                     onToggleChecked={handleToggleChecked}
                     onDeleteLine={handleDeleteLine}
                     onDeleteFromCatalog={handleRequestDeleteFromCatalog}
+                    onEditListLine={handleEditListLine}
+                    onEditCatalogItem={handleEditCatalogItem}
                     isLoading={isLoading}
                   />
                 ))}
@@ -349,6 +422,8 @@ export function GroceryListView({
                     onToggleChecked={handleToggleChecked}
                     onDeleteLine={handleDeleteLine}
                     onDeleteFromCatalog={handleRequestDeleteFromCatalog}
+                    onEditListLine={handleEditListLine}
+                    onEditCatalogItem={handleEditCatalogItem}
                     isLoading={isLoading}
                   />
                 ))}
@@ -384,6 +459,26 @@ export function GroceryListView({
         affectedListCount={affectedListCount}
         onClose={handleCloseDeleteCatalogDialog}
         onConfirm={handleConfirmDeleteFromCatalog}
+        isLoading={isLoading}
+      />
+
+      <CatalogItemEditDialog
+        item={catalogItemPendingEdit}
+        isOpen={catalogItemPendingEdit !== null}
+        onClose={handleCloseCatalogEdit}
+        onSave={handleUpdateCatalogItem}
+        isLoading={isLoading}
+      />
+      <ListLineEditDialog
+        line={linePendingEdit}
+        catalogItem={
+          linePendingEdit
+            ? catalog.find((item) => item.id === linePendingEdit.catalogItemId)
+            : undefined
+        }
+        isOpen={linePendingEdit !== null}
+        onClose={handleCloseLineEdit}
+        onSave={handleUpdateListLine}
         isLoading={isLoading}
       />
     </div>

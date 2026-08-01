@@ -1,12 +1,15 @@
 export { AddExistingItemDialog } from './AddExistingItemDialog';
 export { AddItemDialog } from './AddItemDialog';
 export type { AddItemFormResult } from './AddItemDialog';
+export { CatalogItemEditDialog } from './CatalogItemEditDialog';
+export type { CatalogItemEditChanges } from './CatalogItemEditDialog';
 export { AddItemInlineForm } from './AddItemInlineForm';
 export { DeleteCatalogItemDialog } from './DeleteCatalogItemDialog';
 export { EditItemDialog } from './EditItemDialog';
 export { GroceryItemRow } from './GroceryItemRow';
 export { GroceryListView } from './GroceryListView';
 export { LinksInput } from './LinksInput';
+export { ListLineEditDialog } from './ListLineEditDialog';
 export { TripBoardLifecycleToolbar } from './TripBoardLifecycleToolbar';
 export { TripBoardLineRow } from './TripBoardLineRow';
 export { TripBoardSpendFooter } from './TripBoardSpendFooter';

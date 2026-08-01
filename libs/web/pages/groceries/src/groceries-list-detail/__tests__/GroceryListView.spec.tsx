@@ -97,6 +97,47 @@ jest.mock('../components/DeleteCatalogItemDialog', () => ({
     ) : null,
 }));
 
+jest.mock('../components/CatalogItemEditDialog', () => ({
+  CatalogItemEditDialog: ({ item, isOpen, onClose, onSave, isLoading }: any) =>
+    isOpen ? (
+      <div data-testid="catalog-item-edit-dialog" data-loading={isLoading}>
+        <button
+          data-testid="catalog-item-edit-submit"
+          onClick={() =>
+            void onSave({
+              id: item.id,
+              name: 'Updated Milk',
+              category: 'dairy',
+              price: 4.5,
+            }).catch(() => undefined)
+          }
+        >
+          Save
+        </button>
+        <button onClick={onClose}>Close</button>
+      </div>
+    ) : null,
+}));
+
+jest.mock('../components/ListLineEditDialog', () => ({
+  ListLineEditDialog: ({ line, isOpen, onClose, onSave, isLoading }: any) =>
+    isOpen ? (
+      <div data-testid="list-line-edit-dialog" data-loading={isLoading}>
+        <button
+          data-testid="list-line-edit-submit"
+          onClick={() =>
+            void onSave({ id: line.id, amount: '3 cartons' }).catch(
+              () => undefined,
+            )
+          }
+        >
+          Save
+        </button>
+        <button onClick={onClose}>Close</button>
+      </div>
+    ) : null,
+}));
+
 jest.mock('../components/TripBoardLifecycleToolbar', () => ({
   TripBoardLifecycleToolbar: ({
     checkedCount,
@@ -138,6 +179,8 @@ jest.mock('../components/TripBoardLineRow', () => ({
     onToggleChecked,
     onDeleteLine,
     onDeleteFromCatalog,
+    onEditListLine,
+    onEditCatalogItem,
     isLoading,
   }: any) => (
     <div data-testid={`line-row-${line.id}`} data-loading={isLoading}>
@@ -154,13 +197,27 @@ jest.mock('../components/TripBoardLineRow', () => ({
       >
         Delete Line
       </button>
+      <button
+        data-testid={`edit-line-${line.id}`}
+        onClick={() => onEditListLine(line.id)}
+      >
+        Edit Line
+      </button>
       {catalogItem && (
-        <button
-          data-testid={`delete-from-catalog-${line.id}`}
-          onClick={() => onDeleteFromCatalog(catalogItem.id)}
-        >
-          Delete From Catalog
-        </button>
+        <>
+          <button
+            data-testid={`delete-from-catalog-${line.id}`}
+            onClick={() => onDeleteFromCatalog(catalogItem.id)}
+          >
+            Delete From Catalog
+          </button>
+          <button
+            data-testid={`edit-catalog-${line.id}`}
+            onClick={() => onEditCatalogItem(catalogItem.id)}
+          >
+            Edit Catalog
+          </button>
+        </>
       )}
     </div>
   ),
@@ -228,6 +285,8 @@ describe('GroceryListView', () => {
       onAddItemToLists: jest.fn().mockResolvedValue(undefined),
       onAddExistingItem: jest.fn().mockResolvedValue(['list-a', 'list-b']),
       onDeleteFromCatalog: jest.fn().mockResolvedValue(undefined),
+      onUpdateCatalogItem: jest.fn().mockResolvedValue(undefined),
+      onUpdateListLine: jest.fn().mockResolvedValue(undefined),
       ...overrides,
     };
   }
@@ -503,5 +562,100 @@ describe('GroceryListView', () => {
         variant: 'destructive',
       }),
     );
+  });
+
+  it('keeps the catalog edit dialog open, shows an error toast, and clears loading when the update rejects', async () => {
+    const catalogItem = makeCatalogItem('c1', 'Milk');
+    const line = makeLine('ln1', 'c1');
+    const list = makeList('list1', 'Weekly', [line]);
+    const props = makeBaseProps({
+      onUpdateCatalogItem: jest.fn().mockRejectedValue(new Error('boom')),
+    });
+
+    render(
+      <GroceryListView
+        list={list}
+        catalog={[catalogItem]}
+        allLists={[list]}
+        {...props}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('edit-catalog-ln1'));
+    fireEvent.click(screen.getByTestId('catalog-item-edit-submit'));
+
+    await waitFor(() => {
+      expect(props.onUpdateCatalogItem).toHaveBeenCalledWith({
+        id: 'c1',
+        name: 'Updated Milk',
+        category: 'dairy',
+        price: 4.5,
+      });
+      expect(screen.getByTestId('catalog-item-edit-dialog')).toHaveAttribute(
+        'data-loading',
+        'false',
+      );
+    });
+    expect(screen.getByTestId('catalog-item-edit-dialog')).toBeInTheDocument();
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Error', variant: 'destructive' }),
+    );
+  });
+
+  it('keeps the list-line edit dialog open, shows an error toast, and clears loading when the update rejects', async () => {
+    const catalogItem = makeCatalogItem('c1', 'Milk');
+    const line = makeLine('ln1', 'c1');
+    const list = makeList('list1', 'Weekly', [line]);
+    const props = makeBaseProps({
+      onUpdateListLine: jest.fn().mockRejectedValue(new Error('boom')),
+    });
+
+    render(
+      <GroceryListView
+        list={list}
+        catalog={[catalogItem]}
+        allLists={[list]}
+        {...props}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('edit-line-ln1'));
+    fireEvent.click(screen.getByTestId('list-line-edit-submit'));
+
+    await waitFor(() => {
+      expect(props.onUpdateListLine).toHaveBeenCalledWith('list1', {
+        id: 'ln1',
+        amount: '3 cartons',
+      });
+      expect(screen.getByTestId('list-line-edit-dialog')).toHaveAttribute(
+        'data-loading',
+        'false',
+      );
+    });
+    expect(screen.getByTestId('list-line-edit-dialog')).toBeInTheDocument();
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Error', variant: 'destructive' }),
+    );
+  });
+
+  it('renders the empty-list state with no active or checked lines', () => {
+    const list = makeList('list1', 'Weekly');
+
+    render(
+      <GroceryListView
+        list={list}
+        catalog={[]}
+        allLists={[list]}
+        {...makeBaseProps()}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Weekly' })).toBeInTheDocument();
+    expect(
+      screen.getByText('0 active · 0 checked · $0.00 known'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('No items yet')).toBeInTheDocument();
+    expect(screen.getByText('Use Add Item to get started')).toBeInTheDocument();
+    expect(screen.queryByTestId(/^line-row-/)).not.toBeInTheDocument();
   });
 });

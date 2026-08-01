@@ -32,6 +32,21 @@ export interface AddCatalogItemAndLineInput {
   amount?: string;
 }
 
+export interface UpdateCatalogItemInput {
+  id: string;
+  name: string;
+  category: GroceryCategoryType;
+  price?: number;
+  notes?: string;
+  imageUrl?: string;
+  links?: string[];
+}
+
+export interface UpdateListLineInput {
+  id: string;
+  amount?: string;
+}
+
 interface UseGroceriesVaultResult {
   lists: GroceryList[];
   catalog: CatalogItem[];
@@ -57,6 +72,8 @@ interface UseGroceriesVaultResult {
   restoreLines: (listId: string, lines: ListLine[]) => Promise<void>;
   /** Deletes one List Line only; the referenced Catalog Item remains. */
   deleteListLine: (listId: string, lineId: string) => Promise<void>;
+  updateCatalogItem: (input: UpdateCatalogItemInput) => Promise<void>;
+  updateListLine: (listId: string, input: UpdateListLineInput) => Promise<void>;
   /**
    * Adds an item to a Grocery List: reuses an existing Catalog Item when the
    * name matches case-insensitively (updating its durable fields), otherwise
@@ -270,6 +287,7 @@ export function useGroceriesVault({
         await persistPayload(nextPayload);
       } catch (err) {
         console.error('Failed to toggle list line:', err);
+        throw err;
       }
     },
     [payload, persistPayload],
@@ -302,6 +320,7 @@ export function useGroceriesVault({
         await persistPayload(nextPayload);
       } catch (err) {
         console.error('Failed to uncheck all list lines:', err);
+        throw err;
       }
     },
     [payload, persistPayload],
@@ -336,7 +355,7 @@ export function useGroceriesVault({
         return removed;
       } catch (err) {
         console.error('Failed to remove checked list lines:', err);
-        return [];
+        throw err;
       }
     },
     [payload, persistPayload],
@@ -387,6 +406,67 @@ export function useGroceriesVault({
         await persistPayload(nextPayload);
       } catch (err) {
         console.error('Failed to delete list line:', err);
+        throw err;
+      }
+    },
+    [payload, persistPayload],
+  );
+
+  /** Updates only durable Catalog Item fields; List Lines are untouched. */
+  const updateCatalogItem = useCallback(
+    async (input: UpdateCatalogItemInput) => {
+      try {
+        const existing = payload.catalog.find((item) => item.id === input.id);
+        if (!existing) throw new Error('Catalog Item not found');
+
+        const now = new Date().toISOString();
+        const nextPayload: GroceriesVaultPayload = {
+          catalog: payload.catalog.map((item) =>
+            item.id === input.id ? { ...item, ...input, updatedAt: now } : item,
+          ),
+          lists: payload.lists,
+        };
+        await persistPayload(nextPayload);
+      } catch (err) {
+        console.error('Failed to update catalog item:', err);
+        throw err;
+      }
+    },
+    [payload, persistPayload],
+  );
+
+  /** Updates only one List Line's trip-local amount; checked is untouched. */
+  const updateListLine = useCallback(
+    async (listId: string, input: UpdateListLineInput) => {
+      try {
+        const list = payload.lists.find(
+          (currentList) => currentList.id === listId,
+        );
+        if (!list || !list.lines.some((line) => line.id === input.id)) {
+          throw new Error('List Line not found');
+        }
+
+        const now = new Date().toISOString();
+        const nextPayload: GroceriesVaultPayload = {
+          catalog: payload.catalog,
+          lists: payload.lists.map((currentList) =>
+            currentList.id === listId
+              ? {
+                  ...currentList,
+                  lines: currentList.lines.map((line) =>
+                    line.id === input.id
+                      ? { ...line, amount: input.amount, updatedAt: now }
+                      : line,
+                  ),
+                  updatedAt: now,
+                }
+              : currentList,
+          ),
+        };
+        await persistPayload(nextPayload);
+      } catch (err) {
+        console.error('Failed to update list line:', err);
+        throw err;
       }
     },
     [payload, persistPayload],
@@ -688,6 +768,8 @@ export function useGroceriesVault({
     removeCheckedLines,
     restoreLines,
     deleteListLine,
+    updateCatalogItem,
+    updateListLine,
     addCatalogItemAndLine,
     addItemToLists,
     addExistingCatalogItemToLists,

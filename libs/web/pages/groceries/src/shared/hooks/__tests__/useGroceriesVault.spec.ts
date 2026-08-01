@@ -530,6 +530,319 @@ describe('useGroceriesVault', () => {
     });
   });
 
+  describe('updateCatalogItem', () => {
+    it('updates only durable Catalog Item fields and persists the complete payload', async () => {
+      const catalogItem = makeCatalogItem({
+        id: 'cat-1',
+        name: 'Milk',
+        category: 'dairy',
+        price: 3,
+        notes: 'Keep chilled',
+        imageUrl: 'https://old.example/milk',
+        links: ['https://old.example'],
+      });
+      const otherCatalogItem = makeCatalogItem({
+        id: 'cat-2',
+        name: 'Bread',
+        category: 'bakery',
+      });
+      const firstLine = makeLine({
+        id: 'line-1',
+        catalogItemId: 'cat-1',
+        checked: true,
+        amount: '2 cartons',
+      });
+      const secondLine = makeLine({
+        id: 'line-2',
+        catalogItemId: 'cat-2',
+        checked: false,
+        amount: '1 loaf',
+      });
+      const listA = makeList({ id: 'listA', name: 'A', lines: [firstLine] });
+      const listB = makeList({ id: 'listB', name: 'B', lines: [secondLine] });
+      const initialPayload = {
+        catalog: [catalogItem, otherCatalogItem],
+        lists: [listA, listB],
+      };
+      const result = await setup(initialPayload);
+
+      await act(async () => {
+        await result.current.updateCatalogItem({
+          id: 'cat-1',
+          name: 'Organic Milk',
+          category: 'dairy',
+          price: 4.5,
+          notes: 'New note',
+          imageUrl: 'https://new.example/milk',
+          links: ['https://new.example'],
+        });
+      });
+
+      await waitFor(() => {
+        expect(result.current.catalog[0]).toMatchObject({
+          id: catalogItem.id,
+          name: 'Organic Milk',
+          category: 'dairy',
+          price: 4.5,
+          notes: 'New note',
+          imageUrl: 'https://new.example/milk',
+          links: ['https://new.example'],
+          createdAt: catalogItem.createdAt,
+        });
+        expect(result.current.catalog[0].createdAt).toBe(catalogItem.createdAt);
+        expect(result.current.catalog[1]).toEqual(otherCatalogItem);
+        expect(result.current.lists).toEqual(initialPayload.lists);
+
+        expect(mockSaveEncryptedData).toHaveBeenCalledTimes(1);
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith({
+          masterKeyBytes,
+          type: 'groceries',
+          value: {
+            catalog: [
+              {
+                ...catalogItem,
+                name: 'Organic Milk',
+                price: 4.5,
+                notes: 'New note',
+                imageUrl: 'https://new.example/milk',
+                links: ['https://new.example'],
+                updatedAt: expect.any(String),
+              },
+              otherCatalogItem,
+            ],
+            lists: initialPayload.lists,
+          },
+        });
+      });
+    });
+
+    it('rejects an unknown Catalog Item without persistence or state changes', async () => {
+      const initialPayload = {
+        catalog: [makeCatalogItem({ id: 'cat-1', name: 'Milk' })],
+        lists: [makeList({ id: 'listA', name: 'A' })],
+      };
+      const result = await setup(initialPayload);
+
+      let thrownError: unknown;
+      await act(async () => {
+        try {
+          await result.current.updateCatalogItem({
+            id: 'missing',
+            name: 'Unknown',
+            category: 'other',
+          });
+        } catch (error) {
+          thrownError = error;
+        }
+      });
+
+      expect(thrownError).toEqual(new Error('Catalog Item not found'));
+      expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+      expect(result.current.catalog).toEqual(initialPayload.catalog);
+      expect(result.current.lists).toEqual(initialPayload.lists);
+    });
+
+    it('rethrows a persistence failure and leaves Catalog Item state unchanged', async () => {
+      const initialPayload = {
+        catalog: [makeCatalogItem({ id: 'cat-1', name: 'Milk' })],
+        lists: [makeList({ id: 'listA', name: 'A' })],
+      };
+      const result = await setup(initialPayload);
+      const saveError = new Error('save failed');
+      mockSaveEncryptedData.mockRejectedValue(saveError);
+
+      let thrownError: unknown;
+      await act(async () => {
+        try {
+          await result.current.updateCatalogItem({
+            id: 'cat-1',
+            name: 'Updated Milk',
+            category: 'dairy',
+          });
+        } catch (error) {
+          thrownError = error;
+        }
+      });
+
+      await waitFor(() => {
+        expect(thrownError).toBe(saveError);
+        expect(result.current.error).toBe(
+          'Failed to save your changes. Please try again.',
+        );
+        expect(result.current.catalog).toEqual(initialPayload.catalog);
+        expect(result.current.lists).toEqual(initialPayload.lists);
+      });
+    });
+  });
+
+  describe('updateListLine', () => {
+    it('updates only the selected line amount and persists the complete payload', async () => {
+      const catalogItem = makeCatalogItem({
+        id: 'cat-1',
+        name: 'Milk',
+        category: 'dairy',
+        price: 3,
+        notes: 'Keep chilled',
+        imageUrl: 'https://example.com/milk',
+        links: ['https://example.com'],
+      });
+      const otherCatalogItem = makeCatalogItem({
+        id: 'cat-2',
+        name: 'Bread',
+        category: 'bakery',
+      });
+      const selectedLine = makeLine({
+        id: 'line-1',
+        catalogItemId: 'cat-1',
+        checked: true,
+        amount: '1 carton',
+      });
+      const otherLine = makeLine({
+        id: 'line-2',
+        catalogItemId: 'cat-2',
+        checked: false,
+        amount: '2 loaves',
+      });
+      const listA = makeList({
+        id: 'listA',
+        name: 'A',
+        lines: [selectedLine, otherLine],
+      });
+      const listB = makeList({
+        id: 'listB',
+        name: 'B',
+        lines: [makeLine({ id: 'line-3', catalogItemId: 'cat-1' })],
+      });
+      const initialPayload = {
+        catalog: [catalogItem, otherCatalogItem],
+        lists: [listA, listB],
+      };
+      const result = await setup(initialPayload);
+
+      await act(async () => {
+        await result.current.updateListLine('listA', {
+          id: 'line-1',
+          amount: '3 cartons',
+        });
+      });
+
+      await waitFor(() => {
+        expect(result.current.catalog).toEqual(initialPayload.catalog);
+        expect(result.current.lists[0].lines[0]).toMatchObject({
+          id: selectedLine.id,
+          catalogItemId: selectedLine.catalogItemId,
+          amount: '3 cartons',
+          checked: true,
+          createdAt: selectedLine.createdAt,
+        });
+        expect(result.current.lists[0].lines[1]).toEqual(otherLine);
+        expect(result.current.lists[1]).toEqual(listB);
+        expect(mockSaveEncryptedData).toHaveBeenCalledTimes(1);
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith({
+          masterKeyBytes,
+          type: 'groceries',
+          value: {
+            catalog: initialPayload.catalog,
+            lists: [
+              {
+                ...listA,
+                lines: [
+                  {
+                    ...selectedLine,
+                    amount: '3 cartons',
+                    updatedAt: expect.any(String),
+                  },
+                  otherLine,
+                ],
+                updatedAt: expect.any(String),
+              },
+              listB,
+            ],
+          },
+        });
+      });
+    });
+
+    it('rejects an unknown list or line without persistence or state changes', async () => {
+      const initialPayload = {
+        catalog: [makeCatalogItem({ id: 'cat-1', name: 'Milk' })],
+        lists: [
+          makeList({
+            id: 'listA',
+            name: 'A',
+            lines: [makeLine({ id: 'line-1', catalogItemId: 'cat-1' })],
+          }),
+        ],
+      };
+      const result = await setup(initialPayload);
+
+      const thrownErrors: unknown[] = [];
+      await act(async () => {
+        try {
+          await result.current.updateListLine('missing-list', {
+            id: 'line-1',
+            amount: '2',
+          });
+        } catch (error) {
+          thrownErrors.push(error);
+        }
+        try {
+          await result.current.updateListLine('listA', {
+            id: 'missing-line',
+            amount: '2',
+          });
+        } catch (error) {
+          thrownErrors.push(error);
+        }
+      });
+
+      expect(thrownErrors).toEqual([
+        new Error('List Line not found'),
+        new Error('List Line not found'),
+      ]);
+      expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+      expect(result.current.catalog).toEqual(initialPayload.catalog);
+      expect(result.current.lists).toEqual(initialPayload.lists);
+    });
+
+    it('rethrows a persistence failure and leaves List Line state unchanged', async () => {
+      const line = makeLine({
+        id: 'line-1',
+        catalogItemId: 'cat-1',
+        checked: true,
+        amount: '1 carton',
+      });
+      const initialPayload = {
+        catalog: [makeCatalogItem({ id: 'cat-1', name: 'Milk' })],
+        lists: [makeList({ id: 'listA', name: 'A', lines: [line] })],
+      };
+      const result = await setup(initialPayload);
+      const saveError = new Error('save failed');
+      mockSaveEncryptedData.mockRejectedValue(saveError);
+
+      let thrownError: unknown;
+      await act(async () => {
+        try {
+          await result.current.updateListLine('listA', {
+            id: 'line-1',
+            amount: '2 cartons',
+          });
+        } catch (error) {
+          thrownError = error;
+        }
+      });
+
+      await waitFor(() => {
+        expect(thrownError).toBe(saveError);
+        expect(result.current.error).toBe(
+          'Failed to save your changes. Please try again.',
+        );
+        expect(result.current.catalog).toEqual(initialPayload.catalog);
+        expect(result.current.lists).toEqual(initialPayload.lists);
+      });
+    });
+  });
+
   describe('regression: pre-existing trip lifecycle actions never destroy Catalog Items', () => {
     it('toggleLineChecked flips only the target line, catalog and other lines untouched', async () => {
       const catalogItem = makeCatalogItem({ id: 'cat-1', name: 'Milk' });

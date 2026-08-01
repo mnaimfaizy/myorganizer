@@ -2,7 +2,7 @@
 
 import type { CatalogItem, ListLine } from '@myorganizer/core';
 import { Checkbox } from '@myorganizer/web-ui';
-import { Ban, Trash2 } from 'lucide-react';
+import { Ban, Pencil, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { getCategoryEmoji } from '../../shared/constants/categories';
 import { formatMoney } from '../../shared/utils';
@@ -13,6 +13,8 @@ interface TripBoardLineRowProps {
   onToggleChecked: (lineId: string) => void;
   onDeleteLine: (lineId: string) => void;
   onDeleteFromCatalog: (catalogItemId: string) => void;
+  onEditListLine: (lineId: string) => void;
+  onEditCatalogItem: (catalogItemId: string) => void;
   isLoading?: boolean;
 }
 
@@ -22,6 +24,8 @@ export function TripBoardLineRow({
   onToggleChecked,
   onDeleteLine,
   onDeleteFromCatalog,
+  onEditListLine,
+  onEditCatalogItem,
   isLoading = false,
 }: TripBoardLineRowProps) {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -33,6 +37,14 @@ export function TripBoardLineRow({
   const handleToggle = useCallback(() => {
     onToggleChecked(line.id);
   }, [line.id, onToggleChecked]);
+
+  const handleEditLine = useCallback(() => {
+    onEditListLine(line.id);
+  }, [line.id, onEditListLine]);
+
+  const handleEditCatalog = useCallback(() => {
+    if (catalogItem) onEditCatalogItem(catalogItem.id);
+  }, [catalogItem, onEditCatalogItem]);
 
   useEffect(() => {
     if (!isConfirmingDelete) return;
@@ -109,6 +121,30 @@ export function TripBoardLineRow({
       </div>
 
       <button
+        onClick={handleEditLine}
+        disabled={isLoading}
+        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary/10 hover:text-secondary disabled:pointer-events-none disabled:opacity-50"
+        aria-label={`Edit List Line for ${itemName}`}
+        title="Edit List Line"
+        type="button"
+      >
+        <Pencil className="h-4 w-4" />
+      </button>
+
+      {catalogItem && (
+        <button
+          onClick={handleEditCatalog}
+          disabled={isLoading}
+          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary/10 hover:text-secondary disabled:pointer-events-none disabled:opacity-50"
+          aria-label={`Edit Catalog Item ${itemName}`}
+          title="Edit Catalog Item"
+          type="button"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+      )}
+
+      <button
         onClick={handleDeleteClick}
         disabled={isLoading}
         className={`p-1.5 rounded-lg shrink-0 transition-colors disabled:pointer-events-none disabled:opacity-50 ${
@@ -117,11 +153,11 @@ export function TripBoardLineRow({
             : 'hover:bg-destructive/10 text-muted-foreground hover:text-destructive'
         }`}
         aria-label={
-          isConfirmingDelete
-            ? `Confirm delete ${itemName}`
-            : `Delete ${itemName}`
+          isConfirmingDelete ? 'Confirm Delete List Line' : 'Delete List Line'
         }
-        title={isConfirmingDelete ? 'Click again to confirm' : 'Delete item'}
+        title={
+          isConfirmingDelete ? 'Click again to confirm' : 'Delete List Line'
+        }
         type="button"
       >
         <Trash2 className="h-4 w-4" />
