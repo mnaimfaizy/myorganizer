@@ -2,7 +2,7 @@
 description: 'Automatically runs after ComponentBuilder completes. Reviews the written component against docs/ui/GUIDELINES.md, checks for side-effects, performance, memory, and design issues, and scans direct importers for breakage. Produces a report only — never edits files.'
 name: 'ComponentReviewer'
 tools: [read, search]
-model: ['GPT-5 mini (copilot)', 'Claude Haiku 4.5 (copilot)']
+model: ['Claude Sonnet 5 (copilot)', 'Grok 4.5 (copilot)', 'GPT-5.6 Terra (copilot)']
 user-invocable: false
 argument-hint: 'ComponentBuilder Report block'
 ---

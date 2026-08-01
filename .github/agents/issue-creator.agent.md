@@ -2,7 +2,7 @@
 description: 'Use when the user asks to create a GitHub issue and you need a focused workflow for duplicate detection, mandatory detail collection, label validation, and safe issue creation in MyOrganizer.'
 name: 'IssueCreator'
 tools: [read, search, execute]
-model: ['MAI-Code-1-Flash (copilot)', 'GPT-5 mini (copilot)', 'Kimi K2.7 Code (Preview) (copilot)']
+model: ['GPT-5.6 Luna (copilot)']
 user-invocable: true
 argument-hint: 'Issue request details: task/bug context, title, body details, labels, and scope'
 ---
