@@ -3,12 +3,12 @@
 import { Button, Skeleton } from '@myorganizer/web-ui';
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import { Plus } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   CreateListDialog,
   DeleteListConfirmDialog,
-  GroceryListSelector,
   RenameListDialog,
+  TripBoardIndex,
 } from './components';
 import { useGroceriesVault } from '../shared/hooks';
 
@@ -27,6 +27,66 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
   const [dialog, setDialog] = useState<DialogState>({ type: null });
   const vault = useGroceriesVault({ masterKeyBytes });
 
+  const handleOpenCreateDialog = useCallback(() => {
+    setDialog({ type: 'create' });
+  }, []);
+
+  const handleCloseDialog = useCallback(() => {
+    setDialog({ type: null });
+  }, []);
+
+  const handleRenameList = useCallback(
+    (listId: string) => {
+      const list = vault.lists.find((candidate) => candidate.id === listId);
+      if (list) {
+        setDialog({
+          type: 'rename',
+          listId,
+          listName: list.name,
+        });
+      }
+    },
+    [vault.lists],
+  );
+
+  const handleDeleteList = useCallback(
+    (listId: string) => {
+      const list = vault.lists.find((candidate) => candidate.id === listId);
+      if (list) {
+        setDialog({
+          type: 'delete',
+          listId,
+          listName: list.name,
+          itemCount: list.lines.length,
+        });
+      }
+    },
+    [vault.lists],
+  );
+
+  const handleCreateList = useCallback(
+    async (name: string) => {
+      await vault.createList(name);
+      setDialog({ type: null });
+    },
+    [vault.createList],
+  );
+
+  const handleRenameSubmit = useCallback(
+    async (newName: string) => {
+      if (!dialog.listId) return;
+      await vault.renameList(dialog.listId, newName);
+      setDialog({ type: null });
+    },
+    [dialog.listId, vault.renameList],
+  );
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!dialog.listId) return;
+    await vault.deleteList(dialog.listId);
+    setDialog({ type: null });
+  }, [dialog.listId, vault.deleteList]);
+
   if (vault.loading) {
     return (
       <div
@@ -35,13 +95,11 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
         aria-label="Loading groceries list"
       >
         <div className="mx-auto max-w-6xl p-4 md:p-6">
-          {/* Header skeleton */}
           <div className="mb-6 space-y-2">
             <Skeleton className="h-8 w-48" />
             <Skeleton className="h-4 w-64" />
           </div>
 
-          {/* List cards skeleton */}
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-24 w-full rounded-lg" />
@@ -55,7 +113,6 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
   return (
     <div className="min-h-screen bg-surface">
       <div className="mx-auto max-w-6xl p-4 md:p-6">
-        {/* Error banner */}
         {vault.error && (
           <div
             className="mb-4 flex items-start gap-3 rounded-lg border border-error bg-error-container p-4 text-error md:mb-6"
@@ -89,7 +146,6 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
           </div>
         )}
 
-        {/* Header */}
         <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
           <div>
             <h1 className="text-3xl font-bold text-on-surface md:text-4xl">
@@ -102,7 +158,7 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
           <Button
             size="lg"
             className="w-full gap-2 md:w-auto"
-            onClick={() => setDialog({ type: 'create' })}
+            onClick={handleOpenCreateDialog}
             disabled={vault.loading}
           >
             <Plus className="h-5 w-5" />
@@ -110,19 +166,7 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
           </Button>
         </div>
 
-        {/* Search bar */}
-        <div className="mb-6">
-          <input
-            type="text"
-            placeholder="Search your lists..."
-            aria-label="Search grocery lists by name"
-            className="w-full rounded-lg border border-outline-variant bg-surface-container-lowest px-4 py-3 text-on-surface placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-secondary md:max-w-md"
-          />
-        </div>
-
-        {/* Lists section or selected list view */}
         {vault.lists.length === 0 ? (
-          // Empty state
           <div
             className="rounded-lg border-2 border-dashed border-outline-variant bg-surface-container-low p-8 text-center md:p-12"
             role="status"
@@ -149,52 +193,25 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
             <p className="mt-2 text-on-surface-variant">
               Create your first list to get started organizing your shopping.
             </p>
-            <Button
-              className="mt-6"
-              onClick={() => setDialog({ type: 'create' })}
-            >
+            <Button className="mt-6" onClick={handleOpenCreateDialog}>
               Create Your First List
             </Button>
           </div>
         ) : (
-          // List selector
-          <GroceryListSelector
+          <TripBoardIndex
             lists={vault.lists}
             catalog={vault.catalog}
-            onRenameList={(listId) => {
-              const list = vault.lists.find((l) => l.id === listId);
-              if (list) {
-                setDialog({
-                  type: 'rename',
-                  listId,
-                  listName: list.name,
-                });
-              }
-            }}
-            onDeleteList={(listId) => {
-              const list = vault.lists.find((l) => l.id === listId);
-              if (list) {
-                setDialog({
-                  type: 'delete',
-                  listId,
-                  listName: list.name,
-                  itemCount: list.lines.length,
-                });
-              }
-            }}
+            onRenameList={handleRenameList}
+            onDeleteList={handleDeleteList}
             isLoading={vault.loading}
           />
         )}
       </div>
 
-      {/* Dialogs */}
       <CreateListDialog
         isOpen={dialog.type === 'create'}
-        onClose={() => setDialog({ type: null })}
-        onSubmit={async (name) => {
-          await vault.createList(name);
-          setDialog({ type: null });
-        }}
+        onClose={handleCloseDialog}
+        onSubmit={handleCreateList}
         isLoading={vault.loading}
       />
 
@@ -202,11 +219,8 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
         <RenameListDialog
           isOpen={true}
           currentName={dialog.listName || ''}
-          onClose={() => setDialog({ type: null })}
-          onSubmit={async (newName) => {
-            await vault.renameList(dialog.listId!, newName);
-            setDialog({ type: null });
-          }}
+          onClose={handleCloseDialog}
+          onSubmit={handleRenameSubmit}
           isLoading={vault.loading}
         />
       )}
@@ -216,11 +230,8 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
           isOpen={true}
           listName={dialog.listName || ''}
           itemCount={dialog.itemCount || 0}
-          onClose={() => setDialog({ type: null })}
-          onConfirm={async () => {
-            await vault.deleteList(dialog.listId!);
-            setDialog({ type: null });
-          }}
+          onClose={handleCloseDialog}
+          onConfirm={handleDeleteConfirm}
           isLoading={vault.loading}
         />
       )}

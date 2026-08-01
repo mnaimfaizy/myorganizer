@@ -93,6 +93,37 @@ jest.mock('../components', () => {
     );
   }
 
+  function TripBoardIndex({
+    lists,
+    catalog,
+    onRenameList,
+    onDeleteList,
+    isLoading,
+  }: any) {
+    return (
+      <div data-testid="grocery-list-selector">
+        <input placeholder="Search your lists..." />
+        <div data-testid="lists-count">{lists.length}</div>
+        <div data-testid="catalog-count">{catalog?.length ?? 0}</div>
+        <button
+          data-testid="selector-rename-button"
+          onClick={() => onRenameList('list1')}
+        >
+          Rename
+        </button>
+        <button
+          data-testid="selector-delete-button"
+          onClick={() => onDeleteList('list1')}
+        >
+          Delete
+        </button>
+        <div data-testid="selector-loading">
+          {isLoading ? 'loading' : 'ready'}
+        </div>
+      </div>
+    );
+  }
+
   function CreateListDialog({ isOpen, onClose, onSubmit, isLoading }: any) {
     return (
       <div
@@ -172,6 +203,7 @@ jest.mock('../components', () => {
 
   return {
     GroceryListSelector,
+    TripBoardIndex,
     CreateListDialog,
     RenameListDialog,
     DeleteListConfirmDialog,
