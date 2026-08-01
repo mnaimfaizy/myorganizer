@@ -1,6 +1,5 @@
 'use client';
 
-import type { GroceryList } from '@myorganizer/core';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -21,10 +20,6 @@ export function GroceriesListDetailClient({
   const router = useRouter();
   const vault = useGroceriesVault({ masterKeyBytes });
 
-  const handleListUpdated = useCallback(
-    (updated: GroceryList) => void updated,
-    [],
-  );
   const handleClose = useCallback(() => {
     router.push('/dashboard/groceries');
   }, [router]);
@@ -83,11 +78,14 @@ export function GroceriesListDetailClient({
       </Link>
       <GroceryListView
         list={list}
-        masterKeyBytes={masterKeyBytes}
-        onListUpdated={handleListUpdated}
+        catalog={vault.catalog}
         onClose={handleClose}
-        persistLists={vault.persistLists}
-        allLists={vault.lists}
+        onToggleChecked={vault.toggleLineChecked}
+        onUncheckAll={vault.uncheckAllLines}
+        onRemoveChecked={vault.removeCheckedLines}
+        onRestoreLines={vault.restoreLines}
+        onDeleteLine={vault.deleteListLine}
+        onAddItem={vault.addCatalogItemAndLine}
       />
     </div>
   );

@@ -5,3 +5,6 @@ export { EditItemDialog } from './EditItemDialog';
 export { GroceryItemRow } from './GroceryItemRow';
 export { GroceryListView } from './GroceryListView';
 export { LinksInput } from './LinksInput';
+export { TripBoardLifecycleToolbar } from './TripBoardLifecycleToolbar';
+export { TripBoardLineRow } from './TripBoardLineRow';
+export { TripBoardSpendFooter } from './TripBoardSpendFooter';

@@ -1,419 +1,259 @@
 'use client';
 
-import type {
-  GroceryCategoryType,
-  GroceryItem,
-  GroceryList,
-} from '@myorganizer/core';
-import { randomId } from '@myorganizer/core';
-import { Button, useToast } from '@myorganizer/web-ui';
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react';
+import type { CatalogItem, GroceryList, ListLine } from '@myorganizer/core';
+import { ToastAction, useToast } from '@myorganizer/web-ui';
 import { useCallback, useMemo, useState } from 'react';
-import { CategoryFilterBar } from '../../shared/components/CategoryFilterBar';
-import {
-  CATEGORY_LABELS,
-  CATEGORY_ORDER,
-} from '../../shared/constants/categories';
+import type { AddCatalogItemAndLineInput } from '../../shared/hooks';
+import { summarizeListSpend } from '../../shared/utils';
 import type { AddItemFormResult } from './AddItemDialog';
 import { AddItemDialog } from './AddItemDialog';
-import { EditItemDialog } from './EditItemDialog';
-import { GroceryItemRow } from './GroceryItemRow';
+import { TripBoardLifecycleToolbar } from './TripBoardLifecycleToolbar';
+import { TripBoardLineRow } from './TripBoardLineRow';
+import { TripBoardSpendFooter } from './TripBoardSpendFooter';
 
 interface GroceryListViewProps {
   list: GroceryList;
-  masterKeyBytes: Uint8Array;
-  onListUpdated: (updated: GroceryList) => void;
+  catalog: CatalogItem[];
   onClose: () => void;
-  persistLists: (lists: GroceryList[]) => Promise<void>;
-  allLists: GroceryList[];
+  onToggleChecked: (listId: string, lineId: string) => Promise<void>;
+  onUncheckAll: (listId: string) => Promise<void>;
+  onRemoveChecked: (listId: string) => Promise<ListLine[]>;
+  onRestoreLines: (listId: string, lines: ListLine[]) => Promise<void>;
+  onDeleteLine: (listId: string, lineId: string) => Promise<void>;
+  onAddItem: (
+    listId: string,
+    input: AddCatalogItemAndLineInput,
+  ) => Promise<void>;
 }
 
 /**
- * Main grocery list view component
- * Displays and manages items within a selected list
+ * Trip Board detail view — manages the List Lines within a single Grocery
+ * List (Active vs Checked, spend summary, and lifecycle actions).
  */
 export function GroceryListView({
   list,
-  masterKeyBytes,
-  onListUpdated,
-  onClose,
-  persistLists,
-  allLists,
+  catalog,
+  onToggleChecked,
+  onUncheckAll,
+  onRemoveChecked,
+  onRestoreLines,
+  onDeleteLine,
+  onAddItem,
 }: GroceryListViewProps) {
   const { toast } = useToast();
-  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<
-    GroceryCategoryType | 'all'
-  >('all');
 
-  const editingItem = list.items.find((item) => item.id === editingItemId);
+  const active = useMemo(
+    () => list.lines.filter((line) => !line.checked),
+    [list.lines],
+  );
+  const checked = useMemo(
+    () => list.lines.filter((line) => line.checked),
+    [list.lines],
+  );
+  const summary = useMemo(
+    () => summarizeListSpend(list.lines, catalog),
+    [list.lines, catalog],
+  );
 
-  /**
-   * Helper: update a single item and refresh updatedAt
-   */
-  const updateItem = (
-    items: GroceryItem[],
-    patch: Partial<GroceryItem> & { id: string },
-  ): GroceryItem[] =>
-    items.map((item) =>
-      item.id === patch.id
-        ? { ...item, ...patch, updatedAt: new Date().toISOString() }
-        : item,
-    );
+  const showErrorToast = useCallback(() => {
+    toast({
+      title: 'Error',
+      description: 'Failed to save your changes. Please try again.',
+      variant: 'destructive',
+    });
+  }, [toast]);
 
-  /**
-   * Persist changes to the vault
-   */
-  const persistChanges = useCallback(
-    async (updatedList: GroceryList) => {
+  const handleToggleChecked = useCallback(
+    async (lineId: string) => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
-        onListUpdated(updatedList);
-        const nextAllLists = allLists.map((l) =>
-          l.id === updatedList.id ? updatedList : l,
-        );
-        await persistLists(nextAllLists);
+        await onToggleChecked(list.id, lineId);
       } catch (err) {
-        console.error('Failed to persist changes:', err);
-        toast({
-          title: 'Error',
-          description: 'Failed to save your changes. Please try again.',
-          variant: 'destructive',
-        });
+        console.error('Failed to toggle list line:', err);
+        showErrorToast();
       } finally {
         setIsLoading(false);
       }
     },
-    [allLists, onListUpdated, persistLists, toast],
+    [list.id, onToggleChecked, showErrorToast],
   );
 
-  /**
-   * Add a new item to the list
-   */
+  const handleUncheckAll = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await onUncheckAll(list.id);
+    } catch (err) {
+      console.error('Failed to uncheck all list lines:', err);
+      showErrorToast();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [list.id, onUncheckAll, showErrorToast]);
+
+  const handleRemoveChecked = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const removed = await onRemoveChecked(list.id);
+      if (removed.length === 0) {
+        toast({
+          title: 'No checked items to remove.',
+        });
+        return;
+      }
+      toast({
+        title: 'Checked items removed',
+        description: `${removed.length} Checked Item${removed.length !== 1 ? 's' : ''} removed from this Grocery List.`,
+        action: (
+          <ToastAction
+            altText="Undo"
+            onClick={() => {
+              void onRestoreLines(list.id, removed);
+            }}
+          >
+            Undo
+          </ToastAction>
+        ),
+      });
+    } catch (err) {
+      console.error('Failed to remove checked list lines:', err);
+      showErrorToast();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [list.id, onRemoveChecked, onRestoreLines, showErrorToast, toast]);
+
+  const handleDeleteLine = useCallback(
+    async (lineId: string) => {
+      setIsLoading(true);
+      try {
+        await onDeleteLine(list.id, lineId);
+      } catch (err) {
+        console.error('Failed to delete list line:', err);
+        showErrorToast();
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [list.id, onDeleteLine, showErrorToast],
+  );
+
   const handleAddItem = useCallback(
     async (values: AddItemFormResult) => {
-      const newItem: GroceryItem = {
-        id: randomId(),
-        name: values.name,
-        category: values.category,
-        amount: values.amount,
-        price: values.price,
-        notes: values.notes,
-        imageUrl: values.imageUrl,
-        links: values.links,
-        checked: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      const updated: GroceryList = {
-        ...list,
-        items: [...list.items, newItem],
-        updatedAt: new Date().toISOString(),
-      };
-
-      await persistChanges(updated);
-      toast({
-        title: 'Item added',
-        description: `"${values.name}" has been added to your list.`,
-      });
-    },
-    [list, persistChanges, toast],
-  );
-
-  /**
-   * Toggle checked state of an item
-   */
-  const handleToggleChecked = useCallback(
-    async (id: string) => {
-      const item = list.items.find((i) => i.id === id);
-      if (!item) return;
-
-      const patched = updateItem(list.items, {
-        id,
-        checked: !item.checked,
-      });
-
-      const updated: GroceryList = {
-        ...list,
-        items: patched,
-        updatedAt: new Date().toISOString(),
-      };
-
-      await persistChanges(updated);
-    },
-    [list, persistChanges],
-  );
-
-  /**
-   * Edit an existing item
-   */
-  const handleEditItem = useCallback(
-    async (id: string, changes: Partial<GroceryItem>) => {
-      const patched = updateItem(list.items, {
-        id,
-        ...changes,
-      });
-
-      const updated: GroceryList = {
-        ...list,
-        items: patched,
-        updatedAt: new Date().toISOString(),
-      };
-
-      await persistChanges(updated);
-      setEditingItemId(null);
-
-      const itemName = list.items.find((i) => i.id === id)?.name || 'Item';
-      toast({
-        title: 'Item updated',
-        description: `"${itemName}" has been updated.`,
-      });
-    },
-    [list, persistChanges, toast],
-  );
-
-  /**
-   * Delete an item from the list
-   */
-  const handleDeleteItem = useCallback(
-    async (id: string) => {
-      const item = list.items.find((i) => i.id === id);
-      if (!item) return;
-
-      const patched = list.items.filter((i) => i.id !== id);
-
-      const updated: GroceryList = {
-        ...list,
-        items: patched,
-        updatedAt: new Date().toISOString(),
-      };
-
-      await persistChanges(updated);
-
-      toast({
-        title: 'Item deleted',
-        description: `"${item.name}" has been removed from your list.`,
-      });
-    },
-    [list, persistChanges, toast],
-  );
-
-  /**
-   * Clear all checked items
-   */
-  const handleClearChecked = useCallback(async () => {
-    const patched = list.items.filter((i) => !i.checked);
-    const checkedCount = list.items.length - patched.length;
-
-    if (checkedCount === 0) {
-      toast({
-        title: 'No items to clear',
-        description: 'There are no checked items to remove.',
-      });
-      return;
-    }
-
-    const updated: GroceryList = {
-      ...list,
-      items: patched,
-      updatedAt: new Date().toISOString(),
-    };
-
-    await persistChanges(updated);
-
-    toast({
-      title: 'Items cleared',
-      description: `${checkedCount} completed item${checkedCount !== 1 ? 's' : ''} removed.`,
-    });
-  }, [list, persistChanges, toast]);
-
-  // Filter items by selected category
-  const filteredItems = useMemo(() => {
-    return selectedCategory === 'all'
-      ? list.items
-      : list.items.filter((item) => item.category === selectedCategory);
-  }, [list.items, selectedCategory]);
-
-  // Group items by category in the order defined
-  const groupedItems = useMemo(() => {
-    const groups: Record<GroceryCategoryType, GroceryItem[]> = {} as Record<
-      GroceryCategoryType,
-      GroceryItem[]
-    >;
-
-    // Initialize all categories
-    CATEGORY_ORDER.forEach((cat) => {
-      groups[cat] = [];
-    });
-
-    // Group items
-    filteredItems.forEach((item) => {
-      const category = (item.category as GroceryCategoryType) || 'other';
-      if (!groups[category]) {
-        groups[category] = [];
+      setIsLoading(true);
+      try {
+        await onAddItem(list.id, values);
+        setIsAddDialogOpen(false);
+      } catch (err) {
+        console.error('Failed to add item to list:', err);
+        showErrorToast();
+      } finally {
+        setIsLoading(false);
       }
-      groups[category].push(item);
-    });
+    },
+    [list.id, onAddItem, showErrorToast],
+  );
 
-    // Return only non-empty categories in order
-    return CATEGORY_ORDER.filter((cat) => groups[cat].length > 0).map(
-      (cat) => ({
-        category: cat,
-        items: groups[cat],
-      }),
-    );
-  }, [filteredItems]);
+  const handleOpenAddDialog = useCallback(() => {
+    setIsAddDialogOpen(true);
+  }, []);
 
-  const checkedCount = filteredItems.filter((item) => item.checked).length;
-  const hasCheckedItems = checkedCount > 0;
-
-  // Get all categories that have items in this list
-  const categoriesWithItems = useMemo(() => {
-    const cats = new Set<GroceryCategoryType>();
-    list.items.forEach((item) => {
-      cats.add((item.category as GroceryCategoryType) || 'other');
-    });
-    return Array.from(cats);
-  }, [list.items]);
+  const handleCloseAddDialog = useCallback(() => {
+    setIsAddDialogOpen(false);
+  }, []);
 
   return (
-    <div className="space-y-lg px-md">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-md pb-md border-b border-outline-variant">
-        <div className="flex items-center gap-md grow">
-          <button
-            onClick={onClose}
-            className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-secondary hover:bg-secondary-container/20 transition-colors"
-            aria-label="Back to groceries"
-            type="button"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="hidden sm:inline">Back</span>
-          </button>
-
-          <div>
-            <h2 className="text-lg font-semibold text-on-surface md:text-xl">
-              {list.name}
-            </h2>
-            <p className="text-xs text-on-surface-variant">
-              {list.items.length} item{list.items.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-        </div>
+    <div className="space-y-lg">
+      <div className="space-y-1 pb-md border-b border-outline-variant">
+        <h2 className="text-lg font-semibold text-on-surface md:text-xl">
+          {list.name}
+        </h2>
+        <p className="text-xs text-on-surface-variant">
+          {active.length} active · {checked.length} checked ·{' '}
+          {summary.known ? `$${summary.known.toFixed(2)}` : '$0.00'} known
+        </p>
       </div>
 
-      {/* Add Item Button */}
-      <Button
-        onClick={() => setIsAddDialogOpen(true)}
-        disabled={isLoading}
-        className="w-full gap-2 sm:w-auto"
-      >
-        <Plus className="h-4 w-4" />
-        Add Item
-      </Button>
-
-      {/* Category Filter Tabs */}
-      <div className="-mx-md px-md border-b border-outline-variant">
-        <CategoryFilterBar
-          items={list.items}
-          activeCategory={selectedCategory}
-          onCategoryChange={setSelectedCategory}
-        />
-      </div>
-
-      {/* Action Bar */}
-      {hasCheckedItems && (
-        <div className="flex justify-end">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleClearChecked}
-            disabled={isLoading}
-            className="gap-2"
-          >
-            <Trash2 className="h-4 w-4" />
-            <span>Clear checked ({checkedCount})</span>
-          </Button>
-        </div>
-      )}
-
-      {/* Items List */}
-      {list.items.length === 0 ? (
-        <div className="text-center py-12">
-          <div className="inline-block rounded-full bg-secondary-container p-4 mb-4">
-            <svg
-              className="h-8 w-8 text-on-secondary-container"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-              />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold text-on-surface mb-2">
-            No items yet
-          </h3>
-          <p className="text-sm text-on-surface-variant mb-6">
-            Add your first item to get started
-          </p>
-        </div>
-      ) : filteredItems.length === 0 ? (
-        <div className="text-center py-8">
-          <p className="text-sm text-on-surface-variant">
-            No items in this category
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-md">
-          {groupedItems.map((group) => (
-            <div key={group.category}>
-              {/* Category Header */}
-              {selectedCategory === 'all' && (
-                <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1 pb-1">
-                  {CATEGORY_LABELS[group.category]}
-                </h3>
-              )}
-
-              {/* Items in this category */}
-              <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border shadow-sm">
-                {group.items.map((item) => (
-                  <GroceryItemRow
-                    key={item.id}
-                    item={item}
-                    onToggleChecked={handleToggleChecked}
-                    onEdit={(id) => setEditingItemId(id)}
-                    onDelete={handleDeleteItem}
-                  />
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Add Item Dialog */}
-      <AddItemDialog
-        isOpen={isAddDialogOpen}
-        onClose={() => setIsAddDialogOpen(false)}
-        onAdd={handleAddItem}
+      <TripBoardLifecycleToolbar
+        checkedCount={checked.length}
+        onUncheckAll={handleUncheckAll}
+        onRemoveChecked={handleRemoveChecked}
+        onAddItem={handleOpenAddDialog}
         isLoading={isLoading}
       />
 
-      {/* Edit Item Dialog — keyed by editingItemId so useForm re-initialises per item */}
-      <EditItemDialog
-        key={editingItemId ?? 'none'}
-        item={editingItem || null}
-        isOpen={editingItemId !== null}
-        onClose={() => setEditingItemId(null)}
-        onSave={(changes) => handleEditItem(changes.id, changes)}
+      {list.lines.length === 0 ? (
+        <div className="text-center py-12">
+          <h3 className="text-lg font-semibold text-on-surface mb-2">
+            No items yet
+          </h3>
+          <p className="text-sm text-on-surface-variant">
+            Use Add Item to get started
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-2">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1 pb-1">
+              Active ({active.length})
+            </h3>
+            {active.length === 0 ? (
+              <p className="px-1 text-sm text-on-surface-variant">
+                Nothing left in cart
+              </p>
+            ) : (
+              <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border shadow-sm">
+                {active.map((line) => (
+                  <TripBoardLineRow
+                    key={line.id}
+                    line={line}
+                    catalogItem={catalog.find(
+                      (item) => item.id === line.catalogItemId,
+                    )}
+                    onToggleChecked={handleToggleChecked}
+                    onDeleteLine={handleDeleteLine}
+                    isLoading={isLoading}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1 pb-1">
+              Checked ({checked.length}) — visible until removed
+            </h3>
+            {checked.length === 0 ? (
+              <p className="px-1 text-sm text-on-surface-variant">
+                None bought yet
+              </p>
+            ) : (
+              <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border shadow-sm">
+                {checked.map((line) => (
+                  <TripBoardLineRow
+                    key={line.id}
+                    line={line}
+                    catalogItem={catalog.find(
+                      (item) => item.id === line.catalogItemId,
+                    )}
+                    onToggleChecked={handleToggleChecked}
+                    onDeleteLine={handleDeleteLine}
+                    isLoading={isLoading}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      <TripBoardSpendFooter summary={summary} />
+
+      <AddItemDialog
+        isOpen={isAddDialogOpen}
+        onClose={handleCloseAddDialog}
+        onAdd={handleAddItem}
         isLoading={isLoading}
       />
     </div>
