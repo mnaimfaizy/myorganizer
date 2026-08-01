@@ -6,9 +6,11 @@
 
 /** Mocking rule: place jest.mock calls before any imports */
 jest.mock('@myorganizer/web-ui', () => {
-  const React = require('react');
+  const React = require('react') as typeof import('react');
 
-  const DialogContext = React.createContext<any>(null);
+  const DialogContext = React.createContext<{
+    onOpenChange?: (open: boolean) => void;
+  } | null>(null);
 
   function Dialog({ open, onOpenChange, children }: any) {
     React.useEffect(() => {

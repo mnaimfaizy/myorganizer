@@ -5,9 +5,12 @@
 */
 /** Mocking rule: place jest.mock calls before any imports */
 jest.mock('@myorganizer/web-ui', () => {
-  const React = require('react');
+  const React = require('react') as typeof import('react');
 
-  const MenuContext = React.createContext<any>(null);
+  const MenuContext = React.createContext<{
+    isOpen: boolean;
+    toggle: (next?: boolean) => void;
+  } | null>(null);
 
   function DropdownMenu({ open, onOpenChange, children }: any) {
     const [isOpen, setIsOpen] = React.useState(Boolean(open));
@@ -80,18 +83,14 @@ import { GroceryListSelector } from '../components/GroceryListSelector';
 describe('GroceryListSelector', () => {
   const NOW_ISO = '2026-06-04T12:00:00.000Z';
 
-  beforeAll(() => {
+  beforeEach(() => {
+    jest.resetAllMocks();
     jest.useFakeTimers();
-    // @ts-expect-error - Jest global setSystemTime exists on modern Jest
     jest.setSystemTime(new Date(NOW_ISO));
   });
 
-  afterAll(() => {
+  afterEach(() => {
     jest.useRealTimers();
-  });
-
-  beforeEach(() => {
-    jest.resetAllMocks();
   });
 
   function makeCatalogItem(id: string, category = 'produce'): CatalogItem {
@@ -133,7 +132,10 @@ describe('GroceryListSelector', () => {
   }
 
   it('renders lists with name, item counts, timestamp and progress', async () => {
-    const catalog = [makeCatalogItem('i1'), makeCatalogItem('i2')];
+    const catalog = [
+      { ...makeCatalogItem('i1'), price: 2.5 },
+      makeCatalogItem('i2'),
+    ];
     const lists = [
       makeList({
         id: 'l1',
@@ -163,21 +165,24 @@ describe('GroceryListSelector', () => {
     );
 
     // Names and item counts
-    expect(screen.getByText('Groceries A')).toBeTruthy();
-    expect(screen.getByText('Groceries B')).toBeTruthy();
-    expect(screen.getByText('1 / 2 items')).toBeTruthy();
-    expect(screen.getByText('0 / 0 items')).toBeTruthy();
+    expect(screen.getByText('Groceries A')).not.toBeNull();
+    expect(screen.getByText('Groceries B')).not.toBeNull();
+    expect(screen.getByText('1 / 2 items')).not.toBeNull();
+    expect(screen.getByText('0 / 0 items')).not.toBeNull();
+    expect(
+      screen.getByLabelText('Known spend $2.50; 1 item unpriced'),
+    ).not.toBeNull();
 
     // Relative times (5m ago, 2h ago)
-    expect(screen.getByText(/5m ago/)).toBeTruthy();
-    expect(screen.getByText(/2h ago/)).toBeTruthy();
+    expect(screen.getByText(/5m ago/)).not.toBeNull();
+    expect(screen.getByText(/2h ago/)).not.toBeNull();
 
     // Progress bar for first list should be 50% (1/2)
     const cardA = screen
       .getByText('Groceries A')
       .closest('[role="article"]') as HTMLElement;
     const progressInner = cardA.querySelector('div[style]') as HTMLElement;
-    expect(progressInner).toBeTruthy();
+    expect(progressInner).not.toBeNull();
     expect(progressInner.style.width).toBe('50%');
 
     // Clicking checkbox toggles internal selection (shows border-error shadow-md)
@@ -239,9 +244,9 @@ describe('GroceryListSelector', () => {
 
     const header = screen.getByText('Active Lists');
     // The count is rendered in a span next to header
-    expect(header).toBeTruthy();
+    expect(header).not.toBeNull();
     const countSpan = header.parentElement?.querySelector('span');
-    expect(countSpan).toBeTruthy();
+    expect(countSpan).not.toBeNull();
     expect(countSpan?.textContent).toBe('0');
   });
 
@@ -275,17 +280,23 @@ describe('GroceryListSelector', () => {
     const noItemsCard = screen
       .getByText('No Items')
       .closest('[role="article"]') as HTMLElement;
-    expect(noItemsCard.querySelector('div[style]')!.style.width).toBe('0%');
+    expect(
+      (noItemsCard.querySelector('div[style]') as HTMLElement).style.width,
+    ).toBe('0%');
 
     const s1 = screen
       .getByText('SingleChecked')
       .closest('[role="article"]') as HTMLElement;
-    expect(s1.querySelector('div[style]')!.style.width).toBe('100%');
+    expect((s1.querySelector('div[style]') as HTMLElement).style.width).toBe(
+      '100%',
+    );
 
     const s2 = screen
       .getByText('SingleUnchecked')
       .closest('[role="article"]') as HTMLElement;
-    expect(s2.querySelector('div[style]')!.style.width).toBe('0%');
+    expect((s2.querySelector('div[style]') as HTMLElement).style.width).toBe(
+      '0%',
+    );
   });
 
   it('rename and delete menu items call handlers and do not propagate select click', async () => {
@@ -364,8 +375,8 @@ describe('GroceryListSelector', () => {
     );
 
     // All names are present (including long name prefix)
-    expect(screen.getByText('List 0')).toBeTruthy();
-    expect(screen.getByText(new RegExp(longName.slice(0, 10)))).toBeTruthy();
+    expect(screen.getByText('List 0')).not.toBeNull();
+    expect(screen.getByText(new RegExp(longName.slice(0, 10)))).not.toBeNull();
   });
 
   it('formats relative times: Just now, Xm ago, Xh ago, Xd ago, date for older', () => {
@@ -412,12 +423,12 @@ describe('GroceryListSelector', () => {
       />,
     );
 
-    expect(screen.getByText(/Just now/)).toBeTruthy();
-    expect(screen.getByText(/5m ago/)).toBeTruthy();
-    expect(screen.getByText(/2h ago/)).toBeTruthy();
-    expect(screen.getByText(/3d ago/)).toBeTruthy();
+    expect(screen.getByText(/Just now/)).not.toBeNull();
+    expect(screen.getByText(/5m ago/)).not.toBeNull();
+    expect(screen.getByText(/2h ago/)).not.toBeNull();
+    expect(screen.getByText(/3d ago/)).not.toBeNull();
 
     const oldDate = new Date('2020-01-01T00:00:00.000Z').toLocaleDateString();
-    expect(screen.getByText(new RegExp(oldDate))).toBeTruthy();
+    expect(screen.getByText(new RegExp(oldDate))).not.toBeNull();
   });
 });

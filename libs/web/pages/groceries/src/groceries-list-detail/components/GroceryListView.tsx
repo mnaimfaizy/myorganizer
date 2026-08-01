@@ -107,6 +107,13 @@ export function GroceryListView({
     }
   }, [list.id, onUncheckAll, showErrorToast]);
 
+  const createUndoHandler = useCallback(
+    (listId: string, lines: ListLine[]) => () => {
+      void onRestoreLines(listId, lines);
+    },
+    [onRestoreLines],
+  );
+
   const handleRemoveChecked = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -123,9 +130,7 @@ export function GroceryListView({
         action: (
           <ToastAction
             altText="Undo"
-            onClick={() => {
-              void onRestoreLines(list.id, removed);
-            }}
+            onClick={createUndoHandler(list.id, removed)}
           >
             Undo
           </ToastAction>
@@ -137,7 +142,7 @@ export function GroceryListView({
     } finally {
       setIsLoading(false);
     }
-  }, [list.id, onRemoveChecked, onRestoreLines, showErrorToast, toast]);
+  }, [createUndoHandler, list.id, onRemoveChecked, showErrorToast, toast]);
 
   const handleDeleteLine = useCallback(
     async (lineId: string) => {
@@ -360,6 +365,7 @@ export function GroceryListView({
         onClose={handleCloseAddDialog}
         onAdd={handleAddItem}
         isLoading={isLoading}
+        catalog={catalog}
       />
 
       <AddExistingItemDialog

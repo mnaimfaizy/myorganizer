@@ -1,6 +1,7 @@
 /** Mocking rule: place jest.mock calls before any imports */
 jest.mock('@myorganizer/web-ui', () => {
   const React = require('react');
+  const { Controller } = require('react-hook-form');
 
   function Input(props: any) {
     // Render a plain input so react-hook-form register props (name, onChange, ref) work
@@ -13,9 +14,57 @@ jest.mock('@myorganizer/web-ui', () => {
     return <button {...props}>{children}</button>;
   }
 
+  function FormField({ name, render, ...props }: any) {
+    return (
+      <Controller
+        name={name}
+        render={({ field }: any) =>
+          render({
+            field: {
+              ...field,
+              onChange: (event: any) => {
+                field.onChange(event);
+                const links = [...(props.control._formValues.links ?? [])];
+                const index = Number(name.split('.').pop());
+                links[index] = event.target.value;
+                props.control.register('links').onChange({
+                  target: { name: 'links', value: links },
+                });
+              },
+            },
+          })
+        }
+        {...props}
+      />
+    );
+  }
+
+  function FormItem({ children, ...props }: any) {
+    return <div {...props}>{children}</div>;
+  }
+
+  function FormControl({ children, ...props }: any) {
+    return React.cloneElement(React.Children.only(children), {
+      ...props,
+    });
+  }
+
+  function FormLabel({ children, ...props }: any) {
+    return <label {...props}>{children}</label>;
+  }
+
+  function FormMessage({ children, ...props }: any) {
+    return children ? <p {...props}>{children}</p> : null;
+  }
+
   return {
     Input,
     Button,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
   };
 });
 

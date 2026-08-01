@@ -14,6 +14,7 @@ import {
   saveEncryptedData,
 } from '@myorganizer/web-vault';
 import { useCallback, useEffect, useState } from 'react';
+import { validateAddCatalogItemAndLineInput } from '../utils';
 
 interface UseGroceriesVaultOptions {
   masterKeyBytes: Uint8Array;
@@ -23,6 +24,7 @@ interface UseGroceriesVaultOptions {
 export interface AddCatalogItemAndLineInput {
   name: string;
   category: GroceryCategoryType;
+  catalogItemId?: string;
   price?: number;
   notes?: string;
   imageUrl?: string;
@@ -398,41 +400,52 @@ export function useGroceriesVault({
   const addCatalogItemAndLine = useCallback(
     async (listId: string, input: AddCatalogItemAndLineInput) => {
       try {
+        const validatedInput = validateAddCatalogItemAndLineInput(input);
         const now = new Date().toISOString();
-        const trimmedName = input.name.trim();
-        const existing = payload.catalog.find(
-          (item) =>
-            item.name.trim().toLowerCase() === trimmedName.toLowerCase(),
-        );
+        const trimmedName = validatedInput.name;
+        const existing = validatedInput.catalogItemId
+          ? payload.catalog.find(
+              (item) => item.id === validatedInput.catalogItemId,
+            )
+          : payload.catalog.find(
+              (item) =>
+                item.name.trim().toLowerCase() === trimmedName.toLowerCase(),
+            );
+
+        if (validatedInput.catalogItemId && !existing) {
+          throw new Error('Catalog Item not found');
+        }
 
         let catalogItemId: string;
         let nextCatalog: CatalogItem[];
 
         if (existing) {
           catalogItemId = existing.id;
-          nextCatalog = payload.catalog.map((item) =>
-            item.id === existing.id
-              ? {
-                  ...item,
-                  name: trimmedName,
-                  category: input.category,
-                  price: input.price,
-                  notes: input.notes,
-                  imageUrl: input.imageUrl,
-                  links: input.links,
-                  updatedAt: now,
-                }
-              : item,
-          );
+          nextCatalog = validatedInput.catalogItemId
+            ? payload.catalog
+            : payload.catalog.map((item) =>
+                item.id === existing.id
+                  ? {
+                      ...item,
+                      name: trimmedName,
+                      category: validatedInput.category,
+                      price: validatedInput.price,
+                      notes: validatedInput.notes,
+                      imageUrl: validatedInput.imageUrl,
+                      links: validatedInput.links,
+                      updatedAt: now,
+                    }
+                  : item,
+              );
         } else {
           const newCatalogItem: CatalogItem = {
             id: randomId(),
             name: trimmedName,
-            category: input.category,
-            price: input.price,
-            notes: input.notes,
-            imageUrl: input.imageUrl,
-            links: input.links,
+            category: validatedInput.category,
+            price: validatedInput.price,
+            notes: validatedInput.notes,
+            imageUrl: validatedInput.imageUrl,
+            links: validatedInput.links,
             createdAt: now,
             updatedAt: now,
           };
@@ -444,7 +457,7 @@ export function useGroceriesVault({
           id: randomId(),
           catalogItemId,
           checked: false,
-          amount: input.amount,
+          amount: validatedInput.amount,
           createdAt: now,
           updatedAt: now,
         };
@@ -480,41 +493,52 @@ export function useGroceriesVault({
   const addItemToLists = useCallback(
     async (listIds: string[], input: AddCatalogItemAndLineInput) => {
       try {
+        const validatedInput = validateAddCatalogItemAndLineInput(input);
         const now = new Date().toISOString();
-        const trimmedName = input.name.trim();
-        const existing = payload.catalog.find(
-          (item) =>
-            item.name.trim().toLowerCase() === trimmedName.toLowerCase(),
-        );
+        const trimmedName = validatedInput.name;
+        const existing = validatedInput.catalogItemId
+          ? payload.catalog.find(
+              (item) => item.id === validatedInput.catalogItemId,
+            )
+          : payload.catalog.find(
+              (item) =>
+                item.name.trim().toLowerCase() === trimmedName.toLowerCase(),
+            );
+
+        if (validatedInput.catalogItemId && !existing) {
+          throw new Error('Catalog Item not found');
+        }
 
         let catalogItemId: string;
         let nextCatalog: CatalogItem[];
 
         if (existing) {
           catalogItemId = existing.id;
-          nextCatalog = payload.catalog.map((item) =>
-            item.id === existing.id
-              ? {
-                  ...item,
-                  name: trimmedName,
-                  category: input.category,
-                  price: input.price,
-                  notes: input.notes,
-                  imageUrl: input.imageUrl,
-                  links: input.links,
-                  updatedAt: now,
-                }
-              : item,
-          );
+          nextCatalog = validatedInput.catalogItemId
+            ? payload.catalog
+            : payload.catalog.map((item) =>
+                item.id === existing.id
+                  ? {
+                      ...item,
+                      name: trimmedName,
+                      category: validatedInput.category,
+                      price: validatedInput.price,
+                      notes: validatedInput.notes,
+                      imageUrl: validatedInput.imageUrl,
+                      links: validatedInput.links,
+                      updatedAt: now,
+                    }
+                  : item,
+              );
         } else {
           const newCatalogItem: CatalogItem = {
             id: randomId(),
             name: trimmedName,
-            category: input.category,
-            price: input.price,
-            notes: input.notes,
-            imageUrl: input.imageUrl,
-            links: input.links,
+            category: validatedInput.category,
+            price: validatedInput.price,
+            notes: validatedInput.notes,
+            imageUrl: validatedInput.imageUrl,
+            links: validatedInput.links,
             createdAt: now,
             updatedAt: now,
           };
@@ -535,7 +559,7 @@ export function useGroceriesVault({
               id: randomId(),
               catalogItemId,
               checked: false,
-              amount: input.amount,
+              amount: validatedInput.amount,
               createdAt: now,
               updatedAt: now,
             };

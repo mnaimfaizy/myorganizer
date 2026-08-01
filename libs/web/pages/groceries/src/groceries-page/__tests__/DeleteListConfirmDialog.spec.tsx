@@ -135,7 +135,7 @@ describe('DeleteListConfirmDialog', () => {
 
     it('should disable all buttons during deletion and re-enable after', async () => {
       const mockOnConfirm = jest.fn(
-        () => new Promise((resolve) => setTimeout(resolve, 100)),
+        () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
       );
       render(
         <DeleteListConfirmDialog {...defaultProps} onConfirm={mockOnConfirm} />,
@@ -343,7 +343,7 @@ describe('DeleteListConfirmDialog', () => {
   describe('Error Handling', () => {
     it('should properly reset state after onConfirm operation completes', async () => {
       // Verify that confirming state is properly reset even after any async operation
-      let resolveConfirmation: (() => void) | null = null;
+      let resolveConfirmation!: () => void;
       const confirmPromise = new Promise<void>((resolve) => {
         resolveConfirmation = resolve;
       });
@@ -365,9 +365,7 @@ describe('DeleteListConfirmDialog', () => {
       });
 
       // Resolve the confirmation
-      if (resolveConfirmation) {
-        resolveConfirmation();
-      }
+      resolveConfirmation();
 
       // After completion, state should reset
       await waitFor(() => {
@@ -378,7 +376,7 @@ describe('DeleteListConfirmDialog', () => {
 
     it('should disable buttons during entire async operation lifecycle', async () => {
       // Verify buttons stay disabled throughout the async flow and are re-enabled when done
-      let resolveConfirmation: (() => void) | null = null;
+      let resolveConfirmation!: () => void;
       const confirmPromise = new Promise<void>((resolve) => {
         resolveConfirmation = resolve;
       });
@@ -404,9 +402,7 @@ describe('DeleteListConfirmDialog', () => {
       });
 
       // Resolve and verify they re-enable
-      if (resolveConfirmation) {
-        resolveConfirmation();
-      }
+      resolveConfirmation();
 
       await waitFor(() => {
         expect(cancelButton).not.toBeDisabled();
@@ -450,7 +446,7 @@ describe('DeleteListConfirmDialog', () => {
 
     it('should not call onConfirm more than once even on rapid clicks', async () => {
       const mockOnConfirm = jest.fn(
-        () => new Promise((resolve) => setTimeout(resolve, 100)),
+        () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
       );
       render(
         <DeleteListConfirmDialog {...defaultProps} onConfirm={mockOnConfirm} />,

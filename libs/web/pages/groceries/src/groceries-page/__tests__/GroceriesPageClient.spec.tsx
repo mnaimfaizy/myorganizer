@@ -1089,13 +1089,14 @@ describe('GroceriesPageClient', () => {
 
       fireEvent.click(screen.getByTestId('selector-rename-button'));
 
-      let renameDialog = screen.getByTestId('rename-list-dialog');
+      const renameDialog = screen.getByTestId('rename-list-dialog');
       expect(renameDialog).toHaveAttribute('data-open', 'true');
 
       fireEvent.click(screen.getByTestId('dialog-rename-close'));
 
-      renameDialog = screen.queryByTestId('rename-list-dialog');
-      expect(renameDialog).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('rename-list-dialog'),
+      ).not.toBeInTheDocument();
     });
 
     it('should persist dialog state across renders', async () => {
@@ -1231,7 +1232,7 @@ describe('GroceriesPageClient', () => {
       fireEvent.click(screen.getByTestId('selector-rename-button'));
 
       // Dialog opens with correct name
-      let dialog = screen.getByTestId('rename-list-dialog');
+      const dialog = screen.getByTestId('rename-list-dialog');
       expect(dialog).toHaveAttribute('data-open', 'true');
       expect(dialog).toHaveAttribute('data-current-name', 'Groceries');
 
@@ -1240,8 +1241,9 @@ describe('GroceriesPageClient', () => {
 
       // Dialog closes after submission
       await waitFor(() => {
-        dialog = screen.queryByTestId('rename-list-dialog');
-        expect(dialog).not.toBeInTheDocument();
+        expect(
+          screen.queryByTestId('rename-list-dialog'),
+        ).not.toBeInTheDocument();
       });
 
       // vault.renameList was called with correct args
@@ -1266,7 +1268,7 @@ describe('GroceriesPageClient', () => {
       fireEvent.click(screen.getByTestId('selector-delete-button'));
 
       // Dialog opens with correct info
-      let dialog = screen.getByTestId('delete-list-dialog');
+      const dialog = screen.getByTestId('delete-list-dialog');
       expect(dialog).toHaveAttribute('data-open', 'true');
       expect(dialog).toHaveAttribute('data-list-name', 'Groceries');
       expect(dialog).toHaveAttribute('data-item-count', '5');
@@ -1276,8 +1278,9 @@ describe('GroceriesPageClient', () => {
 
       // Dialog closes after deletion
       await waitFor(() => {
-        dialog = screen.queryByTestId('delete-list-dialog');
-        expect(dialog).not.toBeInTheDocument();
+        expect(
+          screen.queryByTestId('delete-list-dialog'),
+        ).not.toBeInTheDocument();
       });
 
       // vault.deleteList was called

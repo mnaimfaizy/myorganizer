@@ -13,7 +13,15 @@ jest.mock('next/navigation', () => ({
 
 jest.mock('next/link', () => ({
   __esModule: true,
-  default: ({ href, children, ...props }: Record<string, unknown>) => (
+  default: ({
+    href,
+    children,
+    ...props
+  }: {
+    href: string;
+    children: import('react').ReactNode;
+    [key: string]: unknown;
+  }) => (
     <a href={href} {...props}>
       {children}
     </a>

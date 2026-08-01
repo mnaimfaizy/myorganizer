@@ -48,7 +48,7 @@ export function summarizeListSpend(
     const catalogItem = resolveCatalogItem(line, catalog);
     const price = catalogItem?.price;
 
-    if (typeof price === 'number' && !Number.isNaN(price)) {
+    if (typeof price === 'number' && Number.isFinite(price)) {
       known += price;
       pricedCount += 1;
       if (line.checked) checkedKnown += price;

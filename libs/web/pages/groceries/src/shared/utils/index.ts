@@ -9,3 +9,7 @@ export {
   summarizeListSpend,
 } from './groceryTotals';
 export type { ListSpendSummary } from './groceryTotals';
+export {
+  addCatalogItemAndLineInputSchema,
+  validateAddCatalogItemAndLineInput,
+} from './groceryValidation';

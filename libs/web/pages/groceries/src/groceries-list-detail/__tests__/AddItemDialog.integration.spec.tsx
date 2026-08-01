@@ -1,6 +1,11 @@
 /** Mocking rule: place jest.mock calls before any imports */
 jest.mock('@myorganizer/web-ui', () => {
   const React = require('react');
+  const {
+    Controller,
+    FormProvider,
+    useFormContext,
+  } = require('react-hook-form');
 
   // Simple Input that forwards all props to a real input so react-hook-form register works
   function Input(props: any) {
@@ -45,6 +50,78 @@ jest.mock('@myorganizer/web-ui', () => {
   const DialogTitle = ({ children }: any) => <h2>{children}</h2>;
   const DialogDescription = ({ children }: any) => <p>{children}</p>;
   const DialogFooter = ({ children }: any) => <div>{children}</div>;
+
+  // Keep the form primitives close to their production contract: Controller
+  // supplies field props, while the other wrappers expose field state and
+  // accessible ids/validation attributes to their children.
+  const FormFieldContext = React.createContext<{ name?: string }>({});
+  const FormItemContext = React.createContext<{ id?: string }>({});
+
+  function Form(props: any) {
+    return <FormProvider {...props} />;
+  }
+
+  function FormField({ name, render, ...props }: any) {
+    return (
+      <FormFieldContext.Provider value={{ name }}>
+        <Controller name={name} render={render} {...props} />
+      </FormFieldContext.Provider>
+    );
+  }
+
+  function FormItem({ children, ...props }: any) {
+    const id = React.useId();
+    return (
+      <FormItemContext.Provider value={{ id }}>
+        <div {...props}>{children}</div>
+      </FormItemContext.Provider>
+    );
+  }
+
+  function useFormField() {
+    const { name } = React.useContext(FormFieldContext);
+    const { id } = React.useContext(FormItemContext);
+    const { getFieldState, formState } = useFormContext();
+    return {
+      error: name ? getFieldState(name, formState).error : undefined,
+      formItemId: `${id}-form-item`,
+      formDescriptionId: `${id}-form-item-description`,
+      formMessageId: `${id}-form-item-message`,
+    };
+  }
+
+  function FormControl({ children, ...props }: any) {
+    const { error, formItemId, formDescriptionId, formMessageId } =
+      useFormField();
+    return React.cloneElement(React.Children.only(children), {
+      ...props,
+      id: formItemId,
+      'aria-describedby': error
+        ? `${formDescriptionId} ${formMessageId}`
+        : formDescriptionId,
+      'aria-invalid': !!error,
+    });
+  }
+
+  function FormLabel({ children, ...props }: any) {
+    const { formItemId } = useFormField();
+    return (
+      <label htmlFor={formItemId} {...props}>
+        {children}
+      </label>
+    );
+  }
+
+  function FormMessage({ children, ...props }: any) {
+    const { error, formMessageId } = useFormField();
+    const message = error ? String(error.message) : children;
+    if (!message) return null;
+    return (
+      <p id={formMessageId} {...props}>
+        {message}
+      </p>
+    );
+  }
 
   // Minimal Select components to be safe in the environment
   function Select({ value, onValueChange, children, ...props }: any) {
@@ -91,6 +168,12 @@ jest.mock('@myorganizer/web-ui', () => {
     DialogTitle,
     DialogDescription,
     DialogFooter,
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
     Select,
     SelectTrigger,
     SelectValue,
@@ -106,7 +189,7 @@ import React from 'react';
 
 import { AddItemDialog } from '../components/AddItemDialog';
 
-function TestWrapper({ onAdd, onClose, isLoading = false }: any) {
+function TestWrapper({ onAdd, onClose, isLoading = false, catalog = [] }: any) {
   const [open, setOpen] = React.useState(false);
   return (
     <div>
@@ -121,6 +204,7 @@ function TestWrapper({ onAdd, onClose, isLoading = false }: any) {
         }}
         onAdd={onAdd}
         isLoading={isLoading}
+        catalog={catalog}
       />
     </div>
   );
@@ -304,6 +388,76 @@ describe('AddItemDialog integration', () => {
       'e.g. Organic Almond Milk',
     );
     expect((reopened as HTMLInputElement).value).toBe('');
+  });
+
+  it('keeps the dialog open when onAdd rejects and does not treat it as success', async () => {
+    const onAdd = jest.fn().mockRejectedValue(new Error('save failed'));
+    const onClose = jest.fn();
+    const { container } = render(
+      <TestWrapper onAdd={onAdd} onClose={onClose} />,
+    );
+
+    fireEvent.click(screen.getByTestId('open-dialog'));
+    await screen.findByText('Add New Item');
+    fireEvent.change(screen.getByPlaceholderText('e.g. Organic Almond Milk'), {
+      target: { value: 'Milk' },
+    });
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+
+    await waitFor(() => expect(onAdd).toHaveBeenCalled());
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText('Add New Item')).toBeInTheDocument();
+    expect(
+      (
+        screen.getByPlaceholderText(
+          'e.g. Organic Almond Milk',
+        ) as HTMLInputElement
+      ).value,
+    ).toBe('Milk');
+  });
+
+  it('suggests matching catalog items and submits the selected catalog identity', async () => {
+    const onAdd = jest.fn().mockResolvedValue(undefined);
+    const onClose = jest.fn();
+    const { container } = render(
+      <TestWrapper
+        onAdd={onAdd}
+        onClose={onClose}
+        catalog={[
+          {
+            id: 'catalog-milk',
+            name: 'Organic Milk',
+            category: 'dairy',
+            price: 4.5,
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('open-dialog'));
+    const name = await screen.findByPlaceholderText('e.g. Organic Almond Milk');
+    fireEvent.change(name, { target: { value: 'milk' } });
+
+    const suggestion = await screen.findByRole('option', {
+      name: /Organic Milk Dairy/i,
+    });
+    fireEvent.click(suggestion);
+    expect((name as HTMLInputElement).value).toBe('Organic Milk');
+
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    await waitFor(() => expect(onAdd).toHaveBeenCalled());
+    expect(onAdd).toHaveBeenCalledWith({
+      name: 'Organic Milk',
+      category: 'dairy',
+      catalogItemId: 'catalog-milk',
+      amount: undefined,
+      price: 4.5,
+      notes: undefined,
+      imageUrl: undefined,
+      links: undefined,
+    });
   });
 
   it('full submit with all fields calls onAdd with parsed values', async () => {

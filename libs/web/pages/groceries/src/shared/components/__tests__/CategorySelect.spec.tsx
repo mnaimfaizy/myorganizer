@@ -1,8 +1,15 @@
 /** Mocking rule: place jest.mock calls before any imports */
 jest.mock('@myorganizer/web-ui', () => {
-  const React = require('react');
+  const React = require('react') as typeof import('react');
 
-  const SelectContext = React.createContext<any>(null);
+  const SelectContext = React.createContext<{
+    value?: string;
+    onValueChange?: (value: string) => void;
+    open: boolean;
+    setOpen: (open: boolean) => void;
+    registerItem: (value: string, label: string) => void;
+    items: Record<string, string>;
+  } | null>(null);
 
   function Select({ value, onValueChange, children }: any) {
     const [open, setOpen] = React.useState(false);
@@ -60,6 +67,7 @@ jest.mock('@myorganizer/web-ui', () => {
 
   function SelectItem({ value, children, ...props }: any) {
     const ctx = React.useContext(SelectContext);
+    if (!ctx) return null;
     const ref = React.useRef<any>(null);
     const registerItem = ctx?.registerItem;
 

@@ -15,6 +15,20 @@ jest.mock('@myorganizer/core', () => {
   let counter = 0;
   return {
     randomId: jest.fn(() => `id-${++counter}`),
+    GROCERY_PREDEFINED_CATEGORIES: [
+      'produce',
+      'dairy',
+      'meat',
+      'seafood',
+      'bakery',
+      'frozen',
+      'beverages',
+      'snacks',
+      'condiments',
+      'household',
+      'personal-care',
+      'other',
+    ],
   };
 });
 
@@ -92,6 +106,55 @@ describe('useGroceriesVault', () => {
     jest.resetAllMocks();
   });
 
+  it('reports a load failure and stops loading without claiming success', async () => {
+    mockLoadDecryptedData.mockRejectedValue(new Error('vault unavailable'));
+
+    const { result } = renderHook(() => useGroceriesVault({ masterKeyBytes }));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+
+    expect(result.current.error).toBe(
+      'Failed to load your grocery lists. Please try again.',
+    );
+    expect(result.current.catalog).toEqual([]);
+    expect(result.current.lists).toEqual([]);
+    expect(mockNormalizeGroceries).not.toHaveBeenCalled();
+    expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+  });
+
+  it('rethrows persistence failures, reports an error, and leaves state unchanged', async () => {
+    const initialPayload = {
+      catalog: [],
+      lists: [makeList({ id: 'listA', name: 'A' })],
+    };
+    const result = await setup(initialPayload);
+    const saveError = new Error('vault is locked');
+    mockSaveEncryptedData.mockRejectedValue(saveError);
+
+    let thrownError: unknown;
+    await act(async () => {
+      try {
+        await result.current.persistPayload({
+          catalog: [],
+          lists: [makeList({ id: 'listB', name: 'B' })],
+        });
+      } catch (error) {
+        thrownError = error;
+      }
+    });
+
+    expect(thrownError).toBe(saveError);
+    await waitFor(() =>
+      expect(result.current.error).toBe(
+        'Failed to save your changes. Please try again.',
+      ),
+    );
+    await waitFor(() => {
+      expect(result.current.catalog).toEqual(initialPayload.catalog);
+      expect(result.current.lists).toEqual(initialPayload.lists);
+    });
+  });
+
   describe('addItemToLists', () => {
     it('creates a new Catalog Item and adds a new List Line to every target list', async () => {
       const listA = makeList({ id: 'listA', name: 'A' });
@@ -105,17 +168,28 @@ describe('useGroceriesVault', () => {
         });
       });
 
-      expect(result.current.catalog).toHaveLength(1);
-      expect(result.current.catalog[0].name).toBe('Milk');
-      expect(result.current.catalog[0].category).toBe('dairy');
+      await waitFor(() => {
+        expect(result.current.catalog).toHaveLength(1);
+        expect(result.current.catalog[0].name).toBe('Milk');
+        expect(result.current.catalog[0].category).toBe('dairy');
 
-      const catalogItemId = result.current.catalog[0].id;
-      const listAResult = result.current.lists.find((l) => l.id === 'listA');
-      const listBResult = result.current.lists.find((l) => l.id === 'listB');
-      expect(listAResult?.lines).toHaveLength(1);
-      expect(listAResult?.lines[0].catalogItemId).toBe(catalogItemId);
-      expect(listBResult?.lines).toHaveLength(1);
-      expect(listBResult?.lines[0].catalogItemId).toBe(catalogItemId);
+        const catalogItemId = result.current.catalog[0].id;
+        const listAResult = result.current.lists.find((l) => l.id === 'listA');
+        const listBResult = result.current.lists.find((l) => l.id === 'listB');
+        expect(listAResult?.lines).toHaveLength(1);
+        expect(listAResult?.lines[0].catalogItemId).toBe(catalogItemId);
+        expect(listBResult?.lines).toHaveLength(1);
+        expect(listBResult?.lines[0].catalogItemId).toBe(catalogItemId);
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            type: 'groceries',
+            value: {
+              catalog: result.current.catalog,
+              lists: result.current.lists,
+            },
+          }),
+        );
+      });
     });
 
     it('reuses an existing Catalog Item case-insensitively and updates its durable fields', async () => {
@@ -135,16 +209,18 @@ describe('useGroceriesVault', () => {
         });
       });
 
-      // Reused, not duplicated
-      expect(result.current.catalog).toHaveLength(1);
-      expect(result.current.catalog[0].id).toBe('cat-1');
-      expect(result.current.catalog[0].name).toBe('MILK');
-      expect(result.current.catalog[0].category).toBe('dairy');
-      expect(result.current.catalog[0].price).toBe(2.5);
+      await waitFor(() => {
+        // Reused, not duplicated
+        expect(result.current.catalog).toHaveLength(1);
+        expect(result.current.catalog[0].id).toBe('cat-1');
+        expect(result.current.catalog[0].name).toBe('MILK');
+        expect(result.current.catalog[0].category).toBe('dairy');
+        expect(result.current.catalog[0].price).toBe(2.5);
 
-      const listAResult = result.current.lists.find((l) => l.id === 'listA');
-      expect(listAResult?.lines).toHaveLength(1);
-      expect(listAResult?.lines[0].catalogItemId).toBe('cat-1');
+        const listAResult = result.current.lists.find((l) => l.id === 'listA');
+        expect(listAResult?.lines).toHaveLength(1);
+        expect(listAResult?.lines[0].catalogItemId).toBe('cat-1');
+      });
     });
 
     it('skips lists that already have a line for the Catalog Item, but still adds to others', async () => {
@@ -167,13 +243,15 @@ describe('useGroceriesVault', () => {
         });
       });
 
-      const listAResult = result.current.lists.find((l) => l.id === 'listA');
-      const listBResult = result.current.lists.find((l) => l.id === 'listB');
-      // listA already had a line for cat-1 - no duplicate added
-      expect(listAResult?.lines).toHaveLength(1);
-      expect(listAResult?.lines[0].id).toBe('ln-existing');
-      // listB did not have a line - one was added
-      expect(listBResult?.lines).toHaveLength(1);
+      await waitFor(() => {
+        const listAResult = result.current.lists.find((l) => l.id === 'listA');
+        const listBResult = result.current.lists.find((l) => l.id === 'listB');
+        // listA already had a line for cat-1 - no duplicate added
+        expect(listAResult?.lines).toHaveLength(1);
+        expect(listAResult?.lines[0].id).toBe('ln-existing');
+        // listB did not have a line - one was added
+        expect(listBResult?.lines).toHaveLength(1);
+      });
     });
 
     it('creates/reuses the Catalog Item but mutates no list when listIds is empty', async () => {
@@ -187,9 +265,123 @@ describe('useGroceriesVault', () => {
         });
       });
 
-      expect(result.current.catalog).toHaveLength(1);
-      const listAResult = result.current.lists.find((l) => l.id === 'listA');
-      expect(listAResult?.lines).toHaveLength(0);
+      await waitFor(() => {
+        expect(result.current.catalog).toHaveLength(1);
+        const listAResult = result.current.lists.find((l) => l.id === 'listA');
+        expect(listAResult?.lines).toHaveLength(0);
+      });
+    });
+  });
+
+  describe('addCatalogItemAndLine', () => {
+    it('creates one catalog identity and attaches one line to the requested list', async () => {
+      const result = await setup({
+        catalog: [],
+        lists: [makeList({ id: 'listA', name: 'A' })],
+      });
+
+      await act(async () => {
+        await result.current.addCatalogItemAndLine('listA', {
+          name: '  Apples  ',
+          category: 'produce',
+          price: 3.25,
+          amount: '500g',
+        });
+      });
+
+      await waitFor(() => {
+        expect(result.current.catalog).toHaveLength(1);
+        expect(result.current.catalog[0]).toMatchObject({
+          name: 'Apples',
+          category: 'produce',
+          price: 3.25,
+        });
+        expect(result.current.lists[0].lines).toHaveLength(1);
+        expect(result.current.lists[0].lines[0]).toMatchObject({
+          catalogItemId: result.current.catalog[0].id,
+          amount: '500g',
+          checked: false,
+        });
+        expect(mockSaveEncryptedData).toHaveBeenCalledTimes(1);
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            type: 'groceries',
+            value: {
+              catalog: result.current.catalog,
+              lists: result.current.lists,
+            },
+          }),
+        );
+      });
+    });
+
+    it('reuses the exact selected catalog identity without changing its durable fields', async () => {
+      const existing = makeCatalogItem({
+        id: 'cat-1',
+        name: 'Milk',
+        category: 'dairy',
+        price: 3,
+      });
+      const result = await setup({
+        catalog: [existing],
+        lists: [makeList({ id: 'listA', name: 'A' })],
+      });
+
+      await act(async () => {
+        await result.current.addCatalogItemAndLine('listA', {
+          name: 'Different label',
+          category: 'other',
+          catalogItemId: 'cat-1',
+          price: 99,
+        });
+      });
+
+      await waitFor(() => {
+        expect(result.current.catalog).toEqual([existing]);
+        expect(result.current.lists[0].lines[0].catalogItemId).toBe('cat-1');
+      });
+    });
+
+    it('rejects an invalid catalog identity and does not persist', async () => {
+      const result = await setup({
+        catalog: [],
+        lists: [makeList({ id: 'listA', name: 'A' })],
+      });
+
+      await expect(
+        act(async () => {
+          await result.current.addCatalogItemAndLine('listA', {
+            name: 'Milk',
+            category: 'dairy',
+            catalogItemId: 'missing',
+          });
+        }),
+      ).rejects.toThrow('Catalog Item not found');
+
+      await waitFor(() => {
+        expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+        expect(result.current.catalog).toEqual([]);
+        expect(result.current.lists[0].lines).toEqual([]);
+      });
+    });
+
+    it('rejects invalid input before persistence', async () => {
+      const result = await setup({
+        catalog: [],
+        lists: [makeList({ id: 'listA', name: 'A' })],
+      });
+
+      await expect(
+        act(async () => {
+          await result.current.addCatalogItemAndLine('listA', {
+            name: 'Milk',
+            category: 'dairy',
+            amount: '-1kg',
+          });
+        }),
+      ).rejects.toThrow('Quantity');
+
+      await waitFor(() => expect(mockSaveEncryptedData).not.toHaveBeenCalled());
     });
   });
 
@@ -216,18 +408,20 @@ describe('useGroceriesVault', () => {
         );
       });
 
-      // Resolves with only the list ids that actually received a new line
-      expect(addedListIds).toEqual(['listB']);
+      await waitFor(() => {
+        // Resolves with only the list ids that actually received a new line
+        expect(addedListIds).toEqual(['listB']);
 
-      const listAResult = result.current.lists.find((l) => l.id === 'listA');
-      const listBResult = result.current.lists.find((l) => l.id === 'listB');
-      // listA already had a line - untouched
-      expect(listAResult?.lines).toHaveLength(1);
-      expect(listAResult?.lines[0].id).toBe('ln-existing');
-      // listB gets a new line with the given amount
-      expect(listBResult?.lines).toHaveLength(1);
-      expect(listBResult?.lines[0].catalogItemId).toBe('cat-1');
-      expect(listBResult?.lines[0].amount).toBe('2 gallons');
+        const listAResult = result.current.lists.find((l) => l.id === 'listA');
+        const listBResult = result.current.lists.find((l) => l.id === 'listB');
+        // listA already had a line - untouched
+        expect(listAResult?.lines).toHaveLength(1);
+        expect(listAResult?.lines[0].id).toBe('ln-existing');
+        // listB gets a new line with the given amount
+        expect(listBResult?.lines).toHaveLength(1);
+        expect(listBResult?.lines[0].catalogItemId).toBe('cat-1');
+        expect(listBResult?.lines[0].amount).toBe('2 gallons');
+      });
     });
 
     it('rejects when the Catalog Item does not exist and does not persist any change', async () => {
@@ -242,10 +436,12 @@ describe('useGroceriesVault', () => {
         }),
       ).rejects.toThrow('Catalog Item not found');
 
-      expect(mockSaveEncryptedData).not.toHaveBeenCalled();
-      expect(
-        result.current.lists.find((l) => l.id === 'listA')?.lines,
-      ).toHaveLength(0);
+      await waitFor(() => {
+        expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+        expect(
+          result.current.lists.find((l) => l.id === 'listA')?.lines,
+        ).toHaveLength(0);
+      });
     });
 
     it('does not mutate the Catalog Item durable fields', async () => {
@@ -262,12 +458,14 @@ describe('useGroceriesVault', () => {
         await result.current.addExistingCatalogItemToLists('cat-1', ['listA']);
       });
 
-      expect(result.current.catalog[0]).toMatchObject({
-        id: 'cat-1',
-        name: 'Milk',
-        category: 'dairy',
-        price: 3,
-      });
+      await waitFor(() =>
+        expect(result.current.catalog[0]).toMatchObject({
+          id: 'cat-1',
+          name: 'Milk',
+          category: 'dairy',
+          price: 3,
+        }),
+      );
     });
   });
 
@@ -299,17 +497,19 @@ describe('useGroceriesVault', () => {
         await result.current.deleteCatalogItem('cat-1');
       });
 
-      expect(result.current.catalog).toHaveLength(0);
-      expect(result.current.lists.find((l) => l.id === 'listA')?.lines).toEqual(
-        [],
-      );
-      expect(result.current.lists.find((l) => l.id === 'listB')?.lines).toEqual(
-        [],
-      );
-      // listC never referenced the deleted item - untouched
-      expect(result.current.lists.find((l) => l.id === 'listC')?.lines).toEqual(
-        [otherLine],
-      );
+      await waitFor(() => {
+        expect(result.current.catalog).toHaveLength(0);
+        expect(
+          result.current.lists.find((l) => l.id === 'listA')?.lines,
+        ).toEqual([]);
+        expect(
+          result.current.lists.find((l) => l.id === 'listB')?.lines,
+        ).toEqual([]);
+        // listC never referenced the deleted item - untouched
+        expect(
+          result.current.lists.find((l) => l.id === 'listC')?.lines,
+        ).toEqual([otherLine]);
+      });
     });
 
     it('removes a Catalog Item with no referencing lines cleanly', async () => {
@@ -321,10 +521,12 @@ describe('useGroceriesVault', () => {
         await result.current.deleteCatalogItem('cat-1');
       });
 
-      expect(result.current.catalog).toHaveLength(0);
-      expect(result.current.lists.find((l) => l.id === 'listA')?.lines).toEqual(
-        [],
-      );
+      await waitFor(() => {
+        expect(result.current.catalog).toHaveLength(0);
+        expect(
+          result.current.lists.find((l) => l.id === 'listA')?.lines,
+        ).toEqual([]);
+      });
     });
   });
 
@@ -339,10 +541,12 @@ describe('useGroceriesVault', () => {
         await result.current.toggleLineChecked('listA', 'ln-1');
       });
 
-      expect(result.current.catalog).toEqual([catalogItem]);
-      expect(
-        result.current.lists.find((l) => l.id === 'listA')?.lines[0].checked,
-      ).toBe(true);
+      await waitFor(() => {
+        expect(result.current.catalog).toEqual([catalogItem]);
+        expect(
+          result.current.lists.find((l) => l.id === 'listA')?.lines[0].checked,
+        ).toBe(true);
+      });
     });
 
     it('uncheckAllLines unchecks every line without removing any line or Catalog Item', async () => {
@@ -359,10 +563,12 @@ describe('useGroceriesVault', () => {
         await result.current.uncheckAllLines('listA');
       });
 
-      expect(result.current.catalog).toEqual([catalogItem]);
-      const resultList = result.current.lists.find((l) => l.id === 'listA');
-      expect(resultList?.lines).toHaveLength(1);
-      expect(resultList?.lines[0].checked).toBe(false);
+      await waitFor(() => {
+        expect(result.current.catalog).toEqual([catalogItem]);
+        const resultList = result.current.lists.find((l) => l.id === 'listA');
+        expect(resultList?.lines).toHaveLength(1);
+        expect(resultList?.lines[0].checked).toBe(false);
+      });
     });
 
     it('removeCheckedLines + restoreLines round-trips without touching the Catalog Item', async () => {
@@ -380,20 +586,24 @@ describe('useGroceriesVault', () => {
         removed = await result.current.removeCheckedLines('listA');
       });
 
-      expect(removed).toHaveLength(1);
-      expect(result.current.lists.find((l) => l.id === 'listA')?.lines).toEqual(
-        [],
-      );
-      expect(result.current.catalog).toEqual([catalogItem]);
+      await waitFor(() => {
+        expect(removed).toHaveLength(1);
+        expect(
+          result.current.lists.find((l) => l.id === 'listA')?.lines,
+        ).toEqual([]);
+        expect(result.current.catalog).toEqual([catalogItem]);
+      });
 
       await act(async () => {
         await result.current.restoreLines('listA', removed);
       });
 
-      expect(result.current.lists.find((l) => l.id === 'listA')?.lines).toEqual(
-        [line],
-      );
-      expect(result.current.catalog).toEqual([catalogItem]);
+      await waitFor(() => {
+        expect(
+          result.current.lists.find((l) => l.id === 'listA')?.lines,
+        ).toEqual([line]);
+        expect(result.current.catalog).toEqual([catalogItem]);
+      });
     });
 
     it('deleteListLine removes only that line, leaving the Catalog Item intact', async () => {
@@ -406,10 +616,12 @@ describe('useGroceriesVault', () => {
         await result.current.deleteListLine('listA', 'ln-1');
       });
 
-      expect(result.current.lists.find((l) => l.id === 'listA')?.lines).toEqual(
-        [],
-      );
-      expect(result.current.catalog).toEqual([catalogItem]);
+      await waitFor(() => {
+        expect(
+          result.current.lists.find((l) => l.id === 'listA')?.lines,
+        ).toEqual([]);
+        expect(result.current.catalog).toEqual([catalogItem]);
+      });
     });
   });
 });

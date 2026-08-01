@@ -203,7 +203,7 @@ describe('RenameListDialog', () => {
 
     it('should disable submit button when submitting is true', async () => {
       const slowSubmit = jest.fn(
-        () => new Promise((resolve) => setTimeout(resolve, 100)),
+        () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
       );
       render(<RenameListDialog {...defaultProps} onSubmit={slowSubmit} />);
 
@@ -306,7 +306,7 @@ describe('RenameListDialog', () => {
 
     it('should show "Saving..." text during submission', async () => {
       const slowSubmit = jest.fn(
-        () => new Promise((resolve) => setTimeout(resolve, 100)),
+        () => new Promise<void>((resolve) => setTimeout(resolve, 100)),
       );
       render(<RenameListDialog {...defaultProps} onSubmit={slowSubmit} />);
 

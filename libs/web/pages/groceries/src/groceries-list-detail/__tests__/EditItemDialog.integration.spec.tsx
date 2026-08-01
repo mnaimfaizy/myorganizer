@@ -147,12 +147,14 @@ const sampleFullItem = {
   id: 'item-1',
   name: 'Organic Bananas',
   checked: true,
-  category: 'produce',
+  category: 'produce' as const,
   amount: '1 dozen',
   price: 3.49,
   notes: 'Get ripe ones',
   imageUrl: 'http://example.com/bananas.jpg',
   links: ['http://a.example', 'http://b.example'],
+  createdAt: '2026-01-01T00:00:00.000Z',
+  updatedAt: '2026-01-01T00:00:00.000Z',
 };
 
 const sampleMinimalItem = {

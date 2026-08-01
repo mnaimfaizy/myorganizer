@@ -9,7 +9,9 @@ import {
 } from '@myorganizer/web-ui';
 import { MoreVertical, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import type { ChangeEvent, MouseEvent } from 'react';
+import { formatMoney, summarizeListSpend } from '../../shared/utils';
 
 interface GroceryListSelectorProps {
   lists: GroceryList[];
@@ -19,7 +21,6 @@ interface GroceryListSelectorProps {
   isLoading?: boolean;
 }
 
-// Category icon map for visual variety
 const CATEGORY_ICONS: Record<string, string> = {
   produce: '🥬',
   dairy: '🥛',
@@ -35,7 +36,6 @@ const CATEGORY_ICONS: Record<string, string> = {
   other: '🛒',
 };
 
-// Get category from lines or use default
 function getDominantCategory(
   lines: ListLine[],
   catalog: CatalogItem[],
@@ -52,7 +52,6 @@ function getDominantCategory(
   return Object.entries(counts).sort(([, a], [, b]) => b - a)[0][0];
 }
 
-// Format timestamp to relative time
 function formatRelativeTime(dateString: string): string {
   const date = new Date(dateString);
   const now = new Date();
@@ -79,13 +78,43 @@ export function GroceryListSelector({
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [selectedListIds, setSelectedListIds] = useState<string[]>([]);
 
-  const handleToggleSelect = (listId: string) => {
-    if (selectedListIds.includes(listId)) {
-      setSelectedListIds(selectedListIds.filter((id) => id !== listId));
-    } else {
-      setSelectedListIds([...selectedListIds, listId]);
-    }
-  };
+  const handleStopPropagation = useCallback((event: MouseEvent) => {
+    event.stopPropagation();
+  }, []);
+
+  const createMenuOpenChangeHandler = useCallback(
+    (listId: string) => (open: boolean) => {
+      setOpenMenuId(open ? listId : null);
+    },
+    [],
+  );
+
+  const createMenuActionHandler = useCallback(
+    (action: 'rename' | 'delete', listId: string) => (event: MouseEvent) => {
+      event.stopPropagation();
+      if (action === 'rename') {
+        onRenameList(listId);
+      } else {
+        onDeleteList(listId);
+      }
+      setOpenMenuId(null);
+    },
+    [onDeleteList, onRenameList],
+  );
+
+  const handleToggleSelect = useCallback(
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const listId = event.currentTarget.dataset.listId;
+      if (!listId) return;
+
+      setSelectedListIds((currentIds) =>
+        currentIds.includes(listId)
+          ? currentIds.filter((id) => id !== listId)
+          : [...currentIds, listId],
+      );
+    },
+    [],
+  );
 
   return (
     <div className="space-y-3">
@@ -99,6 +128,7 @@ export function GroceryListSelector({
           const dominantCategory = getDominantCategory(list.lines, catalog);
           const icon = CATEGORY_ICONS[dominantCategory];
           const checkedCount = list.lines.filter((line) => line.checked).length;
+          const spendSummary = summarizeListSpend(list.lines, catalog);
           const isSelected = selectedListIds.includes(list.id);
           const progressPercent =
             list.lines.length > 0
@@ -115,15 +145,14 @@ export function GroceryListSelector({
               } ${isLoading ? 'opacity-60 pointer-events-none' : ''}`}
               role="article"
             >
-              {/* Content */}
               <div className="relative">
-                {/* Header with checkbox and title link and menu */}
                 <div className="mb-3 flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
                     <input
                       type="checkbox"
                       checked={isSelected}
-                      onChange={() => handleToggleSelect(list.id)}
+                      data-list-id={list.id}
+                      onChange={handleToggleSelect}
                       className="h-5 w-5 cursor-pointer rounded border-2 border-on-surface-variant accent-error"
                       aria-label={`Select ${list.name} for deletion`}
                       disabled={isLoading}
@@ -133,7 +162,6 @@ export function GroceryListSelector({
                     </div>
                   </div>
 
-                  {/* Title as link - clickable */}
                   <Link
                     href={`/dashboard/groceries/${list.id}`}
                     className="flex-1 rounded-lg px-2 py-1 transition-colors hover:bg-secondary-container/30"
@@ -146,37 +174,26 @@ export function GroceryListSelector({
                     </p>
                   </Link>
 
-                  {/* Context menu */}
                   <DropdownMenu
                     open={openMenuId === list.id}
-                    onOpenChange={(open) =>
-                      setOpenMenuId(open ? list.id : null)
-                    }
+                    onOpenChange={createMenuOpenChangeHandler(list.id)}
                   >
                     <DropdownMenuTrigger
                       className="flex-shrink-0 rounded p-1 opacity-0 transition-opacity hover:bg-surface-container group-hover:opacity-100"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={handleStopPropagation}
                       aria-label={`More actions for ${list.name}`}
                     >
                       <MoreVertical className="h-4 w-4 text-on-surface-variant" />
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-40">
                       <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onRenameList(list.id);
-                          setOpenMenuId(null);
-                        }}
+                        onClick={createMenuActionHandler('rename', list.id)}
                       >
                         Rename
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-error focus:bg-error/10 focus:text-error"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onDeleteList(list.id);
-                          setOpenMenuId(null);
-                        }}
+                        onClick={createMenuActionHandler('delete', list.id)}
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
                         Delete
@@ -185,7 +202,6 @@ export function GroceryListSelector({
                   </DropdownMenu>
                 </div>
 
-                {/* Item count and timestamp */}
                 <div className="mb-3 flex items-center justify-between text-xs text-on-surface-variant">
                   <span>
                     {checkedCount} / {list.lines.length} items
@@ -193,7 +209,19 @@ export function GroceryListSelector({
                   <span>Updated {formatRelativeTime(list.updatedAt)}</span>
                 </div>
 
-                {/* Progress bar */}
+                <div
+                  className="mb-3 flex items-center justify-between gap-3 text-xs"
+                  aria-label={`Known spend ${formatMoney(spendSummary.known)}; ${spendSummary.unpricedCount} item${spendSummary.unpricedCount !== 1 ? 's' : ''} unpriced`}
+                >
+                  <span className="font-semibold text-on-surface">
+                    Known spend {formatMoney(spendSummary.known)}
+                  </span>
+                  <span className="text-on-surface-variant">
+                    {spendSummary.unpricedCount} item
+                    {spendSummary.unpricedCount !== 1 ? 's' : ''} unpriced
+                  </span>
+                </div>
+
                 <div className="h-2 overflow-hidden rounded-full bg-surface-container">
                   <div
                     className={`h-full transition-all ${
