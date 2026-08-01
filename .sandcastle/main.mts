@@ -336,6 +336,24 @@ function buildAgent(agentKind: AgentKind, model: string) {
   }
 }
 
+function providerEnvironment(): Record<string, string> {
+  const variableNames = [
+    'CLAUDE_CODE_OAUTH_TOKEN',
+    'ANTHROPIC_API_KEY',
+    'CURSOR_API_KEY',
+    'COPILOT_GITHUB_TOKEN',
+    'GH_TOKEN',
+    'GITHUB_TOKEN',
+  ];
+
+  return Object.fromEntries(
+    variableNames.flatMap((variableName) => {
+      const value = process.env[variableName];
+      return value ? [[variableName, value]] : [];
+    }),
+  );
+}
+
 function sliceBranchFor(issue: Issue): string {
   const slug = issue.title
     .replace(/^\[Slice\]\s*/i, '')
@@ -729,6 +747,7 @@ for (const issue of slices) {
           NX_DAEMON: 'false',
           NX_ISOLATE_PLUGINS: 'false',
           NX_SKIP_NX_CACHE: 'true',
+          ...providerEnvironment(),
           ...YARN_CACHE_ENV,
         },
         // Bind-mount the shared, content-addressable Yarn global cache so the
