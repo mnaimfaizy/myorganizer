@@ -26,9 +26,17 @@ pipeline.
 1. **Toolchain:** Node 22 + corepack (`corepack enable` → provides `yarn` pinned to 4.13.0).
 2. **Docker:** a running Docker engine the dispatch shell can reach (`docker info` works).
 3. **Auth:** `gh auth status` green and `git config user.name/.email` set, for the dispatch host.
-4. **Secrets:** Prefer a 1Password Environment. Install the 1Password CLI, enable its
-   desktop-app integration, and copy the Environment ID from **Developer > View
-   Environments**. Then run dispatch with `OP_ENVIRONMENT_ID`:
+4. **Secrets:** Prefer a 1Password Environment. The Environment CLI integration is
+   currently beta and is not included in the stable Homebrew cask. Install the beta
+   cask (it conflicts with the stable cask):
+   ```bash
+   brew uninstall --cask 1password-cli
+   brew install --cask 1password-cli@beta
+   op --version                         # should include -beta
+   op environment --help
+   ```
+   Enable 1Password's desktop-app integration and copy the Environment ID from
+   **Developer > View Environments**. Then run dispatch with `OP_ENVIRONMENT_ID`:
    ```bash
    export OP_ENVIRONMENT_ID=<your-1password-environment-id>
    corepack yarn dispatch-agents:1password --prd <issue-number>
