@@ -73,6 +73,7 @@ jest.mock('@myorganizer/web-ui', () => {
   };
 });
 
+import type { CatalogItem, GroceryList, ListLine } from '@myorganizer/core';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { GroceryListSelector } from '../components/GroceryListSelector';
 
@@ -93,20 +94,51 @@ describe('GroceryListSelector', () => {
     jest.resetAllMocks();
   });
 
-  function makeItem(id: string, checked = false, category = 'produce') {
-    return { id, name: `Item ${id}`, checked, category };
+  function makeCatalogItem(id: string, category = 'produce'): CatalogItem {
+    return {
+      id,
+      name: `Item ${id}`,
+      category: category as CatalogItem['category'],
+      createdAt: NOW_ISO,
+      updatedAt: NOW_ISO,
+    };
   }
 
-  function makeList({ id, name, items, updatedAt }: any) {
-    return { id, name, items, updatedAt };
+  function makeLine(
+    id: string,
+    catalogItemId: string,
+    checked = false,
+  ): ListLine {
+    return {
+      id,
+      catalogItemId,
+      checked,
+      createdAt: NOW_ISO,
+      updatedAt: NOW_ISO,
+    };
+  }
+
+  function makeList({
+    id,
+    name,
+    lines,
+    updatedAt,
+  }: {
+    id: string;
+    name: string;
+    lines: ListLine[];
+    updatedAt: string;
+  }): GroceryList {
+    return { id, name, lines, updatedAt, createdAt: updatedAt };
   }
 
   it('renders lists with name, item counts, timestamp and progress', async () => {
+    const catalog = [makeCatalogItem('i1'), makeCatalogItem('i2')];
     const lists = [
       makeList({
         id: 'l1',
         name: 'Groceries A',
-        items: [makeItem('i1', true), makeItem('i2', false)],
+        lines: [makeLine('ln1', 'i1', true), makeLine('ln2', 'i2', false)],
         updatedAt: new Date(
           new Date(NOW_ISO).getTime() - 5 * 60000,
         ).toISOString(),
@@ -114,17 +146,17 @@ describe('GroceryListSelector', () => {
       makeList({
         id: 'l2',
         name: 'Groceries B',
-        items: [],
+        lines: [],
         updatedAt: new Date(
           new Date(NOW_ISO).getTime() - 2 * 3600000,
         ).toISOString(),
       }),
     ];
 
-    const onSelect = jest.fn();
     render(
       <GroceryListSelector
         lists={lists}
+        catalog={catalog}
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
       />,
@@ -158,11 +190,12 @@ describe('GroceryListSelector', () => {
   });
 
   it('shows selected styling when list checkbox is clicked', () => {
+    const catalog = [makeCatalogItem('a')];
     const lists = [
       makeList({
         id: 'sel',
         name: 'Selected List',
-        items: [makeItem('a', true)],
+        lines: [makeLine('ln-a', 'a', true)],
         updatedAt: NOW_ISO,
       }),
     ];
@@ -170,6 +203,7 @@ describe('GroceryListSelector', () => {
     render(
       <GroceryListSelector
         lists={lists}
+        catalog={catalog}
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
       />,
@@ -197,8 +231,7 @@ describe('GroceryListSelector', () => {
     render(
       <GroceryListSelector
         lists={[]}
-        selectedListIds={[]}
-        onSelectLists={jest.fn()}
+        catalog={[]}
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
       />,
@@ -213,18 +246,19 @@ describe('GroceryListSelector', () => {
   });
 
   it('shows 0% progress for lists with no items and 100%/0% for single item cases', () => {
+    const catalog = [makeCatalogItem('x'), makeCatalogItem('y')];
     const lists = [
-      makeList({ id: 'n', name: 'No Items', items: [], updatedAt: NOW_ISO }),
+      makeList({ id: 'n', name: 'No Items', lines: [], updatedAt: NOW_ISO }),
       makeList({
         id: 's1',
         name: 'SingleChecked',
-        items: [makeItem('x', true)],
+        lines: [makeLine('ln-x', 'x', true)],
         updatedAt: NOW_ISO,
       }),
       makeList({
         id: 's2',
         name: 'SingleUnchecked',
-        items: [makeItem('y', false)],
+        lines: [makeLine('ln-y', 'y', false)],
         updatedAt: NOW_ISO,
       }),
     ];
@@ -232,8 +266,7 @@ describe('GroceryListSelector', () => {
     render(
       <GroceryListSelector
         lists={lists}
-        selectedListIds={[]}
-        onSelectLists={jest.fn()}
+        catalog={catalog}
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
       />,
@@ -258,13 +291,13 @@ describe('GroceryListSelector', () => {
   it('rename and delete menu items call handlers and do not propagate select click', async () => {
     const onRename = jest.fn();
     const onDelete = jest.fn();
-    const onSelect = jest.fn();
 
+    const catalog = [makeCatalogItem('a')];
     const lists = [
       makeList({
         id: 'm1',
         name: 'MenuList',
-        items: [makeItem('a')],
+        lines: [makeLine('ln-a', 'a')],
         updatedAt: NOW_ISO,
       }),
     ];
@@ -272,8 +305,7 @@ describe('GroceryListSelector', () => {
     render(
       <GroceryListSelector
         lists={lists}
-        selectedListIds={[]}
-        onSelectLists={onSelect}
+        catalog={catalog}
         onRenameList={onRename}
         onDeleteList={onDelete}
       />,
@@ -295,8 +327,6 @@ describe('GroceryListSelector', () => {
     expect(onRename).toHaveBeenCalledWith('m1');
     // menu should close
     expect(dropdown.dataset.open).toBe('false');
-    // rename should not trigger parent select
-    expect(onSelect).not.toHaveBeenCalled();
 
     // Re-open and Delete
     fireEvent.click(trigger);
@@ -305,15 +335,15 @@ describe('GroceryListSelector', () => {
     fireEvent.click(del);
     expect(onDelete).toHaveBeenCalledWith('m1');
     expect(dropdown.dataset.open).toBe('false');
-    expect(onSelect).not.toHaveBeenCalled();
   });
 
   it('renders many lists and handles very long names without crashing', () => {
+    const catalog = [makeCatalogItem('a')];
     const many = Array.from({ length: 12 }).map((_, i) =>
       makeList({
         id: `L${i}`,
         name: `List ${i}`,
-        items: [makeItem('a')],
+        lines: [makeLine(`ln-${i}`, 'a')],
         updatedAt: NOW_ISO,
       }),
     );
@@ -321,14 +351,13 @@ describe('GroceryListSelector', () => {
     // Add very long name
     const longName = 'L'.repeat(120);
     many.push(
-      makeList({ id: 'long', name: longName, items: [], updatedAt: NOW_ISO }),
+      makeList({ id: 'long', name: longName, lines: [], updatedAt: NOW_ISO }),
     );
 
     render(
       <GroceryListSelector
         lists={many}
-        selectedListIds={[]}
-        onSelectLists={jest.fn()}
+        catalog={catalog}
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
       />,
@@ -345,31 +374,31 @@ describe('GroceryListSelector', () => {
       makeList({
         id: 'jn',
         name: 'JustNow',
-        items: [],
+        lines: [],
         updatedAt: new Date(now - 30 * 1000).toISOString(),
       }),
       makeList({
         id: 'm5',
         name: 'FiveMin',
-        items: [],
+        lines: [],
         updatedAt: new Date(now - 5 * 60000).toISOString(),
       }),
       makeList({
         id: 'h2',
         name: 'TwoHour',
-        items: [],
+        lines: [],
         updatedAt: new Date(now - 2 * 3600000).toISOString(),
       }),
       makeList({
         id: 'd3',
         name: 'ThreeDay',
-        items: [],
+        lines: [],
         updatedAt: new Date(now - 3 * 86400000).toISOString(),
       }),
       makeList({
         id: 'old',
         name: 'Old',
-        items: [],
+        lines: [],
         updatedAt: new Date('2020-01-01T00:00:00.000Z').toISOString(),
       }),
     ];
@@ -377,8 +406,7 @@ describe('GroceryListSelector', () => {
     render(
       <GroceryListSelector
         lists={lists}
-        selectedListIds={[]}
-        onSelectLists={jest.fn()}
+        catalog={[]}
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
       />,

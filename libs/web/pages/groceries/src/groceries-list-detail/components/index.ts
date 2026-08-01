@@ -1,6 +1,8 @@
+export { AddExistingItemDialog } from './AddExistingItemDialog';
 export { AddItemDialog } from './AddItemDialog';
 export type { AddItemFormResult } from './AddItemDialog';
 export { AddItemInlineForm } from './AddItemInlineForm';
+export { DeleteCatalogItemDialog } from './DeleteCatalogItemDialog';
 export { EditItemDialog } from './EditItemDialog';
 export { GroceryItemRow } from './GroceryItemRow';
 export { GroceryListView } from './GroceryListView';

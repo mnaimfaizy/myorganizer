@@ -79,6 +79,7 @@ export function GroceriesListDetailClient({
       <GroceryListView
         list={list}
         catalog={vault.catalog}
+        allLists={vault.lists}
         onClose={handleClose}
         onToggleChecked={vault.toggleLineChecked}
         onUncheckAll={vault.uncheckAllLines}
@@ -86,6 +87,8 @@ export function GroceriesListDetailClient({
         onRestoreLines={vault.restoreLines}
         onDeleteLine={vault.deleteListLine}
         onAddItem={vault.addCatalogItemAndLine}
+        onAddExistingItem={vault.addExistingCatalogItemToLists}
+        onDeleteFromCatalog={vault.deleteCatalogItem}
       />
     </div>
   );

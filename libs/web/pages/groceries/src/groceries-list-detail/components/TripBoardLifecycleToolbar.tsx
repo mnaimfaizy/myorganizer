@@ -1,13 +1,14 @@
 'use client';
 
 import { Button } from '@myorganizer/web-ui';
-import { Plus, Trash2 } from 'lucide-react';
+import { ListPlus, Plus, Trash2 } from 'lucide-react';
 
 interface TripBoardLifecycleToolbarProps {
   checkedCount: number;
   onUncheckAll: () => void;
   onRemoveChecked: () => void;
   onAddItem: () => void;
+  onAddExisting: () => void;
   isLoading?: boolean;
 }
 
@@ -16,6 +17,7 @@ export function TripBoardLifecycleToolbar({
   onUncheckAll,
   onRemoveChecked,
   onAddItem,
+  onAddExisting,
   isLoading = false,
 }: TripBoardLifecycleToolbarProps) {
   const hasCheckedItems = checkedCount > 0;
@@ -25,6 +27,16 @@ export function TripBoardLifecycleToolbar({
       <Button onClick={onAddItem} disabled={isLoading} className="gap-2">
         <Plus className="h-4 w-4" />
         Add Item
+      </Button>
+
+      <Button
+        variant="outline"
+        onClick={onAddExisting}
+        disabled={isLoading}
+        className="gap-2"
+      >
+        <ListPlus className="h-4 w-4" />
+        Add From Catalog
       </Button>
 
       <Button

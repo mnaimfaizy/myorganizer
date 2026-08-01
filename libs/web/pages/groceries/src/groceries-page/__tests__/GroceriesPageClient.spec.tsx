@@ -65,6 +65,7 @@ jest.mock('../components', () => {
 
   function GroceryListSelector({
     lists,
+    catalog,
     onRenameList,
     onDeleteList,
     isLoading,
@@ -72,6 +73,7 @@ jest.mock('../components', () => {
     return (
       <div data-testid="grocery-list-selector">
         <div data-testid="lists-count">{lists.length}</div>
+        <div data-testid="catalog-count">{catalog?.length ?? 0}</div>
         <button
           data-testid="selector-rename-button"
           onClick={() => onRenameList('list1')}
@@ -176,7 +178,7 @@ jest.mock('../components', () => {
   };
 });
 
-import type { GroceryList } from '@myorganizer/core';
+import type { CatalogItem, GroceryList } from '@myorganizer/core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { GroceriesPageClient as GroceriesPage } from '../GroceriesPageClient';
@@ -191,6 +193,7 @@ describe('GroceriesPageClient', () => {
 
   interface VaultState {
     lists: GroceryList[];
+    catalog: CatalogItem[];
     loading: boolean;
     error: string | null;
     selectedListIds: string[];
@@ -204,6 +207,7 @@ describe('GroceriesPageClient', () => {
   function makeVaultState(overrides?: Partial<VaultState>): VaultState {
     return {
       lists: [],
+      catalog: [],
       loading: false,
       error: null,
       selectedListIds: [],
@@ -224,12 +228,12 @@ describe('GroceriesPageClient', () => {
     return {
       id,
       name,
-      items: Array.from({ length: itemCount }, (_, i) => ({
-        id: `item-${i}`,
-        name: `Item ${i}`,
-        completed: false,
-        quantity: 1,
-        unit: '',
+      lines: Array.from({ length: itemCount }, (_, i) => ({
+        id: `line-${i}`,
+        catalogItemId: `catalog-item-${i}`,
+        checked: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       })),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -422,6 +426,26 @@ describe('GroceriesPageClient', () => {
       render(<GroceriesPage />);
 
       expect(screen.getByTestId('lists-count')).toHaveTextContent('2');
+    });
+
+    it('should pass vault.catalog through to GroceryListSelector', () => {
+      const lists = [makeGroceryList('list1', 'Groceries', 1)];
+      const catalog: CatalogItem[] = [
+        {
+          id: 'catalog-item-0',
+          name: 'Milk',
+          category: 'dairy',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+      mockUseGroceriesVault.mockReturnValue(
+        makeVaultState({ lists, catalog, loading: false }),
+      );
+
+      render(<GroceriesPage />);
+
+      expect(screen.getByTestId('catalog-count')).toHaveTextContent('1');
     });
 
     it('should pass loading state to GroceryListSelector', () => {

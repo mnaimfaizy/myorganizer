@@ -39,10 +39,31 @@ Items can be assigned to one of these predefined categories:
 
 Use the **category filter bar** above the item list to show only items in a given category.
 
-### Checking Items Off
+### Catalog Items and List Lines
 
-Click the checkbox next to any item to mark it as collected. Use **Clear Checked** to
-remove all checked items at once.
+Every grocery item you create becomes a **Catalog Item** (its identity: name, category,
+price, notes, image, links). A **List Line** is a lightweight reference — `catalogItemId`
+
+- `checked`/`amount` — that places a Catalog Item onto a specific Grocery List. The same
+  Catalog Item can be a List Line on many lists at once without duplicating its identity.
+
+* **Add From Catalog** on a list lets you pick an existing Catalog Item and add it as a
+  List Line to one or many lists in a single action.
+* **Delete List Line** removes the item from that one list only; the Catalog Item and its
+  lines on other lists are untouched.
+* **Delete From Catalog** permanently removes the Catalog Item and every List Line that
+  references it, across every list. This requires typing the item's name to confirm.
+
+### Trip Lifecycle (Checking Items Off)
+
+Click the checkbox next to any line to mark it as bought on the current trip (`checked`).
+Checked lines stay visible on the list.
+
+- **Uncheck All** clears the checked state on every line without removing any lines or
+  Catalog Items — use it to reset a list for a new trip.
+- **Remove Checked From List** removes the finished (checked) lines from the current list
+  only, with an undo affordance immediately after. It never deletes the underlying Catalog
+  Items, and other lists referencing the same items are unaffected.
 
 ### Vault Backup
 
@@ -63,22 +84,17 @@ Despite E2EE, the server retains limited metadata: the blob type identifier (`'g
 ## Vault Blob Schema (developer reference)
 
 ```typescript
-// Stored as an encrypted GroceryList[] array
-interface GroceryList {
-  id: string; // UUID v4
-  name: string; // Required, user-defined list name
-  items: GroceryItem[];
-  createdAt: string; // ISO 8601
-  updatedAt: string; // ISO 8601
+// Stored as an encrypted GroceriesVaultPayload
+interface GroceriesVaultPayload {
+  catalog: CatalogItem[]; // Item identities, shared across lists
+  lists: GroceryList[];
 }
 
-interface GroceryItem {
+interface CatalogItem {
   id: string; // UUID v4
   name: string; // Required
-  amount?: string; // Free text, e.g. "2", "500g", "1 dozen"
-  price?: number; // Optional — for budget tracking (in user's local currency)
   category: GroceryCategoryType; // Defaults to 'other'
-  checked: boolean; // Shopping-list checked state
+  price?: number; // Optional — for budget tracking (in user's local currency)
   notes?: string; // Optional free text notes
   imageUrl?: string; // Optional external image URL (display only, no uploads)
   links?: string[]; // Optional array of external links
@@ -86,13 +102,33 @@ interface GroceryItem {
   updatedAt: string; // ISO 8601
 }
 
+interface GroceryList {
+  id: string; // UUID v4
+  name: string; // Required, user-defined list name
+  lines: ListLine[]; // References into `catalog` for this list
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+}
+
+interface ListLine {
+  id: string; // UUID v4
+  catalogItemId: string; // References CatalogItem.id
+  checked: boolean; // Bought-on-this-trip state
+  amount?: string; // Free text, e.g. "2", "500g", "1 dozen"
+  createdAt: string; // ISO 8601
+  updatedAt: string; // ISO 8601
+}
+
 type GroceryCategoryType = 'produce' | 'dairy' | 'meat' | 'seafood' | 'bakery' | 'frozen' | 'beverages' | 'snacks' | 'condiments' | 'household' | 'personal-care' | 'other';
 ```
+
+A Catalog Item's name/category/price/etc. are resolved by looking up `ListLine.catalogItemId`
+in `catalog` — a `ListLine` itself never carries a copy of that data.
 
 ## Architecture
 
 - **Page library**: `@myorganizer/web-pages/groceries` ([libs/web/pages/groceries/](../../libs/web/pages/groceries/))
-- **Shared types**: `@myorganizer/core` → `GroceryList`, `GroceryItem`, `GroceryCategoryType`
+- **Shared types**: `@myorganizer/core` → `GroceriesVaultPayload`, `CatalogItem`, `GroceryList`, `ListLine`, `GroceryCategoryType`
 - **Vault normalization**: `@myorganizer/web-vault` → `normalizeGroceries` ([libs/web-vault/src/lib/vault/groceriesNormalization.ts](../../libs/web-vault/src/lib/vault/groceriesNormalization.ts))
 - **Vault blob type**: `'groceries'` (registered in `VaultRecordType`, `VaultBlobType`)
 - **Route**: `/groceries` ([apps/myorganizer/src/app/groceries/page.tsx](../../apps/myorganizer/src/app/groceries/page.tsx))
@@ -147,6 +183,7 @@ interface DialogState {
 ```typescript
 interface GroceryListSelectorProps {
   lists: GroceryList[];
+  catalog: CatalogItem[]; // resolves each line's category/name for progress + dominant-category display
   selectedListIds: string[];
   onSelectLists: (ids: string[]) => void;
   onRenameList: (id: string) => void;
@@ -199,48 +236,98 @@ interface DeleteListConfirmDialogProps {
 
 Wraps the groceries page to catch React render errors and show a fallback UI.
 
+### AddExistingItemDialog
+
+```typescript
+interface AddExistingItemDialogProps {
+  isOpen: boolean;
+  catalog: CatalogItem[];
+  lists: GroceryList[];
+  currentListId: string;
+  onClose: () => void;
+  onAdd: (catalogItemId: string, listIds: string[], amount?: string) => Promise<void>;
+  isLoading?: boolean;
+}
+```
+
+Search/select an existing Catalog Item, choose one or many target lists, optionally set an
+amount, and add it as a List Line to every selected list (skipping lists that already have
+a line for that item).
+
+### DeleteCatalogItemDialog
+
+```typescript
+interface DeleteCatalogItemDialogProps {
+  isOpen: boolean;
+  catalogItem: CatalogItem | null;
+  affectedListCount: number; // other lists (besides the current one) with a matching line
+  onClose: () => void;
+  onConfirm: () => Promise<void>;
+  isLoading?: boolean;
+}
+```
+
+Strong confirmation: the destructive action stays disabled until the user types the Catalog
+Item's exact name. Confirming permanently deletes the Catalog Item and every List Line that
+references it, across all lists.
+
 ---
 
 ## `useGroceriesVault` Hook
 
-**Location:** `@myorganizer/web-pages/groceries` → `src/groceries-page/hooks/useGroceriesVault.ts`
+**Location:** `@myorganizer/web-pages/groceries` → `src/shared/hooks/useGroceriesVault.ts`
 
 ```typescript
 const vault = useGroceriesVault({ masterKeyBytes });
 ```
 
-**Return type:**
+**Key mutations (partial list):**
 
 ```typescript
-interface UseGroceriesVaultReturn {
+interface UseGroceriesVaultResult {
+  catalog: CatalogItem[];
   lists: GroceryList[];
   loading: boolean;
   error: string | null;
-  selectedListId: string | null;
 
   createList: (name: string) => Promise<void>;
   renameList: (id: string, newName: string) => Promise<void>;
   deleteList: (id: string) => Promise<void>;
-  persistLists: (lists: GroceryList[]) => Promise<void>; // low-level direct save
 
-  setError: (error: string | null) => void;
-  setSelectedListId: (id: string | null) => void;
+  // Catalog membership
+  addCatalogItemAndLine: (listId: string, item: NewCatalogItemInput) => Promise<void>; // create-or-reuse a Catalog Item by name, add a line to one list
+  addItemToLists: (item: NewCatalogItemInput, listIds: string[]) => Promise<void>; // create-or-reuse a Catalog Item, add a line to many lists
+  addExistingCatalogItemToLists: (catalogItemId: string, listIds: string[], amount?: string) => Promise<string[]>; // resolves with the ids of lists that actually received a new line
+  deleteListLine: (listId: string, lineId: string) => Promise<void>; // list-only removal
+  deleteCatalogItem: (catalogItemId: string) => Promise<void>; // cascades off every list
+
+  // Trip lifecycle
+  toggleLineChecked: (listId: string, lineId: string) => Promise<void>;
+  uncheckAllLines: (listId: string) => Promise<void>;
+  removeCheckedLines: (listId: string) => Promise<ListLine[]>; // returns removed lines for undo
+  restoreLines: (listId: string, lines: ListLine[]) => Promise<void>; // undo affordance
 }
 ```
 
-Errors are caught internally and stored in `vault.error`. All mutations are idempotent — safe to retry. On load error the user can retry by refreshing; on save error the previous state is preserved.
+Errors are caught internally and stored in `vault.error`. On load error the user can retry
+by refreshing; on save error the previous state is preserved. `addItemToLists` and
+`addExistingCatalogItemToLists` silently skip any target list that already has a line for
+the same Catalog Item (no duplicate identity per list) — callers should surface the actual
+added-list count to the user. None of `deleteListLine`, `uncheckAllLines`, or
+`removeCheckedLines` ever remove a Catalog Item — only `deleteCatalogItem` does, and it
+always cascades to every referencing List Line.
 
 ---
 
 ## Vault Utilities
 
-**Location:** `src/groceries-page/utils/vault.ts`
+**Location:** `src/shared/utils/vault.ts`
 
 | Function                        | Description                                                                |
 | ------------------------------- | -------------------------------------------------------------------------- |
 | `getVaultErrorMessage(error)`   | Converts caught errors to user-friendly strings                            |
 | `validateGroceryListName(name)` | Validates 1–100 chars with whitespace trimming                             |
-| `createEmptyGroceryList(name)`  | Factory: returns a new `GroceryList` with a UUID v4 id and empty `items[]` |
+| `createEmptyGroceryList(name)`  | Factory: returns a new `GroceryList` with a UUID v4 id and empty `lines[]` |
 
 ---
 
@@ -248,7 +335,7 @@ Errors are caught internally and stored in `vault.error`. All mutations are idem
 
 When the `GroceryList` or `GroceryItem` shape needs to change:
 
-1. Update the types in `libs/core/src/lib/types/` (`GroceryList`, `GroceryItem`, `GroceryCategoryType`)
+1. Update the types in `libs/core/src/lib/types/` (`GroceriesVaultPayload`, `CatalogItem`, `GroceryList`, `ListLine`, `GroceryCategoryType`)
 2. Update `GroceryListSchema` in `libs/web-vault/src/lib/vault/groceriesNormalization.ts`
 3. Add a migration step inside `normalizeGroceries()` for the shape change
 4. Existing vault blobs auto-migrate on next load — `normalizeGroceries()` returns `changed: true` and the hook re-persists the updated blob

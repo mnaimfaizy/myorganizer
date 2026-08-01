@@ -160,6 +160,7 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
           // List selector
           <GroceryListSelector
             lists={vault.lists}
+            catalog={vault.catalog}
             onRenameList={(listId) => {
               const list = vault.lists.find((l) => l.id === listId);
               if (list) {
@@ -177,7 +178,7 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
                   type: 'delete',
                   listId,
                   listName: list.name,
-                  itemCount: list.items.length,
+                  itemCount: list.lines.length,
                 });
               }
             }}

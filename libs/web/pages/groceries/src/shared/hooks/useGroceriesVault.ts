@@ -64,6 +64,37 @@ interface UseGroceriesVaultResult {
     listId: string,
     input: AddCatalogItemAndLineInput,
   ) => Promise<void>;
+  /**
+   * Adds an item to one or many Grocery Lists in a single action: reuses an
+   * existing Catalog Item when the name matches case-insensitively (updating
+   * its durable fields), otherwise creates a new Catalog Item. Skips any
+   * target list that already carries a List Line for that Catalog Item, so
+   * the same identity is never duplicated on one list.
+   */
+  addItemToLists: (
+    listIds: string[],
+    input: AddCatalogItemAndLineInput,
+  ) => Promise<void>;
+  /**
+   * Adds an already-existing Catalog Item as a new List Line to one or many
+   * Grocery Lists, without changing any of the Catalog Item's durable
+   * fields. Skips any target list that already carries a List Line for that
+   * Catalog Item. Resolves with the ids of the lists that actually received
+   * a new List Line (a subset of `listIds` — lists that already had a line
+   * for this Catalog Item are skipped and excluded from the result), so
+   * callers can give accurate feedback when some targets were skipped.
+   */
+  addExistingCatalogItemToLists: (
+    catalogItemId: string,
+    listIds: string[],
+    amount?: string,
+  ) => Promise<string[]>;
+  /**
+   * Permanently destroys a Catalog Item and every List Line referencing it
+   * across every Grocery List. Requires strong confirmation in the UI before
+   * being called — this cannot be undone.
+   */
+  deleteCatalogItem: (catalogItemId: string) => Promise<void>;
 }
 
 /**
@@ -439,6 +470,183 @@ export function useGroceriesVault({
     [payload, persistPayload],
   );
 
+  /**
+   * Adds an item to one or many Grocery Lists in a single action: reuses an
+   * existing Catalog Item when the name matches case-insensitively (updating
+   * its durable fields), otherwise creates a new Catalog Item. Skips any
+   * target list that already carries a List Line for that Catalog Item, so
+   * the same identity is never duplicated on one list.
+   */
+  const addItemToLists = useCallback(
+    async (listIds: string[], input: AddCatalogItemAndLineInput) => {
+      try {
+        const now = new Date().toISOString();
+        const trimmedName = input.name.trim();
+        const existing = payload.catalog.find(
+          (item) =>
+            item.name.trim().toLowerCase() === trimmedName.toLowerCase(),
+        );
+
+        let catalogItemId: string;
+        let nextCatalog: CatalogItem[];
+
+        if (existing) {
+          catalogItemId = existing.id;
+          nextCatalog = payload.catalog.map((item) =>
+            item.id === existing.id
+              ? {
+                  ...item,
+                  name: trimmedName,
+                  category: input.category,
+                  price: input.price,
+                  notes: input.notes,
+                  imageUrl: input.imageUrl,
+                  links: input.links,
+                  updatedAt: now,
+                }
+              : item,
+          );
+        } else {
+          const newCatalogItem: CatalogItem = {
+            id: randomId(),
+            name: trimmedName,
+            category: input.category,
+            price: input.price,
+            notes: input.notes,
+            imageUrl: input.imageUrl,
+            links: input.links,
+            createdAt: now,
+            updatedAt: now,
+          };
+          catalogItemId = newCatalogItem.id;
+          nextCatalog = [...payload.catalog, newCatalogItem];
+        }
+
+        const targetIds = new Set(listIds);
+        const nextPayload: GroceriesVaultPayload = {
+          catalog: nextCatalog,
+          lists: payload.lists.map((list) => {
+            if (!targetIds.has(list.id)) return list;
+            const alreadyHasLine = list.lines.some(
+              (line) => line.catalogItemId === catalogItemId,
+            );
+            if (alreadyHasLine) return list;
+            const newLine: ListLine = {
+              id: randomId(),
+              catalogItemId,
+              checked: false,
+              amount: input.amount,
+              createdAt: now,
+              updatedAt: now,
+            };
+            return {
+              ...list,
+              lines: [...list.lines, newLine],
+              updatedAt: now,
+            };
+          }),
+        };
+        await persistPayload(nextPayload);
+      } catch (err) {
+        console.error('Failed to add item to lists:', err);
+        throw err;
+      }
+    },
+    [payload, persistPayload],
+  );
+
+  /**
+   * Adds an already-existing Catalog Item as a new List Line to one or many
+   * Grocery Lists, without changing any of the Catalog Item's durable
+   * fields. Skips any target list that already carries a List Line for that
+   * Catalog Item. Resolves with the ids of the lists that actually received
+   * a new List Line, so callers can report accurate feedback when some
+   * targets were skipped as duplicates.
+   */
+  const addExistingCatalogItemToLists = useCallback(
+    async (
+      catalogItemId: string,
+      listIds: string[],
+      amount?: string,
+    ): Promise<string[]> => {
+      try {
+        const catalogItem = payload.catalog.find(
+          (item) => item.id === catalogItemId,
+        );
+        if (!catalogItem) {
+          throw new Error('Catalog Item not found');
+        }
+
+        const now = new Date().toISOString();
+        const targetIds = new Set(listIds);
+        const addedListIds: string[] = [];
+        const nextPayload: GroceriesVaultPayload = {
+          ...payload,
+          lists: payload.lists.map((list) => {
+            if (!targetIds.has(list.id)) return list;
+            const alreadyHasLine = list.lines.some(
+              (line) => line.catalogItemId === catalogItemId,
+            );
+            if (alreadyHasLine) return list;
+            const newLine: ListLine = {
+              id: randomId(),
+              catalogItemId,
+              checked: false,
+              amount,
+              createdAt: now,
+              updatedAt: now,
+            };
+            addedListIds.push(list.id);
+            return {
+              ...list,
+              lines: [...list.lines, newLine],
+              updatedAt: now,
+            };
+          }),
+        };
+        await persistPayload(nextPayload);
+        return addedListIds;
+      } catch (err) {
+        console.error('Failed to add existing catalog item to lists:', err);
+        throw err;
+      }
+    },
+    [payload, persistPayload],
+  );
+
+  /**
+   * Permanently destroys a Catalog Item and every List Line referencing it
+   * across every Grocery List. This is the Delete From Catalog action — it
+   * cascades off every list and cannot be undone.
+   */
+  const deleteCatalogItem = useCallback(
+    async (catalogItemId: string) => {
+      try {
+        const nextPayload: GroceriesVaultPayload = {
+          catalog: payload.catalog.filter((item) => item.id !== catalogItemId),
+          lists: payload.lists.map((list) => {
+            const hasLine = list.lines.some(
+              (line) => line.catalogItemId === catalogItemId,
+            );
+            if (!hasLine) return list;
+            return {
+              ...list,
+              lines: list.lines.filter(
+                (line) => line.catalogItemId !== catalogItemId,
+              ),
+              updatedAt: new Date().toISOString(),
+            };
+          }),
+        };
+        await persistPayload(nextPayload);
+      } catch (err) {
+        console.error('Failed to delete catalog item:', err);
+        throw err;
+      }
+    },
+    [payload, persistPayload],
+  );
+
   return {
     lists: payload.lists,
     catalog: payload.catalog,
@@ -457,5 +665,8 @@ export function useGroceriesVault({
     restoreLines,
     deleteListLine,
     addCatalogItemAndLine,
+    addItemToLists,
+    addExistingCatalogItemToLists,
+    deleteCatalogItem,
   };
 }

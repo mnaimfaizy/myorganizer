@@ -5,8 +5,10 @@ import { ToastAction, useToast } from '@myorganizer/web-ui';
 import { useCallback, useMemo, useState } from 'react';
 import type { AddCatalogItemAndLineInput } from '../../shared/hooks';
 import { summarizeListSpend } from '../../shared/utils';
+import { AddExistingItemDialog } from './AddExistingItemDialog';
 import type { AddItemFormResult } from './AddItemDialog';
 import { AddItemDialog } from './AddItemDialog';
+import { DeleteCatalogItemDialog } from './DeleteCatalogItemDialog';
 import { TripBoardLifecycleToolbar } from './TripBoardLifecycleToolbar';
 import { TripBoardLineRow } from './TripBoardLineRow';
 import { TripBoardSpendFooter } from './TripBoardSpendFooter';
@@ -14,6 +16,7 @@ import { TripBoardSpendFooter } from './TripBoardSpendFooter';
 interface GroceryListViewProps {
   list: GroceryList;
   catalog: CatalogItem[];
+  allLists: GroceryList[];
   onClose: () => void;
   onToggleChecked: (listId: string, lineId: string) => Promise<void>;
   onUncheckAll: (listId: string) => Promise<void>;
@@ -24,6 +27,12 @@ interface GroceryListViewProps {
     listId: string,
     input: AddCatalogItemAndLineInput,
   ) => Promise<void>;
+  onAddExistingItem: (
+    catalogItemId: string,
+    listIds: string[],
+    amount?: string,
+  ) => Promise<string[]>;
+  onDeleteFromCatalog: (catalogItemId: string) => Promise<void>;
 }
 
 /**
@@ -33,15 +42,21 @@ interface GroceryListViewProps {
 export function GroceryListView({
   list,
   catalog,
+  allLists,
   onToggleChecked,
   onUncheckAll,
   onRemoveChecked,
   onRestoreLines,
   onDeleteLine,
   onAddItem,
+  onAddExistingItem,
+  onDeleteFromCatalog,
 }: GroceryListViewProps) {
   const { toast } = useToast();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isAddExistingDialogOpen, setIsAddExistingDialogOpen] = useState(false);
+  const [catalogItemPendingDelete, setCatalogItemPendingDelete] =
+    useState<CatalogItem | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const active = useMemo(
@@ -163,6 +178,93 @@ export function GroceryListView({
     setIsAddDialogOpen(false);
   }, []);
 
+  const handleOpenAddExistingDialog = useCallback(() => {
+    setIsAddExistingDialogOpen(true);
+  }, []);
+
+  const handleCloseAddExistingDialog = useCallback(() => {
+    setIsAddExistingDialogOpen(false);
+  }, []);
+
+  const handleAddExistingItem = useCallback(
+    async (catalogItemId: string, listIds: string[], amount?: string) => {
+      setIsLoading(true);
+      try {
+        const addedListIds = await onAddExistingItem(
+          catalogItemId,
+          listIds,
+          amount,
+        );
+        setIsAddExistingDialogOpen(false);
+        if (addedListIds.length === 0) {
+          toast({
+            title: 'Already on every selected list.',
+          });
+        } else if (addedListIds.length === listIds.length) {
+          toast({
+            title: 'Added to lists',
+            description: `Added to ${addedListIds.length} list${addedListIds.length !== 1 ? 's' : ''}.`,
+          });
+        } else {
+          toast({
+            title: 'Added to lists',
+            description: `Added to ${addedListIds.length} of ${listIds.length} lists (already on the rest).`,
+          });
+        }
+      } catch (err) {
+        console.error('Failed to add existing catalog item to lists:', err);
+        showErrorToast();
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [onAddExistingItem, showErrorToast, toast],
+  );
+
+  const handleRequestDeleteFromCatalog = useCallback(
+    (catalogItemId: string) => {
+      const item = catalog.find((c) => c.id === catalogItemId);
+      if (item) {
+        setCatalogItemPendingDelete(item);
+      }
+    },
+    [catalog],
+  );
+
+  const handleCloseDeleteCatalogDialog = useCallback(() => {
+    setCatalogItemPendingDelete(null);
+  }, []);
+
+  const handleConfirmDeleteFromCatalog = useCallback(async () => {
+    if (!catalogItemPendingDelete) return;
+    setIsLoading(true);
+    try {
+      await onDeleteFromCatalog(catalogItemPendingDelete.id);
+      toast({
+        title: `Deleted "${catalogItemPendingDelete.name}" from Catalog`,
+      });
+    } catch (err) {
+      console.error('Failed to delete catalog item:', err);
+      showErrorToast();
+    } finally {
+      setIsLoading(false);
+      setCatalogItemPendingDelete(null);
+    }
+  }, [catalogItemPendingDelete, onDeleteFromCatalog, showErrorToast, toast]);
+
+  const affectedListCount = useMemo(() => {
+    if (!catalogItemPendingDelete) return 0;
+    const totalLists = allLists.filter((otherList) =>
+      otherList.lines.some(
+        (line) => line.catalogItemId === catalogItemPendingDelete.id,
+      ),
+    ).length;
+    const includesCurrentList = list.lines.some(
+      (line) => line.catalogItemId === catalogItemPendingDelete.id,
+    );
+    return includesCurrentList ? totalLists - 1 : totalLists;
+  }, [allLists, catalogItemPendingDelete, list.lines]);
+
   return (
     <div className="space-y-lg">
       <div className="space-y-1 pb-md border-b border-outline-variant">
@@ -180,6 +282,7 @@ export function GroceryListView({
         onUncheckAll={handleUncheckAll}
         onRemoveChecked={handleRemoveChecked}
         onAddItem={handleOpenAddDialog}
+        onAddExisting={handleOpenAddExistingDialog}
         isLoading={isLoading}
       />
 
@@ -213,6 +316,7 @@ export function GroceryListView({
                     )}
                     onToggleChecked={handleToggleChecked}
                     onDeleteLine={handleDeleteLine}
+                    onDeleteFromCatalog={handleRequestDeleteFromCatalog}
                     isLoading={isLoading}
                   />
                 ))}
@@ -239,6 +343,7 @@ export function GroceryListView({
                     )}
                     onToggleChecked={handleToggleChecked}
                     onDeleteLine={handleDeleteLine}
+                    onDeleteFromCatalog={handleRequestDeleteFromCatalog}
                     isLoading={isLoading}
                   />
                 ))}
@@ -254,6 +359,25 @@ export function GroceryListView({
         isOpen={isAddDialogOpen}
         onClose={handleCloseAddDialog}
         onAdd={handleAddItem}
+        isLoading={isLoading}
+      />
+
+      <AddExistingItemDialog
+        isOpen={isAddExistingDialogOpen}
+        onClose={handleCloseAddExistingDialog}
+        catalog={catalog}
+        lists={allLists}
+        defaultListId={list.id}
+        onAdd={handleAddExistingItem}
+        isLoading={isLoading}
+      />
+
+      <DeleteCatalogItemDialog
+        isOpen={catalogItemPendingDelete !== null}
+        catalogItem={catalogItemPendingDelete}
+        affectedListCount={affectedListCount}
+        onClose={handleCloseDeleteCatalogDialog}
+        onConfirm={handleConfirmDeleteFromCatalog}
         isLoading={isLoading}
       />
     </div>

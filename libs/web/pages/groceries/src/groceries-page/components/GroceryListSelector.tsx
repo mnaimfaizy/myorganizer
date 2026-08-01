@@ -1,6 +1,6 @@
 'use client';
 
-import type { GroceryList } from '@myorganizer/core';
+import type { CatalogItem, GroceryList, ListLine } from '@myorganizer/core';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,6 +13,7 @@ import { useState } from 'react';
 
 interface GroceryListSelectorProps {
   lists: GroceryList[];
+  catalog: CatalogItem[];
   onRenameList: (id: string) => void;
   onDeleteList: (id: string) => void;
   isLoading?: boolean;
@@ -34,10 +35,16 @@ const CATEGORY_ICONS: Record<string, string> = {
   other: '🛒',
 };
 
-// Get category from items or use default
-function getDominantCategory(items: any[]): string {
-  if (items.length === 0) return 'other';
-  const categories = items.map((item) => item.category);
+// Get category from lines or use default
+function getDominantCategory(
+  lines: ListLine[],
+  catalog: CatalogItem[],
+): string {
+  if (lines.length === 0) return 'other';
+  const categories = lines.map((line) => {
+    const catalogItem = catalog.find((item) => item.id === line.catalogItemId);
+    return catalogItem?.category ?? 'other';
+  });
   const counts: Record<string, number> = {};
   for (const cat of categories) {
     counts[cat] = (counts[cat] || 0) + 1;
@@ -64,6 +71,7 @@ function formatRelativeTime(dateString: string): string {
 
 export function GroceryListSelector({
   lists,
+  catalog,
   onRenameList,
   onDeleteList,
   isLoading = false,
@@ -88,13 +96,13 @@ export function GroceryListSelector({
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
         {lists.map((list) => {
-          const dominantCategory = getDominantCategory(list.items);
+          const dominantCategory = getDominantCategory(list.lines, catalog);
           const icon = CATEGORY_ICONS[dominantCategory];
-          const checkedCount = list.items.filter((item) => item.checked).length;
+          const checkedCount = list.lines.filter((line) => line.checked).length;
           const isSelected = selectedListIds.includes(list.id);
           const progressPercent =
-            list.items.length > 0
-              ? Math.round((checkedCount / list.items.length) * 100)
+            list.lines.length > 0
+              ? Math.round((checkedCount / list.lines.length) * 100)
               : 0;
 
           return (
@@ -180,7 +188,7 @@ export function GroceryListSelector({
                 {/* Item count and timestamp */}
                 <div className="mb-3 flex items-center justify-between text-xs text-on-surface-variant">
                   <span>
-                    {checkedCount} / {list.items.length} items
+                    {checkedCount} / {list.lines.length} items
                   </span>
                   <span>Updated {formatRelativeTime(list.updatedAt)}</span>
                 </div>

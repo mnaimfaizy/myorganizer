@@ -2,7 +2,7 @@
 
 import type { CatalogItem, ListLine } from '@myorganizer/core';
 import { Checkbox } from '@myorganizer/web-ui';
-import { Trash2 } from 'lucide-react';
+import { Ban, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { getCategoryEmoji } from '../../shared/constants/categories';
 import { formatMoney } from '../../shared/utils';
@@ -12,6 +12,7 @@ interface TripBoardLineRowProps {
   catalogItem: CatalogItem | undefined;
   onToggleChecked: (lineId: string) => void;
   onDeleteLine: (lineId: string) => void;
+  onDeleteFromCatalog: (catalogItemId: string) => void;
   isLoading?: boolean;
 }
 
@@ -20,6 +21,7 @@ export function TripBoardLineRow({
   catalogItem,
   onToggleChecked,
   onDeleteLine,
+  onDeleteFromCatalog,
   isLoading = false,
 }: TripBoardLineRowProps) {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -46,6 +48,11 @@ export function TripBoardLineRow({
       setIsConfirmingDelete(true);
     }
   }, [isConfirmingDelete, line.id, onDeleteLine]);
+
+  const handleDeleteFromCatalogClick = useCallback(() => {
+    if (!catalogItem) return;
+    onDeleteFromCatalog(catalogItem.id);
+  }, [catalogItem, onDeleteFromCatalog]);
 
   return (
     <div
@@ -119,6 +126,19 @@ export function TripBoardLineRow({
       >
         <Trash2 className="h-4 w-4" />
       </button>
+
+      {catalogItem && (
+        <button
+          onClick={handleDeleteFromCatalogClick}
+          disabled={isLoading}
+          className="p-1.5 rounded-lg shrink-0 transition-colors disabled:pointer-events-none disabled:opacity-50 hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+          aria-label={`Delete ${itemName} from catalog`}
+          title="Delete from catalog (all lists)"
+          type="button"
+        >
+          <Ban className="h-4 w-4" />
+        </button>
+      )}
     </div>
   );
 }

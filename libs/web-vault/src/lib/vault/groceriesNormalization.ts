@@ -5,6 +5,7 @@ import {
   type ListLine,
   type GroceryList,
   type GroceryItem,
+  type GroceryCategoryType,
 } from '@myorganizer/core';
 import { z } from 'zod';
 
@@ -24,9 +25,12 @@ const VALID_CATEGORIES = [
 ] as const;
 
 // Helper to validate and coerce category
-function normalizeCategory(value: unknown): string {
-  if (typeof value === 'string' && VALID_CATEGORIES.includes(value as any)) {
-    return value;
+function normalizeCategory(value: unknown): GroceryCategoryType {
+  if (
+    typeof value === 'string' &&
+    (VALID_CATEGORIES as readonly string[]).includes(value)
+  ) {
+    return value as GroceryCategoryType;
   }
   return 'other';
 }
