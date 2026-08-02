@@ -5,6 +5,7 @@ import type {
   GroceryCategoryType,
   GroceryList,
 } from '@myorganizer/core';
+import { Edit2, Plus } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import {
   CATEGORY_LABELS,
@@ -21,6 +22,8 @@ interface TripBoardStaplesProps {
   selectedCategory: GroceryCategoryType | 'all';
   onSelectCategory: (category: GroceryCategoryType | 'all') => void;
   onAddToTrip: (catalogItemId: string) => void;
+  onNewStaple: () => void;
+  onEditCatalogItem: (catalogItemId: string) => void;
   isLoading?: boolean;
 }
 
@@ -47,6 +50,8 @@ export function TripBoardStaples({
   selectedCategory,
   onSelectCategory,
   onAddToTrip,
+  onNewStaple,
+  onEditCatalogItem,
   isLoading = false,
 }: TripBoardStaplesProps) {
   const categoriesInUse = useMemo(() => {
@@ -71,12 +76,24 @@ export function TripBoardStaples({
       aria-labelledby="staples-catalog-heading"
       className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4"
     >
-      <h2
-        id="staples-catalog-heading"
-        className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
-      >
-        Staples catalog ({allCatalog.length})
-      </h2>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h2
+          id="staples-catalog-heading"
+          className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground"
+        >
+          Staples catalog ({allCatalog.length})
+        </h2>
+        <button
+          type="button"
+          onClick={onNewStaple}
+          disabled={isLoading}
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg px-1 py-0.5 text-xs font-semibold text-foreground transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
+          aria-label="New staple"
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+          New staple
+        </button>
+      </div>
 
       <div
         className="mb-3 flex gap-2 overflow-x-auto py-1"
@@ -121,7 +138,9 @@ export function TripBoardStaples({
             className="rounded-lg border border-dashed border-outline-variant p-4 text-center text-sm text-muted-foreground"
             role="status"
           >
-            No catalog matches
+            {allCatalog.length === 0
+              ? 'No staples yet — add one to seed the catalog.'
+              : 'No catalog matches'}
           </li>
         ) : (
           catalog.map((item) => {
@@ -149,25 +168,36 @@ export function TripBoardStaples({
                     {metaParts.join(' · ')}
                   </p>
                 </div>
-                <div className="shrink-0 text-right">
-                  <p className="text-sm font-semibold tabular-nums text-foreground">
-                    {typeof item.price === 'number'
-                      ? formatMoney(item.price)
-                      : '—'}
-                  </p>
+                <div className="flex shrink-0 items-center gap-0.5">
                   <button
                     type="button"
-                    onClick={() => onAddToTrip(item.id)}
-                    disabled={onAllTrips || isLoading}
-                    className="mt-1 text-xs font-semibold text-foreground hover:underline focus-visible:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
-                    aria-label={
-                      onAllTrips
-                        ? `${item.name} is on all trips`
-                        : `Add ${item.name} to trip`
-                    }
+                    onClick={() => onEditCatalogItem(item.id)}
+                    disabled={isLoading}
+                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-container-highest hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary disabled:pointer-events-none disabled:opacity-50"
+                    aria-label={`Edit catalog item ${item.name}`}
                   >
-                    {onAllTrips ? 'On all trips' : 'Add to trip'}
+                    <Edit2 className="h-4 w-4" aria-hidden="true" />
                   </button>
+                  <div className="text-right">
+                    <p className="text-sm font-semibold tabular-nums text-foreground">
+                      {typeof item.price === 'number'
+                        ? formatMoney(item.price)
+                        : '—'}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => onAddToTrip(item.id)}
+                      disabled={onAllTrips || isLoading}
+                      className="mt-1 text-xs font-semibold text-foreground hover:underline focus-visible:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
+                      aria-label={
+                        onAllTrips
+                          ? `${item.name} is on all trips`
+                          : `Add ${item.name} to trip`
+                      }
+                    >
+                      {onAllTrips ? 'On all trips' : 'Add to trip'}
+                    </button>
+                  </div>
                 </div>
               </li>
             );

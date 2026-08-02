@@ -8,7 +8,16 @@ import type {
 import { Input, Label, useToast } from '@myorganizer/web-ui';
 import { useCallback, useMemo, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { AddExistingItemDialog } from '../../groceries-list-detail/components';
+import {
+  AddExistingItemDialog,
+  AddItemDialog,
+  CatalogItemEditDialog,
+} from '../../groceries-list-detail/components';
+import type {
+  AddItemFormResult,
+  CatalogItemEditChanges,
+} from '../../groceries-list-detail/components';
+import type { AddCatalogItemAndLineInput } from '../../shared/hooks';
 import { TripBoardStaples } from './TripBoardStaples';
 import { TripBoardTripCard } from './TripBoardTripCard';
 
@@ -22,6 +31,8 @@ export interface TripBoardIndexProps {
     listIds: string[],
     amount?: string,
   ) => Promise<string[]>;
+  onAddCatalogItem: (input: AddCatalogItemAndLineInput) => Promise<void>;
+  onUpdateCatalogItem: (changes: CatalogItemEditChanges) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -31,6 +42,8 @@ export function TripBoardIndex({
   onRenameList,
   onDeleteList,
   onAddExistingItem,
+  onAddCatalogItem,
+  onUpdateCatalogItem,
   isLoading = false,
 }: TripBoardIndexProps) {
   const [searchText, setSearchText] = useState('');
@@ -40,6 +53,9 @@ export function TripBoardIndex({
   const [addExistingCatalogItemId, setAddExistingCatalogItemId] = useState<
     string | null
   >(null);
+  const [isAddStapleOpen, setIsAddStapleOpen] = useState(false);
+  const [catalogItemPendingEdit, setCatalogItemPendingEdit] =
+    useState<CatalogItem | null>(null);
   const { toast } = useToast();
 
   const normalizedSearch = searchText.trim().toLowerCase();
@@ -107,6 +123,27 @@ export function TripBoardIndex({
     setAddExistingCatalogItemId(catalogItemId);
   }, []);
 
+  const handleOpenAddStaple = useCallback(() => {
+    setIsAddStapleOpen(true);
+  }, []);
+
+  const handleCloseAddStaple = useCallback(() => {
+    setIsAddStapleOpen(false);
+  }, []);
+
+  const handleEditCatalogItem = useCallback(
+    (catalogItemId: string) => {
+      setCatalogItemPendingEdit(
+        catalog.find((item) => item.id === catalogItemId) ?? null,
+      );
+    },
+    [catalog],
+  );
+
+  const handleCloseCatalogEdit = useCallback(() => {
+    setCatalogItemPendingEdit(null);
+  }, []);
+
   const showErrorToast = useCallback(() => {
     toast({
       title: 'Error',
@@ -114,6 +151,49 @@ export function TripBoardIndex({
       variant: 'destructive',
     });
   }, [toast]);
+
+  const mapFormResultToCatalogInput = useCallback(
+    (values: AddItemFormResult): AddCatalogItemAndLineInput => ({
+      name: values.name,
+      category: values.category,
+      ...(values.catalogItemId ? { catalogItemId: values.catalogItemId } : {}),
+      ...(values.price !== undefined ? { price: values.price } : {}),
+      ...(values.notes ? { notes: values.notes } : {}),
+      ...(values.imageUrl ? { imageUrl: values.imageUrl } : {}),
+      ...(values.links ? { links: values.links } : {}),
+    }),
+    [],
+  );
+
+  const handleAddCatalogItemSubmit = useCallback(
+    async (values: AddItemFormResult) => {
+      try {
+        await onAddCatalogItem(mapFormResultToCatalogInput(values));
+        toast({
+          title: 'Added to catalog',
+        });
+      } catch (err) {
+        console.error('Failed to add catalog item:', err);
+        showErrorToast();
+        throw err;
+      }
+    },
+    [mapFormResultToCatalogInput, onAddCatalogItem, showErrorToast, toast],
+  );
+
+  const handleUpdateCatalogItemSubmit = useCallback(
+    async (changes: CatalogItemEditChanges) => {
+      try {
+        await onUpdateCatalogItem(changes);
+        setCatalogItemPendingEdit(null);
+      } catch (err) {
+        console.error('Failed to update catalog item:', err);
+        showErrorToast();
+        throw err;
+      }
+    },
+    [onUpdateCatalogItem, showErrorToast],
+  );
 
   const handleCloseAddExistingDialog = useCallback(() => {
     setAddExistingCatalogItemId(null);
@@ -174,12 +254,14 @@ export function TripBoardIndex({
         selectedCategory={selectedCategory}
         onSelectCategory={handleSelectCategory}
         onAddToTrip={handleAddToTrip}
+        onNewStaple={handleOpenAddStaple}
+        onEditCatalogItem={handleEditCatalogItem}
         isLoading={isLoading}
       />
 
       <p
         id="trip-board-results"
-        className="text-sm text-on-surface-variant"
+        className="text-sm text-muted-foreground"
         aria-live="polite"
       >
         Showing {filteredLists.length} of {lists.length} trip
@@ -207,6 +289,23 @@ export function TripBoardIndex({
         lists={lists}
         defaultCatalogItemId={addExistingCatalogItemId ?? undefined}
         onAdd={handleAddExistingSubmit}
+        isLoading={isLoading}
+      />
+
+      <AddItemDialog
+        isOpen={isAddStapleOpen}
+        onClose={handleCloseAddStaple}
+        onAdd={handleAddCatalogItemSubmit}
+        isLoading={isLoading}
+        catalog={catalog}
+        mode="catalog"
+      />
+
+      <CatalogItemEditDialog
+        item={catalogItemPendingEdit}
+        isOpen={catalogItemPendingEdit !== null}
+        onClose={handleCloseCatalogEdit}
+        onSave={handleUpdateCatalogItemSubmit}
         isLoading={isLoading}
       />
     </div>

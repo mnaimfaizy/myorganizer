@@ -139,6 +139,8 @@ jest.mock('lucide-react', () => ({
   Trash2: () => <span data-testid="trash-icon" />,
   Lock: () => <span data-testid="lock-icon" />,
   Search: () => <span data-testid="search-icon" />,
+  Plus: () => <span data-testid="plus-icon" />,
+  Edit2: () => <span data-testid="edit-icon" />,
 }));
 
 let latestAddExistingSubmit:
@@ -167,6 +169,106 @@ jest.mock(
   },
 );
 
+jest.mock('../../groceries-list-detail/components/AddItemDialog', () => ({
+  AddItemDialog: ({
+    isOpen,
+    onAdd,
+    onClose,
+    mode,
+  }: {
+    isOpen: boolean;
+    onAdd: (values: { name: string; category: string }) => Promise<void>;
+    onClose: () => void;
+    mode?: 'list' | 'catalog';
+  }) => {
+    if (!isOpen) return null;
+
+    return (
+      <div data-testid="add-item-dialog" role="dialog">
+        <h2>{mode === 'catalog' ? 'New staple' : 'Add New Item'}</h2>
+        {mode !== 'catalog' ? (
+          <label htmlFor="add-item-amount">Quantity / Amount</label>
+        ) : null}
+        <button
+          type="button"
+          onClick={async () => {
+            try {
+              await onAdd({ name: 'New Staple', category: 'other' });
+              onClose();
+            } catch {
+              // TripBoardIndex shows toast before rethrow; dialog stays open.
+            }
+          }}
+        >
+          {mode === 'catalog' ? 'Add to catalog' : 'Add to List'}
+        </button>
+        <button type="button" onClick={onClose}>
+          Cancel
+        </button>
+      </div>
+    );
+  },
+}));
+
+jest.mock(
+  '../../groceries-list-detail/components/CatalogItemEditDialog',
+  () => ({
+    CatalogItemEditDialog: ({
+      isOpen,
+      item,
+      onSave,
+      onClose,
+    }: {
+      isOpen: boolean;
+      item: {
+        id: string;
+        name: string;
+        category: string;
+        price?: number;
+        notes?: string;
+      } | null;
+      onSave: (changes: {
+        id: string;
+        name: string;
+        category: string;
+        price?: number;
+        notes?: string;
+      }) => Promise<void>;
+      onClose: () => void;
+    }) => {
+      if (!isOpen || !item) return null;
+
+      return (
+        <div data-testid="catalog-item-edit-dialog" role="dialog">
+          <h2>Edit Catalog Item</h2>
+          <button
+            type="button"
+            onClick={async () => {
+              try {
+                await onSave({
+                  id: item.id,
+                  name: item.name,
+                  category: item.category,
+                  ...(item.price !== undefined ? { price: item.price } : {}),
+                  ...(item.notes ? { notes: item.notes } : {}),
+                });
+                onClose();
+              } catch {
+                // TripBoardIndex shows toast before rethrow; dialog stays open.
+              }
+            }}
+          >
+            Save Catalog Item
+          </button>
+          <button type="button" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      );
+    },
+  }),
+);
+
 import type { CatalogItem, GroceryList, ListLine } from '@myorganizer/core';
 import '@testing-library/jest-dom';
 import {
@@ -176,6 +278,8 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import type { CatalogItemEditChanges } from '../../groceries-list-detail/components';
+import type { AddCatalogItemAndLineInput } from '../../shared/hooks';
 import { TripBoardIndex } from '../components/TripBoardIndex';
 
 const DATE = '2026-01-01T00:00:00.000Z';
@@ -224,6 +328,8 @@ function renderTripBoard(
       listIds: string[],
       amount?: string,
     ) => Promise<string[]>;
+    onAddCatalogItem: (input: AddCatalogItemAndLineInput) => Promise<void>;
+    onUpdateCatalogItem: (changes: CatalogItemEditChanges) => Promise<void>;
     isLoading?: boolean;
   }> & {
     lists: GroceryList[];
@@ -232,13 +338,21 @@ function renderTripBoard(
 ) {
   const onAddExistingItem =
     props.onAddExistingItem ?? jest.fn().mockResolvedValue([]);
+  const onAddCatalogItem =
+    props.onAddCatalogItem ?? jest.fn().mockResolvedValue(undefined);
+  const onUpdateCatalogItem =
+    props.onUpdateCatalogItem ?? jest.fn().mockResolvedValue(undefined);
   return {
     onAddExistingItem,
+    onAddCatalogItem,
+    onUpdateCatalogItem,
     ...render(
       <TripBoardIndex
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
         onAddExistingItem={onAddExistingItem}
+        onAddCatalogItem={onAddCatalogItem}
+        onUpdateCatalogItem={onUpdateCatalogItem}
         {...props}
       />,
     ),
@@ -436,6 +550,8 @@ describe('TripBoardIndex', () => {
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
         onAddExistingItem={jest.fn()}
+        onAddCatalogItem={jest.fn().mockResolvedValue(undefined)}
+        onUpdateCatalogItem={jest.fn().mockResolvedValue(undefined)}
         isLoading={false}
       />,
     );
@@ -453,6 +569,8 @@ describe('TripBoardIndex', () => {
         onRenameList={jest.fn()}
         onDeleteList={jest.fn()}
         onAddExistingItem={jest.fn()}
+        onAddCatalogItem={jest.fn().mockResolvedValue(undefined)}
+        onUpdateCatalogItem={jest.fn().mockResolvedValue(undefined)}
         isLoading={true}
       />,
     );
@@ -577,6 +695,165 @@ describe('TripBoardIndex', () => {
     await expect(latestAddExistingSubmit!('milk', ['a'])).rejects.toThrow(
       'save failed',
     );
+    consoleError.mockRestore();
+  });
+
+  it('shows empty catalog seed copy when no staples exist', () => {
+    renderTripBoard({
+      lists: [makeList('trip', 'Weekly Shop', [])],
+      catalog: [],
+    });
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'No staples yet — add one to seed the catalog.',
+    );
+  });
+
+  it('opens the catalog add dialog without a quantity field', () => {
+    renderTripBoard({
+      lists: [makeList('trip', 'Weekly Shop', [])],
+      catalog: [makeCatalogItem('milk', 'Milk')],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'New staple' }));
+
+    const dialog = screen.getByTestId('add-item-dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('heading', { name: 'New staple' }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('button', { name: 'Add to catalog' }),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).queryByLabelText('Quantity / Amount'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('calls onAddCatalogItem and toasts success when adding a staple', async () => {
+    const onAddCatalogItem = jest.fn().mockResolvedValue(undefined);
+
+    renderTripBoard({
+      lists: [makeList('trip', 'Weekly Shop', [])],
+      catalog: [],
+      onAddCatalogItem,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'New staple' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to catalog' }));
+
+    await waitFor(() => {
+      expect(onAddCatalogItem).toHaveBeenCalledWith({
+        name: 'New Staple',
+        category: 'other',
+      });
+    });
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: 'Added to catalog' }),
+    );
+  });
+
+  it('shows a destructive toast when onAddCatalogItem rejects', async () => {
+    const onAddCatalogItem = jest.fn().mockRejectedValue(new Error('fail'));
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    renderTripBoard({
+      lists: [makeList('trip', 'Weekly Shop', [])],
+      catalog: [],
+      onAddCatalogItem,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'New staple' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to catalog' }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Error',
+          variant: 'destructive',
+        }),
+      );
+    });
+    expect(screen.getByTestId('add-item-dialog')).toBeInTheDocument();
+    consoleError.mockRestore();
+  });
+
+  it('opens the catalog edit dialog for a staple', () => {
+    renderTripBoard({
+      lists: [makeList('trip', 'Weekly Shop', [])],
+      catalog: [makeCatalogItem('milk', 'Milk', 'dairy')],
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Edit catalog item Milk' }),
+    );
+
+    const dialog = screen.getByTestId('catalog-item-edit-dialog');
+    expect(dialog).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole('heading', { name: 'Edit Catalog Item' }),
+    ).toBeInTheDocument();
+  });
+
+  it('calls onUpdateCatalogItem and closes the edit dialog on save', async () => {
+    const onUpdateCatalogItem = jest.fn().mockResolvedValue(undefined);
+    const milk = makeCatalogItem('milk', 'Milk', 'dairy');
+
+    renderTripBoard({
+      lists: [makeList('trip', 'Weekly Shop', [])],
+      catalog: [milk],
+      onUpdateCatalogItem,
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Edit catalog item Milk' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Save Catalog Item' }));
+
+    await waitFor(() => {
+      expect(onUpdateCatalogItem).toHaveBeenCalledWith({
+        id: 'milk',
+        name: 'Milk',
+        category: 'dairy',
+      });
+    });
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('catalog-item-edit-dialog'),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it('shows a destructive toast when onUpdateCatalogItem rejects', async () => {
+    const onUpdateCatalogItem = jest
+      .fn()
+      .mockRejectedValue(new Error('update failed'));
+    const consoleError = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    renderTripBoard({
+      lists: [makeList('trip', 'Weekly Shop', [])],
+      catalog: [makeCatalogItem('milk', 'Milk', 'dairy')],
+      onUpdateCatalogItem,
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Edit catalog item Milk' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Save Catalog Item' }));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Error',
+          variant: 'destructive',
+        }),
+      );
+    });
+    expect(screen.getByTestId('catalog-item-edit-dialog')).toBeInTheDocument();
     consoleError.mockRestore();
   });
 });

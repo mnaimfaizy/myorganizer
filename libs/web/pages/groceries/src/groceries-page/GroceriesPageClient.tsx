@@ -12,6 +12,8 @@ import {
   TripBoardIndex,
 } from './components';
 import { useGroceriesVault } from '../shared/hooks';
+import type { AddCatalogItemAndLineInput } from '../shared/hooks';
+import type { CatalogItemEditChanges } from '../groceries-list-detail/components/CatalogItemEditDialog';
 
 interface GroceriesInnerProps {
   masterKeyBytes: Uint8Array;
@@ -92,6 +94,18 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
     (catalogItemId: string, listIds: string[], amount?: string) =>
       vault.addExistingCatalogItemToLists(catalogItemId, listIds, amount),
     [vault.addExistingCatalogItemToLists],
+  );
+
+  const handleAddCatalogItem = useCallback(
+    async (input: AddCatalogItemAndLineInput) => {
+      await vault.addItemToLists([], input);
+    },
+    [vault.addItemToLists],
+  );
+
+  const handleUpdateCatalogItem = useCallback(
+    (changes: CatalogItemEditChanges) => vault.updateCatalogItem(changes),
+    [vault.updateCatalogItem],
   );
 
   const portfolio = useMemo(
@@ -232,6 +246,8 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
             onRenameList={handleRenameList}
             onDeleteList={handleDeleteList}
             onAddExistingItem={handleAddExistingItem}
+            onAddCatalogItem={handleAddCatalogItem}
+            onUpdateCatalogItem={handleUpdateCatalogItem}
             isLoading={vault.loading}
           />
         )}

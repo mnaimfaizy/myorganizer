@@ -20,9 +20,10 @@ and cannot access your grocery information.
 The Groceries index is a **Trip Board**. It has three parts:
 
 - A search box that filters both trips and staples at once.
-- A **Staples catalog** panel listing your Catalog Items, filterable by category. Each row
-  has an **Add to trip** action; it reads **On all trips** and is disabled once the item is
-  already on every trip.
+- A **Staples catalog** panel listing your Catalog Items, filterable by category. Use
+  **New staple** to add a Catalog Item without attaching it to a trip, and the pencil on
+  each row to edit that item. Each row also has an **Add to trip** action; it reads
+  **On all trips** and is disabled once the item is already on every trip.
 - A horizontally scrolling row of **trip cards**. Each card shows known spend, unpriced
   count, a checked/open progress bar, a preview of the active and checked lines, and a
   rename/delete menu.
@@ -221,8 +222,9 @@ interface TripBoardIndexProps {
 
 ### TripBoardStaples
 
-Staples catalog panel: category filter chips plus a scrollable list of Catalog Items with an
-**Add to trip** action per row (disabled and relabelled **On all trips** when the item is
+Staples catalog panel: category filter chips plus a scrollable list of Catalog Items.
+**New staple** creates a catalog-only item; each row has an edit pencil and an
+**Add to trip** action (disabled and relabelled **On all trips** when the item is
 already on every list).
 
 ### TripBoardTripCard

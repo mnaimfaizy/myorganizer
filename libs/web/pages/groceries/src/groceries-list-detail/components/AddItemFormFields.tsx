@@ -269,12 +269,14 @@ interface AddItemDetailsFieldsProps {
   control: Control<AddItemFormValues>;
   imageUrl: string;
   isLoading: boolean;
+  showAmount?: boolean;
 }
 
 export function AddItemDetailsFields({
   control,
   imageUrl,
   isLoading,
+  showAmount = true,
 }: AddItemDetailsFieldsProps) {
   const handleImageError = useCallback(
     (event: SyntheticEvent<HTMLImageElement>) => {
@@ -285,27 +287,29 @@ export function AddItemDetailsFields({
 
   return (
     <>
-      <div className="grid grid-cols-2 gap-4">
-        <FormField
-          control={control}
-          name="amount"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-                Quantity / Amount
-              </FormLabel>
-              <FormControl>
-                <Input
-                  {...field}
-                  placeholder="e.g. 2, 500g"
-                  disabled={isLoading}
-                  className="text-base md:text-sm"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <div className={showAmount ? 'grid grid-cols-2 gap-4' : undefined}>
+        {showAmount ? (
+          <FormField
+            control={control}
+            name="amount"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                  Quantity / Amount
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    placeholder="e.g. 2, 500g"
+                    disabled={isLoading}
+                    className="text-base md:text-sm"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        ) : null}
         <FormField
           control={control}
           name="price"
