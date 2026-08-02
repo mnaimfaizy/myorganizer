@@ -1,6 +1,11 @@
 /** Mocking rule: place jest.mock calls before any imports */
 jest.mock('@myorganizer/web-ui', () => {
   const React = require('react');
+  const {
+    Controller,
+    FormProvider,
+    useFormContext,
+  } = require('react-hook-form');
 
   // Simple Input that forwards all props to a real input so react-hook-form register works
   function Input(props: any) {
@@ -50,6 +55,78 @@ jest.mock('@myorganizer/web-ui', () => {
   const DialogTitle = ({ children }: any) => <h2>{children}</h2>;
   const DialogDescription = ({ children }: any) => <p>{children}</p>;
   const DialogFooter = ({ children }: any) => <div>{children}</div>;
+
+  // Keep the form primitives close to their production contract: Controller
+  // supplies field props, while the other wrappers expose field state and
+  // accessible ids/validation attributes to their children.
+  const FormFieldContext = React.createContext<{ name?: string }>({});
+  const FormItemContext = React.createContext<{ id?: string }>({});
+
+  function Form(props: any) {
+    return <FormProvider {...props} />;
+  }
+
+  function FormField({ name, render, ...props }: any) {
+    return (
+      <FormFieldContext.Provider value={{ name }}>
+        <Controller name={name} render={render} {...props} />
+      </FormFieldContext.Provider>
+    );
+  }
+
+  function FormItem({ children, ...props }: any) {
+    const id = React.useId();
+    return (
+      <FormItemContext.Provider value={{ id }}>
+        <div {...props}>{children}</div>
+      </FormItemContext.Provider>
+    );
+  }
+
+  function useFormField() {
+    const { name } = React.useContext(FormFieldContext);
+    const { id } = React.useContext(FormItemContext);
+    const { getFieldState, formState } = useFormContext();
+    return {
+      error: name ? getFieldState(name, formState).error : undefined,
+      formItemId: `${id}-form-item`,
+      formDescriptionId: `${id}-form-item-description`,
+      formMessageId: `${id}-form-item-message`,
+    };
+  }
+
+  function FormControl({ children, ...props }: any) {
+    const { error, formItemId, formDescriptionId, formMessageId } =
+      useFormField();
+    return React.cloneElement(React.Children.only(children), {
+      ...props,
+      id: formItemId,
+      'aria-describedby': error
+        ? `${formDescriptionId} ${formMessageId}`
+        : formDescriptionId,
+      'aria-invalid': !!error,
+    });
+  }
+
+  function FormLabel({ children, ...props }: any) {
+    const { formItemId } = useFormField();
+    return (
+      <label htmlFor={formItemId} {...props}>
+        {children}
+      </label>
+    );
+  }
+
+  function FormMessage({ children, ...props }: any) {
+    const { error, formMessageId } = useFormField();
+    const message = error ? String(error.message) : children;
+    if (!message) return null;
+    return (
+      <p id={formMessageId} {...props}>
+        {message}
+      </p>
+    );
+  }
 
   // Minimal Select components to support CategorySelect's Controller usage
   function Select({ value, onValueChange, children, ...props }: any) {
@@ -105,6 +182,12 @@ jest.mock('@myorganizer/web-ui', () => {
     DialogTitle,
     DialogDescription,
     DialogFooter,
+    Form,
+    FormControl,
+    FormField,
+    FormItem,
+    FormLabel,
+    FormMessage,
     Select,
     SelectTrigger,
     SelectValue,

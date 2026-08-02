@@ -10,14 +10,37 @@ and cannot access your grocery information.
 
 1. Navigate to **Groceries** in the dashboard sidebar.
 2. Enter your vault password to unlock.
-3. Click **+ New List** to create your first grocery list.
-4. Type an item name in the quick-add field and press **Enter**.
+3. Click **+ New trip** to create your first grocery list.
+4. Open the trip and use **Add Item**, or pick a staple from the **Add from catalog** strip.
 
 ## Features
+
+### Trip Board
+
+The Groceries index is a **Trip Board**. It has three parts:
+
+- A search box that filters both trips and staples at once.
+- A **Staples catalog** panel listing your Catalog Items, filterable by category. Use
+  **New staple** to add a Catalog Item without attaching it to a trip, and the pencil on
+  each row to edit that item. Each row also has an **Add to trip** action; it reads
+  **On all trips** and is disabled once the item is already on every trip.
+- A horizontally scrolling row of **trip cards**. Each card shows known spend, unpriced
+  count, a checked/open progress bar, a preview of the active and checked lines, and a
+  rename/delete menu.
+
+Opening a trip shows the **trip detail board**: **Active** and **Checked** columns, an
+add-from-catalog chip strip, a lifecycle toolbar, and a sticky spend footer.
 
 ### Multiple Lists
 
 Create unlimited independent grocery lists (e.g. "Weekly Shop", "Costco Run").
+
+### Budget Totals
+
+Every trip card and the trip detail footer show **known spend** — the sum of prices for
+lines whose Catalog Item has one — alongside the count of **unpriced** items. Items without
+a price are never silently counted as $0; they are reported separately so the total is
+honest about what it does not know.
 
 ### Item Fields
 
@@ -37,7 +60,8 @@ Items can be assigned to one of these predefined categories:
 
 **Produce** · **Dairy** · **Meat** · **Seafood** · **Bakery** · **Frozen** · **Beverages** · **Snacks** · **Condiments** · **Household** · **Personal Care** · **Other**
 
-Use the **category filter bar** above the item list to show only items in a given category.
+Use the **category filter** in the Staples catalog panel on the Trip Board to browse the
+catalog by category.
 
 ### Catalog Items and List Lines
 
@@ -47,8 +71,10 @@ price, notes, image, links). A **List Line** is a lightweight reference — `cat
 - `checked`/`amount` — that places a Catalog Item onto a specific Grocery List. The same
   Catalog Item can be a List Line on many lists at once without duplicating its identity.
 
-* **Add From Catalog** on a list lets you pick an existing Catalog Item and add it as a
-  List Line to one or many lists in a single action.
+* The **Add from catalog** chip strip on a trip adds an existing Catalog Item to that trip
+  in one click; chips for items already on the trip are disabled. **Add to multiple lists…**
+  opens a dialog for adding one Catalog Item to several lists at once, and the Staples
+  catalog panel on the index offers the same via **Add to trip**.
 * **Delete List Line** removes the item from that one list only; the Catalog Item and its
   lines on other lists are untouched.
 * **Delete From Catalog** permanently removes the Catalog Item and every List Line that
@@ -131,7 +157,7 @@ in `catalog` — a `ListLine` itself never carries a copy of that data.
 - **Shared types**: `@myorganizer/core` → `GroceriesVaultPayload`, `CatalogItem`, `GroceryList`, `ListLine`, `GroceryCategoryType`
 - **Vault normalization**: `@myorganizer/web-vault` → `normalizeGroceries` ([libs/web-vault/src/lib/vault/groceriesNormalization.ts](../../libs/web-vault/src/lib/vault/groceriesNormalization.ts))
 - **Vault blob type**: `'groceries'` (registered in `VaultRecordType`, `VaultBlobType`)
-- **Route**: `/groceries` ([apps/myorganizer/src/app/groceries/page.tsx](../../apps/myorganizer/src/app/groceries/page.tsx))
+- **Routes**: `/dashboard/groceries` ([apps/myorganizer/src/app/dashboard/groceries/page.tsx](../../apps/myorganizer/src/app/dashboard/groceries/page.tsx)) and `/dashboard/groceries/[listId]` ([apps/myorganizer/src/app/dashboard/groceries/[listId]/page.tsx](../../apps/myorganizer/src/app/dashboard/groceries/%5BlistId%5D/page.tsx))
 
 ## Implementation Details
 
@@ -148,11 +174,11 @@ in `catalog` — a `ListLine` itself never carries a copy of that data.
 The `normalizeGroceries()` function:
 
 - Accepts unknown data (e.g., from vault export or recovery).
-- Validates each `GroceryList` and `GroceryItem` against their schemas.
-- Filters out invalid items and lists.
+- Validates each `CatalogItem`, `GroceryList`, and `ListLine` against their schemas.
+- Filters out invalid entries, including List Lines pointing at a missing Catalog Item.
 - Coerces categories to known values ('produce', 'dairy', etc.) or 'other'.
 - Validates image URLs and drops invalid ones.
-- Returns `{ value: GroceryList[], changed: boolean }` to signal if the blob was migrated.
+- Signals whether the blob changed, so the hook can re-persist a migrated payload.
 
 ### Vault Blob Type Registration
 
@@ -178,19 +204,34 @@ interface DialogState {
 }
 ```
 
-### GroceryListSelector
+### TripBoardIndex
+
+Trip Board composition for the index: owns the search text, the selected staples category,
+and the add-to-trip dialog state, and composes `TripBoardStaples` with the trip cards.
 
 ```typescript
-interface GroceryListSelectorProps {
+interface TripBoardIndexProps {
   lists: GroceryList[];
-  catalog: CatalogItem[]; // resolves each line's category/name for progress + dominant-category display
-  selectedListIds: string[];
-  onSelectLists: (ids: string[]) => void;
+  catalog: CatalogItem[];
   onRenameList: (id: string) => void;
   onDeleteList: (id: string) => void;
+  onAddExistingItem: (catalogItemId: string, listIds: string[], amount?: string) => Promise<string[]>;
   isLoading?: boolean;
 }
 ```
+
+### TripBoardStaples
+
+Staples catalog panel: category filter chips plus a scrollable list of Catalog Items.
+**New staple** creates a catalog-only item; each row has an edit pencil and an
+**Add to trip** action (disabled and relabelled **On all trips** when the item is
+already on every list).
+
+### TripBoardTripCard
+
+A single trip column — spend badge, progress bar, capped Active/Checked previews, a
+rename/delete menu, and a footer link into the trip. Memoised, and carries
+`data-testid={`trip-card-${list.id}`}` for E2E scoping.
 
 ### CreateListDialog
 
@@ -241,18 +282,21 @@ Wraps the groceries page to catch React render errors and show a fallback UI.
 ```typescript
 interface AddExistingItemDialogProps {
   isOpen: boolean;
+  onClose: () => void;
   catalog: CatalogItem[];
   lists: GroceryList[];
-  currentListId: string;
-  onClose: () => void;
-  onAdd: (catalogItemId: string, listIds: string[], amount?: string) => Promise<void>;
+  defaultListId?: string; // preselect a target list (trip detail)
+  defaultCatalogItemId?: string; // preselect the Catalog Item (index staples row)
+  onAdd: (catalogItemId: string, listIds: string[], amount?: string) => Promise<string[] | void>;
   isLoading?: boolean;
 }
 ```
 
 Search/select an existing Catalog Item, choose one or many target lists, optionally set an
 amount, and add it as a List Line to every selected list (skipping lists that already have
-a line for that item).
+a line for that item). Used from both the trip detail catalog strip and the index Staples
+catalog panel; when `onAdd` resolves with the list ids it actually added to, the caller
+reports how many lists were affected.
 
 ### DeleteCatalogItemDialog
 
@@ -333,7 +377,7 @@ always cascades to every referencing List Line.
 
 ## Schema Migration
 
-When the `GroceryList` or `GroceryItem` shape needs to change:
+When the `CatalogItem`, `GroceryList`, or `ListLine` shape needs to change:
 
 1. Update the types in `libs/core/src/lib/types/` (`GroceriesVaultPayload`, `CatalogItem`, `GroceryList`, `ListLine`, `GroceryCategoryType`)
 2. Update `GroceryListSchema` in `libs/web-vault/src/lib/vault/groceriesNormalization.ts`

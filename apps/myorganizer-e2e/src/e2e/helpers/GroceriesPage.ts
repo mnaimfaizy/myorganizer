@@ -1,7 +1,7 @@
 import { Page, expect } from '@playwright/test';
 
 /**
- * Page Object Model for Groceries page.
+ * Page Object Model for Groceries Trip Board.
  * Provides a higher-level API for interacting with the groceries feature
  * across multiple test scenarios, reducing code duplication.
  */
@@ -27,22 +27,35 @@ export class GroceriesPage {
       await this.unlockWithPassphrase(passphrase);
     }
 
-    // Wait for the groceries page content to render after unlock
-    await this.page.waitForFunction(
-      () => {
-        const pageContent = document.body.innerText;
-        const hasNewListBtn = !!document
-          .querySelector('button')
-          ?.textContent?.includes('New List');
-        const hasPageTitle =
-          pageContent.includes('Groceries') || pageContent.includes('grocery');
-        return hasNewListBtn || hasPageTitle;
-      },
-      { timeout: 30000 },
-    );
+    await this.waitForGroceriesReady();
 
     await this.page.waitForLoadState('networkidle');
     await this.page.waitForTimeout(1000);
+  }
+
+  /**
+   * Wait for the Trip Board index to be ready after unlock.
+   */
+  async waitForGroceriesReady(): Promise<void> {
+    await expect(
+      this.page.getByRole('heading', { name: 'Active trips' }),
+    ).toBeVisible({ timeout: 30000 });
+  }
+
+  /**
+   * Click "New trip" or the empty-state "Create Your First List" button.
+   */
+  async clickNewTrip(): Promise<void> {
+    const newTrip = this.page.getByRole('button', { name: 'New trip' });
+    const createFirst = this.page.getByRole('button', {
+      name: 'Create Your First List',
+    });
+
+    if (await newTrip.isVisible({ timeout: 2000 }).catch(() => false)) {
+      await newTrip.click();
+    } else {
+      await createFirst.click();
+    }
   }
 
   /**
@@ -120,10 +133,19 @@ export class GroceriesPage {
   }
 
   /**
-   * Create a new grocery list via the UI.
+   * Scope a trip card on the index by its linked trip name.
+   */
+  tripCard(tripName: string) {
+    return this.page.getByRole('article').filter({
+      has: this.page.getByRole('link', { name: tripName, exact: true }),
+    });
+  }
+
+  /**
+   * Create a new grocery trip via the UI.
    */
   async createList(name: string): Promise<void> {
-    await this.page.getByRole('button', { name: 'New List' }).click();
+    await this.clickNewTrip();
 
     const dialog = this.page.getByRole('dialog');
     await expect(dialog).toBeVisible();
@@ -132,41 +154,33 @@ export class GroceriesPage {
     await expect(input).toBeVisible();
     await input.fill(name);
 
-    // Character counter visible
     await expect(this.page.getByText(/\d+ \/ 100/)).toBeVisible();
 
-    // Click the create button
     await this.page.getByRole('button', { name: 'Create List' }).click();
 
-    // Dialog should close
     await expect(this.page.getByRole('dialog')).toHaveCount(0, {
       timeout: 60000,
     });
 
-    // Ensure list is created
-    await expect(this.page.getByText(name)).toBeVisible({ timeout: 60000 });
+    await expect(this.tripCard(name)).toBeVisible({ timeout: 60000 });
   }
 
   /**
-   * Open a grocery list by name and navigate to its items page.
+   * Open a grocery trip by name and navigate to its detail board.
    */
   async openList(listName: string, passphraseParam?: string): Promise<void> {
-    const link = this.page
-      .locator(`a[href*="/dashboard/groceries/"]`)
-      .filter({
-        hasText: listName,
-      })
+    const link = this.tripCard(listName)
+      .getByRole('link', { name: listName, exact: true })
       .first();
 
     const href = await link.getAttribute('href');
     if (!href) {
-      throw new Error(`Could not find link for list "${listName}"`);
+      throw new Error(`Could not find link for trip "${listName}"`);
     }
 
     await this.page.goto(href);
     await this.page.waitForLoadState('networkidle');
 
-    // Check if vault unlock is required
     const passphraseInput = this.page
       .locator('#unlock-passphrase, [data-testid="unlock-passphrase"]')
       .first();
@@ -195,11 +209,11 @@ export class GroceriesPage {
   }
 
   /**
-   * Rename a grocery list.
+   * Rename a grocery trip.
    */
   async renameList(oldName: string, newName: string): Promise<void> {
-    await this.openListContextMenu(oldName);
-    await this.page.getByRole('menuitem', { name: 'Rename' }).click();
+    await this.openTripActionsMenu(oldName);
+    await this.page.getByRole('menuitem', { name: 'Rename trip' }).click();
 
     const dialog = this.page.getByRole('dialog');
     await expect(dialog).toBeVisible();
@@ -209,40 +223,45 @@ export class GroceriesPage {
     await input.fill(newName);
     await this.page.getByRole('button', { name: 'Rename List' }).click();
     await expect(this.page.getByRole('dialog')).toHaveCount(0);
-    await expect(this.page.getByText(newName)).toBeVisible({ timeout: 60000 });
+    await expect(this.tripCard(newName)).toBeVisible({ timeout: 60000 });
   }
 
   /**
-   * Delete a grocery list with confirmation.
+   * Delete a grocery trip with confirmation.
    */
   async deleteList(listName: string): Promise<void> {
-    await this.openListContextMenu(listName);
-    await this.page.getByRole('menuitem', { name: 'Delete' }).click();
+    await this.openTripActionsMenu(listName);
+    await this.page.getByRole('menuitem', { name: 'Delete trip' }).click();
 
     const dialog = this.page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     await this.page.getByRole('button', { name: 'Delete List' }).click();
 
     await expect(this.page.getByRole('dialog')).toHaveCount(0);
-    await expect(this.page.getByText(listName)).toHaveCount(0);
+    await expect(this.tripCard(listName)).toHaveCount(0);
   }
 
   /**
-   * Open the context menu (three-dot dropdown) for a list card.
+   * Open the trip actions menu for a card on the index.
    */
-  private async openListContextMenu(listName: string): Promise<void> {
-    const cardButton = this.page
-      .locator('xpath=//div[@role="article"][contains(., "' + listName + '")]')
-      .first();
-    await cardButton.hover();
-
-    const menuButton = cardButton.locator('button').first();
-    await expect(menuButton).toBeVisible();
-    await menuButton.click();
+  private async openTripActionsMenu(tripName: string): Promise<void> {
+    const card = this.tripCard(tripName).first();
+    await card
+      .getByRole('button', { name: `Trip actions for ${tripName}` })
+      .click();
   }
 
   /**
-   * Add an item to the current list via the Add Item dialog.
+   * Open the row actions menu for a list line on the detail board.
+   */
+  private async openRowActionsMenu(itemName: string): Promise<void> {
+    await this.page
+      .getByRole('button', { name: `More actions for ${itemName}` })
+      .click();
+  }
+
+  /**
+   * Add an item to the current trip via the Add Item dialog.
    */
   async addItem(name: string): Promise<void> {
     await this.page.getByRole('button', { name: 'Add Item' }).click();
@@ -250,7 +269,7 @@ export class GroceriesPage {
     const dialog = this.page.getByRole('dialog');
     await expect(dialog).toBeVisible({ timeout: 30000 });
 
-    const nameInput = this.page.locator('#add-item-name');
+    const nameInput = this.page.getByRole('combobox', { name: /Item Name/ });
     await expect(nameInput).toBeVisible({ timeout: 10000 });
     await nameInput.fill(name);
 
@@ -265,7 +284,69 @@ export class GroceriesPage {
   }
 
   /**
-   * Edit an item with the specified fields.
+   * Edit catalog-level fields (name, category, price, notes).
+   */
+  async editCatalogItem(
+    originalName: string,
+    updates: {
+      name?: string;
+      category?: string;
+      price?: string;
+      notes?: string;
+    },
+  ): Promise<void> {
+    await this.openRowActionsMenu(originalName);
+    await this.page
+      .getByRole('menuitem', { name: 'Edit Catalog Item' })
+      .click();
+
+    const dialog = this.page.getByRole('dialog');
+    await expect(dialog).toBeVisible({ timeout: 30000 });
+
+    if (updates.name) {
+      await this.page.getByLabel('Catalog Item Name').fill(updates.name);
+    }
+
+    if (updates.category) {
+      await dialog.getByRole('button', { name: updates.category }).click();
+    }
+
+    if (updates.price) {
+      await this.page.getByLabel('Default Price').fill(updates.price);
+    }
+
+    if (updates.notes) {
+      await this.page.getByLabel('Notes').fill(updates.notes);
+    }
+
+    await this.page.getByRole('button', { name: 'Save Catalog Item' }).click();
+    await expect(dialog).toHaveCount(0, { timeout: 30000 });
+  }
+
+  /**
+   * Edit list-line fields (amount) via the pencil control.
+   */
+  async editListLine(
+    itemName: string,
+    updates: { amount?: string },
+  ): Promise<void> {
+    await this.page
+      .getByRole('button', { name: `Edit List Line for ${itemName}` })
+      .click();
+
+    const dialog = this.page.getByRole('dialog');
+    await expect(dialog).toBeVisible({ timeout: 30000 });
+
+    if (updates.amount) {
+      await this.page.getByLabel('Quantity / Amount').fill(updates.amount);
+    }
+
+    await this.page.getByRole('button', { name: 'Save List Line' }).click();
+    await expect(dialog).toHaveCount(0, { timeout: 30000 });
+  }
+
+  /**
+   * Edit an item — routes catalog vs list-line updates to the correct dialog.
    */
   async editItem(
     originalName: string,
@@ -277,42 +358,19 @@ export class GroceriesPage {
       notes?: string;
     },
   ): Promise<void> {
-    await this.page
-      .getByRole('button', { name: new RegExp(`Edit ${originalName}`) })
-      .click();
-    const dialog = this.page.getByRole('dialog');
-    await expect(dialog).toBeVisible({ timeout: 30000 });
+    const { amount, ...catalogUpdates } = updates;
+    const hasCatalogUpdates = Object.values(catalogUpdates).some(
+      (value) => value !== undefined,
+    );
 
-    if (updates.name) {
-      const nameInput = this.page.locator('#item-name');
-      await expect(nameInput).toBeVisible({ timeout: 30000 });
-      await nameInput.fill(updates.name);
+    if (hasCatalogUpdates) {
+      await this.editCatalogItem(originalName, catalogUpdates);
     }
 
-    if (updates.category) {
-      await dialog.getByRole('button', { name: updates.category }).click();
+    const currentName = updates.name ?? originalName;
+    if (amount !== undefined) {
+      await this.editListLine(currentName, { amount });
     }
-
-    if (updates.amount) {
-      await this.page.fill('#item-amount', updates.amount);
-    }
-
-    if (updates.price) {
-      await this.page.fill('#item-price', updates.price);
-    }
-
-    if (updates.notes) {
-      await this.page.fill('#item-notes', updates.notes);
-    }
-
-    const saveBtn = dialog
-      .getByRole('button', { name: /Save/ })
-      .filter({ hasText: /Save/ })
-      .first();
-    await expect(saveBtn).toBeVisible({ timeout: 10000 });
-    await saveBtn.click();
-
-    await expect(dialog).toHaveCount(0, { timeout: 30000 });
   }
 
   /**
@@ -337,65 +395,40 @@ export class GroceriesPage {
   }
 
   /**
-   * Delete an item with confirmation.
+   * Remove a list line with the two-step menu confirmation.
    */
   async deleteItem(itemName: string): Promise<void> {
-    const delBtn = this.page.getByRole('button', {
-      name: new RegExp(`Delete ${itemName}`),
-    });
-    await expect(delBtn).toBeVisible({ timeout: 30000 });
-    await delBtn.click();
-
-    const confirmBtn = this.page.getByRole('button', {
-      name: new RegExp(`Confirm delete ${itemName}`),
-    });
-    await expect(confirmBtn).toBeVisible({ timeout: 10000 });
-    await confirmBtn.click();
-
-    await expect(this.page.getByText(itemName)).toHaveCount(0, {
-      timeout: 30000,
-    });
-  }
-
-  /**
-   * Filter items by category using the category tabs.
-   */
-  async filterByCategory(category: string): Promise<void> {
+    await this.openRowActionsMenu(itemName);
+    await this.page.getByRole('menuitem', { name: 'Remove from list' }).click();
     await this.page
-      .getByRole('tab', { name: new RegExp(`Filter by ${category}`) })
+      .getByRole('menuitem', { name: 'Confirm remove line' })
       .click();
+
+    await expect(this.page.getByText(itemName, { exact: true })).toHaveCount(
+      0,
+      { timeout: 30000 },
+    );
   }
 
   /**
-   * Reset category filter to show all items.
-   */
-  async showAllItems(): Promise<void> {
-    await this.page.getByRole('tab', { name: 'Show all items' }).click();
-  }
-
-  /**
-   * Verify that an item is visible on the current list.
+   * Verify that an item is visible on the current trip board.
    */
   async assertItemVisible(itemName: string): Promise<void> {
     await expect(
-      this.page.locator(`[data-testid="item-row-${itemName}"]`).or(
-        this.page
-          .locator('div')
-          .filter({
-            has: this.page.locator(`button[aria-label*="Edit ${itemName}"]`),
-          })
-          .first(),
-      ),
+      this.page.getByRole('checkbox', {
+        name: new RegExp(`Toggle ${itemName}`),
+      }),
     ).toBeVisible({ timeout: 30000 });
   }
 
   /**
-   * Verify that an item is NOT visible on the current list.
+   * Verify that an item is NOT visible on the current trip board.
    */
   async assertItemNotVisible(itemName: string): Promise<void> {
-    await expect(this.page.getByText(itemName)).toHaveCount(0, {
-      timeout: 10000,
-    });
+    await expect(this.page.getByText(itemName, { exact: true })).toHaveCount(
+      0,
+      { timeout: 10000 },
+    );
   }
 
   /**
@@ -420,7 +453,7 @@ export class GroceriesPage {
    */
   async assertPageUsable(): Promise<void> {
     await expect(
-      this.page.getByRole('button', { name: 'New List' }),
+      this.page.getByRole('button', { name: 'New trip' }),
     ).toBeVisible();
   }
 

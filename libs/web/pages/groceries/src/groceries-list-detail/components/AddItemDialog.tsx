@@ -38,6 +38,7 @@ interface AddItemDialogProps {
   onAdd: (values: AddItemFormResult) => Promise<void>;
   isLoading?: boolean;
   catalog?: CatalogItem[];
+  mode?: 'list' | 'catalog';
 }
 
 export function AddItemDialog({
@@ -46,6 +47,7 @@ export function AddItemDialog({
   onAdd,
   isLoading = false,
   catalog = [],
+  mode = 'list',
 }: AddItemDialogProps) {
   const [activeSuggestion, setActiveSuggestion] = useState(0);
   const [selectedCatalogItemId, setSelectedCatalogItemId] = useState<
@@ -175,7 +177,7 @@ export function AddItemDialog({
             <div className="border-b border-border-muted px-6 py-5">
               <div className="mb-1 flex items-start gap-3">
                 <DialogTitle className="text-xl font-semibold text-primary">
-                  Add New Item
+                  {mode === 'catalog' ? 'New staple' : 'Add New Item'}
                 </DialogTitle>
                 <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border border-action-cyan/20 bg-primary-container px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-action-cyan">
                   <Lock className="h-3 w-3" />
@@ -202,6 +204,7 @@ export function AddItemDialog({
                 control={form.control}
                 imageUrl={imageUrl}
                 isLoading={isLoading}
+                showAmount={mode !== 'catalog'}
               />
             </div>
 
@@ -226,7 +229,7 @@ export function AddItemDialog({
                   disabled={isLoading || !form.formState.isValid}
                   className="gap-2"
                 >
-                  Add to List
+                  Add to {mode === 'catalog' ? 'catalog' : 'List'}
                 </Button>
               </div>
             </div>

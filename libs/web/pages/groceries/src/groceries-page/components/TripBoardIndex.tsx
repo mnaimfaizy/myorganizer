@@ -5,22 +5,34 @@ import type {
   GroceryCategoryType,
   GroceryList,
 } from '@myorganizer/core';
-import { Input, Label } from '@myorganizer/web-ui';
+import { Input, Label, useToast } from '@myorganizer/web-ui';
 import { useCallback, useMemo, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import { GroceryListSelector } from './GroceryListSelector';
 import {
-  CATEGORY_ORDER,
-  getCategoryEmoji,
-  getCategoryLabel,
-} from '../../shared/constants/categories';
-import { formatMoney } from '../../shared/utils';
+  AddExistingItemDialog,
+  AddItemDialog,
+  CatalogItemEditDialog,
+} from '../../groceries-list-detail/components';
+import type {
+  AddItemFormResult,
+  CatalogItemEditChanges,
+} from '../../groceries-list-detail/components';
+import type { AddCatalogItemAndLineInput } from '../../shared/hooks';
+import { TripBoardStaples } from './TripBoardStaples';
+import { TripBoardTripCard } from './TripBoardTripCard';
 
 export interface TripBoardIndexProps {
   lists: GroceryList[];
   catalog: CatalogItem[];
   onRenameList: (id: string) => void;
   onDeleteList: (id: string) => void;
+  onAddExistingItem: (
+    catalogItemId: string,
+    listIds: string[],
+    amount?: string,
+  ) => Promise<string[]>;
+  onAddCatalogItem: (input: AddCatalogItemAndLineInput) => Promise<void>;
+  onUpdateCatalogItem: (changes: CatalogItemEditChanges) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -29,12 +41,22 @@ export function TripBoardIndex({
   catalog,
   onRenameList,
   onDeleteList,
+  onAddExistingItem,
+  onAddCatalogItem,
+  onUpdateCatalogItem,
   isLoading = false,
 }: TripBoardIndexProps) {
   const [searchText, setSearchText] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<
     GroceryCategoryType | 'all'
   >('all');
+  const [addExistingCatalogItemId, setAddExistingCatalogItemId] = useState<
+    string | null
+  >(null);
+  const [isAddStapleOpen, setIsAddStapleOpen] = useState(false);
+  const [catalogItemPendingEdit, setCatalogItemPendingEdit] =
+    useState<CatalogItem | null>(null);
+  const { toast } = useToast();
 
   const normalizedSearch = searchText.trim().toLowerCase();
 
@@ -69,11 +91,6 @@ export function TripBoardIndex({
     [catalog, normalizedSearch, selectedCategory],
   );
 
-  const categoriesInUse = useMemo(() => {
-    const categories = new Set(catalog.map((item) => item.category));
-    return CATEGORY_ORDER.filter((category) => categories.has(category));
-  }, [catalog]);
-
   const handleSearchChange = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => {
       setSearchText(event.currentTarget.value);
@@ -81,8 +98,8 @@ export function TripBoardIndex({
     [],
   );
 
-  const createCategoryChangeHandler = useCallback(
-    (category: GroceryCategoryType | 'all') => () => {
+  const handleSelectCategory = useCallback(
+    (category: GroceryCategoryType | 'all') => {
       setSelectedCategory(category);
     },
     [],
@@ -102,6 +119,121 @@ export function TripBoardIndex({
     [onDeleteList],
   );
 
+  const handleAddToTrip = useCallback((catalogItemId: string) => {
+    setAddExistingCatalogItemId(catalogItemId);
+  }, []);
+
+  const handleOpenAddStaple = useCallback(() => {
+    setIsAddStapleOpen(true);
+  }, []);
+
+  const handleCloseAddStaple = useCallback(() => {
+    setIsAddStapleOpen(false);
+  }, []);
+
+  const handleEditCatalogItem = useCallback(
+    (catalogItemId: string) => {
+      setCatalogItemPendingEdit(
+        catalog.find((item) => item.id === catalogItemId) ?? null,
+      );
+    },
+    [catalog],
+  );
+
+  const handleCloseCatalogEdit = useCallback(() => {
+    setCatalogItemPendingEdit(null);
+  }, []);
+
+  const showErrorToast = useCallback(() => {
+    toast({
+      title: 'Error',
+      description: 'Failed to save your changes. Please try again.',
+      variant: 'destructive',
+    });
+  }, [toast]);
+
+  const mapFormResultToCatalogInput = useCallback(
+    (values: AddItemFormResult): AddCatalogItemAndLineInput => ({
+      name: values.name,
+      category: values.category,
+      ...(values.catalogItemId ? { catalogItemId: values.catalogItemId } : {}),
+      ...(values.price !== undefined ? { price: values.price } : {}),
+      ...(values.notes ? { notes: values.notes } : {}),
+      ...(values.imageUrl ? { imageUrl: values.imageUrl } : {}),
+      ...(values.links ? { links: values.links } : {}),
+    }),
+    [],
+  );
+
+  const handleAddCatalogItemSubmit = useCallback(
+    async (values: AddItemFormResult) => {
+      try {
+        await onAddCatalogItem(mapFormResultToCatalogInput(values));
+        toast({
+          title: 'Added to catalog',
+        });
+      } catch (err) {
+        console.error('Failed to add catalog item:', err);
+        showErrorToast();
+        throw err;
+      }
+    },
+    [mapFormResultToCatalogInput, onAddCatalogItem, showErrorToast, toast],
+  );
+
+  const handleUpdateCatalogItemSubmit = useCallback(
+    async (changes: CatalogItemEditChanges) => {
+      try {
+        await onUpdateCatalogItem(changes);
+        setCatalogItemPendingEdit(null);
+      } catch (err) {
+        console.error('Failed to update catalog item:', err);
+        showErrorToast();
+        throw err;
+      }
+    },
+    [onUpdateCatalogItem, showErrorToast],
+  );
+
+  const handleCloseAddExistingDialog = useCallback(() => {
+    setAddExistingCatalogItemId(null);
+  }, []);
+
+  const handleAddExistingSubmit = useCallback(
+    async (catalogItemId: string, listIds: string[], amount?: string) => {
+      try {
+        const addedListIds = await onAddExistingItem(
+          catalogItemId,
+          listIds,
+          amount,
+        );
+
+        if (addedListIds.length === 0) {
+          toast({
+            title: 'Already on every selected list.',
+          });
+        } else if (addedListIds.length === listIds.length) {
+          toast({
+            title: 'Added to lists',
+            description: `Added to ${addedListIds.length} list${addedListIds.length !== 1 ? 's' : ''}.`,
+          });
+        } else {
+          toast({
+            title: 'Added to lists',
+            description: `Added to ${addedListIds.length} of ${listIds.length} lists (already on the rest).`,
+          });
+        }
+
+        return addedListIds;
+      } catch (err) {
+        console.error('Failed to add existing catalog item to lists:', err);
+        showErrorToast();
+        throw err;
+      }
+    },
+    [onAddExistingItem, showErrorToast, toast],
+  );
+
   return (
     <div className="space-y-8">
       <div className="space-y-2">
@@ -115,97 +247,21 @@ export function TripBoardIndex({
         />
       </div>
 
-      <section aria-labelledby="staples-heading" className="space-y-3">
-        <div>
-          <h2
-            id="staples-heading"
-            className="text-lg font-semibold text-on-surface md:text-xl"
-          >
-            Staples
-          </h2>
-          <p className="text-sm text-on-surface-variant">
-            Browse your catalog for the next trip.
-          </p>
-        </div>
-
-        <div
-          className="flex gap-2 overflow-x-auto py-1"
-          role="group"
-          aria-label="Filter staples by category"
-        >
-          <button
-            type="button"
-            aria-label="Show all staples"
-            aria-pressed={selectedCategory === 'all'}
-            onClick={createCategoryChangeHandler('all')}
-            className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${
-              selectedCategory === 'all'
-                ? 'bg-secondary text-on-secondary'
-                : 'bg-secondary-container text-on-secondary-container'
-            }`}
-          >
-            All
-          </button>
-          {categoriesInUse.map((category) => (
-            <button
-              key={category}
-              type="button"
-              aria-label={`Filter staples by ${getCategoryLabel(category)}`}
-              aria-pressed={selectedCategory === category}
-              onClick={createCategoryChangeHandler(category)}
-              className={`flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${
-                selectedCategory === category
-                  ? 'bg-secondary text-on-secondary'
-                  : 'bg-secondary-container text-on-secondary-container'
-              }`}
-            >
-              <span aria-hidden="true">{getCategoryEmoji(category)}</span>
-              {getCategoryLabel(category)}
-            </button>
-          ))}
-        </div>
-
-        {filteredCatalog.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {filteredCatalog.map((item) => (
-              <article
-                key={item.id}
-                className="rounded-lg border border-surface-variant bg-surface-container-lowest p-4"
-              >
-                <div className="flex items-start gap-2">
-                  <span aria-hidden="true">
-                    {getCategoryEmoji(item.category)}
-                  </span>
-                  <div className="min-w-0">
-                    <h3 className="truncate font-medium text-on-surface">
-                      {item.name}
-                    </h3>
-                    <p className="text-sm text-on-surface-variant">
-                      {getCategoryLabel(item.category)}
-                    </p>
-                  </div>
-                </div>
-                {typeof item.price === 'number' && (
-                  <p className="mt-3 text-sm font-semibold text-on-surface">
-                    {formatMoney(item.price)}
-                  </p>
-                )}
-              </article>
-            ))}
-          </div>
-        ) : (
-          <p
-            className="rounded-lg border border-dashed border-outline-variant p-6 text-center text-sm text-on-surface-variant"
-            role="status"
-          >
-            No staples match the current filters.
-          </p>
-        )}
-      </section>
+      <TripBoardStaples
+        catalog={filteredCatalog}
+        allCatalog={catalog}
+        lists={lists}
+        selectedCategory={selectedCategory}
+        onSelectCategory={handleSelectCategory}
+        onAddToTrip={handleAddToTrip}
+        onNewStaple={handleOpenAddStaple}
+        onEditCatalogItem={handleEditCatalogItem}
+        isLoading={isLoading}
+      />
 
       <p
         id="trip-board-results"
-        className="text-sm text-on-surface-variant"
+        className="text-sm text-muted-foreground"
         aria-live="polite"
       >
         Showing {filteredLists.length} of {lists.length} trip
@@ -213,11 +269,43 @@ export function TripBoardIndex({
         {normalizedSearch ? ` matching “${searchText.trim()}”` : ''}
       </p>
 
-      <GroceryListSelector
-        lists={filteredLists}
+      <div className="flex gap-4 overflow-x-auto pb-4">
+        {filteredLists.map((list) => (
+          <TripBoardTripCard
+            key={list.id}
+            list={list}
+            catalog={catalog}
+            onRenameList={handleRenameList}
+            onDeleteList={handleDeleteList}
+            isLoading={isLoading}
+          />
+        ))}
+      </div>
+
+      <AddExistingItemDialog
+        isOpen={addExistingCatalogItemId !== null}
+        onClose={handleCloseAddExistingDialog}
         catalog={catalog}
-        onRenameList={handleRenameList}
-        onDeleteList={handleDeleteList}
+        lists={lists}
+        defaultCatalogItemId={addExistingCatalogItemId ?? undefined}
+        onAdd={handleAddExistingSubmit}
+        isLoading={isLoading}
+      />
+
+      <AddItemDialog
+        isOpen={isAddStapleOpen}
+        onClose={handleCloseAddStaple}
+        onAdd={handleAddCatalogItemSubmit}
+        isLoading={isLoading}
+        catalog={catalog}
+        mode="catalog"
+      />
+
+      <CatalogItemEditDialog
+        item={catalogItemPendingEdit}
+        isOpen={catalogItemPendingEdit !== null}
+        onClose={handleCloseCatalogEdit}
+        onSave={handleUpdateCatalogItemSubmit}
         isLoading={isLoading}
       />
     </div>

@@ -6,17 +6,19 @@ interface TripBoardSpendFooterProps {
 
 export function TripBoardSpendFooter({ summary }: TripBoardSpendFooterProps) {
   return (
-    <div
+    <footer
       role="status"
-      className="sticky bottom-0 z-10 flex items-center justify-between gap-3 border-t border-outline-variant bg-surface px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.06)]"
+      className="sticky bottom-20 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-outline-variant bg-surface-container-lowest px-4 py-3 shadow-md md:bottom-4"
     >
-      <span className="text-sm font-semibold text-on-surface">
-        Known spend {formatMoney(summary.known)}
-      </span>
-      <span className="text-xs text-on-surface-variant">
-        {summary.unpricedCount} item{summary.unpricedCount !== 1 ? 's' : ''}{' '}
-        unpriced
-      </span>
-    </div>
+      <div>
+        <p className="text-xs uppercase tracking-wide text-on-surface-variant">
+          Known spend · unpriced · checked
+        </p>
+        <p className="text-lg font-bold tabular-nums text-on-surface">
+          {formatMoney(summary.known)} · {summary.unpricedCount} ·{' '}
+          {formatMoney(summary.checkedKnown)}
+        </p>
+      </div>
+    </footer>
   );
 }

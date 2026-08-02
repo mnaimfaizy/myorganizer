@@ -1,10 +1,28 @@
 'use client';
 
 import type { CatalogItem, ListLine } from '@myorganizer/core';
-import { Checkbox } from '@myorganizer/web-ui';
-import { Ban, Pencil, Trash2 } from 'lucide-react';
+import {
+  Checkbox,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+  cn,
+} from '@myorganizer/web-ui';
+import {
+  AlertTriangle,
+  Edit2,
+  FileText,
+  Link2,
+  MoreVertical,
+  Trash2,
+} from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { getCategoryEmoji } from '../../shared/constants/categories';
+import {
+  getCategoryEmoji,
+  getCategoryLabel,
+} from '../../shared/constants/categories';
 import { formatMoney } from '../../shared/utils';
 
 interface TripBoardLineRowProps {
@@ -31,7 +49,8 @@ export function TripBoardLineRow({
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
 
   const itemName = catalogItem?.name ?? 'Unknown item';
-  const categoryEmoji = getCategoryEmoji(catalogItem?.category ?? 'other');
+  const category = catalogItem?.category ?? 'other';
+  const categoryEmoji = getCategoryEmoji(category);
   const hasPrice = typeof catalogItem?.price === 'number';
 
   const handleToggle = useCallback(() => {
@@ -52,14 +71,22 @@ export function TripBoardLineRow({
     return () => clearTimeout(timer);
   }, [isConfirmingDelete]);
 
-  const handleDeleteClick = useCallback(() => {
-    if (isConfirmingDelete) {
-      onDeleteLine(line.id);
-      setIsConfirmingDelete(false);
-    } else {
+  const handleRemoveSelect = useCallback(
+    (event: Event) => {
+      if (isConfirmingDelete) {
+        onDeleteLine(line.id);
+        setIsConfirmingDelete(false);
+        return;
+      }
+      event.preventDefault();
       setIsConfirmingDelete(true);
-    }
-  }, [isConfirmingDelete, line.id, onDeleteLine]);
+    },
+    [isConfirmingDelete, line.id, onDeleteLine],
+  );
+
+  const removeLineLabel = isConfirmingDelete
+    ? 'Confirm remove line'
+    : 'Remove from list';
 
   const handleDeleteFromCatalogClick = useCallback(() => {
     if (!catalogItem) return;
@@ -69,112 +96,123 @@ export function TripBoardLineRow({
   return (
     <div
       data-testid={`list-line-${line.id}`}
-      className={`flex items-center gap-3 px-4 py-3 transition-colors ${
-        line.checked ? 'bg-muted/20' : 'bg-card'
-      }`}
+      className={cn(
+        'group flex items-center gap-3 border-b border-outline-variant/60 px-3 py-3 transition-colors last:border-b-0 hover:bg-surface-container-low/60',
+        line.checked && 'bg-surface-container-low/40',
+      )}
     >
       <Checkbox
         checked={line.checked}
         onCheckedChange={handleToggle}
         disabled={isLoading}
         aria-label={`Toggle ${itemName}`}
+        className="h-5 w-5 shrink-0"
       />
 
-      <span className="text-lg shrink-0 leading-none" aria-hidden="true">
+      <span className="shrink-0 text-lg leading-none" aria-hidden="true">
         {categoryEmoji}
       </span>
 
-      <div className="flex flex-col min-w-0 grow">
-        <span
-          className={`text-sm font-semibold leading-snug transition-all ${
-            line.checked
-              ? 'line-through text-muted-foreground'
-              : 'text-foreground'
-          }`}
-        >
-          {itemName}
-        </span>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span
+            className={cn(
+              'font-semibold text-foreground',
+              line.checked && 'text-muted-foreground line-through',
+            )}
+          >
+            {itemName}
+          </span>
+          <span className="rounded-full bg-surface-container-highest px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            {getCategoryLabel(category)}
+          </span>
+        </div>
 
         {(line.amount || hasPrice) && (
-          <div
-            className={`flex items-center gap-1 mt-0.5 transition-all ${
-              line.checked ? 'opacity-50' : ''
-            }`}
+          <p
+            className={cn(
+              'mt-0.5 text-xs text-muted-foreground',
+              line.checked && 'opacity-60',
+            )}
           >
-            {line.amount && (
-              <span className="text-[11px] font-medium text-muted-foreground">
-                {line.amount}
-              </span>
-            )}
-            {line.amount && hasPrice && (
-              <span className="text-[11px] text-muted-foreground select-none">
-                •
-              </span>
-            )}
-            {hasPrice && (
-              <span className="text-[11px] font-medium text-muted-foreground">
-                {formatMoney(catalogItem?.price as number)}
-              </span>
-            )}
-          </div>
+            {line.amount ? `${line.amount}` : ''}
+            {line.amount && hasPrice ? ' · ' : ''}
+            {hasPrice
+              ? formatMoney(catalogItem?.price as number)
+              : !line.amount
+                ? 'unpriced'
+                : ''}
+          </p>
+        )}
+
+        {catalogItem?.notes && (
+          <p className="mt-0.5 flex items-center gap-1 text-[11px] italic text-muted-foreground">
+            <FileText className="h-3 w-3 shrink-0" aria-hidden="true" />
+            {catalogItem.notes.length > 60
+              ? `${catalogItem.notes.slice(0, 60)}…`
+              : catalogItem.notes}
+          </p>
+        )}
+
+        {catalogItem?.links && catalogItem.links.length > 0 && (
+          <p className="mt-0.5 flex items-center gap-1 text-[11px] text-muted-foreground">
+            <Link2 className="h-3 w-3 shrink-0" aria-hidden="true" />
+            {catalogItem.links.length} link
+            {catalogItem.links.length !== 1 ? 's' : ''}
+          </p>
         )}
       </div>
 
-      <button
-        onClick={handleEditLine}
-        disabled={isLoading}
-        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary/10 hover:text-secondary disabled:pointer-events-none disabled:opacity-50"
-        aria-label={`Edit List Line for ${itemName}`}
-        title="Edit List Line"
-        type="button"
-      >
-        <Pencil className="h-4 w-4" />
-      </button>
-
-      {catalogItem && (
+      <div className="flex shrink-0 items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100">
         <button
-          onClick={handleEditCatalog}
-          disabled={isLoading}
-          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary/10 hover:text-secondary disabled:pointer-events-none disabled:opacity-50"
-          aria-label={`Edit Catalog Item ${itemName}`}
-          title="Edit Catalog Item"
           type="button"
-        >
-          <Pencil className="h-4 w-4" />
-        </button>
-      )}
-
-      <button
-        onClick={handleDeleteClick}
-        disabled={isLoading}
-        className={`p-1.5 rounded-lg shrink-0 transition-colors disabled:pointer-events-none disabled:opacity-50 ${
-          isConfirmingDelete
-            ? 'bg-destructive/10 text-destructive'
-            : 'hover:bg-destructive/10 text-muted-foreground hover:text-destructive'
-        }`}
-        aria-label={
-          isConfirmingDelete ? 'Confirm Delete List Line' : 'Delete List Line'
-        }
-        title={
-          isConfirmingDelete ? 'Click again to confirm' : 'Delete List Line'
-        }
-        type="button"
-      >
-        <Trash2 className="h-4 w-4" />
-      </button>
-
-      {catalogItem && (
-        <button
-          onClick={handleDeleteFromCatalogClick}
+          onClick={handleEditLine}
           disabled={isLoading}
-          className="p-1.5 rounded-lg shrink-0 transition-colors disabled:pointer-events-none disabled:opacity-50 hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
-          aria-label={`Delete ${itemName} from catalog`}
-          title="Delete from catalog (all lists)"
-          type="button"
+          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-container-highest hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+          aria-label={`Edit List Line for ${itemName}`}
+          title="Edit List Line"
         >
-          <Ban className="h-4 w-4" />
+          <Edit2 className="h-4 w-4" />
         </button>
-      )}
+
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            disabled={isLoading}
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-container-highest hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            aria-label={`More actions for ${itemName}`}
+          >
+            <MoreVertical className="h-4 w-4" />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-52">
+            {catalogItem && (
+              <DropdownMenuItem onClick={handleEditCatalog}>
+                <Edit2 className="mr-2 h-4 w-4" />
+                Edit Catalog Item
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              className="text-error focus:bg-error/10 focus:text-error"
+              aria-label={removeLineLabel}
+              onSelect={handleRemoveSelect}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {removeLineLabel}
+            </DropdownMenuItem>
+            {catalogItem && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-error focus:bg-error/10 focus:text-error"
+                  onClick={handleDeleteFromCatalogClick}
+                >
+                  <AlertTriangle className="mr-2 h-4 w-4" />
+                  Delete from Catalog
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </div>
   );
 }
