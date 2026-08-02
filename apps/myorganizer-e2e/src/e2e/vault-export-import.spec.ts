@@ -437,34 +437,32 @@ async function setupVaultWithGroceryData(page: Page) {
     await unlockWithPassphrase(page, passphrase);
   }
 
-  // Wait for the groceries page content to render after unlock
-  await page.waitForFunction(
-    () => {
-      const pageContent = document.body.innerText;
-      const hasNewListBtn = !!document
-        .querySelector('button')
-        ?.textContent?.includes('New List');
-      const hasPageTitle =
-        pageContent.includes('Groceries') || pageContent.includes('grocery');
-      return hasNewListBtn || hasPageTitle;
-    },
+  await expect(page.getByRole('heading', { name: 'Active trips' })).toBeVisible(
     { timeout: 30000 },
   );
 
   await page.waitForLoadState('networkidle');
   await page.waitForTimeout(1000);
 
-  // Create a grocery list
-  await page.getByRole('button', { name: 'New List' }).click();
+  const newTrip = page.getByRole('button', { name: 'New trip' });
+  const createFirst = page.getByRole('button', {
+    name: 'Create Your First List',
+  });
+  if (await newTrip.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await newTrip.click();
+  } else {
+    await createFirst.click();
+  }
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByPlaceholder('e.g., Weekly Shopping').fill('Backup Test List');
-
-  // Click the create button
   await page.getByRole('button', { name: 'Create List' }).click();
 
-  // Wait for dialog to close and list to appear
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 60000 });
-  await expect(page.getByText('Backup Test List')).toBeVisible({
+  await expect(
+    page.getByRole('article').filter({
+      has: page.getByRole('link', { name: 'Backup Test List', exact: true }),
+    }),
+  ).toBeVisible({
     timeout: 60000,
   });
 
@@ -740,12 +738,14 @@ test.describe('Vault export/import (E2E)', () => {
       { timeout: 60000 },
     );
 
-    // Navigate to groceries and verify the list was restored
     await gotoStable(page, '/dashboard/groceries');
     await unlockWithPassphrase(page, 'correct horse battery staple');
 
-    // Verify the grocery list is still present
-    await expect(page.getByText('Backup Test List')).toBeVisible({
+    await expect(
+      page.getByRole('article').filter({
+        has: page.getByRole('link', { name: 'Backup Test List', exact: true }),
+      }),
+    ).toBeVisible({
       timeout: 60000,
     });
 

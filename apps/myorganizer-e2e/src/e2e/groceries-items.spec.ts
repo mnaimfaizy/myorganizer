@@ -194,16 +194,7 @@ async function gotoGroceriesAndUnlock(
 
   if (isLocked) await unlockWithPassphrase(page, passphrase);
 
-  await page.waitForFunction(
-    () => {
-      const pageContent = document.body.innerText;
-      const hasNewListBtn = !!document
-        .querySelector('button')
-        ?.textContent?.includes('New List');
-      const hasPageTitle =
-        pageContent.includes('Groceries') || pageContent.includes('grocery');
-      return hasNewListBtn || hasPageTitle;
-    },
+  await expect(page.getByRole('heading', { name: 'Active trips' })).toBeVisible(
     { timeout: 30000 },
   );
 
@@ -211,11 +202,29 @@ async function gotoGroceriesAndUnlock(
   await page.waitForTimeout(1000);
 }
 
+async function clickNewTrip(page: import('@playwright/test').Page) {
+  const newTrip = page.getByRole('button', { name: 'New trip' });
+  const createFirst = page.getByRole('button', {
+    name: 'Create Your First List',
+  });
+  if (await newTrip.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await newTrip.click();
+  } else {
+    await createFirst.click();
+  }
+}
+
+function tripCard(page: import('@playwright/test').Page, tripName: string) {
+  return page.getByRole('article').filter({
+    has: page.getByRole('link', { name: tripName, exact: true }),
+  });
+}
+
 async function createListViaUI(
   page: import('@playwright/test').Page,
   name: string,
 ) {
-  await page.getByRole('button', { name: 'New List' }).click();
+  await clickNewTrip(page);
 
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -228,7 +237,7 @@ async function createListViaUI(
 
   await page.getByRole('button', { name: 'Create List' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 60000 });
-  await expect(page.getByText(name)).toBeVisible({ timeout: 60000 });
+  await expect(tripCard(page, name)).toBeVisible({ timeout: 60000 });
 }
 
 async function openListByName(
@@ -236,14 +245,8 @@ async function openListByName(
   listName: string,
   passphraseParam?: string,
 ) {
-  // Find the list ID from the page content by looking for the list name
-  // Then navigate directly to the list items page
-  // We'll extract the URL from the link that contains the list name
-  const link = page
-    .locator(`a[href*="/dashboard/groceries/"]`)
-    .filter({
-      hasText: listName,
-    })
+  const link = tripCard(page, listName)
+    .getByRole('link', { name: listName, exact: true })
     .first();
 
   // Get the href and navigate to it
@@ -290,26 +293,103 @@ async function addItemViaDialog(
   page: import('@playwright/test').Page,
   name: string,
 ) {
-  // Click the "Add Item" button to open the Add New Item dialog
   await page.getByRole('button', { name: 'Add Item' }).click();
 
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible({ timeout: 30000 });
 
-  const nameInput = page.locator('#add-item-name');
+  const nameInput = page.getByRole('combobox', { name: /Item Name/ });
   await expect(nameInput).toBeVisible({ timeout: 10000 });
   await nameInput.fill(name);
 
-  // Click "Add to List" to submit
   const addBtn = dialog.getByRole('button', { name: 'Add to List' });
   await expect(addBtn).toBeEnabled({ timeout: 10000 });
   await addBtn.click();
 
-  // Wait for dialog to close and item to appear in the list
   await expect(dialog).toHaveCount(0, { timeout: 30000 });
   await expect(page.getByText(name, { exact: true })).toBeVisible({
     timeout: 30000,
   });
+}
+
+async function openRowActionsMenu(
+  page: import('@playwright/test').Page,
+  itemName: string,
+) {
+  await page
+    .getByRole('button', { name: `More actions for ${itemName}` })
+    .click();
+}
+
+async function editCatalogItemViaMenu(
+  page: import('@playwright/test').Page,
+  originalName: string,
+  updates: {
+    name?: string;
+    category?: string;
+    price?: string;
+    notes?: string;
+  },
+) {
+  await openRowActionsMenu(page, originalName);
+  await page.getByRole('menuitem', { name: 'Edit Catalog Item' }).click();
+
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible({ timeout: 30000 });
+
+  if (updates.name) {
+    await page.getByLabel('Catalog Item Name').fill(updates.name);
+  }
+  if (updates.category) {
+    await dialog.getByRole('button', { name: updates.category }).click();
+  }
+  if (updates.price) {
+    await page.getByLabel('Default Price').fill(updates.price);
+  }
+  if (updates.notes) {
+    await page.getByLabel('Notes').fill(updates.notes);
+  }
+
+  await page.getByRole('button', { name: 'Save Catalog Item' }).click();
+  await expect(dialog).toHaveCount(0, { timeout: 30000 });
+}
+
+async function editListLineViaPencil(
+  page: import('@playwright/test').Page,
+  itemName: string,
+  updates: { amount?: string },
+) {
+  await page
+    .getByRole('button', { name: `Edit List Line for ${itemName}` })
+    .click();
+
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toBeVisible({ timeout: 30000 });
+
+  if (updates.amount) {
+    await page.getByLabel('Quantity / Amount').fill(updates.amount);
+  }
+
+  await page.getByRole('button', { name: 'Save List Line' }).click();
+  await expect(dialog).toHaveCount(0, { timeout: 30000 });
+}
+
+async function removeLineViaMenu(
+  page: import('@playwright/test').Page,
+  itemName: string,
+) {
+  await openRowActionsMenu(page, itemName);
+  await page.getByRole('menuitem', { name: 'Remove from list' }).click();
+  await page.getByRole('menuitem', { name: 'Confirm remove line' }).click();
+}
+
+async function assertItemRowVisible(
+  page: import('@playwright/test').Page,
+  itemName: string,
+) {
+  await expect(
+    page.getByRole('checkbox', { name: new RegExp(`Toggle ${itemName}`) }),
+  ).toBeVisible({ timeout: 30000 });
 }
 
 test.describe('Groceries Items (E2E)', () => {
@@ -351,33 +431,16 @@ test.describe('Groceries Items (E2E)', () => {
     // Add item via dialog
     await addItemViaDialog(page, 'Organic Bananas');
 
-    // Open edit dialog by clicking the edit button using aria-label
-    await page.getByRole('button', { name: /Edit Organic Bananas/ }).click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible({ timeout: 30000 });
+    await editCatalogItemViaMenu(page, 'Organic Bananas', {
+      name: 'Organic Bananas - Ripe',
+      category: 'Produce',
+      price: '3.50',
+      notes: 'Choose ripe ones',
+    });
+    await editListLineViaPencil(page, 'Organic Bananas - Ripe', {
+      amount: '1 dozen',
+    });
 
-    // Update name - wait for the form to fully render
-    const nameInput = page.locator('#item-name');
-    await expect(nameInput).toBeVisible({ timeout: 30000 });
-    await nameInput.fill('Organic Bananas - Ripe');
-
-    // Select Category: Produce — click the icon grid button
-    await dialog.getByRole('button', { name: 'Produce' }).click();
-
-    // Price and amount and notes
-    await page.fill('#item-amount', '1 dozen');
-    await page.fill('#item-price', '3.50');
-    await page.fill('#item-notes', 'Choose ripe ones');
-
-    // Save - find the button with text "Save Changes"
-    const saveBtn = dialog
-      .getByRole('button', { name: /Save|Submit/ })
-      .filter({ hasText: /Save/ })
-      .first();
-    await expect(saveBtn).toBeVisible({ timeout: 10000 });
-    await saveBtn.click();
-
-    // Assert updated name and price visible
     await expect(page.getByText('Organic Bananas - Ripe')).toBeVisible({
       timeout: 30000,
     });
@@ -407,137 +470,16 @@ test.describe('Groceries Items (E2E)', () => {
     const items = ['Milk', 'Eggs', 'Bread'];
     for (const it of items) await addItemViaDialog(page, it);
 
-    // Verify visible - wait for list items to render (not notifications)
-    // Use getByRole to find item rows specifically
-    for (const it of items) {
-      await expect(
-        page.locator(`[data-testid="item-row-${it}"]`).or(
-          page
-            .locator('div')
-            .filter({ has: page.locator(`button[aria-label*="Edit ${it}"]`) })
-            .first(),
-        ),
-      ).toBeVisible({ timeout: 30000 });
-    }
+    for (const it of items) await assertItemRowVisible(page, it);
 
-    // Reload and re-open list to verify persistence
     await page.reload();
     await gotoGroceriesAndUnlock(page, passphrase);
-    await expect(page.getByText('Multiple Items List')).toBeVisible({
+    await expect(tripCard(page, 'Multiple Items List')).toBeVisible({
       timeout: 60000,
     });
     await openListByName(page, 'Multiple Items List', passphrase);
 
-    for (const it of items)
-      await expect(
-        page.locator(`[data-testid="item-row-${it}"]`).or(
-          page
-            .locator('div')
-            .filter({ has: page.locator(`button[aria-label*="Edit ${it}"]`) })
-            .first(),
-        ),
-      ).toBeVisible({ timeout: 60000 });
-  });
-
-  test('3 — Filter by Category', async ({ page }, testInfo) => {
-    test.setTimeout(120000);
-
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
-    await gotoStable(page, '/dashboard/addresses');
-    await page.fill('#setup-passphrase', passphrase);
-    await page.fill('#setup-confirm', passphrase);
-    await page.getByRole('button', { name: 'Create encrypted vault' }).click();
-    await page.waitForFunction(
-      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-      undefined,
-      { timeout: 60000 },
-    );
-    await gotoGroceriesAndUnlock(page, passphrase);
-
-    await createListViaUI(page, 'Filter List');
-    await openListByName(page, 'Filter List', passphrase);
-
-    // Add three items
-    await addItemViaDialog(page, 'Cheddar Cheese');
-    await addItemViaDialog(page, 'Organic Apples');
-    await addItemViaDialog(page, 'Greek Yogurt');
-
-    // Set categories: Cheddar -> Dairy, Apples -> Produce, Yogurt -> Dairy
-    await page.getByRole('button', { name: /Edit Cheddar Cheese/ }).click();
-    let dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible({ timeout: 30000 });
-    await page.waitForLoadState('networkidle');
-
-    // Set category to Dairy — click icon grid button
-    await dialog.getByRole('button', { name: 'Dairy' }).click();
-    await page.waitForTimeout(300);
-
-    let saveBtn = dialog.getByRole('button', { name: /Save/ });
-    await expect(saveBtn).toBeEnabled({ timeout: 30000 });
-    await saveBtn.click();
-    await page.waitForLoadState('networkidle');
-
-    await page.getByRole('button', { name: /Edit Organic Apples/ }).click();
-    dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible({ timeout: 30000 });
-    await page.waitForLoadState('networkidle');
-
-    // Set category to Produce — click icon grid button
-    await dialog.getByRole('button', { name: 'Produce' }).click();
-    await page.waitForTimeout(300);
-
-    saveBtn = dialog.getByRole('button', { name: /Save/ });
-    await expect(saveBtn).toBeEnabled({ timeout: 30000 });
-    await saveBtn.click();
-    await page.waitForLoadState('networkidle');
-
-    await page.getByRole('button', { name: /Edit Greek Yogurt/ }).click();
-    dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible({ timeout: 30000 });
-    await page.waitForLoadState('networkidle');
-
-    // Set category to Dairy — click icon grid button
-    await dialog.getByRole('button', { name: 'Dairy' }).click();
-    await page.waitForTimeout(300);
-
-    saveBtn = dialog.getByRole('button', { name: /Save/ });
-    await expect(saveBtn).toBeEnabled({ timeout: 30000 });
-    await saveBtn.click();
-    await page.waitForLoadState('networkidle');
-
-    // Click category filter: Dairy (tabs use role="tab" with aria-label)
-    await page.getByRole('tab', { name: 'Filter by Dairy' }).click();
-    await expect(
-      page.locator(`[data-testid="item-row-Cheddar Cheese"]`).or(
-        page
-          .locator('div')
-          .filter({
-            has: page.locator(`button[aria-label*="Edit Cheddar Cheese"]`),
-          })
-          .first(),
-      ),
-    ).toBeVisible({ timeout: 30000 });
-    await expect(
-      page.locator(`[data-testid="item-row-Greek Yogurt"]`).or(
-        page
-          .locator('div')
-          .filter({
-            has: page.locator(`button[aria-label*="Edit Greek Yogurt"]`),
-          })
-          .first(),
-      ),
-    ).toBeVisible({ timeout: 30000 });
-    await expect(page.getByText('Organic Apples')).toHaveCount(0, {
-      timeout: 10000,
-    });
-
-    // Click All to reset
-    await page.getByRole('tab', { name: 'Show all items' }).click();
-    await expect(page.getByText('Organic Apples')).toBeVisible({
-      timeout: 30000,
-    });
+    for (const it of items) await assertItemRowVisible(page, it);
   });
 
   test('4 — Edit Item (name, category, price)', async ({ page }, testInfo) => {
@@ -561,17 +503,11 @@ test.describe('Groceries Items (E2E)', () => {
     await openListByName(page, 'Edit Flow List', passphrase);
 
     await addItemViaDialog(page, 'Cherry Tomatoes');
-    await page.getByRole('button', { name: /Edit Cherry Tomatoes/ }).click();
-    const dialog = page.getByRole('dialog');
-    await expect(dialog).toBeVisible({ timeout: 30000 });
-
-    await page.fill('#item-name', 'Cherry Tomatoes - Sweet');
-    await page.waitForLoadState('networkidle');
-
-    // Set category to Produce — click icon grid button
-    await dialog.getByRole('button', { name: 'Produce' }).click();
-    await page.fill('#item-price', '2.99');
-    await dialog.getByRole('button', { name: /Save/ }).click();
+    await editCatalogItemViaMenu(page, 'Cherry Tomatoes', {
+      name: 'Cherry Tomatoes - Sweet',
+      category: 'Produce',
+      price: '2.99',
+    });
 
     await expect(page.getByText('Cherry Tomatoes - Sweet')).toBeVisible({
       timeout: 30000,
@@ -610,8 +546,7 @@ test.describe('Groceries Items (E2E)', () => {
     // Visual change: name should have line-through class
     // The line-through is applied to the span containing the item name
     const nameElement = page.getByText('Cucumber', { exact: true });
-    const elementClass = await nameElement.getAttribute('class');
-    await page.waitForTimeout(500); // Wait for UI to update
+    await page.waitForTimeout(500);
     const updatedClass = await nameElement.getAttribute('class');
     expect(updatedClass?.includes('line-through')).toBeTruthy();
   });
@@ -637,20 +572,11 @@ test.describe('Groceries Items (E2E)', () => {
     await openListByName(page, 'Delete Item List', passphrase);
 
     await addItemViaDialog(page, 'Chips');
+    await removeLineViaMenu(page, 'Chips');
 
-    // Click delete button once to enable confirm state
-    const delBtn = page.getByRole('button', { name: /Delete Chips/ });
-    await expect(delBtn).toBeVisible({ timeout: 30000 });
-    await delBtn.click();
-
-    // Click delete button again to confirm (aria-label changes to "Confirm delete")
-    const confirmBtn = page.getByRole('button', {
-      name: /Confirm delete Chips/,
+    await expect(page.getByText('Chips', { exact: true })).toHaveCount(0, {
+      timeout: 30000,
     });
-    await expect(confirmBtn).toBeVisible({ timeout: 10000 });
-    await confirmBtn.click();
-
-    await expect(page.getByText('Chips')).toHaveCount(0, { timeout: 30000 });
   });
 
   test('7 — Full CRUD Journey', async ({ page }, testInfo) => {
@@ -673,32 +599,13 @@ test.describe('Groceries Items (E2E)', () => {
     await createListViaUI(page, 'Full CRUD List');
     await openListByName(page, 'Full CRUD List', passphrase);
 
-    // Create
     await addItemViaDialog(page, 'Alpha');
 
-    // Edit
-    await page.getByRole('button', { name: /Edit Alpha/ }).click();
-    const editDialog = page.getByRole('dialog');
-    await expect(editDialog).toBeVisible({ timeout: 30000 });
-
-    // Clear name field using keyboard and type new name
-    const nameField = editDialog.locator('#item-name');
-    await nameField.click();
-    await nameField.press('Control+A');
-    await nameField.type('Alpha v2');
-    await nameField.blur();
-    await page.waitForTimeout(300);
-
-    const editSaveBtn = editDialog.getByRole('button', { name: /Save/ });
-    await expect(editSaveBtn).toBeEnabled({ timeout: 30000 });
-    await editSaveBtn.click();
+    await editCatalogItemViaMenu(page, 'Alpha', {
+      name: 'Alpha v2',
+    });
     await expect(page.getByText('Alpha v2')).toBeVisible({ timeout: 30000 });
 
-    // Filter (All should show it)
-    await page.getByRole('tab', { name: 'Show all items' }).click();
-    await expect(page.getByText('Alpha v2')).toBeVisible({ timeout: 30000 });
-
-    // Check then uncheck
     const chk = page.getByRole('checkbox', { name: /Toggle Alpha v2/ });
     await expect(chk).toBeVisible({ timeout: 30000 });
     await chk.check();
@@ -706,10 +613,10 @@ test.describe('Groceries Items (E2E)', () => {
     await chk.uncheck();
     await expect(chk).not.toBeChecked();
 
-    // Delete
-    await page.getByRole('button', { name: /Delete Alpha v2/ }).click();
-    await page.getByRole('button', { name: /Confirm delete Alpha v2/ }).click();
-    await expect(page.getByText('Alpha v2')).toHaveCount(0, { timeout: 30000 });
+    await removeLineViaMenu(page, 'Alpha v2');
+    await expect(page.getByText('Alpha v2')).toHaveCount(0, {
+      timeout: 30000,
+    });
   });
 
   test('8 — Persistence & Reload', async ({ page }, testInfo) => {
@@ -735,10 +642,9 @@ test.describe('Groceries Items (E2E)', () => {
     await addItemViaDialog(page, 'Persistent One');
     await addItemViaDialog(page, 'Persistent Two');
 
-    // Reload and unlock then re-open
     await page.reload();
     await gotoGroceriesAndUnlock(page, passphrase);
-    await expect(page.getByText('Persistence List')).toBeVisible({
+    await expect(tripCard(page, 'Persistence List')).toBeVisible({
       timeout: 60000,
     });
     await openListByName(page, 'Persistence List', passphrase);
@@ -774,25 +680,22 @@ test.describe('Groceries Items (E2E)', () => {
     await openListByName(page, 'Validation List', passphrase);
 
     await addItemViaDialog(page, 'To Be Invalid');
-    await page.getByRole('button', { name: /Edit To Be Invalid/ }).click();
+    await openRowActionsMenu(page, 'To Be Invalid');
+    await page.getByRole('menuitem', { name: 'Edit Catalog Item' }).click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible({ timeout: 30000 });
 
-    // Clear the required name field and submit — proves validation blocks save
-    const nameInput = page.locator('#item-name');
+    const nameInput = page.getByLabel('Catalog Item Name');
     await expect(nameInput).toBeVisible({ timeout: 10000 });
     await nameInput.fill('');
     await nameInput.blur();
 
-    // Click Save regardless of disabled state to trigger submit-time validation
-    const saveBtn = dialog.getByRole('button', { name: /Save/ });
+    const saveBtn = dialog.getByRole('button', { name: 'Save Catalog Item' });
     await saveBtn.click({ force: true });
 
-    // Validation error must appear, proving submission was blocked
     await expect(dialog.getByText('Item name is required')).toBeVisible({
       timeout: 10000,
     });
-    // Dialog remains open — onSave was not called
     await expect(dialog).toBeVisible();
   });
 });

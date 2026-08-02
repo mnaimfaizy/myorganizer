@@ -7,6 +7,12 @@
 
 /** Mocking rule: place jest.mock calls before any imports */
 
+const mockGroceryListView = jest.fn(
+  (props: { list: { name: string; id: string } }) => (
+    <div data-testid="grocery-list-view">{props.list.name}</div>
+  ),
+);
+
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(() => ({ push: jest.fn() })),
 }));
@@ -35,9 +41,8 @@ jest.mock('../../shared/hooks', () => ({
 }));
 
 jest.mock('../components', () => ({
-  GroceryListView: ({ list }: Record<string, unknown>) => (
-    <div data-testid="grocery-list-view">{(list as { name: string }).name}</div>
-  ),
+  GroceryListView: (props: { list: { name: string; id: string } }) =>
+    mockGroceryListView(props),
 }));
 
 jest.mock('lucide-react', () => ({
@@ -86,6 +91,25 @@ describe('GroceriesListDetailClient', () => {
   }
 
   const masterKeyBytes = new Uint8Array(32);
+
+  function makeVaultState(overrides: Record<string, unknown> = {}) {
+    return {
+      loading: false,
+      lists: [] as GroceryList[],
+      catalog: [],
+      toggleLineChecked: jest.fn(),
+      uncheckAllLines: jest.fn(),
+      removeCheckedLines: jest.fn(),
+      restoreLines: jest.fn(),
+      deleteListLine: jest.fn(),
+      addCatalogItemAndLine: jest.fn(),
+      addExistingCatalogItemToLists: jest.fn(),
+      deleteCatalogItem: jest.fn(),
+      updateCatalogItem: jest.fn(),
+      updateListLine: jest.fn(),
+      ...overrides,
+    };
+  }
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -192,11 +216,7 @@ describe('GroceriesListDetailClient', () => {
     });
 
     it('should render back link with correct href when list not found', () => {
-      mockUseGroceriesVault.mockReturnValue({
-        loading: false,
-        lists: [],
-        persistLists: jest.fn(),
-      });
+      mockUseGroceriesVault.mockReturnValue(makeVaultState());
 
       render(
         <GroceriesListDetailClient
@@ -210,6 +230,7 @@ describe('GroceriesListDetailClient', () => {
       });
       expect(backLink).toBeInTheDocument();
       expect(backLink).toHaveAttribute('href', '/dashboard/groceries');
+      expect(screen.queryByTestId('grocery-list-view')).not.toBeInTheDocument();
     });
 
     it('should not render GroceryListView when list not found', () => {
@@ -289,13 +310,9 @@ describe('GroceriesListDetailClient', () => {
       expect(screen.queryByText('List not found')).not.toBeInTheDocument();
     });
 
-    it('should render back link when list is found', () => {
+    it('does not render its own back link when the list is found', () => {
       const list = makeGroceryList('list-1', 'Vegetables', 3);
-      mockUseGroceriesVault.mockReturnValue({
-        loading: false,
-        lists: [list],
-        persistLists: jest.fn(),
-      });
+      mockUseGroceriesVault.mockReturnValue(makeVaultState({ lists: [list] }));
 
       render(
         <GroceriesListDetailClient
@@ -304,11 +321,51 @@ describe('GroceriesListDetailClient', () => {
         />,
       );
 
-      const backLink = screen.getByRole('link', {
-        name: /back to groceries/i,
-      });
-      expect(backLink).toBeInTheDocument();
-      expect(backLink).toHaveAttribute('href', '/dashboard/groceries');
+      expect(screen.getByTestId('grocery-list-view')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: /back to groceries/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('passes vault catalog, all lists, and lifecycle handlers to GroceryListView', () => {
+      const list = makeGroceryList('list-1', 'Vegetables', 3);
+      const catalog = [
+        {
+          id: 'catalog-0',
+          name: 'Tomatoes',
+          category: 'produce' as const,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
+      const vault = makeVaultState({ lists: [list], catalog });
+      mockUseGroceriesVault.mockReturnValue(vault);
+
+      render(
+        <GroceriesListDetailClient
+          listId="list-1"
+          masterKeyBytes={masterKeyBytes}
+        />,
+      );
+
+      expect(mockGroceryListView).toHaveBeenCalledWith(
+        expect.objectContaining({
+          list,
+          catalog,
+          allLists: [list],
+          onClose: expect.any(Function),
+          onToggleChecked: expect.any(Function),
+          onUncheckAll: expect.any(Function),
+          onRemoveChecked: expect.any(Function),
+          onRestoreLines: expect.any(Function),
+          onDeleteLine: expect.any(Function),
+          onAddItem: expect.any(Function),
+          onAddExistingItem: expect.any(Function),
+          onDeleteFromCatalog: expect.any(Function),
+          onUpdateCatalogItem: expect.any(Function),
+          onUpdateListLine: expect.any(Function),
+        }),
+      );
     });
 
     it('should find correct list by ID when multiple lists exist', () => {

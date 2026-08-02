@@ -5,9 +5,9 @@
     a basic level, plus the NEW catalog-membership wiring: Add From Catalog
     (AddExistingItemDialog) and Delete From Catalog (DeleteCatalogItemDialog),
     including the affectedListCount computation and toast/close behavior.
-  - Mocks the dialog/toolbar/row child components with lightweight testid
-    stubs so this suite is a pure wiring test, not a re-test of those
-    components' own internal behavior (already covered in their own specs).
+  - Uses real TripBoardLifecycleToolbar, TripBoardCatalogAddStrip, and
+    TripBoardLineRow children for lifecycle wiring; dialog components remain
+    stubbed so this suite focuses on GroceryListView orchestration.
   - Mocks @myorganizer/web-ui's useToast/ToastAction the same way sibling
     vault-adjacent specs in this repo do (see migrationRunner.spec.tsx).
 */
@@ -15,11 +15,137 @@
 /** Mocking rule: place jest.mock calls before any imports */
 const mockToast = jest.fn();
 
-jest.mock('@myorganizer/web-ui', () => ({
-  useToast: () => ({ toast: mockToast }),
-  ToastAction: ({ children, onClick }: any) => (
-    <button onClick={onClick}>{children}</button>
+jest.mock('next/link', () => ({
+  __esModule: true,
+  default: ({
+    href,
+    children,
+    ...rest
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
   ),
+}));
+
+jest.mock('@myorganizer/web-ui', () => {
+  const React = require('react') as typeof import('react');
+
+  const MenuContext = React.createContext<{
+    isOpen: boolean;
+    toggle: (next?: boolean) => void;
+  } | null>(null);
+
+  function DropdownMenu({ open, onOpenChange, children }: any) {
+    const [isOpen, setIsOpen] = React.useState(Boolean(open));
+
+    React.useEffect(() => setIsOpen(Boolean(open)), [open]);
+
+    const toggle = React.useCallback(
+      (next?: boolean) => {
+        const n = typeof next === 'boolean' ? next : !isOpen;
+        setIsOpen(n);
+        onOpenChange?.(n);
+      },
+      [isOpen, onOpenChange],
+    );
+
+    return (
+      <MenuContext.Provider value={{ isOpen, toggle }}>
+        <div>{children}</div>
+      </MenuContext.Provider>
+    );
+  }
+
+  function DropdownMenuTrigger({ onClick, children, ...rest }: any) {
+    const ctx = React.useContext(MenuContext);
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          onClick?.(e);
+          ctx?.toggle?.();
+        }}
+        {...rest}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  function DropdownMenuContent({ children }: any) {
+    const ctx = React.useContext(MenuContext);
+    if (!ctx?.isOpen) return null;
+    return <div data-testid="dropdown-content">{children}</div>;
+  }
+
+  function DropdownMenuItem({ onClick, onSelect, children, ...rest }: any) {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          if (onSelect) {
+            onSelect({
+              preventDefault: jest.fn(),
+            });
+          }
+          onClick?.(e);
+        }}
+        {...rest}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  function DropdownMenuSeparator() {
+    return <hr data-testid="dropdown-separator" />;
+  }
+
+  return {
+    useToast: () => ({ toast: mockToast }),
+    ToastAction: ({ children, onClick }: any) => (
+      <button onClick={onClick}>{children}</button>
+    ),
+    Button: ({ children, onClick, disabled }: any) => (
+      <button type="button" onClick={onClick} disabled={disabled}>
+        {children}
+      </button>
+    ),
+    Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => (
+      <input {...props} />
+    ),
+    Checkbox: ({ checked, onCheckedChange, disabled, ...rest }: any) => (
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={() => onCheckedChange?.(!checked)}
+        disabled={disabled}
+        {...rest}
+      />
+    ),
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
+  };
+});
+
+jest.mock('lucide-react', () => ({
+  ArrowLeft: () => <span data-testid="arrow-left-icon" />,
+  Plus: () => <span data-testid="plus-icon" />,
+  Trash2: () => <span data-testid="trash-icon" />,
+  ListPlus: () => <span data-testid="list-plus-icon" />,
+  AlertTriangle: () => <span data-testid="alert-icon" />,
+  Edit2: () => <span data-testid="edit-icon" />,
+  FileText: () => <span data-testid="file-text-icon" />,
+  Link2: () => <span data-testid="link-icon" />,
+  MoreVertical: () => <span data-testid="more-icon" />,
 }));
 
 jest.mock('../components/AddItemDialog', () => ({
@@ -137,92 +263,6 @@ jest.mock('../components/ListLineEditDialog', () => ({
       </div>
     ) : null,
 }));
-
-jest.mock('../components/TripBoardLifecycleToolbar', () => ({
-  TripBoardLifecycleToolbar: ({
-    checkedCount,
-    onUncheckAll,
-    onRemoveChecked,
-    onAddItem,
-    onAddExisting,
-    isLoading,
-  }: any) => (
-    <div data-testid="toolbar" data-checked-count={checkedCount}>
-      <button data-testid="toolbar-add-item" onClick={onAddItem}>
-        Add Item
-      </button>
-      <button data-testid="toolbar-add-existing" onClick={onAddExisting}>
-        Add From Catalog
-      </button>
-      <button
-        data-testid="toolbar-uncheck-all"
-        onClick={onUncheckAll}
-        disabled={isLoading}
-      >
-        Uncheck All
-      </button>
-      <button
-        data-testid="toolbar-remove-checked"
-        onClick={onRemoveChecked}
-        disabled={isLoading}
-      >
-        Remove Checked
-      </button>
-    </div>
-  ),
-}));
-
-jest.mock('../components/TripBoardLineRow', () => ({
-  TripBoardLineRow: ({
-    line,
-    catalogItem,
-    onToggleChecked,
-    onDeleteLine,
-    onDeleteFromCatalog,
-    onEditListLine,
-    onEditCatalogItem,
-    isLoading,
-  }: any) => (
-    <div data-testid={`line-row-${line.id}`} data-loading={isLoading}>
-      <span>{catalogItem?.name ?? 'Unknown item'}</span>
-      <button
-        data-testid={`toggle-${line.id}`}
-        onClick={() => onToggleChecked(line.id)}
-      >
-        Toggle
-      </button>
-      <button
-        data-testid={`delete-line-${line.id}`}
-        onClick={() => onDeleteLine(line.id)}
-      >
-        Delete Line
-      </button>
-      <button
-        data-testid={`edit-line-${line.id}`}
-        onClick={() => onEditListLine(line.id)}
-      >
-        Edit Line
-      </button>
-      {catalogItem && (
-        <>
-          <button
-            data-testid={`delete-from-catalog-${line.id}`}
-            onClick={() => onDeleteFromCatalog(catalogItem.id)}
-          >
-            Delete From Catalog
-          </button>
-          <button
-            data-testid={`edit-catalog-${line.id}`}
-            onClick={() => onEditCatalogItem(catalogItem.id)}
-          >
-            Edit Catalog
-          </button>
-        </>
-      )}
-    </div>
-  ),
-}));
-
 import type { CatalogItem, GroceryList, ListLine } from '@myorganizer/core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
@@ -296,7 +336,28 @@ describe('GroceryListView', () => {
   });
 
   /* ============================================
-     Basic trip lifecycle wiring (first test file for this component)
+     Trip board header
+     ============================================ */
+
+  it('renders the back link in the trip board header', () => {
+    const list = makeList('list1', 'Weekly');
+
+    render(
+      <GroceryListView
+        list={list}
+        catalog={[]}
+        allLists={[list]}
+        {...makeBaseProps()}
+      />,
+    );
+
+    expect(
+      screen.getByRole('link', { name: /back to groceries/i }),
+    ).toHaveAttribute('href', '/dashboard/groceries');
+  });
+
+  /* ============================================
+     Basic trip lifecycle wiring
      ============================================ */
 
   it('toggles a line via TripBoardLineRow wiring', async () => {
@@ -314,7 +375,7 @@ describe('GroceryListView', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('toggle-ln1'));
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Toggle Milk' }));
 
     await waitFor(() => {
       expect(props.onToggleChecked).toHaveBeenCalledWith('list1', 'ln1');
@@ -336,7 +397,7 @@ describe('GroceryListView', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('toolbar-uncheck-all'));
+    fireEvent.click(screen.getByRole('button', { name: 'Uncheck All' }));
 
     await waitFor(() => {
       expect(props.onUncheckAll).toHaveBeenCalledWith('list1');
@@ -358,14 +419,14 @@ describe('GroceryListView', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('toolbar-remove-checked'));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Checked (1)' }));
 
     await waitFor(() => {
       expect(props.onRemoveChecked).toHaveBeenCalledWith('list1');
     });
   });
 
-  it('deletes a line via TripBoardLineRow wiring', async () => {
+  it('deletes a line via TripBoardLineRow two-click confirm wiring without reopening the menu', async () => {
     const catalogItem = makeCatalogItem('c1', 'Milk');
     const line = makeLine('ln1', 'c1');
     const list = makeList('list1', 'Weekly', [line]);
@@ -380,7 +441,19 @@ describe('GroceryListView', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('delete-line-ln1'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'More actions for Milk' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Remove from list' }));
+
+    expect(props.onDeleteLine).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('button', { name: 'Confirm remove line' }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Confirm remove line' }),
+    );
 
     await waitFor(() => {
       expect(props.onDeleteLine).toHaveBeenCalledWith('list1', 'ln1');
@@ -388,10 +461,10 @@ describe('GroceryListView', () => {
   });
 
   /* ============================================
-     NEW: Add From Catalog (AddExistingItemDialog) wiring
+     Catalog add strip and multi-list dialog wiring
      ============================================ */
 
-  it('opens AddExistingItemDialog from the toolbar and submits to onAddExistingItem, then toasts and closes', async () => {
+  it('opens AddExistingItemDialog from the catalog strip multi-list entry', async () => {
     const list = makeList('list1', 'Weekly');
     const props = makeBaseProps();
 
@@ -403,7 +476,77 @@ describe('GroceryListView', () => {
       screen.queryByTestId('add-existing-item-dialog'),
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('toolbar-add-existing'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add to multiple lists…' }),
+    );
+
+    expect(screen.getByTestId('add-existing-item-dialog')).toBeInTheDocument();
+  });
+
+  it('adds from an enabled catalog strip chip through onAddExistingItem wiring', async () => {
+    const catalogItem = makeCatalogItem('strip', 'Strip Item');
+    const list = makeList('list1', 'Weekly', []);
+    const props = makeBaseProps({
+      onAddExistingItem: jest.fn().mockResolvedValue(['list1']),
+    });
+
+    render(
+      <GroceryListView
+        list={list}
+        catalog={[catalogItem]}
+        allLists={[list]}
+        {...props}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add Strip Item to list' }),
+    );
+
+    await waitFor(() => {
+      expect(props.onAddExistingItem).toHaveBeenCalledWith('strip', ['list1']);
+    });
+  });
+
+  it('disables the catalog strip chip when the item is already on the list', async () => {
+    const catalogItem = makeCatalogItem('strip', 'Strip Item');
+    const list = makeList('list1', 'Weekly', [makeLine('ln-strip', 'strip')]);
+    const props = makeBaseProps({
+      onAddExistingItem: jest.fn().mockResolvedValue([]),
+    });
+
+    render(
+      <GroceryListView
+        list={list}
+        catalog={[catalogItem]}
+        allLists={[list]}
+        {...props}
+      />,
+    );
+
+    const chip = screen.getByRole('button', {
+      name: 'Strip Item already on list',
+    });
+    expect(chip).toBeDisabled();
+    fireEvent.click(chip);
+    expect(props.onAddExistingItem).not.toHaveBeenCalled();
+  });
+
+  it('opens AddExistingItemDialog from the multi-list entry and submits to onAddExistingItem, then toasts and closes', async () => {
+    const list = makeList('list1', 'Weekly');
+    const props = makeBaseProps();
+
+    render(
+      <GroceryListView list={list} catalog={[]} allLists={[list]} {...props} />,
+    );
+
+    expect(
+      screen.queryByTestId('add-existing-item-dialog'),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add to multiple lists…' }),
+    );
 
     expect(screen.getByTestId('add-existing-item-dialog')).toBeInTheDocument();
 
@@ -443,7 +586,9 @@ describe('GroceryListView', () => {
       <GroceryListView list={list} catalog={[]} allLists={[list]} {...props} />,
     );
 
-    fireEvent.click(screen.getByTestId('toolbar-add-existing'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Add to multiple lists…' }),
+    );
     fireEvent.click(screen.getByTestId('add-existing-submit'));
 
     await waitFor(() => {
@@ -481,7 +626,12 @@ describe('GroceryListView', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('delete-from-catalog-ln-current'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'More actions for Milk' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Delete from Catalog' }),
+    );
 
     const dialog = screen.getByTestId('delete-catalog-item-dialog');
     expect(dialog).toHaveAttribute('data-catalog-item-id', 'c1');
@@ -506,7 +656,12 @@ describe('GroceryListView', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('delete-from-catalog-ln1'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'More actions for Milk' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Delete from Catalog' }),
+    );
     fireEvent.click(screen.getByTestId('delete-catalog-confirm'));
 
     await waitFor(() => {
@@ -543,7 +698,12 @@ describe('GroceryListView', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('delete-from-catalog-ln1'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'More actions for Milk' }),
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Delete from Catalog' }),
+    );
     fireEvent.click(screen.getByTestId('delete-catalog-confirm'));
 
     await waitFor(() => {
@@ -581,7 +741,10 @@ describe('GroceryListView', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('edit-catalog-ln1'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'More actions for Milk' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Edit Catalog Item' }));
     fireEvent.click(screen.getByTestId('catalog-item-edit-submit'));
 
     await waitFor(() => {
@@ -619,7 +782,9 @@ describe('GroceryListView', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('edit-line-ln1'));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Edit List Line for Milk' }),
+    );
     fireEvent.click(screen.getByTestId('list-line-edit-submit'));
 
     await waitFor(() => {
@@ -638,7 +803,7 @@ describe('GroceryListView', () => {
     );
   });
 
-  it('renders the empty-list state with no active or checked lines', () => {
+  it('renders column empty states instead of the removed standalone empty block', () => {
     const list = makeList('list1', 'Weekly');
 
     render(
@@ -654,8 +819,20 @@ describe('GroceryListView', () => {
     expect(
       screen.getByText('0 active · 0 checked · $0.00 known'),
     ).toBeInTheDocument();
-    expect(screen.getByText('No items yet')).toBeInTheDocument();
-    expect(screen.getByText('Use Add Item to get started')).toBeInTheDocument();
-    expect(screen.queryByTestId(/^line-row-/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Active (0)' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', {
+        name: 'Checked (0) — visible until removed',
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Nothing left in cart')).toBeInTheDocument();
+    expect(screen.getByText('None bought yet')).toBeInTheDocument();
+    expect(screen.queryByText('No items yet')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Use Add Item to get started'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId(/^list-line-/)).not.toBeInTheDocument();
   });
 });

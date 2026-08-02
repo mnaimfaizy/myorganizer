@@ -250,18 +250,8 @@ async function gotoGroceriesAndUnlock(
     await unlockWithPassphrase(page, passphrase);
   }
 
-  // Wait for the groceries page content to render after unlock
-  // Look for either the "New List" button or the empty state
-  await page.waitForFunction(
-    () => {
-      const pageContent = document.body.innerText;
-      const hasNewListBtn = !!document
-        .querySelector('button')
-        ?.textContent?.includes('New List');
-      const hasPageTitle =
-        pageContent.includes('Groceries') || pageContent.includes('grocery');
-      return hasNewListBtn || hasPageTitle;
-    },
+  // Wait for the Trip Board index to render after unlock
+  await expect(page.getByRole('heading', { name: 'Active trips' })).toBeVisible(
     { timeout: 30000 },
   );
 
@@ -489,12 +479,29 @@ async function _setupRoutes(page: import('@playwright/test').Page) {
  * Helper to open Create dialog and create a list by UI interactions.
  * Waits for the dialog to close and the list to appear, indicating success.
  */
+async function clickNewTrip(page: import('@playwright/test').Page) {
+  const newTrip = page.getByRole('button', { name: 'New trip' });
+  const createFirst = page.getByRole('button', {
+    name: 'Create Your First List',
+  });
+  if (await newTrip.isVisible({ timeout: 2000 }).catch(() => false)) {
+    await newTrip.click();
+  } else {
+    await createFirst.click();
+  }
+}
+
+function tripCard(page: import('@playwright/test').Page, tripName: string) {
+  return page.getByRole('article').filter({
+    has: page.getByRole('link', { name: tripName, exact: true }),
+  });
+}
+
 async function createListViaUI(
   page: import('@playwright/test').Page,
   name: string,
 ) {
-  // Open create dialog
-  await page.getByRole('button', { name: 'New List' }).click();
+  await clickNewTrip(page);
 
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
@@ -512,27 +519,17 @@ async function createListViaUI(
   // Dialog should close
   await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 60000 });
 
-  // Ensure card exists and list is created
-  await expect(page.getByText(name)).toBeVisible({ timeout: 60000 });
+  await expect(tripCard(page, name)).toBeVisible({ timeout: 60000 });
 }
 
-/**
- * Helper to open the context menu (three-dot dropdown) for a list card.
- * Finds the card containing the given text, hovers over it, and clicks the menu button.
- */
-async function openListContextMenu(
+async function openTripActionsMenu(
   page: import('@playwright/test').Page,
-  listName: string,
+  tripName: string,
 ) {
-  const cardButton = page
-    .locator('xpath=//div[@role="article"][contains(., "' + listName + '")]')
-    .first();
-  await cardButton.hover();
-
-  // Click the menu button (three dots)
-  const menuButton = cardButton.locator('button').first();
-  await expect(menuButton).toBeVisible();
-  await menuButton.click();
+  const card = tripCard(page, tripName).first();
+  await card
+    .getByRole('button', { name: `Trip actions for ${tripName}` })
+    .click();
 }
 
 test.describe('Groceries (E2E)', () => {
@@ -564,22 +561,12 @@ test.describe('Groceries (E2E)', () => {
 
       await gotoGroceriesAndUnlock(page, passphrase);
 
-      // Wait for the "New List" button to be clickable
-      await page.waitForFunction(
-        () => {
-          const buttons = Array.from(document.querySelectorAll('button'));
-          return buttons.some((btn) =>
-            btn.textContent?.trim().includes('New List'),
-          );
-        },
-        { timeout: 30000 },
-      );
-
-      // Give the button time to be fully interactive
+      await expect(
+        page.getByRole('heading', { name: 'Active trips' }),
+      ).toBeVisible({ timeout: 30000 });
       await page.waitForTimeout(500);
 
-      // Create list
-      await page.getByRole('button', { name: 'New List' }).click();
+      await clickNewTrip(page);
       await expect(page.getByRole('dialog')).toBeVisible();
       await page.getByPlaceholder('e.g., Weekly Shopping').fill('Weekly Shop');
 
@@ -591,25 +578,14 @@ test.describe('Groceries (E2E)', () => {
 
       // Wait for dialog to close and item to appear
       await expect(page.getByRole('dialog')).toHaveCount(0, { timeout: 60000 });
-      await expect(page.getByText('Weekly Shop')).toBeVisible({
+      await expect(tripCard(page, 'Weekly Shop')).toBeVisible({
         timeout: 60000,
       });
-
-      // Wait a brief moment for the selection state to update
-      await page.waitForTimeout(100);
-
-      // Selected state: find the card element that contains this list name
-      // The card container has role="article" and border-secondary when selected
-      const cardButton = page.locator(
-        'xpath=//div[@role="article"][contains(., "Weekly Shop")]',
-      );
-      const classAttr = await cardButton.getAttribute('class');
-      expect(classAttr?.includes('border-secondary')).toBeTruthy();
 
       // Reload and re-unlock, then assert persistence
       await page.reload();
       await gotoGroceriesAndUnlock(page, passphrase);
-      await expect(page.getByText('Weekly Shop')).toBeVisible({
+      await expect(tripCard(page, 'Weekly Shop')).toBeVisible({
         timeout: 60000,
       });
     });
@@ -640,11 +616,8 @@ test.describe('Groceries (E2E)', () => {
       // Seed with one list using the UI
       await createListViaUI(page, 'Weekly Shop');
 
-      // Rename flow: open the context menu
-      await openListContextMenu(page, 'Weekly Shop');
-
-      // Click the "Rename" menu item
-      await page.getByRole('menuitem', { name: 'Rename' }).click();
+      await openTripActionsMenu(page, 'Weekly Shop');
+      await page.getByRole('menuitem', { name: 'Rename trip' }).click();
 
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
@@ -655,7 +628,7 @@ test.describe('Groceries (E2E)', () => {
       await input.fill('Weekend Haul');
       await page.getByRole('button', { name: 'Rename List' }).click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
-      await expect(page.getByText('Weekend Haul')).toBeVisible({
+      await expect(tripCard(page, 'Weekend Haul')).toBeVisible({
         timeout: 60000,
       });
     });
@@ -689,9 +662,8 @@ test.describe('Groceries (E2E)', () => {
       await createListViaUI(page, 'Alpha');
       await createListViaUI(page, 'Beta');
 
-      // Try delete and cancel
-      await openListContextMenu(page, 'Alpha');
-      await page.getByRole('menuitem', { name: 'Delete' }).click();
+      await openTripActionsMenu(page, 'Alpha');
+      await page.getByRole('menuitem', { name: 'Delete trip' }).click();
       await expect(page.getByRole('dialog')).toBeVisible();
       await expect(page.getByText(/Delete\s+"?Alpha"?/)).toBeVisible();
 
@@ -700,21 +672,20 @@ test.describe('Groceries (E2E)', () => {
         .getByRole('button', { name: 'Cancel' })
         .click();
       await expect(page.getByRole('dialog')).toHaveCount(0);
-      await expect(page.getByText('Alpha')).toBeVisible();
+      await expect(tripCard(page, 'Alpha')).toBeVisible();
 
-      // Confirm delete
-      await openListContextMenu(page, 'Alpha');
-      await page.getByRole('menuitem', { name: 'Delete' }).click();
+      await openTripActionsMenu(page, 'Alpha');
+      await page.getByRole('menuitem', { name: 'Delete trip' }).click();
       await page.getByRole('button', { name: 'Delete List' }).click();
 
       await expect(page.getByRole('dialog')).toHaveCount(0);
-      await expect(page.getByText('Alpha')).toHaveCount(0);
-      await expect(page.getByText('Beta')).toBeVisible();
+      await expect(tripCard(page, 'Alpha')).toHaveCount(0);
+      await expect(tripCard(page, 'Beta')).toBeVisible();
     });
   });
 
   test.describe('F4 — Multiple Lists Management', () => {
-    test('creates multiple lists, selects, renames and deletes while preserving others', async ({
+    test('creates multiple lists, renames and deletes while preserving others', async ({
       page,
     }, testInfo) => {
       test.setTimeout(120000);
@@ -742,76 +713,23 @@ test.describe('Groceries (E2E)', () => {
       await createListViaUI(page, 'Beta');
       await createListViaUI(page, 'Gamma');
 
-      // Assert all three headings present
-      await expect(page.getByText('Alpha')).toBeVisible();
-      await expect(page.getByText('Beta')).toBeVisible();
-      await expect(page.getByText('Gamma')).toBeVisible();
+      await expect(tripCard(page, 'Alpha')).toBeVisible();
+      await expect(tripCard(page, 'Beta')).toBeVisible();
+      await expect(tripCard(page, 'Gamma')).toBeVisible();
 
-      // Multi-select behavior with checkboxes
-      // Check Alpha checkbox
-      let alphaCheckbox = page
-        .locator('xpath=//div[contains(., "Alpha")]//input[@type="checkbox"]')
-        .first();
-      await alphaCheckbox.check();
-      let alphaCard = page
-        .locator('xpath=//div[@role="article"][contains(., "Alpha")]')
-        .first();
-      let alphaCardClass = await alphaCard.getAttribute('class');
-      expect(
-        Boolean(alphaCardClass?.includes('border-secondary')),
-      ).toBeTruthy();
-
-      // Check Gamma checkbox - both should now be selected (multi-select)
-      const gammaCheckbox = page
-        .locator('xpath=//div[contains(., "Gamma")]//input[@type="checkbox"]')
-        .first();
-      await gammaCheckbox.check();
-      const gammaCard = page
-        .locator('xpath=//div[@role="article"][contains(., "Gamma")]')
-        .first();
-      const gammaCardClass = await gammaCard.getAttribute('class');
-      expect(
-        Boolean(gammaCardClass?.includes('border-secondary')),
-      ).toBeTruthy();
-
-      // Verify Alpha is still selected (multi-select means both are checked)
-      alphaCard = page
-        .locator('xpath=//div[@role="article"][contains(., "Alpha")]')
-        .first();
-      alphaCardClass = await alphaCard.getAttribute('class');
-      expect(
-        Boolean(alphaCardClass?.includes('border-secondary')),
-      ).toBeTruthy();
-
-      // Uncheck Alpha - only Gamma should remain selected
-      alphaCheckbox = page
-        .locator('xpath=//div[contains(., "Alpha")]//input[@type="checkbox"]')
-        .first();
-      await alphaCheckbox.uncheck();
-
-      // Verify checkbox is unchecked
-      await expect(alphaCheckbox).not.toBeChecked();
-
-      // Also verify by checking the checkbox state from the DOM
-      const isAlphaChecked = await alphaCheckbox.isChecked();
-      expect(isAlphaChecked).toBeFalsy();
-
-      // Rename Beta
-      await openListContextMenu(page, 'Beta');
-      await page.getByRole('menuitem', { name: 'Rename' }).click();
+      await openTripActionsMenu(page, 'Beta');
+      await page.getByRole('menuitem', { name: 'Rename trip' }).click();
       await page.getByPlaceholder('e.g., Weekly Shopping').fill('Beta Renamed');
       await page.getByRole('button', { name: 'Rename List' }).click();
-      await expect(page.getByText('Beta Renamed')).toBeVisible();
+      await expect(tripCard(page, 'Beta Renamed')).toBeVisible();
 
-      // Delete Alpha
-      await openListContextMenu(page, 'Alpha');
-      await page.getByRole('menuitem', { name: 'Delete' }).click();
+      await openTripActionsMenu(page, 'Alpha');
+      await page.getByRole('menuitem', { name: 'Delete trip' }).click();
       await page.getByRole('button', { name: 'Delete List' }).click();
 
-      // Ensure count is 2: Beta Renamed and Gamma
-      await expect(page.getByText('Alpha')).toHaveCount(0);
-      await expect(page.getByText('Beta Renamed')).toBeVisible();
-      await expect(page.getByText('Gamma')).toBeVisible();
+      await expect(tripCard(page, 'Alpha')).toHaveCount(0);
+      await expect(tripCard(page, 'Beta Renamed')).toBeVisible();
+      await expect(tripCard(page, 'Gamma')).toBeVisible();
     });
   });
 
@@ -845,15 +763,13 @@ test.describe('Groceries (E2E)', () => {
       );
       await gotoGroceriesAndUnlock(page, passphrase);
 
-      // Escape closes dialog
-      await page.getByRole('button', { name: 'New List' }).click();
+      await clickNewTrip(page);
       await expect(page.getByRole('dialog')).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(page.getByRole('dialog')).toHaveCount(0);
 
-      // Verify page is still usable
       await expect(
-        page.getByRole('button', { name: 'New List' }),
+        page.getByRole('button', { name: 'New trip' }),
       ).toBeVisible();
     });
   });

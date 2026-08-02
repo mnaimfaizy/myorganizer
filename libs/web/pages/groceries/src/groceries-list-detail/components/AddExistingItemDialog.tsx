@@ -21,11 +21,12 @@ interface AddExistingItemDialogProps {
   catalog: CatalogItem[];
   lists: GroceryList[];
   defaultListId?: string;
+  defaultCatalogItemId?: string;
   onAdd: (
     catalogItemId: string,
     listIds: string[],
     amount?: string,
-  ) => Promise<void>;
+  ) => Promise<string[] | void>;
   isLoading?: boolean;
 }
 
@@ -39,6 +40,7 @@ export function AddExistingItemDialog({
   catalog,
   lists,
   defaultListId,
+  defaultCatalogItemId,
   onAdd,
   isLoading = false,
 }: AddExistingItemDialogProps) {
@@ -54,10 +56,10 @@ export function AddExistingItemDialog({
   useEffect(() => {
     if (!isOpen) return;
     setQuery('');
-    setSelectedCatalogItemId(null);
+    setSelectedCatalogItemId(defaultCatalogItemId ?? null);
     setAmount('');
     setSelectedListIds(new Set(defaultListId ? [defaultListId] : []));
-  }, [isOpen, defaultListId]);
+  }, [isOpen, defaultCatalogItemId, defaultListId]);
 
   const filteredCatalog = useMemo(() => {
     const trimmed = query.trim().toLowerCase();

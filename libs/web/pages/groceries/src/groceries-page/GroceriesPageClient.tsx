@@ -2,8 +2,9 @@
 
 import { Button, Skeleton } from '@myorganizer/web-ui';
 import { VaultGate } from '@myorganizer/web-vault-ui';
-import { Plus } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { LayoutGrid, Plus } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+import { formatMoney, summarizeListSpend } from '../shared/utils';
 import {
   CreateListDialog,
   DeleteListConfirmDialog,
@@ -87,6 +88,26 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
     setDialog({ type: null });
   }, [dialog.listId, vault.deleteList]);
 
+  const handleAddExistingItem = useCallback(
+    (catalogItemId: string, listIds: string[], amount?: string) =>
+      vault.addExistingCatalogItemToLists(catalogItemId, listIds, amount),
+    [vault.addExistingCatalogItemToLists],
+  );
+
+  const portfolio = useMemo(
+    () =>
+      vault.lists.reduce(
+        (acc, list) => {
+          const summary = summarizeListSpend(list.lines, vault.catalog);
+          acc.known += summary.known;
+          acc.unpriced += summary.unpricedCount;
+          return acc;
+        },
+        { known: 0, unpriced: 0 },
+      ),
+    [vault.catalog, vault.lists],
+  );
+
   if (vault.loading) {
     return (
       <div
@@ -146,13 +167,20 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
           </div>
         )}
 
-        <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-center">
+        <div className="mb-8 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
           <div>
-            <h1 className="text-3xl font-bold text-on-surface md:text-4xl">
-              Groceries
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              <LayoutGrid className="h-4 w-4" />
+              Trip board
+            </p>
+            <h1 className="text-3xl font-bold text-foreground md:text-4xl">
+              Active trips
             </h1>
-            <p className="mt-1 text-on-surface-variant">
-              Access and manage your shopping lists.
+            <p className="mt-1 text-muted-foreground">
+              {formatMoney(portfolio.known)} known spend
+              {portfolio.unpriced > 0
+                ? ` · ${portfolio.unpriced} unpriced`
+                : ''}
             </p>
           </div>
           <Button
@@ -162,7 +190,7 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
             disabled={vault.loading}
           >
             <Plus className="h-5 w-5" />
-            New List
+            New trip
           </Button>
         </div>
 
@@ -203,6 +231,7 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
             catalog={vault.catalog}
             onRenameList={handleRenameList}
             onDeleteList={handleDeleteList}
+            onAddExistingItem={handleAddExistingItem}
             isLoading={vault.loading}
           />
         )}

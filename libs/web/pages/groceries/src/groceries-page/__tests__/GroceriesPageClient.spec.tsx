@@ -58,51 +58,28 @@ jest.mock('lucide-react', () => ({
   Plus: ({ className }: any) => (
     <svg data-testid="plus-icon" className={className} viewBox="0 0 24 24" />
   ),
+  LayoutGrid: ({ className }: any) => (
+    <svg
+      data-testid="layout-grid-icon"
+      className={className}
+      viewBox="0 0 24 24"
+    />
+  ),
 }));
 
 jest.mock('../components', () => {
   const React = require('react');
-
-  function GroceryListSelector({
-    lists,
-    catalog,
-    onRenameList,
-    onDeleteList,
-    isLoading,
-  }: any) {
-    return (
-      <div data-testid="grocery-list-selector">
-        <div data-testid="lists-count">{lists.length}</div>
-        <div data-testid="catalog-count">{catalog?.length ?? 0}</div>
-        <button
-          data-testid="selector-rename-button"
-          onClick={() => onRenameList('list1')}
-        >
-          Rename
-        </button>
-        <button
-          data-testid="selector-delete-button"
-          onClick={() => onDeleteList('list1')}
-        >
-          Delete
-        </button>
-        <div data-testid="selector-loading">
-          {isLoading ? 'loading' : 'ready'}
-        </div>
-      </div>
-    );
-  }
 
   function TripBoardIndex({
     lists,
     catalog,
     onRenameList,
     onDeleteList,
+    onAddExistingItem,
     isLoading,
   }: any) {
     return (
-      <div data-testid="grocery-list-selector">
-        <input placeholder="Search your lists..." />
+      <div data-testid="trip-board-index">
         <div data-testid="lists-count">{lists.length}</div>
         <div data-testid="catalog-count">{catalog?.length ?? 0}</div>
         <button
@@ -116,6 +93,12 @@ jest.mock('../components', () => {
           onClick={() => onDeleteList('list1')}
         >
           Delete
+        </button>
+        <button
+          data-testid="selector-add-existing-button"
+          onClick={() => onAddExistingItem('cat-1', ['list1'])}
+        >
+          Add existing
         </button>
         <div data-testid="selector-loading">
           {isLoading ? 'loading' : 'ready'}
@@ -202,7 +185,6 @@ jest.mock('../components', () => {
   }
 
   return {
-    GroceryListSelector,
     TripBoardIndex,
     CreateListDialog,
     RenameListDialog,
@@ -234,6 +216,7 @@ describe('GroceriesPageClient', () => {
     createList: jest.Mock;
     renameList: jest.Mock;
     deleteList: jest.Mock;
+    addExistingCatalogItemToLists: jest.Mock;
   }
 
   function makeVaultState(overrides?: Partial<VaultState>): VaultState {
@@ -248,6 +231,7 @@ describe('GroceriesPageClient', () => {
       createList: jest.fn(),
       renameList: jest.fn(),
       deleteList: jest.fn(),
+      addExistingCatalogItemToLists: jest.fn(),
       ...overrides,
     };
   }
@@ -322,14 +306,12 @@ describe('GroceriesPageClient', () => {
       });
     });
 
-    it('should not display GroceryListSelector during loading', () => {
+    it('should not display TripBoardIndex during loading', () => {
       mockUseGroceriesVault.mockReturnValue(makeVaultState({ loading: true }));
 
       render(<GroceriesPage />);
 
-      expect(
-        screen.queryByTestId('grocery-list-selector'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('trip-board-index')).not.toBeInTheDocument();
     });
 
     it('should not display empty state during loading', () => {
@@ -404,28 +386,31 @@ describe('GroceriesPageClient', () => {
       expect(dialog).toHaveAttribute('data-open', 'true');
     });
 
-    it('should not display GroceryListSelector when lists empty', () => {
+    it('should not display TripBoardIndex when lists empty', () => {
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({ lists: [], loading: false }),
       );
 
       render(<GroceriesPage />);
 
-      expect(
-        screen.queryByTestId('grocery-list-selector'),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('trip-board-index')).not.toBeInTheDocument();
     });
 
-    it('should display header with title even in empty state', () => {
+    it('should display header with trip board copy even in empty state', () => {
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({ lists: [], loading: false }),
       );
 
       render(<GroceriesPage />);
 
-      expect(screen.getByText('Groceries')).toBeInTheDocument();
+      expect(screen.getByText('Trip board')).toBeInTheDocument();
       expect(
-        screen.getByText('Access and manage your shopping lists.'),
+        screen.getByRole('heading', { name: 'Active trips' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          (_, element) => element?.textContent === '$0.00 known spend',
+        ),
       ).toBeInTheDocument();
     });
   });
@@ -435,7 +420,7 @@ describe('GroceriesPageClient', () => {
      ============================================ */
 
   describe('Loaded State - List Display', () => {
-    it('should display GroceryListSelector when vault.lists has items', () => {
+    it('should display TripBoardIndex when vault.lists has items', () => {
       const lists = [makeGroceryList('list1', 'Groceries', 5)];
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({ lists, loading: false }),
@@ -443,10 +428,10 @@ describe('GroceriesPageClient', () => {
 
       render(<GroceriesPage />);
 
-      expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+      expect(screen.getByTestId('trip-board-index')).toBeInTheDocument();
     });
 
-    it('should pass correct lists array to GroceryListSelector', () => {
+    it('should pass correct lists array to TripBoardIndex', () => {
       const lists = [
         makeGroceryList('list1', 'Groceries', 3),
         makeGroceryList('list2', 'Farmers Market', 2),
@@ -460,7 +445,7 @@ describe('GroceriesPageClient', () => {
       expect(screen.getByTestId('lists-count')).toHaveTextContent('2');
     });
 
-    it('should pass vault.catalog through to GroceryListSelector', () => {
+    it('should pass vault.catalog through to TripBoardIndex', () => {
       const lists = [makeGroceryList('list1', 'Groceries', 1)];
       const catalog: CatalogItem[] = [
         {
@@ -480,7 +465,7 @@ describe('GroceriesPageClient', () => {
       expect(screen.getByTestId('catalog-count')).toHaveTextContent('1');
     });
 
-    it('should pass loading state to GroceryListSelector', () => {
+    it('should pass loading state to TripBoardIndex', () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({ lists, loading: false }),
@@ -491,33 +476,69 @@ describe('GroceriesPageClient', () => {
       expect(screen.getByTestId('selector-loading')).toHaveTextContent('ready');
     });
 
-    it('should display header with title and subtitle', () => {
-      const lists = [makeGroceryList('list1', 'Groceries', 3)];
+    it('should display header with trip board title and portfolio subline', () => {
+      const lists = [makeGroceryList('list1', 'Groceries', 1)];
+      const catalog: CatalogItem[] = [
+        {
+          id: 'catalog-item-0',
+          name: 'Milk',
+          category: 'dairy',
+          price: 3.5,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
       mockUseGroceriesVault.mockReturnValue(
-        makeVaultState({ lists, loading: false }),
+        makeVaultState({ lists, catalog, loading: false }),
       );
 
       render(<GroceriesPage />);
 
-      expect(screen.getByText('Groceries')).toBeInTheDocument();
+      expect(screen.getByText('Trip board')).toBeInTheDocument();
       expect(
-        screen.getByText('Access and manage your shopping lists.'),
+        screen.getByRole('heading', { name: 'Active trips' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          (_, element) => element?.textContent === '$3.50 known spend',
+        ),
       ).toBeInTheDocument();
     });
 
-    it('should display search bar with correct placeholder', () => {
-      const lists = [makeGroceryList('list1', 'Groceries', 3)];
+    it('should append unpriced count to the portfolio subline when present', () => {
+      const lists = [makeGroceryList('list1', 'Groceries', 2)];
+      const catalog: CatalogItem[] = [
+        {
+          id: 'catalog-item-0',
+          name: 'Milk',
+          category: 'dairy',
+          price: 2,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+        {
+          id: 'catalog-item-1',
+          name: 'Bread',
+          category: 'bakery',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ];
       mockUseGroceriesVault.mockReturnValue(
-        makeVaultState({ lists, loading: false }),
+        makeVaultState({ lists, catalog, loading: false }),
       );
 
       render(<GroceriesPage />);
 
-      const searchInput = screen.getByPlaceholderText('Search your lists...');
-      expect(searchInput).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          (_, element) =>
+            element?.textContent === '$2.00 known spend · 1 unpriced',
+        ),
+      ).toBeInTheDocument();
     });
 
-    it('should show New List button in header', () => {
+    it('should show New trip button in header', () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({ lists, loading: false }),
@@ -527,12 +548,12 @@ describe('GroceriesPageClient', () => {
 
       const buttons = screen.getAllByTestId('button');
       const newListBtn = buttons.find((btn) =>
-        btn.textContent.includes('New List'),
+        btn.textContent.includes('New trip'),
       );
       expect(newListBtn).toBeInTheDocument();
     });
 
-    it('should enable New List button when not loading', () => {
+    it('should enable New trip button when not loading', () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({ lists, loading: false }),
@@ -542,12 +563,12 @@ describe('GroceriesPageClient', () => {
 
       const buttons = screen.getAllByTestId('button');
       const newListBtn = buttons.find((btn) =>
-        btn.textContent.includes('New List'),
+        btn.textContent.includes('New trip'),
       );
       expect(newListBtn).not.toBeDisabled();
     });
 
-    it('should pass callback functions to GroceryListSelector', () => {
+    it('should pass callback functions to TripBoardIndex', () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({
@@ -558,8 +579,8 @@ describe('GroceriesPageClient', () => {
 
       render(<GroceriesPage />);
 
-      // Verify the component renders GroceryListSelector
-      expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+      // Verify the component renders TripBoardIndex
+      expect(screen.getByTestId('trip-board-index')).toBeInTheDocument();
 
       // Verify callback buttons are present and functional
       expect(screen.getByTestId('selector-rename-button')).toBeInTheDocument();
@@ -648,7 +669,7 @@ describe('GroceriesPageClient', () => {
       render(<GroceriesPage />);
 
       const errorText = screen.getByText('Network error occurred');
-      const selector = screen.getByTestId('grocery-list-selector');
+      const selector = screen.getByTestId('trip-board-index');
 
       // Both should be in document, error appears first in DOM
       expect(errorText).toBeInTheDocument();
@@ -661,7 +682,7 @@ describe('GroceriesPageClient', () => {
      ============================================ */
 
   describe('Create List Flow', () => {
-    it('should open CreateListDialog when New List button clicked', () => {
+    it('should open CreateListDialog when New trip button clicked', () => {
       const lists = [makeGroceryList('list1', 'Groceries', 3)];
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({ lists, loading: false }),
@@ -671,7 +692,7 @@ describe('GroceriesPageClient', () => {
 
       const buttons = screen.getAllByTestId('button');
       const newListBtn = buttons.find((btn) =>
-        btn.textContent.includes('New List'),
+        btn.textContent.includes('New trip'),
       );
       fireEvent.click(newListBtn!);
 
@@ -707,7 +728,7 @@ describe('GroceriesPageClient', () => {
 
       const buttons = screen.getAllByTestId('button');
       const newListBtn = buttons.find((btn) =>
-        btn.textContent.includes('New List'),
+        btn.textContent.includes('New trip'),
       );
       fireEvent.click(newListBtn!);
 
@@ -730,7 +751,7 @@ describe('GroceriesPageClient', () => {
 
       const buttons = screen.getAllByTestId('button');
       const newListBtn = buttons.find((btn) =>
-        btn.textContent.includes('New List'),
+        btn.textContent.includes('New trip'),
       );
       fireEvent.click(newListBtn!);
 
@@ -753,7 +774,7 @@ describe('GroceriesPageClient', () => {
 
       const buttons = screen.getAllByTestId('button');
       const newListBtn = buttons.find((btn) =>
-        btn.textContent.includes('New List'),
+        btn.textContent.includes('New trip'),
       );
       fireEvent.click(newListBtn!);
 
@@ -1050,13 +1071,13 @@ describe('GroceriesPageClient', () => {
 
       // Wait for selector to be visible
       await waitFor(() => {
-        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+        expect(screen.getByTestId('trip-board-index')).toBeInTheDocument();
       });
 
       // Open create dialog
       const buttons = screen.getAllByTestId('button');
       const newListBtn = buttons.find((btn) =>
-        btn.textContent.includes('New List'),
+        btn.textContent.includes('New trip'),
       );
       fireEvent.click(newListBtn!);
 
@@ -1080,13 +1101,13 @@ describe('GroceriesPageClient', () => {
 
       // Wait for selector to be visible
       await waitFor(() => {
-        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+        expect(screen.getByTestId('trip-board-index')).toBeInTheDocument();
       });
 
       // Open create dialog
       const buttons = screen.getAllByTestId('button');
       const newListBtn = buttons.find((btn) =>
-        btn.textContent.includes('New List'),
+        btn.textContent.includes('New trip'),
       );
       fireEvent.click(newListBtn!);
 
@@ -1116,7 +1137,7 @@ describe('GroceriesPageClient', () => {
 
       // Wait for selector to be visible
       await waitFor(() => {
-        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+        expect(screen.getByTestId('trip-board-index')).toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByTestId('selector-rename-button'));
@@ -1142,7 +1163,7 @@ describe('GroceriesPageClient', () => {
 
       // Wait for selector to be visible
       await waitFor(() => {
-        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+        expect(screen.getByTestId('trip-board-index')).toBeInTheDocument();
       });
 
       fireEvent.click(screen.getByTestId('selector-rename-button'));
@@ -1197,7 +1218,7 @@ describe('GroceriesPageClient', () => {
       await waitFor(() => {
         const vaultGate = screen.getByTestId('vault-gate');
         expect(
-          vaultGate.querySelector('[data-testid="grocery-list-selector"]'),
+          vaultGate.querySelector('[data-testid="trip-board-index"]'),
         ).toBeInTheDocument();
       });
     });
@@ -1219,13 +1240,13 @@ describe('GroceriesPageClient', () => {
 
       // Wait for selector to be visible
       await waitFor(() => {
-        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+        expect(screen.getByTestId('trip-board-index')).toBeInTheDocument();
       });
 
-      // Click New List
+      // Click New trip
       const buttons = screen.getAllByTestId('button');
       const newListBtn = buttons.find((btn) =>
-        btn.textContent.includes('New List'),
+        btn.textContent.includes('New trip'),
       );
       fireEvent.click(newListBtn!);
 
@@ -1257,7 +1278,7 @@ describe('GroceriesPageClient', () => {
 
       // Wait for selector to be visible
       await waitFor(() => {
-        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+        expect(screen.getByTestId('trip-board-index')).toBeInTheDocument();
       });
 
       // Click Rename on selector
@@ -1293,7 +1314,7 @@ describe('GroceriesPageClient', () => {
 
       // Wait for selector to be visible
       await waitFor(() => {
-        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+        expect(screen.getByTestId('trip-board-index')).toBeInTheDocument();
       });
 
       // Click Delete on selector
@@ -1332,7 +1353,7 @@ describe('GroceriesPageClient', () => {
 
       // Wait for selector to be visible
       await waitFor(() => {
-        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+        expect(screen.getByTestId('trip-board-index')).toBeInTheDocument();
       });
 
       // Verify selector has correct list count
@@ -1359,14 +1380,14 @@ describe('GroceriesPageClient', () => {
 
       // Wait for selector to be visible (error and selector render together)
       await waitFor(() => {
-        expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+        expect(screen.getByTestId('trip-board-index')).toBeInTheDocument();
       });
 
       // Error banner visible
       expect(screen.getByText('Some warning')).toBeInTheDocument();
 
       // Lists still visible and operable
-      expect(screen.getByTestId('grocery-list-selector')).toBeInTheDocument();
+      expect(screen.getByTestId('trip-board-index')).toBeInTheDocument();
       expect(screen.getByTestId('selector-rename-button')).toBeInTheDocument();
 
       // Can dismiss error

@@ -2,15 +2,18 @@
 
 import type { CatalogItem, GroceryList, ListLine } from '@myorganizer/core';
 import { ToastAction, useToast } from '@myorganizer/web-ui';
+import { ArrowLeft } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useMemo, useState } from 'react';
 import type { AddCatalogItemAndLineInput } from '../../shared/hooks';
-import { summarizeListSpend } from '../../shared/utils';
+import { formatMoney, summarizeListSpend } from '../../shared/utils';
 import { AddExistingItemDialog } from './AddExistingItemDialog';
 import type { AddItemFormResult } from './AddItemDialog';
 import { AddItemDialog } from './AddItemDialog';
 import { DeleteCatalogItemDialog } from './DeleteCatalogItemDialog';
+import { TripBoardCatalogAddStrip } from './TripBoardCatalogAddStrip';
 import { TripBoardLifecycleToolbar } from './TripBoardLifecycleToolbar';
-import { TripBoardLineRow } from './TripBoardLineRow';
+import { TripBoardLineColumns } from './TripBoardLineColumns';
 import { TripBoardSpendFooter } from './TripBoardSpendFooter';
 import { CatalogItemEditDialog } from './CatalogItemEditDialog';
 import type { CatalogItemEditChanges } from './CatalogItemEditDialog';
@@ -239,6 +242,26 @@ export function GroceryListView({
     [onAddExistingItem, showErrorToast, toast],
   );
 
+  const handleAddFromCatalogStrip = useCallback(
+    async (catalogItemId: string) => {
+      setIsLoading(true);
+      try {
+        const addedListIds = await onAddExistingItem(catalogItemId, [list.id]);
+        if (addedListIds.length === 0) {
+          toast({
+            title: 'Already on this list.',
+          });
+        }
+      } catch (err) {
+        console.error('Failed to add catalog item to list:', err);
+        showErrorToast();
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [list.id, onAddExistingItem, showErrorToast, toast],
+  );
+
   const handleRequestDeleteFromCatalog = useCallback(
     (catalogItemId: string) => {
       const item = catalog.find((c) => c.id === catalogItemId);
@@ -342,96 +365,59 @@ export function GroceryListView({
   }, [allLists, catalogItemPendingDelete, list.lines]);
 
   return (
-    <div className="space-y-lg">
-      <div className="space-y-1 pb-md border-b border-outline-variant">
-        <h2 className="text-lg font-semibold text-on-surface md:text-xl">
-          {list.name}
-        </h2>
-        <p className="text-xs text-on-surface-variant">
-          {active.length} active · {checked.length} checked ·{' '}
-          {summary.known ? `$${summary.known.toFixed(2)}` : '$0.00'} known
-        </p>
-      </div>
-
-      <TripBoardLifecycleToolbar
-        checkedCount={checked.length}
-        onUncheckAll={handleUncheckAll}
-        onRemoveChecked={handleRemoveChecked}
-        onAddItem={handleOpenAddDialog}
-        onAddExisting={handleOpenAddExistingDialog}
-        isLoading={isLoading}
-      />
-
-      {list.lines.length === 0 ? (
-        <div className="text-center py-12">
-          <h3 className="text-lg font-semibold text-on-surface mb-2">
-            No items yet
-          </h3>
-          <p className="text-sm text-on-surface-variant">
-            Use Add Item to get started
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <Link
+            href="/dashboard/groceries"
+            className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:underline focus-visible:underline"
+            aria-label="Back to groceries"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Groceries
+          </Link>
+          <h1 className="mt-1 text-3xl font-bold text-foreground">
+            {list.name}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {active.length} active · {checked.length} checked ·{' '}
+            {formatMoney(summary.known)} known
           </p>
         </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1 pb-1">
-              Active ({active.length})
-            </h3>
-            {active.length === 0 ? (
-              <p className="px-1 text-sm text-on-surface-variant">
-                Nothing left in cart
-              </p>
-            ) : (
-              <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border shadow-sm">
-                {active.map((line) => (
-                  <TripBoardLineRow
-                    key={line.id}
-                    line={line}
-                    catalogItem={catalog.find(
-                      (item) => item.id === line.catalogItemId,
-                    )}
-                    onToggleChecked={handleToggleChecked}
-                    onDeleteLine={handleDeleteLine}
-                    onDeleteFromCatalog={handleRequestDeleteFromCatalog}
-                    onEditListLine={handleEditListLine}
-                    onEditCatalogItem={handleEditCatalogItem}
-                    isLoading={isLoading}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+        <TripBoardLifecycleToolbar
+          checkedCount={checked.length}
+          onUncheckAll={handleUncheckAll}
+          onRemoveChecked={handleRemoveChecked}
+          onAddItem={handleOpenAddDialog}
+          isLoading={isLoading}
+        />
+      </div>
 
-          <div className="space-y-2">
-            <h3 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground px-1 pb-1">
-              Checked ({checked.length}) — visible until removed
-            </h3>
-            {checked.length === 0 ? (
-              <p className="px-1 text-sm text-on-surface-variant">
-                None bought yet
-              </p>
-            ) : (
-              <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border shadow-sm">
-                {checked.map((line) => (
-                  <TripBoardLineRow
-                    key={line.id}
-                    line={line}
-                    catalogItem={catalog.find(
-                      (item) => item.id === line.catalogItemId,
-                    )}
-                    onToggleChecked={handleToggleChecked}
-                    onDeleteLine={handleDeleteLine}
-                    onDeleteFromCatalog={handleRequestDeleteFromCatalog}
-                    onEditListLine={handleEditListLine}
-                    onEditCatalogItem={handleEditCatalogItem}
-                    isLoading={isLoading}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <section>
+        <h2 className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          Add from catalog
+        </h2>
+        <TripBoardCatalogAddStrip
+          catalog={catalog}
+          lists={allLists}
+          currentListId={list.id}
+          onAdd={handleAddFromCatalogStrip}
+          onOpenMultiListDialog={handleOpenAddExistingDialog}
+          isLoading={isLoading}
+        />
+      </section>
+
+      <TripBoardLineColumns
+        active={active}
+        checked={checked}
+        catalog={catalog}
+        onToggleChecked={handleToggleChecked}
+        onDeleteLine={handleDeleteLine}
+        onDeleteFromCatalog={handleRequestDeleteFromCatalog}
+        onEditListLine={handleEditListLine}
+        onEditCatalogItem={handleEditCatalogItem}
+        isLoading={isLoading}
+      />
 
       <TripBoardSpendFooter summary={summary} />
 

@@ -8,7 +8,7 @@ interface TripBoardLifecycleToolbarProps {
   onUncheckAll: () => void;
   onRemoveChecked: () => void;
   onAddItem: () => void;
-  onAddExisting: () => void;
+  onAddExisting?: () => void;
   isLoading?: boolean;
 }
 
@@ -29,15 +29,17 @@ export function TripBoardLifecycleToolbar({
         Add Item
       </Button>
 
-      <Button
-        variant="outline"
-        onClick={onAddExisting}
-        disabled={isLoading}
-        className="gap-2"
-      >
-        <ListPlus className="h-4 w-4" />
-        Add From Catalog
-      </Button>
+      {onAddExisting && (
+        <Button
+          variant="outline"
+          onClick={onAddExisting}
+          disabled={isLoading}
+          className="gap-2"
+        >
+          <ListPlus className="h-4 w-4" />
+          Add From Catalog
+        </Button>
+      )}
 
       <Button
         variant="outline"
