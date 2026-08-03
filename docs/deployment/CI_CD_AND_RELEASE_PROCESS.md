@@ -207,7 +207,11 @@ Use a versioned release branch so production deploys are unambiguous:
   - `git tag -a v1.2.3 -m "Release v1.2.3"`
   - `git push origin v1.2.3`
 
-5. Create a GitHub Release using the tag `v1.2.3` for traceability (release notes + links).
+5. Push the tag and let the `Publish GitHub Release` workflow create the GitHub Release.
+
+- The workflow checks out the tagged commit and uses its `RELEASE_NOTES.md` as the release body.
+- Re-running the workflow updates the existing release, so publishing is idempotent.
+- To publish an existing tag manually, run the workflow with the `tag` input.
 
 ### Release checklist (copy/paste)
 
@@ -255,12 +259,6 @@ If enabled, a workflow can automatically:
 - Enable GitHub auto-merge so it merges after required checks pass
 
 This requires repository settings to allow auto-merge and that branch protection rules do not require manual approvals.
-
-5. Create the GitHub Release:
-
-- GitHub → Releases → Draft a new release
-- Tag: `vX.Y.Z`
-- Target: `release/vX.Y.Z`
 
 Notes:
 

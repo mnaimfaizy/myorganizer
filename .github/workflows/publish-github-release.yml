@@ -1,0 +1,101 @@
+name: Publish GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing release tag to publish (e.g. v0.3.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-github-release-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Resolve release tag
+        id: release
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          PUSHED_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          tag="${INPUT_TAG:-$PUSHED_TAG}"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: '$tag' is not a semantic release tag."
+            exit 1
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout tagged release
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ steps.release.outputs.tag }}
+          fetch-depth: 1
+
+      - name: Create or update GitHub Release
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const fs = require('node:fs');
+            const tag = process.env.RELEASE_TAG;
+            const notesPath = 'RELEASE_NOTES.md';
+
+            if (!fs.existsSync(notesPath)) {
+              core.setFailed(`Missing ${notesPath} at ${tag}.`);
+              return;
+            }
+
+            const body = fs.readFileSync(notesPath, 'utf8').trim();
+            if (!body) {
+              core.setFailed(`${notesPath} is empty at ${tag}.`);
+              return;
+            }
+
+            const release = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: tag,
+              name: `Release ${tag}`,
+              body,
+              draft: false,
+              prerelease: false,
+            };
+
+            try {
+              const existing = await github.rest.repos.getReleaseByTag({
+                owner: release.owner,
+                repo: release.repo,
+                tag: release.tag_name,
+              });
+
+              await github.rest.repos.updateRelease({
+                owner: release.owner,
+                repo: release.repo,
+                release_id: existing.data.id,
+                name: release.name,
+                body: release.body,
+                draft: release.draft,
+                prerelease: release.prerelease,
+              });
+              core.info(`Updated GitHub Release ${tag}.`);
+            } catch (error) {
+              if (error.status !== 404) throw error;
+
+              await github.rest.repos.createRelease(release);
+              core.info(`Created GitHub Release ${tag}.`);
+            }

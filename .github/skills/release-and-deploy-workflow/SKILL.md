@@ -155,6 +155,8 @@ The script will:
 3. Create annotated tag `vX.Y.Z`
 4. Push the tag to `origin`
 
+Pushing the tag triggers `Publish GitHub Release`, which checks out the tagged commit and creates or updates the GitHub Release using `RELEASE_NOTES.md` as its body.
+
 ---
 
 ### Phase 7 — Merge the release PR back to main
