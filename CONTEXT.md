@@ -72,6 +72,16 @@ _Avoid_: Pool item, master item, product, favorite (unless UI label), template
 A Grocery List’s reference to a Catalog Item for a trip, carrying trip-local state such as checked and quantity/amount. The same Catalog Item may appear on multiple Grocery Lists at once.
 _Avoid_: Embedded item, list-owned item, row (as domain name)
 
+## YouTube (focused watching)
+
+**Shorts Daily Budget**:
+The User’s configurable daily cap on time spent in the Shorts lane (default one hour), measured as wall-clock while a Short is active and the document is visible.
+_Avoid_: Shorts quota, daily Shorts timer (as the product name), playtime limit
+
+**Shorts Hard Stop**:
+The locked state when the Shorts Daily Budget is exhausted for the User’s local calendar day: in-app Shorts playback and navigation are unavailable until local midnight or the User raises the limit enough to unlock.
+_Avoid_: Soft lock, cooldown, Shorts ban, timeout
+
 ## Frontend Architecture
 
 **UI Primitive**:
