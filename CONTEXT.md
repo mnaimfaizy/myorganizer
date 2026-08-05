@@ -74,6 +74,26 @@ _Avoid_: Embedded item, list-owned item, row (as domain name)
 
 ## YouTube (focused watching)
 
+**Followed Channel**:
+A YouTube channel the User follows, imported from their connected YouTube account.
+_Avoid_: Subscription, YouTube subscription, channel subscription
+
+**Enabled Channel**:
+A Followed Channel the User has turned on for metadata sync and focused watching surfaces.
+_Avoid_: Active channel, selected channel, subscribed channel
+
+**Cached Upload**:
+Metadata MyOrganizer stores for one upload from an Enabled Channel (ids, title, thumb, published time, duration). Never the media file.
+_Avoid_: Video (as the domain name alone), synced video, YouTube video row
+
+**Watched**:
+The binary completion/seen state of a Cached Upload for a User. Reversible by the User; not a viewing-analytics history.
+_Avoid_: Viewed, seen, played, completed
+
+**New**:
+A Cached Upload that is not Watched.
+_Avoid_: Unwatched, unread, unseen
+
 **Shorts Daily Budget**:
 The User’s configurable daily cap on time spent in the Shorts lane (default one hour), measured as wall-clock while a Short is active and the document is visible.
 _Avoid_: Shorts quota, daily Shorts timer (as the product name), playtime limit
