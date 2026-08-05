@@ -87,7 +87,7 @@ Metadata MyOrganizer stores for one upload from an Enabled Channel (ids, title, 
 _Avoid_: Video (as the domain name alone), synced video, YouTube video row
 
 **Watched**:
-The marked state that a Cached Upload has been completed for browsing purposes (manual or near-end completion — not play-start).
+The binary completion/seen state of a Cached Upload for a User. Reversible by the User; not a viewing-analytics history.
 _Avoid_: Viewed, seen, played, completed
 
 **New**:
