@@ -1,23 +1,12 @@
-import process from 'node:process';
-
-const MUTATING_TOOL_NAMES = new Set([
-  'apply_patch',
-  'applypatch',
-  'bash',
-  'command',
-  'delete',
-  'execute',
-  'edit',
-  'move',
-  'patch',
-  'run',
-  'replace',
-  'rename',
-  'multiedit',
-  'multi_edit',
-  'shell',
-  'write',
-]);
+import {
+  allowTool,
+  collectStrings,
+  denyTool,
+  getToolInput,
+  getToolName,
+  isMutatingTool,
+  readPayloadOrExit,
+} from './lib.mjs';
 
 const SECRET_PATTERNS = [
   {
@@ -50,57 +39,6 @@ const SECRET_PATTERNS = [
   },
 ];
 
-function getToolName(payload) {
-  const value =
-    payload?.toolName ??
-    payload?.tool_name ??
-    payload?.tool ??
-    payload?.name ??
-    '';
-
-  return typeof value === 'string' ? value.toLowerCase() : '';
-}
-
-function getToolInput(payload) {
-  return (
-    payload?.toolArgs ??
-    payload?.tool_args ??
-    payload?.toolInput ??
-    payload?.tool_input ??
-    payload?.input ??
-    payload?.args ??
-    payload?.arguments ??
-    null
-  );
-}
-
-function collectStrings(node, output = []) {
-  if (node === null || node === undefined) {
-    return output;
-  }
-
-  if (typeof node === 'string') {
-    output.push(node);
-    return output;
-  }
-
-  if (Array.isArray(node)) {
-    for (const item of node) {
-      collectStrings(item, output);
-    }
-
-    return output;
-  }
-
-  if (typeof node === 'object') {
-    for (const value of Object.values(node)) {
-      collectStrings(value, output);
-    }
-  }
-
-  return output;
-}
-
 function getSecretReason(strings) {
   for (const text of strings) {
     for (const secretPattern of SECRET_PATTERNS) {
@@ -113,49 +51,20 @@ function getSecretReason(strings) {
   return null;
 }
 
-function main() {
-  let rawInput = '';
+async function main() {
+  const payload = await readPayloadOrExit();
+  const toolName = getToolName(payload);
 
-  process.stdin.setEncoding('utf8');
-  process.stdin.on('data', (chunk) => {
-    rawInput += chunk;
-  });
+  if (!isMutatingTool(toolName)) {
+    allowTool();
+  }
 
-  process.stdin.on('end', () => {
-    if (!rawInput.trim()) {
-      process.exit(0);
-      return;
-    }
+  const secretReason = getSecretReason(collectStrings(getToolInput(payload)));
+  if (!secretReason) {
+    allowTool();
+  }
 
-    let payload;
-    try {
-      payload = JSON.parse(rawInput);
-    } catch (error) {
-      console.error('[copilot-hooks] Unable to parse preToolUse payload.');
-      console.error(error instanceof Error ? error.message : String(error));
-      process.exit(1);
-      return;
-    }
-
-    const toolName = getToolName(payload);
-    if (!MUTATING_TOOL_NAMES.has(toolName)) {
-      process.exit(0);
-      return;
-    }
-
-    const secretReason = getSecretReason(collectStrings(getToolInput(payload)));
-    if (!secretReason) {
-      process.exit(0);
-      return;
-    }
-
-    process.stdout.write(
-      JSON.stringify({
-        permissionDecision: 'deny',
-        permissionDecisionReason: secretReason,
-      }),
-    );
-  });
+  denyTool(secretReason);
 }
 
 main();

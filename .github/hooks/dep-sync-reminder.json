@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "node tools/scripts/copilot-hooks/dep-sync-reminder.mjs",
+        "powershell": "node tools/scripts/copilot-hooks/dep-sync-reminder.mjs",
+        "cwd": ".",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}

@@ -1,23 +1,12 @@
-import process from 'node:process';
-
-const MUTATING_TOOL_NAMES = new Set([
-  'apply_patch',
-  'applypatch',
-  'bash',
-  'command',
-  'delete',
-  'execute',
-  'edit',
-  'move',
-  'patch',
-  'run',
-  'replace',
-  'rename',
-  'multiedit',
-  'multi_edit',
-  'shell',
-  'write',
-]);
+import {
+  allowTool,
+  denyTool,
+  getToolInput,
+  getToolName,
+  isMutatingTool,
+  normalizeText,
+  readPayloadOrExit,
+} from './lib.mjs';
 
 const COMMAND_KEYS = new Set(['cmd', 'command', 'script', 'shell']);
 const PATH_KEYS = new Set([
@@ -87,10 +76,6 @@ const PROTECTED_PATTERNS = [
   },
 ];
 
-function normalizeText(value) {
-  return value.replace(/\\/g, '/').toLowerCase();
-}
-
 function looksLikePath(text) {
   const normalized = normalizeText(text);
 
@@ -98,30 +83,6 @@ function looksLikePath(text) {
     normalized.includes('/') ||
     normalized.startsWith('.') ||
     /\.[a-z0-9]{1,5}(?:[?*].*)?$/i.test(normalized)
-  );
-}
-
-function getToolName(payload) {
-  const value =
-    payload?.toolName ??
-    payload?.tool_name ??
-    payload?.tool ??
-    payload?.name ??
-    '';
-
-  return typeof value === 'string' ? value.toLowerCase() : '';
-}
-
-function getToolInput(payload) {
-  return (
-    payload?.toolArgs ??
-    payload?.tool_args ??
-    payload?.toolInput ??
-    payload?.tool_input ??
-    payload?.input ??
-    payload?.args ??
-    payload?.arguments ??
-    null
   );
 }
 
@@ -239,7 +200,13 @@ function inspectToolInput(toolName, toolInput) {
   }
 
   if (typeof toolInput === 'string') {
-    if (toolName === 'bash' || toolName === 'command' || toolName === 'shell') {
+    if (
+      toolName === 'bash' ||
+      toolName === 'command' ||
+      toolName === 'shell' ||
+      toolName === 'powershell' ||
+      toolName === 'runterminalcommand'
+    ) {
       if (!isLikelyWriteCommand(toolInput)) {
         return null;
       }
@@ -257,49 +224,20 @@ function inspectToolInput(toolName, toolInput) {
   return inspectNode(toolInput);
 }
 
-function main() {
-  let rawInput = '';
+async function main() {
+  const payload = await readPayloadOrExit();
+  const toolName = getToolName(payload);
 
-  process.stdin.setEncoding('utf8');
-  process.stdin.on('data', (chunk) => {
-    rawInput += chunk;
-  });
+  if (!isMutatingTool(toolName)) {
+    allowTool();
+  }
 
-  process.stdin.on('end', () => {
-    if (!rawInput.trim()) {
-      process.exit(0);
-      return;
-    }
+  const reason = inspectToolInput(toolName, getToolInput(payload));
+  if (!reason) {
+    allowTool();
+  }
 
-    let payload;
-    try {
-      payload = JSON.parse(rawInput);
-    } catch (error) {
-      console.error('[copilot-hooks] Unable to parse preToolUse payload.');
-      console.error(error instanceof Error ? error.message : String(error));
-      process.exit(1);
-      return;
-    }
-
-    const toolName = getToolName(payload);
-    if (!MUTATING_TOOL_NAMES.has(toolName)) {
-      process.exit(0);
-      return;
-    }
-
-    const reason = inspectToolInput(toolName, getToolInput(payload));
-    if (!reason) {
-      process.exit(0);
-      return;
-    }
-
-    process.stdout.write(
-      JSON.stringify({
-        permissionDecision: 'deny',
-        permissionDecisionReason: reason,
-      }),
-    );
-  });
+  denyTool(reason);
 }
 
 main();
