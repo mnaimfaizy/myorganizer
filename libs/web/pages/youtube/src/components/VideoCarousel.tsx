@@ -9,9 +9,16 @@ import { VideoCard } from './VideoCard';
 interface VideoCarouselProps {
   channels: ChannelCarousel[];
   loading: boolean;
+  onWatchedToggle?: (videoId: string, watched: boolean) => void;
 }
 
-function ChannelRow({ channel }: { channel: ChannelCarousel }) {
+function ChannelRow({
+  channel,
+  onWatchedToggle,
+}: {
+  channel: ChannelCarousel;
+  onWatchedToggle?: (videoId: string, watched: boolean) => void;
+}) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
@@ -67,8 +74,8 @@ function ChannelRow({ channel }: { channel: ChannelCarousel }) {
           className="flex gap-3 overflow-x-auto scroll-smooth pb-2 scrollbar-thin"
         >
           {channel.videos.map((video) => (
-            <div key={video.id} className="w-56 flex-shrink-0">
-              <VideoCard video={video} />
+            <div key={video.id} className="w-56 shrink-0">
+              <VideoCard video={video} onWatchedToggle={onWatchedToggle} />
             </div>
           ))}
         </div>
@@ -87,7 +94,11 @@ function ChannelRow({ channel }: { channel: ChannelCarousel }) {
   );
 }
 
-export function VideoCarousel({ channels, loading }: VideoCarouselProps) {
+export function VideoCarousel({
+  channels,
+  loading,
+  onWatchedToggle,
+}: VideoCarouselProps) {
   if (loading) {
     return (
       <div className="space-y-6">
@@ -116,7 +127,11 @@ export function VideoCarousel({ channels, loading }: VideoCarouselProps) {
   return (
     <div className="space-y-6">
       {channels.map((channel) => (
-        <ChannelRow key={channel.channelId} channel={channel} />
+        <ChannelRow
+          key={channel.channelId}
+          channel={channel}
+          onWatchedToggle={onWatchedToggle}
+        />
       ))}
     </div>
   );

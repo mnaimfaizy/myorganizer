@@ -122,6 +122,14 @@ function ConnectedDashboard({
 
   const isCooldownActive = !!syncStatus.isCooldownActive;
 
+  const handleWatchedToggle = useCallback(
+    (videoId: string, watched: boolean) => {
+      gridData.updateWatched(videoId, watched);
+      carouselData.updateWatched(videoId, watched);
+    },
+    [gridData, carouselData],
+  );
+
   const handleSync = useCallback(async () => {
     if (isCooldownActive) return;
     setSyncing(true);
@@ -261,11 +269,13 @@ function ConnectedDashboard({
               totalPages={gridData.totalPages}
               onPageChange={handlePageChange}
               total={gridData.total}
+              onWatchedToggle={handleWatchedToggle}
             />
           ) : (
             <VideoCarousel
               channels={carouselData.channels}
               loading={carouselData.loading}
+              onWatchedToggle={handleWatchedToggle}
             />
           )}
         </CardContent>

@@ -196,6 +196,12 @@ export function useYouTubeVideos(channelId?: string) {
     void fetch_();
   }, [fetch_]);
 
+  const updateWatched = useCallback((videoId: string, watched: boolean) => {
+    setVideos((prev) =>
+      prev.map((v) => (v.videoId === videoId ? { ...v, watched } : v)),
+    );
+  }, []);
+
   return {
     videos,
     total,
@@ -207,6 +213,7 @@ export function useYouTubeVideos(channelId?: string) {
     setSearch,
     page,
     setPage,
+    updateWatched,
     refresh: fetch_,
   };
 }
@@ -229,7 +236,18 @@ export function useYouTubeCarousel() {
     void fetch_();
   }, [fetch_]);
 
-  return { channels, loading, refresh: fetch_ };
+  const updateWatched = useCallback((videoId: string, watched: boolean) => {
+    setChannels((prev) =>
+      prev.map((channel) => ({
+        ...channel,
+        videos: channel.videos.map((v) =>
+          v.videoId === videoId ? { ...v, watched } : v,
+        ),
+      })),
+    );
+  }, []);
+
+  return { channels, loading, updateWatched, refresh: fetch_ };
 }
 
 export function useYouTubeNotifications() {
@@ -351,4 +369,17 @@ export function useYouTubeSyncStatus() {
   const isCooldownActive = !!(status && isRetryCooldownActive(status.retryAt));
 
   return { status, loading, refresh: fetch_, triggerSync, isCooldownActive };
+}
+
+export async function updateVideoWatched(
+  videoId: string,
+  watched: boolean,
+): Promise<{ ok: boolean; watched: boolean }> {
+  return apiFetch<{ ok: boolean; watched: boolean }>(
+    `/videos/${encodeURIComponent(videoId)}/watched`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({ watched }),
+    },
+  );
 }

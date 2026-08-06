@@ -42,6 +42,7 @@ export interface YouTubeVideoDTO {
   title: string;
   thumbnail: string | null;
   publishedAt: string;
+  watched: boolean;
 }
 
 export type YouTubeSyncStatus =
@@ -569,6 +570,19 @@ class YouTubeSyncService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  /** Set the Watched state for one of the user's Cached Uploads. */
+  async setVideoWatched(
+    userId: string,
+    videoId: string,
+    watched: boolean,
+  ): Promise<number> {
+    const result = await this.prisma.youTubeVideo.updateMany({
+      where: { userId, videoId },
+      data: { watched },
+    });
+    return result.count;
   }
 
   /** Get videos grouped by channel for carousel view */

@@ -37,6 +37,7 @@ const mockChannels: ChannelCarousel[] = [
         thumbnail: 'https://example.com/v1.jpg',
         publishedAt: '2024-01-01T00:00:00Z',
         description: '',
+        watched: false,
       },
       {
         id: '2',
@@ -47,6 +48,7 @@ const mockChannels: ChannelCarousel[] = [
         thumbnail: 'https://example.com/v2.jpg',
         publishedAt: '2024-01-02T00:00:00Z',
         description: '',
+        watched: false,
       },
     ],
   },
@@ -64,6 +66,7 @@ const mockChannels: ChannelCarousel[] = [
         thumbnail: null,
         publishedAt: '2024-01-03T00:00:00Z',
         description: '',
+        watched: false,
       },
     ],
   },

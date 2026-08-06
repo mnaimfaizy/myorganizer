@@ -86,6 +86,7 @@ jest.mock('../prisma', () => {
       upsert: jest.fn().mockResolvedValue({}),
       findMany: jest.fn().mockResolvedValue([]),
       count: jest.fn().mockResolvedValue(0),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       deleteMany: jest.fn(),
     },
     youTubeNotificationSettings: {
@@ -298,9 +299,10 @@ describe('YouTubeSyncService', () => {
       (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([
         {
           videoId: 'v1',
-          title: 'Old',
+          title: 'Old title',
           thumbnail: 't1',
           publishedAt: new Date('2026-01-01'),
+          watched: true,
         },
         {
           videoId: 'v2',
@@ -313,6 +315,7 @@ describe('YouTubeSyncService', () => {
           title: 'DeleteMe',
           thumbnail: 't3',
           publishedAt: new Date('2026-01-03'),
+          watched: true,
         },
       ]);
 
@@ -332,9 +335,9 @@ describe('YouTubeSyncService', () => {
             {
               id: 'v1',
               snippet: {
-                title: 'Old',
-                thumbnails: { medium: { url: 't1' } },
-                publishedAt: '2026-01-01T00:00:00Z',
+                title: 'Updated title',
+                thumbnails: { medium: { url: 'updated-t1' } },
+                publishedAt: '2026-01-05T00:00:00Z',
               },
             },
             {
@@ -358,18 +361,42 @@ describe('YouTubeSyncService', () => {
         mockPrisma.__transaction.youTubeVideo.upsert,
       ).toHaveBeenCalledTimes(2);
 
+      expect(mockPrisma.__transaction.youTubeVideo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId_videoId: { userId: 'user-1', videoId: 'v1' } },
+          update: {
+            channelId: 'ch-1',
+            title: 'Updated title',
+            thumbnail: 'updated-t1',
+            publishedAt: new Date('2026-01-05T00:00:00Z'),
+          },
+        }),
+      );
+
+      const v1Upsert = (
+        mockPrisma.__transaction.youTubeVideo.upsert as jest.Mock
+      ).mock.calls.find(
+        ([payload]) => payload.where.userId_videoId.videoId === 'v1',
+      );
+      expect(v1Upsert?.[0].update).not.toHaveProperty('watched');
+
+      expect(mockPrisma.__transaction.youTubeVideo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId_videoId: { userId: 'user-1', videoId: 'v4' } },
+          create: expect.not.objectContaining({ watched: true }),
+        }),
+      );
+
       // Deleted videos should be pruned (videoId not in snapshot)
       expect(
         mockPrisma.__transaction.youTubeVideo.deleteMany,
-      ).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            userId: 'user-1',
-            channelId: 'ch-1',
-            videoId: { notIn: expect.arrayContaining(['v1', 'v4']) },
-          }),
-        }),
-      );
+      ).toHaveBeenCalledWith({
+        where: {
+          userId: 'user-1',
+          channelId: 'ch-1',
+          videoId: { notIn: ['v1', 'v4'] },
+        },
+      });
 
       expect(result.videosSynced).toBe(2);
     });
@@ -736,6 +763,62 @@ describe('YouTubeSyncService', () => {
           take: 10,
         }),
       );
+    });
+  });
+
+  describe('setVideoWatched', () => {
+    it('should update watched state to true and return affected count', async () => {
+      (mockPrisma.youTubeVideo.updateMany as jest.Mock).mockResolvedValue({
+        count: 1,
+      });
+
+      const count = await youtubeSyncService.setVideoWatched(
+        'user-1',
+        'v1',
+        true,
+      );
+
+      expect(mockPrisma.youTubeVideo.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', videoId: 'v1' },
+        data: { watched: true },
+      });
+      expect(count).toBe(1);
+    });
+
+    it('should update watched state to false and return affected count', async () => {
+      (mockPrisma.youTubeVideo.updateMany as jest.Mock).mockResolvedValue({
+        count: 1,
+      });
+
+      const count = await youtubeSyncService.setVideoWatched(
+        'user-1',
+        'v1',
+        false,
+      );
+
+      expect(mockPrisma.youTubeVideo.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', videoId: 'v1' },
+        data: { watched: false },
+      });
+      expect(count).toBe(1);
+    });
+
+    it('should return 0 when no video matched the criteria', async () => {
+      (mockPrisma.youTubeVideo.updateMany as jest.Mock).mockResolvedValue({
+        count: 0,
+      });
+
+      const count = await youtubeSyncService.setVideoWatched(
+        'user-1',
+        'v-nonexistent',
+        true,
+      );
+
+      expect(mockPrisma.youTubeVideo.updateMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1', videoId: 'v-nonexistent' },
+        data: { watched: true },
+      });
+      expect(count).toBe(0);
     });
   });
 

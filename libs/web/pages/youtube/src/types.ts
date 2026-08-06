@@ -8,6 +8,7 @@ export interface YouTubeVideo {
   publishedAt: string;
   channelTitle?: string;
   description?: string;
+  watched: boolean;
 }
 
 export interface YouTubeSubscription {

@@ -96,6 +96,7 @@ const models: TsoaRoute.Models = {
             "title": {"dataType":"string","required":true},
             "thumbnail": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "publishedAt": {"dataType":"string","required":true},
+            "watched": {"dataType":"boolean","required":true},
             "channelTitle": {"dataType":"string"},
         },
         "additionalProperties": false,
@@ -109,6 +110,23 @@ const models: TsoaRoute.Models = {
             "page": {"dataType":"double","required":true},
             "limit": {"dataType":"double","required":true},
             "totalPages": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "WatchedResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "ok": {"dataType":"boolean","required":true},
+            "watched": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "WatchedBody": {
+        "dataType": "refObject",
+        "properties": {
+            "watched": {"dataType":"boolean","required":true},
         },
         "additionalProperties": false,
     },
@@ -720,6 +738,39 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'getVideos',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsYouTubeController_setVideoWatched: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                videoId: {"in":"path","name":"videoId","required":true,"dataType":"string"},
+                body: {"in":"body","name":"body","required":true,"ref":"WatchedBody"},
+        };
+        app.patch('/youtube/videos/:videoId/watched',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.setVideoWatched)),
+
+            async function YouTubeController_setVideoWatched(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_setVideoWatched, request, response });
+
+                const controller = new YouTubeController();
+
+              await templateService.apiHandler({
+                methodName: 'setVideoWatched',
                 controller,
                 response,
                 next,

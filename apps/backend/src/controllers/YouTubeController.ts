@@ -52,6 +52,7 @@ interface VideoResponse {
   title: string;
   thumbnail: string | null;
   publishedAt: string;
+  watched: boolean;
   channelTitle?: string;
 }
 
@@ -97,6 +98,15 @@ interface SyncStatusResponse {
 interface SyncResponse extends SyncStatusResponse {
   synced: number;
   videosSynced: number;
+}
+
+interface WatchedBody {
+  watched: boolean;
+}
+
+interface WatchedResponse {
+  ok: boolean;
+  watched: boolean;
 }
 
 function toSyncStatusResponse(
@@ -282,9 +292,31 @@ export class YouTubeController extends Controller {
         title: v.title,
         thumbnail: v.thumbnail,
         publishedAt: v.publishedAt.toISOString(),
+        watched: v.watched,
         channelTitle: v.subscription?.channelTitle ?? undefined,
       })),
     };
+  }
+
+  /** Marks a Cached Upload as Watched or New. */
+  @Patch('/videos/{videoId}/watched')
+  @Security('jwt')
+  public async setVideoWatched(
+    @Request() req: ExRequest,
+    @Path() videoId: string,
+    @Body() body: WatchedBody,
+  ): Promise<WatchedResponse | YouTubeErrorResponse> {
+    const userId = requireUserId(req);
+    const updated = await youtubeSyncService.setVideoWatched(
+      userId,
+      videoId,
+      body.watched,
+    );
+    if (updated === 0) {
+      this.setStatus(404);
+      return { message: 'Cached Upload not found' };
+    }
+    return { ok: true, watched: body.watched };
   }
 
   /**
@@ -308,6 +340,7 @@ export class YouTubeController extends Controller {
         title: v.title,
         thumbnail: v.thumbnail,
         publishedAt: v.publishedAt.toISOString(),
+        watched: v.watched,
       })),
     }));
   }

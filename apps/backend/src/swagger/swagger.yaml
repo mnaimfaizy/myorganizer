@@ -131,6 +131,8 @@ components:
           nullable: true
         publishedAt:
           type: string
+        watched:
+          type: boolean
         channelTitle:
           type: string
       required:
@@ -140,6 +142,7 @@ components:
         - title
         - thumbnail
         - publishedAt
+        - watched
       type: object
       additionalProperties: false
     VideosPageResponse:
@@ -166,6 +169,25 @@ components:
         - page
         - limit
         - totalPages
+      type: object
+      additionalProperties: false
+    WatchedResponse:
+      properties:
+        ok:
+          type: boolean
+        watched:
+          type: boolean
+      required:
+        - ok
+        - watched
+      type: object
+      additionalProperties: false
+    WatchedBody:
+      properties:
+        watched:
+          type: boolean
+      required:
+        - watched
       type: object
       additionalProperties: false
     ChannelCarouselResponse:
@@ -976,6 +998,35 @@ paths:
           required: false
           schema:
             type: string
+  /youtube/videos/{videoId}/watched:
+    patch:
+      operationId: SetVideoWatched
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/WatchedResponse"
+                  - $ref: "#/components/schemas/YouTubeErrorResponse"
+      description: Marks a Cached Upload as Watched or New.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      parameters:
+        - in: path
+          name: videoId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WatchedBody"
   /youtube/videos/carousel:
     get:
       operationId: GetVideosCarousel
