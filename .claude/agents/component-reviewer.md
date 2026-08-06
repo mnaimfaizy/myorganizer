@@ -129,6 +129,29 @@ For each file found:
 
 ## Output — Review Report
 
+Keep reports short by default (`PASS|FAIL|PASS_WITH_WARNINGS` + ≤5 bullets). Expand the full table only when the verdict is `FAIL` or the main agent requests detail (`gate:full` after a rejection).
+
+```markdown
+## ComponentReviewer Report
+
+### Verdict
+
+PASS | PASS_WITH_WARNINGS | FAIL
+
+### Summary (≤5 bullets)
+
+- <guideline or quality finding, or "none">
+
+### Required Revisions
+
+- [ ] <specific change ComponentBuilder must make, citing guideline section — omit if PASS>
+```
+
+When `FAIL` (or on request), also include the Guidelines Compliance table, Code Quality Findings, and Direct Importers sections from the long template below.
+
+<details>
+<summary>Full report template (FAIL / requested detail)</summary>
+
 ```markdown
 ## ComponentReviewer Report
 
@@ -192,9 +215,16 @@ PASS | PASS_WITH_WARNINGS | FAIL
 - [ ] <specific change ComponentBuilder must make, citing guideline section>
 ```
 
+</details>
+
+## Retry policy (main agent)
+
+The main agent may re-invoke ComponentBuilder → ComponentReviewer at most **3** times after a `FAIL`. On the 4th failure, escalate with a diagnosis — do not continue the loop.
+
 ## Constraints
 
 - Do NOT edit, create, or delete any file.
 - Do NOT fabricate findings — unknown = noted as such, not guessed.
 - Do NOT review Storybook stories or test files.
 - Every FAIL must cite a specific guideline section or concrete code quality issue.
+- Prefer the short report format unless FAIL or detail was requested.

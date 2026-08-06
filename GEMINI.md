@@ -106,7 +106,7 @@ When agreed work from a spec, PRD, or tickets should be built in the current ses
 - **Command**: `.gemini/commands/implement.md`
 - **Skill location**: `.github/skills/implement/SKILL.md`
 - **When to use**: The user has a scoped spec or ticket set and wants implementation now (ad-hoc or single-session delivery).
-- **What it does**: Implements against the spec using TDD at pre-agreed seams, routes file types through mandatory delegation, validates with Nx lint/test targets, reviews with `/code-review`, and commits or opens PRs only when the user explicitly asks.
+- **What it does**: Implements against the spec using TDD at pre-agreed seams, classifies `gate:*` (ADR 0012), routes by gate + file type, validates with Nx lint/test targets, reviews with `/code-review` when appropriate, and commits or opens PRs only when the user explicitly asks.
 
 ## Code Review — Two-axis diff review
 

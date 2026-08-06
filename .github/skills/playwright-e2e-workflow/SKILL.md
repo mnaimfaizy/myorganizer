@@ -5,11 +5,23 @@ description: 'Use when adding or changing Playwright end-to-end tests, validatin
 
 # Playwright E2E Workflow
 
+Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../docs/adr/0012-tiered-quality-gates.md) — classify `gate:*` before choosing hops.
+
 ## Use This Skill When
 
 - Adding or changing Playwright tests in `apps/myorganizer-e2e`
 - Validating critical route flows after frontend or auth changes
 - Debugging browser behavior that is hard to cover with unit tests alone
+
+## Gate tier routing
+
+| Gate              | Path                                                                                                                                                                 |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gate:mechanical` | Selector/string-only fix; flow matrix unchanged → main agent may edit directly; no E2EPlanner; still do not execute E2E in AFK                                       |
+| `gate:standard`   | Behavior/assertion change with unchanged high-level flow → TestScaffold + TestReviewer (structural); **skip E2EPlanner** when the existing flow matrix still applies |
+| `gate:full`       | New flow or matrix change → **E2EPlanner → TestScaffold → TestReviewer (structural)**                                                                                |
+
+Canonical chain when planning is required: **E2EPlanner → TestScaffold → TestReviewer (structural only)**. Never execute Playwright autonomously in Sandcastle.
 
 ## Autonomous Agent Execution Policy
 
@@ -21,7 +33,7 @@ description: 'Use when adding or changing Playwright end-to-end tests, validatin
 - Post a PR comment: _"E2E tests written but not executed — requires human verification before merge. Run: `yarn nx e2e myorganizer-e2e`"_
 - Apply label `needs-e2e-review` to the PR.
 
-**In human-in-the-loop sessions (interactive, human present), follow the full procedure below.**
+**In human-in-the-loop sessions (interactive, human present), follow the full procedure below (and execute browsers only when the human is present).**
 
 ## Critical Prerequisites (Before Planning)
 

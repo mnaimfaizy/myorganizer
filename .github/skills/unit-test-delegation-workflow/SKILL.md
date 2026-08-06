@@ -6,6 +6,8 @@ argument-hint: 'Requirement summary + source path(s) + test type + expected beha
 
 # Jest Test Delegation Workflow
 
+Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../docs/adr/0012-tiered-quality-gates.md) — classify `gate:*` before delegating.
+
 ## Use This Skill When
 
 - A feature, bug fix, or refactor requires new or changed Jest tests.
@@ -14,12 +16,19 @@ argument-hint: 'Requirement summary + source path(s) + test type + expected beha
 
 Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright specs in `apps/myorganizer-e2e`.
 
+## Gate tier routing
+
+| Gate                          | Path                                                                                                                       |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `gate:mechanical`             | Fixture/type retarget or rename only → main agent may edit + focused jest; **do not** run TestScaffold → Reviewer → Runner |
+| `gate:standard` / `gate:full` | Behavioral assertion changes → full pipeline below                                                                         |
+
 ## Core Rules
 
-- Always delegate Jest test implementation to the `TestScaffold` custom agent.
+- On `standard`/`full`, always delegate Jest test implementation to the `TestScaffold` custom agent.
 - Send a complete requirement brief; never ask for generic "comprehensive tests".
 - The brief must include a behavior matrix based on the actual implementation, not desired behavior from a template.
-- After `TestScaffold` reports, delegate the output to `TestReviewer` — it is the static quality gate (checklist verification, `tsc --noEmit`, `eslint`). After `TestReviewer` approves, delegate to `TestRunner` for execution. The main agent handles escalation only.
+- After `TestScaffold` reports, delegate the output to `TestReviewer` — it is the static quality gate (checklist verification, `tsc --noEmit`, `eslint`). After `TestReviewer` approves, delegate to `TestRunner` for **one** authoritative execution. Do not re-run the full suite in every hop.
 - Happy-path-only tests are not acceptable when reachable side effects, error paths, boundaries, or security-sensitive misuse paths exist.
 
 ## Workflow
