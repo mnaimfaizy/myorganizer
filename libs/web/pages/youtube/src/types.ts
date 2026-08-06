@@ -35,3 +35,23 @@ export interface NotificationSettings {
 
 export type SortOption = 'latest' | 'oldest' | 'az';
 export type ViewMode = 'grid' | 'carousel';
+
+export interface YouTubeSyncStatus {
+  status:
+    | 'never'
+    | 'running'
+    | 'success'
+    | 'partial'
+    | 'failed'
+    | 'quota_exceeded'
+    | 'cooldown';
+  lastSyncedAt: string | null;
+  lastSyncAttemptAt: string | null;
+  lastSyncError: string | null;
+  retryAt: string | null;
+}
+
+export interface YouTubeSyncResult extends YouTubeSyncStatus {
+  synced: number;
+  videosSynced: number;
+}

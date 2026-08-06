@@ -11,6 +11,29 @@ import type {
   YouTubeVideo,
 } from '../types';
 
+// Helper: centralize cooldown derivation & formatting so UI components
+// and other hooks use a single authoritative implementation.
+export function isRetryCooldownActive(retryAt?: string | null) {
+  if (!retryAt) return false;
+  const t = Date.parse(retryAt);
+  if (Number.isNaN(t)) return false;
+  return t > Date.now();
+}
+
+export function formatRetryAt(retryAt?: string | null) {
+  if (!retryAt) return null;
+  const d = new Date(retryAt);
+  if (Number.isNaN(d.getTime())) return null;
+  try {
+    return new Intl.DateTimeFormat(undefined, {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(d);
+  } catch {
+    return d.toLocaleString();
+  }
+}
+
 function getYouTubeApiBase(): string {
   return `${getApiBaseUrl()}/youtube`;
 }
@@ -105,6 +128,14 @@ export function useYouTubeSubscriptions() {
   const sync = useCallback(async () => {
     setLoading(true);
     try {
+      // Enforce authoritative backend cooldown before attempting PUT
+      const status =
+        await apiFetch<import('../types').YouTubeSyncStatus>('/sync-status');
+      if (isRetryCooldownActive(status.retryAt)) {
+        throw new Error(
+          `Sync disabled until ${formatRetryAt(status.retryAt) ?? status.retryAt}`,
+        );
+      }
       await apiFetch('/subscriptions/sync', { method: 'PUT' });
       await fetch_();
     } finally {
@@ -254,4 +285,70 @@ export function useYouTubeConnect() {
   }, []);
 
   return { connect, disconnect };
+}
+
+export function useYouTubeSyncStatus() {
+  const [status, setStatus] = useState<
+    import('../types').YouTubeSyncStatus | null
+  >(null);
+  const [loading, setLoading] = useState(false);
+  const didMount = useRef(false);
+
+  const fetch_ = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data =
+        await apiFetch<import('../types').YouTubeSyncStatus>('/sync-status');
+      setStatus(data);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const triggerSync = useCallback(async () => {
+    setLoading(true);
+    try {
+      // Ensure we have the authoritative sync-status from the backend
+      const latest =
+        await apiFetch<import('../types').YouTubeSyncStatus>('/sync-status');
+      setStatus(latest);
+      if (isRetryCooldownActive(latest.retryAt)) {
+        throw new Error(
+          `Sync disabled until ${formatRetryAt(latest.retryAt) ?? latest.retryAt}`,
+        );
+      }
+
+      // Backend PUT /youtube/subscriptions/sync returns YouTubeSyncResult
+      const data = await apiFetch<import('../types').YouTubeSyncResult>(
+        '/subscriptions/sync',
+        {
+          method: 'PUT',
+        },
+      );
+
+      // Update local status from the result
+      setStatus({
+        status: data.status,
+        lastSyncedAt: data.lastSyncedAt,
+        lastSyncAttemptAt: data.lastSyncAttemptAt,
+        lastSyncError: data.lastSyncError,
+        retryAt: data.retryAt,
+      });
+
+      return data;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      void fetch_();
+    }
+  }, [fetch_]);
+
+  const isCooldownActive = !!(status && isRetryCooldownActive(status.retryAt));
+
+  return { status, loading, refresh: fetch_, triggerSync, isCooldownActive };
 }

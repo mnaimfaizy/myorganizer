@@ -2,15 +2,17 @@
 
 import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 import { RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
+  formatRetryAt,
   useYouTubeCarousel,
   useYouTubeConnect,
   useYouTubeStatus,
   useYouTubeSubscriptions,
+  useYouTubeSyncStatus,
   useYouTubeVideos,
 } from '../hooks';
-import type { ViewMode } from '../types';
+import type { SortOption, ViewMode } from '../types';
 import { SubscriptionManager } from './SubscriptionManager';
 import { VideoCarousel } from './VideoCarousel';
 import { VideoGrid } from './VideoGrid';
@@ -19,6 +21,16 @@ export function YouTubePageClient() {
   const { connected, status, refresh: refreshStatus } = useYouTubeStatus();
   const { connect, disconnect } = useYouTubeConnect();
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const handleViewModeChange = useCallback(
+    (mode: ViewMode) => {
+      setViewMode(mode);
+    },
+    [setViewMode],
+  );
+  const handleDisconnect = useCallback(async () => {
+    await disconnect();
+    await refreshStatus();
+  }, [disconnect, refreshStatus]);
 
   if (status === 'loading') {
     return (
@@ -35,22 +47,18 @@ export function YouTubePageClient() {
   return (
     <ConnectedDashboard
       viewMode={viewMode}
-      onViewModeChange={setViewMode}
-      onDisconnect={async () => {
-        await disconnect();
-        await refreshStatus();
-      }}
+      onViewModeChange={handleViewModeChange}
+      onDisconnect={handleDisconnect}
     />
   );
 }
 
-function ConnectPrompt({
-  status,
-  onConnect,
-}: {
+interface ConnectPromptProps {
   status: string;
   onConnect: () => void;
-}) {
+}
+
+function ConnectPrompt({ status, onConnect }: ConnectPromptProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
       <div className="rounded-full bg-red-100 p-4 dark:bg-red-900/30">
@@ -79,34 +87,79 @@ function ConnectPrompt({
   );
 }
 
+interface ConnectedDashboardProps {
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
+  onDisconnect: () => void;
+}
+
 function ConnectedDashboard({
   viewMode,
   onViewModeChange,
   onDisconnect,
-}: {
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
-  onDisconnect: () => void;
-}) {
+}: ConnectedDashboardProps) {
   const subs = useYouTubeSubscriptions();
   const gridData = useYouTubeVideos();
   const carouselData = useYouTubeCarousel();
+  const syncStatus = useYouTubeSyncStatus();
   const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
-  const handleSync = async () => {
+  // Stabilized handlers for VideoGrid/ChannelVideosClient
+  const { setSort, setSearch, setPage } = gridData;
+  const handleSortChange = useCallback(
+    (sort: SortOption) => setSort(sort),
+    [setSort],
+  );
+  const handleSearchChange = useCallback(
+    (query: string) => setSearch(query),
+    [setSearch],
+  );
+  const handlePageChange = useCallback(
+    (page: number) => setPage(page),
+    [setPage],
+  );
+
+  const isCooldownActive = !!syncStatus.isCooldownActive;
+
+  const handleSync = useCallback(async () => {
+    if (isCooldownActive) return;
     setSyncing(true);
+    setSyncError(null);
     try {
-      await subs.sync();
-      // Sync also fetches videos on the backend now, refresh both views
-      await Promise.all([gridData.refresh(), carouselData.refresh()]);
+      // Use the authoritative trigger so we get sync-status details
+      await syncStatus.triggerSync();
+      // Refresh lists but don't fail the whole flow — preserve cached data on failures
+      const results = await Promise.allSettled([
+        subs.refresh(),
+        gridData.refresh(),
+        carouselData.refresh(),
+      ]);
+      const hadFailure = results.some((r) => r.status === 'rejected');
+      if (hadFailure) {
+        setSyncError('Refresh failed — showing cached data');
+      }
+      // Refresh authoritative sync status
+      await syncStatus.refresh();
+    } catch (err: unknown) {
+      setSyncError(err instanceof Error ? err.message : String(err));
     } finally {
       setSyncing(false);
     }
-  };
+  }, [isCooldownActive, syncStatus, subs, gridData, carouselData]);
 
-  const handleRefreshVideos = async () => {
-    await Promise.all([gridData.refresh(), carouselData.refresh()]);
-  };
+  const onGridClick = useCallback(
+    () => onViewModeChange('grid'),
+    [onViewModeChange],
+  );
+  const onCarouselClick = useCallback(
+    () => onViewModeChange('carousel'),
+    [onViewModeChange],
+  );
+  const handleRetryClick = useCallback(async () => {
+    if (isCooldownActive) return;
+    await handleSync();
+  }, [isCooldownActive, handleSync]);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -116,34 +169,64 @@ function ConnectedDashboard({
         onSync={handleSync}
         onToggle={subs.toggle}
         onDisconnect={onDisconnect}
+        syncRetryAt={syncStatus.status?.retryAt}
       />
 
       <Card className="p-4">
         <div className="flex items-center justify-between">
           <CardTitle>Videos</CardTitle>
           <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefreshVideos}
-              disabled={gridData.loading || carouselData.loading}
-              title="Refresh videos"
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${gridData.loading || carouselData.loading ? 'animate-spin' : ''}`}
-              />
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Freshness/status */}
+              {syncStatus.status && syncStatus.status.lastSyncedAt ? (
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Last synced{' '}
+                  {new Date(syncStatus.status.lastSyncedAt).toLocaleString()}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Never synced
+                </div>
+              )}
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRetryClick}
+                disabled={
+                  gridData.loading ||
+                  carouselData.loading ||
+                  syncStatus.loading ||
+                  syncing ||
+                  isCooldownActive
+                }
+                aria-label={
+                  isCooldownActive && syncStatus.status?.retryAt
+                    ? `Retry disabled until ${formatRetryAt(syncStatus.status?.retryAt) ?? syncStatus.status?.retryAt}`
+                    : 'Retry sync'
+                }
+                title={
+                  isCooldownActive && syncStatus.status?.retryAt
+                    ? `Retry disabled until ${formatRetryAt(syncStatus.status?.retryAt) ?? syncStatus.status?.retryAt}`
+                    : 'Retry sync'
+                }
+              >
+                <RefreshCw
+                  className={`h-4 w-4 ${gridData.loading || carouselData.loading || syncStatus.loading || syncing ? 'animate-spin' : ''}`}
+                />
+              </Button>
+            </div>
             <Button
               variant={viewMode === 'grid' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => onViewModeChange('grid')}
+              onClick={onGridClick}
             >
               Grid
             </Button>
             <Button
               variant={viewMode === 'carousel' ? 'default' : 'outline'}
               size="sm"
-              onClick={() => onViewModeChange('carousel')}
+              onClick={onCarouselClick}
             >
               Carousel
             </Button>
@@ -156,17 +239,27 @@ function ConnectedDashboard({
           </p>
         )}
         <CardContent className="mt-4">
+          {/* Freshness/error display */}
+          {syncError && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mb-2 text-sm text-red-600 dark:text-red-400"
+            >
+              {syncError}
+            </div>
+          )}
           {viewMode === 'grid' ? (
             <VideoGrid
               videos={gridData.videos}
               loading={gridData.loading}
               sort={gridData.sort}
-              onSortChange={gridData.setSort}
+              onSortChange={handleSortChange}
               search={gridData.search}
-              onSearchChange={gridData.setSearch}
+              onSearchChange={handleSearchChange}
               page={gridData.page}
               totalPages={gridData.totalPages}
-              onPageChange={gridData.setPage}
+              onPageChange={handlePageChange}
               total={gridData.total}
             />
           ) : (

@@ -17,6 +17,8 @@ import {
 import { requireUserId } from '../guards/AuthGuard';
 import youTubeNotificationService from '../services/YouTubeNotificationService';
 import youtubeSyncService, {
+  YouTubeRefreshResult,
+  YouTubeSyncStatusDTO,
   YouTubeVideoWithChannel,
 } from '../services/YouTubeSyncService';
 
@@ -82,6 +84,39 @@ interface NotificationSettingsBody {
 interface CronResultResponse {
   usersSynced: number;
   notificationsSent: number;
+}
+
+interface SyncStatusResponse {
+  status: string;
+  lastSyncedAt: string | null;
+  lastSyncAttemptAt: string | null;
+  lastSyncError: string | null;
+  retryAt: string | null;
+}
+
+interface SyncResponse extends SyncStatusResponse {
+  synced: number;
+  videosSynced: number;
+}
+
+function toSyncStatusResponse(
+  status: YouTubeSyncStatusDTO,
+): SyncStatusResponse {
+  return {
+    status: status.status,
+    lastSyncedAt: status.lastSyncedAt?.toISOString() ?? null,
+    lastSyncAttemptAt: status.lastSyncAttemptAt?.toISOString() ?? null,
+    lastSyncError: status.lastSyncError,
+    retryAt: status.retryAt?.toISOString() ?? null,
+  };
+}
+
+function toSyncResponse(result: YouTubeRefreshResult): SyncResponse {
+  return {
+    synced: result.subscriptionsSynced,
+    videosSynced: result.videosSynced,
+    ...toSyncStatusResponse(result),
+  };
 }
 
 // ─── Controller ─────────────────────────────────────────────────
@@ -179,11 +214,19 @@ export class YouTubeController extends Controller {
   @Security('jwt')
   public async syncSubscriptions(
     @Request() req: ExRequest,
-  ): Promise<{ synced: number; videosSynced: number } | YouTubeErrorResponse> {
+  ): Promise<SyncResponse | YouTubeErrorResponse> {
     const userId = requireUserId(req);
-    const subs = await youtubeSyncService.syncSubscriptions(userId);
-    const videosSynced = await youtubeSyncService.syncVideosForUser(userId);
-    return { synced: subs.length, videosSynced };
+    return toSyncResponse(await youtubeSyncService.manualRefresh(userId));
+  }
+
+  /** Returns the latest cached-video sync outcome and retry time. */
+  @Get('/sync-status')
+  @Security('jwt')
+  public async getSyncStatus(
+    @Request() req: ExRequest,
+  ): Promise<SyncStatusResponse | YouTubeErrorResponse> {
+    const userId = requireUserId(req);
+    return toSyncStatusResponse(await youtubeSyncService.getSyncStatus(userId));
   }
 
   /**

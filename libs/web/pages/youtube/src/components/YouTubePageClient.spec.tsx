@@ -1,6 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 
-import { YouTubePageClient } from './YouTubePageClient';
+import '@testing-library/jest-dom';
 
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
@@ -36,6 +36,7 @@ const mockUseYouTubeConnect = jest.fn();
 const mockUseYouTubeSubscriptions = jest.fn();
 const mockUseYouTubeVideos = jest.fn();
 const mockUseYouTubeCarousel = jest.fn();
+const mockUseYouTubeSyncStatus = jest.fn();
 
 jest.mock('../hooks', () => ({
   useYouTubeStatus: () => mockUseYouTubeStatus(),
@@ -43,7 +44,15 @@ jest.mock('../hooks', () => ({
   useYouTubeSubscriptions: () => mockUseYouTubeSubscriptions(),
   useYouTubeVideos: () => mockUseYouTubeVideos(),
   useYouTubeCarousel: () => mockUseYouTubeCarousel(),
+  useYouTubeSyncStatus: () => mockUseYouTubeSyncStatus(),
+  isRetryCooldownActive: (retryAt?: string | null) =>
+    Boolean(retryAt && Date.parse(retryAt) > Date.now()),
+  formatRetryAt: (retryAt?: string | null) =>
+    retryAt ? new Date(retryAt).toLocaleString() : null,
 }));
+
+const { YouTubePageClient } =
+  require('./YouTubePageClient') as typeof import('./YouTubePageClient');
 
 describe('YouTubePageClient', () => {
   const defaultConnect = {
@@ -85,6 +94,13 @@ describe('YouTubePageClient', () => {
     mockUseYouTubeSubscriptions.mockReturnValue(defaultSubs);
     mockUseYouTubeVideos.mockReturnValue(defaultVideos);
     mockUseYouTubeCarousel.mockReturnValue(defaultCarousel);
+    mockUseYouTubeSyncStatus.mockReturnValue({
+      status: null,
+      loading: false,
+      triggerSync: jest.fn(),
+      isCooldownActive: false,
+      refresh: jest.fn(),
+    });
   });
 
   it('should show loading state', () => {
@@ -94,7 +110,7 @@ describe('YouTubePageClient', () => {
       refresh: jest.fn(),
     });
     render(<YouTubePageClient />);
-    expect(screen.getByText('Loading…')).toBeTruthy();
+    expect(screen.getByText('Loading…')).toBeInTheDocument();
   });
 
   it('should show connect prompt when disconnected', () => {
@@ -104,8 +120,12 @@ describe('YouTubePageClient', () => {
       refresh: jest.fn(),
     });
     render(<YouTubePageClient />);
-    expect(screen.getByText('Connect Your YouTube Account')).toBeTruthy();
-    expect(screen.getByText('Connect YouTube')).toBeTruthy();
+    expect(
+      screen.getByText('Connect Your YouTube Account'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Connect YouTube' }),
+    ).toBeInTheDocument();
   });
 
   it('should show revoked warning when status is revoked', () => {
@@ -117,7 +137,7 @@ describe('YouTubePageClient', () => {
     render(<YouTubePageClient />);
     expect(
       screen.getByText(/Your previous connection was revoked/),
-    ).toBeTruthy();
+    ).toBeInTheDocument();
   });
 
   it('should call connect when Connect YouTube button clicked', () => {
@@ -143,10 +163,12 @@ describe('YouTubePageClient', () => {
       refresh: jest.fn(),
     });
     render(<YouTubePageClient />);
-    expect(screen.getByText('Subscriptions')).toBeTruthy();
-    expect(screen.getByText('Videos')).toBeTruthy();
-    expect(screen.getByText('Grid')).toBeTruthy();
-    expect(screen.getByText('Carousel')).toBeTruthy();
+    expect(screen.getByText('Subscriptions')).toBeInTheDocument();
+    expect(screen.getByText('Videos')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Grid' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'Carousel' }),
+    ).toBeInTheDocument();
   });
 
   it('should toggle between Grid and Carousel views', () => {
@@ -158,11 +180,94 @@ describe('YouTubePageClient', () => {
     render(<YouTubePageClient />);
 
     // Default is Grid view, so sort buttons should be visible
-    expect(screen.getByText('Latest')).toBeTruthy();
+    expect(screen.getByText('Latest')).toBeInTheDocument();
 
     // Switch to Carousel view
     fireEvent.click(screen.getByText('Carousel'));
     // Carousel has no sort buttons; instead it shows "No videos found."
     expect(screen.getByText('No videos found.')).toBeTruthy();
+  });
+
+  it('shows last synced when status is available', () => {
+    mockUseYouTubeStatus.mockReturnValue({
+      connected: true,
+      status: 'connected',
+      refresh: jest.fn(),
+    });
+
+    mockUseYouTubeSyncStatus.mockReturnValue({
+      status: { lastSyncedAt: '2026-08-06T12:00:00.000Z' },
+      loading: false,
+      triggerSync: jest.fn(),
+      isCooldownActive: false,
+      refresh: jest.fn(),
+    });
+
+    render(<YouTubePageClient />);
+    expect(screen.getByText(/Last synced/)).toHaveTextContent(/Last synced/);
+  });
+
+  it('shows error after failed refresh and Retry triggers sync', async () => {
+    mockUseYouTubeStatus.mockReturnValue({
+      connected: true,
+      status: 'connected',
+      refresh: jest.fn(),
+    });
+
+    const trigger = jest.fn().mockResolvedValue({ status: 'failed' });
+    mockUseYouTubeSyncStatus.mockReturnValue({
+      status: null,
+      loading: false,
+      triggerSync: trigger,
+      isCooldownActive: false,
+      refresh: jest.fn(),
+    });
+
+    const subs = {
+      ...defaultSubs,
+      refresh: jest.fn().mockRejectedValue(new Error('refresh failed')),
+    };
+    mockUseYouTubeSubscriptions.mockReturnValue(subs);
+
+    render(<YouTubePageClient />);
+
+    // Click the subscription sync button
+    const syncBtn = screen.getByRole('button', { name: 'Sync from YouTube' });
+    expect(syncBtn).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(syncBtn);
+    });
+
+    // Wait for the alert to appear
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/Refresh failed/);
+    expect(trigger).toHaveBeenCalled();
+  });
+
+  it('disables sync and retry when cooldown is active', () => {
+    mockUseYouTubeStatus.mockReturnValue({
+      connected: true,
+      status: 'connected',
+      refresh: jest.fn(),
+    });
+
+    const future = new Date(Date.now() + 1000 * 60 * 60).toISOString();
+    mockUseYouTubeSyncStatus.mockReturnValue({
+      status: { retryAt: future },
+      loading: false,
+      triggerSync: jest.fn(),
+      isCooldownActive: true,
+      refresh: jest.fn(),
+    });
+
+    render(<YouTubePageClient />);
+
+    // Subscription manager sync button should be disabled
+    const syncBtn = screen.getByText('Sync from YouTube');
+    expect(syncBtn).toBeDisabled();
+
+    // Retry button should be disabled and have a title indicating retry time
+    const retryByTitle = screen.queryByTitle(/Retry disabled until/);
+    expect(retryByTitle).toBeInTheDocument();
   });
 });

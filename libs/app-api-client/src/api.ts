@@ -581,6 +581,49 @@ export interface GetSubscriptions200Response {
 /**
  * 
  * @export
+ * @interface GetSyncStatus200Response
+ */
+export interface GetSyncStatus200Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'status': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'lastSyncedAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'lastSyncAttemptAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'lastSyncError': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'retryAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'message': string;
+}
+/**
+ * 
+ * @export
  * @interface GetVaultBlobResponse
  */
 export interface GetVaultBlobResponse {
@@ -1444,46 +1487,143 @@ export interface SubscriptionResponse {
 /**
  * 
  * @export
+ * @interface SyncResponse
+ */
+export interface SyncResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncResponse
+     */
+    'status': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncResponse
+     */
+    'lastSyncedAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncResponse
+     */
+    'lastSyncAttemptAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncResponse
+     */
+    'lastSyncError': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncResponse
+     */
+    'retryAt': string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof SyncResponse
+     */
+    'synced': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof SyncResponse
+     */
+    'videosSynced': number;
+}
+/**
+ * 
+ * @export
+ * @interface SyncStatusResponse
+ */
+export interface SyncStatusResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncStatusResponse
+     */
+    'status': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncStatusResponse
+     */
+    'lastSyncedAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncStatusResponse
+     */
+    'lastSyncAttemptAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncStatusResponse
+     */
+    'lastSyncError': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncStatusResponse
+     */
+    'retryAt': string | null;
+}
+/**
+ * 
+ * @export
  * @interface SyncSubscriptions200Response
  */
 export interface SyncSubscriptions200Response {
     /**
      * 
-     * @type {number}
+     * @type {string}
      * @memberof SyncSubscriptions200Response
      */
-    'videosSynced': number;
+    'status': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncSubscriptions200Response
+     */
+    'lastSyncedAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncSubscriptions200Response
+     */
+    'lastSyncAttemptAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncSubscriptions200Response
+     */
+    'lastSyncError': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncSubscriptions200Response
+     */
+    'retryAt': string | null;
     /**
      * 
      * @type {number}
      * @memberof SyncSubscriptions200Response
      */
     'synced': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof SyncSubscriptions200Response
+     */
+    'videosSynced': number;
     /**
      * 
      * @type {string}
      * @memberof SyncSubscriptions200Response
      */
     'message': string;
-}
-/**
- * 
- * @export
- * @interface SyncSubscriptions200ResponseAnyOf
- */
-export interface SyncSubscriptions200ResponseAnyOf {
-    /**
-     * 
-     * @type {number}
-     * @memberof SyncSubscriptions200ResponseAnyOf
-     */
-    'videosSynced': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof SyncSubscriptions200ResponseAnyOf
-     */
-    'synced': number;
 }
 /**
  * 
@@ -4638,6 +4778,39 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             };
         },
         /**
+         * Returns the latest cached-video sync outcome and retry time.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getSyncStatus: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/sync-status`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Returns cached videos with sorting, searching, and pagination.
          * @param {GetVideosSortEnum} [sort] Sort order: latest | oldest | az
          * @param {string} [search] Filter by video title
@@ -4959,6 +5132,17 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Returns the latest cached-video sync outcome and retry time.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getSyncStatus(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetSyncStatus200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getSyncStatus(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getSyncStatus']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Returns cached videos with sorting, searching, and pagination.
          * @param {GetVideosSortEnum} [sort] Sort order: latest | oldest | az
          * @param {string} [search] Filter by video title
@@ -5090,6 +5274,14 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
          */
         getSubscriptions(options?: RawAxiosRequestConfig): AxiosPromise<GetSubscriptions200Response> {
             return localVarFp.getSubscriptions(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Returns the latest cached-video sync outcome and retry time.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getSyncStatus(options?: RawAxiosRequestConfig): AxiosPromise<GetSyncStatus200Response> {
+            return localVarFp.getSyncStatus(options).then((request) => request(axios, basePath));
         },
         /**
          * Returns cached videos with sorting, searching, and pagination.
@@ -5302,6 +5494,16 @@ export class YouTubeApi extends BaseAPI {
      */
     public getSubscriptions(options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).getSubscriptions(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Returns the latest cached-video sync outcome and retry time.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public getSyncStatus(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).getSyncStatus(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

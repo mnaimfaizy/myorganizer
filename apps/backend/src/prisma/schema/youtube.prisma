@@ -6,6 +6,10 @@ model YouTubeIntegration {
     token_iv                    String
     token_auth_tag              String
     status                      String      @default("connected")
+    lastSyncAttemptAt           DateTime?
+    lastSyncStatus              String      @default("never")
+    lastSyncError               String?
+    lastManualRefreshAt         DateTime?
     createdAt                   DateTime    @default(now())
     updatedAt                   DateTime    @updatedAt
 
@@ -24,6 +28,7 @@ model YouTubeSubscription {
     uploadsPlaylistId       String
     enabled                 Boolean     @default(true)
     lastSyncedAt            DateTime?
+    disabledAt              DateTime?
     createdAt               DateTime    @default(now())
     updatedAt               DateTime    @updatedAt
 

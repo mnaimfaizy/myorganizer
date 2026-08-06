@@ -1,5 +1,3 @@
-import youtubeSyncService from './YouTubeSyncService';
-
 // Mock googleapis
 jest.mock('googleapis', () => {
   const mockYoutube = {
@@ -58,6 +56,13 @@ jest.mock('./YouTubeTokenEncryption', () => ({
 // jest.mock is hoisted above all variable declarations.
 // We export __mockPrisma so tests can reference mock methods.
 jest.mock('../prisma', () => {
+  const transaction = {
+    youTubeVideo: {
+      upsert: jest.fn().mockResolvedValue({}),
+      deleteMany: jest.fn().mockResolvedValue({}),
+    },
+  };
+
   const __mockPrisma = {
     youTubeIntegration: {
       upsert: jest
@@ -65,6 +70,7 @@ jest.mock('../prisma', () => {
         .mockResolvedValue({ userId: 'user-1', status: 'connected' }),
       findUnique: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       delete: jest.fn(),
       findMany: jest.fn().mockResolvedValue([]),
     },
@@ -74,6 +80,7 @@ jest.mock('../prisma', () => {
       updateMany: jest.fn().mockResolvedValue({ count: 1 }),
       deleteMany: jest.fn(),
       update: jest.fn(),
+      findFirst: jest.fn().mockResolvedValue(null),
     },
     youTubeVideo: {
       upsert: jest.fn().mockResolvedValue({}),
@@ -87,7 +94,18 @@ jest.mock('../prisma', () => {
       update: jest.fn(),
       deleteMany: jest.fn(),
     },
+    // Provide a $transaction implementation that passes a transaction-like
+    // object to the callback so the service's transactional upserts/deletes
+    // can be asserted.
+    $transaction: jest.fn().mockImplementation(async (fn: any) => {
+      // call the provided function with the transaction stub
+      await fn(transaction as any);
+      return;
+    }),
+    // expose the transaction stub so tests can assert on transactional calls
+    __transaction: transaction,
   };
+
   return {
     createPrismaClient: () => __mockPrisma,
     PrismaClient: jest.fn(),
@@ -95,10 +113,12 @@ jest.mock('../prisma', () => {
   };
 });
 
+const youtubeSyncService = require('./YouTubeSyncService').default;
 const mockPrisma = require('../prisma').__mockPrisma;
 
 describe('YouTubeSyncService', () => {
   beforeEach(() => {
+    jest.restoreAllMocks();
     jest.clearAllMocks();
     process.env.GOOGLE_CLIENT_ID = 'test-client-id';
     process.env.GOOGLE_CLIENT_SECRET = 'test-client-secret';
@@ -128,6 +148,8 @@ describe('YouTubeSyncService', () => {
           create: expect.objectContaining({
             userId: 'user-1',
             status: 'connected',
+            encrypted_access_token: 'encrypted_mock-access-token',
+            encrypted_refresh_token: 'encrypted_mock-refresh-token',
           }),
         }),
       );
@@ -239,10 +261,414 @@ describe('YouTubeSyncService', () => {
     it('should update subscription enabled state', async () => {
       await youtubeSyncService.toggleSubscription('user-1', 'sub-1', false);
 
-      expect(mockPrisma.youTubeSubscription.updateMany).toHaveBeenCalledWith({
-        where: { id: 'sub-1', userId: 'user-1' },
-        data: { enabled: false },
+      expect(mockPrisma.youTubeSubscription.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'sub-1', userId: 'user-1' },
+          data: expect.objectContaining({ enabled: false }),
+        }),
+      );
+    });
+  });
+
+  describe('video sync behavior', () => {
+    it('should upsert new videos and delete removed videos when snapshot differs', async () => {
+      // Setup integration and a single enabled subscription
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          encrypted_access_token: 'encrypted_access',
+          encrypted_refresh_token: 'encrypted_refresh',
+          token_iv: 'iv1:iv2',
+          token_auth_tag: 'tag1:tag2',
+          status: 'connected',
+        },
+      );
+
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'sub-1',
+          userId: 'user-1',
+          channelId: 'ch-1',
+          uploadsPlaylistId: 'pl-1',
+          enabled: true,
+        },
+      ]);
+
+      // Existing DB has three videos; snapshot will contain two (one new)
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([
+        {
+          videoId: 'v1',
+          title: 'Old',
+          thumbnail: 't1',
+          publishedAt: new Date('2026-01-01'),
+        },
+        {
+          videoId: 'v2',
+          title: 'Keep',
+          thumbnail: 't2',
+          publishedAt: new Date('2026-01-02'),
+        },
+        {
+          videoId: 'v3',
+          title: 'DeleteMe',
+          thumbnail: 't3',
+          publishedAt: new Date('2026-01-03'),
+        },
+      ]);
+
+      const mockYoutube = require('googleapis').google.youtube();
+      mockYoutube.playlistItems.list.mockResolvedValue({
+        data: {
+          items: [
+            { snippet: { resourceId: { videoId: 'v1' } } },
+            { snippet: { resourceId: { videoId: 'v4' } } },
+          ],
+        },
       });
+
+      mockYoutube.videos.list.mockResolvedValue({
+        data: {
+          items: [
+            {
+              id: 'v1',
+              snippet: {
+                title: 'Old',
+                thumbnails: { medium: { url: 't1' } },
+                publishedAt: '2026-01-01T00:00:00Z',
+              },
+            },
+            {
+              id: 'v4',
+              snippet: {
+                title: 'New Video',
+                thumbnails: { medium: { url: 't4' } },
+                publishedAt: '2026-01-04T00:00:00Z',
+              },
+            },
+          ],
+        },
+      });
+
+      const result =
+        await youtubeSyncService.syncVideosForUserWithStatus('user-1');
+
+      // Transactional upserts should have been invoked for snapshot items
+      expect(mockPrisma.$transaction).toHaveBeenCalled();
+      expect(
+        mockPrisma.__transaction.youTubeVideo.upsert,
+      ).toHaveBeenCalledTimes(2);
+
+      // Deleted videos should be pruned (videoId not in snapshot)
+      expect(
+        mockPrisma.__transaction.youTubeVideo.deleteMany,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId: 'user-1',
+            channelId: 'ch-1',
+            videoId: { notIn: expect.arrayContaining(['v1', 'v4']) },
+          }),
+        }),
+      );
+
+      expect(result.videosSynced).toBe(2);
+    });
+
+    it('should cap a successful snapshot at 100 videos', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          encrypted_access_token: 'encrypted_access',
+          encrypted_refresh_token: 'encrypted_refresh',
+          token_iv: 'iv1:iv2',
+          token_auth_tag: 'tag1:tag2',
+          status: 'connected',
+        },
+      );
+
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock)
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            id: 'sub-1',
+            userId: 'user-1',
+            channelId: 'ch-1',
+            uploadsPlaylistId: 'pl-1',
+            enabled: true,
+          },
+        ]);
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([]);
+
+      const videoIds = Array.from(
+        { length: 100 },
+        (_, index) => `v${index + 1}`,
+      );
+      const mockYoutube = require('googleapis').google.youtube();
+      mockYoutube.playlistItems.list
+        .mockResolvedValueOnce({
+          data: {
+            items: videoIds.slice(0, 50).map((videoId) => ({
+              snippet: { resourceId: { videoId } },
+            })),
+            nextPageToken: 'page-2',
+          },
+        })
+        .mockResolvedValueOnce({
+          data: {
+            items: videoIds.slice(50).map((videoId) => ({
+              snippet: { resourceId: { videoId } },
+            })),
+          },
+        });
+      mockYoutube.videos.list.mockResolvedValue({
+        data: {
+          items: videoIds.map((videoId) => ({
+            id: videoId,
+            snippet: {
+              title: `Video ${videoId}`,
+              thumbnails: { medium: { url: `https://img.test/${videoId}` } },
+              publishedAt: '2026-01-01T00:00:00Z',
+            },
+          })),
+        },
+      });
+
+      const result =
+        await youtubeSyncService.syncVideosForUserWithStatus('user-1');
+
+      expect(result.videosSynced).toBe(100);
+      expect(
+        mockPrisma.__transaction.youTubeVideo.upsert,
+      ).toHaveBeenCalledTimes(100);
+    });
+
+    it('should not perform transaction when snapshot is unchanged', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          encrypted_access_token: 'encrypted_access',
+          encrypted_refresh_token: 'encrypted_refresh',
+          token_iv: 'iv1:iv2',
+          token_auth_tag: 'tag1:tag2',
+          status: 'connected',
+        },
+      );
+
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'sub-1',
+          userId: 'user-1',
+          channelId: 'ch-1',
+          uploadsPlaylistId: 'pl-1',
+          enabled: true,
+        },
+      ]);
+
+      // Existing DB and snapshot will match exactly
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([
+        {
+          videoId: 'v1',
+          title: 'Same',
+          thumbnail: 't1',
+          publishedAt: new Date('2026-01-01'),
+        },
+      ]);
+
+      const mockYoutube = require('googleapis').google.youtube();
+      mockYoutube.playlistItems.list.mockResolvedValue({
+        data: { items: [{ snippet: { resourceId: { videoId: 'v1' } } }] },
+      });
+      mockYoutube.videos.list.mockResolvedValue({
+        data: {
+          items: [
+            {
+              id: 'v1',
+              snippet: {
+                title: 'Same',
+                thumbnails: { medium: { url: 't1' } },
+                publishedAt: '2026-01-01T00:00:00Z',
+              },
+            },
+          ],
+        },
+      });
+
+      const result =
+        await youtubeSyncService.syncVideosForUserWithStatus('user-1');
+
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      expect(result.videosSynced).toBe(0);
+    });
+
+    it('should retain last-good snapshot on fetch failure', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          encrypted_access_token: 'encrypted_access',
+          encrypted_refresh_token: 'encrypted_refresh',
+          token_iv: 'iv1:iv2',
+          token_auth_tag: 'tag1:tag2',
+          status: 'connected',
+        },
+      );
+
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock)
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            id: 'sub-1',
+            userId: 'user-1',
+            channelId: 'ch-err',
+            uploadsPlaylistId: 'pl-err',
+            enabled: true,
+          },
+        ]);
+
+      const mockYoutube = require('googleapis').google.youtube();
+      mockYoutube.playlistItems.list.mockRejectedValue(
+        new Error('network failure'),
+      );
+
+      await youtubeSyncService.syncVideosForUserWithStatus('user-1');
+
+      // Should mark lastSyncStatus as failed and should not have deleted cached rows
+      expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 'user-1' },
+          data: expect.objectContaining({ lastSyncStatus: 'failed' }),
+        }),
+      );
+
+      expect(mockPrisma.youTubeVideo.deleteMany).not.toHaveBeenCalled();
+      expect(mockPrisma.youTubeSubscription.update).not.toHaveBeenCalled();
+    });
+
+    it('should prune expired disabled channel videos during sync', async () => {
+      // First call: pruneExpiredDisabledVideos should find expired subs
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock)
+        .mockResolvedValueOnce([{ channelId: 'ch-expired' }])
+        .mockResolvedValueOnce([]); // enabled subs after prune
+
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          status: 'connected',
+        },
+      );
+
+      await youtubeSyncService.syncVideosForUserWithStatus('user-1');
+
+      expect(mockPrisma.youTubeVideo.deleteMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 'user-1', channelId: { in: ['ch-expired'] } },
+        }),
+      );
+    });
+
+    it('manualRefresh should claim and invoke sync when not in cooldown', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          status: 'connected',
+          lastManualRefreshAt: null,
+        },
+      );
+
+      (mockPrisma.youTubeIntegration.updateMany as jest.Mock).mockResolvedValue(
+        { count: 1 },
+      );
+
+      const subsSpy = jest
+        .spyOn(youtubeSyncService, 'syncSubscriptions')
+        .mockResolvedValue([]);
+      const videosSpy = jest
+        .spyOn(youtubeSyncService, 'syncVideosForUserWithStatus')
+        .mockResolvedValue({
+          subscriptionsSynced: 0,
+          videosSynced: 0,
+          status: 'success',
+          lastSyncedAt: null,
+          lastSyncAttemptAt: null,
+          lastSyncError: null,
+          retryAt: null,
+        });
+
+      const result = await youtubeSyncService.manualRefresh('user-1');
+
+      expect(subsSpy).toHaveBeenCalled();
+      expect(videosSpy).toHaveBeenCalled();
+      expect(result.status).toBeDefined();
+    });
+
+    it('manualRefresh should return cooldown when called too soon', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          status: 'connected',
+          lastManualRefreshAt: new Date(),
+        },
+      );
+
+      const subsSpy = jest.spyOn(youtubeSyncService, 'syncSubscriptions');
+      const result = await youtubeSyncService.manualRefresh('user-1');
+
+      expect(result.status).toBe('cooldown');
+      expect(subsSpy).not.toHaveBeenCalled();
+    });
+
+    it('should stop processing channels on quotaExceeded and report quota_exceeded', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock)
+        .mockResolvedValueOnce({
+          userId: 'user-1',
+          encrypted_access_token: 'encrypted_access',
+          encrypted_refresh_token: 'encrypted_refresh',
+          token_iv: 'iv1:iv2',
+          token_auth_tag: 'tag1:tag2',
+          status: 'connected',
+        })
+        .mockResolvedValueOnce({
+          userId: 'user-1',
+          status: 'connected',
+          lastSyncStatus: 'quota_exceeded',
+          lastSyncError: 'quotaExceeded',
+        });
+
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 's1',
+          channelId: 'c1',
+          uploadsPlaylistId: 'p1',
+          userId: 'user-1',
+          enabled: true,
+        },
+        {
+          id: 's2',
+          channelId: 'c2',
+          uploadsPlaylistId: 'p2',
+          userId: 'user-1',
+          enabled: true,
+        },
+      ]);
+
+      const mockYoutube = require('googleapis').google.youtube();
+      mockYoutube.playlistItems.list.mockRejectedValueOnce(
+        new Error('quotaExceeded'),
+      );
+
+      const result =
+        await youtubeSyncService.syncVideosForUserWithStatus('user-1');
+
+      expect(mockYoutube.playlistItems.list).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId: 'user-1' },
+          data: expect.objectContaining({
+            lastSyncStatus: 'quota_exceeded',
+            lastSyncError: 'quotaExceeded',
+          }),
+        }),
+      );
+      expect(result.status).toBe('quota_exceeded');
     });
   });
 

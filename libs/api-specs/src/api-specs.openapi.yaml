@@ -60,6 +60,62 @@ components:
         - lastSyncedAt
       type: object
       additionalProperties: false
+    SyncResponse:
+      properties:
+        status:
+          type: string
+        lastSyncedAt:
+          type: string
+          nullable: true
+        lastSyncAttemptAt:
+          type: string
+          nullable: true
+        lastSyncError:
+          type: string
+          nullable: true
+        retryAt:
+          type: string
+          nullable: true
+        synced:
+          type: number
+          format: double
+        videosSynced:
+          type: number
+          format: double
+      required:
+        - status
+        - lastSyncedAt
+        - lastSyncAttemptAt
+        - lastSyncError
+        - retryAt
+        - synced
+        - videosSynced
+      type: object
+      additionalProperties: false
+    SyncStatusResponse:
+      properties:
+        status:
+          type: string
+        lastSyncedAt:
+          type: string
+          nullable: true
+        lastSyncAttemptAt:
+          type: string
+          nullable: true
+        lastSyncError:
+          type: string
+          nullable: true
+        retryAt:
+          type: string
+          nullable: true
+      required:
+        - status
+        - lastSyncedAt
+        - lastSyncAttemptAt
+        - lastSyncError
+        - retryAt
+      type: object
+      additionalProperties: false
     VideoResponse:
       properties:
         id:
@@ -802,19 +858,27 @@ paths:
             application/json:
               schema:
                 anyOf:
-                  - properties:
-                      videosSynced:
-                        type: number
-                        format: double
-                      synced:
-                        type: number
-                        format: double
-                    required:
-                      - videosSynced
-                      - synced
-                    type: object
+                  - $ref: "#/components/schemas/SyncResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
       description: Fetches fresh subscriptions from YouTube and syncs to DB.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      parameters: []
+  /youtube/sync-status:
+    get:
+      operationId: GetSyncStatus
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/SyncStatusResponse"
+                  - $ref: "#/components/schemas/YouTubeErrorResponse"
+      description: Returns the latest cached-video sync outcome and retry time.
       tags:
         - YouTube
       security:

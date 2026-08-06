@@ -13,6 +13,10 @@ const logger = winston.createLogger({
   transports: [new winston.transports.Console()],
 });
 
+const VIDEO_SNAPSHOT_LIMIT = 100;
+const MANUAL_REFRESH_COOLDOWN_MS = 15 * 60 * 1000;
+const DISABLED_VIDEO_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+
 function getOAuth2Client() {
   return new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -38,6 +42,54 @@ export interface YouTubeVideoDTO {
   title: string;
   thumbnail: string | null;
   publishedAt: string;
+}
+
+export type YouTubeSyncStatus =
+  | 'never'
+  | 'running'
+  | 'success'
+  | 'partial'
+  | 'failed'
+  | 'quota_exceeded'
+  | 'cooldown';
+
+export interface YouTubeSyncStatusDTO {
+  status: YouTubeSyncStatus;
+  lastSyncedAt: Date | null;
+  lastSyncAttemptAt: Date | null;
+  lastSyncError: string | null;
+  retryAt: Date | null;
+}
+
+export interface YouTubeRefreshResult extends YouTubeSyncStatusDTO {
+  subscriptionsSynced: number;
+  videosSynced: number;
+}
+
+interface YouTubeVideoSnapshot {
+  videoId: string;
+  channelId: string;
+  title: string;
+  thumbnail: string | null;
+  publishedAt: Date;
+}
+
+function isQuotaExceededError(error: unknown): boolean {
+  let message = String(error);
+  if (error instanceof Error) {
+    message = error.message;
+  } else {
+    try {
+      message = JSON.stringify(error) ?? message;
+    } catch {
+      // Keep the string representation when a third-party error is not serializable.
+    }
+  }
+  return /quotaExceeded/i.test(message);
+}
+
+function getSyncErrorCode(error: unknown): string {
+  return isQuotaExceededError(error) ? 'quotaExceeded' : 'syncFailed';
 }
 
 class YouTubeSyncService {
@@ -88,7 +140,6 @@ class YouTubeSyncService {
       },
     });
 
-    // Create default notification settings if not existing
     await this.prisma.youTubeNotificationSettings.upsert({
       where: { userId },
       create: { userId, intervalDays: 7, enabled: true },
@@ -123,7 +174,6 @@ class YouTubeSyncService {
       return { ok: false, message: 'No YouTube integration found.' };
     }
 
-    // Attempt to revoke the token at Google
     try {
       const oauth2Client = getOAuth2Client();
       const refreshToken = this.decryptRefreshToken(integration);
@@ -132,7 +182,6 @@ class YouTubeSyncService {
       logger.warn('Failed to revoke token at Google (may already be revoked)');
     }
 
-    // Remove all related data
     await this.prisma.youTubeVideo.deleteMany({ where: { userId } });
     await this.prisma.youTubeSubscription.deleteMany({ where: { userId } });
     await this.prisma.youTubeNotificationSettings.deleteMany({
@@ -234,43 +283,223 @@ class YouTubeSyncService {
   ) {
     return this.prisma.youTubeSubscription.updateMany({
       where: { id: subscriptionId, userId },
-      data: { enabled },
+      data: enabled
+        ? { enabled: true, disabledAt: null }
+        : { enabled: false, disabledAt: new Date() },
     });
   }
 
-  /** Sync videos for all enabled subscriptions of a user */
+  /** Sync enabled videos and preserve the last good snapshot on failure. */
   async syncVideosForUser(userId: string): Promise<number> {
-    const subs = await this.prisma.youTubeSubscription.findMany({
+    const result = await this.syncVideosForUserWithStatus(userId);
+    return result.videosSynced;
+  }
+
+  async syncVideosForUserWithStatus(
+    userId: string,
+  ): Promise<YouTubeRefreshResult> {
+    const attemptAt = new Date();
+    await this.prisma.youTubeIntegration.update({
+      where: { userId },
+      data: {
+        lastSyncAttemptAt: attemptAt,
+        lastSyncStatus: 'running',
+        lastSyncError: null,
+      },
+    });
+
+    await this.pruneExpiredDisabledVideos(userId);
+    const subscriptions = await this.prisma.youTubeSubscription.findMany({
       where: { userId, enabled: true },
     });
 
-    if (subs.length === 0) return 0;
+    if (subscriptions.length === 0) {
+      await this.recordSyncState(userId, attemptAt, 'success', null);
+      return {
+        subscriptionsSynced: 0,
+        videosSynced: 0,
+        ...(await this.getSyncStatus(userId)),
+      };
+    }
 
-    const youtube = await this.getAuthenticatedClient(userId);
-    let totalSynced = 0;
+    let youtube: youtube_v3.Youtube;
+    try {
+      youtube = await this.getAuthenticatedClient(userId);
+    } catch (error) {
+      await this.recordSyncState(
+        userId,
+        attemptAt,
+        'failed',
+        getSyncErrorCode(error),
+      );
+      throw error;
+    }
 
-    for (const sub of subs) {
+    let videosSynced = 0;
+    let successfulChannels = 0;
+    let failedChannels = 0;
+    let lastSyncError: string | null = null;
+    let quotaExceeded = false;
+
+    for (const subscription of subscriptions) {
       try {
         const count = await this.syncVideosForSubscription(
           youtube,
           userId,
-          sub.channelId,
-          sub.uploadsPlaylistId,
+          subscription.channelId,
+          subscription.uploadsPlaylistId,
         );
-        totalSynced += count;
+        videosSynced += count;
+        successfulChannels++;
 
         await this.prisma.youTubeSubscription.update({
-          where: { id: sub.id },
-          data: { lastSyncedAt: new Date() },
+          where: { id: subscription.id },
+          data: { lastSyncedAt: attemptAt },
         });
-      } catch (err) {
+      } catch (error) {
+        failedChannels++;
+        lastSyncError = getSyncErrorCode(error);
         logger.error(
-          `Failed to sync videos for channel ${sub.channelId}: ${err}`,
+          `Failed to sync videos for channel ${subscription.channelId}: ${error}`,
         );
+        if (isQuotaExceededError(error)) {
+          quotaExceeded = true;
+          break;
+        }
       }
     }
 
-    return totalSynced;
+    const status: YouTubeSyncStatus = quotaExceeded
+      ? 'quota_exceeded'
+      : failedChannels === 0
+        ? 'success'
+        : successfulChannels === 0
+          ? 'failed'
+          : 'partial';
+
+    await this.recordSyncState(userId, attemptAt, status, lastSyncError);
+
+    return {
+      subscriptionsSynced: successfulChannels,
+      videosSynced,
+      ...(await this.getSyncStatus(userId)),
+    };
+  }
+
+  /** Refresh subscriptions and videos with a per-user 15-minute cooldown. */
+  async manualRefresh(userId: string): Promise<YouTubeRefreshResult> {
+    const integration = await this.prisma.youTubeIntegration.findUnique({
+      where: { userId },
+    });
+    if (!integration || integration.status !== 'connected') {
+      throw new Error('YouTube account is not connected.');
+    }
+
+    const now = new Date();
+    const cooldownUntil = integration.lastManualRefreshAt
+      ? new Date(
+          integration.lastManualRefreshAt.getTime() +
+            MANUAL_REFRESH_COOLDOWN_MS,
+        )
+      : null;
+
+    if (cooldownUntil && cooldownUntil > now) {
+      return {
+        subscriptionsSynced: 0,
+        videosSynced: 0,
+        ...(await this.getSyncStatus(userId)),
+        status: 'cooldown',
+        retryAt: cooldownUntil,
+      };
+    }
+
+    const claim = await this.prisma.youTubeIntegration.updateMany({
+      where: {
+        userId,
+        status: 'connected',
+        OR: [
+          { lastManualRefreshAt: null },
+          {
+            lastManualRefreshAt: {
+              lte: new Date(now.getTime() - MANUAL_REFRESH_COOLDOWN_MS),
+            },
+          },
+        ],
+      },
+      data: { lastManualRefreshAt: now },
+    });
+
+    if (claim.count !== 1) {
+      const currentStatus = await this.getSyncStatus(userId);
+      return {
+        subscriptionsSynced: 0,
+        videosSynced: 0,
+        ...currentStatus,
+        status: 'cooldown',
+        retryAt:
+          currentStatus.retryAt ??
+          new Date(now.getTime() + MANUAL_REFRESH_COOLDOWN_MS),
+      };
+    }
+
+    try {
+      const subscriptions = await this.syncSubscriptions(userId);
+      const syncResult = await this.syncVideosForUserWithStatus(userId);
+      return {
+        ...syncResult,
+        subscriptionsSynced: subscriptions.length,
+      };
+    } catch (error) {
+      const status: YouTubeSyncStatus = isQuotaExceededError(error)
+        ? 'quota_exceeded'
+        : 'failed';
+      await this.recordSyncState(userId, now, status, getSyncErrorCode(error));
+      return {
+        subscriptionsSynced: 0,
+        videosSynced: 0,
+        ...(await this.getSyncStatus(userId)),
+        status,
+      };
+    }
+  }
+
+  /** Return persisted freshness and manual-refresh state. */
+  async getSyncStatus(userId: string): Promise<YouTubeSyncStatusDTO> {
+    const integration = await this.prisma.youTubeIntegration.findUnique({
+      where: { userId },
+    });
+    if (!integration) {
+      return {
+        status: 'never',
+        lastSyncedAt: null,
+        lastSyncAttemptAt: null,
+        lastSyncError: null,
+        retryAt: null,
+      };
+    }
+
+    const latestSubscription = await this.prisma.youTubeSubscription.findFirst({
+      where: {
+        userId,
+        enabled: true,
+        lastSyncedAt: { not: null },
+      },
+      orderBy: { lastSyncedAt: 'desc' },
+      select: { lastSyncedAt: true },
+    });
+    const now = new Date();
+    const manualRefreshAt = integration.lastManualRefreshAt;
+    const retryAt = manualRefreshAt
+      ? new Date(manualRefreshAt.getTime() + MANUAL_REFRESH_COOLDOWN_MS)
+      : null;
+
+    return {
+      status: (integration.lastSyncStatus ?? 'never') as YouTubeSyncStatus,
+      lastSyncedAt: latestSubscription?.lastSyncedAt ?? null,
+      lastSyncAttemptAt: integration.lastSyncAttemptAt ?? null,
+      lastSyncError: integration.lastSyncError ?? null,
+      retryAt: retryAt && retryAt > now ? retryAt : null,
+    };
   }
 
   /** Get cached videos with sorting, search, and pagination */
@@ -305,8 +534,6 @@ class YouTubeSyncService {
     if (search) {
       where['title'] = { contains: search, mode: 'insensitive' };
     }
-
-    // Only show videos from enabled subscriptions
     where['subscription'] = { enabled: true };
 
     let orderBy: Record<string, string>;
@@ -324,7 +551,6 @@ class YouTubeSyncService {
     }
 
     const skip = (page - 1) * limit;
-
     const [videos, total] = await Promise.all([
       this.prisma.youTubeVideo.findMany({
         where,
@@ -358,11 +584,11 @@ class YouTubeSyncService {
       },
     });
 
-    return subscriptions.map((sub) => ({
-      channelId: sub.channelId,
-      channelTitle: sub.channelTitle,
-      channelThumbnail: sub.channelThumbnail,
-      videos: sub.videos,
+    return subscriptions.map((subscription) => ({
+      channelId: subscription.channelId,
+      channelTitle: subscription.channelTitle,
+      channelThumbnail: subscription.channelThumbnail,
+      videos: subscription.videos,
     }));
   }
 
@@ -396,8 +622,6 @@ class YouTubeSyncService {
     });
   }
 
-  // ─── Private Helpers ─────────────────────────────────────────────
-
   private async getAuthenticatedClient(
     userId: string,
   ): Promise<youtube_v3.Youtube> {
@@ -410,14 +634,12 @@ class YouTubeSyncService {
 
     const accessToken = this.decryptAccessToken(integration);
     const refreshToken = this.decryptRefreshToken(integration);
-
     const oauth2Client = getOAuth2Client();
     oauth2Client.setCredentials({
       access_token: accessToken,
       refresh_token: refreshToken,
     });
 
-    // Listen for token refresh events to persist the new access token
     oauth2Client.on('tokens', async (tokens) => {
       if (tokens.access_token) {
         const encrypted = encryptToken(tokens.access_token);
@@ -473,12 +695,76 @@ class YouTubeSyncService {
     channelId: string,
     uploadsPlaylistId: string,
   ): Promise<number> {
-    let count = 0;
-    let pageToken: string | undefined;
+    const snapshot = await this.fetchVideoSnapshot(
+      youtube,
+      channelId,
+      uploadsPlaylistId,
+    );
+    const existingVideos = await this.prisma.youTubeVideo.findMany({
+      where: { userId, channelId },
+      select: {
+        videoId: true,
+        title: true,
+        thumbnail: true,
+        publishedAt: true,
+      },
+    });
+    const existingByVideoId = new Map(
+      existingVideos.map((video) => [video.videoId, video]),
+    );
+    const changed =
+      existingVideos.length !== snapshot.length ||
+      snapshot.some((video) => {
+        const existing = existingByVideoId.get(video.videoId);
+        return (
+          !existing ||
+          existing.title !== video.title ||
+          existing.thumbnail !== video.thumbnail ||
+          existing.publishedAt.getTime() !== video.publishedAt.getTime()
+        );
+      });
 
-    // Fetch only the first 2 pages (up to 100 videos) per sync to be quota-efficient
-    const maxPages = 2;
-    let currentPage = 0;
+    if (!changed) return 0;
+
+    await this.prisma.$transaction(async (transaction) => {
+      for (const video of snapshot) {
+        await transaction.youTubeVideo.upsert({
+          where: { userId_videoId: { userId, videoId: video.videoId } },
+          create: { userId, ...video },
+          update: {
+            channelId: video.channelId,
+            title: video.title,
+            thumbnail: video.thumbnail,
+            publishedAt: video.publishedAt,
+          },
+        });
+      }
+
+      await transaction.youTubeVideo.deleteMany({
+        where:
+          snapshot.length === 0
+            ? { userId, channelId }
+            : {
+                userId,
+                channelId,
+                videoId: {
+                  notIn: snapshot.map((video) => video.videoId),
+                },
+              },
+      });
+    });
+
+    return snapshot.length;
+  }
+
+  private async fetchVideoSnapshot(
+    youtube: youtube_v3.Youtube,
+    channelId: string,
+    uploadsPlaylistId: string,
+  ): Promise<YouTubeVideoSnapshot[]> {
+    const videosById = new Map<string, YouTubeVideoSnapshot>();
+    let pageToken: string | undefined;
+    let page = 0;
 
     do {
       const response = await youtube.playlistItems.list({
@@ -487,26 +773,25 @@ class YouTubeSyncService {
         maxResults: 50,
         pageToken,
       });
+      const videoIds = [
+        ...new Set(
+          (response.data.items ?? [])
+            .map((item) => item.snippet?.resourceId?.videoId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
 
-      const videoIds = (response.data.items ?? [])
-        .map((item) => item.snippet?.resourceId?.videoId)
-        .filter((id): id is string => !!id);
+      if (videoIds.length > 0) {
+        const videoDetails = await youtube.videos.list({
+          part: ['snippet'],
+          id: videoIds,
+        });
 
-      if (videoIds.length === 0) break;
-
-      // Batch-fetch video details (up to 50 IDs per request = 1 quota unit)
-      const videoDetails = await youtube.videos.list({
-        part: ['snippet'],
-        id: videoIds,
-      });
-
-      for (const video of videoDetails.data.items ?? []) {
-        if (!video.id || !video.snippet) continue;
-
-        await this.prisma.youTubeVideo.upsert({
-          where: { userId_videoId: { userId, videoId: video.id } },
-          create: {
-            userId,
+        for (const video of videoDetails.data.items ?? []) {
+          if (!video.id || !video.snippet || videosById.has(video.id)) {
+            continue;
+          }
+          videosById.set(video.id, {
             videoId: video.id,
             channelId,
             title: video.snippet.title ?? 'Untitled',
@@ -515,23 +800,53 @@ class YouTubeSyncService {
               video.snippet.thumbnails?.default?.url ??
               null,
             publishedAt: new Date(video.snippet.publishedAt ?? Date.now()),
-          },
-          update: {
-            title: video.snippet.title ?? 'Untitled',
-            thumbnail:
-              video.snippet.thumbnails?.medium?.url ??
-              video.snippet.thumbnails?.default?.url ??
-              null,
-          },
-        });
-        count++;
+          });
+        }
       }
 
       pageToken = response.data.nextPageToken ?? undefined;
-      currentPage++;
-    } while (pageToken && currentPage < maxPages);
+      page++;
+    } while (pageToken && page < VIDEO_SNAPSHOT_LIMIT / 50);
 
-    return count;
+    return [...videosById.values()].slice(0, VIDEO_SNAPSHOT_LIMIT);
+  }
+
+  private async pruneExpiredDisabledVideos(userId: string): Promise<void> {
+    const cutoff = new Date(Date.now() - DISABLED_VIDEO_RETENTION_MS);
+    const expiredSubscriptions = await this.prisma.youTubeSubscription.findMany(
+      {
+        where: {
+          userId,
+          enabled: false,
+          disabledAt: { not: null, lt: cutoff },
+        },
+        select: { channelId: true },
+      },
+    );
+    const channelIds = expiredSubscriptions.map(
+      (subscription) => subscription.channelId,
+    );
+    if (channelIds.length === 0) return;
+
+    await this.prisma.youTubeVideo.deleteMany({
+      where: { userId, channelId: { in: channelIds } },
+    });
+  }
+
+  private async recordSyncState(
+    userId: string,
+    attemptAt: Date,
+    status: YouTubeSyncStatus,
+    error: string | null,
+  ): Promise<void> {
+    await this.prisma.youTubeIntegration.update({
+      where: { userId },
+      data: {
+        lastSyncAttemptAt: attemptAt,
+        lastSyncStatus: status,
+        lastSyncError: error,
+      },
+    });
   }
 }
 
