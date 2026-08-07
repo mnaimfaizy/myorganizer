@@ -6,16 +6,25 @@ argument-hint: 'Requirement summary + component path(s) + story file path(s) + e
 
 # Storybook Delegation Workflow
 
+Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../docs/adr/0012-tiered-quality-gates.md)
+
 ## Use This Skill When
 
 - A task asks to create Storybook stories for a new UI component.
 - A task asks to update existing stories after component behavior changes.
 - A Storybook file needs UX-focused improvement (states, controls, docs clarity, edge scenarios).
 
+## Gate tier routing
+
+| Gate                          | Path                                                     |
+| ----------------------------- | -------------------------------------------------------- |
+| `gate:mechanical`             | Rename / import-path only → main agent may edit directly |
+| `gate:standard` / `gate:full` | New or behavioral story updates → StorybookCurator       |
+
 ## Core Rules
 
-- Always delegate Storybook implementation to the `StorybookCurator` sub-agent.
-- Do not create or edit `*.stories.tsx` directly in the main agent context when this workflow applies.
+- On `standard`/`full`, always delegate Storybook implementation to the `StorybookCurator` sub-agent.
+- Do not create or edit `*.stories.tsx` directly in the main agent context when this workflow applies (except mechanical).
 - The sub-agent must analyze requirement quality first (completeness, ambiguity, conflicts) before touching files.
 - If requirements are incomplete, the sub-agent must stop and return targeted clarification questions.
 - The sub-agent may disagree with the requested implementation when it would reduce quality (accessibility gaps, misleading stories, missing critical states, anti-patterns).

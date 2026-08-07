@@ -58,7 +58,7 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - For issue creation requests, follow `.github/skills/github-issue-creation-workflow/SKILL.md` and delegate to `IssueCreator` so duplicate checks, required details, and label validation are handled consistently.
 - For issue/PR triage requests, follow `.github/skills/triage/SKILL.md`. Use `.github/skills/triage/AGENT-BRIEF.md` when moving to `ready-for-agent`, and `.github/skills/triage/OUT-OF-SCOPE.md` when rejecting enhancements as `wontfix`.
 - For Jest unit or integration test creation/update requests, follow `.github/skills/unit-test-delegation-workflow/SKILL.md` and delegate implementation to `TestScaffold` first. The brief must include a behavior matrix from the actual implementation plus explicit in-scope and out-of-scope scenarios. Main agent must review behavior correctness, side effects, failures, boundaries, security-sensitive paths, mock hygiene, duplicate output, and validation before finalizing. Use `docs/testing/README.md` as the project-aware tooling reference.
-- For implementing agreed work from a spec, PRD, or tickets in the current session, use `.github/skills/implement/SKILL.md`. Use TDD at pre-agreed seams, respect mandatory delegation rules, and commit or open PRs only when the user explicitly asks.
+- For implementing agreed work from a spec, PRD, or tickets in the current session, use `.github/skills/implement/SKILL.md`. Classify `gate:*` first (ADR 0012); ad-hoc work needs no ticket. Use TDD at pre-agreed seams, respect tiered delegation rules, and commit or open PRs only when the user explicitly asks.
 - For reviewing branch or WIP changes against repo standards and the originating spec, use `.github/skills/code-review/SKILL.md`.
 - For building features or fixing bugs test-first (red-green-refactor), use `.github/skills/tdd/SKILL.md`. Plan the behavior list with the user before writing any code, work in vertical tracer-bullet slices (one test → one implementation → repeat), and consult `.github/skills/codebase-design/SKILL.md` for deep-module vocabulary during the refactor step.
 - For Playwright E2E creation/update requests, follow `.github/skills/playwright-e2e-workflow/SKILL.md`; use `E2EPlanner` for broad flows and delegate implementation to `TestScaffold` only with a precise flow matrix.
@@ -73,39 +73,31 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - To break a PRD Issue into Slice Issues, use `.github/skills/to-issues/SKILL.md`. The user must supply the PRD Issue number. Every slice body must start with `PRD: #<N>`. Flag `type:hitl` slices prominently — `dispatch-agents` skips them. After publishing, remind the user to run `yarn dispatch-agents --prd <N>`.
 - Before issuing 3 or more consecutive read/search operations to locate something in the codebase, stop and delegate to `CodeExplorer` (`.github/agents/explore.agent.md`) instead. Provide an Explore Request with a `Goal` sentence; optionally include `Known Locations`, `Search Hints`, `Out of Scope`, and `Expected Output`. CodeExplorer returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
 
-## ⚠️ Mandatory Delegation Rules (NO EXCEPTIONS)
+## ⚠️ Tiered Quality Gates (ADR 0012)
 
-**ALWAYS delegate tasks for these file types.** Do NOT skip delegation even if the change seems small or obvious.
+Do not treat every test/component touch as a full multi-agent pipeline. Classify a **gate tier** first (checklist Step 0 or slice `gate:*` label). When unsure → promote. Applies to interactive and AFK sessions.
 
-| File Pattern                    | Skill                                                   | Agent Flow                           | Rule                   |
-| ------------------------------- | ------------------------------------------------------- | ------------------------------------ | ---------------------- |
-| `*.spec.ts` (Playwright E2E)    | `.github/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold            | ✅ **Always delegate** |
-| `*.test.ts` (Jest tests)        | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold                         | ✅ **Always delegate** |
-| `*.stories.tsx` (Storybook)     | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                     | ✅ **Always delegate** |
-| Components in `libs/web-ui/`    | Component workflow                                      | ComponentBuilder → ComponentReviewer | ✅ **Always delegate** |
-| Components in `libs/web/pages/` | Component workflow                                      | ComponentBuilder → ComponentReviewer | ✅ **Always delegate** |
+| Tier              | Execution                                                                                            |
+| ----------------- | ---------------------------------------------------------------------------------------------------- |
+| `gate:mechanical` | Main agent may edit (fixture/type retarget, rename, dead delete, selector-only E2E) + focused checks |
+| `gate:standard`   | Matching specialist hop for the artifact                                                             |
+| `gate:full`       | Full mandatory pipelines                                                                             |
 
-### Key Anti-Pattern to Avoid
+| File Pattern                                     | Skill                                                   | `standard` / `full` flow                                                                                      |
+| ------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `*.spec.ts` (Playwright E2E)                     | `.github/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold → TestReviewer (structural). Skip planner only for selector-only + unchanged matrix |
+| `*.test.ts` (Jest)                               | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold → TestReviewer → TestRunner                                                                      |
+| `*.stories.tsx`                                  | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                                                                                              |
+| Components in `libs/web-ui/` / `libs/web/pages/` | Component workflow                                      | ComponentBuilder → ComponentReviewer (max 3 FAIL loops)                                                       |
 
-❌ **DO NOT do this:**
+### Key Anti-Patterns
 
-```
-"I see a bug in an E2E test. Let me read the similar test, find the pattern, and fix it directly."
-```
-
-✅ **DO THIS INSTEAD:**
-
-```
-"I see a bug in an E2E test. This is an E2E test UPDATE.
-1. Read .github/skills/playwright-e2e-workflow/SKILL.md
-2. Use E2EPlanner to outline the fix
-3. Delegate to TestScaffold with a precise brief
-4. Apply changes from TestScaffold output"
-```
+❌ Skip specialists on behavioral (`standard`/`full`) test or component work.  
+❌ Run the full test pipeline for a pure mechanical fixture retarget.
 
 ### Before You Edit Any File
 
-Use the decision tree in [`.claude/checklist.md`](.claude/checklist.md) to verify you're not skipping delegation.
+Use [`.claude/checklist.md`](.claude/checklist.md) Step 0 → file-type matrix.
 
 ## Do Not
 

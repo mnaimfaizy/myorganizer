@@ -15,12 +15,14 @@ Use the Playwright E2E workflow for specs in `apps/myorganizer-e2e`.
 
 ## Core Rules
 
-- Do not write Jest tests inline in the main context. Delegate to a focused sub-context or `TestScaffold` invocation.
+- Classify `gate:*` first (ADR 0012). `gate:mechanical` fixture/type retargets may be edited by the main agent + focused jest — skip the specialist pipeline.
+- On `gate:standard` / `gate:full`, do not write Jest tests inline in the main context. Delegate to `TestScaffold`.
 - Always send a complete delegation brief; never just "add comprehensive tests".
 - Build the brief from the actual implementation, not only type signatures or desired behavior.
 - Include unsupported behavior to avoid testing, such as retry, concurrency, timeout, or thrown-error expectations that the code does not provide.
 - Happy-path-only coverage is not acceptable when reachable error paths, side effects, boundary values, or security-sensitive misuse paths exist.
 - The main agent acts as quality reviewer and must challenge weak coverage, incorrect mock patterns, duplicate generated content, and vacuous tests.
+- Run the suite once after TestReviewer approval (TestRunner) — avoid redundant full-suite runs in every hop.
 
 ## Workflow
 

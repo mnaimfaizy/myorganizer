@@ -2,148 +2,165 @@
 
 **CRITICAL:** Use this checklist BEFORE making ANY file edits.
 
-## Step 1: Pre-Action Decision Tree
+Policy: [`docs/adr/0012-tiered-quality-gates.md`](../docs/adr/0012-tiered-quality-gates.md)
 
-Before editing ANY file, answer these questions:
+---
+
+## Step 0: Choose a gate tier
+
+State the tier in your first reply (interactive) or follow the slice `gate:*` label (AFK). When unsure → **promote**. User may override.
+
+| Tier              | Use when                                                                          | Execution                                                                           |
+| ----------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `gate:mechanical` | All mechanical criteria below are true                                            | Main agent may edit directly; focused lint + focused tests/`tsc`                    |
+| `gate:standard`   | Single-surface behavior change                                                    | One specialist hop for the artifact type (+ reviewer/runner as that skill requires) |
+| `gate:full`       | New module, vault/crypto, API contract, multi-file product behavior, ambiguous UX | Full mandatory pipelines                                                            |
+
+### Mechanical criteria (all must be true)
+
+1. No new product behavior or public API contract.
+2. Diff is localized (prefer ≤2 files; larger only if pure rename/delete).
+3. Assertions/stories unchanged **or** only fixture/type retarget to an already-landed domain model.
+4. Success is decidable by deterministic checks alone (`tsc` / `eslint` / focused jest).
+
+If any fails → `gate:standard` or `gate:full`.
+
+**Ticket optional:** Ad-hoc interactive work does not require a GitHub issue. Planned features still use `/to-prd` → `/to-issues`.
+
+---
+
+## Step 1: Pre-Action Decision Tree
 
 ### Q1: What file type am I modifying?
 
-- **`*.spec.ts` (Playwright E2E tests)** → Go to "E2E Tests" section
-- **`*.test.ts` (Jest unit/integration tests)** → Go to "Jest Tests" section
-- **`*.stories.tsx` (Storybook stories)** → Go to "Storybook Stories" section
-- **Component in `libs/web-ui/` (UI Primitives)** → Go to "React Components" section
-- **Component in `libs/web/pages/` (Feature Components)** → Go to "React Components" section
-- **Other files** → Proceed to Step 2
+- **`*.spec.ts` (Playwright E2E)** → E2E section (tier applies)
+- **`*.test.ts` / `*.spec.tsx` (Jest)** → Jest section (tier applies)
+- **`*.stories.tsx`** → Storybook section (tier applies)
+- **Component in `libs/web-ui/` or `libs/web/pages/`** → React Components section (tier applies)
+- **Other files** → Step 2 / matrix
 
-### Q2: Am I UPDATING existing code or CREATING new code?
+### Q2: Updating or creating?
 
-- **Updating test behavior or fixing test logic** → DELEGATE (even small fixes)
-- **Creating new test files** → DELEGATE
-- **Updating component implementation** → DELEGATE
-- **Other infrastructure/config** → Check "Red Flags" section
+- Mechanical retarget/rename/delete → may stay `gate:mechanical`
+- New behavior, new assertions, new props contracts → at least `gate:standard`
+- New UI primitive / multi-pipeline slice → `gate:full`
 
 ---
 
-## Step 2: Red Flags — Stop and Delegate If You See Any
+## Step 2: Red Flags — escalate the gate
 
-Before calling `replace_string_in_file` or `create_file`, check for these patterns:
+These patterns usually mean **not** mechanical (promote unless Step 0 criteria still hold):
 
-- ☐ The file extension is `.spec.ts` or `.test.ts`
-- ☐ The file path contains `/helpers/` within an E2E test directory
-- ☐ The code contains `setupBackend()`, `setupVault*()`, test fixtures, or mock helpers
-- ☐ The word "fixture", "setup", "mock", "beforeEach", "afterEach", "test.describe" appears
-- ☐ Playwright page object or browser automation code (`page.goto()`, `page.click()`, etc.)
-- ☐ Jest mock configuration or test structure (`jest.mock()`, `.mock()`)
-- ☐ Storybook story definition (`export const MyStory`)
-- ☐ React component JSX in `libs/web-ui/` or `libs/web/pages/`
-- ☐ UI behavior changes (styling, interactivity, props)
-- ☐ Test assertions being added or changed
+- New or changed product assertions / flows
+- New Jest mocks that encode behavior
+- Playwright page-object flow changes (not selector-only strings)
+- UI behavior changes (styling, interactivity, props contracts)
+- Vault/crypto, API contract, or OpenAPI surface changes
 
-**If ANY of these apply: STOP → READ SKILL FILE → DELEGATE to sub-agent**
+Config/docs/type-only edits with no behavior change may stay mechanical or direct-edit.
 
 ---
 
-## Step 3: Task Classification Matrix
+## Step 3: Task Classification Matrix (by gate)
 
-| File Pattern               | Operation         | Skill/Agent                                                                                                    | Delegated?                                  |
-| -------------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------- |
-| `*.spec.ts` (E2E)          | Create/Update/Fix | `.github/skills/playwright-e2e-workflow/SKILL.md` → E2EPlanner + TestScaffold → TestReviewer (structural only) | ✅ **Always**                               |
-| `*.test.ts` (Jest)         | Create/Update/Fix | `.github/skills/unit-test-delegation-workflow/SKILL.md` → TestScaffold → TestReviewer → TestRunner             | ✅ **Always**                               |
-| `*.stories.tsx`            | Create/Update     | `.github/skills/storybook-delegation-workflow/SKILL.md` → StorybookCurator                                     | ✅ **Always**                               |
-| Component (libs/web-ui)    | Create/Edit       | `.claude/commands/component-builder.md` → ComponentBuilder → ComponentReviewer                                 | ✅ **Always**                               |
-| Component (libs/web/pages) | Create/Edit       | `.claude/commands/component-builder.md` → ComponentBuilder → ComponentReviewer                                 | ✅ **Always**                               |
-| Config/Infrastructure      | Edit              | Direct edit OK                                                                                                 | ⚠️ Only if no test/component files involved |
-| Docs/README                | Create/Update     | Direct edit OK                                                                                                 | ⚠️ Can delegate to Docs agent if complex    |
-| Type definitions           | Create/Update     | Direct edit OK                                                                                                 | ⚠️ Unless tests need updating too           |
+| File Pattern                                  | `gate:mechanical`                                        | `gate:standard`                                                                    | `gate:full`                                                                          |
+| --------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Playwright `*.spec.ts`                        | Direct edit (selector/string only) + note; no E2EPlanner | TestScaffold + TestReviewer (structural); skip E2EPlanner if flow matrix unchanged | E2EPlanner → TestScaffold → TestReviewer (structural); never execute E2E in AFK      |
+| Jest `*.test.ts` / page `*.spec.tsx`          | Direct edit (fixture/type retarget) + focused jest       | TestScaffold → TestReviewer → TestRunner                                           | Same full pipeline (max 3 retries)                                                   |
+| `*.stories.tsx`                               | Direct edit only for rename/import path                  | StorybookCurator                                                                   | StorybookCurator                                                                     |
+| Components `libs/web-ui/` / `libs/web/pages/` | Direct edit only for rename/import/dead delete           | ComponentBuilder → ComponentReviewer                                               | ComponentBuilder → ComponentReviewer (max 3 FAIL loops) + Storybook/tests after PASS |
+| Config / docs / types                         | Direct edit OK                                           | Direct edit OK                                                                     | Direct edit OK                                                                       |
 
----
+Skills:
 
-## Step 4: Mandatory Delegation Rules
-
-### **NO EXCEPTIONS** — These tasks ALWAYS require delegation:
-
-1. **E2E Test Changes** (`.spec.ts` files)
-   - Skill: `.github/skills/playwright-e2e-workflow/SKILL.md`
-   - Agent flow: E2EPlanner → TestScaffold
-   - What this means: Even a one-line bug fix in an E2E test must go through delegation
-
-2. **Jest Test Changes** (`.test.ts` files)
-   - Skill: `.github/skills/unit-test-delegation-workflow/SKILL.md`
-   - Agent flow: TestScaffold → TestReviewer → TestRunner (max 3 retries before escalating to main agent)
-   - What this means: Any test creation, update, or fix uses the full three-stage pipeline
-
-3. **Storybook Stories** (`*.stories.tsx` files)
-   - Skill: `.github/skills/storybook-delegation-workflow/SKILL.md`
-   - Agent flow: StorybookCurator
-   - What this means: New or updated story files go through StorybookCurator
-
-4. **React Components** (libs/web-ui/_, libs/web/pages/_)
-   - Workflow: ComponentBuilder → ComponentReviewer (no exceptions)
-   - What this means: Component creation/edits follow the compound pattern via agents
+- E2E: `.github/skills/playwright-e2e-workflow/SKILL.md`
+- Jest: `.github/skills/unit-test-delegation-workflow/SKILL.md`
+- Storybook: `.github/skills/storybook-delegation-workflow/SKILL.md`
+- Components: `CLAUDE.md` → UI Component Workflows / `.claude/commands/component-builder.md`
 
 ---
 
-## Step 5: Common Failure Pattern (What We're Preventing)
+## Step 4: Mandatory rules (tiered — not absolute)
 
-### ❌ **Anti-Pattern to Avoid:**
+1. **Behavioral / structural work** on tests, stories, or components **must** use the matching specialist path for that gate — do not “quietly” hand-edit to skip Reviewer on `standard`/`full`.
+2. **Mechanical work** may be edited by the main agent; still run focused deterministic checks and state `gate:mechanical` explicitly.
+3. **ComponentReviewer** and **TestReviewer** retries: max **3** cycles, then escalate to the main agent / human.
+4. Specialist reports: `PASS|FAIL|ESCALATE` + ≤5 bullets unless `gate:full` after a rejection needs detail.
+5. E2E chain when required: **E2EPlanner → TestScaffold → TestReviewer (structural only)**. Never execute Playwright autonomously in Sandcastle.
+
+---
+
+## Step 5: Anti-patterns
+
+### ❌ Wrong (behavioral work)
 
 ```
-"I see a bug in the E2E tests. Let me:
-1. Read the similar test file to find the pattern
-2. Understand what needs fixing
-3. Apply the fix directly with replace_string_in_file"
+"I see a behavior bug in an E2E test. I'll copy a sibling and patch it directly."
 ```
 
-### ✅ **Correct Pattern:**
+### ✅ Right (behavioral — `gate:standard` / `gate:full`)
 
 ```
-"I see a bug in the E2E tests. This is an E2E test UPDATE, so I need to:
-1. Read .github/skills/playwright-e2e-workflow/SKILL.md
-2. Use E2EPlanner to outline the fix (flow matrix + issues)
-3. Delegate to TestScaffold with a precise E2E brief
-4. TestScaffold executes the changes
-5. I verify the result"
+1. Classify gate tier
+2. Read .github/skills/playwright-e2e-workflow/SKILL.md
+3. E2EPlanner if flow changed (skip only for selector-only + unchanged matrix)
+4. TestScaffold → TestReviewer (structural)
+```
+
+### ❌ Wrong (mechanical work)
+
+```
+"This is a one-line fixture retarget — run TestScaffold → TestReviewer → TestRunner anyway."
+```
+
+### ✅ Right (mechanical)
+
+```
+1. State gate:mechanical
+2. Edit directly
+3. Run focused jest / tsc
+4. Short summary (≤5 bullets)
 ```
 
 ---
 
 ## Step 6: Tool-Level Gatekeeping
 
-**BEFORE calling these tools on test/component files:**
+**BEFORE** editing test/component/story files:
 
-- `replace_string_in_file` on `*.spec.ts`, `*.test.ts`, `*.stories.tsx`, or component files → DELEGATE FIRST
-- `create_file` for test or story files → DELEGATE FIRST
-- `read_file` (if 3+ consecutive reads needed for exploration) → Use CodeExplorer instead
-
----
-
-## Quick Reference: What to Do Next
-
-| Scenario                         | Action                                                                                                       |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| "Fix a bug in an E2E test"       | → Read `.github/skills/playwright-e2e-workflow/SKILL.md`, use E2EPlanner + TestScaffold                      |
-| "Update a Jest test"             | → Read `.github/skills/unit-test-delegation-workflow/SKILL.md`, use TestScaffold → TestReviewer → TestRunner |
-| "Create a new Storybook story"   | → Read `.github/skills/storybook-delegation-workflow/SKILL.md`, use StorybookCurator                         |
-| "Edit a React component"         | → Build Structured Spec, use ComponentBuilder → ComponentReviewer                                            |
-| "Explore codebase for a pattern" | → Use CodeExplorer (not 3+ manual reads)                                                                     |
-| "Fix a config file"              | → Direct edit OK (but check for tests that might break)                                                      |
-| "Update documentation"           | → Direct edit OK (or use Docs agent for complex docs)                                                        |
+- If `gate:standard` or `gate:full` → delegate first (do not `StrReplace` / create those files in the main agent).
+- If `gate:mechanical` → edit allowed; still run focused checks.
+- 3+ consecutive reads for exploration → CodeExplorer.
 
 ---
 
-## How to Use This Checklist
+## Quick Reference
 
-1. **Before starting work:** Run through Step 1 & 2 mentally
-2. **If any red flag triggers:** Skip to Step 3, find your file type, follow the delegation flow
-3. **If no red flags:** Proceed with direct edit (but still verify with Step 4)
-4. **If you're ever unsure:** Re-read Step 4 — if it's a test/component/story file, delegate
+| Scenario                                      | Gate                                  | Action                       |
+| --------------------------------------------- | ------------------------------------- | ---------------------------- |
+| Fixture/type retarget, rename, dead delete    | mechanical                            | Direct edit + focused checks |
+| One assertion suite / one component props fix | standard                              | Matching specialist chain    |
+| New UI module / vault / API contract          | full                                  | Full pipelines               |
+| Selector-only E2E string, matrix unchanged    | mechanical or standard (skip planner) | See Playwright skill         |
+| Explore for a pattern                         | —                                     | CodeExplorer                 |
+| Config / docs                                 | —                                     | Direct edit OK               |
+
+---
+
+## How to Use
+
+1. Step 0 — pick/state gate (or read `gate:*` label).
+2. Step 1–3 — route by file type + gate.
+3. If unsure — promote the gate.
+4. Keep reports short.
 
 ---
 
 ## Reference Links
 
-- E2E Workflow: `.github/skills/playwright-e2e-workflow/SKILL.md`
-- Jest Workflow: `.github/skills/unit-test-delegation-workflow/SKILL.md`
-- Storybook Workflow: `.github/skills/storybook-delegation-workflow/SKILL.md`
-- Component Workflow: `CLAUDE.md` → "UI Component Workflows"
-- This checklist: `.claude/checklist.md`
+- ADR: `docs/adr/0012-tiered-quality-gates.md`
+- E2E: `.github/skills/playwright-e2e-workflow/SKILL.md`
+- Jest: `.github/skills/unit-test-delegation-workflow/SKILL.md`
+- Storybook: `.github/skills/storybook-delegation-workflow/SKILL.md`
+- Components: `CLAUDE.md` → UI Component Workflows
+- Implement (ad-hoc): `.github/skills/implement/SKILL.md`

@@ -238,6 +238,120 @@ function blockedBy(issue: Issue): number[] {
   return [...section.matchAll(/#(\d+)/g)].map((match) => Number(match[1]));
 }
 
+function blocks(issue: Issue): number[] {
+  const section = issue.body.match(
+    /##\s+Blocks\s*([\s\S]*?)(?=\n##\s|$)/i,
+  )?.[1];
+  if (!section || /^\s*-\s*None\b/im.test(section)) return [];
+
+  return [...section.matchAll(/#(\d+)/g)].map((match) => Number(match[1]));
+}
+
+function isIssueSatisfied(issue: Issue | undefined): boolean {
+  if (!issue) return false;
+  return isCompleted(issue);
+}
+
+/**
+ * After a slice completes, clear `status:blocked` on dependents whose
+ * ## Blocked by deps are all done/closed. Prefer ## Blocks on the completed
+ * issue; also scan same-PRD open slices as a fallback.
+ */
+function unblockDependents(completed: Issue): void {
+  const prdMatch = completed.body?.match(/PRD:\s*#(\d+)/i);
+  const prdRef = prdMatch ? `PRD: #${prdMatch[1]}` : null;
+
+  const candidateNumbers = new Set<number>(blocks(completed));
+  for (const issue of allIssues) {
+    if (issue.number === completed.number) continue;
+    if (prdRef && !issue.body?.includes(prdRef)) continue;
+    if (blockedBy(issue).includes(completed.number)) {
+      candidateNumbers.add(issue.number);
+    }
+  }
+
+  if (candidateNumbers.size === 0) return;
+
+  // Refresh issue metadata for accurate labels/state.
+  const byNumber = new Map<number, Issue>();
+  for (const issue of allIssues) {
+    byNumber.set(issue.number, issue);
+  }
+  byNumber.set(completed.number, {
+    ...completed,
+    state: 'CLOSED',
+    labels: [
+      ...completed.labels.filter((l) => l.name !== 'status:in-progress'),
+      { name: 'status:done' },
+    ],
+  });
+
+  for (const dependentNumber of candidateNumbers) {
+    let dependent = byNumber.get(dependentNumber);
+    if (!dependent) {
+      try {
+        dependent = ghJson<Issue>([
+          'issue',
+          'view',
+          String(dependentNumber),
+          '--repo',
+          REPO,
+          '--json',
+          'number,title,state,labels,body',
+        ]);
+        byNumber.set(dependentNumber, dependent);
+      } catch {
+        console.warn(
+          `  [#${completed.number}] unblock: could not load dependent #${dependentNumber}`,
+        );
+        continue;
+      }
+    }
+
+    if (!dependent.labels.some((l) => l.name === 'status:blocked')) {
+      continue;
+    }
+
+    const deps = blockedBy(dependent);
+    const unfinished = deps.filter((blockerNumber) => {
+      if (blockerNumber === completed.number) return false;
+      const blocker = byNumber.get(blockerNumber);
+      return !isIssueSatisfied(blocker);
+    });
+
+    if (unfinished.length > 0) {
+      console.log(
+        `  [#${completed.number}] #${dependentNumber} still blocked by ${unfinished
+          .map((n) => `#${n}`)
+          .join(', ')}`,
+      );
+      continue;
+    }
+
+    ghSilent([
+      'issue',
+      'edit',
+      String(dependentNumber),
+      '--repo',
+      REPO,
+      '--remove-label',
+      'status:blocked',
+    ]);
+    ghSilent([
+      'issue',
+      'comment',
+      String(dependentNumber),
+      '--repo',
+      REPO,
+      '--body',
+      `Unblocked: #${completed.number} is done. Remaining blockers: none — ready for agent.`,
+    ]);
+    console.log(
+      `  [#${completed.number}] removed status:blocked from #${dependentNumber}`,
+    );
+  }
+}
+
 const prd = ghJson<Pick<Issue, 'title' | 'body'>>([
   'issue',
   'view',
@@ -713,7 +827,49 @@ function integrateSlice(issue: Issue, sliceBranch: string): boolean {
   return true;
 }
 
+function resolveGate(issue: Issue): 'mechanical' | 'standard' | 'full' {
+  const labels = issue.labels.map((l) => l.name);
+  if (labels.includes('gate:mechanical')) return 'mechanical';
+  if (labels.includes('gate:full')) return 'full';
+  return 'standard';
+}
+
+function buildGateInstructions(
+  gate: 'mechanical' | 'standard' | 'full',
+): string[] {
+  const common = [
+    `- Quality gate for this slice: \`gate:${gate}\` (ADR 0012 / \`.claude/checklist.md\`).`,
+    `- Prefer short specialist reports (\`PASS|FAIL|ESCALATE\` + ≤5 bullets).`,
+    `- ComponentReviewer FAIL loops: max 3, then escalate with a diagnosis.`,
+  ];
+
+  if (gate === 'mechanical') {
+    return [
+      ...common,
+      `- Mechanical path: main agent may edit directly (fixture/type retarget, rename, dead delete, selector-only E2E, verify-already-done).`,
+      `- Do NOT run TestScaffold → TestReviewer → TestRunner or ComponentBuilder → ComponentReviewer for mechanical work.`,
+      `- Still run focused deterministic checks (jest/tsc/eslint on touched files).`,
+    ];
+  }
+
+  if (gate === 'full') {
+    return [
+      ...common,
+      `- Full path: follow mandatory specialist pipelines in CLAUDE.md for behavioral tests, stories, and components.`,
+      `- E2E: E2EPlanner → TestScaffold → TestReviewer (structural only); never execute Playwright in this sandbox.`,
+    ];
+  }
+
+  return [
+    ...common,
+    `- Standard path: one specialist hop for the changed artifact type (not every pipeline by default).`,
+    `- Follow CLAUDE.md / \`.claude/checklist.md\` for which agent chain applies.`,
+    `- Skip E2EPlanner only for selector-only E2E edits when the flow matrix is unchanged.`,
+  ];
+}
+
 function buildPrompt(issue: Issue, sliceBranch: string): string {
+  const gate = resolveGate(issue);
   return [
     `You are implementing GitHub Issue #${issue.number}: ${issue.title}`,
     ``,
@@ -727,7 +883,7 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     `- Read CLAUDE.md, CONTEXT.md, and TECH_STACK.md before making any changes.`,
     `- Implement this vertical slice end-to-end (schema → API → UI → tests where applicable).`,
     `- Your working branch is \`${sliceBranch}\` (based on \`${featureBranch}\`). Do not switch branches.`,
-    `- Follow all mandatory delegation rules in CLAUDE.md (tests → TestScaffold, components → ComponentBuilder, etc.).`,
+    ...buildGateInstructions(gate),
     `- Commit your changes using Conventional Commit messages (\`corepack yarn ai:commit\`).`,
     `- Do NOT push and do NOT open a PR — this sandbox has no credentials. Just commit locally on your branch; leave nothing uncommitted. The orchestrator integrates your branch into the feature branch on the host.`,
     `- When implementation is complete, output <promise>COMPLETE</promise>.`,
@@ -984,6 +1140,7 @@ while (pendingSlices.length > 0) {
           `Integrated into the local \`${featureBranch}\` (fast-forward, not pushed) and closed as completed. ` +
           `It will reach \`main\` via the manual PRD PR.`,
       ]);
+      unblockDependents(issue);
     } else {
       ghSilent([
         'issue',

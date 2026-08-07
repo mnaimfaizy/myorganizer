@@ -14,46 +14,40 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 - Commit-message drafting still belongs to the existing `Commit` sub-agent; commit execution belongs to the shared `ai:commit` runner.
 - Jest test implementation uses a three-stage pipeline: `TestScaffold` (writes tests) → `TestReviewer` (static gate: checklist, tsc, eslint) → `TestRunner` (execution with hang detection). Always provide a behavior matrix from the actual implementation, including unsupported scenarios to avoid. Consult `docs/testing/README.md` for per-project tooling, integration scope, mock patterns, and validation checks. Max 3 retries before escalating to the main agent.
 - Storybook implementation is delegated to the `StorybookCurator` sub-agent (`.claude/agents/storybook-curator.md`); require requirement-readiness analysis before edits and route clarification questions to the human-in-the-loop.
-- React component creation or editing (UI Primitives in `libs/web-ui/` or Feature Components in `libs/web/pages/<route>/`) must use the ComponentBuilder → ComponentReviewer workflow — see **UI Component Workflows** below.
+- React component creation or editing (UI Primitives in `libs/web-ui/` or Feature Components in `libs/web/pages/<route>/`) uses the ComponentBuilder → ComponentReviewer workflow on `gate:standard` / `gate:full` — see **UI Component Workflows** below and ADR 0012 for mechanical exceptions.
 - After any `yarn add`, `yarn remove`, or package upgrade, run `/dep-sync` to keep `TECH_STACK.md` current — see **Dependency Sync** below.
 - After any sub-agent change in any harness (`.github`, `.claude`, `.cursor`, `.gemini`), run `yarn agents:sync` and then `yarn agents:sync:check`.
 - Use `.github/skills/sub-agent-sync-workflow/SKILL.md` as the required workflow for sub-agent synchronization.
 
-## ⚠️ Mandatory Delegation Rules (NO EXCEPTIONS)
+## ⚠️ Tiered Quality Gates (ADR 0012)
 
-**ALWAYS delegate tasks for these file types.** Do NOT skip delegation even if the change seems small or obvious.
+Pipeline depth is chosen by **gate tier**, not file extension alone. Classify via **`.claude/checklist.md` Step 0** (or the slice `gate:*` label). When unsure → promote. Same policy for interactive and AFK.
 
-| File Pattern                    | Skill                                                   | Agent Flow                                                                             | Rule                                     |
-| ------------------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------- |
-| `*.spec.ts` (Playwright E2E)    | `.github/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold → TestReviewer (structural only; never execute autonomously) | ✅ **Always delegate**                   |
-| `*.test.ts` (Jest tests)        | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold → TestReviewer → TestRunner                                               | ✅ **Always delegate**                   |
-| `*.stories.tsx` (Storybook)     | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                                                                       | ✅ **Always delegate**                   |
-| Components in `libs/web-ui/`    | Component workflow (below)                              | ComponentBuilder → ComponentReviewer                                                   | ✅ **Always delegate**                   |
-| Components in `libs/web/pages/` | Component workflow (below)                              | ComponentBuilder → ComponentReviewer                                                   | ✅ **Always delegate**                   |
-| New planned feature (PRD)       | `.github/skills/to-prd/SKILL.md`                        | to-prd                                                                                 | ✅ **Always use for planned features**   |
-| Slice breakdown from PRD        | `.github/skills/to-issues/SKILL.md`                     | to-issues                                                                              | ✅ **Always use after PRD is published** |
+| Tier              | When                                                                                             | Execution                                                     |
+| ----------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `gate:mechanical` | Fixture/type retarget, rename, dead delete, selector-only E2E string, already-satisfied AC check | Main agent may edit + focused lint/tests                      |
+| `gate:standard`   | Single-surface behavior change                                                                   | Matching specialist hop (+ reviewer/runner as skill requires) |
+| `gate:full`       | New UI module, vault/crypto, API contract, multi-file product behavior                           | Full mandatory pipelines                                      |
 
-### Key Anti-Pattern to Avoid
+| File Pattern                                     | Skill                                                   | `standard` / `full` agent flow                                                                                                              |
+| ------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `*.spec.ts` (Playwright E2E)                     | `.github/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold → TestReviewer (structural; never execute in AFK). Skip E2EPlanner only for selector-only + unchanged flow matrix |
+| `*.test.ts` (Jest)                               | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold → TestReviewer → TestRunner (max 3 retries)                                                                                    |
+| `*.stories.tsx`                                  | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                                                                                                                            |
+| Components in `libs/web-ui/` / `libs/web/pages/` | Component workflow (below)                              | ComponentBuilder → ComponentReviewer (max 3 FAIL loops)                                                                                     |
+| New planned feature (PRD)                        | `.github/skills/to-prd/SKILL.md`                        | Always for planned features                                                                                                                 |
+| Slice breakdown from PRD                         | `.github/skills/to-issues/SKILL.md`                     | Always after PRD; assign `gate:*` + `complexity:*`                                                                                          |
 
-❌ **DO NOT do this:**
+### Key Anti-Patterns
 
-```
-"I see a bug in an E2E test. Let me read the similar test, find the pattern, and fix it directly."
-```
+❌ Behavioral E2E/Jest/component edits done directly to skip specialists on `standard`/`full`.  
+❌ Full TestScaffold → Reviewer → Runner for a pure fixture retarget (`gate:mechanical`).
 
-✅ **DO THIS INSTEAD:**
-
-```
-"I see a bug in an E2E test. This is an E2E test UPDATE.
-1. Read .github/skills/playwright-e2e-workflow/SKILL.md
-2. Use E2EPlanner to outline the fix
-3. Delegate to TestScaffold with a precise brief
-4. Apply changes from TestScaffold output"
-```
+✅ State the gate, follow `.claude/checklist.md`, run focused deterministic checks.
 
 ### Before You Edit Any File
 
-Use the decision tree in **`.claude/checklist.md`** to verify you're not skipping delegation.
+Use **`.claude/checklist.md`** (Step 0 gate → file-type matrix).
 
 ## UI Component Workflows
 
@@ -102,27 +96,28 @@ all
 
 Pass the Structured Spec to the `ComponentBuilder` sub-agent (`.claude/agents/component-builder.md`). Wait for the **ComponentBuilder Report** before proceeding.
 
-### Step 3 — Delegate to ComponentReviewer (always — no exceptions)
+### Step 3 — Delegate to ComponentReviewer
 
-Pass the ComponentBuilder Report to the `ComponentReviewer` sub-agent (`.claude/agents/component-reviewer.md`). Do NOT skip this step, even for small edits.
+Required on `gate:standard` and `gate:full` after ComponentBuilder. Pass the ComponentBuilder Report to `ComponentReviewer` (`.claude/agents/component-reviewer.md`). Skip Builder/Reviewer only for `gate:mechanical` rename/import/dead-delete.
 
 ### Step 4 — Handle the Verdict
 
 - **`PASS`** — accept the component; note any warnings to the user.
 - **`PASS_WITH_WARNINGS`** — accept the component; surface the warnings to the user for awareness.
-- **`FAIL`** — relay the `Required Revisions` section back to ComponentBuilder and repeat from Step 2 until the verdict is `PASS` or `PASS_WITH_WARNINGS`.
+- **`FAIL`** — relay `Required Revisions` to ComponentBuilder and repeat from Step 2. **Max 3 FAIL cycles**, then escalate to the main agent/human with a diagnosis. Prefer short reviewer reports (`PASS|FAIL` + ≤5 bullets) unless detail is needed after a rejection.
 
 ### Step 5 — Storybook and Tests (after review passes)
 
 - New UI Primitives always need a Storybook story → use `.claude/commands/storybook.md`.
 - Any component with testable behaviour → use `.claude/commands/unit-test.md`.
+- On `gate:standard`, add stories/tests only when behavior warrants them.
 
 ### Key Rules
 
-- Do NOT write component code directly in the main agent context. Always delegate to ComponentBuilder.
+- On `gate:standard` / `gate:full`, do NOT write component code in the main agent — delegate to ComponentBuilder.
 - ComponentBuilder does not write stories or tests — those go to StorybookCurator and TestScaffold after the review passes.
-- Do NOT invent component conventions. ComponentBuilder and ComponentReviewer enforce `docs/ui/GUIDELINES.md` — read it if you need to understand the rules.
-- If the Structured Spec is incomplete (missing `Target Path` or `Props Interface`), gather the missing information from the user before delegating.
+- Do NOT invent component conventions. ComponentBuilder and ComponentReviewer enforce `docs/ui/GUIDELINES.md`.
+- If the Structured Spec is incomplete (missing `Target Path` or `Props Interface`), gather the missing information before delegating.
 
 ---
 

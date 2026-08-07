@@ -44,7 +44,8 @@ GitHub Issues
 - **Title format**: `[Slice] <Feature Name>: <short description>`
 - **Labels**: `ready-for-agent` + `type:afk` or `type:hitl` + one `complexity:*` label
 - **Body**: Must include `PRD: #<parent-issue-number>` on the first line. Then acceptance criteria, affected libs, test seams.
-- **Created by**: `to-issues` skill via IssueCreator agent.
+- **Created by**: `to-issues` skill via `gh issue create` directly (not via IssueCreator agent).
+- **Labels**: also include one `gate:*` (ADR 0012); default `gate:standard` when missing.
 
 ## Integration Strategy (local-only)
 
