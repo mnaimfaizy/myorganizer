@@ -45,7 +45,7 @@ const HARNESS_CONFIG = {
   },
 };
 
-const USAGE = `Usage:\n  node tools/scripts/sync-subagents.mjs --check\n  node tools/scripts/sync-subagents.mjs --apply [--no-prune]\n\nNotes:\n  - Canonical source is .github/agents/*.agent.md\n  - Existing target frontmatter is preserved; only body is synced.\n  - Missing target files are created with harness-specific defaults.\n  - --apply prunes extra files by default (disable with --no-prune).\n`;
+const USAGE = `Usage:\n  node tools/scripts/sync-subagents.mjs --check\n  node tools/scripts/sync-subagents.mjs --apply [--no-prune]\n\nNotes:\n  - Canonical source is .github/agents/*.agent.md\n  - Existing target frontmatter is always preserved verbatim; only the body is synced.\n    Harness defaults (including tools:) apply ONLY when creating a new file.\n  - A target whose frontmatter cannot be parsed is reported as malformed and skipped,\n    never rewritten, so per-agent tools: grants cannot be silently widened.\n  - Missing target files are created with harness-specific defaults.\n  - --apply prunes extra files by default (disable with --no-prune).\n`;
 
 function parseArgs(argv) {
   const args = new Set(argv.slice(2));
@@ -71,17 +71,22 @@ function toKebab(value) {
 }
 
 function splitFrontmatter(content) {
-  if (!content.startsWith('---\n')) {
-    return { frontmatter: null, body: content.replace(/^\s+/, '') };
+  // Normalize line endings first. Matching '\n---\n' against a CRLF file used to
+  // report "no frontmatter", which made the caller regenerate frontmatter from
+  // harness defaults and silently overwrite hand-tuned `tools:` grants.
+  const normalized = content.replace(/\r\n/g, '\n');
+
+  if (!normalized.startsWith('---\n')) {
+    return { frontmatter: null, body: normalized.replace(/^\s+/, '') };
   }
 
-  const closeIdx = content.indexOf('\n---\n', 4);
+  const closeIdx = normalized.indexOf('\n---\n', 4);
   if (closeIdx === -1) {
-    return { frontmatter: null, body: content.replace(/^\s+/, '') };
+    return { frontmatter: null, body: normalized.replace(/^\s+/, '') };
   }
 
-  const frontmatter = content.slice(0, closeIdx + 5);
-  const body = content.slice(closeIdx + 5).replace(/^\s+/, '');
+  const frontmatter = normalized.slice(0, closeIdx + 5);
+  const body = normalized.slice(closeIdx + 5).replace(/^\s+/, '');
   return { frontmatter, body };
 }
 
@@ -201,6 +206,7 @@ async function syncHarness(harness, canonicalAgents, mode, prune) {
     drifted: [],
     missing: [],
     extra: [],
+    malformed: [],
   };
 
   for (const canonical of canonicalAgents) {
@@ -229,21 +235,29 @@ async function syncHarness(harness, canonicalAgents, mode, prune) {
       continue;
     }
 
-    const { frontmatter } = splitFrontmatter(existingContent);
-    const existingBody = normalizeBody(splitFrontmatter(existingContent).body);
+    const { frontmatter, body } = splitFrontmatter(existingContent);
+    const rel = path.relative(repoRoot, targetPath);
+
+    // An existing target's frontmatter is owned by the harness, not by this
+    // script — it carries per-agent `tools:` grants (e.g. CodeExplorer's
+    // read-only + graphify set) that defaults would silently widen. If it
+    // cannot be parsed, refuse to touch the file instead of regenerating it.
+    if (!frontmatter) {
+      report.malformed.push(rel);
+      continue;
+    }
+
+    const existingBody = normalizeBody(body);
     const bodyDiffers = existingBody !== desiredBody;
     if (bodyDiffers) {
-      report.drifted.push(path.relative(repoRoot, targetPath));
+      report.drifted.push(rel);
       if (mode === 'apply') {
-        const effectiveFrontmatter =
-          frontmatter ||
-          buildFrontmatter(harness, canonical.slug, canonical.canonicalMeta);
-        const nextContent = `${effectiveFrontmatter}${desiredBody}\n`;
+        const nextContent = `${frontmatter}${desiredBody}\n`;
         await fs.writeFile(targetPath, nextContent, 'utf8');
-        report.updated.push(path.relative(repoRoot, targetPath));
+        report.updated.push(rel);
       }
     } else {
-      report.unchanged.push(path.relative(repoRoot, targetPath));
+      report.unchanged.push(rel);
     }
   }
 
@@ -274,22 +288,28 @@ function printReport(mode, prune, reports) {
       console.log(`  missing: ${report.missing.length}`);
       console.log(`  drifted: ${report.drifted.length}`);
       console.log(`  extra: ${report.extra.length}`);
+      console.log(`  malformed: ${report.malformed.length}`);
       if (report.missing.length)
         report.missing.forEach((p) => console.log(`    + ${p}`));
       if (report.drifted.length)
         report.drifted.forEach((p) => console.log(`    ~ ${p}`));
       if (report.extra.length)
         report.extra.forEach((p) => console.log(`    - ${p}`));
+      if (report.malformed.length)
+        report.malformed.forEach((p) => console.log(`    ! ${p}`));
     } else {
       console.log(`  created: ${report.created.length}`);
       console.log(`  updated: ${report.updated.length}`);
       console.log(`  removed: ${report.removed.length}`);
+      console.log(`  skipped (malformed): ${report.malformed.length}`);
       if (report.created.length)
         report.created.forEach((p) => console.log(`    + ${p}`));
       if (report.updated.length)
         report.updated.forEach((p) => console.log(`    ~ ${p}`));
       if (report.removed.length)
         report.removed.forEach((p) => console.log(`    - ${p}`));
+      if (report.malformed.length)
+        report.malformed.forEach((p) => console.log(`    ! ${p}`));
     }
   }
 }
@@ -297,8 +317,15 @@ function printReport(mode, prune, reports) {
 function hasDrift(reports) {
   return reports.some(
     (report) =>
-      report.missing.length || report.drifted.length || report.extra.length,
+      report.missing.length ||
+      report.drifted.length ||
+      report.extra.length ||
+      report.malformed.length,
   );
+}
+
+function hasMalformed(reports) {
+  return reports.some((report) => report.malformed.length);
 }
 
 async function main() {
@@ -312,6 +339,16 @@ async function main() {
   }
 
   printReport(mode, prune, reports);
+
+  if (hasMalformed(reports)) {
+    console.error(
+      '\nERROR: the files marked ! have unreadable frontmatter and were left untouched.\n' +
+        'Fix their `---` delimited frontmatter by hand, then re-run. This script will not\n' +
+        'regenerate frontmatter for an existing file — doing so would overwrite its `tools:` grants.',
+    );
+    process.exitCode = 1;
+    return;
+  }
 
   if (mode === 'check' && hasDrift(reports)) {
     process.exitCode = 1;
