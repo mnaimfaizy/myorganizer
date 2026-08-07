@@ -20,7 +20,7 @@ Key points:
 - Pin a fixed point; use three-dot diff (`git diff <fixed-point>...HEAD`).
 - Fetch spec from issue references, user path, or PRD files.
 - Standards sources: `AGENTS.md`, `CLAUDE.md`, `docs/ui/GUIDELINES.md`, `docs/testing/README.md`, `CONTEXT.md`, ADRs, vault rules.
-- Spawn Standards and Spec sub-agents in parallel via `Task` (`generalPurpose`).
+- Spawn Standards and Spec sub-agents in parallel via the harness's native sub-agent dispatch (harness-agnostic; Cursor `Task` is fine).
 - Aggregate under separate `## Standards` and `## Spec` headings — do not merge findings.
 
 ## Skill Files
