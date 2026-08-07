@@ -2,7 +2,7 @@
 description: 'Runs after ComponentBuilder. Runs the mechanical hygiene script plus tsc and eslint, then judges composition, concern mixing, and abstraction quality against docs/ui/GUIDELINES.md. Returns PASS, PASS_WITH_WARNINGS, or FAIL with required revisions. Never edits files.'
 name: 'ComponentReviewer'
 tools: [read, search, execute]
-model: ['Claude Sonnet 5 (copilot)', 'Grok 4.5 (copilot)', 'GPT-5.6 Terra (copilot)']
+model: ['Grok 4.5 (copilot)', 'GPT-5.6 Terra (copilot)']
 user-invocable: false
 argument-hint: 'ComponentBuilder Report block'
 ---
