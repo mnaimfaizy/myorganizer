@@ -82,8 +82,9 @@ HITL note: `type:hitl` is separate from `status:blocked`. HITL needs a human to 
    - Delegate to `CodeExplorer` (`.github/agents/explore.agent.md`) focused on the seams listed in the PRD's Testing Decisions and Implementation Decisions.
    - Only explore areas relevant to slicing — do not re-explore what the PRD already captured.
 
-4. **Draft vertical slices**
-   - Break the PRD into tracer-bullet slices. Each slice cuts through ALL integration layers end-to-end.
+4. **Draft slices (vertical, or wide-refactor when required)**
+   - Prefer tracer-bullet **vertical** slices. Each cuts through ALL integration layers end-to-end.
+   - **Exception — wide refactors:** if the work is one mechanical change whose **blast radius** fans across the codebase (rename a column, retype a shared symbol) so no vertical slice can land green, do **not** force a tracer bullet. Sequence **expand → migrate batches → contract** (see Reference below). Still assign `gate:*`, `complexity:*`, and blocking edges.
    - For each slice, assign:
      - **Type**: `type:afk` (agent can implement alone) or `type:hitl` (needs human decision)
      - **Complexity**: `complexity:low` / `complexity:medium` / `complexity:high` (model size)
@@ -217,6 +218,31 @@ After all slice numbers exist, ensure every blocker’s `## Blocks` section list
 - Confirm slices with non-empty `## Blocked by` carry `status:blocked`.
 - Confirm blocker ↔ dependent edges are bidirectional.
 - Confirm the PRD Issue `## Slices` section was updated after all slices are published.
+- If the PRD is a wide refactor, confirm expand → migrate batches → contract ordering and blocking edges.
+
+## Reference
+
+### Vertical slice rules
+
+- Each ordinary slice cuts a narrow but complete path through every layer (schema → API → UI → tests) — vertical, not a horizontal layer slice.
+- A completed slice must be independently demoable or verifiable.
+- Prefer one non-trivial delegation pipeline per `gate:full` slice (split candidates when two or more apply).
+
+### Wide refactors (expand–contract)
+
+Adapted from mattpocock/skills `to-tickets` (v1.1+).
+
+A **wide refactor** is one mechanical change — rename a column, retype a shared symbol — whose **blast radius** fans across the codebase so a single edit breaks many call sites at once and no vertical slice can land green.
+
+Do **not** force it into a tracer bullet. Sequence it as **expand–contract**:
+
+1. **Expand** — add the new form beside the old so nothing breaks (`gate:standard` or `gate:mechanical` as appropriate).
+2. **Migrate** — move call sites over in batches sized by blast radius (per package / directory). Each batch is its own slice, **blocked by** the expand slice, keeping CI green because the old form still exists. Prefer `gate:mechanical` when the batch is pure retargets.
+3. **Contract** — delete the old form once no caller remains, in a slice **blocked by** every migrate batch.
+
+When even the batches cannot stay green alone, keep the sequence but let them share an integration branch that all block a final **integrate-and-verify** slice — green is promised only there. Mark that final slice `type:hitl` if a human must confirm the cutover.
+
+Still use bidirectional `## Blocked by` / `## Blocks` and `status:blocked` as elsewhere in this skill.
 
 ## References
 

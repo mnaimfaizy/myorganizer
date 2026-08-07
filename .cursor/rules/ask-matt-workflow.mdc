@@ -8,7 +8,7 @@ alwaysApply: false
 ## When to Use
 
 - The next workflow/skill is unclear.
-- A request could fit multiple paths (planned feature, ad-hoc task, testing, architecture, release).
+- A request could fit multiple paths (planned feature, ad-hoc task, testing, architecture, release, hard bug).
 
 ## Core Approach
 
@@ -16,11 +16,13 @@ Read and follow `.github/skills/ask-matt/SKILL.md` exactly.
 
 Routing highlights:
 
-- Recommend a **gate tier** first (`gate:mechanical | standard | full` — ADR 0012)
-- Planned feature -> `to-prd` then `to-issues` (assign `gate:*`)
-- Ad-hoc fix now (no ticket) -> classify gate -> `implement`
+- Recommend a **gate tier** first (`gate:mechanical | standard | full` — ADR 0012) when implementing
+- Planned feature -> `to-prd` then `to-issues` (assign `gate:*` + blocks)
+- Something's broken (hard bug) -> `diagnosing-bugs`
+- Ad-hoc fix now (no ticket) -> classify gate -> `implement` (+ `tdd` when appropriate)
 - Agreed spec ready to build -> `implement`
 - Design ambiguity -> `grill-with-docs`
+- Vocabulary/shape problems -> `domain-modeling` / `codebase-design`
 - Runnable validation required -> `prototype` (+ `handoff` if crossing sessions)
 - Jest/Playwright work -> matching test workflow (mechanical may skip specialist hops)
 - Release preparation -> `release-and-deploy-workflow`
@@ -29,4 +31,5 @@ Routing highlights:
 ## Skill Files
 
 - `.github/skills/ask-matt/SKILL.md`
+- `.github/skills/diagnosing-bugs/SKILL.md`
 - `docs/adr/0012-tiered-quality-gates.md`
