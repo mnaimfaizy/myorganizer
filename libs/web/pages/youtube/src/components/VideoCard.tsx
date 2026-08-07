@@ -1,17 +1,23 @@
 'use client';
 
-import { Badge, Button } from '@myorganizer/web-ui';
+import { Button, cn } from '@myorganizer/web-ui';
 import { CheckCircle, Circle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { updateVideoWatched } from '../hooks';
 import type { YouTubeVideo } from '../types';
+import { YouTubeVideoPlayer } from './YouTubeVideoPlayer';
 
 interface VideoCardProps {
   video: YouTubeVideo;
   onWatchedToggle?: (videoId: string, watched: boolean) => void;
+  className?: string;
 }
 
-export function VideoCard({ video, onWatchedToggle }: VideoCardProps) {
+export function VideoCard({
+  video,
+  onWatchedToggle,
+  className,
+}: VideoCardProps) {
   const [watched, setWatched] = useState<boolean>(!!video.watched);
   const [updating, setUpdating] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,16 +26,19 @@ export function VideoCard({ video, onWatchedToggle }: VideoCardProps) {
     setWatched(!!video.watched);
   }, [video.watched]);
 
-  const youtubeUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(video.videoId)}`;
   const formattedDate = new Date(video.publishedAt).toLocaleDateString(
     undefined,
     { year: 'numeric', month: 'short', day: 'numeric' },
   );
 
+  const youtubeWatchUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(
+    video.videoId,
+  )}`;
+
   const handleToggleWatched = useCallback(
-    async (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
+    async (e?: React.MouseEvent) => {
+      e?.preventDefault();
+      e?.stopPropagation();
 
       const nextWatched = !watched;
       const prevWatched = watched;
@@ -52,65 +61,50 @@ export function VideoCard({ video, onWatchedToggle }: VideoCardProps) {
     [watched, video.videoId, onWatchedToggle],
   );
 
+  const handleNearEndAutoWatched = useCallback(async () => {
+    if (watched || updating) return;
+
+    setWatched(true);
+    setUpdating(true);
+    setError(null);
+
+    try {
+      const result = await updateVideoWatched(video.videoId, true);
+      setWatched(result.watched);
+      onWatchedToggle?.(video.videoId, result.watched);
+    } catch {
+      setWatched(false);
+      setError('Failed to update status');
+    } finally {
+      setUpdating(false);
+    }
+  }, [watched, updating, video.videoId, onWatchedToggle]);
+
   return (
-    <div className="group block overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-900">
-      <a
-        href={youtubeUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block"
-      >
-        {video.thumbnail ? (
-          <div className="relative aspect-video w-full overflow-hidden bg-gray-100 dark:bg-gray-800">
-            <img
-              src={video.thumbnail}
-              alt={video.title}
-              className="h-full w-full object-cover transition-transform group-hover:scale-105"
-              loading="lazy"
-            />
-            <div className="absolute right-2 top-2 z-10">
-              <Badge
-                variant={watched ? 'secondary' : 'default'}
-                className={
-                  watched
-                    ? 'bg-gray-800/80 text-gray-200 backdrop-blur-sm dark:bg-gray-900/80 dark:text-gray-300'
-                    : 'bg-blue-600/90 text-white backdrop-blur-sm'
-                }
-              >
-                {watched ? 'Watched' : 'New'}
-              </Badge>
-            </div>
-          </div>
-        ) : (
-          <div className="relative flex aspect-video w-full items-center justify-center bg-gray-100 dark:bg-gray-800">
-            <span className="text-3xl text-gray-400">▶</span>
-            <div className="absolute right-2 top-2 z-10">
-              <Badge
-                variant={watched ? 'secondary' : 'default'}
-                className={
-                  watched
-                    ? 'bg-gray-800/80 text-gray-200 backdrop-blur-sm dark:bg-gray-900/80 dark:text-gray-300'
-                    : 'bg-blue-600/90 text-white backdrop-blur-sm'
-                }
-              >
-                {watched ? 'Watched' : 'New'}
-              </Badge>
-            </div>
-          </div>
-        )}
-      </a>
+    <div
+      className={cn(
+        'group block overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-900',
+        className,
+      )}
+    >
+      <YouTubeVideoPlayer
+        key={video.videoId}
+        video={video}
+        watched={watched}
+        onNearEnd={handleNearEndAutoWatched}
+      />
 
       <div className="p-3">
-        <a
-          href={youtubeUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="block"
-        >
-          <h3 className="line-clamp-2 text-sm font-medium leading-snug text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+        <h3 className="line-clamp-2 text-sm font-medium leading-snug text-gray-900 dark:text-gray-100">
+          <a
+            href={youtubeWatchUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:underline"
+          >
             {video.title}
-          </h3>
-        </a>
+          </a>
+        </h3>
 
         <div className="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
           {video.channelTitle && (
