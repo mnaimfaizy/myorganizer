@@ -2,7 +2,7 @@
 name: issue-creator
 description: >
   Use when the user asks to create a GitHub issue and you need a focused workflow for duplicate detection, mandatory detail collection, label validation, and safe issue creation in MyOrganizer.
-model: gemini-2.5-flash
+model: gemini-3.6-flash
 tools:
   - read_file
   - list_files

@@ -5,7 +5,7 @@ description: >
   Accepts a Structured Spec from the main agent, reads project guidelines, and
   writes the component following docs/ui/GUIDELINES.md and TECH_STACK.md.
   Always prefers the compound/composition pattern.
-model: gemini-2.5-flash
+model: gemini-3.6-flash
 tools:
   - read_file
   - list_files

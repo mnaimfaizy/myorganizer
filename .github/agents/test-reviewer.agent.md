@@ -2,7 +2,7 @@
 description: 'Use after TestScaffold to gate test files before execution. Runs tsc --noEmit and eslint, then verifies the behavior matrix and checklist items against the actual file. Returns APPROVED or REJECTED with an annotated checklist and required revisions.'
 name: 'TestReviewer'
 tools: [read, search, execute]
-model: ['Claude Sonnet 5 (copilot)']
+model: ['GPT-5.6 Luna (copilot)']
 user-invocable: false
 argument-hint: 'Full TestScaffold output including file path, behavior matrix, coverage map, and review checklist'
 ---

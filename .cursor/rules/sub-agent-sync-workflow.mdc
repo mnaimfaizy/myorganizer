@@ -35,16 +35,17 @@ Run the sync workflow after any of these:
 2. Preserve existing harness-specific frontmatter where file already exists.
 3. Create missing harness files from canonical using harness defaults.
 4. Prune extra harness files when canonical file no longer exists (default apply behavior).
-5. `CodeExplorer` in Cursor must stay `model: composer`.
+5. Model frontmatter must match `tools/config/agent-model-policy.json`.
+6. `CodeExplorer` in Cursor must stay `model: composer-2.5`.
 
 ## Model Policy
 
-- Cursor defaults: `claude-haiku-4-5`
-- Cursor `CodeExplorer`: `composer`
-- Prefer low-cost models unless explicit quality needs require a stronger model.
-- Keep model mapping centralized in `tools/scripts/sync-subagents.mjs`.
+- Source of truth: `tools/config/agent-model-policy.json`
+- Cursor `CodeExplorer`: `composer-2.5`
+- Prefer role-tier defaults; escalate repeated failures instead of changing models automatically.
+- Run `yarn agents:models:audit` before accepting catalog or assignment changes.
 
 ## Reference
 
 - Skill: `.github/skills/sub-agent-sync-workflow/SKILL.md`
-- Script: `tools/scripts/sync-subagents.mjs`
+- Scripts: `tools/scripts/sync-subagents.mjs`, `tools/scripts/sync-agent-models.mjs`

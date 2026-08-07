@@ -31,24 +31,27 @@ Synchronization means:
 ## Source of Truth
 
 - Canonical file body: `.github/agents/<agent>.agent.md`
-- Automation script: `tools/scripts/sync-subagents.mjs`
+- Canonical model assignment: `tools/config/agent-model-policy.json`
+- Body sync: `tools/scripts/sync-subagents.mjs`
+- Model sync: `tools/scripts/sync-agent-models.mjs`
 
 Do not manually copy agent bodies across harnesses unless the script is unavailable.
 
 ## Model Assignment Policy
 
-When creating missing harness files, model selection must respect harness availability and cost goals.
+Model assignments come from `tools/config/agent-model-policy.json`. Agent bodies remain canonical in `.github/agents`; model frontmatter is canonical in the policy.
 
 - GitHub Copilot (`.github/agents`): can define model priority lists.
-- Claude (`.claude/agents`): use a single low-cost default (`haiku`) unless quality needs are explicit.
-- Cursor (`.cursor/agents`): use a single model. `CodeExplorer` must use `composer`.
-- Gemini (`.gemini/agents`): use a single low-cost default (`gemini-2.5-flash`) unless quality needs are explicit.
+- Claude (`.claude/agents`): uses one alias or model ID.
+- Cursor (`.cursor/agents`): uses one model ID. `CodeExplorer` must use `composer-2.5`.
+- Gemini (`.gemini/agents`): uses one model ID.
 
-Backup strategy:
+Assignment strategy:
 
 1. Prefer low-cost fast models for exploration, triage, and repetitive workflows.
-2. Use stronger models only for research-heavy or synthesis-heavy agents.
-3. Keep model defaults centralized in `tools/scripts/sync-subagents.mjs` (`defaultModelByAgent` + `defaultModel`).
+2. Use stronger models for generation, synthesis, planning, and judgment only when the role tier requires it.
+3. Escalate repeated failures to the main agent or human; do not change pinned models automatically.
+4. Run `yarn agents:models:audit` before accepting catalog or assignment changes.
 
 ## Required Triggers
 
@@ -64,6 +67,7 @@ Run this workflow after any of the following:
 Before closing the task:
 
 - `yarn agents:sync:check` returns exit code 0.
-- `CodeExplorer` in Cursor remains `model: composer`.
+- `CodeExplorer` in Cursor remains `model: composer-2.5`.
+- Every harness model matches `tools/config/agent-model-policy.json`.
 - No canonical agent exists only in `.github/agents`.
 - No stale removed canonical agents remain in target harness directories (unless explicitly using `--no-prune`).

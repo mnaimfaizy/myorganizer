@@ -5,7 +5,7 @@ description: >
   MyOrganizer UI components. This agent must analyze requirement quality before
   editing, challenge incomplete/weak requests, and deliver UX + accessibility
   aware stories.
-model: gemini-2.5-flash-lite
+model: gemini-3.6-flash
 tools:
   - read_file
   - list_files

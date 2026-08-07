@@ -88,7 +88,7 @@ Windows-native dispatch (from PowerShell, repo on `D:\`) works but is ~29 min/in
 corepack yarn dispatch-agents --prd <issue-number>   # all ready AFK slices, one by one
 corepack yarn dispatch-waves  --prd <issue-number>   # dependency-ordered across waves
 corepack yarn dispatch-agents --prd <issue-number> --agent cursor
-corepack yarn dispatch-agents --prd <issue-number> --agent copilot --model claude-sonnet-4.5
+corepack yarn dispatch-agents --prd <issue-number> --agent copilot --model claude-sonnet-5
 ```
 
 Provider switching is optional: the default agent can live in `.sandcastle/.env` as
@@ -96,6 +96,16 @@ Provider switching is optional: the default agent can live in `.sandcastle/.env`
 (`SANDCASTLE_CLAUDE_MODEL`, `SANDCASTLE_CURSOR_MODEL`, `SANDCASTLE_COPILOT_MODEL`), and
 `--model` always overrides them for a single run. Claude keeps the existing complexity-based
 model routing when no override is set.
+
+After a dispatch, summarize loop and token usage:
+
+```bash
+corepack yarn agents:usage:report
+corepack yarn agents:usage:report -- --prd <issue-number>
+```
+
+Model defaults are governed by `tools/config/agent-model-policy.json`; check current provider
+catalogs with `corepack yarn agents:models:audit`.
 
 With 1Password Environments, put the same variable names in the Environment instead. For
 example, use `SANDCASTLE_AGENT`, `SANDCASTLE_CLAUDE_MODEL`, and the provider credential

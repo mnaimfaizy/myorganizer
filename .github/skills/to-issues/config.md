@@ -28,11 +28,7 @@ GitHub Issues
 
 ## Model Routing
 
-| Label               | Model               |
-| ------------------- | ------------------- |
-| `complexity:low`    | `claude-haiku-4-5`  |
-| `complexity:medium` | `claude-sonnet-4-6` |
-| `complexity:high`   | `claude-opus-4-5`   |
+`complexity:low | medium | high` selects the corresponding Sandcastle model from `tools/config/agent-model-policy.json`. Do not duplicate concrete model IDs here.
 
 ## Issue Formats
 

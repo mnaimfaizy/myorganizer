@@ -2,7 +2,7 @@
 name: audit
 description: >
   Use when the user asks to audit, scan, review, or check the codebase for issues like unused exports, `any` usage, missing tests, OWASP Top 10 risks, Nx module boundary violations, or dead code. Read-only — returns a prioritized list.
-model: gemini-2.5-flash
+model: gemini-3.6-flash
 tools:
   - read_file
   - list_files

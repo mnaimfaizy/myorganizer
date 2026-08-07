@@ -140,7 +140,7 @@ When any sub-agent file changes, keep all harnesses synchronized with `.github/a
 
 1. Run `yarn agents:sync`.
 2. Run `yarn agents:sync:check` and require exit code 0.
-3. Confirm `.cursor/agents/explore.md` remains `model: composer`.
+3. Confirm `.cursor/agents/explore.md` remains `model: composer-2.5`.
 
 References:
 

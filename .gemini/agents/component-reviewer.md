@@ -5,7 +5,7 @@ description: >
   component against docs/ui/GUIDELINES.md, checks for side-effects, performance,
   memory, and design issues, and scans direct importers for breakage. Produces a
   report only — never edits files.
-model: gemini-2.5-flash
+model: gemini-3.6-flash
 tools:
   - read_file
   - list_files

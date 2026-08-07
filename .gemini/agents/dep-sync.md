@@ -4,7 +4,7 @@ description: >
   Synchronise TECH_STACK.md and authoritative files when dependencies are
   installed, updated, or removed. Proposes changes and requires user
   confirmation before writing anything.
-model: gemini-2.5-flash-lite
+model: gemini-3.5-flash-lite
 tools:
   - read_file
   - list_files

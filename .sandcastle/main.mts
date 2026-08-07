@@ -10,6 +10,28 @@ const SANDBOX_IMAGE = 'sandcastle:myorganizer';
 
 dotenv.config({ path: join(process.cwd(), '.sandcastle', '.env') });
 
+type AgentModelPolicy = {
+  orchestrators: {
+    sandcastle: {
+      claudeByComplexity: {
+        low: string;
+        medium: string;
+        high: string;
+      };
+      cursorDefault: string;
+      copilotDefault: string;
+    };
+  };
+};
+
+const agentModelPolicy = JSON.parse(
+  readFileSync(
+    join(process.cwd(), 'tools', 'config', 'agent-model-policy.json'),
+    'utf8',
+  ),
+) as AgentModelPolicy;
+const sandcastleModels = agentModelPolicy.orchestrators.sandcastle;
+
 // ─── Integration model (local-only) ───────────────────────────────────────────
 // GitHub coupling is deliberately minimal: we READ the PRD + slice issues and
 // WRITE status labels + a completion comment back to each slice. That is all.
@@ -498,9 +520,11 @@ type AgentKind = 'claude' | 'cursor' | 'copilot';
 
 function modelFor(issue: Issue): string {
   const labels = issue.labels.map((l) => l.name);
-  if (labels.includes('complexity:high')) return 'claude-opus-4-5';
-  if (labels.includes('complexity:medium')) return 'claude-sonnet-4-6';
-  return 'claude-haiku-4-5';
+  if (labels.includes('complexity:high'))
+    return sandcastleModels.claudeByComplexity.high;
+  if (labels.includes('complexity:medium'))
+    return sandcastleModels.claudeByComplexity.medium;
+  return sandcastleModels.claudeByComplexity.low;
 }
 
 function resolveAgentKind(): AgentKind {
@@ -520,9 +544,13 @@ function resolveModel(issue: Issue, agentKind: AgentKind): string {
     case 'claude':
       return process.env.SANDCASTLE_CLAUDE_MODEL ?? modelFor(issue);
     case 'cursor':
-      return process.env.SANDCASTLE_CURSOR_MODEL ?? 'composer-2';
+      return (
+        process.env.SANDCASTLE_CURSOR_MODEL ?? sandcastleModels.cursorDefault
+      );
     case 'copilot':
-      return process.env.SANDCASTLE_COPILOT_MODEL ?? 'claude-sonnet-4.5';
+      return (
+        process.env.SANDCASTLE_COPILOT_MODEL ?? sandcastleModels.copilotDefault
+      );
   }
 }
 
@@ -931,6 +959,22 @@ function logRunUsage(
   model: string,
   result: Awaited<ReturnType<typeof run>>,
 ): void {
+  const usageDir = join(process.cwd(), '.sandcastle', 'usage');
+  const usageFile = join(usageDir, 'agent-usage.jsonl');
+  const writeUsageRecord = (record: Record<string, unknown>): void => {
+    mkdirSync(usageDir, { recursive: true });
+    appendFileSync(
+      usageFile,
+      `${JSON.stringify({
+        timestamp: new Date().toISOString(),
+        prdNumber,
+        issueNumber,
+        agentKind,
+        model,
+        ...record,
+      })}\n`,
+    );
+  };
   const writeLog = (message: string): void => {
     console.log(message);
     if (result.logFilePath) {
@@ -938,14 +982,16 @@ function logRunUsage(
     }
   };
 
-  const usage = result.iterations
-    .map((iteration) => iteration.usage)
-    .filter(
-      (iterationUsage): iterationUsage is NonNullable<typeof iterationUsage> =>
-        iterationUsage !== undefined,
-    );
+  const usage = result.iterations.flatMap((iteration, index) =>
+    iteration.usage ? [{ index, ...iteration.usage }] : [],
+  );
 
   if (usage.length === 0) {
+    writeUsageRecord({
+      available: false,
+      iterations: result.iterations.length,
+      telemetryIterations: 0,
+    });
     writeLog(
       `  [#${issueNumber}] ${agentKind}:${model} usage unavailable (the provider did not return token telemetry).`,
     );
@@ -970,6 +1016,13 @@ function logRunUsage(
     },
   );
 
+  writeUsageRecord({
+    available: true,
+    iterations: result.iterations.length,
+    telemetryIterations: usage.length,
+    iterationUsage: usage,
+    ...totals,
+  });
   writeLog(
     `  [#${issueNumber}] ${agentKind}:${model} tokens — ` +
       `input ${totals.inputTokens}, ` +

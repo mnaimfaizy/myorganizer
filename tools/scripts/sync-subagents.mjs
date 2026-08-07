@@ -7,40 +7,29 @@ import process from 'node:process';
 const repoRoot = process.cwd();
 
 const CANONICAL_DIR = path.join(repoRoot, '.github', 'agents');
+const MODEL_POLICY_PATH = path.join(
+  repoRoot,
+  'tools',
+  'config',
+  'agent-model-policy.json',
+);
+const MODEL_POLICY = JSON.parse(await fs.readFile(MODEL_POLICY_PATH, 'utf8'));
 
 const HARNESS_CONFIG = {
   claude: {
     dir: path.join(repoRoot, '.claude', 'agents'),
     extension: '.md',
-    defaultModelByAgent: {
-      explore: 'haiku',
-      research: 'sonnet',
-      docs: 'sonnet',
-    },
-    defaultModel: 'haiku',
     defaultTools: '[Read, Glob, Grep, Edit, Write, Bash]',
     nameTransform: (name) => name,
   },
   cursor: {
     dir: path.join(repoRoot, '.cursor', 'agents'),
     extension: '.md',
-    defaultModelByAgent: {
-      explore: 'composer',
-      research: 'composer',
-      docs: 'composer',
-    },
-    defaultModel: 'claude-haiku-4-5',
     nameTransform: (name) => name,
   },
   gemini: {
     dir: path.join(repoRoot, '.gemini', 'agents'),
     extension: '.md',
-    defaultModelByAgent: {
-      explore: 'gemini-2.5-flash',
-      research: 'gemini-2.5-pro',
-      docs: 'gemini-2.5-pro',
-    },
-    defaultModel: 'gemini-2.5-flash',
     defaultTools: [
       'read_file',
       'list_files',
@@ -117,7 +106,12 @@ function normalizeBody(body) {
 function buildFrontmatter(harness, slug, canonicalMeta) {
   const cfg = HARNESS_CONFIG[harness];
   const name = cfg.nameTransform(canonicalMeta.name, slug);
-  const model = cfg.defaultModelByAgent[slug] || cfg.defaultModel;
+  const model = MODEL_POLICY.agents?.[slug]?.models?.[harness];
+  if (!model || Array.isArray(model)) {
+    throw new Error(
+      `Missing single-model ${harness} assignment for ${slug} in ${MODEL_POLICY_PATH}`,
+    );
+  }
   const description = canonicalMeta.description.replace(/\s+/g, ' ').trim();
 
   if (harness === 'gemini') {

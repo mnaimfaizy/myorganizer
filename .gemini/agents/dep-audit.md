@@ -2,7 +2,7 @@
 name: dep-audit
 description: >
   Use when the user asks to audit dependencies, check for outdated packages, scan for vulnerabilities, or review dependency upgrade risk in MyOrganizer.
-model: gemini-2.5-flash
+model: gemini-3.6-flash
 tools:
   - read_file
   - list_files
