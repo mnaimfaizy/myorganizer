@@ -34,7 +34,6 @@ jest.mock('@myorganizer/web-ui', () => ({
 const mockUseYouTubeStatus = jest.fn();
 const mockUseYouTubeConnect = jest.fn();
 const mockUseYouTubeSubscriptions = jest.fn();
-const mockUseYouTubeVideos = jest.fn();
 const mockUseYouTubeCarousel = jest.fn();
 const mockUseYouTubeSyncStatus = jest.fn();
 
@@ -42,7 +41,6 @@ jest.mock('../hooks', () => ({
   useYouTubeStatus: () => mockUseYouTubeStatus(),
   useYouTubeConnect: () => mockUseYouTubeConnect(),
   useYouTubeSubscriptions: () => mockUseYouTubeSubscriptions(),
-  useYouTubeVideos: () => mockUseYouTubeVideos(),
   useYouTubeCarousel: () => mockUseYouTubeCarousel(),
   useYouTubeSyncStatus: () => mockUseYouTubeSyncStatus(),
   isRetryCooldownActive: (retryAt?: string | null) =>
@@ -68,23 +66,11 @@ describe('YouTubePageClient', () => {
     refresh: jest.fn(),
   };
 
-  const defaultVideos = {
-    videos: [],
-    total: 0,
-    totalPages: 0,
-    loading: false,
-    sort: 'latest' as const,
-    setSort: jest.fn(),
-    search: '',
-    setSearch: jest.fn(),
-    page: 1,
-    setPage: jest.fn(),
-    refresh: jest.fn(),
-  };
-
   const defaultCarousel = {
     channels: [],
     loading: false,
+    error: null,
+    updateWatched: jest.fn(),
     refresh: jest.fn(),
   };
 
@@ -92,7 +78,6 @@ describe('YouTubePageClient', () => {
     jest.clearAllMocks();
     mockUseYouTubeConnect.mockReturnValue(defaultConnect);
     mockUseYouTubeSubscriptions.mockReturnValue(defaultSubs);
-    mockUseYouTubeVideos.mockReturnValue(defaultVideos);
     mockUseYouTubeCarousel.mockReturnValue(defaultCarousel);
     mockUseYouTubeSyncStatus.mockReturnValue({
       status: null,
@@ -165,27 +150,6 @@ describe('YouTubePageClient', () => {
     render(<YouTubePageClient />);
     expect(screen.getByText('Subscriptions')).toBeInTheDocument();
     expect(screen.getByText('Videos')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Grid' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Carousel' }),
-    ).toBeInTheDocument();
-  });
-
-  it('should toggle between Grid and Carousel views', () => {
-    mockUseYouTubeStatus.mockReturnValue({
-      connected: true,
-      status: 'connected',
-      refresh: jest.fn(),
-    });
-    render(<YouTubePageClient />);
-
-    // Default is Grid view, so sort buttons should be visible
-    expect(screen.getByText('Latest')).toBeInTheDocument();
-
-    // Switch to Carousel view
-    fireEvent.click(screen.getByText('Carousel'));
-    // Carousel has no sort buttons; instead it shows "No videos found."
-    expect(screen.getByText('No videos found.')).toBeTruthy();
   });
 
   it('shows last synced when status is available', () => {

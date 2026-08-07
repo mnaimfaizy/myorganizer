@@ -35,7 +35,6 @@ export interface NotificationSettings {
 }
 
 export type SortOption = 'latest' | 'oldest' | 'az';
-export type ViewMode = 'grid' | 'carousel';
 
 export interface YouTubeSyncStatus {
   status:

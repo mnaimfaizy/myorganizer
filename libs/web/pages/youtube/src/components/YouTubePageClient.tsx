@@ -10,23 +10,13 @@ import {
   useYouTubeStatus,
   useYouTubeSubscriptions,
   useYouTubeSyncStatus,
-  useYouTubeVideos,
 } from '../hooks';
-import type { SortOption, ViewMode } from '../types';
 import { SubscriptionManager } from './SubscriptionManager';
-import { VideoCarousel } from './VideoCarousel';
-import { VideoGrid } from './VideoGrid';
+import { ChannelDirectory } from './ChannelDirectory';
 
 export function YouTubePageClient() {
   const { connected, status, refresh: refreshStatus } = useYouTubeStatus();
   const { connect, disconnect } = useYouTubeConnect();
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
-  const handleViewModeChange = useCallback(
-    (mode: ViewMode) => {
-      setViewMode(mode);
-    },
-    [setViewMode],
-  );
   const handleDisconnect = useCallback(async () => {
     await disconnect();
     await refreshStatus();
@@ -44,13 +34,7 @@ export function YouTubePageClient() {
     return <ConnectPrompt status={status} onConnect={connect} />;
   }
 
-  return (
-    <ConnectedDashboard
-      viewMode={viewMode}
-      onViewModeChange={handleViewModeChange}
-      onDisconnect={handleDisconnect}
-    />
-  );
+  return <ConnectedDashboard onDisconnect={handleDisconnect} />;
 }
 
 interface ConnectPromptProps {
@@ -88,46 +72,23 @@ function ConnectPrompt({ status, onConnect }: ConnectPromptProps) {
 }
 
 interface ConnectedDashboardProps {
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
   onDisconnect: () => void;
 }
 
-function ConnectedDashboard({
-  viewMode,
-  onViewModeChange,
-  onDisconnect,
-}: ConnectedDashboardProps) {
+function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
   const subs = useYouTubeSubscriptions();
-  const gridData = useYouTubeVideos();
   const carouselData = useYouTubeCarousel();
   const syncStatus = useYouTubeSyncStatus();
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
-  // Stabilized handlers for VideoGrid/ChannelVideosClient
-  const { setSort, setSearch, setPage } = gridData;
-  const handleSortChange = useCallback(
-    (sort: SortOption) => setSort(sort),
-    [setSort],
-  );
-  const handleSearchChange = useCallback(
-    (query: string) => setSearch(query),
-    [setSearch],
-  );
-  const handlePageChange = useCallback(
-    (page: number) => setPage(page),
-    [setPage],
-  );
-
   const isCooldownActive = !!syncStatus.isCooldownActive;
 
   const handleWatchedToggle = useCallback(
     (videoId: string, watched: boolean) => {
-      gridData.updateWatched(videoId, watched);
       carouselData.updateWatched(videoId, watched);
     },
-    [gridData, carouselData],
+    [carouselData],
   );
 
   const handleSync = useCallback(async () => {
@@ -140,7 +101,6 @@ function ConnectedDashboard({
       // Refresh lists but don't fail the whole flow — preserve cached data on failures
       const results = await Promise.allSettled([
         subs.refresh(),
-        gridData.refresh(),
         carouselData.refresh(),
       ]);
       const hadFailure = results.some((r) => r.status === 'rejected');
@@ -154,20 +114,16 @@ function ConnectedDashboard({
     } finally {
       setSyncing(false);
     }
-  }, [isCooldownActive, syncStatus, subs, gridData, carouselData]);
+  }, [isCooldownActive, syncStatus, subs, carouselData]);
 
-  const onGridClick = useCallback(
-    () => onViewModeChange('grid'),
-    [onViewModeChange],
-  );
-  const onCarouselClick = useCallback(
-    () => onViewModeChange('carousel'),
-    [onViewModeChange],
-  );
   const handleRetryClick = useCallback(async () => {
     if (isCooldownActive) return;
     await handleSync();
   }, [isCooldownActive, handleSync]);
+
+  const handleDirectoryRetry = useCallback(() => {
+    carouselData.refresh();
+  }, [carouselData]);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -183,71 +139,46 @@ function ConnectedDashboard({
       <Card className="p-4">
         <div className="flex items-center justify-between">
           <CardTitle>Videos</CardTitle>
-          <div className="flex gap-2">
-            <div className="flex items-center gap-2">
-              {/* Freshness/status */}
-              {syncStatus.status && syncStatus.status.lastSyncedAt ? (
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Last synced{' '}
-                  {new Date(syncStatus.status.lastSyncedAt).toLocaleString()}
-                </div>
-              ) : (
-                <div className="text-sm text-gray-600 dark:text-gray-400">
-                  Never synced
-                </div>
-              )}
+          <div className="flex items-center gap-2">
+            {syncStatus.status && syncStatus.status.lastSyncedAt ? (
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Last synced{' '}
+                {new Date(syncStatus.status.lastSyncedAt).toLocaleString()}
+              </div>
+            ) : (
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                Never synced
+              </div>
+            )}
 
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleRetryClick}
-                disabled={
-                  gridData.loading ||
-                  carouselData.loading ||
-                  syncStatus.loading ||
-                  syncing ||
-                  isCooldownActive
-                }
-                aria-label={
-                  isCooldownActive && syncStatus.status?.retryAt
-                    ? `Retry disabled until ${formatRetryAt(syncStatus.status?.retryAt) ?? syncStatus.status?.retryAt}`
-                    : 'Retry sync'
-                }
-                title={
-                  isCooldownActive && syncStatus.status?.retryAt
-                    ? `Retry disabled until ${formatRetryAt(syncStatus.status?.retryAt) ?? syncStatus.status?.retryAt}`
-                    : 'Retry sync'
-                }
-              >
-                <RefreshCw
-                  className={`h-4 w-4 ${gridData.loading || carouselData.loading || syncStatus.loading || syncing ? 'animate-spin' : ''}`}
-                />
-              </Button>
-            </div>
             <Button
-              variant={viewMode === 'grid' ? 'default' : 'outline'}
+              variant="ghost"
               size="sm"
-              onClick={onGridClick}
+              onClick={handleRetryClick}
+              disabled={
+                carouselData.loading ||
+                syncStatus.loading ||
+                syncing ||
+                isCooldownActive
+              }
+              aria-label={
+                isCooldownActive && syncStatus.status?.retryAt
+                  ? `Retry disabled until ${formatRetryAt(syncStatus.status?.retryAt) ?? syncStatus.status?.retryAt}`
+                  : 'Retry sync'
+              }
+              title={
+                isCooldownActive && syncStatus.status?.retryAt
+                  ? `Retry disabled until ${formatRetryAt(syncStatus.status?.retryAt) ?? syncStatus.status?.retryAt}`
+                  : 'Retry sync'
+              }
             >
-              Grid
-            </Button>
-            <Button
-              variant={viewMode === 'carousel' ? 'default' : 'outline'}
-              size="sm"
-              onClick={onCarouselClick}
-            >
-              Carousel
+              <RefreshCw
+                className={`h-4 w-4 ${carouselData.loading || syncStatus.loading || syncing ? 'animate-spin' : ''}`}
+              />
             </Button>
           </div>
         </div>
-        {gridData.total === 0 && !gridData.loading && (
-          <p className="mt-2 text-sm text-gray-500">
-            No videos yet. Click &quot;Sync from YouTube&quot; above to fetch
-            your subscriptions and their latest videos.
-          </p>
-        )}
         <CardContent className="mt-4">
-          {/* Freshness/error display */}
           {syncError && (
             <div
               role="alert"
@@ -257,27 +188,13 @@ function ConnectedDashboard({
               {syncError}
             </div>
           )}
-          {viewMode === 'grid' ? (
-            <VideoGrid
-              videos={gridData.videos}
-              loading={gridData.loading}
-              sort={gridData.sort}
-              onSortChange={handleSortChange}
-              search={gridData.search}
-              onSearchChange={handleSearchChange}
-              page={gridData.page}
-              totalPages={gridData.totalPages}
-              onPageChange={handlePageChange}
-              total={gridData.total}
-              onWatchedToggle={handleWatchedToggle}
-            />
-          ) : (
-            <VideoCarousel
-              channels={carouselData.channels}
-              loading={carouselData.loading}
-              onWatchedToggle={handleWatchedToggle}
-            />
-          )}
+          <ChannelDirectory
+            channels={carouselData.channels}
+            loading={carouselData.loading}
+            error={carouselData.error}
+            onRetry={handleDirectoryRetry}
+            onWatchedToggle={handleWatchedToggle}
+          />
         </CardContent>
       </Card>
     </div>

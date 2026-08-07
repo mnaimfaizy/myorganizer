@@ -221,12 +221,16 @@ export function useYouTubeVideos(channelId?: string) {
 export function useYouTubeCarousel() {
   const [channels, setChannels] = useState<ChannelCarousel[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetch_ = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const data = await apiFetch<ChannelCarousel[]>('/videos/carousel');
       setChannels(data);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
@@ -247,7 +251,7 @@ export function useYouTubeCarousel() {
     );
   }, []);
 
-  return { channels, loading, updateWatched, refresh: fetch_ };
+  return { channels, loading, error, updateWatched, refresh: fetch_ };
 }
 
 export function useYouTubeNotifications() {
