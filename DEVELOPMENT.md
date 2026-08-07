@@ -805,7 +805,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
 The monorepo uses Jest for unit testing.
 
-For Jest unit tests, Jest integration tests, React hook/component integration tests, and Playwright E2E rules, use `docs/testing/README.md` as the canonical guide. Before writing or delegating tests, read the implementation under test, build a behavior matrix, and avoid unsupported retry, concurrency, timeout, or thrown-error scenarios.
+For Jest unit tests, Jest integration tests, React hook/component integration tests, and Playwright E2E rules, use `docs/testing/README.md` as the index and `docs/testing/projects/<project>.md` as the per-project guide. Before writing or delegating tests, read the implementation under test, build a behavior matrix, and avoid unsupported retry, concurrency, timeout, or thrown-error scenarios.
 
 #### Running Tests
 

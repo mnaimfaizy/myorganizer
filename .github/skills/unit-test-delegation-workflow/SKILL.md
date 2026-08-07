@@ -6,7 +6,7 @@ argument-hint: 'Requirement summary + source path(s) + test type + expected beha
 
 # Jest Test Delegation Workflow
 
-Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../docs/adr/0012-tiered-quality-gates.md) — classify `gate:*` before delegating.
+Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../../docs/adr/0012-tiered-quality-gates.md) — classify `gate:*` before delegating.
 
 ## Use This Skill When
 
@@ -70,24 +70,12 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright specs in `a
 
 ## Integration-Test Scope Guardrails
 
-For hooks, components, controllers, or services, prefer core workflows and observable contracts over broad edge-case sweeps.
+Scope rules (what to cover, what is off-limits without implementation evidence) live in
+`.github/agents/test-scaffold.agent.md` Steps 3-4 and are enforced by
+`.github/agents/test-reviewer.agent.md`. Do not restate them in the brief.
 
-Test these when reachable:
-
-- load/init behavior;
-- create/update/delete or equivalent mutation workflows;
-- state consistency after operations;
-- persistence/API/repository collaborator calls;
-- validation and error states that the implementation actually sets;
-- security-sensitive boundaries such as auth checks or ciphertext-only rules.
-
-Do not test these unless the code explicitly supports them:
-
-- retry or recovery flows;
-- concurrent `Promise.all()` mutations;
-- timeout/timing-window behavior;
-- thrown errors from public methods that catch and swallow;
-- real network, DB, email, Google, or third-party behavior.
+The main agent's job here is sizing only: 8-15 tests per focused suite, >15 needs a
+behavior-matrix reason, >20 or multi-file must be split.
 
 ## Large Suite Splitting
 
@@ -138,5 +126,5 @@ TestScaffold → TestReviewer → TestRunner → main agent
 - `.github/agents/test-reviewer.agent.md`
 - `.github/agents/test-runner.agent.md`
 - `.github/skills/playwright-e2e-workflow/SKILL.md`
-- `docs/testing/README.md` - canonical Nx-aware testing guide
+- `docs/testing/README.md` - project index + cross-project rules; per-project tooling lives in `docs/testing/projects/<project>.md`
 - `AGENTS.md`
