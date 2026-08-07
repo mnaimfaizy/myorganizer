@@ -133,7 +133,7 @@ When the user wants to build features or fix bugs test-first, use the **tdd** sk
 
 Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs in `apps/myorganizer-e2e`.
 
-- Consult `docs/testing/README.md` first — it is the canonical Nx-aware guide for per-project tooling, environments, and mock patterns.
+- Consult `docs/testing/projects/<project>.md` for the owning project's tooling, environment, and mock patterns. `docs/testing/README.md` is the project index plus cross-project rules.
 - Build a complete delegation brief before invoking the sub-agent:
   - Test type (`unit`, `Jest integration`, `React hook integration`, `component integration`, etc.)
   - Source and test file paths
@@ -152,7 +152,7 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs i
 
 ### References
 
-- `docs/testing/README.md` — canonical Nx-aware testing guide
+- `docs/testing/README.md` — testing index + cross-project rules; per-project guides in `docs/testing/projects/`
 - `.gemini/agents/test-scaffold.md` — TestScaffold sub-agent (Gemini CLI native format)
 - `.github/agents/test-scaffold.agent.md` — Copilot-CLI version of the same agent
 - `.github/skills/unit-test-delegation-workflow/SKILL.md` — full workflow skill

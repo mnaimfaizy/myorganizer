@@ -1,8 +1,19 @@
 # Jest Test Delegation Runbook
 
-Use this runbook to provide high-signal context to the `TestScaffold` sub-agent and to review its result consistently.
+Use this runbook to build the **delegation brief** for the `TestScaffold` sub-agent — the
+task-specific context only it can get from you.
 
 The main failure mode to avoid is template-driven test generation: tests that assert ideal behavior, retry flows, concurrency, or error propagation that the implementation does not provide.
+
+> **Do not restate standing rules in the brief.** Mock hygiene, scope limits, unsupported-scenario
+> rules, and the review checklist are already in the agent prompts:
+>
+> - Authoring rules → `.github/agents/test-scaffold.agent.md`
+> - Gate criteria → `.github/agents/test-reviewer.agent.md`
+> - Per-project tooling and mocks → `docs/testing/projects/<project>.md`
+>
+> Repeating them here costs tokens on every delegation and creates two places to update.
+> The brief carries **paths, the behavior matrix, and in/out of scope** — nothing else.
 
 ## Delegation Brief Template
 
@@ -25,9 +36,9 @@ Provide all of the following fields to `TestScaffold`:
 
 8. **In scope**: the exact scenarios to test.
 9. **Out of scope**: scenarios not to test, especially unsupported retry/concurrency/timing flows.
-10. **Mocking boundaries**: what must be mocked and what must stay real. Reference `docs/testing/README.md`.
+10. **Mocking boundaries**: what must be mocked and what must stay real, with the reason. The agent reads `docs/testing/projects/<project>.md` for the pattern itself.
 11. **Acceptance checks**: concrete assertions that must exist.
-12. **Validation commands**: focused run, full affected run, lint command, and duplicate/syntax check.
+12. **Focused run command**: the narrowest `--testFile` / `--testNamePattern` invocation. Do **not** ask for a full-project run or lint — `TestReviewer` owns `tsc`/`eslint` and `TestRunner` owns the authoritative run.
 13. **Batch scope**: if splitting, identify this batch and the total plan.
 
 ## Prompt Pattern
@@ -69,76 +80,24 @@ Acceptance checks:
 
 Validation:
 
-- Focused: <command>
-- Full affected: <command>
-- Lint: <command>
+- Focused run only: <command>
 - Duplicate/syntax: inspect for duplicate helpers/describe blocks and invalid TS
 ```
 
-## Integration-Test Scope Guide
+## Sizing The Batch
 
-Default to 8-15 focused tests for one integration suite. More tests require an explicit behavior-matrix reason.
+Default to 8-15 focused tests for one integration suite. More requires an explicit
+behavior-matrix reason. More than 20 tests or multiple files must be split — see
+**Large Suite Split Pattern** below.
 
-Prefer testing:
-
-- load or initialization behavior;
-- core mutation workflows;
-- persistence/API/repository collaborator calls;
-- state consistency after operations;
-- reachable error states;
-- validation and security-sensitive boundaries.
-
-Avoid testing unless implemented:
-
-- error recovery or retry;
-- concurrent operations;
-- timeout or timing-window behavior;
-- public method throws when the implementation catches and logs;
-- real external infrastructure.
-
-## Per-Project Mock Cheatsheet
-
-| Project surface            | Key mocks to supply                                                              |
-| -------------------------- | -------------------------------------------------------------------------------- |
-| `apps/backend` services    | `jest.mock('../prisma', factory)`, external SDK mocks, env vars via `beforeEach` |
-| `apps/backend` controllers | `supertest` + app instance, no real server                                       |
-| `apps/myorganizer`         | `jest.mock('@myorganizer/app-api-client')`, `jest.mock('next/navigation')`       |
-| `libs/auth`                | `clearAuthSession()` in `beforeEach`, no real network                            |
-| `libs/vault-core`          | Deterministic `Buffer` stubs, no real crypto keys                                |
-| `libs/web-vault*`          | `jest.mock('@myorganizer/vault-core')`, stub unlock/read/write                   |
-| `libs/web/pages/*`         | API client + auth + vault mocks, Zod `safeParse` for form validation             |
-
-For full examples see `docs/testing/README.md`.
-
-## Mandatory Mock Hygiene Reminders
-
-Include these in every brief:
-
-- Place all `jest.mock()` calls before any imports, including `import type`.
-- Mock every module whose functions are configured or cast in the test.
-- Reset all mocks in `beforeEach()`, never `beforeAll()`.
-- Use `waitFor()` for async React state assertions.
-- Prefer `mockImplementation()` over `mockReturnValueOnce()` queues for async or multi-call behavior.
-- Avoid concurrent `Promise.all()` tests unless the code explicitly handles concurrency and the mocks are order-independent.
-- Only type-cast mocks that are referenced in assertions or setup.
+Mocking boundaries for the brief come from `docs/testing/projects/<project>.md`; name the
+boundary and the reason, and let the agent read the file for the pattern.
 
 ## Review Standard
 
-The main agent must treat TestScaffold output as a quality gate, not only a pass/fail check. Reject or refine output when:
-
-- tests assert behavior that is not in the implementation;
-- the behavior matrix is missing or not reflected in test names/assertions;
-- only happy-path assertions are present while reachable failure paths exist;
-- side effects are implied but not asserted;
-- security-sensitive risks in scope are not represented;
-- assertions are too weak to catch regressions;
-- tests would pass with a broken implementation;
-- mock setup is in `beforeAll()` instead of `beforeEach()`;
-- async state assertions lack `waitFor()`;
-- `jest.mock()` calls appear after imports;
-- a configured mock module is not explicitly mocked;
-- duplicate helper functions, duplicate `describe` blocks, or appended second copies remain;
-- unused type-cast variables remain after generation.
+`TestReviewer` is the gate — it verifies the checklist, runs `tsc --noEmit` and `eslint`, and
+returns APPROVED or REJECTED. The main agent does not re-run that checklist; it acts on the
+verdict per the pipeline rules in `SKILL.md`.
 
 ## Security Prompts To Include When Relevant
 
