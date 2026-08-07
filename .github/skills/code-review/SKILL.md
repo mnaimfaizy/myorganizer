@@ -70,7 +70,7 @@ Each smell reads _what it is_ → _how to fix_; match it against the diff:
 
 ### 4. Spawn both sub-agents in parallel
 
-Send a single message with two `Task` tool calls. Use `subagent_type: generalPurpose` for both.
+Spawn two parallel sub-agents (harness-native dispatch — do not hard-code a specific tool or agent-type name). In Cursor, `Task` with independent general-purpose agents is fine; in Claude Code / Codex use that harness's equivalent parallel sub-agent mechanism.
 
 **Standards sub-agent prompt** — include:
 
