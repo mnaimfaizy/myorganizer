@@ -156,16 +156,16 @@ When any sub-agent content, model, or file inventory changes in any harness:
 
 1. Run `yarn agents:sync`.
 2. Run `yarn agents:sync:check` and require a clean result.
-3. Ensure `.cursor/agents/explore.md` keeps `model: composer`.
+3. Ensure `.cursor/agents/explore.md` keeps `model: composer-2.5`.
 
-Use `.github/skills/sub-agent-sync-workflow/SKILL.md` for the full policy and `tools/scripts/sync-subagents.mjs` for automation.
+Use `.github/skills/sub-agent-sync-workflow/SKILL.md` for the full policy, `tools/config/agent-model-policy.json` for assignments, and the sync scripts under `tools/scripts/` for automation.
 
 Model assignment policy for sub-agents:
 
 - Prefer low-cost models for exploration, triage, and repetitive delegation.
-- Upgrade only for synthesis/research-heavy agents.
+- Escalate repeated failures to the main agent or human; do not change pinned models automatically.
 - Use harness-supported model syntax only (single model where required; priority list only where supported).
-- Keep defaults centralized in `tools/scripts/sync-subagents.mjs`.
+- Keep assignments centralized in `tools/config/agent-model-policy.json`.
 
 ## Design & Planning
 

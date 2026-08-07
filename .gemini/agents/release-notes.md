@@ -2,7 +2,7 @@
 name: release-notes
 description: >
   Use when the user asks to draft release notes, CHANGELOG entries, or summarize commits between two refs/tags for MyOrganizer.
-model: gemini-2.5-flash
+model: gemini-3.6-flash
 tools:
   - read_file
   - list_files

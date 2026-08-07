@@ -35,15 +35,16 @@ node tools/scripts/sync-subagents.mjs --apply --no-prune
 - Preserve existing harness-specific frontmatter when file already exists.
 - Create missing files in `.claude/agents`, `.cursor/agents`, and `.gemini/agents`.
 - Remove target files with no canonical counterpart when pruning is enabled.
-- Ensure Cursor `CodeExplorer` remains `model: composer`.
+- Ensure Cursor `CodeExplorer` remains `model: composer-2.5`.
 
 ## Model policy
 
 - Use low-cost defaults for high-volume delegations.
-- Upgrade only for quality-sensitive agents (research/synthesis heavy).
-- Maintain model defaults in `tools/scripts/sync-subagents.mjs`.
+- Escalate repeated failures to the main agent or human; do not change pinned models automatically.
+- Maintain assignments in `tools/config/agent-model-policy.json`.
 
 ## Reference
 
 - `.github/skills/sub-agent-sync-workflow/SKILL.md`
 - `tools/scripts/sync-subagents.mjs`
+- `tools/scripts/sync-agent-models.mjs`

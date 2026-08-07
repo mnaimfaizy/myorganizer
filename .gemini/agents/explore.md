@@ -5,7 +5,7 @@ description: >
   the main agent would issue 3 or more consecutive file read/search operations
   to locate something in the codebase. Returns a structured Explore Summary
   with [found]/[inferred] tagged findings and ranked file paths.
-model: gemini-2.5-flash
+model: gemini-3.5-flash-lite
 tools:
   - read_file
   - list_files

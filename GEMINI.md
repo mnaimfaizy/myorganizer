@@ -119,7 +119,7 @@ When the user wants to review changes since a fixed point (commit, branch, tag, 
 
 ## Jest Test Delegation
 
-When a task requires Jest unit tests or Jest integration tests to be created or updated, delegate to the `test-scaffold` sub-agent (`.gemini/agents/test-scaffold.md`) rather than writing tests inline. The agent runs on `gemini-2.5-flash` to keep costs low.
+When a task requires Jest unit tests or Jest integration tests to be created or updated, delegate to the `test-scaffold` sub-agent (`.gemini/agents/test-scaffold.md`) rather than writing tests inline. Its model is governed by `tools/config/agent-model-policy.json`.
 
 ## TDD — Test-Driven Development
 
@@ -153,7 +153,7 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs i
 ### References
 
 - `docs/testing/README.md` — canonical Nx-aware testing guide
-- `.gemini/agents/test-scaffold.md` — TestScaffold sub-agent (Gemini CLI native format, model: gemini-2.5-flash)
+- `.gemini/agents/test-scaffold.md` — TestScaffold sub-agent (Gemini CLI native format)
 - `.github/agents/test-scaffold.agent.md` — Copilot-CLI version of the same agent
 - `.github/skills/unit-test-delegation-workflow/SKILL.md` — full workflow skill
 - `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md` — delegation brief template
@@ -164,12 +164,12 @@ When a task requires locating files, symbols, or patterns in the codebase, deleg
 
 - Delegate to `@code-explorer` (`.gemini/agents/explore.md`) with an Explore Request.
 - The request must include a `Goal` sentence. All other fields are optional: `Known Locations`, `Search Hints`, `Out of Scope`, `Expected Output`.
-- CodeExplorer runs on `gemini-2.5-flash` and returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
+- CodeExplorer runs on the policy's low-cost Gemini model and returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
 - Use the `Relevant Paths` section to decide which files to read next. Trust `[found]` findings directly; verify `[inferred]` findings before acting on them.
 
 ### References
 
-- `.gemini/agents/explore.md` — CodeExplorer sub-agent (Gemini CLI native format, model: gemini-2.5-flash)
+- `.gemini/agents/explore.md` — CodeExplorer sub-agent (Gemini CLI native format)
 - `.github/agents/explore.agent.md` — canonical definition and Copilot-CLI version
 - `docs/adr/0001-codeexplorer-custom-agent.md` — why a custom agent over inline exploration
 
@@ -181,19 +181,20 @@ When any sub-agent file changes in `.github`, `.claude`, `.cursor`, or `.gemini`
 - Required commands:
   - `yarn agents:sync`
   - `yarn agents:sync:check`
-- Ensure `.cursor/agents/explore.md` remains `model: composer`.
+- Ensure `.cursor/agents/explore.md` remains `model: composer-2.5`.
 
 Use these references:
 
 - `.github/skills/sub-agent-sync-workflow/SKILL.md`
 - `.gemini/commands/sync-subagents.md`
 - `tools/scripts/sync-subagents.mjs`
+- `tools/scripts/sync-agent-models.mjs`
 
 Model policy:
 
 - Prefer low-cost defaults for high-frequency delegations.
 - Upgrade model strength only when the agent is synthesis-heavy.
-- Keep default model mapping centralized in `tools/scripts/sync-subagents.mjs`.
+- Keep model mapping centralized in `tools/config/agent-model-policy.json`.
 
 ## Storybook Delegation
 
@@ -211,7 +212,7 @@ When a task requires Storybook creation or updates (`*.stories.tsx`), delegate t
 
 ### References
 
-- `.gemini/agents/storybook-curator.md` — StorybookCurator sub-agent (Gemini CLI native format, model: gemini-2.5-flash-lite)
+- `.gemini/agents/storybook-curator.md` — StorybookCurator sub-agent (Gemini CLI native format)
 - `.github/agents/storybook-curator.agent.md` — Copilot-CLI version of the same agent
 - `.github/skills/storybook-delegation-workflow/SKILL.md` — full workflow skill
 - `.github/skills/storybook-delegation-workflow/references/delegation-runbook.md` — delegation brief template

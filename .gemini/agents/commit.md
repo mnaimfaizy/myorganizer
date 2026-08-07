@@ -2,7 +2,7 @@
 name: commit
 description: >
   Use when the user asks to write, draft, generate, or suggest a Conventional Commit message based on staged or unstaged changes. Read-only — produces the message text only and does not create the commit.
-model: gemini-2.5-flash
+model: gemini-3.5-flash-lite
 tools:
   - read_file
   - list_files

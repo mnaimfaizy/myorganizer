@@ -6,7 +6,7 @@ description: >
   Playwright E2E specs. This agent edits test files directly after reading
   the implementation, building a behavior matrix, and validating that each
   test matches real behavior.
-model: gemini-2.5-flash
+model: gemini-3.6-flash
 tools:
   - read_file
   - list_files

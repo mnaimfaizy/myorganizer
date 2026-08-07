@@ -5,7 +5,7 @@ description: >
   --noEmit and eslint, then verifies the behavior matrix and checklist
   items against the actual file. Returns APPROVED or REJECTED with an
   annotated checklist and required revisions.
-model: gemini-2.5-flash
+model: gemini-3.6-flash
 tools:
   - read_file
   - search_files

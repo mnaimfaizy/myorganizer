@@ -2,7 +2,7 @@
 name: research
 description: >
   Use when the user asks to research, look up, investigate, or summarize external documentation, libraries, standards, RFCs, security advisories, or web content. Produces a structured brief with citations.
-model: gemini-2.5-pro
+model: gemini-3.6-flash
 tools:
   - read_file
   - list_files
