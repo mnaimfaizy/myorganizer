@@ -1,10 +1,10 @@
 ---
 name: TestReviewer
 description: >
-  Use after TestScaffold to gate test files before execution. Runs tsc
-  --noEmit and eslint, then verifies the behavior matrix and checklist
-  items against the actual file. Returns APPROVED or REJECTED with an
-  annotated checklist and required revisions.
+  Use after TestScaffold to gate test files before execution. Runs the
+  mechanical hygiene script plus tsc and eslint, then verifies the behavior
+  matrix against the source. Returns APPROVED or REJECTED with an annotated
+  judgment checklist and required revisions.
 tools: [Read, Glob, Grep, Bash]
 model: haiku
 ---
