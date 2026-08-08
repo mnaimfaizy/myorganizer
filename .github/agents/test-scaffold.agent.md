@@ -199,33 +199,10 @@ SUCCESS | BLOCKED
 
 (`tsc`, `eslint`, and the full-file run belong to TestReviewer and TestRunner — do not report them here.)
 
-## Review Checklist
-
-### Behavior Correctness
-
-- [x] Behavior matrix built from actual implementation
-- [x] Every test scenario exists in actual code path
-- [x] Retry/recovery/timeout/concurrency excluded unless implemented
-- [x] Test names accurately describe assertions
-- [x] Tests would fail if implementation were broken
-
-### Coverage Quality
-
-- [x] Concrete assertions (not just toBeTruthy/toBeDefined)
-- [x] Reachable error/negative paths covered
-- [x] Side effects and collaborator calls asserted
-- [x] Boundary values handled when branching exists
-- [x] Security-sensitive paths covered when in scope
-
-### Technical Hygiene
-
-- [x] All jest.mock() before imports (including import type)
-- [x] Every configured mock module explicitly mocked
-- [x] Mocks reset in beforeEach(), not beforeAll()
-- [x] Async React state uses waitFor()
-- [x] No brittle mockReturnValueOnce() queues
-- [x] No duplicate helpers/describe blocks/suite copies
-- [x] No unused type-cast mock variables
+Do **not** emit a review checklist. TestReviewer owns it, and a checklist the author
+grades for itself carries no information. Run
+`node tools/scripts/check-test-hygiene.mjs <path>` before reporting if you want to
+catch mechanical problems early, but report only whether you fixed what it found.
 
 ## Rationale
 

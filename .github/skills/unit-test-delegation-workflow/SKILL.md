@@ -28,7 +28,8 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright specs in `a
 - On `standard`/`full`, always delegate Jest test implementation to the `TestScaffold` custom agent.
 - Send a complete requirement brief; never ask for generic "comprehensive tests".
 - The brief must include a behavior matrix based on the actual implementation, not desired behavior from a template.
-- After `TestScaffold` reports, delegate the output to `TestReviewer` — it is the static quality gate (checklist verification, `tsc --noEmit`, `eslint`). After `TestReviewer` approves, delegate to `TestRunner` for **one** authoritative execution. Do not re-run the full suite in every hop.
+- After `TestScaffold` reports, delegate the output to `TestReviewer` — the static gate. It runs `node tools/scripts/check-test-hygiene.mjs` for the mechanical items, `tsc`/`eslint` for the project, then a judgment pass over the source. After `TestReviewer` approves, delegate to `TestRunner` for **one** authoritative execution. Do not re-run the full suite in every hop.
+- The review checklist belongs to `TestReviewer` alone. `TestScaffold` does not self-grade it and `TestRunner` does not echo it.
 - Happy-path-only tests are not acceptable when reachable side effects, error paths, boundaries, or security-sensitive misuse paths exist.
 
 ## Workflow
