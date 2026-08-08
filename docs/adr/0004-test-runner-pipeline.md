@@ -14,11 +14,15 @@ accepted
 
 ## Pipeline contract
 
-Each stage hands off a structured markdown checklist:
+Each stage hands off a structured markdown report:
 
-1. **TestScaffold → TestReviewer**: generated test file + behavior matrix + mock boundary map
-2. **TestReviewer → TestRunner**: approved checklist with each item marked PASS/FAIL + `tsc --noEmit` / `eslint` results
-3. **TestRunner → main agent**: approved checklist + actual test run results + verdict (PASS / FAIL / ESCALATE)
+1. **TestScaffold → TestReviewer**: generated test file + behavior matrix + mock boundary map + focused-run result
+2. **TestReviewer → TestRunner**: verdict + hygiene-script output + `tsc` / `eslint` results + notes for execution
+3. **TestRunner → main agent**: test run results + verdict (PASS / FAIL / ESCALATE)
+
+The review checklist is owned solely by TestReviewer. TestScaffold does not emit a
+self-graded copy (an author grading its own gate carries no information) and
+TestRunner does not echo the annotated copy forward.
 
 ## Key guardrails
 
@@ -30,6 +34,15 @@ Each stage hands off a structured markdown checklist:
 
 - **TestReviewer**: Haiku — well-defined static analysis task, no judgment required
 - **TestRunner**: inherits session model — needs judgment (hung vs slow, test wrong vs code broken)
+
+Keeping TestReviewer on Haiku is only sound if its checklist really is mechanical.
+It was not: items like _"tests would fail if the implementation were broken"_ need
+mutation testing, and a cheap model marks them PASS every time. The checklist is
+therefore split — `tools/scripts/check-test-hygiene.mjs` decides the mechanical
+items deterministically, unverifiable items were removed, and the residual judgment
+items each require a cited line. The alternative, upgrading the reviewer's model,
+was rejected: it pays per-run for checks a script settles once, and leaves the
+unverifiable items unverifiable at any model size.
 
 ## Consequences
 
