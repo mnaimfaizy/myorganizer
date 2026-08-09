@@ -4,6 +4,30 @@
 
 YouTube dashboard page library for OAuth status, subscriptions, videos, and notification settings.
 
+## Before any UI work — read the locked prototype
+
+The focused watching UI was decided by prototype, one locked variant per
+direction. **Read [`docs/features/youtube-prototype-references.md`](../../../../docs/features/youtube-prototype-references.md)
+before creating or changing any component here.** A slice issue states the lock
+in a sentence; the prototype is where the actual interaction model lives.
+
+| Direction                        | Locked variant                                    | Prototype file                                            |
+| -------------------------------- | ------------------------------------------------- | --------------------------------------------------------- |
+| Channel-first (long-form home)   | **Variant C — Channel directory (list + detail)** | `channel-first/VariantC_Directory.tsx`                    |
+| In-session queue rail            | **Variant B — Queue rail**                        | `queue-first/VariantB_Rail.tsx`, `useWatchQueue.ts`       |
+| Shorts page + budget / hard stop | Locked timed Shorts page                          | `feed-first/ShortsPrototypePage.tsx`, `useShortsTimer.ts` |
+
+Paths are under `libs/web/pages/youtube/src/prototype/` on the local-only
+branch `prototype/youtube-channel-first`, which carries all three directions.
+Read without switching branches:
+
+```sh
+git show prototype/youtube-channel-first:libs/web/pages/youtube/src/prototype/channel-first/VariantC_Directory.tsx
+```
+
+Variant letters are scoped to a direction, not global. Channel-first Variant B
+(stacked carousels) was **not** selected — do not build it.
+
 ## Do
 
 - Use backend YouTube APIs through the generated client.
