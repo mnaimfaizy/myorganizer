@@ -63,13 +63,13 @@ Config/docs/type-only edits with no behavior change may stay mechanical or direc
 
 ## Step 3: Task Classification Matrix (by gate)
 
-| File Pattern                                  | `gate:mechanical`                                        | `gate:standard`                                                                    | `gate:full`                                                                          |
-| --------------------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Playwright `*.spec.ts`                        | Direct edit (selector/string only) + note; no E2EPlanner | TestScaffold + TestReviewer (structural); skip E2EPlanner if flow matrix unchanged | E2EPlanner → TestScaffold → TestReviewer (structural); never execute E2E in AFK      |
-| Jest `*.test.ts` / page `*.spec.tsx`          | Direct edit (fixture/type retarget) + focused jest       | TestScaffold → TestReviewer → TestRunner                                           | Same full pipeline (max 3 retries)                                                   |
-| `*.stories.tsx`                               | Direct edit only for rename/import path                  | StorybookCurator                                                                   | StorybookCurator                                                                     |
-| Components `libs/web-ui/` / `libs/web/pages/` | Direct edit only for rename/import/dead delete           | ComponentBuilder → ComponentReviewer                                               | ComponentBuilder → ComponentReviewer (max 3 FAIL loops) + Storybook/tests after PASS |
-| Config / docs / types                         | Direct edit OK                                           | Direct edit OK                                                                     | Direct edit OK                                                                       |
+| File Pattern                                  | `gate:mechanical`                                                                   | `gate:standard`                                                                    | `gate:full`                                                                          |
+| --------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Playwright `*.spec.ts`                        | Direct edit (selector/string only) + note; no E2EPlanner                            | TestScaffold + TestReviewer (structural); skip E2EPlanner if flow matrix unchanged | E2EPlanner → TestScaffold → TestReviewer (structural); never execute E2E in AFK      |
+| Jest `*.test.ts` / page `*.spec.tsx`          | Direct edit (fixture/type retarget) + focused jest                                  | TestScaffold → TestReviewer → TestRunner                                           | Same full pipeline (max 3 retries)                                                   |
+| `*.stories.tsx`                               | Direct edit only for rename/import path                                             | StorybookCurator                                                                   | StorybookCurator                                                                     |
+| Components `libs/web-ui/` / `libs/web/pages/` | Direct edit only for rename/import/dead delete; run `yarn component:hygiene <path>` | ComponentBuilder → ComponentReviewer                                               | ComponentBuilder → ComponentReviewer (max 3 FAIL loops) + Storybook/tests after PASS |
+| Config / docs / types                         | Direct edit OK                                                                      | Direct edit OK                                                                     | Direct edit OK                                                                       |
 
 Skills:
 
@@ -77,6 +77,8 @@ Skills:
 - Jest: `.github/skills/unit-test-delegation-workflow/SKILL.md`
 - Storybook: `.github/skills/storybook-delegation-workflow/SKILL.md`
 - Components: `CLAUDE.md` → UI Component Workflows / `.claude/commands/component-builder.md`
+
+Deterministic component checks (any gate): `yarn component:hygiene <path>` — the shape rules from `docs/ui/GUIDELINES.md`. Errors gate; warnings are advisory (ADR 0014).
 
 ---
 

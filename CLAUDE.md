@@ -100,6 +100,8 @@ Pass the Structured Spec to the `ComponentBuilder` sub-agent (`.claude/agents/co
 
 Required on `gate:standard` and `gate:full` after ComponentBuilder. Pass the ComponentBuilder Report to `ComponentReviewer` (`.claude/agents/component-reviewer.md`). Skip Builder/Reviewer only for `gate:mechanical` rename/import/dead-delete.
 
+ComponentReviewer runs `check-component-hygiene.mjs`, `tsc --noEmit`, and `eslint`, then judges composition, scope placement, concern mixing, the client boundary, Radix usage, and accessibility. `tsc` over the owning project is the importer check — nobody reads importer files one by one.
+
 ### Step 4 — Handle the Verdict
 
 - **`PASS`** — accept the component; note any warnings to the user.
@@ -116,7 +118,9 @@ Required on `gate:standard` and `gate:full` after ComponentBuilder. Pass the Com
 
 - On `gate:standard` / `gate:full`, do NOT write component code in the main agent — delegate to ComponentBuilder.
 - ComponentBuilder does not write stories or tests — those go to StorybookCurator and TestScaffold after the review passes.
-- Do NOT invent component conventions. ComponentBuilder and ComponentReviewer enforce `docs/ui/GUIDELINES.md`.
+- Do NOT invent component conventions. ComponentBuilder and ComponentReviewer enforce `docs/ui/GUIDELINES.md`, which is the single copy of those rules — the agents read it rather than restating it.
+- Neither agent reads `TECH_STACK.md` in full; it is a version lookup table, not a component briefing.
+- On `gate:mechanical`, run the shape checks yourself: `yarn component:hygiene <path>` (see ADR 0014).
 - If the Structured Spec is incomplete (missing `Target Path` or `Props Interface`), gather the missing information before delegating.
 
 ---

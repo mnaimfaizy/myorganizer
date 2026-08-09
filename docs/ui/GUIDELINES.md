@@ -385,10 +385,26 @@ Every component must satisfy this before being considered done:
 
 ---
 
-## 8. What ComponentBuilder Does With These Guidelines
+## 8. How These Guidelines Are Enforced
 
-ComponentBuilder reads these guidelines at the start of every run and applies them as hard constraints, not suggestions. If the Structured Spec conflicts with a rule here, ComponentBuilder flags the conflict to the main agent before writing any code.
+This document is the source of truth. The agents do not paraphrase it into their own prompts — they read it and apply it, so there is only ever one copy of a rule to keep current.
 
-ComponentReviewer checks the finished component against §§ 1–7 and reports any violation, along with the guideline section number, so the main agent can instruct ComponentBuilder to revise.
+Enforcement is split three ways by what each layer can actually decide:
 
-Neither agent invents conventions not present in this document or in `TECH_STACK.md`. If a situation is not covered, ComponentReviewer flags it as a gap rather than applying general React knowledge.
+| Layer                         | Owns                                                                                                                                                                                                                                             |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `check-component-hygiene.mjs` | Shape rules: `forwardRef`/`displayName`, `cn()` merging, barrel export, deep imports, `useCallback` on handler props, inline props types, effect cleanup, generic names, oversized JSX. Deterministic — a script counts where a model estimates. |
+| `tsc --noEmit` + `eslint`     | Type correctness, importer compatibility, `any`, unused vars, hook dependency arrays.                                                                                                                                                            |
+| ComponentReviewer             | Judgment: is the composition pattern right, is the component in the right scope, is it mixing too many concerns, is the client boundary correct, should this be Radix, accessibility beyond the shape rules.                                     |
+
+Run the shape rules yourself at any time:
+
+```bash
+yarn component:hygiene libs/web-ui/src/lib/components/Card/Card.tsx
+```
+
+ComponentBuilder runs it before handing off and must clear every error. ComponentReviewer runs it again as the gate, alongside `tsc` and `eslint`.
+
+Neither agent invents conventions absent from this document. If a situation is not covered, ComponentReviewer flags it as a gap rather than applying general React knowledge — which is how this document grows.
+
+Rationale for the split: [`docs/adr/0014-component-pipeline-guardrails.md`](../adr/0014-component-pipeline-guardrails.md).

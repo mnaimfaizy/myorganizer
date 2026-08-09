@@ -19,6 +19,13 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
+import {
+  blockAfter,
+  lineOf,
+  maskNonCode,
+  normalize,
+} from './lib/source-scan.mjs';
+
 const USAGE = `Usage:
   node tools/scripts/check-test-hygiene.mjs <file> [<file> ...]
   node tools/scripts/check-test-hygiene.mjs --json <file> [<file> ...]
@@ -27,112 +34,6 @@ Runs the mechanical (non-judgment) TestReviewer checklist items against Jest
 test files. E2E specs under apps/myorganizer-e2e are skipped — they have their
 own rules in .github/skills/playwright-e2e-workflow/references/e2e-patterns.md.
 `;
-
-/**
- * Blanks out line comments, block comments, and string/template literals so
- * pattern matching does not fire on prose. Positions are preserved so line
- * numbers stay accurate.
- */
-function maskNonCode(source) {
-  const out = source.split('');
-  let i = 0;
-  const n = source.length;
-  let state = 'code';
-  let quote = '';
-
-  const blank = (idx) => {
-    if (out[idx] !== '\n') out[idx] = ' ';
-  };
-
-  while (i < n) {
-    const ch = source[i];
-    const next = source[i + 1];
-
-    if (state === 'code') {
-      if (ch === '/' && next === '/') {
-        state = 'line';
-        blank(i);
-        blank(i + 1);
-        i += 2;
-        continue;
-      }
-      if (ch === '/' && next === '*') {
-        state = 'block';
-        blank(i);
-        blank(i + 1);
-        i += 2;
-        continue;
-      }
-      if (ch === "'" || ch === '"' || ch === '`') {
-        state = 'string';
-        quote = ch;
-        i += 1;
-        continue;
-      }
-      i += 1;
-      continue;
-    }
-
-    if (state === 'line') {
-      if (ch === '\n') state = 'code';
-      else blank(i);
-      i += 1;
-      continue;
-    }
-
-    if (state === 'block') {
-      if (ch === '*' && next === '/') {
-        blank(i);
-        blank(i + 1);
-        state = 'code';
-        i += 2;
-        continue;
-      }
-      blank(i);
-      i += 1;
-      continue;
-    }
-
-    // state === 'string'
-    if (ch === '\\') {
-      blank(i);
-      blank(i + 1);
-      i += 2;
-      continue;
-    }
-    if (ch === quote) {
-      state = 'code';
-      quote = '';
-      i += 1;
-      continue;
-    }
-    blank(i);
-    i += 1;
-  }
-
-  return out.join('');
-}
-
-function lineOf(source, index) {
-  let line = 1;
-  for (let i = 0; i < index; i += 1) if (source[i] === '\n') line += 1;
-  return line;
-}
-
-/** Returns the source slice of a balanced-brace block starting at `from`. */
-function blockAfter(code, from) {
-  const open = code.indexOf('{', from);
-  if (open === -1) return '';
-  let depth = 0;
-  for (let i = open; i < code.length; i += 1) {
-    if (code[i] === '{') depth += 1;
-    else if (code[i] === '}') {
-      depth -= 1;
-      if (depth === 0) return code.slice(open, i + 1);
-    }
-  }
-  return code.slice(open);
-}
 
 // --- individual checks -------------------------------------------------------
 
@@ -339,10 +240,10 @@ const CHECKS = [
 ];
 
 async function inspect(file) {
-  const raw = await fs.readFile(file, 'utf8');
-  const code = maskNonCode(raw.replace(/\r\n/g, '\n'));
+  const raw = normalize(await fs.readFile(file, 'utf8'));
+  const code = maskNonCode(raw);
   const findings = [];
-  for (const check of CHECKS) check(code, raw.replace(/\r\n/g, '\n'), findings);
+  for (const check of CHECKS) check(code, raw, findings);
   findings.sort((a, b) => a.line - b.line);
   return findings;
 }

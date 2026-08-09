@@ -5,6 +5,13 @@
 > Owned and kept current by the **DepSync** agent/skill — do not edit versions manually.
 > Last synced from `package.json` on 2026-06-11.
 
+> **Reading this file as an agent:** it is a lookup table, not a briefing. Read
+> the one section you need. Component work needs
+> [Frontend — Web App](#frontend--web-app) at most; the rules that actually
+> govern a component live in [`docs/ui/GUIDELINES.md`](docs/ui/GUIDELINES.md).
+> Reading all 23 KB to write one component spends roughly 6k tokens on backend,
+> database, mobile, and CI versions that cannot affect the outcome.
+
 ---
 
 ## Runtime Environment

@@ -125,12 +125,23 @@ Only when the target spec is under `apps/myorganizer-e2e/`.
 
 1. Follow `.github/skills/playwright-e2e-workflow/SKILL.md` for workflow and policy.
 2. Read `.github/skills/playwright-e2e-workflow/references/e2e-patterns.md` before writing any spec code. It is the single source for Radix/context-menu handling, vault unlock, async content waits, CORS preflight mocking, parallel-execution resilience, React Hook Form flows, cross-browser differences, and the anti-pattern table. Do not re-derive these.
-3. Read the component implementation in `libs/web/pages/<route>` first — semantic roles, hidden-by-default elements, Radix patterns, and which state changes are async.
-4. Start from the smallest affected user journey; reuse an existing focused spec when possible.
-5. Identify route, auth state, seeded data, vault unlock state, network expectations, and cleanup.
-6. Never depend on live Google OAuth, email delivery, external APIs, or manual local setup.
-7. **Never execute Playwright.** Do not run `yarn nx e2e`. Report the spec for `TestReviewer` structural review; a human runs the browsers.
-8. Do not commit traces, screenshots, videos, or generated artifacts.
+3. **If an E2EPlanner plan was provided, implement from it.** It is a filled-in
+   contract: `Component inspection` gives you the roles and accessible names,
+   `Patterns required` names the `e2e-patterns.md` sections to apply, and
+   `Form State Specification` gives you the button-enable and remount behavior.
+   Do not re-derive those by re-reading the route. Do read the component when the
+   plan is silent on something you need — and note the gap in `Open concerns`.
+4. Without a plan, read the component implementation in `libs/web/pages/<route>`
+   yourself — semantic roles, hidden-by-default elements, Radix patterns, and
+   which state changes are async.
+5. Never add a `data-testid` to a production component on your own initiative. If
+   the plan lists one under `Selectors required`, it is an approved production
+   change; if it does not and you need one, return `BLOCKED`.
+6. Start from the smallest affected user journey; reuse an existing focused spec when possible.
+7. Identify route, auth state, seeded data, vault unlock state, network expectations, and cleanup.
+8. Never depend on live Google OAuth, email delivery, external APIs, or manual local setup.
+9. **Never execute Playwright.** Do not run `yarn nx e2e`. Report the spec for `TestReviewer` structural review; a human runs the browsers.
+10. Do not commit traces, screenshots, videos, or generated artifacts.
 
 If the flow is broad or ambiguous, ask the main agent for `E2EPlanner` output before implementing.
 

@@ -65,7 +65,9 @@ Verify these before starting E2E planning — if not met, recommend a PR to comp
    - Which interactions are async (vault operations, API calls)
    - Which patterns use Radix UI vs standard HTML
 3. **Build a flow matrix** with preconditions, steps, selectors, network expectations, side effects, and unsupported behavior.
-4. **If planning is needed**, use `E2EPlanner` first with component inspection; if implementation is needed, delegate to `TestScaffold` with the completed flow matrix and target spec path.
+4. **If planning is needed**, use `E2EPlanner` first with component inspection, then hand its **whole output** to `TestScaffold` — the plan is the handoff contract, and TestScaffold implements from it rather than re-reading the route. Without a plan, give TestScaffold a completed flow matrix and the target spec path.
+   - A `data-testid` that the plan lists under `Selectors required` is an approved production change. TestScaffold must not invent one; if it needs a selector the plan does not provide, it returns `BLOCKED`.
+   - `Open questions` in the plan carry a stated working assumption. Resolve them with the human before implementation when the assumption changes what gets asserted.
 5. **Keep the test deterministic and focused** on the changed behavior.
 6. **Test on all browsers** during implementation — run on Chromium, Firefox, and WebKit before marking as complete.
 7. **Use `yarn nx e2e myorganizer-e2e --ui`** only when the normal run is not enough to debug.
