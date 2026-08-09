@@ -92,13 +92,20 @@ describe('YouTubePageClient', () => {
     });
     mockUseVideoQueue.mockReturnValue({
       items: [],
-      currentIndex: -1,
+      ids: [],
+      activeId: null,
       current: null,
+      activeIndex: -1,
       focusSignal: 0,
+      isFull: false,
+      remainingSlots: 4,
       add: jest.fn(),
       remove: jest.fn(),
-      playAt: jest.fn(),
+      moveUp: jest.fn(),
+      moveDown: jest.fn(),
+      playId: jest.fn(),
       playNext: jest.fn(),
+      completeAndNext: jest.fn(),
       clear: jest.fn(),
       isQueued: jest.fn(),
     });

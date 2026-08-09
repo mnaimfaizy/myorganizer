@@ -34,7 +34,7 @@ export function formatRetryAt(retryAt?: string | null) {
   }
 }
 
-export { useVideoQueue } from './useVideoQueue';
+export { useVideoQueue, QUEUE_CAP } from './useVideoQueue';
 export type { VideoQueue } from './useVideoQueue';
 
 function getYouTubeApiBase(): string {

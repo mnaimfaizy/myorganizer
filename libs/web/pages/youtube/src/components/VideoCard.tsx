@@ -10,8 +10,9 @@ import { YouTubeVideoPlayer } from './YouTubeVideoPlayer';
 interface VideoCardProps {
   video: YouTubeVideo;
   onWatchedToggle?: (videoId: string, watched: boolean) => void;
-  onAddToQueue?: (video: YouTubeVideo) => void;
+  onAddToQueue?: (videoId: string) => void;
   isQueued?: boolean;
+  queueFull?: boolean;
   className?: string;
 }
 
@@ -20,6 +21,7 @@ export function VideoCard({
   onWatchedToggle,
   onAddToQueue,
   isQueued,
+  queueFull,
   className,
 }: VideoCardProps) {
   const [watched, setWatched] = useState<boolean>(!!video.watched);
@@ -85,8 +87,8 @@ export function VideoCard({
   }, [watched, updating, video.videoId, onWatchedToggle]);
 
   const handleAddToQueue = useCallback(() => {
-    onAddToQueue?.(video);
-  }, [onAddToQueue, video]);
+    onAddToQueue?.(video.videoId);
+  }, [onAddToQueue, video.videoId]);
 
   return (
     <div
@@ -158,16 +160,22 @@ export function VideoCard({
                 variant="ghost"
                 size="sm"
                 onClick={handleAddToQueue}
-                disabled={isQueued}
+                disabled={isQueued || queueFull}
                 className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-400 dark:hover:text-gray-100"
                 aria-label={
                   isQueued
                     ? `${video.title} is already queued`
-                    : `Add ${video.title} to queue`
+                    : queueFull
+                      ? `Queue is full — remove an upload to add ${video.title}`
+                      : `Add ${video.title} to queue`
                 }
               >
                 <ListPlus className="mr-1.5 h-3.5 w-3.5 text-gray-400" />
-                {isQueued ? 'Queued' : 'Add to queue'}
+                {isQueued
+                  ? 'Queued'
+                  : queueFull
+                    ? 'Queue full'
+                    : 'Add to queue'}
               </Button>
             )}
           </div>

@@ -2,7 +2,7 @@
 
 import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 import { RefreshCw } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   formatRetryAt,
   useVideoQueue,
@@ -81,11 +81,17 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
   const subs = useYouTubeSubscriptions();
   const carouselData = useYouTubeCarousel();
   const syncStatus = useYouTubeSyncStatus();
-  const queue = useVideoQueue();
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const isCooldownActive = !!syncStatus.isCooldownActive;
+
+  const library = useMemo(
+    () => carouselData.channels.flatMap((channel) => channel.videos),
+    [carouselData.channels],
+  );
+
+  const queue = useVideoQueue(library);
 
   const handleWatchedToggle = useCallback(
     (videoId: string, watched: boolean) => {
@@ -200,6 +206,7 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
             onWatchedToggle={handleWatchedToggle}
             onAddToQueue={queue.add}
             isQueued={queue.isQueued}
+            queueFull={queue.isFull}
           />
         </CardContent>
       </Card>

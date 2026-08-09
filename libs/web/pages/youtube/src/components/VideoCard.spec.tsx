@@ -452,7 +452,7 @@ describe('VideoCard', () => {
     );
   });
 
-  it('should call onAddToQueue with video when add-to-queue button clicked', () => {
+  it('should call onAddToQueue with videoId when add-to-queue button clicked', () => {
     const onAddToQueue = jest.fn();
     render(
       <VideoCard
@@ -466,7 +466,7 @@ describe('VideoCard', () => {
     });
     fireEvent.click(button);
     expect(onAddToQueue).toHaveBeenCalledTimes(1);
-    expect(onAddToQueue).toHaveBeenCalledWith(baseVideo);
+    expect(onAddToQueue).toHaveBeenCalledWith(baseVideo.videoId);
   });
 
   it('should not call updateVideoWatched when add-to-queue button clicked', async () => {
@@ -505,5 +505,38 @@ describe('VideoCard', () => {
         name: /Mark.*as watched/,
       }),
     ).toBeInTheDocument();
+  });
+
+  it('should disable add-to-queue button when queueFull is true', () => {
+    const onAddToQueue = jest.fn();
+    render(
+      <VideoCard
+        video={baseVideo}
+        onAddToQueue={onAddToQueue}
+        isQueued={false}
+        queueFull={true}
+      />,
+    );
+    const button = screen.getByRole('button', {
+      name: `Queue is full — remove an upload to add ${baseVideo.title}`,
+    }) as HTMLButtonElement;
+    expect(button).toBeDisabled();
+    expect(button).toHaveTextContent('Queue full');
+  });
+
+  it('should show correct aria-label when queueFull is true', () => {
+    const onAddToQueue = jest.fn();
+    render(
+      <VideoCard
+        video={baseVideo}
+        onAddToQueue={onAddToQueue}
+        isQueued={false}
+        queueFull={true}
+      />,
+    );
+    const button = screen.getByRole('button', {
+      name: `Queue is full — remove an upload to add ${baseVideo.title}`,
+    });
+    expect(button).toBeInTheDocument();
   });
 });

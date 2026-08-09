@@ -3,14 +3,15 @@
 import { Button } from '@myorganizer/web-ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useRef, useState } from 'react';
-import type { ChannelCarousel, YouTubeVideo } from '../types';
+import type { ChannelCarousel } from '../types';
 import { VideoCard } from './VideoCard';
 
 interface ChannelUploadsRowProps {
   channel: ChannelCarousel;
   onWatchedToggle?: (videoId: string, watched: boolean) => void;
-  onAddToQueue?: (video: YouTubeVideo) => void;
+  onAddToQueue?: (videoId: string) => void;
   isQueued?: (videoId: string) => boolean;
+  queueFull?: boolean;
 }
 
 export function ChannelUploadsRow({
@@ -18,6 +19,7 @@ export function ChannelUploadsRow({
   onWatchedToggle,
   onAddToQueue,
   isQueued,
+  queueFull,
 }: ChannelUploadsRowProps) {
   const router = useRouter();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -142,6 +144,7 @@ export function ChannelUploadsRow({
                   onWatchedToggle={onWatchedToggle}
                   onAddToQueue={onAddToQueue}
                   isQueued={isQueued?.(video.videoId) ?? false}
+                  queueFull={queueFull}
                 />
               </div>
             ))}
