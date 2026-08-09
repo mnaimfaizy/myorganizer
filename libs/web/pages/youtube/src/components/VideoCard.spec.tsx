@@ -1,5 +1,7 @@
 /* eslint-disable import/first */
 
+import '@testing-library/jest-dom';
+
 jest.mock('@myorganizer/web-ui', () => ({
   cn: (...classes: Array<string | undefined>) =>
     classes.filter(Boolean).join(' '),
@@ -32,6 +34,9 @@ jest.mock('lucide-react', () => ({
     <span className={className} aria-hidden="true" />
   ),
   ExternalLink: ({ className }: { className?: string }) => (
+    <span className={className} aria-hidden="true" />
+  ),
+  ListPlus: ({ className }: { className?: string }) => (
     <span className={className} aria-hidden="true" />
   ),
 }));
@@ -346,5 +351,159 @@ describe('VideoCard', () => {
     fireEvent.click(titleLink);
 
     expect(mockUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not render add-to-queue button when onAddToQueue is not provided', () => {
+    render(<VideoCard video={baseVideo} />);
+    expect(
+      screen.queryByRole('button', { name: /Add.*to queue/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('should render add-to-queue button when onAddToQueue is provided', () => {
+    const onAddToQueue = jest.fn();
+    render(
+      <VideoCard
+        video={baseVideo}
+        onAddToQueue={onAddToQueue}
+        isQueued={false}
+      />,
+    );
+    expect(
+      screen.getByRole('button', { name: `Add ${baseVideo.title} to queue` }),
+    ).toBeInTheDocument();
+  });
+
+  it('should show correct text on add-to-queue button when not queued', () => {
+    const onAddToQueue = jest.fn();
+    render(
+      <VideoCard
+        video={baseVideo}
+        onAddToQueue={onAddToQueue}
+        isQueued={false}
+      />,
+    );
+    const button = screen.getByRole('button', {
+      name: `Add ${baseVideo.title} to queue`,
+    });
+    expect(button).toHaveTextContent('Add to queue');
+  });
+
+  it('should disable add-to-queue button when isQueued is true', () => {
+    const onAddToQueue = jest.fn();
+    render(
+      <VideoCard
+        video={baseVideo}
+        onAddToQueue={onAddToQueue}
+        isQueued={true}
+      />,
+    );
+    const button = screen.getByRole('button', {
+      name: `${baseVideo.title} is already queued`,
+    }) as HTMLButtonElement;
+    expect(button).toBeDisabled();
+  });
+
+  it('should show "Queued" text when isQueued is true', () => {
+    const onAddToQueue = jest.fn();
+    render(
+      <VideoCard
+        video={baseVideo}
+        onAddToQueue={onAddToQueue}
+        isQueued={true}
+      />,
+    );
+    expect(screen.getByText('Queued')).toBeInTheDocument();
+  });
+
+  it('should show correct aria-label when not queued', () => {
+    const onAddToQueue = jest.fn();
+    render(
+      <VideoCard
+        video={baseVideo}
+        onAddToQueue={onAddToQueue}
+        isQueued={false}
+      />,
+    );
+    const button = screen.getByRole('button', {
+      name: `Add ${baseVideo.title} to queue`,
+    });
+    expect(button).toHaveAttribute(
+      'aria-label',
+      `Add ${baseVideo.title} to queue`,
+    );
+  });
+
+  it('should show correct aria-label when already queued', () => {
+    const onAddToQueue = jest.fn();
+    render(
+      <VideoCard
+        video={baseVideo}
+        onAddToQueue={onAddToQueue}
+        isQueued={true}
+      />,
+    );
+    const button = screen.getByRole('button', {
+      name: `${baseVideo.title} is already queued`,
+    });
+    expect(button).toHaveAttribute(
+      'aria-label',
+      `${baseVideo.title} is already queued`,
+    );
+  });
+
+  it('should call onAddToQueue with video when add-to-queue button clicked', () => {
+    const onAddToQueue = jest.fn();
+    render(
+      <VideoCard
+        video={baseVideo}
+        onAddToQueue={onAddToQueue}
+        isQueued={false}
+      />,
+    );
+    const button = screen.getByRole('button', {
+      name: `Add ${baseVideo.title} to queue`,
+    });
+    fireEvent.click(button);
+    expect(onAddToQueue).toHaveBeenCalledTimes(1);
+    expect(onAddToQueue).toHaveBeenCalledWith(baseVideo);
+  });
+
+  it('should not call updateVideoWatched when add-to-queue button clicked', async () => {
+    const mockUpdate = updateVideoWatched as jest.Mock;
+    mockUpdate.mockResolvedValue({ ok: true, watched: false });
+    const onAddToQueue = jest.fn();
+    render(
+      <VideoCard
+        video={baseVideo}
+        onAddToQueue={onAddToQueue}
+        isQueued={false}
+      />,
+    );
+    const button = screen.getByRole('button', {
+      name: `Add ${baseVideo.title} to queue`,
+    });
+    fireEvent.click(button);
+    expect(mockUpdate).not.toHaveBeenCalled();
+  });
+
+  it('should not toggle watched status when add-to-queue button clicked', () => {
+    const onAddToQueue = jest.fn();
+    render(
+      <VideoCard
+        video={{ ...baseVideo, watched: false }}
+        onAddToQueue={onAddToQueue}
+        isQueued={false}
+      />,
+    );
+    const button = screen.getByRole('button', {
+      name: `Add ${baseVideo.title} to queue`,
+    });
+    fireEvent.click(button);
+    expect(
+      screen.getByRole('button', {
+        name: /Mark.*as watched/,
+      }),
+    ).toBeInTheDocument();
   });
 });

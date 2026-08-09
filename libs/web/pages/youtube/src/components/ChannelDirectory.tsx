@@ -2,7 +2,7 @@
 
 import { Skeleton } from '@myorganizer/web-ui';
 import { useCallback } from 'react';
-import type { ChannelCarousel } from '../types';
+import type { ChannelCarousel, YouTubeVideo } from '../types';
 import { ChannelUploadsRow } from './ChannelUploadsRow';
 
 interface ChannelDirectoryProps {
@@ -11,6 +11,8 @@ interface ChannelDirectoryProps {
   error?: string | null;
   onRetry?: () => void;
   onWatchedToggle?: (videoId: string, watched: boolean) => void;
+  onAddToQueue?: (video: YouTubeVideo) => void;
+  isQueued?: (videoId: string) => boolean;
 }
 
 export function ChannelDirectory({
@@ -19,6 +21,8 @@ export function ChannelDirectory({
   error,
   onRetry,
   onWatchedToggle,
+  onAddToQueue,
+  isQueued,
 }: ChannelDirectoryProps) {
   const handleRetryClick = useCallback(() => {
     onRetry?.();
@@ -83,6 +87,8 @@ export function ChannelDirectory({
           <ChannelUploadsRow
             channel={channel}
             onWatchedToggle={onWatchedToggle}
+            onAddToQueue={onAddToQueue}
+            isQueued={isQueued}
           />
         </section>
       ))}

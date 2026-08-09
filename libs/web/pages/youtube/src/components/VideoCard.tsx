@@ -1,7 +1,7 @@
 'use client';
 
 import { Button, cn } from '@myorganizer/web-ui';
-import { CheckCircle, Circle } from 'lucide-react';
+import { CheckCircle, Circle, ListPlus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { updateVideoWatched } from '../hooks';
 import type { YouTubeVideo } from '../types';
@@ -10,12 +10,16 @@ import { YouTubeVideoPlayer } from './YouTubeVideoPlayer';
 interface VideoCardProps {
   video: YouTubeVideo;
   onWatchedToggle?: (videoId: string, watched: boolean) => void;
+  onAddToQueue?: (video: YouTubeVideo) => void;
+  isQueued?: boolean;
   className?: string;
 }
 
 export function VideoCard({
   video,
   onWatchedToggle,
+  onAddToQueue,
+  isQueued,
   className,
 }: VideoCardProps) {
   const [watched, setWatched] = useState<boolean>(!!video.watched);
@@ -80,6 +84,10 @@ export function VideoCard({
     }
   }, [watched, updating, video.videoId, onWatchedToggle]);
 
+  const handleAddToQueue = useCallback(() => {
+    onAddToQueue?.(video);
+  }, [onAddToQueue, video]);
+
   return (
     <div
       className={cn(
@@ -117,31 +125,52 @@ export function VideoCard({
         </div>
 
         <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2 dark:border-gray-800">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleToggleWatched}
-            disabled={updating}
-            className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-            aria-label={
-              watched
-                ? `Mark ${video.title} as new`
-                : `Mark ${video.title} as watched`
-            }
-          >
-            {watched ? (
-              <>
-                <CheckCircle className="mr-1.5 h-3.5 w-3.5 text-green-600 dark:text-green-500" />
-                Mark as new
-              </>
-            ) : (
-              <>
-                <Circle className="mr-1.5 h-3.5 w-3.5 text-gray-400" />
-                Mark as watched
-              </>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleToggleWatched}
+              disabled={updating}
+              className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              aria-label={
+                watched
+                  ? `Mark ${video.title} as new`
+                  : `Mark ${video.title} as watched`
+              }
+            >
+              {watched ? (
+                <>
+                  <CheckCircle className="mr-1.5 h-3.5 w-3.5 text-green-600 dark:text-green-500" />
+                  Mark as new
+                </>
+              ) : (
+                <>
+                  <Circle className="mr-1.5 h-3.5 w-3.5 text-gray-400" />
+                  Mark as watched
+                </>
+              )}
+            </Button>
+
+            {onAddToQueue && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleAddToQueue}
+                disabled={isQueued}
+                className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-400 dark:hover:text-gray-100"
+                aria-label={
+                  isQueued
+                    ? `${video.title} is already queued`
+                    : `Add ${video.title} to queue`
+                }
+              >
+                <ListPlus className="mr-1.5 h-3.5 w-3.5 text-gray-400" />
+                {isQueued ? 'Queued' : 'Add to queue'}
+              </Button>
             )}
-          </Button>
+          </div>
 
           {error && (
             <span

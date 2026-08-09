@@ -14,6 +14,8 @@ jest.mock('lucide-react', () => ({
 
 // Mock UI components
 jest.mock('@myorganizer/web-ui', () => ({
+  cn: (...classes: Array<string | undefined>) =>
+    classes.filter(Boolean).join(' '),
   Button: ({ children, ...props }: any) => (
     <button {...props}>{children}</button>
   ),
@@ -36,6 +38,7 @@ const mockUseYouTubeConnect = jest.fn();
 const mockUseYouTubeSubscriptions = jest.fn();
 const mockUseYouTubeCarousel = jest.fn();
 const mockUseYouTubeSyncStatus = jest.fn();
+const mockUseVideoQueue = jest.fn();
 
 jest.mock('../hooks', () => ({
   useYouTubeStatus: () => mockUseYouTubeStatus(),
@@ -43,6 +46,7 @@ jest.mock('../hooks', () => ({
   useYouTubeSubscriptions: () => mockUseYouTubeSubscriptions(),
   useYouTubeCarousel: () => mockUseYouTubeCarousel(),
   useYouTubeSyncStatus: () => mockUseYouTubeSyncStatus(),
+  useVideoQueue: () => mockUseVideoQueue(),
   isRetryCooldownActive: (retryAt?: string | null) =>
     Boolean(retryAt && Date.parse(retryAt) > Date.now()),
   formatRetryAt: (retryAt?: string | null) =>
@@ -85,6 +89,18 @@ describe('YouTubePageClient', () => {
       triggerSync: jest.fn(),
       isCooldownActive: false,
       refresh: jest.fn(),
+    });
+    mockUseVideoQueue.mockReturnValue({
+      items: [],
+      currentIndex: -1,
+      current: null,
+      focusSignal: 0,
+      add: jest.fn(),
+      remove: jest.fn(),
+      playAt: jest.fn(),
+      playNext: jest.fn(),
+      clear: jest.fn(),
+      isQueued: jest.fn(),
     });
   });
 

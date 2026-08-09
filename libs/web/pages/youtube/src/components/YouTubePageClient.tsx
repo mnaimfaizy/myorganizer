@@ -5,6 +5,7 @@ import { RefreshCw } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import {
   formatRetryAt,
+  useVideoQueue,
   useYouTubeCarousel,
   useYouTubeConnect,
   useYouTubeStatus,
@@ -13,6 +14,7 @@ import {
 } from '../hooks';
 import { SubscriptionManager } from './SubscriptionManager';
 import { ChannelDirectory } from './ChannelDirectory';
+import { QueueRail } from './QueueRail';
 
 export function YouTubePageClient() {
   const { connected, status, refresh: refreshStatus } = useYouTubeStatus();
@@ -79,6 +81,7 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
   const subs = useYouTubeSubscriptions();
   const carouselData = useYouTubeCarousel();
   const syncStatus = useYouTubeSyncStatus();
+  const queue = useVideoQueue();
   const [syncing, setSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -178,7 +181,7 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
             </Button>
           </div>
         </div>
-        <CardContent className="mt-4">
+        <CardContent className="mt-4 space-y-6">
           {syncError && (
             <div
               role="alert"
@@ -188,12 +191,15 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
               {syncError}
             </div>
           )}
+          <QueueRail queue={queue} onWatchedToggle={handleWatchedToggle} />
           <ChannelDirectory
             channels={carouselData.channels}
             loading={carouselData.loading}
             error={carouselData.error}
             onRetry={handleDirectoryRetry}
             onWatchedToggle={handleWatchedToggle}
+            onAddToQueue={queue.add}
+            isQueued={queue.isQueued}
           />
         </CardContent>
       </Card>
