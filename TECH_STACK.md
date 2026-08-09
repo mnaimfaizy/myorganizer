@@ -307,10 +307,22 @@
 
 These transitive dependencies are explicitly resolved to patched versions via Yarn resolutions, npm overrides, and pnpm overrides.
 
-| Package                     | Resolved Version | Reason                                                                            | Vulnerability ID |
-| --------------------------- | ---------------- | --------------------------------------------------------------------------------- | ---------------- |
-| `shell-quote`               | 1.8.4            | Patches critical shell injection vulnerability (GHSA-w7jw-789q-3m8p)              | CVE-2024-XXXXX   |
-| `fast-xml-parser`           | 5.7.3            | Patches XMLBuilder comment/CDATA injection (GHSA-gh4j-gqv2-49f6)                  | CVE-2026-41650   |
-| `react-native-quick-base64` | 3.0.0            | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto) | —                |
+| Package                     | Resolved Version | Reason                                                                                        | Vulnerability ID |
+| --------------------------- | ---------------- | --------------------------------------------------------------------------------------------- | ---------------- |
+| `shell-quote`               | 1.8.4            | Patches critical shell injection vulnerability (GHSA-w7jw-789q-3m8p)                          | CVE-2024-XXXXX   |
+| `fast-xml-parser`           | 5.7.3            | Patches XMLBuilder comment/CDATA injection (GHSA-gh4j-gqv2-49f6)                              | CVE-2026-41650   |
+| `react-native-quick-base64` | 3.0.0            | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto)             | —                |
+| `nanoid`                    | 3.3.17           | Patches infinite loops on negative and zero `size` (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8) | 1138811, 1138813 |
 
 > **Note**: `shell-quote` is a transitive dependency of `concurrently@9.2.1` (pulled in by `@openapitools/openapi-generator-cli@2.27.0`) and `launch-editor@2.9.1` (pulled in by `webpack-dev-server@5.2.3`). Upstream packages are pinned to versions that contain vulnerable `shell-quote`, so we use resolutions to force the patched version globally.
+
+> **Note**: `nanoid` reaches the tree through `postcss@8.5.18` (`^3.3.11`) and `@react-navigation/native@7.2.5` (`^3.3.12`). Both are resolved to `3.3.17`, the first release patching both advisories. It is also listed in `npmPreapprovedPackages` because it was published inside the 7-day `npmMinimalAgeGate` window.
+
+### Accepted audit exceptions
+
+Advisories deliberately ignored via `npmAuditIgnoreAdvisories` in `.yarnrc.yml`. Each needs a reachability argument and a revisit condition.
+
+| Advisory IDs     | Package           | Why it is not fixable now                                                                                                                                                                                                                                                                                                          | Revisit when                          |
+| ---------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| 1138808, 1138809 | `image-size`      | Patched in 2.0.3, but `metro@0.82.5` needs `^1.0.2` and calls it as a default export, which v2 removed; forcing 2.x breaks the React Native asset pipeline. `less@4.5.1` needs `~0.5.0` and marks it optional. Both are build-time tools over first-party assets, so the parser DoS is not reachable from untrusted runtime input. | `metro` ships `image-size` v2 support |
+| 1124334          | `brace-expansion` | Superseded ReDoS variant; kept for history.                                                                                                                                                                                                                                                                                        | —                                     |
