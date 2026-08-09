@@ -123,7 +123,7 @@ When consuming the generated client:
 - When a task requires creating or changing Jest unit or integration tests, route through `.github/skills/unit-test-delegation-workflow/SKILL.md`. The pipeline is: `TestScaffold` (implementation) → `TestReviewer` (static gate: checklist verification, `tsc --noEmit`, `eslint`) → `TestRunner` (execution with hang detection and one-at-a-time recovery). Max 3 retries before escalating to the main agent.
 - When a task requires building features or fixing bugs test-first, use `.github/skills/tdd/SKILL.md`. Plan the behavior list before writing any code, work in vertical tracer-bullet slices (one test → one implementation → repeat), consult `.github/skills/codebase-design/SKILL.md` for deep-module vocabulary during the refactor step.
 - Test delegation briefs must include a behavior matrix from reading the actual implementation, plus explicit in-scope and out-of-scope scenarios. Do not ask for vague "comprehensive tests".
-- Use `docs/testing/README.md` for per-project tooling, integration scope, environments, and mock patterns.
+- Use `docs/testing/projects/<project>.md` for per-project tooling, environments, and mock patterns; `docs/testing/README.md` is the index plus cross-project rules.
 - When a task requires creating or changing Storybook stories (`*.stories.tsx`), route through `.github/skills/storybook-delegation-workflow/SKILL.md` and delegate implementation to `StorybookCurator`; require requirement-readiness analysis first, then review for UX/a11y coverage, scenario completeness, and clarification gaps before finalizing.
 
 ### E2E Tests
