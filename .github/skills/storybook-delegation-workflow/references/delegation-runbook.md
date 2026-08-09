@@ -23,7 +23,7 @@ Use this template when delegating Storybook work to `StorybookCurator`.
 
 ## References
 
-- Existing stories to mirror style: <path>
+- Patterns: `docs/ui/STORYBOOK-PATTERNS.md` (always — the curator reads it; do not copy it here)
 - Design constraints/tokens: <path or rule>
 - UX/accessibility expectations: <short notes>
 
@@ -43,5 +43,6 @@ Use this template when delegating Storybook work to `StorybookCurator`.
 
 - Requirement analysis was performed before file edits.
 - Clarification questions are returned when requirements are insufficient.
-- Story set is useful for real UI review, not only a happy-path demo.
+- Story set is useful for real UI review, not only a happy-path demo — measured against the required-coverage table in `STORYBOOK-PATTERNS.md` §8.
 - Accessibility and UX concerns are explicitly surfaced.
+- The pattern matches the component shape (single / compound / controlled), and portalled content is actually visible in at least one story.

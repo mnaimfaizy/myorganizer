@@ -159,11 +159,11 @@ _Avoid_: Agent runner, orchestrator command, run-agents
 ## Agent Roles
 
 **ComponentBuilder**:
-The sub-agent responsible for creating or editing a React component from a Structured Spec, following `docs/ui/GUIDELINES.md` and `TECH_STACK.md`.
+The sub-agent responsible for creating or editing a React component from a Structured Spec, following `docs/ui/GUIDELINES.md`.
 _Avoid_: Frontend agent, UI agent, component writer
 
 **ComponentReviewer**:
-The sub-agent that reviews a component produced by ComponentBuilder for side-effects, performance, memory, and design issues, and scans direct importers for breakage. Always runs after ComponentBuilder. Produces a report only — no code edits.
+The sub-agent that gates a component produced by ComponentBuilder. Runs `check-component-hygiene.mjs`, `tsc`, and `eslint`, then judges composition, scope placement, concern mixing, the client boundary, Radix usage, and accessibility. `tsc` over the owning project serves as the importer check. Always runs after ComponentBuilder. Produces a report only — no code edits.
 _Avoid_: Code reviewer, linter agent, review agent
 
 **DepSync**:

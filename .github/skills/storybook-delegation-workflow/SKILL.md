@@ -23,6 +23,7 @@ Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../docs/adr/0012-tiered-qua
 
 ## Core Rules
 
+- Story patterns live in [`docs/ui/STORYBOOK-PATTERNS.md`](../../../docs/ui/STORYBOOK-PATTERNS.md) — the single home for the compound-component wrapper pattern, controlled primitives, Radix portals, `play` functions, required coverage, and the anti-pattern table. `StorybookCurator` reads it. Do not restate those patterns in a brief.
 - On `standard`/`full`, always delegate Storybook implementation to the `StorybookCurator` sub-agent.
 - Do not create or edit `*.stories.tsx` directly in the main agent context when this workflow applies (except mechanical).
 - The sub-agent must analyze requirement quality first (completeness, ambiguity, conflicts) before touching files.
@@ -50,9 +51,10 @@ Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../docs/adr/0012-tiered-qua
 
 ## Review Checklist (Main Agent)
 
-- Does the story set cover primary and failure/edge states relevant to the component?
+- Does the story set cover the applicable rows of the required-coverage table (`STORYBOOK-PATTERNS.md` §8)? Long-content and empty states are the two most often skipped.
+- Did the curator pick the right pattern for the component shape — `args` for a single component with variants, a wrapper for a compound one, `render` + state for a controlled one?
 - Are controls/args realistic and useful for exploration?
-- Is accessibility represented (labels, disabled states, keyboard-relevant scenarios)?
+- Is accessibility represented (labels, disabled states, keyboard-relevant scenarios)? Icon-only controls must have an accessible name.
 - Did the sub-agent challenge weak or risky requirements where appropriate?
 - Did the output include specific clarification questions when requirements were incomplete?
 
@@ -60,6 +62,7 @@ Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../docs/adr/0012-tiered-qua
 
 - `./references/delegation-runbook.md`
 - `.github/agents/storybook-curator.agent.md`
-- `docs/storybook/README.md`
+- `docs/ui/STORYBOOK-PATTERNS.md` — authoring patterns (single home; link, do not copy)
+- `docs/storybook/README.md` — setup, Chromatic, commands
 - `libs/web-ui/AGENTS.md`
 - `AGENTS.md`
