@@ -37,6 +37,14 @@ export function formatRetryAt(retryAt?: string | null) {
 export { useVideoQueue, QUEUE_CAP } from './useVideoQueue';
 export type { VideoQueue } from './useVideoQueue';
 
+export { useShortsBudget } from './useShortsBudget';
+export type { ShortsBudget } from './useShortsBudget';
+export {
+  MIN_SHORTS_LIMIT_MINUTES,
+  MAX_SHORTS_LIMIT_MINUTES,
+  formatShortsDuration,
+} from '../lib/shortsBudget';
+
 function getYouTubeApiBase(): string {
   return `${getApiBaseUrl()}/youtube`;
 }
@@ -219,6 +227,53 @@ export function useYouTubeVideos(channelId?: string) {
     updateWatched,
     refresh: fetch_,
   };
+}
+
+/**
+ * Cached Uploads that are Shorts, for the separate Shorts page.
+ *
+ * Reads the existing `/videos` list — Shorts already arrive in the uploads
+ * playlist — and keeps only those flagged {@link YouTubeVideo.isShort}. That
+ * flag is an open API-contract gap: nothing populates it yet, so this hook
+ * legitimately resolves to an empty list today and the page renders its
+ * "no Shorts yet" state. No Shorts-specific endpoint is invented here.
+ */
+export function useYouTubeShorts() {
+  const [shorts, setShorts] = useState<YouTubeVideo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch_ = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams({
+        sort: 'latest',
+        page: '1',
+        limit: '50',
+      });
+      const data = await apiFetch<{ videos: YouTubeVideo[] }>(
+        `/videos?${params.toString()}`,
+      );
+      setShorts(data.videos.filter((video) => video.isShort === true));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetch_();
+  }, [fetch_]);
+
+  const updateWatched = useCallback((videoId: string, watched: boolean) => {
+    setShorts((prev) =>
+      prev.map((v) => (v.videoId === videoId ? { ...v, watched } : v)),
+    );
+  }, []);
+
+  return { shorts, loading, error, updateWatched, refresh: fetch_ };
 }
 
 export function useYouTubeCarousel() {

@@ -9,6 +9,7 @@ export interface YouTubeVideoPlayerProps {
   video: YouTubeVideo;
   watched?: boolean;
   onNearEnd?: () => void;
+  onPlay?: () => void;
   onPlaybackUnavailable?: () => void;
   className?: string;
   defaultPlaying?: boolean;
@@ -25,6 +26,7 @@ export function YouTubeVideoPlayer({
   video,
   watched = false,
   onNearEnd,
+  onPlay,
   onPlaybackUnavailable,
   className = '',
   defaultPlaying = false,
@@ -313,7 +315,8 @@ export function YouTubeVideoPlayer({
 
   const handleStartPlay = useCallback(() => {
     setIsPlaying(true);
-  }, []);
+    onPlay?.();
+  }, [onPlay]);
 
   const handleIframeError = useCallback(() => {
     handleMarkUnavailable('Failed to load YouTube video embed.');

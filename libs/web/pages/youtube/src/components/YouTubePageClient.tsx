@@ -2,6 +2,7 @@
 
 import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 import { RefreshCw } from 'lucide-react';
+import Link from 'next/link';
 import { useCallback, useMemo, useState } from 'react';
 import {
   formatRetryAt,
@@ -147,7 +148,17 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
 
       <Card className="p-4">
         <div className="flex items-center justify-between">
-          <CardTitle>Videos</CardTitle>
+          <div className="flex items-center gap-4">
+            <CardTitle>Videos</CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              asChild
+              aria-label="Shorts — daily time budget applies"
+            >
+              <Link href="/dashboard/youtube/shorts">Shorts</Link>
+            </Button>
+          </div>
           <div className="flex items-center gap-2">
             {syncStatus.status && syncStatus.status.lastSyncedAt ? (
               <div className="text-sm text-gray-600 dark:text-gray-400">
