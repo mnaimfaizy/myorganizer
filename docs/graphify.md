@@ -70,6 +70,8 @@ This is a per-developer machine setup step, not a repo change — nothing here i
 Verify the whole chain with `graphify --version` (should match the warning-free CLI output)
 and `claude mcp list` (should report `graphify: … ✔ Connected`).
 
+### Build the graph
+
 ```pwsh
 # Full rebuild (per-package extract + merge + cluster + label), zero external egress.
 # Uses --backend claude-cli, which routes doc/image semantic extraction through the local
