@@ -73,6 +73,92 @@ interface YouTubeVideoSnapshot {
   title: string;
   thumbnail: string | null;
   publishedAt: Date;
+  durationSeconds: number | null;
+}
+
+/**
+ * Longest runtime still treated as a Short.
+ *
+ * The YouTube Data API exposes no Shorts flag, and Shorts arrive in the ordinary
+ * uploads playlist alongside long-form uploads, so runtime is the only signal
+ * available without a per-video web request. YouTube's own Shorts ceiling is
+ * three minutes, so that is the threshold used here.
+ *
+ * The trade-off is deliberate and one-directional: a genuinely short long-form
+ * upload (a three-minute trailer, say) is classified as a Short and lands on the
+ * budgeted page. That is the safer failure — the point of the split is keeping
+ * short-form out of the focused long-form home, and an over-eager cap costs a
+ * User some budget rather than letting the doom-scroll surface leak back in.
+ *
+ * `durationSeconds` is stored rather than a computed boolean precisely so this
+ * threshold can be retuned later without re-syncing every User's library.
+ */
+export const SHORTS_MAX_DURATION_SECONDS = 180;
+
+/**
+ * Parses an ISO 8601 duration (`PT1M30S`, `PT2H3M4S`, `P1DT2H`) into seconds.
+ *
+ * Returns null for anything unparseable rather than guessing — an unclassified
+ * upload is treated as long-form, so a parse failure keeps a video visible on
+ * the home rather than hiding it behind the Shorts budget.
+ */
+export function parseIso8601DurationSeconds(
+  duration: string | null | undefined,
+): number | null {
+  if (!duration) return null;
+  const match =
+    /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/.exec(
+      duration,
+    );
+  if (!match) return null;
+  const [, days, hours, minutes, seconds] = match;
+  if (!days && !hours && !minutes && !seconds) return null;
+  const total =
+    Number(days ?? 0) * 86400 +
+    Number(hours ?? 0) * 3600 +
+    Number(minutes ?? 0) * 60 +
+    Number(seconds ?? 0);
+  return Number.isFinite(total) ? Math.round(total) : null;
+}
+
+/**
+ * Whether a Cached Upload counts as a Short.
+ *
+ * An unclassified upload (null duration — cached before duration collection, or
+ * a parse failure) is **not** a Short. Unknown must never be treated as Short,
+ * or a sync gap would quietly move someone's library behind the daily budget.
+ */
+export function isShortDuration(
+  durationSeconds: number | null | undefined,
+): boolean {
+  return (
+    typeof durationSeconds === 'number' &&
+    durationSeconds > 0 &&
+    durationSeconds <= SHORTS_MAX_DURATION_SECONDS
+  );
+}
+
+/** Which slice of the library a query wants. */
+export type VideoKind = 'short' | 'long' | 'all';
+
+/**
+ * Prisma `where` fragment selecting a slice of the library by runtime.
+ * `long` deliberately includes unclassified rows.
+ */
+export function videoKindWhere(kind: VideoKind): Record<string, unknown> {
+  if (kind === 'short') {
+    return { durationSeconds: { gt: 0, lte: SHORTS_MAX_DURATION_SECONDS } };
+  }
+  if (kind === 'long') {
+    return {
+      OR: [
+        { durationSeconds: null },
+        { durationSeconds: { gt: SHORTS_MAX_DURATION_SECONDS } },
+        { durationSeconds: { lte: 0 } },
+      ],
+    };
+  }
+  return {};
 }
 
 function isQuotaExceededError(error: unknown): boolean {
@@ -512,6 +598,8 @@ class YouTubeSyncService {
       page?: number;
       limit?: number;
       channelId?: string;
+      /** Library slice by runtime. Defaults to `all` so existing callers are unaffected. */
+      kind?: VideoKind;
     },
   ): Promise<{
     videos: YouTubeVideoWithChannel[];
@@ -526,9 +614,13 @@ class YouTubeSyncService {
       page = 1,
       limit = 24,
       channelId,
+      kind = 'all',
     } = options;
 
-    const where: Record<string, unknown> = { userId };
+    const where: Record<string, unknown> = {
+      userId,
+      ...videoKindWhere(kind),
+    };
     if (channelId) {
       where['channelId'] = channelId;
     }
@@ -585,13 +677,20 @@ class YouTubeSyncService {
     return result.count;
   }
 
-  /** Get videos grouped by channel for carousel view */
-  async getVideosGroupedByChannel(userId: string) {
+  /**
+   * Get videos grouped by channel for the channel-first directory.
+   *
+   * `kind` defaults to `long` here rather than `all`: this feeds the focused
+   * long-form home, and the whole point of the separate Shorts page is that
+   * short-form never appears on it (PRD #264, user story 14).
+   */
+  async getVideosGroupedByChannel(userId: string, kind: VideoKind = 'long') {
     const subscriptions = await this.prisma.youTubeSubscription.findMany({
       where: { userId, enabled: true },
       orderBy: { channelTitle: 'asc' },
       include: {
         videos: {
+          where: videoKindWhere(kind),
           orderBy: { publishedAt: 'desc' },
           take: 20,
         },
@@ -721,6 +820,7 @@ class YouTubeSyncService {
         title: true,
         thumbnail: true,
         publishedAt: true,
+        durationSeconds: true,
       },
     });
     const existingByVideoId = new Map(
@@ -734,7 +834,12 @@ class YouTubeSyncService {
           !existing ||
           existing.title !== video.title ||
           existing.thumbnail !== video.thumbnail ||
-          existing.publishedAt.getTime() !== video.publishedAt.getTime()
+          existing.publishedAt.getTime() !== video.publishedAt.getTime() ||
+          // Duration participates in change detection so libraries cached
+          // before duration collection are backfilled by the next sync
+          // instead of staying permanently unclassified behind an
+          // "unchanged" verdict.
+          existing.durationSeconds !== video.durationSeconds
         );
       });
 
@@ -750,6 +855,7 @@ class YouTubeSyncService {
             title: video.title,
             thumbnail: video.thumbnail,
             publishedAt: video.publishedAt,
+            durationSeconds: video.durationSeconds,
           },
         });
       }
@@ -796,8 +902,11 @@ class YouTubeSyncService {
       ];
 
       if (videoIds.length > 0) {
+        // `contentDetails` rides along on the call that already fetches
+        // `snippet` — videos.list costs the same 1 unit either way, so Shorts
+        // classification adds no quota against the shared project budget.
         const videoDetails = await youtube.videos.list({
-          part: ['snippet'],
+          part: ['snippet', 'contentDetails'],
           id: videoIds,
         });
 
@@ -814,6 +923,9 @@ class YouTubeSyncService {
               video.snippet.thumbnails?.default?.url ??
               null,
             publishedAt: new Date(video.snippet.publishedAt ?? Date.now()),
+            durationSeconds: parseIso8601DurationSeconds(
+              video.contentDetails?.duration,
+            ),
           });
         }
       }

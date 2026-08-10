@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { useShortsBudget, useYouTubeShorts, useYouTubeStatus } from '../hooks';
 import { updateVideoWatched } from '../hooks';
-import { YouTubeVideoPlayer } from './YouTubeVideoPlayer';
 import { ShortsEntryWarning } from './ShortsEntryWarning';
 import { ShortsBudgetMeter } from './ShortsBudgetMeter';
 import { ShortsHardStop } from './ShortsHardStop';
+import { YouTubeConnectPrompt } from './YouTubeConnectPrompt';
+import { ShortsList } from './ShortsList';
+import { ShortsPlayerPanel } from './ShortsPlayerPanel';
 
 /**
  * Shorts page client — orchestrates the focused Shorts watching experience.
@@ -95,8 +97,8 @@ export function ShortsPageClient() {
     setPlaying(false);
   }, []);
 
-  const handlePlay = useCallback(() => {
-    setPlaying(true);
+  const handlePlayingChange = useCallback((playing: boolean) => {
+    setPlaying(playing);
   }, []);
 
   const handleNearEnd = useCallback(() => {
@@ -169,29 +171,7 @@ export function ShortsPageClient() {
   }
 
   if (!connected) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
-        <div className="rounded-full bg-red-100 p-4 dark:bg-red-900/30">
-          <svg
-            viewBox="0 0 24 24"
-            className="h-12 w-12 text-red-600 dark:text-red-400"
-            fill="currentColor"
-          >
-            <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-          </svg>
-        </div>
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-          Connect Your YouTube Account
-        </h2>
-        <p className="max-w-md text-center text-sm text-gray-500">
-          Link your YouTube account to watch Shorts. We only request read-only
-          access.
-        </p>
-        <Button asChild>
-          <Link href="/dashboard/youtube">Back to Videos</Link>
-        </Button>
-      </div>
-    );
+    return <YouTubeConnectPrompt fallbackHref="/dashboard/youtube" />;
   }
 
   // Page header
@@ -263,148 +243,61 @@ export function ShortsPageClient() {
       {header}
       {meterSection}
 
-      <div className="flex flex-1 gap-4 p-4">
-        {/* Player + navigation */}
-        <div className="flex flex-1 flex-col items-center justify-center gap-4">
-          {loading && !shorts.length ? (
-            <div className="w-full max-w-sm space-y-2">
-              <Skeleton className="aspect-video" />
-              <Skeleton className="h-10 w-full" />
+      <div className="flex flex-1 flex-col gap-4 p-4 lg:flex-row lg:gap-4">
+        {/* Loading state */}
+        {loading && !shorts.length ? (
+          <div className="w-full max-w-sm space-y-2">
+            <Skeleton className="aspect-[9/16] rounded-lg" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ) : error && !shorts.length ? (
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-center dark:border-red-900 dark:bg-red-900/20">
+            <p className="text-sm font-semibold text-red-900 dark:text-red-100">
+              Failed to load Shorts
+            </p>
+            <p className="mt-1 text-xs text-red-800 dark:text-red-200">
+              {error}
+            </p>
+            <Button onClick={handleRetry} variant="outline" className="mt-3">
+              Retry
+            </Button>
+          </div>
+        ) : shorts.length === 0 ? (
+          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-900">
+            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              No Shorts to Watch
+            </p>
+            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+              None of your Enabled Channels have recent Shorts. Visit your
+              long-form videos or check back later.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* Player panel — desktop centered, mobile full-width */}
+            <div className="flex flex-1 items-center justify-center">
+              <ShortsPlayerPanel
+                activeShort={activeShort}
+                activeIndex={activeIndex}
+                shortsLength={shorts.length}
+                remainingMs={budget.remainingMs}
+                watched={activeShort?.watched ?? false}
+                onNearEnd={handleNearEnd}
+                onPlay={handlePlayingChange}
+                onPrevious={handlePreviousShort}
+                onNext={handleNextShort}
+                onWatchedToggle={handleWatchedToggleClick}
+              />
             </div>
-          ) : error && !shorts.length ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-center dark:border-red-900 dark:bg-red-900/20">
-              <p className="text-sm font-semibold text-red-900 dark:text-red-100">
-                Failed to load Shorts
-              </p>
-              <p className="mt-1 text-xs text-red-800 dark:text-red-200">
-                {error}
-              </p>
-              <Button onClick={handleRetry} variant="outline" className="mt-3">
-                Retry
-              </Button>
-            </div>
-          ) : shorts.length === 0 ? (
-            <div className="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-900">
-              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                No Shorts Yet
-              </p>
-              <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-                We can&apos;t tell yet which of your saved videos are Shorts, so
-                there is nothing to show here. Your daily limit is still set and
-                ready. In the meantime, your long-form videos are unaffected.
-              </p>
-            </div>
-          ) : activeShort ? (
-            <>
-              {/* Short player — portrait 9:16 */}
-              <div className="w-full max-w-sm">
-                <div className="aspect-[9/16] overflow-hidden rounded-lg bg-black">
-                  <YouTubeVideoPlayer
-                    video={activeShort}
-                    watched={activeShort.watched}
-                    onNearEnd={handleNearEnd}
-                    onPlay={handlePlay}
-                    defaultPlaying={false}
-                    className="h-full w-full"
-                  />
-                </div>
-              </div>
 
-              {/* Short info + navigation */}
-              <div className="w-full max-w-sm space-y-3">
-                <div>
-                  <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-                    {activeShort.title}
-                  </h2>
-                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                    {activeShort.channelTitle}
-                  </p>
-                </div>
-
-                {/* Watched toggle */}
-                <Button
-                  variant="outline"
-                  onClick={handleWatchedToggleClick}
-                  className="w-full"
-                >
-                  {activeShort.watched ? 'Mark as New' : 'Mark as Watched'}
-                </Button>
-
-                {/* Previous/Next */}
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handlePreviousShort}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    ← Prev
-                  </Button>
-                  <Button
-                    onClick={handleNextShort}
-                    variant="outline"
-                    className="flex-1"
-                  >
-                    Next →
-                  </Button>
-                </div>
-
-                {/* Short index with live region for announcement */}
-                <p
-                  className="text-center text-xs text-gray-500 dark:text-gray-400"
-                  aria-live="polite"
-                  aria-atomic="true"
-                >
-                  Short {activeIndex >= 0 ? activeIndex + 1 : 0} of{' '}
-                  {shorts.length}
-                </p>
-              </div>
-            </>
-          ) : null}
-        </div>
-
-        {/* Side list of all Shorts */}
-        <div className="hidden w-64 flex-col gap-2 overflow-y-auto rounded-lg border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-900 lg:flex">
-          <p className="px-2 py-1 text-xs font-semibold text-gray-500 dark:text-gray-400">
-            All Shorts
-          </p>
-          {shorts.map((short) => {
-            const isActive = activeShortId === short.videoId;
-            const watchedLabel = short.watched ? ' (Watched)' : ' (New)';
-            const accessibleName = `${short.title}, ${short.channelTitle}${watchedLabel}`;
-            return (
-              <button
-                key={short.videoId}
-                type="button"
-                onClick={() => handleSelectShort(short.videoId)}
-                aria-current={isActive ? 'true' : undefined}
-                aria-label={accessibleName}
-                className={`overflow-hidden rounded-lg p-2 text-left text-xs transition-colors ${
-                  isActive
-                    ? 'bg-blue-100 dark:bg-blue-900/30'
-                    : 'hover:bg-gray-100 dark:hover:bg-gray-800'
-                }`}
-              >
-                <div className="aspect-video overflow-hidden rounded bg-gray-300 dark:bg-gray-700">
-                  {short.thumbnail ? (
-                    <img
-                      src={short.thumbnail}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : null}
-                </div>
-                <p className="mt-1 line-clamp-2 font-medium text-gray-900 dark:text-gray-100">
-                  {short.title}
-                </p>
-                {short.watched && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    Watched
-                  </p>
-                )}
-              </button>
-            );
-          })}
-        </div>
+            {/* Side list of all Shorts (responsive: desktop rail + mobile scroller) */}
+            <ShortsList
+              shorts={shorts}
+              selectedShortId={activeShortId}
+              onSelectShort={handleSelectShort}
+            />
+          </>
+        )}
       </div>
     </>
   );

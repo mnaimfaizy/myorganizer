@@ -302,6 +302,7 @@ describe('YouTubeSyncService', () => {
           title: 'Old title',
           thumbnail: 't1',
           publishedAt: new Date('2026-01-01'),
+          durationSeconds: null,
           watched: true,
         },
         {
@@ -309,12 +310,14 @@ describe('YouTubeSyncService', () => {
           title: 'Keep',
           thumbnail: 't2',
           publishedAt: new Date('2026-01-02'),
+          durationSeconds: null,
         },
         {
           videoId: 'v3',
           title: 'DeleteMe',
           thumbnail: 't3',
           publishedAt: new Date('2026-01-03'),
+          durationSeconds: null,
           watched: true,
         },
       ]);
@@ -369,6 +372,7 @@ describe('YouTubeSyncService', () => {
             title: 'Updated title',
             thumbnail: 'updated-t1',
             publishedAt: new Date('2026-01-05T00:00:00Z'),
+            durationSeconds: null,
           },
         }),
       );
@@ -491,13 +495,14 @@ describe('YouTubeSyncService', () => {
         },
       ]);
 
-      // Existing DB and snapshot will match exactly
+      // Existing DB and snapshot will match exactly (including durationSeconds)
       (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([
         {
           videoId: 'v1',
           title: 'Same',
           thumbnail: 't1',
           publishedAt: new Date('2026-01-01'),
+          durationSeconds: null,
         },
       ]);
 
@@ -515,6 +520,7 @@ describe('YouTubeSyncService', () => {
                 thumbnails: { medium: { url: 't1' } },
                 publishedAt: '2026-01-01T00:00:00Z',
               },
+              // No contentDetails means durationSeconds will be null, matching existing
             },
           ],
         },
@@ -880,6 +886,625 @@ describe('YouTubeSyncService', () => {
           update: { intervalDays: 5 },
         }),
       );
+    });
+  });
+
+  describe('parseIso8601DurationSeconds', () => {
+    const { parseIso8601DurationSeconds } = require('./YouTubeSyncService');
+
+    it('should parse seconds only', () => {
+      expect(parseIso8601DurationSeconds('PT30S')).toBe(30);
+      expect(parseIso8601DurationSeconds('PT1S')).toBe(1);
+    });
+
+    it('should parse minutes', () => {
+      expect(parseIso8601DurationSeconds('PT1M')).toBe(60);
+      expect(parseIso8601DurationSeconds('PT5M')).toBe(300);
+    });
+
+    it('should parse combined minutes and seconds', () => {
+      expect(parseIso8601DurationSeconds('PT1M30S')).toBe(90);
+      expect(parseIso8601DurationSeconds('PT2M15S')).toBe(135);
+    });
+
+    it('should parse hours', () => {
+      expect(parseIso8601DurationSeconds('PT1H')).toBe(3600);
+      expect(parseIso8601DurationSeconds('PT2H')).toBe(7200);
+    });
+
+    it('should parse hours, minutes, and seconds', () => {
+      expect(parseIso8601DurationSeconds('PT2H3M4S')).toBe(7384);
+      expect(parseIso8601DurationSeconds('PT1H30M45S')).toBe(5445);
+    });
+
+    it('should parse days', () => {
+      expect(parseIso8601DurationSeconds('P1D')).toBe(86400);
+      expect(parseIso8601DurationSeconds('P2D')).toBe(172800);
+    });
+
+    it('should parse days with time component', () => {
+      expect(parseIso8601DurationSeconds('P1DT2H')).toBe(93600);
+      expect(parseIso8601DurationSeconds('P1DT2H3M4S')).toBe(93784);
+    });
+
+    it('should round fractional seconds', () => {
+      expect(parseIso8601DurationSeconds('PT1M30.5S')).toBe(91);
+      expect(parseIso8601DurationSeconds('PT1.5S')).toBe(2);
+      expect(parseIso8601DurationSeconds('PT0.4S')).toBe(0);
+    });
+
+    it('should parse zero duration', () => {
+      expect(parseIso8601DurationSeconds('PT0S')).toBe(0);
+    });
+
+    it('should return null for null input', () => {
+      expect(parseIso8601DurationSeconds(null)).toBeNull();
+    });
+
+    it('should return null for undefined input', () => {
+      expect(parseIso8601DurationSeconds(undefined)).toBeNull();
+    });
+
+    it('should return null for empty string', () => {
+      expect(parseIso8601DurationSeconds('')).toBeNull();
+    });
+
+    it('should return null for garbage input', () => {
+      expect(parseIso8601DurationSeconds('garbage')).toBeNull();
+      expect(parseIso8601DurationSeconds('123')).toBeNull();
+      expect(parseIso8601DurationSeconds('not-iso')).toBeNull();
+    });
+
+    it('should return null for malformed ISO 8601', () => {
+      expect(parseIso8601DurationSeconds('P')).toBeNull();
+      expect(parseIso8601DurationSeconds('PT')).toBeNull();
+      expect(parseIso8601DurationSeconds('T1H')).toBeNull();
+    });
+  });
+
+  describe('isShortDuration', () => {
+    const {
+      isShortDuration,
+      SHORTS_MAX_DURATION_SECONDS,
+    } = require('./YouTubeSyncService');
+
+    it('should identify shorts under the ceiling', () => {
+      expect(isShortDuration(1)).toBe(true);
+      expect(isShortDuration(30)).toBe(true);
+      expect(isShortDuration(60)).toBe(true);
+      expect(isShortDuration(179)).toBe(true);
+    });
+
+    it('should identify exactly 180 seconds as short (inclusive ceiling)', () => {
+      expect(isShortDuration(SHORTS_MAX_DURATION_SECONDS)).toBe(true);
+    });
+
+    it('should reject durations over the ceiling', () => {
+      expect(isShortDuration(181)).toBe(false);
+      expect(isShortDuration(300)).toBe(false);
+      expect(isShortDuration(3600)).toBe(false);
+    });
+
+    it('should reject zero duration', () => {
+      expect(isShortDuration(0)).toBe(false);
+    });
+
+    it('should reject negative duration', () => {
+      expect(isShortDuration(-1)).toBe(false);
+      expect(isShortDuration(-100)).toBe(false);
+    });
+
+    it('should treat null as not short (safety critical)', () => {
+      expect(isShortDuration(null)).toBe(false);
+    });
+
+    it('should treat undefined as not short (safety critical)', () => {
+      expect(isShortDuration(undefined)).toBe(false);
+    });
+  });
+
+  describe('videoKindWhere', () => {
+    const {
+      videoKindWhere,
+      SHORTS_MAX_DURATION_SECONDS,
+    } = require('./YouTubeSyncService');
+
+    it('should select shorts when kind=short', () => {
+      const where = videoKindWhere('short');
+      expect(where).toEqual({
+        durationSeconds: { gt: 0, lte: SHORTS_MAX_DURATION_SECONDS },
+      });
+    });
+
+    it('should select long-form when kind=long', () => {
+      const where = videoKindWhere('long');
+      expect(where).toEqual({
+        OR: [
+          { durationSeconds: null },
+          { durationSeconds: { gt: SHORTS_MAX_DURATION_SECONDS } },
+          { durationSeconds: { lte: 0 } },
+        ],
+      });
+    });
+
+    it('should select all when kind=all', () => {
+      const where = videoKindWhere('all');
+      expect(where).toEqual({});
+    });
+  });
+
+  describe('video sync with duration backfill', () => {
+    it('should request contentDetails in video fetch', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          encrypted_access_token: 'encrypted_access',
+          encrypted_refresh_token: 'encrypted_refresh',
+          token_iv: 'iv1:iv2',
+          token_auth_tag: 'tag1:tag2',
+          status: 'connected',
+        },
+      );
+
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'sub-1',
+          userId: 'user-1',
+          channelId: 'ch-1',
+          uploadsPlaylistId: 'pl-1',
+          enabled: true,
+        },
+      ]);
+
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([]);
+
+      const mockYoutube = require('googleapis').google.youtube();
+      mockYoutube.playlistItems.list.mockResolvedValue({
+        data: { items: [{ snippet: { resourceId: { videoId: 'v1' } } }] },
+      });
+
+      mockYoutube.videos.list.mockResolvedValue({
+        data: {
+          items: [
+            {
+              id: 'v1',
+              snippet: {
+                title: 'Video 1',
+                thumbnails: { medium: { url: 't1' } },
+                publishedAt: '2026-01-01T00:00:00Z',
+              },
+              contentDetails: { duration: 'PT2M30S' },
+            },
+          ],
+        },
+      });
+
+      await youtubeSyncService.syncVideosForUserWithStatus('user-1');
+
+      // Verify contentDetails was requested
+      expect(mockYoutube.videos.list).toHaveBeenCalledWith(
+        expect.objectContaining({
+          part: ['snippet', 'contentDetails'],
+        }),
+      );
+    });
+
+    it('should populate durationSeconds from contentDetails.duration', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          encrypted_access_token: 'encrypted_access',
+          encrypted_refresh_token: 'encrypted_refresh',
+          token_iv: 'iv1:iv2',
+          token_auth_tag: 'tag1:tag2',
+          status: 'connected',
+        },
+      );
+
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'sub-1',
+          userId: 'user-1',
+          channelId: 'ch-1',
+          uploadsPlaylistId: 'pl-1',
+          enabled: true,
+        },
+      ]);
+
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([]);
+
+      const mockYoutube = require('googleapis').google.youtube();
+      mockYoutube.playlistItems.list.mockResolvedValue({
+        data: { items: [{ snippet: { resourceId: { videoId: 'v1' } } }] },
+      });
+
+      mockYoutube.videos.list.mockResolvedValue({
+        data: {
+          items: [
+            {
+              id: 'v1',
+              snippet: {
+                title: 'A Short Video',
+                thumbnails: { medium: { url: 't1' } },
+                publishedAt: '2026-01-01T00:00:00Z',
+              },
+              contentDetails: { duration: 'PT30S' },
+            },
+          ],
+        },
+      });
+
+      await youtubeSyncService.syncVideosForUserWithStatus('user-1');
+
+      // Verify durationSeconds was included in the upsert
+      expect(mockPrisma.__transaction.youTubeVideo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId_videoId: { userId: 'user-1', videoId: 'v1' } },
+          create: expect.objectContaining({
+            durationSeconds: 30,
+          }),
+        }),
+      );
+    });
+
+    it('should store null when contentDetails.duration is missing', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          encrypted_access_token: 'encrypted_access',
+          encrypted_refresh_token: 'encrypted_refresh',
+          token_iv: 'iv1:iv2',
+          token_auth_tag: 'tag1:tag2',
+          status: 'connected',
+        },
+      );
+
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'sub-1',
+          userId: 'user-1',
+          channelId: 'ch-1',
+          uploadsPlaylistId: 'pl-1',
+          enabled: true,
+        },
+      ]);
+
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([]);
+
+      const mockYoutube = require('googleapis').google.youtube();
+      mockYoutube.playlistItems.list.mockResolvedValue({
+        data: { items: [{ snippet: { resourceId: { videoId: 'v1' } } }] },
+      });
+
+      mockYoutube.videos.list.mockResolvedValue({
+        data: {
+          items: [
+            {
+              id: 'v1',
+              snippet: {
+                title: 'No Duration Video',
+                thumbnails: { medium: { url: 't1' } },
+                publishedAt: '2026-01-01T00:00:00Z',
+              },
+              // Missing contentDetails
+            },
+          ],
+        },
+      });
+
+      await youtubeSyncService.syncVideosForUserWithStatus('user-1');
+
+      expect(mockPrisma.__transaction.youTubeVideo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          create: expect.objectContaining({
+            durationSeconds: null,
+          }),
+        }),
+      );
+    });
+
+    it('should treat duration mismatch as changed and backfill null', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          encrypted_access_token: 'encrypted_access',
+          encrypted_refresh_token: 'encrypted_refresh',
+          token_iv: 'iv1:iv2',
+          token_auth_tag: 'tag1:tag2',
+          status: 'connected',
+        },
+      );
+
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'sub-1',
+          userId: 'user-1',
+          channelId: 'ch-1',
+          uploadsPlaylistId: 'pl-1',
+          enabled: true,
+        },
+      ]);
+
+      // Existing video has null duration (cached before duration collection)
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([
+        {
+          videoId: 'v1',
+          title: 'Same Video',
+          thumbnail: 't1',
+          publishedAt: new Date('2026-01-01'),
+          durationSeconds: null, // Previously unclassified
+        },
+      ]);
+
+      const mockYoutube = require('googleapis').google.youtube();
+      mockYoutube.playlistItems.list.mockResolvedValue({
+        data: { items: [{ snippet: { resourceId: { videoId: 'v1' } } }] },
+      });
+
+      // Now we have the duration
+      mockYoutube.videos.list.mockResolvedValue({
+        data: {
+          items: [
+            {
+              id: 'v1',
+              snippet: {
+                title: 'Same Video',
+                thumbnails: { medium: { url: 't1' } },
+                publishedAt: '2026-01-01T00:00:00Z',
+              },
+              contentDetails: { duration: 'PT2M30S' },
+            },
+          ],
+        },
+      });
+
+      const result =
+        await youtubeSyncService.syncVideosForUserWithStatus('user-1');
+
+      // Should recognize it as changed and perform the transaction
+      expect(mockPrisma.$transaction).toHaveBeenCalled();
+      expect(mockPrisma.__transaction.youTubeVideo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId_videoId: { userId: 'user-1', videoId: 'v1' } },
+          update: expect.objectContaining({
+            durationSeconds: 150,
+          }),
+        }),
+      );
+      expect(result.videosSynced).toBe(1);
+    });
+
+    it('should include durationSeconds in the update block of upsert', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          encrypted_access_token: 'encrypted_access',
+          encrypted_refresh_token: 'encrypted_refresh',
+          token_iv: 'iv1:iv2',
+          token_auth_tag: 'tag1:tag2',
+          status: 'connected',
+        },
+      );
+
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockResolvedValue([
+        {
+          id: 'sub-1',
+          userId: 'user-1',
+          channelId: 'ch-1',
+          uploadsPlaylistId: 'pl-1',
+          enabled: true,
+        },
+      ]);
+
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([
+        {
+          videoId: 'v1',
+          title: 'Old Title',
+          thumbnail: 't1',
+          publishedAt: new Date('2026-01-01'),
+          durationSeconds: 60,
+        },
+      ]);
+
+      const mockYoutube = require('googleapis').google.youtube();
+      mockYoutube.playlistItems.list.mockResolvedValue({
+        data: { items: [{ snippet: { resourceId: { videoId: 'v1' } } }] },
+      });
+
+      mockYoutube.videos.list.mockResolvedValue({
+        data: {
+          items: [
+            {
+              id: 'v1',
+              snippet: {
+                title: 'New Title',
+                thumbnails: { medium: { url: 't1-new' } },
+                publishedAt: '2026-01-01T00:00:00Z',
+              },
+              contentDetails: { duration: 'PT1M30S' },
+            },
+          ],
+        },
+      });
+
+      await youtubeSyncService.syncVideosForUserWithStatus('user-1');
+
+      expect(mockPrisma.__transaction.youTubeVideo.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: expect.objectContaining({
+            durationSeconds: 90,
+          }),
+        }),
+      );
+    });
+  });
+
+  describe('getVideos with kind filtering', () => {
+    it('should default to kind=all when not specified', async () => {
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.youTubeVideo.count as jest.Mock).mockResolvedValue(0);
+
+      await youtubeSyncService.getVideos('user-1', {});
+
+      expect(mockPrisma.youTubeVideo.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId: 'user-1',
+            // No duration filter when kind=all
+          }),
+        }),
+      );
+
+      // Verify the where clause doesn't have durationSeconds
+      const call = (mockPrisma.youTubeVideo.findMany as jest.Mock).mock
+        .calls[0][0];
+      expect(call.where).not.toHaveProperty('durationSeconds');
+    });
+
+    it('should filter shorts when kind=short', async () => {
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.youTubeVideo.count as jest.Mock).mockResolvedValue(0);
+
+      await youtubeSyncService.getVideos('user-1', { kind: 'short' });
+
+      expect(mockPrisma.youTubeVideo.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            userId: 'user-1',
+            durationSeconds: { gt: 0, lte: 180 },
+          }),
+        }),
+      );
+    });
+
+    it('should filter long-form when kind=long', async () => {
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.youTubeVideo.count as jest.Mock).mockResolvedValue(0);
+
+      await youtubeSyncService.getVideos('user-1', { kind: 'long' });
+
+      const call = (mockPrisma.youTubeVideo.findMany as jest.Mock).mock
+        .calls[0][0];
+      expect(call.where).toHaveProperty('OR');
+      expect(call.where.OR).toContainEqual({ durationSeconds: null });
+      expect(call.where.OR).toContainEqual({
+        durationSeconds: { gt: 180 },
+      });
+    });
+
+    it('should apply kind filter alongside other filters', async () => {
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([]);
+      (mockPrisma.youTubeVideo.count as jest.Mock).mockResolvedValue(0);
+
+      await youtubeSyncService.getVideos('user-1', {
+        kind: 'short',
+        search: 'test',
+        channelId: 'ch-1',
+      });
+
+      const call = (mockPrisma.youTubeVideo.findMany as jest.Mock).mock
+        .calls[0][0];
+      expect(call.where).toMatchObject({
+        userId: 'user-1',
+        durationSeconds: { gt: 0, lte: 180 },
+        channelId: 'ch-1',
+        title: { contains: 'test', mode: 'insensitive' },
+      });
+    });
+  });
+
+  describe('getVideosGroupedByChannel', () => {
+    it('should default to kind=long', async () => {
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockResolvedValue([
+        {
+          channelId: 'ch-1',
+          channelTitle: 'Channel 1',
+          channelThumbnail: null,
+          videos: [],
+        },
+      ]);
+
+      await youtubeSyncService.getVideosGroupedByChannel('user-1');
+
+      const call = (mockPrisma.youTubeSubscription.findMany as jest.Mock).mock
+        .calls[0][0];
+      expect(call.include.videos.where).toEqual({
+        OR: [
+          { durationSeconds: null },
+          { durationSeconds: { gt: 180 } },
+          { durationSeconds: { lte: 0 } },
+        ],
+      });
+    });
+
+    it('should filter nested videos when kind=short', async () => {
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockResolvedValue([
+        {
+          channelId: 'ch-1',
+          channelTitle: 'Channel 1',
+          channelThumbnail: null,
+          videos: [],
+        },
+      ]);
+
+      await youtubeSyncService.getVideosGroupedByChannel('user-1', 'short');
+
+      const call = (mockPrisma.youTubeSubscription.findMany as jest.Mock).mock
+        .calls[0][0];
+      expect(call.include.videos.where).toEqual({
+        durationSeconds: { gt: 0, lte: 180 },
+      });
+    });
+
+    it('should not filter when kind=all', async () => {
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockResolvedValue([
+        {
+          channelId: 'ch-1',
+          channelTitle: 'Channel 1',
+          channelThumbnail: null,
+          videos: [],
+        },
+      ]);
+
+      await youtubeSyncService.getVideosGroupedByChannel('user-1', 'all');
+
+      const call = (mockPrisma.youTubeSubscription.findMany as jest.Mock).mock
+        .calls[0][0];
+      expect(call.include.videos.where).toEqual({});
+    });
+
+    it('should order nested videos by publishedAt descending', async () => {
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockResolvedValue([
+        {
+          channelId: 'ch-1',
+          channelTitle: 'Channel 1',
+          channelThumbnail: null,
+          videos: [],
+        },
+      ]);
+
+      await youtubeSyncService.getVideosGroupedByChannel('user-1');
+
+      const call = (mockPrisma.youTubeSubscription.findMany as jest.Mock).mock
+        .calls[0][0];
+      expect(call.include.videos.orderBy).toEqual({ publishedAt: 'desc' });
+    });
+
+    it('should limit nested videos to 20 per channel', async () => {
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockResolvedValue([
+        {
+          channelId: 'ch-1',
+          channelTitle: 'Channel 1',
+          channelThumbnail: null,
+          videos: [],
+        },
+      ]);
+
+      await youtubeSyncService.getVideosGroupedByChannel('user-1');
+
+      const call = (mockPrisma.youTubeSubscription.findMany as jest.Mock).mock
+        .calls[0][0];
+      expect(call.include.videos.take).toBe(20);
     });
   });
 });

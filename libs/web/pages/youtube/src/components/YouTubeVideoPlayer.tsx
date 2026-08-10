@@ -10,6 +10,7 @@ export interface YouTubeVideoPlayerProps {
   watched?: boolean;
   onNearEnd?: () => void;
   onPlay?: () => void;
+  onPlayingChange?: (playing: boolean) => void;
   onPlaybackUnavailable?: () => void;
   className?: string;
   defaultPlaying?: boolean;
@@ -27,6 +28,7 @@ export function YouTubeVideoPlayer({
   watched = false,
   onNearEnd,
   onPlay,
+  onPlayingChange,
   onPlaybackUnavailable,
   className = '',
   defaultPlaying = false,
@@ -39,6 +41,7 @@ export function YouTubeVideoPlayer({
   const hasFiredNearEndRef = useRef<boolean>(false);
   const lastWatchedRef = useRef<boolean>(watched);
   const lastDurationRef = useRef<number | undefined>(undefined);
+  const lastPlayingStateRef = useRef<boolean | undefined>(undefined);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
@@ -264,6 +267,17 @@ export function YouTubeVideoPlayer({
       if (typeof currentTime === 'number' && typeof duration === 'number') {
         handleNearEndCheck(currentTime, duration);
       }
+
+      // Track playing state from YouTube player state changes.
+      // State 1 = PLAYING, 2 = PAUSED, 0 = ENDED, 3 = BUFFERING
+      const state = typeof info.state === 'number' ? info.state : undefined;
+      if (typeof state === 'number') {
+        const isNowPlaying = state === 1;
+        if (isNowPlaying !== lastPlayingStateRef.current) {
+          lastPlayingStateRef.current = isNowPlaying;
+          onPlayingChange?.(isNowPlaying);
+        }
+      }
     };
 
     const handleCustomProgress = (e: Event) => {
@@ -307,6 +321,7 @@ export function YouTubeVideoPlayer({
     video.videoId,
     handleNearEndCheck,
     handleMarkUnavailable,
+    onPlayingChange,
   ]);
 
   const handleIframeLoad = useCallback(() => {

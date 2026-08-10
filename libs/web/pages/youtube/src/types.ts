@@ -9,15 +9,12 @@ export interface YouTubeVideo {
   channelTitle?: string;
   description?: string;
   watched: boolean;
+  /** Runtime in seconds, or null for uploads cached before duration collection. */
+  durationSeconds?: number | null;
   /**
-   * Whether this Cached Upload is a Short.
-   *
-   * **Currently an API-contract gap.** Shorts already arrive in the channel
-   * uploads playlist alongside long-form uploads, but neither the Prisma
-   * `YouTubeVideo` model nor the video DTO carries a duration or Shorts marker,
-   * so nothing can classify them yet. The Shorts page reads this field and
-   * shows its "no Shorts yet" empty state until sync populates it — per the
-   * prototype rules, the missing data is reported rather than invented.
+   * Whether this Cached Upload is a Short, classified server-side from its
+   * runtime. Unclassified uploads are never Shorts, so a sync gap leaves a
+   * video on the long-form home rather than hiding it behind the daily budget.
    */
   isShort?: boolean;
 }

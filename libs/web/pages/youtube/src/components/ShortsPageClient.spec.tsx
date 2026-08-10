@@ -28,8 +28,27 @@ jest.mock('next/link', () => {
   return ({ children, href }: any) => <a href={href}>{children}</a>;
 });
 
-jest.mock('./YouTubeVideoPlayer', () => ({
-  YouTubeVideoPlayer: () => <div data-testid="player">Player</div>,
+// Mock ShortsPlayerPanel with a simple div so we can confirm it renders in unlocked branch
+jest.mock('./ShortsPlayerPanel', () => ({
+  ShortsPlayerPanel: ({ activeShort }: any) => (
+    <div data-testid="player-panel">
+      {activeShort ? activeShort.title : 'No short'}
+    </div>
+  ),
+}));
+
+// Mock ShortsList so we can confirm it renders in unlocked branch
+jest.mock('./ShortsList', () => ({
+  ShortsList: ({ shorts }: any) => (
+    <div data-testid="shorts-list">
+      <p>All Shorts</p>
+      {shorts.map((s: any) => (
+        <button key={s.videoId} data-testid={`short-${s.videoId}`}>
+          {s.title}
+        </button>
+      ))}
+    </div>
+  ),
 }));
 
 // Mock ShortsEntryWarning with a clickable button so the gate can open
@@ -107,23 +126,20 @@ describe('ShortsPageClient — locked and unlocked branches', () => {
 
       const { container } = render(<ShortsPageClient />);
 
+      // Acknowledge the entry warning
       expect(screen.getByTestId('entry-continue')).toBeInTheDocument();
       fireEvent.click(screen.getByTestId('entry-continue'));
 
+      // Hard Stop should render
       expect(
         screen.getByRole('status', { name: /exhausted/i }),
       ).toBeInTheDocument();
-      expect(screen.queryByTestId('player')).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('button', { name: /Prev/i }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('button', { name: /Next/i }),
-      ).not.toBeInTheDocument();
-      expect(screen.queryByText('Test Short')).not.toBeInTheDocument();
-      expect(screen.queryByText('Another Short')).not.toBeInTheDocument();
-      expect(screen.queryByText(/All Shorts/i)).not.toBeInTheDocument();
 
+      // Player panel and shorts list mocks should NOT render
+      expect(screen.queryByTestId('player-panel')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('shorts-list')).not.toBeInTheDocument();
+
+      // Verify no youtube.com links in the actual Hard Stop component
       const allLinks = container.querySelectorAll('a[href]');
       allLinks.forEach((link) => {
         const href = link.getAttribute('href') || '';
@@ -156,15 +172,19 @@ describe('ShortsPageClient — locked and unlocked branches', () => {
 
       render(<ShortsPageClient />);
 
+      // Acknowledge the entry warning
       expect(screen.getByTestId('entry-continue')).toBeInTheDocument();
       fireEvent.click(screen.getByTestId('entry-continue'));
 
-      expect(screen.getByTestId('player')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Prev/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /Next/i })).toBeInTheDocument();
-      expect(screen.getAllByText('Test Short').length).toBeGreaterThan(0);
-      expect(screen.getAllByText('Another Short').length).toBeGreaterThan(0);
-      expect(screen.getByText(/All Shorts/i)).toBeInTheDocument();
+      // Player panel mock should render
+      expect(screen.getByTestId('player-panel')).toBeInTheDocument();
+
+      // Shorts list mock should render with all shorts
+      expect(screen.getByTestId('shorts-list')).toBeInTheDocument();
+      expect(screen.getByTestId('short-dQw4w9WgXcQ')).toBeInTheDocument();
+      expect(screen.getByTestId('short-video2')).toBeInTheDocument();
+
+      // Hard Stop should NOT render
       expect(
         screen.queryByRole('status', { name: /exhausted/i }),
       ).not.toBeInTheDocument();

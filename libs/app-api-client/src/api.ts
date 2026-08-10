@@ -1417,25 +1417,25 @@ export interface ResetPasswordByEmailBody {
     'email': string;
 }
 /**
- *
+ * 
  * @export
  * @interface SetVideoWatched200Response
  */
 export interface SetVideoWatched200Response {
     /**
-     *
+     * 
      * @type {boolean}
      * @memberof SetVideoWatched200Response
      */
     'ok': boolean;
     /**
-     *
+     * 
      * @type {boolean}
      * @memberof SetVideoWatched200Response
      */
     'watched': boolean;
     /**
-     *
+     * 
      * @type {string}
      * @memberof SetVideoWatched200Response
      */
@@ -2116,7 +2116,7 @@ export interface VideoResponse {
      */
     'publishedAt': string;
     /**
-     *
+     * 
      * @type {boolean}
      * @memberof VideoResponse
      */
@@ -2127,6 +2127,18 @@ export interface VideoResponse {
      * @memberof VideoResponse
      */
     'channelTitle'?: string;
+    /**
+     * Runtime in seconds, or null when this upload has not been classified yet.
+     * @type {number}
+     * @memberof VideoResponse
+     */
+    'durationSeconds': number | null;
+    /**
+     * Whether this Cached Upload is a Short. Unclassified uploads are never Shorts.
+     * @type {boolean}
+     * @memberof VideoResponse
+     */
+    'isShort': boolean;
 }
 /**
  * 
@@ -2166,32 +2178,32 @@ export interface VideosPageResponse {
     'totalPages': number;
 }
 /**
- *
+ * 
  * @export
  * @interface WatchedBody
  */
 export interface WatchedBody {
     /**
-     *
+     * 
      * @type {boolean}
      * @memberof WatchedBody
      */
     'watched': boolean;
 }
 /**
- *
+ * 
  * @export
  * @interface WatchedResponse
  */
 export interface WatchedResponse {
     /**
-     *
+     * 
      * @type {boolean}
      * @memberof WatchedResponse
      */
     'ok': boolean;
     /**
-     *
+     * 
      * @type {boolean}
      * @memberof WatchedResponse
      */
@@ -4644,7 +4656,7 @@ export class VaultBackupsApi extends BaseAPI {
 export const YouTubeApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
         /**
-         * Cron-only endpoint: syncs all users\' videos and sends due notifications. Authenticated via X-Cron-Secret header instead of JWT.
+         * Cron-only endpoint: syncs all users\' videos and sends due notifications.  Authenticated via X-Cron-Secret header instead of JWT.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -4880,10 +4892,11 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
          * @param {number} [page] Page number (1-based)
          * @param {number} [limit] Items per page
          * @param {string} [channelId] 
+         * @param {GetVideosKindEnum} [kind] Library slice by runtime: short | long | all (default all)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        getVideos: async (sort?: GetVideosSortEnum, search?: string, page?: number, limit?: number, channelId?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        getVideos: async (sort?: GetVideosSortEnum, search?: string, page?: number, limit?: number, channelId?: string, kind?: GetVideosKindEnum, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/youtube/videos`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -4918,6 +4931,10 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
 
             if (channelId !== undefined) {
                 localVarQueryParameter['channelId'] = channelId;
+            }
+
+            if (kind !== undefined) {
+                localVarQueryParameter['kind'] = kind;
             }
 
 
@@ -5005,8 +5022,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * Marks a Cached Upload as Watched or New.
-         * @param {string} videoId
-         * @param {WatchedBody} watchedBody
+         * @param {string} videoId 
+         * @param {WatchedBody} watchedBody 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -5033,7 +5050,7 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
 
-
+    
             localVarHeaderParameter['Content-Type'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
@@ -5172,7 +5189,7 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = YouTubeApiAxiosParamCreator(configuration)
     return {
         /**
-         * Cron-only endpoint: syncs all users\' videos and sends due notifications. Authenticated via X-Cron-Secret header instead of JWT.
+         * Cron-only endpoint: syncs all users\' videos and sends due notifications.  Authenticated via X-Cron-Secret header instead of JWT.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -5255,11 +5272,12 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
          * @param {number} [page] Page number (1-based)
          * @param {number} [limit] Items per page
          * @param {string} [channelId] 
+         * @param {GetVideosKindEnum} [kind] Library slice by runtime: short | long | all (default all)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async getVideos(sort?: GetVideosSortEnum, search?: string, page?: number, limit?: number, channelId?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetVideos200Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getVideos(sort, search, page, limit, channelId, options);
+        async getVideos(sort?: GetVideosSortEnum, search?: string, page?: number, limit?: number, channelId?: string, kind?: GetVideosKindEnum, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetVideos200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getVideos(sort, search, page, limit, channelId, kind, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getVideos']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -5289,8 +5307,8 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
         },
         /**
          * Marks a Cached Upload as Watched or New.
-         * @param {string} videoId
-         * @param {WatchedBody} watchedBody
+         * @param {string} videoId 
+         * @param {WatchedBody} watchedBody 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -5347,7 +5365,7 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
     const localVarFp = YouTubeApiFp(configuration)
     return {
         /**
-         * Cron-only endpoint: syncs all users\' videos and sends due notifications. Authenticated via X-Cron-Secret header instead of JWT.
+         * Cron-only endpoint: syncs all users\' videos and sends due notifications.  Authenticated via X-Cron-Secret header instead of JWT.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -5409,7 +5427,7 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
          * @throws {RequiredError}
          */
         getVideos(requestParameters: YouTubeApiGetVideosRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<GetVideos200Response> {
-            return localVarFp.getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, requestParameters.channelId, options).then((request) => request(axios, basePath));
+            return localVarFp.getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, requestParameters.channelId, requestParameters.kind, options).then((request) => request(axios, basePath));
         },
         /**
          * Returns videos grouped by channel for the carousel view.
@@ -5506,6 +5524,13 @@ export interface YouTubeApiGetVideosRequest {
      * @memberof YouTubeApiGetVideos
      */
     readonly channelId?: string
+
+    /**
+     * Library slice by runtime: short | long | all (default all)
+     * @type {'short' | 'long' | 'all'}
+     * @memberof YouTubeApiGetVideos
+     */
+    readonly kind?: GetVideosKindEnum
 }
 
 /**
@@ -5529,14 +5554,14 @@ export interface YouTubeApiHandleCallbackRequest {
  */
 export interface YouTubeApiSetVideoWatchedRequest {
     /**
-     *
+     * 
      * @type {string}
      * @memberof YouTubeApiSetVideoWatched
      */
     readonly videoId: string
 
     /**
-     *
+     * 
      * @type {WatchedBody}
      * @memberof YouTubeApiSetVideoWatched
      */
@@ -5586,7 +5611,7 @@ export interface YouTubeApiUpdateNotificationSettingsRequest {
  */
 export class YouTubeApi extends BaseAPI {
     /**
-     * Cron-only endpoint: syncs all users\' videos and sends due notifications. Authenticated via X-Cron-Secret header instead of JWT.
+     * Cron-only endpoint: syncs all users\' videos and sends due notifications.  Authenticated via X-Cron-Secret header instead of JWT.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof YouTubeApi
@@ -5663,7 +5688,7 @@ export class YouTubeApi extends BaseAPI {
      * @memberof YouTubeApi
      */
     public getVideos(requestParameters: YouTubeApiGetVideosRequest = {}, options?: RawAxiosRequestConfig) {
-        return YouTubeApiFp(this.configuration).getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, requestParameters.channelId, options).then((request) => request(this.axios, this.basePath));
+        return YouTubeApiFp(this.configuration).getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, requestParameters.channelId, requestParameters.kind, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -5740,5 +5765,14 @@ export const GetVideosSortEnum = {
     Az: 'az'
 } as const;
 export type GetVideosSortEnum = typeof GetVideosSortEnum[keyof typeof GetVideosSortEnum];
+/**
+ * @export
+ */
+export const GetVideosKindEnum = {
+    Short: 'short',
+    Long: 'long',
+    All: 'all'
+} as const;
+export type GetVideosKindEnum = typeof GetVideosKindEnum[keyof typeof GetVideosKindEnum];
 
 

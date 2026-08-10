@@ -188,6 +188,10 @@ export function useYouTubeVideos(channelId?: string) {
       params.set('sort', sort);
       params.set('page', String(page));
       params.set('limit', '24');
+      // Long-form surfaces exclude Shorts: short-form is isolated on its own
+      // budgeted page (PRD #264, user story 14), so it must not reappear in
+      // the channel grid or a channel's detail list.
+      params.set('kind', 'long');
       if (search) params.set('search', search);
       if (channelId) params.set('channelId', channelId);
       const data = await apiFetch<{
@@ -232,11 +236,10 @@ export function useYouTubeVideos(channelId?: string) {
 /**
  * Cached Uploads that are Shorts, for the separate Shorts page.
  *
- * Reads the existing `/videos` list — Shorts already arrive in the uploads
- * playlist — and keeps only those flagged {@link YouTubeVideo.isShort}. That
- * flag is an open API-contract gap: nothing populates it yet, so this hook
- * legitimately resolves to an empty list today and the page renders its
- * "no Shorts yet" state. No Shorts-specific endpoint is invented here.
+ * Shorts arrive in the ordinary uploads playlist, so they are not a separate
+ * resource — the server slices the same library by runtime via `kind=short`.
+ * Filtering server-side keeps the page from downloading a full library to throw
+ * most of it away, and keeps one classification rule rather than two.
  */
 export function useYouTubeShorts() {
   const [shorts, setShorts] = useState<YouTubeVideo[]>([]);
@@ -251,11 +254,12 @@ export function useYouTubeShorts() {
         sort: 'latest',
         page: '1',
         limit: '50',
+        kind: 'short',
       });
       const data = await apiFetch<{ videos: YouTubeVideo[] }>(
         `/videos?${params.toString()}`,
       );
-      setShorts(data.videos.filter((video) => video.isShort === true));
+      setShorts(data.videos);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

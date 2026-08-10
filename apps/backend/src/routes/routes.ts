@@ -98,6 +98,8 @@ const models: TsoaRoute.Models = {
             "publishedAt": {"dataType":"string","required":true},
             "watched": {"dataType":"boolean","required":true},
             "channelTitle": {"dataType":"string"},
+            "durationSeconds": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}],"required":true},
+            "isShort": {"dataType":"boolean","required":true},
         },
         "additionalProperties": false,
     },
@@ -720,6 +722,7 @@ export function RegisterRoutes(app: Router) {
                 page: {"in":"query","name":"page","dataType":"double"},
                 limit: {"in":"query","name":"limit","dataType":"double"},
                 channelId: {"in":"query","name":"channelId","dataType":"string"},
+                kind: {"in":"query","name":"kind","dataType":"union","subSchemas":[{"dataType":"enum","enums":["short"]},{"dataType":"enum","enums":["long"]},{"dataType":"enum","enums":["all"]}]},
         };
         app.get('/youtube/videos',
             authenticateMiddleware([{"jwt":[]}]),

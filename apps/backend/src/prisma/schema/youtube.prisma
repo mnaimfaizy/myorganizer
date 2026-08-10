@@ -48,6 +48,11 @@ model YouTubeVideo {
     title               String
     thumbnail           String?
     publishedAt         DateTime
+    // Runtime in seconds, from the uploads sync. Nullable because rows cached
+    // before duration was collected have never been classified — those are
+    // treated as long-form until the next sync backfills them, so nothing
+    // silently disappears from the channel-first home.
+    durationSeconds     Int?
     watched             Boolean     @default(false)
     createdAt           DateTime    @default(now())
 

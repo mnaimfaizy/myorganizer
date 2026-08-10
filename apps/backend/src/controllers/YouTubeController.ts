@@ -20,6 +20,7 @@ import youtubeSyncService, {
   YouTubeRefreshResult,
   YouTubeSyncStatusDTO,
   YouTubeVideoWithChannel,
+  isShortDuration,
 } from '../services/YouTubeSyncService';
 
 type YouTubeErrorResponse = { message: string };
@@ -54,6 +55,10 @@ interface VideoResponse {
   publishedAt: string;
   watched: boolean;
   channelTitle?: string;
+  /** Runtime in seconds, or null when this upload has not been classified yet. */
+  durationSeconds: number | null;
+  /** Whether this Cached Upload is a Short. Unclassified uploads are never Shorts. */
+  isShort: boolean;
 }
 
 interface VideosPageResponse {
@@ -264,6 +269,7 @@ export class YouTubeController extends Controller {
    * @param search  Filter by video title
    * @param page  Page number (1-based)
    * @param limit  Items per page
+   * @param kind  Library slice by runtime: short | long | all (default all)
    */
   @Get('/videos')
   @Security('jwt')
@@ -274,6 +280,7 @@ export class YouTubeController extends Controller {
     @Query() page?: number,
     @Query() limit?: number,
     @Query() channelId?: string,
+    @Query() kind?: 'short' | 'long' | 'all',
   ): Promise<VideosPageResponse | YouTubeErrorResponse> {
     const userId = requireUserId(req);
     const result = await youtubeSyncService.getVideos(userId, {
@@ -282,6 +289,7 @@ export class YouTubeController extends Controller {
       page,
       limit,
       channelId,
+      kind,
     });
     return {
       ...result,
@@ -294,6 +302,8 @@ export class YouTubeController extends Controller {
         publishedAt: v.publishedAt.toISOString(),
         watched: v.watched,
         channelTitle: v.subscription?.channelTitle ?? undefined,
+        durationSeconds: v.durationSeconds,
+        isShort: isShortDuration(v.durationSeconds),
       })),
     };
   }
@@ -341,6 +351,8 @@ export class YouTubeController extends Controller {
         thumbnail: v.thumbnail,
         publishedAt: v.publishedAt.toISOString(),
         watched: v.watched,
+        durationSeconds: v.durationSeconds,
+        isShort: isShortDuration(v.durationSeconds),
       })),
     }));
   }

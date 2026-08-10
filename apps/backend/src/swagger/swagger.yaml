@@ -135,6 +135,16 @@ components:
           type: boolean
         channelTitle:
           type: string
+        durationSeconds:
+          type: number
+          format: double
+          nullable: true
+          description: Runtime in seconds, or null when this upload has not been
+            classified yet.
+        isShort:
+          type: boolean
+          description: Whether this Cached Upload is a Short. Unclassified uploads are
+            never Shorts.
       required:
         - id
         - videoId
@@ -143,6 +153,8 @@ components:
         - thumbnail
         - publishedAt
         - watched
+        - durationSeconds
+        - isShort
       type: object
       additionalProperties: false
     VideosPageResponse:
@@ -998,6 +1010,16 @@ paths:
           required: false
           schema:
             type: string
+        - description: "Library slice by runtime: short | long | all (default all)"
+          in: query
+          name: kind
+          required: false
+          schema:
+            type: string
+            enum:
+              - short
+              - long
+              - all
   /youtube/videos/{videoId}/watched:
     patch:
       operationId: SetVideoWatched
@@ -1100,9 +1122,10 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/CronResultResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
-      description: |-
-        Cron-only endpoint: syncs all users' videos and sends due notifications.
-        Authenticated via X-Cron-Secret header instead of JWT.
+      description: "Cron-only endpoint: syncs all users' videos and sends due
+        notifications.\r
+
+        Authenticated via X-Cron-Secret header instead of JWT."
       tags:
         - YouTube
       security:

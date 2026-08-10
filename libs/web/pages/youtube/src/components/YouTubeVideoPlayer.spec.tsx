@@ -437,4 +437,202 @@ describe('YouTubeVideoPlayer', () => {
 
     expect(onNearEnd).not.toHaveBeenCalled();
   });
+
+  it('should fire onPlayingChange(true) when YouTube player state is 1 (playing)', () => {
+    const onPlayingChange = jest.fn();
+    render(
+      <YouTubeVideoPlayer
+        video={baseVideo}
+        onPlayingChange={onPlayingChange}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Play Test Video Title/ }),
+    );
+
+    const iframe = screen.getByTitle(
+      'Test Video Title - YouTube video player',
+    ) as HTMLIFrameElement;
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'https://www.youtube-nocookie.com',
+          source: iframe.contentWindow,
+          data: {
+            event: 'infoDelivery',
+            info: { videoId: baseVideo.videoId, state: 1 },
+          },
+        }),
+      );
+    });
+
+    expect(onPlayingChange).toHaveBeenCalledWith(true);
+  });
+
+  it('should fire onPlayingChange(false) when YouTube player state is 0 (ended)', () => {
+    const onPlayingChange = jest.fn();
+    render(
+      <YouTubeVideoPlayer
+        video={baseVideo}
+        onPlayingChange={onPlayingChange}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Play Test Video Title/ }),
+    );
+
+    const iframe = screen.getByTitle(
+      'Test Video Title - YouTube video player',
+    ) as HTMLIFrameElement;
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'https://www.youtube-nocookie.com',
+          source: iframe.contentWindow,
+          data: {
+            event: 'infoDelivery',
+            info: { videoId: baseVideo.videoId, state: 0 },
+          },
+        }),
+      );
+    });
+
+    expect(onPlayingChange).toHaveBeenCalledWith(false);
+  });
+
+  it('should fire onPlayingChange(false) when YouTube player state is 2 (paused)', () => {
+    const onPlayingChange = jest.fn();
+    render(
+      <YouTubeVideoPlayer
+        video={baseVideo}
+        onPlayingChange={onPlayingChange}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Play Test Video Title/ }),
+    );
+
+    const iframe = screen.getByTitle(
+      'Test Video Title - YouTube video player',
+    ) as HTMLIFrameElement;
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'https://www.youtube-nocookie.com',
+          source: iframe.contentWindow,
+          data: {
+            event: 'infoDelivery',
+            info: { videoId: baseVideo.videoId, state: 2 },
+          },
+        }),
+      );
+    });
+
+    expect(onPlayingChange).toHaveBeenCalledWith(false);
+  });
+
+  it('should not fire onPlayingChange if the callback is not provided', () => {
+    // This test ensures that omitting onPlayingChange does not cause errors
+    const onPlayingChange = jest.fn();
+    render(
+      <YouTubeVideoPlayer
+        video={baseVideo}
+        // onPlayingChange is intentionally omitted
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Play Test Video Title/ }),
+    );
+
+    const iframe = screen.getByTitle(
+      'Test Video Title - YouTube video player',
+    ) as HTMLIFrameElement;
+
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'https://www.youtube-nocookie.com',
+          source: iframe.contentWindow,
+          data: {
+            event: 'infoDelivery',
+            info: { videoId: baseVideo.videoId, state: 1 },
+          },
+        }),
+      );
+    });
+
+    // onPlayingChange should not have been called (it was never registered)
+    expect(onPlayingChange).not.toHaveBeenCalled();
+  });
+
+  it('should only fire onPlayingChange when state transitions, not on repeated state', () => {
+    const onPlayingChange = jest.fn();
+    render(
+      <YouTubeVideoPlayer
+        video={baseVideo}
+        onPlayingChange={onPlayingChange}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole('button', { name: /Play Test Video Title/ }),
+    );
+
+    const iframe = screen.getByTitle(
+      'Test Video Title - YouTube video player',
+    ) as HTMLIFrameElement;
+
+    // First state change to playing
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'https://www.youtube-nocookie.com',
+          source: iframe.contentWindow,
+          data: {
+            event: 'infoDelivery',
+            info: { videoId: baseVideo.videoId, state: 1 },
+          },
+        }),
+      );
+    });
+
+    expect(onPlayingChange).toHaveBeenCalledTimes(1);
+    expect(onPlayingChange).toHaveBeenCalledWith(true);
+
+    // Second state change to playing (no transition)
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'https://www.youtube-nocookie.com',
+          source: iframe.contentWindow,
+          data: {
+            event: 'infoDelivery',
+            info: { videoId: baseVideo.videoId, state: 1 },
+          },
+        }),
+      );
+    });
+
+    // Should still be 1 call total (no duplicate)
+    expect(onPlayingChange).toHaveBeenCalledTimes(1);
+
+    // Now transition to paused
+    act(() => {
+      window.dispatchEvent(
+        new MessageEvent('message', {
+          origin: 'https://www.youtube-nocookie.com',
+          source: iframe.contentWindow,
+          data: {
+            event: 'infoDelivery',
+            info: { videoId: baseVideo.videoId, state: 2 },
+          },
+        }),
+      );
+    });
+
+    expect(onPlayingChange).toHaveBeenCalledTimes(2);
+    expect(onPlayingChange).toHaveBeenCalledWith(false);
+  });
 });
