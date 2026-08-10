@@ -42,9 +42,33 @@ rebuild + staleness cost. Keep it only if it earns a clear `helped` track record
 The graph is **not committed** (it's generated and goes stale). Build it once locally; the
 `graphify` MCP server in `.mcp.json` then serves `graphify-out/graph.json`.
 
-Prerequisite: `uv tool install graphifyy --with mcp` (provides `graphify` + `graphify-mcp`).
-The `--with mcp` extra is **required** — without it `graphify-mcp` crashes with
+Prerequisite: `uv tool install "graphifyy[mcp]"` (provides `graphify` + `graphify-mcp`).
+The `mcp` extra is **required** — without it `graphify-mcp` crashes with
 `ModuleNotFoundError: No module named 'mcp'` and the MCP server in `.mcp.json` won't start.
+Installing it via the `[mcp]` extra records `extras = ["mcp"]` in the uv receipt, so a later
+`uv tool upgrade graphifyy` keeps it. Installing plain `graphifyy` drops the extra and silently
+re-breaks the MCP server — the symptom in Claude Code is
+`graphify: … ✘ Failed to connect — MCP error -32000: Connection closed`.
+
+### Resync the skill after any version change
+
+The `/graphify` skill under `~/.claude/skills/graphify/` is written by the CLI and is
+**pinned to the version that wrote it**. Upgrading the package does not update it, so the two
+drift apart and the CLI starts every command with:
+
+```
+warning: skill is from graphify 0.9.16, package is 0.9.37. Run 'graphify install' to update.
+```
+
+After **any** install, upgrade, or reinstall of `graphifyy`, resync it:
+
+```pwsh
+graphify install --platform claude   # rewrites ~/.claude/skills/graphify/{SKILL.md,references/}
+```
+
+This is a per-developer machine setup step, not a repo change — nothing here is committed.
+Verify the whole chain with `graphify --version` (should match the warning-free CLI output)
+and `claude mcp list` (should report `graphify: … ✔ Connected`).
 
 ```pwsh
 # Full rebuild (per-package extract + merge + cluster + label), zero external egress.
