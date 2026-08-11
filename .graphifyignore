@@ -50,6 +50,17 @@ test-results/
 apps/mobile/android/
 apps/mobile/ios/
 
+# Prisma migrations. Excluded on purpose (#292), not by accident.
+# graphify's SQL extractor resolves table names WITHIN SQL only — there is no
+# edge from a SQL table to TS, and the backend reaches the DB via Prisma models
+# (`prisma.user.…`), never SQL identifiers. So graphing these cannot answer
+# "what reads this table?" — it only makes the graph look non-blind. Worse,
+# `_ref_stub` mints bare-name nodes that `_rewire_unique_stub_nodes` collapses
+# onto "the unique real definition" by name, and migration tables are quoted
+# PascalCase ("User", "VaultItem") — the same names as Prisma model types in TS,
+# a plausible route to FALSE edges. Current schema lives in schema.prisma.
+**/*.sql
+
 # Graphify's own output
 graphify-out/
 

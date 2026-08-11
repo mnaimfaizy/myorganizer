@@ -25,8 +25,58 @@ limited because of measured blind spots (below).
   Use `nx affected` for PR scoping.
 - **TypeScript type-reference blast radius** (type usages aren't edges) or any symbol whose
   name appears in more than one file (it can't disambiguate).
+- **Database schema questions** ("what reads this table?", "what does this migration affect?").
+  `**/*.sql` is excluded by design — see "SQL is excluded on purpose" below. The current schema
+  lives in `apps/backend/src/prisma/schema.prisma`; use that and `nx affected`.
 
 Always confirm a graph result against the actual file before trusting it — the graph can be stale.
+
+## Measured extraction limits
+
+Numbers from issue #292, measured 2026-08-11 by parsing every `.ts`/`.tsx` file under `apps/` and
+`libs/` with the same `tree-sitter-typescript` grammar graphify uses. Recorded here so the question
+does not get re-litigated from stale guesses.
+
+### SQL is excluded on purpose
+
+The 10 Prisma migrations under `apps/backend/src/prisma/migrations/` are **not** in the graph, and
+that is deliberate — `**/*.sql` is in `.graphifyignore`. Installing `graphifyy[sql]` would make them
+parse, but it would not make them useful:
+
+- graphify's SQL extractor resolves table names **within SQL only**. There is no extractor edge from
+  a SQL table to TypeScript, and the backend reaches the database through Prisma models
+  (`prisma.user.…`), never through SQL identifiers. Graphing migrations therefore cannot answer
+  "what reads this table?" — it would only stop the graph from _looking_ blind there.
+- Its `_ref_stub` mints sourceless bare-name nodes that `_rewire_unique_stub_nodes` collapses onto
+  "the unique real definition" by name. Migration tables are quoted PascalCase (`"User"`,
+  `"VaultItem"`) — the same names as Prisma model types in TS. That is a plausible route to **false**
+  edges, which is worse than an honest absence.
+- Migrations are append-only history, not current state. The authoritative schema is `schema.prisma`,
+  which graphify has no extractor for at all.
+
+### Parse errors: none left in authored code
+
+A full scan of 535 files finds **2** that the grammar cannot parse, both generated and gitignored
+(`apps/backend/src/prisma/prisma-client/*.d.ts`). They contribute **0 nodes** to the graph either
+way, so nothing is lost.
+
+Previously there were 6. The 4 authored ones were all Playwright specs that hit a genuine
+`tree-sitter-typescript` bug — `Parameters<import('@playwright/test').Page['goto']>[1]`, an
+import-type in type-argument position — in a `gotoStable` helper duplicated verbatim across 7 specs.
+Extracting it to `apps/myorganizer-e2e/src/e2e/helpers/navigation.ts` removed the duplication and
+cleared the parse errors as a side effect.
+
+Two caveats worth keeping:
+
+- **The grammar bug is real and unfixable from here.** `tree-sitter-typescript` 0.23.2 is the newest
+  release on PyPI, so there is nothing to upgrade to and no upstream bump to request. Confirmed
+  failing patterns: import-types in type-argument position; a bare `&` in JSX text; an inline
+  import-type in a `.tsx` parameter. Plain `page: import('x').Page` in a `.ts` file and
+  `typeof import('react')` both parse fine — which is why ~27 remaining inline-import annotations in
+  the E2E specs are harmless and were deliberately left alone.
+- If a future file reintroduces one of the failing patterns, graphify reports it as
+  "partially extracted" — an unknown subset of that file's symbols goes missing while the file still
+  _looks_ covered. Re-run the scan before trusting the graph in a newly-touched area.
 
 ## On probation — usage is measured
 
