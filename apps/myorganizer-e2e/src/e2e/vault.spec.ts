@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { gotoStable } from './helpers';
 
 async function unlockWithPassphrase(
   page: import('@playwright/test').Page,
@@ -64,32 +65,6 @@ async function login(
   await page.waitForLoadState('networkidle');
   if (options.webkitDelayMs > 0) {
     await page.waitForTimeout(options.webkitDelayMs);
-  }
-}
-
-async function gotoStable(
-  page: import('@playwright/test').Page,
-  url: string,
-  options?: Parameters<import('@playwright/test').Page['goto']>[1],
-) {
-  const maxAttempts = 3;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      await page.goto(url, options);
-      return;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      if (
-        message.includes('Navigation to') &&
-        message.includes('is interrupted by another navigation') &&
-        attempt < maxAttempts
-      ) {
-        await page.waitForLoadState('networkidle');
-        await page.waitForTimeout(250);
-        continue;
-      }
-      throw e;
-    }
   }
 }
 

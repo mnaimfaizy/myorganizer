@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { gotoStable } from './helpers';
 
 /**
  * Platform Admin console — access control + user directory smoke (issue #204).
@@ -38,32 +39,6 @@ function corsHeaders(origin: string) {
     'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
     'access-control-allow-headers': 'content-type,authorization',
   } as const;
-}
-
-async function gotoStable(
-  page: Page,
-  url: string,
-  options?: Parameters<Page['goto']>[1],
-) {
-  const maxAttempts = 3;
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      await page.goto(url, options);
-      return;
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      if (
-        message.includes('Navigation to') &&
-        message.includes('is interrupted by another navigation') &&
-        attempt < maxAttempts
-      ) {
-        await page.waitForLoadState('networkidle');
-        await page.waitForTimeout(250);
-        continue;
-      }
-      throw e;
-    }
-  }
 }
 
 async function seedSession(page: Page, user: PersonaUser) {
