@@ -4,6 +4,7 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 
 - Commit requests should use `.claude/commands/commit.md`.
 - PR requests should use `.claude/commands/create-pr.md`.
+- Before creating any branch, follow the **Branch naming** section in `AGENTS.md` — `<type>/<issue-number>-<slug>`, with the type derived from the issue's labels. `release/`, `slice/`, `claude/`, and `copilot/` are reserved prefixes documented there.
 - Jest unit or integration test creation/updates should use `.claude/commands/unit-test.md`.
 - For implementing agreed work from a spec, PRD, or tickets in the current session, use `.claude/commands/implement.md` (`.github/skills/implement/SKILL.md`).
 - For reviewing branch or WIP changes against repo standards and the originating spec, use `.claude/commands/code-review.md` (`.github/skills/code-review/SKILL.md`).
