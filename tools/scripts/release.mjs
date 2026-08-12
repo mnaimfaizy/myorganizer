@@ -6,7 +6,7 @@ function assertNodeVersion() {
   const major = Number(String(process.versions.node).split('.')[0]);
   if (!Number.isFinite(major) || major < 22) {
     console.error(
-      `Node.js v22+ is required to run this script. Current: ${process.versions.node}`
+      `Node.js v22+ is required to run this script. Current: ${process.versions.node}`,
     );
     process.exit(1);
   }
@@ -124,7 +124,7 @@ function normalizeVersion(input) {
   const match = /^v?(\d+)\.(\d+)\.(\d+)$/.exec(v);
   if (!match) {
     die(
-      `Invalid version: "${input}". Expected semver like v1.2.3 or 1.2.3 (no prerelease).`
+      `Invalid version: "${input}". Expected semver like v1.2.3 or 1.2.3 (no prerelease).`,
     );
   }
 
@@ -171,7 +171,7 @@ function assertCleanTree() {
   const porcelain = run('git status --porcelain');
   if (porcelain.length > 0) {
     die(
-      'Working tree is not clean. Commit/stash your changes before releasing.'
+      'Working tree is not clean. Commit/stash your changes before releasing.',
     );
   }
 }
@@ -191,7 +191,7 @@ function assertUpToDateWithOrigin(branch) {
 
   if (local !== remote) {
     die(
-      `Local ${branch} is not up to date with origin/${branch}. Run: git pull --ff-only`
+      `Local ${branch} is not up to date with origin/${branch}. Run: git pull --ff-only`,
     );
   }
 }
@@ -205,7 +205,7 @@ function assertNotBehindOrigin(branch) {
     run(`git merge-base --is-ancestor origin/${branch} ${branch}`);
   } catch {
     die(
-      `Local ${branch} is behind origin/${branch}. Run: git pull --ff-only before tagging.`
+      `Local ${branch} is behind origin/${branch}. Run: git pull --ff-only before tagging.`,
     );
   }
 }
@@ -236,23 +236,6 @@ function parseSemverTag(tag) {
     minor: Number(match[2]),
     patch: Number(match[3]),
   };
-}
-
-function compareSemver(a, b) {
-  if (a.major !== b.major) return a.major - b.major;
-  if (a.minor !== b.minor) return a.minor - b.minor;
-  return a.patch - b.patch;
-}
-
-function listSemverTags() {
-  // Use double quotes for cross-platform compatibility (Windows cmd.exe does not treat single quotes as quotes).
-  const raw = run('git tag -l "v[0-9]*.[0-9]*.[0-9]*"');
-  if (!raw) return [];
-  return raw
-    .split(/\r?\n/)
-    .map((t) => t.trim())
-    .filter(Boolean)
-    .filter((t) => parseSemverTag(t) !== null);
 }
 
 function getLatestReachableSemverTag({ excludeTag } = {}) {
@@ -291,20 +274,6 @@ function normalizeNotesFilePath(notesFile) {
   }
 
   return notesFile;
-}
-
-function getPreviousSemverTag(currentTag) {
-  const current = parseSemverTag(currentTag);
-  if (!current) return null;
-
-  const tags = listSemverTags();
-  const prev = tags
-    .map((t) => ({ tag: t, semver: parseSemverTag(t) }))
-    .filter((x) => x.semver)
-    .filter((x) => compareSemver(x.semver, current) < 0)
-    .sort((a, b) => compareSemver(a.semver, b.semver));
-
-  return prev.length ? prev[prev.length - 1].tag : null;
 }
 
 function getGitHubRepoSlugFromRemote() {
@@ -369,7 +338,7 @@ function generateReleaseNotesMarkdown({ versionTag, previousTag }) {
   const logRange = previousTag ? `${previousTag}..HEAD` : 'HEAD';
 
   const raw = run(
-    `git log --no-merges --pretty=format:%H%x1f%s%x1f%b%x1e ${logRange}`
+    `git log --no-merges --pretty=format:%H%x1f%s%x1f%b%x1e ${logRange}`,
   );
 
   const entries = raw
@@ -483,7 +452,7 @@ function updateChangelogFile({ versionTag, previousTag, dryRun }) {
   const escaped = String(versionTag).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const sectionRe = new RegExp(
     `(^## ${escaped}\\b[\\s\\S]*?)(?=^## \\S|\\Z)`,
-    'm'
+    'm',
   );
 
   let nextContent;
@@ -699,7 +668,7 @@ if (command === 'cut') {
 
   console.log(`\nRelease branch ready: ${releaseBranch}`);
   console.log(
-    'Next: run GitHub Actions → Deploy Production (manual) for this branch.'
+    'Next: run GitHub Actions → Deploy Production (manual) for this branch.',
   );
   process.exit(0);
 }
