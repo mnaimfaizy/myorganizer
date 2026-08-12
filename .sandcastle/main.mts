@@ -33,8 +33,8 @@ const agentModelPolicy = JSON.parse(
 const sandcastleModels = agentModelPolicy.orchestrators.sandcastle;
 
 // ─── Integration model (local-only) ───────────────────────────────────────────
-// GitHub coupling is deliberately minimal: we READ the PRD + slice issues and
-// WRITE status labels + a completion comment back to each slice. That is all.
+// GitHub coupling is deliberately minimal: we READ the issue(s) and WRITE status
+// labels + a completion comment back. That is all.
 //
 // Everything else is LOCAL:
 //   • The feature branch `feat/<slug>` is created from origin/main and is NEVER
@@ -46,6 +46,13 @@ const sandcastleModels = agentModelPolicy.orchestrators.sandcastle;
 //
 // After the run you QA the local feature branch, then push it and open ONE PR to
 // `main` yourself — CI runs there. See docs/adr/0010 and docs/sandcastle/RUNBOOK.md.
+//
+// TWO MODES (see the run plan below):
+//   • prd   — the model above: `--prd <n>`, integrating into `feat/<slug>`.
+//   • issue — `--issue <n>` with NO `--prd`. One ad-hoc issue, cut from origin/main
+//     (or `--base`). There is no integration branch, so the work branch IS the
+//     deliverable: gate green ends the run, the issue is left OPEN, and nothing is
+//     fast-forwarded. Same sandbox, same in-container install, same gate.
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -98,8 +105,6 @@ function ensureSandboxImage(): void {
     );
   }
 }
-
-ensureSandboxImage();
 
 /**
  * Maps the files a slice changed (between base and head) to the Nx projects that
@@ -174,7 +179,7 @@ function gitRefExists(ref: string): boolean {
   );
 }
 
-// ─── Parse --prd <N> ─────────────────────────────────────────────────────────
+// ─── Parse arguments ─────────────────────────────────────────────────────────
 
 function getArgValue(name: string): string | undefined {
   const prefix = `--${name}=`;
@@ -191,11 +196,19 @@ function getArgValue(name: string): string | undefined {
 function printHelp(): void {
   console.log(`
 Usage:
-  yarn dispatch-agents --prd <issue-number> [--issue <slice-number>] [--agent claude|cursor|copilot] [--model <model>]
+  PRD mode        yarn dispatch-agents --prd <issue-number> [--issue <slice-number>]
+  Standalone mode yarn dispatch-agents --issue <issue-number> [--base <ref>]
+
+  Both accept [--agent claude|cursor|copilot] [--model <model>]
 
 Flags:
-  --prd <issue-number>   PRD issue number to dispatch
-  --issue <slice-number> Dispatch only this slice issue
+  --prd <issue-number>   PRD issue number to dispatch. Slices integrate into the
+                         local feat/<slug> branch, one by one.
+  --issue <number>       With --prd: dispatch only this slice of that PRD.
+                         Without --prd: standalone mode — dispatch this one issue
+                         off --base, leave the result on its own local branch.
+  --base <ref>           Standalone mode only: base ref for the work branch
+                         (default: origin/main).
   --agent <name>         Agent provider to use (default: SANDCASTLE_AGENT or claude)
   --model <model>        Override the model for this run (default: env/provider routing)
   --help                 Show this help text
@@ -207,6 +220,13 @@ Environment:
   SANDCASTLE_CLAUDE_MODEL
   SANDCASTLE_CURSOR_MODEL
   SANDCASTLE_COPILOT_MODEL
+
+Claude auth (see docs/sandcastle/RUNBOOK.md):
+  CLAUDE_CODE_OAUTH_TOKEN  Pro/Max subscription token from \`claude setup-token\`.
+                           Takes precedence; ANTHROPIC_API_KEY is then NOT forwarded.
+  ANTHROPIC_API_KEY        Metered API billing. Used only when no OAuth token is set.
+  SANDCASTLE_CLAUDE_AUTH   Force one mode: \`subscription\` or \`api\`. Fails if the
+                           matching credential is missing.
 `);
 }
 
@@ -215,24 +235,101 @@ if (process.argv.includes('--help') || process.argv.includes('-h')) {
   process.exit(0);
 }
 
+const USAGE =
+  'Usage: yarn dispatch-agents --prd <issue-number> [--issue <slice-number>]\n' +
+  '   or: yarn dispatch-agents --issue <issue-number> [--base <ref>]   (standalone, no PRD)';
+
 const prdValue = getArgValue('prd');
-if (!prdValue) {
-  fail(
-    'Usage: yarn dispatch-agents --prd <issue-number> [--issue <slice-number>] [--agent claude|cursor|copilot] [--model <model>]',
-  );
-}
-
-const prdNumber = parseInt(prdValue, 10);
-if (isNaN(prdNumber)) fail('--prd must be a number.');
-
 const issueValue = getArgValue('issue');
+
+if (!prdValue && !issueValue) fail(USAGE);
+
+const prdNumber = prdValue ? parseInt(prdValue, 10) : undefined;
+if (prdValue && isNaN(prdNumber as number)) fail('--prd must be a number.');
+
 const issueNumber = issueValue ? parseInt(issueValue, 10) : undefined;
 if (issueValue && isNaN(issueNumber as number)) {
   fail('--issue must be a number.');
 }
 
+// Standalone mode: one issue, no PRD, no integration branch. The work branch IS
+// the deliverable — nothing is fast-forwarded and nothing is closed, because the
+// work only reaches `main` once you push the branch and open a PR yourself.
+const mode: 'prd' | 'issue' = prdNumber === undefined ? 'issue' : 'prd';
+
+const baseFlag = getArgValue('base');
+if (baseFlag && mode === 'prd') {
+  fail(
+    '--base applies to standalone mode only. In PRD mode every slice is cut from the local feature branch.',
+  );
+}
+
 const agentFlag = getArgValue('agent');
 const modelFlag = getArgValue('model');
+
+// ─── Claude auth mode ─────────────────────────────────────────────────────────
+// Two ways to authenticate the Claude Code agent inside the sandbox:
+//
+//   • subscription — CLAUDE_CODE_OAUTH_TOKEN, produced by `claude setup-token` on
+//     the host (requires an active Pro/Max plan). Bills against that plan, which is
+//     the SAME quota as your interactive Claude Code sessions: a long AFK batch of
+//     complexity:high (opus) slices can throttle you at the keyboard.
+//   • api — ANTHROPIC_API_KEY. Metered per token, isolated from the plan quota.
+//
+// We forward exactly ONE of them into the container. Which credential Claude Code
+// prefers when both are present is version-dependent, so a stale ANTHROPIC_API_KEY
+// sitting next to a valid token can silently bill the API while you believe you are
+// on the plan. Resolve the mode up front, fail loudly if the credential is missing
+// (before we build worktrees and containers), and print the mode in the run header.
+
+type ClaudeAuthMode = 'subscription' | 'api';
+
+function resolveClaudeAuth(kind: AgentKind): ClaudeAuthMode | null {
+  if (kind !== 'claude') return null;
+
+  const hasToken = Boolean(process.env.CLAUDE_CODE_OAUTH_TOKEN);
+  const hasApiKey = Boolean(process.env.ANTHROPIC_API_KEY);
+  const forced = (process.env.SANDCASTLE_CLAUDE_AUTH ?? '')
+    .trim()
+    .toLowerCase();
+
+  if (forced && forced !== 'subscription' && forced !== 'api') {
+    fail(
+      `SANDCASTLE_CLAUDE_AUTH must be "subscription" or "api" (got "${forced}").`,
+    );
+  }
+
+  if (forced === 'subscription' && !hasToken) {
+    fail(
+      'SANDCASTLE_CLAUDE_AUTH=subscription but CLAUDE_CODE_OAUTH_TOKEN is not set.\n' +
+        'Run `claude setup-token` on the host and store the result in your 1Password Environment.',
+    );
+  }
+  if (forced === 'api' && !hasApiKey) {
+    fail('SANDCASTLE_CLAUDE_AUTH=api but ANTHROPIC_API_KEY is not set.');
+  }
+
+  if (forced === 'subscription' || forced === 'api') return forced;
+
+  // Unforced: the subscription token wins when both are available.
+  if (hasToken) return 'subscription';
+  if (hasApiKey) return 'api';
+
+  fail(
+    'No Claude credential found. Set one of:\n' +
+      '  CLAUDE_CODE_OAUTH_TOKEN  — `claude setup-token` on the host (Pro/Max plan)\n' +
+      '  ANTHROPIC_API_KEY        — metered API billing\n' +
+      'See docs/sandcastle/RUNBOOK.md. Both are normally injected via 1Password.',
+  );
+}
+
+const agentKind = resolveAgentKind();
+const claudeAuth = resolveClaudeAuth(agentKind);
+
+// Only now — after --help, argument validation, and the credential preflight have
+// all had their say. Building this image can take minutes; there is no reason to
+// pay for it before we know the run can actually authenticate.
+ensureSandboxImage();
 
 // ─── Fetch PRD issue ──────────────────────────────────────────────────────────
 
@@ -374,72 +471,168 @@ function unblockDependents(completed: Issue): void {
   }
 }
 
-const prd = ghJson<Pick<Issue, 'title' | 'body'>>([
-  'issue',
-  'view',
-  String(prdNumber),
-  '--repo',
-  REPO,
-  '--json',
-  'title,body',
-]);
-
-const featureName = prd.title.replace(/^\[PRD\]\s*/i, '').trim();
-const featureSlug = featureName
-  .toLowerCase()
-  .replace(/[^a-z0-9]+/g, '-')
-  .replace(/^-|-$/g, '');
-const featureBranch = `feat/${featureSlug}`;
-
-console.log(`\nPRD #${prdNumber}: ${featureName}`);
-console.log(`Feature branch:  ${featureBranch} (local only — never pushed)\n`);
-
-// ─── Ensure the feature branch exists LOCALLY (never pushed) ───────────────────
-// The PRD branch is created once, locally, from the freshest main. It is the
-// integration target for every slice in this PRD. We do NOT create it on origin
-// and we do NOT push it — you push it by hand after QA to open the PRD PR.
+// ─── Build the run plan ───────────────────────────────────────────────────────
+// The two modes differ in exactly three things — where work branches are cut from,
+// whether finished work is fast-forwarded anywhere, and how the issue set is chosen.
+// Everything downstream (sandbox, in-container install, gate, prompt, usage log)
+// is shared and reads from this plan.
+//
+//   prd   — integrationBranch = local `feat/<slug>`, also the base each slice is cut
+//           from, so slice N sees slices 1..N-1. Issues are the PRD's ready AFK
+//           slices, ordered by `## Blocked by`.
+//   issue — integrationBranch = null. One explicitly named issue, cut from
+//           origin/main (or --base). Its branch IS the deliverable: nothing is
+//           fast-forwarded, nothing is closed. You QA it, push it, open the PR.
 
 gitCmd(['fetch', 'origin', 'main']);
 
-if (gitRefExists(featureBranch)) {
-  console.log(`Reusing existing local branch ${featureBranch}.`);
-} else {
-  const base = gitRefExists('origin/main') ? 'origin/main' : 'main';
-  gitCmd(['branch', featureBranch, base]);
-  console.log(
-    `Created local branch ${featureBranch} from ${base} (not pushed).`,
+type RunPlan = {
+  /** Ref every work branch is cut from, and the gate's diff base. */
+  baseRef: string;
+  /** Local branch finished work fast-forwards into; null in standalone mode. */
+  integrationBranch: string | null;
+  issues: Issue[];
+  /** Full repo issue list, for dependency unblocking. Empty in standalone mode. */
+  allIssues: Issue[];
+};
+
+function planPrdRun(prd: number): RunPlan {
+  const prdIssue = ghJson<Pick<Issue, 'title' | 'body'>>([
+    'issue',
+    'view',
+    String(prd),
+    '--repo',
+    REPO,
+    '--json',
+    'title,body',
+  ]);
+
+  const name = prdIssue.title.replace(/^\[PRD\]\s*/i, '').trim();
+  const slug = name
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  const branch = `feat/${slug}`;
+
+  console.log(`\nPRD #${prd}: ${name}`);
+  console.log(`Feature branch:  ${branch} (local only — never pushed)`);
+
+  // The PRD branch is created once, locally, from the freshest main. It is the
+  // integration target for every slice in this PRD. We do NOT create it on origin
+  // and we do NOT push it — you push it by hand after QA to open the PRD PR.
+  if (gitRefExists(branch)) {
+    console.log(`Reusing existing local branch ${branch}.`);
+  } else {
+    const base = gitRefExists('origin/main') ? 'origin/main' : 'main';
+    gitCmd(['branch', branch, base]);
+    console.log(`Created local branch ${branch} from ${base} (not pushed).`);
+  }
+
+  const everyIssue = ghJson<Issue[]>([
+    'issue',
+    'list',
+    '--repo',
+    REPO,
+    '--state',
+    'all',
+    '--json',
+    'number,title,state,labels,body',
+    '--limit',
+    '100',
+  ]);
+
+  const isAfkSlice = (issue: Issue): boolean =>
+    issue.labels.some((label) => label.name === 'ready-for-agent') &&
+    issue.labels.some((label) => label.name === 'type:afk');
+
+  const selected = everyIssue.filter(
+    (i) =>
+      i.body?.includes(`PRD: #${prd}`) &&
+      isAfkSlice(i) &&
+      (issueNumber === undefined || i.number === issueNumber) &&
+      !i.labels.some((label) => label.name === 'status:blocked') &&
+      i.state === 'OPEN' &&
+      // Skip slices already merged into the feature branch so re-runs are
+      // idempotent — only undone work in the wave is re-dispatched.
+      !isCompleted(i),
   );
+
+  if (selected.length === 0) {
+    fail(
+      issueNumber === undefined
+        ? `No open AFK slice issues found for PRD #${prd}.\n` +
+            `Run /to-issues ${prd} to create them first.`
+        : `Slice issue #${issueNumber} was not found as an open AFK slice for PRD #${prd}.\n` +
+            `Check its labels and PRD reference, or run it standalone:\n` +
+            `  yarn dispatch-agents --issue ${issueNumber}`,
+    );
+  }
+
+  return {
+    baseRef: branch,
+    integrationBranch: branch,
+    issues: selected,
+    allIssues: everyIssue,
+  };
 }
 
-// ─── Fetch AFK slice issues for this PRD ─────────────────────────────────────
+function planStandaloneRun(number: number): RunPlan {
+  const issue = ghJson<Issue>([
+    'issue',
+    'view',
+    String(number),
+    '--repo',
+    REPO,
+    '--json',
+    'number,title,state,labels,body',
+  ]);
 
-const allIssues = ghJson<Issue[]>([
-  'issue',
-  'list',
-  '--repo',
-  REPO,
-  '--state',
-  'all',
-  '--json',
-  'number,title,state,labels,body',
-  '--limit',
-  '100',
-]);
+  if (issue.state === 'CLOSED') {
+    fail(`Issue #${number} is closed. Reopen it before dispatching.`);
+  }
 
-const isAfkSlice = (issue: Issue): boolean =>
-  issue.labels.some((label) => label.name === 'ready-for-agent') &&
-  issue.labels.some((label) => label.name === 'type:afk');
+  const base =
+    baseFlag ?? (gitRefExists('origin/main') ? 'origin/main' : 'main');
+  if (!gitRefExists(base)) fail(`Base ref "${base}" does not resolve locally.`);
 
-const slices = allIssues.filter(
-  (i) =>
-    i.body?.includes(`PRD: #${prdNumber}`) &&
-    isAfkSlice(i) &&
-    (issueNumber === undefined || i.number === issueNumber) &&
-    !i.labels.some((label) => label.name === 'status:blocked') &&
-    i.state === 'OPEN' &&
-    // Skip slices already merged into the feature branch so re-runs are
-    // idempotent — only undone work in the wave is re-dispatched.
-    !isCompleted(i),
+  console.log(`\nIssue #${number}: ${issue.title}`);
+  console.log(`Base:            ${base}`);
+  console.log(`Standalone — no PRD, no integration branch. Nothing is pushed.`);
+
+  // Naming the issue explicitly IS the authorization: standalone runs do not
+  // require ready-for-agent / type:afk. Labels that normally mean "a human wanted
+  // this one" are surfaced as warnings so a mis-typed number is still visible.
+  const labels = issue.labels.map((label) => label.name);
+  for (const flagged of ['type:hitl', 'status:blocked', 'status:in-progress']) {
+    if (labels.includes(flagged)) {
+      console.warn(`  ⚠ #${number} carries "${flagged}" — dispatching anyway.`);
+    }
+  }
+
+  return {
+    baseRef: base,
+    integrationBranch: null,
+    issues: [issue],
+    allIssues: [],
+  };
+}
+
+const plan =
+  mode === 'prd'
+    ? planPrdRun(prdNumber as number)
+    : planStandaloneRun(issueNumber as number);
+
+const { baseRef, integrationBranch, allIssues } = plan;
+const slices = plan.issues;
+
+console.log(
+  `Agent:           ${agentKind}${
+    claudeAuth
+      ? claudeAuth === 'subscription'
+        ? ' (auth: subscription — shares your Pro/Max quota)'
+        : ' (auth: API key — metered)'
+      : ''
+  }\n`,
 );
 
 const completedIssueNumbers = new Set(
@@ -452,23 +645,19 @@ const completedIssueNumbers = new Set(
 );
 
 function nextReadySlice(pending: Issue[]): Issue | undefined {
-  return pending
-    .filter((issue) =>
-      blockedBy(issue).every((dependency) =>
-        completedIssueNumbers.has(dependency),
-      ),
-    )
-    .sort((left, right) => left.number - right.number)[0];
-}
+  // `## Blocked by` ordering is PRD vocabulary. Standalone runs a single issue the
+  // human named explicitly — honouring a stale blocker section there would silently
+  // refuse to run it, since completedIssueNumbers is empty by construction.
+  const ready =
+    mode === 'prd'
+      ? pending.filter((issue) =>
+          blockedBy(issue).every((dependency) =>
+            completedIssueNumbers.has(dependency),
+          ),
+        )
+      : pending;
 
-if (slices.length === 0) {
-  fail(
-    issueNumber === undefined
-      ? `No open AFK slice issues found for PRD #${prdNumber}.\n` +
-          `Run /to-issues ${prdNumber} to create them first.`
-      : `Slice issue #${issueNumber} was not found as an open AFK slice for PRD #${prdNumber}.\n` +
-          `Check its labels and PRD reference before retrying.`,
-  );
+  return ready.sort((left, right) => left.number - right.number)[0];
 }
 
 // ─── Dependency install model ─────────────────────────────────────────────────
@@ -566,9 +755,17 @@ function buildAgent(agentKind: AgentKind, model: string) {
 }
 
 function providerEnvironment(): Record<string, string> {
+  // Exactly one Claude credential reaches the container — see resolveClaudeAuth.
+  // On cursor/copilot runs claudeAuth is null and neither is forwarded.
+  const claudeVariables =
+    claudeAuth === 'subscription'
+      ? ['CLAUDE_CODE_OAUTH_TOKEN']
+      : claudeAuth === 'api'
+        ? ['ANTHROPIC_API_KEY']
+        : [];
+
   const variableNames = [
-    'CLAUDE_CODE_OAUTH_TOKEN',
-    'ANTHROPIC_API_KEY',
+    ...claudeVariables,
     'CURSOR_API_KEY',
     'COPILOT_GITHUB_TOKEN',
     'GH_TOKEN',
@@ -590,7 +787,11 @@ function sliceBranchFor(issue: Issue): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 40);
-  return `slice/${issue.number}-${slug}`;
+  // Separate namespaces so a standalone re-run of an issue that later becomes a PRD
+  // slice (or vice versa) can never collide on a branch, worktree, or gate path.
+  return mode === 'prd'
+    ? `slice/${issue.number}-${slug}`
+    : `issue/${issue.number}-${slug}`;
 }
 
 // ─── Finalize the agent's local commit ─────────────────────────────────────────
@@ -636,15 +837,15 @@ function finalizeSliceBranch(issue: Issue, sliceBranch: string): boolean {
     }
   }
 
-  // Nothing ahead of the feature branch means the agent produced no work.
+  // Nothing ahead of the base means the agent produced no work.
   const ahead = spawnSync(
     'git',
-    ['rev-list', '--count', `${featureBranch}..${sliceBranch}`],
+    ['rev-list', '--count', `${baseRef}..${sliceBranch}`],
     { encoding: 'utf8', windowsHide: true },
   );
   if ((ahead.stdout || '').trim() === '0') {
     console.error(
-      `  [#${issue.number}] ${sliceBranch} has no commits beyond ${featureBranch} — nothing to integrate.`,
+      `  [#${issue.number}] ${sliceBranch} has no commits beyond ${baseRef} — nothing to integrate.`,
     );
     return false;
   }
@@ -671,7 +872,7 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
   // Gate only the projects whose OWN files this slice changed — not their
   // transitive dependents. For a per-file lint gate, an upstream change cannot
   // introduce lint errors downstream.
-  const projects = changedProjects(featureBranch, sliceBranch);
+  const projects = changedProjects(baseRef, sliceBranch);
   if (projects.length === 0) {
     console.log(`  [#${issue.number}] gate: no project files changed — pass.`);
     return true;
@@ -769,7 +970,14 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
 // always a pure descendant of the feature branch — a fast-forward, no merge commit,
 // no conflicts. We advance the (un-checked-out) feature ref with `git branch -f`.
 // Nothing is pushed. Fails closed if the slice is somehow not a descendant.
-function integrateSlice(issue: Issue, sliceBranch: string): boolean {
+//
+// Standalone runs never reach this: with no PRD there is no integration target, so
+// the work branch is left exactly as the agent committed it.
+function integrateSlice(
+  issue: Issue,
+  sliceBranch: string,
+  featureBranch: string,
+): boolean {
   const isDescendant =
     spawnSync(
       'git',
@@ -910,7 +1118,7 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     `- Dependencies are ALREADY installed in this sandbox before you start (a setup hook runs \`corepack yarn install --immutable\`). Do NOT run \`yarn install\` yourself.`,
     `- Read CLAUDE.md, CONTEXT.md, and TECH_STACK.md before making any changes.`,
     `- Implement this vertical slice end-to-end (schema → API → UI → tests where applicable).`,
-    `- Your working branch is \`${sliceBranch}\` (based on \`${featureBranch}\`). Do not switch branches.`,
+    `- Your working branch is \`${sliceBranch}\` (based on \`${baseRef}\`). Do not switch branches.`,
     ...buildGateInstructions(gate),
     `- Commit your changes using Conventional Commit messages (\`corepack yarn ai:commit\`).`,
     `- Do NOT push and do NOT open a PR — this sandbox has no credentials. Just commit locally on your branch; leave nothing uncommitted. The orchestrator integrates your branch into the feature branch on the host.`,
@@ -1034,7 +1242,6 @@ function logRunUsage(
 
 const results: SliceResult[] = [];
 const crashed: Array<{ issue: Issue; error: string }> = [];
-const agentKind = resolveAgentKind();
 const pendingSlices = [...slices];
 
 while (pendingSlices.length > 0) {
@@ -1098,7 +1305,7 @@ while (pendingSlices.length > 0) {
       encoding: 'utf8',
       windowsHide: true,
     });
-    gitCmd(['branch', sliceBranch, featureBranch]);
+    gitCmd(['branch', sliceBranch, baseRef]);
     const wt = spawnSync(
       'git',
       ['worktree', 'add', worktreePath, sliceBranch],
@@ -1134,7 +1341,7 @@ while (pendingSlices.length > 0) {
       branchStrategy: {
         type: 'branch',
         branch: sliceBranch,
-        baseBranch: featureBranch,
+        baseBranch: baseRef,
       },
       // Install this slice's deps INSIDE the container before the agent starts, so
       // native binaries match the container's platform (correct on WSL2, Linux, and
@@ -1160,11 +1367,17 @@ while (pendingSlices.length > 0) {
     logRunUsage(issue.number, agentKind, model, result);
 
     // Finalize → gate → integrate, all LOCAL. No push, no PR.
+    // Standalone runs stop after the gate: with no integration branch the work
+    // branch is already the deliverable, so "succeeded" means gate-passed.
     const hasWork = finalizeSliceBranch(issue, sliceBranch);
     const gatePassed = hasWork ? runSliceGate(issue, sliceBranch) : false;
-    const mergeOk = gatePassed ? integrateSlice(issue, sliceBranch) : false;
+    const mergeOk = !gatePassed
+      ? false
+      : integrationBranch === null
+        ? true
+        : integrateSlice(issue, sliceBranch, integrationBranch);
 
-    if (mergeOk) {
+    if (mergeOk && integrationBranch !== null) {
       ghSilent([
         'issue',
         'edit',
@@ -1190,10 +1403,33 @@ while (pendingSlices.length > 0) {
         'completed',
         '--comment',
         `Agent completed and the build gate passed. ${result.commits.length} commit(s) on \`${sliceBranch}\`.\n` +
-          `Integrated into the local \`${featureBranch}\` (fast-forward, not pushed) and closed as completed. ` +
+          `Integrated into the local \`${integrationBranch}\` (fast-forward, not pushed) and closed as completed. ` +
           `It will reach \`main\` via the manual PRD PR.`,
       ]);
       unblockDependents(issue);
+    } else if (mergeOk) {
+      // Standalone success. The issue stays OPEN and is NOT marked status:done —
+      // nothing has reached `main` yet, and marking it done here would lie about
+      // work that only exists on an unpushed local branch.
+      ghSilent([
+        'issue',
+        'edit',
+        String(issue.number),
+        '--repo',
+        REPO,
+        '--remove-label',
+        'status:in-progress',
+      ]);
+      ghSilent([
+        'issue',
+        'comment',
+        String(issue.number),
+        '--repo',
+        REPO,
+        '--body',
+        `Agent completed and the build gate passed. ${result.commits.length} commit(s) on the local branch \`${sliceBranch}\` (based on \`${baseRef}\`).\n` +
+          `Nothing was pushed. Left open until the branch is reviewed, pushed, and merged via a PR.`,
+      ]);
     } else {
       ghSilent([
         'issue',
@@ -1216,9 +1452,11 @@ while (pendingSlices.length > 0) {
         '--repo',
         REPO,
         '--body',
-        `Agent finished but ${reason} — slice was NOT integrated into \`${featureBranch}\`. ` +
-          `The local branch \`${sliceBranch}\` is left in place for inspection. ` +
-          `Later slices in this PRD will NOT include this one until it is fixed and re-run.`,
+        integrationBranch === null
+          ? `Agent finished but ${reason}. The local branch \`${sliceBranch}\` is left in place for inspection.`
+          : `Agent finished but ${reason} — slice was NOT integrated into \`${integrationBranch}\`. ` +
+            `The local branch \`${sliceBranch}\` is left in place for inspection. ` +
+            `Later slices in this PRD will NOT include this one until it is fixed and re-run.`,
       ]);
       results.push({
         issue,
@@ -1235,7 +1473,7 @@ while (pendingSlices.length > 0) {
       sliceBranch,
       commits: result.commits.length,
       merged: true,
-      reason: 'integrated',
+      reason: integrationBranch === null ? 'gate passed' : 'integrated',
     });
     completedIssueNumbers.add(issue.number);
   } catch (e) {
@@ -1257,19 +1495,22 @@ while (pendingSlices.length > 0) {
 
 const merged = results.filter((r) => r.merged);
 const blocked = results.filter((r) => !r.merged);
+const succeededVerb = integrationBranch === null ? 'ready' : 'integrated';
 
 console.log(`\n${'─'.repeat(55)}`);
 console.log(
-  `Batch done: ${merged.length} integrated, ${blocked.length} blocked (gate/no-work), ${crashed.length} crashed.\n`,
+  `Batch done: ${merged.length} ${succeededVerb}, ${blocked.length} blocked (gate/no-work), ${crashed.length} crashed.\n`,
 );
 
 for (const r of merged) {
   console.log(
-    `  ✓ #${r.issue.number} integrated — ${r.commits} commit(s) on ${featureBranch}`,
+    integrationBranch === null
+      ? `  ✓ #${r.issue.number} ready — ${r.commits} commit(s) on ${r.sliceBranch}`
+      : `  ✓ #${r.issue.number} integrated — ${r.commits} commit(s) on ${integrationBranch}`,
   );
 }
 for (const r of blocked) {
-  console.error(`  ⚠ #${r.issue.number} NOT integrated — ${r.reason}`);
+  console.error(`  ⚠ #${r.issue.number} NOT ${succeededVerb} — ${r.reason}`);
 }
 for (const r of crashed) {
   console.error(`  ✗ #${r.issue.number} crashed — ${r.error}`);
@@ -1277,23 +1518,30 @@ for (const r of crashed) {
 
 if (blocked.length > 0 || crashed.length > 0) {
   console.log(
-    `\nOne or more slices did not integrate. Fix them and re-run — done slices are skipped.`,
+    integrationBranch === null
+      ? `\nThe run did not finish cleanly. Inspect the branch above, then fix and re-run.`
+      : `\nOne or more slices did not integrate. Fix them and re-run — done slices are skipped.`,
   );
 }
 if (merged.length > 0) {
-  console.log(`\nNext step: QA the local \`${featureBranch}\` branch`);
+  const deliverable = integrationBranch ?? merged[0].sliceBranch;
+  console.log(`\nNext step: QA the local \`${deliverable}\` branch`);
   console.log(
-    `  git switch ${featureBranch}   # it now contains the merged slices`,
+    integrationBranch === null
+      ? `  git switch ${deliverable}   # the agent's work for this issue`
+      : `  git switch ${deliverable}   # it now contains the merged slices`,
   );
   console.log(`Then push it and open ONE PR to \`main\` manually so CI runs:`);
   console.log(
-    `  git push -u origin ${featureBranch} && gh pr create --base main`,
+    `  git push -u origin ${deliverable} && gh pr create --base main`,
   );
 }
 
 // ─── Desktop notification (best-effort; Windows / WSL2 only) ───────────────────
 
-const safeTitle = featureName.replace(/'/g, "''");
+const runLabel = (
+  mode === 'prd' ? `PRD #${prdNumber}` : `Issue #${issueNumber}`
+).replace(/'/g, "''");
 spawnSync(
   'powershell.exe',
   [
@@ -1301,8 +1549,8 @@ spawnSync(
     [
       'Add-Type -AssemblyName System.Windows.Forms;',
       `[System.Windows.Forms.MessageBox]::Show(`,
-      `  '${merged.length} integrated, ${blocked.length} blocked, ${crashed.length} crashed.` +
-        `\\nPRD #${prdNumber}: ${safeTitle}',`,
+      `  '${merged.length} ${succeededVerb}, ${blocked.length} blocked, ${crashed.length} crashed.` +
+        `\\n${runLabel}',`,
       `  'dispatch-agents complete', 'OK', 'Information'`,
       `)`,
     ].join(' '),

@@ -91,6 +91,43 @@ corepack yarn dispatch-agents --prd <issue-number> --agent cursor
 corepack yarn dispatch-agents --prd <issue-number> --agent copilot --model claude-sonnet-5
 ```
 
+### Two dispatch modes
+
+| Mode           | Invocation                                 | Base for the work branch         | Where finished work lands                   |
+| -------------- | ------------------------------------------ | -------------------------------- | ------------------------------------------- |
+| **PRD**        | `--prd <n>` (optionally `--issue <slice>`) | the local `feat/<slug>` head     | fast-forwarded into `feat/<slug>`           |
+| **Standalone** | `--issue <n>` with **no** `--prd`          | `origin/main`, or `--base <ref>` | stays on `issue/<n>-<slug>` — nothing moves |
+
+**One slice of a PRD:** add `--issue` to a PRD run. It still creates/reuses `feat/<slug>`,
+gates, and fast-forwards — just for that one slice.
+
+```bash
+corepack yarn dispatch-agents --prd 42 --issue 45
+```
+
+**A one-off issue with no PRD** — a bug fix, a chore, anything created straight from the
+`github-issue-creation-workflow` skill. Same Docker isolation, same in-container install, same
+gate; only the integration step differs:
+
+```bash
+corepack yarn dispatch-agents --issue 57              # off origin/main
+corepack yarn dispatch-agents --issue 57 --base feat/some-branch
+```
+
+Standalone specifics:
+
+- **No label gate.** Naming `--issue` explicitly _is_ the authorization — `ready-for-agent` and
+  `type:afk` are not required. `type:hitl`, `status:blocked`, and `status:in-progress` print a
+  warning and the run proceeds, so a mistyped issue number is still visible.
+- **No `## Blocked by` ordering** and no dependent unblocking — that vocabulary belongs to a PRD.
+- **The branch is the deliverable.** `issue/<n>-<slug>` is left exactly as the agent committed it.
+  Nothing is fast-forwarded anywhere and nothing is pushed, per `docs/adr/0010`.
+- **The issue stays open** and is **not** labelled `status:done`. The orchestrator only removes
+  `status:in-progress` and comments with the branch name and gate verdict — marking it done would
+  claim work that exists solely on an unpushed local branch. Close it when the PR merges.
+- Branch namespaces are separate (`issue/` vs `slice/`), so a standalone run and a later PRD run of
+  the same issue can never collide on a branch, worktree, or gate path.
+
 Provider switching is optional: the default agent can live in `.sandcastle/.env` as
 `SANDCASTLE_AGENT=claude|cursor|copilot`. Per-provider model defaults can also live there
 (`SANDCASTLE_CLAUDE_MODEL`, `SANDCASTLE_CURSOR_MODEL`, `SANDCASTLE_COPILOT_MODEL`), and
@@ -109,9 +146,46 @@ catalogs with `corepack yarn agents:models:audit`.
 
 With 1Password Environments, put the same variable names in the Environment instead. For
 example, use `SANDCASTLE_AGENT`, `SANDCASTLE_CLAUDE_MODEL`, and the provider credential
-(`ANTHROPIC_API_KEY`, `CURSOR_API_KEY`, or `COPILOT_GITHUB_TOKEN`) as Environment variables.
-1Password Environments are currently beta functionality, and 1Password notes that
-`op run --environment` may take longer to start on Apple silicon Macs.
+(`CLAUDE_CODE_OAUTH_TOKEN` or `ANTHROPIC_API_KEY`, `CURSOR_API_KEY`, or `COPILOT_GITHUB_TOKEN`) as
+Environment variables. 1Password Environments are currently beta functionality, and 1Password
+notes that `op run --environment` may take longer to start on Apple silicon Macs.
+
+## Claude auth: subscription vs API key
+
+The Claude Code agent in the sandbox authenticates one of two ways. The orchestrator forwards
+**exactly one** credential into the container and prints which in the run header.
+
+| Mode           | Variable                  | Billing                                                     |
+| -------------- | ------------------------- | ----------------------------------------------------------- |
+| `subscription` | `CLAUDE_CODE_OAUTH_TOKEN` | Your Pro/Max plan — **the same quota as your own sessions** |
+| `api`          | `ANTHROPIC_API_KEY`       | Metered per token, isolated from the plan quota             |
+
+To use your plan instead of the API, mint a long-lived token on the **host** (not in the
+container) and store it in your 1Password Environment as `CLAUDE_CODE_OAUTH_TOKEN`:
+
+```bash
+claude setup-token
+```
+
+Resolution rules:
+
+- The OAuth token wins when both are present, and `ANTHROPIC_API_KEY` is then **not forwarded at
+  all**. Which credential Claude Code prefers when it sees both is version-dependent, so leaving a
+  stale API key alongside a valid token could otherwise bill the API while you believe you are on
+  the plan.
+- `SANDCASTLE_CLAUDE_AUTH=subscription|api` forces one mode and fails immediately if the matching
+  credential is missing.
+- With `--agent claude` and neither variable set, dispatch fails **before** building the sandbox
+  image or any worktrees.
+
+**Quota warning.** Subscription auth shares the 5-hour window with your interactive Claude Code
+sessions, and `complexity:high` slices route to `claude-opus-5`
+(`tools/config/agent-model-policy.json`). A long AFK batch can throttle you at the keyboard — send
+big batches to `SANDCASTLE_CLAUDE_AUTH=api` and keep the plan for short runs.
+
+Host credential files (`~/.claude/.credentials.json`) are deliberately **not** bind-mounted: the
+container would write token refreshes back into your host credential store, and the file does not
+exist at all on macOS (Keychain). `claude setup-token` is the supported headless path.
 
 **Integration is local-only** (see `docs/adr/0010`). The feature branch `feat/<slug>` is created
 from `origin/main` **locally and is never pushed**. Slices run **one by one**: each branches off
@@ -125,6 +199,10 @@ GitHub is touched only to **read** the PRD/slice issues and **write** status lab
 comment back to each slice, then **close** each slice that integrates successfully (reason:
 completed). The PRD issue stays open until you merge the manual PRD PR.
 
+Standalone runs follow the same rule with the last step removed: agent → commit → gate → **stop**.
+There is no integration branch to fast-forward into, so the work branch is the deliverable and the
+issue is left open.
+
 When the run finishes, **you** finish the loop by hand:
 
 ```bash
@@ -132,6 +210,8 @@ git switch feat/<slug>                 # QA the integrated branch locally
 git push -u origin feat/<slug>         # publish it when you're satisfied
 gh pr create --base main               # open ONE PR; CI runs here; merge it on GitHub
 ```
+
+For a standalone run, substitute the `issue/<n>-<slug>` branch the summary printed.
 
 ### Tunables
 
@@ -156,3 +236,8 @@ Slices run **serially** (one by one), so there is no concurrency knob — each s
   longer used (the seed step and lockfile-hash invalidation were removed).
 - **Never put the repo on `/mnt/d`** (or any drvfs/9P mount) for dispatch — that's the ~29 min
   trap.
+- **`Could not fetch from origin (reusing worktree at … as-is, …)` is expected — ignore it.** It
+  comes from `@ai-hero/sandcastle`'s `fastForwardFromOrigin`, which tries `git fetch origin <branch>`
+  on the work branch. Sandcastle work branches are local-only by design (`docs/adr/0010`), so that
+  fetch can never succeed; the library logs this and correctly reuses the worktree as-is. It fires
+  on every run in both modes and does not indicate a failed dispatch.
