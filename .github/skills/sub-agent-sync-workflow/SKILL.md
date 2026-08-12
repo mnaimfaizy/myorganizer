@@ -18,6 +18,43 @@ Synchronization means:
 3. Added or removed canonical agents are propagated to all target harnesses.
 4. Harness-specific frontmatter is preserved when file already exists.
 5. Missing files are created with harness defaults.
+6. Harness-specific **body** content lives in canonical, wrapped in `<!-- harness:... -->` markers.
+
+## Harness-Specific Body Sections
+
+The body is regenerated from canonical on every apply, so an instruction hand-written into a target
+file does not survive the next sync. This is not hypothetical: the Graphify probation instrumentation
+was added to `.claude/agents/explore.md` on 2026-06-19 and silently deleted on 2026-07-02 that way.
+
+When an instruction genuinely applies to only some harnesses — MCP tool names are the usual case,
+since the same server is `mcp__graphify__*` in Claude, `mcp_graphify_*` in Gemini, and `graphify/*`
+in Copilot — put it in **canonical**, wrapped in a marker:
+
+```markdown
+<!-- harness:claude -->
+
+Rendered only into .claude/agents/.
+
+<!-- /harness -->
+
+<!-- harness:claude,cursor -->
+
+Rendered into both.
+
+<!-- /harness -->
+```
+
+Rules:
+
+- Valid harness names: `claude`, `copilot`, `cursor`, `gemini`. `copilot` means `.github/agents`.
+- Unmarked content goes to every harness. Use markers sparingly — a shared body is the default.
+- Markers must sit alone on their own line and must not nest. Violations, unknown harness names, and
+  unbalanced markers are hard errors, not warnings: a marker that silently fails to apply
+  reintroduces the bug the mechanism exists to prevent.
+- `.github/agents` is canonical, not a render target, so Copilot reads the file with the markers
+  still in it and sees every block. Keep block contents short and self-labeling
+  (`**Claude Code —** ...`) so that reads as a reference table, not as contradictory instructions.
+- Implementation and tests: `tools/scripts/lib/harness-sections.mjs`, run with `yarn agents:sync:test`.
 
 ## Commands
 
@@ -25,6 +62,8 @@ Synchronization means:
   - `yarn agents:sync:check`
 - Apply sync and prune extras:
   - `yarn agents:sync`
+- Test the harness-section renderer:
+  - `yarn agents:sync:test`
 - Keep extra non-canonical files (rare):
   - `node tools/scripts/sync-subagents.mjs --apply --no-prune`
 
@@ -67,6 +106,7 @@ Run this workflow after any of the following:
 Before closing the task:
 
 - `yarn agents:sync:check` returns exit code 0.
+- `yarn agents:sync:test` passes if you touched the harness-section renderer or its markers.
 - `CodeExplorer` in Cursor remains `model: composer-2.5`.
 - Every harness model matches `tools/config/agent-model-policy.json`.
 - No canonical agent exists only in `.github/agents`.

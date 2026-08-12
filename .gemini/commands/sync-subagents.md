@@ -36,6 +36,26 @@ node tools/scripts/sync-subagents.mjs --apply --no-prune
 - Create missing files in `.claude/agents`, `.cursor/agents`, and `.gemini/agents`.
 - Remove target files with no canonical counterpart when pruning is enabled.
 - Ensure Cursor `CodeExplorer` remains `model: composer-2.5`.
+- Never hand-edit an instruction into `.gemini/agents/**`; the next apply regenerates the body from
+  canonical and the edit is lost. Put it in canonical instead.
+
+## Harness-specific body sections
+
+Canonical bodies may scope a section to particular harnesses:
+
+```markdown
+<!-- harness:gemini -->
+
+Rendered only into .gemini/agents/.
+
+<!-- /harness -->
+```
+
+- Valid names: `claude`, `copilot`, `cursor`, `gemini`. Unmarked content goes to every harness.
+- Markers sit alone on their own line and must not nest; violations are hard errors.
+- Main use is MCP tool naming. In Gemini CLI the fully qualified name is `mcp_<server>_<tool>`, and
+  `mcp_<server>_*` grants a whole server; servers are registered in `.gemini/settings.json`.
+- Implementation: `tools/scripts/lib/harness-sections.mjs`; test with `yarn agents:sync:test`.
 
 ## Model policy
 
