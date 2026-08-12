@@ -78,14 +78,71 @@ Two caveats worth keeping:
   "partially extracted" — an unknown subset of that file's symbols goes missing while the file still
   _looks_ covered. Re-run the scan before trusting the graph in a newly-touched area.
 
-## On probation — usage is measured
+## Graduated from probation — 2026-08-12
 
-This integration is **on probation**: a real-workflow spike showed an agent never invoked it
-directly and its contribution (buried inside CodeExplorer) was unmeasurable. So CodeExplorer now
-**queries Graphify first** for relationship questions and **logs the outcome** (`helped` /
-`redundant` / `wrong/missed`) in a `Graphify Usage` block on every run. If those logs show it is
-consistently `redundant` or `wrong/missed`, drop the integration — it is not worth the manual
-rebuild + staleness cost. Keep it only if it earns a clear `helped` track record.
+Probation is over. Graphify is a **permanent tool with a hard, narrow scope**: `get_neighbors` for
+"who calls / imports / consumes X", and `god_nodes` for orientation. Everything under "What it must
+NOT be used for" above is a standing ban, not a caution.
+
+Two things settled it.
+
+**The cost side collapsed.** The kill argument in `graphify-eval-notes.md` rested as much on
+maintenance — manual rebuilds, staleness — as on capability. #293 made the graph refresh on commit
+and #292 confirmed extraction is complete for authored `.ts`/`.tsx`. What is left costs close to
+nothing.
+
+**The capability side is unchanged, and was re-measured rather than assumed.** The original bar
+questions were re-run against the live graph on 2026-08-12 (2,853 nodes / 5,350 edges, 99%
+EXTRACTED):
+
+| Bar question                               | 2026-06-19         | 2026-08-12                                                    |
+| ------------------------------------------ | ------------------ | ------------------------------------------------------------- |
+| R3 — `get_neighbors saveEncryptedData`     | 🟢 degree 20       | 🟢 17 edges with `file:line`, ~1s, $0                         |
+| `god_nodes` hub map                        | 🟢                 | 🟢 `cn`, `Button`, `useToast`, `requireUserId`, `UserService` |
+| R1 — `get_node EncryptedBlob`              | 🔴 no unique match | 🔴 **silently returned `EncryptedBlobV1`**, degree 1          |
+| R5 — `VaultController` → `serverVaultSync` | 🔴 no path         | 🔴 "No directed path found"                                   |
+
+The shape of the tool is therefore settled and will not improve: the good half is reliable, and the
+bad half fails **silently**. R1 is the sharp case — asking for one symbol returns a _different_ one
+with no ambiguity warning. That is why the ban list is written into the agent as a table of question
+shapes rather than as general advice.
+
+**What this replaces.** The earlier probation required CodeExplorer to log a `helped` / `redundant` /
+`wrong-missed` verdict in a `Graphify Usage` block on every run. That instrumentation never actually
+ran: it was added 2026-06-19 and deleted 2026-07-02 by `yarn agents:sync`, because it lived only in
+`.claude/agents/explore.md` while the sync script regenerates every target body from canonical
+`.github/agents/`. It is **not** being restored — it charged a per-run token cost on a Haiku agent to
+keep re-deciding a question the table above answers.
+
+The scoping rules now live in canonical `.github/agents/explore.agent.md`, so they survive the sync.
+The harness-specific parts (tool names) use the `<!-- harness:... -->` mechanism documented in
+`.github/skills/sub-agent-sync-workflow/SKILL.md`.
+
+## Harness registration
+
+Registered in all four harnesses. The MCP server itself is harness-agnostic — plain stdio JSON-RPC —
+so only the registration differs, and the formats are **not** interchangeable. Each was checked
+against that harness's own docs rather than copied from `.mcp.json`.
+
+| Harness           | MCP config                              | Top-level key | Agent tool grant                                         |
+| ----------------- | --------------------------------------- | ------------- | -------------------------------------------------------- |
+| Claude Code       | `.mcp.json`                             | `mcpServers`  | `mcp__graphify__*` in `.claude/agents/explore.md`        |
+| Copilot / VS Code | `.vscode/mcp.json`                      | `servers`     | `graphify/*` in `.github/agents/explore.agent.md`        |
+| Cursor            | `.cursor/mcp.json`                      | `mcpServers`  | none — Cursor subagents inherit the parent agent's tools |
+| Gemini CLI        | `.gemini/settings.json` (project scope) | `mcpServers`  | `mcp_graphify_*` in `.gemini/agents/explore.md`          |
+
+Two caveats:
+
+- The Gemini entry uses `includeTools` to allowlist the same five read-only tools the other harnesses
+  grant, so `triage_prs` and `get_pr_impact` — which invert risk for hub and barrel files — are not
+  reachable there at all.
+- Gemini CLI has an open bug where subagents do not always receive MCP tools
+  (google-gemini/gemini-cli#17005, #19599). CodeExplorer is told to fall back to Glob/Grep silently,
+  so this degrades rather than breaks.
+
+All four share the same local prerequisite: `uv tool install "graphifyy[mcp]"` plus one manual graph
+build (below). Without it a harness simply has no graphify tools, which is the documented fallback
+path, not a failure.
 
 ## Build / refresh
 
@@ -142,11 +199,24 @@ graphify extract libs --backend claude-cli
 graphify merge-graphs apps/graphify-out/graph.json libs/graphify-out/graph.json --out graphify-out/graph.json
 ```
 
-## Automatic refresh on commit
+## Automatic refresh on commit and on merge
 
-`.husky/post-commit` runs the incremental refresh above in the background after any commit that
-touches `.ts/.tsx/.js/.jsx/.mjs/.cjs` under `apps/` or `libs/`. `git commit` returns immediately;
-progress goes to `~/.cache/graphify-rebuild.log`.
+Two hooks run the incremental refresh above in the background whenever
+`.ts/.tsx/.js/.jsx/.mjs/.cjs` under `apps/` or `libs/` changes. The triggering git command returns
+immediately; progress goes to `~/.cache/graphify-rebuild.log`.
+
+| Hook                 | Fires on                       | "Changed" means                                 |
+| -------------------- | ------------------------------ | ----------------------------------------------- |
+| `.husky/post-commit` | `git commit`                   | the files in `HEAD`                             |
+| `.husky/post-merge`  | `git merge`, and so `git pull` | `git diff ORIG_HEAD HEAD` (fallback `HEAD@{1}`) |
+
+`post-merge` exists because `post-commit` genuinely does not cover pulls: `git merge` never fires
+`post-commit` — not for a fast-forward, where no commit is created at all, and not for a merge
+commit, which `git merge` writes directly. Without it, pulling other people's merged work left the
+graph a step behind until your own next local commit happened to touch `apps/` or `libs/`.
+
+Everything except the definition of "changed" lives in `.husky/graphify-refresh.sh`, which both
+hooks source, so the guards below cannot drift apart between them.
 
 It is a **no-op unless you have opted in** by installing graphify and building the graph once by
 hand, so it costs nothing for contributors who do not use it. Specifically, it exits early when:
@@ -155,12 +225,12 @@ hand, so it costs nothing for contributors who do not use it. Specifically, it e
 | ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
 | `graphify` is not on `PATH` or in `~/.local/bin` | Most contributors never install it                                                                                                |
 | `graphify-out/` does not exist                   | The first build needs an LLM pass — keep it manual                                                                                |
-| The commit touched no `apps/`/`libs/` source     | Doc and image changes must never trigger an LLM call from a hook                                                                  |
+| No `apps/`/`libs/` source changed                | Doc and image changes must never trigger an LLM call from a hook                                                                  |
 | You are in a linked worktree                     | `graphify-out/` belongs to the primary checkout; rebuilding from a worktree writes a rogue delta-only graph and races the primary |
 | A rebase, merge, or cherry-pick is in progress   | A rebuild mid-sequence leaves unstaged output and blocks `--continue`                                                             |
 | `GRAPHIFY_SKIP_HOOK=1` is set                    | Explicit opt-out                                                                                                                  |
 
-Two environment settings in the hook are load-bearing, so do not drop them when editing it:
+Two environment settings in the shared script are load-bearing, so do not drop them when editing it:
 
 - `PYTHONHASHSEED=0` — networkx's louvain clustering iterates string-keyed sets whose order is
   randomised per process. Unpinned, repeated no-op refreshes were observed drifting
@@ -170,6 +240,10 @@ Two environment settings in the hook are load-bearing, so do not drop them when 
   set", and with `ANTHROPIC_BASE_URL` exported that would send source to an external endpoint.
   `claude-cli` keeps the rebuild local.
 
-> **Maintenance reality:** the hook only covers **code**. Docs, images, community clustering, and
-> the domain names in `GRAPH_REPORT.md` still need the manual `cluster-only` + `label` pass above.
+> **Maintenance reality:** the hooks only cover **code**. Docs, images, community clustering, and the
+> domain names in `GRAPH_REPORT.md` still need the manual `cluster-only` + `label` pass above.
 > Rebuild by hand before relying on the report for a fresh area of the code.
+>
+> Branch switching is still uncovered: `git checkout` fires neither hook, so the graph reflects
+> whichever branch last triggered a rebuild. Confirm any graph result against the file, which the
+> agent rules already require.
