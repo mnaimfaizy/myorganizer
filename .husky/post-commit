@@ -1,89 +1,12 @@
 # Refresh the Graphify knowledge graph after commits that touch code.
-# Background, AST-only, no network egress. See docs/graphify.md.
-#
-# This hook is a deliberate no-op for anyone who has not installed graphify,
-# so it is safe to ship to every contributor. Opt out at any time with
-# GRAPHIFY_SKIP_HOOK=1.
+# All the guards and the rebuild itself live in the shared script; this hook
+# only says which files count as "just changed". See docs/graphify.md.
 
-if [ "${GRAPHIFY_SKIP_HOOK:-0}" = "1" ]; then
-  exit 0
-fi
+graphify_changed_files() {
+  git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null
+}
 
-# Locate graphify. `uv tool install` drops it in ~/.local/bin, which is not
-# always on PATH for hooks launched from a GUI client, so check there too.
-GRAPHIFY_BIN=$(command -v graphify 2>/dev/null)
-if [ -z "$GRAPHIFY_BIN" ] && [ -x "$HOME/.local/bin/graphify" ]; then
-  GRAPHIFY_BIN="$HOME/.local/bin/graphify"
-fi
-if [ -z "$GRAPHIFY_BIN" ]; then
-  exit 0
-fi
+GRAPHIFY_TRIGGER="code changed"
+export GRAPHIFY_TRIGGER
 
-# Only the primary checkout owns graphify-out/. Linked worktrees under
-# .claude/worktrees/ share core.hooksPath, so without this guard a commit in
-# any worktree writes a rogue delta-only graph and races the primary checkout.
-# A linked worktree has git-dir != git-common-dir; both are resolved to
-# absolute first, because git can hand back an absolute GIT_DIR alongside a
-# relative ".git" common dir and a raw compare would skip the primary too.
-_GFY_GITDIR=$(cd "$(git rev-parse --git-dir 2>/dev/null)" 2>/dev/null && pwd)
-_GFY_COMMONDIR=$(cd "$(git rev-parse --git-common-dir 2>/dev/null)" 2>/dev/null && pwd)
-if [ -n "$_GFY_COMMONDIR" ] && [ "$_GFY_GITDIR" != "$_GFY_COMMONDIR" ]; then
-  exit 0
-fi
-
-# Never rebuild mid-rebase/merge/cherry-pick: the rebuild would leave unstaged
-# output and block `--continue`.
-GIT_DIR=${GIT_DIR:-$(git rev-parse --git-dir 2>/dev/null)}
-for _state in "$GIT_DIR/rebase-merge" "$GIT_DIR/rebase-apply"; do
-  if [ -d "$_state" ]; then
-    exit 0
-  fi
-done
-for _state in "$GIT_DIR/MERGE_HEAD" "$GIT_DIR/CHERRY_PICK_HEAD"; do
-  if [ -f "$_state" ]; then
-    exit 0
-  fi
-done
-
-# Refresh an existing graph only. The first build needs an LLM pass for docs and
-# images, so it stays manual — see the Build / refresh section of docs/graphify.md.
-if [ ! -d graphify-out ]; then
-  exit 0
-fi
-
-# Only when committed source under apps/ or libs/ changed. Doc and image changes
-# are intentionally ignored here so a commit never triggers an LLM call; refresh
-# those by hand.
-CHANGED=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null)
-if ! printf '%s\n' "$CHANGED" | grep -qE '^(apps|libs)/.*\.(ts|tsx|js|jsx|mjs|cjs)$'; then
-  exit 0
-fi
-
-# networkx louvain iterates string-keyed sets whose order is randomised per
-# process, so community ids churn between runs. Pinning this keeps the graph
-# reproducible instead of drifting a few nodes on every rebuild.
-export PYTHONHASHSEED=0
-export GRAPHIFY_OUT=graphify-out
-
-# Git for Windows hooks can inherit fragile pipe handles from GUI clients and
-# agent shells; keep the rebuild sequential there unless told otherwise.
-if [ -n "${WINDIR:-}" ] || [ -n "${MSYSTEM:-}" ]; then
-  export GRAPHIFY_MAX_WORKERS="${GRAPHIFY_MAX_WORKERS:-1}"
-fi
-
-GRAPHIFY_LOG="${HOME}/.cache/graphify-rebuild.log"
-mkdir -p "$(dirname "$GRAPHIFY_LOG")"
-
-# Detached, with stdin and both streams off the hook's pipes, so `git commit`
-# returns immediately instead of waiting on a ~40s rebuild.
-echo "[graphify] code changed - refreshing graph in background (log: $GRAPHIFY_LOG)"
-# --backend claude-cli is pinned deliberately. Without it graphify picks
-# "whichever API key is set", which with ANTHROPIC_BASE_URL exported would send
-# source through an external endpoint. claude-cli keeps the rebuild local.
-nohup sh -c "
-  '$GRAPHIFY_BIN' extract apps --backend claude-cli &&
-  '$GRAPHIFY_BIN' extract libs --backend claude-cli &&
-  '$GRAPHIFY_BIN' merge-graphs apps/graphify-out/graph.json libs/graphify-out/graph.json --out graphify-out/graph.json
-" >"$GRAPHIFY_LOG" 2>&1 </dev/null &
-
-exit 0
+. .husky/graphify-refresh.sh

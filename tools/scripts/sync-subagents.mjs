@@ -4,6 +4,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
+import { renderHarnessSections } from './lib/harness-sections.mjs';
+
 const repoRoot = process.cwd();
 
 const CANONICAL_DIR = path.join(repoRoot, '.github', 'agents');
@@ -45,7 +47,7 @@ const HARNESS_CONFIG = {
   },
 };
 
-const USAGE = `Usage:\n  node tools/scripts/sync-subagents.mjs --check\n  node tools/scripts/sync-subagents.mjs --apply [--no-prune]\n\nNotes:\n  - Canonical source is .github/agents/*.agent.md\n  - Existing target frontmatter is always preserved verbatim; only the body is synced.\n    Harness defaults (including tools:) apply ONLY when creating a new file.\n  - A target whose frontmatter cannot be parsed is reported as malformed and skipped,\n    never rewritten, so per-agent tools: grants cannot be silently widened.\n  - Missing target files are created with harness-specific defaults.\n  - --apply prunes extra files by default (disable with --no-prune).\n`;
+const USAGE = `Usage:\n  node tools/scripts/sync-subagents.mjs --check\n  node tools/scripts/sync-subagents.mjs --apply [--no-prune]\n\nNotes:\n  - Canonical source is .github/agents/*.agent.md\n  - Existing target frontmatter is always preserved verbatim; only the body is synced.\n    Harness defaults (including tools:) apply ONLY when creating a new file.\n  - A target whose frontmatter cannot be parsed is reported as malformed and skipped,\n    never rewritten, so per-agent tools: grants cannot be silently widened.\n  - Canonical bodies may scope a section to specific harnesses:\n      <!-- harness:claude,cursor -->  ...  <!-- /harness -->\n    Unmarked content goes to every harness. See tools/scripts/lib/harness-sections.mjs.\n  - Missing target files are created with harness-specific defaults.\n  - --apply prunes extra files by default (disable with --no-prune).\n`;
 
 function parseArgs(argv) {
   const args = new Set(argv.slice(2));
@@ -182,7 +184,12 @@ async function loadCanonicalAgents() {
       throw new Error(`Canonical agent missing frontmatter: ${fullPath}`);
     }
     const canonicalMeta = parseCanonicalMeta(frontmatter, slug);
-    agents.push({ slug, body: normalizeBody(body), canonicalMeta });
+    agents.push({
+      slug,
+      body: normalizeBody(body),
+      canonicalMeta,
+      sourcePath: path.relative(repoRoot, fullPath),
+    });
   }
   return agents;
 }
@@ -219,14 +226,20 @@ async function syncHarness(harness, canonicalAgents, mode, prune) {
       existingContent = null;
     }
 
-    const desiredBody = canonical.body;
+    const desiredBody = normalizeBody(
+      renderHarnessSections(canonical.body, harness, {
+        source: canonical.sourcePath,
+      }),
+    );
     if (!existingContent) {
       const frontmatter = buildFrontmatter(
         harness,
         canonical.slug,
         canonical.canonicalMeta,
       );
-      const nextContent = `${frontmatter}${desiredBody}\n`;
+      // The blank line after `---` is what prettier expects; without it every
+      // file this script rewrites fails `nx format:check`.
+      const nextContent = `${frontmatter}\n${desiredBody}\n`;
       if (mode === 'apply') {
         await fs.writeFile(targetPath, nextContent, 'utf8');
       }
@@ -252,7 +265,7 @@ async function syncHarness(harness, canonicalAgents, mode, prune) {
     if (bodyDiffers) {
       report.drifted.push(rel);
       if (mode === 'apply') {
-        const nextContent = `${frontmatter}${desiredBody}\n`;
+        const nextContent = `${frontmatter}\n${desiredBody}\n`;
         await fs.writeFile(targetPath, nextContent, 'utf8');
         report.updated.push(rel);
       }
