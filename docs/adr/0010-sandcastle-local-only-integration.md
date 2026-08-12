@@ -30,6 +30,21 @@ integrates). Integration becomes entirely local.
 - After the run, the human QAs the local feature branch, then pushes it once and opens **one** PR
   to `main` so CI runs there and the PRD lands as a single review unit.
 
+### Amendment: standalone (no-PRD) dispatch
+
+`dispatch-agents --issue <n>` with no `--prd` runs a single issue that belongs to no PRD. It keeps
+every property above and simply has **no integration step**:
+
+- The work branch `issue/<n>-<slug>` is cut from `origin/main` (or `--base <ref>`) and **is** the
+  deliverable. There is no `feat/<slug>`, so there is nothing to fast-forward into.
+- Naming the issue explicitly is the authorization: no `ready-for-agent` / `type:afk` requirement,
+  no `## Blocked by` ordering, no dependent unblocking. Human-oriented labels (`type:hitl`,
+  `status:blocked`) warn but do not stop the run.
+- The issue is **not** closed and **not** labelled `status:done` — only `status:in-progress` is
+  removed, plus a comment naming the branch and gate verdict. Closing would assert completion of
+  work that exists only on an unpushed local branch; the PR merge is what completes it.
+- Nothing is pushed, so the "safer by default" property below is unchanged.
+
 ## Status
 
 accepted.
@@ -67,8 +82,9 @@ un-checked-out feature ref is enough.
 
 - **The feature branch is local and unpushed.** Deleting it loses the integrated work — push
   before deleting. Documented in `docs/sandcastle/RUNBOOK.md`.
-- **The gate operates on local refs** (`featureBranch`, `sliceBranch`) — no `git fetch origin
+- **The gate operates on local refs** (`baseRef`, `sliceBranch`) — no `git fetch origin
 <slice>` before gating. Still fail-closed: no integration without a green gate (or `SLICE_GATE=off`).
+  `baseRef` is the feature branch in PRD mode and `origin/main` (or `--base`) standalone.
 - **`dispatch-waves` still works** unchanged in behavior — it gates the `ready-for-agent` label
   per wave and calls `main.mts`; each wave's integrated output (local feature branch) is the next
   wave's base. Its role narrows to _ordering_ by `## Blocked by`.

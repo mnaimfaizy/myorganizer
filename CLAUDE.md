@@ -208,6 +208,18 @@ QA the local `feat/<slug>` branch — it now contains every integrated slice. Wh
 - **Planned feature** → always start with `/to-prd` + `/to-issues`
 - **Ad-hoc bug or one-off task** → use the `github-issue-creation-workflow` skill directly (no PRD needed)
 
+### Dispatching a single issue
+
+```bash
+yarn dispatch-agents --prd <prd-number> --issue <slice-number>   # one slice of a PRD
+yarn dispatch-agents --issue <issue-number>                      # standalone, no PRD
+```
+
+Standalone mode gives an ad-hoc issue the same sandbox, in-container install, and lint gate as a
+PRD slice, but has no integration branch: the work is left on `issue/<n>-<slug>`, nothing is
+pushed, and the issue stays open until you push the branch and merge a PR. See
+`docs/sandcastle/RUNBOOK.md` and `docs/adr/0010`.
+
 ---
 
 ## Design & Planning Workflows
