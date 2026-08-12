@@ -236,3 +236,8 @@ Slices run **serially** (one by one), so there is no concurrency knob — each s
   longer used (the seed step and lockfile-hash invalidation were removed).
 - **Never put the repo on `/mnt/d`** (or any drvfs/9P mount) for dispatch — that's the ~29 min
   trap.
+- **`Could not fetch from origin (reusing worktree at … as-is, …)` is expected — ignore it.** It
+  comes from `@ai-hero/sandcastle`'s `fastForwardFromOrigin`, which tries `git fetch origin <branch>`
+  on the work branch. Sandcastle work branches are local-only by design (`docs/adr/0010`), so that
+  fetch can never succeed; the library logs this and correctly reuses the worktree as-is. It fires
+  on every run in both modes and does not indicate a failed dispatch.
