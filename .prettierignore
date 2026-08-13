@@ -8,6 +8,8 @@
 # Generated artifacts (keep generator output stable / avoid drift)
 apps/backend/src/routes/routes.ts
 docs/agents/orchestration-map.html
+docs/agents/agent-journey.html
+tools/assets/dc-runtime
 apps/backend/src/swagger/swagger.yaml
 apps/myorganizer/next-env.d.ts
 libs/api-specs/src/api-specs.openapi.yaml

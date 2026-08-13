@@ -1,35 +1,41 @@
 #!/usr/bin/env node
 // Converts a dc-runtime design export into a single self-contained page under docs/.
 //
-//   node tools/scripts/build-agent-map.mjs <export-dir> <out-file>
+//   node tools/scripts/build-agent-map.mjs <export-dir> <file.dc.html> <out-file>
 //
-// The export ships as `<name>.dc.html` + `support.js` + `ds/styles.css`, and expects a
-// React runtime it does not bundle. The page's own logic is plain DOM, so the runtime is
-// dropped rather than vendored. Content is copied verbatim; only delivery changes:
+// The exports ship as `<name>.dc.html` + `support.js` + `ds/styles.css` and expect React to
+// arrive from a CDN at load time. Neither can hold for a page that must render from disk and
+// inside a sandbox, so everything is inlined. Content is copied verbatim; delivery changes:
 //
-//   - inline ds/styles.css, minus its Google-Fonts @import (no network at render time)
-//   - unwrap <x-dc> / <helmet>, drop the support.js script tag
+//   - inline ds/styles.css, minus its Google-Fonts @import, plus the woff2 faces as data URIs
 //   - re-express the dark block so an explicit theme choice wins in both directions
-//   - unwrap the DCLogic class into a plain IIFE, preserving the export's prop defaults
 //   - embed the agent manifest that tools/scripts/check-agent-map.mjs asserts against
+//
+// How much runtime a page needs is decided by the page, not by a flag. A page with no `{{ }}`
+// bindings is plain DOM: the runtime is dropped and its DCLogic class unwrapped into an IIFE.
+// A page that binds templates needs the real thing, so React, ReactDOM and support.js are
+// inlined ahead of it from tools/assets/dc-runtime and the <x-dc> markup is left intact.
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
-const [srcDir, outFile] = process.argv.slice(2);
-if (!srcDir || !outFile) {
-  console.error('usage: build-agent-map.mjs <export-dir> <out-file>');
+const [srcDir, dcFile, outFile] = process.argv.slice(2);
+if (!srcDir || !dcFile || !outFile) {
+  console.error(
+    'usage: build-agent-map.mjs <export-dir> <file.dc.html> <out-file>',
+  );
   process.exit(64);
 }
-
-const repoRoot = process.cwd();
-const dcFile = readdirSync(srcDir).find((f) => f.endsWith('.dc.html'));
-if (!dcFile) {
-  console.error(`no *.dc.html found in ${srcDir}`);
+if (!readdirSync(srcDir).includes(dcFile)) {
+  console.error(`${dcFile} not found in ${srcDir}`);
   process.exit(65);
 }
 
+const repoRoot = process.cwd();
 let html = readFileSync(join(srcDir, dcFile), 'utf8');
 let ds = readFileSync(join(srcDir, 'ds', 'styles.css'), 'utf8');
+
+// A page that binds `{{ }}` cannot be served without the template runtime.
+const needsRuntime = html.includes('{{');
 
 // Design-system tokens. The remote @import cannot resolve in a sandboxed page, so the two
 // families are embedded below instead; the stacks keep fallbacks for the base64-stripped case.
@@ -87,10 +93,33 @@ const themedStyle = pageStyle.replace(
     `:root[data-theme="dark"]{${darkDecls}}`,
 );
 
-const body = html
+// A runtime-backed page keeps <x-dc> and its `text/x-dc` island — the runtime parses both.
+// A plain-DOM page is unwrapped, and its island is rewritten below as an ordinary IIFE.
+const inner = html
   .match(/<x-dc>([\s\S]*?)<\/x-dc>/)[1]
   .replace(/<helmet>[\s\S]*?<\/helmet>/, '')
   .trim();
+const dcIsland = needsRuntime
+  ? html.match(/<script type="text\/x-dc"[\s\S]*?<\/script>/)[0]
+  : '';
+const body = needsRuntime ? `<x-dc>\n${inner}\n</x-dc>\n${dcIsland}` : inner;
+
+// React is fetched from a CDN by support.js unless the globals already exist, so inlining the
+// two UMD builds ahead of it short-circuits that fetch. Versions and integrity are pinned by
+// the runtime itself; tools/assets/dc-runtime/README.md records the verification.
+const runtimeDir = join(repoRoot, 'tools/assets/dc-runtime');
+
+// The runtime finds its template by regex-scanning raw document text for `<x-dc>`. Inlining
+// support.js puts that literal — which it carries in an error message — earlier in the document
+// than the real element, so it matches its own source and renders itself as the page. Escaping
+// the `d` leaves the evaluated string identical and the raw bytes unmatchable.
+const vendor = (f) =>
+  readFileSync(join(runtimeDir, f), 'utf8').replace(/<x-dc>/g, '<x-\\x64c>');
+const runtimeScripts = needsRuntime
+  ? ['react.production.min.js', 'react-dom.production.min.js', 'support.js']
+      .map((f) => `<script>/* ${f} */\n${vendor(f)}\n</script>`)
+      .join('\n')
+  : '';
 
 // The manifest is the page's machine-readable claim about the fleet. check-agent-map.mjs
 // diffs it against the policy file, so a policy change fails CI instead of rotting the page.
@@ -119,7 +148,11 @@ const manifest = {
   ),
 };
 
-const script = `
+// Only the plain-DOM page needs this: the export's DCLogic wrapper carries no reactive state,
+// so its componentDidMount body runs as-is with the export's prop defaults substituted.
+const script = needsRuntime
+  ? ''
+  : `
 (function(){
   var root = document.querySelector('[data-map-root]');
   if (!root) return;
@@ -167,15 +200,18 @@ const script = `
 })();
 `.trim();
 
+const title = dcFile.replace('.dc.html', '');
+
 const out = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sub-agent orchestration map — MyOrganizer</title>
+<title>${title} — MyOrganizer</title>
 <script type="application/json" id="agent-map-manifest">
 ${JSON.stringify(manifest, null, 2)}
 </script>
+${runtimeScripts}
 <style>
 ${fontFaces}
 </style>
@@ -193,16 +229,15 @@ ${themedStyle.trim()}
 <body>
 
 ${body}
-
-<script>
-${script}
-</script>
+${script ? `<script>\n${script}\n</script>` : ''}
 </body>
 </html>
 `;
 
 writeFileSync(outFile, out, 'utf8');
-console.log(`wrote ${outFile} (${(out.length / 1024).toFixed(1)} KB)`);
+console.log(
+  `wrote ${outFile} (${(out.length / 1024).toFixed(1)} KB, ${needsRuntime ? 'runtime inlined' : 'plain DOM'})`,
+);
 console.log(
   `manifest: ${Object.keys(manifest.agents).length} agents from policy`,
 );

@@ -13,6 +13,7 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 const PAGE = 'docs/agents/orchestration-map.html';
+const JOURNEY = 'docs/agents/agent-journey.html';
 const POLICY = 'tools/config/agent-model-policy.json';
 const AGENTS_DIR = '.github/agents';
 
@@ -97,13 +98,35 @@ if (manifest.policyReviewedAt !== policy.reviewedAt) {
   );
 }
 
+// The journey page hard-codes a tier per station in its own script, independent of the manifest.
+// Those are what a reader actually sees on the rail, so they get checked against the policy too.
+if (existsSync(JOURNEY)) {
+  const journey = readFileSync(JOURNEY, 'utf8');
+  const stations = [
+    ...journey.matchAll(/name\s*:\s*'([^']+)'\s*,\s*tier\s*:\s*'(T[012])'/g),
+  ];
+  if (stations.length === 0) {
+    findings.push(
+      `${JOURNEY} declares no station tiers — did its script change shape?`,
+    );
+  }
+  for (const [, name, tier] of stations) {
+    if (!(name in expected)) continue; // stations also cover non-agents (Lint gate, Human, …)
+    if (expected[name] !== tier) {
+      findings.push(
+        `tier drift in the journey: ${name} is ${expected[name]} in policy, ${tier} on the rail`,
+      );
+    }
+  }
+}
+
 if (findings.length > 0) {
   console.error(
-    `agent-map: ${findings.length} finding(s) — ${PAGE} is out of date\n`,
+    `agent-map: ${findings.length} finding(s) — the agent docs are out of date\n`,
   );
   for (const f of findings) console.error(`  - ${f}`);
   console.error(
-    `\nRebuild the page from the design export, or update the diagram to match ${POLICY}.`,
+    `\nRebuild from the design export, or update the diagrams to match ${POLICY}.`,
   );
   process.exit(1);
 }
