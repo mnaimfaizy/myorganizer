@@ -18,7 +18,7 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - E2E: `yarn nx e2e myorganizer-e2e`.
 - Lint: `yarn nx lint <project-name>` or `yarn lint`.
 - Format: `yarn format:write`.
-- AI commit workflow: `corepack yarn ai:commit --message-file <path>` (or pipe the message on stdin).
+- AI commit workflow: `corepack yarn ai:commit --message-file <path>`.
 - AI PR workflow: `corepack yarn ai:create-pr [--reviewer <login>]`.
 - API sync after backend contract changes: `yarn openapi:sync`; check drift with `yarn openapi:check`.
 - Release (cut branch): `yarn release:cut --version vX.Y.Z --push --notes-file RELEASE_NOTES.md`.
@@ -54,8 +54,8 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - Use the generated API client when it covers the endpoint.
 - Add or update focused tests for changed behavior.
 - Keep docs concise and link to existing docs when possible.
-- Use the `Commit` sub-agent only to draft Conventional Commit messages; execute commits through the shared AI workflow so Husky is allowed to finish.
-- For commit requests, wait for `git commit` to return before continuing. If Husky fails, fix the reported issue and rerun the narrow validation before retrying the commit.
+- Use the `Commit` sub-agent only to draft Conventional Commit messages from the staged diff; execute commits with `corepack yarn ai:commit --message-file <path>` so Husky is allowed to finish. Never `git add .` or run `git commit` directly.
+- For commit requests, wait for `yarn ai:commit` to return before continuing. If it fails, read the `ai:commit: failed` trailer, fix the hinted slice, and retry.
 - For PR requests, gather commit history from the current branch, push upstream if needed, create or reuse the PR, assign the authenticated GitHub user, and leave reviewers empty unless the user explicitly names them.
 - For issue creation requests, follow `.github/skills/github-issue-creation-workflow/SKILL.md` and delegate to `IssueCreator` so duplicate checks, required details, and label validation are handled consistently.
 - For issue/PR triage requests, follow `.github/skills/triage/SKILL.md`. Use `.github/skills/triage/AGENT-BRIEF.md` when moving to `ready-for-agent`, and `.github/skills/triage/OUT-OF-SCOPE.md` when rejecting enhancements as `wontfix`.
@@ -74,6 +74,46 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - For new planned feature work, use `.github/skills/to-prd/SKILL.md` to write and publish a PRD Issue. The user must be present — there is one interactive step (test seam approval). Do not use IssueCreator for PRD Issues; create them directly via `gh issue create`.
 - To break a PRD Issue into Slice Issues, use `.github/skills/to-issues/SKILL.md`. The user must supply the PRD Issue number. Every slice body must start with `PRD: #<N>`. Flag `type:hitl` slices prominently — `dispatch-agents` skips them. After publishing, remind the user to run `yarn dispatch-agents --prd <N>`.
 - Before issuing 3 or more consecutive read/search operations to locate something in the codebase, stop and delegate to `CodeExplorer` (`.github/agents/explore.agent.md`) instead. Provide an Explore Request with a `Goal` sentence; optionally include `Known Locations`, `Search Hints`, `Out of Scope`, and `Expected Output`. CodeExplorer returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
+
+## Branch naming
+
+Format: `<type>/<issue-number>-<short-slug>`. The issue number comes **first**, right after the
+type. Omit the number only when there is no issue.
+
+```
+fix/292-graphify-extraction-gaps
+feat/304-sandcastle-repo-wide-sweep
+docs/287-component-agent-guardrails
+chore/280-agent-model-governance
+```
+
+Pick the type from what the work _does_, not from the file it touches. When an issue carries
+labels, map them — **first match wins, top to bottom**, because issues routinely carry several:
+
+| Issue label                              | Type     |
+| ---------------------------------------- | -------- |
+| `bug`, `security`                        | `fix/`   |
+| `enhancement`                            | `feat/`  |
+| `documentation`                          | `docs/`  |
+| `tooling`, `maintenance`, `dependencies` | `chore/` |
+| `research`                               | `docs/`  |
+| `qa`                                     | `chore/` |
+| CI/workflow changes only                 | `ci/`    |
+| _no label matches_                       | `chore/` |
+
+`qa` and `research` rank last on purpose: they say why work is tracked, not what it changes. An
+issue labelled `tooling` + `maintenance` + `qa` is a chore, not documentation.
+
+Slugs are lowercase, hyphen-separated, and short (~40 chars) — enough to recognise the branch in
+`git branch`, not a restatement of the title.
+
+Reserved prefixes, which do **not** follow the table:
+
+- `release/v<semver>` — release branches (see `docs/deployment/CI_CD_AND_RELEASE_PROCESS.md`).
+- `slice/<issue>-<slug>` — sandcastle PRD slices. The prefix is load-bearing: it means the branch
+  fast-forwards into a `feat/<prd-slug>` integration branch and its issue closes on success. Never
+  create one by hand.
+- `claude/…`, `copilot/…` — generated by agent tooling. Leave them alone; don't rename to match.
 
 ## ⚠️ Tiered Quality Gates (ADR 0012)
 
@@ -108,6 +148,7 @@ Use [`.claude/checklist.md`](.claude/checklist.md) Step 0 → file-type matrix.
 - Do not store vault plaintext on the server or add plaintext todo APIs.
 - Do not hand-edit generated API client code.
 - Do not commit secrets or production credentials.
-- Do not cancel, background, or abandon a running `git commit` while Husky checks are still executing.
+- Do not run `git commit` directly or `git add .`; use `corepack yarn ai:commit --message-file <path>`.
+- Do not cancel, background, or abandon a running `yarn ai:commit` while Husky checks are still executing.
 - Do not open pull requests from `main` or another base branch directly.
 - Do not leave harness-only agent additions/removals unsynchronized. If one agent is added/removed in canonical, propagate to all harnesses via `yarn agents:sync`.

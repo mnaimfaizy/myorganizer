@@ -15,7 +15,7 @@ You are implementing a vertical slice for MyOrganizer.
 - Read `CLAUDE.md`, `CONTEXT.md`, and `TECH_STACK.md` before making any changes.
 - Follow the slice `gate:*` tier from ADR 0012 / `.claude/checklist.md` (Sandcastle injects gate instructions; default `gate:standard`).
 - Work only on the branch you were given. Do not switch branches.
-- Commit with Conventional Commit messages (`corepack yarn ai:commit`).
+- Commit with Conventional Commit messages (`corepack yarn ai:commit --message-file <path>`). Do not run `git commit` directly.
 - Do NOT push and do NOT open a PR — the sandbox has no credentials. Just commit locally; the orchestrator integrates your branch into the feature branch on the host.
 
 # Task
