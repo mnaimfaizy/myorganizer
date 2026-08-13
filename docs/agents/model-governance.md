@@ -4,6 +4,18 @@ MyOrganizer pins sub-agent models by **role** across GitHub Copilot, Claude Code
 
 See [ADR 0013: Role-pinned sub-agent model governance](../adr/0013-bounded-subagent-model-governance.md) for the decision record.
 
+Two static pages illustrate this, both self-contained — open either in a browser, no build step
+and no network:
+
+- [orchestration-map.html](orchestration-map.html) — **who** the agents are and how they chain:
+  pipelines, retry caps, human gates, and the tier assignments below.
+- [agent-journey.html](agent-journey.html) — **what happens over time** to one work item, as a
+  play/step walkthrough of three scenarios (AFK slice, interactive bug fix, `gate:full` with
+  E2E). Playback halts at every human gate until you approve it, which is the point.
+
+`yarn agents:map:check` fails if the roster or tiers on either page fall behind the policy file,
+so treat a failure there as "the diagram is stale", not "the check is broken".
+
 ## Operating model
 
 Three independent controls govern agent work:
@@ -44,6 +56,7 @@ Executable adapters:
 | -------------------------- | ----------------------------------------------------- |
 | `yarn agents:sync`         | Sync agent bodies, then model frontmatter from policy |
 | `yarn agents:sync:check`   | Validate body and model frontmatter                   |
+| `yarn agents:map:check`    | Assert the orchestration map still matches the policy |
 | `yarn agents:models:audit` | Check assignments and first-party catalog snapshots   |
 | `yarn agents:usage:report` | Summarize Sandcastle token telemetry                  |
 
