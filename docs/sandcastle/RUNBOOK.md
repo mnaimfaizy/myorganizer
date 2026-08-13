@@ -91,12 +91,29 @@ corepack yarn dispatch-agents --prd <issue-number> --agent cursor
 corepack yarn dispatch-agents --prd <issue-number> --agent copilot --model claude-sonnet-5
 ```
 
-### Two dispatch modes
+### Three dispatch modes
 
-| Mode           | Invocation                                 | Base for the work branch         | Where finished work lands                   |
-| -------------- | ------------------------------------------ | -------------------------------- | ------------------------------------------- |
-| **PRD**        | `--prd <n>` (optionally `--issue <slice>`) | the local `feat/<slug>` head     | fast-forwarded into `feat/<slug>`           |
-| **Standalone** | `--issue <n>` with **no** `--prd`          | `origin/main`, or `--base <ref>` | stays on `issue/<n>-<slug>` — nothing moves |
+| Mode           | Invocation                                 | Base for the work branch         | Where finished work lands                     |
+| -------------- | ------------------------------------------ | -------------------------------- | --------------------------------------------- |
+| **PRD**        | `--prd <n>` (optionally `--issue <slice>`) | the local `feat/<slug>` head     | fast-forwarded into `feat/<slug>`             |
+| **Standalone** | `--issue <n>` with **no** `--prd`          | `origin/main`, or `--base <ref>` | stays on `<type>/<n>-<slug>` — nothing moves  |
+| **Sweep**      | `--all-standalone [--limit <n>]`           | `origin/main`, or `--base <ref>` | one `<type>/<n>-<slug>` per issue, all remain |
+
+Work branches are named `<type>/<issue>-<slug>` with the type derived from the issue's labels
+(`bug` → `fix/`, `enhancement` → `feat/`, and so on — see **Branch naming** in `AGENTS.md`). PRD
+slices keep `slice/<n>-<slug>`, which signals that the branch fast-forwards into a feature branch
+and closes its issue on success.
+
+**Preview any run before it spends anything:**
+
+```bash
+corepack yarn dispatch-agents --prd 42 --dry-run
+corepack yarn dispatch-agents --all-standalone --dry-run
+```
+
+`--dry-run` resolves the whole plan — selected issues, branch names, routed model per issue, base
+ref, integration target — then exits. It creates no worktree or container, writes nothing to
+GitHub, does not create the PRD feature branch, and does not build the sandbox image.
 
 **One slice of a PRD:** add `--issue` to a PRD run. It still creates/reuses `feat/<slug>`,
 gates, and fast-forwards — just for that one slice.
@@ -120,13 +137,45 @@ Standalone specifics:
   `type:afk` are not required. `type:hitl`, `status:blocked`, and `status:in-progress` print a
   warning and the run proceeds, so a mistyped issue number is still visible.
 - **No `## Blocked by` ordering** and no dependent unblocking — that vocabulary belongs to a PRD.
-- **The branch is the deliverable.** `issue/<n>-<slug>` is left exactly as the agent committed it.
+- **The branch is the deliverable.** `<type>/<n>-<slug>` is left exactly as the agent committed it.
   Nothing is fast-forwarded anywhere and nothing is pushed, per `docs/adr/0010`.
 - **The issue stays open** and is **not** labelled `status:done`. The orchestrator only removes
   `status:in-progress` and comments with the branch name and gate verdict — marking it done would
   claim work that exists solely on an unpushed local branch. Close it when the PR merges.
-- Branch namespaces are separate (`issue/` vs `slice/`), so a standalone run and a later PRD run of
-  the same issue can never collide on a branch, worktree, or gate path.
+- Branch namespaces are separate (`<type>/` vs `slice/`), so a standalone run and a later PRD run
+  of the same issue can never collide on a branch, worktree, or gate path.
+- Re-running an issue whose labels changed since last time also cleans up the branch and worktree
+  from the previous run, even though it was filed under a different type prefix.
+
+### Sweep mode
+
+Dispatches every open issue that is agent-ready and **not** part of a PRD — the ad-hoc backlog:
+
+```bash
+corepack yarn dispatch-agents --all-standalone --dry-run   # always look first
+corepack yarn dispatch-agents --all-standalone --limit 3
+```
+
+An issue is eligible when it is open, labelled `ready-for-agent` **and** `type:afk`, carries none
+of `type:hitl` / `status:blocked` / `status:in-progress`, and has no `PRD: #<n>` reference. PRD
+slices are excluded on purpose: `--prd` orders them by `## Blocked by` and integrates them, and
+sweeping them one-off would strand each on a branch with no integration target.
+
+Each selected issue is then handled exactly like a standalone run — own branch, own worktree, own
+gate, nothing pushed, nothing closed. `--all-standalone` cannot be combined with `--prd` or
+`--issue`.
+
+Two guard rails, because this is the only mode where no human named the work:
+
+- **The label gate is enforced, not warned about.** Standalone treats naming `--issue` as the
+  authorization; a sweep has no such signal, so the labels are the only gate there is.
+- **The selection is confirmed before the first container starts.** The full set is printed with
+  each issue's routed model, and the run waits for `y`. `--yes` skips the prompt; on a
+  non-interactive stdin the run fails rather than proceeding unattended.
+
+⚠️ On `SANDCASTLE_CLAUDE_AUTH=subscription`, a sweep draws on the same 5-hour window as your
+interactive Claude Code sessions, and any `complexity:high` issue routes to `claude-opus-5`. Check
+the `--dry-run` output before committing to a large batch.
 
 Provider switching is optional: the default agent can live in `.sandcastle/.env` as
 `SANDCASTLE_AGENT=claude|cursor|copilot`. Per-provider model defaults can also live there
