@@ -11,7 +11,7 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 - Storybook creation or updates should use `.claude/commands/storybook.md`.
 - Playwright E2E creation/updates should follow `.github/skills/playwright-e2e-workflow/SKILL.md`.
 - Issue/PR triage requests should use `.claude/commands/triage.md` (`.github/skills/triage/SKILL.md`).
-- Commit-message drafting still belongs to the existing `Commit` sub-agent; commit execution belongs to the shared `ai:commit` runner.
+- Commit-message drafting still belongs to the existing `Commit` sub-agent (staged diff only); commit execution belongs to `corepack yarn ai:commit --message-file <path>`.
 - Jest test implementation uses a three-stage pipeline: `TestScaffold` (writes tests) → `TestReviewer` (static gate: checklist, tsc, eslint) → `TestRunner` (execution with hang detection). Always provide a behavior matrix from the actual implementation, including unsupported scenarios to avoid. Consult `docs/testing/projects/<project>.md` for that project's tooling and mock patterns (`docs/testing/README.md` is the index plus cross-project rules). Max 3 retries before escalating to the main agent.
 - Storybook implementation is delegated to the `StorybookCurator` sub-agent (`.claude/agents/storybook-curator.md`); require requirement-readiness analysis before edits and route clarification questions to the human-in-the-loop.
 - React component creation or editing (UI Primitives in `libs/web-ui/` or Feature Components in `libs/web/pages/<route>/`) uses the ComponentBuilder → ComponentReviewer workflow on `gate:standard` / `gate:full` — see **UI Component Workflows** below and ADR 0012 for mechanical exceptions.
