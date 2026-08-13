@@ -18,7 +18,7 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - E2E: `yarn nx e2e myorganizer-e2e`.
 - Lint: `yarn nx lint <project-name>` or `yarn lint`.
 - Format: `yarn format:write`.
-- AI commit workflow: `corepack yarn ai:commit --message-file <path>` (or pipe the message on stdin).
+- AI commit workflow: `corepack yarn ai:commit --message-file <path>`.
 - AI PR workflow: `corepack yarn ai:create-pr [--reviewer <login>]`.
 - API sync after backend contract changes: `yarn openapi:sync`; check drift with `yarn openapi:check`.
 - Release (cut branch): `yarn release:cut --version vX.Y.Z --push --notes-file RELEASE_NOTES.md`.
@@ -54,8 +54,8 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - Use the generated API client when it covers the endpoint.
 - Add or update focused tests for changed behavior.
 - Keep docs concise and link to existing docs when possible.
-- Use the `Commit` sub-agent only to draft Conventional Commit messages; execute commits through the shared AI workflow so Husky is allowed to finish.
-- For commit requests, wait for `git commit` to return before continuing. If Husky fails, fix the reported issue and rerun the narrow validation before retrying the commit.
+- Use the `Commit` sub-agent only to draft Conventional Commit messages from the staged diff; execute commits with `corepack yarn ai:commit --message-file <path>` so Husky is allowed to finish. Never `git add .` or run `git commit` directly.
+- For commit requests, wait for `yarn ai:commit` to return before continuing. If it fails, read the `ai:commit: failed` trailer, fix the hinted slice, and retry.
 - For PR requests, gather commit history from the current branch, push upstream if needed, create or reuse the PR, assign the authenticated GitHub user, and leave reviewers empty unless the user explicitly names them.
 - For issue creation requests, follow `.github/skills/github-issue-creation-workflow/SKILL.md` and delegate to `IssueCreator` so duplicate checks, required details, and label validation are handled consistently.
 - For issue/PR triage requests, follow `.github/skills/triage/SKILL.md`. Use `.github/skills/triage/AGENT-BRIEF.md` when moving to `ready-for-agent`, and `.github/skills/triage/OUT-OF-SCOPE.md` when rejecting enhancements as `wontfix`.
@@ -108,6 +108,7 @@ Use [`.claude/checklist.md`](.claude/checklist.md) Step 0 → file-type matrix.
 - Do not store vault plaintext on the server or add plaintext todo APIs.
 - Do not hand-edit generated API client code.
 - Do not commit secrets or production credentials.
-- Do not cancel, background, or abandon a running `git commit` while Husky checks are still executing.
+- Do not run `git commit` directly or `git add .`; use `corepack yarn ai:commit --message-file <path>`.
+- Do not cancel, background, or abandon a running `yarn ai:commit` while Husky checks are still executing.
 - Do not open pull requests from `main` or another base branch directly.
 - Do not leave harness-only agent additions/removals unsynchronized. If one agent is added/removed in canonical, propagate to all harnesses via `yarn agents:sync`.
