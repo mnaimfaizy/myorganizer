@@ -470,9 +470,10 @@ Examples of existing page libraries:
 
 4. **Commit Your Changes**
 
+   Stage the specific files for this change (never `git add .`), then:
+
    ```bash
-   git add .
-   git commit -m "feat: add your feature description"
+   corepack yarn ai:commit --message "feat: add your feature description"
    ```
 
    Follow [Conventional Commits](https://www.conventionalcommits.org/) format:
@@ -728,14 +729,15 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
 5. **Commit Your Changes**
 
+   Stage the specific files for this change (never `git add .`), then:
+
    ```bash
-   git add .
    corepack yarn ai:commit --message "feat: add user profile settings page"
    ```
 
    Use [Conventional Commits](https://www.conventionalcommits.org/) format.
    The shared commit workflow waits for Husky pre-commit checks to finish and uses static Nx output so lint failures stay readable in terminal-based AI tools.
-   If Husky fails, fix the reported formatting, linting, test, or typecheck issue before retrying the commit.
+   If the command fails, read the `ai:commit: failed` trailer, fix the hinted formatting or lint slice, and retry.
 
 6. **Keep Your Branch Up to Date**
 
@@ -790,7 +792,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
    ```bash
    # Make requested changes
-   git add .
+   # Stage the specific files for this change (never git add .)
    corepack yarn ai:commit --message "fix: address review feedback"
    git push origin feature/your-feature-name
    ```
@@ -1133,8 +1135,8 @@ git merge upstream/main
 
 # Edit files to resolve conflicts
 # Then:
-git add .
-git commit -m "chore: resolve merge conflicts"
+git add <resolved-files>
+git commit
 ```
 
 ### Common Errors

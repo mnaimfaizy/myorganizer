@@ -4,10 +4,11 @@ Use these repo-local workflows for commit, pull request, test, and Storybook-sui
 
 ## Commit Changes
 
-- Draft the Conventional Commit message with the existing `Commit` sub-agent or equivalent diff-based commit-message generator.
-- Execute the commit with `corepack yarn ai:commit`.
+- Inspect git status first. Never `git add .`. If nothing is staged, or staged and unstaged files are mixed, list the files and ask before staging.
+- Draft the Conventional Commit message with the existing `Commit` sub-agent from the staged diff only.
+- Execute the commit with `corepack yarn ai:commit --message-file <path>`. Do not run `git commit` directly.
 - Wait for the commit process to finish; do not cancel the command while Husky is running.
-- If Husky fails, fix the reported issue, rerun the narrow validation, and retry the commit.
+- If it fails, read the `ai:commit: failed` trailer, fix the hinted slice, rerun that check, and retry.
 
 ## Create Pull Request
 
