@@ -753,7 +753,13 @@ Good issues help maintainers understand and address problems quickly. Here's how
    ```
 
 8. **Create the Pull Request**
-   - Use the shared PR workflow:
+   - Agent sessions draft first with the `PrAuthor` sub-agent, then pass that draft into the shared runner:
+
+     ```bash
+     corepack yarn ai:create-pr --title "feat(scope): short summary" --body-file /tmp/pr-body.md
+     ```
+
+   - Humans may still run the runner with no title/body; it then builds a thin description from commit subjects:
 
      ```bash
      corepack yarn ai:create-pr
@@ -766,9 +772,8 @@ Good issues help maintainers understand and address problems quickly. Here's how
      ```
 
    - The shared PR workflow:
-     - gathers the commits in the current branch relative to the default base branch
      - pushes the branch upstream if it is not already tracked
-     - creates the PR description from the branch commits
+     - uses `--title` / `--body-file` when provided (agent path), otherwise a commit-derived fallback
      - assigns the authenticated GitHub user to the PR
      - leaves reviewers empty unless you explicitly pass one
      - returns only the PR URL on success
