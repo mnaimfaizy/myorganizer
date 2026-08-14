@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { createInterface } from 'node:readline/promises';
 
 const REPO = 'mnaimfaizy/myorganizer';
 const SANDBOX_IMAGE = 'sandcastle:myorganizer';
@@ -198,8 +199,9 @@ function printHelp(): void {
 Usage:
   PRD mode        yarn dispatch-agents --prd <issue-number> [--issue <slice-number>]
   Standalone mode yarn dispatch-agents --issue <issue-number> [--base <ref>]
+  Sweep mode      yarn dispatch-agents --all-standalone [--limit <n>] [--base <ref>]
 
-  Both accept [--agent claude|cursor|copilot] [--model <model>]
+  All accept [--agent claude|cursor|copilot] [--model <model>] [--dry-run]
 
 Flags:
   --prd <issue-number>   PRD issue number to dispatch. Slices integrate into the
@@ -207,11 +209,23 @@ Flags:
   --issue <number>       With --prd: dispatch only this slice of that PRD.
                          Without --prd: standalone mode — dispatch this one issue
                          off --base, leave the result on its own local branch.
-  --base <ref>           Standalone mode only: base ref for the work branch
+  --all-standalone       Sweep mode: dispatch every open issue labelled
+                         ready-for-agent + type:afk that is not a PRD slice, each
+                         on its own branch. Skips type:hitl, status:blocked, and
+                         status:in-progress. Prompts for confirmation first.
+  --limit <n>            Sweep mode only: cap how many issues are dispatched.
+  --base <ref>           Standalone and sweep modes: base ref for work branches
                          (default: origin/main).
+  --dry-run              Resolve and print the plan — issues, branches, models,
+                         base, integration target — then exit. Touches no worktree,
+                         container, or GitHub state, and builds no sandbox image.
+  --yes, -y              Skip the sweep confirmation prompt.
   --agent <name>         Agent provider to use (default: SANDCASTLE_AGENT or claude)
   --model <model>        Override the model for this run (default: env/provider routing)
   --help                 Show this help text
+
+Work branches are named <type>/<issue-number>-<slug>, with <type> derived from the
+issue's labels (see AGENTS.md "Branch naming"). PRD slices use slice/<n>-<slug>.
 
 Environment:
   .sandcastle/.env is loaded automatically.
@@ -237,12 +251,20 @@ if (process.argv.includes('--help') || process.argv.includes('-h')) {
 
 const USAGE =
   'Usage: yarn dispatch-agents --prd <issue-number> [--issue <slice-number>]\n' +
-  '   or: yarn dispatch-agents --issue <issue-number> [--base <ref>]   (standalone, no PRD)';
+  '   or: yarn dispatch-agents --issue <issue-number> [--base <ref>]   (standalone, no PRD)\n' +
+  '   or: yarn dispatch-agents --all-standalone [--limit <n>] [--base <ref>]   (sweep)';
 
 const prdValue = getArgValue('prd');
 const issueValue = getArgValue('issue');
+const sweepFlag = process.argv.includes('--all-standalone');
 
-if (!prdValue && !issueValue) fail(USAGE);
+if (!prdValue && !issueValue && !sweepFlag) fail(USAGE);
+
+if (sweepFlag && (prdValue || issueValue)) {
+  fail(
+    '--all-standalone selects the issue set itself and cannot be combined with --prd or --issue.',
+  );
+}
 
 const prdNumber = prdValue ? parseInt(prdValue, 10) : undefined;
 if (prdValue && isNaN(prdNumber as number)) fail('--prd must be a number.');
@@ -252,16 +274,37 @@ if (issueValue && isNaN(issueNumber as number)) {
   fail('--issue must be a number.');
 }
 
-// Standalone mode: one issue, no PRD, no integration branch. The work branch IS
-// the deliverable — nothing is fast-forwarded and nothing is closed, because the
-// work only reaches `main` once you push the branch and open a PR yourself.
-const mode: 'prd' | 'issue' = prdNumber === undefined ? 'issue' : 'prd';
+// Three modes:
+//   prd    — slices of one PRD, integrated into a local feat/<slug> branch.
+//   issue  — one explicitly named issue. The work branch IS the deliverable:
+//            nothing is fast-forwarded and nothing is closed, because the work
+//            only reaches `main` once you push the branch and open a PR yourself.
+//   sweep  — every agent-ready ad-hoc issue, each handled exactly like `issue`.
+//            Nothing was named by a human here, so the label gate is enforced
+//            strictly and the selection is confirmed before anything runs.
+const mode: 'prd' | 'issue' | 'sweep' = sweepFlag
+  ? 'sweep'
+  : prdNumber === undefined
+    ? 'issue'
+    : 'prd';
 
 const baseFlag = getArgValue('base');
 if (baseFlag && mode === 'prd') {
   fail(
-    '--base applies to standalone mode only. In PRD mode every slice is cut from the local feature branch.',
+    '--base applies to standalone and sweep modes only. In PRD mode every slice is cut from the local feature branch.',
   );
+}
+
+const dryRun = process.argv.includes('--dry-run');
+const assumeYes = process.argv.includes('--yes') || process.argv.includes('-y');
+
+const limitValue = getArgValue('limit');
+if (limitValue && mode !== 'sweep') {
+  fail('--limit applies to --all-standalone only.');
+}
+const limit = limitValue ? parseInt(limitValue, 10) : undefined;
+if (limitValue && (isNaN(limit as number) || (limit as number) < 1)) {
+  fail('--limit must be a positive number.');
 }
 
 const agentFlag = getArgValue('agent');
@@ -328,8 +371,9 @@ const claudeAuth = resolveClaudeAuth(agentKind);
 
 // Only now — after --help, argument validation, and the credential preflight have
 // all had their say. Building this image can take minutes; there is no reason to
-// pay for it before we know the run can actually authenticate.
-ensureSandboxImage();
+// pay for it before we know the run can actually authenticate. A --dry-run never
+// launches a container, so it must not pay for the image either.
+if (!dryRun) ensureSandboxImage();
 
 // ─── Fetch PRD issue ──────────────────────────────────────────────────────────
 
@@ -472,7 +516,7 @@ function unblockDependents(completed: Issue): void {
 }
 
 // ─── Build the run plan ───────────────────────────────────────────────────────
-// The two modes differ in exactly three things — where work branches are cut from,
+// The modes differ in exactly three things — where work branches are cut from,
 // whether finished work is fast-forwarded anywhere, and how the issue set is chosen.
 // Everything downstream (sandbox, in-container install, gate, prompt, usage log)
 // is shared and reads from this plan.
@@ -483,6 +527,10 @@ function unblockDependents(completed: Issue): void {
 //   issue — integrationBranch = null. One explicitly named issue, cut from
 //           origin/main (or --base). Its branch IS the deliverable: nothing is
 //           fast-forwarded, nothing is closed. You QA it, push it, open the PR.
+//   sweep — identical to `issue` in every downstream respect, run once per selected
+//           issue. Only the selection differs, and it is the one place where nobody
+//           named an issue by hand — so the label gate is enforced rather than
+//           warned about, and the whole set is confirmed before the first container.
 
 gitCmd(['fetch', 'origin', 'main']);
 
@@ -520,8 +568,12 @@ function planPrdRun(prd: number): RunPlan {
   // The PRD branch is created once, locally, from the freshest main. It is the
   // integration target for every slice in this PRD. We do NOT create it on origin
   // and we do NOT push it — you push it by hand after QA to open the PRD PR.
+  // A --dry-run must not leave it behind either: creating the branch is a real
+  // mutation, and a preview that alters the repo is not a preview.
   if (gitRefExists(branch)) {
     console.log(`Reusing existing local branch ${branch}.`);
+  } else if (dryRun) {
+    console.log(`Would create local branch ${branch} from origin/main.`);
   } else {
     const base = gitRefExists('origin/main') ? 'origin/main' : 'main';
     gitCmd(['branch', branch, base]);
@@ -617,10 +669,90 @@ function planStandaloneRun(number: number): RunPlan {
   };
 }
 
+/**
+ * Every open issue the orchestrator may pick up on its own authority: explicitly
+ * marked agent-ready, not part of a PRD (those belong to `--prd`, which orders them
+ * by dependency and integrates them), and not carrying a label that means a human
+ * still has to look at it.
+ *
+ * The `type:hitl` / `status:blocked` warnings that standalone mode prints are hard
+ * exclusions here. Standalone treats naming an issue as the authorization; a sweep
+ * has no such signal, so the labels are the only gate there is.
+ */
+function planSweepRun(): RunPlan {
+  const base =
+    baseFlag ?? (gitRefExists('origin/main') ? 'origin/main' : 'main');
+  if (!gitRefExists(base)) fail(`Base ref "${base}" does not resolve locally.`);
+
+  const everyIssue = ghJson<Issue[]>([
+    'issue',
+    'list',
+    '--repo',
+    REPO,
+    '--state',
+    'open',
+    '--json',
+    'number,title,state,labels,body',
+    '--limit',
+    '200',
+  ]);
+
+  const eligible = everyIssue.filter((issue) => {
+    const labels = issue.labels.map((label) => label.name);
+    return (
+      labels.includes('ready-for-agent') &&
+      labels.includes('type:afk') &&
+      !labels.includes('type:hitl') &&
+      !labels.includes('status:blocked') &&
+      !labels.includes('status:in-progress') &&
+      // A PRD parent is a spec, not implementable work, and its body carries
+      // `## Slices` rather than a `PRD: #` back-reference — so the slice filter
+      // below would not catch it.
+      !labels.includes('prd') &&
+      // PRD slices are `--prd`'s business: it orders them by `## Blocked by` and
+      // integrates them into a feature branch. Sweeping them one-off would strand
+      // each on its own branch with no integration target.
+      !/^\s*PRD:\s*#\d+/m.test(issue.body ?? '')
+    );
+  });
+
+  const selected = [...eligible]
+    .sort((left, right) => left.number - right.number)
+    .slice(0, limit ?? eligible.length);
+
+  if (selected.length === 0) {
+    fail(
+      'No eligible issues for a sweep.\n' +
+        'An issue qualifies when it is open, labelled `ready-for-agent` + `type:afk`,\n' +
+        'carries no `type:hitl` / `status:blocked` / `status:in-progress`, and has no\n' +
+        '`PRD: #<n>` reference (PRD slices belong to `--prd`).',
+    );
+  }
+
+  console.log(`\nSweep — every agent-ready ad-hoc issue.`);
+  console.log(`Base:            ${base}`);
+  console.log(
+    `Selected:        ${selected.length} of ${eligible.length} eligible` +
+      (limit !== undefined && eligible.length > selected.length
+        ? ` (--limit ${limit})`
+        : ''),
+  );
+  console.log(`No integration branch. Nothing is pushed, nothing is closed.`);
+
+  return {
+    baseRef: base,
+    integrationBranch: null,
+    issues: selected,
+    allIssues: [],
+  };
+}
+
 const plan =
   mode === 'prd'
     ? planPrdRun(prdNumber as number)
-    : planStandaloneRun(issueNumber as number);
+    : mode === 'sweep'
+      ? planSweepRun()
+      : planStandaloneRun(issueNumber as number);
 
 const { baseRef, integrationBranch, allIssues } = plan;
 const slices = plan.issues;
@@ -701,7 +833,9 @@ const HOST_GID = process.getgid?.() ?? 1000;
 
 const worktreesDir = join(process.cwd(), '.sandcastle', 'worktrees');
 
-console.log(`Dispatching ${slices.length} slice(s) one by one...\n`);
+// The "dispatching" banner is deliberately NOT printed here: a --dry-run dispatches
+// nothing, and a sweep may still be declined at the confirmation prompt. It is
+// printed once the run is actually committed to, just below the preview block.
 
 // ─── Model routing ────────────────────────────────────────────────────────────
 
@@ -780,18 +914,76 @@ function providerEnvironment(): Record<string, string> {
   );
 }
 
-function sliceBranchFor(issue: Issue): string {
-  const slug = issue.title
+// Branch type is read off the issue's labels so the branch name says what the work
+// does, not merely which issue it came from — see AGENTS.md "Branch naming". First
+// match wins, so the more specific intent (a security bug is a fix, not a chore)
+// must come first.
+// Order is significant: issues carry several of these at once. `qa` and `research`
+// rank last because they describe why work is tracked, not what it changes — #290
+// is labelled tooling + maintenance + qa but is a code fix, so `tooling` must win.
+const BRANCH_TYPE_BY_LABEL: ReadonlyArray<readonly [string, string]> = [
+  ['bug', 'fix'],
+  ['security', 'fix'],
+  ['enhancement', 'feat'],
+  ['documentation', 'docs'],
+  ['tooling', 'chore'],
+  ['maintenance', 'chore'],
+  ['dependencies', 'chore'],
+  ['research', 'docs'],
+  ['qa', 'chore'],
+];
+
+/** Conventional-commit type for an issue's work branch. Defaults to `chore`. */
+function branchTypeFor(issue: Issue): string {
+  const labels = new Set(issue.labels.map((label) => label.name));
+  for (const [label, type] of BRANCH_TYPE_BY_LABEL) {
+    if (labels.has(label)) return type;
+  }
+  return 'chore';
+}
+
+/** Every branch prefix a non-PRD work branch can be created under. */
+const WORK_BRANCH_TYPES = [
+  ...new Set(BRANCH_TYPE_BY_LABEL.map(([, type]) => type)),
+  // Legacy: standalone runs used a flat `issue/` prefix before AGENTS.md pinned
+  // the convention. Kept so stale branches from those runs are still cleaned up.
+  'issue',
+];
+
+function slugFor(issue: Issue): string {
+  return issue.title
     .replace(/^\[Slice\]\s*/i, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 40);
-  // Separate namespaces so a standalone re-run of an issue that later becomes a PRD
-  // slice (or vice versa) can never collide on a branch, worktree, or gate path.
+}
+
+function sliceBranchFor(issue: Issue): string {
+  // PRD slices keep `slice/`, and the prefix is load-bearing: it marks a branch that
+  // fast-forwards into a feature branch and closes its issue on success. Keeping it
+  // distinct from the work-branch types also preserves the guarantee that a
+  // standalone re-run of an issue that later becomes a PRD slice (or vice versa)
+  // can never collide on a branch, worktree, or gate path.
   return mode === 'prd'
-    ? `slice/${issue.number}-${slug}`
-    : `issue/${issue.number}-${slug}`;
+    ? `slice/${issue.number}-${slugFor(issue)}`
+    : `${branchTypeFor(issue)}/${issue.number}-${slugFor(issue)}`;
+}
+
+/**
+ * Branches a previous run of this issue may have left behind.
+ *
+ * The type is derived from labels, so re-running an issue whose labels changed
+ * produces a different branch name than last time — deleting only the currently
+ * computed name would orphan the old branch and its worktree.
+ */
+function staleWorkBranchesFor(issue: Issue): string[] {
+  if (mode === 'prd') return [];
+  const current = sliceBranchFor(issue);
+  const slug = slugFor(issue);
+  return WORK_BRANCH_TYPES.map((type) => `${type}/${issue.number}-${slug}`)
+    .filter((branch) => branch !== current)
+    .filter((branch) => gitRefExists(branch));
 }
 
 // ─── Finalize the agent's local commit ─────────────────────────────────────────
@@ -1240,6 +1432,66 @@ function logRunUsage(
   );
 }
 
+// ─── Preview and confirmation ─────────────────────────────────────────────────
+// The plan is fully resolved by this point but nothing has been created yet, so
+// this is the last moment a run can be inspected or abandoned for free.
+
+function printPlanPreview(): void {
+  console.log('Planned work:\n');
+  for (const issue of slices) {
+    const model = resolveModel(issue, agentKind);
+    console.log(`  #${issue.number}  ${issue.title}`);
+    console.log(
+      `      branch ${sliceBranchFor(issue)}  ·  ${agentKind}:${model}`,
+    );
+  }
+  console.log(
+    `\n  base ${baseRef}  ·  ` +
+      (integrationBranch === null
+        ? 'no integration branch — each branch is its own deliverable'
+        : `integrates into ${integrationBranch}`),
+  );
+  console.log('  Nothing is pushed to origin.\n');
+}
+
+if (dryRun) {
+  printPlanPreview();
+  console.log(
+    'Dry run — no worktree, container, or GitHub write was performed.',
+  );
+  process.exit(0);
+}
+
+// A sweep is the only mode where no human named the work. Everything selected here
+// spends real model quota, so the set is shown and confirmed before the first
+// container starts.
+if (mode === 'sweep' && !assumeYes) {
+  printPlanPreview();
+
+  if (!process.stdin.isTTY) {
+    fail(
+      'A sweep needs confirmation, but stdin is not interactive.\n' +
+        'Re-run with --dry-run to inspect the selection, or --yes to accept it.',
+    );
+  }
+
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const answer = (
+    await rl.question(`Dispatch these ${slices.length} issue(s)? [y/N] `)
+  )
+    .trim()
+    .toLowerCase();
+  rl.close();
+
+  if (answer !== 'y' && answer !== 'yes') {
+    console.log('Aborted — nothing was dispatched.');
+    process.exit(0);
+  }
+  console.log('');
+}
+
+console.log(`Dispatching ${slices.length} slice(s) one by one...\n`);
+
 const results: SliceResult[] = [];
 const crashed: Array<{ issue: Issue; error: string }> = [];
 const pendingSlices = [...slices];
@@ -1288,23 +1540,30 @@ while (pendingSlices.length > 0) {
 
     // Fresh slice branch + worktree off the CURRENT local feature head, so this
     // slice (processed one by one) builds on every previously-integrated slice.
-    // Clear any stale branch/worktree from an earlier run first.
-    const worktreeName = sliceBranch.replace(/\//g, '-');
-    const worktreePath = join(worktreesDir, worktreeName);
-    if (existsSync(worktreePath)) {
-      spawnSync('git', ['worktree', 'remove', '--force', worktreePath], {
-        encoding: 'utf8',
-        windowsHide: true,
-      });
+    // Clear any stale branch/worktree from an earlier run first — including one
+    // filed under a different type prefix, if this issue's labels have changed
+    // since it last ran.
+    const staleBranches = [sliceBranch, ...staleWorkBranchesFor(issue)];
+    for (const stale of staleBranches) {
+      const stalePath = join(worktreesDir, stale.replace(/\//g, '-'));
+      if (existsSync(stalePath)) {
+        spawnSync('git', ['worktree', 'remove', '--force', stalePath], {
+          encoding: 'utf8',
+          windowsHide: true,
+        });
+      }
     }
+    const worktreePath = join(worktreesDir, sliceBranch.replace(/\//g, '-'));
     spawnSync('git', ['worktree', 'prune'], {
       encoding: 'utf8',
       windowsHide: true,
     });
-    spawnSync('git', ['branch', '-D', sliceBranch], {
-      encoding: 'utf8',
-      windowsHide: true,
-    });
+    for (const stale of staleBranches) {
+      spawnSync('git', ['branch', '-D', stale], {
+        encoding: 'utf8',
+        windowsHide: true,
+      });
+    }
     gitCmd(['branch', sliceBranch, baseRef]);
     const wt = spawnSync(
       'git',
