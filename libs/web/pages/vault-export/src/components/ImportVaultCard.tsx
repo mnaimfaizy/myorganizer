@@ -20,7 +20,7 @@ import {
   importVault,
   isVaultImportError,
   loadVault,
-  VAULT_CORE_EXPORT_MAX_BYTES,
+  VAULT_ENVELOPE_PARSE_MAX_BYTES,
 } from '@myorganizer/web-vault';
 import { getVaultImportErrorMessage } from '@myorganizer/web-vault-ui';
 
@@ -43,11 +43,11 @@ export function ImportVaultCard() {
       return;
     }
 
-    if (selectedFile.size > VAULT_CORE_EXPORT_MAX_BYTES) {
+    if (selectedFile.size > VAULT_ENVELOPE_PARSE_MAX_BYTES) {
       toast({
         title: 'File too large',
         description: `Max supported size is ${formatBytes(
-          VAULT_CORE_EXPORT_MAX_BYTES,
+          VAULT_ENVELOPE_PARSE_MAX_BYTES,
         )}.`,
         variant: 'destructive',
       });

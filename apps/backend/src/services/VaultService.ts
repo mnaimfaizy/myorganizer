@@ -42,7 +42,10 @@ type ServiceResult<T> =
 
 const VAULT_META_MAX_BYTES = 32 * 1024;
 const VAULT_BLOB_MAX_BYTES = 256 * 1024;
-const VAULT_EXPORT_MAX_BYTES = 1024 * 1024;
+// Cap on `POST /vault/export` and `POST /vault/import` payloads. Independent of, and
+// tighter than, VAULT_ENVELOPE_PARSE_MAX_BYTES (10 MiB) in @myorganizer/vault-core,
+// which governs client-side envelope parsing rather than anything crossing this API.
+const VAULT_EXPORT_PAYLOAD_MAX_BYTES = 1024 * 1024;
 
 const BASE64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
 
@@ -369,7 +372,7 @@ export class VaultService {
       blobs: blobMap,
     };
 
-    if (jsonByteLength(payload) > VAULT_EXPORT_MAX_BYTES) {
+    if (jsonByteLength(payload) > VAULT_EXPORT_PAYLOAD_MAX_BYTES) {
       return {
         ok: false,
         status: 422,
@@ -392,7 +395,7 @@ export class VaultService {
       };
     }
 
-    if (jsonByteLength(exportBundle) > VAULT_EXPORT_MAX_BYTES) {
+    if (jsonByteLength(exportBundle) > VAULT_EXPORT_PAYLOAD_MAX_BYTES) {
       return {
         ok: false,
         status: 422,
