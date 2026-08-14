@@ -9,6 +9,12 @@
 # refresh must never fail the git operation that triggered it. The whole thing is
 # a no-op for anyone who has not installed graphify, so it is safe to ship to
 # every contributor. Opt out at any time with GRAPHIFY_SKIP_HOOK=1.
+#
+# Husky runs hooks under `sh -e` (see .husky/_/h), and a bare `VAR=$(cmd)` takes
+# cmd's exit status as its own — so a probe that is *expected* to fail, like
+# `command -v graphify` on a machine without it, aborts the hook before its guard
+# can run. Every command substitution below therefore ends in `|| true`; the
+# guards that follow are what decide whether to proceed.
 
 if [ "${GRAPHIFY_SKIP_HOOK:-0}" = "1" ]; then
   exit 0
@@ -16,7 +22,7 @@ fi
 
 # Locate graphify. `uv tool install` drops it in ~/.local/bin, which is not
 # always on PATH for hooks launched from a GUI client, so check there too.
-GRAPHIFY_BIN=$(command -v graphify 2>/dev/null)
+GRAPHIFY_BIN=$(command -v graphify 2>/dev/null) || true
 if [ -z "$GRAPHIFY_BIN" ] && [ -x "$HOME/.local/bin/graphify" ]; then
   GRAPHIFY_BIN="$HOME/.local/bin/graphify"
 fi
@@ -30,15 +36,15 @@ fi
 # A linked worktree has git-dir != git-common-dir; both are resolved to
 # absolute first, because git can hand back an absolute GIT_DIR alongside a
 # relative ".git" common dir and a raw compare would skip the primary too.
-_GFY_GITDIR=$(cd "$(git rev-parse --git-dir 2>/dev/null)" 2>/dev/null && pwd)
-_GFY_COMMONDIR=$(cd "$(git rev-parse --git-common-dir 2>/dev/null)" 2>/dev/null && pwd)
+_GFY_GITDIR=$(cd "$(git rev-parse --git-dir 2>/dev/null)" 2>/dev/null && pwd) || true
+_GFY_COMMONDIR=$(cd "$(git rev-parse --git-common-dir 2>/dev/null)" 2>/dev/null && pwd) || true
 if [ -n "$_GFY_COMMONDIR" ] && [ "$_GFY_GITDIR" != "$_GFY_COMMONDIR" ]; then
   exit 0
 fi
 
 # Never rebuild mid-rebase/merge/cherry-pick: the rebuild would leave unstaged
 # output and block `--continue`.
-GIT_DIR=${GIT_DIR:-$(git rev-parse --git-dir 2>/dev/null)}
+GIT_DIR=${GIT_DIR:-$(git rev-parse --git-dir 2>/dev/null)} || true
 for _state in "$GIT_DIR/rebase-merge" "$GIT_DIR/rebase-apply"; do
   if [ -d "$_state" ]; then
     exit 0
@@ -59,7 +65,7 @@ fi
 # Only when source under apps/ or libs/ changed. Doc and image changes are
 # intentionally ignored here so a hook never triggers an LLM call; refresh those
 # by hand.
-CHANGED=$(graphify_changed_files 2>/dev/null)
+CHANGED=$(graphify_changed_files 2>/dev/null) || true
 if ! printf '%s\n' "$CHANGED" | grep -qE '^(apps|libs)/.*\.(ts|tsx|js|jsx|mjs|cjs)$'; then
   exit 0
 fi
