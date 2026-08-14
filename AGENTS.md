@@ -19,7 +19,7 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - Lint: `yarn nx lint <project-name>` or `yarn lint`.
 - Format: `yarn format:write`.
 - AI commit workflow: `corepack yarn ai:commit --message-file <path>`.
-- AI PR workflow: `corepack yarn ai:create-pr [--reviewer <login>]`.
+- AI PR workflow: draft with the `PrAuthor` sub-agent, then `corepack yarn ai:create-pr --title <text> --body-file <path> [--reviewer <login>]`.
 - API sync after backend contract changes: `yarn openapi:sync`; check drift with `yarn openapi:check`.
 - Release (cut branch): `yarn release:cut --version vX.Y.Z --push --notes-file RELEASE_NOTES.md`.
 - Release (tag after production deploy): `yarn release:tag --version vX.Y.Z --push`.
@@ -56,7 +56,7 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - Keep docs concise and link to existing docs when possible.
 - Use the `Commit` sub-agent only to draft Conventional Commit messages from the staged diff; execute commits with `corepack yarn ai:commit --message-file <path>` so Husky is allowed to finish. Never `git add .` or run `git commit` directly.
 - For commit requests, wait for `yarn ai:commit` to return before continuing. If it fails, read the `ai:commit: failed` trailer, fix the hinted slice, and retry.
-- For PR requests, gather commit history from the current branch, push upstream if needed, create or reuse the PR, assign the authenticated GitHub user, and leave reviewers empty unless the user explicitly names them.
+- For PR requests, draft the title and body with the `PrAuthor` sub-agent from the branch diff and linked GitHub issues, then execute `corepack yarn ai:create-pr --title <text> --body-file <path>`. Push upstream if needed, assign the authenticated GitHub user, and leave reviewers empty unless the user explicitly names them. Do not fall back to a title-only PR if `PrAuthor` fails.
 - For issue creation requests, follow `.github/skills/github-issue-creation-workflow/SKILL.md` and delegate to `IssueCreator` so duplicate checks, required details, and label validation are handled consistently.
 - For issue/PR triage requests, follow `.github/skills/triage/SKILL.md`. Use `.github/skills/triage/AGENT-BRIEF.md` when moving to `ready-for-agent`, and `.github/skills/triage/OUT-OF-SCOPE.md` when rejecting enhancements as `wontfix`.
 - For Jest unit or integration test creation/update requests, follow `.github/skills/unit-test-delegation-workflow/SKILL.md` and delegate implementation to `TestScaffold` first. The brief must include a behavior matrix from the actual implementation plus explicit in-scope and out-of-scope scenarios. Main agent must review behavior correctness, side effects, failures, boundaries, security-sensitive paths, mock hygiene, duplicate output, and validation before finalizing. Use `docs/testing/projects/<project>.md` as the project-aware tooling reference; `docs/testing/README.md` is the index plus cross-project rules.
@@ -150,5 +150,6 @@ Use [`.claude/checklist.md`](.claude/checklist.md) Step 0 → file-type matrix.
 - Do not commit secrets or production credentials.
 - Do not run `git commit` directly or `git add .`; use `corepack yarn ai:commit --message-file <path>`.
 - Do not cancel, background, or abandon a running `yarn ai:commit` while Husky checks are still executing.
+- Do not run `gh pr create` directly; draft with the `PrAuthor` sub-agent, then `corepack yarn ai:create-pr --title <text> --body-file <path>`.
 - Do not open pull requests from `main` or another base branch directly.
 - Do not leave harness-only agent additions/removals unsynchronized. If one agent is added/removed in canonical, propagate to all harnesses via `yarn agents:sync`.

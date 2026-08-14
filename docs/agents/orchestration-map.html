@@ -21,6 +21,7 @@
     "E2EPlanner": "T2",
     "IssueCreator": "T1",
     "PreflightCheck": "T0",
+    "PrAuthor": "T1",
     "ReleaseNotes": "T1",
     "Research": "T1",
     "StorybookCurator": "T1",
@@ -787,7 +788,7 @@ a:hover{color:var(--a-strong)}
             </div>
           </div>
           <div style="font-size:13px;color:var(--muted);line-height:1.45">Spawned <strong style="color:var(--ink);font-weight:700">in parallel and deliberately isolated</strong> so they cannot pollute each other's context. Findings are reported side by side and are <strong style="color:var(--ink);font-weight:700">never merged or reranked</strong>.</div>
-          <div style="font-size:12.5px;color:var(--muted);line-height:1.45;padding:var(--space-3) var(--space-4);background:var(--paper);border-radius:var(--radius-sm)">No tier badge, on purpose. <code style="font-family:ui-monospace,Menlo,monospace">agent-model-policy.json</code> covers only the 19 <em>named</em> agents; the skill specifies <strong style="color:var(--ink);font-weight:700">harness-native dispatch</strong> and deliberately doesn't hard-code a tool or agent-type name, so both axes run on whatever general-purpose default the current harness provides.</div>
+          <div style="font-size:12.5px;color:var(--muted);line-height:1.45;padding:var(--space-3) var(--space-4);background:var(--paper);border-radius:var(--radius-sm)">No tier badge, on purpose. <code style="font-family:ui-monospace,Menlo,monospace">agent-model-policy.json</code> covers only the 20 <em>named</em> agents; the skill specifies <strong style="color:var(--ink);font-weight:700">harness-native dispatch</strong> and deliberately doesn't hard-code a tool or agent-type name, so both axes run on whatever general-purpose default the current harness provides.</div>
         </div>
       </div>
 
@@ -811,6 +812,29 @@ a:hover{color:var(--a-strong)}
             <span style="font-size:10px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:999px;border:1.5px dashed var(--line-strong);color:var(--muted)">READ-ONLY</span>
           </div>
           <div style="font-size:13px;color:var(--muted)">Drafts the commit message text only — <strong style="color:var(--ink);font-weight:700">the orchestrator executes the commit</strong>.</div>
+        </div>
+      </div>
+
+      <div data-dim="1" data-agent="PrAuthor" data-pipe="review" style="display:grid;grid-template-columns:180px 64px 1fr;gap:0 var(--space-4);align-items:stretch;padding-bottom:var(--space-4)">
+        <div style="display:flex;gap:var(--space-3)">
+          <div style="width:36px;flex:none;display:flex;flex-direction:column;align-items:center">
+            <div style="width:36px;height:36px;border-radius:999px;background:var(--a);color:var(--paper);display:grid;place-items:center;font-family:var(--font-heading);font-size:16px;flex:none">10</div>
+            <div style="flex:1;width:5px;background:var(--tint-a);border-radius:999px;margin-top:6px;min-height:16px"></div>
+          </div>
+          <div style="padding-top:6px"><div style="font-size:13.5px;font-weight:800;line-height:1.25">PrAuthor</div><div style="font-size:12px;color:var(--muted)">on request</div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:center;padding:14px 0 10px">
+          <svg width="60" height="14" viewBox="0 0 60 14" aria-hidden="true"><line x1="1" y1="7" x2="50" y2="7" stroke="var(--a)" stroke-width="2.75" stroke-linecap="round"></line><path d="M49 2.2 L58 7 L49 11.8 Z" fill="var(--a)"></path></svg>
+          <svg width="60" height="14" viewBox="0 0 60 14" aria-hidden="true"><line x1="10" y1="7" x2="59" y2="7" stroke="var(--line-strong)" stroke-width="2.25" stroke-dasharray="3 5" stroke-linecap="round"></line><path d="M11 2.2 L2 7 L11 11.8 Z" fill="var(--line-strong)"></path></svg>
+        </div>
+        <div style="display:grid;gap:8px;padding:var(--space-3) var(--space-4);background:var(--panel);border:2px dashed var(--line-strong);border-radius:var(--radius-md)">
+          <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+            <span style="width:11px;height:11px;border-radius:999px;border:2px solid var(--line-strong);flex:none"></span>
+            <span style="font-size:15px;font-weight:800">PrAuthor</span>
+            <span title="T1 — code generation or bounded synthesis. Optimize for reliable tool use and quality" style="font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:999px;background:var(--tint-b);color:var(--on-tint-b)">T1</span>
+            <span style="font-size:10px;font-weight:700;letter-spacing:.06em;padding:3px 9px;border-radius:999px;border:1.5px dashed var(--line-strong);color:var(--muted)">READ-ONLY</span>
+          </div>
+          <div style="font-size:13px;color:var(--muted)">Drafts the PR title and body from the branch diff and linked issues — <strong style="color:var(--ink);font-weight:700">the orchestrator creates the PR</strong>.</div>
         </div>
       </div>
 
@@ -876,7 +900,7 @@ a:hover{color:var(--a-strong)}
   <section style="margin-bottom:var(--space-8)">
     <div style="display:flex;align-items:baseline;gap:var(--space-4);flex-wrap:wrap;margin-bottom:var(--space-4)">
       <h2 style="font-size:30px;margin:0">The cast</h2>
-      <p style="margin:0;font-size:14px;color:var(--muted)">19 named sub-agents, plus two unnamed ones. Filled dot = always-on core; hollow = fires on a trigger.</p>
+      <p style="margin:0;font-size:14px;color:var(--muted)">20 named sub-agents, plus two unnamed ones. Filled dot = always-on core; hollow = fires on a trigger.</p>
     </div>
 
     <div style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:var(--space-3)">Always-on core — 7 agents, fires in most feature sessions</div>
@@ -925,7 +949,7 @@ a:hover{color:var(--a-strong)}
       </div>
     </div>
 
-    <div style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:var(--space-3)">Occasional — 12 agents, each on one specific trigger</div>
+    <div style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--muted);margin-bottom:var(--space-3)">Occasional — 13 agents, each on one specific trigger</div>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(258px,1fr));gap:var(--space-3);margin-bottom:var(--space-6)">
 
       <div data-dim="1" data-agent="E2EPlanner" data-pipe="e2e" style="display:grid;gap:7px;align-content:start;padding:var(--space-3) var(--space-4);background:var(--panel);border:2px dashed var(--line-strong);border-radius:var(--radius-md)">
@@ -936,6 +960,11 @@ a:hover{color:var(--a-strong)}
       <div data-dim="1" data-agent="Commit" data-pipe="review" style="display:grid;gap:7px;align-content:start;padding:var(--space-3) var(--space-4);background:var(--panel);border:2px dashed var(--line-strong);border-radius:var(--radius-md)">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="width:11px;height:11px;border-radius:999px;border:2px solid var(--line-strong);flex:none"></span><span style="font-size:14.5px;font-weight:800">Commit</span><span title="T0 — deterministic, repetitive or read-only work. Optimize for low cost and latency" style="font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:999px;background:var(--panel-2);color:var(--muted)">T0</span></div>
         <div style="font-size:12.5px;color:var(--muted)">User asks for a commit message. Drafts text; the orchestrator commits.</div>
+      </div>
+
+      <div data-dim="1" data-agent="PrAuthor" data-pipe="review" style="display:grid;gap:7px;align-content:start;padding:var(--space-3) var(--space-4);background:var(--panel);border:2px dashed var(--line-strong);border-radius:var(--radius-md)">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="width:11px;height:11px;border-radius:999px;border:2px solid var(--line-strong);flex:none"></span><span style="font-size:14.5px;font-weight:800">PrAuthor</span><span title="T1 — code generation or bounded synthesis. Optimize for reliable tool use and quality" style="font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:999px;background:var(--tint-b);color:var(--on-tint-b)">T1</span></div>
+        <div style="font-size:12.5px;color:var(--muted)">User asks for a PR. Drafts title and body from the diff and linked issues; the orchestrator creates the PR.</div>
       </div>
 
       <div data-dim="1" data-agent="IssueCreator" data-pipe="ops" style="display:grid;gap:7px;align-content:start;padding:var(--space-3) var(--space-4);background:var(--panel);border:2px solid var(--ink);border-radius:var(--radius-md)">
@@ -1103,7 +1132,7 @@ a:hover{color:var(--a-strong)}
     <div>
       <h3 style="font-size:22px;margin:0 0 8px">Three deliberate exceptions</h3>
       <div style="font-size:13px;color:var(--muted);line-height:1.5">Every sub-agent on this page is pinned in one file. These three are stated absences — read them as decisions, not gaps.</div>
-      <div style="font-size:11.5px;color:var(--muted);margin-top:var(--space-4);line-height:1.6">The policy file pins the 19 named sub-agents and the Sandcastle dispatcher. The interactive orchestrator's own model is user-selected per session and governed by nothing.</div>
+      <div style="font-size:11.5px;color:var(--muted);margin-top:var(--space-4);line-height:1.6">The policy file pins the 20 named sub-agents and the Sandcastle dispatcher. The interactive orchestrator's own model is user-selected per session and governed by nothing.</div>
       <div style="font-size:11.5px;color:var(--muted);margin-top:var(--space-3);line-height:1.6"><code style="font-family:ui-monospace,Menlo,monospace">tools/config/agent-model-policy.json</code><br>ADR 0004 · 0012 · 0013 · 0014</div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:var(--space-3);font-size:12.5px">
