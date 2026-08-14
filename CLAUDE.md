@@ -12,6 +12,7 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 - Storybook creation or updates should use `.claude/commands/storybook.md`.
 - Playwright E2E creation/updates should follow `.github/skills/playwright-e2e-workflow/SKILL.md`.
 - Issue/PR triage requests should use `.claude/commands/triage.md` (`.github/skills/triage/SKILL.md`).
+- Design brief requests — a prompt for the Designer agent to build a diagram, animated walkthrough, or explainer page — should use `.claude/commands/design-brief.md` (`.github/skills/design-brief/SKILL.md`).
 - Commit-message drafting still belongs to the existing `Commit` sub-agent (staged diff only); commit execution belongs to `corepack yarn ai:commit --message-file <path>`.
 - PR title and body drafting belongs to the `PrAuthor` sub-agent (branch diff plus linked issues); PR execution belongs to `corepack yarn ai:create-pr --title <text> --body-file <path>`.
 - Jest test implementation uses a three-stage pipeline: `TestScaffold` (writes tests) → `TestReviewer` (static gate: checklist, tsc, eslint) → `TestRunner` (execution with hang detection). Always provide a behavior matrix from the actual implementation, including unsupported scenarios to avoid. Consult `docs/testing/projects/<project>.md` for that project's tooling and mock patterns (`docs/testing/README.md` is the index plus cross-project rules). Max 3 retries before escalating to the main agent.
