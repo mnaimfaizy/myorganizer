@@ -12,12 +12,14 @@ Use these repo-local workflows for commit, pull request, test, and Storybook-sui
 
 ## Create Pull Request
 
-- Build the PR title and description from the current branch commits.
-- Execute `corepack yarn ai:create-pr`.
+- Confirm the current branch is not the base branch.
+- Draft the PR title and description with the existing `PrAuthor` sub-agent from the branch diff and linked GitHub issues.
+- Write the body to a temp file and execute `corepack yarn ai:create-pr --title "<title>" --body-file <path>`.
+- Do not run `gh pr create` directly. Do not omit `--title` / `--body-file` if `PrAuthor` failed.
 - Push upstream if needed.
 - Assign the authenticated GitHub user.
 - Leave reviewers empty unless the user explicitly supplies them with `--reviewer <login>`.
-- Return only the PR URL on success.
+- Return the PR URL and the title on success.
 
 ## Triage Issues And PRs
 

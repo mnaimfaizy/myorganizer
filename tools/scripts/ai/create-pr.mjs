@@ -10,9 +10,9 @@ const usage = `Usage:
 
 Options:
   --base <branch>         Base branch for the pull request. Defaults to origin/HEAD or main.
-  --title <text>          Pull request title. Falls back to commit-derived text when omitted.
+  --title <text>          Pull request title. Agent sessions pass the PrAuthor draft; falls back to commit-derived text when omitted.
   --body <text>           Pull request body text.
-  --body-file <path>      Read the pull request body from a file.
+  --body-file <path>      Read the pull request body from a file. Agent sessions pass the PrAuthor draft here.
   --reviewer <login>      Reviewer to request. Repeat the flag or pass a comma-separated list.
   --draft                 Create the pull request as a draft.
   --help                  Show this help text.

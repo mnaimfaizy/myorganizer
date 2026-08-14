@@ -322,8 +322,8 @@ When you need to find **shallow modules**, **seam leaks**, or **testability gaps
 - The commit workflow must wait for `yarn ai:commit` to finish. Do not cancel, background, or move on while Husky pre-commit checks are still running.
 - If `ai:commit` fails, read the `ai:commit: failed` trailer (`reason`, `hint`, optional `projects` / `paths`), fix that slice, rerun the hinted check, and only then retry.
 - Commit-time Nx output should remain readable. The Husky hook uses static output for Nx task execution; preserve that behavior when editing the hook.
-- When the user asks to open or create a PR, use `corepack yarn ai:create-pr` unless an IDE-native integration can satisfy the exact same behavior.
-- PR creation should gather the commit history from the current branch, push upstream if needed, assign the authenticated GitHub user, keep reviewers empty unless the user explicitly names one, and return only success plus the PR link.
+- When the user asks to open or create a PR, draft the title and body with the `PrAuthor` sub-agent, then run `corepack yarn ai:create-pr --title <text> --body-file <path>` unless an IDE-native integration can satisfy the exact same behavior.
+- PR creation should use the `PrAuthor` draft (branch diff plus linked GitHub issues), push upstream if needed, assign the authenticated GitHub user, keep reviewers empty unless the user explicitly names one, and return the title plus the PR link. Do not omit `--title` / `--body-file` if `PrAuthor` failed.
 
 ## API Development
 
