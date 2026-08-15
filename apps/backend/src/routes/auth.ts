@@ -1,6 +1,7 @@
 import { NextFunction, Router } from 'express';
 import authController from '../controllers/AuthController';
 import apiTokens from '../helpers/ApiTokens';
+import { ACCESS_TOKEN_EXPIRES_IN_MS } from '../helpers/tokenLifetimes';
 import { getExpiry } from '../helpers/cookieHelper';
 import filterUser from '../helpers/filterUser';
 import { decodeToken } from '../helpers/jwtHelper';
@@ -79,7 +80,7 @@ router.post(
             refresh_token?: string;
           } = {
             token: token,
-            expires_in: 600_000,
+            expires_in: ACCESS_TOKEN_EXPIRES_IN_MS,
             user: filteredUser,
             ...(isMobile ? { refresh_token: refreshToken } : {}),
           };
@@ -439,7 +440,7 @@ router.post('/refresh', async (req, res, next: NextFunction) => {
       .status(200)
       .json({
         token,
-        expires_in: 600_000,
+        expires_in: ACCESS_TOKEN_EXPIRES_IN_MS,
         user: filteredUser,
       });
   } catch (error) {

@@ -504,22 +504,6 @@ components:
         - disabled
       type: object
       additionalProperties: false
-    UserLoginBody:
-      properties:
-        email:
-          type: string
-        password:
-          type: string
-        client_type:
-          type: string
-          enum:
-            - mobile
-            - web
-      required:
-        - email
-        - password
-      type: object
-      additionalProperties: false
     ValidateErrorJSON:
       properties:
         message:
@@ -534,6 +518,22 @@ components:
       required:
         - message
         - details
+      type: object
+      additionalProperties: false
+    UserLoginBody:
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        client_type:
+          type: string
+          enum:
+            - mobile
+            - web
+      required:
+        - email
+        - password
       type: object
       additionalProperties: false
     RegisterUserResponse:
@@ -672,7 +672,7 @@ components:
       description: Shared secret for cron-triggered endpoints
 info:
   title: "@myorganizer/source"
-  version: 0.2.0
+  version: 0.3.0
   license:
     name: MIT
   contact: {}
@@ -1243,6 +1243,14 @@ paths:
                 required:
                   - message
                 type: object
+        "403":
+          description: Email not verified
+        "422":
+          description: Validation Failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidateErrorJSON"
       tags:
         - Authentication
       security: []
