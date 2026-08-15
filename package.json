@@ -27,6 +27,7 @@
     "release:cut": "node tools/scripts/release.mjs cut",
     "release:tag": "node tools/scripts/release.mjs tag",
     "test:hygiene": "node tools/scripts/check-test-hygiene.mjs",
+    "test:hygiene:test": "node --test tools/scripts/check-test-hygiene.test.mjs",
     "component:hygiene": "node tools/scripts/check-component-hygiene.mjs",
     "test:backend": "nx test backend",
     "test:myorganizer": "nx test myorganizer",
