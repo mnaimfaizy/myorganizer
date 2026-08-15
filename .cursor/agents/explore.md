@@ -44,8 +44,9 @@ Which sections of the Explore Summary matter most for this request.
 ## Graphify structural index (MCP)
 
 A pre-built AST knowledge graph of `apps/` and `libs/` is served over MCP from
-`graphify-out/graph.json`, refreshed automatically on commit. It came off probation on 2026-08-12 as
-a **permanent tool for two question shapes only**. Full rationale and evidence: `docs/graphify.md`.
+`graphify-out/graph.json`. Refresh hooks cover commits and merges, but not every checkout/worktree
+workflow, so the graph can be stale. It came off probation on 2026-08-12 as a **permanent tool for
+two question shapes only**. Full rationale and evidence: `docs/graphify.md`.
 
 **Use it before grep, for exactly these two:**
 
@@ -55,16 +56,33 @@ a **permanent tool for two question shapes only**. Full rationale and evidence: 
 
 `query_graph` is a fallback for a broad "what relates to X" sweep when you have no exact symbol.
 
+### Project-edge fidelity preflight
+
+For cross-project import/dependency or architecture questions, the **parent agent** should run
+`yarn graphify:project-edges` before delegating and include its JSON result in the Explore Request.
+CodeExplorer cannot run it because every harness keeps this agent read-only and shell-less.
+
+- `passed: true` and `integrity.freshAtHead: true` means Graphify's import projection may be used as
+  fast candidate evidence. Nx remains authoritative for project ownership and affected projects.
+- A failed benchmark, `freshAtHead: false`, a missing result, or a command error means do not draw
+  project-wide conclusions from Graphify. Use Nx output supplied by the parent, then verify with
+  `Read`/`Grep`.
+- The benchmark validates aggregate project-edge fidelity; it does not answer which projects a
+  specific change affects. Use `nx affected --files=<path>` for that question.
+- State the benchmark status under `Gaps / Unknowns` whenever the Goal asks for project-wide
+  dependency or architecture conclusions.
+
 **Never use it for these. It answers wrongly or emptily, and it does so silently:**
 
-| Question shape                                                                           | What actually happens                                                                                                           | Use instead                                           |
-| ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| Cross-package or cross-HTTP-boundary impact ("what breaks if `VaultController` changes") | No edge spans the OpenAPI/codegen seam, so you get an empty result that reads as "nothing is affected"                          | `nx affected --files=<path>`                          |
-| Blast radius of a TypeScript **type**                                                    | Type references are not edges; the node reports degree ≈ 1                                                                      | `Grep`                                                |
-| Any symbol whose name occurs in more than one file                                       | `get_node` returns one arbitrary match **without saying it substituted** — asking for `EncryptedBlob` returns `EncryptedBlobV1` | `query_graph`, then disambiguate by reading the files |
-| Which fields or members a type has                                                       | Members are not nodes                                                                                                           | `Read` the type definition                            |
-| Database or schema questions                                                             | `**/*.sql` is excluded by design                                                                                                | `apps/backend/src/prisma/schema.prisma`               |
-| Ranking PRs or slices by review risk                                                     | Blast radius counts the changed file's own community, not its dependents, so it inverts risk for hub and barrel files           | `nx affected`                                         |
+| Question shape                                                         | What actually happens                                                                                                           | Use instead                                           |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Cross-HTTP/codegen impact ("what breaks if `VaultController` changes") | No edge spans the OpenAPI/codegen seam, so you get an empty result that reads as "nothing is affected"                          | `nx affected --files=<path>` + contract/source reads  |
+| Project impact from a changed file                                     | Graphify symbol provenance is not Nx affected-project analysis                                                                  | `nx affected --files=<path>`                          |
+| Blast radius of a TypeScript **type**                                  | Type references are not edges; the node reports degree ≈ 1                                                                      | `Grep`                                                |
+| Any symbol whose name occurs in more than one file                     | `get_node` returns one arbitrary match **without saying it substituted** — asking for `EncryptedBlob` returns `EncryptedBlobV1` | `query_graph`, then disambiguate by reading the files |
+| Which fields or members a type has                                     | Members are not nodes                                                                                                           | `Read` the type definition                            |
+| Database or schema questions                                           | `**/*.sql` is excluded by design                                                                                                | `apps/backend/src/prisma/schema.prisma`               |
+| Ranking PRs or slices by review risk                                   | Blast radius counts the changed file's own community, not its dependents, so it inverts risk for hub and barrel files           | `nx affected`                                         |
 
 **Trust rule.** Tag every graph-derived fact `[inferred]` until you confirm the exact location with
 `Read`/`Grep`, then upgrade it to `[found]` with the `file:line` citation. If the graphify tools are
