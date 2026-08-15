@@ -30,11 +30,13 @@ This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express
 - Sub-agent sync apply: `yarn agents:sync`.
 - Sub-agent model/catalog audit: `yarn agents:models:audit`.
 - Sandcastle loop usage summary: `yarn agents:usage:report`.
+- Root README check: `yarn readme:check`.
 
 ## Architecture
 
 - Keep `apps/myorganizer/src/app/**` as thin Next.js route wrappers.
 - Put page logic in `libs/web/pages/<route>` and shared code in `libs/**`.
+- After adding or removing an app, a top-level lib, or a `/dashboard/*` route, update `README.md` and run `yarn readme:check`. The README is the only place claiming a repository layout and a route list, and it drifted for months because no rule made it anyone's job. Keep it a front door: versions live in `TECH_STACK.md`, scripts in `package.json`, env vars in `.env.example` — link to them rather than restating them.
 - Use path aliases from `tsconfig.base.json`.
 - Vault-backed features are end-to-end encrypted; the server stores ciphertext only.
 - Treat `libs/app-api-client` and API specs as generated/synced outputs.

@@ -53,6 +53,7 @@
     "agents:sync:test": "node --test tools/scripts/lib/harness-sections.test.mjs",
     "agents:map:check": "node tools/scripts/check-agent-map.mjs",
     "vault:pages:check": "node tools/scripts/check-vault-pages.mjs",
+    "readme:check": "node tools/scripts/check-readme.mjs",
     "agents:models:audit": "node tools/scripts/audit-agent-model-catalog.mjs",
     "agents:usage:report": "node tools/scripts/report-agent-usage.mjs",
     "dispatch-agents": "npx tsx .sandcastle/main.mts",
