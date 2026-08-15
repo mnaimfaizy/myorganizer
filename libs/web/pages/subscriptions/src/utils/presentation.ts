@@ -81,7 +81,11 @@ export function getSubscriptionTierLabel(value: string) {
 
 export function formatIsoDateForDisplay(iso?: string) {
   if (!iso) return '—';
-  const parsed = parseISO(iso);
+  // Use the date-only portion (YYYY-MM-DD) so that parseISO treats it as local
+  // midnight rather than UTC midnight, preventing off-by-one-day for users in
+  // timezones behind UTC (e.g. UTC-5 would show the previous day otherwise).
+  const dateOnly = iso.slice(0, 10);
+  const parsed = parseISO(dateOnly);
   if (!isValid(parsed)) return '—';
   return format(parsed, 'PPP');
 }
