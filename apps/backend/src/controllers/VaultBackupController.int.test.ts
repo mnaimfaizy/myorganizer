@@ -79,7 +79,12 @@ jest.mock('../services/UserService', () => ({
 
 // Prevent module-level createPrismaClient() calls in YouTube services from
 // attempting a real DB connection during VaultBackup integration tests.
-jest.mock('../services/YouTubeNotificationService', () => ({
+jest.mock('../services/YouTubeSyncWorkerService', () => ({
+  __esModule: true,
+  default: {},
+}));
+
+jest.mock('../services/YouTubeDigestService', () => ({
   __esModule: true,
   default: {},
 }));

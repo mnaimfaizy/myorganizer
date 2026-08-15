@@ -215,46 +215,198 @@ export interface ConfirmResetPasswordBody {
 /**
  * 
  * @export
- * @interface CronResultResponse
+ * @interface CronDigest200Response
  */
-export interface CronResultResponse {
+export interface CronDigest200Response {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronDigest200Response
+     */
+    'ran': boolean;
     /**
      * 
      * @type {number}
-     * @memberof CronResultResponse
+     * @memberof CronDigest200Response
      */
-    'usersSynced': number;
+    'processed': number;
     /**
      * 
      * @type {number}
-     * @memberof CronResultResponse
+     * @memberof CronDigest200Response
      */
-    'notificationsSent': number;
+    'sent': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigest200Response
+     */
+    'skippedEmpty': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigest200Response
+     */
+    'notDue': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigest200Response
+     */
+    'duplicates': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigest200Response
+     */
+    'failed': number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronDigest200Response
+     */
+    'done': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof CronDigest200Response
+     */
+    'message': string;
+}
+/**
+ * Result of one bounded pass of the weekly digest worker.
+ * @export
+ * @interface CronDigestResponse
+ */
+export interface CronDigestResponse {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronDigestResponse
+     */
+    'ran': boolean;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigestResponse
+     */
+    'processed': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigestResponse
+     */
+    'sent': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigestResponse
+     */
+    'skippedEmpty': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigestResponse
+     */
+    'notDue': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigestResponse
+     */
+    'duplicates': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigestResponse
+     */
+    'failed': number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronDigestResponse
+     */
+    'done': boolean;
 }
 /**
  * 
  * @export
- * @interface CronSyncAndNotify200Response
+ * @interface CronSync200Response
  */
-export interface CronSyncAndNotify200Response {
+export interface CronSync200Response {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronSync200Response
+     */
+    'ran': boolean;
     /**
      * 
      * @type {number}
-     * @memberof CronSyncAndNotify200Response
+     * @memberof CronSync200Response
+     */
+    'processed': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronSync200Response
      */
     'usersSynced': number;
     /**
      * 
      * @type {number}
-     * @memberof CronSyncAndNotify200Response
+     * @memberof CronSync200Response
      */
-    'notificationsSent': number;
+    'failed': number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronSync200Response
+     */
+    'done': boolean;
     /**
      * 
      * @type {string}
-     * @memberof CronSyncAndNotify200Response
+     * @memberof CronSync200Response
      */
     'message': string;
+}
+/**
+ * Result of one bounded pass of the metadata sync worker.
+ * @export
+ * @interface CronSyncResponse
+ */
+export interface CronSyncResponse {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronSyncResponse
+     */
+    'ran': boolean;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronSyncResponse
+     */
+    'processed': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronSyncResponse
+     */
+    'usersSynced': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronSyncResponse
+     */
+    'failed': number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronSyncResponse
+     */
+    'done': boolean;
 }
 /**
  * 
@@ -541,13 +693,7 @@ export interface GetLatestVaultBackupResponse {
  */
 export interface GetNotificationSettings200Response {
     /**
-     * 
-     * @type {number}
-     * @memberof GetNotificationSettings200Response
-     */
-    'intervalDays': number;
-    /**
-     * 
+     * Whether the User has opted in to the weekly New-only digest.
      * @type {boolean}
      * @memberof GetNotificationSettings200Response
      */
@@ -558,6 +704,18 @@ export interface GetNotificationSettings200Response {
      * @memberof GetNotificationSettings200Response
      */
     'lastNotifiedAt': string | null;
+    /**
+     * Preferred send day in the User\'s own week, 0 = Sunday .. 6 = Saturday.
+     * @type {number}
+     * @memberof GetNotificationSettings200Response
+     */
+    'preferredWeekday': number;
+    /**
+     * IANA time zone the weekday is evaluated in. Null means UTC.
+     * @type {string}
+     * @memberof GetNotificationSettings200Response
+     */
+    'timeZone': string | null;
     /**
      * 
      * @type {string}
@@ -970,16 +1128,22 @@ export interface Login401Response {
 export interface NotificationSettingsBody {
     /**
      * 
-     * @type {number}
-     * @memberof NotificationSettingsBody
-     */
-    'intervalDays'?: number;
-    /**
-     * 
      * @type {boolean}
      * @memberof NotificationSettingsBody
      */
     'enabled'?: boolean;
+    /**
+     * 
+     * @type {number}
+     * @memberof NotificationSettingsBody
+     */
+    'preferredWeekday'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof NotificationSettingsBody
+     */
+    'timeZone'?: string | null;
 }
 /**
  * 
@@ -988,13 +1152,7 @@ export interface NotificationSettingsBody {
  */
 export interface NotificationSettingsResponse {
     /**
-     * 
-     * @type {number}
-     * @memberof NotificationSettingsResponse
-     */
-    'intervalDays': number;
-    /**
-     * 
+     * Whether the User has opted in to the weekly New-only digest.
      * @type {boolean}
      * @memberof NotificationSettingsResponse
      */
@@ -1005,6 +1163,18 @@ export interface NotificationSettingsResponse {
      * @memberof NotificationSettingsResponse
      */
     'lastNotifiedAt': string | null;
+    /**
+     * Preferred send day in the User\'s own week, 0 = Sunday .. 6 = Saturday.
+     * @type {number}
+     * @memberof NotificationSettingsResponse
+     */
+    'preferredWeekday': number;
+    /**
+     * IANA time zone the weekday is evaluated in. Null means UTC.
+     * @type {string}
+     * @memberof NotificationSettingsResponse
+     */
+    'timeZone': string | null;
 }
 /**
  * Make all properties in T optional
@@ -1694,6 +1864,51 @@ export interface ToggleSubscriptionRequest {
      * @memberof ToggleSubscriptionRequest
      */
     'enabled': boolean;
+}
+/**
+ * 
+ * @export
+ * @interface UnsubscribeBody
+ */
+export interface UnsubscribeBody {
+    /**
+     * 
+     * @type {string}
+     * @memberof UnsubscribeBody
+     */
+    'token': string;
+}
+/**
+ * 
+ * @export
+ * @interface UnsubscribeFromDigest200Response
+ */
+export interface UnsubscribeFromDigest200Response {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof UnsubscribeFromDigest200Response
+     */
+    'ok': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof UnsubscribeFromDigest200Response
+     */
+    'message': string;
+}
+/**
+ * 
+ * @export
+ * @interface UnsubscribeResponse
+ */
+export interface UnsubscribeResponse {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof UnsubscribeResponse
+     */
+    'ok': boolean;
 }
 /**
  * 
@@ -4656,12 +4871,44 @@ export class VaultBackupsApi extends BaseAPI {
 export const YouTubeApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
         /**
-         * Cron-only endpoint: syncs all users\' videos and sends due notifications.  Authenticated via X-Cron-Secret header instead of JWT.
+         * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        cronSyncAndNotify: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/youtube/cron/sync-and-notify`;
+        cronDigest: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/cron/digest`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication cron-secret required
+            await setApiKeyToObject(localVarHeaderParameter, "X-Cron-Secret", configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Cron-only endpoint: runs one bounded pass of the metadata sync worker. Authenticated via X-Cron-Secret header instead of JWT.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        cronSync: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/cron/sync`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -5140,6 +5387,41 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             };
         },
         /**
+         * Turns the weekly digest off from the link carried by every digest email. Unauthenticated by design — the opaque token is the only credential a mail client can present.
+         * @param {UnsubscribeBody} unsubscribeBody 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        unsubscribeFromDigest: async (unsubscribeBody: UnsubscribeBody, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'unsubscribeBody' is not null or undefined
+            assertParamExists('unsubscribeFromDigest', 'unsubscribeBody', unsubscribeBody)
+            const localVarPath = `/youtube/digest/unsubscribe`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(unsubscribeBody, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Updates the user\'s YouTube notification preferences.
          * @param {NotificationSettingsBody} notificationSettingsBody 
          * @param {*} [options] Override http request option.
@@ -5189,14 +5471,25 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = YouTubeApiAxiosParamCreator(configuration)
     return {
         /**
-         * Cron-only endpoint: syncs all users\' videos and sends due notifications.  Authenticated via X-Cron-Secret header instead of JWT.
+         * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async cronSyncAndNotify(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CronSyncAndNotify200Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.cronSyncAndNotify(options);
+        async cronDigest(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CronDigest200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.cronDigest(options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.cronSyncAndNotify']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.cronDigest']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Cron-only endpoint: runs one bounded pass of the metadata sync worker. Authenticated via X-Cron-Secret header instead of JWT.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async cronSync(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CronSync200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.cronSync(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.cronSync']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -5343,6 +5636,18 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Turns the weekly digest off from the link carried by every digest email. Unauthenticated by design — the opaque token is the only credential a mail client can present.
+         * @param {UnsubscribeBody} unsubscribeBody 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async unsubscribeFromDigest(unsubscribeBody: UnsubscribeBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnsubscribeFromDigest200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.unsubscribeFromDigest(unsubscribeBody, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.unsubscribeFromDigest']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Updates the user\'s YouTube notification preferences.
          * @param {NotificationSettingsBody} notificationSettingsBody 
          * @param {*} [options] Override http request option.
@@ -5365,12 +5670,20 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
     const localVarFp = YouTubeApiFp(configuration)
     return {
         /**
-         * Cron-only endpoint: syncs all users\' videos and sends due notifications.  Authenticated via X-Cron-Secret header instead of JWT.
+         * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        cronSyncAndNotify(options?: RawAxiosRequestConfig): AxiosPromise<CronSyncAndNotify200Response> {
-            return localVarFp.cronSyncAndNotify(options).then((request) => request(axios, basePath));
+        cronDigest(options?: RawAxiosRequestConfig): AxiosPromise<CronDigest200Response> {
+            return localVarFp.cronDigest(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Cron-only endpoint: runs one bounded pass of the metadata sync worker. Authenticated via X-Cron-Secret header instead of JWT.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        cronSync(options?: RawAxiosRequestConfig): AxiosPromise<CronSync200Response> {
+            return localVarFp.cronSync(options).then((request) => request(axios, basePath));
         },
         /**
          * Disconnects the user\'s YouTube account after revoking the token.
@@ -5471,6 +5784,15 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
          */
         toggleSubscription(requestParameters: YouTubeApiToggleSubscriptionRequest, options?: RawAxiosRequestConfig): AxiosPromise<ToggleSubscription200Response> {
             return localVarFp.toggleSubscription(requestParameters.subscriptionId, requestParameters.toggleSubscriptionRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Turns the weekly digest off from the link carried by every digest email. Unauthenticated by design — the opaque token is the only credential a mail client can present.
+         * @param {YouTubeApiUnsubscribeFromDigestRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        unsubscribeFromDigest(requestParameters: YouTubeApiUnsubscribeFromDigestRequest, options?: RawAxiosRequestConfig): AxiosPromise<UnsubscribeFromDigest200Response> {
+            return localVarFp.unsubscribeFromDigest(requestParameters.unsubscribeBody, options).then((request) => request(axios, basePath));
         },
         /**
          * Updates the user\'s YouTube notification preferences.
@@ -5590,6 +5912,20 @@ export interface YouTubeApiToggleSubscriptionRequest {
 }
 
 /**
+ * Request parameters for unsubscribeFromDigest operation in YouTubeApi.
+ * @export
+ * @interface YouTubeApiUnsubscribeFromDigestRequest
+ */
+export interface YouTubeApiUnsubscribeFromDigestRequest {
+    /**
+     * 
+     * @type {UnsubscribeBody}
+     * @memberof YouTubeApiUnsubscribeFromDigest
+     */
+    readonly unsubscribeBody: UnsubscribeBody
+}
+
+/**
  * Request parameters for updateNotificationSettings operation in YouTubeApi.
  * @export
  * @interface YouTubeApiUpdateNotificationSettingsRequest
@@ -5611,13 +5947,23 @@ export interface YouTubeApiUpdateNotificationSettingsRequest {
  */
 export class YouTubeApi extends BaseAPI {
     /**
-     * Cron-only endpoint: syncs all users\' videos and sends due notifications.  Authenticated via X-Cron-Secret header instead of JWT.
+     * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof YouTubeApi
      */
-    public cronSyncAndNotify(options?: RawAxiosRequestConfig) {
-        return YouTubeApiFp(this.configuration).cronSyncAndNotify(options).then((request) => request(this.axios, this.basePath));
+    public cronDigest(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).cronDigest(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Cron-only endpoint: runs one bounded pass of the metadata sync worker. Authenticated via X-Cron-Secret header instead of JWT.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public cronSync(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).cronSync(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -5742,6 +6088,17 @@ export class YouTubeApi extends BaseAPI {
      */
     public toggleSubscription(requestParameters: YouTubeApiToggleSubscriptionRequest, options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).toggleSubscription(requestParameters.subscriptionId, requestParameters.toggleSubscriptionRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Turns the weekly digest off from the link carried by every digest email. Unauthenticated by design — the opaque token is the only credential a mail client can present.
+     * @param {YouTubeApiUnsubscribeFromDigestRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public unsubscribeFromDigest(requestParameters: YouTubeApiUnsubscribeFromDigestRequest, options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).unsubscribeFromDigest(requestParameters.unsubscribeBody, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

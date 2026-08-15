@@ -147,9 +147,10 @@ const models: TsoaRoute.Models = {
     "NotificationSettingsResponse": {
         "dataType": "refObject",
         "properties": {
-            "intervalDays": {"dataType":"double","required":true},
             "enabled": {"dataType":"boolean","required":true},
             "lastNotifiedAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "preferredWeekday": {"dataType":"double","required":true},
+            "timeZone": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
         },
         "additionalProperties": false,
     },
@@ -157,17 +158,52 @@ const models: TsoaRoute.Models = {
     "NotificationSettingsBody": {
         "dataType": "refObject",
         "properties": {
-            "intervalDays": {"dataType":"double"},
             "enabled": {"dataType":"boolean"},
+            "preferredWeekday": {"dataType":"double"},
+            "timeZone": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
         },
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "CronResultResponse": {
+    "UnsubscribeResponse": {
         "dataType": "refObject",
         "properties": {
+            "ok": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "UnsubscribeBody": {
+        "dataType": "refObject",
+        "properties": {
+            "token": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CronSyncResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "ran": {"dataType":"boolean","required":true},
+            "processed": {"dataType":"double","required":true},
             "usersSynced": {"dataType":"double","required":true},
-            "notificationsSent": {"dataType":"double","required":true},
+            "failed": {"dataType":"double","required":true},
+            "done": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CronDigestResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "ran": {"dataType":"boolean","required":true},
+            "processed": {"dataType":"double","required":true},
+            "sent": {"dataType":"double","required":true},
+            "skippedEmpty": {"dataType":"double","required":true},
+            "notDue": {"dataType":"double","required":true},
+            "duplicates": {"dataType":"double","required":true},
+            "failed": {"dataType":"double","required":true},
+            "done": {"dataType":"boolean","required":true},
         },
         "additionalProperties": false,
     },
@@ -879,25 +915,85 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsYouTubeController_cronSyncAndNotify: Record<string, TsoaRoute.ParameterSchema> = {
+        const argsYouTubeController_unsubscribeFromDigest: Record<string, TsoaRoute.ParameterSchema> = {
+                body: {"in":"body","name":"body","required":true,"ref":"UnsubscribeBody"},
         };
-        app.post('/youtube/cron/sync-and-notify',
-            authenticateMiddleware([{"cron-secret":[]}]),
+        app.post('/youtube/digest/unsubscribe',
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
-            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.cronSyncAndNotify)),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.unsubscribeFromDigest)),
 
-            async function YouTubeController_cronSyncAndNotify(request: ExRequest, response: ExResponse, next: any) {
+            async function YouTubeController_unsubscribeFromDigest(request: ExRequest, response: ExResponse, next: any) {
 
             // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_cronSyncAndNotify, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_unsubscribeFromDigest, request, response });
 
                 const controller = new YouTubeController();
 
               await templateService.apiHandler({
-                methodName: 'cronSyncAndNotify',
+                methodName: 'unsubscribeFromDigest',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsYouTubeController_cronSync: Record<string, TsoaRoute.ParameterSchema> = {
+        };
+        app.post('/youtube/cron/sync',
+            authenticateMiddleware([{"cron-secret":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.cronSync)),
+
+            async function YouTubeController_cronSync(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_cronSync, request, response });
+
+                const controller = new YouTubeController();
+
+              await templateService.apiHandler({
+                methodName: 'cronSync',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsYouTubeController_cronDigest: Record<string, TsoaRoute.ParameterSchema> = {
+        };
+        app.post('/youtube/cron/digest',
+            authenticateMiddleware([{"cron-secret":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.cronDigest)),
+
+            async function YouTubeController_cronDigest(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_cronDigest, request, response });
+
+                const controller = new YouTubeController();
+
+              await templateService.apiHandler({
+                methodName: 'cronDigest',
                 controller,
                 response,
                 next,

@@ -10,21 +10,30 @@ Allow users to securely link their YouTube account via OAuth 2.0, sync selected 
 
 ```
 User ──OAuth 2.0──▶ Google  ──tokens──▶  Backend (encrypted at rest in DB)
-                                              │
-                 cPanel cron (daily) ────▶ /api/v1/youtube/cron/sync-and-notify
-                                              │
-                                    ┌─────────┴──────────┐
-                                    ▼                     ▼
-                            Sync new videos         Send email digests
-                          (YouTube Data API)       (existing EmailService)
-                                    │
-                                    ▼
-                              PostgreSQL
-                           (cached metadata)
-                                    │
-                                    ▼
-                        Frontend Dashboard (DB queries only)
+
+  cPanel cron ──flock──▶ /cron/sync        cPanel cron ──flock──▶ /cron/digest
+         │                                        │
+         ▼                                        ▼
+  Sync worker (lease: youtube-sync)        Digest worker (lease: youtube-digest)
+  Refresh Cached Uploads                   New-only weekly mail
+  (YouTube Data API)                       (EmailService + delivery ledger)
+         │                                        │
+         └────────────────┬───────────────────────┘
+                          ▼
+                     PostgreSQL
+                  (cached metadata)
+                          │
+                          ▼
+              Frontend Dashboard (DB queries only)
 ```
+
+The two workers are deliberately independent. They hold separate database
+leases, keep separate cursors, and run on separate cron entries, so a YouTube
+quota stall or one slow account in sync can no longer swallow a week of digest
+mail — which is exactly what the previous combined `sync-and-notify` job did.
+
+Each endpoint processes one bounded slice of the User list per call and records
+a resume cursor, so neither job has to finish inside a single cron tick.
 
 ### YouTube Data API v3 — Quota & Limits
 
@@ -57,8 +66,8 @@ User ──OAuth 2.0──▶ Google  ──tokens──▶  Backend (encrypted 
 
 #### API Key for Cron Endpoint
 
-- The `/api/v1/youtube/cron/sync-and-notify` endpoint is protected by an `X-Cron-Secret` header validated against the `YOUTUBE_CRON_SECRET` env var.
-- No JWT required — this endpoint is for server-to-server (cPanel cron) use only.
+- The `/api/v1/youtube/cron/sync` and `/api/v1/youtube/cron/digest` endpoints are protected by an `X-Cron-Secret` header validated against the `YOUTUBE_CRON_SECRET` env var.
+- No JWT required — these endpoints are for server-to-server (cPanel cron) use only.
 
 ### Environment Variables (new)
 
@@ -122,15 +131,19 @@ Cached video metadata from synced channels.
 
 ### `YouTubeNotificationSettings` (fields on User or separate)
 
-| Column           | Type                          | Notes            |
-| ---------------- | ----------------------------- | ---------------- |
-| `id`             | `String @id @default(cuid())` |                  |
-| `userId`         | `String @unique`              | FK → User        |
-| `intervalDays`   | `Int @default(7)`             | 2-15 days        |
-| `lastNotifiedAt` | `DateTime?`                   | Last digest sent |
-| `enabled`        | `Boolean @default(true)`      |                  |
-| `createdAt`      | `DateTime`                    |                  |
-| `updatedAt`      | `DateTime`                    |                  |
+| Column             | Type                          | Notes                                             |
+| ------------------ | ----------------------------- | ------------------------------------------------- |
+| `id`               | `String @id @default(cuid())` |                                                   |
+| `userId`           | `String @unique`              | FK → User                                         |
+| `intervalDays`     | `Int @default(7)`             | Legacy; not in the API contract, nothing reads it |
+| `lastNotifiedAt`   | `DateTime?`                   | Last successful digest send; the window start     |
+| `enabled`          | `Boolean @default(false)`     | Opt-in                                            |
+| `optedInAt`        | `DateTime?`                   | Window start before the first send                |
+| `preferredWeekday` | `Int @default(1)`             | 0 = Sunday .. 6 = Saturday, local                 |
+| `timeZone`         | `String?`                     | IANA; null means UTC                              |
+| `unsubscribeToken` | `String? @unique`             | Secret in every digest's unsubscribe link         |
+| `createdAt`        | `DateTime`                    |                                                   |
+| `updatedAt`        | `DateTime`                    |                                                   |
 
 ## API Endpoints
 
@@ -146,9 +159,45 @@ All under `/api/v1/youtube`, JWT-secured unless noted.
 | `PUT`    | `/subscriptions/sync`    | Fetches fresh subscriptions from YouTube                                                      |
 | `PATCH`  | `/subscriptions/:id`     | Toggle a subscription enabled/disabled                                                        |
 | `GET`    | `/videos`                | Returns cached videos with query params: `sort` (latest/oldest/az), `search`, `page`, `limit` |
-| `GET`    | `/notification-settings` | Returns user's notification preferences                                                       |
-| `PATCH`  | `/notification-settings` | Updates interval (2-15 days) and enabled flag                                                 |
-| `POST`   | `/cron/sync-and-notify`  | **Cron-only** (X-Cron-Secret). Syncs all users and sends due notifications                    |
+| `GET`    | `/notification-settings` | Returns digest preferences: opt-in flag, preferred weekday, time zone                         |
+| `PATCH`  | `/notification-settings` | Updates opt-in flag, `preferredWeekday` (0-6), and IANA `timeZone`                            |
+
+| `POST` | `/digest/unsubscribe` | **Public**. Turns the digest off from the token carried by every digest email |
+| `POST` | `/cron/sync` | **Cron-only** (X-Cron-Secret). One bounded pass of the metadata sync worker |
+| `POST` | `/cron/digest` | **Cron-only** (X-Cron-Secret). One bounded pass of the weekly digest worker |
+
+`POST /cron/sync-and-notify` was replaced by the two separate cron endpoints
+above. Existing deployments must update their cron entries — see below.
+
+## Weekly digest
+
+- **Opt-in.** `YouTubeNotificationSettings.enabled` defaults to `false`, and
+  connecting an account no longer switches it on. The migration also cleared
+  the flag for rows created under the old opt-out default.
+- **New only.** Eligible items are Cached Uploads from Enabled Channels that
+  are still New (`watched = false`) and published after the window start.
+  Watched uploads never appear.
+- **Window** runs from the last successful send, falling back to `optedInAt`,
+  then to when the account was connected — so opting in never back-fills every
+  upload the account has ever seen.
+- **Long-form only.** Shorts are excluded: they live behind the Shorts Daily
+  Budget on their own page, and the digest's per-item link is the long-form
+  channel page.
+- **Cap** of 25 items per email.
+- **No interval knob.** The legacy `intervalDays` column remains on the row but
+  is gone from the API contract and the UI — the digest is weekly and fires on
+  `preferredWeekday`, so an interval control would do nothing.
+- **Empty weeks skip.** No mail is sent, and `lastNotifiedAt` does not advance,
+  so the next send still covers the whole gap.
+- **Preferred weekday** is evaluated against the User's own calendar using
+  their stored IANA `timeZone` (null means UTC).
+- **Idempotent ledger.** `YouTubeDigestDelivery` is unique on
+  `(userId, periodKey)` where `periodKey` is the local ISO week, e.g.
+  `2026-W33`. The row is claimed _before_ the mail reaches SMTP, so a worker
+  that dies mid-send leaves a claimed row that no later pass re-sends: losing
+  one week's digest is the deliberate trade against mailing it twice.
+- **Unsubscribe** link in every email, backed by a stable per-User token, and
+  every content link points back into MyOrganizer rather than youtube.com.
 
 ## Frontend Views
 
@@ -175,18 +224,28 @@ All under `/api/v1/youtube`, JWT-secured unless noted.
 
 ### Settings Page (existing account page extension)
 
-- Notification interval slider/select (2-15 days).
-- Enable/disable YouTube notifications toggle.
+- Weekly digest opt-in toggle.
+- Preferred weekday select (Sunday-Saturday), evaluated in the browser's time zone.
 
 ## cPanel Cron Configuration
 
-Add a daily cron job (e.g., at 02:00 server time):
+Use `tools/scripts/youtube-cron.sh`, which wraps the call in a non-blocking
+`flock` so a tick that finds the previous one still running exits quietly
+instead of queueing up behind it and pinning the shared host's process cap.
 
 ```bash
-curl -s -X POST https://api.example.com/api/v1/youtube/cron/sync-and-notify \
-  -H "X-Cron-Secret: $YOUTUBE_CRON_SECRET" \
-  -H "Content-Type: application/json"
+*/15 * * * * YOUTUBE_API_BASE_URL=https://api.example.com/api/v1 YOUTUBE_CRON_SECRET=... /home/user/app/tools/scripts/youtube-cron.sh sync
+*/30 * * * * YOUTUBE_API_BASE_URL=https://api.example.com/api/v1 YOUTUBE_CRON_SECRET=... /home/user/app/tools/scripts/youtube-cron.sh digest
 ```
+
+Both endpoints are safe to call more often than the work needs: each pass is
+bounded, resumes from its stored cursor, and no-ops while another pass holds
+the lease. Namecheap Stellar Plus allows intervals of ≥ 5 minutes and at most
+5 jobs, so two entries at 15 and 30 minutes stay well inside the budget.
+
+Migrating from the old combined job: replace the single
+`/cron/sync-and-notify` entry with the two above. Leaving the old entry in
+place will simply 404.
 
 ## Testing Strategy
 
@@ -194,7 +253,10 @@ curl -s -X POST https://api.example.com/api/v1/youtube/cron/sync-and-notify \
 
 - `YouTubeTokenEncryption.spec.ts` — encrypt/decrypt round-trip, invalid key handling.
 - `YouTubeSyncService.spec.ts` — mock `googleapis`, verify DB writes, quota-efficient fetching.
-- `YouTubeNotificationService.spec.ts` — mock DB queries, verify email dispatch logic.
+- `YouTubeDigestService.spec.ts` — New-only eligibility, empty-week skip, ledger idempotency, worker separation from sync.
+- `YouTubeSyncWorkerService.spec.ts` — lease acquisition, cursor resumption, revoked-token handling.
+- `WorkerLeaseService.spec.ts` — acquire/steal-expired/release, cursor persistence.
+- `localCalendar.spec.ts` — local weekday and ISO week key across time zones.
 - `YouTubeController.spec.ts` — mock services, test endpoint responses and auth checks.
 
 ### Frontend Unit Tests

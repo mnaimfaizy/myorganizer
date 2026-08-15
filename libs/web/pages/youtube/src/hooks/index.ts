@@ -318,9 +318,11 @@ export function useYouTubeCarousel() {
 
 export function useYouTubeNotifications() {
   const [settings, setSettings] = useState<NotificationSettings>({
-    intervalDays: 7,
-    enabled: true,
+    // The digest is opt-in, so assume off until the server says otherwise.
+    enabled: false,
     lastNotifiedAt: null,
+    preferredWeekday: 1,
+    timeZone: null,
   });
   const [loading, setLoading] = useState(false);
 

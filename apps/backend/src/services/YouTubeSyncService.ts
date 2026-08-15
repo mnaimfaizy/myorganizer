@@ -1,5 +1,10 @@
 import { google, youtube_v3 } from 'googleapis';
 import winston from 'winston';
+import {
+  parseIso8601DurationSeconds,
+  videoKindWhere,
+  type VideoKind,
+} from '../helpers/videoKind';
 import { Prisma, PrismaClient, createPrismaClient } from '../prisma';
 import {
   EncryptedToken,
@@ -16,6 +21,31 @@ const logger = winston.createLogger({
 const VIDEO_SNAPSHOT_LIMIT = 100;
 const MANUAL_REFRESH_COOLDOWN_MS = 15 * 60 * 1000;
 const DISABLED_VIDEO_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+/** Monday, matching the ISO week the digest period key is built from. */
+const DEFAULT_DIGEST_WEEKDAY = 1;
+
+/**
+ * Shape returned by the digest settings accessors, defaults included.
+ *
+ * The legacy `intervalDays` column still exists on the row but is deliberately
+ * absent here: the digest is weekly and fires on `preferredWeekday`, so an
+ * interval knob would be a control that silently does nothing.
+ */
+export interface NotificationSettings {
+  enabled: boolean;
+  lastNotifiedAt: Date | null;
+  preferredWeekday: number;
+  timeZone: string | null;
+}
+
+function isSupportedTimeZone(timeZone: string): boolean {
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone });
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function getOAuth2Client() {
   return new google.auth.OAuth2(
@@ -76,90 +106,15 @@ interface YouTubeVideoSnapshot {
   durationSeconds: number | null;
 }
 
-/**
- * Longest runtime still treated as a Short.
- *
- * The YouTube Data API exposes no Shorts flag, and Shorts arrive in the ordinary
- * uploads playlist alongside long-form uploads, so runtime is the only signal
- * available without a per-video web request. YouTube's own Shorts ceiling is
- * three minutes, so that is the threshold used here.
- *
- * The trade-off is deliberate and one-directional: a genuinely short long-form
- * upload (a three-minute trailer, say) is classified as a Short and lands on the
- * budgeted page. That is the safer failure — the point of the split is keeping
- * short-form out of the focused long-form home, and an over-eager cap costs a
- * User some budget rather than letting the doom-scroll surface leak back in.
- *
- * `durationSeconds` is stored rather than a computed boolean precisely so this
- * threshold can be retuned later without re-syncing every User's library.
- */
-export const SHORTS_MAX_DURATION_SECONDS = 180;
-
-/**
- * Parses an ISO 8601 duration (`PT1M30S`, `PT2H3M4S`, `P1DT2H`) into seconds.
- *
- * Returns null for anything unparseable rather than guessing — an unclassified
- * upload is treated as long-form, so a parse failure keeps a video visible on
- * the home rather than hiding it behind the Shorts budget.
- */
-export function parseIso8601DurationSeconds(
-  duration: string | null | undefined,
-): number | null {
-  if (!duration) return null;
-  const match =
-    /^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?)?$/.exec(
-      duration,
-    );
-  if (!match) return null;
-  const [, days, hours, minutes, seconds] = match;
-  if (!days && !hours && !minutes && !seconds) return null;
-  const total =
-    Number(days ?? 0) * 86400 +
-    Number(hours ?? 0) * 3600 +
-    Number(minutes ?? 0) * 60 +
-    Number(seconds ?? 0);
-  return Number.isFinite(total) ? Math.round(total) : null;
-}
-
-/**
- * Whether a Cached Upload counts as a Short.
- *
- * An unclassified upload (null duration — cached before duration collection, or
- * a parse failure) is **not** a Short. Unknown must never be treated as Short,
- * or a sync gap would quietly move someone's library behind the daily budget.
- */
-export function isShortDuration(
-  durationSeconds: number | null | undefined,
-): boolean {
-  return (
-    typeof durationSeconds === 'number' &&
-    durationSeconds > 0 &&
-    durationSeconds <= SHORTS_MAX_DURATION_SECONDS
-  );
-}
-
-/** Which slice of the library a query wants. */
-export type VideoKind = 'short' | 'long' | 'all';
-
-/**
- * Prisma `where` fragment selecting a slice of the library by runtime.
- * `long` deliberately includes unclassified rows.
- */
-export function videoKindWhere(kind: VideoKind): Record<string, unknown> {
-  if (kind === 'short') {
-    return { durationSeconds: { gt: 0, lte: SHORTS_MAX_DURATION_SECONDS } };
-  }
-  if (kind === 'long') {
-    return {
-      OR: [
-        { durationSeconds: null },
-        { durationSeconds: { gt: SHORTS_MAX_DURATION_SECONDS } },
-        { durationSeconds: { lte: 0 } },
-      ],
-    };
-  }
-  return {};
-}
+// Runtime classification lives in a shared helper so the digest worker can use
+// the same definition of long-form without importing this service.
+export {
+  SHORTS_MAX_DURATION_SECONDS,
+  isShortDuration,
+  parseIso8601DurationSeconds,
+  videoKindWhere,
+} from '../helpers/videoKind';
+export type { VideoKind } from '../helpers/videoKind';
 
 function isQuotaExceededError(error: unknown): boolean {
   let message = String(error);
@@ -229,7 +184,9 @@ class YouTubeSyncService {
 
     await this.prisma.youTubeNotificationSettings.upsert({
       where: { userId },
-      create: { userId, intervalDays: 7, enabled: true },
+      // Seed the row but leave the digest off — it is opt-in, so connecting an
+      // account must never start mailing anyone.
+      create: { userId, intervalDays: 7, enabled: false },
       update: {},
     });
 
@@ -705,33 +662,72 @@ class YouTubeSyncService {
     }));
   }
 
-  /** Get notification settings for a user */
-  async getNotificationSettings(userId: string) {
+  /** Get digest settings for a user. Absent settings read as opted out. */
+  async getNotificationSettings(userId: string): Promise<NotificationSettings> {
     const settings = await this.prisma.youTubeNotificationSettings.findUnique({
       where: { userId },
     });
-    return settings ?? { intervalDays: 7, enabled: true, lastNotifiedAt: null };
+    return (
+      settings ?? {
+        enabled: false,
+        lastNotifiedAt: null,
+        preferredWeekday: DEFAULT_DIGEST_WEEKDAY,
+        timeZone: null,
+      }
+    );
   }
 
-  /** Update notification settings */
+  /**
+   * Update digest settings. Turning the digest on stamps `optedInAt`, which is
+   * the window start for the very first send — so opting in never back-fills
+   * every Cached Upload the account has ever seen.
+   */
   async updateNotificationSettings(
     userId: string,
-    data: { intervalDays?: number; enabled?: boolean },
-  ) {
-    if (data.intervalDays !== undefined) {
-      if (data.intervalDays < 2 || data.intervalDays > 15) {
-        throw new Error('Notification interval must be between 2 and 15 days.');
+    data: {
+      enabled?: boolean;
+      preferredWeekday?: number;
+      timeZone?: string | null;
+    },
+  ): Promise<NotificationSettings> {
+    if (data.preferredWeekday !== undefined) {
+      if (
+        !Number.isInteger(data.preferredWeekday) ||
+        data.preferredWeekday < 0 ||
+        data.preferredWeekday > 6
+      ) {
+        throw new Error(
+          'Preferred weekday must be an integer from 0 (Sunday) to 6 (Saturday).',
+        );
       }
     }
+
+    if (data.timeZone) {
+      if (!isSupportedTimeZone(data.timeZone)) {
+        throw new Error('Time zone must be a valid IANA identifier.');
+      }
+    }
+
+    const existing = await this.prisma.youTubeNotificationSettings.findUnique({
+      where: { userId },
+      select: { optedInAt: true },
+    });
+
+    const optedInNow = data.enabled === true && !existing?.optedInAt;
 
     return this.prisma.youTubeNotificationSettings.upsert({
       where: { userId },
       create: {
         userId,
-        intervalDays: data.intervalDays ?? 7,
-        enabled: data.enabled ?? true,
+        enabled: data.enabled ?? false,
+        preferredWeekday: data.preferredWeekday ?? DEFAULT_DIGEST_WEEKDAY,
+        timeZone: data.timeZone ?? null,
+        optedInAt: data.enabled === true ? new Date() : null,
       },
-      update: data,
+      update: {
+        ...data,
+        ...(optedInNow ? { optedInAt: new Date() } : {}),
+      },
     });
   }
 

@@ -156,7 +156,7 @@ describe('YouTubeSyncService', () => {
       );
     });
 
-    it('should create default notification settings', async () => {
+    it('should seed notification settings with the digest opted out', async () => {
       await youtubeSyncService.handleOAuthCallback('user-1', 'auth-code');
 
       expect(
@@ -167,7 +167,8 @@ describe('YouTubeSyncService', () => {
           create: expect.objectContaining({
             userId: 'user-1',
             intervalDays: 7,
-            enabled: true,
+            // The weekly digest is opt-in: connecting must not start mailing.
+            enabled: false,
           }),
         }),
       );
@@ -833,15 +834,17 @@ describe('YouTubeSyncService', () => {
       (
         mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
       ).mockResolvedValue({
-        intervalDays: 3,
-        enabled: false,
+        enabled: true,
         lastNotifiedAt: null,
+        preferredWeekday: 4,
+        timeZone: 'Australia/Sydney',
       });
 
       const settings =
         await youtubeSyncService.getNotificationSettings('user-1');
-      expect(settings.intervalDays).toBe(3);
-      expect(settings.enabled).toBe(false);
+      expect(settings.enabled).toBe(true);
+      expect(settings.preferredWeekday).toBe(4);
+      expect(settings.timeZone).toBe('Australia/Sydney');
     });
 
     it('should return defaults when no settings exist', async () => {
@@ -851,31 +854,46 @@ describe('YouTubeSyncService', () => {
 
       const settings =
         await youtubeSyncService.getNotificationSettings('user-1');
-      expect(settings.intervalDays).toBe(7);
-      expect(settings.enabled).toBe(true);
+      // Absent settings read as opted out, never as opted in.
+      expect(settings.enabled).toBe(false);
+      expect(settings.preferredWeekday).toBe(1);
+      expect(settings.timeZone).toBeNull();
     });
   });
 
   describe('updateNotificationSettings', () => {
-    it('should reject interval below 2', async () => {
+    it('should reject a weekday outside 0-6', async () => {
       await expect(
         youtubeSyncService.updateNotificationSettings('user-1', {
-          intervalDays: 1,
+          preferredWeekday: 7,
         }),
-      ).rejects.toThrow('between 2 and 15');
+      ).rejects.toThrow('0 (Sunday) to 6 (Saturday)');
     });
 
-    it('should reject interval above 15', async () => {
+    it('should reject a non-integer weekday', async () => {
       await expect(
         youtubeSyncService.updateNotificationSettings('user-1', {
-          intervalDays: 16,
+          preferredWeekday: 2.5,
         }),
-      ).rejects.toThrow('between 2 and 15');
+      ).rejects.toThrow('0 (Sunday) to 6 (Saturday)');
     });
 
-    it('should accept valid interval', async () => {
+    it('should reject an unknown IANA time zone', async () => {
+      await expect(
+        youtubeSyncService.updateNotificationSettings('user-1', {
+          timeZone: 'Mars/Olympus_Mons',
+        }),
+      ).rejects.toThrow('valid IANA identifier');
+    });
+
+    it('should accept a valid weekday and time zone', async () => {
+      (
+        mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
+      ).mockResolvedValue({ optedInAt: new Date('2026-01-01') });
+
       await youtubeSyncService.updateNotificationSettings('user-1', {
-        intervalDays: 5,
+        preferredWeekday: 5,
+        timeZone: 'Australia/Sydney',
       });
 
       expect(
@@ -883,9 +901,38 @@ describe('YouTubeSyncService', () => {
       ).toHaveBeenCalledWith(
         expect.objectContaining({
           where: { userId: 'user-1' },
-          update: { intervalDays: 5 },
+          update: { preferredWeekday: 5, timeZone: 'Australia/Sydney' },
         }),
       );
+    });
+
+    it('should stamp optedInAt the first time the digest is enabled', async () => {
+      (
+        mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
+      ).mockResolvedValue({ optedInAt: null });
+
+      await youtubeSyncService.updateNotificationSettings('user-1', {
+        enabled: true,
+      });
+
+      const call = (mockPrisma.youTubeNotificationSettings.upsert as jest.Mock)
+        .mock.calls[0][0];
+      expect(call.update.optedInAt).toBeInstanceOf(Date);
+    });
+
+    it('should not restamp optedInAt when the digest is re-enabled', async () => {
+      const originalOptIn = new Date('2026-01-01');
+      (
+        mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
+      ).mockResolvedValue({ optedInAt: originalOptIn });
+
+      await youtubeSyncService.updateNotificationSettings('user-1', {
+        enabled: true,
+      });
+
+      const call = (mockPrisma.youTubeNotificationSettings.upsert as jest.Mock)
+        .mock.calls[0][0];
+      expect(call.update.optedInAt).toBeUndefined();
     });
   });
 

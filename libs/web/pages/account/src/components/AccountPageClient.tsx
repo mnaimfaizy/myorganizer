@@ -3,6 +3,7 @@
 import { getAccessToken } from '@myorganizer/auth';
 import {
   COUNTRIES,
+  detectTimeZone,
   getAccountSettings,
   getApiBaseUrl,
   setAccountSettings,
@@ -16,7 +17,6 @@ import {
   Card,
   CardContent,
   CardTitle,
-  Input,
   Label,
   Select,
   SelectContent,
@@ -37,8 +37,8 @@ export function AccountPageClient() {
     useState<CurrencyCode>('AUD');
 
   // YouTube notification settings
-  const [ytInterval, setYtInterval] = useState(7);
-  const [ytEnabled, setYtEnabled] = useState(true);
+  const [ytEnabled, setYtEnabled] = useState(false);
+  const [ytWeekday, setYtWeekday] = useState(1);
   const [ytLoading, setYtLoading] = useState(false);
   const [ytConnected, setYtConnected] = useState(false);
 
@@ -79,8 +79,8 @@ export function AccountPageClient() {
         );
         if (!res.ok) return;
         const data = await res.json();
-        setYtInterval(data.intervalDays);
         setYtEnabled(data.enabled);
+        setYtWeekday(data.preferredWeekday);
       } catch {
         // YouTube not connected or API unavailable
       }
@@ -91,6 +91,7 @@ export function AccountPageClient() {
     setYtLoading(true);
     try {
       const token = getAccessToken();
+      const timeZone = detectTimeZone();
       const res = await fetch(
         `${getApiBaseUrl()}/youtube/notification-settings`,
         {
@@ -101,26 +102,34 @@ export function AccountPageClient() {
           },
           credentials: 'include',
           body: JSON.stringify({
-            intervalDays: ytInterval,
             enabled: ytEnabled,
+            preferredWeekday: ytWeekday,
+            timeZone,
           }),
         },
       );
-      if (!res.ok) throw new Error('Failed to save');
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || 'Failed to save');
+      }
       toast({
         title: 'Saved',
-        description: 'YouTube notification settings updated.',
+        description: 'Weekly digest settings updated.',
       });
-    } catch {
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to update digest settings.';
       toast({
         title: 'Error',
-        description: 'Failed to update YouTube settings.',
+        description: message,
         variant: 'destructive',
       });
     } finally {
       setYtLoading(false);
     }
-  }, [ytInterval, ytEnabled, toast]);
+  }, [ytEnabled, ytWeekday, toast]);
 
   const countries = useMemo(() => COUNTRIES, []);
 
@@ -214,38 +223,50 @@ export function AccountPageClient() {
 
       {ytConnected && (
         <Card className="p-4">
-          <CardTitle className="text-lg">YouTube Notifications</CardTitle>
+          <CardTitle className="text-lg">Weekly YouTube digest</CardTitle>
           <CardContent className="mt-4 space-y-4">
-            <div className="space-y-2">
-              <Label>Notification interval (days)</Label>
-              <Input
-                type="number"
-                min={2}
-                max={15}
-                value={ytInterval}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  if (val >= 2 && val <= 15) setYtInterval(val);
-                }}
-              />
-              <p className="text-xs text-gray-500">
-                Receive an email digest every {ytInterval} day
-                {ytInterval !== 1 ? 's' : ''} with new videos from your
-                subscriptions. (Min: 2, Max: 15)
-              </p>
-            </div>
-
             <div className="flex items-center gap-2">
               <label className="relative inline-flex cursor-pointer items-center">
                 <input
                   type="checkbox"
                   checked={ytEnabled}
                   onChange={() => setYtEnabled(!ytEnabled)}
+                  aria-label="Email me a weekly digest"
                   className="peer sr-only"
                 />
                 <div className="peer h-5 w-9 rounded-full bg-gray-200 after:absolute after:start-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-gray-700" />
               </label>
-              <Label>Enable email notifications</Label>
+              <Label>Email me a weekly digest</Label>
+            </div>
+            <p className="text-xs text-gray-500">
+              Digest lists only Cached Uploads that are still New — Watched
+              uploads are left out. Weeks with nothing new are skipped entirely.
+            </p>
+
+            <div className="space-y-2">
+              <Label htmlFor="weekday-select">Send on</Label>
+              <Select
+                value={String(ytWeekday)}
+                onValueChange={(v) => setYtWeekday(parseInt(v, 10))}
+                disabled={!ytEnabled}
+              >
+                <SelectTrigger id="weekday-select">
+                  <SelectValue placeholder="Select day" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">Sunday</SelectItem>
+                  <SelectItem value="1">Monday</SelectItem>
+                  <SelectItem value="2">Tuesday</SelectItem>
+                  <SelectItem value="3">Wednesday</SelectItem>
+                  <SelectItem value="4">Thursday</SelectItem>
+                  <SelectItem value="5">Friday</SelectItem>
+                  <SelectItem value="6">Saturday</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-gray-500">
+                Sent on your chosen day, in your time zone (
+                {detectTimeZone() || 'UTC'}).
+              </p>
             </div>
 
             <Button
@@ -253,7 +274,7 @@ export function AccountPageClient() {
               disabled={ytLoading}
               className="w-full"
             >
-              {ytLoading ? 'Saving…' : 'Save YouTube Settings'}
+              {ytLoading ? 'Saving…' : 'Save digest settings'}
             </Button>
           </CardContent>
         </Card>

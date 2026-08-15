@@ -37,9 +37,13 @@ export interface ChannelCarousel {
 }
 
 export interface NotificationSettings {
-  intervalDays: number;
+  /** Whether the User has opted in to the weekly New-only digest. */
   enabled: boolean;
   lastNotifiedAt: string | null;
+  /** Preferred send day in the User's own week, 0 = Sunday .. 6 = Saturday. */
+  preferredWeekday: number;
+  /** IANA time zone the weekday is evaluated in. Null means UTC. */
+  timeZone: string | null;
 }
 
 export type SortOption = 'latest' | 'oldest' | 'az';

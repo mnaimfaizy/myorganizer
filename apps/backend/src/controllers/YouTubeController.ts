@@ -15,7 +15,8 @@ import {
   Tags,
 } from 'tsoa';
 import { requireUserId } from '../guards/AuthGuard';
-import youTubeNotificationService from '../services/YouTubeNotificationService';
+import youTubeDigestService from '../services/YouTubeDigestService';
+import youTubeSyncWorkerService from '../services/YouTubeSyncWorkerService';
 import youtubeSyncService, {
   YouTubeRefreshResult,
   YouTubeSyncStatusDTO,
@@ -77,19 +78,48 @@ interface ChannelCarouselResponse {
 }
 
 interface NotificationSettingsResponse {
-  intervalDays: number;
+  /** Whether the User has opted in to the weekly New-only digest. */
   enabled: boolean;
   lastNotifiedAt: string | null;
+  /** Preferred send day in the User's own week, 0 = Sunday .. 6 = Saturday. */
+  preferredWeekday: number;
+  /** IANA time zone the weekday is evaluated in. Null means UTC. */
+  timeZone: string | null;
 }
 
 interface NotificationSettingsBody {
-  intervalDays?: number;
   enabled?: boolean;
+  preferredWeekday?: number;
+  timeZone?: string | null;
 }
 
-interface CronResultResponse {
+/** Result of one bounded pass of the metadata sync worker. */
+interface CronSyncResponse {
+  ran: boolean;
+  processed: number;
   usersSynced: number;
-  notificationsSent: number;
+  failed: number;
+  done: boolean;
+}
+
+/** Result of one bounded pass of the weekly digest worker. */
+interface CronDigestResponse {
+  ran: boolean;
+  processed: number;
+  sent: number;
+  skippedEmpty: number;
+  notDue: number;
+  duplicates: number;
+  failed: number;
+  done: boolean;
+}
+
+interface UnsubscribeBody {
+  token: string;
+}
+
+interface UnsubscribeResponse {
+  ok: boolean;
 }
 
 interface SyncStatusResponse {
@@ -123,6 +153,20 @@ function toSyncStatusResponse(
     lastSyncAttemptAt: status.lastSyncAttemptAt?.toISOString() ?? null,
     lastSyncError: status.lastSyncError,
     retryAt: status.retryAt?.toISOString() ?? null,
+  };
+}
+
+function toNotificationSettingsResponse(settings: {
+  enabled: boolean;
+  lastNotifiedAt: Date | null;
+  preferredWeekday: number;
+  timeZone: string | null;
+}): NotificationSettingsResponse {
+  return {
+    enabled: settings.enabled,
+    lastNotifiedAt: settings.lastNotifiedAt?.toISOString() ?? null,
+    preferredWeekday: settings.preferredWeekday,
+    timeZone: settings.timeZone,
   };
 }
 
@@ -367,11 +411,7 @@ export class YouTubeController extends Controller {
   ): Promise<NotificationSettingsResponse | YouTubeErrorResponse> {
     const userId = requireUserId(req);
     const settings = await youtubeSyncService.getNotificationSettings(userId);
-    return {
-      intervalDays: settings.intervalDays,
-      enabled: settings.enabled,
-      lastNotifiedAt: settings.lastNotifiedAt?.toISOString() ?? null,
-    };
+    return toNotificationSettingsResponse(settings);
   }
 
   /**
@@ -384,27 +424,76 @@ export class YouTubeController extends Controller {
     @Body() body: NotificationSettingsBody,
   ): Promise<NotificationSettingsResponse | YouTubeErrorResponse> {
     const userId = requireUserId(req);
-    const updated = await youtubeSyncService.updateNotificationSettings(
-      userId,
-      body,
-    );
+    try {
+      const updated = await youtubeSyncService.updateNotificationSettings(
+        userId,
+        body,
+      );
+      return toNotificationSettingsResponse(updated);
+    } catch (error) {
+      this.setStatus(400);
+      return {
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Invalid notification settings.',
+      };
+    }
+  }
+
+  /**
+   * Turns the weekly digest off from the link carried by every digest email.
+   * Unauthenticated by design — the opaque token is the only credential a
+   * mail client can present.
+   */
+  @Post('/digest/unsubscribe')
+  public async unsubscribeFromDigest(
+    @Body() body: UnsubscribeBody,
+  ): Promise<UnsubscribeResponse | YouTubeErrorResponse> {
+    const ok = await youTubeDigestService.unsubscribe(body.token);
+    if (!ok) {
+      this.setStatus(404);
+      return { message: 'Unknown unsubscribe link.' };
+    }
+    return { ok: true };
+  }
+
+  /**
+   * Cron-only endpoint: runs one bounded pass of the metadata sync worker.
+   * Authenticated via X-Cron-Secret header instead of JWT.
+   */
+  @Post('/cron/sync')
+  @Security('cron-secret')
+  public async cronSync(): Promise<CronSyncResponse | YouTubeErrorResponse> {
+    const result = await youTubeSyncWorkerService.runSyncWorker();
     return {
-      intervalDays: updated.intervalDays,
-      enabled: updated.enabled,
-      lastNotifiedAt: updated.lastNotifiedAt?.toISOString() ?? null,
+      ran: result.ran,
+      processed: result.processed,
+      usersSynced: result.usersSynced,
+      failed: result.failed,
+      done: result.done,
     };
   }
 
   /**
-   * Cron-only endpoint: syncs all users' videos and sends due notifications.
-   * Authenticated via X-Cron-Secret header instead of JWT.
+   * Cron-only endpoint: runs one bounded pass of the weekly digest worker.
+   * Separate from `/cron/sync` so neither job can starve or fail the other.
    */
-  @Post('/cron/sync-and-notify')
+  @Post('/cron/digest')
   @Security('cron-secret')
-  public async cronSyncAndNotify(): Promise<
-    CronResultResponse | YouTubeErrorResponse
+  public async cronDigest(): Promise<
+    CronDigestResponse | YouTubeErrorResponse
   > {
-    const result = await youTubeNotificationService.syncAndNotifyAll();
-    return result;
+    const result = await youTubeDigestService.runDigestWorker();
+    return {
+      ran: result.ran,
+      processed: result.processed,
+      sent: result.sent,
+      skippedEmpty: result.skippedEmpty,
+      notDue: result.notDue,
+      duplicates: result.duplicates,
+      failed: result.failed,
+      done: result.done,
+    };
   }
 }
