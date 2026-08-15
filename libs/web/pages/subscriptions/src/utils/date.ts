@@ -8,11 +8,14 @@ export function dateInputToIso(value: string | undefined): string | undefined {
   const v = typeof value === 'string' ? value.trim() : '';
   if (!v) return undefined;
 
-  // Validate by parsing (new Date treats YYYY-MM-DD as UTC midnight)
   const date = new Date(v);
   if (Number.isNaN(date.getTime())) return undefined;
-  // Return date-only to avoid timezone-dependent shifts when displaying
-  return v.slice(0, 10);
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v) && date.toISOString().slice(0, 10) !== v) {
+    return undefined;
+  }
+
+  return date.toISOString();
 }
 
 /**

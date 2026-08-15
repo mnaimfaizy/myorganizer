@@ -27,16 +27,18 @@ describe('isoToDateInput', () => {
 });
 
 describe('dateInputToIso', () => {
-  it('should return the same value for a valid date-only string', () => {
-    expect(dateInputToIso('2024-01-15')).toBe('2024-01-15');
+  it('should return a full ISO string for a valid date-only string', () => {
+    expect(dateInputToIso('2024-01-15')).toBe('2024-01-15T00:00:00.000Z');
   });
 
-  it('should return the same value for another valid date-only string', () => {
-    expect(dateInputToIso('2024-12-31')).toBe('2024-12-31');
+  it('should return a full ISO string for another valid date-only string', () => {
+    expect(dateInputToIso('2024-12-31')).toBe('2024-12-31T00:00:00.000Z');
   });
 
-  it('should return the date portion for a full ISO string', () => {
-    expect(dateInputToIso('2024-01-15T00:00:00.000Z')).toBe('2024-01-15');
+  it('should return full ISO string for a full ISO string input', () => {
+    expect(dateInputToIso('2024-01-15T00:00:00.000Z')).toBe(
+      '2024-01-15T00:00:00.000Z',
+    );
   });
 
   it('should return undefined for undefined input', () => {
@@ -57,6 +59,10 @@ describe('dateInputToIso', () => {
 
   it('should return undefined for an invalid calendar date string', () => {
     expect(dateInputToIso('2024-13-01')).toBeUndefined();
+  });
+
+  it('should return undefined for an impossible calendar day rollover string', () => {
+    expect(dateInputToIso('2024-02-30')).toBeUndefined();
   });
 });
 
