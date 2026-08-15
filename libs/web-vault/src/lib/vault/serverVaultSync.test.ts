@@ -106,12 +106,22 @@ describe('serverVaultSync', () => {
 
   test('putServerVaultMetaEtagAware on 409 can keep local (retry with remote etag)', async () => {
     const api = {
-      putVaultMeta: jest
-        .fn()
-        .mockRejectedValueOnce(httpError(409))
-        .mockResolvedValueOnce({
-          data: { ok: true, etag: 'new-etag', updatedAt: 't3', message: 'ok' },
-        }),
+      putVaultMeta: jest.fn().mockImplementation(async (args) => {
+        if (args?.ifMatch === 'local-etag') {
+          throw httpError(409);
+        }
+        if (args?.ifMatch === 'remote-etag') {
+          return {
+            data: {
+              ok: true,
+              etag: 'new-etag',
+              updatedAt: 't3',
+              message: 'ok',
+            },
+          };
+        }
+        throw new Error(`Unexpected ifMatch argument: ${args?.ifMatch}`);
+      }),
       getVaultMeta: jest.fn().mockResolvedValue({
         data: { etag: 'remote-etag', updatedAt: 'rt', meta: makeMeta() },
       }),
@@ -149,18 +159,28 @@ describe('serverVaultSync', () => {
     } as unknown as ApiForGetBlob;
 
     await expect(
-      getServerVaultBlob(api, VaultBlobType.Addresses)
+      getServerVaultBlob(api, VaultBlobType.Addresses),
     ).resolves.toBeNull();
   });
 
   test('putServerVaultBlobEtagAware on 409 can keep local (retry with remote etag)', async () => {
     const api = {
-      putVaultBlob: jest
-        .fn()
-        .mockRejectedValueOnce(httpError(409))
-        .mockResolvedValueOnce({
-          data: { ok: true, etag: 'new-etag', updatedAt: 't3', message: 'ok' },
-        }),
+      putVaultBlob: jest.fn().mockImplementation(async (args) => {
+        if (args?.ifMatch === 'local-etag') {
+          throw httpError(409);
+        }
+        if (args?.ifMatch === 'remote-etag') {
+          return {
+            data: {
+              ok: true,
+              etag: 'new-etag',
+              updatedAt: 't3',
+              message: 'ok',
+            },
+          };
+        }
+        throw new Error(`Unexpected ifMatch argument: ${args?.ifMatch}`);
+      }),
       getVaultBlob: jest.fn().mockResolvedValue({
         data: {
           etag: 'remote-etag',

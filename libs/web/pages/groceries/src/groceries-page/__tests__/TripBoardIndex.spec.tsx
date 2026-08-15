@@ -617,14 +617,10 @@ describe('TripBoardIndex', () => {
     ).toBeInTheDocument();
   });
 
-  it('toasts none, all, and partial add results from onAddExistingItem', async () => {
+  it('toasts info when onAddExistingItem returns no added list ids', async () => {
     const catalog = [makeCatalogItem('milk', 'Milk')];
     const lists = [makeList('a', 'Trip A', []), makeList('b', 'Trip B', [])];
-    const onAddExistingItem = jest
-      .fn()
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce(['a', 'b'])
-      .mockResolvedValueOnce(['a']);
+    const onAddExistingItem = jest.fn().mockResolvedValue([]);
 
     renderTripBoard({ lists, catalog, onAddExistingItem });
 
@@ -634,10 +630,23 @@ describe('TripBoardIndex', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add to Lists' }));
 
     await waitFor(() => {
+      expect(onAddExistingItem).toHaveBeenCalledWith(
+        'milk',
+        ['a', 'b'],
+        undefined,
+      );
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({ title: 'Already on every selected list.' }),
       );
     });
+  });
+
+  it('toasts success when onAddExistingItem returns all selected list ids', async () => {
+    const catalog = [makeCatalogItem('milk', 'Milk')];
+    const lists = [makeList('a', 'Trip A', []), makeList('b', 'Trip B', [])];
+    const onAddExistingItem = jest.fn().mockResolvedValue(['a', 'b']);
+
+    renderTripBoard({ lists, catalog, onAddExistingItem });
 
     fireEvent.click(screen.getByRole('button', { name: 'Add Milk to trip' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Add to Trip A' }));
@@ -645,6 +654,11 @@ describe('TripBoardIndex', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add to Lists' }));
 
     await waitFor(() => {
+      expect(onAddExistingItem).toHaveBeenCalledWith(
+        'milk',
+        ['a', 'b'],
+        undefined,
+      );
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Added to lists',
@@ -652,6 +666,14 @@ describe('TripBoardIndex', () => {
         }),
       );
     });
+  });
+
+  it('toasts partial success when onAddExistingItem returns a subset of list ids', async () => {
+    const catalog = [makeCatalogItem('milk', 'Milk')];
+    const lists = [makeList('a', 'Trip A', []), makeList('b', 'Trip B', [])];
+    const onAddExistingItem = jest.fn().mockResolvedValue(['a']);
+
+    renderTripBoard({ lists, catalog, onAddExistingItem });
 
     fireEvent.click(screen.getByRole('button', { name: 'Add Milk to trip' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Add to Trip A' }));
@@ -659,6 +681,11 @@ describe('TripBoardIndex', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add to Lists' }));
 
     await waitFor(() => {
+      expect(onAddExistingItem).toHaveBeenCalledWith(
+        'milk',
+        ['a', 'b'],
+        undefined,
+      );
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Added to lists',

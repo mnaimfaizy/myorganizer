@@ -1,8 +1,5 @@
+/* eslint-disable import/first -- jest.mock must precede application imports */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-
-import type { MigrationDecision } from '@myorganizer/web-vault';
-
-import { VaultMigrationRunner } from './migrationRunner';
 
 const mockToast = jest.fn();
 const mockMigrateVaultPhase1ToPhase2 = jest.fn();
@@ -24,6 +21,10 @@ jest.mock('@myorganizer/web-vault', () => ({
     mockMigrateVaultPhase1ToPhase2(options),
   saveVault: (vault: unknown) => mockSaveVault(vault),
 }));
+
+import type { MigrationDecision } from '@myorganizer/web-vault';
+
+import { VaultMigrationRunner } from './migrationRunner';
 
 type MigrationPromptOptions = {
   prompt: (params: { message: string }) => Promise<MigrationDecision>;
