@@ -10,6 +10,11 @@ and troubleshooting.
 > Google Cloud as the OAuth provider but use different flows, scopes, and
 > credentials.
 
+> **New to the vault?** Two visual pages cover the architecture this feature sits
+> on: [the lifecycle walkthrough](../vault/lifecycle.html) for what happens over
+> time, and [the trust boundary map](../vault/trust-boundary.html) for what
+> crosses which line. See [docs/vault/](../vault/README.md).
+
 ## Table of contents
 
 - [Overview](#overview)

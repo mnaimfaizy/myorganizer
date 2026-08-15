@@ -3,19 +3,28 @@
 //
 //   node tools/scripts/build-agent-map.mjs <export-dir> <file.dc.html> <out-file>
 //
-// The exports ship as `<name>.dc.html` + `support.js` + `ds/styles.css` and expect React to
-// arrive from a CDN at load time. Neither can hold for a page that must render from disk and
-// inside a sandbox, so everything is inlined. Content is copied verbatim; delivery changes:
+// The exports ship as `<name>.dc.html` + `support.js` + a design-system stylesheet, and expect
+// React to arrive from a CDN at load time. Neither can hold for a page that must render from
+// disk and inside a sandbox, so everything is inlined. Content is copied verbatim; delivery
+// changes:
 //
-//   - inline ds/styles.css, minus its Google-Fonts @import, plus the woff2 faces as data URIs
-//   - re-express the dark block so an explicit theme choice wins in both directions
-//   - embed the agent manifest that tools/scripts/check-agent-map.mjs asserts against
+//   - inline the design-system stylesheet, minus its Google-Fonts @import, plus the woff2 faces
+//   - re-express a `prefers-color-scheme` block so an explicit theme choice wins both ways
+//   - carry through the page's own manifest, or generate the agent one when it declares none
 //
-// How much runtime a page needs is decided by the page, not by a flag. A page with no `{{ }}`
-// bindings is plain DOM: the runtime is dropped and its DCLogic class unwrapped into an IIFE.
-// A page that binds templates needs the real thing, so React, ReactDOM and support.js are
-// inlined ahead of it from tools/assets/dc-runtime and the <x-dc> markup is left intact.
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+// Nothing here is page-specific. Two things are decided by the export rather than by a flag:
+//
+//   Runtime. A page with no `{{ }}` bindings is plain DOM: React is dropped and the export's
+//   DCLogic class is unwrapped into an IIFE with a minimal shim. A page that binds templates
+//   gets React, ReactDOM and support.js inlined ahead of it, with <x-dc> left intact.
+//
+//   Manifest. A page that declares its own `application/json` manifest keeps it. A page that
+//   declares none gets the agent-fleet manifest generated from agent-model-policy.json.
+//
+// Note: docs/agents/orchestration-map.html was produced by an earlier revision of this script
+// that carried a hand-written interaction script, and its source export no longer exists, so
+// that page is not reproducible from here. It remains covered by check-agent-map.mjs.
+import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
 const [srcDir, dcFile, outFile] = process.argv.slice(2);
@@ -32,7 +41,25 @@ if (!readdirSync(srcDir).includes(dcFile)) {
 
 const repoRoot = process.cwd();
 let html = readFileSync(join(srcDir, dcFile), 'utf8');
-let ds = readFileSync(join(srcDir, 'ds', 'styles.css'), 'utf8');
+
+// Exports have moved the design-system stylesheet around between revisions: older ones use
+// `ds/styles.css`, newer ones nest it under `_ds/<theme-id>/styles.css`.
+function findDesignStyles(dir) {
+  const direct = join(dir, 'ds', 'styles.css');
+  if (existsSync(direct)) return direct;
+
+  const dsRoot = join(dir, '_ds');
+  if (existsSync(dsRoot)) {
+    for (const themeDir of readdirSync(dsRoot)) {
+      const nested = join(dsRoot, themeDir, 'styles.css');
+      if (existsSync(nested)) return nested;
+    }
+  }
+  console.error(`no styles.css found under ${dir} (looked in ds/ and _ds/*/)`);
+  process.exit(65);
+}
+
+let ds = readFileSync(findDesignStyles(srcDir), 'utf8');
 
 // A page that binds `{{ }}` cannot be served without the template runtime.
 const needsRuntime = html.includes('{{');
@@ -52,7 +79,7 @@ ds = ds
 
 // The design's own typefaces, embedded as data URIs so the page renders identically offline,
 // behind a CSP, and from disk. Latin subset only; Figtree is variable across 400-800, which is
-// the range the diagram actually uses. See tools/assets/fonts/README.md for provenance.
+// the range the diagrams actually use. See tools/assets/fonts/README.md for provenance.
 const fontDir = join(repoRoot, 'tools/assets/fonts');
 const embed = (file) => readFileSync(join(fontDir, file)).toString('base64');
 const LATIN =
@@ -82,16 +109,20 @@ const pageStyle = html.match(
   /<helmet>[\s\S]*?<style>([\s\S]*?)<\/style>[\s\S]*?<\/helmet>/,
 )[1];
 
-// `prefers-color-scheme` alone cannot be overridden by a viewer toggle; mirror the dark
-// declarations onto [data-theme="dark"] and guard the media query with [data-theme="light"].
-const darkDecls = pageStyle.match(
+// `prefers-color-scheme` alone cannot be overridden by a viewer toggle, so where a page relies
+// on it, mirror the dark declarations onto [data-theme="dark"] and guard the media query with
+// [data-theme="light"]. Pages that set data-theme from script already win in both directions
+// and are left untouched.
+const darkBlock = pageStyle.match(
   /@media \(prefers-color-scheme: dark\)\{\s*:root\{([\s\S]*?)\}\s*\}/,
-)[1];
-const themedStyle = pageStyle.replace(
-  /@media \(prefers-color-scheme: dark\)\{\s*:root\{[\s\S]*?\}\s*\}/,
-  `@media (prefers-color-scheme: dark){\n  :root:not([data-theme="light"]){${darkDecls}}\n}\n` +
-    `:root[data-theme="dark"]{${darkDecls}}`,
 );
+const themedStyle = darkBlock
+  ? pageStyle.replace(
+      /@media \(prefers-color-scheme: dark\)\{\s*:root\{[\s\S]*?\}\s*\}/,
+      `@media (prefers-color-scheme: dark){\n  :root:not([data-theme="light"]){${darkBlock[1]}}\n}\n` +
+        `:root[data-theme="dark"]{${darkBlock[1]}}`,
+    )
+  : pageStyle;
 
 // A runtime-backed page keeps <x-dc> and its `text/x-dc` island — the runtime parses both.
 // A plain-DOM page is unwrapped, and its island is rewritten below as an ordinary IIFE.
@@ -121,84 +152,96 @@ const runtimeScripts = needsRuntime
       .join('\n')
   : '';
 
-// The manifest is the page's machine-readable claim about the fleet. check-agent-map.mjs
-// diffs it against the policy file, so a policy change fails CI instead of rotting the page.
-const policy = JSON.parse(
-  readFileSync(join(repoRoot, 'tools/config/agent-model-policy.json'), 'utf8'),
+// A manifest is the page's machine-readable claim about what it asserts, so a check script can
+// diff it against source and fail the build instead of letting the page rot. Newer exports
+// declare their own; the agent pages did not, so one is generated from the policy file.
+const declaredManifest = html.match(
+  /<script type="application\/json" id="[a-zA-Z0-9-]*manifest">[\s\S]*?<\/script>/,
 );
-const agentsDir = join(repoRoot, '.github/agents');
-const displayNames = Object.fromEntries(
-  readdirSync(agentsDir)
-    .filter((f) => f.endsWith('.agent.md'))
-    .map((f) => [
-      f.replace('.agent.md', ''),
-      readFileSync(join(agentsDir, f), 'utf8')
-        .match(/^name:\s*(.+)$/m)[1]
-        .trim()
-        .replace(/^['"]|['"]$/g, ''),
-    ]),
-);
-const manifest = {
-  note: 'Asserted by tools/scripts/check-agent-map.mjs. Do not hand-edit — rebuild the page.',
-  policyReviewedAt: policy.reviewedAt,
-  agents: Object.fromEntries(
-    Object.entries(policy.agents)
-      .map(([key, v]) => [displayNames[key] ?? key, v.tier])
-      .sort(([a], [b]) => a.localeCompare(b)),
-  ),
-};
 
-// Only the plain-DOM page needs this: the export's DCLogic wrapper carries no reactive state,
-// so its componentDidMount body runs as-is with the export's prop defaults substituted.
-const script = needsRuntime
-  ? ''
-  : `
+function generateAgentManifest() {
+  const policy = JSON.parse(
+    readFileSync(
+      join(repoRoot, 'tools/config/agent-model-policy.json'),
+      'utf8',
+    ),
+  );
+  const agentsDir = join(repoRoot, '.github/agents');
+  const displayNames = Object.fromEntries(
+    readdirSync(agentsDir)
+      .filter((f) => f.endsWith('.agent.md'))
+      .map((f) => [
+        f.replace('.agent.md', ''),
+        readFileSync(join(agentsDir, f), 'utf8')
+          .match(/^name:\s*(.+)$/m)[1]
+          .trim()
+          .replace(/^['"]|['"]$/g, ''),
+      ]),
+  );
+  const manifest = {
+    note: 'Asserted by tools/scripts/check-agent-map.mjs. Do not hand-edit — rebuild the page.',
+    policyReviewedAt: policy.reviewedAt,
+    agents: Object.fromEntries(
+      Object.entries(policy.agents)
+        .map(([key, v]) => [displayNames[key] ?? key, v.tier])
+        .sort(([a], [b]) => a.localeCompare(b)),
+    ),
+  };
+  return `<script type="application/json" id="agent-map-manifest">\n${JSON.stringify(
+    manifest,
+    null,
+    2,
+  )}\n</script>`;
+}
+
+const manifestBlock = declaredManifest
+  ? declaredManifest[0]
+  : generateAgentManifest();
+
+// Only the plain-DOM path needs this. The export's DCLogic subclass is ordinary JS once it has
+// a base class to extend, props to read, and a setState that re-runs componentDidUpdate — so
+// provide exactly that rather than reimplementing each page's behaviour by hand.
+function unwrapDcLogic(source) {
+  const classSource = source.match(
+    /<script type="text\/x-dc"[^>]*>([\s\S]*?)<\/script>/,
+  );
+  if (!classSource) return '';
+
+  // `data-props` is HTML-escaped, and its real quotes are all entities, so the attribute value
+  // never contains a raw `"`. Each entry's `default` is what the export renders with.
+  const rawProps = source.match(/data-props="([^"]*)"/);
+  let props = {};
+  if (rawProps) {
+    const decoded = rawProps[1]
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&');
+    props = Object.fromEntries(
+      Object.entries(JSON.parse(decoded)).map(([k, v]) => [k, v.default]),
+    );
+  }
+
+  return `
 (function(){
-  var root = document.querySelector('[data-map-root]');
-  if (!root) return;
-  var dimOpacity = '0.13';
-  var dims = function(){ return Array.prototype.slice.call(root.querySelectorAll('[data-dim]')); };
-  var set = function(el, on){
-    el.style.opacity = on ? '1' : dimOpacity;
-    el.style.filter = on ? 'none' : 'saturate(0.2)';
+  function DCLogic(){}
+  DCLogic.prototype.setState = function(patch){
+    this.state = Object.assign({}, this.state, patch);
+    if (typeof this.componentDidUpdate === 'function') this.componentDidUpdate();
   };
-  var clear = function(){ dims().forEach(function(el){ set(el, true); }); };
-  var filter = null;
-  var matchesFilter = function(el){
-    return !filter || (el.getAttribute('data-pipe') || '').split(/\\s+/).indexOf(filter) !== -1;
-  };
-  var applyFilter = function(){ dims().forEach(function(el){ set(el, matchesFilter(el)); }); };
 
-  root.addEventListener('pointerover', function(e){
-    var t = e.target.closest && e.target.closest('[data-agent]');
-    if (!t || !root.contains(t)) return;
-    var names = (t.getAttribute('data-agent') || '').split('|');
-    dims().forEach(function(el){
-      var own = (el.getAttribute('data-agent') || '').split('|');
-      set(el, names.some(function(n){ return own.indexOf(n) !== -1; }));
-    });
-  });
-  root.addEventListener('pointerout', function(e){
-    var t = e.target.closest && e.target.closest('[data-agent]');
-    if (!t) return;
-    if (e.relatedTarget && t.contains(e.relatedTarget)) return;
-    applyFilter();
-  });
-  root.addEventListener('click', function(e){
-    var b = e.target.closest && e.target.closest('[data-filter]');
-    if (!b) return;
-    var v = b.getAttribute('data-filter');
-    filter = (v === 'all' || filter === v) ? null : v;
-    root.querySelectorAll('[data-filter]').forEach(function(x){
-      var active = (filter === null && x.getAttribute('data-filter') === 'all') || x.getAttribute('data-filter') === filter;
-      x.style.background = active ? 'var(--ink)' : 'transparent';
-      x.style.color = active ? 'var(--paper)' : 'var(--ink)';
-      x.style.borderColor = active ? 'var(--ink)' : 'var(--line)';
-    });
-    if (filter) applyFilter(); else clear();
-  });
+${classSource[1].trim()}
+
+  var instance = new Component();
+  instance.props = ${JSON.stringify(props)};
+  if (!instance.state) instance.state = {};
+  if (typeof instance.componentDidMount === 'function') instance.componentDidMount();
 })();
 `.trim();
+}
+
+const script = needsRuntime ? '' : unwrapDcLogic(html);
 
 const title = dcFile.replace('.dc.html', '');
 
@@ -208,9 +251,7 @@ const out = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>${title} — MyOrganizer</title>
-<script type="application/json" id="agent-map-manifest">
-${JSON.stringify(manifest, null, 2)}
-</script>
+${manifestBlock}
 ${runtimeScripts}
 <style>
 ${fontFaces}
@@ -239,5 +280,5 @@ console.log(
   `wrote ${outFile} (${(out.length / 1024).toFixed(1)} KB, ${needsRuntime ? 'runtime inlined' : 'plain DOM'})`,
 );
 console.log(
-  `manifest: ${Object.keys(manifest.agents).length} agents from policy`,
+  `manifest: ${declaredManifest ? 'carried through from the export' : 'generated from agent-model-policy.json'}`,
 );
