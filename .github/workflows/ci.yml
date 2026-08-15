@@ -397,6 +397,12 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: git diff --exit-code -- yarn.lock
 
+      - name: Test hygiene checker contracts
+        run: corepack yarn test:hygiene:test
+
+      - name: Check Jest test hygiene
+        run: corepack yarn test:hygiene --all
+
       - name: Restore Nx computation cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

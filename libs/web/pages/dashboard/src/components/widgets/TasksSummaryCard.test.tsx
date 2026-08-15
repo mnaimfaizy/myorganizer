@@ -1,9 +1,11 @@
+/* eslint-disable import/first -- jest.mock must precede application imports */
 import { render, screen, waitFor } from '@testing-library/react';
+
+jest.mock('@myorganizer/web-vault');
+
 import type { Task } from '@myorganizer/web-vault';
 import { loadDecryptedData, normalizeTasks } from '@myorganizer/web-vault';
 import { TasksSummaryCard } from './TasksSummaryCard';
-
-jest.mock('@myorganizer/web-vault');
 
 describe('TasksSummaryCard', () => {
   beforeEach(() => {
