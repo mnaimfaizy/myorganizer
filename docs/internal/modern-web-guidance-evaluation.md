@@ -14,6 +14,24 @@ npx skills add GoogleChrome/modern-web-guidance --skill modern-web-guidance -y
 
 The repository-level command documented upstream is valid, but its non-interactive form installs both exported skills. MyOrganizer does not build a Chrome extension, so installing the separate `chrome-extensions` skill adds unrelated instructions and unnecessary agent context.
 
+## Project Installation
+
+The approved skill is installed in this repository and tracked through the Skills CLI's universal project layout:
+
+- `.agents/skills/modern-web-guidance/` contains the upstream manifest and guide corpus used by GitHub Copilot, Cursor, OpenCode, and other compatible agents.
+- `.claude/skills/modern-web-guidance` links to the universal installation for Claude Code.
+- `skills-lock.json` records the source, skill path, and computed content hash.
+
+The installation contains only `modern-web-guidance`; `chrome-extensions` is intentionally absent. Use the CLI to inspect or refresh the generated files instead of editing them directly:
+
+```sh
+npx skills list
+npx skills check
+npx skills update -p
+```
+
+The skill invokes its search and retrieval CLI on demand, so no application runtime dependency is required. Set `DISABLE_TELEMETRY=1` when running its CLI where telemetry is not acceptable.
+
 ## Fit
 
 The skill covers 103 web platform features and 131 use cases across CSS, HTML and DOM APIs, JavaScript, performance, accessibility, forms, security, privacy, and UI behavior. It is useful to MyOrganizer's Next.js and React frontend because it complements the existing framework-focused skills with browser-platform guidance, including:
@@ -39,11 +57,13 @@ The default-set classification is justified by the breadth of frontend work in M
 
 ## Validation
 
-The following checks were run from disposable temporary directories on August 15, 2026:
+The following checks were run on August 15, 2026:
 
 1. `npx -y skills add GoogleChrome/modern-web-guidance --skill modern-web-guidance -y` found two upstream skills, selected one, and installed only `.agents/skills/modern-web-guidance` plus `skills-lock.json`.
 2. `npx -y skills add GoogleChrome/modern-web-guidance -y` found two upstream skills and installed both `modern-web-guidance` and `chrome-extensions`.
 3. The installed manifest declares frontend triggers and excludes backend, CI/CD, Docker, ESLint, and Git tasks.
+4. The project installation exposes one skill to Claude Code, Cursor, GitHub Copilot, and OpenCode; its Claude compatibility link resolves to the universal installation.
+5. The installed corpus contains 140 guide files, and telemetry-disabled search and retrieval commands complete successfully.
 
 ## Primary Sources
 
