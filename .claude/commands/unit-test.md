@@ -21,7 +21,7 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs i
 ## Workflow
 
 1. Identify the source files under test and the behaviors requiring coverage.
-2. Read the full implementation, neighboring tests, `docs/testing/README.md`, and the owning project's `jest.config.ts`.
+2. Read the full implementation, neighboring tests, `docs/testing/projects/<project>.md`, and the owning project's `jest.config.ts`.
 3. **Assess suite size** before delegating:
    - 8-15 tests is the default upper range for one focused integration suite.
    - More than 15 tests requires a behavior-matrix reason.
@@ -64,7 +64,7 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs i
 
 ## References
 
-- `docs/testing/README.md` — canonical Nx-aware testing guide
+- `docs/testing/README.md` — testing index + cross-project rules; per-project guides in `docs/testing/projects/`
 - `.claude/agents/test-scaffold.md` — TestScaffold (Claude Code, model: haiku)
 - `.claude/agents/test-reviewer.md` — TestReviewer (Claude Code, model: haiku)
 - `.claude/agents/test-runner.md` — TestRunner (Claude Code, model: inherit)

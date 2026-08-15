@@ -2,7 +2,7 @@
 name: docs
 description: >
   Use when the user asks to write, update, or expand long-form documentation, READMEs, ADRs, feature docs, or guides under docs/ or library README files in MyOrganizer. Produces Markdown content; main agent decides where to write it.
-model: gemini-2.5-pro
+model: gemini-3.6-flash
 tools:
   - read_file
   - list_files

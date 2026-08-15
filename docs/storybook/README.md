@@ -32,6 +32,8 @@ The static files will be generated in `libs/web-ui/storybook-static/`.
 
 ## Writing Stories
 
+> **Authoring patterns live in [`docs/ui/STORYBOOK-PATTERNS.md`](../ui/STORYBOOK-PATTERNS.md)** — compound-component wrappers, controlled primitives, Radix portals, `play` functions, required coverage, accessibility, and the anti-pattern table. This file covers setup and commands only.
+
 Stories are located alongside components in the `libs/web-ui/src/lib/components/` directory.
 
 ### AI Delegation Workflow
@@ -69,7 +71,7 @@ export const Default: Story = {
 };
 ```
 
-See `libs/web-ui/src/lib/components/Button/Button.stories.tsx` for a complete example.
+See `libs/web-ui/src/lib/components/Button/Button.stories.tsx` for a complete example of a single component with variants, and `Dialog/Dialog.stories.tsx` for a compound component. Note that the shape above only works for single components — a compound component needs the wrapper pattern (`STORYBOOK-PATTERNS.md` §4).
 
 ## Chromatic Integration
 

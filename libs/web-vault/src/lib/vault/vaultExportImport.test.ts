@@ -2,7 +2,7 @@ import { VaultBlobType } from '@myorganizer/app-api-client';
 
 import type { VaultStorageV1 } from './vault';
 import {
-  VAULT_EXPORT_MAX_BYTES,
+  VAULT_LEGACY_BUNDLE_MAX_BYTES,
   buildLocalExportBundle,
   bundleToLocalVault,
   validateVaultExportBundleFromText,
@@ -98,7 +98,7 @@ describe('vaultExportImport helpers', () => {
   });
 
   test('validateVaultExportBundleFromText size guard triggers before JSON parse', () => {
-    const tooLarge = 'a'.repeat(VAULT_EXPORT_MAX_BYTES + 1);
+    const tooLarge = 'a'.repeat(VAULT_LEGACY_BUNDLE_MAX_BYTES + 1);
     expect(() => validateVaultExportBundleFromText(tooLarge)).toThrow(
       'Bundle is too large to import',
     );
@@ -108,11 +108,13 @@ describe('vaultExportImport helpers', () => {
     const prefix = '{"a":"';
     const suffix = '"}';
     const padLen =
-      VAULT_EXPORT_MAX_BYTES - byteLengthUtf8(prefix) - byteLengthUtf8(suffix);
+      VAULT_LEGACY_BUNDLE_MAX_BYTES -
+      byteLengthUtf8(prefix) -
+      byteLengthUtf8(suffix);
     expect(padLen).toBeGreaterThan(0);
 
     const text = `${prefix}${'x'.repeat(padLen)}${suffix}`;
-    expect(byteLengthUtf8(text)).toBe(VAULT_EXPORT_MAX_BYTES);
+    expect(byteLengthUtf8(text)).toBe(VAULT_LEGACY_BUNDLE_MAX_BYTES);
 
     // Should pass size check but fail schema validation.
     expect(() => validateVaultExportBundleFromText(text)).toThrow(

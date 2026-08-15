@@ -9,7 +9,7 @@ import {
   isVaultImportError,
   migrateEnvelope,
   parseVaultExportEnvelope,
-  VAULT_EXPORT_MAX_BYTES as VAULT_CORE_EXPORT_MAX_BYTES,
+  VAULT_ENVELOPE_PARSE_MAX_BYTES,
   VAULT_EXPORT_BLOB_TYPES,
   VaultExportEnvelope,
   VaultImportError,
@@ -25,7 +25,14 @@ import {
   toEncryptedBlobV1,
 } from './vaultShapes';
 
-export const VAULT_EXPORT_MAX_BYTES = 1024 * 1024;
+/**
+ * Cap on the legacy export-bundle path ({@link validateVaultExportBundleFromText}).
+ *
+ * Deliberately tighter than {@link VAULT_ENVELOPE_PARSE_MAX_BYTES}, which governs the
+ * hardened envelope path in `importVault`. The two limits are not interchangeable —
+ * check which path you are on before citing either.
+ */
+export const VAULT_LEGACY_BUNDLE_MAX_BYTES = 1024 * 1024;
 
 const BASE64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
 
@@ -198,7 +205,7 @@ export function validateVaultExportBundle(raw: unknown): VaultExportV1 {
 }
 
 export function validateVaultExportBundleFromText(text: string): VaultExportV1 {
-  if (byteLengthUtf8(text) > VAULT_EXPORT_MAX_BYTES) {
+  if (byteLengthUtf8(text) > VAULT_LEGACY_BUNDLE_MAX_BYTES) {
     throw new Error('Bundle is too large to import');
   }
 
@@ -594,7 +601,7 @@ export async function importVault(
 export {
   CURRENT_VAULT_EXPORT_SCHEMA_VERSION,
   isVaultImportError,
-  VAULT_CORE_EXPORT_MAX_BYTES,
+  VAULT_ENVELOPE_PARSE_MAX_BYTES,
   VAULT_EXPORT_BLOB_TYPES,
   VaultImportError,
 };

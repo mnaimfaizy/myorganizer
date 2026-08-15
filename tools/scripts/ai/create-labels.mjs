@@ -27,6 +27,22 @@ const LABELS = [
     description: 'Route to Opus — complex task requiring deep reasoning',
   },
   {
+    name: 'gate:mechanical',
+    color: 'd4c5f9',
+    description:
+      'Mechanical path — main agent edits; no specialist chains (ADR 0012)',
+  },
+  {
+    name: 'gate:standard',
+    color: 'b392f0',
+    description: 'Single-hop specialist path (ADR 0012)',
+  },
+  {
+    name: 'gate:full',
+    color: '6f42c1',
+    description: 'Full mandatory multi-agent pipelines (ADR 0012)',
+  },
+  {
     name: 'type:afk',
     color: 'e4e669',
     description: 'Agent can implement and merge without human interaction',
@@ -41,6 +57,12 @@ const LABELS = [
     name: 'status:in-progress',
     color: 'fef2c0',
     description: 'Agent has picked up the issue and is working on it',
+  },
+  {
+    name: 'status:blocked',
+    color: 'd93f0b',
+    description:
+      'Waiting on blocker issue(s) in ## Blocked by — skipped by dispatch-agents until unblocked',
   },
   {
     name: 'status:done',

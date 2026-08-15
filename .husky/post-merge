@@ -1,0 +1,26 @@
+# Refresh the Graphify knowledge graph after a merge or pull brings in code.
+#
+# post-commit does not cover this. `git merge` — which is what `git pull` runs —
+# never fires post-commit, not for a fast-forward (no commit is created at all)
+# and not for a merge commit (git merge writes it directly). So before this hook
+# existed, pulling other people's merged work left the graph a step behind until
+# your own next local commit happened to touch apps/ or libs/.
+#
+# All the guards and the rebuild itself live in the shared script; this hook only
+# says which files count as "just changed". See docs/graphify.md.
+
+graphify_changed_files() {
+  # git merge and git pull both set ORIG_HEAD to the pre-merge tip, which covers
+  # the fast-forward and merge-commit cases alike. HEAD@{1} is the fallback for
+  # the rare path where the reflog has the entry but ORIG_HEAD is unset.
+  if git rev-parse --verify --quiet ORIG_HEAD >/dev/null 2>&1; then
+    git diff --name-only ORIG_HEAD HEAD 2>/dev/null
+  else
+    git diff --name-only 'HEAD@{1}' HEAD 2>/dev/null
+  fi
+}
+
+GRAPHIFY_TRIGGER="merge brought in code"
+export GRAPHIFY_TRIGGER
+
+. .husky/graphify-refresh.sh

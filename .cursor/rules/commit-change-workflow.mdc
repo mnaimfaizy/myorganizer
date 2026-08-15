@@ -5,8 +5,10 @@ alwaysApply: false
 
 # Commit Change Workflow
 
-- Use the existing `Commit` sub-agent to draft the Conventional Commit message from the staged diff.
-- Run the actual commit with `corepack yarn ai:commit`.
-- Wait for `git commit` to finish. Do not cancel or background the process while Husky is running.
-- If Husky fails, fix the reported formatting, lint, typecheck, or test issue, rerun the narrow validation, and then retry the commit.
-- Do not auto-stage unrelated files.
+- Inspect git status first. Never `git add .`. If nothing is staged, or staged and unstaged files are mixed, list the files and ask before staging.
+- Do not stage secret-looking files (`.env`, `credentials.json`, `*.pem`, private keys).
+- Use the existing `Commit` sub-agent to draft the Conventional Commit message from the **staged** diff only.
+- If `Commit` recommends multiple commits, ask which group to commit first.
+- Run the actual commit with `corepack yarn ai:commit --message-file <path>`. Do not run `git commit` directly. Do not pipe the message on stdin.
+- Wait for `yarn ai:commit` to finish. Do not cancel or background the process while Husky is running.
+- If it fails, read the `ai:commit: failed` trailer (`reason`, `hint`, optional `projects` / `paths`), fix that slice, rerun the hinted check, then retry.

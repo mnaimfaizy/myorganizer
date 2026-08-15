@@ -330,3 +330,43 @@ its AST-symbol model. Against this sits a real cost: manual rebuilds + staleness
 dependency, and an extra indirection in CodeExplorer. Per the documented kill criterion
 (consistent `redundant`/`wrong-missed` → drop it), the evidence now points to **KILL the
 adoption**. Tool verdict (no-go as primary exploration/impact engine) is unchanged and reinforced.
+
+## RESOLUTION (2026-08-12, issue #294) — GRADUATED, narrowly scoped
+
+The kill call above was never executed, and the probation it depended on never actually ran: the
+`Graphify Usage` instrumentation was deleted on 2026-07-02 by `yarn agents:sync` (it lived only in
+`.claude/agents/explore.md`; the sync script regenerates every target body from canonical
+`.github/agents/`). So the tally above — two spikes from a single day — remained the entire evidence
+base for six weeks.
+
+Two inputs changed the call:
+
+1. **The cost half of the kill argument is gone.** #293 refreshes the graph automatically on commit,
+   and #292 confirmed extraction is complete for authored `.ts`/`.tsx` (2 unparseable files, both
+   generated and gitignored, contributing 0 nodes). "Manual rebuilds + staleness" no longer weighs
+   much.
+2. **The capability half was re-measured, not assumed.** Bar questions re-run against the live graph
+   on 2026-08-12 (2,853 nodes / 5,350 edges, 99% EXTRACTED):
+
+| Q                                      | Result                                                                               |
+| -------------------------------------- | ------------------------------------------------------------------------------------ |
+| R3 `get_neighbors saveEncryptedData`   | 🟢 17 edges with `file:line` (callers, importers, callees), ~1s, $0                  |
+| `god_nodes`                            | 🟢 `cn` 40, `Button` 33, `useToast` 30, `requireUserId` 26, `UserService` 26         |
+| R1 `get_node EncryptedBlob`            | 🔴 returned **`EncryptedBlobV1`** — a different symbol — degree 1, no ambiguity flag |
+| R5 `VaultController → serverVaultSync` | 🔴 "No directed path found"                                                          |
+
+R1/R5 reproduce exactly, confirming they are AST-bounded and permanent. R1 is the worst shape: a
+silent substitution, not an error.
+
+**Decision:** graduate rather than kill, with the scope enforced instead of measured. The two green
+rows become the sanctioned uses; every red row becomes a written ban in the agent body, expressed as
+a table of question shapes with the tool to use instead. The per-run usage logging is dropped — it
+charged Haiku tokens on every exploration to keep re-litigating a settled question.
+
+Also decided: register the MCP in **all four** harnesses (Claude, Copilot/VS Code, Cursor, Gemini
+CLI) rather than Claude only, so the wiring is not Claude-specific evidence. Formats were verified
+per harness; they are not interchangeable. See `docs/graphify.md` § Harness registration.
+
+The restoration is durable this time because the rules live in canonical
+`.github/agents/explore.agent.md`, with harness-specific tool names carried by a new
+`<!-- harness:... -->` section mechanism in `tools/scripts/sync-subagents.mjs`.

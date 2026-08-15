@@ -5,7 +5,7 @@ description: >
   Detects hangs via ps aux check after 1-minute silence, retries
   one-at-a-time if needed, and returns a structured verdict. Never
   executes E2E tests — applies needs-e2e-review label instead.
-model: gemini-2.5-pro
+model: gemini-3.6-flash
 tools:
   - read_file
   - run_shell_command
@@ -20,8 +20,10 @@ You receive the full TestReviewer output:
 - `## TestReviewer Verdict` — must be APPROVED to proceed
 - `## Files changed` (from the original TestScaffold output) — test file path(s)
 - Project name and run command (e.g., `yarn nx test tasks`)
-- `## Annotated Checklist` — the approved checklist from TestReviewer
 - `## Notes for TestRunner` — any timing or environment notes
+
+You do not need TestReviewer's checklist and should not ask for it. Your job is
+execution and diagnosis; the static gate already passed.
 
 **If TestReviewer verdict is REJECTED: do not execute. Return BLOCKED immediately.**
 
@@ -120,10 +122,6 @@ PASS | FAIL(test_wrong) | FAIL(code_broken) | ESCALATE | NEEDS_HUMAN_REVIEW | BL
 - Failed: <N>
 - Hung/skipped: <N>
 - Iteration: <N of 3 max>
-
-## Approved Checklist (from TestReviewer)
-
-<Paste the annotated checklist here, unchanged>
 
 ## Test Results
 

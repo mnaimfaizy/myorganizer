@@ -10,12 +10,16 @@ The full label vocabulary:
 | `complexity:low`     | Route to Haiku                                                        |
 | `complexity:medium`  | Route to Sonnet                                                       |
 | `complexity:high`    | Route to Opus                                                         |
+| `gate:mechanical`    | Mechanical path — no specialist chains (ADR 0012)                     |
+| `gate:standard`      | Single-hop specialist path (ADR 0012)                                 |
+| `gate:full`          | Full mandatory pipelines (ADR 0012)                                   |
 | `type:afk`           | Agent can implement and merge without human interaction               |
 | `type:hitl`          | Human decision required before agent can proceed — orchestrator skips |
 | `status:in-progress` | Agent has picked up the issue                                         |
+| `status:blocked`     | Waiting on `## Blocked by` deps — orchestrator skips until unblocked  |
 | `status:done`        | Agent finished; slice integrated into the local feature branch        |
 
-`to-issues` applies `ready-for-agent` + `type:*` + `complexity:*` at creation time. The orchestrator filters on `ready-for-agent` + `type:afk` and reads `complexity:*` to select the model.
+`to-issues` applies `ready-for-agent` + `type:*` + `complexity:*` + one `gate:*` at creation time, plus `status:blocked` when `## Blocked by` is non-empty. The orchestrator filters on `ready-for-agent` + `type:afk` (and excludes `status:blocked`), reads `complexity:*` for model size, and reads `gate:*` for pipeline depth (default `gate:standard` when missing). On successful completion, Sandcastle and `/implement` remove `status:blocked` from dependents whose blockers are all done. See `docs/adr/0012-tiered-quality-gates.md`.
 
 ## Considered Options
 

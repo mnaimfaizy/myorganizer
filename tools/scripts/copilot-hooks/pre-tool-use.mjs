@@ -1,25 +1,55 @@
-import process from 'node:process';
+import {
+  allowTool,
+  COMMAND_KEYS,
+  denyTool,
+  extractCommand,
+  getToolInput,
+  getToolName,
+  isLikelyWriteCommand,
+  isMutatingTool,
+  normalizeText,
+  readPayloadOrExit,
+  SHELL_TOOL_NAMES,
+} from './lib.mjs';
 
-const MUTATING_TOOL_NAMES = new Set([
-  'apply_patch',
-  'applypatch',
-  'bash',
-  'command',
-  'delete',
-  'execute',
-  'edit',
-  'move',
-  'patch',
-  'run',
-  'replace',
-  'rename',
-  'multiedit',
-  'multi_edit',
-  'shell',
-  'write',
+/** Read-only tools across harnesses. Not mutating, but they can exfiltrate. */
+const READ_TOOL_NAMES = new Set([
+  'glob',
+  'grep',
+  'read',
+  'read_file',
+  'readfile',
+  'search_files',
+  'searchfiles',
+  'view',
 ]);
 
-const COMMAND_KEYS = new Set(['cmd', 'command', 'script', 'shell']);
+/**
+ * Path-bearing keys for read tools. Deliberately excludes `pattern` — that key
+ * carries a search expression, not a path, and matching it would block a plain
+ * `grep "secrets"`.
+ */
+const READ_PATH_KEYS = new Set([
+  'dir',
+  'directory',
+  'file',
+  'file_path',
+  'filename',
+  'filenames',
+  'filepath',
+  'filePath',
+  'files',
+  'folder',
+  'glob',
+  'notebook_path',
+  'path',
+  'paths',
+  'source',
+  'sources',
+  'target',
+  'targets',
+]);
+
 const PATH_KEYS = new Set([
   'dest',
   'destination',
@@ -31,6 +61,11 @@ const PATH_KEYS = new Set([
   'filenames',
   'filepath',
   'filePath',
+  // Claude Code Write/Edit/NotebookEdit send snake_case path keys.
+  'file_path',
+  'notebook_path',
+  'new_path',
+  'old_path',
   'folder',
   'glob',
   'path',
@@ -69,7 +104,7 @@ const PROTECTED_PATTERNS = [
       'Direct edits to Prisma migrations are blocked. Update the schema and use the migration workflow instead.',
   },
   {
-    pattern: /(^|[^a-z0-9])(?:\.env(?:\.[^\/]+)?|[^\/]+\.env)(?:$|[^a-z0-9])/i,
+    pattern: /(^|[^a-z0-9])(?:\.env(?:\.[^/]+)?|[^/]+\.env)(?:$|[^a-z0-9])/i,
     exclude: (normalized) => /\.env\.example(?:$|[^a-z0-9])/.test(normalized),
     reason:
       'Direct edits to environment files are blocked. Keep secrets in local env files or managed secret storage.',
@@ -87,8 +122,103 @@ const PROTECTED_PATTERNS = [
   },
 ];
 
-function normalizeText(value) {
-  return value.replace(/\\/g, '/').toLowerCase();
+/**
+ * Read-side guard. `PROTECTED_PATTERNS` stops *writes* to generated and secret
+ * files; these stop *reads* of secret material only. Generated code stays
+ * readable — the point is to keep credentials out of the transcript.
+ *
+ * `pathOnly` rules are checked against structured path arguments but not against
+ * raw shell command text, where the token is too ambiguous to match safely
+ * (`.key` would fire on `obj.key`).
+ */
+const SECRET_READ_PATTERNS = [
+  {
+    pattern: /(^|[^a-z0-9])(?:\.env(?:\.[^/]+)?|[^/]+\.env)(?:$|[^a-z0-9])/i,
+    exclude: (normalized) => /\.env\.example(?:$|[^a-z0-9])/.test(normalized),
+    reason:
+      'Reading environment files is blocked. They hold live credentials — read `.env.example` for the shape, or ask the user for the specific value.',
+  },
+  {
+    pattern: /(^|[/\\])\.(?:ssh|aws|gnupg)(?:\/|$)/i,
+    reason:
+      'Reading SSH, AWS, or GnuPG configuration is blocked. That directory holds private key material.',
+  },
+  {
+    pattern: /(^|[^a-z0-9])id_(?:rsa|dsa|ecdsa|ed25519)(?:$|[^a-z0-9])/i,
+    reason:
+      'Reading private SSH key files is blocked. Keep private keys out of tool output.',
+  },
+  {
+    pattern:
+      /(^|[^a-z0-9])(?:\.npmrc|\.yarnrc(?:\.yml)?|credentials|secrets)(?:\/|$)/i,
+    reason:
+      'Reading registry or credentials files is blocked. They commonly contain auth tokens.',
+  },
+  {
+    pattern: /\.(?:pem|p8|p12|pfx)(?:$|[^a-z0-9])/i,
+    reason:
+      'Reading key or certificate bundles is blocked. Keep secret material out of tool output.',
+  },
+  {
+    pathOnly: true,
+    pattern: /\.(?:key|der|crt|cer)(?:$|[^a-z0-9])/i,
+    reason:
+      'Reading key or certificate files is blocked. Keep secret material out of tool output.',
+  },
+];
+
+function getSecretReadReason(text, { pathOnly = false } = {}) {
+  const normalized = normalizeText(text);
+
+  for (const rule of SECRET_READ_PATTERNS) {
+    if (rule.pathOnly && !pathOnly) {
+      continue;
+    }
+
+    if (typeof rule.exclude === 'function' && rule.exclude(normalized)) {
+      continue;
+    }
+
+    if (rule.pattern.test(normalized)) {
+      return rule.reason;
+    }
+  }
+
+  return null;
+}
+
+function inspectReadNode(node, key = '') {
+  if (node === null || node === undefined) {
+    return null;
+  }
+
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const reason = inspectReadNode(item, key);
+      if (reason) {
+        return reason;
+      }
+    }
+
+    return null;
+  }
+
+  if (typeof node === 'object') {
+    for (const [childKey, childValue] of Object.entries(node)) {
+      const reason = inspectReadNode(childValue, childKey);
+      if (reason) {
+        return reason;
+      }
+    }
+
+    return null;
+  }
+
+  if (typeof node !== 'string' || !READ_PATH_KEYS.has(key)) {
+    return null;
+  }
+
+  return getSecretReadReason(node, { pathOnly: true });
 }
 
 function looksLikePath(text) {
@@ -98,43 +228,6 @@ function looksLikePath(text) {
     normalized.includes('/') ||
     normalized.startsWith('.') ||
     /\.[a-z0-9]{1,5}(?:[?*].*)?$/i.test(normalized)
-  );
-}
-
-function getToolName(payload) {
-  const value =
-    payload?.toolName ??
-    payload?.tool_name ??
-    payload?.tool ??
-    payload?.name ??
-    '';
-
-  return typeof value === 'string' ? value.toLowerCase() : '';
-}
-
-function getToolInput(payload) {
-  return (
-    payload?.toolArgs ??
-    payload?.tool_args ??
-    payload?.toolInput ??
-    payload?.tool_input ??
-    payload?.input ??
-    payload?.args ??
-    payload?.arguments ??
-    null
-  );
-}
-
-function isLikelyWriteCommand(command) {
-  const normalized = normalizeText(command);
-
-  return (
-    />/.test(normalized) ||
-    /\btee\b/.test(normalized) ||
-    /\b(?:cp|mv|rm|touch|truncate)\b/.test(normalized) ||
-    /\bgit\s+(?:restore|checkout|reset)\b/.test(normalized) ||
-    /\bsed\b[^\n]*\s-i\b/.test(normalized) ||
-    /\bperl\b[^\n]*\s-i\b/.test(normalized)
   );
 }
 
@@ -239,7 +332,13 @@ function inspectToolInput(toolName, toolInput) {
   }
 
   if (typeof toolInput === 'string') {
-    if (toolName === 'bash' || toolName === 'command' || toolName === 'shell') {
+    if (
+      toolName === 'bash' ||
+      toolName === 'command' ||
+      toolName === 'shell' ||
+      toolName === 'powershell' ||
+      toolName === 'runterminalcommand'
+    ) {
       if (!isLikelyWriteCommand(toolInput)) {
         return null;
       }
@@ -257,49 +356,41 @@ function inspectToolInput(toolName, toolInput) {
   return inspectNode(toolInput);
 }
 
-function main() {
-  let rawInput = '';
+async function main() {
+  const payload = await readPayloadOrExit();
+  const toolName = getToolName(payload);
+  const toolInput = getToolInput(payload);
 
-  process.stdin.setEncoding('utf8');
-  process.stdin.on('data', (chunk) => {
-    rawInput += chunk;
-  });
+  if (READ_TOOL_NAMES.has(toolName)) {
+    const readReason =
+      typeof toolInput === 'string'
+        ? getSecretReadReason(toolInput, { pathOnly: true })
+        : inspectReadNode(toolInput);
 
-  process.stdin.on('end', () => {
-    if (!rawInput.trim()) {
-      process.exit(0);
-      return;
+    if (readReason) {
+      denyTool(readReason);
     }
 
-    let payload;
-    try {
-      payload = JSON.parse(rawInput);
-    } catch (error) {
-      console.error('[copilot-hooks] Unable to parse preToolUse payload.');
-      console.error(error instanceof Error ? error.message : String(error));
-      process.exit(1);
-      return;
-    }
+    allowTool();
+  }
 
-    const toolName = getToolName(payload);
-    if (!MUTATING_TOOL_NAMES.has(toolName)) {
-      process.exit(0);
-      return;
-    }
+  if (!isMutatingTool(toolName)) {
+    allowTool();
+  }
 
-    const reason = inspectToolInput(toolName, getToolInput(payload));
-    if (!reason) {
-      process.exit(0);
-      return;
+  if (SHELL_TOOL_NAMES.has(toolName)) {
+    const readReason = getSecretReadReason(extractCommand(toolInput));
+    if (readReason) {
+      denyTool(readReason);
     }
+  }
 
-    process.stdout.write(
-      JSON.stringify({
-        permissionDecision: 'deny',
-        permissionDecisionReason: reason,
-      }),
-    );
-  });
+  const reason = inspectToolInput(toolName, toolInput);
+  if (!reason) {
+    allowTool();
+  }
+
+  denyTool(reason);
 }
 
 main();

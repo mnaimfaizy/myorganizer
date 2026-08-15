@@ -1,0 +1,12 @@
+# Refresh the Graphify knowledge graph after commits that touch code.
+# All the guards and the rebuild itself live in the shared script; this hook
+# only says which files count as "just changed". See docs/graphify.md.
+
+graphify_changed_files() {
+  git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null
+}
+
+GRAPHIFY_TRIGGER="code changed"
+export GRAPHIFY_TRIGGER
+
+. .husky/graphify-refresh.sh

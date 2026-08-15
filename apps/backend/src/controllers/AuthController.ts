@@ -17,6 +17,7 @@ import {
 } from 'tsoa';
 import { Body, ValidateBody } from '../decorators/request-body-validator';
 import apiTokens from '../helpers/ApiTokens';
+import { ACCESS_TOKEN_EXPIRES_IN_MS } from '../helpers/tokenLifetimes';
 import filterUser from '../helpers/filterUser';
 import PlatformTokenHandler from '../helpers/PlatformTokenHandler';
 import { decodeToken } from '../helpers/jwtHelper';
@@ -47,6 +48,13 @@ export class AuthController extends Controller {
   @Post('/login')
   @Response(200, 'Success')
   @Response(401, 'Unauthorized')
+  // `routes/auth.ts` is mounted ahead of the tsoa routes and is what actually
+  // serves POST /auth/login, so it — not this handler — decides these two.
+  // They are declared here because this controller is what generates the
+  // OpenAPI spec, and a client generated without them cannot represent the
+  // most common login rejection there is.
+  @Response(403, 'Email not verified')
+  @Response<ValidateErrorJSON>(422, 'Validation Failed')
   @Middlewares([passport.authenticate('local', { session: false })])
   async login(
     @Request() req: ExRequest,
@@ -166,7 +174,11 @@ export class AuthController extends Controller {
     const filteredUser = filterUser(user as UserInterface);
 
     this.setStatus(200);
-    return { token, expires_in: 600_000, user: filteredUser };
+    return {
+      token,
+      expires_in: ACCESS_TOKEN_EXPIRES_IN_MS,
+      user: filteredUser,
+    };
   }
 
   @Post('/register')

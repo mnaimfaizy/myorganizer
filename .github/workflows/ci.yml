@@ -169,16 +169,25 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
 
-          changed_files="$(git diff --name-only --diff-filter=ACDMRT "$BASE_SHA" "$HEAD_SHA")"
-
-          if printf '%s\n' "$changed_files" | grep -Eq '^(package\.json|yarn\.lock|\.yarnrc\.yml)$'; then
+          # Content-aware, not path-aware: editing a `scripts` entry is not a
+          # dependency change. yarn.lock and .yarnrc.yml still always trigger,
+          # and every workspace manifest is inspected (the previous check only
+          # looked at the root package.json).
+          #
+          # If the detector itself fails, audit anyway — never skip on error.
+          if ! result="$(node tools/scripts/ci/dependency-manifest-changed.mjs "$BASE_SHA" "$HEAD_SHA")"; then
+            echo '::warning title=Dependency detection failed::Falling back to running the audit.'
             echo 'run_audit=true' >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          echo 'run_audit=false' >> "$GITHUB_OUTPUT"
+          if [ "$result" = 'true' ]; then
+            echo 'run_audit=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'run_audit=false' >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Run Yarn npm audit
         if: github.event_name != 'pull_request' || steps.dependency-files.outputs.run_audit == 'true'
@@ -188,7 +197,7 @@ jobs:
         if: github.event_name == 'pull_request' && steps.dependency-files.outputs.run_audit != 'true'
         shell: bash
         run: |
-          echo 'Skipped npm audit because no dependency manifests changed in this pull request.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Skipped npm audit because this pull request changes no dependencies: yarn.lock and .yarnrc.yml are untouched, and any package.json edits were confined to non-dependency fields such as `scripts`.' >> "$GITHUB_STEP_SUMMARY"
 
   prepare-dependencies:
     name: Prepare Dependency Cache

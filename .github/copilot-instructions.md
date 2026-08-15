@@ -123,7 +123,7 @@ When consuming the generated client:
 - When a task requires creating or changing Jest unit or integration tests, route through `.github/skills/unit-test-delegation-workflow/SKILL.md`. The pipeline is: `TestScaffold` (implementation) → `TestReviewer` (static gate: checklist verification, `tsc --noEmit`, `eslint`) → `TestRunner` (execution with hang detection and one-at-a-time recovery). Max 3 retries before escalating to the main agent.
 - When a task requires building features or fixing bugs test-first, use `.github/skills/tdd/SKILL.md`. Plan the behavior list before writing any code, work in vertical tracer-bullet slices (one test → one implementation → repeat), consult `.github/skills/codebase-design/SKILL.md` for deep-module vocabulary during the refactor step.
 - Test delegation briefs must include a behavior matrix from reading the actual implementation, plus explicit in-scope and out-of-scope scenarios. Do not ask for vague "comprehensive tests".
-- Use `docs/testing/README.md` for per-project tooling, integration scope, environments, and mock patterns.
+- Use `docs/testing/projects/<project>.md` for per-project tooling, environments, and mock patterns; `docs/testing/README.md` is the index plus cross-project rules.
 - When a task requires creating or changing Storybook stories (`*.stories.tsx`), route through `.github/skills/storybook-delegation-workflow/SKILL.md` and delegate implementation to `StorybookCurator`; require requirement-readiness analysis first, then review for UX/a11y coverage, scenario completeness, and clarification gaps before finalizing.
 
 ### E2E Tests
@@ -156,16 +156,16 @@ When any sub-agent content, model, or file inventory changes in any harness:
 
 1. Run `yarn agents:sync`.
 2. Run `yarn agents:sync:check` and require a clean result.
-3. Ensure `.cursor/agents/explore.md` keeps `model: composer`.
+3. Ensure `.cursor/agents/explore.md` keeps `model: composer-2.5`.
 
-Use `.github/skills/sub-agent-sync-workflow/SKILL.md` for the full policy and `tools/scripts/sync-subagents.mjs` for automation.
+Use `.github/skills/sub-agent-sync-workflow/SKILL.md` for the full policy, `tools/config/agent-model-policy.json` for assignments, and the sync scripts under `tools/scripts/` for automation.
 
 Model assignment policy for sub-agents:
 
 - Prefer low-cost models for exploration, triage, and repetitive delegation.
-- Upgrade only for synthesis/research-heavy agents.
+- Escalate repeated failures to the main agent or human; do not change pinned models automatically.
 - Use harness-supported model syntax only (single model where required; priority list only where supported).
-- Keep defaults centralized in `tools/scripts/sync-subagents.mjs`.
+- Keep assignments centralized in `tools/config/agent-model-policy.json`.
 
 ## Design & Planning
 
@@ -316,13 +316,14 @@ When you need to find **shallow modules**, **seam leaks**, or **testability gaps
 ### Commit And PR Workflows
 
 - When the user asks to commit changes, use the repo-local commit workflow skill and the existing `Commit` sub-agent together:
-  - The `Commit` sub-agent drafts the Conventional Commit message only.
-  - The actual commit must run through `corepack yarn ai:commit`.
-- The commit workflow must wait for `git commit` to finish. Do not cancel, background, or move on while Husky pre-commit checks are still running.
-- If Husky fails because of linting, tests, formatting, or another validation issue, fix the reported problem first, rerun the narrow validation for that slice, and only then retry the commit.
+  - Inspect git status first. Never `git add .`. Ask before staging when the tree is mixed.
+  - The `Commit` sub-agent drafts the Conventional Commit message from the staged diff only.
+  - The actual commit must run through `corepack yarn ai:commit --message-file <path>`. Do not run `git commit` directly.
+- The commit workflow must wait for `yarn ai:commit` to finish. Do not cancel, background, or move on while Husky pre-commit checks are still running.
+- If `ai:commit` fails, read the `ai:commit: failed` trailer (`reason`, `hint`, optional `projects` / `paths`), fix that slice, rerun the hinted check, and only then retry.
 - Commit-time Nx output should remain readable. The Husky hook uses static output for Nx task execution; preserve that behavior when editing the hook.
-- When the user asks to open or create a PR, use `corepack yarn ai:create-pr` unless an IDE-native integration can satisfy the exact same behavior.
-- PR creation should gather the commit history from the current branch, push upstream if needed, assign the authenticated GitHub user, keep reviewers empty unless the user explicitly names one, and return only success plus the PR link.
+- When the user asks to open or create a PR, draft the title and body with the `PrAuthor` sub-agent, then run `corepack yarn ai:create-pr --title <text> --body-file <path>` unless an IDE-native integration can satisfy the exact same behavior.
+- PR creation should use the `PrAuthor` draft (branch diff plus linked GitHub issues), push upstream if needed, assign the authenticated GitHub user, keep reviewers empty unless the user explicitly names one, and return the title plus the PR link. Do not omit `--title` / `--body-file` if `PrAuthor` failed.
 
 ## API Development
 

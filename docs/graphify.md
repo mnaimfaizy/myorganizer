@@ -25,26 +25,159 @@ limited because of measured blind spots (below).
   Use `nx affected` for PR scoping.
 - **TypeScript type-reference blast radius** (type usages aren't edges) or any symbol whose
   name appears in more than one file (it can't disambiguate).
+- **Database schema questions** ("what reads this table?", "what does this migration affect?").
+  `**/*.sql` is excluded by design — see "SQL is excluded on purpose" below. The current schema
+  lives in `apps/backend/src/prisma/schema.prisma`; use that and `nx affected`.
 
 Always confirm a graph result against the actual file before trusting it — the graph can be stale.
 
-## On probation — usage is measured
+## Measured extraction limits
 
-This integration is **on probation**: a real-workflow spike showed an agent never invoked it
-directly and its contribution (buried inside CodeExplorer) was unmeasurable. So CodeExplorer now
-**queries Graphify first** for relationship questions and **logs the outcome** (`helped` /
-`redundant` / `wrong/missed`) in a `Graphify Usage` block on every run. If those logs show it is
-consistently `redundant` or `wrong/missed`, drop the integration — it is not worth the manual
-rebuild + staleness cost. Keep it only if it earns a clear `helped` track record.
+Numbers from issue #292, measured 2026-08-11 by parsing every `.ts`/`.tsx` file under `apps/` and
+`libs/` with the same `tree-sitter-typescript` grammar graphify uses. Recorded here so the question
+does not get re-litigated from stale guesses.
+
+### SQL is excluded on purpose
+
+The 10 Prisma migrations under `apps/backend/src/prisma/migrations/` are **not** in the graph, and
+that is deliberate — `**/*.sql` is in `.graphifyignore`. Installing `graphifyy[sql]` would make them
+parse, but it would not make them useful:
+
+- graphify's SQL extractor resolves table names **within SQL only**. There is no extractor edge from
+  a SQL table to TypeScript, and the backend reaches the database through Prisma models
+  (`prisma.user.…`), never through SQL identifiers. Graphing migrations therefore cannot answer
+  "what reads this table?" — it would only stop the graph from _looking_ blind there.
+- Its `_ref_stub` mints sourceless bare-name nodes that `_rewire_unique_stub_nodes` collapses onto
+  "the unique real definition" by name. Migration tables are quoted PascalCase (`"User"`,
+  `"VaultItem"`) — the same names as Prisma model types in TS. That is a plausible route to **false**
+  edges, which is worse than an honest absence.
+- Migrations are append-only history, not current state. The authoritative schema is `schema.prisma`,
+  which graphify has no extractor for at all.
+
+### Parse errors: none left in authored code
+
+A full scan of 535 files finds **2** that the grammar cannot parse, both generated and gitignored
+(`apps/backend/src/prisma/prisma-client/*.d.ts`). They contribute **0 nodes** to the graph either
+way, so nothing is lost.
+
+Previously there were 6. The 4 authored ones were all Playwright specs that hit a genuine
+`tree-sitter-typescript` bug — `Parameters<import('@playwright/test').Page['goto']>[1]`, an
+import-type in type-argument position — in a `gotoStable` helper duplicated verbatim across 7 specs.
+Extracting it to `apps/myorganizer-e2e/src/e2e/helpers/navigation.ts` removed the duplication and
+cleared the parse errors as a side effect.
+
+Two caveats worth keeping:
+
+- **The grammar bug is real and unfixable from here.** `tree-sitter-typescript` 0.23.2 is the newest
+  release on PyPI, so there is nothing to upgrade to and no upstream bump to request. Confirmed
+  failing patterns: import-types in type-argument position; a bare `&` in JSX text; an inline
+  import-type in a `.tsx` parameter. Plain `page: import('x').Page` in a `.ts` file and
+  `typeof import('react')` both parse fine — which is why ~27 remaining inline-import annotations in
+  the E2E specs are harmless and were deliberately left alone.
+- If a future file reintroduces one of the failing patterns, graphify reports it as
+  "partially extracted" — an unknown subset of that file's symbols goes missing while the file still
+  _looks_ covered. Re-run the scan before trusting the graph in a newly-touched area.
+
+## Graduated from probation — 2026-08-12
+
+Probation is over. Graphify is a **permanent tool with a hard, narrow scope**: `get_neighbors` for
+"who calls / imports / consumes X", and `god_nodes` for orientation. Everything under "What it must
+NOT be used for" above is a standing ban, not a caution.
+
+Two things settled it.
+
+**The cost side collapsed.** The kill argument in `graphify-eval-notes.md` rested as much on
+maintenance — manual rebuilds, staleness — as on capability. #293 made the graph refresh on commit
+and #292 confirmed extraction is complete for authored `.ts`/`.tsx`. What is left costs close to
+nothing.
+
+**The capability side is unchanged, and was re-measured rather than assumed.** The original bar
+questions were re-run against the live graph on 2026-08-12 (2,853 nodes / 5,350 edges, 99%
+EXTRACTED):
+
+| Bar question                               | 2026-06-19         | 2026-08-12                                                    |
+| ------------------------------------------ | ------------------ | ------------------------------------------------------------- |
+| R3 — `get_neighbors saveEncryptedData`     | 🟢 degree 20       | 🟢 17 edges with `file:line`, ~1s, $0                         |
+| `god_nodes` hub map                        | 🟢                 | 🟢 `cn`, `Button`, `useToast`, `requireUserId`, `UserService` |
+| R1 — `get_node EncryptedBlob`              | 🔴 no unique match | 🔴 **silently returned `EncryptedBlobV1`**, degree 1          |
+| R5 — `VaultController` → `serverVaultSync` | 🔴 no path         | 🔴 "No directed path found"                                   |
+
+The shape of the tool is therefore settled and will not improve: the good half is reliable, and the
+bad half fails **silently**. R1 is the sharp case — asking for one symbol returns a _different_ one
+with no ambiguity warning. That is why the ban list is written into the agent as a table of question
+shapes rather than as general advice.
+
+**What this replaces.** The earlier probation required CodeExplorer to log a `helped` / `redundant` /
+`wrong-missed` verdict in a `Graphify Usage` block on every run. That instrumentation never actually
+ran: it was added 2026-06-19 and deleted 2026-07-02 by `yarn agents:sync`, because it lived only in
+`.claude/agents/explore.md` while the sync script regenerates every target body from canonical
+`.github/agents/`. It is **not** being restored — it charged a per-run token cost on a Haiku agent to
+keep re-deciding a question the table above answers.
+
+The scoping rules now live in canonical `.github/agents/explore.agent.md`, so they survive the sync.
+The harness-specific parts (tool names) use the `<!-- harness:... -->` mechanism documented in
+`.github/skills/sub-agent-sync-workflow/SKILL.md`.
+
+## Harness registration
+
+Registered in all four harnesses. The MCP server itself is harness-agnostic — plain stdio JSON-RPC —
+so only the registration differs, and the formats are **not** interchangeable. Each was checked
+against that harness's own docs rather than copied from `.mcp.json`.
+
+| Harness           | MCP config                              | Top-level key | Agent tool grant                                         |
+| ----------------- | --------------------------------------- | ------------- | -------------------------------------------------------- |
+| Claude Code       | `.mcp.json`                             | `mcpServers`  | `mcp__graphify__*` in `.claude/agents/explore.md`        |
+| Copilot / VS Code | `.vscode/mcp.json`                      | `servers`     | `graphify/*` in `.github/agents/explore.agent.md`        |
+| Cursor            | `.cursor/mcp.json`                      | `mcpServers`  | none — Cursor subagents inherit the parent agent's tools |
+| Gemini CLI        | `.gemini/settings.json` (project scope) | `mcpServers`  | `mcp_graphify_*` in `.gemini/agents/explore.md`          |
+
+Two caveats:
+
+- The Gemini entry uses `includeTools` to allowlist the same five read-only tools the other harnesses
+  grant, so `triage_prs` and `get_pr_impact` — which invert risk for hub and barrel files — are not
+  reachable there at all.
+- Gemini CLI has an open bug where subagents do not always receive MCP tools
+  (google-gemini/gemini-cli#17005, #19599). CodeExplorer is told to fall back to Glob/Grep silently,
+  so this degrades rather than breaks.
+
+All four share the same local prerequisite: `uv tool install "graphifyy[mcp]"` plus one manual graph
+build (below). Without it a harness simply has no graphify tools, which is the documented fallback
+path, not a failure.
 
 ## Build / refresh
 
 The graph is **not committed** (it's generated and goes stale). Build it once locally; the
 `graphify` MCP server in `.mcp.json` then serves `graphify-out/graph.json`.
 
-Prerequisite: `uv tool install graphifyy --with mcp` (provides `graphify` + `graphify-mcp`).
-The `--with mcp` extra is **required** — without it `graphify-mcp` crashes with
+Prerequisite: `uv tool install "graphifyy[mcp]"` (provides `graphify` + `graphify-mcp`).
+The `mcp` extra is **required** — without it `graphify-mcp` crashes with
 `ModuleNotFoundError: No module named 'mcp'` and the MCP server in `.mcp.json` won't start.
+Installing it via the `[mcp]` extra records `extras = ["mcp"]` in the uv receipt, so a later
+`uv tool upgrade graphifyy` keeps it. Installing plain `graphifyy` drops the extra and silently
+re-breaks the MCP server — the symptom in Claude Code is
+`graphify: … ✘ Failed to connect — MCP error -32000: Connection closed`.
+
+### Resync the skill after any version change
+
+The `/graphify` skill under `~/.claude/skills/graphify/` is written by the CLI and is
+**pinned to the version that wrote it**. Upgrading the package does not update it, so the two
+drift apart and the CLI starts every command with:
+
+```
+warning: skill is from graphify 0.9.16, package is 0.9.37. Run 'graphify install' to update.
+```
+
+After **any** install, upgrade, or reinstall of `graphifyy`, resync it:
+
+```pwsh
+graphify install --platform claude   # rewrites ~/.claude/skills/graphify/{SKILL.md,references/}
+```
+
+This is a per-developer machine setup step, not a repo change — nothing here is committed.
+Verify the whole chain with `graphify --version` (should match the warning-free CLI output)
+and `claude mcp list` (should report `graphify: … ✔ Connected`).
+
+### Build the graph
 
 ```pwsh
 # Full rebuild (per-package extract + merge + cluster + label), zero external egress.
@@ -66,5 +199,51 @@ graphify extract libs --backend claude-cli
 graphify merge-graphs apps/graphify-out/graph.json libs/graphify-out/graph.json --out graphify-out/graph.json
 ```
 
-> **Maintenance reality:** there is no commit hook wiring this up. The graph reflects the
-> last manual build. Rebuild before relying on it for a fresh area of the code.
+## Automatic refresh on commit and on merge
+
+Two hooks run the incremental refresh above in the background whenever
+`.ts/.tsx/.js/.jsx/.mjs/.cjs` under `apps/` or `libs/` changes. The triggering git command returns
+immediately; progress goes to `~/.cache/graphify-rebuild.log`.
+
+| Hook                 | Fires on                       | "Changed" means                                 |
+| -------------------- | ------------------------------ | ----------------------------------------------- |
+| `.husky/post-commit` | `git commit`                   | the files in `HEAD`                             |
+| `.husky/post-merge`  | `git merge`, and so `git pull` | `git diff ORIG_HEAD HEAD` (fallback `HEAD@{1}`) |
+
+`post-merge` exists because `post-commit` genuinely does not cover pulls: `git merge` never fires
+`post-commit` — not for a fast-forward, where no commit is created at all, and not for a merge
+commit, which `git merge` writes directly. Without it, pulling other people's merged work left the
+graph a step behind until your own next local commit happened to touch `apps/` or `libs/`.
+
+Everything except the definition of "changed" lives in `.husky/graphify-refresh.sh`, which both
+hooks source, so the guards below cannot drift apart between them.
+
+It is a **no-op unless you have opted in** by installing graphify and building the graph once by
+hand, so it costs nothing for contributors who do not use it. Specifically, it exits early when:
+
+| Condition                                        | Why                                                                                                                               |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `graphify` is not on `PATH` or in `~/.local/bin` | Most contributors never install it                                                                                                |
+| `graphify-out/` does not exist                   | The first build needs an LLM pass — keep it manual                                                                                |
+| No `apps/`/`libs/` source changed                | Doc and image changes must never trigger an LLM call from a hook                                                                  |
+| You are in a linked worktree                     | `graphify-out/` belongs to the primary checkout; rebuilding from a worktree writes a rogue delta-only graph and races the primary |
+| A rebase, merge, or cherry-pick is in progress   | A rebuild mid-sequence leaves unstaged output and blocks `--continue`                                                             |
+| `GRAPHIFY_SKIP_HOOK=1` is set                    | Explicit opt-out                                                                                                                  |
+
+Two environment settings in the shared script are load-bearing, so do not drop them when editing it:
+
+- `PYTHONHASHSEED=0` — networkx's louvain clustering iterates string-keyed sets whose order is
+  randomised per process. Unpinned, repeated no-op refreshes were observed drifting
+  (2,965 → 2,967 → 2,968 nodes); pinned, consecutive no-op refreshes hold steady at the same node
+  and edge count. Without it you cannot tell a real change from clustering noise.
+- `--backend claude-cli` — pinned on purpose. Without it graphify selects "whichever API key is
+  set", and with `ANTHROPIC_BASE_URL` exported that would send source to an external endpoint.
+  `claude-cli` keeps the rebuild local.
+
+> **Maintenance reality:** the hooks only cover **code**. Docs, images, community clustering, and the
+> domain names in `GRAPH_REPORT.md` still need the manual `cluster-only` + `label` pass above.
+> Rebuild by hand before relying on the report for a fresh area of the code.
+>
+> Branch switching is still uncovered: `git checkout` fires neither hook, so the graph reflects
+> whichever branch last triggered a rebuild. Confirm any graph result against the file, which the
+> agent rules already require.

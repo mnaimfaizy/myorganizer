@@ -24,11 +24,7 @@ GitHub Issues
 
 ## Model Routing
 
-| Label               | Model               |
-| ------------------- | ------------------- |
-| `complexity:low`    | `claude-haiku-4-5`  |
-| `complexity:medium` | `claude-sonnet-4-6` |
-| `complexity:high`   | `claude-opus-4-5`   |
+`complexity:low | medium | high` selects the corresponding Sandcastle model from `tools/config/agent-model-policy.json`. Do not duplicate concrete model IDs here.
 
 ## Issue Formats
 
@@ -44,7 +40,8 @@ GitHub Issues
 - **Title format**: `[Slice] <Feature Name>: <short description>`
 - **Labels**: `ready-for-agent` + `type:afk` or `type:hitl` + one `complexity:*` label
 - **Body**: Must include `PRD: #<parent-issue-number>` on the first line. Then acceptance criteria, affected libs, test seams.
-- **Created by**: `to-issues` skill via IssueCreator agent.
+- **Created by**: `to-issues` skill via `gh issue create` directly (not via IssueCreator agent).
+- **Labels**: also include one `gate:*` (ADR 0012); default `gate:standard` when missing.
 
 ## Integration Strategy (local-only)
 

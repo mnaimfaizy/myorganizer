@@ -18,8 +18,14 @@ export type VaultExportBlobType = (typeof VAULT_EXPORT_BLOB_TYPES)[number];
  */
 export const CURRENT_VAULT_EXPORT_SCHEMA_VERSION = 1 as const;
 
-/** Hard cap on the parsed envelope size in bytes. */
-export const VAULT_EXPORT_MAX_BYTES = 10 * 1024 * 1024;
+/**
+ * Hard cap on envelope text accepted by {@link parseVaultExportEnvelope}, which is
+ * phase 1 of the hardened import path.
+ *
+ * Scoped deliberately: the backend applies its own, tighter caps to `/vault/export`
+ * and `/vault/import` payloads. Do not treat this as "the" vault size limit.
+ */
+export const VAULT_ENVELOPE_PARSE_MAX_BYTES = 10 * 1024 * 1024;
 
 const Base64String = z
   .string()
@@ -96,10 +102,10 @@ export function parseVaultExportEnvelope(text: string): VaultExportEnvelope {
     throw new VaultImportError('corrupt-file', 'Empty envelope');
   }
 
-  if (utf8ByteLength(text) > VAULT_EXPORT_MAX_BYTES) {
+  if (utf8ByteLength(text) > VAULT_ENVELOPE_PARSE_MAX_BYTES) {
     throw new VaultImportError(
       'oversize',
-      `Envelope exceeds ${VAULT_EXPORT_MAX_BYTES} bytes`,
+      `Envelope exceeds ${VAULT_ENVELOPE_PARSE_MAX_BYTES} bytes`,
     );
   }
 

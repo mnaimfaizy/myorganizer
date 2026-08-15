@@ -1,0 +1,16 @@
+{
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "name": "tools",
+  "projectType": "library",
+  "sourceRoot": "tools",
+  "targets": {
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/tools"],
+      "options": {
+        "jestConfig": "tools/jest.config.ts"
+      }
+    }
+  },
+  "tags": ["scope:tooling", "type:util"]
+}

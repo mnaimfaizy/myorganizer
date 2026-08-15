@@ -1,4 +1,5 @@
 .env
 logs/
+usage/
 worktrees/
 node_modules_linux_cache/

@@ -2,7 +2,7 @@
 name: preflight-check
 description: >
   Use when the user asks to validate, check, or confirm that the repo is ready to cut a release in MyOrganizer. Returns a structured pass/fail checklist.
-model: gemini-2.5-flash
+model: gemini-3.5-flash-lite
 tools:
   - read_file
   - list_files

@@ -4,19 +4,22 @@ Use these repo-local workflows for commit, pull request, test, and Storybook-sui
 
 ## Commit Changes
 
-- Draft the Conventional Commit message with the existing `Commit` sub-agent or equivalent diff-based commit-message generator.
-- Execute the commit with `corepack yarn ai:commit`.
+- Inspect git status first. Never `git add .`. If nothing is staged, or staged and unstaged files are mixed, list the files and ask before staging.
+- Draft the Conventional Commit message with the existing `Commit` sub-agent from the staged diff only.
+- Execute the commit with `corepack yarn ai:commit --message-file <path>`. Do not run `git commit` directly.
 - Wait for the commit process to finish; do not cancel the command while Husky is running.
-- If Husky fails, fix the reported issue, rerun the narrow validation, and retry the commit.
+- If it fails, read the `ai:commit: failed` trailer, fix the hinted slice, rerun that check, and retry.
 
 ## Create Pull Request
 
-- Build the PR title and description from the current branch commits.
-- Execute `corepack yarn ai:create-pr`.
+- Confirm the current branch is not the base branch.
+- Draft the PR title and description with the existing `PrAuthor` sub-agent from the branch diff and linked GitHub issues.
+- Write the body to a temp file and execute `corepack yarn ai:create-pr --title "<title>" --body-file <path>`.
+- Do not run `gh pr create` directly. Do not omit `--title` / `--body-file` if `PrAuthor` failed.
 - Push upstream if needed.
 - Assign the authenticated GitHub user.
 - Leave reviewers empty unless the user explicitly supplies them with `--reviewer <login>`.
-- Return only the PR URL on success.
+- Return the PR URL and the title on success.
 
 ## Triage Issues And PRs
 
@@ -106,7 +109,7 @@ When agreed work from a spec, PRD, or tickets should be built in the current ses
 - **Command**: `.gemini/commands/implement.md`
 - **Skill location**: `.github/skills/implement/SKILL.md`
 - **When to use**: The user has a scoped spec or ticket set and wants implementation now (ad-hoc or single-session delivery).
-- **What it does**: Implements against the spec using TDD at pre-agreed seams, routes file types through mandatory delegation, validates with Nx lint/test targets, reviews with `/code-review`, and commits or opens PRs only when the user explicitly asks.
+- **What it does**: Implements against the spec using TDD at pre-agreed seams, classifies `gate:*` (ADR 0012), routes by gate + file type, validates with Nx lint/test targets, reviews with `/code-review` when appropriate, and commits or opens PRs only when the user explicitly asks.
 
 ## Code Review — Two-axis diff review
 
@@ -119,7 +122,7 @@ When the user wants to review changes since a fixed point (commit, branch, tag, 
 
 ## Jest Test Delegation
 
-When a task requires Jest unit tests or Jest integration tests to be created or updated, delegate to the `test-scaffold` sub-agent (`.gemini/agents/test-scaffold.md`) rather than writing tests inline. The agent runs on `gemini-2.5-flash` to keep costs low.
+When a task requires Jest unit tests or Jest integration tests to be created or updated, delegate to the `test-scaffold` sub-agent (`.gemini/agents/test-scaffold.md`) rather than writing tests inline. Its model is governed by `tools/config/agent-model-policy.json`.
 
 ## TDD — Test-Driven Development
 
@@ -133,7 +136,7 @@ When the user wants to build features or fix bugs test-first, use the **tdd** sk
 
 Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs in `apps/myorganizer-e2e`.
 
-- Consult `docs/testing/README.md` first — it is the canonical Nx-aware guide for per-project tooling, environments, and mock patterns.
+- Consult `docs/testing/projects/<project>.md` for the owning project's tooling, environment, and mock patterns. `docs/testing/README.md` is the project index plus cross-project rules.
 - Build a complete delegation brief before invoking the sub-agent:
   - Test type (`unit`, `Jest integration`, `React hook integration`, `component integration`, etc.)
   - Source and test file paths
@@ -152,8 +155,8 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs i
 
 ### References
 
-- `docs/testing/README.md` — canonical Nx-aware testing guide
-- `.gemini/agents/test-scaffold.md` — TestScaffold sub-agent (Gemini CLI native format, model: gemini-2.5-flash)
+- `docs/testing/README.md` — testing index + cross-project rules; per-project guides in `docs/testing/projects/`
+- `.gemini/agents/test-scaffold.md` — TestScaffold sub-agent (Gemini CLI native format)
 - `.github/agents/test-scaffold.agent.md` — Copilot-CLI version of the same agent
 - `.github/skills/unit-test-delegation-workflow/SKILL.md` — full workflow skill
 - `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md` — delegation brief template
@@ -164,12 +167,12 @@ When a task requires locating files, symbols, or patterns in the codebase, deleg
 
 - Delegate to `@code-explorer` (`.gemini/agents/explore.md`) with an Explore Request.
 - The request must include a `Goal` sentence. All other fields are optional: `Known Locations`, `Search Hints`, `Out of Scope`, `Expected Output`.
-- CodeExplorer runs on `gemini-2.5-flash` and returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
+- CodeExplorer runs on the policy's low-cost Gemini model and returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
 - Use the `Relevant Paths` section to decide which files to read next. Trust `[found]` findings directly; verify `[inferred]` findings before acting on them.
 
 ### References
 
-- `.gemini/agents/explore.md` — CodeExplorer sub-agent (Gemini CLI native format, model: gemini-2.5-flash)
+- `.gemini/agents/explore.md` — CodeExplorer sub-agent (Gemini CLI native format)
 - `.github/agents/explore.agent.md` — canonical definition and Copilot-CLI version
 - `docs/adr/0001-codeexplorer-custom-agent.md` — why a custom agent over inline exploration
 
@@ -181,19 +184,34 @@ When any sub-agent file changes in `.github`, `.claude`, `.cursor`, or `.gemini`
 - Required commands:
   - `yarn agents:sync`
   - `yarn agents:sync:check`
-- Ensure `.cursor/agents/explore.md` remains `model: composer`.
+- Ensure `.cursor/agents/explore.md` remains `model: composer-2.5`.
 
 Use these references:
 
 - `.github/skills/sub-agent-sync-workflow/SKILL.md`
 - `.gemini/commands/sync-subagents.md`
 - `tools/scripts/sync-subagents.mjs`
+- `tools/scripts/sync-agent-models.mjs`
 
 Model policy:
 
 - Prefer low-cost defaults for high-frequency delegations.
 - Upgrade model strength only when the agent is synthesis-heavy.
-- Keep default model mapping centralized in `tools/scripts/sync-subagents.mjs`.
+- Keep model mapping centralized in `tools/config/agent-model-policy.json`.
+
+## Root README Maintenance
+
+After adding or removing an app, a top-level lib, or a `/dashboard/*` route, update `README.md` and run `yarn readme:check`.
+
+The README is the only place claiming a repository layout and a route list, and nothing else asserts them — it drifted for months because no rule made it anyone's job.
+
+Keep it a front door:
+
+- Package versions belong in `TECH_STACK.md`.
+- Scripts belong in `package.json`.
+- Environment variables belong in `.env.example`.
+
+Link to those files rather than restating them. A table copied into the README is a table that will go stale.
 
 ## Storybook Delegation
 
@@ -211,7 +229,7 @@ When a task requires Storybook creation or updates (`*.stories.tsx`), delegate t
 
 ### References
 
-- `.gemini/agents/storybook-curator.md` — StorybookCurator sub-agent (Gemini CLI native format, model: gemini-2.5-flash-lite)
+- `.gemini/agents/storybook-curator.md` — StorybookCurator sub-agent (Gemini CLI native format)
 - `.github/agents/storybook-curator.agent.md` — Copilot-CLI version of the same agent
 - `.github/skills/storybook-delegation-workflow/SKILL.md` — full workflow skill
 - `.github/skills/storybook-delegation-workflow/references/delegation-runbook.md` — delegation brief template

@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 import {
   CURRENT_VAULT_EXPORT_SCHEMA_VERSION,
-  VAULT_EXPORT_MAX_BYTES,
+  VAULT_ENVELOPE_PARSE_MAX_BYTES,
   VaultImportError,
   migrateEnvelope,
   migrationRegistry,
@@ -65,7 +65,7 @@ describe('parseVaultExportEnvelope', () => {
   test('throws oversize when payload exceeds max bytes', () => {
     const padded = JSON.stringify({
       ...makeEnvelope(),
-      filler: 'x'.repeat(VAULT_EXPORT_MAX_BYTES + 100),
+      filler: 'x'.repeat(VAULT_ENVELOPE_PARSE_MAX_BYTES + 100),
     });
     try {
       parseVaultExportEnvelope(padded);

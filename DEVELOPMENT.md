@@ -470,9 +470,10 @@ Examples of existing page libraries:
 
 4. **Commit Your Changes**
 
+   Stage the specific files for this change (never `git add .`), then:
+
    ```bash
-   git add .
-   git commit -m "feat: add your feature description"
+   corepack yarn ai:commit --message "feat: add your feature description"
    ```
 
    Follow [Conventional Commits](https://www.conventionalcommits.org/) format:
@@ -728,14 +729,15 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
 5. **Commit Your Changes**
 
+   Stage the specific files for this change (never `git add .`), then:
+
    ```bash
-   git add .
    corepack yarn ai:commit --message "feat: add user profile settings page"
    ```
 
    Use [Conventional Commits](https://www.conventionalcommits.org/) format.
    The shared commit workflow waits for Husky pre-commit checks to finish and uses static Nx output so lint failures stay readable in terminal-based AI tools.
-   If Husky fails, fix the reported formatting, linting, test, or typecheck issue before retrying the commit.
+   If the command fails, read the `ai:commit: failed` trailer, fix the hinted formatting or lint slice, and retry.
 
 6. **Keep Your Branch Up to Date**
 
@@ -751,7 +753,13 @@ Good issues help maintainers understand and address problems quickly. Here's how
    ```
 
 8. **Create the Pull Request**
-   - Use the shared PR workflow:
+   - Agent sessions draft first with the `PrAuthor` sub-agent, then pass that draft into the shared runner:
+
+     ```bash
+     corepack yarn ai:create-pr --title "feat(scope): short summary" --body-file /tmp/pr-body.md
+     ```
+
+   - Humans may still run the runner with no title/body; it then builds a thin description from commit subjects:
 
      ```bash
      corepack yarn ai:create-pr
@@ -764,9 +772,8 @@ Good issues help maintainers understand and address problems quickly. Here's how
      ```
 
    - The shared PR workflow:
-     - gathers the commits in the current branch relative to the default base branch
      - pushes the branch upstream if it is not already tracked
-     - creates the PR description from the branch commits
+     - uses `--title` / `--body-file` when provided (agent path), otherwise a commit-derived fallback
      - assigns the authenticated GitHub user to the PR
      - leaves reviewers empty unless you explicitly pass one
      - returns only the PR URL on success
@@ -790,7 +797,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
    ```bash
    # Make requested changes
-   git add .
+   # Stage the specific files for this change (never git add .)
    corepack yarn ai:commit --message "fix: address review feedback"
    git push origin feature/your-feature-name
    ```
@@ -805,7 +812,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
 The monorepo uses Jest for unit testing.
 
-For Jest unit tests, Jest integration tests, React hook/component integration tests, and Playwright E2E rules, use `docs/testing/README.md` as the canonical guide. Before writing or delegating tests, read the implementation under test, build a behavior matrix, and avoid unsupported retry, concurrency, timeout, or thrown-error scenarios.
+For Jest unit tests, Jest integration tests, React hook/component integration tests, and Playwright E2E rules, use `docs/testing/README.md` as the index and `docs/testing/projects/<project>.md` as the per-project guide. Before writing or delegating tests, read the implementation under test, build a behavior matrix, and avoid unsupported retry, concurrency, timeout, or thrown-error scenarios.
 
 #### Running Tests
 
@@ -1133,8 +1140,8 @@ git merge upstream/main
 
 # Edit files to resolve conflicts
 # Then:
-git add .
-git commit -m "chore: resolve merge conflicts"
+git add <resolved-files>
+git commit
 ```
 
 ### Common Errors

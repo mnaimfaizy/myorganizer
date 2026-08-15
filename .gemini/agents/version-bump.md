@@ -2,7 +2,7 @@
 name: version-bump
 description: >
   Use when the user asks to determine, suggest, or propose the next semantic version number based on commit history in MyOrganizer.
-model: gemini-2.5-flash
+model: gemini-3.5-flash-lite
 tools:
   - read_file
   - list_files

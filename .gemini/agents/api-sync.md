@@ -2,7 +2,7 @@
 name: api-sync
 description: >
   Use when the user asks to verify, regenerate, or check drift in the OpenAPI spec or generated API client (libs/app-api-client) after backend contract changes in MyOrganizer.
-model: gemini-2.5-flash
+model: gemini-3.6-flash
 tools:
   - read_file
   - list_files
