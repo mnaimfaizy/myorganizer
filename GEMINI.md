@@ -199,6 +199,20 @@ Model policy:
 - Upgrade model strength only when the agent is synthesis-heavy.
 - Keep model mapping centralized in `tools/config/agent-model-policy.json`.
 
+## Root README Maintenance
+
+After adding or removing an app, a top-level lib, or a `/dashboard/*` route, update `README.md` and run `yarn readme:check`.
+
+The README is the only place claiming a repository layout and a route list, and nothing else asserts them — it drifted for months because no rule made it anyone's job.
+
+Keep it a front door:
+
+- Package versions belong in `TECH_STACK.md`.
+- Scripts belong in `package.json`.
+- Environment variables belong in `.env.example`.
+
+Link to those files rather than restating them. A table copied into the README is a table that will go stale.
+
 ## Storybook Delegation
 
 When a task requires Storybook creation or updates (`*.stories.tsx`), delegate to the `storybook-curator` sub-agent (`.gemini/agents/storybook-curator.md`) rather than editing stories inline.

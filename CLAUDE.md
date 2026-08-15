@@ -20,6 +20,7 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 - React component creation or editing (UI Primitives in `libs/web-ui/` or Feature Components in `libs/web/pages/<route>/`) uses the ComponentBuilder → ComponentReviewer workflow on `gate:standard` / `gate:full` — see **UI Component Workflows** below and ADR 0012 for mechanical exceptions.
 - After any `yarn add`, `yarn remove`, or package upgrade, run `/dep-sync` to keep `TECH_STACK.md` current — see **Dependency Sync** below.
 - After any sub-agent change in any harness (`.github`, `.claude`, `.cursor`, `.gemini`), run `yarn agents:sync` and then `yarn agents:sync:check`.
+- After adding or removing an app, a top-level lib, or a `/dashboard/*` route, update `README.md` and run `yarn readme:check`. The README claims a repository layout and a route list; nothing else asserts them. Keep it a front door — versions belong in `TECH_STACK.md`, scripts in `package.json`, env vars in `.env.example`. If you find yourself pasting a table into the README that already exists elsewhere, link to it instead.
 - Use `.github/skills/sub-agent-sync-workflow/SKILL.md` as the required workflow for sub-agent synchronization.
 
 ## ⚠️ Tiered Quality Gates (ADR 0012)
