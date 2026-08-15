@@ -239,6 +239,48 @@ describe('pre-tool-use hook', () => {
         shellPayload('Bash', 'echo "--- section ---"'),
       );
     });
+
+    // A bare `/>/` write test read `2>/dev/null` as a redirect, so discarding
+    // stderr while *reading* a protected path was denied outright.
+    it('should allow reading a protected path while discarding stderr', () => {
+      expectAllowed(
+        PRE_TOOL_USE_HOOK,
+        shellPayload('Bash', `sed -n '1,20p' ${GENERATED_SPEC} 2>/dev/null`),
+      );
+    });
+
+    it('should allow reading a protected path while discarding stderr in PowerShell', () => {
+      expectAllowed(
+        PRE_TOOL_USE_HOOK,
+        shellPayload('PowerShell', `Get-Content ${GENERATED_CLIENT} 2>$null`),
+      );
+    });
+
+    it('should allow a comparison operator near a protected path', () => {
+      expectAllowed(
+        PRE_TOOL_USE_HOOK,
+        shellPayload(
+          'Bash',
+          `node -e "if (a >= b) require('./${GENERATED_SPEC}')"`,
+        ),
+      );
+    });
+
+    it('should still deny a real redirect into a protected path', () => {
+      expectDenied(
+        PRE_TOOL_USE_HOOK,
+        shellPayload('Bash', `echo broken > ${GENERATED_SPEC}`),
+        /openapi spec/i,
+      );
+    });
+
+    it('should still deny an append redirect into a protected path', () => {
+      expectDenied(
+        PRE_TOOL_USE_HOOK,
+        shellPayload('Bash', `cat fragment >> ${GENERATED_CLIENT}`),
+        /generated api client/i,
+      );
+    });
   });
 
   describe('fail-open behavior', () => {
