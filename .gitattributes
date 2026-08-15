@@ -26,3 +26,6 @@
 *.mov binary
 *.mp3 binary
 *.wav binary
+
+# Preserve generated third-party skill content exactly as installed.
+.agents/skills/** linguist-generated=true whitespace=-trailing-space

@@ -2,7 +2,7 @@
 
 These are the exact third-party skills approved for project-scope install in MyOrganizer. They complement the repo-native skills in this directory and are meant to add fast-moving framework knowledge the repo should not duplicate.
 
-Exact package and skill names below were verified with `npx skills find` on April 26, 2026.
+Exact package and skill names below were verified with `npx skills find` on April 26, 2026. `GoogleChrome/modern-web-guidance@modern-web-guidance` was verified against the upstream documentation and a disposable install on August 15, 2026; see the [evaluation](../../docs/internal/modern-web-guidance-evaluation.md).
 
 ## Default Install Set
 
@@ -15,6 +15,8 @@ Exact package and skill names below were verified with `npx skills find` on Apri
 - Frontend design:
   - `anthropics/skills@frontend-design`
   - `vercel-labs/agent-skills@web-design-guidelines`
+- Modern web platform guidance:
+  - `GoogleChrome/modern-web-guidance@modern-web-guidance`
 - Node.js and Express-style backend patterns:
   - `wshobson/agents@nodejs-backend-patterns`
 - Tailwind CSS:
@@ -39,6 +41,7 @@ Install the default set:
 npx skills add vercel-labs/next-skills --skill next-best-practices next-cache-components -y
 npx skills add vercel-labs/agent-skills --skill vercel-react-best-practices vercel-composition-patterns web-design-guidelines -y
 npx skills add anthropics/skills --skill frontend-design -y
+npx skills add GoogleChrome/modern-web-guidance --skill modern-web-guidance -y
 npx skills add wshobson/agents --skill nodejs-backend-patterns tailwind-design-system -y
 npx skills add currents-dev/playwright-best-practices-skill --skill playwright-best-practices -y
 npx skills add xixu-me/skills --skill github-actions-docs -y
