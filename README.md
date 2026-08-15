@@ -45,13 +45,16 @@ blob it cannot read.
 It is an Nx monorepo with three deployable apps: a Next.js web client, an Express API, and a React
 Native mobile client that opens the same vault the browser wrote.
 
-Two interactive pages explain the encryption model better than prose can. Open either in a browser —
-no build step, no network, no server:
+Three interactive pages explain the hard parts better than prose can. Open any of them in a
+browser — no build step, no network, no server:
 
 - **[Vault lifecycle](docs/vault/lifecycle.html)** — what happens over time, from creating a vault
   to restoring it on a new device.
 - **[Vault trust boundary](docs/vault/trust-boundary.html)** — which zone holds keys, which holds
   only ciphertext, and what is allowed to cross.
+- **[Session lifecycle](docs/authentication/session-lifecycle.html)** — one account from
+  registration to revocation: which check rejects a login, and what "log everyone out" actually
+  kills.
 
 ---
 
@@ -146,22 +149,22 @@ for its area — restating them here is how they go stale, so this table points 
 
 ## Documentation
 
-| Document                                                                                     | Description                                              |
-| -------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| [DEVELOPMENT.md](DEVELOPMENT.md)                                                             | Complete developer guide — setup, workflow, architecture |
-| [AGENTS.md](AGENTS.md)                                                                       | Contributor and agent workflows, branch naming, gates    |
-| [CONTEXT.md](CONTEXT.md)                                                                     | Domain glossary                                          |
-| [TECH_STACK.md](TECH_STACK.md)                                                               | Dependency versions and rationale                        |
-| [docs/adr/](docs/adr/)                                                                       | Architecture Decision Records                            |
-| [docs/vault/README.md](docs/vault/README.md)                                                 | Vault architecture, plus the two interactive pages       |
-| [docs/authentication/README.md](docs/authentication/README.md)                               | JWT and session strategy                                 |
-| [docs/agents/model-governance.md](docs/agents/model-governance.md)                           | Sub-agent fleet, model governance, orchestration         |
-| [docs/features/README.md](docs/features/README.md)                                           | Feature integration index                                |
-| [docs/testing/README.md](docs/testing/README.md)                                             | Testing strategy and per-project tooling                 |
-| [docs/storybook/README.md](docs/storybook/README.md)                                         | Storybook and Chromatic setup                            |
-| [docs/deployment/CI_CD_AND_RELEASE_PROCESS.md](docs/deployment/CI_CD_AND_RELEASE_PROCESS.md) | CI/CD and release process                                |
-| [docs/sandcastle/RUNBOOK.md](docs/sandcastle/RUNBOOK.md)                                     | Autonomous agent dispatch                                |
-| [libs/design-tokens/DESIGN.md](libs/design-tokens/DESIGN.md)                                 | Design system and token reference                        |
+| Document                                                                                     | Description                                               |
+| -------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| [DEVELOPMENT.md](DEVELOPMENT.md)                                                             | Complete developer guide — setup, workflow, architecture  |
+| [AGENTS.md](AGENTS.md)                                                                       | Contributor and agent workflows, branch naming, gates     |
+| [CONTEXT.md](CONTEXT.md)                                                                     | Domain glossary                                           |
+| [TECH_STACK.md](TECH_STACK.md)                                                               | Dependency versions and rationale                         |
+| [docs/adr/](docs/adr/)                                                                       | Architecture Decision Records                             |
+| [docs/vault/README.md](docs/vault/README.md)                                                 | Vault architecture, plus the two interactive pages        |
+| [docs/authentication/README.md](docs/authentication/README.md)                               | JWT and session strategy, plus the session lifecycle page |
+| [docs/agents/model-governance.md](docs/agents/model-governance.md)                           | Sub-agent fleet, model governance, orchestration          |
+| [docs/features/README.md](docs/features/README.md)                                           | Feature integration index                                 |
+| [docs/testing/README.md](docs/testing/README.md)                                             | Testing strategy and per-project tooling                  |
+| [docs/storybook/README.md](docs/storybook/README.md)                                         | Storybook and Chromatic setup                             |
+| [docs/deployment/CI_CD_AND_RELEASE_PROCESS.md](docs/deployment/CI_CD_AND_RELEASE_PROCESS.md) | CI/CD and release process                                 |
+| [docs/sandcastle/RUNBOOK.md](docs/sandcastle/RUNBOOK.md)                                     | Autonomous agent dispatch                                 |
+| [libs/design-tokens/DESIGN.md](libs/design-tokens/DESIGN.md)                                 | Design system and token reference                         |
 
 ---
 
