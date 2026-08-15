@@ -48,6 +48,151 @@ export function normalizeText(value) {
   return value.replace(/\\/g, '/').toLowerCase();
 }
 
+/** Tool names whose input carries a shell command rather than file arguments. */
+export const SHELL_TOOL_NAMES = new Set([
+  'bash',
+  'command',
+  'execute',
+  'powershell',
+  'run',
+  'runterminalcommand',
+  'shell',
+]);
+
+/** Input keys that hold a shell command. */
+export const COMMAND_KEYS = new Set(['cmd', 'command', 'script', 'shell']);
+
+/**
+ * Input keys that name a file a tool is about to write.
+ *
+ * Deliberately excludes `pattern` (a search expression, not a destination) and
+ * every content-bearing key — `content`, `new_string`, `old_string`. Matching
+ * content is how a hook ends up firing because a document *mentions* a path.
+ */
+export const WRITE_PATH_KEYS = new Set([
+  'dest',
+  'destination',
+  'dir',
+  'directory',
+  'file',
+  'file_path',
+  'filename',
+  'filenames',
+  'filepath',
+  'filePath',
+  'files',
+  'folder',
+  'new_path',
+  'notebook_path',
+  'old_path',
+  'path',
+  'paths',
+  'target',
+  'targets',
+]);
+
+// A redirect that writes somewhere real. `2>/dev/null` discards output and is not a write, and
+// the lookarounds keep `>=`, `=>`, and `->` from reading as redirects at all. Getting this wrong
+// is not cosmetic: a bare `/>/` test made every command carrying `2>/dev/null` look like a write.
+const FILE_REDIRECT = /(?<![-=>])>{1,2}(?![=>])\s*([^\s|;&<>]+)/g;
+const NULL_SINKS = new Set(['/dev/null', 'nul', '$null']);
+
+export function hasFileRedirect(normalized) {
+  for (const match of normalized.matchAll(FILE_REDIRECT)) {
+    if (!NULL_SINKS.has(match[1])) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Whether a shell command plausibly modifies the filesystem.
+ *
+ * Conservative by design — a read misclassified as a write blocks or nags on
+ * `ls`, `cat`, and `grep`, which is the failure this guard exists to avoid.
+ */
+export function isLikelyWriteCommand(command) {
+  const normalized = normalizeText(command);
+
+  return (
+    hasFileRedirect(normalized) ||
+    /\btee\b/.test(normalized) ||
+    /\b(?:cp|mv|rm|touch|truncate)\b/.test(normalized) ||
+    /\bgit\s+(?:restore|checkout|reset)\b/.test(normalized) ||
+    /\bsed\b[^\n]*\s-i\b/.test(normalized) ||
+    /\bperl\b[^\n]*\s-i\b/.test(normalized) ||
+    /\b(?:out-file|set-content|add-content|new-item|remove-item)\b/.test(
+      normalized,
+    )
+  );
+}
+
+export function extractCommand(toolInput) {
+  if (typeof toolInput === 'string') {
+    return toolInput;
+  }
+
+  if (!toolInput || typeof toolInput !== 'object') {
+    return '';
+  }
+
+  for (const key of COMMAND_KEYS) {
+    const value = toolInput[key];
+    if (typeof value === 'string') {
+      return value;
+    }
+  }
+
+  return '';
+}
+
+/**
+ * Collect only the strings that name a write destination: shell commands that
+ * look like writes, and values under `WRITE_PATH_KEYS`. Unlike `collectStrings`
+ * this never returns file content.
+ */
+export function collectWriteTargets(node, key = '', output = []) {
+  if (node === null || node === undefined) {
+    return output;
+  }
+
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      collectWriteTargets(item, key, output);
+    }
+
+    return output;
+  }
+
+  if (typeof node === 'object') {
+    for (const [childKey, childValue] of Object.entries(node)) {
+      collectWriteTargets(childValue, childKey, output);
+    }
+
+    return output;
+  }
+
+  if (typeof node !== 'string') {
+    return output;
+  }
+
+  if (COMMAND_KEYS.has(key)) {
+    if (isLikelyWriteCommand(node)) {
+      output.push(node);
+    }
+
+    return output;
+  }
+
+  if (WRITE_PATH_KEYS.has(key)) {
+    output.push(node);
+  }
+
+  return output;
+}
+
 export function getToolName(payload) {
   const value =
     payload?.toolName ??

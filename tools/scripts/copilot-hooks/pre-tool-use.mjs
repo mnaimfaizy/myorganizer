@@ -1,14 +1,16 @@
 import {
   allowTool,
+  COMMAND_KEYS,
   denyTool,
+  extractCommand,
   getToolInput,
   getToolName,
+  isLikelyWriteCommand,
   isMutatingTool,
   normalizeText,
   readPayloadOrExit,
+  SHELL_TOOL_NAMES,
 } from './lib.mjs';
-
-const COMMAND_KEYS = new Set(['cmd', 'command', 'script', 'shell']);
 
 /** Read-only tools across harnesses. Not mutating, but they can exfiltrate. */
 const READ_TOOL_NAMES = new Set([
@@ -48,15 +50,6 @@ const READ_PATH_KEYS = new Set([
   'targets',
 ]);
 
-const SHELL_TOOL_NAMES = new Set([
-  'bash',
-  'command',
-  'execute',
-  'powershell',
-  'run',
-  'runterminalcommand',
-  'shell',
-]);
 const PATH_KEYS = new Set([
   'dest',
   'destination',
@@ -228,25 +221,6 @@ function inspectReadNode(node, key = '') {
   return getSecretReadReason(node, { pathOnly: true });
 }
 
-function extractCommand(toolInput) {
-  if (typeof toolInput === 'string') {
-    return toolInput;
-  }
-
-  if (!toolInput || typeof toolInput !== 'object') {
-    return '';
-  }
-
-  for (const key of COMMAND_KEYS) {
-    const value = toolInput[key];
-    if (typeof value === 'string') {
-      return value;
-    }
-  }
-
-  return '';
-}
-
 function looksLikePath(text) {
   const normalized = normalizeText(text);
 
@@ -254,19 +228,6 @@ function looksLikePath(text) {
     normalized.includes('/') ||
     normalized.startsWith('.') ||
     /\.[a-z0-9]{1,5}(?:[?*].*)?$/i.test(normalized)
-  );
-}
-
-function isLikelyWriteCommand(command) {
-  const normalized = normalizeText(command);
-
-  return (
-    />/.test(normalized) ||
-    /\btee\b/.test(normalized) ||
-    /\b(?:cp|mv|rm|touch|truncate)\b/.test(normalized) ||
-    /\bgit\s+(?:restore|checkout|reset)\b/.test(normalized) ||
-    /\bsed\b[^\n]*\s-i\b/.test(normalized) ||
-    /\bperl\b[^\n]*\s-i\b/.test(normalized)
   );
 }
 

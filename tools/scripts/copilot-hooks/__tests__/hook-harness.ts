@@ -3,6 +3,7 @@ import { join } from 'node:path';
 
 export const PRE_TOOL_USE_HOOK = join(__dirname, '..', 'pre-tool-use.mjs');
 export const SECRET_SCAN_HOOK = join(__dirname, '..', 'secret-scan.mjs');
+export const POST_TOOL_USE_HOOK = join(__dirname, '..', 'post-tool-use.mjs');
 
 /** Exit code the shared hook lib uses to block a tool call. */
 const DENY_EXIT_CODE = 2;
@@ -62,4 +63,35 @@ export function expectAllowed(hookPath: string, payload: unknown): void {
 
 export function shellPayload(toolName: string, command: string) {
   return { tool_name: toolName, tool_input: { command } };
+}
+
+/**
+ * PostToolUse hooks never block — they exit 0 either silently or with follow-up
+ * context on stdout. `''` means the hook stayed quiet.
+ */
+export function runContextHook(hookPath: string, payload: unknown): string {
+  const result = spawnSync(process.execPath, [hookPath], {
+    input: JSON.stringify(payload),
+    encoding: 'utf8',
+  });
+
+  expect(result.status).toBe(0);
+
+  if (!result.stdout.trim()) {
+    return '';
+  }
+
+  return JSON.parse(result.stdout).additionalContext ?? '';
+}
+
+export function expectNoContext(hookPath: string, payload: unknown): void {
+  expect(runContextHook(hookPath, payload)).toBe('');
+}
+
+export function expectContext(
+  hookPath: string,
+  payload: unknown,
+  pattern: RegExp,
+): void {
+  expect(runContextHook(hookPath, payload)).toMatch(pattern);
 }

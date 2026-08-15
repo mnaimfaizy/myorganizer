@@ -309,21 +309,21 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ValidateErrorJSON": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"enum","enums":["Validation failed"],"required":true},
+            "details": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"any"},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "UserLoginBody": {
         "dataType": "refObject",
         "properties": {
             "email": {"dataType":"string","required":true},
             "password": {"dataType":"string","required":true},
             "client_type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["mobile"]},{"dataType":"enum","enums":["web"]}]},
-        },
-        "additionalProperties": false,
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "ValidateErrorJSON": {
-        "dataType": "refObject",
-        "properties": {
-            "message": {"dataType":"enum","enums":["Validation failed"],"required":true},
-            "details": {"dataType":"nestedObjectLiteral","nestedProperties":{},"additionalProperties":{"dataType":"any"},"required":true},
         },
         "additionalProperties": false,
     },
