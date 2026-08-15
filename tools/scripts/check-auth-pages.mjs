@@ -44,46 +44,64 @@ const capture = (path, pattern, label) => {
   return match[1];
 };
 
-const API_TOKENS = 'apps/backend/src/helpers/ApiTokens.ts';
+const TOKEN_LIFETIMES = 'apps/backend/src/helpers/tokenLifetimes.ts';
+const COOKIE_HELPER = 'apps/backend/src/helpers/cookieHelper.ts';
 const STORAGE_ADAPTER = 'libs/auth/src/lib/auth-session-storage-adapter.ts';
 const AUTH_ROUTES = 'apps/backend/src/routes/auth.ts';
 const MAIN = 'apps/backend/src/main.ts';
 
-// The TTL is the argument after the secret, so each token family is read from its own call
-// rather than by position — reordering the methods in ApiTokens must not silently swap them.
-const ttlAfterSecret = (secret) =>
+// Access and refresh lifetimes are derived in the source from a single number, so they are
+// derived the same way here. Reading the rendered `'10m'` is not possible without evaluating
+// the template literal, and hard-coding it would defeat the point of the guard.
+const accessTtlMinutes = () =>
+  num(
+    capture(
+      TOKEN_LIFETIMES,
+      /const ACCESS_TOKEN_TTL_MINUTES\s*=\s*([\d_]+)/,
+      'ACCESS_TOKEN_TTL_MINUTES',
+    ),
+  );
+
+const refreshTtlDays = () =>
+  num(
+    capture(
+      TOKEN_LIFETIMES,
+      /export const REFRESH_TOKEN_TTL_DAYS\s*=\s*([\d_]+)/,
+      'REFRESH_TOKEN_TTL_DAYS',
+    ),
+  );
+
+/** The single-use email tokens are still plain literals, so they are read directly. */
+const literalTtl = (name) =>
   capture(
-    API_TOKENS,
-    new RegExp(`process\\.env\\.${secret},\\s*'([^']+)'`),
-    `${secret} TTL`,
+    TOKEN_LIFETIMES,
+    new RegExp(`export const ${name}\\s*=\\s*'([^']+)'`),
+    name,
   );
 
 const EXTRACTORS = {
-  'tokens.accessTokenTtl': () => ttlAfterSecret('ACCESS_JWT_SECRET'),
-  'tokens.refreshTokenTtl': () => ttlAfterSecret('REFRESH_JWT_SECRET'),
-  'tokens.verifyTokenTtl': () => ttlAfterSecret('VERIFY_JWT_SECRET'),
-  'tokens.resetTokenTtl': () => ttlAfterSecret('RESET_JWT_SECRET'),
+  'tokens.accessTokenTtl': () => `${accessTtlMinutes()}m`,
+  'tokens.refreshTokenTtl': () => `${refreshTtlDays()}d`,
+  'tokens.verifyTokenTtl': () => literalTtl('VERIFY_TOKEN_TTL'),
+  'tokens.resetTokenTtl': () => literalTtl('RESET_TOKEN_TTL'),
 
-  'tokens.accessTokenExpiresInMs': () =>
-    num(
-      capture(
-        'apps/backend/src/helpers/PlatformTokenHandler.ts',
-        /const ACCESS_TOKEN_EXPIRES_IN_MS\s*=\s*([\d_]+)/,
-        'ACCESS_TOKEN_EXPIRES_IN_MS',
-      ),
-    ),
+  'tokens.accessTokenExpiresInMs': () => accessTtlMinutes() * 60_000,
 
   'cookie.refreshCookieName': () =>
     capture(AUTH_ROUTES, /\.cookie\('([^']+)'/, 'refresh cookie name'),
 
-  'cookie.refreshCookieDays': () =>
-    num(
-      capture(
-        'apps/backend/src/helpers/cookieHelper.ts',
-        /getDate\(\)\s*\+\s*(\d+)/,
-        'refresh cookie expiry',
-      ),
-    ),
+  // The cookie no longer carries its own number — it derives from the refresh token's
+  // lifetime. Asserting that derivation is what stops the two drifting apart again, so a
+  // cookieHelper that reverts to a literal fails here rather than passing on a stale match.
+  'cookie.refreshCookieDays': () => {
+    const source = read(COOKIE_HELPER);
+    if (!/getDate\(\)\s*\+\s*REFRESH_TOKEN_TTL_DAYS/.test(source)) {
+      fail(
+        `${COOKIE_HELPER} no longer derives its expiry from REFRESH_TOKEN_TTL_DAYS`,
+      );
+    }
+    return refreshTtlDays();
+  },
 
   'hashing.bcryptSaltRounds': () =>
     num(
