@@ -6,8 +6,7 @@ import { User } from '../models/User';
 import { FilteredUserInterface, UserInterface } from '../types';
 import apiTokens from './ApiTokens';
 import filterUser from './filterUser';
-
-const ACCESS_TOKEN_EXPIRES_IN_MS = 600_000;
+import { ACCESS_TOKEN_EXPIRES_IN_MS } from './tokenLifetimes';
 
 export type LoginResponseBody = {
   token: string;
