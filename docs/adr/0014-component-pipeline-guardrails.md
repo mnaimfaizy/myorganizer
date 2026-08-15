@@ -61,6 +61,16 @@ Rules were tuned against the whole codebase before landing, not designed in the 
 
 A zero-error baseline means the script can gate immediately without a cleanup campaign first. The 68 warnings are pre-existing guideline drift, tracked separately.
 
+### Follow-up enforcement decision
+
+Issue [#288](https://github.com/mnaimfaizy/myorganizer/issues/288) will remove all 68 warnings without changing the rules, their scan roots, or the 150-line oversized JSX threshold. Once the full scan has a zero-warning baseline:
+
+- CI will run the full scan and fail on any error or warning.
+- Pre-commit will run the same strict policy against staged in-scope components if the completed staged check remains below one second in the agreed benchmark.
+- Targeted local scans may continue to report warnings without failing, preserving the diagnostic workflow during component development.
+
+The cleanup is deliberately split by risk: named props-interface extraction is mechanical; handler memoization requires dependency review; oversized JSX findings require behavior-preserving, feature-private decomposition. Strict enforcement lands only after those cleanup changes establish the zero-warning baseline. Operational documentation must not advertise the staged or strict commands until their implementation lands.
+
 ## Consequences
 
 - New: `tools/scripts/check-component-hygiene.mjs`, `yarn component:hygiene`, and `tools/scripts/lib/source-scan.mjs` — shared lexical helpers now used by both hygiene scripts (the test script was refactored onto it with byte-identical output).
