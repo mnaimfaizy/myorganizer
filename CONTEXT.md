@@ -21,7 +21,7 @@ A recurring financial commitment the user monitors.
 _Avoid_: Recurring payment, recurring task, bill
 
 **User**:
-The authenticated account holder.
+A person's account in MyOrganizer. Authentication is a state a User may be in, not part of what a User is — a Disabled User and an Unverified User are both Users.
 _Avoid_: Account, member, customer, person
 
 **Platform Admin**:
@@ -29,7 +29,7 @@ A User with elevated privilege to manage other Users' account metadata across th
 _Avoid_: Admin, superuser, staff, operator, system admin
 
 **Disabled User**:
-A User whose account is blocked from authenticating; their Vault Ciphertext and profile remain until separately deleted or purged.
+A User blocked from authenticating. Disabling also ends their existing Sessions; re-enabling restores the ability to sign in but does not bring those Sessions back. Their Vault Ciphertext and profile remain until separately deleted or purged.
 _Avoid_: Banned user, suspended user, deactivated account, soft-deleted user
 
 **Admin Audit Log**:
@@ -71,6 +71,44 @@ _Avoid_: Pool item, master item, product, favorite (unless UI label), template
 **List Line**:
 A Grocery List’s reference to a Catalog Item for a trip, carrying trip-local state such as checked and quantity/amount. The same Catalog Item may appear on multiple Grocery Lists at once.
 _Avoid_: Embedded item, list-owned item, row (as domain name)
+
+## Identity & Session
+
+**Session**:
+The period during which a User's client can act on their behalf without re-entering credentials. Independent of Vault Unlock — a User can hold a Session while their Vault is still locked, and unlocking the Vault does not extend the Session.
+_Avoid_: Login, sign-in, auth session, logged-in state
+
+**Access Token**:
+The short-lived proof of identity a client presents with each request. Held in browser storage, so it is treated as exposed and given a deliberately short life.
+_Avoid_: JWT, bearer token, auth token, API token
+
+**Refresh Token**:
+The longer-lived credential that obtains a new Access Token without asking the User for anything. How it reaches the client differs by platform — the web client never handles it directly, the Mobile App does (see ADR 0006).
+_Avoid_: Renewal token, long-lived token, session token
+
+**Verification Token** / **Reset Token**:
+Single-use, purpose-bound credentials delivered by email to prove control of an address or authorise a passphrase change. Each is signed for its own purpose only and cannot be presented in place of an Access Token or Refresh Token.
+_Avoid_: Email token, magic link, one-time password
+
+**Restorable Session**:
+The state where a client's Access Token is gone but it still holds enough to obtain a new one without credentials. A User in this state has not been signed out, and should not be shown a sign-in prompt.
+_Avoid_: Expired session, stale session, half-logged-in, partial session
+
+**Guest**:
+A visitor with no Session and no means of restoring one. The only state that warrants a sign-in prompt.
+_Avoid_: Anonymous user, logged-out user, visitor, unauthenticated user
+
+**Unverified User**:
+A User who has registered but not yet proven control of their email address. Cannot obtain a Session, and is refused at sign-in with a distinct reason rather than a credential failure.
+_Avoid_: Pending user, inactive user, new user, unconfirmed account
+
+**Force Logout**:
+The Platform Admin action that ends a User's existing Sessions while leaving them free to sign in again immediately. Distinct from disabling: Force Logout answers "this User's device is compromised", disabling answers "this User should not be here".
+_Avoid_: Kick, revoke access, sign out user, terminate session, ban
+
+**Resend Cooldown**:
+The interval during which a repeat request for a verification or reset email is refused. It is not a separate timer — the still-valid outstanding token _is_ the cooldown, so the wait always equals that token's remaining life.
+_Avoid_: Rate limit, throttle, spam guard, backoff
 
 ## YouTube (focused watching)
 
