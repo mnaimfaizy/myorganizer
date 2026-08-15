@@ -9,11 +9,13 @@ import { useEffect, useState } from 'react';
 
 import { VaultStatCard } from './VaultStatCard';
 
+interface MobileNumbersCountCardProps {
+  masterKeyBytes: Uint8Array | null;
+}
+
 export function MobileNumbersCountCard({
   masterKeyBytes,
-}: {
-  masterKeyBytes: Uint8Array | null;
-}) {
+}: MobileNumbersCountCardProps) {
   return (
     <VaultStatCard
       masterKeyBytes={masterKeyBytes}
@@ -25,11 +27,11 @@ export function MobileNumbersCountCard({
   );
 }
 
-function MobileNumbersContent({
-  masterKeyBytes,
-}: {
+interface MobileNumbersContentProps {
   masterKeyBytes: Uint8Array;
-}) {
+}
+
+function MobileNumbersContent({ masterKeyBytes }: MobileNumbersContentProps) {
   const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {

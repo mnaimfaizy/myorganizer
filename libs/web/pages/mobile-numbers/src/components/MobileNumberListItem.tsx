@@ -4,10 +4,12 @@ import { Smartphone, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { formatMobileNumber } from '../utils/formatMobileNumber';
 
-export function MobileNumberListItem(props: {
+interface MobileNumberListItemProps {
   item: MobileNumberRecord;
   onDelete: (id: string) => void | Promise<void>;
-}) {
+}
+
+export function MobileNumberListItem(props: MobileNumberListItemProps) {
   const usageCount = props.item.usageLocations.length;
 
   return (

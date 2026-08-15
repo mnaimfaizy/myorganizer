@@ -18,7 +18,11 @@ import { randomId } from '../utils/randomId';
 import { AddAddressCard } from './AddAddressCard';
 import { AddressListCard } from './AddressListCard';
 
-function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
+interface AddressesInnerProps {
+  masterKeyBytes: Uint8Array;
+}
+
+function AddressesInner(props: AddressesInnerProps) {
   const { toast } = useToast();
 
   const [items, setItems] = useState<AddressRecord[]>([]);

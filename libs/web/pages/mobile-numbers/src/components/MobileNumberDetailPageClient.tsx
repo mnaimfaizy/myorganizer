@@ -21,10 +21,12 @@ import {
 import { MobileNumberDetailsCard } from './MobileNumberDetailsCard';
 import { UsageLocationsTable } from './UsageLocationsTable';
 
-function MobileNumberDetailsInner(props: {
+interface MobileNumberDetailsInnerProps {
   masterKeyBytes: Uint8Array;
   mobileNumberId: string;
-}) {
+}
+
+function MobileNumberDetailsInner(props: MobileNumberDetailsInnerProps) {
   const { toast } = useToast();
   const router = useRouter();
 

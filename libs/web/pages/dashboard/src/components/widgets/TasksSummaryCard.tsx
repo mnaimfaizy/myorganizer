@@ -6,11 +6,11 @@ import { useEffect, useState } from 'react';
 
 import { VaultStatCard } from './VaultStatCard';
 
-export function TasksSummaryCard({
-  masterKeyBytes,
-}: {
+interface TasksSummaryCardProps {
   masterKeyBytes: Uint8Array | null;
-}) {
+}
+
+export function TasksSummaryCard({ masterKeyBytes }: TasksSummaryCardProps) {
   return (
     <VaultStatCard
       masterKeyBytes={masterKeyBytes}
@@ -22,11 +22,11 @@ export function TasksSummaryCard({
   );
 }
 
-function TasksSummaryContent({
-  masterKeyBytes,
-}: {
+interface TasksSummaryContentProps {
   masterKeyBytes: Uint8Array;
-}) {
+}
+
+function TasksSummaryContent({ masterKeyBytes }: TasksSummaryContentProps) {
   const [summary, setSummary] = useState<{
     counts: Record<string, number>;
     total: number;

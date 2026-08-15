@@ -66,11 +66,11 @@ export default function VaultSettingsPage() {
   );
 }
 
-function CloudBackupSection({
-  provider,
-}: {
+interface CloudBackupSectionProps {
   provider: GoogleDriveCloudBackupProvider;
-}) {
+}
+
+function CloudBackupSection({ provider }: CloudBackupSectionProps) {
   const getLastSuccessMs = useCallback(async () => {
     try {
       const api = createVaultBackupsApi();
@@ -129,7 +129,11 @@ function CloudBackupSection({
   );
 }
 
-function CloudBackupUnavailable({ reason }: { reason: string }) {
+interface CloudBackupUnavailableProps {
+  reason: string;
+}
+
+function CloudBackupUnavailable({ reason }: CloudBackupUnavailableProps) {
   return (
     <div
       data-testid="cloud-backup-unavailable"

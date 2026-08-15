@@ -120,7 +120,11 @@ const addSubscriptionSchema = z.object({
 
 type AddSubscriptionFormValues = z.infer<typeof addSubscriptionSchema>;
 
-function SubscriptionsInner(props: { masterKeyBytes: Uint8Array }) {
+interface SubscriptionsInnerProps {
+  masterKeyBytes: Uint8Array;
+}
+
+function SubscriptionsInner(props: SubscriptionsInnerProps) {
   const { toast } = useToast();
 
   const [items, setItems] = useState<SubscriptionRecord[]>([]);

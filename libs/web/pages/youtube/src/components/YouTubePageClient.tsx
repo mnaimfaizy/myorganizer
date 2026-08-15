@@ -44,13 +44,12 @@ export function YouTubePageClient() {
   );
 }
 
-function ConnectPrompt({
-  status,
-  onConnect,
-}: {
+interface ConnectPromptProps {
   status: string;
   onConnect: () => void;
-}) {
+}
+
+function ConnectPrompt({ status, onConnect }: ConnectPromptProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
       <div className="rounded-full bg-red-100 p-4 dark:bg-red-900/30">
@@ -79,15 +78,17 @@ function ConnectPrompt({
   );
 }
 
+interface ConnectedDashboardProps {
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
+  onDisconnect: () => void;
+}
+
 function ConnectedDashboard({
   viewMode,
   onViewModeChange,
   onDisconnect,
-}: {
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
-  onDisconnect: () => void;
-}) {
+}: ConnectedDashboardProps) {
   const subs = useYouTubeSubscriptions();
   const gridData = useYouTubeVideos();
   const carouselData = useYouTubeCarousel();

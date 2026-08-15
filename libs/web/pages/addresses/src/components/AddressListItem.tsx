@@ -4,10 +4,12 @@ import { ArrowRight, MapPin, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { formatAddress } from '../utils/formatAddress';
 
-export function AddressListItem(props: {
+interface AddressListItemProps {
   item: AddressRecord;
   onDelete: (id: string) => void | Promise<void>;
-}) {
+}
+
+export function AddressListItem(props: AddressListItemProps) {
   const usageCount = props.item.usageLocations.length;
 
   return (

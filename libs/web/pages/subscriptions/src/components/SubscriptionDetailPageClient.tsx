@@ -93,10 +93,12 @@ const editSchema = z.object({
 
 type EditValues = z.infer<typeof editSchema>;
 
-function SubscriptionDetailInner(props: {
+interface SubscriptionDetailInnerProps {
   masterKeyBytes: Uint8Array;
   subscriptionId: string;
-}) {
+}
+
+function SubscriptionDetailInner(props: SubscriptionDetailInnerProps) {
   const { toast } = useToast();
   const router = useRouter();
 
