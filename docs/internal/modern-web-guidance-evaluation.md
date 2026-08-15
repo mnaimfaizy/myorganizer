@@ -1,6 +1,7 @@
 # Modern Web Guidance Evaluation
 
-Date: August 15, 2026  
+Date: August 15, 2026
+
 Related work: issue #195 and PR #255
 
 ## Decision
