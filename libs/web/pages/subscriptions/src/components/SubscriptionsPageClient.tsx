@@ -50,7 +50,7 @@ import { z } from 'zod';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 
-import { dateInputToIso, isoToDateInput } from '../utils/date';
+import { dateInputToIso, todayAsDateInput } from '../utils/date';
 import {
   formatIsoDateForDisplay,
   getSubscriptionBillingCycleLabel,
@@ -144,7 +144,7 @@ function SubscriptionsInner(props: { masterKeyBytes: Uint8Array }) {
       paymentMethod: SubscriptionPaymentMethodEnum.CreditCard,
       renewalType: SubscriptionRenewalTypeEnum.AutoRenew,
       tier: SubscriptionTierEnum.Basic,
-      startDate: isoToDateInput(new Date().toISOString()),
+      startDate: todayAsDateInput(),
       nextBillingDate: '',
       link: '',
     },
