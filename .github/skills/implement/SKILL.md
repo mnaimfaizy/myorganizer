@@ -47,10 +47,10 @@ When TDD is not appropriate, work in small vertical slices scoped to the spec.
 Pick domain workflow skills when they apply:
 
 - Frontend pages → `frontend-page-library-workflow`
-- Backend APIs → `backend-api-contract-change`
+- Backend APIs / API Contract → `backend-api-contract-change` (PrismaWriter → ApiWriter → ApiSync; do not write controllers or schema yourself on `standard`/`full`)
 - Vault-backed data → `vault-feature-workflow`
 - Auth/session → `auth-session-workflow`
-- Prisma/schema → `prisma-migration-workflow`
+- Prisma runbook (read by PrismaWriter) → `prisma-migration-workflow`
 - YouTube integration → `youtube-integration-workflow`
 
 Respect MyOrganizer structure: thin Next.js route wrappers in `apps/myorganizer`, page logic in `libs/web/pages/**`, shared code in `libs/**`.

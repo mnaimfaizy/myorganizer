@@ -39,6 +39,7 @@ Pipeline depth is chosen by **gate tier**, not file extension alone. Classify vi
 | `*.test.ts` (Jest)                               | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold → TestReviewer → TestRunner (max 3 retries)                                                                                    |
 | `*.stories.tsx`                                  | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                                                                                                                            |
 | Components in `libs/web-ui/` / `libs/web/pages/` | Component workflow (below)                              | ComponentBuilder → ComponentReviewer (max 3 FAIL loops)                                                                                     |
+| API Contract (controllers, DTOs, Prisma for HTTP) | `.github/skills/backend-api-contract-change/SKILL.md` | PrismaWriter (if schema) → ApiWriter → ApiSync. One-shot; no reviewer loop (ADR 0015) |
 | New planned feature (PRD)                        | `.github/skills/to-prd/SKILL.md`                        | Always for planned features                                                                                                                 |
 | Slice breakdown from PRD                         | `.github/skills/to-issues/SKILL.md`                     | Always after PRD; assign `gate:*` + `complexity:*`                                                                                          |
 
@@ -46,6 +47,7 @@ Pipeline depth is chosen by **gate tier**, not file extension alone. Classify vi
 
 ❌ Behavioral E2E/Jest/component edits done directly to skip specialists on `standard`/`full`.  
 ❌ Full TestScaffold → Reviewer → Runner for a pure fixture retarget (`gate:mechanical`).
+❌ Main agent writes controllers or Prisma schema on `standard`/`full` instead of PrismaWriter / ApiWriter.
 
 ✅ State the gate, follow `.claude/checklist.md`, run focused deterministic checks.
 

@@ -120,6 +120,15 @@ When the user wants to review changes since a fixed point (commit, branch, tag, 
 - **When to use**: Review a branch, PR, WIP changes, or after `/implement` before opening a PR.
 - **What it does**: Runs parallel Standards and Spec sub-agents against a three-dot diff, then aggregates findings under separate headings. Fetches issues via `docs/agents/issue-tracker.md`.
 
+## API Contract (one-shot)
+
+When a task changes a public HTTP surface or the Prisma schema it depends on, use `.github/skills/backend-api-contract-change/SKILL.md`. Do not write controllers or schema inline on `standard`/`full`.
+
+- Persistence → `prisma-writer` (`.gemini/agents/prisma-writer.md`), skip if the schema did not change
+- HTTP contract → `api-writer` (`.gemini/agents/api-writer.md`)
+- OpenAPI / client → `api-sync`
+- Then leave. Jest stays the Gated Pipeline. No reviewer retry loop (ADR 0015).
+
 ## Jest Test Delegation
 
 When a task requires Jest unit tests or Jest integration tests to be created or updated, delegate to the `test-scaffold` sub-agent (`.gemini/agents/test-scaffold.md`) rather than writing tests inline. Its model is governed by `tools/config/agent-model-policy.json`.
