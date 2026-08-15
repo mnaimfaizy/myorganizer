@@ -1,5 +1,10 @@
 # Authentication
 
+> **[Session lifecycle](session-lifecycle.html)** is an interactive walk through one account from
+> registration to revocation — which check rejects a login, which of the two `/auth/*`
+> implementations actually runs, and what "log everyone out" really kills. Open it in a browser;
+> no build step or server needed. This file stays the endpoint reference.
+
 This project uses **Option A**:
 
 - **Access token**: short-lived JWT, sent as `Authorization: Bearer <token>`.
