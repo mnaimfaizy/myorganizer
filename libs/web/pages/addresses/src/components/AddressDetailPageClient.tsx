@@ -9,7 +9,7 @@ import {
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Plus } from 'lucide-react';
 
@@ -93,51 +93,57 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
     };
   }, [props.addressId, props.masterKeyBytes, toast]);
 
-  async function handleDeleteLocation(locationId: string) {
-    try {
-      const updatedLocations = usageLocations.filter(
-        (l) => l.id !== locationId,
+  const handleDeleteLocation = useCallback(
+    async (locationId: string) => {
+      try {
+        const updatedLocations = usageLocations.filter(
+          (l) => l.id !== locationId,
+        );
+
+        const raw = await loadDecryptedData<unknown>({
+          masterKeyBytes: props.masterKeyBytes,
+          type: 'addresses',
+          defaultValue: [],
+        });
+
+        const normalized = normalizeAddresses(raw);
+        const nextAddresses = normalized.value.map((x) =>
+          x.id === props.addressId
+            ? { ...x, usageLocations: updatedLocations }
+            : x,
+        );
+
+        await saveEncryptedData({
+          masterKeyBytes: props.masterKeyBytes,
+          type: 'addresses',
+          value: nextAddresses,
+        });
+
+        setUsageLocations(updatedLocations);
+        toast({
+          title: 'Deleted',
+          description: 'Usage location deleted successfully.',
+        });
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        toast({
+          title: 'Failed to delete',
+          description: message,
+          variant: 'destructive',
+        });
+      }
+    },
+    [props.addressId, props.masterKeyBytes, toast, usageLocations],
+  );
+
+  const handleEditLocation = useCallback(
+    (location: UsageLocationRecord) => {
+      router.push(
+        `/dashboard/addresses/${props.addressId}/add-location?edit=${location.id}`,
       );
-
-      const raw = await loadDecryptedData<unknown>({
-        masterKeyBytes: props.masterKeyBytes,
-        type: 'addresses',
-        defaultValue: [],
-      });
-
-      const normalized = normalizeAddresses(raw);
-      const nextAddresses = normalized.value.map((x) =>
-        x.id === props.addressId
-          ? { ...x, usageLocations: updatedLocations }
-          : x,
-      );
-
-      await saveEncryptedData({
-        masterKeyBytes: props.masterKeyBytes,
-        type: 'addresses',
-        value: nextAddresses,
-      });
-
-      setUsageLocations(updatedLocations);
-      toast({
-        title: 'Deleted',
-        description: 'Usage location deleted successfully.',
-      });
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      toast({
-        title: 'Failed to delete',
-        description: message,
-        variant: 'destructive',
-      });
-    }
-  }
-
-  function handleEditLocation(location: UsageLocationRecord) {
-    router.push(
-      `/dashboard/addresses/${props.addressId}/add-location?edit=${location.id}`,
-    );
-  }
+    },
+    [props.addressId, router],
+  );
 
   if (loading) {
     return <AddressDetailLoading />;

@@ -2,7 +2,7 @@
 
 import type { GroceryItem } from '@myorganizer/core';
 import { Edit2, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { getCategoryEmoji } from '../../shared/constants/categories';
 
 interface GroceryItemRowProps {
@@ -24,7 +24,7 @@ export function GroceryItemRow({
 }: GroceryItemRowProps) {
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDelete = () => {
+  const handleDelete = useCallback(() => {
     if (isDeleting) {
       onDelete(item.id);
       setIsDeleting(false);
@@ -33,7 +33,7 @@ export function GroceryItemRow({
       // Auto-reset after 3 seconds
       setTimeout(() => setIsDeleting(false), 3000);
     }
-  };
+  }, [isDeleting, item.id, onDelete]);
 
   const categoryEmoji = getCategoryEmoji(item.category);
 

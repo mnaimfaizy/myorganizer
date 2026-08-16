@@ -20,7 +20,7 @@ import {
 } from '@myorganizer/web-ui';
 import { AlertTriangle, CheckCircle2, MapPinned, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import {
@@ -109,11 +109,11 @@ export function AddAddressCard(props: AddAddressCardProps) {
     }
   }
 
-  function resetForAnotherAddress() {
+  const resetForAnotherAddress = useCallback(() => {
     form.reset({ ...defaultValues, label: values.label });
     setSavedAddress(null);
     setAllowDuplicate(false);
-  }
+  }, [defaultValues, form, values.label]);
 
   return (
     <Sheet open={props.open} onOpenChange={props.onOpenChange}>

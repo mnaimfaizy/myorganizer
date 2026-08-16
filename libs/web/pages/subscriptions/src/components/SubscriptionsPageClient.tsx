@@ -44,7 +44,7 @@ import {
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -315,9 +315,9 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
     }
   }
 
-  function resetConversion() {
+  const resetConversion = useCallback(() => {
     setConvertedTotals({ enabled: false, loading: false, totals: [] });
-  }
+  }, []);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
