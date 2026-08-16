@@ -7,4 +7,10 @@
 corepack yarn format:write --uncommitted
 git update-index --again
 corepack yarn test:hygiene --staged
+if ! git diff --cached --quiet --diff-filter=ACMRT -- \
+	libs/web-ui/src/lib/components \
+	libs/web/pages
+then
+	corepack yarn component:hygiene --staged --max-warnings=0
+fi
 corepack yarn affected:lint --uncommitted --outputStyle=static

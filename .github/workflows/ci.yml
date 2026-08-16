@@ -397,6 +397,12 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: git diff --exit-code -- yarn.lock
 
+      - name: Component hygiene checker contracts
+        run: corepack yarn component:hygiene:test
+
+      - name: Check component hygiene
+        run: corepack yarn component:hygiene --all --max-warnings=0
+
       - name: Test hygiene checker contracts
         run: corepack yarn test:hygiene:test
 
