@@ -86,9 +86,10 @@ Deterministic component checks (any gate): `yarn component:hygiene <path>` — t
 
 1. **Behavioral / structural work** on tests, stories, or components **must** use the matching specialist path for that gate — do not “quietly” hand-edit to skip Reviewer on `standard`/`full`.
 2. **Mechanical work** may be edited by the main agent; still run focused deterministic checks and state `gate:mechanical` explicitly.
-3. **ComponentReviewer** and **TestReviewer** retries: max **3** cycles, then escalate to the main agent / human.
+3. **ComponentReviewer** and **TestReviewer** retries: max **2** cycles (ADR 0017), then escalate to the main agent / human. Hitting the cap, a repeated FAIL, or a static PASS then Runner/`tsc`/`eslint` FAIL is a Pipeline Incident — comment `## Pipeline Incident` on the Slice Issue.
 4. Specialist reports: `PASS|FAIL|ESCALATE` + ≤5 bullets unless `gate:full` after a rejection needs detail.
 5. E2E chain when required: **E2EPlanner → TestScaffold → TestReviewer (structural only)**. Never execute Playwright autonomously in Sandcastle.
+6. `/code-review` runs once per Slice after deterministic checks are green, not after every specialist hop.
 
 ---
 
