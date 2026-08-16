@@ -21,10 +21,12 @@ import {
 import { AddressDetailsCard } from './AddressDetailsCard';
 import { UsageLocationsTable } from './UsageLocationsTable';
 
-function AddressDetailsInner(props: {
+interface AddressDetailsInnerProps {
   masterKeyBytes: Uint8Array;
   addressId: string;
-}) {
+}
+
+function AddressDetailsInner(props: AddressDetailsInnerProps) {
   const { toast } = useToast();
   const router = useRouter();
 

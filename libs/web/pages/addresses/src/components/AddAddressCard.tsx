@@ -34,12 +34,20 @@ import {
 } from '../utils/addressForm';
 import { formatAddress } from '../utils/formatAddress';
 
-export function AddAddressCard(props: {
+interface AddAddressCardProps {
   open: boolean;
   items: AddressRecord[];
   onOpenChange: (open: boolean) => void;
   onAdd: (values: AddAddressFormValues) => Promise<AddressRecord>;
-}) {
+}
+
+interface StepBadgeProps {
+  active?: boolean;
+  done?: boolean;
+  label: string;
+}
+
+export function AddAddressCard(props: AddAddressCardProps) {
   const router = useRouter();
   const defaultValues = useMemo(
     () => ({
@@ -370,7 +378,7 @@ export function AddAddressCard(props: {
   );
 }
 
-function StepBadge(props: { active?: boolean; done?: boolean; label: string }) {
+function StepBadge(props: StepBadgeProps) {
   return (
     <div className="flex items-center gap-2">
       <span

@@ -11,7 +11,11 @@ interface VideoCarouselProps {
   loading: boolean;
 }
 
-function ChannelRow({ channel }: { channel: ChannelCarousel }) {
+interface ChannelRowProps {
+  channel: ChannelCarousel;
+}
+
+function ChannelRow({ channel }: ChannelRowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 

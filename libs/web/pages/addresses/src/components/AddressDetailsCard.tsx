@@ -2,7 +2,11 @@ import { AddressRecord } from '@myorganizer/core';
 import { Badge, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 import { formatAddress } from '../utils/formatAddress';
 
-export function AddressDetailsCard(props: { addressRecord: AddressRecord }) {
+interface AddressDetailsCardProps {
+  addressRecord: AddressRecord;
+}
+
+export function AddressDetailsCard(props: AddressDetailsCardProps) {
   const { addressRecord } = props;
   const fullAddress = formatAddress(addressRecord);
   const hasStructuredAddress = !!(

@@ -6,7 +6,11 @@ import { type ReactNode, useEffect, useState } from 'react';
 
 type GateState = 'checking' | 'redirecting' | 'guest';
 
-export default function RootAuthRedirect(props: { children: ReactNode }) {
+interface RootAuthRedirectProps {
+  children: ReactNode;
+}
+
+export default function RootAuthRedirect(props: RootAuthRedirectProps) {
   const router = useRouter();
   const [state, setState] = useState<GateState>('checking');
 

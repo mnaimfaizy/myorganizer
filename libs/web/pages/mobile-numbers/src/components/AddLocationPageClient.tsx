@@ -36,10 +36,12 @@ const addUsageLocationSchema = z.object({
 
 type AddUsageLocationFormValues = z.infer<typeof addUsageLocationSchema>;
 
-function AddLocationInner(props: {
+interface AddLocationInnerProps {
   masterKeyBytes: Uint8Array;
   mobileNumberId: string;
-}) {
+}
+
+function AddLocationInner(props: AddLocationInnerProps) {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -49,7 +51,7 @@ function AddLocationInner(props: {
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [usageLocations, setUsageLocations] = useState<UsageLocationRecord[]>(
-    []
+    [],
   );
 
   const usageForm = useForm<AddUsageLocationFormValues>({
@@ -84,7 +86,7 @@ function AddLocationInner(props: {
       .then(async (raw) => {
         const normalized = normalizeMobileNumbers(raw);
         const found = normalized.value.find(
-          (x) => x.id === props.mobileNumberId
+          (x) => x.id === props.mobileNumberId,
         );
         if (!found) {
           setNotFound(true);
@@ -133,7 +135,7 @@ function AddLocationInner(props: {
         value: v,
         label: titleCase(v),
       })),
-    []
+    [],
   );
 
   const updateMethodOptions = useMemo(
@@ -142,7 +144,7 @@ function AddLocationInner(props: {
         value: v,
         label: titleCase(v),
       })),
-    []
+    [],
   );
 
   const canAddUsage = usageForm.formState.isValid;
@@ -156,7 +158,7 @@ function AddLocationInner(props: {
 
     const normalized = normalizeMobileNumbers(raw);
     const nextMobileNumbers = normalized.value.map((x) =>
-      x.id === props.mobileNumberId ? { ...x, usageLocations: nextUsage } : x
+      x.id === props.mobileNumberId ? { ...x, usageLocations: nextUsage } : x,
     );
 
     await saveEncryptedData({
@@ -237,17 +239,17 @@ function AddLocationInner(props: {
                   organisationType: parseEnumValue(
                     OrganisationTypeEnum,
                     values.orgType,
-                    OrganisationTypeEnum.Other
+                    OrganisationTypeEnum.Other,
                   ),
                   updateMethod: parseEnumValue(
                     UpdateMethodEnum,
                     values.updateMethod,
-                    UpdateMethodEnum.Online
+                    UpdateMethodEnum.Online,
                   ),
                   priority: parseEnumValue(
                     PriorityEnum,
                     values.priority,
-                    PriorityEnum.Normal
+                    PriorityEnum.Normal,
                   ),
                   link: values.link?.trim() || '',
                   changed: values.changed,
@@ -276,19 +278,19 @@ function AddLocationInner(props: {
               organisationType: parseEnumValue(
                 OrganisationTypeEnum,
                 values.orgType,
-                OrganisationTypeEnum.Other
+                OrganisationTypeEnum.Other,
               ),
               updateMethod: parseEnumValue(
                 UpdateMethodEnum,
                 values.updateMethod,
-                UpdateMethodEnum.Online
+                UpdateMethodEnum.Online,
               ),
               changed: values.changed,
               link: values.link?.trim() ? values.link.trim() : undefined,
               priority: parseEnumValue(
                 PriorityEnum,
                 values.priority,
-                PriorityEnum.Normal
+                PriorityEnum.Normal,
               ),
               createdAt: now,
               changedAt: values.changed ? now : undefined,

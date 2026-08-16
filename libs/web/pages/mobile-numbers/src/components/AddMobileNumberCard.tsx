@@ -14,7 +14,7 @@ import {
 import { ChangeEvent } from 'react';
 import { COUNTRY_CALLING_CODES } from '../data/countryCodes';
 
-export function AddMobileNumberCard(props: {
+interface AddMobileNumberCardProps {
   label: string;
   countryCode: string;
   phoneNumber: string;
@@ -23,7 +23,9 @@ export function AddMobileNumberCard(props: {
   onCountryCodeChange: (value: string) => void;
   onPhoneNumberChange: (value: string) => void;
   onAdd: () => void | Promise<void>;
-}) {
+}
+
+export function AddMobileNumberCard(props: AddMobileNumberCardProps) {
   return (
     <Card className="p-4">
       <CardTitle className="text-lg">Add mobile number</CardTitle>

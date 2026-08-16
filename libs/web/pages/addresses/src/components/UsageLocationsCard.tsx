@@ -3,9 +3,11 @@ import { Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 
 import { titleCase } from '../utils/enumUtils';
 
-export function UsageLocationsCard(props: {
+interface UsageLocationsCardProps {
   usageLocations: UsageLocationRecord[];
-}) {
+}
+
+export function UsageLocationsCard(props: UsageLocationsCardProps) {
   return (
     <Card className="p-4">
       <CardTitle className="text-lg">Used at</CardTitle>

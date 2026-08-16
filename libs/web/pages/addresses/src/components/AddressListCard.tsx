@@ -13,11 +13,13 @@ import { useMemo, useState } from 'react';
 import { formatAddress } from '../utils/formatAddress';
 import { AddressListItem } from './AddressListItem';
 
-export function AddressListCard(props: {
+interface AddressListCardProps {
   items: AddressRecord[];
   onAddAddress: () => void;
   onDelete: (id: string) => void | Promise<void>;
-}) {
+}
+
+export function AddressListCard(props: AddressListCardProps) {
   const [query, setQuery] = useState('');
 
   const counts = useMemo(

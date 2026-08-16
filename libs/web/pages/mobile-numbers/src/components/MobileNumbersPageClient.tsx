@@ -28,7 +28,7 @@ const addMobileNumberSchema = z
       .min(1, 'Phone number is required')
       .regex(
         /^[0-9\s\-\(\)]+$/,
-        'Only numbers, spaces, hyphens, and parentheses allowed'
+        'Only numbers, spaces, hyphens, and parentheses allowed',
       ),
   })
   .refine(
@@ -39,12 +39,16 @@ const addMobileNumberSchema = z
     {
       message: 'Phone number must be between 7 and 15 digits',
       path: ['phoneNumber'],
-    }
+    },
   );
 
 type AddMobileNumberFormValues = z.infer<typeof addMobileNumberSchema>;
 
-function MobileNumbersInner(props: { masterKeyBytes: Uint8Array }) {
+interface MobileNumbersInnerProps {
+  masterKeyBytes: Uint8Array;
+}
+
+function MobileNumbersInner(props: MobileNumbersInnerProps) {
   const { toast } = useToast();
 
   const [items, setItems] = useState<MobileNumberRecord[]>([]);
