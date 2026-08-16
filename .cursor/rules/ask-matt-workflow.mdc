@@ -22,6 +22,7 @@ Routing highlights:
 - Ad-hoc fix now (no ticket) -> classify gate -> `implement` (+ `tdd` when appropriate)
 - Agreed spec ready to build -> `implement`
 - Design ambiguity -> `grill-with-docs`
+- Stale framework / library instructions -> `upstream-brief`
 - Vocabulary/shape problems -> `domain-modeling` / `codebase-design`
 - Runnable validation required -> `prototype` (+ `handoff` if crossing sessions)
 - Jest/Playwright work -> matching test workflow (mechanical may skip specialist hops)

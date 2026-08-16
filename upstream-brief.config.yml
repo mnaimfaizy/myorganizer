@@ -1,0 +1,40 @@
+# MyOrganizer adapter for the portable Upstream Brief skill.
+# Schema: .github/skills/upstream-brief/ADAPTER.md
+
+current_versions:
+  path: TECH_STACK.md
+
+instruction_globs:
+  - AGENTS.md
+  - CLAUDE.md
+  - GEMINI.md
+  - DEVELOPMENT.md
+  - .github/copilot-instructions.md
+  - .github/skills/**/*.md
+  - .github/agents/*.agent.md
+  - .claude/commands/*.md
+  - .cursor/rules/*.mdc
+  - docs/ui/GUIDELINES.md
+
+script_globs:
+  - tools/scripts/check-component-hygiene.mjs
+  - tools/scripts/check-test-hygiene.mjs
+  - tools/scripts/check-readme.mjs
+  - tools/scripts/check-vault-pages.mjs
+  - tools/scripts/check-auth-pages.mjs
+
+source_globs:
+  - apps/myorganizer/src/**/*.{ts,tsx}
+  - apps/backend/src/**/*.{ts,js}
+  - libs/web-ui/src/**/*.{ts,tsx}
+  - libs/web/pages/**/src/**/*.{ts,tsx}
+
+brief_dir: docs/research
+
+issue:
+  tracker: github
+  repository: mnaimfaizy/myorganizer
+  labels:
+    research: research
+    quality: qa
+    hitl: type:hitl

@@ -7,6 +7,7 @@ Use this workflow when it is unclear which MyOrganizer skill or sequence should 
    - Planned feature -> `/to-prd` then `/to-issues`
    - Agreed spec ready to build -> `/implement`
    - Design uncertainty -> `/grill-with-docs`
+   - Stale framework / library instructions -> `/upstream-brief`
    - Runnable exploration needed -> `/prototype` (and `/handoff` if crossing sessions)
    - Test updates -> `/unit-test-delegation-workflow` or `/playwright-e2e-workflow`
    - Review branch or WIP changes -> `/code-review`
