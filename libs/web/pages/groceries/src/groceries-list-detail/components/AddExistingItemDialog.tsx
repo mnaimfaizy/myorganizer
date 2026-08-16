@@ -3,17 +3,15 @@
 import type { CatalogItem, GroceryList } from '@myorganizer/core';
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   Input,
   Label,
-  cn,
 } from '@myorganizer/web-ui';
-import { Lock, Search } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { getCategoryEmoji } from '../../shared/constants/categories';
-import { formatMoney } from '../../shared/utils';
+import { Lock } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { AddExistingItemCatalogSelector } from './AddExistingItemCatalogSelector';
+import { AddExistingItemListSelector } from './AddExistingItemListSelector';
 
 interface AddExistingItemDialogProps {
   isOpen: boolean;
@@ -61,11 +59,9 @@ export function AddExistingItemDialog({
     setSelectedListIds(new Set(defaultListId ? [defaultListId] : []));
   }, [isOpen, defaultCatalogItemId, defaultListId]);
 
-  const filteredCatalog = useMemo(() => {
-    const trimmed = query.trim().toLowerCase();
-    if (!trimmed) return catalog;
-    return catalog.filter((item) => item.name.toLowerCase().includes(trimmed));
-  }, [catalog, query]);
+  const handleQueryChange = useCallback((newQuery: string) => {
+    setQuery(newQuery);
+  }, []);
 
   const handleSelectCatalogItem = useCallback((catalogItemId: string) => {
     setSelectedCatalogItemId(catalogItemId);
@@ -82,6 +78,13 @@ export function AddExistingItemDialog({
       return next;
     });
   }, []);
+
+  const handleAmountChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setAmount(event.target.value);
+    },
+    [],
+  );
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
@@ -137,100 +140,21 @@ export function AddExistingItemDialog({
             </div>
           ) : (
             <>
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="add-existing-item-search"
-                  className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide"
-                >
-                  Catalog Item
-                </Label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-on-surface-variant" />
-                  <Input
-                    id="add-existing-item-search"
-                    placeholder="Search catalog by name..."
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    disabled={isLoading}
-                    className="pl-9 text-base md:text-sm"
-                  />
-                </div>
+              <AddExistingItemCatalogSelector
+                catalog={catalog}
+                query={query}
+                onQueryChange={handleQueryChange}
+                selectedCatalogItemId={selectedCatalogItemId}
+                onSelectCatalogItem={handleSelectCatalogItem}
+                isLoading={isLoading}
+              />
 
-                <div
-                  role="radiogroup"
-                  aria-label="Select a Catalog Item"
-                  className="mt-2 max-h-60 overflow-y-auto rounded-lg border border-outline-variant divide-y divide-outline-variant"
-                >
-                  {filteredCatalog.length === 0 ? (
-                    <p className="px-3 py-4 text-sm text-on-surface-variant">
-                      No Catalog Items match "{query}".
-                    </p>
-                  ) : (
-                    filteredCatalog.map((item) => {
-                      const isSelected = item.id === selectedCatalogItemId;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          role="radio"
-                          aria-checked={isSelected}
-                          onClick={() => handleSelectCatalogItem(item.id)}
-                          disabled={isLoading}
-                          className={cn(
-                            'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors disabled:pointer-events-none disabled:opacity-50',
-                            isSelected
-                              ? 'bg-secondary-fixed/20'
-                              : 'hover:bg-surface-container-low',
-                          )}
-                        >
-                          <span
-                            className="text-lg shrink-0 leading-none"
-                            aria-hidden="true"
-                          >
-                            {getCategoryEmoji(item.category)}
-                          </span>
-                          <span className="grow min-w-0 truncate text-sm font-medium text-on-surface">
-                            {item.name}
-                          </span>
-                          {typeof item.price === 'number' && (
-                            <span className="shrink-0 text-xs font-medium text-on-surface-variant">
-                              {formatMoney(item.price)}
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
-                  Add to Lists
-                </Label>
-                <div className="space-y-2 rounded-lg border border-outline-variant p-3">
-                  {lists.length === 0 ? (
-                    <p className="text-sm text-on-surface-variant">
-                      There are no Grocery Lists yet.
-                    </p>
-                  ) : (
-                    lists.map((list) => (
-                      <label
-                        key={list.id}
-                        className="flex items-center gap-2 text-sm text-on-surface"
-                      >
-                        <Checkbox
-                          checked={selectedListIds.has(list.id)}
-                          onCheckedChange={() => handleToggleList(list.id)}
-                          disabled={isLoading}
-                          aria-label={`Add to ${list.name}`}
-                        />
-                        {list.name}
-                      </label>
-                    ))
-                  )}
-                </div>
-              </div>
+              <AddExistingItemListSelector
+                lists={lists}
+                selectedListIds={selectedListIds}
+                onToggleList={handleToggleList}
+                isLoading={isLoading}
+              />
 
               <div className="space-y-1.5">
                 <Label
@@ -246,7 +170,7 @@ export function AddExistingItemDialog({
                   id="add-existing-item-amount"
                   placeholder="e.g. 2, 500g"
                   value={amount}
-                  onChange={(event) => setAmount(event.target.value)}
+                  onChange={handleAmountChange}
                   disabled={isLoading}
                   className="text-base md:text-sm"
                 />
