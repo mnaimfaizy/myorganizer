@@ -29,4 +29,6 @@ The full label vocabulary:
 
 ## Consequences
 
-The label names are a shared contract. Renaming a label requires updating the orchestrator source (`dispatch-agents` filter logic) and re-labelling all open issues simultaneously. Do not rename labels without a migration script.
+The label names are a shared contract. Renaming a label requires updating the orchestrator source (`dispatch-agents` filter logic) and re-labelling all open issues simultaneously. Do not rename labels without a migration script. The machine-readable copy is `tools/config/github-labels.json`.
+
+These labels apply to Issues only. Pull Requests use Surface Labels ([ADR 0025](0025-pr-surface-labels.md)).

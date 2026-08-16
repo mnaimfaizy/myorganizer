@@ -2,81 +2,13 @@
 
 import { spawnSync } from 'node:child_process';
 
-const REPO = 'mnaimfaizy/myorganizer';
+import {
+  loadGithubLabelCatalog,
+  provisionLabels,
+} from '../lib/github-labels.mjs';
 
-const LABELS = [
-  {
-    name: 'ready-for-agent',
-    color: '0075ca',
-    description:
-      'Orchestrator may pick this issue up for autonomous processing',
-  },
-  {
-    name: 'complexity:low',
-    color: 'c5def5',
-    description: 'Route to Haiku — simple, well-scoped task',
-  },
-  {
-    name: 'complexity:medium',
-    color: 'bfd4f2',
-    description: 'Route to Sonnet — moderate complexity task',
-  },
-  {
-    name: 'complexity:high',
-    color: '84b6eb',
-    description: 'Route to Opus — complex task requiring deep reasoning',
-  },
-  {
-    name: 'gate:mechanical',
-    color: 'd4c5f9',
-    description:
-      'Mechanical path — main agent edits; no specialist chains (ADR 0012)',
-  },
-  {
-    name: 'gate:standard',
-    color: 'b392f0',
-    description: 'Single-hop specialist path (ADR 0012)',
-  },
-  {
-    name: 'gate:full',
-    color: '6f42c1',
-    description: 'Full mandatory multi-agent pipelines (ADR 0012)',
-  },
-  {
-    name: 'type:afk',
-    color: 'e4e669',
-    description: 'Agent can implement and merge without human interaction',
-  },
-  {
-    name: 'type:hitl',
-    color: 'f9d0c4',
-    description:
-      'Human decision required before agent can proceed — skipped by dispatch-agents',
-  },
-  {
-    name: 'status:in-progress',
-    color: 'fef2c0',
-    description: 'Agent has picked up the issue and is working on it',
-  },
-  {
-    name: 'status:blocked',
-    color: 'd93f0b',
-    description:
-      'Waiting on blocker issue(s) in ## Blocked by — skipped by dispatch-agents until unblocked',
-  },
-  {
-    name: 'status:done',
-    color: '0e8a16',
-    description:
-      'Agent finished; slice integrated into the local feature branch',
-  },
-  {
-    name: 'prd',
-    color: '6f42c1',
-    description:
-      'Product Requirements Document — parent issue for a planned feature',
-  },
-];
+const REPO = 'mnaimfaizy/myorganizer';
+const LABELS = provisionLabels(loadGithubLabelCatalog());
 
 function run(args) {
   return spawnSync('gh', args, {

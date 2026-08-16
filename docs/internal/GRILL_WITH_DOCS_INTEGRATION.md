@@ -6,7 +6,7 @@ The `grill-with-docs` skill from [mattpocock/skills](https://github.com/mattpoco
 
 ## 📁 Files Created
 
-### Main Skill Directory: `.github/skills/grill-with-docs/`
+### Main Skill Directory: `.agents/skills/grill-with-docs/`
 
 1. **SKILL.md** — Core skill definition
    - Grilling interview approach (ask one question at a time)
@@ -52,18 +52,14 @@ The `grill-with-docs` skill from [mattpocock/skills](https://github.com/mattpoco
 - ✅ Explained key documents to maintain
 - ✅ Referenced format templates
 
-### 4. Cursor (`.cursor/rules/grill-with-docs.mdc`)
+### 4. Cursor
 
-- ✅ Created new rule file with MDC frontmatter
-- ✅ When to use instructions with concrete examples
-- ✅ Core approach (relentless interviewing, code exploration, terminology sharpening)
-- ✅ MyOrganizer-specific context and tech stack
+- ✅ Discovers `grill-with-docs` from `.agents/skills/` (ADR 0020). Workflow `.mdc` copies were removed.
 
 ### 5. Project Agents Guide (AGENTS.md)
 
-- ✅ Added bullet point for design/planning requests
-- ✅ Links to `.github/skills/grill-with-docs/SKILL.md`
-- ✅ Explains CONTEXT.md and ADR documentation
+- ✅ Routes design/planning requests to `.agents/skills/grill-with-docs/SKILL.md`
+- ✅ Does not restate the Skill procedure (ADR 0020)
 
 ## 🎯 How to Use
 
@@ -83,7 +79,7 @@ this architectural decision against our domain model."
 
 ### For Cursor Users
 
-The grill-with-docs rule is enabled in `.cursor/rules/` and will be applied to relevant conversations.
+The grill-with-docs Skill in `.agents/skills/` is discovered by Cursor like other repo Skills.
 
 ### For Gemini Users
 
@@ -131,7 +127,7 @@ The skill is pre-configured with MyOrganizer's:
 **Domain Terms:**
 
 - Vault (E2EE storage, ciphertext-only on server)
-- Todo (task/item, vault-backed)
+- Task (vault-backed)
 - Subscription (recurring, vault-backed)
 - User (authenticated account holder)
 - Organization (group for resources)
@@ -148,7 +144,7 @@ The skill is pre-configured with MyOrganizer's:
 **Key Constraints:**
 
 - Vault = ciphertext-only on server (no plaintext indexing)
-- Todos are vault-backed (not a plaintext Prisma model)
+- Tasks are vault-backed (not a plaintext Prisma model)
 
 ## ✨ What's Next?
 

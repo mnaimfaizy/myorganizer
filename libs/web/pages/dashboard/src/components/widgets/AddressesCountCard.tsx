@@ -6,11 +6,13 @@ import { useEffect, useState } from 'react';
 
 import { VaultStatCard } from './VaultStatCard';
 
+interface AddressesCountCardProps {
+  masterKeyBytes: Uint8Array | null;
+}
+
 export function AddressesCountCard({
   masterKeyBytes,
-}: {
-  masterKeyBytes: Uint8Array | null;
-}) {
+}: AddressesCountCardProps) {
   return (
     <VaultStatCard
       masterKeyBytes={masterKeyBytes}
@@ -22,7 +24,11 @@ export function AddressesCountCard({
   );
 }
 
-function AddressesContent({ masterKeyBytes }: { masterKeyBytes: Uint8Array }) {
+interface AddressesContentProps {
+  masterKeyBytes: Uint8Array;
+}
+
+function AddressesContent({ masterKeyBytes }: AddressesContentProps) {
   const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {

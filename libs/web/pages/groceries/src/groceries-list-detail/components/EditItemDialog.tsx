@@ -4,24 +4,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import type { GroceryItem } from '@myorganizer/core';
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   Form,
-  Input,
-  Label,
-  cn,
 } from '@myorganizer/web-ui';
 import { Info, Lock } from 'lucide-react';
-import { useEffect } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import {
-  CATEGORY_EMOJIS,
-  CATEGORY_LABELS,
-  CATEGORY_ORDER,
-} from '../../shared/constants/categories';
+import { useCallback, useEffect } from 'react';
+import { useForm } from 'react-hook-form';
 import { editItemSchema, type EditItemFormValues } from '../schemas';
-import { LinksInput } from './LinksInput';
+import {
+  EditItemCoreFields,
+  EditItemDetailsFields,
+} from './EditItemFormFields';
 
 interface EditItemDialogProps {
   item: GroceryItem | null;
@@ -103,12 +97,19 @@ export function EditItemDialog({
     }
   });
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      form.reset();
-      onClose();
-    }
-  };
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        form.reset();
+        onClose();
+      }
+    },
+    [form, onClose],
+  );
+
+  const handleCancel = useCallback(() => {
+    handleOpenChange(false);
+  }, [handleOpenChange]);
 
   // Re-initialise form values whenever the item prop changes.
   // isValid is re-evaluated by RHF on the first onChange interaction; the Save
@@ -137,7 +138,6 @@ export function EditItemDialog({
 
   const selectedCategory = form.watch('category');
   const watchImageUrl = form.watch('imageUrl');
-  const isValidImageUrl = watchImageUrl && watchImageUrl.startsWith('http');
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
@@ -162,218 +162,20 @@ export function EditItemDialog({
 
             {/* Body */}
             <div className="px-6 py-5 space-y-5 max-h-[60vh] overflow-y-auto">
-              {/* Item Name */}
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="item-name"
-                  className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide"
-                >
-                  Item Name <span className="text-error">*</span>
-                </Label>
-                <Input
-                  id="item-name"
-                  placeholder="e.g., Organic Bananas"
-                  {...form.register('name')}
-                  disabled={isLoading}
-                  maxLength={200}
-                  autoFocus
-                  className="text-base md:text-sm"
-                />
-                {form.formState.errors.name && (
-                  <p className="text-xs text-error">
-                    {form.formState.errors.name.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Category icon grid */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
-                  Category
-                </Label>
-                <Controller
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <div className="grid grid-cols-4 gap-2">
-                      {CATEGORY_ORDER.map((cat) => (
-                        <button
-                          key={cat}
-                          type="button"
-                          onClick={() => field.onChange(cat)}
-                          className={cn(
-                            'flex flex-col items-center justify-center p-2 rounded-lg transition-all text-center',
-                            selectedCategory === cat
-                              ? 'border-2 border-secondary bg-secondary-fixed/20'
-                              : 'border border-outline-variant bg-surface-bright hover:border-secondary',
-                          )}
-                        >
-                          <span className="text-lg mb-0.5" aria-hidden="true">
-                            {CATEGORY_EMOJIS[cat]}
-                          </span>
-                          <span
-                            className={cn(
-                              'text-[10px] font-medium leading-tight',
-                              selectedCategory === cat
-                                ? 'font-bold text-secondary'
-                                : 'text-on-surface-variant',
-                            )}
-                          >
-                            {CATEGORY_LABELS[cat]}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                />
-              </div>
-
-              {/* Amount + Price */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="item-amount"
-                    className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide"
-                  >
-                    Quantity / Amount
-                  </Label>
-                  <Input
-                    id="item-amount"
-                    placeholder="e.g., 2L, 1 dozen"
-                    {...form.register('amount')}
-                    disabled={isLoading}
-                    className="text-base md:text-sm"
-                  />
-                  {form.formState.errors.amount && (
-                    <p className="text-xs text-error">
-                      {form.formState.errors.amount.message}
-                    </p>
-                  )}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label
-                    htmlFor="item-price"
-                    className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide"
-                  >
-                    Estimated Price
-                  </Label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-2.5 text-on-surface-variant font-bold text-sm">
-                      $
-                    </span>
-                    <Input
-                      id="item-price"
-                      placeholder="0.00"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      {...form.register('price')}
-                      disabled={isLoading}
-                      className="pl-6 text-base md:text-sm"
-                    />
-                  </div>
-                  {form.formState.errors.price && (
-                    <p className="text-xs text-error">
-                      {form.formState.errors.price.message}
-                    </p>
-                  )}
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="item-notes"
-                  className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide"
-                >
-                  Notes
-                </Label>
-                <textarea
-                  id="item-notes"
-                  placeholder="e.g., Get organic if available"
-                  {...form.register('notes')}
-                  disabled={isLoading}
-                  rows={3}
-                  maxLength={1000}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-lg text-base md:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-secondary bg-surface-bright"
-                />
-                {form.formState.errors.notes && (
-                  <p className="text-xs text-error">
-                    {form.formState.errors.notes.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Image URL */}
-              <div className="space-y-1.5">
-                <Label
-                  htmlFor="item-imageUrl"
-                  className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide"
-                >
-                  Image URL{' '}
-                  <span className="text-xs normal-case font-normal text-text-muted">
-                    (optional)
-                  </span>
-                </Label>
-                <Input
-                  id="item-imageUrl"
-                  placeholder="https://example.com/image.jpg"
-                  type="url"
-                  {...form.register('imageUrl')}
-                  disabled={isLoading}
-                  className="text-base md:text-sm"
-                />
-                {form.formState.errors.imageUrl && (
-                  <p className="text-xs text-error">
-                    {form.formState.errors.imageUrl.message}
-                  </p>
-                )}
-                {/* Image preview */}
-                {isValidImageUrl && (
-                  <div className="mt-2 rounded-lg overflow-hidden border border-outline-variant">
-                    <img
-                      src={watchImageUrl}
-                      alt="Item preview"
-                      className="max-w-xs max-h-48 rounded"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Links */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
-                  Links{' '}
-                  <span className="text-xs normal-case font-normal text-text-muted">
-                    (optional, max 10)
-                  </span>
-                </Label>
-                <LinksInput control={form.control} />
-                {form.formState.errors.links && (
-                  <p className="text-xs text-error">
-                    {form.formState.errors.links.message}
-                  </p>
-                )}
-              </div>
-
-              {/* Mark as done (edit-only) */}
-              <div className="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg border border-outline-variant">
-                <Checkbox
-                  id="item-checked"
-                  {...form.register('checked')}
-                  disabled={isLoading}
-                />
-                <Label
-                  htmlFor="item-checked"
-                  className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide cursor-pointer grow"
-                >
-                  Mark as done
-                </Label>
-              </div>
+              <EditItemCoreFields
+                control={form.control}
+                register={form.register}
+                errors={form.formState.errors}
+                selectedCategory={selectedCategory}
+                isLoading={isLoading}
+              />
+              <EditItemDetailsFields
+                control={form.control}
+                register={form.register}
+                errors={form.formState.errors}
+                watchImageUrl={watchImageUrl}
+                isLoading={isLoading}
+              />
             </div>
 
             {/* Footer */}
@@ -388,7 +190,7 @@ export function EditItemDialog({
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => handleOpenChange(false)}
+                  onClick={handleCancel}
                   disabled={isLoading}
                 >
                   Cancel

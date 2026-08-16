@@ -5,11 +5,11 @@ Playwright E2E · `@playwright/test` · `yarn nx e2e myorganizer-e2e`
 > **Canonical E2E guidance lives in the skill, not here.**
 >
 > - Workflow, gate routing, and the never-execute-autonomously policy:
->   [`.github/skills/playwright-e2e-workflow/SKILL.md`](../../../.github/skills/playwright-e2e-workflow/SKILL.md)
+>   [`.agents/skills/playwright-e2e-workflow/SKILL.md`](../../../.agents/skills/playwright-e2e-workflow/SKILL.md)
 > - Flow matrix, selector rules, validation:
->   [`references/runbook.md`](../../../.github/skills/playwright-e2e-workflow/references/runbook.md)
+>   [`references/runbook.md`](../../../.agents/skills/playwright-e2e-workflow/references/runbook.md)
 > - Code-level patterns and anti-patterns (Radix, vault unlock, CORS, forms, cross-browser):
->   [`references/e2e-patterns.md`](../../../.github/skills/playwright-e2e-workflow/references/e2e-patterns.md)
+>   [`references/e2e-patterns.md`](../../../.agents/skills/playwright-e2e-workflow/references/e2e-patterns.md)
 >
 > This file covers only the tooling facts specific to the Nx project.
 

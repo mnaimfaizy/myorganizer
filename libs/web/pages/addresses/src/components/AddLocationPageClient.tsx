@@ -42,10 +42,12 @@ const addUsageLocationSchema = z.object({
 
 type AddUsageLocationFormValues = z.infer<typeof addUsageLocationSchema>;
 
-function AddLocationInner(props: {
+interface AddLocationInnerProps {
   masterKeyBytes: Uint8Array;
   addressId: string;
-}) {
+}
+
+function AddLocationInner(props: AddLocationInnerProps) {
   const { toast } = useToast();
   const router = useRouter();
   const searchParams = useSearchParams();

@@ -116,7 +116,7 @@ keep re-deciding a question the table above answers.
 
 The scoping rules now live in canonical `.github/agents/explore.agent.md`, so they survive the sync.
 The harness-specific parts (tool names) use the `<!-- harness:... -->` mechanism documented in
-`.github/skills/sub-agent-sync-workflow/SKILL.md`.
+`.agents/skills/sub-agent-sync-workflow/SKILL.md`.
 
 ## Harness registration
 

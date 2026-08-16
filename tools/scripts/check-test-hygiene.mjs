@@ -15,6 +15,7 @@
  * Exit codes: 0 = no errors, 1 = at least one error, 2 = bad invocation.
  */
 
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -29,11 +30,26 @@ import {
 const USAGE = `Usage:
   node tools/scripts/check-test-hygiene.mjs <file> [<file> ...]
   node tools/scripts/check-test-hygiene.mjs --json <file> [<file> ...]
+  node tools/scripts/check-test-hygiene.mjs [--json] --all
+  node tools/scripts/check-test-hygiene.mjs [--json] --staged
 
 Runs the mechanical (non-judgment) TestReviewer checklist items against Jest
 test files. E2E specs under apps/myorganizer-e2e are skipped — they have their
-own rules in .github/skills/playwright-e2e-workflow/references/e2e-patterns.md.
+own rules in .agents/skills/playwright-e2e-workflow/references/e2e-patterns.md.
 `;
+
+const TEST_PATHS = [
+  '*.spec.ts',
+  '*.spec.tsx',
+  '*.spec.js',
+  '*.spec.jsx',
+  '*.test.ts',
+  '*.test.tsx',
+  '*.test.js',
+  '*.test.jsx',
+];
+
+const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
 
 // --- individual checks -------------------------------------------------------
 
@@ -204,8 +220,8 @@ function checkUnusedMockCasts(code, raw, findings) {
   }
 }
 
-function checkVacuousAssertions(code, raw, findings) {
-  const total = (code.match(/\bexpect\s*\(/g) ?? []).length;
+function checkVacuousAssertions(code, raw, findings, helperAssertions = 0) {
+  const total = (code.match(/\bexpect\s*\(/g) ?? []).length + helperAssertions;
   if (total === 0) {
     findings.push({
       level: 'error',
@@ -236,14 +252,98 @@ const CHECKS = [
   checkDuplicateHelpers,
   checkMockReturnValueOnce,
   checkUnusedMockCasts,
-  checkVacuousAssertions,
 ];
+
+async function resolveLocalModule(file, specifier) {
+  const base = path.resolve(path.dirname(file), specifier);
+  const candidates = path.extname(base)
+    ? [base]
+    : [
+        ...SOURCE_EXTENSIONS.map((extension) => `${base}${extension}`),
+        ...SOURCE_EXTENSIONS.map((extension) =>
+          path.join(base, `index${extension}`),
+        ),
+      ];
+
+  for (const candidate of candidates) {
+    try {
+      const stats = await fs.stat(candidate);
+      if (stats.isFile()) return candidate;
+    } catch {
+      // Try the next supported source extension.
+    }
+  }
+  return null;
+}
+
+function importedBindings(raw, code) {
+  const bindings = [];
+  const importRe = /^\s*import\s*{[^}]+}\s*from\s*['"]/gm;
+  let match;
+  while ((match = importRe.exec(code)) !== null) {
+    const slice = raw.slice(match.index, match.index + 1000);
+    const recovered = slice.match(
+      /import\s*{([^}]+)}\s*from\s*(['"])(\.[^'"]+)\2/,
+    );
+    if (!recovered) continue;
+
+    for (const binding of recovered[1].split(',')) {
+      const [imported, local = imported] = binding.trim().split(/\s+as\s+/);
+      if (imported && local) {
+        bindings.push({ imported, local, specifier: recovered[3] });
+      }
+    }
+  }
+  return bindings;
+}
+
+function exportedHelperHasAssertion(raw, exportedName) {
+  const code = maskNonCode(raw);
+  const escapedName = exportedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const declarationRe = new RegExp(
+    `\\bexport\\s+(?:(?:async\\s+)?function\\s+${escapedName}\\s*\\(|const\\s+${escapedName}\\s*=)`,
+  );
+  const declaration = declarationRe.exec(code);
+  if (!declaration) return false;
+  return /\bexpect\s*\(/.test(blockAfter(code, declaration.index));
+}
+
+async function countCalledLocalAssertionHelpers(file, raw, code) {
+  let count = 0;
+  const moduleCache = new Map();
+
+  for (const binding of importedBindings(raw, code)) {
+    const callCount = (
+      code.match(new RegExp(`\\b${binding.local}\\s*\\(`, 'g')) ?? []
+    ).length;
+    if (!callCount) continue;
+
+    const modulePath = await resolveLocalModule(file, binding.specifier);
+    if (!modulePath) continue;
+    let moduleSource = moduleCache.get(modulePath);
+    if (moduleSource === undefined) {
+      moduleSource = normalize(await fs.readFile(modulePath, 'utf8'));
+      moduleCache.set(modulePath, moduleSource);
+    }
+    if (exportedHelperHasAssertion(moduleSource, binding.imported)) {
+      count += callCount;
+    }
+  }
+
+  return count;
+}
 
 async function inspect(file) {
   const raw = normalize(await fs.readFile(file, 'utf8'));
   const code = maskNonCode(raw);
   const findings = [];
   for (const check of CHECKS) check(code, raw, findings);
+  const helperAssertions = await countCalledLocalAssertionHelpers(
+    file,
+    raw,
+    code,
+  );
+  checkVacuousAssertions(code, raw, findings, helperAssertions);
   findings.sort((a, b) => a.line - b.line);
   return findings;
 }
@@ -255,6 +355,58 @@ function isE2E(file) {
     .includes('apps/myorganizer-e2e/');
 }
 
+function collectGitFiles(mode) {
+  const root = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+    encoding: 'utf8',
+  }).trim();
+  const args =
+    mode === 'all'
+      ? ['ls-files', '-z', '--', ...TEST_PATHS]
+      : [
+          'diff',
+          '--cached',
+          '--name-only',
+          '--diff-filter=ACMR',
+          '-z',
+          '--',
+          ...TEST_PATHS,
+        ];
+  const output = execFileSync('git', args, {
+    cwd: root,
+    encoding: 'utf8',
+  });
+  process.chdir(root);
+  return output
+    .split('\0')
+    .filter(Boolean)
+    .filter((file) => !isE2E(file));
+}
+
+function printResults(results, concise) {
+  for (const result of results) {
+    if (result.skipped) {
+      if (!concise) {
+        console.log(
+          `\n${result.file}\n  SKIPPED (E2E spec — structural rules live in the Playwright skill)`,
+        );
+      }
+      continue;
+    }
+    if (concise && !result.findings.length) continue;
+    console.log(`\n${result.file}`);
+    if (!result.findings.length) {
+      console.log('  PASS — no mechanical issues');
+      continue;
+    }
+    for (const finding of result.findings) {
+      const tag = finding.level === 'error' ? 'ERROR' : 'WARN ';
+      console.log(
+        `  ${tag} ${finding.rule} (line ${finding.line})\n        ${finding.message}`,
+      );
+    }
+  }
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   if (!argv.length || argv.includes('--help') || argv.includes('-h')) {
@@ -264,8 +416,33 @@ async function main() {
   }
 
   const json = argv.includes('--json');
-  const files = argv.filter((a) => !a.startsWith('--'));
+  const all = argv.includes('--all');
+  const staged = argv.includes('--staged');
+  const unknownFlags = argv.filter(
+    (arg) =>
+      arg.startsWith('--') && !['--json', '--all', '--staged'].includes(arg),
+  );
+  const explicitFiles = argv.filter((arg) => !arg.startsWith('--'));
+  if (
+    unknownFlags.length ||
+    (all && staged) ||
+    ((all || staged) && explicitFiles.length)
+  ) {
+    process.stderr.write(USAGE);
+    process.exitCode = 2;
+    return;
+  }
+  const selector = all ? 'all' : staged ? 'staged' : null;
+  const files = selector ? collectGitFiles(selector) : explicitFiles;
   if (!files.length) {
+    if (staged) {
+      process.stdout.write('No staged Jest files to check.\n');
+      return;
+    }
+    if (all) {
+      process.stdout.write('Checked 0 Jest files: 0 error(s), 0 warning(s)\n');
+      return;
+    }
     process.stderr.write(USAGE);
     process.exitCode = 2;
     return;
@@ -308,28 +485,11 @@ async function main() {
       `${JSON.stringify({ errors, warnings, results }, null, 2)}\n`,
     );
   } else {
-    for (const result of results) {
-      if (result.skipped) {
-        console.log(
-          `\n${result.file}\n  SKIPPED (E2E spec — structural rules live in the Playwright skill)`,
-        );
-        continue;
-      }
-      console.log(`\n${result.file}`);
-      if (!result.findings.length) {
-        console.log('  PASS — no mechanical issues');
-        continue;
-      }
-      for (const f of result.findings) {
-        const tag = f.level === 'error' ? 'ERROR' : 'WARN ';
-        console.log(
-          `  ${tag} ${f.rule} (line ${f.line})\n        ${f.message}`,
-        );
-      }
-    }
-    console.log(
-      `\nMechanical hygiene: ${errors} error(s), ${warnings} warning(s)`,
-    );
+    printResults(results, all);
+    const summary = all
+      ? `Checked ${files.length} Jest files`
+      : 'Mechanical hygiene';
+    console.log(`\n${summary}: ${errors} error(s), ${warnings} warning(s)`);
   }
 
   process.exitCode = errors > 0 ? 1 : 0;

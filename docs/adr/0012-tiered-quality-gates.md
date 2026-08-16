@@ -16,7 +16,7 @@ Quality depth is selected by a **gate tier**, not by “always full pipeline.”
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `gate:mechanical` | Fixture/type retarget, rename, delete dead code, selector-only E2E string fix, already-satisfied AC verification, import/path fix with no behavior change | Main agent may edit directly (interactive or AFK)                                                                   | Focused lint + focused tests (or `tsc` for type-only). No specialist chain. Short report (≤5 bullets).                                                          |
 | `gate:standard`   | Single-surface behavior change: one component props/state fix, one schema field, one assertion suite update                                               | One specialist hop when that artifact type changes (e.g. TestScaffold **or** ComponentBuilder), not both by default | Specialist + matching Reviewer **or** Runner once. Collapse redundant re-runs. Cap retries at 2 ([ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md)). |
-| `gate:full`       | New UI primitive/feature module, vault/crypto, API contract, multi-file product behavior, ambiguous UX                                                    | Current mandatory chains                                                                                            | Full documented pipelines. ComponentReviewer retry cap = 2 (mirror test pipeline; [ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md)).                |
+| `gate:full`       | New UI primitive/feature module, vault/crypto, API contract, multi-file product behavior, ambiguous UX                                                    | Current mandatory chains. **API Contract** uses One-shot Specialists (ADR 0015), not a Gated Pipeline.              | Full documented pipelines. ComponentReviewer retry cap = 2 (mirror test pipeline; [ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md)). API Contract: PrismaWriter → ApiWriter → ApiSync, then leave. |
 
 ### Session modes (same tiers, different entry)
 
@@ -67,6 +67,7 @@ No novel-length checklist dumps unless `gate:full` and the reviewer rejected onc
 
 - This does **not** remove GUIDELINES, behavior matrices, or vault safety rules for structural work.
 - This does **not** authorize plaintext vault APIs or skipping OpenAPI sync after contract changes.
+- API Contract execution is One-shot Specialists (ADR 0015), not ComponentBuilder-style retry loops.
 - This does **not** make E2E autonomous in Sandcastle (still structural-only per ADR 0004).
 
 ## Considered Options

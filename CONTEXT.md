@@ -159,12 +159,16 @@ _Avoid_: Soft lock, cooldown, Shorts ban, timeout
 ## Frontend Architecture
 
 **UI Primitive**:
-A reusable, stateless React component in `libs/web-ui/`. Built on Radix UI with Tailwind CSS and CVA variants. Has no knowledge of domain state, vault data, or route context.
-_Avoid_: Shared component, base component, core component, common component
+A reusable React component in `libs/web-ui/` with no knowledge of domain state, vault data, or route context. It must be fully expressible with mock props — that expressibility is required, not optional. Stateful interaction (checked, open, a mount point that fires a toast) does not disqualify it; domain knowledge does.
+_Avoid_: Shared component, base component, core component, common component, stateless component (as the definition)
 
 **Feature Component**:
 A React component in `libs/web/pages/<route>/src/components/` that composes UI Primitives with domain logic and route-specific state. Never imported by other routes.
 _Avoid_: Page component, route component, smart component
+
+**Vault UI Component**:
+A presentational component in `libs/web-vault-ui` that shows vault-adjacent state from mockable props. It knows the vault domain, so it is not a UI Primitive; it is reused across routes, so it is not a Feature Component.
+_Avoid_: UI Primitive (wrong scope), Feature Component, vault widget, vault card (as the scope name)
 
 **Structured Spec**:
 The handoff document the main agent passes to ComponentBuilder. Contains: component name, target path, scope (UI Primitive or Feature Component), props interface, state ownership, Zod schema if applicable, and relevant guideline references.
@@ -210,6 +214,14 @@ _Avoid_: Blocked issue, human task
 The `yarn dispatch-agents --prd <issue-number>` command that triggers the sandcastle orchestrator. Reads AFK Slice Issues labelled `ready-for-agent`, creates the feature branch **locally (never pushed)**, and runs one sandcastle agent per slice — one at a time, in Docker isolation — fast-forwarding each finished slice into the local feature branch and closing the slice issue. Integration is local: you push the feature branch and open one PR to `main` by hand.
 _Avoid_: Agent runner, orchestrator command, run-agents
 
+**Issue Orchestration Label**:
+A GitHub label from the ADR 0002 vocabulary that coordinates planning tools and dispatch-agents. Applies to Issues only — never to Pull Requests.
+_Avoid_: agent label, workflow label, status label (as the general name)
+
+**Surface Label**:
+A GitHub label that names a change's kind (`bug`, `enhancement`, `documentation`, …) or area (`backend`, `web-app`, …). Distinct from Issue Orchestration Labels. Issues may wear both; Pull Requests wear Surface Labels only.
+_Avoid_: PR label (as a second vocabulary), topic tag, category
+
 **Gated Pipeline**:
 A specialist chain that retries between agents until a reviewer or runner verdict passes, with a cap. Components and Jest use this shape. Hitting the cap is a stop, not another silent retry.
 _Avoid_: review loop, QA cycle, writer-reviewer loop
@@ -226,6 +238,54 @@ _Avoid_: retry, reviewer fix, send-back
 A durable note that a specialist or gate wasted a cycle, repeated the same FAIL, or missed something a sibling already solved. Written so the specialist can be improved. Not a retry and not an Orchestrator Patch.
 _Avoid_: quality flag, agent bug report, suspicious behavior, loop smell
 
+**API Contract**:
+The public HTTP surface for one capability: what a client may send, what it receives, and the meaning of success and failure.
+_Avoid_: backend API, endpoint (as the unit of work), REST resource
+
+**Independent Hop**:
+A specialist job that does not need another specialist's output. Only Independent Hops may run in parallel. The orchestrator judges this; specialists do not schedule themselves.
+_Avoid_: fan-out, parallel pipeline, concurrent by default
+
+**Upstream Brief**:
+A dated, cited report of how this repo's instructions and usage compare to official upstream documentation for named languages, frameworks, or libraries. Records future-risk, mismatch, and missed improvement only. Its proposed plan may change instructions and hygiene scripts; application-code findings are follow-on, not part of that plan. Never a package upgrade plan.
+_Avoid_: research base, research note, upgrade plan, dependency audit
+
+## Documentation
+
+**Agent Guide**:
+Nested agent instructions colocated with the project they constrain. Under `apps/`, the only instruction document besides an Operational README. Under `libs/`, the only instruction document besides at most one Library README per Nx library.
+_Avoid_: project README (when you mean agent rules), local instructions, CLAUDE.md as a second copy of the same rules
+
+**Operational README**:
+A human-facing runbook for a deployable app, living next to that app because people run it from there. At most one per app. Not a feature write-up, design note, or ticket close-out.
+_Avoid_: feature README, page README, colocated design doc, implementation summary, component breakdown, Library README
+
+**Library README**:
+A human-facing package readme for an Nx library: what the package is, how to consume it, and what not to hand-edit. At most one per library. Not a feature write-up, page README, or Agent Guide.
+_Avoid_: feature README, page README, Operational README (when you mean a library), Nx scaffold README
+
+## Harness & Instructions
+
+**Harness**:
+A coding-agent product that loads this repo's instructions (Cursor, Claude Code, Gemini CLI, GitHub Copilot).
+_Avoid_: IDE, vendor, tool (when you mean the product)
+
+**Instruction File**:
+Always-on policy markdown a Harness injects into the session. Repo-wide policy has one human-edited Instruction File; other roots are Harness Adapters. Distinct from a Skill, which loads only when the task matches. May include chooser lines (which Skill to load when requests collide); must not restate a Skill's procedure.
+_Avoid_: memory file, system prompt, copilot instructions (as the general name)
+
+**Skill**:
+An on-demand workflow a Harness loads when the task matches. The repo has one Skill tree; Harnesses discover it natively or via a Harness Adapter and must not copy the body.
+_Avoid_: command, rule, workflow file (when you mean the Skill)
+
+**Harness Adapter**:
+A Harness-specific discovery file that exists so that Harness finds an Instruction File or Skill, and that must not restate policy. Distinct from a Platform Adapter.
+_Avoid_: Adapter (unqualified), copy, wrapper, sync target
+
+**Sub-agent**:
+A named specialist with its own instruction body and model pin, invoked by the main agent for a bounded job. Humans edit one canonical body; each Harness receives a generated Harness Adapter because model pins and tool names are not portable.
+_Avoid_: agent (unqualified), custom agent (when you mean the role)
+
 ## Agent Roles
 
 **ComponentBuilder**:
@@ -239,3 +299,11 @@ _Avoid_: Code reviewer, linter agent, review agent
 **DepSync**:
 The sub-agent and skill responsible for keeping `TECH_STACK.md` and the fixed set of authoritative files current when dependencies are installed, updated, or removed.
 _Avoid_: Dependency agent, package sync, doc updater
+
+**ApiWriter**:
+The One-shot Specialist that implements an API Contract from a brief. Returns a report and stops. Not a Gated Pipeline.
+_Avoid_: BackendBuilder, API agent, ContractBuilder, backend writer
+
+**PrismaWriter**:
+The One-shot Specialist that changes persistence: Prisma schema, generated client types, and the migration produced from that schema. Returns a report and stops. Not folded into ApiWriter.
+_Avoid_: schema agent, migration agent, database writer

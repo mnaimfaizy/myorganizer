@@ -3,10 +3,12 @@ import { Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 
 import { MobileNumberListItem } from './MobileNumberListItem';
 
-export function MobileNumberListCard(props: {
+interface MobileNumberListCardProps {
   items: MobileNumberRecord[];
   onDelete: (id: string) => void | Promise<void>;
-}) {
+}
+
+export function MobileNumberListCard(props: MobileNumberListCardProps) {
   return (
     <Card className="p-6">
       <CardTitle className="text-xl font-semibold mb-4">

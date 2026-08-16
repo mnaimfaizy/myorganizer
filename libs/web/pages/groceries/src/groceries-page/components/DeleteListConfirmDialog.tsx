@@ -10,7 +10,7 @@ import {
   DialogTitle,
 } from '@myorganizer/web-ui';
 import { AlertTriangle } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 interface DeleteListConfirmDialogProps {
   isOpen: boolean;
@@ -31,14 +31,14 @@ export function DeleteListConfirmDialog({
 }: DeleteListConfirmDialogProps) {
   const [confirming, setConfirming] = useState(false);
 
-  const handleConfirm = async () => {
+  const handleConfirm = useCallback(async () => {
     setConfirming(true);
     try {
       await onConfirm();
     } finally {
       setConfirming(false);
     }
-  };
+  }, [onConfirm]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>

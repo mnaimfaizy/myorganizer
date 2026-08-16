@@ -1,0 +1,53 @@
+MyOrganizer
+Copyright 2024-2026 Mohammad Naim Faizy
+
+This product is licensed under the Elastic License 2.0. See LICENSE.
+
+This repository also includes third-party material. Those files keep their
+own licenses; this NOTICE exists so those notices are preserved on
+redistribution.
+
+------------------------------------------------------------------------------
+React and ReactDOM 18.3.1
+
+Copyright (c) Facebook, Inc. and its affiliates.
+
+Licensed under the MIT License.
+
+Vendored at:
+  tools/assets/dc-runtime/react.production.min.js
+  tools/assets/dc-runtime/react-dom.production.min.js
+
+Provenance: tools/assets/dc-runtime/README.md
+
+The MIT copyright notice is included in each minified file header. React's
+upstream LICENSE is https://github.com/facebook/react/blob/v18.3.1/LICENSE
+
+------------------------------------------------------------------------------
+Caprasimo
+
+Licensed under the SIL Open Font License 1.1.
+https://fonts.google.com/specimen/Caprasimo
+https://openfontlicense.org/
+
+Vendored at: tools/assets/fonts/caprasimo-400-latin.woff2
+
+------------------------------------------------------------------------------
+Figtree
+
+Licensed under the SIL Open Font License 1.1.
+https://fonts.google.com/specimen/Figtree
+https://openfontlicense.org/
+
+Vendored at: tools/assets/fonts/figtree-400-800-latin.woff2
+
+Provenance for both fonts: tools/assets/fonts/README.md
+
+------------------------------------------------------------------------------
+tools/assets/dc-runtime/support.js
+
+Generated design-tool runtime (dc-runtime). No separate license grant is
+documented for this file. It is redistributed only as part of this repository
+for the interactive docs pages that depend on it.
+
+Provenance: tools/assets/dc-runtime/README.md

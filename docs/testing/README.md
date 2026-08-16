@@ -12,8 +12,8 @@ below plus **only the file for the project you are testing**.
 > | ---------------------------------------------------------- | ------------------------------------------------------------------------------- |
 > | How to analyze, scope, write, and validate a test suite    | `.github/agents/test-scaffold.agent.md`                                         |
 > | What a reviewer gates on                                   | `.github/agents/test-reviewer.agent.md`                                         |
-> | Delegation brief format                                    | `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md` |
-> | Playwright workflow, patterns, and anti-patterns           | `.github/skills/playwright-e2e-workflow/`                                       |
+> | Delegation brief format                                    | `.agents/skills/unit-test-delegation-workflow/references/delegation-runbook.md` |
+> | Playwright workflow, patterns, and anti-patterns           | `.agents/skills/playwright-e2e-workflow/`                                       |
 > | Per-project tooling, environment, and mocks (**this doc**) | `docs/testing/projects/<project>.md`                                            |
 >
 > Do not restate agent rules here, and do not restate this doc's tooling facts in agent prompts.

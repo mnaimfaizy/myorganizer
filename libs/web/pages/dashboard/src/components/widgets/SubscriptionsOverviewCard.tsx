@@ -14,11 +14,13 @@ import { useEffect, useState } from 'react';
 
 import { VaultStatCard } from './VaultStatCard';
 
+interface SubscriptionsOverviewCardProps {
+  masterKeyBytes: Uint8Array | null;
+}
+
 export function SubscriptionsOverviewCard({
   masterKeyBytes,
-}: {
-  masterKeyBytes: Uint8Array | null;
-}) {
+}: SubscriptionsOverviewCardProps) {
   return (
     <VaultStatCard
       masterKeyBytes={masterKeyBytes}
@@ -46,11 +48,11 @@ const MONTHLY_MULTIPLIERS: Record<string, number> = {
   threeYears: 1 / 36,
 };
 
-function SubscriptionsContent({
-  masterKeyBytes,
-}: {
+interface SubscriptionsContentProps {
   masterKeyBytes: Uint8Array;
-}) {
+}
+
+function SubscriptionsContent({ masterKeyBytes }: SubscriptionsContentProps) {
   const [summary, setSummary] = useState<Summary | null>(null);
 
   useEffect(() => {

@@ -48,5 +48,7 @@ import { colorPrimary, colorPrimaryVar } from '@myorganizer/design-tokens';
   components.** Use a Tailwind class or import from
   `@myorganizer/design-tokens`.
 - New token? Add it to `tokens.json` first, regenerate, then use it.
-- Keep DESIGN.md as the human-facing rationale; this lib is the machine
-  truth.
+- Keep DESIGN.md as brand rationale (when to use a role), not a second
+  palette. Update it when a semantic role or brand rule changes, not when
+  a hex or spacing step moves. `tokens.json` is the machine truth. See
+  ADR 0023.

@@ -10,7 +10,7 @@ import {
   DialogTitle,
   Input,
 } from '@myorganizer/web-ui';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { z } from 'zod';
 
 interface RenameListDialogProps {
@@ -50,39 +50,45 @@ export function RenameListDialog({
     }
   }, [isOpen, currentName]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    try {
-      const result = renameListSchema.parse({ name });
-
-      // Check if name actually changed
-      if (result.name === currentName) {
-        onClose();
-        return;
-      }
-
-      setSubmitting(true);
-      await onSubmit(result.name);
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        setError(err.issues[0]?.message || 'Invalid input');
-      } else {
-        setError('Failed to rename list');
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      setName(currentName);
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
       setError(null);
-      onClose();
-    }
-  };
+
+      try {
+        const result = renameListSchema.parse({ name });
+
+        // Check if name actually changed
+        if (result.name === currentName) {
+          onClose();
+          return;
+        }
+
+        setSubmitting(true);
+        await onSubmit(result.name);
+      } catch (err) {
+        if (err instanceof z.ZodError) {
+          setError(err.issues[0]?.message || 'Invalid input');
+        } else {
+          setError('Failed to rename list');
+        }
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [currentName, name, onClose, onSubmit],
+  );
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        setName(currentName);
+        setError(null);
+        onClose();
+      }
+    },
+    [currentName, onClose],
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>

@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  SUPPORTED_CURRENCIES,
   SubscriptionBillingCycleEnum,
   SubscriptionPaymentMethodEnum,
   SubscriptionRenewalTypeEnum,
@@ -10,21 +9,7 @@ import {
   type CurrencyCode,
   type SubscriptionRecord,
 } from '@myorganizer/core';
-import {
-  Button,
-  Card,
-  CardContent,
-  CardTitle,
-  DatePicker,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  useToast,
-} from '@myorganizer/web-ui';
+import { useToast } from '@myorganizer/web-ui';
 import {
   loadDecryptedData,
   normalizeSubscriptions,
@@ -33,20 +18,14 @@ import {
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import { dateInputToIso, isoToDateInput } from '../utils/date';
-import {
-  getSubscriptionBillingCycleLabel,
-  getSubscriptionPaymentMethodLabel,
-  getSubscriptionRenewalTypeLabel,
-  getSubscriptionStatusLabel,
-  getSubscriptionTierLabel,
-} from '../utils/presentation';
+import { EditSubscriptionCard } from './EditSubscriptionCard';
 
 const editSchema = z.object({
   name: z.string().trim().min(1, 'Name is required'),
@@ -91,18 +70,52 @@ const editSchema = z.object({
   link: z.string().trim().url().optional().or(z.literal('')),
 });
 
-type EditValues = z.infer<typeof editSchema>;
+export type EditValues = z.infer<typeof editSchema>;
 
-function SubscriptionDetailInner(props: {
+type LoadState =
+  | {
+      status: 'loading';
+      subscriptionId: string;
+      masterKeyBytes: Uint8Array;
+    }
+  | {
+      status: 'ready';
+      record: SubscriptionRecord;
+      subscriptionId: string;
+      masterKeyBytes: Uint8Array;
+    }
+  | {
+      status: 'not-found';
+      subscriptionId: string;
+      masterKeyBytes: Uint8Array;
+    };
+
+interface SubscriptionDetailInnerProps {
   masterKeyBytes: Uint8Array;
   subscriptionId: string;
-}) {
+}
+
+function SubscriptionDetailInner(props: SubscriptionDetailInnerProps) {
   const { toast } = useToast();
   const router = useRouter();
 
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-  const [record, setRecord] = useState<SubscriptionRecord | null>(null);
+  const [loadState, setLoadState] = useState<LoadState>({
+    status: 'loading',
+    subscriptionId: props.subscriptionId,
+    masterKeyBytes: props.masterKeyBytes,
+  });
+
+  const isMatch =
+    loadState.subscriptionId === props.subscriptionId &&
+    loadState.masterKeyBytes === props.masterKeyBytes;
+
+  const currentLoadState: LoadState = isMatch
+    ? loadState
+    : {
+        status: 'loading',
+        subscriptionId: props.subscriptionId,
+        masterKeyBytes: props.masterKeyBytes,
+      };
 
   const form = useForm<EditValues>({
     resolver: zodResolver(editSchema),
@@ -124,8 +137,7 @@ function SubscriptionDetailInner(props: {
   });
 
   useEffect(() => {
-    setLoading(true);
-    setNotFound(false);
+    let cancelled = false;
 
     loadDecryptedData<unknown>({
       masterKeyBytes: props.masterKeyBytes,
@@ -133,30 +145,45 @@ function SubscriptionDetailInner(props: {
       defaultValue: [],
     })
       .then(async (raw) => {
+        if (cancelled) return;
         const normalized = normalizeSubscriptions(raw);
         const found = normalized.value.find(
           (x) => x.id === props.subscriptionId,
         );
         if (!found) {
-          setNotFound(true);
+          if (!cancelled) {
+            setLoadState({
+              status: 'not-found',
+              subscriptionId: props.subscriptionId,
+              masterKeyBytes: props.masterKeyBytes,
+            });
+          }
           return;
         }
 
-        setRecord(found);
-        form.reset({
-          name: found.name,
-          status: found.status,
-          billingCycle: found.billingCycle,
-          amount: found.amount,
-          currency: found.currency,
-          paymentMethod: found.paymentMethod,
-          renewalType: found.renewalType,
-          tier: found.tier,
-          startDate: isoToDateInput(found.startDate),
-          endDate: isoToDateInput(found.endDate),
-          nextBillingDate: isoToDateInput(found.nextBillingDate),
-          link: found.link ?? '',
-        });
+        if (!cancelled) {
+          form.reset({
+            name: found.name,
+            status: found.status,
+            billingCycle: found.billingCycle,
+            amount: found.amount,
+            currency: found.currency,
+            paymentMethod: found.paymentMethod,
+            renewalType: found.renewalType,
+            tier: found.tier,
+            startDate: isoToDateInput(found.startDate),
+            endDate: isoToDateInput(found.endDate),
+            nextBillingDate: isoToDateInput(found.nextBillingDate),
+            link: found.link ?? '',
+          });
+
+          setLoadState({
+            status: 'ready',
+            record: found,
+            subscriptionId: props.subscriptionId,
+            masterKeyBytes: props.masterKeyBytes,
+          });
+        }
 
         if (normalized.changed) {
           await saveEncryptedData({
@@ -167,84 +194,100 @@ function SubscriptionDetailInner(props: {
         }
       })
       .catch(() => {
+        if (cancelled) return;
         toast({
           title: 'Failed to load subscription',
           description: 'Could not decrypt saved data.',
           variant: 'destructive',
         });
-      })
-      .finally(() => setLoading(false));
+        setLoadState({
+          status: 'not-found',
+          subscriptionId: props.subscriptionId,
+          masterKeyBytes: props.masterKeyBytes,
+        });
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [form, props.masterKeyBytes, props.subscriptionId, toast]);
 
   const canSave = form.formState.isValid && !form.formState.isSubmitting;
 
   const backHref = useMemo(() => '/dashboard/subscriptions', []);
 
-  async function save(values: EditValues) {
-    try {
-      const startDateIso = dateInputToIso(values.startDate);
-      if (!startDateIso) {
+  const save = useCallback(
+    async (values: EditValues) => {
+      try {
+        const startDateIso = dateInputToIso(values.startDate);
+        if (!startDateIso) {
+          toast({
+            title: 'Invalid start date',
+            description: 'Please enter a valid start date.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        const endDateIso = dateInputToIso(values.endDate);
+        const nextBillingIso = dateInputToIso(values.nextBillingDate);
+
+        const raw = await loadDecryptedData<unknown>({
+          masterKeyBytes: props.masterKeyBytes,
+          type: 'subscriptions',
+          defaultValue: [],
+        });
+
+        const normalized = normalizeSubscriptions(raw);
+
+        const next: SubscriptionRecord[] = normalized.value.map((s) => {
+          if (s.id !== props.subscriptionId) return s;
+          return {
+            ...s,
+            name: values.name.trim(),
+            status: values.status,
+            billingCycle: values.billingCycle,
+            amount: values.amount,
+            currency: values.currency as CurrencyCode,
+            paymentMethod: values.paymentMethod,
+            renewalType: values.renewalType,
+            tier: values.tier,
+            startDate: startDateIso,
+            endDate: endDateIso,
+            nextBillingDate: nextBillingIso,
+            link: values.link?.trim() || undefined,
+          };
+        });
+
+        await saveEncryptedData({
+          masterKeyBytes: props.masterKeyBytes,
+          type: 'subscriptions',
+          value: next,
+        });
+
         toast({
-          title: 'Invalid start date',
-          description: 'Please enter a valid start date.',
+          title: 'Saved',
+          description: 'Subscription updated (encrypted).',
+        });
+
+        router.push(backHref);
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        toast({
+          title: 'Failed to save',
+          description: message,
           variant: 'destructive',
         });
-        return;
       }
+    },
+    [backHref, props.masterKeyBytes, props.subscriptionId, router, toast],
+  );
 
-      const endDateIso = dateInputToIso(values.endDate);
-      const nextBillingIso = dateInputToIso(values.nextBillingDate);
+  const handleSave = useCallback(() => {
+    void form.handleSubmit(save)();
+  }, [form, save]);
 
-      const raw = await loadDecryptedData<unknown>({
-        masterKeyBytes: props.masterKeyBytes,
-        type: 'subscriptions',
-        defaultValue: [],
-      });
-
-      const normalized = normalizeSubscriptions(raw);
-
-      const next: SubscriptionRecord[] = normalized.value.map((s) => {
-        if (s.id !== props.subscriptionId) return s;
-        return {
-          ...s,
-          name: values.name.trim(),
-          status: values.status,
-          billingCycle: values.billingCycle,
-          amount: values.amount,
-          currency: values.currency as CurrencyCode,
-          paymentMethod: values.paymentMethod,
-          renewalType: values.renewalType,
-          tier: values.tier,
-          startDate: startDateIso,
-          endDate: endDateIso,
-          nextBillingDate: nextBillingIso,
-          link: values.link?.trim() || undefined,
-        };
-      });
-
-      await saveEncryptedData({
-        masterKeyBytes: props.masterKeyBytes,
-        type: 'subscriptions',
-        value: next,
-      });
-
-      toast({
-        title: 'Saved',
-        description: 'Subscription updated (encrypted).',
-      });
-
-      router.push(backHref);
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      toast({
-        title: 'Failed to save',
-        description: message,
-        variant: 'destructive',
-      });
-    }
-  }
-
-  async function deleteRecord() {
+  const deleteRecord = useCallback(async () => {
     try {
       const raw = await loadDecryptedData<unknown>({
         masterKeyBytes: props.masterKeyBytes,
@@ -277,13 +320,13 @@ function SubscriptionDetailInner(props: {
         variant: 'destructive',
       });
     }
-  }
+  }, [backHref, props.masterKeyBytes, props.subscriptionId, router, toast]);
 
-  if (loading) {
+  if (currentLoadState.status === 'loading') {
     return <div className="p-4">Loading…</div>;
   }
 
-  if (notFound || !record) {
+  if (currentLoadState.status === 'not-found') {
     return (
       <div className="p-4 space-y-2">
         <div className="text-lg font-semibold">Not found</div>
@@ -300,256 +343,22 @@ function SubscriptionDetailInner(props: {
         Back to subscriptions
       </Link>
 
-      <Card className="p-4">
-        <CardTitle className="text-lg">Edit subscription</CardTitle>
-        <CardContent className="mt-4 space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-name">Name</Label>
-            <Input id="edit-name" {...form.register('name')} />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-status">Status</Label>
-              <Select
-                value={form.watch('status')}
-                onValueChange={(v) =>
-                  form.setValue('status', v as EditValues['status'], {
-                    shouldValidate: true,
-                  })
-                }
-              >
-                <SelectTrigger id="edit-status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(SubscriptionStatusEnum).map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {getSubscriptionStatusLabel(v)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-billing">Billing cycle</Label>
-              <Select
-                value={form.watch('billingCycle')}
-                onValueChange={(v) =>
-                  form.setValue(
-                    'billingCycle',
-                    v as EditValues['billingCycle'],
-                    {
-                      shouldValidate: true,
-                    },
-                  )
-                }
-              >
-                <SelectTrigger id="edit-billing">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(SubscriptionBillingCycleEnum).map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {getSubscriptionBillingCycleLabel(v)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-amount">Amount</Label>
-              <Input
-                id="edit-amount"
-                type="number"
-                step="0.01"
-                {...form.register('amount', { valueAsNumber: true })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-currency">Currency</Label>
-              <Select
-                value={form.watch('currency')}
-                onValueChange={(v) =>
-                  form.setValue('currency', v as EditValues['currency'], {
-                    shouldValidate: true,
-                  })
-                }
-              >
-                <SelectTrigger id="edit-currency">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUPPORTED_CURRENCIES.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>
-                      {c.code} — {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-start">Start date</Label>
-              <Controller
-                control={form.control}
-                name="startDate"
-                render={({ field }) => (
-                  <DatePicker
-                    id="edit-start"
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Pick a start date"
-                  />
-                )}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-end">End date</Label>
-              <Controller
-                control={form.control}
-                name="endDate"
-                render={({ field }) => (
-                  <DatePicker
-                    id="edit-end"
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Pick an end date"
-                  />
-                )}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-next">Next billing date</Label>
-              <Controller
-                control={form.control}
-                name="nextBillingDate"
-                render={({ field }) => (
-                  <DatePicker
-                    id="edit-next"
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Pick a billing date"
-                  />
-                )}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-link">Link</Label>
-              <Input id="edit-link" {...form.register('link')} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="edit-payment">Payment method</Label>
-              <Select
-                value={form.watch('paymentMethod')}
-                onValueChange={(v) =>
-                  form.setValue(
-                    'paymentMethod',
-                    v as EditValues['paymentMethod'],
-                    {
-                      shouldValidate: true,
-                    },
-                  )
-                }
-              >
-                <SelectTrigger id="edit-payment">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(SubscriptionPaymentMethodEnum).map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {getSubscriptionPaymentMethodLabel(v)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-renewal">Renewal type</Label>
-              <Select
-                value={form.watch('renewalType')}
-                onValueChange={(v) =>
-                  form.setValue('renewalType', v as EditValues['renewalType'], {
-                    shouldValidate: true,
-                  })
-                }
-              >
-                <SelectTrigger id="edit-renewal">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(SubscriptionRenewalTypeEnum).map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {getSubscriptionRenewalTypeLabel(v)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="edit-tier">Tier</Label>
-              <Select
-                value={form.watch('tier')}
-                onValueChange={(v) =>
-                  form.setValue('tier', v as EditValues['tier'], {
-                    shouldValidate: true,
-                  })
-                }
-              >
-                <SelectTrigger id="edit-tier">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(SubscriptionTierEnum).map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {getSubscriptionTierLabel(v)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              disabled={!canSave}
-              onClick={form.handleSubmit(save)}
-              className="flex-1"
-            >
-              Save
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={deleteRecord}
-              className="flex-1"
-            >
-              Delete
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <EditSubscriptionCard
+        form={form}
+        canSave={canSave}
+        onSave={handleSave}
+        onDelete={deleteRecord}
+      />
     </div>
   );
 }
-
-export function SubscriptionDetailPageClient(props: {
+export interface SubscriptionDetailPageClientProps {
   params: { id: string };
-}) {
+}
+
+export function SubscriptionDetailPageClient(
+  props: SubscriptionDetailPageClientProps,
+) {
   return (
     <VaultGate title="Subscription">
       {({ masterKeyBytes }) => (

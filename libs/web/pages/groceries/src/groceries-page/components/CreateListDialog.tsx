@@ -10,7 +10,7 @@ import {
   DialogTitle,
   Input,
 } from '@myorganizer/web-ui';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { z } from 'zod';
 
 interface CreateListDialogProps {
@@ -40,33 +40,39 @@ export function CreateListDialog({
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    try {
-      const result = createListSchema.parse({ name });
-      setSubmitting(true);
-      await onSubmit(result.name);
-      setName('');
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        setError(err.issues[0]?.message || 'Invalid input');
-      } else {
-        setError('Failed to create list');
-      }
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      setName('');
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
       setError(null);
-      onClose();
-    }
-  };
+
+      try {
+        const result = createListSchema.parse({ name });
+        setSubmitting(true);
+        await onSubmit(result.name);
+        setName('');
+      } catch (err) {
+        if (err instanceof z.ZodError) {
+          setError(err.issues[0]?.message || 'Invalid input');
+        } else {
+          setError('Failed to create list');
+        }
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [name, onSubmit],
+  );
+
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        setName('');
+        setError(null);
+        onClose();
+      }
+    },
+    [onClose],
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>

@@ -5,6 +5,14 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import {
+  loadGithubLabelCatalog,
+  normalizeLabelArgs,
+  rejectedPrLabels,
+  surfaceLabelNames,
+  syncSurfaceLabelChanges,
+} from '../lib/github-labels.mjs';
+
 const usage = `Usage:
   corepack yarn ai:create-pr [options]
 
@@ -14,6 +22,7 @@ Options:
   --body <text>           Pull request body text.
   --body-file <path>      Read the pull request body from a file. Agent sessions pass the PrAuthor draft here.
   --reviewer <login>      Reviewer to request. Repeat the flag or pass a comma-separated list.
+  --label <name>          Surface Label to apply (ADR 0025). Repeat the flag or pass a comma-separated list. Default: none.
   --draft                 Create the pull request as a draft.
   --help                  Show this help text.
 `;
@@ -30,6 +39,7 @@ function parseArgs(argv) {
     bodyFile: null,
     draft: false,
     help: false,
+    labels: [],
     reviewers: [],
     title: null,
   };
@@ -68,6 +78,12 @@ function parseArgs(argv) {
 
     if (arg === '--reviewer') {
       options.reviewers.push(argv[index + 1] ?? '');
+      index += 1;
+      continue;
+    }
+
+    if (arg === '--label') {
+      options.labels.push(argv[index + 1] ?? '');
       index += 1;
       continue;
     }
@@ -139,6 +155,18 @@ function validateReviewers(reviewers) {
 
   fail(
     'GitHub review requests do not support @copilot or @me as reviewer handles through this workflow. Use a real GitHub login for --reviewer, or keep Copilot in the IDE/web review flow instead.',
+  );
+}
+
+function validateLabels(labels, catalog) {
+  const rejected = rejectedPrLabels(labels, catalog);
+
+  if (rejected.length === 0) {
+    return;
+  }
+
+  fail(
+    `Not Surface Labels (ADR 0025): ${rejected.join(', ')}. Use kind/area names from tools/config/github-labels.json.`,
   );
 }
 
@@ -364,7 +392,7 @@ function findExistingPullRequest(branch, baseBranch) {
     '--state',
     'open',
     '--json',
-    'number,url,reviewRequests',
+    'number,url,reviewRequests,labels',
   ]);
 
   if (!response) {
@@ -379,6 +407,8 @@ function updateExistingPullRequest(
   pullRequest,
   assignee,
   reviewers,
+  labels,
+  surfaceNames,
   title,
   bodyPath,
 ) {
@@ -391,6 +421,15 @@ function updateExistingPullRequest(
   const reviewersToRemove = existingReviewers.filter(
     (reviewer) => !reviewers.includes(reviewer),
   );
+  const currentLabelNames = (pullRequest.labels ?? [])
+    .map((label) => label.name)
+    .filter(Boolean);
+  const { toAdd: labelsToAdd, toRemove: labelsToRemove } =
+    syncSurfaceLabelChanges({
+      currentNames: currentLabelNames,
+      desiredNames: labels,
+      surfaceNames,
+    });
   const editArgs = [
     'pr',
     'edit',
@@ -411,6 +450,14 @@ function updateExistingPullRequest(
     editArgs.push('--remove-reviewer', reviewer);
   });
 
+  labelsToAdd.forEach((label) => {
+    editArgs.push('--add-label', label);
+  });
+
+  labelsToRemove.forEach((label) => {
+    editArgs.push('--remove-label', label);
+  });
+
   run('gh', editArgs);
 }
 
@@ -419,6 +466,7 @@ function createPullRequest(
   baseBranch,
   assignee,
   reviewers,
+  labels,
   title,
   bodyPath,
   draft,
@@ -446,6 +494,10 @@ function createPullRequest(
     args.push('--reviewer', reviewer);
   });
 
+  labels.forEach((label) => {
+    args.push('--label', label);
+  });
+
   const result = run('gh', args);
   const urls = result.stdout.match(/https?:\/\/\S+/g) ?? [];
   const pullRequestUrl = urls.at(-1)?.trim();
@@ -471,10 +523,14 @@ ensureGhAvailable();
 const branch = getCurrentBranch();
 const baseBranch = options.base ?? getDefaultBaseBranch();
 const reviewers = normalizeReviewers(options.reviewers);
+const catalog = loadGithubLabelCatalog();
+const labels = normalizeLabelArgs(options.labels);
+const surfaceNames = surfaceLabelNames(catalog);
 const commits = getBranchCommits(baseBranch);
 
 ensureNotBaseBranch(branch, baseBranch);
 validateReviewers(reviewers);
+validateLabels(labels, catalog);
 ensureUpstreamBranch();
 
 if (commits.length === 0) {
@@ -493,6 +549,8 @@ if (existingPullRequest) {
       existingPullRequest,
       assignee,
       reviewers,
+      labels,
+      surfaceNames,
       title,
       bodySource,
     );
@@ -505,6 +563,8 @@ if (existingPullRequest) {
       existingPullRequest,
       assignee,
       reviewers,
+      labels,
+      surfaceNames,
       title,
       bodySource.bodyPath,
     );
@@ -522,6 +582,7 @@ if (typeof bodySource === 'string') {
     baseBranch,
     assignee,
     reviewers,
+    labels,
     title,
     bodySource,
     options.draft,
@@ -536,6 +597,7 @@ try {
     baseBranch,
     assignee,
     reviewers,
+    labels,
     title,
     bodySource.bodyPath,
     options.draft,

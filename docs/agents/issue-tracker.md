@@ -38,4 +38,4 @@ For PRD issues, also read labels — PRDs are tagged `prd`.
 ## PRD and slice issues
 
 - PRD issues are labelled `prd` and often `ready-for-agent`.
-- Slice issues start with `PRD: #<N>` in the body and carry the full slice label set from `.github/skills/to-issues/SKILL.md`.
+- Slice issues start with `PRD: #<N>` in the body and carry the full slice label set from `.agents/skills/to-issues/SKILL.md`.

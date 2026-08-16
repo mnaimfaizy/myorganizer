@@ -5,7 +5,7 @@
 > Component rules live in [`GUIDELINES.md`](./GUIDELINES.md).
 > This file is the single home for story patterns — `StorybookCurator` reads it instead of carrying copies in its prompt.
 
-Only three stories exist today against 27 UI primitives, so there is little in-repo precedent to imitate. Follow the patterns here rather than generalising from whichever story you happened to open.
+A colocated story is required for every UI Primitive and every Vault UI Component the glob is meant to show. Follow the patterns here rather than generalising from whichever story you happened to open. Feature Components stay out of Storybook. Non-UI `web-vault-ui` exports (`session`, `vaultGate`, `migrationRunner`) are not this rule.
 
 ---
 
@@ -18,7 +18,13 @@ Only three stories exist today against 27 UI primitives, so there is little in-r
 
 Both libraries are served by the **same** Storybook instance (`libs/web-ui/.storybook/main.ts`). A story placed outside `src/lib/` is silently never loaded — no error, it just does not appear.
 
-Feature Components in `libs/web/pages/` are **not** in any story glob. They depend on domain state, so they belong in tests, not Storybook. If a feature component seems worth a story, that is a signal it should have been a UI Primitive — raise it rather than adding a glob.
+**Standing rule.** If the glob is meant to show the component, the component ships with a story:
+
+- UI Primitives in `libs/web-ui` — required (GUIDELINES §1).
+- Vault UI Components in `libs/web-vault-ui` (`CloudBackupCard`, `LastBackupCard`) — required. They know vault domain, so they are not primitives; they still must be mock-props-expressible.
+- Non-UI modules in `web-vault-ui` (`session`, `vaultGate`, `migrationRunner`, error-message helpers) — no story.
+
+Feature Components in `libs/web/pages/` are **not** in any story glob. They depend on domain state, so they belong in tests, not Storybook. If a feature component seems worth a story, that is a signal it should have been a UI Primitive or a Vault UI Component — raise it rather than adding a glob.
 
 ## 2. Title and metadata
 
@@ -32,7 +38,7 @@ export default meta;
 type Story = StoryObj<typeof Card>;
 ```
 
-`title` is `Components/<Name>` matching the component folder — the sidebar grouping depends on it. `tags: ['autodocs']` is standard for every story file here.
+`title` is `Components/<Name>` for UI Primitives — the sidebar grouping depends on it. Vault UI Components use `Vault/<Name>` (see `LastBackupCard`). `tags: ['autodocs']` is standard for every story file here.
 
 ## 3. Pattern A — single component with CVA variants
 
@@ -99,7 +105,7 @@ const meta: Meta<typeof DialogExample> = {
 };
 ```
 
-`Dialog.stories.tsx` is the reference. Where several arrangements are worth showing (a Card with and without a footer, say), write one wrapper per arrangement rather than one wrapper with boolean props — the point of the story is to show the composition.
+`Dialog.stories.tsx` is the reference. It must include an **open** story (`defaultOpen` on Root, or `play`) so portalled content is visible — a closed `Default` trigger-only set is not finished work. Where several arrangements are worth showing (a Card with and without a footer, say), write one wrapper per arrangement rather than one wrapper with boolean props — the point of the story is to show the composition.
 
 The trade-off: `argTypes` controls are lost, because the wrapper has no interesting props. That is correct. Anyone exploring a compound component is exploring its structure, not its prop surface.
 
@@ -120,6 +126,25 @@ export const Interactive: Story = {
 
 Declare `render` as a **named function** (`function Render()`), not an arrow — hooks inside an anonymous arrow trip the rules-of-hooks lint.
 
+### Mount-point primitives (`Toaster`)
+
+`Toaster` is a UI Primitive that reads `useToast()` and mounts `Toast` + `ToastViewport`. Cover Toast visuals on `Toast`. Prove `Toaster` has no domain knowledge with a Pattern C story whose `play` function calls `toast({ title, description })` (exported next to `useToast`). Do not skip it as "not visual."
+
+```typescript
+import { toast } from '../../hooks/use-toast';
+import { Toaster } from './Toaster';
+
+export const ShowsToast: Story = {
+  render: function Render() {
+    return <Toaster />;
+  },
+  play: async () => {
+    toast({ title: 'Backup complete', description: 'Last snapshot is ready to restore.' });
+    await expect(within(document.body).getByText('Backup complete')).toBeVisible();
+  },
+};
+```
+
 ## 6. Radix portals
 
 `Dialog`, `Sheet`, `Popover`, `Tooltip`, `Select`, and `DropdownMenu` render their content through a portal, attached to `document.body` rather than inside the story canvas.
@@ -136,14 +161,18 @@ To show the open state, either set the primitive's `open`/`defaultOpen` prop in 
 `@storybook/test` and `@storybook/addon-interactions` are installed. A `play` function turns a story into an assertion that runs under `npx nx test-storybook web-ui`.
 
 ```typescript
-import { expect, userEvent, within } from '@storybook/test';
+import { expect, userEvent, waitFor, within } from '@storybook/test';
 
 export const OpensOnClick: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Open dialog' }));
     // Portalled content lives outside canvasElement — query the document body.
-    await expect(within(document.body).getByRole('dialog')).toBeVisible();
+    // waitFor: enter animations (`fade-in-0`) start at opacity 0; one-shot
+    // toBeVisible() fails mid-animation even when data-state is already open.
+    await waitFor(() => {
+      expect(within(document.body).getByRole('dialog')).toBeVisible();
+    });
   },
 };
 ```
@@ -172,11 +201,12 @@ Long-content and empty states are the two most often skipped and the two that mo
 
 Stories are where a11y defects become visible, so do not encode them into the examples.
 
-**Every icon-only control needs an accessible name.** `Button.stories.tsx` currently has:
+**Every icon-only control needs an accessible name.** Do not use emoji as the sole label of an icon button:
 
 ```typescript
+// ❌ no accessible name
 export const Icon: Story = {
-  args: { children: '🔍', size: 'icon' }, // ← no accessible name
+  args: { children: '🔍', size: 'icon' },
 };
 ```
 
@@ -200,19 +230,20 @@ Stories are rendered by Chromatic and the test-runner, so anything non-determini
 
 - No `fetch`, no API clients, no `@myorganizer/app-api-client`. Pass data as props.
 - No `new Date()`, `Date.now()`, `Math.random()`, or `crypto.randomUUID()` — pin a fixed date and fixed ids.
-- No vault data, no decryption, no domain records. If a primitive appears to need them, it belongs in `libs/web/pages/`, not `libs/web-ui/` (GUIDELINES §1).
+- No live Vault, no decryption. UI Primitives must not take domain records. Vault UI Components may take mock backup/restore props (GUIDELINES §1). If a `web-ui` primitive appears to need vault data, it does not belong there.
 - No `setTimeout`-driven visual states.
 
 ## Anti-patterns
 
-| Anti-pattern                                                             | Why it fails                                              | Instead                                    |
-| ------------------------------------------------------------------------ | --------------------------------------------------------- | ------------------------------------------ |
-| `args: { children: <CardHeader>…</CardHeader> }` on a compound component | Unreadable story, useless controls                        | Wrapper component (§4)                     |
-| Static `checked`/`value` on a controlled primitive                       | Control appears broken                                    | `render` with local state (§5)             |
-| Story file outside `src/lib/`                                            | Silently never loaded                                     | Colocate with the component (§1)           |
-| `render: () => { const [x] = useState() … }`                             | Rules-of-hooks violation in an anonymous arrow            | `render: function Render() { … }` (§5)     |
-| `within(canvasElement)` for portalled content                            | Radix renders to `document.body`; the query finds nothing | `within(document.body)` (§7)               |
-| Only a `Default` story                                                   | Reviewers cannot see the states that break                | Coverage table (§8)                        |
-| Emoji or bare icon as the whole button label                             | No accessible name                                        | Icon + `aria-label` (§9)                   |
-| Fetching or generating data in a story                                   | Non-deterministic Chromatic diffs                         | Fixed props (§10)                          |
-| A story for a `libs/web/pages/` component                                | Not in any glob; depends on domain state                  | Test it, or promote it to a primitive (§1) |
+| Anti-pattern                                                             | Why it fails                                              | Instead                                                          |
+| ------------------------------------------------------------------------ | --------------------------------------------------------- | ---------------------------------------------------------------- |
+| `args: { children: <CardHeader>…</CardHeader> }` on a compound component | Unreadable story, useless controls                        | Wrapper component (§4)                                           |
+| Static `checked`/`value` on a controlled primitive                       | Control appears broken                                    | `render` with local state (§5)                                   |
+| Story file outside `src/lib/`                                            | Silently never loaded                                     | Colocate with the component (§1)                                 |
+| `render: () => { const [x] = useState() … }`                             | Rules-of-hooks violation in an anonymous arrow            | `render: function Render() { … }` (§5)                           |
+| `within(canvasElement)` for portalled content                            | Radix renders to `document.body`; the query finds nothing | `within(document.body)` (§7)                                     |
+| Only a `Default` story                                                   | Reviewers cannot see the states that break                | Coverage table (§8)                                              |
+| Emoji or bare icon as the whole button label                             | No accessible name                                        | Icon + `aria-label` (§9)                                         |
+| Skipping `Toaster` because it is a mount point                           | Never tests GUIDELINES §1 for that primitive              | `play` that calls `toast()` (§5)                                 |
+| Fetching or generating data in a story                                   | Non-deterministic Chromatic diffs                         | Fixed props (§10)                                                |
+| A story for a `libs/web/pages/` component                                | Not in any glob; depends on domain state                  | Test it, or promote it to a primitive or Vault UI Component (§1) |

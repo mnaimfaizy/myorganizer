@@ -342,6 +342,8 @@ MyOrganizer enforces a simple rule for the Next.js App Router:
 - Files under `apps/myorganizer/src/app/**` are **thin route wrappers** only.
 - All page/domain logic lives in Nx libraries under `libs/web/pages/<route>/`.
 
+Next.js request conventions (`proxy.ts`, async request APIs, do not suggest `next lint`) live in [AGENTS.md](./AGENTS.md). Package versions live in [TECH_STACK.md](./TECH_STACK.md). Do not add a Next.js Proxy unless a ticket explicitly asks — [ADR 0019](./docs/adr/0019-nextjs-proxy-is-not-a-session-layer.md).
+
 This keeps pages reusable and testable, and prevents app-local “shared code” from spreading.
 
 ### What goes where
@@ -405,7 +407,7 @@ Examples of existing page libraries:
 
 #### web/pages
 
-- One Nx library per frontend route/page (e.g. `libs/web/pages/todos`)
+- One Nx library per frontend route/page (e.g. `libs/web/pages/tasks`)
 - Imported via `@myorganizer/web-pages/<route>`
 
 #### web-vault
@@ -528,7 +530,7 @@ Prisma schemas are located in `apps/backend/src/prisma/schema/`:
 
 - `schema.prisma` - Main configuration
 - `user.prisma` - User model
-- `todo.prisma` - Todo model
+- `vault.prisma` - Vault ciphertext model
 
 After modifying schemas, always run:
 
@@ -646,7 +648,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
 4. **Provide a Clear Title**
 
-   Good: `Backend API returns 500 error when saving a todos vault blob`
+   Good: `Backend API returns 500 error when saving a tasks vault blob`
 
    Bad: `API broken`
 
@@ -656,7 +658,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
    - **Description**: What is the problem?
    - **Steps to Reproduce**:
      1. Start the backend
-     2. Send `PUT /api/v1/vault/blob/todos` with an invalid payload
+     2. Send `PUT /api/v1/vault/blob/tasks` with an invalid payload
      3. Observe 500 error
    - **Expected Behavior**: Should return 400 with validation error
    - **Actual Behavior**: Returns 500 internal server error
@@ -765,6 +767,12 @@ Good issues help maintainers understand and address problems quickly. Here's how
      corepack yarn ai:create-pr
      ```
 
+   - Add Surface Labels only when you have them (kind/area from `tools/config/github-labels.json`; default is unlabeled):
+
+     ```bash
+     corepack yarn ai:create-pr --label documentation --label tooling
+     ```
+
    - Add reviewers only when you need them:
 
      ```bash
@@ -774,6 +782,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
    - The shared PR workflow:
      - pushes the branch upstream if it is not already tracked
      - uses `--title` / `--body-file` when provided (agent path), otherwise a commit-derived fallback
+     - applies `--label` Surface Labels when provided (ADR 0025); default is none
      - assigns the authenticated GitHub user to the PR
      - leaves reviewers empty unless you explicitly pass one
      - returns only the PR URL on success

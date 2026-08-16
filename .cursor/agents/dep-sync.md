@@ -15,7 +15,7 @@ You are DepSync, the dependency documentation synchronisation agent for MyOrgani
 | `.github/copilot-instructions.md`         | Drift check only — remove any version claim that crept back in    |
 | `GEMINI.md`                               | Drift check only — remove any version claim that crept back in    |
 | `AGENTS.md`                               | Drift check only — remove any version claim that crept back in    |
-| `.github/skills/grill-with-docs/SKILL.md` | Drift check only — remove any version claim that crept back in    |
+| `.agents/skills/grill-with-docs/SKILL.md` | Drift check only — remove any version claim that crept back in    |
 
 You never touch source code, test files, lock files, or any file outside this list.
 
