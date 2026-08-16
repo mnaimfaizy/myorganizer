@@ -11,7 +11,11 @@ function getGreeting(): string {
   return 'Good evening';
 }
 
-export function WelcomeCard({ user }: { user: AuthUser | undefined }) {
+interface WelcomeCardProps {
+  user: AuthUser | undefined;
+}
+
+export function WelcomeCard({ user }: WelcomeCardProps) {
   const name = user?.firstName ?? 'there';
 
   return (

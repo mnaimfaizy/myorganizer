@@ -57,13 +57,26 @@ This mirrors ADR 0004's removal of _"tests would fail if the implementation were
 
 ## Calibration
 
-Rules were tuned against the whole codebase before landing, not designed in the abstract. Final baseline over 140 components: **0 errors, 68 warnings** (41 inline props types, 20 unmemoized handler props, 7 oversized JSX blocks). Errors gate; warnings are advisory and justify `PASS_WITH_WARNINGS`, never `FAIL`.
+Rules were tuned against the whole codebase before landing, not designed in the abstract. The original baseline over 140 components was **0 errors, 68 warnings** (41 inline props types, 20 unmemoized handler props, 7 oversized JSX blocks). At that point errors gated while warnings were advisory and justified `PASS_WITH_WARNINGS`, never `FAIL`.
 
-A zero-error baseline means the script can gate immediately without a cleanup campaign first. The 68 warnings are pre-existing guideline drift, tracked separately.
+A zero-error baseline meant the script could gate immediately while the 68 warnings were tracked as pre-existing guideline drift. Issue [#288](https://github.com/mnaimfaizy/myorganizer/issues/288) subsequently removed that drift without changing the rules, scan roots, or 150-line oversized JSX threshold.
+
+### Zero-warning enforcement
+
+The repository now maintains a **0 error, 0 warning** full-scan baseline:
+
+- CI runs `component:hygiene --all --max-warnings=0` and fails on any error or warning.
+- Pre-commit runs `component:hygiene --staged --max-warnings=0` for staged paths under the existing component roots.
+- Targeted local scans continue to report warnings without failing, preserving the diagnostic workflow during component development.
+- Contract tests cover strict warning exits, JSON output, staged additions and modifications, rename destinations, deletions, scope filtering, and Git failures.
+
+The staged strict check was benchmarked with one modified UI primitive and one modified feature component using a copied Git index. Five warm runs completed in **0.48–0.50 seconds**, below the agreed one-second pre-commit threshold without mutating the developer's index.
+
+The cleanup was deliberately split by risk: named props-interface extraction was mechanical; handler memoization required dependency review; oversized JSX findings required behavior-preserving, feature-private decomposition. Strict enforcement landed only after those changes established the zero-warning baseline.
 
 ## Consequences
 
 - New: `tools/scripts/check-component-hygiene.mjs`, `yarn component:hygiene`, and `tools/scripts/lib/source-scan.mjs` — shared lexical helpers now used by both hygiene scripts (the test script was refactored onto it with byte-identical output).
 - `ComponentReviewer` gains `execute`; its tool grant must stay `[read, search, execute]` across all four harnesses.
 - `docs/ui/GUIDELINES.md` §8 documents the three-layer split; the agents no longer paraphrase §§1–7.
-- The 68 warnings are not fixed here. Fixing them is a separate change, as is deciding whether `inline-props-type` and `handler-not-memoized` should ever become errors.
+- Targeted scans remain useful during development, while CI and staged pre-commit checks enforce the zero-warning baseline explicitly.

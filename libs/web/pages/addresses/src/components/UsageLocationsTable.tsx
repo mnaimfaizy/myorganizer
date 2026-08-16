@@ -25,11 +25,13 @@ import { useMemo } from 'react';
 
 import { titleCase } from '../utils/enumUtils';
 
-export function UsageLocationsTable(props: {
+interface UsageLocationsTableProps {
   usageLocations: UsageLocationRecord[];
   onEdit: (location: UsageLocationRecord) => void;
   onDelete: (locationId: string) => void;
-}) {
+}
+
+export function UsageLocationsTable(props: UsageLocationsTableProps) {
   const columns = useMemo<ColumnDef<UsageLocationRecord>[]>(
     () => [
       {
@@ -64,8 +66,8 @@ export function UsageLocationsTable(props: {
             priority === 'high'
               ? 'text-red-600 bg-red-50'
               : priority === 'low'
-              ? 'text-gray-600 bg-gray-50'
-              : 'text-blue-600 bg-blue-50';
+                ? 'text-gray-600 bg-gray-50'
+                : 'text-blue-600 bg-blue-50';
           return (
             <span
               className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${colorClass}`}
@@ -134,7 +136,7 @@ export function UsageLocationsTable(props: {
         ),
       },
     ],
-    [props]
+    [props],
   );
 
   const table = useReactTable({
@@ -177,7 +179,7 @@ export function UsageLocationsTable(props: {
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext()
+                            header.getContext(),
                           )}
                     </TableHead>
                   ))}
@@ -192,7 +194,7 @@ export function UsageLocationsTable(props: {
                       <TableCell key={cell.id}>
                         {flexRender(
                           cell.column.columnDef.cell,
-                          cell.getContext()
+                          cell.getContext(),
                         )}
                       </TableCell>
                     ))}

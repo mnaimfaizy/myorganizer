@@ -29,6 +29,7 @@
     "test:hygiene": "node tools/scripts/check-test-hygiene.mjs",
     "test:hygiene:test": "node --test tools/scripts/check-test-hygiene.test.mjs",
     "component:hygiene": "node tools/scripts/check-component-hygiene.mjs",
+    "component:hygiene:test": "node --test tools/scripts/check-component-hygiene.test.mjs",
     "test:backend": "nx test backend",
     "test:myorganizer": "nx test myorganizer",
     "json-api:generate": "yarn run tsoa spec-and-routes -c=apps/backend/tsoa.json",

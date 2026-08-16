@@ -4,7 +4,11 @@ import { authSession, resolveOutboundGuard } from '@myorganizer/auth';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
 
-export default function DashboardGuard(props: { children: ReactNode }) {
+interface DashboardGuardProps {
+  children: ReactNode;
+}
+
+export default function DashboardGuard(props: DashboardGuardProps) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
 

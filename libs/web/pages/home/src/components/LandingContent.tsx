@@ -299,7 +299,11 @@ function Features() {
   );
 }
 
-function FeatureCardView({ card }: { card: FeatureCard }) {
+interface FeatureCardViewProps {
+  card: FeatureCard;
+}
+
+function FeatureCardView({ card }: FeatureCardViewProps) {
   const spanClass = card.span === 'lg' ? 'md:col-span-2' : 'md:col-span-1';
   return (
     <div
@@ -419,13 +423,12 @@ function Integrations() {
   );
 }
 
-function IntegrationPill({
-  icon,
-  label,
-}: {
+interface IntegrationPillProps {
   icon: React.ReactNode;
   label: string;
-}) {
+}
+
+function IntegrationPill({ icon, label }: IntegrationPillProps) {
   return (
     <div
       className="inline-flex items-center gap-2 rounded-lg border px-4 py-2"

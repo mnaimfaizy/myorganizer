@@ -1,27 +1,10 @@
-import { PriorityEnum } from '@myorganizer/core';
-import {
-  Button,
-  Card,
-  CardContent,
-  CardTitle,
-  Checkbox,
-  Combobox,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@myorganizer/web-ui';
-import { AlertTriangle } from 'lucide-react';
-import { ChangeEvent } from 'react';
+import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 
-import { enumOptions, titleCase } from '../utils/enumUtils';
+import { UsageLocationFormFields } from './UsageLocationFormFields';
 
 export type SelectOption = { value: string; label: string };
 
-export function AddUsageLocationCard(props: {
+export interface AddUsageLocationCardProps {
   orgName: string;
   orgType: string;
   updateMethod: string;
@@ -46,146 +29,34 @@ export function AddUsageLocationCard(props: {
   onChangedChange: (value: boolean) => void;
   onAddUsage: () => void | Promise<void>;
   isEditMode?: boolean;
-}) {
+}
+
+export function AddUsageLocationCard(props: AddUsageLocationCardProps) {
   return (
     <Card className="p-6 shadow-sm border-2">
       <CardTitle className="text-xl font-semibold mb-6">
         {props.isEditMode ? 'Edit location' : 'Add location where used'}
       </CardTitle>
       <CardContent className="space-y-6 p-0">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="usage-org-name" className="text-sm font-medium">
-              Organisation Name
-            </Label>
-            <Input
-              id="usage-org-name"
-              value={props.orgName}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                props.onOrgNameChange(e.target.value)
-              }
-              placeholder="ATO / Comm Bank"
-              className="h-11"
-            />
-            {props.fieldErrors?.orgName && (
-              <p className="text-sm font-medium text-destructive">
-                {props.fieldErrors.orgName}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="usage-org-type" className="text-sm font-medium">
-              Organisation Type
-            </Label>
-            <Combobox
-              id="usage-org-type"
-              value={props.orgType}
-              onValueChange={props.onOrgTypeChange}
-              options={props.orgTypeOptions}
-              placeholder="Government"
-              searchPlaceholder="Search organisation types..."
-              emptyText="No organisation types found."
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="usage-priority" className="text-sm font-medium">
-              Priority
-            </Label>
-            <Select
-              value={props.priority}
-              onValueChange={props.onPriorityChange}
-            >
-              <SelectTrigger id="usage-priority" className="h-11">
-                <SelectValue placeholder="Select priority" />
-              </SelectTrigger>
-              <SelectContent>
-                {enumOptions(PriorityEnum).map((v) => (
-                  <SelectItem key={v} value={v}>
-                    {titleCase(v)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label
-              htmlFor="usage-update-method"
-              className="text-sm font-medium"
-            >
-              Update method
-            </Label>
-            <Combobox
-              id="usage-update-method"
-              value={props.updateMethod}
-              onValueChange={props.onUpdateMethodChange}
-              options={props.updateMethodOptions}
-              placeholder="Online"
-              searchPlaceholder="Search update methods..."
-              emptyText="No update methods found."
-            />
-          </div>
-        </div>
-
-        {props.duplicateOrganisationName && (
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5" />
-              <div className="space-y-1">
-                <p className="text-sm font-semibold">
-                  This organisation is already attached to this address.
-                </p>
-                <p className="text-sm">
-                  Existing entry: {props.duplicateOrganisationName}
-                </p>
-                {props.duplicateAcknowledged && (
-                  <p className="text-sm">
-                    Select save again to keep this as a separate location.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <Label htmlFor="usage-link" className="text-sm font-medium">
-            Link to change (optional)
-          </Label>
-          <Input
-            id="usage-link"
-            value={props.link}
-            onChange={(e: ChangeEvent<HTMLInputElement>) =>
-              props.onLinkChange(e.target.value)
-            }
-            placeholder="https://example.com"
-            className="h-11"
-          />
-          {props.fieldErrors?.link && (
-            <p className="text-sm font-medium text-destructive">
-              {props.fieldErrors.link}
-            </p>
-          )}
-        </div>
-
-        <div className="flex items-center gap-3 py-2">
-          <Checkbox
-            id="usage-changed"
-            checked={props.changed}
-            onCheckedChange={(v) => props.onChangedChange(Boolean(v))}
-            className="h-5 w-5"
-          />
-          <Label
-            htmlFor="usage-changed"
-            className="text-sm font-medium cursor-pointer"
-          >
-            Already changed/updated
-          </Label>
-        </div>
+        <UsageLocationFormFields
+          orgName={props.orgName}
+          orgType={props.orgType}
+          updateMethod={props.updateMethod}
+          priority={props.priority}
+          link={props.link}
+          changed={props.changed}
+          duplicateOrganisationName={props.duplicateOrganisationName}
+          duplicateAcknowledged={props.duplicateAcknowledged}
+          fieldErrors={props.fieldErrors}
+          orgTypeOptions={props.orgTypeOptions}
+          updateMethodOptions={props.updateMethodOptions}
+          onOrgNameChange={props.onOrgNameChange}
+          onOrgTypeChange={props.onOrgTypeChange}
+          onUpdateMethodChange={props.onUpdateMethodChange}
+          onPriorityChange={props.onPriorityChange}
+          onLinkChange={props.onLinkChange}
+          onChangedChange={props.onChangedChange}
+        />
 
         <div className="pt-2">
           <Button

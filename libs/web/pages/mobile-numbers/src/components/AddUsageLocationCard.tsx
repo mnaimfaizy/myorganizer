@@ -20,7 +20,7 @@ import { enumOptions, titleCase } from '../utils/enumUtils';
 
 export type SelectOption = { value: string; label: string };
 
-export function AddUsageLocationCard(props: {
+interface AddUsageLocationCardProps {
   orgName: string;
   orgType: string;
   updateMethod: string;
@@ -38,7 +38,9 @@ export function AddUsageLocationCard(props: {
   onLinkChange: (value: string) => void;
   onChangedChange: (value: boolean) => void;
   onAddUsage: () => void | Promise<void>;
-}) {
+}
+
+export function AddUsageLocationCard(props: AddUsageLocationCardProps) {
   return (
     <Card className="p-6 shadow-sm border-2">
       <CardTitle className="text-xl font-semibold mb-6">

@@ -8,7 +8,7 @@ import {
   saveEncryptedData,
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import {
   AddAddressFormValues,
@@ -18,7 +18,11 @@ import { randomId } from '../utils/randomId';
 import { AddAddressCard } from './AddAddressCard';
 import { AddressListCard } from './AddressListCard';
 
-function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
+interface AddressesInnerProps {
+  masterKeyBytes: Uint8Array;
+}
+
+function AddressesInner(props: AddressesInnerProps) {
   const { toast } = useToast();
 
   const [items, setItems] = useState<AddressRecord[]>([]);
@@ -50,44 +54,48 @@ function AddressesInner(props: { masterKeyBytes: Uint8Array }) {
       });
   }, [props.masterKeyBytes, toast]);
 
-  async function persist(next: AddressRecord[]) {
-    setItems(next);
-    try {
-      await saveEncryptedData({
-        masterKeyBytes: props.masterKeyBytes,
-        type: 'addresses',
-        value: next,
-      });
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
+  const persist = useCallback(
+    async (next: AddressRecord[]) => {
+      setItems(next);
+      try {
+        await saveEncryptedData({
+          masterKeyBytes: props.masterKeyBytes,
+          type: 'addresses',
+          value: next,
+        });
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        toast({
+          title: 'Failed to save',
+          description: message,
+          variant: 'destructive',
+        });
+        throw e;
+      }
+    },
+    [props.masterKeyBytes, toast],
+  );
+
+  const handleAddAddress = useCallback(
+    async (values: AddAddressFormValues): Promise<AddressRecord> => {
+      const nextItem: AddressRecord = {
+        id: randomId(),
+        ...addressFormValuesToRecordFields(values),
+        status: AddressStatusEnum.Current,
+        usageLocations: [],
+        createdAt: new Date().toISOString(),
+      };
+
+      await persist([nextItem, ...items]);
       toast({
-        title: 'Failed to save',
-        description: message,
-        variant: 'destructive',
+        title: 'Saved',
+        description: 'Address saved (encrypted).',
       });
-      throw e;
-    }
-  }
 
-  async function handleAddAddress(
-    values: AddAddressFormValues,
-  ): Promise<AddressRecord> {
-    const nextItem: AddressRecord = {
-      id: randomId(),
-      ...addressFormValuesToRecordFields(values),
-      status: AddressStatusEnum.Current,
-      usageLocations: [],
-      createdAt: new Date().toISOString(),
-    };
-
-    await persist([nextItem, ...items]);
-    toast({
-      title: 'Saved',
-      description: 'Address saved (encrypted).',
-    });
-
-    return nextItem;
-  }
+      return nextItem;
+    },
+    [items, persist, toast],
+  );
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">

@@ -13,13 +13,15 @@ import {
   SidebarMenuItem,
 } from '@myorganizer/web-ui';
 
+interface VersionSwitcherProps {
+  versions: string[];
+  defaultVersion: string;
+}
+
 export function VersionSwitcher({
   versions,
   defaultVersion,
-}: {
-  versions: string[];
-  defaultVersion: string;
-}) {
+}: VersionSwitcherProps) {
   const [selectedVersion, setSelectedVersion] = React.useState(defaultVersion);
 
   return (

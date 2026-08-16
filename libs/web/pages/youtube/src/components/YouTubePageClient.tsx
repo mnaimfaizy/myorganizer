@@ -2,7 +2,7 @@
 
 import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 import { RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   useYouTubeCarousel,
   useYouTubeConnect,
@@ -44,13 +44,12 @@ export function YouTubePageClient() {
   );
 }
 
-function ConnectPrompt({
-  status,
-  onConnect,
-}: {
+interface ConnectPromptProps {
   status: string;
   onConnect: () => void;
-}) {
+}
+
+function ConnectPrompt({ status, onConnect }: ConnectPromptProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
       <div className="rounded-full bg-red-100 p-4 dark:bg-red-900/30">
@@ -79,34 +78,39 @@ function ConnectPrompt({
   );
 }
 
+interface ConnectedDashboardProps {
+  viewMode: ViewMode;
+  onViewModeChange: (mode: ViewMode) => void;
+  onDisconnect: () => void;
+}
+
 function ConnectedDashboard({
   viewMode,
   onViewModeChange,
   onDisconnect,
-}: {
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
-  onDisconnect: () => void;
-}) {
+}: ConnectedDashboardProps) {
   const subs = useYouTubeSubscriptions();
   const gridData = useYouTubeVideos();
   const carouselData = useYouTubeCarousel();
+  const { sync: syncSubs } = subs;
+  const { refresh: refreshGrid } = gridData;
+  const { refresh: refreshCarousel } = carouselData;
   const [syncing, setSyncing] = useState(false);
 
-  const handleSync = async () => {
+  const handleSync = useCallback(async () => {
     setSyncing(true);
     try {
-      await subs.sync();
+      await syncSubs();
       // Sync also fetches videos on the backend now, refresh both views
-      await Promise.all([gridData.refresh(), carouselData.refresh()]);
+      await Promise.all([refreshGrid(), refreshCarousel()]);
     } finally {
       setSyncing(false);
     }
-  };
+  }, [syncSubs, refreshGrid, refreshCarousel]);
 
-  const handleRefreshVideos = async () => {
-    await Promise.all([gridData.refresh(), carouselData.refresh()]);
-  };
+  const handleRefreshVideos = useCallback(async () => {
+    await Promise.all([refreshGrid(), refreshCarousel()]);
+  }, [refreshGrid, refreshCarousel]);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">

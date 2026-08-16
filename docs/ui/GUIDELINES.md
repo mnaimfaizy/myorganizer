@@ -403,6 +403,15 @@ Run the shape rules yourself at any time:
 yarn component:hygiene libs/web-ui/src/lib/components/Card/Card.tsx
 ```
 
+Targeted scans are diagnostic: errors fail, while warnings remain visible without failing the command. Enforcement scans use an explicit zero-warning budget:
+
+```bash
+yarn component:hygiene --all --max-warnings=0
+yarn component:hygiene --staged --max-warnings=0
+```
+
+CI runs the strict full scan. Pre-commit runs the strict staged scan when an in-scope component path is staged. The scan roots and rules are identical in both modes.
+
 ComponentBuilder runs it before handing off and must clear every error. ComponentReviewer runs it again as the gate, alongside `tsc` and `eslint`.
 
 Neither agent invents conventions absent from this document. If a situation is not covered, ComponentReviewer flags it as a gap rather than applying general React knowledge — which is how this document grows.

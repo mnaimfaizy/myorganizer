@@ -2,9 +2,11 @@ import { MobileNumberRecord } from '@myorganizer/core';
 import { Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 import { formatMobileNumber } from '../utils/formatMobileNumber';
 
-export function MobileNumberDetailsCard(props: {
+interface MobileNumberDetailsCardProps {
   mobileNumberRecord: MobileNumberRecord;
-}) {
+}
+
+export function MobileNumberDetailsCard(props: MobileNumberDetailsCardProps) {
   const { mobileNumberRecord } = props;
   const hasStructuredNumber = !!(
     mobileNumberRecord.countryCode && mobileNumberRecord.phoneNumber

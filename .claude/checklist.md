@@ -80,7 +80,7 @@ Skills:
 - Components: `CLAUDE.md` → UI Component Workflows / `.claude/commands/component-builder.md`
 - API Contract: `.github/skills/backend-api-contract-change/SKILL.md` (ADR 0015)
 
-Deterministic component checks (any gate): `yarn component:hygiene <path>` — the shape rules from `docs/ui/GUIDELINES.md`. Errors gate; warnings are advisory (ADR 0014).
+Deterministic component checks (any gate): `yarn component:hygiene <path>` — the shape rules from `docs/ui/GUIDELINES.md`. Targeted scans keep warnings advisory; CI and pre-commit enforce zero warnings with `--max-warnings=0` (ADR 0014).
 
 ---
 
