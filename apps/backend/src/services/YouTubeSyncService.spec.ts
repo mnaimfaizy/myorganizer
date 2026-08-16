@@ -418,17 +418,22 @@ describe('YouTubeSyncService', () => {
         },
       );
 
-      (mockPrisma.youTubeSubscription.findMany as jest.Mock)
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([
-          {
-            id: 'sub-1',
-            userId: 'user-1',
-            channelId: 'ch-1',
-            uploadsPlaylistId: 'pl-1',
-            enabled: true,
-          },
-        ]);
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockImplementation(
+        (args: { where?: { enabled?: boolean } }) => {
+          if (args?.where?.enabled === true) {
+            return [
+              {
+                id: 'sub-1',
+                userId: 'user-1',
+                channelId: 'ch-1',
+                uploadsPlaylistId: 'pl-1',
+                enabled: true,
+              },
+            ];
+          }
+          return [];
+        },
+      );
       (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([]);
 
       const videoIds = Array.from(
@@ -436,22 +441,27 @@ describe('YouTubeSyncService', () => {
         (_, index) => `v${index + 1}`,
       );
       const mockYoutube = require('googleapis').google.youtube();
-      mockYoutube.playlistItems.list
-        .mockResolvedValueOnce({
-          data: {
-            items: videoIds.slice(0, 50).map((videoId) => ({
-              snippet: { resourceId: { videoId } },
-            })),
-            nextPageToken: 'page-2',
-          },
-        })
-        .mockResolvedValueOnce({
-          data: {
-            items: videoIds.slice(50).map((videoId) => ({
-              snippet: { resourceId: { videoId } },
-            })),
-          },
-        });
+      mockYoutube.playlistItems.list.mockImplementation(
+        (args: { pageToken?: string }) => {
+          if (args?.pageToken === 'page-2') {
+            return {
+              data: {
+                items: videoIds.slice(50).map((videoId) => ({
+                  snippet: { resourceId: { videoId } },
+                })),
+              },
+            };
+          }
+          return {
+            data: {
+              items: videoIds.slice(0, 50).map((videoId) => ({
+                snippet: { resourceId: { videoId } },
+              })),
+              nextPageToken: 'page-2',
+            },
+          };
+        },
+      );
       mockYoutube.videos.list.mockResolvedValue({
         data: {
           items: videoIds.map((videoId) => ({
@@ -546,17 +556,22 @@ describe('YouTubeSyncService', () => {
         },
       );
 
-      (mockPrisma.youTubeSubscription.findMany as jest.Mock)
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([
-          {
-            id: 'sub-1',
-            userId: 'user-1',
-            channelId: 'ch-err',
-            uploadsPlaylistId: 'pl-err',
-            enabled: true,
-          },
-        ]);
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockImplementation(
+        (args: { where?: { enabled?: boolean } }) => {
+          if (args?.where?.enabled === true) {
+            return [
+              {
+                id: 'sub-1',
+                userId: 'user-1',
+                channelId: 'ch-err',
+                uploadsPlaylistId: 'pl-err',
+                enabled: true,
+              },
+            ];
+          }
+          return [];
+        },
+      );
 
       const mockYoutube = require('googleapis').google.youtube();
       mockYoutube.playlistItems.list.mockRejectedValue(
@@ -578,10 +593,14 @@ describe('YouTubeSyncService', () => {
     });
 
     it('should prune expired disabled channel videos during sync', async () => {
-      // First call: pruneExpiredDisabledVideos should find expired subs
-      (mockPrisma.youTubeSubscription.findMany as jest.Mock)
-        .mockResolvedValueOnce([{ channelId: 'ch-expired' }])
-        .mockResolvedValueOnce([]); // enabled subs after prune
+      (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockImplementation(
+        (args: { where?: { enabled?: boolean } }) => {
+          if (args?.where?.enabled === false) {
+            return [{ channelId: 'ch-expired' }];
+          }
+          return [];
+        },
+      );
 
       (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
         {
@@ -651,21 +670,18 @@ describe('YouTubeSyncService', () => {
     });
 
     it('should stop processing channels on quotaExceeded and report quota_exceeded', async () => {
-      (mockPrisma.youTubeIntegration.findUnique as jest.Mock)
-        .mockResolvedValueOnce({
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
           userId: 'user-1',
           encrypted_access_token: 'encrypted_access',
           encrypted_refresh_token: 'encrypted_refresh',
           token_iv: 'iv1:iv2',
           token_auth_tag: 'tag1:tag2',
           status: 'connected',
-        })
-        .mockResolvedValueOnce({
-          userId: 'user-1',
-          status: 'connected',
           lastSyncStatus: 'quota_exceeded',
           lastSyncError: 'quotaExceeded',
-        });
+        },
+      );
 
       (mockPrisma.youTubeSubscription.findMany as jest.Mock).mockResolvedValue([
         {

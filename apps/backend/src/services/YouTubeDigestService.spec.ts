@@ -357,17 +357,18 @@ describe('YouTubeDigestService', () => {
       (
         mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
       ).mockResolvedValue(settings);
-      (mockPrisma.youTubeVideo.findMany as jest.Mock)
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([
-          {
-            videoId: 'v1',
-            title: 'Late sync',
-            thumbnail: null,
-            publishedAt: new Date('2026-01-02'),
-            subscription: { channelTitle: 'Channel' },
-          },
-        ]);
+      const lateVideo = {
+        videoId: 'v1',
+        title: 'Late sync',
+        thumbnail: null,
+        publishedAt: new Date('2026-01-02'),
+        subscription: { channelTitle: 'Channel' },
+      };
+      let findManyCalls = 0;
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockImplementation(() => {
+        findManyCalls += 1;
+        return findManyCalls === 1 ? [] : [lateVideo];
+      });
       (mockPrisma.youTubeDigestDelivery.create as jest.Mock).mockResolvedValue(
         {},
       );
