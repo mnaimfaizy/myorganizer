@@ -29,7 +29,7 @@ Break a PRD Issue into independently-grabbable Slice Issues using tracer-bullet 
 - After publishing all slices, update the PRD Issue `## Slices` section with links to each created issue.
 - Do NOT close or modify the PRD Issue body beyond the `## Slices` section.
 - Do not include specific file paths or code snippets in issue bodies — they go stale. Exception: decision-rich prototype snippets (schema shape, state machine, type) — trim to the essential parts only.
-- For each slice, assign a `gate:*` tier (ADR 0012) and detect which delegation pipelines apply under that gate (ComponentBuilder, TestScaffold, StorybookCurator). If a `gate:full` slice requires two or more non-trivial pipelines, flag it as a **split candidate** in the quiz — splitting keeps each agent iteration focused on one pipeline and prevents guardrail bypasses.
+- For each slice, assign a `gate:*` tier (ADR 0012) and detect which **Gated Pipelines** apply under that gate (ComponentBuilder, TestScaffold, StorybookCurator). One-shot Specialists (PrismaWriter, ApiWriter, ApiSync) do not count. If a `gate:full` slice would invoke two or more Gated Pipelines, **split it by default** — keep it together only when the quiz explicitly says so. Vertical completeness still wins: do not split into schema-only or UI-only layers.
 - When an acceptance criterion involves creating test files, suffix it with `(via TestScaffold — do not write directly)`. This removes the agent's rationalization surface for writing tests inline.
 
 ## Blocking / unblocking (required)
@@ -96,7 +96,7 @@ HITL note: `type:hitl` is separate from `status:blocked`. HITL needs a human to 
        - New/behavioral test file → `TestScaffold → TestReviewer → TestRunner` (`standard`/`full`)
        - New or updated Storybook story → `StorybookCurator` (`standard`/`full`)
        - File moves, import path updates, config, docs → `direct edit`
-         If two or more entries are non-`direct edit` on `gate:full`, mark the slice **split candidate ⚠️**.
+         If two or more **Gated Pipelines** (Component, Jest, Storybook — not PrismaWriter/ApiWriter/ApiSync) apply on `gate:full`, **split by default**. Keep together only when the quiz explicitly says so.
 
 5. **Quiz the user**
 
@@ -114,7 +114,7 @@ HITL note: `type:hitl` is separate from `status:blocked`. HITL needs a human to 
    - Should any slices be merged or split?
    - Are HITL classifications correct?
    - Are `gate:*` assignments correct? (mechanical vs standard vs full)
-   - Are there slices marked **split candidate ⚠️** (two or more delegation pipelines on `gate:full`)? Splitting them prevents agents from bypassing specialists under task pressure — one pipeline per slice is the target.
+   - Are there slices that would invoke two or more Gated Pipelines on `gate:full`? **Split by default** (ADR 0017). Keep a multi-pipeline slice only when it is one demoable surface and you say so explicitly. One-shot Specialists do not count.
 
    Iterate until the user approves the full breakdown.
 
@@ -226,7 +226,7 @@ After all slice numbers exist, ensure every blocker’s `## Blocks` section list
 
 - Each ordinary slice cuts a narrow but complete path through every layer (schema → API → UI → tests) — vertical, not a horizontal layer slice.
 - A completed slice must be independently demoable or verifiable.
-- Prefer one non-trivial delegation pipeline per `gate:full` slice (split candidates when two or more apply).
+- Prefer one Gated Pipeline per `gate:full` slice. **Split by default** when two or more Gated Pipelines apply; keep together only with an explicit quiz exception. One-shot Specialists do not count. Do not split into horizontal layers.
 
 ### Wide refactors (expand–contract)
 

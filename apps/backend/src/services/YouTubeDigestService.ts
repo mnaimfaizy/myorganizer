@@ -85,7 +85,8 @@ function frontendUrl(): string {
  * Every delivery is claimed in a ledger keyed by User + local ISO week before
  * anything reaches SMTP. A pass that dies mid-send therefore leaves a claimed
  * row that no later pass will re-send: losing one week's digest is the
- * deliberate trade against mailing the same week twice.
+ * deliberate trade against mailing the same week twice. An empty Window does
+ * not create a Digest Delivery (ADR 0016).
  */
 export class YouTubeDigestService {
   constructor(
@@ -214,37 +215,37 @@ export class YouTubeDigestService {
     }
 
     const periodKey = isoWeekKey(now, timeZone);
+    // Window runs from the last successful send, falling back to when the
+    // User opted in, then to when they connected — never further back.
+    const windowStart =
+      settings.lastNotifiedAt ?? settings.optedInAt ?? connectedAt;
+
+    const videos = (await this.prisma.youTubeVideo.findMany({
+      where: {
+        userId,
+        watched: false,
+        publishedAt: { gt: windowStart },
+        subscription: { enabled: true },
+        // Long-form only. Shorts live behind the Daily Budget on their own
+        // page, and the digest's per-item link is the long-form channel
+        // page — mailing a Short would land the reader somewhere it is not
+        // shown.
+        ...videoKindWhere('long'),
+      },
+      orderBy: { publishedAt: 'desc' },
+      take: DIGEST_ITEM_CAP,
+      include: { subscription: { select: { channelTitle: true } } },
+    })) as DigestVideo[];
+
+    // An empty Window is not a send attempt. Do not claim the Period, so a
+    // later tick the same local day (for example after sync catches up) can
+    // still send. See ADR 0016.
+    if (videos.length === 0) return 'skipped_empty';
+
     const claim = await this.claimPeriod(userId, periodKey);
     if (!claim) return 'duplicate';
 
     try {
-      // Window runs from the last successful send, falling back to when the
-      // User opted in, then to when they connected — never further back.
-      const windowStart =
-        settings.lastNotifiedAt ?? settings.optedInAt ?? connectedAt;
-
-      const videos = (await this.prisma.youTubeVideo.findMany({
-        where: {
-          userId,
-          watched: false,
-          publishedAt: { gt: windowStart },
-          subscription: { enabled: true },
-          // Long-form only. Shorts live behind the Daily Budget on their own
-          // page, and the digest's per-item link is the long-form channel
-          // page — mailing a Short would land the reader somewhere it is not
-          // shown.
-          ...videoKindWhere('long'),
-        },
-        orderBy: { publishedAt: 'desc' },
-        take: DIGEST_ITEM_CAP,
-        include: { subscription: { select: { channelTitle: true } } },
-      })) as DigestVideo[];
-
-      if (videos.length === 0) {
-        await this.finishPeriod(userId, periodKey, 'skipped_empty', 0);
-        return 'skipped_empty';
-      }
-
       const user = await this.prisma.user.findUnique({
         where: { id: userId },
         select: { email: true, first_name: true },
@@ -304,7 +305,7 @@ export class YouTubeDigestService {
   private async finishPeriod(
     userId: string,
     periodKey: string,
-    status: 'sent' | 'skipped_empty' | 'failed',
+    status: 'sent' | 'failed',
     itemCount: number,
     error?: string,
   ): Promise<void> {

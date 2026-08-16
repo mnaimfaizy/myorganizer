@@ -99,7 +99,8 @@ model YouTubeDigestDelivery {
   userId    String
   /// Local ISO week the digest covers, e.g. "2026-W33".
   periodKey String
-  /// claimed | sent | skipped_empty | failed
+  /// claimed | sent | failed. `skipped_empty` is a worker outcome only;
+  /// an empty Window does not write a row (ADR 0016).
   status    String    @default("claimed")
   itemCount Int       @default(0)
   sentAt    DateTime?

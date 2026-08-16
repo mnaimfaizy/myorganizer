@@ -230,6 +230,15 @@ describe('YouTubeDigestService', () => {
         lastNotifiedAt: null,
         optedInAt: new Date('2025-12-01'),
       });
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([
+        {
+          videoId: 'v1',
+          title: 'Test',
+          thumbnail: null,
+          publishedAt: new Date('2026-01-02'),
+          subscription: { channelTitle: 'Channel' },
+        },
+      ]);
       (mockPrisma.youTubeDigestDelivery.create as jest.Mock).mockRejectedValue({
         code: 'P2002',
       });
@@ -237,7 +246,8 @@ describe('YouTubeDigestService', () => {
       const result = await service.deliverDigestForUser('user-1', now, monday);
 
       expect(result).toBe('duplicate');
-      expect(mockPrisma.youTubeVideo.findMany).not.toHaveBeenCalled();
+      expect(mockPrisma.youTubeVideo.findMany).toHaveBeenCalled();
+      expect(mockSendEmail).not.toHaveBeenCalled();
     });
 
     it('should query videos with watched=false and enabled subscriptions', async () => {
@@ -317,9 +327,6 @@ describe('YouTubeDigestService', () => {
         lastNotifiedAt: null,
         optedInAt,
       });
-      (mockPrisma.youTubeDigestDelivery.create as jest.Mock).mockResolvedValue(
-        {},
-      );
       (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([]);
 
       const result = await service.deliverDigestForUser(
@@ -330,9 +337,59 @@ describe('YouTubeDigestService', () => {
 
       expect(result).toBe('skipped_empty');
       expect(mockSendEmail).not.toHaveBeenCalled();
+      expect(mockPrisma.youTubeDigestDelivery.create).not.toHaveBeenCalled();
       const call = (mockPrisma.youTubeVideo.findMany as jest.Mock).mock
         .calls[0][0];
       expect(call.where.publishedAt).toEqual({ gt: optedInAt });
+    });
+
+    it('should still send later the same Period after an empty Window', async () => {
+      const monday = new Date('2026-01-05T12:00:00Z');
+      const settings = {
+        userId: 'user-1',
+        enabled: true,
+        timeZone: 'UTC',
+        preferredWeekday: 1,
+        lastNotifiedAt: null,
+        optedInAt: new Date('2025-12-01'),
+        unsubscribeToken: 'token123',
+      };
+      (
+        mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
+      ).mockResolvedValue(settings);
+      (mockPrisma.youTubeVideo.findMany as jest.Mock)
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([
+          {
+            videoId: 'v1',
+            title: 'Late sync',
+            thumbnail: null,
+            publishedAt: new Date('2026-01-02'),
+            subscription: { channelTitle: 'Channel' },
+          },
+        ]);
+      (mockPrisma.youTubeDigestDelivery.create as jest.Mock).mockResolvedValue(
+        {},
+      );
+      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+        email: 'user@example.com',
+        first_name: 'John',
+      });
+
+      const empty = await service.deliverDigestForUser(
+        'user-1',
+        new Date('2025-11-01'),
+        monday,
+      );
+      const sent = await service.deliverDigestForUser(
+        'user-1',
+        new Date('2025-11-01'),
+        monday,
+      );
+
+      expect(empty).toBe('skipped_empty');
+      expect(sent).toBe('sent');
+      expect(mockPrisma.youTubeDigestDelivery.create).toHaveBeenCalledTimes(1);
     });
 
     it('should return failed when user row missing', async () => {

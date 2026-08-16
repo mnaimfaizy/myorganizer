@@ -4,13 +4,13 @@ Sandbox agents were silently hanging during `yarn nx test` — the Bash tool blo
 
 ## Status
 
-accepted
+accepted — retry cap amended by [ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md) (3 → 2 reject-cycles)
 
 ## Considered Options
 
 **Agent-calls-next** — each agent invokes the next one in its own instructions. Rejected: distributes control flow across three definitions, making the retry logic and escalation path hard to audit or change.
 
-**Skill-owns-chain** (chosen) — `unit-test-delegation-workflow` skill orchestrates `TestScaffold → TestReviewer → TestRunner`. Agents are stateless; they receive a contract checklist and return a verdict. Control flow, retry cap (3), and escalation live in one place.
+**Skill-owns-chain** (chosen) — `unit-test-delegation-workflow` skill orchestrates `TestScaffold → TestReviewer → TestRunner`. Agents are stateless; they receive a contract checklist and return a verdict. Control flow, retry cap, and escalation live in one place. Cap is **2** reject-cycles ([ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md); originally 3).
 
 ## Pipeline contract
 
@@ -27,7 +27,7 @@ TestRunner does not echo the annotated copy forward.
 ## Key guardrails
 
 - **Hung test detection**: after 1 min of no stdout, TestRunner checks `ps aux` to distinguish "yarn still installing" (wait) from "test process hung" (kill, retry one-at-a-time with `--testNamePattern`)
-- **Retry cap**: 3 cycles of TestReviewer-rejects-back-to-TestScaffold before escalating to main agent with a diagnosis
+- **Retry cap**: 2 cycles of TestReviewer-rejects-back-to-TestScaffold before escalating to the orchestrator ([ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md)). Hitting the cap is a Pipeline Incident.
 - **E2E never executes autonomously**: E2E test files get `tsc --noEmit` + `eslint` only; TestRunner posts a PR comment and applies `needs-e2e-review` label; enforced in both TestRunner and E2EPlanner
 
 ## Model assignments

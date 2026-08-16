@@ -132,7 +132,7 @@ Do not treat every test/component touch as a full multi-agent pipeline. Classify
 | `*.spec.ts` (Playwright E2E)                     | `.github/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold → TestReviewer (structural). Skip planner only for selector-only + unchanged matrix |
 | `*.test.ts` (Jest)                               | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold → TestReviewer → TestRunner                                                                      |
 | `*.stories.tsx`                                  | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                                                                                              |
-| Components in `libs/web-ui/` / `libs/web/pages/` | Component workflow                                      | ComponentBuilder → ComponentReviewer (max 3 FAIL loops)                                                       |
+| Components in `libs/web-ui/` / `libs/web/pages/` | Component workflow                                      | ComponentBuilder → ComponentReviewer (max 2 FAIL cycles; ADR 0017)                                            |
 
 ### Key Anti-Patterns
 

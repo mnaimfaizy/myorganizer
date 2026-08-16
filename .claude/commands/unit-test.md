@@ -39,11 +39,11 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs i
 6. Delegate `TestScaffold` output to `TestReviewer` (`.claude/agents/test-reviewer.md`).
 7. Handle `TestReviewer` verdict:
    - **APPROVED** → proceed to step 8.
-   - **REJECTED** → send revision brief to `TestScaffold` listing the specific failing checklist items (counts as one retry; max 3 retries total before escalating to the main agent).
+   - **REJECTED** → send revision brief to `TestScaffold` listing the specific failing checklist items (counts as one retry; max 2 reject-cycles total before escalating to the main agent; ADR 0017).
 8. Delegate `TestReviewer`-approved output to `TestRunner` (`.claude/agents/test-runner.md`).
 9. Handle `TestRunner` verdict:
    - **PASS** → report result to main agent.
-   - **FAIL(test_wrong)** → send diagnosis to `TestScaffold` as revision brief (retry counter applies; max 3 total).
+   - **FAIL(test_wrong)** → send diagnosis to `TestScaffold` as revision brief (retry counter applies; max 2 total). A Reviewer PASS then Runner FAIL is a Pipeline Incident.
    - **FAIL(code_broken)** → escalate to main agent with full TestRunner report; do not retry.
    - **ESCALATE** → escalate to main agent with full context.
    - **NEEDS_HUMAN_REVIEW** → relay PR comment and `needs-e2e-review` label to main agent; accept result.

@@ -132,6 +132,22 @@ _Avoid_: Viewed, seen, played, completed
 A Cached Upload that is not Watched.
 _Avoid_: Unwatched, unread, unseen
 
+**Weekly Digest**:
+The weekly email of long-form Cached Uploads that are still New and inside the Digest Window. Shorts are never part of it.
+_Avoid_: notification email, YouTube newsletter, catch-up mail, sync-and-notify
+
+**Digest Window**:
+The open interval of publish times that makes a New Cached Upload eligible for a Weekly Digest. It starts at the last successful send, otherwise when the User opted in, otherwise when they connected YouTube.
+_Avoid_: lookback, became-New window, since last sync
+
+**Digest Period**:
+The User's local ISO week (Monday-start) during which at most one Weekly Digest may be attempted.
+_Avoid_: digest week, calendar week, Sunday-start week, interval
+
+**Digest Delivery**:
+One attempt to send a Weekly Digest to one User for one Digest Period.
+_Avoid_: delivery ledger, notification log, send receipt, mail record
+
 **Shorts Daily Budget**:
 The User’s configurable daily cap on time spent in the Shorts lane (default one hour), measured as wall-clock while a Short is active and the document is visible.
 _Avoid_: Shorts quota, daily Shorts timer (as the product name), playtime limit
@@ -193,6 +209,22 @@ _Avoid_: Blocked issue, human task
 **dispatch-agents**:
 The `yarn dispatch-agents --prd <issue-number>` command that triggers the sandcastle orchestrator. Reads AFK Slice Issues labelled `ready-for-agent`, creates the feature branch **locally (never pushed)**, and runs one sandcastle agent per slice — one at a time, in Docker isolation — fast-forwarding each finished slice into the local feature branch and closing the slice issue. Integration is local: you push the feature branch and open one PR to `main` by hand.
 _Avoid_: Agent runner, orchestrator command, run-agents
+
+**Gated Pipeline**:
+A specialist chain that retries between agents until a reviewer or runner verdict passes, with a cap. Components and Jest use this shape. Hitting the cap is a stop, not another silent retry.
+_Avoid_: review loop, QA cycle, writer-reviewer loop
+
+**One-shot Specialist**:
+A sub-agent that performs one assigned job, returns a report of what it did, and stops. The orchestrator does not send the work back for another round.
+_Avoid_: writer-reviewer loop, retry cycle, gated hop (when you mean this shape)
+
+**Orchestrator Patch**:
+The main agent's local fix to an obvious miss in a One-shot Specialist's output — an annotation, a field, an import, or a command the report claimed but skipped. Not a re-delegation. If the specialist missed the assignment, the orchestrator stops and surfaces it; it does not open a loop.
+_Avoid_: retry, reviewer fix, send-back
+
+**Pipeline Incident**:
+A durable note that a specialist or gate wasted a cycle, repeated the same FAIL, or missed something a sibling already solved. Written so the specialist can be improved. Not a retry and not an Orchestrator Patch.
+_Avoid_: quality flag, agent bug report, suspicious behavior, loop smell
 
 ## Agent Roles
 

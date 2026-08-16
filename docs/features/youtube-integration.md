@@ -197,8 +197,9 @@ above. Existing deployments must update their cron entries — see below.
 - **No interval knob.** The legacy `intervalDays` column remains on the row but
   is gone from the API contract and the UI — the digest is weekly and fires on
   `preferredWeekday`, so an interval control would do nothing.
-- **Empty weeks skip.** No mail is sent, and `lastNotifiedAt` does not advance,
-  so the next send still covers the whole gap.
+- **Empty weeks skip.** No mail is sent, `lastNotifiedAt` does not advance,
+  and no Digest Delivery is written, so a later tick the same local day
+  (for example after sync catches up) can still send. See ADR 0016.
 - **Preferred weekday** is evaluated against the User's own calendar using
   their stored IANA `timeZone` (null means UTC).
 - **Idempotent ledger.** `YouTubeDigestDelivery` is unique on

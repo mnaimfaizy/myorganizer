@@ -12,7 +12,7 @@ The importer scan was the worst of both problems: ComponentReviewer was told to 
 
 ## Status
 
-accepted
+accepted — retry cap amended by [ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md) (3 → 2 reject-cycles)
 
 ## Considered Options
 
