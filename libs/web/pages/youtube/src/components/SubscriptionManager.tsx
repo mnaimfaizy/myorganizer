@@ -7,6 +7,7 @@ import {
   CardTitle,
   Skeleton,
 } from '@myorganizer/web-ui';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatRetryAt, isRetryCooldownActive } from '../hooks';
 import type { YouTubeSubscription } from '../types';
@@ -69,6 +70,19 @@ export function SubscriptionManager({
             Disconnect
           </Button>
         </div>
+      </div>
+      <div className="text-xs text-gray-500 dark:text-gray-400">
+        <ul className="list-disc list-inside space-y-0.5 mb-2">
+          <li>Metadata only — never video files</li>
+          <li>Watched is yes/no, not analytics</li>
+          <li>Latest 100 uploads cached per channel</li>
+          <li>30 days after you disable a channel</li>
+          <li>Disconnecting deletes all metadata</li>
+          <li>Shorts budget is tracked locally</li>
+        </ul>
+        <Link href="/youtube/data-privacy" className="underline">
+          How we store your data
+        </Link>
       </div>
       <CardContent className="mt-4">
         {loading && subscriptions.length === 0 ? (

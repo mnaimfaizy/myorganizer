@@ -355,6 +355,7 @@ export class YouTubeDigestService {
     const base = frontendUrl();
     const homeUrl = `${base}/dashboard/youtube`;
     const settingsUrl = `${base}/dashboard/youtube`;
+    const privacyUrl = `${base}/youtube/data-privacy`;
     const unsubscribeUrl = `${base}/youtube/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`;
 
     const rows = videos
@@ -392,6 +393,7 @@ export class YouTubeDigestService {
         </table>
         <p style="margin-top: 24px; color: #666; font-size: 13px;">
           MyOrganizer stores YouTube metadata only — never video files.
+          <a href="${privacyUrl}" style="color: #666;">How we store your data</a> &middot;
           <a href="${settingsUrl}" style="color: #666;">Digest settings</a> &middot;
           <a href="${unsubscribeUrl}" style="color: #666;">Unsubscribe</a>
         </p>

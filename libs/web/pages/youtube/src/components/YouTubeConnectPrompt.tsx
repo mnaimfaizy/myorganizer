@@ -54,6 +54,22 @@ export function YouTubeConnectPrompt({
         Link your YouTube account to view and manage videos from your Enabled
         Channels. We only request read-only access.
       </p>
+      <div className="max-w-md text-center text-sm text-gray-500">
+        <ul className="list-disc list-inside space-y-1 mb-2 inline-block text-left">
+          <li>Metadata only — never video files</li>
+          <li>Watched is yes/no, not analytics</li>
+          <li>Latest 100 uploads cached per channel</li>
+          <li>30 days after you disable a channel</li>
+          <li>Disconnecting deletes all metadata</li>
+          <li>Shorts budget is tracked locally</li>
+        </ul>
+      </div>
+      <Link
+        href="/youtube/data-privacy"
+        className="text-xs underline text-gray-500 dark:text-gray-400"
+      >
+        How we store your YouTube data
+      </Link>
       {statusMessage && (
         <p className="text-sm text-yellow-600 dark:text-yellow-400">
           {statusMessage}

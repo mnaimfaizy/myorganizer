@@ -191,6 +191,10 @@ describe('YouTubeDigestService', () => {
   });
 
   describe('deliverDigestForUser', () => {
+    afterEach(() => {
+      delete process.env.APP_FRONTEND_URL;
+    });
+
     it('should return not_due when no settings row exists', async () => {
       (
         mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
@@ -525,6 +529,49 @@ describe('YouTubeDigestService', () => {
       expect(html).toContain('https://app.example.com/dashboard/youtube');
       // The whole point of the digest is to return the reader to MyOrganizer.
       expect(html).not.toContain('youtube.com');
+    });
+
+    it('should include data-privacy link in footer', async () => {
+      const monday = new Date('2026-01-05T12:00:00Z');
+      process.env.APP_FRONTEND_URL = 'https://app.example.com';
+      (
+        mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
+      ).mockResolvedValue({
+        userId: 'user-1',
+        enabled: true,
+        timeZone: 'UTC',
+        preferredWeekday: 1,
+        lastNotifiedAt: null,
+        optedInAt: new Date('2025-12-01'),
+        unsubscribeToken: 'token123',
+      });
+      (mockPrisma.youTubeDigestDelivery.create as jest.Mock).mockResolvedValue(
+        {},
+      );
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([
+        {
+          videoId: 'v1',
+          channelId: 'chan-1',
+          title: 'Test Video',
+          thumbnail: null,
+          publishedAt: new Date('2026-01-02'),
+          subscription: { channelTitle: 'Test Channel' },
+        },
+      ]);
+      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+        email: 'user@example.com',
+        first_name: 'John',
+      });
+
+      await service.deliverDigestForUser(
+        'user-1',
+        new Date('2025-11-01'),
+        monday,
+      );
+
+      const html = (mockSendEmail as jest.Mock).mock.calls[0][2] as string;
+      expect(html).toContain('https://app.example.com/youtube/data-privacy');
+      expect(html).toContain('How we store your data');
     });
 
     it('should mint and persist an unsubscribe token when none exists', async () => {
