@@ -133,11 +133,13 @@ Do not treat every test/component touch as a full multi-agent pipeline. Classify
 | `*.test.ts` (Jest)                               | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold → TestReviewer → TestRunner                                                                      |
 | `*.stories.tsx`                                  | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                                                                                              |
 | Components in `libs/web-ui/` / `libs/web/pages/` | Component workflow                                      | ComponentBuilder → ComponentReviewer (max 3 FAIL loops)                                                       |
+| API Contract (controllers, DTOs, Prisma for HTTP) | `.github/skills/backend-api-contract-change/SKILL.md` | PrismaWriter (if schema) → ApiWriter → ApiSync. One-shot; no reviewer loop (ADR 0015) |
 
 ### Key Anti-Patterns
 
 ❌ Skip specialists on behavioral (`standard`/`full`) test or component work.  
 ❌ Run the full test pipeline for a pure mechanical fixture retarget.
+❌ Main agent writes controllers or Prisma schema on `standard`/`full` instead of PrismaWriter / ApiWriter.
 
 ### Before You Edit Any File
 

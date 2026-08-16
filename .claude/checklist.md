@@ -69,6 +69,7 @@ Config/docs/type-only edits with no behavior change may stay mechanical or direc
 | Jest `*.test.ts` / page `*.spec.tsx`          | Direct edit (fixture/type retarget) + focused jest                                  | TestScaffold → TestReviewer → TestRunner                                           | Same full pipeline (max 3 retries)                                                   |
 | `*.stories.tsx`                               | Direct edit only for rename/import path                                             | StorybookCurator                                                                   | StorybookCurator                                                                     |
 | Components `libs/web-ui/` / `libs/web/pages/` | Direct edit only for rename/import/dead delete; run `yarn component:hygiene <path>` | ComponentBuilder → ComponentReviewer                                               | ComponentBuilder → ComponentReviewer (max 3 FAIL loops) + Storybook/tests after PASS |
+| API Contract (controllers, DTOs, Prisma schema for a public HTTP surface) | Direct edit only for rename/import/comment | PrismaWriter (if schema) → ApiWriter → ApiSync (skip unused hops) | Same one-shot hops (ADR 0015). Then leave — Jest stays its Gated Pipeline |
 | Config / docs / types                         | Direct edit OK                                                                      | Direct edit OK                                                                     | Direct edit OK                                                                       |
 
 Skills:
@@ -77,6 +78,7 @@ Skills:
 - Jest: `.github/skills/unit-test-delegation-workflow/SKILL.md`
 - Storybook: `.github/skills/storybook-delegation-workflow/SKILL.md`
 - Components: `CLAUDE.md` → UI Component Workflows / `.claude/commands/component-builder.md`
+- API Contract: `.github/skills/backend-api-contract-change/SKILL.md` (ADR 0015)
 
 Deterministic component checks (any gate): `yarn component:hygiene <path>` — the shape rules from `docs/ui/GUIDELINES.md`. Targeted scans keep warnings advisory; CI and pre-commit enforce zero warnings with `--max-warnings=0` (ADR 0014).
 
