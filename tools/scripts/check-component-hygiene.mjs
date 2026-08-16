@@ -27,13 +27,17 @@
  *   node tools/scripts/check-component-hygiene.mjs <file> [<file> ...]
  *   node tools/scripts/check-component-hygiene.mjs --json <file>
  *   node tools/scripts/check-component-hygiene.mjs --all
+ *   node tools/scripts/check-component-hygiene.mjs --staged
+ *   node tools/scripts/check-component-hygiene.mjs --all --max-warnings=0
  *
- * Exit codes: 0 = no errors, 1 = at least one error, 2 = bad invocation.
+ * Exit codes: 0 = within budget, 1 = errors or exceeded warning budget,
+ * 2 = bad invocation.
  */
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
+import { execFileSync } from 'node:child_process';
 
 import {
   lineOf,
@@ -46,7 +50,8 @@ import {
 const USAGE = `Usage:
   node tools/scripts/check-component-hygiene.mjs <file> [<file> ...]
   node tools/scripts/check-component-hygiene.mjs --json <file> [<file> ...]
-  node tools/scripts/check-component-hygiene.mjs --all
+  node tools/scripts/check-component-hygiene.mjs --all [--max-warnings=0]
+  node tools/scripts/check-component-hygiene.mjs --staged [--max-warnings=0]
 
 Runs the mechanical (non-judgment) ComponentReviewer checklist items against
 React components in libs/web-ui/ (UI Primitives) and libs/web/pages/ (Feature
@@ -360,6 +365,35 @@ async function collectAll() {
   return out.sort();
 }
 
+function collectStaged() {
+  const root = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+    encoding: 'utf8',
+  }).trim();
+  const output = execFileSync(
+    'git',
+    ['diff', '--cached', '--name-status', '--diff-filter=ACDMRT', '-z'],
+    { cwd: root, encoding: 'utf8' },
+  );
+  process.chdir(root);
+
+  const records = output.split('\0');
+  const files = [];
+  for (let index = 0; index < records.length; ) {
+    const status = records[index++];
+    if (!status) continue;
+
+    const source = records[index++];
+    if (!source) break;
+    if (status.startsWith('R') || status.startsWith('C')) {
+      const destination = records[index++];
+      if (destination && scopeOf(destination)) files.push(destination);
+    } else if (status !== 'D' && scopeOf(source)) {
+      files.push(source);
+    }
+  }
+  return files.sort();
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   if (argv.includes('--help') || argv.includes('-h')) {
@@ -369,10 +403,43 @@ async function main() {
 
   const json = argv.includes('--json');
   const all = argv.includes('--all');
-  let files = argv.filter((a) => !a.startsWith('--'));
+  const staged = argv.includes('--staged');
+  const strictWarnings = argv.includes('--max-warnings=0');
+  const validFlags = new Set([
+    '--json',
+    '--all',
+    '--staged',
+    '--max-warnings=0',
+  ]);
+  const unknownFlags = argv.filter(
+    (argument) => argument.startsWith('--') && !validFlags.has(argument),
+  );
+  const explicitFiles = argv.filter((argument) => !argument.startsWith('--'));
+  if (
+    unknownFlags.length ||
+    (all && staged) ||
+    ((all || staged) && explicitFiles.length)
+  ) {
+    process.stderr.write(USAGE);
+    process.exitCode = 2;
+    return;
+  }
+
+  let files = explicitFiles;
 
   if (all) files = await collectAll();
+  if (staged) files = collectStaged();
   if (!files.length) {
+    if (staged) {
+      if (json) {
+        process.stdout.write(
+          `${JSON.stringify({ errors: 0, warnings: 0, results: [] }, null, 2)}\n`,
+        );
+      } else {
+        process.stdout.write('No staged component files to check.\n');
+      }
+      return;
+    }
     process.stderr.write(USAGE);
     process.exitCode = 2;
     return;
@@ -427,7 +494,7 @@ async function main() {
     reportFindings(results, 'Component hygiene');
   }
 
-  process.exitCode = errors > 0 ? 1 : 0;
+  process.exitCode = errors > 0 || (strictWarnings && warnings > 0) ? 1 : 0;
 }
 
 main().catch((error) => {
