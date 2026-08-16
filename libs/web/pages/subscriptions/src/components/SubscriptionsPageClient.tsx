@@ -1,124 +1,49 @@
 'use client';
 
 import {
-  SUPPORTED_CURRENCIES,
   SubscriptionBillingCycleEnum,
   SubscriptionPaymentMethodEnum,
-  SubscriptionRecord,
   SubscriptionRenewalTypeEnum,
   SubscriptionStatusEnum,
   SubscriptionTierEnum,
   convertAmount,
-  formatMoney,
   getAccountSettings,
   getFxRates,
   randomId,
   subscribeAccountSettings,
   type CurrencyCode,
+  type SubscriptionRecord,
 } from '@myorganizer/core';
-import {
-  Button,
-  Card,
-  CardContent,
-  CardTitle,
-  DatePicker,
-  Input,
-  Label,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  useToast,
-} from '@myorganizer/web-ui';
+import { useToast } from '@myorganizer/web-ui';
 import {
   loadDecryptedData,
   normalizeSubscriptions,
   saveEncryptedData,
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
-import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Controller, useForm } from 'react-hook-form';
-import { z } from 'zod';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type BaseSyntheticEvent,
+} from 'react';
+import { useForm } from 'react-hook-form';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import { dateInputToIso, todayAsDateInput } from '../utils/date';
 import {
-  formatIsoDateForDisplay,
-  getSubscriptionBillingCycleLabel,
-  getSubscriptionPaymentMethodLabel,
-  getSubscriptionRenewalTypeLabel,
-  getSubscriptionStatusLabel,
-  getSubscriptionTierLabel,
-} from '../utils/presentation';
-
-type CycleCurrencySubtotal = {
-  billingCycle: SubscriptionRecord['billingCycle'];
-  currency: CurrencyCode;
-  total: number;
-  count: number;
-};
-
-type CycleConvertedSubtotal = {
-  billingCycle: SubscriptionRecord['billingCycle'];
-  currency: CurrencyCode;
-  total: number;
-  count: number;
-};
-
-const addSubscriptionSchema = z.object({
-  name: z.string().trim().min(1, 'Name is required'),
-  status: z.enum([
-    SubscriptionStatusEnum.Active,
-    SubscriptionStatusEnum.Inactive,
-    SubscriptionStatusEnum.Cancelled,
-    SubscriptionStatusEnum.Expired,
-    SubscriptionStatusEnum.Pending,
-  ]),
-  billingCycle: z.enum([
-    SubscriptionBillingCycleEnum.Weekly,
-    SubscriptionBillingCycleEnum.Fortnightly,
-    SubscriptionBillingCycleEnum.Monthly,
-    SubscriptionBillingCycleEnum.Quarterly,
-    SubscriptionBillingCycleEnum.Yearly,
-    SubscriptionBillingCycleEnum.TwoYears,
-    SubscriptionBillingCycleEnum.ThreeYears,
-  ]),
-  amount: z.number().finite().min(0, 'Amount must be >= 0'),
-  currency: z.custom<CurrencyCode>(
-    (v) => typeof v === 'string' && v.length > 0,
-  ),
-  paymentMethod: z.enum([
-    SubscriptionPaymentMethodEnum.CreditCard,
-    SubscriptionPaymentMethodEnum.PayPal,
-    SubscriptionPaymentMethodEnum.BankTransfer,
-  ]),
-  renewalType: z.enum([
-    SubscriptionRenewalTypeEnum.AutoRenew,
-    SubscriptionRenewalTypeEnum.Manual,
-  ]),
-  tier: z.enum([
-    SubscriptionTierEnum.Free,
-    SubscriptionTierEnum.Basic,
-    SubscriptionTierEnum.Pro,
-    SubscriptionTierEnum.Enterprise,
-    SubscriptionTierEnum.Individual,
-    SubscriptionTierEnum.Family,
-  ]),
-  startDate: z.string().trim().min(1, 'Start date is required'),
-  nextBillingDate: z.string().trim().optional(),
-  link: z.string().trim().url().optional().or(z.literal('')),
-});
-
-type AddSubscriptionFormValues = z.infer<typeof addSubscriptionSchema>;
+  AddSubscriptionCard,
+  addSubscriptionSchema,
+  type AddSubscriptionFormValues,
+} from './AddSubscriptionCard';
+import { SubscriptionsListCard } from './SubscriptionsListCard';
+import {
+  SubscriptionsTotalsCard,
+  type CycleConvertedSubtotal,
+  type CycleCurrencySubtotal,
+} from './SubscriptionsTotalsCard';
 
 interface SubscriptionsInnerProps {
   masterKeyBytes: Uint8Array;
@@ -193,23 +118,26 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
       });
   }, [props.masterKeyBytes, toast]);
 
-  async function persist(next: SubscriptionRecord[]) {
-    setItems(next);
-    try {
-      await saveEncryptedData({
-        masterKeyBytes: props.masterKeyBytes,
-        type: 'subscriptions',
-        value: next,
-      });
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      toast({
-        title: 'Failed to save',
-        description: message,
-        variant: 'destructive',
-      });
-    }
-  }
+  const persist = useCallback(
+    async (next: SubscriptionRecord[]) => {
+      setItems(next);
+      try {
+        await saveEncryptedData({
+          masterKeyBytes: props.masterKeyBytes,
+          type: 'subscriptions',
+          value: next,
+        });
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        toast({
+          title: 'Failed to save',
+          description: message,
+          variant: 'destructive',
+        });
+      }
+    },
+    [props.masterKeyBytes, toast],
+  );
 
   const sorted = useMemo(() => {
     return [...items].sort((a, b) => a.name.localeCompare(b.name));
@@ -244,7 +172,7 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
     });
   }, [activeItems]);
 
-  async function convertTotalsOnDemand() {
+  const convertTotalsOnDemand = useCallback(async () => {
     setConvertedTotals({ enabled: true, loading: true, totals: [] });
     try {
       const fromCurrencies = Array.from(
@@ -313,482 +241,95 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
         variant: 'destructive',
       });
     }
-  }
+  }, [activeItems, preferredCurrency, toast]);
 
   const resetConversion = useCallback(() => {
     setConvertedTotals({ enabled: false, loading: false, totals: [] });
   }, []);
 
+  const handleAddSubscription = useCallback(
+    async (e?: BaseSyntheticEvent) => {
+      return addForm.handleSubmit(async (values) => {
+        const startDateIso = dateInputToIso(values.startDate);
+        if (!startDateIso) {
+          toast({
+            title: 'Invalid start date',
+            description: 'Please enter a valid start date.',
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        const nextBillingIso = dateInputToIso(values.nextBillingDate);
+
+        const nextItem: SubscriptionRecord = {
+          id: randomId(),
+          name: values.name.trim(),
+          startDate: startDateIso,
+          endDate: undefined,
+          status: values.status,
+          billingCycle: values.billingCycle,
+          amount: values.amount,
+          currency: values.currency as CurrencyCode,
+          paymentMethod: values.paymentMethod,
+          nextBillingDate: nextBillingIso,
+          renewalType: values.renewalType,
+          cancellationDate: undefined,
+          cancellationReason: undefined,
+          tier: values.tier,
+          link: values.link?.trim() || undefined,
+        };
+
+        await persist([nextItem, ...items]);
+        addForm.reset({
+          ...values,
+          name: '',
+          amount: 0,
+          nextBillingDate: '',
+          link: '',
+        });
+        toast({
+          title: 'Saved',
+          description: 'Subscription saved (encrypted).',
+        });
+      })(e);
+    },
+    [addForm, items, persist, toast],
+  );
+
+  const handleDeleteSubscription = useCallback(
+    async (id: string) => {
+      await persist(items.filter((x) => x.id !== id));
+      toast({
+        title: 'Deleted',
+        description: 'Subscription removed.',
+      });
+    },
+    [items, persist, toast],
+  );
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <Card className="p-4">
-        <CardTitle className="text-lg">Totals (active)</CardTitle>
-        <CardContent className="mt-4 space-y-3">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div className="text-sm text-muted-foreground">
-              Preferred currency:{' '}
-              <span className="font-medium">{preferredCurrency}</span>
-            </div>
-            <div className="flex gap-2">
-              {convertedTotals.enabled ? (
-                <Button
-                  variant="secondary"
-                  onClick={resetConversion}
-                  disabled={convertedTotals.loading}
-                >
-                  Show original
-                </Button>
-              ) : (
-                <Button
-                  onClick={() => void convertTotalsOnDemand()}
-                  disabled={convertedTotals.loading || activeItems.length === 0}
-                >
-                  {convertedTotals.loading
-                    ? 'Converting…'
-                    : `Convert totals to ${preferredCurrency}`}
-                </Button>
-              )}
-            </div>
-          </div>
-
-          {convertedTotals.enabled ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Billing cycle</TableHead>
-                  <TableHead className="text-right">Count</TableHead>
-                  <TableHead className="text-right">
-                    Total ({preferredCurrency})
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {convertedTotals.totals.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={3} className="text-muted-foreground">
-                      {convertedTotals.loading
-                        ? 'Loading FX rates…'
-                        : convertedTotals.error
-                          ? convertedTotals.error
-                          : 'No active subscriptions.'}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  convertedTotals.totals.map((t) => (
-                    <TableRow key={t.billingCycle}>
-                      <TableCell>
-                        {getSubscriptionBillingCycleLabel(t.billingCycle)}
-                      </TableCell>
-                      <TableCell className="text-right">{t.count}</TableCell>
-                      <TableCell className="text-right">
-                        {formatMoney({
-                          amount: t.total,
-                          currency: preferredCurrency,
-                        })}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Billing cycle</TableHead>
-                  <TableHead>Currency</TableHead>
-                  <TableHead className="text-right">Count</TableHead>
-                  <TableHead className="text-right">Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {nativeSubtotals.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-muted-foreground">
-                      No active subscriptions.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  nativeSubtotals.map((t) => (
-                    <TableRow key={`${t.billingCycle}|${t.currency}`}>
-                      <TableCell>
-                        {getSubscriptionBillingCycleLabel(t.billingCycle)}
-                      </TableCell>
-                      <TableCell>{t.currency}</TableCell>
-                      <TableCell className="text-right">{t.count}</TableCell>
-                      <TableCell className="text-right">
-                        {formatMoney({ amount: t.total, currency: t.currency })}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="p-4">
-        <CardTitle className="text-lg">Add subscription</CardTitle>
-        <CardContent className="mt-4 space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="sub-name">Name *</Label>
-            <Input
-              id="sub-name"
-              {...addForm.register('name')}
-              placeholder="Netflix"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="sub-status">Status</Label>
-              <Select
-                value={addForm.watch('status')}
-                onValueChange={(v) =>
-                  addForm.setValue(
-                    'status',
-                    v as AddSubscriptionFormValues['status'],
-                    {
-                      shouldValidate: true,
-                    },
-                  )
-                }
-              >
-                <SelectTrigger id="sub-status">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(SubscriptionStatusEnum).map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {getSubscriptionStatusLabel(v)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sub-billing">Billing cycle</Label>
-              <Select
-                value={addForm.watch('billingCycle')}
-                onValueChange={(v) =>
-                  addForm.setValue(
-                    'billingCycle',
-                    v as AddSubscriptionFormValues['billingCycle'],
-                    { shouldValidate: true },
-                  )
-                }
-              >
-                <SelectTrigger id="sub-billing">
-                  <SelectValue placeholder="Select cycle" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(SubscriptionBillingCycleEnum).map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {getSubscriptionBillingCycleLabel(v)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="sub-amount">Amount</Label>
-              <Input
-                id="sub-amount"
-                type="number"
-                step="0.01"
-                {...addForm.register('amount', { valueAsNumber: true })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sub-currency">Currency</Label>
-              <Select
-                value={addForm.watch('currency')}
-                onValueChange={(v) =>
-                  addForm.setValue(
-                    'currency',
-                    v as AddSubscriptionFormValues['currency'],
-                    {
-                      shouldValidate: true,
-                    },
-                  )
-                }
-              >
-                <SelectTrigger id="sub-currency">
-                  <SelectValue placeholder="Select currency" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUPPORTED_CURRENCIES.map((c) => (
-                    <SelectItem key={c.code} value={c.code}>
-                      {c.code} — {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sub-start">Start date *</Label>
-              <Controller
-                control={addForm.control}
-                name="startDate"
-                render={({ field }) => (
-                  <DatePicker
-                    id="sub-start"
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Pick a start date"
-                  />
-                )}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="sub-next">Next billing date</Label>
-              <Controller
-                control={addForm.control}
-                name="nextBillingDate"
-                render={({ field }) => (
-                  <DatePicker
-                    id="sub-next"
-                    value={field.value}
-                    onChange={field.onChange}
-                    placeholder="Pick a billing date"
-                  />
-                )}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sub-link">Link</Label>
-              <Input
-                id="sub-link"
-                {...addForm.register('link')}
-                placeholder="https://..."
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="sub-payment">Payment method</Label>
-              <Select
-                value={addForm.watch('paymentMethod')}
-                onValueChange={(v) =>
-                  addForm.setValue(
-                    'paymentMethod',
-                    v as AddSubscriptionFormValues['paymentMethod'],
-                    { shouldValidate: true },
-                  )
-                }
-              >
-                <SelectTrigger id="sub-payment">
-                  <SelectValue placeholder="Select payment method" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(SubscriptionPaymentMethodEnum).map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {getSubscriptionPaymentMethodLabel(v)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sub-renewal">Renewal type</Label>
-              <Select
-                value={addForm.watch('renewalType')}
-                onValueChange={(v) =>
-                  addForm.setValue(
-                    'renewalType',
-                    v as AddSubscriptionFormValues['renewalType'],
-                    { shouldValidate: true },
-                  )
-                }
-              >
-                <SelectTrigger id="sub-renewal">
-                  <SelectValue placeholder="Select renewal" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(SubscriptionRenewalTypeEnum).map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {getSubscriptionRenewalTypeLabel(v)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sub-tier">Tier</Label>
-              <Select
-                value={addForm.watch('tier')}
-                onValueChange={(v) =>
-                  addForm.setValue(
-                    'tier',
-                    v as AddSubscriptionFormValues['tier'],
-                    {
-                      shouldValidate: true,
-                    },
-                  )
-                }
-              >
-                <SelectTrigger id="sub-tier">
-                  <SelectValue placeholder="Select tier" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.values(SubscriptionTierEnum).map((v) => (
-                    <SelectItem key={v} value={v}>
-                      {getSubscriptionTierLabel(v)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <Button
-            disabled={!canAdd}
-            onClick={addForm.handleSubmit(async (values) => {
-              const startDateIso = dateInputToIso(values.startDate);
-              if (!startDateIso) {
-                toast({
-                  title: 'Invalid start date',
-                  description: 'Please enter a valid start date.',
-                  variant: 'destructive',
-                });
-                return;
-              }
-
-              const nextBillingIso = dateInputToIso(values.nextBillingDate);
-
-              const nextItem: SubscriptionRecord = {
-                id: randomId(),
-                name: values.name.trim(),
-                startDate: startDateIso,
-                endDate: undefined,
-                status: values.status,
-                billingCycle: values.billingCycle,
-                amount: values.amount,
-                currency: values.currency as CurrencyCode,
-                paymentMethod: values.paymentMethod,
-                nextBillingDate: nextBillingIso,
-                renewalType: values.renewalType,
-                cancellationDate: undefined,
-                cancellationReason: undefined,
-                tier: values.tier,
-                link: values.link?.trim() || undefined,
-              };
-
-              await persist([nextItem, ...items]);
-              addForm.reset({
-                ...values,
-                name: '',
-                amount: 0,
-                nextBillingDate: '',
-                link: '',
-              });
-              toast({
-                title: 'Saved',
-                description: 'Subscription saved (encrypted).',
-              });
-            })}
-            className="w-full"
-          >
-            Add Subscription
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card className="p-4">
-        <CardTitle className="text-lg">Subscriptions</CardTitle>
-        <CardContent className="mt-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Billing</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead>Next Billing</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sorted.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-muted-foreground">
-                    No subscriptions yet.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                sorted.map((s) => (
-                  <TableRow key={s.id}>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <Link
-                          href={`/dashboard/subscriptions/${s.id}`}
-                          className="font-medium hover:underline"
-                        >
-                          {s.name}
-                        </Link>
-                        {s.link ? (
-                          <a
-                            href={s.link}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs text-muted-foreground hover:underline"
-                          >
-                            {s.link}
-                          </a>
-                        ) : null}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {getSubscriptionStatusLabel(s.status)}
-                    </TableCell>
-                    <TableCell>
-                      {getSubscriptionBillingCycleLabel(s.billingCycle)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {formatMoney({ amount: s.amount, currency: s.currency })}
-                    </TableCell>
-                    <TableCell>
-                      {formatIsoDateForDisplay(s.nextBillingDate)}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="destructive"
-                        onClick={async () => {
-                          await persist(items.filter((x) => x.id !== s.id));
-                          toast({
-                            title: 'Deleted',
-                            description: 'Subscription removed.',
-                          });
-                        }}
-                      >
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+      <SubscriptionsTotalsCard
+        preferredCurrency={preferredCurrency}
+        convertedTotals={convertedTotals}
+        nativeSubtotals={nativeSubtotals}
+        hasActiveSubscriptions={activeItems.length > 0}
+        onConvertTotals={convertTotalsOnDemand}
+        onResetConversion={resetConversion}
+      />
+      <AddSubscriptionCard
+        form={addForm}
+        canAdd={canAdd}
+        onSubmit={handleAddSubscription}
+      />
+      <SubscriptionsListCard
+        subscriptions={sorted}
+        onDeleteSubscription={handleDeleteSubscription}
+      />
     </div>
   );
 }
-
 export function SubscriptionsPageClient() {
   return (
     <VaultGate title="Subscriptions">
