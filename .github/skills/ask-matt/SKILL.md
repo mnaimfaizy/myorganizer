@@ -57,7 +57,8 @@ Keep grilling → PRD → issue slicing in **one unbroken context** when possibl
 - Jest unit/integration tests → `/unit-test-delegation-workflow` (or mechanical direct edit per checklist)
 - Playwright E2E work → `/playwright-e2e-workflow` (skip E2EPlanner for selector-only + unchanged matrix)
 - Storybook story changes → `/storybook-delegation-workflow`
-- Prisma/schema/migrations → `/prisma-migration-workflow`
+- API Contract / Prisma for a public HTTP surface → `/backend-api-contract-change` (PrismaWriter → ApiWriter → ApiSync; one-shot, ADR 0015)
+- Prisma runbook only (PrismaWriter reads it) → `/prisma-migration-workflow`
 - Release/deploy preparation → `/release-and-deploy-workflow`
 - Review branch or WIP changes → `/code-review` (optional for `gate:mechanical`)
 

@@ -194,6 +194,26 @@ _Avoid_: Blocked issue, human task
 The `yarn dispatch-agents --prd <issue-number>` command that triggers the sandcastle orchestrator. Reads AFK Slice Issues labelled `ready-for-agent`, creates the feature branch **locally (never pushed)**, and runs one sandcastle agent per slice — one at a time, in Docker isolation — fast-forwarding each finished slice into the local feature branch and closing the slice issue. Integration is local: you push the feature branch and open one PR to `main` by hand.
 _Avoid_: Agent runner, orchestrator command, run-agents
 
+**Gated Pipeline**:
+A specialist chain that retries between agents until a reviewer or runner verdict passes, with a cap. Components and Jest use this shape.
+_Avoid_: review loop, QA cycle, writer-reviewer loop
+
+**One-shot Specialist**:
+A sub-agent that performs one assigned job, returns a report of what it did, and stops. The orchestrator does not send the work back for another round.
+_Avoid_: writer-reviewer loop, retry cycle, gated hop (when you mean this shape)
+
+**Orchestrator Patch**:
+The main agent's local fix to an obvious miss in a One-shot Specialist's output — an annotation, a field, an import, or a command the report claimed but skipped. Not a re-delegation. If the specialist missed the assignment, the orchestrator stops and surfaces it; it does not open a loop.
+_Avoid_: retry, reviewer fix, send-back
+
+**API Contract**:
+The public HTTP surface for one capability: what a client may send, what it receives, and the meaning of success and failure.
+_Avoid_: backend API, endpoint (as the unit of work), REST resource
+
+**Independent Hop**:
+A specialist job that does not need another specialist's output. Only Independent Hops may run in parallel. The orchestrator judges this; specialists do not schedule themselves.
+_Avoid_: fan-out, parallel pipeline, concurrent by default
+
 ## Agent Roles
 
 **ComponentBuilder**:
@@ -207,3 +227,11 @@ _Avoid_: Code reviewer, linter agent, review agent
 **DepSync**:
 The sub-agent and skill responsible for keeping `TECH_STACK.md` and the fixed set of authoritative files current when dependencies are installed, updated, or removed.
 _Avoid_: Dependency agent, package sync, doc updater
+
+**ApiWriter**:
+The One-shot Specialist that implements an API Contract from a brief. Returns a report and stops. Not a Gated Pipeline.
+_Avoid_: BackendBuilder, API agent, ContractBuilder, backend writer
+
+**PrismaWriter**:
+The One-shot Specialist that changes persistence: Prisma schema, generated client types, and the migration produced from that schema. Returns a report and stops. Not folded into ApiWriter.
+_Avoid_: schema agent, migration agent, database writer

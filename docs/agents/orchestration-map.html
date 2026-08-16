@@ -10,6 +10,7 @@
   "policyReviewedAt": "2026-08-07",
   "agents": {
     "ApiSync": "T1",
+    "ApiWriter": "T1",
     "Audit": "T1",
     "CodeExplorer": "T0",
     "Commit": "T0",
@@ -21,6 +22,7 @@
     "E2EPlanner": "T2",
     "IssueCreator": "T1",
     "PreflightCheck": "T0",
+    "PrismaWriter": "T1",
     "PrAuthor": "T1",
     "ReleaseNotes": "T1",
     "Research": "T1",
@@ -739,13 +741,13 @@ a:hover{color:var(--a-strong)}
         </div>
       </div>
 
-      <div data-dim="1" data-agent="ApiSync" data-pipe="ops" style="display:grid;grid-template-columns:180px 64px 1fr;gap:0 var(--space-4);align-items:stretch;padding-bottom:var(--space-4)">
+      <div data-dim="1" data-agent="PrismaWriter" data-pipe="ops" style="display:grid;grid-template-columns:180px 64px 1fr;gap:0 var(--space-4);align-items:stretch;padding-bottom:var(--space-4)">
         <div style="display:flex;gap:var(--space-3)">
           <div style="width:36px;flex:none;display:flex;flex-direction:column;align-items:center">
             <div style="width:36px;height:36px;border-radius:999px;background:var(--a);color:var(--paper);display:grid;place-items:center;font-family:var(--font-heading);font-size:16px;flex:none">7</div>
             <div style="flex:1;width:5px;background:var(--tint-a);border-radius:999px;margin-top:6px;min-height:16px"></div>
           </div>
-          <div style="padding-top:6px"><div style="font-size:13.5px;font-weight:800;line-height:1.25">Contract</div><div style="font-size:12px;color:var(--muted)">the slice touched the backend</div></div>
+          <div style="padding-top:6px"><div style="font-size:13.5px;font-weight:800;line-height:1.25">Contract</div><div style="font-size:12px;color:var(--muted)">one-shot hops · sequential</div></div>
         </div>
         <div style="display:flex;flex-direction:column;justify-content:space-between;align-items:center;padding:14px 0 10px">
           <svg width="60" height="14" viewBox="0 0 60 14" aria-hidden="true"><line x1="1" y1="7" x2="50" y2="7" stroke="var(--a)" stroke-width="2.75" stroke-linecap="round"></line><path d="M49 2.2 L58 7 L49 11.8 Z" fill="var(--a)"></path></svg>
@@ -754,11 +756,15 @@ a:hover{color:var(--a-strong)}
         <div style="display:grid;gap:8px;padding:var(--space-3) var(--space-4);background:var(--panel);border:2px solid var(--ink);border-radius:var(--radius-md)">
           <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
             <span style="width:11px;height:11px;border-radius:999px;border:2px solid var(--line-strong);flex:none"></span>
+            <span style="font-size:15px;font-weight:800">PrismaWriter</span>
+            <span style="font-size:14px;font-weight:700;color:var(--muted)">→</span>
+            <span style="font-size:15px;font-weight:800">ApiWriter</span>
+            <span style="font-size:14px;font-weight:700;color:var(--muted)">→</span>
             <span style="font-size:15px;font-weight:800">ApiSync</span>
             <span title="T1 — code generation or bounded synthesis. Optimize for reliable tool use and quality" style="font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:999px;background:var(--tint-b);color:var(--on-tint-b)">T1</span>
-            <span style="font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:999px;background:var(--ink);color:var(--paper)">REGENERATES CLIENT</span>
+            <span style="font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:999px;background:var(--ink);color:var(--paper)">ONE-SHOT</span>
           </div>
-          <div style="font-size:13px;color:var(--muted)">Verifies or regenerates the OpenAPI spec and the generated API client after a backend contract change.</div>
+          <div style="font-size:13px;color:var(--muted)">Schema (skip if unchanged), then the HTTP contract, then OpenAPI/client. Orchestrator patches or stops. No reviewer loop (ADR 0015).</div>
         </div>
       </div>
 
@@ -981,6 +987,16 @@ a:hover{color:var(--a-strong)}
       <div data-dim="1" data-agent="DepAudit" data-pipe="ops" style="display:grid;gap:7px;align-content:start;padding:var(--space-3) var(--space-4);background:var(--panel);border:2px dashed var(--line-strong);border-radius:var(--radius-md)">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="width:11px;height:11px;border-radius:999px;border:2px solid var(--line-strong);flex:none"></span><span style="font-size:14.5px;font-weight:800">DepAudit</span><span title="T1 — code generation or bounded synthesis. Optimize for reliable tool use and quality" style="font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:999px;background:var(--tint-b);color:var(--on-tint-b)">T1</span></div>
         <div style="font-size:12.5px;color:var(--muted)">On request: vulnerability, outdated-package or upgrade-risk audit.</div>
+      </div>
+
+      <div data-dim="1" data-agent="PrismaWriter" data-pipe="ops" style="display:grid;gap:7px;align-content:start;padding:var(--space-3) var(--space-4);background:var(--panel);border:2px solid var(--ink);border-radius:var(--radius-md)">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="width:11px;height:11px;border-radius:999px;border:2px solid var(--line-strong);flex:none"></span><span style="font-size:14.5px;font-weight:800">PrismaWriter</span><span title="T1 — code generation or bounded synthesis. Optimize for reliable tool use and quality" style="font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:999px;background:var(--tint-b);color:var(--on-tint-b)">T1</span><span style="font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:999px;background:var(--ink);color:var(--paper)">WRITES</span></div>
+        <div style="font-size:12.5px;color:var(--muted)">One-shot persistence: schema, generate-types, migrate. Stops; orchestrator patches or surfaces a miss.</div>
+      </div>
+
+      <div data-dim="1" data-agent="ApiWriter" data-pipe="ops" style="display:grid;gap:7px;align-content:start;padding:var(--space-3) var(--space-4);background:var(--panel);border:2px solid var(--ink);border-radius:var(--radius-md)">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="width:11px;height:11px;border-radius:999px;border:2px solid var(--line-strong);flex:none"></span><span style="font-size:14.5px;font-weight:800">ApiWriter</span><span title="T1 — code generation or bounded synthesis. Optimize for reliable tool use and quality" style="font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:999px;background:var(--tint-b);color:var(--on-tint-b)">T1</span><span style="font-size:10px;font-weight:800;letter-spacing:.06em;padding:3px 9px;border-radius:999px;background:var(--ink);color:var(--paper)">WRITES</span></div>
+        <div style="font-size:12.5px;color:var(--muted)">One-shot API Contract: TSOA controller, DTOs, the service method. Does not sync OpenAPI or write tests.</div>
       </div>
 
       <div data-dim="1" data-agent="ApiSync" data-pipe="ops" style="display:grid;gap:7px;align-content:start;padding:var(--space-3) var(--space-4);background:var(--panel);border:2px solid var(--ink);border-radius:var(--radius-md)">
