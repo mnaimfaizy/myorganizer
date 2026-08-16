@@ -9,7 +9,7 @@ import {
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Plus } from 'lucide-react';
 
@@ -94,51 +94,57 @@ function MobileNumberDetailsInner(props: MobileNumberDetailsInnerProps) {
     };
   }, [props.masterKeyBytes, props.mobileNumberId, toast]);
 
-  async function handleDeleteLocation(locationId: string) {
-    try {
-      const updatedLocations = usageLocations.filter(
-        (l) => l.id !== locationId,
+  const handleDeleteLocation = useCallback(
+    async (locationId: string) => {
+      try {
+        const updatedLocations = usageLocations.filter(
+          (l) => l.id !== locationId,
+        );
+
+        const raw = await loadDecryptedData<unknown>({
+          masterKeyBytes: props.masterKeyBytes,
+          type: 'mobileNumbers',
+          defaultValue: [],
+        });
+
+        const normalized = normalizeMobileNumbers(raw);
+        const nextMobileNumbers = normalized.value.map((x) =>
+          x.id === props.mobileNumberId
+            ? { ...x, usageLocations: updatedLocations }
+            : x,
+        );
+
+        await saveEncryptedData({
+          masterKeyBytes: props.masterKeyBytes,
+          type: 'mobileNumbers',
+          value: nextMobileNumbers,
+        });
+
+        setUsageLocations(updatedLocations);
+        toast({
+          title: 'Deleted',
+          description: 'Usage location deleted successfully.',
+        });
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        toast({
+          title: 'Failed to delete',
+          description: message,
+          variant: 'destructive',
+        });
+      }
+    },
+    [props.masterKeyBytes, props.mobileNumberId, toast, usageLocations],
+  );
+
+  const handleEditLocation = useCallback(
+    (location: UsageLocationRecord) => {
+      router.push(
+        `/dashboard/mobile-numbers/${props.mobileNumberId}/add-location?edit=${location.id}`,
       );
-
-      const raw = await loadDecryptedData<unknown>({
-        masterKeyBytes: props.masterKeyBytes,
-        type: 'mobileNumbers',
-        defaultValue: [],
-      });
-
-      const normalized = normalizeMobileNumbers(raw);
-      const nextMobileNumbers = normalized.value.map((x) =>
-        x.id === props.mobileNumberId
-          ? { ...x, usageLocations: updatedLocations }
-          : x,
-      );
-
-      await saveEncryptedData({
-        masterKeyBytes: props.masterKeyBytes,
-        type: 'mobileNumbers',
-        value: nextMobileNumbers,
-      });
-
-      setUsageLocations(updatedLocations);
-      toast({
-        title: 'Deleted',
-        description: 'Usage location deleted successfully.',
-      });
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
-      toast({
-        title: 'Failed to delete',
-        description: message,
-        variant: 'destructive',
-      });
-    }
-  }
-
-  function handleEditLocation(location: UsageLocationRecord) {
-    router.push(
-      `/dashboard/mobile-numbers/${props.mobileNumberId}/add-location?edit=${location.id}`,
-    );
-  }
+    },
+    [props.mobileNumberId, router],
+  );
 
   if (loading) {
     return <MobileNumberDetailLoading />;

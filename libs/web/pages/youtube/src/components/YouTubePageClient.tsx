@@ -2,7 +2,7 @@
 
 import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 import { RefreshCw } from 'lucide-react';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   useYouTubeCarousel,
   useYouTubeConnect,
@@ -92,22 +92,25 @@ function ConnectedDashboard({
   const subs = useYouTubeSubscriptions();
   const gridData = useYouTubeVideos();
   const carouselData = useYouTubeCarousel();
+  const { sync: syncSubs } = subs;
+  const { refresh: refreshGrid } = gridData;
+  const { refresh: refreshCarousel } = carouselData;
   const [syncing, setSyncing] = useState(false);
 
-  const handleSync = async () => {
+  const handleSync = useCallback(async () => {
     setSyncing(true);
     try {
-      await subs.sync();
+      await syncSubs();
       // Sync also fetches videos on the backend now, refresh both views
-      await Promise.all([gridData.refresh(), carouselData.refresh()]);
+      await Promise.all([refreshGrid(), refreshCarousel()]);
     } finally {
       setSyncing(false);
     }
-  };
+  }, [syncSubs, refreshGrid, refreshCarousel]);
 
-  const handleRefreshVideos = async () => {
-    await Promise.all([gridData.refresh(), carouselData.refresh()]);
-  };
+  const handleRefreshVideos = useCallback(async () => {
+    await Promise.all([refreshGrid(), refreshCarousel()]);
+  }, [refreshGrid, refreshCarousel]);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">

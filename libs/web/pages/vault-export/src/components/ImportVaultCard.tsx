@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import {
   Button,
@@ -34,7 +34,7 @@ export function ImportVaultCard() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [lastServerNote, setLastServerNote] = useState<string | null>(null);
 
-  async function handleImport() {
+  const handleImport = useCallback(async () => {
     if (!selectedFile) {
       toast({
         title: 'Choose a file',
@@ -109,7 +109,7 @@ export function ImportVaultCard() {
     } finally {
       setImporting(false);
     }
-  }
+  }, [selectedFile, toast]);
 
   return (
     <Card>

@@ -33,7 +33,7 @@ import {
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -246,7 +246,7 @@ function SubscriptionDetailInner(props: SubscriptionDetailInnerProps) {
     }
   }
 
-  async function deleteRecord() {
+  const deleteRecord = useCallback(async () => {
     try {
       const raw = await loadDecryptedData<unknown>({
         masterKeyBytes: props.masterKeyBytes,
@@ -279,7 +279,7 @@ function SubscriptionDetailInner(props: SubscriptionDetailInnerProps) {
         variant: 'destructive',
       });
     }
-  }
+  }, [backHref, props.masterKeyBytes, props.subscriptionId, router, toast]);
 
   if (loading) {
     return <div className="p-4">Loading…</div>;

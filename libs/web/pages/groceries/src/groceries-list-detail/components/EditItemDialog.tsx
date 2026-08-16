@@ -13,7 +13,7 @@ import {
   cn,
 } from '@myorganizer/web-ui';
 import { Info, Lock } from 'lucide-react';
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import {
   CATEGORY_EMOJIS,
@@ -103,12 +103,15 @@ export function EditItemDialog({
     }
   });
 
-  const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      form.reset();
-      onClose();
-    }
-  };
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) {
+        form.reset();
+        onClose();
+      }
+    },
+    [form, onClose],
+  );
 
   // Re-initialise form values whenever the item prop changes.
   // isValid is re-evaluated by RHF on the first onChange interaction; the Save

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import {
   Button,
@@ -26,7 +26,7 @@ export function ExportVaultCard() {
 
   const [exporting, setExporting] = useState(false);
 
-  async function handleExport() {
+  const handleExport = useCallback(async () => {
     setExporting(true);
 
     try {
@@ -64,7 +64,7 @@ export function ExportVaultCard() {
     } finally {
       setExporting(false);
     }
-  }
+  }, [toast]);
 
   return (
     <Card>

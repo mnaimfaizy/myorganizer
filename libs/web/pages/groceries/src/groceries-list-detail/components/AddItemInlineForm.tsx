@@ -2,7 +2,7 @@
 
 import { Button, Input } from '@myorganizer/web-ui';
 import { Plus } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { z } from 'zod';
 
 interface AddItemInlineFormProps {
@@ -31,27 +31,30 @@ export function AddItemInlineForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setError(null);
 
-    try {
-      const result = addItemSchema.parse({ name });
-      setIsSubmitting(true);
-      onAdd(result.name);
-      setName('');
-      // Refocus input for quick re-entry
-      inputRef.current?.focus();
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        setError(err.issues[0]?.message || 'Invalid input');
-      } else {
-        setError('Failed to add item');
+      try {
+        const result = addItemSchema.parse({ name });
+        setIsSubmitting(true);
+        onAdd(result.name);
+        setName('');
+        // Refocus input for quick re-entry
+        inputRef.current?.focus();
+      } catch (err) {
+        if (err instanceof z.ZodError) {
+          setError(err.issues[0]?.message || 'Invalid input');
+        } else {
+          setError('Failed to add item');
+        }
+      } finally {
+        setIsSubmitting(false);
       }
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    },
+    [name, onAdd],
+  );
 
   return (
     <div className="space-y-2">
