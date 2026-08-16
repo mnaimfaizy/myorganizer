@@ -2,6 +2,9 @@
 
 # Format uncommitted files once, restage so the commit includes the rewrite,
 # then lint with static Nx output so failures stay readable for AI tools.
+# Prettier does not understand .prisma, so the schema needs its own formatter
+# or it drifts silently until some unrelated commit reindents every model.
 corepack yarn format:write --uncommitted
+(cd apps/backend/src && npx prisma format --schema prisma/schema >/dev/null)
 git update-index --again
 corepack yarn affected:lint --uncommitted --outputStyle=static

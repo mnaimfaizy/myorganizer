@@ -24,4 +24,10 @@ Express REST API with TypeScript, TSOA, Prisma, Passport, JWT auth, email, vault
 - Do not expose internal errors or secrets in responses.
 - Do not construct raw SQL with string concatenation.
 - Do not add plaintext storage for vault-backed data.
-- Do not edit Prisma migrations manually.
+- Do not hand-edit generated DDL in a Prisma migration, and never edit a
+  migration that has already been applied — Prisma checksums them, so an edit
+  surfaces as drift.
+- Data-only migrations (backfills) are the exception and are permitted. Prisma
+  emits no data statements, so the only route is `--create-only` plus
+  hand-written SQL. Put those in their own clearly-named migration, never
+  appended to a DDL one.
