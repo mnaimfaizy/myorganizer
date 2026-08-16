@@ -180,6 +180,16 @@ above. Existing deployments must update their cron entries — see below.
 - **Window** runs from the last successful send, falling back to `optedInAt`,
   then to when the account was connected — so opting in never back-fills every
   upload the account has ever seen.
+- **The window filters on `publishedAt`, deliberately.** Two consequences,
+  both intended:
+  - Enabling a channel does not mail its back-catalogue. Those uploads are
+    New and visible in the app, but they were published before the window
+    opened, so they never appear in a digest. The digest answers "what is new
+    this week across your Enabled Channels", not "what is new to you".
+  - `lastNotifiedAt` only advances on a **successful send**, so a run of empty
+    or failed weeks widens the next window rather than skipping those uploads.
+    A long gap produces a fuller digest, never a lossy one — the 25-item cap
+    is what bounds the email's size.
 - **Long-form only.** Shorts are excluded: they live behind the Shorts Daily
   Budget on their own page, and the digest's per-item link is the long-form
   channel page.
