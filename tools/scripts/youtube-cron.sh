@@ -16,9 +16,13 @@
 #   YOUTUBE_API_BASE_URL   e.g. https://api.example.com/api/v1
 #   YOUTUBE_CRON_SECRET    shared secret for the X-Cron-Secret header
 #
-# Suggested cPanel schedule (>= 5 minute interval, <= 5 jobs):
-#   */15 * * * *  /home/user/app/tools/scripts/youtube-cron.sh sync
-#   */30 * * * *  /home/user/app/tools/scripts/youtube-cron.sh digest
+# Suggested cPanel schedule (>= 5 minute interval, <= 5 jobs).
+# Copy this script to $HOME/bin (outside the Passenger app root). Put secrets
+# in $HOME/bin/youtube-cron.env (mode 600), not on the crontab line.
+# Digest is hourly so one tick cannot stack with another against the
+# Stellar Plus 200-emails-per-hour cap (DIGEST_MAX_USERS_PER_RUN is 200).
+#   */15 * * * * set -a; . $HOME/bin/youtube-cron.env; $HOME/bin/youtube-cron.sh sync
+#   0 * * * *    set -a; . $HOME/bin/youtube-cron.env; $HOME/bin/youtube-cron.sh digest
 
 set -euo pipefail
 

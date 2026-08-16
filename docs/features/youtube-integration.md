@@ -240,23 +240,84 @@ above. Existing deployments must update their cron entries — see below.
 
 ## cPanel Cron Configuration
 
-Use `tools/scripts/youtube-cron.sh`, which wraps the call in a non-blocking
-`flock` so a tick that finds the previous one still running exits quietly
-instead of queueing up behind it and pinning the shared host's process cap.
+Production target is Namecheap Stellar Plus (`api.myorganiser.app`). Staging
+is QA only — do not install these jobs there.
 
-```bash
-*/15 * * * * YOUTUBE_API_BASE_URL=https://api.example.com/api/v1 YOUTUBE_CRON_SECRET=... /home/user/app/tools/scripts/youtube-cron.sh sync
-*/30 * * * * YOUTUBE_API_BASE_URL=https://api.example.com/api/v1 YOUTUBE_CRON_SECRET=... /home/user/app/tools/scripts/youtube-cron.sh digest
+Trigger is **batched HTTP only**, via `tools/scripts/youtube-cron.sh`. That
+wrapper takes a non-blocking `flock` and then `curl`s one worker. Do not add
+a Node/CLI cron. The backend deploy zip does **not** include this script;
+place a copy **outside** the Passenger app root so the next FTP deploy does
+not delete it.
+
+### Host files (outside the Node app root)
+
+```text
+$HOME/bin/youtube-cron.sh          # copy of tools/scripts/youtube-cron.sh
+$HOME/bin/youtube-cron.env         # mode 600; not in git
+$HOME/bin/myorganizer-youtube-sync.lock
+$HOME/bin/myorganizer-youtube-digest.lock
 ```
 
-Both endpoints are safe to call more often than the work needs: each pass is
-bounded, resumes from its stored cursor, and no-ops while another pass holds
-the lease. Namecheap Stellar Plus allows intervals of ≥ 5 minutes and at most
-5 jobs, so two entries at 15 and 30 minutes stay well inside the budget.
+`youtube-cron.env`:
 
-Migrating from the old combined job: replace the single
-`/cron/sync-and-notify` entry with the two above. Leaving the old entry in
-place will simply 404.
+```bash
+YOUTUBE_API_BASE_URL=https://api.myorganiser.app/api/v1
+YOUTUBE_CRON_SECRET=          # same value as the Node.js App env var
+YOUTUBE_CRON_LOCK_DIR=$HOME/bin
+```
+
+cPanel cron does not inherit Passenger env vars. The secret must exist in
+**both** the Node.js App environment (so the API can validate
+`X-Cron-Secret`) and this file (so the wrapper can send the header). Never
+put the secret on the crontab line.
+
+### Crontab (server time: America/New_York)
+
+Two entries — inside the Stellar Plus budget (≥ 5 minute interval, ≤ 5 jobs):
+
+```bash
+*/15 * * * * set -a; . $HOME/bin/youtube-cron.env; $HOME/bin/youtube-cron.sh sync
+0 * * * * set -a; . $HOME/bin/youtube-cron.env; $HOME/bin/youtube-cron.sh digest
+```
+
+After the production proof in #273, append `>/dev/null 2>&1` to both lines
+so Namecheap cron mail does not fill inodes. Leave output visible until that
+proof is done.
+
+Sync at 15 minutes is for cursor resume (100 Users/tick), not because every
+account must sync 96 times a day. Digest is **hourly**, not every 30 minutes:
+`DIGEST_MAX_USERS_PER_RUN` is 200, which equals the Stellar Plus
+200-emails-per-hour-per-domain cap. Two digest ticks in one hour can spend
+the cap and get the sending script disabled.
+
+Both endpoints are safe to call when there is no work: each pass is bounded,
+resumes from its stored cursor, and no-ops while another pass holds the
+lease. If `flock` is missing on the box, keep HTTP cron and treat the DB
+lease (`ran: false`) as the overlap guard — do not add a CLI job.
+
+Migrating from the old combined job: delete any
+`/cron/sync-and-notify` entry. Leaving it in place will 404.
+
+### Production SMTP
+
+Use the existing `smtp` provider (not Gmail, not a transactional host).
+Namecheap SMTP Restrictions often block outbound SendGrid/Mailgun/SES.
+
+| Variable                         | Production value                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------------- |
+| `DEFAULT_EMAIL_PROVIDER`         | `smtp`                                                                                |
+| `MAIL_HOST`                      | cPanel **server hostname** (`businessNN.web-hosting.com`), not `mail.myorganiser.app` |
+| `MAIL_PORT`                      | `465`                                                                                 |
+| `MAIL_SECURE`                    | `true`                                                                                |
+| `MAIL_USERNAME` / `EMAIL_SENDER` | `noreply@myorganiser.app`                                                             |
+| `MAIL_PASSWORD`                  | that mailbox's password                                                               |
+
+Create the `noreply@myorganiser.app` mailbox in cPanel. Publish SPF and DKIM
+for the domain before calling mail ready. Auth verify/reset and YouTube
+digests share this path.
+
+Operator verification and the close bar for this recipe live on #273. Do not
+close that issue until the production proof there is done.
 
 ## Testing Strategy
 
