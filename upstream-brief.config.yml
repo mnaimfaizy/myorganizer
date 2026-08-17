@@ -1,5 +1,5 @@
 # MyOrganizer adapter for the portable Upstream Brief skill.
-# Schema: .github/skills/upstream-brief/ADAPTER.md
+# Schema: .agents/skills/upstream-brief/ADAPTER.md
 
 current_versions:
   path: TECH_STACK.md
@@ -10,7 +10,7 @@ instruction_globs:
   - GEMINI.md
   - DEVELOPMENT.md
   - .github/copilot-instructions.md
-  - .github/skills/**/*.md
+  - .agents/skills/**/*.md
   - .github/agents/*.agent.md
   - .claude/commands/*.md
   - .cursor/rules/*.mdc

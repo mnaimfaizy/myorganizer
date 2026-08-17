@@ -2,7 +2,7 @@
 
 Use this workflow when it is unclear which MyOrganizer skill or sequence should be used next.
 
-1. Read and follow `.github/skills/ask-matt/SKILL.md` exactly.
+1. Read and follow `.agents/skills/ask-matt/SKILL.md` exactly.
 2. Route the request to the correct flow:
    - Planned feature -> `/to-prd` then `/to-issues`
    - Something's broken (hard bug) -> `/diagnosing-bugs`

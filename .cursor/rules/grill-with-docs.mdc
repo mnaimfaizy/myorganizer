@@ -89,4 +89,4 @@ Tech stack versions live in `TECH_STACK.md`. Keep in mind:
 - `ADR-FORMAT.md` — How to write architecture decision records
 - `README.md` — Quick reference guide
 
-See `.github/skills/grill-with-docs/` for details.
+See `.agents/skills/grill-with-docs/` for details.

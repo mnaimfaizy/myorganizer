@@ -66,5 +66,5 @@ Rendered only into .cursor/agents/.
 
 ## Reference
 
-- Skill: `.github/skills/sub-agent-sync-workflow/SKILL.md`
+- Skill: `.agents/skills/sub-agent-sync-workflow/SKILL.md`
 - Scripts: `tools/scripts/sync-subagents.mjs`, `tools/scripts/sync-agent-models.mjs`

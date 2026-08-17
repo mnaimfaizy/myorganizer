@@ -13,19 +13,19 @@ alwaysApply: false
 
 ## Core Approach
 
-Read and follow `.github/skills/prototype/SKILL.md` exactly.
+Read and follow `.agents/skills/prototype/SKILL.md` exactly.
 
 Key points:
 
 - Pick the correct branch:
-  - logic/state -> `.github/skills/prototype/LOGIC.md`
-  - UI direction -> `.github/skills/prototype/UI.md`
+  - logic/state -> `.agents/skills/prototype/LOGIC.md`
+  - UI direction -> `.agents/skills/prototype/UI.md`
 - Keep prototype code explicitly throwaway and removable.
 - Use existing MyOrganizer conventions and structure.
 - Capture the decision and clean up prototype artifacts after learning.
 
 ## Skill Files
 
-- `.github/skills/prototype/SKILL.md`
-- `.github/skills/prototype/LOGIC.md`
-- `.github/skills/prototype/UI.md`
+- `.agents/skills/prototype/SKILL.md`
+- `.agents/skills/prototype/LOGIC.md`
+- `.agents/skills/prototype/UI.md`

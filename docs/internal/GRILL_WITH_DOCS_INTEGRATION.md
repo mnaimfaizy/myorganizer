@@ -6,7 +6,7 @@ The `grill-with-docs` skill from [mattpocock/skills](https://github.com/mattpoco
 
 ## 📁 Files Created
 
-### Main Skill Directory: `.github/skills/grill-with-docs/`
+### Main Skill Directory: `.agents/skills/grill-with-docs/`
 
 1. **SKILL.md** — Core skill definition
    - Grilling interview approach (ask one question at a time)
@@ -62,7 +62,7 @@ The `grill-with-docs` skill from [mattpocock/skills](https://github.com/mattpoco
 ### 5. Project Agents Guide (AGENTS.md)
 
 - ✅ Added bullet point for design/planning requests
-- ✅ Links to `.github/skills/grill-with-docs/SKILL.md`
+- ✅ Links to `.agents/skills/grill-with-docs/SKILL.md`
 - ✅ Explains CONTEXT.md and ADR documentation
 
 ## 🎯 How to Use

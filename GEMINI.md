@@ -24,15 +24,15 @@ Use these repo-local workflows for commit, pull request, test, and Storybook-sui
 ## Triage Issues And PRs
 
 - Use `.gemini/commands/triage.md` for issue/PR triage requests.
-- The canonical workflow lives in `.github/skills/triage/SKILL.md`.
-- Use `.github/skills/triage/AGENT-BRIEF.md` when moving work to `ready-for-agent`.
-- Use `.github/skills/triage/OUT-OF-SCOPE.md` when rejecting enhancements as `wontfix`.
+- The canonical workflow lives in `.agents/skills/triage/SKILL.md`.
+- Use `.agents/skills/triage/AGENT-BRIEF.md` when moving work to `ready-for-agent`.
+- Use `.agents/skills/triage/OUT-OF-SCOPE.md` when rejecting enhancements as `wontfix`.
 
 ## Design & Planning Workflows
 
 When you need to stress-test a plan against the project's domain model and documented decisions, use the **grill-with-docs** skill:
 
-- **Skill location**: `.github/skills/grill-with-docs/SKILL.md`
+- **Skill location**: `.agents/skills/grill-with-docs/SKILL.md`
 - **When to use**: You have a design or feature plan that needs validation against MyOrganizer's terminology, architecture, and existing decisions.
 - **What it does**:
   - Interviews relentlessly to sharpen fuzzy requirements and terminology
@@ -48,13 +48,13 @@ When you need to stress-test a plan against the project's domain model and docum
 When agent instructions may be teaching a stale API, use the **upstream-brief** skill:
 
 - **Gemini command**: `/upstream-brief` (`.gemini/commands/upstream-brief.md`)
-- **Skill location**: `.github/skills/upstream-brief/SKILL.md`
+- **Skill location**: `.agents/skills/upstream-brief/SKILL.md`
 - **When to use**: A language, framework, or library has a major you want checked against our repo-owned instructions. The human names each `subject@version`.
 - **What it does**: Fans out Independent Hops to primary upstream docs, writes one Upstream Brief, and may propose a HITL issue. It does not bump packages or apply edits. Host adapter: `upstream-brief.config.yml`. Contract: [ADR 0018](docs/adr/0018-upstream-brief-portable-instruction-audit.md).
 
 ### codebase-design — Deep-module vocabulary
 
-- **Skill location**: `.github/skills/codebase-design/SKILL.md`
+- **Skill location**: `.agents/skills/codebase-design/SKILL.md`
 - **When to use**: Whenever you are designing or evaluating a module's interface, or when the `improve-codebase-architecture` skill is active.
 - **Companion files**:
   - `DEEPENING.md` — dependency categories and seam discipline
@@ -63,7 +63,7 @@ When agent instructions may be teaching a stale API, use the **upstream-brief** 
 
 ### domain-modeling — Build and sharpen the domain model
 
-- **Skill location**: `.github/skills/domain-modeling/SKILL.md`
+- **Skill location**: `.agents/skills/domain-modeling/SKILL.md`
 - **When to use**: You are _changing_ the domain model — adding new terms, resolving conflicting language, recording ADRs, or cross-referencing stated assumptions against code. Invoked inline by `improve-codebase-architecture` and `grill-with-docs` when new terms crystallise.
 - **What it does**:
   - Challenges glossary conflicts the moment they surface
@@ -75,7 +75,7 @@ When agent instructions may be teaching a stale API, use the **upstream-brief** 
 
 ### improve-codebase-architecture — Surface architectural friction
 
-- **Skill location**: `.github/skills/improve-codebase-architecture/SKILL.md`
+- **Skill location**: `.agents/skills/improve-codebase-architecture/SKILL.md`
 - **Depends on**: `codebase-design` skill above — load it first.
 - **When to use**: You want to find shallow modules, seam leaks, or testability gaps before planning a refactor.
 - **What it does**:
@@ -91,14 +91,14 @@ Use these skills when planning a new feature end-to-end, from idea to autonomous
 
 ### to-prd — Write a PRD Issue
 
-- **Skill location**: `.github/skills/to-prd/SKILL.md`
+- **Skill location**: `.agents/skills/to-prd/SKILL.md`
 - **When to use**: The user wants to plan a new feature. Explores the codebase, sketches test seams (with user approval), writes a PRD, and publishes it as a GitHub Issue labelled `prd` + `ready-for-agent`.
 - **Prerequisite**: Run `yarn ai:create-labels` once if labels are missing from the repo.
 - **User must be present**: One interactive step — test seam approval before the PRD is written.
 
 ### to-issues — Break a PRD into Slice Issues
 
-- **Skill location**: `.github/skills/to-issues/SKILL.md`
+- **Skill location**: `.agents/skills/to-issues/SKILL.md`
 - **When to use**: A PRD Issue exists and needs to be decomposed into independently-grabbable implementation tickets. Supply the PRD Issue number.
 - **What it does**: Fetches the PRD, drafts vertical slices (AFK/HITL + complexity), quizzes the user, publishes each slice with the full label set, and updates the PRD `## Slices` section.
 - **After publishing**: Run `yarn dispatch-agents --prd <issue-number>` to hand off AFK slices to autonomous agents running in Docker isolation.
@@ -114,7 +114,7 @@ Use these skills when planning a new feature end-to-end, from idea to autonomous
 When agreed work from a spec, PRD, or tickets should be built in the current session, use the **implement** skill:
 
 - **Command**: `.gemini/commands/implement.md`
-- **Skill location**: `.github/skills/implement/SKILL.md`
+- **Skill location**: `.agents/skills/implement/SKILL.md`
 - **When to use**: The user has a scoped spec or ticket set and wants implementation now (ad-hoc or single-session delivery).
 - **What it does**: Implements against the spec using TDD at pre-agreed seams, classifies `gate:*` (ADR 0012), routes by gate + file type, validates with Nx lint/test targets, reviews with `/code-review` when appropriate, and commits or opens PRs only when the user explicitly asks.
 
@@ -123,13 +123,13 @@ When agreed work from a spec, PRD, or tickets should be built in the current ses
 When the user wants to review changes since a fixed point (commit, branch, tag, or merge-base), use the **code-review** skill:
 
 - **Command**: `.gemini/commands/code-review.md`
-- **Skill location**: `.github/skills/code-review/SKILL.md`
+- **Skill location**: `.agents/skills/code-review/SKILL.md`
 - **When to use**: Review a branch, PR, WIP changes, or after `/implement` before opening a PR.
 - **What it does**: Runs parallel Standards and Spec sub-agents against a three-dot diff, then aggregates findings under separate headings. Fetches issues via `docs/agents/issue-tracker.md`.
 
 ## API Contract (one-shot)
 
-When a task changes a public HTTP surface or the Prisma schema it depends on, use `.github/skills/backend-api-contract-change/SKILL.md`. Do not write controllers or schema inline on `standard`/`full`.
+When a task changes a public HTTP surface or the Prisma schema it depends on, use `.agents/skills/backend-api-contract-change/SKILL.md`. Do not write controllers or schema inline on `standard`/`full`.
 
 - Persistence → `prisma-writer` (`.gemini/agents/prisma-writer.md`), skip if the schema did not change
 - HTTP contract → `api-writer` (`.gemini/agents/api-writer.md`)
@@ -144,13 +144,13 @@ When a task requires Jest unit tests or Jest integration tests to be created or 
 
 When the user wants to build features or fix bugs test-first, use the **tdd** skill:
 
-- **Skill location**: `.github/skills/tdd/SKILL.md`
+- **Skill location**: `.agents/skills/tdd/SKILL.md`
 - **When to use**: User mentions "red-green-refactor", wants integration-style tests written before implementation, or asks to build a feature test-first.
 - **What it does**: Plans the behavior list with the user, works in vertical tracer-bullet slices (one test → one implementation → repeat), and deepens modules during the Refactor step (with help from `codebase-design/SKILL.md`).
 - **Companion files**: `tests.md` (good/bad test examples), `mocking.md` (mock boundary discipline), `refactoring.md` (refactor candidates checklist).
 - **Never** write all tests before any implementation (horizontal slicing produces tests that are insensitive to real behavior changes).
 
-Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs in `apps/myorganizer-e2e`.
+Use `.agents/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs in `apps/myorganizer-e2e`.
 
 - Consult `docs/testing/projects/<project>.md` for the owning project's tooling, environment, and mock patterns. `docs/testing/README.md` is the project index plus cross-project rules.
 - Build a complete delegation brief before invoking the sub-agent:
@@ -174,8 +174,8 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs i
 - `docs/testing/README.md` — testing index + cross-project rules; per-project guides in `docs/testing/projects/`
 - `.gemini/agents/test-scaffold.md` — TestScaffold sub-agent (Gemini CLI native format)
 - `.github/agents/test-scaffold.agent.md` — Copilot-CLI version of the same agent
-- `.github/skills/unit-test-delegation-workflow/SKILL.md` — full workflow skill
-- `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md` — delegation brief template
+- `.agents/skills/unit-test-delegation-workflow/SKILL.md` — full workflow skill
+- `.agents/skills/unit-test-delegation-workflow/references/delegation-runbook.md` — delegation brief template
 
 ## Codebase Exploration
 
@@ -204,7 +204,7 @@ When any sub-agent file changes in `.github`, `.claude`, `.cursor`, or `.gemini`
 
 Use these references:
 
-- `.github/skills/sub-agent-sync-workflow/SKILL.md`
+- `.agents/skills/sub-agent-sync-workflow/SKILL.md`
 - `.gemini/commands/sync-subagents.md`
 - `tools/scripts/sync-subagents.mjs`
 - `tools/scripts/sync-agent-models.mjs`
@@ -247,6 +247,6 @@ When a task requires Storybook creation or updates (`*.stories.tsx`), delegate t
 
 - `.gemini/agents/storybook-curator.md` — StorybookCurator sub-agent (Gemini CLI native format)
 - `.github/agents/storybook-curator.agent.md` — Copilot-CLI version of the same agent
-- `.github/skills/storybook-delegation-workflow/SKILL.md` — full workflow skill
-- `.github/skills/storybook-delegation-workflow/references/delegation-runbook.md` — delegation brief template
+- `.agents/skills/storybook-delegation-workflow/SKILL.md` — full workflow skill
+- `.agents/skills/storybook-delegation-workflow/references/delegation-runbook.md` — delegation brief template
 - `docs/storybook/README.md` — Storybook usage and conventions

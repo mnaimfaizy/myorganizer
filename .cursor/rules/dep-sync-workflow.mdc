@@ -20,7 +20,7 @@ alwaysApply: false
 | `.github/copilot-instructions.md` | Drift check only |
 | `GEMINI.md` | Drift check only |
 | `AGENTS.md` | Drift check only |
-| `.github/skills/grill-with-docs/SKILL.md` | Drift check only |
+| `.agents/skills/grill-with-docs/SKILL.md` | Drift check only |
 
 Never touch source code, test files, lock files, or any file outside this list.
 
@@ -70,6 +70,6 @@ Apply these changes? (yes / no / edit)
 
 ## References
 
-- Full skill: `.github/skills/dep-sync/SKILL.md`
+- Full skill: `.agents/skills/dep-sync/SKILL.md`
 - ADR: `docs/adr/0001-tech-stack-single-source-of-truth.md`
 - CONTEXT.md — DepSync definition

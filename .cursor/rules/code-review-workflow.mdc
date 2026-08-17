@@ -13,7 +13,7 @@ alwaysApply: false
 
 ## Core Approach
 
-Read and follow `.github/skills/code-review/SKILL.md` exactly.
+Read and follow `.agents/skills/code-review/SKILL.md` exactly.
 
 Key points:
 
@@ -25,5 +25,5 @@ Key points:
 
 ## Skill Files
 
-- `.github/skills/code-review/SKILL.md`
+- `.agents/skills/code-review/SKILL.md`
 - `docs/agents/issue-tracker.md`

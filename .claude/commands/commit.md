@@ -9,4 +9,4 @@ Use this workflow when the user asks Claude Code to commit the current staged ch
 5. If it fails, read the `ai:commit: failed` trailer, fix the reported slice, rerun the hinted check, and retry.
 6. Keep the final response concise.
 
-Canonical skill: `.github/skills/commit-change-workflow/SKILL.md`
+Canonical skill: `.agents/skills/commit-change-workflow/SKILL.md`

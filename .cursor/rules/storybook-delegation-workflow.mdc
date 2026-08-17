@@ -35,7 +35,7 @@ alwaysApply: false
 
 ## References
 
-- `.github/skills/storybook-delegation-workflow/SKILL.md`
+- `.agents/skills/storybook-delegation-workflow/SKILL.md`
 - `.github/agents/storybook-curator.agent.md`
 - `.claude/agents/storybook-curator.md`
 - `.gemini/agents/storybook-curator.md`

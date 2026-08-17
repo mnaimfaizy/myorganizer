@@ -13,7 +13,7 @@ alwaysApply: false
 
 ## Core Approach
 
-Read and follow `.github/skills/upstream-brief/SKILL.md` exactly.
+Read and follow `.agents/skills/upstream-brief/SKILL.md` exactly.
 
 - Human names each `subject@version`. The adapter resolves current versions. Never fetch “latest.”
 - One user-invoked skill. Parallelism is Independent Hops (one research worker per subject).
@@ -24,8 +24,8 @@ Read and follow `.github/skills/upstream-brief/SKILL.md` exactly.
 
 ## Skill Files
 
-- `.github/skills/upstream-brief/SKILL.md`
-- `.github/skills/upstream-brief/ADAPTER.md`
-- `.github/skills/upstream-brief/BRIEF.md`
+- `.agents/skills/upstream-brief/SKILL.md`
+- `.agents/skills/upstream-brief/ADAPTER.md`
+- `.agents/skills/upstream-brief/BRIEF.md`
 - `upstream-brief.config.yml`
 - `docs/adr/0018-upstream-brief-portable-instruction-audit.md`

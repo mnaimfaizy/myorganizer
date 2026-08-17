@@ -14,7 +14,7 @@ alwaysApply: false
 
 ## Core Vocabulary
 
-**Always load `.github/skills/codebase-design/SKILL.md` first** — it is the authoritative source for all terms below. Also read its companions:
+**Always load `.agents/skills/codebase-design/SKILL.md` first** — it is the authoritative source for all terms below. Also read its companions:
 
 - `codebase-design/DEEPENING.md` — dependency categories (in-process / local-substitutable / ports & adapters / mock), seam discipline, and replace-don't-layer testing strategy
 - `codebase-design/DESIGN-IT-TWICE.md` — parallel sub-agent pattern for alternative interface exploration
@@ -36,7 +36,7 @@ Use these terms exactly — never substitute:
 1. **Read** `CONTEXT.md` and any relevant ADRs in `docs/adr/` before touching the codebase.
 2. **Delegate** the codebase walk to `CodeExplorer` (`.cursor/agents/explore.md`) — never issue 3+ consecutive file reads directly.
 3. **Identify candidates** using the deletion test: would deleting this module concentrate complexity, or just move it?
-4. **Write the HTML report** to the OS temp dir (`%TEMP%\architecture-review-<timestamp>.html` on Windows) and open it. Full scaffold in `.github/skills/improve-codebase-architecture/HTML-REPORT.md`.
+4. **Write the HTML report** to the OS temp dir (`%TEMP%\architecture-review-<timestamp>.html` on Windows) and open it. Full scaffold in `.agents/skills/improve-codebase-architecture/HTML-REPORT.md`.
 5. **Ask** the user: "Which of these would you like to explore?" — do NOT propose implementation yet.
 6. **Grill** the chosen candidate using the `grill-with-docs` rule (`.cursor/rules/grill-with-docs.mdc`).
 

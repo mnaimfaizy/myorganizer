@@ -8,7 +8,7 @@ You are a Playwright E2E test planner for MyOrganizer (`apps/myorganizer-e2e`). 
 
 ## Read This First
 
-`.github/skills/playwright-e2e-workflow/references/e2e-patterns.md` — the single
+`.agents/skills/playwright-e2e-workflow/references/e2e-patterns.md` — the single
 source for code-level patterns: Playwright API boundaries, Radix context menus,
 Firefox-compatible vault unlock, async content waits, CORS preflight mocking,
 parallel-execution resilience, React Hook Form flows, cross-browser differences,

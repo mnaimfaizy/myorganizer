@@ -2,7 +2,7 @@
 
 Write one Upstream Brief comparing repo-owned instructions to official docs.
 
-1. Read and follow `.github/skills/upstream-brief/SKILL.md` exactly.
+1. Read and follow `.agents/skills/upstream-brief/SKILL.md` exactly.
 2. Require `subject@version` tokens from the user (example: `next@16 react@19`). Do not fetch “latest.”
 3. Resolve current versions from the host adapter (`upstream-brief.config.yml`).
 4. Fan out Independent Hops — one research worker per subject — against primary upstream pages only.
@@ -18,7 +18,7 @@ Write one Upstream Brief comparing repo-owned instructions to official docs.
 
 ## Reference
 
-- Skill: `.github/skills/upstream-brief/SKILL.md`
-- Adapter schema: `.github/skills/upstream-brief/ADAPTER.md`
+- Skill: `.agents/skills/upstream-brief/SKILL.md`
+- Adapter schema: `.agents/skills/upstream-brief/ADAPTER.md`
 - Host adapter: `upstream-brief.config.yml`
 - Contract: `docs/adr/0018-upstream-brief-portable-instruction-audit.md`

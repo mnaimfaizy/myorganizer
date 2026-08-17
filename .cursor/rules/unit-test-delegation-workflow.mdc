@@ -113,6 +113,6 @@ Instruct `TestScaffold` to follow this loop. Do not accept a batch that was writ
 - `.github/agents/test-scaffold.agent.md` - Copilot TestScaffold agent
 - `.claude/agents/test-scaffold.md` - Claude Code TestScaffold agent
 - `.gemini/agents/test-scaffold.md` - Gemini TestScaffold agent
-- `.github/skills/unit-test-delegation-workflow/SKILL.md` - full workflow skill
-- `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md` - delegation brief template
-- `.github/skills/playwright-e2e-workflow/SKILL.md` - Playwright E2E workflow
+- `.agents/skills/unit-test-delegation-workflow/SKILL.md` - full workflow skill
+- `.agents/skills/unit-test-delegation-workflow/references/delegation-runbook.md` - delegation brief template
+- `.agents/skills/playwright-e2e-workflow/SKILL.md` - Playwright E2E workflow

@@ -6,14 +6,14 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 - PR requests should use `.claude/commands/create-pr.md`.
 - Before creating any branch, follow the **Branch naming** section in `AGENTS.md` — `<type>/<issue-number>-<slug>`, with the type derived from the issue's labels. `release/`, `slice/`, `claude/`, and `copilot/` are reserved prefixes documented there.
 - Jest unit or integration test creation/updates should use `.claude/commands/unit-test.md`.
-- For implementing agreed work from a spec, PRD, or tickets in the current session, use `.claude/commands/implement.md` (`.github/skills/implement/SKILL.md`).
-- For reviewing branch or WIP changes against repo standards and the originating spec, use `.claude/commands/code-review.md` (`.github/skills/code-review/SKILL.md`).
-- For building features or fixing bugs test-first (red-green-refactor), use `.claude/commands/tdd.md` (`.github/skills/tdd/SKILL.md`). Plan the behavior list with the user before writing any code, work in vertical tracer-bullet slices (one test → one implementation → repeat), and consult `.github/skills/codebase-design/SKILL.md` for deep-module vocabulary during the refactor step.
+- For implementing agreed work from a spec, PRD, or tickets in the current session, use `.claude/commands/implement.md` (`.agents/skills/implement/SKILL.md`).
+- For reviewing branch or WIP changes against repo standards and the originating spec, use `.claude/commands/code-review.md` (`.agents/skills/code-review/SKILL.md`).
+- For building features or fixing bugs test-first (red-green-refactor), use `.claude/commands/tdd.md` (`.agents/skills/tdd/SKILL.md`). Plan the behavior list with the user before writing any code, work in vertical tracer-bullet slices (one test → one implementation → repeat), and consult `.agents/skills/codebase-design/SKILL.md` for deep-module vocabulary during the refactor step.
 - Storybook creation or updates should use `.claude/commands/storybook.md`.
-- Playwright E2E creation/updates should follow `.github/skills/playwright-e2e-workflow/SKILL.md`.
-- Issue/PR triage requests should use `.claude/commands/triage.md` (`.github/skills/triage/SKILL.md`).
-- Design brief requests — a prompt for the Designer agent to build a diagram, animated walkthrough, or explainer page — should use `.claude/commands/design-brief.md` (`.github/skills/design-brief/SKILL.md`).
-- Instruction-truth / breaking-change audits against official docs should use `.claude/commands/upstream-brief.md` (`.github/skills/upstream-brief/SKILL.md`). The human names each `subject@version`. The run writes an Upstream Brief; it does not bump packages.
+- Playwright E2E creation/updates should follow `.agents/skills/playwright-e2e-workflow/SKILL.md`.
+- Issue/PR triage requests should use `.claude/commands/triage.md` (`.agents/skills/triage/SKILL.md`).
+- Design brief requests — a prompt for the Designer agent to build a diagram, animated walkthrough, or explainer page — should use `.claude/commands/design-brief.md` (`.agents/skills/design-brief/SKILL.md`).
+- Instruction-truth / breaking-change audits against official docs should use `.claude/commands/upstream-brief.md` (`.agents/skills/upstream-brief/SKILL.md`). The human names each `subject@version`. The run writes an Upstream Brief; it does not bump packages.
 - Commit-message drafting still belongs to the existing `Commit` sub-agent (staged diff only); commit execution belongs to `corepack yarn ai:commit --message-file <path>`.
 - PR title and body drafting belongs to the `PrAuthor` sub-agent (branch diff plus linked issues); PR execution belongs to `corepack yarn ai:create-pr --title <text> --body-file <path>`.
 - Jest test implementation uses a three-stage pipeline: `TestScaffold` (writes tests) → `TestReviewer` (static gate: checklist, tsc, eslint) → `TestRunner` (execution with hang detection). Always provide a behavior matrix from the actual implementation, including unsupported scenarios to avoid. Consult `docs/testing/projects/<project>.md` for that project's tooling and mock patterns (`docs/testing/README.md` is the index plus cross-project rules). Max 3 retries before escalating to the main agent.
@@ -22,7 +22,7 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 - After any `yarn add`, `yarn remove`, or package upgrade, run `/dep-sync` to keep `TECH_STACK.md` current — see **Dependency Sync** below.
 - After any sub-agent change in any harness (`.github`, `.claude`, `.cursor`, `.gemini`), run `yarn agents:sync` and then `yarn agents:sync:check`.
 - After adding or removing an app, a top-level lib, or a `/dashboard/*` route, update `README.md` and run `yarn readme:check`. The README claims a repository layout and a route list; nothing else asserts them. Keep it a front door — versions belong in `TECH_STACK.md`, scripts in `package.json`, env vars in `.env.example`. If you find yourself pasting a table into the README that already exists elsewhere, link to it instead.
-- Use `.github/skills/sub-agent-sync-workflow/SKILL.md` as the required workflow for sub-agent synchronization.
+- Use `.agents/skills/sub-agent-sync-workflow/SKILL.md` as the required workflow for sub-agent synchronization.
 
 ## ⚠️ Tiered Quality Gates (ADR 0012)
 
@@ -34,15 +34,15 @@ Pipeline depth is chosen by **gate tier**, not file extension alone. Classify vi
 | `gate:standard`   | Single-surface behavior change                                                                   | Matching specialist hop (+ reviewer/runner as skill requires) |
 | `gate:full`       | New UI module, vault/crypto, API contract, multi-file product behavior                           | Full mandatory pipelines                                      |
 
-| File Pattern                                     | Skill                                                   | `standard` / `full` agent flow                                                                                                              |
-| ------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `*.spec.ts` (Playwright E2E)                     | `.github/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold → TestReviewer (structural; never execute in AFK). Skip E2EPlanner only for selector-only + unchanged flow matrix |
-| `*.test.ts` (Jest)                               | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold → TestReviewer → TestRunner (max 3 retries)                                                                                    |
-| `*.stories.tsx`                                  | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                                                                                                                            |
-| Components in `libs/web-ui/` / `libs/web/pages/` | Component workflow (below)                              | ComponentBuilder → ComponentReviewer (max 3 FAIL loops)                                                                                     |
-| API Contract (controllers, DTOs, Prisma for HTTP) | `.github/skills/backend-api-contract-change/SKILL.md` | PrismaWriter (if schema) → ApiWriter → ApiSync. One-shot; no reviewer loop (ADR 0015) |
-| New planned feature (PRD)                        | `.github/skills/to-prd/SKILL.md`                        | Always for planned features                                                                                                                 |
-| Slice breakdown from PRD                         | `.github/skills/to-issues/SKILL.md`                     | Always after PRD; assign `gate:*` + `complexity:*`                                                                                          |
+| File Pattern                                      | Skill                                                   | `standard` / `full` agent flow                                                                                                              |
+| ------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `*.spec.ts` (Playwright E2E)                      | `.agents/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold → TestReviewer (structural; never execute in AFK). Skip E2EPlanner only for selector-only + unchanged flow matrix |
+| `*.test.ts` (Jest)                                | `.agents/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold → TestReviewer → TestRunner (max 3 retries)                                                                                    |
+| `*.stories.tsx`                                   | `.agents/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                                                                                                                            |
+| Components in `libs/web-ui/` / `libs/web/pages/`  | Component workflow (below)                              | ComponentBuilder → ComponentReviewer (max 3 FAIL loops)                                                                                     |
+| API Contract (controllers, DTOs, Prisma for HTTP) | `.agents/skills/backend-api-contract-change/SKILL.md`   | PrismaWriter (if schema) → ApiWriter → ApiSync. One-shot; no reviewer loop (ADR 0015)                                                       |
+| New planned feature (PRD)                         | `.agents/skills/to-prd/SKILL.md`                        | Always for planned features                                                                                                                 |
+| Slice breakdown from PRD                          | `.agents/skills/to-issues/SKILL.md`                     | Always after PRD; assign `gate:*` + `complexity:*`                                                                                          |
 
 ### Key Anti-Patterns
 
@@ -140,7 +140,7 @@ When `package.json` changes (a Claude Code hook will fire automatically after `y
 2. DepSync proposes changes — confirm before it writes anything.
 3. If a new package appears unused in source files, DepSync flags it as potentially temporary — decide whether to document it as canonical or hold off.
 
-Full workflow: `.github/skills/dep-sync/SKILL.md`
+Full workflow: `.agents/skills/dep-sync/SKILL.md`
 ADR: `docs/adr/0001-tech-stack-single-source-of-truth.md`
 
 ---
@@ -155,7 +155,7 @@ When any sub-agent file changes, keep all harnesses synchronized with `.github/a
 
 References:
 
-- Workflow skill: `.github/skills/sub-agent-sync-workflow/SKILL.md`
+- Workflow skill: `.agents/skills/sub-agent-sync-workflow/SKILL.md`
 - Automation script: `tools/scripts/sync-subagents.mjs`
 - Cursor rule: `.cursor/rules/sub-agent-sync-workflow.mdc`
 - Gemini command: `.gemini/commands/sync-subagents.md`
@@ -233,7 +233,7 @@ pushed, and the issue stays open until you push the branch and merge a PR. See
 
 When you need to stress-test a plan against the project's domain model and documented decisions, use the **grill-with-docs** skill:
 
-- **Skill location**: `.github/skills/grill-with-docs/SKILL.md`
+- **Skill location**: `.agents/skills/grill-with-docs/SKILL.md`
 - **When to use**: You have a design or feature plan that needs validation against MyOrganizer's terminology, architecture, and existing decisions.
 - **What it does**:
   - Interviews relentlessly to sharpen fuzzy requirements and terminology
@@ -249,14 +249,14 @@ When you need to stress-test a plan against the project's domain model and docum
 When agent instructions may be teaching a stale API, use the **upstream-brief** skill:
 
 - **Claude command**: `/upstream-brief` (`.claude/commands/upstream-brief.md`)
-- **Skill location**: `.github/skills/upstream-brief/SKILL.md`
+- **Skill location**: `.agents/skills/upstream-brief/SKILL.md`
 - **When to use**: A language, framework, or library has a major you want checked against our repo-owned instructions. The human names each `subject@version`.
 - **What it does**: Fans out Independent Hops to primary upstream docs, writes one Upstream Brief, and may propose a HITL issue. It does not bump packages or apply edits. Host adapter: `upstream-brief.config.yml`. Contract: [ADR 0018](docs/adr/0018-upstream-brief-portable-instruction-audit.md).
 
 When you need to **actively build or update** the domain model (adding new terms to `CONTEXT.md`, recording a new ADR, resolving conflicting terminology, cross-referencing a stated assumption with code), use the **domain-modeling** skill:
 
 - **Claude command**: `/domain-modeling` (`.claude/commands/domain-modeling.md`)
-- **Skill location**: `.github/skills/domain-modeling/SKILL.md`
+- **Skill location**: `.agents/skills/domain-modeling/SKILL.md`
 - **When to use**: You are _changing_ the domain model, not just reading it. Invoked inline by `improve-codebase-architecture` and `grill-with-docs` when new terms crystallise.
 - **What it does**:
   - Challenges glossary conflicts immediately
@@ -269,8 +269,8 @@ When you need to **actively build or update** the domain model (adding new terms
 When you need to find shallow modules, seam leaks, or testability gaps before planning a refactor, use the **improve-codebase-architecture** skill:
 
 - **Claude command**: `/improve-architecture` (`.claude/commands/improve-architecture.md`)
-- **Skill location**: `.github/skills/improve-codebase-architecture/SKILL.md`
-- **Depends on**: `.github/skills/codebase-design/SKILL.md` — the skill loads this automatically for vocabulary and principles. Companion files: `DEEPENING.md` (dependency categories and seam discipline) and `DESIGN-IT-TWICE.md` (parallel interface exploration).
+- **Skill location**: `.agents/skills/improve-codebase-architecture/SKILL.md`
+- **Depends on**: `.agents/skills/codebase-design/SKILL.md` — the skill loads this automatically for vocabulary and principles. Companion files: `DEEPENING.md` (dependency categories and seam discipline) and `DESIGN-IT-TWICE.md` (parallel interface exploration).
 - **When to use**: You want a structured architectural review — before committing to any specific refactor.
 - **What it does**:
   - Reads `codebase-design/SKILL.md` for the shared vocabulary, `DEEPENING.md` to classify each candidate's dependencies

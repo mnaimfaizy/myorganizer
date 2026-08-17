@@ -7,7 +7,7 @@ Use this workflow when Claude Code is asked to create or update Jest unit tests 
 Delegate Jest test implementation to the `TestScaffold` sub-agent (`.claude/agents/test-scaffold.md`).
 It runs on `model: haiku` to keep costs low.
 
-Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs in `apps/myorganizer-e2e`.
+Use `.agents/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs in `apps/myorganizer-e2e`.
 
 ## Rules
 
@@ -74,6 +74,6 @@ Use `.github/skills/playwright-e2e-workflow/SKILL.md` for Playwright E2E specs i
 - `.gemini/agents/test-scaffold.md` — Gemini TestScaffold
 - `.gemini/agents/test-reviewer.md` — Gemini TestReviewer
 - `.gemini/agents/test-runner.md` — Gemini TestRunner
-- `.github/skills/unit-test-delegation-workflow/SKILL.md` — shared Jest test delegation skill
-- `.github/skills/unit-test-delegation-workflow/references/delegation-runbook.md` — delegation brief template
-- `.github/skills/playwright-e2e-workflow/SKILL.md` — Playwright E2E workflow
+- `.agents/skills/unit-test-delegation-workflow/SKILL.md` — shared Jest test delegation skill
+- `.agents/skills/unit-test-delegation-workflow/references/delegation-runbook.md` — delegation brief template
+- `.agents/skills/playwright-e2e-workflow/SKILL.md` — Playwright E2E workflow

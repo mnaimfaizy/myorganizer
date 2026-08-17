@@ -13,7 +13,7 @@ alwaysApply: false
 
 ## Core Approach
 
-Read and follow `.github/skills/handoff/SKILL.md` exactly.
+Read and follow `.agents/skills/handoff/SKILL.md` exactly.
 
 Key points:
 
@@ -25,4 +25,4 @@ Key points:
 
 ## Skill Files
 
-- `.github/skills/handoff/SKILL.md`
+- `.agents/skills/handoff/SKILL.md`

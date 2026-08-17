@@ -123,8 +123,8 @@ Do not include these unless the implementation explicitly supports them:
 
 Only when the target spec is under `apps/myorganizer-e2e/`.
 
-1. Follow `.github/skills/playwright-e2e-workflow/SKILL.md` for workflow and policy.
-2. Read `.github/skills/playwright-e2e-workflow/references/e2e-patterns.md` before writing any spec code. It is the single source for Radix/context-menu handling, vault unlock, async content waits, CORS preflight mocking, parallel-execution resilience, React Hook Form flows, cross-browser differences, and the anti-pattern table. Do not re-derive these.
+1. Follow `.agents/skills/playwright-e2e-workflow/SKILL.md` for workflow and policy.
+2. Read `.agents/skills/playwright-e2e-workflow/references/e2e-patterns.md` before writing any spec code. It is the single source for Radix/context-menu handling, vault unlock, async content waits, CORS preflight mocking, parallel-execution resilience, React Hook Form flows, cross-browser differences, and the anti-pattern table. Do not re-derive these.
 3. **If an E2EPlanner plan was provided, implement from it.** It is a filled-in
    contract: `Component inspection` gives you the roles and accessible names,
    `Patterns required` names the `e2e-patterns.md` sections to apply, and

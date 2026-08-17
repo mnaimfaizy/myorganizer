@@ -5,7 +5,7 @@ description: Scan the codebase for architectural deepening opportunities, presen
 
 # Improve Codebase Architecture
 
-Read and follow `.github/skills/improve-codebase-architecture/SKILL.md` exactly.
+Read and follow `.agents/skills/improve-codebase-architecture/SKILL.md` exactly.
 
 ## Summary
 

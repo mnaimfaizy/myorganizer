@@ -149,5 +149,5 @@ Use usage reports to investigate:
 
 - [ADR 0013: Role-pinned sub-agent model governance](../adr/0013-bounded-subagent-model-governance.md)
 - [ADR 0012: Tiered quality gates](../adr/0012-tiered-quality-gates.md)
-- [Sub-agent synchronization workflow](../../.github/skills/sub-agent-sync-workflow/SKILL.md)
+- [Sub-agent synchronization workflow](../../.agents/skills/sub-agent-sync-workflow/SKILL.md)
 - [Model policy](../../tools/config/agent-model-policy.json)

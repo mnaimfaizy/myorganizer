@@ -65,6 +65,6 @@ Rendered only into .gemini/agents/.
 
 ## Reference
 
-- `.github/skills/sub-agent-sync-workflow/SKILL.md`
+- `.agents/skills/sub-agent-sync-workflow/SKILL.md`
 - `tools/scripts/sync-subagents.mjs`
 - `tools/scripts/sync-agent-models.mjs`

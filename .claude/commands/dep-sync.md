@@ -10,7 +10,7 @@ Synchronise `TECH_STACK.md` and the authoritative files after a dependency chang
 
 ## What Happens
 
-This command runs the DepSync workflow defined in `.github/skills/dep-sync/SKILL.md`.
+This command runs the DepSync workflow defined in `.agents/skills/dep-sync/SKILL.md`.
 
 DepSync will:
 
@@ -42,6 +42,6 @@ Optional — pass context about what changed to help DepSync focus:
 
 ## Reference
 
-Full workflow: `.github/skills/dep-sync/SKILL.md`
+Full workflow: `.agents/skills/dep-sync/SKILL.md`
 Authoritative files list: see the "What DepSync Owns" table in the skill.
 ADR: `docs/adr/0001-tech-stack-single-source-of-truth.md`

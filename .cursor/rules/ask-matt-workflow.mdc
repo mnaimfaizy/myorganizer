@@ -12,7 +12,7 @@ alwaysApply: false
 
 ## Core Approach
 
-Read and follow `.github/skills/ask-matt/SKILL.md` exactly.
+Read and follow `.agents/skills/ask-matt/SKILL.md` exactly.
 
 Routing highlights:
 
@@ -31,6 +31,6 @@ Routing highlights:
 
 ## Skill Files
 
-- `.github/skills/ask-matt/SKILL.md`
-- `.github/skills/diagnosing-bugs/SKILL.md`
+- `.agents/skills/ask-matt/SKILL.md`
+- `.agents/skills/diagnosing-bugs/SKILL.md`
 - `docs/adr/0012-tiered-quality-gates.md`

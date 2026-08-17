@@ -12,7 +12,7 @@ alwaysApply: false
 
 ## Core Approach
 
-Read and follow `.github/skills/implement/SKILL.md` exactly.
+Read and follow `.agents/skills/implement/SKILL.md` exactly.
 
 Key points:
 
@@ -27,5 +27,5 @@ Key points:
 
 ## Skill Files
 
-- `.github/skills/implement/SKILL.md`
+- `.agents/skills/implement/SKILL.md`
 - `docs/adr/0012-tiered-quality-gates.md`

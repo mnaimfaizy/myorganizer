@@ -13,7 +13,7 @@ alwaysApply: false
 
 ## Core Approach
 
-Read and follow `.github/skills/to-prd/SKILL.md` exactly.
+Read and follow `.agents/skills/to-prd/SKILL.md` exactly.
 
 Key points:
 - Read `config.md` and `CONTEXT.md` first.
@@ -28,5 +28,5 @@ After the PRD Issue is published, use the **to-issues** skill to break it into S
 
 ## Skill Files
 
-- `.github/skills/to-prd/SKILL.md` — full skill definition
-- `.github/skills/to-prd/config.md` — label vocabulary and issue formats
+- `.agents/skills/to-prd/SKILL.md` — full skill definition
+- `.agents/skills/to-prd/config.md` — label vocabulary and issue formats

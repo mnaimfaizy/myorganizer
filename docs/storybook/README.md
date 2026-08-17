@@ -40,7 +40,7 @@ Stories are located alongside components in the `libs/web-ui/src/lib/components/
 
 When using AI agents for Storybook tasks, route requests through the Storybook delegation workflow instead of editing stories inline in the main agent context.
 
-- Skill: `.github/skills/storybook-delegation-workflow/SKILL.md`
+- Skill: `.agents/skills/storybook-delegation-workflow/SKILL.md`
 - Copilot sub-agent: `.github/agents/storybook-curator.agent.md`
 - Claude sub-agent: `.claude/agents/storybook-curator.md`
 - Gemini sub-agent: `.gemini/agents/storybook-curator.md`
