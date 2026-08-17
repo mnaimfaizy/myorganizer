@@ -218,6 +218,16 @@ _Avoid_: fan-out, parallel pipeline, concurrent by default
 A dated, cited report of how this repo's instructions and usage compare to official upstream documentation for named languages, frameworks, or libraries. Records future-risk, mismatch, and missed improvement only. Its proposed plan may change instructions and hygiene scripts; application-code findings are follow-on, not part of that plan. Never a package upgrade plan.
 _Avoid_: research base, research note, upgrade plan, dependency audit
 
+## Documentation
+
+**Agent Guide**:
+Nested agent instructions colocated with the project they constrain. The only instruction document allowed under `apps/` besides an Operational README.
+_Avoid_: project README (when you mean agent rules), local instructions, CLAUDE.md as a second copy of the same rules
+
+**Operational README**:
+A human-facing runbook for a deployable app, living next to that app because people run it from there. At most one per app. Not a feature write-up, design note, or ticket close-out.
+_Avoid_: feature README, page README, colocated design doc, implementation summary, component breakdown
+
 ## Agent Roles
 
 **ComponentBuilder**:
