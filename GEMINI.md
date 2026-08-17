@@ -45,6 +45,13 @@ When you need to stress-test a plan against the project's domain model and docum
   - `docs/adr/` — Architecture Decision Records for major design choices
 - **Reference formats**: See `CONTEXT-FORMAT.md` and `ADR-FORMAT.md` in the skill directory
 
+When agent instructions may be teaching a stale API, use the **upstream-brief** skill:
+
+- **Gemini command**: `/upstream-brief` (`.gemini/commands/upstream-brief.md`)
+- **Skill location**: `.github/skills/upstream-brief/SKILL.md`
+- **When to use**: A language, framework, or library has a major you want checked against our repo-owned instructions. The human names each `subject@version`.
+- **What it does**: Fans out Independent Hops to primary upstream docs, writes one Upstream Brief, and may propose a HITL issue. It does not bump packages or apply edits. Host adapter: `upstream-brief.config.yml`. Contract: [ADR 0018](docs/adr/0018-upstream-brief-portable-instruction-audit.md).
+
 ### codebase-design — Deep-module vocabulary
 
 - **Skill location**: `.github/skills/codebase-design/SKILL.md`

@@ -13,6 +13,7 @@ Use the repo-local command files under `.claude/commands/` for commit, PR, test,
 - Playwright E2E creation/updates should follow `.github/skills/playwright-e2e-workflow/SKILL.md`.
 - Issue/PR triage requests should use `.claude/commands/triage.md` (`.github/skills/triage/SKILL.md`).
 - Design brief requests — a prompt for the Designer agent to build a diagram, animated walkthrough, or explainer page — should use `.claude/commands/design-brief.md` (`.github/skills/design-brief/SKILL.md`).
+- Instruction-truth / breaking-change audits against official docs should use `.claude/commands/upstream-brief.md` (`.github/skills/upstream-brief/SKILL.md`). The human names each `subject@version`. The run writes an Upstream Brief; it does not bump packages.
 - Commit-message drafting still belongs to the existing `Commit` sub-agent (staged diff only); commit execution belongs to `corepack yarn ai:commit --message-file <path>`.
 - PR title and body drafting belongs to the `PrAuthor` sub-agent (branch diff plus linked issues); PR execution belongs to `corepack yarn ai:create-pr --title <text> --body-file <path>`.
 - Jest test implementation uses a three-stage pipeline: `TestScaffold` (writes tests) → `TestReviewer` (static gate: checklist, tsc, eslint) → `TestRunner` (execution with hang detection). Always provide a behavior matrix from the actual implementation, including unsupported scenarios to avoid. Consult `docs/testing/projects/<project>.md` for that project's tooling and mock patterns (`docs/testing/README.md` is the index plus cross-project rules). Max 3 retries before escalating to the main agent.
@@ -244,6 +245,13 @@ When you need to stress-test a plan against the project's domain model and docum
   - `CONTEXT.md` — Domain language glossary (one-sentence definitions, preferred terms, what to avoid)
   - `docs/adr/` — Architecture Decision Records for major design choices
 - **Reference formats**: See `CONTEXT-FORMAT.md` and `ADR-FORMAT.md` in the skill directory
+
+When agent instructions may be teaching a stale API, use the **upstream-brief** skill:
+
+- **Claude command**: `/upstream-brief` (`.claude/commands/upstream-brief.md`)
+- **Skill location**: `.github/skills/upstream-brief/SKILL.md`
+- **When to use**: A language, framework, or library has a major you want checked against our repo-owned instructions. The human names each `subject@version`.
+- **What it does**: Fans out Independent Hops to primary upstream docs, writes one Upstream Brief, and may propose a HITL issue. It does not bump packages or apply edits. Host adapter: `upstream-brief.config.yml`. Contract: [ADR 0018](docs/adr/0018-upstream-brief-portable-instruction-audit.md).
 
 When you need to **actively build or update** the domain model (adding new terms to `CONTEXT.md`, recording a new ADR, resolving conflicting terminology, cross-referencing a stated assumption with code), use the **domain-modeling** skill:
 

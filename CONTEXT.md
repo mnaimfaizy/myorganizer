@@ -214,6 +214,10 @@ _Avoid_: backend API, endpoint (as the unit of work), REST resource
 A specialist job that does not need another specialist's output. Only Independent Hops may run in parallel. The orchestrator judges this; specialists do not schedule themselves.
 _Avoid_: fan-out, parallel pipeline, concurrent by default
 
+**Upstream Brief**:
+A dated, cited report of how this repo's instructions and usage compare to official upstream documentation for named languages, frameworks, or libraries. Records future-risk, mismatch, and missed improvement only. Its proposed plan may change instructions and hygiene scripts; application-code findings are follow-on, not part of that plan. Never a package upgrade plan.
+_Avoid_: research base, research note, upgrade plan, dependency audit
+
 ## Agent Roles
 
 **ComponentBuilder**:
