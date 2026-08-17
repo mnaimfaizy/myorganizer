@@ -1,0 +1,141 @@
+{
+  "schemaVersion": 1,
+  "orchestration": [
+    {
+      "name": "ready-for-agent",
+      "color": "0075ca",
+      "description": "Orchestrator may pick this issue up for autonomous processing"
+    },
+    {
+      "name": "complexity:low",
+      "color": "c5def5",
+      "description": "Route to Haiku — simple, well-scoped task"
+    },
+    {
+      "name": "complexity:medium",
+      "color": "bfd4f2",
+      "description": "Route to Sonnet — moderate complexity task"
+    },
+    {
+      "name": "complexity:high",
+      "color": "84b6eb",
+      "description": "Route to Opus — complex task requiring deep reasoning"
+    },
+    {
+      "name": "gate:mechanical",
+      "color": "d4c5f9",
+      "description": "Mechanical path — main agent edits; no specialist chains (ADR 0012)"
+    },
+    {
+      "name": "gate:standard",
+      "color": "b392f0",
+      "description": "Single-hop specialist path (ADR 0012)"
+    },
+    {
+      "name": "gate:full",
+      "color": "6f42c1",
+      "description": "Full mandatory multi-agent pipelines (ADR 0012)"
+    },
+    {
+      "name": "type:afk",
+      "color": "e4e669",
+      "description": "Agent can implement and merge without human interaction"
+    },
+    {
+      "name": "type:hitl",
+      "color": "f9d0c4",
+      "description": "Human decision required before an agent can proceed — skipped by dispatch-agents"
+    },
+    {
+      "name": "status:in-progress",
+      "color": "fef2c0",
+      "description": "Agent has picked up the issue and is working on it"
+    },
+    {
+      "name": "status:blocked",
+      "color": "d93f0b",
+      "description": "Waiting on blocker issue(s) in ## Blocked by — skipped by dispatch-agents until unblocked"
+    },
+    {
+      "name": "status:done",
+      "color": "0e8a16",
+      "description": "Agent finished; slice integrated into the local feature branch"
+    },
+    {
+      "name": "prd",
+      "color": "6f42c1",
+      "description": "Product Requirements Document — parent issue for a planned feature"
+    }
+  ],
+  "surface": {
+    "kind": [
+      {
+        "name": "bug",
+        "color": "d73a4a",
+        "description": "Something isn't working"
+      },
+      {
+        "name": "security",
+        "color": "b60205",
+        "description": "Security-related work"
+      },
+      {
+        "name": "enhancement",
+        "color": "a2eeef",
+        "description": "New feature or request"
+      },
+      {
+        "name": "documentation",
+        "color": "0075ca",
+        "description": "Improvements or additions to documentation"
+      },
+      {
+        "name": "tooling",
+        "color": "ededed",
+        "description": "Agent, script, or developer-tooling work"
+      },
+      {
+        "name": "maintenance",
+        "color": "aaaaaa",
+        "description": "Repository modifications including refactoring"
+      },
+      {
+        "name": "dependencies",
+        "color": "3b2024",
+        "description": "Dependencies"
+      },
+      {
+        "name": "research",
+        "color": "ededed",
+        "description": "Research or investigation"
+      },
+      {
+        "name": "qa",
+        "color": "0E8A16",
+        "description": "Quality assurance plans, test strategy, and validation tracking"
+      }
+    ],
+    "area": [
+      {
+        "name": "backend",
+        "color": "E99695",
+        "description": "Backend API"
+      },
+      {
+        "name": "web-app",
+        "color": "8740F9",
+        "description": "Web Application"
+      },
+      {
+        "name": "mobile-app",
+        "color": "1d76db",
+        "description": "Mobile app"
+      },
+      {
+        "name": "github-actions",
+        "color": "98bf44",
+        "description": "GitHub Actions"
+      }
+    ]
+  }
+}

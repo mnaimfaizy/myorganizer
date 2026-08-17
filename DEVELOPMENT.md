@@ -767,6 +767,12 @@ Good issues help maintainers understand and address problems quickly. Here's how
      corepack yarn ai:create-pr
      ```
 
+   - Add Surface Labels only when you have them (kind/area from `tools/config/github-labels.json`; default is unlabeled):
+
+     ```bash
+     corepack yarn ai:create-pr --label documentation --label tooling
+     ```
+
    - Add reviewers only when you need them:
 
      ```bash
@@ -776,6 +782,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
    - The shared PR workflow:
      - pushes the branch upstream if it is not already tracked
      - uses `--title` / `--body-file` when provided (agent path), otherwise a commit-derived fallback
+     - applies `--label` Surface Labels when provided (ADR 0025); default is none
      - assigns the authenticated GitHub user to the PR
      - leaves reviewers empty unless you explicitly pass one
      - returns only the PR URL on success
