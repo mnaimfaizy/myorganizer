@@ -2,14 +2,14 @@
 
 > For current package versions see [TECH_STACK.md](../../TECH_STACK.md).
 > For domain language see [CONTEXT.md](../../CONTEXT.md).
-> These guidelines apply to both UI Primitives (`libs/web-ui/`) and Feature Components (`libs/web/pages/<route>/`).
+> These guidelines apply to UI Primitives (`libs/web-ui/`), Feature Components (`libs/web/pages/<route>/`), and Vault UI Components (`libs/web-vault-ui`).
 > ComponentBuilder and ComponentReviewer agents enforce these rules on every component they touch.
 
 ---
 
 ## 1. Component Scopes
 
-There are exactly two places a React component may live. Choosing the wrong one is the most common structural mistake in this codebase.
+There are three places a React component may live. Choosing the wrong one is the most common structural mistake in this codebase. See [ADR 0026](../adr/0026-three-component-scopes.md).
 
 ### UI Primitive — `libs/web-ui/src/lib/components/<Name>/`
 
@@ -19,11 +19,14 @@ A component belongs here if:
 - It can be **fully developed in Storybook** with mock props only
 - It is **reusable across multiple routes** or could reasonably be reused in the future
 
+Stateful interaction (checked, open, a mount point that fires a toast) does not disqualify it. Domain knowledge does.
+
 Every UI Primitive must:
 
 - Live in its own folder: `libs/web-ui/src/lib/components/<Name>/<Name>.tsx`
 - Be exported from `libs/web-ui/src/index.ts` via `export *`
 - Use the compound/composition pattern when it has named slots or sections (see §3)
+- Ship with a colocated `<Name>.stories.tsx` that meets the required-coverage table in [`STORYBOOK-PATTERNS.md`](./STORYBOOK-PATTERNS.md) §8. That story is the proof it has no domain knowledge. A primitive without a story is incomplete.
 
 ### Feature Component — `libs/web/pages/<route>/src/components/`
 
@@ -43,6 +46,24 @@ import { Button, Form, FormField } from '@myorganizer/web-ui';
 import { Button } from '../../../libs/web-ui/src/lib/components/Button/Button';
 ```
 
+Feature Components are **not** in any Storybook glob. They belong in tests. If a feature component seems worth a story, that is a signal it should have been a UI Primitive or a Vault UI Component — raise it rather than adding a glob.
+
+### Vault UI Component — `libs/web-vault-ui/src/lib/`
+
+A component belongs here if:
+
+- It shows vault-adjacent state from mockable props (backup, restore, last-backup)
+- It knows the vault domain, so it is not a UI Primitive
+- It is reused across routes, so it is not a Feature Component
+
+Every Vault UI Component must:
+
+- Live under `libs/web-vault-ui/src/lib/` next to the component file
+- Be fully expressible with mock props — no live Vault, no decryption
+- Ship with a colocated `*.stories.tsx` (same Storybook instance as `web-ui`; see [`STORYBOOK-PATTERNS.md`](./STORYBOOK-PATTERNS.md) §1)
+
+`CloudBackupCard` and `LastBackupCard` are the current examples. Non-UI exports in that library (`session`, `vaultGate`, `migrationRunner`) are not Vault UI Components and do not get stories.
+
 ---
 
 ## 2. File Placement Rules
@@ -50,7 +71,12 @@ import { Button } from '../../../libs/web-ui/src/lib/components/Button/Button';
 ```
 libs/web-ui/src/lib/components/
 └── <Name>/
-    └── <Name>.tsx          ← component + all sub-components in one file
+    ├── <Name>.tsx            ← component + all sub-components in one file
+    └── <Name>.stories.tsx    ← required; proof of GUIDELINES §1
+
+libs/web-vault-ui/src/lib/
+├── <Name>.tsx                ← Vault UI Component (presentational)
+└── <Name>.stories.tsx        ← required for Vault UI Components only
 
 libs/web/pages/<route>/src/
 ├── page.tsx                ← thin Next.js route wrapper only (no logic)
@@ -347,14 +373,15 @@ return <TodoItem onDelete={handleDelete} />;
 
 ### Files and folders
 
-| Context             | Pattern                       | Example                                               |
-| ------------------- | ----------------------------- | ----------------------------------------------------- |
-| UI Primitive folder | `PascalCase/`                 | `Card/`, `DropdownMenu/`                              |
-| UI Primitive file   | `<Name>.tsx` (matches folder) | `Card.tsx`, `DropdownMenu.tsx`                        |
-| Feature component   | `<Purpose><Type>.tsx`         | `CreateListDialog.tsx`, `SubscriptionsTotalsCard.tsx` |
-| Feature page client | `<Route>PageClient.tsx`       | `SubscriptionsPageClient.tsx`                         |
-| Feature hook        | `use-<feature>.ts`            | `use-grocery-lists.ts`                                |
-| Zod schema file     | `<feature>.ts`                | `subscription.ts`                                     |
+| Context             | Pattern                                    | Example                                               |
+| ------------------- | ------------------------------------------ | ----------------------------------------------------- |
+| UI Primitive folder | `PascalCase/`                              | `Card/`, `DropdownMenu/`                              |
+| UI Primitive file   | `<Name>.tsx` (matches folder)              | `Card.tsx`, `DropdownMenu.tsx`                        |
+| Vault UI Component  | `<Name>.tsx` under `web-vault-ui/src/lib/` | `CloudBackupCard.tsx`, `LastBackupCard.tsx`           |
+| Feature component   | `<Purpose><Type>.tsx`                      | `CreateListDialog.tsx`, `SubscriptionsTotalsCard.tsx` |
+| Feature page client | `<Route>PageClient.tsx`                    | `SubscriptionsPageClient.tsx`                         |
+| Feature hook        | `use-<feature>.ts`                         | `use-grocery-lists.ts`                                |
+| Zod schema file     | `<feature>.ts`                             | `subscription.ts`                                     |
 
 ### Components and sub-components
 
@@ -367,6 +394,7 @@ return <TodoItem onDelete={handleDelete} />;
 ### Exports
 
 - UI Primitives: named exports only — `export { Card, CardHeader, CardContent }`
+- Vault UI Components: named exports from `libs/web-vault-ui`
 - Feature components: named export preferred — `export function TodoForm(...)`; default export acceptable for leaf components
 
 ---

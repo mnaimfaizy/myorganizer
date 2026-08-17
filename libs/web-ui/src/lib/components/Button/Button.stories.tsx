@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { Search } from 'lucide-react';
 import { Button } from './Button';
 
 const meta: Meta<typeof Button> = {
@@ -92,8 +93,17 @@ export const Large: Story = {
 
 export const Icon: Story = {
   args: {
-    children: '🔍',
+    children: <Search aria-hidden="true" className="h-4 w-4" />,
     size: 'icon',
+    'aria-label': 'Search',
+  },
+};
+
+export const LongContent: Story = {
+  args: {
+    children:
+      'Save all changes to your workspace settings and notification preferences',
+    className: 'max-w-[12rem]',
   },
 };
 
