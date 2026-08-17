@@ -221,12 +221,16 @@ _Avoid_: research base, research note, upgrade plan, dependency audit
 ## Documentation
 
 **Agent Guide**:
-Nested agent instructions colocated with the project they constrain. The only instruction document allowed under `apps/` besides an Operational README.
+Nested agent instructions colocated with the project they constrain. Under `apps/`, the only instruction document besides an Operational README. Under `libs/`, the only instruction document besides at most one Library README per Nx library.
 _Avoid_: project README (when you mean agent rules), local instructions, CLAUDE.md as a second copy of the same rules
 
 **Operational README**:
 A human-facing runbook for a deployable app, living next to that app because people run it from there. At most one per app. Not a feature write-up, design note, or ticket close-out.
-_Avoid_: feature README, page README, colocated design doc, implementation summary, component breakdown
+_Avoid_: feature README, page README, colocated design doc, implementation summary, component breakdown, Library README
+
+**Library README**:
+A human-facing package readme for an Nx library: what the package is, how to consume it, and what not to hand-edit. At most one per library. Not a feature write-up, page README, or Agent Guide.
+_Avoid_: feature README, page README, Operational README (when you mean a library), Nx scaffold README
 
 ## Harness & Instructions
 

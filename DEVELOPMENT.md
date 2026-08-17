@@ -407,7 +407,7 @@ Examples of existing page libraries:
 
 #### web/pages
 
-- One Nx library per frontend route/page (e.g. `libs/web/pages/todos`)
+- One Nx library per frontend route/page (e.g. `libs/web/pages/tasks`)
 - Imported via `@myorganizer/web-pages/<route>`
 
 #### web-vault
@@ -530,7 +530,7 @@ Prisma schemas are located in `apps/backend/src/prisma/schema/`:
 
 - `schema.prisma` - Main configuration
 - `user.prisma` - User model
-- `todo.prisma` - Todo model
+- `vault.prisma` - Vault ciphertext model
 
 After modifying schemas, always run:
 
@@ -648,7 +648,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
 4. **Provide a Clear Title**
 
-   Good: `Backend API returns 500 error when saving a todos vault blob`
+   Good: `Backend API returns 500 error when saving a tasks vault blob`
 
    Bad: `API broken`
 
@@ -658,7 +658,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
    - **Description**: What is the problem?
    - **Steps to Reproduce**:
      1. Start the backend
-     2. Send `PUT /api/v1/vault/blob/todos` with an invalid payload
+     2. Send `PUT /api/v1/vault/blob/tasks` with an invalid payload
      3. Observe 500 error
    - **Expected Behavior**: Should return 400 with validation error
    - **Actual Behavior**: Returns 500 internal server error

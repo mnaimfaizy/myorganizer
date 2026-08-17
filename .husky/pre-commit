@@ -6,6 +6,7 @@
 
 corepack yarn format:write --uncommitted
 git update-index --again
+corepack yarn libs:markdown:check
 corepack yarn test:hygiene --staged
 if ! git diff --cached --quiet --diff-filter=ACMRT -- \
  libs/web-ui/src/lib/components \

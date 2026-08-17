@@ -50,6 +50,7 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Sub-agent model/catalog audit: `yarn agents:models:audit`.
 - Sandcastle loop usage summary: `yarn agents:usage:report`.
 - Root README check: `yarn readme:check`.
+- Libs markdown allowlist: `yarn libs:markdown:check` (Husky + CI; do not skip).
 
 ## Architecture
 
@@ -64,6 +65,7 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 
 - The design reference lives in `libs/design-tokens/DESIGN.md`; use it together with `libs/design-tokens/src/tokens.json` when changing colors, typography, spacing, radii, or shadows.
 - `libs/design-tokens/src/tokens.json` is the single source of truth for design values; do not hard-code hex colors, font stacks, or magic spacing values in components when a token should exist.
+- `DESIGN.md` is brand rationale, not a second palette. Update it when a semantic role or brand rule changes, not when a hex or spacing step moves. See ADR 0023.
 - Regenerate token outputs with `yarn nx run design-tokens:build-tokens` after editing tokens.
 - Never edit files under `libs/design-tokens/src/generated/` directly; they are regenerated from `tokens.json`.
 - Prefer importing token constants from `@myorganizer/design-tokens` over introducing inline styling literals in application code.
@@ -177,7 +179,7 @@ Use [`.claude/checklist.md`](.claude/checklist.md) Step 0 → file-type matrix.
 
 - Do not introduce `package-lock.json` or `pnpm-lock.yaml` changes.
 - Do not put app-local shared helpers under `apps/myorganizer/src/lib/**`.
-- Do not store vault plaintext on the server or add plaintext todo APIs.
+- Do not store vault plaintext on the server or add plaintext task APIs.
 - Do not hand-edit generated API client code.
 - Do not commit secrets or production credentials.
 - Do not run `git commit` directly or `git add .`; use `corepack yarn ai:commit --message-file <path>`.

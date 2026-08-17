@@ -12,7 +12,7 @@ Browser vault implementation using WebCrypto and web storage/client sync helpers
 ## Do
 
 - Keep plaintext only in client memory while unlocked.
-- Store and sync encrypted blobs for `addresses`, `mobileNumbers`, `subscriptions`, and `todos`.
+- Store and sync encrypted blobs for `addresses`, `groceries`, `mobileNumbers`, `subscriptions`, and `tasks`.
 - Validate ciphertext bundle shape and size before import.
 
 ## Do Not

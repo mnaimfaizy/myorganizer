@@ -6,7 +6,7 @@ End-to-end developer documentation for individual product features.
 
 | Feature       | Status | Vault-backed | Docs                           |
 | ------------- | ------ | ------------ | ------------------------------ |
-| Todos         | ✅     | Yes          | —                              |
+| Tasks         | ✅     | Yes          | —                              |
 | Subscriptions | ✅     | Yes          | —                              |
 | Addresses     | ✅     | Yes          | —                              |
 | Groceries     | ✅     | Yes          | [groceries.md](./groceries.md) |

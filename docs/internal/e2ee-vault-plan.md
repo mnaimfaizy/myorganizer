@@ -143,7 +143,7 @@ See: `docs/internal/address-mobile-usage-plan.md`.
 Sidebar links (already started in app):
 
 - Home (/)
-- Todos (/dashboard/todo)
+- Tasks (/dashboard/tasks)
 - Addresses (/dashboard/addresses)
 - Mobile Numbers (/dashboard/mobile-numbers)
 
