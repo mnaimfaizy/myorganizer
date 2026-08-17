@@ -4,6 +4,25 @@
 
 This is an Nx monorepo for a full-stack organizer app: Next.js frontend, Express/Prisma backend, shared TypeScript libraries, and Playwright e2e tests. Nested AGENTS.md files add local rules for apps and libraries.
 
+<!-- BEGIN:nextjs-agent-rules -->
+
+# Next.js: ALWAYS read docs before coding
+
+Before any Next.js work, find and read the relevant doc in `node_modules/next/dist/docs/`. Your training data is outdated — the docs are the source of truth.
+
+<!-- END:nextjs-agent-rules -->
+
+## Next.js (this pin)
+
+Current `next` version lives in `TECH_STACK.md`. The bundled docs above match the installed package. Do not claim that Next.js auto-updates the marked block — at this pin the pointer is manual.
+
+- This app has no `proxy.ts` or Next.js `middleware.ts`. Do not add one unless the ticket **explicitly** asks for Next.js request interception. See [ADR 0019](docs/adr/0019-nextjs-proxy-is-not-a-session-layer.md).
+- If interception is required, the only live convention is `proxy.ts` (Node.js runtime only). Do not create `middleware.ts`, including the deprecated Edge hatch.
+- Prefer `next.config` `redirects` / `rewrites` for static routing. Proxy is a last resort.
+- Always `await` `cookies()`, `headers()`, `draftMode()`, `params`, and `searchParams`.
+- Do not suggest `next lint`. Lint with Nx/ESLint (`yarn nx lint <project>` or `yarn lint`).
+- Express middleware in `apps/backend/src/middleware/` is unrelated. Do not rename it to proxy.
+
 ## Setup
 
 - Use Node and Corepack-managed Yarn.
@@ -128,13 +147,13 @@ Do not treat every test/component touch as a full multi-agent pipeline. Classify
 | `gate:standard`   | Matching specialist hop for the artifact                                                             |
 | `gate:full`       | Full mandatory pipelines                                                                             |
 
-| File Pattern                                     | Skill                                                   | `standard` / `full` flow                                                                                      |
-| ------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `*.spec.ts` (Playwright E2E)                     | `.github/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold → TestReviewer (structural). Skip planner only for selector-only + unchanged matrix |
-| `*.test.ts` (Jest)                               | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold → TestReviewer → TestRunner                                                                      |
-| `*.stories.tsx`                                  | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                                                                                              |
-| Components in `libs/web-ui/` / `libs/web/pages/` | Component workflow                                      | ComponentBuilder → ComponentReviewer (max 3 FAIL loops)                                                       |
-| API Contract (controllers, DTOs, Prisma for HTTP) | `.github/skills/backend-api-contract-change/SKILL.md` | PrismaWriter (if schema) → ApiWriter → ApiSync. One-shot; no reviewer loop (ADR 0015) |
+| File Pattern                                      | Skill                                                   | `standard` / `full` flow                                                                                      |
+| ------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `*.spec.ts` (Playwright E2E)                      | `.github/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold → TestReviewer (structural). Skip planner only for selector-only + unchanged matrix |
+| `*.test.ts` (Jest)                                | `.github/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold → TestReviewer → TestRunner                                                                      |
+| `*.stories.tsx`                                   | `.github/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                                                                                              |
+| Components in `libs/web-ui/` / `libs/web/pages/`  | Component workflow                                      | ComponentBuilder → ComponentReviewer (max 3 FAIL loops)                                                       |
+| API Contract (controllers, DTOs, Prisma for HTTP) | `.github/skills/backend-api-contract-change/SKILL.md`   | PrismaWriter (if schema) → ApiWriter → ApiSync. One-shot; no reviewer loop (ADR 0015)                         |
 
 ### Key Anti-Patterns
 

@@ -70,6 +70,7 @@ MyOrganizer is a full-stack web application built as an Nx monorepo with:
 ### Frontend (Next.js)
 
 - Use **App Router** (see [TECH_STACK.md](../TECH_STACK.md) for current Next.js version)
+- Next.js request conventions (`proxy.ts`, async request APIs, do not suggest `next lint`): see root [AGENTS.md](../AGENTS.md). Do not add a Next.js Proxy unless the ticket asks. [ADR 0019](../docs/adr/0019-nextjs-proxy-is-not-a-session-layer.md).
 - Server components by default, client components when needed
 - Use `'use client'` directive only when necessary (interactivity, hooks)
 - Route wrappers live in `apps/myorganizer/src/app/`

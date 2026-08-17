@@ -342,6 +342,8 @@ MyOrganizer enforces a simple rule for the Next.js App Router:
 - Files under `apps/myorganizer/src/app/**` are **thin route wrappers** only.
 - All page/domain logic lives in Nx libraries under `libs/web/pages/<route>/`.
 
+Next.js request conventions (`proxy.ts`, async request APIs, do not suggest `next lint`) live in [AGENTS.md](./AGENTS.md). Package versions live in [TECH_STACK.md](./TECH_STACK.md). Do not add a Next.js Proxy unless a ticket explicitly asks — [ADR 0019](./docs/adr/0019-nextjs-proxy-is-not-a-session-layer.md).
+
 This keeps pages reusable and testable, and prevents app-local “shared code” from spreading.
 
 ### What goes where
