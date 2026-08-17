@@ -1,6 +1,6 @@
 ---
 name: triage
-description: Move issues and external PRs through a small triage state machine, then produce agent-ready briefs or close with durable rationale.
+description: 'Use when triaging existing GitHub issues or external PRs through the state machine (needs-triage, ready-for-agent, wontfix). Do not use to create new issues — ad-hoc tickets use github-issue-creation-workflow; PRDs use to-prd.'
 disable-model-invocation: true
 ---
 
@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Adapted from `mattpocock/skills` for MyOrganizer's issue and agent workflows.
 
-Use this skill to move issue-tracker work through a consistent triage state machine.
+Use this skill to move **existing** issue-tracker work through a consistent triage state machine. Do not use it to create new issues.
 
 If this repository treats external pull requests as triage inputs, a PR is triaged with the same lifecycle: it is an issue with attached code.
 

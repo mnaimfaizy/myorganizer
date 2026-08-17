@@ -1,6 +1,6 @@
 ---
 name: grill-with-docs
-description: Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates documentation (CONTEXT.md, ADRs) inline as decisions crystallise. Use when you want to stress-test a plan against the project's language and documented decisions.
+description: Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates documentation (CONTEXT.md, ADRs) inline as decisions crystallise. Use when you want to stress-test a plan against the project's language and documented decisions. Publishing the agreed plan as tracked work is to-prd, not IssueCreator.
 ---
 
 <what-to-do>
@@ -10,6 +10,8 @@ Interview relentlessly about every aspect of the plan until reaching a shared un
 Ask questions one at a time, waiting for feedback on each question before continuing.
 
 If a question can be answered by exploring the codebase, explore the codebase instead of asking.
+
+When the user asks to file the agreed plan as a GitHub issue, PRD, or tracked work, load `.agents/skills/to-prd/SKILL.md`. Do not use `github-issue-creation-workflow` or the IssueCreator sub-agent for that publish.
 
 </what-to-do>
 

@@ -1,6 +1,6 @@
 ---
 name: to-prd
-description: 'Use when the user wants to plan a new feature for MyOrganizer. Explores the codebase, sketches test seams, gets user approval, writes a PRD, and publishes it as a GitHub Issue. Always use this skill for planned features — not for ad-hoc bugs or one-off tasks.'
+description: 'Use when the user wants to plan a new feature for MyOrganizer, or to publish a grill/spec session as a PRD Issue. Explores the codebase, sketches test seams, gets user approval, writes a PRD, and publishes it as a GitHub Issue. Always use this skill for planned features — not for ad-hoc bugs, one-off tasks, or standalone IssueCreator tickets.'
 ---
 
 # To PRD
@@ -11,7 +11,13 @@ Turn the current conversation context into a Product Requirements Document and p
 
 - The user wants to plan a new feature, capability, or significant change to MyOrganizer.
 - The user asks to write a PRD, create a spec, or turn an idea into a structured plan.
+- The user wants to publish the outcome of a `grill-with-docs` session as tracked work.
 - The user wants to prepare work for autonomous agents via `dispatch-agents`.
+
+## Do Not Use When
+
+- The user wants a standalone ad-hoc GitHub issue (bug, task, follow-up) → `.agents/skills/github-issue-creation-workflow/SKILL.md`.
+- A PRD Issue already exists and needs slice tickets → `.agents/skills/to-issues/SKILL.md`.
 
 ## Core Rules
 

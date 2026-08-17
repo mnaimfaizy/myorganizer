@@ -37,8 +37,8 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - E2E: `yarn nx e2e myorganizer-e2e`.
 - Lint: `yarn nx lint <project-name>` or `yarn lint`.
 - Format: `yarn format:write`.
-- AI commit workflow: `corepack yarn ai:commit --message-file <path>`.
-- AI PR workflow: draft with the `PrAuthor` sub-agent, then `corepack yarn ai:create-pr --title <text> --body-file <path> [--reviewer <login>]`.
+- AI commit: `corepack yarn ai:commit --message-file <path>`.
+- AI PR: draft with the `PrAuthor` sub-agent, then `corepack yarn ai:create-pr --title <text> --body-file <path> [--reviewer <login>]`.
 - API sync after backend contract changes: `yarn openapi:sync`; check drift with `yarn openapi:check`.
 - Release (cut branch): `yarn release:cut --version vX.Y.Z --push --notes-file RELEASE_NOTES.md`.
 - Release (tag after production deploy): `yarn release:tag --version vX.Y.Z --push`.
@@ -75,27 +75,35 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Use the generated API client when it covers the endpoint.
 - Add or update focused tests for changed behavior.
 - Keep docs concise and link to existing docs when possible.
-- Use the `Commit` sub-agent only to draft Conventional Commit messages from the staged diff; execute commits with `corepack yarn ai:commit --message-file <path>` so Husky is allowed to finish. Never `git add .` or run `git commit` directly.
-- For commit requests, wait for `yarn ai:commit` to return before continuing. If it fails, read the `ai:commit: failed` trailer, fix the hinted slice, and retry.
-- For PR requests, draft the title and body with the `PrAuthor` sub-agent from the branch diff and linked GitHub issues, then execute `corepack yarn ai:create-pr --title <text> --body-file <path>`. Push upstream if needed, assign the authenticated GitHub user, and leave reviewers empty unless the user explicitly names them. Do not fall back to a title-only PR if `PrAuthor` fails.
-- For issue creation requests, follow `.agents/skills/github-issue-creation-workflow/SKILL.md` and delegate to `IssueCreator` so duplicate checks, required details, and label validation are handled consistently.
-- For issue/PR triage requests, follow `.agents/skills/triage/SKILL.md`. Use `.agents/skills/triage/AGENT-BRIEF.md` when moving to `ready-for-agent`, and `.agents/skills/triage/OUT-OF-SCOPE.md` when rejecting enhancements as `wontfix`.
-- For Jest unit or integration test creation/update requests, follow `.agents/skills/unit-test-delegation-workflow/SKILL.md` and delegate implementation to `TestScaffold` first. The brief must include a behavior matrix from the actual implementation plus explicit in-scope and out-of-scope scenarios. Main agent must review behavior correctness, side effects, failures, boundaries, security-sensitive paths, mock hygiene, duplicate output, and validation before finalizing. Use `docs/testing/projects/<project>.md` as the project-aware tooling reference; `docs/testing/README.md` is the index plus cross-project rules.
-- For implementing agreed work from a spec, PRD, or tickets in the current session, use `.agents/skills/implement/SKILL.md`. Classify `gate:*` first (ADR 0012); ad-hoc work needs no ticket. Use TDD at pre-agreed seams, respect tiered delegation rules, and commit or open PRs only when the user explicitly asks.
-- For reviewing branch or WIP changes against repo standards and the originating spec, use `.agents/skills/code-review/SKILL.md`.
-- For building features or fixing bugs test-first (red-green-refactor), use `.agents/skills/tdd/SKILL.md`. Plan the behavior list with the user before writing any code, work in vertical tracer-bullet slices (one test → one implementation → repeat), and consult `.agents/skills/codebase-design/SKILL.md` for deep-module vocabulary during the refactor step.
-- For Playwright E2E creation/update requests, follow `.agents/skills/playwright-e2e-workflow/SKILL.md`; use `E2EPlanner` for broad flows and delegate implementation to `TestScaffold` only with a precise flow matrix.
-- For release requests, follow the `.agents/skills/release-and-deploy-workflow/SKILL.md` skill. Delegate: pre-flight → `PreflightCheck` agent, version proposal → `VersionBump` agent, notes drafting → `ReleaseNotes` agent.
-- For design and planning sessions, use `.agents/skills/grill-with-docs/SKILL.md` to stress-test plans against the domain model, sharpen terminology, and document decisions. This skill helps create/update `CONTEXT.md` (domain glossary) and `docs/adr/` (architecture decisions).
-- For instruction-truth and breaking-change discovery against official docs, use `.agents/skills/upstream-brief/SKILL.md`. The human names each `subject@version`; the run writes an Upstream Brief and may propose a HITL issue. It does not bump packages or apply instruction edits. Host adapter: `upstream-brief.config.yml`. Contract: `docs/adr/0018-upstream-brief-portable-instruction-audit.md`.
-- For actively building or updating the domain model (adding glossary terms, recording ADRs, resolving fuzzy language, cross-referencing terms with code), use `.agents/skills/domain-modeling/SKILL.md`. This is the _active_ discipline that owns `CONTEXT.md` and `docs/adr/` writes — invoked by `improve-codebase-architecture` and `grill-with-docs` when the model needs to change.
-- For architectural reviews — finding shallow modules, seam leaks, or testability gaps — use `.agents/skills/improve-codebase-architecture/SKILL.md`. It loads `.agents/skills/codebase-design/SKILL.md` (vocabulary + principles) and its companion files (`DEEPENING.md` for dependency classification, `DESIGN-IT-TWICE.md` for alternative interface exploration). It produces a visual HTML report with before/after diagrams for each candidate, then opens a grilling loop on whichever candidate you pick.
-- For any sub-agent update (content, add/remove, model change), use `.agents/skills/sub-agent-sync-workflow/SKILL.md` and run `yarn agents:sync` so `.claude/agents`, `.cursor/agents`, and `.gemini/agents` stay aligned with `.github/agents`.
-- Keep `.github/agents` as the canonical body source; avoid manual copy/paste sync across harnesses when `tools/scripts/sync-subagents.mjs` is available.
-- Keep `CodeExplorer` in `.cursor/agents/explore.md` on `model: composer-2.5`.
-- For new planned feature work, use `.agents/skills/to-prd/SKILL.md` to write and publish a PRD Issue. The user must be present — there is one interactive step (test seam approval). Do not use IssueCreator for PRD Issues; create them directly via `gh issue create`.
-- To break a PRD Issue into Slice Issues, use `.agents/skills/to-issues/SKILL.md`. The user must supply the PRD Issue number. Every slice body must start with `PRD: #<N>`. Flag `type:hitl` slices prominently — `dispatch-agents` skips them. After publishing, remind the user to run `yarn dispatch-agents --prd <N>`.
-- Before issuing 3 or more consecutive read/search operations to locate something in the codebase, stop and delegate to `CodeExplorer` (`.github/agents/explore.agent.md`) instead. Provide an Explore Request with a `Goal` sentence; optionally include `Known Locations`, `Search Hints`, `Out of Scope`, and `Expected Output`. CodeExplorer returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
+- Classify `gate:*` first ([ADR 0012](docs/adr/0012-tiered-quality-gates.md)). When unsure → promote.
+- Before issuing 3 or more consecutive read/search operations to locate something in the codebase, stop and delegate to `CodeExplorer` (`.github/agents/explore.agent.md`). Provide an Explore Request with a `Goal` sentence; optionally include `Known Locations`, `Search Hints`, `Out of Scope`, and `Expected Output`. CodeExplorer returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
+- Keep `.github/agents` as the canonical Sub-agent body source. Keep `CodeExplorer` in `.cursor/agents/explore.md` on `model: composer-2.5`.
+- For PR requests, draft the title and body with the `PrAuthor` sub-agent, then execute `corepack yarn ai:create-pr --title <text> --body-file <path>`. Do not fall back to a title-only PR if `PrAuthor` fails.
+
+## Workflows
+
+Named workflows live in `.agents/skills/`. Load the Skill; do not copy its steps here. The lines below are **choosers** (which Skill to load), not procedures.
+
+- When committing: `.agents/skills/commit-change-workflow/SKILL.md`
+- When opening a PR: `.agents/skills/create-pull-request-workflow/SKILL.md`
+- Ad-hoc GitHub issue (bug, task, or follow-up that is **not** a PRD): `.agents/skills/github-issue-creation-workflow/SKILL.md`
+- Planned feature, spec, or grill outcome published as a **PRD Issue**: `.agents/skills/to-prd/SKILL.md` — do not use IssueCreator
+- Break a PRD Issue into slices: `.agents/skills/to-issues/SKILL.md`
+- Existing issue or external PR (state machine, not create): `.agents/skills/triage/SKILL.md`
+- Jest tests: `.agents/skills/unit-test-delegation-workflow/SKILL.md`
+- Playwright E2E: `.agents/skills/playwright-e2e-workflow/SKILL.md`
+- Storybook: `.agents/skills/storybook-delegation-workflow/SKILL.md`
+- UI components: `.agents/skills/component-builder/SKILL.md`
+- API contracts: `.agents/skills/backend-api-contract-change/SKILL.md`
+- Implement agreed work: `.agents/skills/implement/SKILL.md`
+- Code review: `.agents/skills/code-review/SKILL.md`
+- TDD: `.agents/skills/tdd/SKILL.md`
+- Release: `.agents/skills/release-and-deploy-workflow/SKILL.md`
+- Design / grilling session: `.agents/skills/grill-with-docs/SKILL.md` — filing that plan as tracked work is `to-prd`, not IssueCreator
+- Upstream instruction audit: `.agents/skills/upstream-brief/SKILL.md`
+- Domain model writes: `.agents/skills/domain-modeling/SKILL.md`
+- Architecture review: `.agents/skills/improve-codebase-architecture/SKILL.md`
+- Sub-agent add/remove/edit: `.agents/skills/sub-agent-sync-workflow/SKILL.md`
 
 ## Branch naming
 
@@ -147,97 +155,23 @@ Do not treat every test/component touch as a full multi-agent pipeline. Classify
 | `gate:standard`   | Matching specialist hop for the artifact                                                             |
 | `gate:full`       | Full mandatory pipelines                                                                             |
 
-| File Pattern                                      | Skill                                                   | `standard` / `full` flow                                                                                      |
-| ------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `*.spec.ts` (Playwright E2E)                      | `.agents/skills/playwright-e2e-workflow/SKILL.md`       | E2EPlanner → TestScaffold → TestReviewer (structural). Skip planner only for selector-only + unchanged matrix |
-| `*.test.ts` (Jest)                                | `.agents/skills/unit-test-delegation-workflow/SKILL.md` | TestScaffold → TestReviewer → TestRunner                                                                      |
-| `*.stories.tsx`                                   | `.agents/skills/storybook-delegation-workflow/SKILL.md` | StorybookCurator                                                                                              |
-| Components in `libs/web-ui/` / `libs/web/pages/`  | Component workflow                                      | ComponentBuilder → ComponentReviewer (max 3 FAIL loops)                                                       |
-| API Contract (controllers, DTOs, Prisma for HTTP) | `.agents/skills/backend-api-contract-change/SKILL.md`   | PrismaWriter (if schema) → ApiWriter → ApiSync. One-shot; no reviewer loop (ADR 0015)                         |
+| File Pattern                                      | Skill                                                   |
+| ------------------------------------------------- | ------------------------------------------------------- |
+| `*.spec.ts` (Playwright E2E)                      | `.agents/skills/playwright-e2e-workflow/SKILL.md`       |
+| `*.test.ts` (Jest)                                | `.agents/skills/unit-test-delegation-workflow/SKILL.md` |
+| `*.stories.tsx`                                   | `.agents/skills/storybook-delegation-workflow/SKILL.md` |
+| Components in `libs/web-ui/` / `libs/web/pages/`  | `.agents/skills/component-builder/SKILL.md`             |
+| API Contract (controllers, DTOs, Prisma for HTTP) | `.agents/skills/backend-api-contract-change/SKILL.md`   |
 
 ### Key Anti-Patterns
 
-❌ Skip specialists on behavioral (`standard`/`full`) test or component work.  
+❌ Skip specialists on behavioral (`standard`/`full`) test or component work.
 ❌ Run the full test pipeline for a pure mechanical fixture retarget.
 ❌ Main agent writes controllers or Prisma schema on `standard`/`full` instead of PrismaWriter / ApiWriter.
 
 ### Before You Edit Any File
 
 Use [`.claude/checklist.md`](.claude/checklist.md) Step 0 → file-type matrix.
-
-## UI Component Workflows
-
-When creating or editing any React component in `libs/web-ui/` (UI Primitives) or `libs/web/pages/<route>/` (Feature Components), follow this chain exactly:
-
-### Step 1 — Build a Structured Spec
-
-Before delegating, construct the following spec from the user's request and the surrounding codebase context:
-
-```
-## Structured Spec
-
-### Component Name
-<PascalCase name>
-
-### Target Path
-<exact relative path — ComponentBuilder infers scope from this>
-
-### Action
-create | edit
-
-### Scope
-UI Primitive | Feature Component
-(omit to let ComponentBuilder infer from the target path)
-
-### Props Interface
-<TypeScript interface or prose description of props>
-
-### State Ownership
-<local useState / React Hook Form / custom hook / server>
-
-### Zod Schema
-<schema definition, or "none">
-
-### Composition
-<list of sub-components if compound, or "single component">
-
-### Guidelines to Enforce
-all
-
-### Additional Context
-<anything ComponentBuilder needs to know>
-```
-
-### Step 2 — Delegate to ComponentBuilder
-
-Pass the Structured Spec to the `ComponentBuilder` sub-agent (canonical `.github/agents/component-builder.agent.md`). Wait for the **ComponentBuilder Report** before proceeding.
-
-### Step 3 — Delegate to ComponentReviewer
-
-Required on `gate:standard` and `gate:full` after ComponentBuilder. Pass the ComponentBuilder Report to `ComponentReviewer` (canonical `.github/agents/component-reviewer.agent.md`). Skip Builder/Reviewer only for `gate:mechanical` rename/import/dead-delete.
-
-ComponentReviewer runs `check-component-hygiene.mjs`, `tsc --noEmit`, and `eslint`, then judges composition, scope placement, concern mixing, the client boundary, Radix usage, and accessibility. `tsc` over the owning project is the importer check — nobody reads importer files one by one.
-
-### Step 4 — Handle the Verdict
-
-- **`PASS`** — accept the component; note any warnings to the user.
-- **`PASS_WITH_WARNINGS`** — accept the component; surface the warnings to the user for awareness.
-- **`FAIL`** — relay `Required Revisions` to ComponentBuilder and repeat from Step 2. **Max 3 FAIL cycles**, then escalate to the main agent/human with a diagnosis. Prefer short reviewer reports (`PASS|FAIL` + ≤5 bullets) unless detail is needed after a rejection.
-
-### Step 5 — Storybook and Tests (after review passes)
-
-- New UI Primitives always need a Storybook story → `.agents/skills/storybook-delegation-workflow/SKILL.md`.
-- Any component with testable behaviour → `.agents/skills/unit-test-delegation-workflow/SKILL.md`.
-- On `gate:standard`, add stories/tests only when behavior warrants them.
-
-### Key Rules
-
-- On `gate:standard` / `gate:full`, do NOT write component code in the main agent — delegate to ComponentBuilder.
-- ComponentBuilder does not write stories or tests — those go to StorybookCurator and TestScaffold after the review passes.
-- Do NOT invent component conventions. ComponentBuilder and ComponentReviewer enforce `docs/ui/GUIDELINES.md`, which is the single copy of those rules — the agents read it rather than restating it.
-- Neither agent reads `TECH_STACK.md` in full; it is a version lookup table, not a component briefing.
-- On `gate:mechanical`, run the shape checks yourself: `yarn component:hygiene <path>` (see ADR 0014).
-- If the Structured Spec is incomplete (missing `Target Path` or `Props Interface`), gather the missing information before delegating.
 
 ## Do Not
 

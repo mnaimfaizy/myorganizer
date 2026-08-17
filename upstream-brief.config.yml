@@ -12,7 +12,6 @@ instruction_globs:
   - .github/copilot-instructions.md
   - .agents/skills/**/*.md
   - .github/agents/*.agent.md
-  - .claude/commands/*.md
   - docs/ui/GUIDELINES.md
 
 script_globs:

@@ -1,19 +1,26 @@
 ---
 name: github-issue-creation-workflow
-description: 'Use when the user asks to create, open, file, or draft a GitHub issue for a task, bug, feature, enhancement, or follow-up in MyOrganizer. Delegate to the IssueCreator sub-agent for duplicate checks, detail collection, label validation, and issue creation.'
+description: 'Use when the user asks to create a standalone GitHub issue for an ad-hoc bug, task, or follow-up in MyOrganizer. Do not use for PRD Issues, PRD slices, or publishing a grill/to-prd plan — those use to-prd or to-issues. Delegate to IssueCreator for duplicate checks, detail collection, label validation, and issue creation.'
 ---
 
 # GitHub Issue Creation Workflow
 
 ## Use This Skill When
 
-- The user asks to create a GitHub issue for a bug, task, feature, or change request.
-- The user asks to file an issue from the current session context.
-- Another agent needs to offload issue creation into a dedicated, isolated sub-agent.
+- The user asks to create a standalone GitHub issue for an ad-hoc bug, task, or follow-up.
+- The issue is **not** a PRD, **not** a PRD slice, and **not** the published outcome of a grill or `to-prd` session.
+- Another agent needs to offload ad-hoc issue creation into a dedicated, isolated sub-agent.
+
+## Do Not Use When
+
+- The user wants to plan a feature, write a spec, or publish a grill outcome as tracked work → `.agents/skills/to-prd/SKILL.md` (not IssueCreator).
+- A PRD Issue already exists and needs slice tickets → `.agents/skills/to-issues/SKILL.md`.
+- An existing issue or external PR needs the triage state machine → `.agents/skills/triage/SKILL.md`.
 
 ## Core Rules
 
 - Always delegate issue creation work to the `IssueCreator` custom agent.
+- If the request is a planned feature, PRD, spec, or grill publish, **stop** and load `to-prd` instead. Do not call IssueCreator.
 - The target repository is `mnaimfaizy/myorganizer`. If the context is ambiguous or the user references a different repo, confirm the owner/repo with the user before delegating.
 - The sub-agent must not invent missing facts. If details are incomplete, it must ask for clarification first. If the user does not provide required details after one clarification prompt, return `UNSUCCESS: insufficient details`.
 - The sub-agent must check for duplicate issues before creating a new one. A near match is defined as: any open or closed issue sharing ≥2 significant title keywords or matching the core intent. Present up to 3 candidates and require the user to confirm before proceeding. If the user confirms an existing issue is a duplicate, return `UNSUCCESS: duplicate of <issue-url>` and do not create a new issue.

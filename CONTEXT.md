@@ -235,7 +235,7 @@ A coding-agent product that loads this repo's instructions (Cursor, Claude Code,
 _Avoid_: IDE, vendor, tool (when you mean the product)
 
 **Instruction File**:
-Always-on policy markdown a Harness injects into the session. Repo-wide policy has one human-edited Instruction File; other roots are Harness Adapters. Distinct from a Skill, which loads only when the task matches.
+Always-on policy markdown a Harness injects into the session. Repo-wide policy has one human-edited Instruction File; other roots are Harness Adapters. Distinct from a Skill, which loads only when the task matches. May include chooser lines (which Skill to load when requests collide); must not restate a Skill's procedure.
 _Avoid_: memory file, system prompt, copilot instructions (as the general name)
 
 **Skill**:

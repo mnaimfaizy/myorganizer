@@ -14,6 +14,7 @@ Shared React component library styled with Tailwind and developed with Storybook
 
 - Use accessible Radix-based patterns and existing component conventions.
 - Follow `docs/ui/GUIDELINES.md`; run `yarn component:hygiene <path>` to check the shape rules.
+- For creating or editing components, follow `.agents/skills/component-builder/SKILL.md`.
 - For Storybook creation or updates, delegate through `.agents/skills/storybook-delegation-workflow/SKILL.md` to `StorybookCurator` and review its requirement-readiness + UX/a11y coverage output before accepting. Patterns: `docs/ui/STORYBOOK-PATTERNS.md`.
 - Export public components from `src/index.ts`.
 

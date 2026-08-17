@@ -58,9 +58,8 @@ The `grill-with-docs` skill from [mattpocock/skills](https://github.com/mattpoco
 
 ### 5. Project Agents Guide (AGENTS.md)
 
-- ✅ Added bullet point for design/planning requests
-- ✅ Links to `.agents/skills/grill-with-docs/SKILL.md`
-- ✅ Explains CONTEXT.md and ADR documentation
+- ✅ Routes design/planning requests to `.agents/skills/grill-with-docs/SKILL.md`
+- ✅ Does not restate the Skill procedure (ADR 0020)
 
 ## 🎯 How to Use
 

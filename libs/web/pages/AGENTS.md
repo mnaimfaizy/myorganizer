@@ -12,6 +12,7 @@ One Nx React library per frontend route/page, imported by thin wrappers in `apps
 ## Do
 
 - Keep page components, data loading, form logic, schemas, and page helpers in the route library.
+- For creating or editing React components, follow `.agents/skills/component-builder/SKILL.md`.
 - Use `@myorganizer/web-ui`, `@myorganizer/auth`, `@myorganizer/web-vault`, and the generated API client as appropriate.
 - Keep vault-backed pages ciphertext-only outside the browser.
 

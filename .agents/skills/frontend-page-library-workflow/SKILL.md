@@ -17,6 +17,7 @@ description: "Use when adding or changing frontend pages, dashboard flows, forms
 - Put page logic, schemas, forms, and helpers in `libs/web/pages/<route>`.
 - Prefer the generated API client when it already supports the backend endpoint.
 - For new forms, use React Hook Form and Zod.
+- For creating or editing React components in a page library, follow `.agents/skills/component-builder/SKILL.md`.
 
 ## Workflow
 

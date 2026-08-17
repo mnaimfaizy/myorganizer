@@ -1,6 +1,6 @@
 ---
 name: to-issues
-description: 'Use when a PRD Issue exists and needs to be broken into Slice Issues for autonomous agents. Reads the PRD, explores the codebase, drafts vertical slices (AFK/HITL), quizzes the user, and publishes each slice with the full label set. Always run to-prd first.'
+description: 'Use when a PRD Issue exists and needs to be broken into Slice Issues for autonomous agents. Reads the PRD, explores the codebase, drafts vertical slices (AFK/HITL), quizzes the user, and publishes each slice with the full label set. Always run to-prd first. Do not use for standalone ad-hoc issues — those use github-issue-creation-workflow.'
 ---
 
 # To Issues
@@ -10,8 +10,13 @@ Break a PRD Issue into independently-grabbable Slice Issues using tracer-bullet 
 ## Use This Skill When
 
 - A PRD Issue exists and needs to be decomposed into implementation tickets.
-- The user asks to break down a PRD, create slice issues, or convert a plan into GitHub issues.
+- The user asks to break down a PRD, create slice issues, or convert a PRD into GitHub slice issues.
 - Preparing work for `yarn dispatch-agents`.
+
+## Do Not Use When
+
+- The user wants a standalone ad-hoc GitHub issue with no PRD parent → `.agents/skills/github-issue-creation-workflow/SKILL.md`.
+- The user wants to write or publish the PRD itself → `.agents/skills/to-prd/SKILL.md`.
 
 ## Core Rules
 

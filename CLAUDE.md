@@ -19,7 +19,3 @@ Generated copies live in `.claude/agents/`. Canonical bodies are `.github/agents
 ## Dependency Sync hook
 
 A Claude Code hook fires after `yarn add` / `yarn remove` / `yarn up` / `npm install`. Still run the `dep-sync` Skill and confirm before DepSync writes.
-
-## UI components
-
-On `gate:standard` / `gate:full`, follow **UI Component Workflows** in `AGENTS.md`. Claude slash command: `/component-builder` (`.claude/commands/component-builder.md`).
