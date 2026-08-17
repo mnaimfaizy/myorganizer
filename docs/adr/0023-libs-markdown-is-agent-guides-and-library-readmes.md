@@ -8,7 +8,7 @@ The only markdown allowed under `libs/` is a nested **Agent Guide** (`AGENTS.md`
 
 `libs/design-tokens/DESIGN.md` is brand rationale (when to use a semantic role), not a second token palette. Hex, spacing, and type values live only in `tokens.json`. Update `DESIGN.md` when a role or brand rule changes, not when a value moves.
 
-`yarn libs:markdown:check` enforces the filename allowlist.
+`yarn libs:markdown:check` enforces the filename allowlist. Husky runs it on every commit; CI runs it on every pull request and push to `main` / `release/*`. Do not rely on someone remembering to run the script.
 
 ## Considered Options
 
@@ -19,4 +19,5 @@ The only markdown allowed under `libs/` is a nested **Agent Guide** (`AGENTS.md`
 
 ## Consequences
 
+- Nx library generators that drop a scaffold `README.md` fail the commit and the PR until that file is deleted (or, rarely, added to the allowlist because it earns its keep as a Library README).
 - The pre-tool-use hook protects generated sources (`libs/app-api-client/src`, `libs/api-specs/src`), not Agent Guides or other markdown next to those packages.

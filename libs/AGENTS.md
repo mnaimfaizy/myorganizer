@@ -8,7 +8,7 @@ Shared Nx libraries for API contracts, generated clients, auth, vault logic, UI,
 
 - Test: `yarn nx test <project-name>`.
 - Lint: `yarn nx lint <project-name>`.
-- Markdown allowlist: `yarn libs:markdown:check`.
+- Markdown allowlist: `yarn libs:markdown:check` (Husky + CI). Delete Nx scaffold READMEs under `libs/` before committing.
 
 ## Do
 
