@@ -161,14 +161,18 @@ To show the open state, either set the primitive's `open`/`defaultOpen` prop in 
 `@storybook/test` and `@storybook/addon-interactions` are installed. A `play` function turns a story into an assertion that runs under `npx nx test-storybook web-ui`.
 
 ```typescript
-import { expect, userEvent, within } from '@storybook/test';
+import { expect, userEvent, waitFor, within } from '@storybook/test';
 
 export const OpensOnClick: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Open dialog' }));
     // Portalled content lives outside canvasElement — query the document body.
-    await expect(within(document.body).getByRole('dialog')).toBeVisible();
+    // waitFor: enter animations (`fade-in-0`) start at opacity 0; one-shot
+    // toBeVisible() fails mid-animation even when data-state is already open.
+    await waitFor(() => {
+      expect(within(document.body).getByRole('dialog')).toBeVisible();
+    });
   },
 };
 ```
