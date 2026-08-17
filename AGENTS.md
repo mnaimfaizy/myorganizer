@@ -38,7 +38,7 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Lint: `yarn nx lint <project-name>` or `yarn lint`.
 - Format: `yarn format:write`.
 - AI commit: `corepack yarn ai:commit --message-file <path>`.
-- AI PR: draft with the `PrAuthor` sub-agent, then `corepack yarn ai:create-pr --title <text> --body-file <path> [--reviewer <login>]`.
+- AI PR: draft with the `PrAuthor` sub-agent, then `corepack yarn ai:create-pr --title <text> --body-file <path> [--label <name>] [--reviewer <login>]`.
 - API sync after backend contract changes: `yarn openapi:sync`; check drift with `yarn openapi:check`.
 - Release (cut branch): `yarn release:cut --version vX.Y.Z --push --notes-file RELEASE_NOTES.md`.
 - Release (tag after production deploy): `yarn release:tag --version vX.Y.Z --push`.
@@ -138,6 +138,8 @@ issue labelled `tooling` + `maintenance` + `qa` is a chore, not documentation.
 
 Slugs are lowercase, hyphen-separated, and short (~40 chars) — enough to recognise the branch in
 `git branch`, not a restatement of the title.
+
+Kind and area **Surface Labels** live in `tools/config/github-labels.json` ([ADR 0025](docs/adr/0025-pr-surface-labels.md)). Branch type uses **kind only**, first match in the table above. Area labels (`backend`, `web-app`, …) do not change the prefix. Pull Requests receive Surface Labels only — never Issue Orchestration Labels.
 
 Reserved prefixes, which do **not** follow the table:
 

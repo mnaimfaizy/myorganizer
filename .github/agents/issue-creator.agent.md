@@ -49,7 +49,7 @@ Follow this sequence strictly to avoid wasted effort:
 - If feature: what new capability it adds
 - Impact/surface affected (small change or broader effect)
 - Affected library or libraries
-- Target project scope: frontend, backend API, database models (one or more)
+- Target project scope: web-app, backend, mobile-app, or github-actions (one or more Surface Label areas)
 - Whether attachments/screenshots are required, with links or explicit `None`
 
 If any item is refused or unavailable, stop with `UNSUCCESS`.
@@ -63,7 +63,7 @@ If any item is refused or unavailable, stop with `UNSUCCESS`.
 
 ## Label Policy
 
-1. Infer labels from issue details (e.g. `bug`, `enhancement`, `frontend`, `backend`, `database`), plus user-provided labels.
+1. Infer **Surface Labels** from issue details using `tools/config/github-labels.json` (`surface.kind` and `surface.area`), plus user-provided Surface Labels. Do not invent names such as `frontend` or `database`. Do not apply Issue Orchestration Labels (`ready-for-agent`, `type:*`, `gate:*`, `complexity:*`, `status:*`, `prd`) — those belong to `to-prd` / `to-issues` (ADR 0002 / ADR 0025).
 2. Validate each label exists in `mnaimfaizy/myorganizer`.
 3. If any label missing, stop and ask user to create them first; return `UNSUCCESS` listing missing labels.
 

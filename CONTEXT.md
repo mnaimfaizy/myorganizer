@@ -194,6 +194,14 @@ _Avoid_: Blocked issue, human task
 The `yarn dispatch-agents --prd <issue-number>` command that triggers the sandcastle orchestrator. Reads AFK Slice Issues labelled `ready-for-agent`, creates the feature branch **locally (never pushed)**, and runs one sandcastle agent per slice — one at a time, in Docker isolation — fast-forwarding each finished slice into the local feature branch and closing the slice issue. Integration is local: you push the feature branch and open one PR to `main` by hand.
 _Avoid_: Agent runner, orchestrator command, run-agents
 
+**Issue Orchestration Label**:
+A GitHub label from the ADR 0002 vocabulary that coordinates planning tools and dispatch-agents. Applies to Issues only — never to Pull Requests.
+_Avoid_: agent label, workflow label, status label (as the general name)
+
+**Surface Label**:
+A GitHub label that names a change's kind (`bug`, `enhancement`, `documentation`, …) or area (`backend`, `web-app`, …). Distinct from Issue Orchestration Labels. Issues may wear both; Pull Requests wear Surface Labels only.
+_Avoid_: PR label (as a second vocabulary), topic tag, category
+
 **Gated Pipeline**:
 A specialist chain that retries between agents until a reviewer or runner verdict passes, with a cap. Components and Jest use this shape.
 _Avoid_: review loop, QA cycle, writer-reviewer loop

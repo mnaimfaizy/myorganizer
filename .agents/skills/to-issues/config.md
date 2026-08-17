@@ -26,6 +26,8 @@ GitHub Issues
 | `status:done`        | Agent finished; integrated into local feature branch    |
 | `prd`                | Parent PRD Issue for a planned feature                  |
 
+Kind and area Surface Labels (issues and PRs) live in `tools/config/github-labels.json`. `to-prd` / `to-issues` do not apply them. See [ADR 0025](../../../docs/adr/0025-pr-surface-labels.md).
+
 ## Model Routing
 
 `complexity:low | medium | high` selects the corresponding Sandcastle model from `tools/config/agent-model-policy.json`. Do not duplicate concrete model IDs here.
