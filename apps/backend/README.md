@@ -754,4 +754,6 @@ For issues and questions:
 
 ## License
 
-MIT
+This app is part of MyOrganizer and is licensed under the
+[Elastic License 2.0](../../LICENSE). Third-party notices for vendored files
+are in the repository [NOTICE](../../NOTICE).
