@@ -29,7 +29,9 @@
   <a href="https://myorganizer-seven.vercel.app">
     <img src="https://img.shields.io/badge/demo-live-brightgreen?logo=vercel" alt="Live Demo" />
   </a>
-  <img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT License" />
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-Elastic%202.0-blue" alt="Elastic License 2.0" />
+  </a>
   <img src="https://img.shields.io/badge/node-%3E%3D22-brightgreen?logo=node.js" alt="Node >=22" />
 </p>
 
@@ -144,27 +146,40 @@ for its area — restating them here is how they go stale, so this table points 
 | Production and deployment config | [apps/backend/README.md](apps/backend/README.md), [docs/deployment/](docs/deployment/) |
 | The words this codebase uses     | [CONTEXT.md](CONTEXT.md)                                                               |
 | Contributor and agent workflows  | [AGENTS.md](AGENTS.md)                                                                 |
+| License                          | [LICENSE](LICENSE) (Elastic License 2.0); third-party [NOTICE](NOTICE)                 |
 
 ---
 
 ## Documentation
 
-| Document                                                                                     | Description                                               |
-| -------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| [DEVELOPMENT.md](DEVELOPMENT.md)                                                             | Complete developer guide — setup, workflow, architecture  |
-| [AGENTS.md](AGENTS.md)                                                                       | Contributor and agent workflows, branch naming, gates     |
-| [CONTEXT.md](CONTEXT.md)                                                                     | Domain glossary                                           |
-| [TECH_STACK.md](TECH_STACK.md)                                                               | Dependency versions and rationale                         |
-| [docs/adr/](docs/adr/)                                                                       | Architecture Decision Records                             |
-| [docs/vault/README.md](docs/vault/README.md)                                                 | Vault architecture, plus the two interactive pages        |
-| [docs/authentication/README.md](docs/authentication/README.md)                               | JWT and session strategy, plus the session lifecycle page |
-| [docs/agents/model-governance.md](docs/agents/model-governance.md)                           | Sub-agent fleet, model governance, orchestration          |
-| [docs/features/README.md](docs/features/README.md)                                           | Feature integration index                                 |
-| [docs/testing/README.md](docs/testing/README.md)                                             | Testing strategy and per-project tooling                  |
-| [docs/storybook/README.md](docs/storybook/README.md)                                         | Storybook and Chromatic setup                             |
-| [docs/deployment/CI_CD_AND_RELEASE_PROCESS.md](docs/deployment/CI_CD_AND_RELEASE_PROCESS.md) | CI/CD and release process                                 |
-| [docs/sandcastle/RUNBOOK.md](docs/sandcastle/RUNBOOK.md)                                     | Autonomous agent dispatch                                 |
-| [libs/design-tokens/DESIGN.md](libs/design-tokens/DESIGN.md)                                 | Design system and token reference                         |
+| Document                                                                                     | Description                                                                    |
+| -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| [DEVELOPMENT.md](DEVELOPMENT.md)                                                             | Complete developer guide — setup, workflow, architecture                       |
+| [AGENTS.md](AGENTS.md)                                                                       | Contributor and agent workflows, branch naming, gates                          |
+| [CONTEXT.md](CONTEXT.md)                                                                     | Domain glossary                                                                |
+| [TECH_STACK.md](TECH_STACK.md)                                                               | Dependency versions and rationale                                              |
+| [docs/adr/](docs/adr/)                                                                       | Architecture Decision Records                                                  |
+| [docs/vault/README.md](docs/vault/README.md)                                                 | Vault architecture, plus the two interactive pages                             |
+| [docs/authentication/README.md](docs/authentication/README.md)                               | JWT and session strategy, plus the session lifecycle page                      |
+| [docs/agents/model-governance.md](docs/agents/model-governance.md)                           | Sub-agent fleet, model governance, orchestration                               |
+| [docs/features/README.md](docs/features/README.md)                                           | Feature integration index                                                      |
+| [docs/testing/README.md](docs/testing/README.md)                                             | Testing strategy and per-project tooling                                       |
+| [docs/storybook/README.md](docs/storybook/README.md)                                         | Storybook and Chromatic setup                                                  |
+| [docs/deployment/CI_CD_AND_RELEASE_PROCESS.md](docs/deployment/CI_CD_AND_RELEASE_PROCESS.md) | CI/CD and release process                                                      |
+| [docs/sandcastle/RUNBOOK.md](docs/sandcastle/RUNBOOK.md)                                     | Autonomous agent dispatch                                                      |
+| [libs/design-tokens/DESIGN.md](libs/design-tokens/DESIGN.md)                                 | Design system and token reference                                              |
+| [LICENSE](LICENSE)                                                                           | Elastic License 2.0; see also [ADR 0024](docs/adr/0024-elastic-license-2.0.md) |
+
+---
+
+## License
+
+Copyright 2024-2026 Mohammad Naim Faizy. Licensed under the
+[Elastic License 2.0](LICENSE).
+
+Earlier MIT badges were incorrect; this repository never shipped an MIT grant.
+Pull requests are offered under the same license (GitHub inbound=outbound).
+Vendored third-party notices live in [NOTICE](NOTICE).
 
 ---
 
@@ -172,5 +187,5 @@ for its area — restating them here is how they go stale, so this table points 
   <a href="https://nx.dev" target="_blank" rel="noreferrer">
     <img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="32" alt="Nx" />
   </a>
-  &nbsp; Built with <a href="https://nx.dev">Nx</a> · MIT licensed
+  &nbsp; Built with <a href="https://nx.dev">Nx</a> · <a href="LICENSE">Elastic License 2.0</a>
 </p>
