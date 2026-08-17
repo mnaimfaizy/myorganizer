@@ -13,7 +13,6 @@ instruction_globs:
   - .agents/skills/**/*.md
   - .github/agents/*.agent.md
   - .claude/commands/*.md
-  - .cursor/rules/*.mdc
   - docs/ui/GUIDELINES.md
 
 script_globs:

@@ -40,7 +40,6 @@ instruction_globs:
   - .github/copilot-instructions.md
   - .agents/skills/**/*.md
   - .claude/commands/*.md
-  - .cursor/rules/*.mdc
 ```
 
 Always exclude, even when a glob would match:

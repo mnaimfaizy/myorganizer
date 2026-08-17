@@ -77,7 +77,7 @@ Skills:
 - E2E: `.agents/skills/playwright-e2e-workflow/SKILL.md`
 - Jest: `.agents/skills/unit-test-delegation-workflow/SKILL.md`
 - Storybook: `.agents/skills/storybook-delegation-workflow/SKILL.md`
-- Components: `CLAUDE.md` → UI Component Workflows / `.claude/commands/component-builder.md`
+- Components: `AGENTS.md` → UI Component Workflows / `.claude/commands/component-builder.md`
 - API Contract: `.agents/skills/backend-api-contract-change/SKILL.md` (ADR 0015)
 
 Deterministic component checks (any gate): `yarn component:hygiene <path>` — the shape rules from `docs/ui/GUIDELINES.md`. Targeted scans keep warnings advisory; CI and pre-commit enforce zero warnings with `--max-warnings=0` (ADR 0014).
