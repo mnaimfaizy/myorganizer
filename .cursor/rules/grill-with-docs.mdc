@@ -73,13 +73,14 @@ Key domain terms already established:
 - **Organization** — Group for organizing shared resources
 - **Ciphertext** — Encrypted blob format
 
-Tech stack to keep in mind:
+Tech stack versions live in `TECH_STACK.md`. Keep in mind:
 
-- Frontend: Next.js 14, React 18, TypeScript, Tailwind CSS
+- Frontend: Next.js with App Router, React, TypeScript, Tailwind CSS
 - Backend: Express.js, Prisma ORM, TSOA (for OpenAPI docs)
 - Database: PostgreSQL
 - Monorepo: Nx with path aliases
 - Key constraint: Vault implies ciphertext-only on server (no plaintext indexing)
+- Next.js request conventions: root `AGENTS.md` (do not duplicate them here)
 
 ## Skill Files
 
