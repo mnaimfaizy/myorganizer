@@ -79,12 +79,12 @@ const PATH_KEYS = new Set([
 
 const PROTECTED_PATTERNS = [
   {
-    pattern: /(^|[^a-z0-9])libs\/app-api-client(?:\/|$)/i,
+    pattern: /(^|[^a-z0-9])libs\/app-api-client\/src(?:\/|$)/i,
     reason:
       'Direct edits to the generated API client are blocked. Regenerate it with `yarn api:generate` after syncing the API contract.',
   },
   {
-    pattern: /(^|[^a-z0-9])libs\/api-specs(?:\/|$)/i,
+    pattern: /(^|[^a-z0-9])libs\/api-specs\/src(?:\/|$)/i,
     reason:
       'Direct edits to the synced OpenAPI spec are blocked. Update backend controllers/DTOs and run `yarn openapi:sync`.',
   },

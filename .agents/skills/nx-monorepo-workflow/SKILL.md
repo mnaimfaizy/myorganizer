@@ -71,6 +71,7 @@ The repo uses **Nx 22** with the following plugins installed:
 - If `project.json` was hand-edited to add targets that a generator would have set up, revert and re-run the generator with the correct options.
 - If `tsconfig.base.json` paths are missing for a new library, add them before publishing the PR.
 - If a new app or lib is missing an ESLint config or Jest config, check whether the generator was run with the correct `--linter` and `--unitTestRunner` flags.
+- If Nx dropped a `README.md` under `libs/`, delete it unless it is the design-tokens Library README (ADR 0023). Husky and CI run `yarn libs:markdown:check`.
 
 ## Validation
 

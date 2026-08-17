@@ -8,9 +8,11 @@ import {
 
 const ENV_FILE = '.env';
 const ENV_EXAMPLE = '.env.example';
-const GENERATED_SPEC = 'libs/api-specs/openapi.yaml';
+const GENERATED_SPEC = 'libs/api-specs/src/api-specs.openapi.yaml';
 const GENERATED_CLIENT = 'libs/app-api-client/src/index.ts';
 const ORDINARY_SOURCE = 'src/app/page.tsx';
+const API_CLIENT_README = 'libs/app-api-client/README.md';
+const API_SPECS_AGENTS = 'libs/api-specs/AGENTS.md';
 
 // Assembled from fragments so this file never contains a literal key filename
 // that its own repo-wide scanners would flag.
@@ -173,6 +175,20 @@ describe('pre-tool-use hook', () => {
         shellPayload('Bash', `echo x >> ${GENERATED_CLIENT}`),
         /api client|generated/i,
       );
+    });
+
+    it('should allow deleting a Library README next to the generated API client', () => {
+      expectAllowed(PRE_TOOL_USE_HOOK, {
+        tool_name: 'Delete',
+        tool_input: { path: API_CLIENT_README },
+      });
+    });
+
+    it('should allow editing an Agent Guide next to the synced OpenAPI spec', () => {
+      expectAllowed(PRE_TOOL_USE_HOOK, {
+        tool_name: 'Write',
+        tool_input: { file_path: API_SPECS_AGENTS, content: 'x' },
+      });
     });
 
     it('should allow a Write tool call targeting an ordinary source file', () => {

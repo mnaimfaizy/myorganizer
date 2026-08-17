@@ -19,7 +19,7 @@ This is the backend REST API for MyOrganizer application, built with Express.js,
 
 ## Overview
 
-The backend API provides a RESTful interface for the MyOrganizer application. It handles user authentication, todo management, and other core functionalities. The API is built with TypeScript for type safety and uses Prisma as the ORM for database operations.
+The backend API provides a RESTful interface for the MyOrganizer application. It handles user authentication, vault ciphertext, and other core functionalities. The API is built with TypeScript for type safety and uses Prisma as the ORM for database operations.
 
 ## Technologies
 
@@ -286,7 +286,7 @@ The Prisma schema files are located in:
 apps/backend/src/prisma/schema/
 ├── schema.prisma    # Main schema configuration
 ├── user.prisma      # User model
-└── todo.prisma      # Todo model
+└── vault.prisma     # Vault ciphertext model
 ```
 
 ### Useful Prisma Commands
@@ -422,7 +422,7 @@ apps/backend/
 │   │   └── isOwner.ts
 │   ├── models/              # Data models
 │   │   ├── User.ts
-│   │   └── (no Todo model; todos are vault-backed)
+│   │   └── (no Task model; tasks are vault-backed)
 │   ├── prisma/              # Prisma ORM files
 │   │   ├── schema/          # Prisma schema files
 │   │   │   ├── schema.prisma
@@ -567,9 +567,9 @@ The API follows RESTful conventions:
 - `PATCH /user/:id` - Update user
 - `DELETE /user/:id` - Delete user
 
-#### Todo Endpoints
+#### Task data
 
-Todos are stored as encrypted vault blobs (`todos`) and are not available as plain REST resources.
+Tasks are stored as encrypted vault blobs (`tasks`) and are not available as plain REST resources.
 
 ### Authentication
 

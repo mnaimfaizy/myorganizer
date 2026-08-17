@@ -127,7 +127,7 @@ The skill is pre-configured with MyOrganizer's:
 **Domain Terms:**
 
 - Vault (E2EE storage, ciphertext-only on server)
-- Todo (task/item, vault-backed)
+- Task (vault-backed)
 - Subscription (recurring, vault-backed)
 - User (authenticated account holder)
 - Organization (group for resources)
@@ -144,7 +144,7 @@ The skill is pre-configured with MyOrganizer's:
 **Key Constraints:**
 
 - Vault = ciphertext-only on server (no plaintext indexing)
-- Todos are vault-backed (not a plaintext Prisma model)
+- Tasks are vault-backed (not a plaintext Prisma model)
 
 ## ✨ What's Next?
 
