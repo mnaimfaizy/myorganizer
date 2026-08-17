@@ -143,12 +143,16 @@ _Avoid_: Soft lock, cooldown, Shorts ban, timeout
 ## Frontend Architecture
 
 **UI Primitive**:
-A reusable, stateless React component in `libs/web-ui/`. Built on Radix UI with Tailwind CSS and CVA variants. Has no knowledge of domain state, vault data, or route context.
-_Avoid_: Shared component, base component, core component, common component
+A reusable React component in `libs/web-ui/` with no knowledge of domain state, vault data, or route context. It must be fully expressible with mock props — that expressibility is required, not optional. Stateful interaction (checked, open, a mount point that fires a toast) does not disqualify it; domain knowledge does.
+_Avoid_: Shared component, base component, core component, common component, stateless component (as the definition)
 
 **Feature Component**:
 A React component in `libs/web/pages/<route>/src/components/` that composes UI Primitives with domain logic and route-specific state. Never imported by other routes.
 _Avoid_: Page component, route component, smart component
+
+**Vault UI Component**:
+A presentational component in `libs/web-vault-ui` that shows vault-adjacent state from mockable props. It knows the vault domain, so it is not a UI Primitive; it is reused across routes, so it is not a Feature Component.
+_Avoid_: UI Primitive (wrong scope), Feature Component, vault widget, vault card (as the scope name)
 
 **Structured Spec**:
 The handoff document the main agent passes to ComponentBuilder. Contains: component name, target path, scope (UI Primitive or Feature Component), props interface, state ownership, Zod schema if applicable, and relevant guideline references.
