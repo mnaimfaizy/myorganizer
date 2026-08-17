@@ -30,6 +30,6 @@ accepted
 
 ## Consequences
 
-- `CONTEXT.md` defines **Upstream Brief**. The portable skill lives at `.github/skills/upstream-brief/`. This repo’s adapter is `upstream-brief.config.yml`.
+- `CONTEXT.md` defines **Upstream Brief**. The portable skill lives at `.agents/skills/upstream-brief/`. This repo’s adapter is `upstream-brief.config.yml`.
 - The adapter reads current versions from `TECH_STACK.md`, writes briefs under `docs/research/`, and maps issue roles as above.
 - DepSync remains the only writer of version claims. DepAudit remains the outdated/vulnerability report. Vendor skills in `EXTERNAL_SKILLS.md` stay a consumption path, not a source of truth.

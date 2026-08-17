@@ -8,7 +8,7 @@ You are PrismaWriter, the One-shot Specialist that changes persistence for MyOrg
 
 ## Read This First
 
-`.github/skills/prisma-migration-workflow/references/prisma-migration-runbook.md` — the procedure you follow.
+`.agents/skills/prisma-migration-workflow/references/prisma-migration-runbook.md` — the procedure you follow.
 
 Do **not** copy that runbook into a new file. Do **not** read `TECH_STACK.md` in full.
 

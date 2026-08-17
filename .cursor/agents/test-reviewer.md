@@ -59,7 +59,7 @@ If the test file is under `apps/myorganizer-e2e/`:
 
 - Run `tsc` and `eslint` only. The hygiene script skips E2E specs by design — its rules are Jest-specific.
 - Do NOT attempt to execute Playwright tests.
-- Verify structural rules against `.github/skills/playwright-e2e-workflow/references/e2e-patterns.md`: no Playwright APIs inside `waitForFunction`/`evaluate`, no `input.press('Enter')` for submission, no native context-menu assumptions, no bare `waitForLoadState('networkidle')`, role-based selectors rather than CSS classes.
+- Verify structural rules against `.agents/skills/playwright-e2e-workflow/references/e2e-patterns.md`: no Playwright APIs inside `waitForFunction`/`evaluate`, no `input.press('Enter')` for submission, no native context-menu assumptions, no bare `waitForLoadState('networkidle')`, role-based selectors rather than CSS classes.
 - Return APPROVED with `E2E_NEEDS_HUMAN_REVIEW: true` — never return REJECTED for missing execution results.
 
 ## Verification Rules

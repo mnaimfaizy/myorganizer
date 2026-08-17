@@ -29,6 +29,6 @@ accepted
 ## Consequences
 
 - Add `PrismaWriter` and `ApiWriter` agent definitions; keep `ApiSync` as-is.
-- Thicken `.github/skills/backend-api-contract-change` with the hop list, Orchestrator Patch / stop rule, and Independent Hop rule. Do not duplicate the Prisma runbook.
+- Thicken `.agents/skills/backend-api-contract-change` with the hop list, Orchestrator Patch / stop rule, and Independent Hop rule. Do not duplicate the Prisma runbook.
 - `.claude/checklist.md` needs an API Contract row that points at this skill, not at a Gated Pipeline.
 - Do not send ApiWriter output back for a second round. Do not invent `docs/backend/GUIDELINES.md`.

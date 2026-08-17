@@ -63,22 +63,22 @@ Config/docs/type-only edits with no behavior change may stay mechanical or direc
 
 ## Step 3: Task Classification Matrix (by gate)
 
-| File Pattern                                  | `gate:mechanical`                                                                   | `gate:standard`                                                                    | `gate:full`                                                                          |
-| --------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Playwright `*.spec.ts`                        | Direct edit (selector/string only) + note; no E2EPlanner                            | TestScaffold + TestReviewer (structural); skip E2EPlanner if flow matrix unchanged | E2EPlanner → TestScaffold → TestReviewer (structural); never execute E2E in AFK      |
-| Jest `*.test.ts` / page `*.spec.tsx`          | Direct edit (fixture/type retarget) + focused jest                                  | TestScaffold → TestReviewer → TestRunner                                           | Same full pipeline (max 3 retries)                                                   |
-| `*.stories.tsx`                               | Direct edit only for rename/import path                                             | StorybookCurator                                                                   | StorybookCurator                                                                     |
-| Components `libs/web-ui/` / `libs/web/pages/` | Direct edit only for rename/import/dead delete; run `yarn component:hygiene <path>` | ComponentBuilder → ComponentReviewer                                               | ComponentBuilder → ComponentReviewer (max 3 FAIL loops) + Storybook/tests after PASS |
-| API Contract (controllers, DTOs, Prisma schema for a public HTTP surface) | Direct edit only for rename/import/comment | PrismaWriter (if schema) → ApiWriter → ApiSync (skip unused hops) | Same one-shot hops (ADR 0015). Then leave — Jest stays its Gated Pipeline |
-| Config / docs / types                         | Direct edit OK                                                                      | Direct edit OK                                                                     | Direct edit OK                                                                       |
+| File Pattern                                                              | `gate:mechanical`                                                                   | `gate:standard`                                                                    | `gate:full`                                                                          |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| Playwright `*.spec.ts`                                                    | Direct edit (selector/string only) + note; no E2EPlanner                            | TestScaffold + TestReviewer (structural); skip E2EPlanner if flow matrix unchanged | E2EPlanner → TestScaffold → TestReviewer (structural); never execute E2E in AFK      |
+| Jest `*.test.ts` / page `*.spec.tsx`                                      | Direct edit (fixture/type retarget) + focused jest                                  | TestScaffold → TestReviewer → TestRunner                                           | Same full pipeline (max 3 retries)                                                   |
+| `*.stories.tsx`                                                           | Direct edit only for rename/import path                                             | StorybookCurator                                                                   | StorybookCurator                                                                     |
+| Components `libs/web-ui/` / `libs/web/pages/`                             | Direct edit only for rename/import/dead delete; run `yarn component:hygiene <path>` | ComponentBuilder → ComponentReviewer                                               | ComponentBuilder → ComponentReviewer (max 3 FAIL loops) + Storybook/tests after PASS |
+| API Contract (controllers, DTOs, Prisma schema for a public HTTP surface) | Direct edit only for rename/import/comment                                          | PrismaWriter (if schema) → ApiWriter → ApiSync (skip unused hops)                  | Same one-shot hops (ADR 0015). Then leave — Jest stays its Gated Pipeline            |
+| Config / docs / types                                                     | Direct edit OK                                                                      | Direct edit OK                                                                     | Direct edit OK                                                                       |
 
 Skills:
 
-- E2E: `.github/skills/playwright-e2e-workflow/SKILL.md`
-- Jest: `.github/skills/unit-test-delegation-workflow/SKILL.md`
-- Storybook: `.github/skills/storybook-delegation-workflow/SKILL.md`
-- Components: `CLAUDE.md` → UI Component Workflows / `.claude/commands/component-builder.md`
-- API Contract: `.github/skills/backend-api-contract-change/SKILL.md` (ADR 0015)
+- E2E: `.agents/skills/playwright-e2e-workflow/SKILL.md`
+- Jest: `.agents/skills/unit-test-delegation-workflow/SKILL.md`
+- Storybook: `.agents/skills/storybook-delegation-workflow/SKILL.md`
+- Components: `.agents/skills/component-builder/SKILL.md`
+- API Contract: `.agents/skills/backend-api-contract-change/SKILL.md` (ADR 0015)
 
 Deterministic component checks (any gate): `yarn component:hygiene <path>` — the shape rules from `docs/ui/GUIDELINES.md`. Targeted scans keep warnings advisory; CI and pre-commit enforce zero warnings with `--max-warnings=0` (ADR 0014).
 
@@ -106,7 +106,7 @@ Deterministic component checks (any gate): `yarn component:hygiene <path>` — t
 
 ```
 1. Classify gate tier
-2. Read .github/skills/playwright-e2e-workflow/SKILL.md
+2. Read .agents/skills/playwright-e2e-workflow/SKILL.md
 3. E2EPlanner if flow changed (skip only for selector-only + unchanged matrix)
 4. TestScaffold → TestReviewer (structural)
 ```
@@ -163,8 +163,8 @@ Deterministic component checks (any gate): `yarn component:hygiene <path>` — t
 ## Reference Links
 
 - ADR: `docs/adr/0012-tiered-quality-gates.md`
-- E2E: `.github/skills/playwright-e2e-workflow/SKILL.md`
-- Jest: `.github/skills/unit-test-delegation-workflow/SKILL.md`
-- Storybook: `.github/skills/storybook-delegation-workflow/SKILL.md`
-- Components: `CLAUDE.md` → UI Component Workflows
-- Implement (ad-hoc): `.github/skills/implement/SKILL.md`
+- E2E: `.agents/skills/playwright-e2e-workflow/SKILL.md`
+- Jest: `.agents/skills/unit-test-delegation-workflow/SKILL.md`
+- Storybook: `.agents/skills/storybook-delegation-workflow/SKILL.md`
+- Components: `.agents/skills/component-builder/SKILL.md`
+- Implement (ad-hoc): `.agents/skills/implement/SKILL.md`

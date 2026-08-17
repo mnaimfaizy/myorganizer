@@ -35,7 +35,7 @@ const USAGE = `Usage:
 
 Runs the mechanical (non-judgment) TestReviewer checklist items against Jest
 test files. E2E specs under apps/myorganizer-e2e are skipped — they have their
-own rules in .github/skills/playwright-e2e-workflow/references/e2e-patterns.md.
+own rules in .agents/skills/playwright-e2e-workflow/references/e2e-patterns.md.
 `;
 
 const TEST_PATHS = [

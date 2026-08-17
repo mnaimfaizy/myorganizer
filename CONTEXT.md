@@ -228,6 +228,28 @@ _Avoid_: project README (when you mean agent rules), local instructions, CLAUDE.
 A human-facing runbook for a deployable app, living next to that app because people run it from there. At most one per app. Not a feature write-up, design note, or ticket close-out.
 _Avoid_: feature README, page README, colocated design doc, implementation summary, component breakdown
 
+## Harness & Instructions
+
+**Harness**:
+A coding-agent product that loads this repo's instructions (Cursor, Claude Code, Gemini CLI, GitHub Copilot).
+_Avoid_: IDE, vendor, tool (when you mean the product)
+
+**Instruction File**:
+Always-on policy markdown a Harness injects into the session. Repo-wide policy has one human-edited Instruction File; other roots are Harness Adapters. Distinct from a Skill, which loads only when the task matches. May include chooser lines (which Skill to load when requests collide); must not restate a Skill's procedure.
+_Avoid_: memory file, system prompt, copilot instructions (as the general name)
+
+**Skill**:
+An on-demand workflow a Harness loads when the task matches. The repo has one Skill tree; Harnesses discover it natively or via a Harness Adapter and must not copy the body.
+_Avoid_: command, rule, workflow file (when you mean the Skill)
+
+**Harness Adapter**:
+A Harness-specific discovery file that exists so that Harness finds an Instruction File or Skill, and that must not restate policy. Distinct from a Platform Adapter.
+_Avoid_: Adapter (unqualified), copy, wrapper, sync target
+
+**Sub-agent**:
+A named specialist with its own instruction body and model pin, invoked by the main agent for a bounded job. Humans edit one canonical body; each Harness receives a generated Harness Adapter because model pins and tool names are not portable.
+_Avoid_: agent (unqualified), custom agent (when you mean the role)
+
 ## Agent Roles
 
 **ComponentBuilder**:

@@ -5,7 +5,7 @@ description: Build and sharpen the project's domain model — pin down domain te
 
 # Domain Modeling
 
-Read and follow `.github/skills/domain-modeling/SKILL.md` exactly.
+Read and follow `.agents/skills/domain-modeling/SKILL.md` exactly.
 
 ## Summary
 
@@ -28,5 +28,5 @@ Invoke this prompt when you want to:
 3. **Sharpen** — propose precise canonical terms for vague or overloaded language.
 4. **Scenario-test** — invent concrete edge cases that force precision about domain boundaries.
 5. **Cross-reference** — verify stated assumptions against actual code; surface contradictions.
-6. **Update `CONTEXT.md` inline** — write each resolved term immediately, using the format in `.github/skills/domain-modeling/CONTEXT-FORMAT.md`.
-7. **Offer ADRs sparingly** — only when a decision is hard to reverse, surprising without context, and the result of a real trade-off. Use `.github/skills/domain-modeling/ADR-FORMAT.md`.
+6. **Update `CONTEXT.md` inline** — write each resolved term immediately, using the format in `.agents/skills/domain-modeling/CONTEXT-FORMAT.md`.
+7. **Offer ADRs sparingly** — only when a decision is hard to reverse, surprising without context, and the result of a real trade-off. Use `.agents/skills/domain-modeling/ADR-FORMAT.md`.
