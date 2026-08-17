@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { expect, userEvent, within } from '@storybook/test';
+import { expect, userEvent, waitFor, within } from '@storybook/test';
 
 import { Button } from '../Button/Button';
 import {
@@ -124,6 +124,8 @@ export const OpensOnClick: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     await userEvent.click(canvas.getByRole('button', { name: 'Open dialog' }));
-    await expect(within(document.body).getByRole('dialog')).toBeVisible();
+    await waitFor(() => {
+      expect(within(document.body).getByRole('dialog')).toBeVisible();
+    });
   },
 };
