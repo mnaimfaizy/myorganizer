@@ -56,6 +56,7 @@
     "agents:map:check": "node tools/scripts/check-agent-map.mjs",
     "vault:pages:check": "node tools/scripts/check-vault-pages.mjs",
     "readme:check": "node tools/scripts/check-readme.mjs",
+    "libs:markdown:check": "node tools/scripts/check-libs-markdown.mjs",
     "auth:pages:check": "node tools/scripts/check-auth-pages.mjs",
     "agents:models:audit": "node tools/scripts/audit-agent-model-catalog.mjs",
     "agents:usage:report": "node tools/scripts/report-agent-usage.mjs",

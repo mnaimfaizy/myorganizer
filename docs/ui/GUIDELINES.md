@@ -15,7 +15,7 @@ There are exactly two places a React component may live. Choosing the wrong one 
 
 A component belongs here if:
 
-- It has **no knowledge of domain state** (no Vault, Todo, Subscription, User data)
+- It has **no knowledge of domain state** (no Vault, Task, Subscription, User data)
 - It can be **fully developed in Storybook** with mock props only
 - It is **reusable across multiple routes** or could reasonably be reused in the future
 
@@ -308,14 +308,14 @@ Always declare an explicit props interface — never use inline object types or 
 
 ```typescript
 // ✅ named interface
-interface TodoFormProps {
-  onAddTodo: (todo: string) => void;
+interface TaskFormProps {
+  onAddTask: (title: string) => void;
 }
 
-const TodoForm = ({ onAddTodo }: TodoFormProps) => { ... }
+const TaskForm = ({ onAddTask }: TaskFormProps) => { ... }
 
 // ❌ inline — harder to read and reuse
-const TodoForm = ({ onAddTodo }: { onAddTodo: (todo: string) => void }) => { ... }
+const TaskForm = ({ onAddTask }: { onAddTask: (title: string) => void }) => { ... }
 ```
 
 ### 5.5 State ownership hierarchy
