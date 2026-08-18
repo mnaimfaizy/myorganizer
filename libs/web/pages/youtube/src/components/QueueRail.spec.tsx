@@ -1266,4 +1266,35 @@ describe('QueueRail', () => {
       expect(screen.getByTestId('player-1')).toBeInTheDocument();
     });
   });
+  describe('rail landmark labelling', () => {
+    it('gives the desktop and mobile rails distinct heading ids', () => {
+      const library = [baseVideo('1')];
+      const { result } = renderHook(() => useVideoQueue(library));
+      const { container } = render(<QueueRail queue={result.current} />);
+
+      const headings = Array.from(container.querySelectorAll('h2[id]')).map(
+        (node) => node.id,
+      );
+
+      // Both copies are in the DOM at once — only CSS hides one — so a shared
+      // id would be a duplicate that `aria-labelledby` resolves ambiguously.
+      expect(headings).toHaveLength(2);
+      expect(new Set(headings).size).toBe(2);
+    });
+
+    it('labels each rail landmark with its own heading', () => {
+      const library = [baseVideo('1')];
+      const { result } = renderHook(() => useVideoQueue(library));
+      const { container } = render(<QueueRail queue={result.current} />);
+
+      const rails = Array.from(container.querySelectorAll('aside'));
+      expect(rails).toHaveLength(2);
+
+      rails.forEach((rail) => {
+        const headingId = rail.getAttribute('aria-labelledby');
+        expect(headingId).toBeTruthy();
+        expect(rail.querySelector(`#${headingId}`)?.textContent).toBe('Queue');
+      });
+    });
+  });
 });

@@ -201,11 +201,15 @@ export function QueueRail({
     </div>
   ) : null;
 
-  const railContent = (
-    <aside className="space-y-3">
+  // The rail is rendered twice — once for the desktop column, once inside the
+  // mobile disclosure — so the heading id has to be per-instance. A single
+  // shared id would be duplicated in the DOM and `aria-labelledby` would resolve
+  // to whichever copy came first, which on mobile is the hidden desktop one.
+  const renderRail = (headingId: string) => (
+    <aside className="space-y-3" aria-labelledby={headingId}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <h2 id="queue-rail-heading" className="text-sm font-semibold">
+          <h2 id={headingId} className="text-sm font-semibold">
             Queue
           </h2>
           <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 text-xs font-bold text-gray-700 dark:bg-gray-700 dark:text-gray-300">
@@ -295,7 +299,7 @@ export function QueueRail({
 
       {/* Desktop rail */}
       <div className="hidden lg:block lg:sticky lg:top-4 lg:self-start">
-        {railContent}
+        {renderRail('queue-rail-heading-desktop')}
       </div>
 
       {/* Mobile queue disclosure */}
@@ -303,7 +307,7 @@ export function QueueRail({
         <summary className="cursor-pointer select-none rounded-md px-3 py-2 text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-800">
           Queue ({queue.items.length})
         </summary>
-        <div className="mt-2">{railContent}</div>
+        <div className="mt-2">{renderRail('queue-rail-heading-mobile')}</div>
       </details>
     </div>
   );
