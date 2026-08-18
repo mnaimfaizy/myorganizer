@@ -3,7 +3,7 @@
 > **Single source of truth** for installed package versions and canonical technology choices.
 > All agent instruction files and documentation must reference this file rather than declaring versions inline.
 > Owned and kept current by the **DepSync** agent/skill — do not edit versions manually.
-> Last synced from `package.json` on 2026-06-11.
+> Last synced from `package.json` on 2026-08-18.
 
 > **Reading this file as an agent:** it is a lookup table, not a briefing. Read
 > the one section you need. Component work needs
@@ -314,12 +314,13 @@
 
 These transitive dependencies are explicitly resolved to patched versions via Yarn resolutions, npm overrides, and pnpm overrides.
 
-| Package                     | Resolved Version | Reason                                                                                        | Vulnerability ID |
-| --------------------------- | ---------------- | --------------------------------------------------------------------------------------------- | ---------------- |
-| `shell-quote`               | 1.8.4            | Patches critical shell injection vulnerability (GHSA-w7jw-789q-3m8p)                          | CVE-2024-XXXXX   |
-| `fast-xml-parser`           | 5.7.3            | Patches XMLBuilder comment/CDATA injection (GHSA-gh4j-gqv2-49f6)                              | CVE-2026-41650   |
-| `react-native-quick-base64` | 3.0.0            | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto)             | —                |
-| `nanoid`                    | 3.3.17           | Patches infinite loops on negative and zero `size` (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8) | 1138811, 1138813 |
+| Package                     | Resolved Version | Reason                                                                                        | Vulnerability ID    |
+| --------------------------- | ---------------- | --------------------------------------------------------------------------------------------- | ------------------- |
+| `shell-quote`               | 1.8.4            | Patches critical shell injection vulnerability (GHSA-w7jw-789q-3m8p)                          | CVE-2024-XXXXX      |
+| `fast-xml-parser`           | 5.7.3            | Patches XMLBuilder comment/CDATA injection (GHSA-gh4j-gqv2-49f6)                              | CVE-2026-41650      |
+| `deepmerge-ts`              | 8.0.1            | Patches stack exhaustion in schema merging (pulled by @prisma/config@7.2.0)                   | GHSA-ggr8-5vv4-36mx |
+| `react-native-quick-base64` | 3.0.0            | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto)             | —                   |
+| `nanoid`                    | 3.3.17           | Patches infinite loops on negative and zero `size` (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8) | 1138811, 1138813    |
 
 > **Note**: `shell-quote` is a transitive dependency of `concurrently@9.2.1` (pulled in by `@openapitools/openapi-generator-cli@2.27.0`) and `launch-editor@2.9.1` (pulled in by `webpack-dev-server@5.2.3`). Upstream packages are pinned to versions that contain vulnerable `shell-quote`, so we use resolutions to force the patched version globally.
 
