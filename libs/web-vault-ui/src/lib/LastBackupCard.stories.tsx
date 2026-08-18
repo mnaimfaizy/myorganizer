@@ -17,7 +17,7 @@ export const Recorded: Story = {
       event: 'export',
       source: 'local-file',
       status: 'success',
-      createdAt: new Date().toISOString(),
+      createdAt: '2026-04-01T12:34:56Z',
     },
   },
 };
