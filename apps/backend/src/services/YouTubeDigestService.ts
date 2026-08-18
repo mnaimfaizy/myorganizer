@@ -361,8 +361,10 @@ export class YouTubeDigestService {
     const rows = videos
       .map((video) => {
         // Every link lands back in MyOrganizer, never on youtube.com — the
-        // digest exists to return the User to the focused experience.
-        const watchUrl = `${base}/dashboard/youtube/channel/${encodeURIComponent(video.channelId)}`;
+        // digest exists to return the User to the focused experience, which
+        // means the channel directory itself (PRD #264, Variant C / issue
+        // #250) with the channel preselected, not a separate grid.
+        const watchUrl = `${base}/dashboard/youtube?channel=${encodeURIComponent(video.channelId)}`;
         return `
       <tr>
         <td style="padding: 12px; border-bottom: 1px solid #eee;">

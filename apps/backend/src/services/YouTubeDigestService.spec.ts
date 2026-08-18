@@ -529,6 +529,13 @@ describe('YouTubeDigestService', () => {
       expect(html).toContain('https://app.example.com/dashboard/youtube');
       // The whole point of the digest is to return the reader to MyOrganizer.
       expect(html).not.toContain('youtube.com');
+      // ...and specifically to the locked long-form home, the channel
+      // directory with the channel preselected (Variant C / issue #250),
+      // rather than the separate grid that used to live on its own route.
+      expect(html).toContain(
+        'https://app.example.com/dashboard/youtube?channel=chan-1',
+      );
+      expect(html).not.toContain('/dashboard/youtube/channel/');
     });
 
     it('should include data-privacy link in footer', async () => {

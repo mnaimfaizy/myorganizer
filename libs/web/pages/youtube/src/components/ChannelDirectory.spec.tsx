@@ -66,7 +66,7 @@ import {
 } from '@testing-library/react';
 import type { ChannelCarousel, YouTubeVideo } from '../types';
 import { updateVideoWatched } from '../hooks';
-import { ChannelDirectory } from './ChannelDirectory';
+import { CHANNEL_LIST_UPLOAD_CAP, ChannelDirectory } from './ChannelDirectory';
 
 const makeVideo = (
   id: string,
@@ -1010,6 +1010,173 @@ describe('ChannelDirectory', () => {
       );
 
       expect(screen.getByTestId('player-vid-1')).toBeInTheDocument();
+    });
+  });
+
+  describe('Deep-linked channel', () => {
+    const channels = [
+      makeChannel('ch-1', 'Channel 1', [makeVideo('1', 'Video 1')]),
+      makeChannel('ch-2', 'Channel 2', [makeVideo('2', 'Video 2')]),
+    ];
+
+    it('opens the channel named by the link', () => {
+      const { container } = render(
+        <ChannelDirectory
+          channels={channels}
+          loading={false}
+          initialChannelId="ch-2"
+        />,
+      );
+
+      expect(container.querySelector('div.flex-1 h2')?.textContent).toBe(
+        'Channel 2',
+      );
+    });
+
+    it('falls back to the first channel when the link names a channel that is no longer enabled', () => {
+      const { container } = render(
+        <ChannelDirectory
+          channels={channels}
+          loading={false}
+          initialChannelId="ch-disabled-since-the-mail-went-out"
+        />,
+      );
+
+      expect(container.querySelector('div.flex-1 h2')?.textContent).toBe(
+        'Channel 1',
+      );
+    });
+
+    it('lets the User navigate away from the linked channel', () => {
+      const { container } = render(
+        <ChannelDirectory
+          channels={channels}
+          loading={false}
+          initialChannelId="ch-2"
+        />,
+      );
+
+      const desktopNav = container.querySelector('aside')?.querySelector('nav');
+      const desktopButtons = desktopNav
+        ? within(desktopNav).getAllByRole('button')
+        : [];
+      fireEvent.click(desktopButtons[0]);
+
+      expect(container.querySelector('div.flex-1 h2')?.textContent).toBe(
+        'Channel 1',
+      );
+    });
+  });
+
+  describe('Expanding past the channel list cap', () => {
+    const cappedChannel = () =>
+      makeChannel(
+        'ch-1',
+        'Channel 1',
+        Array.from({ length: CHANNEL_LIST_UPLOAD_CAP }, (_, i) =>
+          makeVideo(String(i + 1), `Video ${i + 1}`),
+        ),
+      );
+
+    const showOlder = () =>
+      screen.queryByRole('button', { name: /Show older uploads/i });
+
+    it('offers to load older uploads when the channel sits on the cap', () => {
+      render(
+        <ChannelDirectory
+          channels={[cappedChannel()]}
+          loading={false}
+          onLoadMoreUploads={jest.fn()}
+        />,
+      );
+
+      expect(showOlder()).toBeInTheDocument();
+    });
+
+    it('does not offer when the channel holds fewer uploads than the cap', () => {
+      render(
+        <ChannelDirectory
+          channels={[makeChannel('ch-1', 'Channel 1', [makeVideo('1', 'V1')])]}
+          loading={false}
+          onLoadMoreUploads={jest.fn()}
+        />,
+      );
+
+      expect(showOlder()).not.toBeInTheDocument();
+    });
+
+    it('does not offer once the channel is known to be fully loaded', () => {
+      render(
+        <ChannelDirectory
+          channels={[cappedChannel()]}
+          loading={false}
+          onLoadMoreUploads={jest.fn()}
+          fullyLoadedChannelIds={new Set(['ch-1'])}
+        />,
+      );
+
+      expect(showOlder()).not.toBeInTheDocument();
+    });
+
+    it('does not offer when the page cannot load more', () => {
+      render(<ChannelDirectory channels={[cappedChannel()]} loading={false} />);
+
+      expect(showOlder()).not.toBeInTheDocument();
+    });
+
+    it('asks for the channel that is on screen', () => {
+      const onLoadMoreUploads = jest.fn();
+      render(
+        <ChannelDirectory
+          channels={[
+            makeChannel('ch-0', 'Channel 0', [makeVideo('x', 'Other')]),
+            cappedChannel(),
+          ]}
+          loading={false}
+          initialChannelId="ch-1"
+          onLoadMoreUploads={onLoadMoreUploads}
+        />,
+      );
+
+      fireEvent.click(showOlder() as HTMLElement);
+
+      expect(onLoadMoreUploads).toHaveBeenCalledWith('ch-1');
+    });
+
+    it('reports progress and refuses a second request while loading', () => {
+      const onLoadMoreUploads = jest.fn();
+      render(
+        <ChannelDirectory
+          channels={[cappedChannel()]}
+          loading={false}
+          onLoadMoreUploads={onLoadMoreUploads}
+          loadingMoreChannelIds={new Set(['ch-1'])}
+        />,
+      );
+
+      const button = screen.getByRole('button', {
+        name: /Loading older uploads/i,
+      });
+      expect(button).toBeDisabled();
+
+      fireEvent.click(button);
+      expect(onLoadMoreUploads).not.toHaveBeenCalled();
+    });
+
+    it('keeps the end-of-list disclosure alongside the control', () => {
+      render(
+        <ChannelDirectory
+          channels={[cappedChannel()]}
+          loading={false}
+          onLoadMoreUploads={jest.fn()}
+        />,
+      );
+
+      // Expanding reaches the whole cached snapshot, not the whole channel —
+      // the disclosure about uncached uploads still has to be true.
+      expect(
+        screen.getByText(/MyOrganizer stores only recent uploads/),
+      ).toBeInTheDocument();
     });
   });
 });

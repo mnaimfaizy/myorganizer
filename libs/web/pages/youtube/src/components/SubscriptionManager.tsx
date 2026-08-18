@@ -105,7 +105,7 @@ export function SubscriptionManager({
                   className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
                   onClick={() =>
                     router.push(
-                      `/dashboard/youtube/channel/${encodeURIComponent(sub.channelId)}`,
+                      `/dashboard/youtube?channel=${encodeURIComponent(sub.channelId)}`,
                     )
                   }
                 >

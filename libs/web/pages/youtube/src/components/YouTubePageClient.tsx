@@ -3,9 +3,11 @@
 import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 import { RefreshCw } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 import {
   formatRetryAt,
+  useChannelUploads,
   useVideoQueue,
   useYouTubeCarousel,
   useYouTubeConnect,
@@ -56,6 +58,10 @@ interface ConnectedDashboardProps {
 }
 
 function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
+  // Digest mail and the subscription list deep-link a channel here. Read once
+  // as the directory's initial selection rather than driving it from the URL,
+  // so the User's own clicks are not fighting a stale query string.
+  const deepLinkedChannelId = useSearchParams().get('channel');
   const subs = useYouTubeSubscriptions();
   const carouselData = useYouTubeCarousel();
   const syncStatus = useYouTubeSyncStatus();
@@ -64,9 +70,22 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
 
   const isCooldownActive = !!syncStatus.isCooldownActive;
 
+  const channelUploads = useChannelUploads();
+
+  // A channel the User expanded shows its full cached snapshot; every other
+  // channel keeps the bounded slice the list endpoint returned.
+  const channels = useMemo(
+    () =>
+      carouselData.channels.map((channel) => {
+        const expanded = channelUploads.uploadsByChannel[channel.channelId];
+        return expanded ? { ...channel, videos: expanded } : channel;
+      }),
+    [carouselData.channels, channelUploads.uploadsByChannel],
+  );
+
   const library = useMemo(
-    () => carouselData.channels.flatMap((channel) => channel.videos),
-    [carouselData.channels],
+    () => channels.flatMap((channel) => channel.videos),
+    [channels],
   );
 
   const queue = useVideoQueue(library);
@@ -94,9 +113,12 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
 
   const handleWatchedToggle = useCallback(
     (videoId: string, watched: boolean) => {
+      // Both stores hold their own copy of an upload, so a Watched change has
+      // to land in each or an expanded channel would show a stale badge.
       carouselData.updateWatched(videoId, watched);
+      channelUploads.updateWatched(videoId, watched);
     },
-    [carouselData],
+    [carouselData, channelUploads],
   );
 
   const handleSync = useCallback(async () => {
@@ -203,7 +225,7 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
             onPlaybackClaim={handleQueuePlaybackClaim}
           />
           <ChannelDirectory
-            channels={carouselData.channels}
+            channels={channels}
             loading={carouselData.loading}
             error={carouselData.error}
             onRetry={handleDirectoryRetry}
@@ -213,6 +235,10 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
             queueFull={queue.isFull}
             playbackSuspended={playbackOwner !== 'directory'}
             onPlaybackClaim={handleDirectoryPlaybackClaim}
+            initialChannelId={deepLinkedChannelId}
+            onLoadMoreUploads={channelUploads.loadChannel}
+            loadingMoreChannelIds={channelUploads.loadingChannelIds}
+            fullyLoadedChannelIds={channelUploads.fullyLoadedChannelIds}
           />
         </CardContent>
       </Card>

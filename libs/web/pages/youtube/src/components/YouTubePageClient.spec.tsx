@@ -2,8 +2,10 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import '@testing-library/jest-dom';
 
+const mockSearchParams = { value: new URLSearchParams() };
 jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
+  useSearchParams: () => mockSearchParams.value,
 }));
 
 jest.mock('lucide-react', () => ({
@@ -20,6 +22,12 @@ jest.mock('lucide-react', () => ({
   Clock: (props: Record<string, unknown>) => (
     <svg data-testid="pending-icon" {...props} />
   ),
+  // Icons rendered by ChannelDirectory once the carousel has channels.
+  CheckCircle: (props: Record<string, unknown>) => <svg {...props} />,
+  Circle: (props: Record<string, unknown>) => <svg {...props} />,
+  ExternalLink: (props: Record<string, unknown>) => <svg {...props} />,
+  ListPlus: (props: Record<string, unknown>) => <svg {...props} />,
+  X: (props: Record<string, unknown>) => <svg {...props} />,
 }));
 
 // Mock UI components
@@ -49,6 +57,7 @@ const mockUseYouTubeSubscriptions = jest.fn();
 const mockUseYouTubeCarousel = jest.fn();
 const mockUseYouTubeSyncStatus = jest.fn();
 const mockUseVideoQueue = jest.fn();
+const mockUseChannelUploads = jest.fn();
 
 jest.mock('../hooks', () => ({
   useYouTubeStatus: () => mockUseYouTubeStatus(),
@@ -57,6 +66,7 @@ jest.mock('../hooks', () => ({
   useYouTubeCarousel: () => mockUseYouTubeCarousel(),
   useYouTubeSyncStatus: () => mockUseYouTubeSyncStatus(),
   useVideoQueue: () => mockUseVideoQueue(),
+  useChannelUploads: () => mockUseChannelUploads(),
   isRetryCooldownActive: (retryAt?: string | null) =>
     Boolean(retryAt && Date.parse(retryAt) > Date.now()),
   formatRetryAt: (retryAt?: string | null) =>
@@ -88,8 +98,19 @@ describe('YouTubePageClient', () => {
     refresh: jest.fn(),
   };
 
+  const defaultChannelUploads = {
+    uploadsByChannel: {},
+    loadingChannelIds: new Set<string>(),
+    fullyLoadedChannelIds: new Set<string>(),
+    error: null,
+    loadChannel: jest.fn(),
+    updateWatched: jest.fn(),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSearchParams.value = new URLSearchParams();
+    mockUseChannelUploads.mockReturnValue(defaultChannelUploads);
     mockUseYouTubeConnect.mockReturnValue(defaultConnect);
     mockUseYouTubeSubscriptions.mockReturnValue(defaultSubs);
     mockUseYouTubeCarousel.mockReturnValue(defaultCarousel);
@@ -266,5 +287,82 @@ describe('YouTubePageClient', () => {
     // Retry button should be disabled and have a title indicating retry time
     const retryByTitle = screen.queryByTitle(/Retry disabled until/);
     expect(retryByTitle).toBeInTheDocument();
+  });
+
+  describe('channel deep link', () => {
+    const video = (id: string, title: string) => ({
+      id: `row-${id}`,
+      videoId: id,
+      channelId: 'ch-1',
+      title,
+      thumbnail: null,
+      publishedAt: '2026-01-01T00:00:00Z',
+      channelTitle: 'Channel 1',
+      watched: false,
+    });
+
+    const twoChannels = [
+      {
+        channelId: 'ch-1',
+        channelTitle: 'Channel 1',
+        channelThumbnail: null,
+        videos: [video('a', 'Upload A')],
+      },
+      {
+        channelId: 'ch-2',
+        channelTitle: 'Channel 2',
+        channelThumbnail: null,
+        videos: [{ ...video('b', 'Upload B'), channelId: 'ch-2' }],
+      },
+    ];
+
+    beforeEach(() => {
+      mockUseYouTubeStatus.mockReturnValue({
+        connected: true,
+        status: 'connected',
+        refresh: jest.fn(),
+      });
+    });
+
+    it('opens the channel named by ?channel=, so digest mail lands on it', () => {
+      mockSearchParams.value = new URLSearchParams('channel=ch-2');
+      mockUseYouTubeCarousel.mockReturnValue({
+        ...defaultCarousel,
+        channels: twoChannels,
+      });
+
+      render(<YouTubePageClient />);
+
+      expect(screen.getByText('Upload B')).toBeInTheDocument();
+      expect(screen.queryByText('Upload A')).not.toBeInTheDocument();
+    });
+
+    it('opens the first channel when no channel is named', () => {
+      mockUseYouTubeCarousel.mockReturnValue({
+        ...defaultCarousel,
+        channels: twoChannels,
+      });
+
+      render(<YouTubePageClient />);
+
+      expect(screen.getByText('Upload A')).toBeInTheDocument();
+    });
+
+    it('shows an expanded channel its full snapshot rather than the capped slice', () => {
+      mockUseYouTubeCarousel.mockReturnValue({
+        ...defaultCarousel,
+        channels: [twoChannels[0]],
+      });
+      mockUseChannelUploads.mockReturnValue({
+        ...defaultChannelUploads,
+        uploadsByChannel: {
+          'ch-1': [video('a', 'Upload A'), video('c', 'Older upload C')],
+        },
+      });
+
+      render(<YouTubePageClient />);
+
+      expect(screen.getByText('Older upload C')).toBeInTheDocument();
+    });
   });
 });

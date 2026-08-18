@@ -8,6 +8,13 @@ import type { ChannelCarousel, YouTubeVideo } from '../types';
 import { ChannelList } from './ChannelList';
 import { YouTubeVideoPlayer } from './YouTubeVideoPlayer';
 
+/**
+ * Uploads per channel returned by the channel list endpoint. Sync caches the
+ * latest 100 per channel, so anything past this is reachable only by asking
+ * for the rest — see `onLoadMoreUploads`.
+ */
+export const CHANNEL_LIST_UPLOAD_CAP = 20;
+
 interface ChannelDirectoryProps {
   channels: ChannelCarousel[];
   loading: boolean;
@@ -28,6 +35,23 @@ interface ChannelDirectoryProps {
    * surface the active player and stop whatever else was playing.
    */
   onPlaybackClaim?: () => void;
+  /**
+   * Channel to open on first render, from the `?channel=` deep link that
+   * digest mail and the subscription list point at. Ignored once the User
+   * picks a channel themselves, and falls back to the first channel when the
+   * id is not among the Enabled Channels (disabled since the mail was sent).
+   */
+  initialChannelId?: string | null;
+  /**
+   * Asks the page to load the rest of a channel's Cached Uploads. The channel
+   * list arrives capped, so a channel with more uploads than that is
+   * incomplete until this resolves.
+   */
+  onLoadMoreUploads?: (channelId: string) => void;
+  /** Channel ids currently being expanded by {@link onLoadMoreUploads}. */
+  loadingMoreChannelIds?: ReadonlySet<string>;
+  /** Channel ids known to be fully loaded — no more uploads to fetch. */
+  fullyLoadedChannelIds?: ReadonlySet<string>;
 }
 
 export function ChannelDirectory({
@@ -41,9 +65,13 @@ export function ChannelDirectory({
   queueFull,
   playbackSuspended = false,
   onPlaybackClaim,
+  initialChannelId = null,
+  onLoadMoreUploads,
+  loadingMoreChannelIds,
+  fullyLoadedChannelIds,
 }: ChannelDirectoryProps) {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
-    null,
+    initialChannelId,
   );
   const [pickedVideoId, setPickedVideoId] = useState<string | null>(null);
   const [focusedVideoIndex, setFocusedVideoIndex] = useState<number>(0);
@@ -61,9 +89,16 @@ export function ChannelDirectory({
   // yanked back: the surface that claimed playback owns where focus lands.
   const activeVideoId = playbackSuspended ? null : pickedVideoId;
 
-  // Compute effective selected channel: use explicit selection if valid, else first channel
+  // Effective selection: the User's own pick when it still names an Enabled
+  // Channel, otherwise the first. A deep link to a channel the User has since
+  // disabled therefore opens the directory rather than an empty pane.
+  const selectionIsEnabled = channels.some(
+    (c) => c.channelId === selectedChannelId,
+  );
   const effectiveSelectedChannelId =
-    selectedChannelId ?? channels[0]?.channelId ?? null;
+    (selectionIsEnabled ? selectedChannelId : null) ??
+    channels[0]?.channelId ??
+    null;
   const selectedChannel = effectiveSelectedChannelId
     ? channels.find((c) => c.channelId === effectiveSelectedChannelId)
     : null;
@@ -173,6 +208,26 @@ export function ChannelDirectory({
     setPickedVideoId(null);
     playerTriggerRef.current?.focus();
   }, []);
+
+  // The channel list arrives capped, so a channel sitting exactly on the cap
+  // probably has more behind it. Offering to load is a guess by design: the
+  // response settles it, and a channel that turns out to hold exactly the cap
+  // simply loses the button on the next render. The alternative — a per
+  // channel total on the list endpoint — is an API contract change for a
+  // button label.
+  const isLoadingMoreUploads = effectiveSelectedChannelId
+    ? (loadingMoreChannelIds?.has(effectiveSelectedChannelId) ?? false)
+    : false;
+  const canLoadMoreUploads =
+    !!onLoadMoreUploads &&
+    !!effectiveSelectedChannelId &&
+    !fullyLoadedChannelIds?.has(effectiveSelectedChannelId) &&
+    (selectedChannel?.videos.length ?? 0) >= CHANNEL_LIST_UPLOAD_CAP;
+
+  const handleLoadMoreUploads = useCallback(() => {
+    if (!effectiveSelectedChannelId) return;
+    onLoadMoreUploads?.(effectiveSelectedChannelId);
+  }, [effectiveSelectedChannelId, onLoadMoreUploads]);
 
   const handleVideoNearEnd = useCallback(() => {
     if (!activeVideoId || !effectiveSelectedChannelId) return;
@@ -328,6 +383,20 @@ export function ChannelDirectory({
 
               {/* End-of-list disclosure */}
               <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+                {canLoadMoreUploads && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLoadMoreUploads}
+                    disabled={isLoadingMoreUploads}
+                    className="mb-3 w-full"
+                  >
+                    {isLoadingMoreUploads
+                      ? 'Loading older uploads…'
+                      : 'Show older uploads'}
+                  </Button>
+                )}
                 <p className="text-xs text-gray-600 dark:text-gray-400">
                   MyOrganizer stores only recent uploads from each channel.
                   Older uploads are not cached here.

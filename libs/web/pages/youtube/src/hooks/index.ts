@@ -373,6 +373,121 @@ export function useYouTubeConnect() {
   return { connect, disconnect };
 }
 
+/**
+ * Uploads fetched per channel when expanding past the channel list cap.
+ * Sync keeps the latest 100 per channel, so one page covers the whole
+ * snapshot and there is never a second round.
+ */
+export const CHANNEL_UPLOAD_PAGE_SIZE = 100;
+
+export interface ChannelUploadExpansion {
+  /** Full upload lists, keyed by channel id, for channels already expanded. */
+  uploadsByChannel: Record<string, YouTubeVideo[]>;
+  /** Channels whose expansion is in flight. */
+  loadingChannelIds: ReadonlySet<string>;
+  /** Channels known to hold nothing further. */
+  fullyLoadedChannelIds: ReadonlySet<string>;
+  error: string | null;
+  loadChannel: (channelId: string) => void;
+  /** Mirrors a Watched change into any expanded list holding that upload. */
+  updateWatched: (videoId: string, watched: boolean) => void;
+}
+
+/**
+ * On-demand expansion of one channel past the channel list's cap.
+ *
+ * The channel list endpoint returns a bounded slice per channel so the home
+ * page does not download every account's whole library on load. That slice is
+ * the doom-scroll guardrail working as intended, but it also has to be
+ * escapable: a digest can name an upload older than the slice, and the
+ * end-of-list disclosure would otherwise be lying about what is cached.
+ *
+ * Expansion is per channel and sticky for the life of the page — re-selecting
+ * an expanded channel does not refetch.
+ */
+export function useChannelUploads(): ChannelUploadExpansion {
+  const [uploadsByChannel, setUploadsByChannel] = useState<
+    Record<string, YouTubeVideo[]>
+  >({});
+  const [loadingChannelIds, setLoadingChannelIds] = useState<Set<string>>(
+    () => new Set(),
+  );
+  const [fullyLoadedChannelIds, setFullyLoadedChannelIds] = useState<
+    Set<string>
+  >(() => new Set());
+  const [error, setError] = useState<string | null>(null);
+
+  const inFlightRef = useRef<Set<string>>(new Set());
+
+  const loadChannel = useCallback((channelId: string) => {
+    if (inFlightRef.current.has(channelId)) return;
+    inFlightRef.current.add(channelId);
+
+    setError(null);
+    setLoadingChannelIds((prev) => new Set(prev).add(channelId));
+
+    const params = new URLSearchParams({
+      sort: 'latest',
+      page: '1',
+      limit: String(CHANNEL_UPLOAD_PAGE_SIZE),
+      // Shorts stay on their own budgeted page (PRD #264, user story 14) and
+      // must not leak back into a long-form channel list.
+      kind: 'long',
+      channelId,
+    });
+
+    void apiFetch<{ videos: YouTubeVideo[]; total: number }>(
+      `/videos?${params.toString()}`,
+    )
+      .then((data) => {
+        setUploadsByChannel((prev) => ({ ...prev, [channelId]: data.videos }));
+        // One page covers the whole snapshot, so this channel is done unless
+        // the server somehow held more than a page.
+        if (data.videos.length >= data.total) {
+          setFullyLoadedChannelIds((prev) => new Set(prev).add(channelId));
+        }
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : String(err));
+      })
+      .finally(() => {
+        inFlightRef.current.delete(channelId);
+        setLoadingChannelIds((prev) => {
+          const next = new Set(prev);
+          next.delete(channelId);
+          return next;
+        });
+      });
+  }, []);
+
+  const updateWatched = useCallback((videoId: string, watched: boolean) => {
+    setUploadsByChannel((prev) => {
+      let changed = false;
+      const next: Record<string, YouTubeVideo[]> = {};
+      for (const [channelId, videos] of Object.entries(prev)) {
+        if (!videos.some((v) => v.videoId === videoId)) {
+          next[channelId] = videos;
+          continue;
+        }
+        changed = true;
+        next[channelId] = videos.map((v) =>
+          v.videoId === videoId ? { ...v, watched } : v,
+        );
+      }
+      return changed ? next : prev;
+    });
+  }, []);
+
+  return {
+    uploadsByChannel,
+    loadingChannelIds,
+    fullyLoadedChannelIds,
+    error,
+    loadChannel,
+    updateWatched,
+  };
+}
+
 export function useYouTubeSyncStatus() {
   const [status, setStatus] = useState<
     import('../types').YouTubeSyncStatus | null
