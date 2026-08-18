@@ -18,8 +18,9 @@ This repo uses GitHub Actions for CI/CD.
 ## Workflows
 
 - `.github/workflows/ci.yml` (name: `CI`)
-  - Runs `lint`, `test`, `build` using `nx affected`.
+  - Runs `lint`, `test`, `build` using `nx affected`, plus **Chromatic UI Tests** (visual snapshots of Storybook).
   - Triggers on PRs to `main` / `release/*` and on pushes to `main` / `release/*`.
+  - Chromatic needs repository secret `CHROMATIC_PROJECT_TOKEN`. Unreviewed visual diffs fail the Chromatic job (and thus `CI`). Free-plan snapshot quota (CLI exit 11) warns and passes. See [ADR 0027](../adr/0027-chromatic-ci-visual-tests.md).
 
 - `.github/workflows/deploy-staging.yml` (name: `Deploy Staging`)
   - Runs only after `CI` succeeds on `main`.
@@ -42,8 +43,15 @@ Configure these in GitHub:
 
 The exact secrets required for each environment are documented in the sections below:
 
+- **Repository (CI tooling)**
 - **Staging (main)**
 - **Production (release/\*)**
+
+### Repository (CI tooling)
+
+These are **repository** secrets (Settings → Secrets and variables → Actions), not environment secrets. They are not staging vs production.
+
+- `CHROMATIC_PROJECT_TOKEN` — Chromatic project token for visual UI Tests in `ci.yml`. Required before the Chromatic job can pass. HITL: create the project and add this secret **before** merging that job to `main`. See [docs/storybook/README.md](../storybook/README.md) and [ADR 0027](../adr/0027-chromatic-ci-visual-tests.md). Do **not** add Chromatic’s “UI Tests” check to branch protection.
 
 ## GitHub Environments (recommended)
 
