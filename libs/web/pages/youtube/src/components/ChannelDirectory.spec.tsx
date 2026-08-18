@@ -205,7 +205,7 @@ describe('ChannelDirectory', () => {
       expect(heading?.textContent).toBe('Channel 1');
     });
 
-    it('marks selected channel button with aria-current="true"', () => {
+    it('marks the selected channel tab with aria-selected="true"', () => {
       const videos = [makeVideo('1', 'Video 1')];
       const channels = [
         makeChannel('ch-1', 'Channel 1', videos),
@@ -216,13 +216,17 @@ describe('ChannelDirectory', () => {
         <ChannelDirectory channels={channels} loading={false} error={null} />,
       );
 
-      const buttons = screen.getAllByRole('button');
-      // First button set is channel buttons - desktop and mobile versions exist
-      // Find the first channel button with aria-current="true"
-      const selectedButtons = buttons.filter(
-        (btn) => btn.getAttribute('aria-current') === 'true',
-      );
-      expect(selectedButtons.length).toBeGreaterThan(0);
+      const tabs = screen.getAllByRole('tab');
+      // Desktop and mobile tab lists are both mounted, so both report a
+      // selection; every tab must state its selected state either way.
+      expect(tabs.length).toBeGreaterThan(0);
+      tabs.forEach((tab) => {
+        expect(tab).toHaveAttribute('aria-selected');
+      });
+      expect(
+        tabs.filter((tab) => tab.getAttribute('aria-selected') === 'true')
+          .length,
+      ).toBeGreaterThan(0);
     });
 
     it('shows upload count and new badge on channel buttons', () => {
@@ -238,7 +242,7 @@ describe('ChannelDirectory', () => {
       );
 
       // Desktop aside should show "3 uploads" and "· 2 New"
-      const asideNav = container.querySelector('aside nav');
+      const asideNav = container.querySelector('aside [role="tablist"]');
       if (asideNav) {
         const asideText = asideNav.textContent;
         expect(asideText).toContain('3 upload');
@@ -246,7 +250,9 @@ describe('ChannelDirectory', () => {
       }
 
       // Mobile should show chip with badge
-      const mobileNav = container.querySelector('div.lg\\:hidden nav');
+      const mobileNav = container.querySelector(
+        'div.lg\\:hidden [role="tablist"]',
+      );
       if (mobileNav) {
         const badge = mobileNav.querySelector('[aria-label="2 new"]');
         expect(badge).toBeInTheDocument();
@@ -270,9 +276,9 @@ describe('ChannelDirectory', () => {
       // Find the desktop aside channel buttons
       const aside = container.querySelector('aside');
       expect(aside).toBeInTheDocument();
-      const desktopNav = aside?.querySelector('nav');
+      const desktopNav = aside?.querySelector('[role="tablist"]');
       const desktopButtons = desktopNav
-        ? within(desktopNav).getAllByRole('button')
+        ? within(desktopNav).getAllByRole('tab')
         : [];
       expect(desktopButtons.length).toBe(3);
 
@@ -300,9 +306,9 @@ describe('ChannelDirectory', () => {
       );
 
       const aside = container.querySelector('aside');
-      const desktopNav = aside?.querySelector('nav');
+      const desktopNav = aside?.querySelector('[role="tablist"]');
       const desktopButtons = desktopNav
-        ? within(desktopNav).getAllByRole('button')
+        ? within(desktopNav).getAllByRole('tab')
         : [];
 
       // Start on second button
@@ -327,9 +333,9 @@ describe('ChannelDirectory', () => {
       );
 
       const aside = container.querySelector('aside');
-      const desktopNav = aside?.querySelector('nav');
+      const desktopNav = aside?.querySelector('[role="tablist"]');
       const desktopButtons = desktopNav
-        ? within(desktopNav).getAllByRole('button')
+        ? within(desktopNav).getAllByRole('tab')
         : [];
 
       // Press Home on any button
@@ -357,9 +363,11 @@ describe('ChannelDirectory', () => {
         <ChannelDirectory channels={channels} loading={false} error={null} />,
       );
 
-      const desktopNav = container.querySelector('aside')?.querySelector('nav');
+      const desktopNav = container
+        .querySelector('aside')
+        ?.querySelector('[role="tablist"]');
       const desktopButtons = desktopNav
-        ? within(desktopNav).getAllByRole('button')
+        ? within(desktopNav).getAllByRole('tab')
         : [];
 
       desktopButtons[0].focus();
@@ -384,9 +392,11 @@ describe('ChannelDirectory', () => {
         <ChannelDirectory channels={channels} loading={false} error={null} />,
       );
 
-      const desktopNav = container.querySelector('aside')?.querySelector('nav');
+      const desktopNav = container
+        .querySelector('aside')
+        ?.querySelector('[role="tablist"]');
       const desktopButtons = desktopNav
-        ? within(desktopNav).getAllByRole('button')
+        ? within(desktopNav).getAllByRole('tab')
         : [];
 
       desktopButtons[0].focus();
@@ -416,13 +426,13 @@ describe('ChannelDirectory', () => {
       const mobileDiv = Array.from(container.querySelectorAll('div')).find(
         (div) =>
           div.classList.contains('lg:hidden') &&
-          div.querySelector('nav[aria-label="Enabled channels"]'),
+          div.querySelector('[role="tablist"][aria-label="Enabled channels"]'),
       );
 
       expect(mobileDiv).toBeInTheDocument();
-      const mobileNav = mobileDiv?.querySelector('nav');
+      const mobileNav = mobileDiv?.querySelector('[role="tablist"]');
       const mobileButtons = mobileNav
-        ? within(mobileNav).getAllByRole('button')
+        ? within(mobileNav).getAllByRole('tab')
         : [];
       expect(mobileButtons.length).toBe(3);
 
@@ -450,11 +460,11 @@ describe('ChannelDirectory', () => {
       const mobileDiv = Array.from(container.querySelectorAll('div')).find(
         (div) =>
           div.classList.contains('lg:hidden') &&
-          div.querySelector('nav[aria-label="Enabled channels"]'),
+          div.querySelector('[role="tablist"][aria-label="Enabled channels"]'),
       );
-      const mobileNav = mobileDiv?.querySelector('nav');
+      const mobileNav = mobileDiv?.querySelector('[role="tablist"]');
       const mobileButtons = mobileNav
-        ? within(mobileNav).getAllByRole('button')
+        ? within(mobileNav).getAllByRole('tab')
         : [];
 
       mobileButtons[0].focus();
@@ -918,9 +928,9 @@ describe('ChannelDirectory', () => {
 
       // Switch to second channel via desktop buttons
       const aside = container.querySelector('aside');
-      const desktopNav = aside?.querySelector('nav');
+      const desktopNav = aside?.querySelector('[role="tablist"]');
       const desktopButtons = desktopNav
-        ? within(desktopNav).getAllByRole('button')
+        ? within(desktopNav).getAllByRole('tab')
         : [];
       fireEvent.click(desktopButtons[1]);
 
@@ -1056,9 +1066,11 @@ describe('ChannelDirectory', () => {
         />,
       );
 
-      const desktopNav = container.querySelector('aside')?.querySelector('nav');
+      const desktopNav = container
+        .querySelector('aside')
+        ?.querySelector('[role="tablist"]');
       const desktopButtons = desktopNav
-        ? within(desktopNav).getAllByRole('button')
+        ? within(desktopNav).getAllByRole('tab')
         : [];
       fireEvent.click(desktopButtons[0]);
 
@@ -1177,6 +1189,82 @@ describe('ChannelDirectory', () => {
       expect(
         screen.getByText(/MyOrganizer stores only recent uploads/),
       ).toBeInTheDocument();
+    });
+  });
+  describe('Channel selector tab semantics', () => {
+    const renderTwoChannels = () =>
+      render(
+        <ChannelDirectory
+          channels={[
+            makeChannel('ch-1', 'Channel 1', [makeVideo('1', 'Video 1')]),
+            makeChannel('ch-2', 'Channel 2', [makeVideo('2', 'Video 2')]),
+          ]}
+          loading={false}
+          error={null}
+        />,
+      );
+
+    it('exposes the channel selector as a tab set, not a nav landmark', () => {
+      const { container } = renderTwoChannels();
+
+      // The set carries a single tab stop and moves with arrow keys, which is
+      // the tabs contract; announcing it as navigation contradicted that.
+      expect(container.querySelector('nav')).toBeNull();
+      expect(screen.getAllByRole('tablist')).toHaveLength(2);
+      expect(screen.getAllByRole('tab').length).toBeGreaterThan(0);
+    });
+
+    it('states the arrow-key axis each layout follows', () => {
+      const { container } = renderTwoChannels();
+
+      const [desktop, mobile] = Array.from(
+        container.querySelectorAll('[role="tablist"]'),
+      );
+
+      expect(desktop).toHaveAttribute('aria-orientation', 'vertical');
+      expect(mobile).toHaveAttribute('aria-orientation', 'horizontal');
+    });
+
+    it('points every tab at the detail pane it swaps', () => {
+      const { container } = renderTwoChannels();
+
+      const panel = container.querySelector('[role="tabpanel"]');
+      expect(panel).not.toBeNull();
+      expect(panel).toHaveAttribute('aria-label', 'Channel 1');
+
+      const panelId = panel?.getAttribute('id');
+      expect(panelId).toBeTruthy();
+
+      screen.getAllByRole('tab').forEach((tab) => {
+        expect(tab).toHaveAttribute('aria-controls', panelId);
+      });
+    });
+
+    it('gives the desktop and mobile copies of a channel distinct tab ids', () => {
+      const { container } = renderTwoChannels();
+
+      const ids = Array.from(container.querySelectorAll('[role="tab"]')).map(
+        (tab) => tab.id,
+      );
+
+      expect(ids.every(Boolean)).toBe(true);
+      expect(new Set(ids).size).toBe(ids.length);
+    });
+
+    it('moves aria-selected onto the newly chosen channel', () => {
+      const { container } = renderTwoChannels();
+
+      const desktopTabs = within(
+        container.querySelector('aside [role="tablist"]') as HTMLElement,
+      ).getAllByRole('tab');
+
+      expect(desktopTabs[0]).toHaveAttribute('aria-selected', 'true');
+      expect(desktopTabs[1]).toHaveAttribute('aria-selected', 'false');
+
+      fireEvent.click(desktopTabs[1]);
+
+      expect(desktopTabs[0]).toHaveAttribute('aria-selected', 'false');
+      expect(desktopTabs[1]).toHaveAttribute('aria-selected', 'true');
     });
   });
 });

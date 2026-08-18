@@ -15,6 +15,9 @@ import { YouTubeVideoPlayer } from './YouTubeVideoPlayer';
  */
 export const CHANNEL_LIST_UPLOAD_CAP = 20;
 
+/** The single detail pane both channel tab lists swap. */
+const CHANNEL_PANEL_ID = 'channel-directory-panel';
+
 interface ChannelDirectoryProps {
   channels: ChannelCarousel[];
   loading: boolean;
@@ -309,6 +312,7 @@ export function ChannelDirectory({
       <ChannelList
         channels={channels}
         selectedChannelId={effectiveSelectedChannelId}
+        panelId={CHANNEL_PANEL_ID}
         desktopRefs={channelDesktopRefs}
         mobileRefs={channelMobileRefs}
         onSelect={handleChannelSelect}
@@ -317,7 +321,15 @@ export function ChannelDirectory({
 
       {/* Detail pane: Selected channel videos */}
       {selectedChannel && (
-        <div className="flex-1 min-w-0 flex flex-col gap-4">
+        <div
+          id={CHANNEL_PANEL_ID}
+          role="tabpanel"
+          // Two tab lists (desktop and mobile) point at this one panel, so it
+          // cannot be labelled by a single tab element. The channel name is the
+          // same name those tabs carry, so it is stated directly instead.
+          aria-label={selectedChannel.channelTitle}
+          className="flex-1 min-w-0 flex flex-col gap-4"
+        >
           {/* Channel title */}
           <div>
             <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">

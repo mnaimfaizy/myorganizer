@@ -7,6 +7,8 @@ import type { ChannelCarousel } from '../types';
 interface ChannelListProps {
   channels: ChannelCarousel[];
   selectedChannelId: string | null;
+  /** Id of the detail pane these tabs swap, for `aria-controls`. */
+  panelId: string;
   desktopRefs: MutableRefObject<(HTMLButtonElement | null)[]>;
   mobileRefs: MutableRefObject<(HTMLButtonElement | null)[]>;
   onSelect: (channelId: string) => void;
@@ -17,9 +19,24 @@ interface ChannelListProps {
   ) => void;
 }
 
+/**
+ * Channel selector for the locked channel-first directory.
+ *
+ * Rendered as a tab set rather than a nav landmark. Decision #261 requires
+ * arrow-key movement within the channel list with a single tab stop for the
+ * whole set, which is the ARIA tabs keyboard contract; announcing the same
+ * controls as navigation left the behaviour and the role disagreeing. The
+ * locked prototype predates #261 and has no arrow keys at all, so it is not
+ * authority against this.
+ *
+ * Both layouts are in the DOM at once and hidden by CSS, so every id is
+ * per-layout. `aria-orientation` states the axis the arrow keys follow, which
+ * is vertical for the desktop rail and horizontal for the mobile chips.
+ */
 export function ChannelList({
   channels,
   selectedChannelId,
+  panelId,
   desktopRefs,
   mobileRefs,
   onSelect,
@@ -32,8 +49,10 @@ export function ChannelList({
         <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
           Channels
         </h2>
-        <nav
+        <div
+          role="tablist"
           aria-label="Enabled channels"
+          aria-orientation="vertical"
           className="space-y-1 overflow-y-auto max-h-96"
         >
           {channels.map((channel, index) => {
@@ -45,10 +64,14 @@ export function ChannelList({
                 ref={(el) => {
                   desktopRefs.current[index] = el;
                 }}
+                id={`channel-tab-desktop-${channel.channelId}`}
+                role="tab"
+                type="button"
                 tabIndex={isSelected ? 0 : -1}
                 onKeyDown={(e) => onKeyDown(e, index, 'desktop')}
                 onClick={() => onSelect(channel.channelId)}
-                aria-current={isSelected ? 'true' : undefined}
+                aria-selected={isSelected}
+                aria-controls={panelId}
                 className={cn(
                   'w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
                   isSelected
@@ -78,13 +101,15 @@ export function ChannelList({
               </button>
             );
           })}
-        </nav>
+        </div>
       </aside>
 
       {/* Mobile: Channel chips */}
       <div className="lg:hidden">
-        <nav
+        <div
+          role="tablist"
           aria-label="Enabled channels"
+          aria-orientation="horizontal"
           className="flex gap-2 overflow-x-auto pb-2 flex-wrap"
         >
           {channels.map((channel, index) => {
@@ -97,10 +122,14 @@ export function ChannelList({
                 ref={(el) => {
                   mobileRefs.current[index] = el;
                 }}
+                id={`channel-tab-mobile-${channel.channelId}`}
+                role="tab"
+                type="button"
                 tabIndex={isSelected ? 0 : -1}
                 onKeyDown={(e) => onKeyDown(e, index, 'mobile')}
                 onClick={() => onSelect(channel.channelId)}
-                aria-current={isSelected ? 'true' : undefined}
+                aria-selected={isSelected}
+                aria-controls={panelId}
                 className={cn(
                   'px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap shrink-0 transition-colors',
                   isSelected
@@ -121,7 +150,7 @@ export function ChannelList({
               </button>
             );
           })}
-        </nav>
+        </div>
       </div>
     </>
   );
