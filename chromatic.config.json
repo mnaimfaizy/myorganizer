@@ -1,0 +1,12 @@
+{
+  "$schema": "https://www.chromatic.com/config-file.schema.json",
+  "onlyChanged": true,
+  "exitZeroOnChanges": true,
+  "storybookConfigDir": "libs/web-ui/.storybook",
+  "buildScriptName": "build-storybook",
+  "zip": true,
+  "externals": [
+    "libs/web-ui/tailwind.config.js",
+    "libs/web-ui/.storybook/preview-styles.css"
+  ]
+}
