@@ -10,6 +10,16 @@ jest.mock('lucide-react', () => ({
   RefreshCw: (props: Record<string, unknown>) => (
     <svg data-testid="refresh-icon" {...props} />
   ),
+  // Tone icons rendered by SyncFreshnessIndicator.
+  AlertTriangle: (props: Record<string, unknown>) => (
+    <svg data-testid="warning-icon" {...props} />
+  ),
+  CircleAlert: (props: Record<string, unknown>) => (
+    <svg data-testid="error-icon" {...props} />
+  ),
+  Clock: (props: Record<string, unknown>) => (
+    <svg data-testid="pending-icon" {...props} />
+  ),
 }));
 
 // Mock UI components

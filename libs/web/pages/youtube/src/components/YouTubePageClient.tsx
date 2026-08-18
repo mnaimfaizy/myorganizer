@@ -16,6 +16,7 @@ import {
 import { SubscriptionManager } from './SubscriptionManager';
 import { ChannelDirectory } from './ChannelDirectory';
 import { QueueRail } from './QueueRail';
+import { SyncFreshnessIndicator } from './SyncFreshnessIndicator';
 import { YouTubeConnectPrompt } from './YouTubeConnectPrompt';
 
 export function YouTubePageClient() {
@@ -123,7 +124,7 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
       />
 
       <Card className="p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
             <CardTitle>Videos</CardTitle>
             <Button
@@ -135,17 +136,8 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
               <Link href="/dashboard/youtube/shorts">Shorts</Link>
             </Button>
           </div>
-          <div className="flex items-center gap-2">
-            {syncStatus.status && syncStatus.status.lastSyncedAt ? (
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Last synced{' '}
-                {new Date(syncStatus.status.lastSyncedAt).toLocaleString()}
-              </div>
-            ) : (
-              <div className="text-sm text-gray-600 dark:text-gray-400">
-                Never synced
-              </div>
-            )}
+          <div className="flex items-start gap-2">
+            <SyncFreshnessIndicator status={syncStatus.status} />
 
             <Button
               variant="ghost"
