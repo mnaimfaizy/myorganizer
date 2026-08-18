@@ -28,22 +28,54 @@ jest.mock('next/link', () => {
   return ({ children, href }: any) => <a href={href}>{children}</a>;
 });
 
-// Mock ShortsPlayerPanel with a simple div so we can confirm it renders in unlocked branch
+// Mock ShortsPlayerPanel with a simple div so we can confirm it renders in the
+// unlocked branch, plus buttons standing in for each playback signal the real
+// panel forwards: the Play press, an embed state report, and an embed refusal.
 jest.mock('./ShortsPlayerPanel', () => ({
-  ShortsPlayerPanel: ({ activeShort }: any) => (
+  ShortsPlayerPanel: ({
+    activeShort,
+    onPlaybackStart,
+    onPlayingChange,
+    onPlaybackUnavailable,
+  }: any) => (
     <div data-testid="player-panel">
       {activeShort ? activeShort.title : 'No short'}
+      <button data-testid="press-play" onClick={() => onPlaybackStart?.()}>
+        press play
+      </button>
+      <button
+        data-testid="report-playing"
+        onClick={() => onPlayingChange?.(true)}
+      >
+        report playing
+      </button>
+      <button
+        data-testid="report-paused"
+        onClick={() => onPlayingChange?.(false)}
+      >
+        report paused
+      </button>
+      <button
+        data-testid="report-unavailable"
+        onClick={() => onPlaybackUnavailable?.()}
+      >
+        report unavailable
+      </button>
     </div>
   ),
 }));
 
 // Mock ShortsList so we can confirm it renders in unlocked branch
 jest.mock('./ShortsList', () => ({
-  ShortsList: ({ shorts }: any) => (
+  ShortsList: ({ shorts, onSelectShort }: any) => (
     <div data-testid="shorts-list">
       <p>All Shorts</p>
       {shorts.map((s: any) => (
-        <button key={s.videoId} data-testid={`short-${s.videoId}`}>
+        <button
+          key={s.videoId}
+          data-testid={`short-${s.videoId}`}
+          onClick={() => onSelectShort?.(s.videoId)}
+        >
           {s.title}
         </button>
       ))}
@@ -248,6 +280,132 @@ describe('ShortsPageClient — locked and unlocked branches', () => {
       expect(
         screen.getByText(/Connect Your YouTube Account/i),
       ).toBeInTheDocument();
+    });
+  });
+  describe('metering fails closed when the embed never reports state', () => {
+    const unlockedBudget = {
+      spentMs: 0,
+      limitMs: 3600000,
+      remainingMs: 3600000,
+      usedPercent: 0,
+      locked: false,
+      dayKey: '2026-08-10',
+      metering: false,
+      setLimitMinutes: jest.fn(),
+    };
+
+    /** The `active` argument the page last handed `useShortsBudget`. */
+    const lastMeteringArg = () => {
+      const calls = (useShortsBudget as jest.Mock).mock.calls;
+      return calls[calls.length - 1][0];
+    };
+
+    const renderAcknowledged = () => {
+      (useShortsBudget as jest.Mock).mockReturnValue(unlockedBudget);
+      (useYouTubeShorts as jest.Mock).mockReturnValue({
+        shorts: [mockShort, mockShort2],
+        loading: false,
+        error: null,
+        updateWatched: jest.fn(),
+        refresh: jest.fn(),
+      });
+
+      render(<ShortsPageClient />);
+      fireEvent.click(screen.getByTestId('entry-continue'));
+    };
+
+    it('does not meter before the User presses Play', () => {
+      renderAcknowledged();
+
+      expect(lastMeteringArg()).toBe(false);
+    });
+
+    it('meters from the Play press alone when no state ever arrives', () => {
+      renderAcknowledged();
+
+      fireEvent.click(screen.getByTestId('press-play'));
+
+      // The embed has reported nothing. Metering must still be running, or the
+      // Shorts Hard Stop would never fire for a User whose embed is silent.
+      expect(lastMeteringArg()).toBe(true);
+    });
+
+    it('stops metering when the embed reports a pause and resumes on play', () => {
+      renderAcknowledged();
+
+      fireEvent.click(screen.getByTestId('press-play'));
+      fireEvent.click(screen.getByTestId('report-paused'));
+      expect(lastMeteringArg()).toBe(false);
+
+      fireEvent.click(screen.getByTestId('report-playing'));
+      expect(lastMeteringArg()).toBe(true);
+    });
+
+    it('keeps metering across Shorts, because the embed autoplays the next one', () => {
+      renderAcknowledged();
+
+      fireEvent.click(screen.getByTestId('press-play'));
+      fireEvent.click(screen.getByTestId('short-video2'));
+
+      expect(lastMeteringArg()).toBe(true);
+    });
+
+    it('re-arms after a pause when the User moves to another Short', () => {
+      renderAcknowledged();
+
+      fireEvent.click(screen.getByTestId('press-play'));
+      fireEvent.click(screen.getByTestId('report-paused'));
+      expect(lastMeteringArg()).toBe(false);
+
+      // The stale pause belongs to the previous Short; the new one autoplays.
+      fireEvent.click(screen.getByTestId('short-video2'));
+      expect(lastMeteringArg()).toBe(true);
+    });
+
+    it('stops metering when the embed refuses to play the Short', () => {
+      renderAcknowledged();
+
+      fireEvent.click(screen.getByTestId('press-play'));
+      fireEvent.click(screen.getByTestId('report-unavailable'));
+
+      expect(lastMeteringArg()).toBe(false);
+    });
+
+    it('does not meter while the entry warning is still up', () => {
+      (useShortsBudget as jest.Mock).mockReturnValue(unlockedBudget);
+      (useYouTubeShorts as jest.Mock).mockReturnValue({
+        shorts: [mockShort],
+        loading: false,
+        error: null,
+        updateWatched: jest.fn(),
+        refresh: jest.fn(),
+      });
+
+      render(<ShortsPageClient />);
+
+      expect(lastMeteringArg()).toBe(false);
+    });
+
+    it('does not meter once the budget is locked', () => {
+      (useShortsBudget as jest.Mock).mockReturnValue({
+        ...unlockedBudget,
+        spentMs: 3600000,
+        remainingMs: 0,
+        usedPercent: 100,
+        locked: true,
+      });
+      (useYouTubeShorts as jest.Mock).mockReturnValue({
+        shorts: [mockShort],
+        loading: false,
+        error: null,
+        updateWatched: jest.fn(),
+        refresh: jest.fn(),
+      });
+
+      render(<ShortsPageClient />);
+      fireEvent.click(screen.getByTestId('entry-continue'));
+
+      expect(lastMeteringArg()).toBe(false);
     });
   });
 });

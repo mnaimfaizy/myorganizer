@@ -24,12 +24,16 @@ jest.mock('./YouTubeVideoPlayer', () => ({
     video,
     watched,
     _onNearEnd,
+    onPlay,
     onPlayingChange,
+    onPlaybackUnavailable,
   }: {
     video: any;
     watched: boolean;
     onNearEnd?: () => void;
+    onPlay?: () => void;
     onPlayingChange?: (playing: boolean) => void;
+    onPlaybackUnavailable?: () => void;
   }) => (
     <div
       data-testid={`player-${video.videoId}`}
@@ -37,6 +41,35 @@ jest.mock('./YouTubeVideoPlayer', () => ({
       onClick={() => onPlayingChange?.(true)}
     >
       Player: {video.title}
+      {/* Clicking the surrounding div stands in for an embed state report, so
+          each inner control has to stop the click from reaching it. */}
+      <button
+        data-testid="mock-press-play"
+        onClick={(e: any) => {
+          e.stopPropagation();
+          onPlay?.();
+        }}
+      >
+        press play
+      </button>
+      <button
+        data-testid="mock-report-paused"
+        onClick={(e: any) => {
+          e.stopPropagation();
+          onPlayingChange?.(false);
+        }}
+      >
+        report paused
+      </button>
+      <button
+        data-testid="mock-report-unavailable"
+        onClick={(e: any) => {
+          e.stopPropagation();
+          onPlaybackUnavailable?.();
+        }}
+      >
+        report unavailable
+      </button>
     </div>
   ),
 }));
@@ -607,15 +640,15 @@ describe('ShortsPlayerPanel', () => {
       expect(screen.getByTestId('player-dQw4w9WgXcQ')).toBeInTheDocument();
     });
 
-    it('passes onPlayingChange callback to YouTubeVideoPlayer', () => {
-      const onPlay = jest.fn();
+    it('forwards the embed reported playing state to onPlayingChange', () => {
+      const onPlayingChange = jest.fn();
       render(
         <ShortsPlayerPanel
           activeShort={baseShort}
           activeIndex={0}
           shortsLength={1}
           remainingMs={60000}
-          onPlay={onPlay}
+          onPlayingChange={onPlayingChange}
           onPrevious={jest.fn()}
           onNext={jest.fn()}
           onWatchedToggle={jest.fn()}
@@ -623,7 +656,49 @@ describe('ShortsPlayerPanel', () => {
       );
 
       fireEvent.click(screen.getByTestId('player-dQw4w9WgXcQ'));
-      expect(onPlay).toHaveBeenCalledWith(true);
+      expect(onPlayingChange).toHaveBeenCalledWith(true);
+    });
+
+    it('forwards the Play press to onPlaybackStart, independent of the embed', () => {
+      const onPlaybackStart = jest.fn();
+      const onPlayingChange = jest.fn();
+      render(
+        <ShortsPlayerPanel
+          activeShort={baseShort}
+          activeIndex={0}
+          shortsLength={1}
+          remainingMs={60000}
+          onPlaybackStart={onPlaybackStart}
+          onPlayingChange={onPlayingChange}
+          onPrevious={jest.fn()}
+          onNext={jest.fn()}
+          onWatchedToggle={jest.fn()}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId('mock-press-play'));
+      expect(onPlaybackStart).toHaveBeenCalledTimes(1);
+      // The click alone must not be reported as an embed state transition.
+      expect(onPlayingChange).not.toHaveBeenCalled();
+    });
+
+    it('forwards an unavailable embed to onPlaybackUnavailable', () => {
+      const onPlaybackUnavailable = jest.fn();
+      render(
+        <ShortsPlayerPanel
+          activeShort={baseShort}
+          activeIndex={0}
+          shortsLength={1}
+          remainingMs={60000}
+          onPlaybackUnavailable={onPlaybackUnavailable}
+          onPrevious={jest.fn()}
+          onNext={jest.fn()}
+          onWatchedToggle={jest.fn()}
+        />,
+      );
+
+      fireEvent.click(screen.getByTestId('mock-report-unavailable'));
+      expect(onPlaybackUnavailable).toHaveBeenCalledTimes(1);
     });
   });
 });

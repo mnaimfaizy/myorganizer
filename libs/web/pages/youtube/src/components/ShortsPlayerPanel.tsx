@@ -2,7 +2,6 @@
 
 import { Button } from '@myorganizer/web-ui';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { useCallback } from 'react';
 import type { YouTubeVideo } from '../types';
 import { formatRuntimeSeconds } from '../lib/formatRuntimeSeconds';
 import { YouTubeVideoPlayer } from './YouTubeVideoPlayer';
@@ -14,7 +13,12 @@ interface ShortsPlayerPanelProps {
   remainingMs: number;
   watched?: boolean;
   onNearEnd?: () => void;
-  onPlay?: (playing: boolean) => void;
+  /** The User pressed Play. Fires from the click itself, not from the embed. */
+  onPlaybackStart?: () => void;
+  /** The embed reported a playback state transition. May never fire. */
+  onPlayingChange?: (playing: boolean) => void;
+  /** The embed refused to play this Short at all. */
+  onPlaybackUnavailable?: () => void;
   onPrevious: () => void;
   onNext: () => void;
   onWatchedToggle: () => void;
@@ -34,18 +38,13 @@ export function ShortsPlayerPanel({
   remainingMs,
   watched = false,
   onNearEnd,
-  onPlay,
+  onPlaybackStart,
+  onPlayingChange,
+  onPlaybackUnavailable,
   onPrevious,
   onNext,
   onWatchedToggle,
 }: ShortsPlayerPanelProps) {
-  const handlePlayingChange = useCallback(
-    (playing: boolean) => {
-      onPlay?.(playing);
-    },
-    [onPlay],
-  );
-
   if (!activeShort) {
     return null;
   }
@@ -70,7 +69,9 @@ export function ShortsPlayerPanel({
             video={activeShort}
             watched={watched}
             onNearEnd={onNearEnd}
-            onPlayingChange={handlePlayingChange}
+            onPlay={onPlaybackStart}
+            onPlayingChange={onPlayingChange}
+            onPlaybackUnavailable={onPlaybackUnavailable}
             defaultPlaying={false}
             className="h-full w-full"
           />

@@ -43,16 +43,27 @@ export function ShortsPageClient() {
   } = useYouTubeShorts();
   const [acknowledged, setAcknowledged] = useState(false);
   const [selectedShortId, setSelectedShortId] = useState<string | null>(null);
-  const [playing, setPlaying] = useState(false);
+  const [playbackStarted, setPlaybackStarted] = useState(false);
+  const [reportedPlaying, setReportedPlaying] = useState<boolean | null>(null);
   const [lockedAtLastRender, setLockedAtLastRender] = useState(false);
 
-  // Metering runs only while a Short is genuinely being watched: the entry
-  // warning has been acknowledged and the User has actually started playback.
+  // The Shorts Daily Budget is a guardrail, so it has to fail *closed*: a
+  // metering signal that never arrives must not hand the User unlimited Shorts.
+  //
+  // `playbackStarted` comes from the Play click itself — a local React event
+  // that cannot fail. `reportedPlaying` comes from the embed's `onStateChange`
+  // postMessage, which is a best-effort channel: a blocked third-party frame, a
+  // player API change, or a browser that drops the message all leave it `null`
+  // forever. Treating `null` as "still playing" means precise metering when the
+  // embed talks to us, and metering from the click when it does not, which is
+  // how the locked prototype behaved.
+  const meteringActive = playbackStarted && reportedPlaying !== false;
+
   // `budget.locked` cannot be part of this expression — it comes out of the very
   // hook being fed — so the Hard Stop case is covered from both sides instead:
-  // the render adjustment below clears `playing` the moment the budget locks,
+  // the render adjustment below clears playback the moment the budget locks,
   // and `useShortsBudget` refuses to accrue against an exhausted budget anyway.
-  const budget = useShortsBudget(acknowledged && playing);
+  const budget = useShortsBudget(acknowledged && meteringActive);
 
   // Derive the active Short: use selection if it exists in the list, otherwise fall back to first.
   // This handles both initial load (selection is null, use first) and refresh (selection may vanish).
@@ -61,16 +72,26 @@ export function ShortsPageClient() {
   const activeShortId = activeShort?.videoId ?? null;
   const activeIndex = activeShort ? shorts.indexOf(activeShort) : -1;
 
-  // Adjust state during render: reset playing when budget locks to prevent metering at midnight.
+  // Adjust state during render: reset playback when the budget locks, so the
+  // Hard Stop cannot leave a stale metering signal behind.
   if (budget.locked && !lockedAtLastRender) {
     setLockedAtLastRender(true);
-    setPlaying(false);
+    setPlaybackStarted(false);
+    setReportedPlaying(null);
   } else if (!budget.locked && lockedAtLastRender) {
     setLockedAtLastRender(false);
   }
 
   const handleContinueToShorts = useCallback(() => {
     setAcknowledged(true);
+  }, []);
+
+  // Moving to another Short discards the previous Short's reported state but
+  // deliberately keeps `playbackStarted`: the embed is reused and autoplays the
+  // new Short without a second click, so clearing it would silently stop
+  // metering for the rest of the session.
+  const forgetReportedPlaying = useCallback(() => {
+    setReportedPlaying(null);
   }, []);
 
   const handleRetry = useCallback(() => {
@@ -82,23 +103,38 @@ export function ShortsPageClient() {
     const previousIndex =
       activeIndex <= 0 ? shorts.length - 1 : activeIndex - 1;
     setSelectedShortId(shorts[previousIndex].videoId);
-    setPlaying(false);
-  }, [activeIndex, shorts]);
+    forgetReportedPlaying();
+  }, [activeIndex, shorts, forgetReportedPlaying]);
 
   const handleNextShort = useCallback(() => {
     if (shorts.length === 0) return;
     const nextIndex = activeIndex >= shorts.length - 1 ? 0 : activeIndex + 1;
     setSelectedShortId(shorts[nextIndex].videoId);
-    setPlaying(false);
-  }, [activeIndex, shorts]);
+    forgetReportedPlaying();
+  }, [activeIndex, shorts, forgetReportedPlaying]);
 
-  const handleSelectShort = useCallback((videoId: string) => {
-    setSelectedShortId(videoId);
-    setPlaying(false);
+  const handleSelectShort = useCallback(
+    (videoId: string) => {
+      setSelectedShortId(videoId);
+      forgetReportedPlaying();
+    },
+    [forgetReportedPlaying],
+  );
+
+  const handlePlaybackStart = useCallback(() => {
+    setPlaybackStarted(true);
+    setReportedPlaying(null);
   }, []);
 
   const handlePlayingChange = useCallback((playing: boolean) => {
-    setPlaying(playing);
+    setReportedPlaying(playing);
+  }, []);
+
+  // The embed refused this Short outright, so nothing is playing behind the
+  // "Playback unavailable" card and the click must stop counting as playback.
+  const handlePlaybackUnavailable = useCallback(() => {
+    setPlaybackStarted(false);
+    setReportedPlaying(null);
   }, []);
 
   const handleNearEnd = useCallback(() => {
@@ -283,7 +319,9 @@ export function ShortsPageClient() {
                 remainingMs={budget.remainingMs}
                 watched={activeShort?.watched ?? false}
                 onNearEnd={handleNearEnd}
-                onPlay={handlePlayingChange}
+                onPlaybackStart={handlePlaybackStart}
+                onPlayingChange={handlePlayingChange}
+                onPlaybackUnavailable={handlePlaybackUnavailable}
                 onPrevious={handlePreviousShort}
                 onNext={handleNextShort}
                 onWatchedToggle={handleWatchedToggleClick}
