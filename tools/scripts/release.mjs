@@ -59,11 +59,6 @@ function parseArgs(argv) {
       continue;
     }
 
-    if (token === '--tag') {
-      args.tag = true;
-      continue;
-    }
-
     if (token === '--dry-run') {
       args.dryRun = true;
       continue;
@@ -483,7 +478,7 @@ function printHelp() {
   const HELP_TEXT = `Release helper (git automation)
 
 Usage:
-  node tools/scripts/release.mjs cut --version v1.2.3 [--push] [--tag] [--dry-run]
+  node tools/scripts/release.mjs cut --version v1.2.3 [--push] [--dry-run]
   node tools/scripts/release.mjs tag --version v1.2.3 [--push] [--dry-run]
 
 What it does:
@@ -494,7 +489,6 @@ What it does:
     - updates root package.json version to X.Y.Z and commits it (default)
       - use --no-version-bump to skip
     - optionally pushes the branch (with --push)
-    - optionally creates + pushes the tag (with --tag --push)
     - updates CHANGELOG.md with generated notes and commits it (default)
       - use --no-notes to skip
       - use --notes-file <path> to also write the generated notes to a file
@@ -631,30 +625,6 @@ if (command === 'cut') {
     }
   } else {
     console.log(`Next: git push -u origin ${releaseBranch}`);
-  }
-
-  if (args.tag) {
-    if (tagExists(version)) {
-      die(`Tag already exists: ${version}`);
-    }
-
-    const tagCmd = `git tag -a ${version} -m "Release ${version}"`;
-    if (args.dryRun) {
-      console.log(`[dry-run] ${tagCmd}`);
-    } else {
-      runInherit(tagCmd);
-    }
-
-    if (args.push) {
-      const pushTagCmd = `git push origin ${version}`;
-      if (args.dryRun) {
-        console.log(`[dry-run] ${pushTagCmd}`);
-      } else {
-        runInherit(pushTagCmd);
-      }
-    } else {
-      console.log(`Next: git push origin ${version}`);
-    }
   }
 
   if (shouldGenerateNotes) {

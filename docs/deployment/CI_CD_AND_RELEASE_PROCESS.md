@@ -12,7 +12,8 @@ This repo uses GitHub Actions for CI/CD.
 
 - `release/*`
   - CI runs on every push.
-  - **Production deploy is manual** (workflow dispatch). No automatic deploys.
+  - A production deploy **run** starts automatically when the branch is created (see `dispatch-production-deploy.yml`), and can also be started by hand.
+  - **No production deploy proceeds without approval.** The `production` Environment carries a required-reviewer rule, so every run pauses until a maintainer approves it. The approval — not the dispatch — is the ship decision. See [ADR 0028](../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md).
   - Both frontend and backend are deployed to **cPanel shared hosting** via FTP/FTPS.
 
 ## Workflows
@@ -28,11 +29,25 @@ This repo uses GitHub Actions for CI/CD.
   - Deploys frontend to Vercel using the Vercel CLI.
 
 - `.github/workflows/deploy-production.yml` (name: `Deploy Production (manual)`)
-  - Manual only (`workflow_dispatch`).
+  - `workflow_dispatch` only — started either by a person or by `dispatch-production-deploy.yml`.
   - Guarded so it only runs when the selected branch is `release/*`.
+  - `deploy-backend` and `deploy-frontend` declare `environment: production`, so the run **pauses for required-reviewer approval** before either touches production.
   - Packages backend + frontend and uploads:
     - `dist/deploy/backend-api/`
     - `dist/deploy/myorganizer-web/`
+
+- `.github/workflows/dispatch-production-deploy.yml` (name: `Dispatch Production Deploy (latest release)`)
+  - Fires on `create` of a `release/vX.Y.Z` branch, and on manual dispatch.
+  - Finds the newest `release/v*` branch and dispatches `Deploy Production (manual)` against it. It does not deploy anything itself — the name says dispatch for that reason.
+  - Because it fires on branch creation, the approval prompt can appear **before** CI has finished on the release branch. Check CI before approving.
+
+- `.github/workflows/release-pr.yml` (name: `Release PR (auto)`)
+  - Fires on push to `release/v*` and opens (or updates) a PR from `release/vX.Y.Z` → `main`.
+  - Attempts to enable auto-merge on that PR; warns and continues if repository settings disallow it.
+
+- `.github/workflows/publish-github-release.yml` (name: `Publish GitHub Release`)
+  - Fires on push of a `v*.*.*` tag, or manual dispatch with a `tag` input.
+  - Creates or updates the GitHub Release using the tagged commit's `RELEASE_NOTES.md` as the body. Idempotent.
 
 ## Required GitHub secrets
 
@@ -53,7 +68,7 @@ These are **repository** secrets (Settings → Secrets and variables → Actions
 
 - `CHROMATIC_PROJECT_TOKEN` — Chromatic project token for publishing Storybook from `ci.yml`. Required before the Chromatic job can pass. HITL: create the project and add this secret **before** merging that job to `main`. Require Chromatic’s **UI Tests** status check in branch protection (pending until Accept/Deny). See [docs/storybook/README.md](../storybook/README.md) and [ADR 0027](../adr/0027-chromatic-ci-visual-tests.md).
 
-## GitHub Environments (recommended)
+## GitHub Environments
 
 This repo uses two GitHub **Environments**:
 
@@ -67,8 +82,8 @@ The deploy workflows are already configured to use them:
 
 Why this matters:
 
-- You can keep **different secrets** for staging vs production.
-- You can add **environment protection rules** (approvals) for production.
+- Staging and production keep **different secrets**.
+- `production` carries **environment protection rules** — a branch policy and a required reviewer — which is what gates the deploy.
 
 ### How to create the environments
 
@@ -99,24 +114,37 @@ This matches how the workflows are intended to be used:
 - `Deploy Staging` runs for `main`
 - `Deploy Production (manual)` should only be run from `release/*`
 
-Optional (recommended):
+Required (already configured):
 
-- Add required reviewers for `production` to enforce a manual approval gate.
+- `production` has a **required reviewer**. This is the ship gate — see the next section. Do not remove it.
 
 ### Manual approval (required reviewers)
 
-GitHub Actions “manual approval” is typically implemented via **GitHub Environments** and **Required reviewers**.
+**This is configured, and it is the only thing that makes production deploys manual.** Anything may
+_start_ a production run — a person, or `dispatch-production-deploy.yml` on branch creation — but no
+run reaches production without a human approving it here.
 
-To enable this for production:
+Behavior:
+
+- When `Deploy Production (manual)` reaches `deploy-backend` or `deploy-frontend` (both declare `environment: production`), GitHub pauses and requires approval.
+- Only after approval is granted does the job proceed to deploy.
+
+Verify it is still in place:
+
+```sh
+gh api repos/mnaimfaizy/myorganizer/environments/production --jq '.protection_rules'
+```
+
+Expect a `required_reviewers` rule alongside the `branch_policy` rule. This lives in repo settings,
+**not** in this repository — no pull request will show you if it is removed, and every workflow file
+will still read exactly as it does today. Removing it, or removing `environment: production` from a
+deploy job, silently turns branch creation into an unattended production deploy.
+
+To re-create it if it is ever lost:
 
 1. Repo → **Settings** → **Environments** → select `production`
 2. Under **Deployment protection rules**, enable **Required reviewers**
 3. Add one or more reviewers
-
-Behavior:
-
-- When the `Deploy Production (manual)` workflow runs and reaches the job that uses `environment: production`, GitHub will pause and require an approval.
-- Only after approval is granted will the job proceed to deploy.
 
 ### Where to put secrets
 
@@ -183,6 +211,17 @@ Examples:
 - `v2.0.0` → breaking-change release
 - `v1.1.1` → bugfix-only release
 
+When every commit since the last tag is `docs:`, `ci:`, or `chore:`, there is nothing to ship and the
+`VersionBump` agent reports `NO_RELEASE`. That is advice, not a veto — cut anyway if you have a
+reason, such as republishing a failed deploy.
+
+Classify on the commit **type**, never on the word "deps". `fix(deps):` is how shipped security
+advisories are remediated in this repo and counts as a PATCH; `chore(deps):` and `ci: bump …` never
+reach the deployed app.
+
+The agent-facing version of this process lives in
+[`.agents/skills/release-and-deploy-workflow/SKILL.md`](../../.agents/skills/release-and-deploy-workflow/SKILL.md).
+
 ### Release branch naming
 
 Use a versioned release branch so production deploys are unambiguous:
@@ -202,10 +241,11 @@ Use a versioned release branch so production deploys are unambiguous:
   - `git checkout -b release/v1.2.3`
   - `git push -u origin release/v1.2.3`
 
-3. Run the production deploy (manual by design):
+3. Approve the production deploy:
 
-- GitHub → **Actions** → `Deploy Production (manual)` → **Run workflow**
-- Select the `release/v1.2.3` branch and run.
+- A run is usually already queued and waiting — pushing the branch in step 2 dispatches one.
+- If you need to start one by hand: GitHub → **Actions** → `Deploy Production (manual)` → **Run workflow**, select the `release/v1.2.3` branch, run.
+- Confirm CI is green on `release/v1.2.3`, then approve the run. Nothing reaches production until you approve.
 
 4. After production deploy succeeds, create and push the version tag:
 
@@ -215,7 +255,10 @@ Use a versioned release branch so production deploys are unambiguous:
   - `git tag -a v1.2.3 -m "Release v1.2.3"`
   - `git push origin v1.2.3`
 
-5. Push the tag and let the `Publish GitHub Release` workflow create the GitHub Release.
+  The tag is a **receipt**: `vX.Y.Z` existing means that version is live in production, which is why
+  it is applied here and not earlier. `release:cut` has no way to create one.
+
+5. That tag push triggers the `Publish GitHub Release` workflow, which creates the GitHub Release.
 
 - The workflow checks out the tagged commit and uses its `RELEASE_NOTES.md` as the release body.
 - Re-running the workflow updates the existing release, so publishing is idempotent.
@@ -242,8 +285,9 @@ What this does:
 
 3. Production deploy:
 
-- If you have auto-dispatch enabled, creating the release branch may automatically trigger the production deploy workflow.
-- Otherwise: GitHub → Actions → `Deploy Production (manual)` → Run workflow on `release/vX.Y.Z`
+- Creating the release branch dispatches a production run automatically; it waits for your approval.
+- To start one by hand instead: GitHub → Actions → `Deploy Production (manual)` → Run workflow on `release/vX.Y.Z`
+- Check CI is green on `release/vX.Y.Z`, then approve. The approval is the ship decision.
 
 4. Tag the release after a successful production deploy:
 
@@ -259,14 +303,16 @@ Optional: write a rolling notes file
 
 Note: We intentionally avoid generating per-version `release-notes-v*.md` files since `CHANGELOG.md` is the source of truth.
 
-### Release PR automation (optional)
+### Release PR automation
 
-If enabled, a workflow can automatically:
+`release-pr.yml` runs on every push to `release/v*` and automatically:
 
-- Create a PR from `release/vX.Y.Z` → `main`
-- Enable GitHub auto-merge so it merges after required checks pass
+- Creates (or updates) a PR from `release/vX.Y.Z` → `main`
+- Attempts to enable GitHub auto-merge so it merges after required checks pass
 
-This requires repository settings to allow auto-merge and that branch protection rules do not require manual approvals.
+Auto-merge is the only optional part: it needs repository settings to allow auto-merge, and branch
+protection rules that do not require manual approvals. If either is missing the workflow logs a
+warning and the PR simply waits to be merged by hand.
 
 Notes:
 
@@ -280,7 +326,8 @@ The script lives at `tools/scripts/release.mjs` and automates the git steps.
 - It enforces `vX.Y.Z` format (no prerelease strings).
 - It requires a clean working tree.
 - `release:cut` requires you to be on `main` and up-to-date with `origin/main`.
-- It does **not** trigger the production deploy workflow automatically (the deploy is intentionally manual).
+- It does **not** dispatch or approve any deploy. Pushing the release branch is what dispatches a production run (via `dispatch-production-deploy.yml`), and that run still waits for approval.
+- `release:cut` **cannot** create a tag. Tagging is a separate command, run only after production is live — the tag is a receipt, not a trigger. See [ADR 0028](../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md).
 
 ## cPanel notes (after upload)
 

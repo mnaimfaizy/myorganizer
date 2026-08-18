@@ -39,7 +39,7 @@ jobs:
 
           echo 'ERROR: This workflow must be run from a release/* branch due to GitHub Environment protection rules.'
           echo "Current ref: $GITHUB_REF"
-          echo "Tip: Use the 'Deploy Production (latest release)' workflow to auto-select the newest release branch."
+          echo "Tip: Use the 'Dispatch Production Deploy (latest release)' workflow to auto-select the newest release branch."
           exit 1
 
       - name: Select release ref

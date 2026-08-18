@@ -8,84 +8,78 @@ description: 'Use when cutting releases, preparing staging or production deploym
 ## Use This Skill When
 
 - The user asks to cut, prepare, or ship a release
-- Deciding the next version number (SemVer)
+- Deciding the next version number (SemVer), or whether to release at all
 - Generating or committing release notes / CHANGELOG entries
 - Creating and pushing a `release/*` branch
-- Triggering or verifying the production deploy in GitHub Actions
+- Approving or verifying the production deploy in GitHub Actions
 - Tagging after a successful production deploy
 - Editing release automation scripts or deployment workflows
 - Verifying environment rules, branch protection, or secrets alignment
 
 ## Hard Stops (never proceed past these)
 
-- Production deploy attempted from `main` → **stop**
-- Tag creation attempted before production deploy is confirmed successful → **stop**
+- Phase 2 started before the user confirmed the plan from Phase 1 → **stop**
 - Working tree is dirty when cutting a release → **stop**, fix first
 - Local `main` is behind `origin/main` → **stop**, pull first
 - Target release branch already exists locally or on origin → **stop**, surface conflict
+- Production deployment approved before CI is green on the release branch → **stop**
+- Tag creation attempted before the production deploy is confirmed successful → **stop**
+- A change that removes `environment: production` from a deploy job, or weakens the
+  `required_reviewers` rule on that environment → **stop**, that rule is the ship gate
 
 ## Branch + Environment Model
 
-| Branch           | CI            | Staging auto-deploy   | Production deploy                  |
-| ---------------- | ------------- | --------------------- | ---------------------------------- |
-| `main`           | ✅ on push/PR | ✅ automatic after CI | ❌ never                           |
-| `release/vX.Y.Z` | ✅ on push/PR | ❌                    | ✅ manual `workflow_dispatch` only |
+| Branch           | CI            | Staging auto-deploy   | Production deploy                        |
+| ---------------- | ------------- | --------------------- | ---------------------------------------- |
+| `main`           | ✅ on push/PR | ✅ automatic after CI | ❌ never                                 |
+| `release/vX.Y.Z` | ✅ on push/PR | ❌                    | ✅ only after required-reviewer approval |
 
 - GitHub environment `staging` is restricted to `main`.
-- GitHub environment `production` is restricted to `release/*`.
-- Tag only after the `Deploy Production (manual)` workflow run succeeds.
+- GitHub environment `production` is restricted to `release/*` **and** carries a `required_reviewers`
+  protection rule. That approval — not the dispatch — is the ship decision.
+- Tag only after the production deploy succeeds. The tag is a **receipt**, not a trigger: `vX.Y.Z`
+  existing means that version is live in production.
 
 ---
 
-## End-to-End Release Workflow
+## Phase 1 — Release Plan (propose, then stop)
 
-### Phase 0 — Pre-flight
+This is the front door. When the user asks to release, produce **one** plan and **wait**. Do not cut,
+commit, push, deploy, or tag from this phase.
 
-Before starting, delegate to the **`PreflightCheck`** agent:
+Run all three advisors:
 
-```
-runSubagent("PreflightCheck", "Validate release readiness for vX.Y.Z")
-```
-
-The agent checks: clean working tree, on `main`, up-to-date with `origin/main`, staging CI green, no version conflict.
-
-If `PreflightCheck` reports any FAIL item, resolve it before continuing.
-
----
-
-### Phase 1 — Decide the next version
-
-If the user has not specified a version, delegate to **`VersionBump`**:
+| Advisor          | Question it answers            |
+| ---------------- | ------------------------------ |
+| `PreflightCheck` | Is the repo ready to cut?      |
+| `VersionBump`    | What version — or none at all? |
+| `ReleaseNotes`   | What shipped since the tag?    |
 
 ```
+runSubagent("PreflightCheck", "Validate release readiness")
 runSubagent("VersionBump", "Propose next semver from latest tag..HEAD")
-```
-
-The agent inspects conventional commits since the last tag and returns a single line:
-
-```
-v1.3.0 (minor — new features added)
-```
-
-Confirm the proposed version with the user if there is any doubt (e.g. a `feat!` / BREAKING CHANGE suggests a major bump).
-
----
-
-### Phase 2 — Draft release notes
-
-Delegate to **`ReleaseNotes`**:
-
-```
 runSubagent("ReleaseNotes", "<previous-tag>..HEAD")
 ```
 
-The agent returns structured Markdown. The **main agent writes it** to `RELEASE_NOTES.md` if needed, or passes it as `--notes-file` to the release script.
+Combine their output into a single block:
+
+1. **Readiness** — the `PreflightCheck` verdict. Any FAIL item stops the plan here.
+2. **Proposed version** — the `VersionBump` line, `v` prefixed.
+3. **Why** — the strongest commit signal that drove the bump.
+4. **Alternatives** — the next bump down (or up), and when it would be right instead.
+5. **Draft release notes** — user-facing bullets grouped Added / Fixed / Changed. Not a raw `git log`.
+
+Then **stop and wait** for the user to confirm the version and edit the notes. "Confirm if in doubt"
+is not enough — everything after this phase writes to `origin`.
+
+If `VersionBump` returns `NO_RELEASE`, say so plainly and give the reason. It is advice, not a veto:
+if the user still wants to cut, proceed with the version they name.
 
 ---
 
-### Phase 3 — Cut the release branch
+## Phase 2 — Cut the release branch
 
-Run the release script (it creates the branch, bumps `package.json`, updates `CHANGELOG.md`, commits, and optionally pushes):
+Only after the user confirms. Write the agreed notes to `RELEASE_NOTES.md`, then:
 
 ```sh
 yarn release:cut --version vX.Y.Z --push --notes-file RELEASE_NOTES.md
@@ -95,7 +89,7 @@ Flags:
 
 - `--push` — push the branch to `origin` immediately
 - `--notes-file RELEASE_NOTES.md` — write notes to file AND include it in the release commit
-- `--dry-run` — preview all steps without side effects (use to verify before running for real)
+- `--dry-run` — preview all steps without side effects
 - `--no-version-bump` — skip `package.json` update (rare; use only if bumped manually)
 - `--no-notes` — skip CHANGELOG/notes generation (rare)
 
@@ -108,41 +102,56 @@ The script will:
 5. Commit: `chore(release): vX.Y.Z`
 6. Push branch (if `--push`)
 
-The `release-pr.yml` workflow fires automatically on push to `release/v*` and opens (or updates) a PR from `release/vX.Y.Z` → `main`.
+The script cannot tag. Tagging is Phase 5, and only after production is confirmed live.
+
+Pushing the branch sets off two workflows: `release-pr.yml` opens a PR back to `main`, and
+`Dispatch Production Deploy (latest release)` queues a production run that will wait for approval.
 
 ---
 
-### Phase 4 — Verify CI on the release branch
+## Phase 3 — Verify CI on the release branch
 
-After pushing, wait for CI to pass on `release/vX.Y.Z` before deploying.
+Wait for CI to pass on `release/vX.Y.Z`.
 
 Check GitHub Actions → `CI` workflow → select the `release/vX.Y.Z` branch run.
 
-Do **not** proceed to Phase 5 until CI is green.
+Do **not** approve a production deployment until this is green.
 
 ---
 
-### Phase 5 — Deploy to production (manual)
+## Phase 4 — Approve the production deploy
 
-Trigger the manual workflow in GitHub Actions:
+Production ships only when a required reviewer approves it. Both `deploy-backend` and
+`deploy-frontend` declare `environment: production`, so the run pauses before either job touches
+production and waits for a human.
 
-1. GitHub → **Actions** → `Deploy Production (manual)` → **Run workflow**
-2. Select branch: `release/vX.Y.Z`
-3. Click **Run workflow**
+A run reaches that prompt one of two ways:
 
-Monitor the run. Both backend (cPanel FTP) and frontend jobs must succeed.
+- **Automatically** — `Dispatch Production Deploy (latest release)` fires on creation of a
+  `release/vX.Y.Z` branch, finds the newest release branch, and dispatches the production deploy
+  against it. The Phase 2 push usually starts this for you.
+- **Manually** — Actions → `Deploy Production (manual)` → Run workflow, branch dropdown set to
+  `release/vX.Y.Z`. The workflow rejects any ref that is not `refs/heads/release/*`.
+
+Before approving, confirm:
+
+1. **CI is green** on `release/vX.Y.Z`. The dispatcher fires on branch creation, so the approval
+   prompt can appear before CI has finished — the gate is yours, not the pipeline's.
+2. The run's ref is the release branch you intend to ship.
+
+Then approve in the GitHub UI. Both jobs must succeed.
 
 If the deploy fails:
 
 - Fix the issue on `release/vX.Y.Z` (push a fix commit)
 - CI re-runs automatically
-- Wait for CI green, then re-trigger the deploy workflow
+- Wait for CI green, then re-run and re-approve the deploy
 
 ---
 
-### Phase 6 — Tag after successful production deploy
+## Phase 5 — Tag after successful production deploy
 
-Only after the production deploy is confirmed successful, run:
+Only after the production deploy is confirmed successful:
 
 ```sh
 yarn release:tag --version vX.Y.Z --push
@@ -155,19 +164,20 @@ The script will:
 3. Create annotated tag `vX.Y.Z`
 4. Push the tag to `origin`
 
-Pushing the tag triggers `Publish GitHub Release`, which checks out the tagged commit and creates or updates the GitHub Release using `RELEASE_NOTES.md` as its body.
+Pushing the tag triggers `publish-github-release.yml`, which checks out the tagged commit and creates
+or updates the GitHub Release using `RELEASE_NOTES.md` as its body.
 
 ---
 
-### Phase 7 — Merge the release PR back to main
+## Phase 6 — Merge the release PR back to main
 
-The `release-pr.yml` workflow creates a PR from `release/vX.Y.Z` → `main` automatically.
+`release-pr.yml` creates a PR from `release/vX.Y.Z` → `main` automatically.
 
 1. Review the auto-created PR (title: `chore(release): vX.Y.Z`)
 2. Ensure CI passes on the PR
 3. Merge (squash or merge commit — follow repo conventions)
 
-This keeps `main` up-to-date with the CHANGELOG entry and version bump from the release.
+This keeps `main` current with the CHANGELOG entry and version bump from the release.
 
 ---
 
@@ -197,12 +207,21 @@ Dry-run logs every action without touching git or the filesystem.
 
 ## Editing deployment workflows
 
-If you change `.github/workflows/deploy-staging.yml`, `deploy-production.yml`, or `ci.yml`:
+If you change `.github/workflows/deploy-staging.yml`, `deploy-production.yml`,
+`dispatch-production-deploy.yml`, or `ci.yml`:
 
 1. Verify the branch guards match the documented model above (and in `CI_CD_AND_RELEASE_PROCESS.md`)
 2. Verify secrets referenced exist in the correct GitHub Environment (`staging` or `production`)
 3. Update `docs/deployment/CI_CD_AND_RELEASE_PROCESS.md` if operational behavior changes
-4. Keep `release-pr.yml` aligned with the release branch naming pattern (`release/v*`)
+4. Keep `release-pr.yml` and `dispatch-production-deploy.yml` aligned with the release branch naming
+   pattern (`release/v*`)
+
+**Never let a job reach production without `environment: production`.** The `required_reviewers`
+rule on that environment is the only thing standing between an automated dispatch and a live deploy,
+and it lives in GitHub repo settings — no workflow file will show you it is missing. Auto-dispatching
+a production _run_ is fine and intended; auto-_approving_ one is not. See
+[ADR 0028](../../../docs/adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md)
+before "fixing" the `create:` trigger on `dispatch-production-deploy.yml` — it is deliberate.
 
 ---
 
@@ -229,37 +248,48 @@ If you change `.github/workflows/deploy-staging.yml`, `deploy-production.yml`, o
 
 ## SemVer quick reference
 
-| Bump  | When                              | Example             |
-| ----- | --------------------------------- | ------------------- |
-| PATCH | Bug fixes only                    | `v1.1.0` → `v1.1.1` |
-| MINOR | New backwards-compatible features | `v1.1.1` → `v1.2.0` |
-| MAJOR | Breaking changes                  | `v1.2.0` → `v2.0.0` |
+| Bump         | When                                                | Example             |
+| ------------ | --------------------------------------------------- | ------------------- |
+| `NO_RELEASE` | Every commit in range is `docs:` / `ci:` / `chore:` | —                   |
+| PATCH        | Bug fixes, perf, refactor, style, test, build       | `v1.1.0` → `v1.1.1` |
+| MINOR        | New backwards-compatible features                   | `v1.1.1` → `v1.2.0` |
+| MAJOR        | Breaking changes                                    | `v1.2.0` → `v2.0.0` |
 
 Conventional commit signals:
 
-- `fix:` → PATCH
+- `docs:` / `ci:` / `chore:` only → NO_RELEASE (advisory — the maintainer may still cut)
+- `fix:` → PATCH — **including `fix(deps):`**, which is how shipped security advisories are remediated here
 - `feat:` → MINOR
 - `feat!:` or `BREAKING CHANGE:` footer → MAJOR
+
+Classify on the commit **type**, never on the word "deps". `chore(deps):` and `ci: bump …` never
+reach the deployed app; `fix(deps):` does.
+
+MyOrganizer does not use pre-release versions. `release.mjs` rejects anything that is not `vX.Y.Z` —
+staging is the pre-release channel.
 
 ---
 
 ## Sub-agent delegation map
 
-| Task                            | Agent            | Model      |
-| ------------------------------- | ---------------- | ---------- |
-| Pre-flight readiness check      | `PreflightCheck` | GPT-5 mini |
-| Propose next semver version     | `VersionBump`    | GPT-5 mini |
-| Draft release notes / CHANGELOG | `ReleaseNotes`   | GPT-5 mini |
+| Task                            | Agent            | Model                  |
+| ------------------------------- | ---------------- | ---------------------- |
+| Pre-flight readiness check      | `PreflightCheck` | GPT-5.6 Luna (copilot) |
+| Propose next semver version     | `VersionBump`    | GPT-5.6 Luna (copilot) |
+| Draft release notes / CHANGELOG | `ReleaseNotes`   | GPT-5.6 Luna (copilot) |
 
 ---
 
 ## Key References
 
+- [ADR 0028](../../../docs/adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md) — why production is approval-gated and tags are receipts
 - `docs/deployment/CI_CD_AND_RELEASE_PROCESS.md` — full CI/CD documentation
 - `.github/workflows/ci.yml` — CI workflow
 - `.github/workflows/deploy-staging.yml` — staging deploy
-- `.github/workflows/deploy-production.yml` — production deploy (manual)
+- `.github/workflows/deploy-production.yml` — production deploy (approval-gated)
+- `.github/workflows/dispatch-production-deploy.yml` — finds the newest release branch and dispatches the production deploy
 - `.github/workflows/release-pr.yml` — auto release PR creator
+- `.github/workflows/publish-github-release.yml` — GitHub Release publisher (on tag push)
 - `tools/scripts/release.mjs` — release script (`cut` + `tag` commands)
 - `package.json` — `release:cut`, `release:tag` script aliases
 - `.github/agents/release-notes.agent.md` — ReleaseNotes agent
