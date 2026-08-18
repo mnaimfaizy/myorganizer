@@ -39,7 +39,7 @@
     "openapi:sync": "nx run api-specs:sync",
     "openapi:check": "nx run api-specs:check",
     "storybook": "nx storybook web-ui",
-    "build-storybook": "nx build-storybook web-ui --stats-json",
+    "build-storybook": "nx build-storybook web-ui --stats-json --skip-nx-cache",
     "chromatic": "chromatic",
     "lint": "nx lint",
     "dep-graph": "nx dep-graph",

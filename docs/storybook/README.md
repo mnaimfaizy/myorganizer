@@ -77,7 +77,7 @@ See `libs/web-ui/src/lib/components/Button/Button.stories.tsx` for a complete ex
 
 Chromatic runs **UI Tests in CI** (merge-blocking). It is not a local visual-test runner: the CLI always uploads Storybook to Chromatic cloud. Policy: [ADR 0027](../adr/0027-chromatic-ci-visual-tests.md). Quota math and GitHub sign-in: [docs/research/2026-08-18-chromatic-free-tier-ci.md](../research/2026-08-18-chromatic-free-tier-ci.md).
 
-CI calls `yarn chromatic` with repository secret `CHROMATIC_PROJECT_TOKEN`. Config lives in `chromatic.config.json` (TurboSnap `onlyChanged`, Storybook at `libs/web-ui/.storybook`, Tailwind listed as `externals`). Do **not** run `yarn chromatic` on a laptop unless you are debugging an upload.
+CI calls `yarn chromatic` with repository secret `CHROMATIC_PROJECT_TOKEN`. Config lives in `chromatic.config.json` (TurboSnap `onlyChanged`, Storybook at `libs/web-ui/.storybook`, Tailwind listed as `externals`). `yarn build-storybook` passes `--skip-nx-cache` because Chromatic builds into `os.tmpdir()` and Nx refuses to cache outputs outside the workspace. Do **not** run `yarn chromatic` on a laptop unless you are debugging an upload.
 
 ### HITL: first Chromatic project
 
@@ -157,13 +157,13 @@ The following addons are pre-configured:
 
 ## Useful Commands
 
-| Command                          | Description                                       |
-| -------------------------------- | ------------------------------------------------- |
-| `yarn storybook`                 | Start Storybook dev server                        |
-| `yarn build-storybook`           | Build static Storybook (includes Vite stats JSON) |
-| `yarn chromatic`                 | CI / debug upload to Chromatic (needs token)      |
-| `npx nx test-storybook web-ui`   | Run interaction tests                             |
-| `npx nx static-storybook web-ui` | Serve built Storybook                             |
+| Command                          | Description                                                                                        |
+| -------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `yarn storybook`                 | Start Storybook dev server                                                                         |
+| `yarn build-storybook`           | Build static Storybook (Vite stats JSON; skips Nx cache so Chromatic’s temp output-dir is allowed) |
+| `yarn chromatic`                 | CI / debug upload to Chromatic (needs token)                                                       |
+| `npx nx test-storybook web-ui`   | Run interaction tests                                                                              |
+| `npx nx static-storybook web-ui` | Serve built Storybook                                                                              |
 
 ## Troubleshooting
 
@@ -173,6 +173,10 @@ Make sure Tailwind CSS is configured properly:
 
 - Check `libs/web-ui/tailwind.config.js` includes Storybook paths
 - Verify `libs/web-ui/.storybook/preview-styles.css` is imported in `preview.ts`
+
+### Chromatic CI fails with “Cache output is outside the workspace”
+
+Chromatic runs `yarn build-storybook --output-dir=/tmp/chromatic-…`. The Nx Storybook target caches `{options.output-dir}`, and Nx errors when that path is outside the repo. Keep `--skip-nx-cache` on the `build-storybook` script.
 
 ### Component not rendering
 

@@ -150,11 +150,13 @@ Accept / Deny in Chromatic as documented. Our CI auto-accepts only on **push** t
 
 ## 7. Repo mapping
 
-| Path                                         | Role                                                    |
-| -------------------------------------------- | ------------------------------------------------------- |
-| `.github/workflows/ci.yml`                   | `chromatic` job after `prepare-dependencies`            |
-| `chromatic.config.json`                      | `onlyChanged`, `storybookConfigDir`, `externals`, `zip` |
-| `package.json` `chromatic`                   | `chromatic` (token from env)                            |
-| `package.json` `build-storybook`             | `nx build-storybook web-ui --stats-json`                |
-| `docs/storybook/README.md`                   | HITL + commands                                         |
-| `docs/adr/0027-chromatic-ci-visual-tests.md` | Decision                                                |
+| Path                                         | Role                                                     |
+| -------------------------------------------- | -------------------------------------------------------- |
+| `.github/workflows/ci.yml`                   | `chromatic` job after `prepare-dependencies`             |
+| `chromatic.config.json`                      | `onlyChanged`, `storybookConfigDir`, `externals`, `zip`  |
+| `package.json` `chromatic`                   | `chromatic` (token from env)                             |
+| `package.json` `build-storybook`             | `nx build-storybook web-ui --stats-json --skip-nx-cache` |
+| `docs/storybook/README.md`                   | HITL + commands                                          |
+| `docs/adr/0027-chromatic-ci-visual-tests.md` | Decision                                                 |
+
+Nx’s inferred `web-ui:build-storybook` target caches `{options.output-dir}`. Chromatic always appends `--output-dir` under `os.tmpdir()` (`/tmp/chromatic-…` on GitHub-hosted runners). Nx then fails with `Cache output is outside the workspace` even though Storybook itself built (first CI run, exit 105). `--skip-nx-cache` is required so Chromatic can keep its temp output-dir.
