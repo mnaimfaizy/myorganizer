@@ -6,117 +6,85 @@ Date: 2026-08-18
 
 Compare: https://github.com/mnaimfaizy/myorganizer/compare/v0.3.0...v0.4.0
 
-### Features
+> **License change.** This release adopts the **Elastic License 2.0** (#365). MyOrganizer was
+> previously distributed under different terms — review [`LICENSE`](LICENSE) before upgrading,
+> redistributing, or offering this software as a hosted service.
 
-- **youtube**: deep-link digest and subscription channels to directory (f280020)
-- **storybook**: add Pattern A stories for vault backup cards (#289) (#375) (10d626c)
-- **youtube**: add sync freshness indicator for failures and delays (187af7d)
-- **storybook**: add Sidebar primitive stories (#374) (39390f0)
-- **youtube**: add keyboard navigation and duration estimate to queue rail (00d0758)
-- **storybook**: add Pattern B stories for ten UI primitives (#373) (b3e668c)
-- **youtube**: implement focused channel directory (Variant C) (98ad931)
-- **youtube**: surface privacy wording for YouTube metadata (3148359)
-- **storybook**: add Pattern C stories for eight UI primitives (#372) (e3fce5e)
-- **storybook**: add Pattern A stories for six UI primitives (#289) (#370) (0575b3b)
-- **storybook**: establish required story precedent and three scopes (#289) (#369) (e7609f0)
-- **tooling**: add PR Surface Labels workflow (ADR 0025) (#366) (395fd05)
-- **upstream-brief**: add portable instruction-truth audit skill (#358) (99a01c4)
-- **youtube**: split digest delivery into its own resumable worker (7e9e93e)
-- **youtube**: classify Shorts by runtime and isolate them from long-form (5b2dce0)
-- **youtube**: add Shorts page with Daily Budget and Hard Stop (4041869)
-- **nx**: disable analytics in configuration (546f989)
-- **youtube**: align queue rail with locked Variant B model (86d9805)
-- **youtube**: add in-session queue rail (d9ed6b7)
-- **youtube**: replace view-mode toggle with channel-first directory (a856214)
-- **youtube**: add privacy-enhanced in-app playback (157bc24)
-- **youtube**: add watched state to synced videos (70ec294)
-- **youtube**: add sync freshness and cooldown tracking (2eb7c50)
-- **graphify**: add project-edge fidelity benchmark (#317) (61981ae)
-- **skills**: add design-brief skill and scope vault export caps (#315) (96249a4)
-- **agents**: add PrAuthor sub-agent for PR draft workflow (#314) (5fa8871)
-- **sandcastle**: add sweep dispatch mode and dry-run support (#309) (737f3f4)
-- **ai-commit**: add failure trailers and secret path guards (#313) (264efb9)
-- **sandcastle**: add standalone dispatch and resolve Claude auth (#300) (b259c49)
+## Highlights
 
-### Fixes
+The focused YouTube watching experience (#264) is the headline of this release: a channel-first
+directory, an in-session queue, Shorts kept deliberately separate from long-form video, and daily
+guardrails designed to stop the watching session before it turns into a doomscroll.
 
-- **deps**: pin deepmerge-ts@8.0.1 to patch stack exhaustion (f25f145)
-- **youtube**: announce the channel selector as the tab set it behaves like (eac2184)
-- **youtube**: clear per-video player state on an in-place swap (bcf31cc)
-- **youtube**: give each queue rail its own heading id (fa9e710)
-- **youtube**: meter Shorts from the Play press, not the embed alone (c115254)
-- **youtube**: align channel list arrow keys to layout orientation (f95f3bf)
-- **youtube**: arbitrate single active player between surfaces (be2b475)
-- **storybook**: wait for Dialog fade-in before visibility assertion (#289) (#371) (f281c47)
-- **backend**: do not claim digest period on empty window (3bad7d6)
-- **deps**: update nanoid to 3.3.18 (#328) (3a00306)
-- correct timezone handling in subscription date picker (#243) (df38774)
-- **auth**: make error codes reachable and stop token lifetimes drifting (#325) (9050b30)
-- **hooks**: stop agent hooks firing on reads and file content (#324) (2748700)
-- **graphify**: guard command substitutions from errexit (#311) (8f0cf47)
-- **security**: run the agent security hooks in Claude Code and guard secret reads (#298) (8eabccf)
-- **graphify**: graduate from probation and make the agent wiring survive sync (#297) (8598720)
-- **graphify**: close SQL and parse-error coverage gaps (#292) (#296) (719d779)
-- **graphify**: repair the MCP server setup and auto-refresh the graph on commit (#293) (bc2ada7)
-- **deps**: resolve nanoid DoS advisories and document image-size exception (#283) (f5e62d2)
-- **hooks**: unify agent hooks across Copilot, Cursor, and Claude (#275) (bed8ae6)
+## Added
 
-### Documentation
+### Focused YouTube watching
 
-- **youtube**: move prototype reference map onto the PRD (72e5bd8)
-- **youtube**: document Namecheap cPanel cron and SMTP setup (c5d2ad7)
-- **libs**: enforce ADR 0023 markdown allowlist in Husky and CI (#363) (347770b)
-- **apps**: restrict apps markdown to agent guides and READMEs (#361) (a072433)
-- **agents**: add Next.js 16 instruction truth and ADR 0019 (#359) (#360) (5a0c5f1)
-- **adr**: record component hygiene enforcement decision (#343) (45a929f)
-- **youtube**: record why the digest window filters on publishedAt (7be5fc8)
-- **tech-stack**: revalidate image-size audit exception (#331) (e70a89d)
-- **youtube**: point agents at the locked prototype variants (3bd155c)
-- **auth**: add the session lifecycle explainer, brief, and drift guard (#329) (e5d97ae)
-- **context**: add identity and session vocabulary to the glossary (#327) (96239bd)
-- **readme**: make the README a front door and guard it against drift (#326) (ef36d1c)
-- **vault**: add trust boundary and lifecycle pages with a drift guard (#316) (a91d263)
-- **agents**: add the sub-agent orchestration map and work-item journey (#312) (efa35f7)
-- **security**: point the image-size audit exception at its tracking issue (#286) (4bb4e7b)
-- **agents**: adopt tiered quality gates and issue unblock (#277) (571408e)
-- **context**: add Shorts Daily Budget and Hard Stop terms (#274) (dcdd5bf)
-- **context**: add Followed Channel and watching glossary terms (#260) (1aaaf5a)
-- **context**: add Shorts Daily Budget and Hard Stop terms (#259) (c3fcbb5)
+- **Channel-first directory** replaces the old view-mode toggle. Browse by channel, with
+  privacy-enhanced in-app playback so watching no longer hands YouTube a full tracking profile.
+- **In-session queue rail** with keyboard navigation, per-video duration estimates, and a running
+  total so you can see what committing to the queue actually costs you.
+- **Shorts, isolated by design.** Shorts are classified by runtime and kept out of the long-form
+  feed. A **Daily Budget** meter tracks Shorts watched, and a **Hard Stop** ends the session when
+  the budget is spent.
+- **Watched state** is tracked on synced videos, with sync freshness and cooldown indicators that
+  tell you when the list you are looking at is stale or a sync has failed.
+- **Digest deep-linking** — links in the weekly digest email and the subscription list now open the
+  channel directly in the focused directory.
+- Digest delivery now runs as its own resumable worker, so a partial failure resumes instead of
+  restarting the whole send.
 
-### Refactors
+### Elsewhere
 
-- **agents**: script the component shape rules and slim the UI pipelines (#287) (995cb83)
-- **testing**: rework the Jest test pipeline guardrails (#282) (a5eead7)
+- Visual regression testing via Chromatic UI Tests in CI, with a Storybook story library covering
+  the UI primitives and vault components.
 
-### Tests
+## Fixed
 
-- **backend**: replace once mock queues in YouTube service specs (13c3a8f)
+### Security
 
-### CI
+- **`deepmerge-ts` stack exhaustion** — pinned to 8.0.1 to patch
+  [GHSA-ggr8-5vv4-36mx](https://github.com/advisories/GHSA-ggr8-5vv4-36mx), where deeply nested
+  input could exhaust the stack.
+- **`nanoid` denial of service** — updated to 3.3.18, resolving the outstanding DoS advisories
+  (#283, #328).
+- **Agent tooling secret exposure** — security hooks now run under Claude Code, and secret file
+  reads are guarded (#298).
 
-- **chromatic**: add Chromatic UI Tests job to CI (#376) (f1a3775)
-- **security**: trigger the npm audit on dependency content, not file paths (#284) (5e02d89)
+### Accessibility
 
-### Chores
+- The channel selector now announces as the tab set it already behaved like, with correct
+  `tablist` / `tab` / `tabpanel` semantics and orientation.
+- Each queue rail has its own heading id, so the two layouts no longer emit duplicate ids.
+- Channel list arrow keys follow the layout: up/down on desktop, left/right on mobile.
 
-- **release**: add plan gate and correct the production approval model (a2f0a38)
-- **agents**: fix component pipeline gaps; add builder bash (1eef3b5)
-- **agents**: add project-scoped implement skill to override global (0289fab)
-- **license**: adopt Elastic License 2.0 (#320) (#365) (83f5a9f)
-- **agents**: consolidate harness instructions under ADR 0020 SSOT (#362) (c4ce919)
-- **agents**: cap gated pipeline reject cycles at 2 (4662632)
-- format prisma schema on commit and allow data migrations (cf89947)
-- **agents**: add one-shot API contract specialists (#342) (1c4ba5d)
-- **tooling**: enforce test hygiene in CI and pre-commit (#330) (5c8a23d)
-- **agents**: align model policy with the agent definitions (eb4f06f)
-- **agents**: update agent model lists (0110c51)
-- **release**: remove unused semver tag functions (#299) (6853bca)
-- **claude-code**: configure permissions with allow/ask/deny rules (#295) (369539a)
-- **agents**: govern sub-agent model assignments across harnesses (#280) (5c875b4)
-- **skills**: selective mattpocock sync through v1.2.3 (#279) (26b05b7)
+### Behaviour
 
-### Other changes
+- **Auth token lifetimes no longer drift** on refresh, and previously unreachable error codes now
+  surface to the client (#325).
+- Per-video player state is cleared on an in-place Shorts swap — playback status and duration no
+  longer leak from the previous video.
+- Only one player can be active across surfaces at a time.
+- The Shorts budget meters from the Play press rather than the embed alone, so it stays accurate
+  when the embed is blocked or unresponsive.
+- The weekly digest no longer claims a digest period when the video window is empty.
+- Corrected timezone handling in the subscription date picker (#243).
 
-- Add `GoogleChrome/modern-web-guidance` to approved external skills baseline (#255) (a06b703)
-- [WIP] Fix failing GitHub Actions job Secure Install Review (#278) (c72002d)
-- Fix failing GitHub Actions job Secure Install Review (#276) (adf0c88)
+## Changed
+
+- **Elastic License 2.0** adopted repository-wide (#365). See the notice above.
+- **Production deploys are documented as approval-gated, and tags are receipts**
+  ([ADR 0028](docs/adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md)). The
+  ship decision is the required-reviewer approval on the `production` environment, not the dispatch
+  that queues the run. A `vX.Y.Z` tag now means "this version is live in production."
+- YouTube metadata privacy wording is surfaced on the playback surface itself, rather than buried
+  in settings.
+- The README is now a front door that links to `TECH_STACK.md`, `package.json`, and `.env.example`
+  instead of restating them, with a drift guard in CI (#326).
+
+## Internal
+
+Agent governance and harness consolidation (ADR 0020), tiered quality gates (ADR 0012), component
+hygiene enforcement (ADR 0027), the markdown allowlist (ADR 0023), PR Surface Labels (ADR 0025),
+graphify knowledge-graph fixes, sandcastle dispatch modes, and the `PrAuthor` sub-agent. None of
+this changes application behaviour.
