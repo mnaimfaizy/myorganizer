@@ -183,6 +183,72 @@ describe('QueueRail', () => {
         screen.getAllByText('Queue is full — 4 is the point.'),
       ).toHaveLength(2); // Desktop and mobile
     });
+
+    it('should show "~N min left" when all remaining items have known duration', () => {
+      const videosWithDuration = [
+        { ...baseVideo('1'), durationSeconds: 300 }, // 5 minutes
+        { ...baseVideo('2'), durationSeconds: 420 }, // 7 minutes
+        { ...baseVideo('3'), durationSeconds: 600 }, // 10 minutes
+      ];
+      const { result } = renderHook(() => useVideoQueue(videosWithDuration));
+      const { rerender } = render(<QueueRail queue={result.current} />);
+
+      act(() => {
+        result.current.add('1');
+        result.current.add('2');
+        result.current.add('3');
+      });
+      rerender(<QueueRail queue={result.current} />);
+
+      // Total: 300 + 420 + 600 = 1320 seconds = 22 minutes
+      // Should display "3 of 4 · ~22 min left"
+      const summarySpans = screen.getAllByText(/of 4/);
+      const summaryText = summarySpans[0]?.textContent;
+      expect(summaryText).toContain('~22 min left');
+    });
+
+    it('should omit "min left" when any remaining item lacks duration', () => {
+      // Mix of videos: one has duration, one doesn't
+      const mixedVideos = [
+        { ...baseVideo('1'), durationSeconds: 300 }, // Has duration
+        { ...baseVideo('2'), durationSeconds: undefined }, // No duration
+        { ...baseVideo('3'), durationSeconds: 600 }, // Has duration
+      ];
+      const { result } = renderHook(() => useVideoQueue(mixedVideos));
+      const { rerender } = render(<QueueRail queue={result.current} />);
+
+      act(() => {
+        result.current.add('1');
+        result.current.add('2');
+        result.current.add('3');
+      });
+      rerender(<QueueRail queue={result.current} />);
+
+      // When any item lacks duration, min left should not be shown
+      const summarySpans = screen.getAllByText(/of 4/);
+      const summaryText = summarySpans[0]?.textContent;
+      // Should be exactly "3 of 4" with no "min left" suffix and no dangling "·"
+      expect(summaryText).toBe('3 of 4');
+    });
+
+    it('should floor remaining time at 1 minute', () => {
+      const videosShortDuration = [
+        { ...baseVideo('1'), durationSeconds: 10 }, // 10 seconds, rounds to 0, should floor to 1
+      ];
+      const { result } = renderHook(() => useVideoQueue(videosShortDuration));
+      const { rerender } = render(<QueueRail queue={result.current} />);
+
+      act(() => {
+        result.current.add('1');
+      });
+      rerender(<QueueRail queue={result.current} />);
+
+      // Should display "1 of 4 · ~1 min left" (not ~0 min left)
+      const summarySpans = screen.getAllByText(/of 4/);
+      const summaryText = summarySpans[0]?.textContent;
+      expect(summaryText).toContain('~1 min left');
+      expect(summaryText).not.toContain('~0 min left');
+    });
   });
 
   describe('queue items rendering', () => {
@@ -847,6 +913,162 @@ describe('QueueRail', () => {
       // ArrowDown on the last item should not crash or cause issues
       fireEvent.keyDown(btn2, { key: 'ArrowDown' });
       expect(btn2).toBeInTheDocument();
+    });
+
+    it('should move focus to first item on Home key', () => {
+      const library = [baseVideo('1'), baseVideo('2'), baseVideo('3')];
+      const { result } = renderHook(() => useVideoQueue(library));
+      const { rerender } = render(<QueueRail queue={result.current} />);
+
+      act(() => {
+        result.current.add('1');
+        result.current.add('2');
+        result.current.add('3');
+      });
+      rerender(<QueueRail queue={result.current} />);
+
+      // Get all Play buttons
+      let playButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.startsWith('Play'));
+      expect(playButtons.length).toBeGreaterThanOrEqual(3);
+
+      const lastPlayButton = playButtons[2] as HTMLButtonElement;
+
+      // Fire Home key on the last Play button
+      act(() => {
+        fireEvent.keyDown(lastPlayButton, { key: 'Home' });
+      });
+
+      // Re-fetch buttons and verify the first button now has tabindex="0" (roving tabindex pattern)
+      playButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.startsWith('Play'));
+      const firstPlayButton = playButtons[0] as HTMLButtonElement;
+      const secondPlayButton = playButtons[1] as HTMLButtonElement;
+      const thirdPlayButton = playButtons[2] as HTMLButtonElement;
+
+      // Verify roving tabindex: only the first button should be focusable
+      expect(firstPlayButton).toHaveAttribute('tabindex', '0');
+      expect(secondPlayButton).toHaveAttribute('tabindex', '-1');
+      expect(thirdPlayButton).toHaveAttribute('tabindex', '-1');
+    });
+
+    it('should move focus to last item on End key', () => {
+      const library = [baseVideo('1'), baseVideo('2'), baseVideo('3')];
+      const { result } = renderHook(() => useVideoQueue(library));
+      const { rerender } = render(<QueueRail queue={result.current} />);
+
+      act(() => {
+        result.current.add('1');
+        result.current.add('2');
+        result.current.add('3');
+      });
+      rerender(<QueueRail queue={result.current} />);
+
+      // Get all Play buttons
+      let playButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.startsWith('Play'));
+      expect(playButtons.length).toBeGreaterThanOrEqual(3);
+
+      const firstPlayButton = playButtons[0] as HTMLButtonElement;
+
+      // Fire End key on the first Play button
+      act(() => {
+        fireEvent.keyDown(firstPlayButton, { key: 'End' });
+      });
+
+      // Re-fetch buttons and verify the last button now has tabindex="0"
+      playButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.startsWith('Play'));
+      const lastPlayButton = playButtons[2] as HTMLButtonElement;
+      const firstPlayButtonAfter = playButtons[0] as HTMLButtonElement;
+      const secondPlayButton = playButtons[1] as HTMLButtonElement;
+
+      // Verify roving tabindex: only the last button should be focusable
+      expect(lastPlayButton).toHaveAttribute('tabindex', '0');
+      expect(firstPlayButtonAfter).toHaveAttribute('tabindex', '-1');
+      expect(secondPlayButton).toHaveAttribute('tabindex', '-1');
+    });
+
+    it('should handle Home key on single-item queue', () => {
+      const library = [baseVideo('1')];
+      const { result } = renderHook(() => useVideoQueue(library));
+      const { rerender } = render(<QueueRail queue={result.current} />);
+
+      act(() => {
+        result.current.add('1');
+      });
+      rerender(<QueueRail queue={result.current} />);
+
+      let playButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.startsWith('Play'));
+      expect(playButtons.length).toBeGreaterThanOrEqual(1);
+
+      const playButton = playButtons[0] as HTMLButtonElement;
+
+      // Press Home on the only Play button
+      act(() => {
+        fireEvent.keyDown(playButton, { key: 'Home' });
+      });
+
+      // Re-fetch the button and verify it still has tabindex="0"
+      playButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.startsWith('Play'));
+      const singleButton = playButtons[0] as HTMLButtonElement;
+      expect(singleButton).toHaveAttribute('tabindex', '0');
+    });
+
+    it('should restore focus to previous Play button when Escape is pressed', async () => {
+      const library = [baseVideo('1'), baseVideo('2')];
+      const { result } = renderHook(() => useVideoQueue(library));
+      const { rerender, container } = render(
+        <QueueRail queue={result.current} />,
+      );
+
+      act(() => {
+        result.current.add('1');
+        result.current.add('2');
+      });
+      rerender(<QueueRail queue={result.current} />);
+
+      // Get the Play button for the first video
+      const playButtons = screen
+        .getAllByRole('button')
+        .filter((btn) => btn.getAttribute('aria-label')?.startsWith('Play'));
+      const playButton1 = playButtons[0] as HTMLButtonElement;
+
+      // Focus the Play button manually (simulating user clicking it)
+      act(() => {
+        playButton1.focus();
+      });
+      expect(document.activeElement).toBe(playButton1);
+
+      // Play the video (this moves focus to the now-playing title)
+      act(() => {
+        result.current.playId('1');
+      });
+      rerender(<QueueRail queue={result.current} />);
+
+      // Find the title element and verify focus moved to it
+      const titleElement = container.querySelector(
+        'h3[tabindex="-1"]',
+      ) as HTMLHeadingElement;
+      expect(titleElement).toBeInTheDocument();
+      expect(document.activeElement).toBe(titleElement);
+
+      // Press Escape on the title element
+      fireEvent.keyDown(titleElement, { key: 'Escape' });
+
+      // Focus should be restored to the original Play button
+      expect(document.activeElement).toBe(playButton1);
+
+      // Verify the player is still rendered (Escape doesn't remove it)
+      expect(screen.getByTestId('player-1')).toBeInTheDocument();
     });
   });
 

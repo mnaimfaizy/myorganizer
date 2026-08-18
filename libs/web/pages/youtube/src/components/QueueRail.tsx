@@ -4,6 +4,7 @@ import { Button, cn } from '@myorganizer/web-ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { updateVideoWatched } from '../hooks';
 import type { VideoQueue } from '../hooks/useVideoQueue';
+import type { YouTubeVideo } from '../types';
 import { QueueRailItem } from './QueueRailItem';
 import { YouTubeVideoPlayer } from './YouTubeVideoPlayer';
 
@@ -13,12 +14,34 @@ interface QueueRailProps {
   className?: string;
 }
 
+function computeRemainingMinutes(
+  videos: YouTubeVideo[],
+  startIndex: number,
+): number | null {
+  if (startIndex >= videos.length || startIndex < 0) {
+    return null;
+  }
+
+  let totalSeconds = 0;
+  for (let i = startIndex; i < videos.length; i++) {
+    const duration = videos[i]?.durationSeconds;
+    if (duration == null) {
+      return null;
+    }
+    totalSeconds += duration;
+  }
+
+  const minutes = Math.round(totalSeconds / 60);
+  return Math.max(minutes, 1);
+}
+
 export function QueueRail({
   queue,
   onWatchedToggle,
   className,
 }: QueueRailProps) {
   const nowPlayingTitleRef = useRef<HTMLHeadingElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
   const lastFocusSignalRef = useRef<number>(queue.focusSignal);
   const [focusedRowIndex, setFocusedRowIndex] = useState<number>(0);
   const [watched, setWatched] = useState<boolean>(!!queue.current?.watched);
@@ -27,6 +50,10 @@ export function QueueRail({
 
   useEffect(() => {
     if (queue.focusSignal !== lastFocusSignalRef.current && queue.current) {
+      const activeElement = document.activeElement;
+      if (activeElement instanceof HTMLElement) {
+        previousFocusRef.current = activeElement;
+      }
       nowPlayingTitleRef.current?.focus();
       lastFocusSignalRef.current = queue.focusSignal;
     }
@@ -94,13 +121,38 @@ export function QueueRail({
         const prevIndex = Math.max(index - 1, 0);
         setFocusedRowIndex(prevIndex);
         playButtonRefs.current[prevIndex]?.focus();
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        setFocusedRowIndex(0);
+        playButtonRefs.current[0]?.focus();
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        const lastIndex = queue.items.length - 1;
+        setFocusedRowIndex(lastIndex);
+        playButtonRefs.current[lastIndex]?.focus();
       }
     },
     [queue.items.length],
   );
 
+  const handlePlayerKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        previousFocusRef.current?.focus();
+      }
+    },
+    [],
+  );
+
+  const startIdx = queue.activeIndex >= 0 ? queue.activeIndex : 0;
+  const remainingMinutes = computeRemainingMinutes(queue.items, startIdx);
+
   const playerContent = queue.current ? (
-    <div className="space-y-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 motion-reduce:transition-none">
+    <div
+      onKeyDown={handlePlayerKeyDown}
+      className="space-y-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 motion-reduce:transition-none"
+    >
       <YouTubeVideoPlayer
         key={queue.current.videoId}
         video={queue.current}
@@ -145,6 +197,7 @@ export function QueueRail({
         </div>
         <span className="text-xs text-gray-500 dark:text-gray-400">
           {queue.items.length} of 4
+          {remainingMinutes !== null && <> · ~{remainingMinutes} min left</>}
         </span>
       </div>
 
