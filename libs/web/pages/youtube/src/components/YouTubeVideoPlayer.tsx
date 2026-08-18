@@ -44,6 +44,32 @@ export function YouTubeVideoPlayer({
   const lastPlayingStateRef = useRef<boolean | undefined>(undefined);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
+  // Most consumers remount this player per video via `key`, so their per-video
+  // state starts clean. The Shorts panel deliberately does not: it swaps `video`
+  // on a live instance so the next Short keeps autoplaying without a second
+  // click. Without this reset that instance carries the previous Short's state
+  // forward — a stuck "Playback unavailable" card, a stale duration that trips
+  // the near-end threshold early on a shorter clip, and a playing flag that
+  // suppresses the next onPlayingChange. `isPlaying` is the one thing that must
+  // survive, because it is what keeps the autoplay chain going.
+  const [renderedVideoId, setRenderedVideoId] = useState<string>(video.videoId);
+  if (renderedVideoId !== video.videoId) {
+    setRenderedVideoId(video.videoId);
+    setIsUnavailable(false);
+    setErrorMessage(null);
+    setIsIframeReady(false);
+  }
+
+  // The per-video refs are cleared in an effect rather than beside the state
+  // above, because a ref must not be written during render. Nothing reads them
+  // except the postMessage handlers, and those cannot report on the new video
+  // until its iframe has reloaded, so this always lands first.
+  useEffect(() => {
+    hasFiredNearEndRef.current = false;
+    lastDurationRef.current = undefined;
+    lastPlayingStateRef.current = undefined;
+  }, [video.videoId]);
+
   useEffect(() => {
     if (!watched) {
       hasFiredNearEndRef.current = false;

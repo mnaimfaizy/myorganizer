@@ -635,4 +635,166 @@ describe('YouTubeVideoPlayer', () => {
     expect(onPlayingChange).toHaveBeenCalledTimes(2);
     expect(onPlayingChange).toHaveBeenCalledWith(false);
   });
+  describe('swapping video on a live instance', () => {
+    const otherVideo: YouTubeVideo = {
+      ...baseVideo,
+      id: '2',
+      videoId: 'oHg5SJYRHA0',
+      title: 'Second Video Title',
+      durationSeconds: 60,
+    };
+
+    it('clears a stuck unavailable card when the video is swapped in place', async () => {
+      const { rerender } = render(<YouTubeVideoPlayer video={baseVideo} />);
+      fireEvent.click(
+        screen.getByRole('button', { name: /Play Test Video Title/ }),
+      );
+
+      act(() => {
+        window.dispatchEvent(
+          new CustomEvent('youtube-player-error', {
+            detail: { videoId: baseVideo.videoId, reason: 'Blocked.' },
+          }),
+        );
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Playback unavailable in app')).toBeTruthy();
+      });
+
+      // The Shorts panel swaps the video without remounting; the previous
+      // Short's failure must not condemn the next one.
+      rerender(<YouTubeVideoPlayer video={otherVideo} />);
+
+      expect(screen.queryByText('Playback unavailable in app')).toBeNull();
+      expect(
+        screen.getByTitle('Second Video Title - YouTube video player'),
+      ).toBeTruthy();
+    });
+
+    it('does not carry the previous duration into the next video near-end check', () => {
+      const onNearEnd = jest.fn();
+      const { rerender } = render(
+        <YouTubeVideoPlayer video={baseVideo} onNearEnd={onNearEnd} />,
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: /Play Test Video Title/ }),
+      );
+
+      const iframe = screen.getByTitle(
+        'Test Video Title - YouTube video player',
+      ) as HTMLIFrameElement;
+
+      // The first video is ten minutes long.
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            origin: 'https://www.youtube-nocookie.com',
+            source: iframe.contentWindow,
+            data: {
+              event: 'infoDelivery',
+              info: { videoId: baseVideo.videoId, duration: 600 },
+            },
+          }),
+        );
+      });
+
+      rerender(<YouTubeVideoPlayer video={otherVideo} onNearEnd={onNearEnd} />);
+
+      // The next video reports position but has not reported its own duration
+      // yet. Measured against the retained 600s this looks like the final
+      // stretch, and the video would be auto-marked Watched nine minutes early.
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            origin: 'https://www.youtube-nocookie.com',
+            source: iframe.contentWindow,
+            data: {
+              event: 'infoDelivery',
+              info: { videoId: otherVideo.videoId, currentTime: 580 },
+            },
+          }),
+        );
+      });
+
+      expect(onNearEnd).not.toHaveBeenCalled();
+
+      // It still fires once the new video reports a duration of its own.
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            origin: 'https://www.youtube-nocookie.com',
+            source: iframe.contentWindow,
+            data: {
+              event: 'infoDelivery',
+              info: {
+                videoId: otherVideo.videoId,
+                currentTime: 59,
+                duration: 60,
+              },
+            },
+          }),
+        );
+      });
+
+      expect(onNearEnd).toHaveBeenCalledTimes(1);
+    });
+
+    it('reports playing again for the next video after the previous one was playing', () => {
+      const onPlayingChange = jest.fn();
+      const { rerender } = render(
+        <YouTubeVideoPlayer
+          video={baseVideo}
+          onPlayingChange={onPlayingChange}
+        />,
+      );
+      fireEvent.click(
+        screen.getByRole('button', { name: /Play Test Video Title/ }),
+      );
+
+      const iframe = screen.getByTitle(
+        'Test Video Title - YouTube video player',
+      ) as HTMLIFrameElement;
+
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            origin: 'https://www.youtube-nocookie.com',
+            source: iframe.contentWindow,
+            data: {
+              event: 'infoDelivery',
+              info: { videoId: baseVideo.videoId, state: 1 },
+            },
+          }),
+        );
+      });
+
+      expect(onPlayingChange).toHaveBeenLastCalledWith(true);
+      onPlayingChange.mockClear();
+
+      rerender(
+        <YouTubeVideoPlayer
+          video={otherVideo}
+          onPlayingChange={onPlayingChange}
+        />,
+      );
+
+      act(() => {
+        window.dispatchEvent(
+          new MessageEvent('message', {
+            origin: 'https://www.youtube-nocookie.com',
+            source: iframe.contentWindow,
+            data: {
+              event: 'infoDelivery',
+              info: { videoId: otherVideo.videoId, state: 1 },
+            },
+          }),
+        );
+      });
+
+      // A retained "already playing" flag would swallow this, leaving the
+      // consumer believing nothing is playing.
+      expect(onPlayingChange).toHaveBeenCalledWith(true);
+    });
+  });
 });
