@@ -1186,4 +1186,84 @@ describe('QueueRail', () => {
       expect(summary?.textContent).toContain('Queue (2)');
     });
   });
+
+  describe('single active player arbitration', () => {
+    it('should claim playback when a queued upload is played', () => {
+      const onPlaybackClaim = jest.fn();
+      const library = [baseVideo('1'), baseVideo('2')];
+      const { result } = renderHook(() => useVideoQueue(library));
+      const { rerender } = render(
+        <QueueRail queue={result.current} onPlaybackClaim={onPlaybackClaim} />,
+      );
+
+      act(() => {
+        result.current.add('1');
+        result.current.add('2');
+      });
+      rerender(
+        <QueueRail queue={result.current} onPlaybackClaim={onPlaybackClaim} />,
+      );
+
+      act(() => {
+        fireEvent.click(
+          screen.getAllByRole('button', { name: 'Play Test Video 2' })[0],
+        );
+      });
+      rerender(
+        <QueueRail queue={result.current} onPlaybackClaim={onPlaybackClaim} />,
+      );
+
+      expect(onPlaybackClaim).toHaveBeenCalledTimes(1);
+      // The claim does not replace the play — the rail still starts the video.
+      expect(screen.getByTestId('player-2')).toBeInTheDocument();
+    });
+
+    it('should not claim playback for queue edits that do not start a video', () => {
+      const onPlaybackClaim = jest.fn();
+      const library = [baseVideo('1'), baseVideo('2')];
+      const { result } = renderHook(() => useVideoQueue(library));
+      const { rerender } = render(
+        <QueueRail queue={result.current} onPlaybackClaim={onPlaybackClaim} />,
+      );
+
+      act(() => {
+        result.current.add('1');
+        result.current.add('2');
+      });
+      rerender(
+        <QueueRail queue={result.current} onPlaybackClaim={onPlaybackClaim} />,
+      );
+
+      const moveDown = screen.getAllByRole('button', {
+        name: 'Move Test Video 1 down',
+      })[0];
+      expect(moveDown).toBeDefined();
+
+      act(() => {
+        fireEvent.click(moveDown);
+      });
+
+      expect(onPlaybackClaim).not.toHaveBeenCalled();
+    });
+
+    it('should play normally when no claim handler is supplied', () => {
+      const library = [baseVideo('1')];
+      const { result } = renderHook(() => useVideoQueue(library));
+      const { rerender } = render(<QueueRail queue={result.current} />);
+
+      act(() => {
+        result.current.add('1');
+      });
+      rerender(<QueueRail queue={result.current} />);
+
+      act(() => {
+        fireEvent.click(
+          screen.getAllByRole('button', { name: 'Play Test Video 1' })[0],
+        );
+      });
+      rerender(<QueueRail queue={result.current} />);
+
+      expect(screen.getByTestId('player-1')).toBeInTheDocument();
+    });
+  });
 });

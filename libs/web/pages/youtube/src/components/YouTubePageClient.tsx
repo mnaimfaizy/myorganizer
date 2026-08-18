@@ -71,6 +71,27 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
 
   const queue = useVideoQueue(library);
 
+  // Which surface owns the single active player. The queue rail and the
+  // channel directory each carry their own player per the locked Variant B
+  // and Variant C models, but only one of them may be playing: two YouTube
+  // embeds running at once means two audio streams and two near-end handlers
+  // racing to mark uploads Watched. Nothing plays on arrival, so the
+  // directory — the home surface — holds the claim until the rail takes it.
+  const [playbackOwner, setPlaybackOwner] = useState<'directory' | 'queue'>(
+    'directory',
+  );
+
+  const handleDirectoryPlaybackClaim = useCallback(() => {
+    setPlaybackOwner('directory');
+    // Leaves the queue contents alone — only the playing pointer is cleared,
+    // so the rail keeps its order and the User can resume it.
+    queue.stop();
+  }, [queue]);
+
+  const handleQueuePlaybackClaim = useCallback(() => {
+    setPlaybackOwner('queue');
+  }, []);
+
   const handleWatchedToggle = useCallback(
     (videoId: string, watched: boolean) => {
       carouselData.updateWatched(videoId, watched);
@@ -176,7 +197,11 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
               {syncError}
             </div>
           )}
-          <QueueRail queue={queue} onWatchedToggle={handleWatchedToggle} />
+          <QueueRail
+            queue={queue}
+            onWatchedToggle={handleWatchedToggle}
+            onPlaybackClaim={handleQueuePlaybackClaim}
+          />
           <ChannelDirectory
             channels={carouselData.channels}
             loading={carouselData.loading}
@@ -186,6 +211,8 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
             onAddToQueue={queue.add}
             isQueued={queue.isQueued}
             queueFull={queue.isFull}
+            playbackSuspended={playbackOwner !== 'directory'}
+            onPlaybackClaim={handleDirectoryPlaybackClaim}
           />
         </CardContent>
       </Card>

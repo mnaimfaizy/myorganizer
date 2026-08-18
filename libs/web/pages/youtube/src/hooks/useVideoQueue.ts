@@ -34,6 +34,12 @@ export interface VideoQueue {
   moveUp: (videoId: string) => void;
   moveDown: (videoId: string) => void;
   clear: () => void;
+  /**
+   * Stops playback while leaving the queue itself intact, so another surface
+   * on the page can take over the single active player. Not a play, so it
+   * never bumps `focusSignal`.
+   */
+  stop: () => void;
   playId: (videoId: string) => void;
   playNext: () => void;
   completeAndNext: (videoId: string) => void;
@@ -151,6 +157,12 @@ export function useVideoQueue(library: YouTubeVideo[]): VideoQueue {
     setState((prev) => ({ ...prev, ids: [], activeId: null }));
   }, []);
 
+  const stop = useCallback(() => {
+    setState((prev) =>
+      prev.activeId === null ? prev : { ...prev, activeId: null },
+    );
+  }, []);
+
   const playId = useCallback((videoId: string) => {
     setState((prev) => {
       if (!prev.ids.includes(videoId)) return prev;
@@ -224,6 +236,7 @@ export function useVideoQueue(library: YouTubeVideo[]): VideoQueue {
       moveUp,
       moveDown,
       clear,
+      stop,
       playId,
       playNext,
       completeAndNext,
@@ -241,6 +254,7 @@ export function useVideoQueue(library: YouTubeVideo[]): VideoQueue {
       moveUp,
       moveDown,
       clear,
+      stop,
       playId,
       playNext,
       completeAndNext,

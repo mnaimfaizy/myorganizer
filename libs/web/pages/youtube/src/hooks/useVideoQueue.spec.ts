@@ -209,6 +209,86 @@ describe('useVideoQueue', () => {
     });
   });
 
+  describe('stop', () => {
+    it('should clear the active pointer without emptying the queue', () => {
+      const library = [baseVideo('1'), baseVideo('2')];
+      const { result } = renderHook(() => useVideoQueue(library));
+
+      act(() => {
+        result.current.add('1');
+        result.current.add('2');
+        result.current.playId('1');
+      });
+
+      act(() => {
+        result.current.stop();
+      });
+
+      expect(result.current.activeId).toBeNull();
+      expect(result.current.current).toBeNull();
+      expect(result.current.activeIndex).toBe(-1);
+      // The rail keeps its order so the User can resume where they were.
+      expect(result.current.ids).toEqual(['1', '2']);
+    });
+
+    it('should not bump focusSignal, because stopping is not a play', () => {
+      const library = [baseVideo('1')];
+      const { result } = renderHook(() => useVideoQueue(library));
+
+      act(() => {
+        result.current.add('1');
+        result.current.playId('1');
+      });
+
+      const signalWhilePlaying = result.current.focusSignal;
+
+      act(() => {
+        result.current.stop();
+      });
+
+      expect(result.current.focusSignal).toBe(signalWhilePlaying);
+    });
+
+    it('should be a no-op when nothing is playing', () => {
+      const library = [baseVideo('1')];
+      const { result } = renderHook(() => useVideoQueue(library));
+
+      act(() => {
+        result.current.add('1');
+      });
+
+      act(() => {
+        result.current.stop();
+      });
+
+      expect(result.current.activeId).toBeNull();
+      expect(result.current.ids).toEqual(['1']);
+      expect(result.current.focusSignal).toBe(0);
+    });
+
+    it('should let playback resume after a stop', () => {
+      const library = [baseVideo('1'), baseVideo('2')];
+      const { result } = renderHook(() => useVideoQueue(library));
+
+      act(() => {
+        result.current.add('1');
+        result.current.add('2');
+        result.current.playId('1');
+      });
+
+      act(() => {
+        result.current.stop();
+      });
+
+      act(() => {
+        result.current.playId('2');
+      });
+
+      expect(result.current.activeId).toBe('2');
+      expect(result.current.current).toEqual(library[1]);
+    });
+  });
+
   describe('playId', () => {
     it('should set activeId and bump focusSignal when videoId is queued', () => {
       const library = [baseVideo('1'), baseVideo('2')];

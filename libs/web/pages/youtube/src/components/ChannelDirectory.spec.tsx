@@ -849,4 +849,84 @@ describe('ChannelDirectory', () => {
       expect(detailH2?.textContent).toBe('Channel 2');
     });
   });
+
+  describe('Single active player arbitration', () => {
+    const channels = [
+      makeChannel('ch-1', 'Channel 1', [makeVideo('1', 'Video 1')]),
+    ];
+
+    it('claims playback before opening its own player', () => {
+      const onPlaybackClaim = jest.fn();
+      render(
+        <ChannelDirectory
+          channels={channels}
+          loading={false}
+          onPlaybackClaim={onPlaybackClaim}
+        />,
+      );
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /Play Video 1 in app/ }),
+      );
+
+      expect(onPlaybackClaim).toHaveBeenCalledTimes(1);
+      expect(screen.getByTestId('player-vid-1')).toBeInTheDocument();
+    });
+
+    it('closes its player when another surface takes playback', () => {
+      const { rerender } = render(
+        <ChannelDirectory channels={channels} loading={false} />,
+      );
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /Play Video 1 in app/ }),
+      );
+      expect(screen.getByTestId('player-vid-1')).toBeInTheDocument();
+
+      rerender(
+        <ChannelDirectory
+          channels={channels}
+          loading={false}
+          playbackSuspended
+        />,
+      );
+
+      expect(screen.queryByTestId('player-vid-1')).not.toBeInTheDocument();
+    });
+
+    it('does not steal focus back when it is suspended', () => {
+      const { rerender } = render(
+        <ChannelDirectory channels={channels} loading={false} />,
+      );
+
+      const playButton = screen.getByRole('button', {
+        name: /Play Video 1 in app/,
+      });
+      fireEvent.click(playButton);
+
+      // The surface that claimed playback owns focus placement, so a suspend
+      // must not pull focus back to this row's play button.
+      (document.activeElement as HTMLElement | null)?.blur();
+
+      rerender(
+        <ChannelDirectory
+          channels={channels}
+          loading={false}
+          playbackSuspended
+        />,
+      );
+
+      expect(document.activeElement).not.toBe(playButton);
+    });
+
+    it('still plays normally when no arbitration props are supplied', () => {
+      render(<ChannelDirectory channels={channels} loading={false} />);
+
+      fireEvent.click(
+        screen.getByRole('button', { name: /Play Video 1 in app/ }),
+      );
+
+      expect(screen.getByTestId('player-vid-1')).toBeInTheDocument();
+    });
+  });
 });

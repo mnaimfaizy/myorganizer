@@ -17,6 +17,17 @@ interface ChannelDirectoryProps {
   onAddToQueue?: (videoId: string) => void;
   isQueued?: (videoId: string) => boolean;
   queueFull?: boolean;
+  /**
+   * True while another surface on the page owns the single active player.
+   * The directory closes its own player rather than letting two YouTube
+   * embeds play over each other.
+   */
+  playbackSuspended?: boolean;
+  /**
+   * Called when the User plays an upload here, so the page can hand this
+   * surface the active player and stop whatever else was playing.
+   */
+  onPlaybackClaim?: () => void;
 }
 
 export function ChannelDirectory({
@@ -28,17 +39,27 @@ export function ChannelDirectory({
   onAddToQueue,
   isQueued,
   queueFull,
+  playbackSuspended = false,
+  onPlaybackClaim,
 }: ChannelDirectoryProps) {
   const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
     null,
   );
-  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+  const [pickedVideoId, setPickedVideoId] = useState<string | null>(null);
   const [focusedVideoIndex, setFocusedVideoIndex] = useState<number>(0);
 
   const channelDesktopRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const channelMobileRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const videoRowRefs = useRef<(HTMLDivElement | null)[]>([]);
   const playerTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  // Playback is derived, not synced: while another surface owns the single
+  // active player this one renders none, whatever the User last picked here.
+  // Suspension only lifts when this surface claims playback again, which sets
+  // a fresh id in the same commit — so nothing stale can resume on its own.
+  // Deriving rather than clearing in an effect also means focus is never
+  // yanked back: the surface that claimed playback owns where focus lands.
+  const activeVideoId = playbackSuspended ? null : pickedVideoId;
 
   // Compute effective selected channel: use explicit selection if valid, else first channel
   const effectiveSelectedChannelId =
@@ -53,7 +74,7 @@ export function ChannelDirectory({
 
   const handleChannelSelect = useCallback((channelId: string) => {
     setSelectedChannelId(channelId);
-    setActiveVideoId(null);
+    setPickedVideoId(null);
     setFocusedVideoIndex(0);
   }, []);
 
@@ -72,27 +93,27 @@ export function ChannelDirectory({
         const nextIndex = Math.min(index + 1, channels.length - 1);
         refs[nextIndex]?.focus();
         setSelectedChannelId(channels[nextIndex].channelId);
-        setActiveVideoId(null);
+        setPickedVideoId(null);
         setFocusedVideoIndex(0);
       } else if (e.key === 'ArrowLeft') {
         e.preventDefault();
         const prevIndex = Math.max(index - 1, 0);
         refs[prevIndex]?.focus();
         setSelectedChannelId(channels[prevIndex].channelId);
-        setActiveVideoId(null);
+        setPickedVideoId(null);
         setFocusedVideoIndex(0);
       } else if (e.key === 'Home') {
         e.preventDefault();
         refs[0]?.focus();
         setSelectedChannelId(channels[0].channelId);
-        setActiveVideoId(null);
+        setPickedVideoId(null);
         setFocusedVideoIndex(0);
       } else if (e.key === 'End') {
         e.preventDefault();
         const lastIndex = channels.length - 1;
         refs[lastIndex]?.focus();
         setSelectedChannelId(channels[lastIndex].channelId);
-        setActiveVideoId(null);
+        setPickedVideoId(null);
         setFocusedVideoIndex(0);
       }
     },
@@ -129,7 +150,7 @@ export function ChannelDirectory({
         videoRowRefs.current[lastIndex]?.focus();
       } else if (e.key === 'Escape' && activeVideoId) {
         e.preventDefault();
-        setActiveVideoId(null);
+        setPickedVideoId(null);
         playerTriggerRef.current?.focus();
       }
     },
@@ -138,14 +159,17 @@ export function ChannelDirectory({
 
   const handlePlayVideo = useCallback(
     (videoId: string, triggerElement: HTMLButtonElement) => {
-      setActiveVideoId(videoId);
+      // Claim before opening, so whatever else was playing is stopped in the
+      // same commit and the two players never overlap for a frame.
+      onPlaybackClaim?.();
+      setPickedVideoId(videoId);
       playerTriggerRef.current = triggerElement;
     },
-    [],
+    [onPlaybackClaim],
   );
 
   const handleClosePlayer = useCallback(() => {
-    setActiveVideoId(null);
+    setPickedVideoId(null);
     playerTriggerRef.current?.focus();
   }, []);
 

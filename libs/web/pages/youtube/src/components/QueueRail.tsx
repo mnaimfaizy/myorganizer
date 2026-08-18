@@ -11,6 +11,11 @@ import { YouTubeVideoPlayer } from './YouTubeVideoPlayer';
 interface QueueRailProps {
   queue: VideoQueue;
   onWatchedToggle?: (videoId: string, watched: boolean) => void;
+  /**
+   * Called when the User starts playback here, so the page can hand this
+   * surface the single active player and stop whatever else was playing.
+   */
+  onPlaybackClaim?: () => void;
   className?: string;
 }
 
@@ -38,6 +43,7 @@ function computeRemainingMinutes(
 export function QueueRail({
   queue,
   onWatchedToggle,
+  onPlaybackClaim,
   className,
 }: QueueRailProps) {
   const nowPlayingTitleRef = useRef<HTMLHeadingElement>(null);
@@ -101,6 +107,17 @@ export function QueueRail({
     if (!queue.current || watched || updating) return;
     await handleCompletion(queue.current.videoId);
   }, [queue.current, watched, updating, handleCompletion]);
+
+  // Claiming happens in the same event as the play, not in an effect after it,
+  // so the surface that was playing is torn down in the same commit and two
+  // embeds are never mounted together — not even for a frame.
+  const handlePlay = useCallback(
+    (videoId: string) => {
+      onPlaybackClaim?.();
+      queue.playId(videoId);
+    },
+    [onPlaybackClaim, queue],
+  );
 
   const handleRegisterPlayButton = useCallback(
     (index: number, el: HTMLButtonElement | null) => {
@@ -231,7 +248,7 @@ export function QueueRail({
                 isCurrentlyPlaying={isCurrentlyPlaying}
                 focusedRowIndex={focusedRowIndex}
                 onRegisterPlayButton={handleRegisterPlayButton}
-                onPlay={queue.playId}
+                onPlay={handlePlay}
                 onRemove={queue.remove}
                 onMoveUp={queue.moveUp}
                 onMoveDown={queue.moveDown}
