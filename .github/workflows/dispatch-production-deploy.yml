@@ -1,4 +1,4 @@
-name: Deploy Production (latest release)
+name: Dispatch Production Deploy (latest release)
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ permissions:
   actions: write
 
 concurrency:
-  group: deploy-production-latest
+  group: dispatch-production-deploy
   cancel-in-progress: false
 
 jobs:
@@ -67,7 +67,7 @@ jobs:
         run: |
           set -euo pipefail
           {
-            echo '## Deploy Production (latest release)'
+            echo '## Dispatch Production Deploy (latest release)'
             echo
             echo "- Latest release branch: \`${{ steps.find.outputs.release_branch }}\`"
             echo "- Trigger: \`${{ github.event_name }}\`"

@@ -250,6 +250,28 @@ _Avoid_: fan-out, parallel pipeline, concurrent by default
 A dated, cited report of how this repo's instructions and usage compare to official upstream documentation for named languages, frameworks, or libraries. Records future-risk, mismatch, and missed improvement only. Its proposed plan may change instructions and hygiene scripts; application-code findings are follow-on, not part of that plan. Never a package upgrade plan.
 _Avoid_: research base, research note, upgrade plan, dependency audit
 
+## Release & Deploy
+
+**Release**:
+A version of MyOrganizer that is live in production, identified by a `vX.Y.Z` tag. Not the act of preparing one, and not the GitHub Release page that documents it.
+_Avoid_: version, deployment, ship, build
+
+**Cut**:
+Creating the Release Branch with its version bump and CHANGELOG entry. Produces a candidate; a Cut that never deploys never becomes a Release.
+_Avoid_: release (as a verb), branch off, prepare, bump
+
+**Release Branch**:
+`release/vX.Y.Z` — the only ref the `production` GitHub Environment accepts. Its existence lets a deploy be proposed, never lets one proceed.
+_Avoid_: version branch, deploy branch, hotfix branch
+
+**Deploy Approval**:
+The required-reviewer sign-off on the `production` GitHub Environment. This is the ship decision, and it is distinct from dispatching a deploy run, which automation may do freely.
+_Avoid_: deploy trigger, manual deploy, production run, workflow dispatch
+
+**Tag**:
+An annotated `vX.Y.Z` tag applied after production is confirmed live. A receipt that a version shipped — never a trigger that ships it.
+_Avoid_: release tag (when you mean a trigger), version marker
+
 ## Documentation
 
 **Agent Guide**:
