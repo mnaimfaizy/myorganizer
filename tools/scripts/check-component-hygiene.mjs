@@ -30,6 +30,13 @@
  *   node tools/scripts/check-component-hygiene.mjs --staged
  *   node tools/scripts/check-component-hygiene.mjs --all --max-warnings=0
  *
+ * `--max-warnings=0` composes with any file-selection mode above, including
+ * explicit file arguments — it is not restricted to `--all`/`--staged`.
+ * ComponentBuilder and ComponentReviewer both invoke it this way on every
+ * pass, so a warning that would fail pre-commit's staged strict check
+ * (ADR 0014) surfaces as a required revision during review instead of only
+ * at commit time.
+ *
  * Exit codes: 0 = within budget, 1 = errors or exceeded warning budget,
  * 2 = bad invocation.
  */
@@ -48,10 +55,12 @@ import {
 } from './lib/source-scan.mjs';
 
 const USAGE = `Usage:
-  node tools/scripts/check-component-hygiene.mjs <file> [<file> ...]
-  node tools/scripts/check-component-hygiene.mjs --json <file> [<file> ...]
+  node tools/scripts/check-component-hygiene.mjs <file> [<file> ...] [--max-warnings=0]
+  node tools/scripts/check-component-hygiene.mjs --json <file> [<file> ...] [--max-warnings=0]
   node tools/scripts/check-component-hygiene.mjs --all [--max-warnings=0]
   node tools/scripts/check-component-hygiene.mjs --staged [--max-warnings=0]
+
+--max-warnings=0 composes with any mode above, including explicit files.
 
 Runs the mechanical (non-judgment) ComponentReviewer checklist items against
 React components in libs/web-ui/ (UI Primitives) and libs/web/pages/ (Feature
