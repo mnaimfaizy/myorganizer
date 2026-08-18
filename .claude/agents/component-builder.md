@@ -29,9 +29,9 @@ If `docs/ui/GUIDELINES.md` is missing, stop and report that to the main agent.
 
 You have `execute` for exactly two purposes: running the Step 6 hygiene
 self-check, and reading a locked prototype's source directly via `git show
-<branch>:<path>` when the spec points at one (see e.g.
-`docs/features/youtube-prototype-references.md` — prototype branches are
-local-only and are read without switching branches). Do not use `execute` for
+<branch>:<path>` when the spec points at one (see e.g. the prototype reference
+map on PRD #264 — prototype branches are local-only and are read without
+switching branches). Do not use `execute` for
 anything else: no `tsc`, `eslint`, or test runs (ComponentReviewer owns
 those), no file mutation via shell, no git operations beyond read-only
 history inspection (`git show`, `git log`, `git diff`). The repository's

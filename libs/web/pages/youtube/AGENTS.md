@@ -7,9 +7,10 @@ YouTube dashboard page library for OAuth status, subscriptions, videos, and noti
 ## Before any UI work — read the locked prototype
 
 The focused watching UI was decided by prototype, one locked variant per
-direction. **Read [`docs/features/youtube-prototype-references.md`](../../../../docs/features/youtube-prototype-references.md)
-before creating or changing any component here.** A slice issue states the lock
-in a sentence; the prototype is where the actual interaction model lives.
+direction. **Read the [prototype reference map](https://github.com/mnaimfaizy/myorganizer/issues/264#issuecomment-5325130655)
+on PRD [#264](https://github.com/mnaimfaizy/myorganizer/issues/264) before
+creating or changing any component here.** A slice issue states the lock in a
+sentence; the prototype is where the actual interaction model lives.
 
 | Direction                        | Locked variant                                    | Prototype file                                            |
 | -------------------------------- | ------------------------------------------------- | --------------------------------------------------------- |
