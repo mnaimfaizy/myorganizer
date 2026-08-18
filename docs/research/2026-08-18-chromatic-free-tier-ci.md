@@ -38,17 +38,17 @@ Can MyOrganizer run merge-blocking Chromatic UI Tests in GitHub Actions on Chrom
 
 From [CLI — Exit codes](https://www.chromatic.com/docs/cli):
 
-| Exit  | Key                              | CI policy (ADR 0027)               |
-| ----- | -------------------------------- | ---------------------------------- |
-| `0`   | `OK`                             | Pass                               |
-| `1`   | `BUILD_HAS_CHANGES`              | **Fail** (unreviewed visual diffs) |
-| `2`   | `BUILD_HAS_ERRORS`               | Fail                               |
-| `3`   | `BUILD_FAILED`                   | Fail                               |
-| `11`  | `ACCOUNT_QUOTA_REACHED`          | **Pass with warning**              |
-| `12`  | `ACCOUNT_PAYMENT_REQUIRED`       | Fail (we are not on paid overage)  |
-| `21`+ | Storybook / git / network errors | Fail                               |
+| Exit  | Key                              | CI policy (ADR 0027)                                                           |
+| ----- | -------------------------------- | ------------------------------------------------------------------------------ |
+| `0`   | `OK`                             | Publish job passes                                                             |
+| `1`   | `BUILD_HAS_CHANGES`              | **Publish job passes**; Chromatic **UI Tests** stays pending until Accept/Deny |
+| `2`   | `BUILD_HAS_ERRORS`               | Publish job fails                                                              |
+| `3`   | `BUILD_FAILED`                   | Publish job fails                                                              |
+| `11`  | `ACCOUNT_QUOTA_REACHED`          | Publish job **passes with warning**                                            |
+| `12`  | `ACCOUNT_PAYMENT_REQUIRED`       | Fail (we are not on paid overage)                                              |
+| `21`+ | Storybook / git / network errors | Publish job fails                                                              |
 
-Do **not** pass `--exit-zero-on-changes` or `--exit-once-uploaded`. The job must wait for comparison results. Token: env `CHROMATIC_PROJECT_TOKEN` is auto-read ([CLI — Authentication](https://www.chromatic.com/docs/cli)).
+Pass `--exit-zero-on-changes` so unreviewed diffs do not fail Actions (re-running recaptures snapshots). Do **not** pass `--exit-once-uploaded` — still wait for capture errors. Token: env `CHROMATIC_PROJECT_TOKEN` is auto-read ([CLI — Authentication](https://www.chromatic.com/docs/cli)).
 
 ---
 
@@ -121,11 +121,11 @@ Token in CI: [GitHub Actions — project token secret](https://www.chromatic.com
 
 Accept / Deny in Chromatic as documented. Our CI auto-accepts only on **push** to `main` and `release/**`.
 
-### 7. PR check for “UI Tests” — skip
+### 7. PR check for “UI Tests” — require
 
 > “Chromatic adds a ‘UI Tests’ badge… Require the check in GitHub…” — [Quickstart](https://www.chromatic.com/docs/quickstart/)
 
-**Do not require that check.** Quota pause would freeze merges. The `CI` job is the gate ([ADR 0027](../adr/0027-chromatic-ci-visual-tests.md)).
+**Require that check.** It stays pending until Accept (green) or Deny (red) and updates in place — no recapture. The Actions publish job uses `--exit-zero-on-changes` so it is not the review gate. Quota pause (exit `11`) still greens the publish job; if **UI Tests** stays pending that month, drop it from required checks until the next cycle.
 
 ### This repo only (not on the quickstart page)
 
@@ -141,7 +141,7 @@ Accept / Deny in Chromatic as documented. Our CI auto-accepts only on **push** t
 | ----------------------------------------------------- | ---------------------------------------------------- |
 | Playwright screenshots instead of Chromatic           | #12 already chose Chromatic; leftover was cloud + CI |
 | Separate `chromatic.yml`                              | Staging deploys when workflow `CI` succeeds          |
-| Required Chromatic GitHub check                       | Quota pause would freeze merges                      |
+| Failing the Actions job on unreviewed diffs           | Re-run after Accept recaptures snapshots             |
 | Soft-pass when the token is missing                   | Gate could be silently off                           |
 | Extra Chromatic viewports / browsers / a11y snapshots | Blow the free cap                                    |
 | Treating `yarn chromatic` as a local test             | Chromatic always uploads                             |
@@ -150,13 +150,13 @@ Accept / Deny in Chromatic as documented. Our CI auto-accepts only on **push** t
 
 ## 7. Repo mapping
 
-| Path                                         | Role                                                     |
-| -------------------------------------------- | -------------------------------------------------------- |
-| `.github/workflows/ci.yml`                   | `chromatic` job after `prepare-dependencies`             |
-| `chromatic.config.json`                      | `onlyChanged`, `storybookConfigDir`, `externals`, `zip`  |
-| `package.json` `chromatic`                   | `chromatic` (token from env)                             |
-| `package.json` `build-storybook`             | `nx build-storybook web-ui --stats-json --skip-nx-cache` |
-| `docs/storybook/README.md`                   | HITL + commands                                          |
-| `docs/adr/0027-chromatic-ci-visual-tests.md` | Decision                                                 |
+| Path                                         | Role                                                                         |
+| -------------------------------------------- | ---------------------------------------------------------------------------- |
+| `.github/workflows/ci.yml`                   | `chromatic` job (`Publish to Chromatic`) after `prepare-dependencies`        |
+| `chromatic.config.json`                      | `onlyChanged`, `exitZeroOnChanges`, `storybookConfigDir`, `externals`, `zip` |
+| `package.json` `chromatic`                   | `chromatic` (token from env)                                                 |
+| `package.json` `build-storybook`             | `nx build-storybook web-ui --stats-json --skip-nx-cache`                     |
+| `docs/storybook/README.md`                   | HITL + commands                                                              |
+| `docs/adr/0027-chromatic-ci-visual-tests.md` | Decision                                                                     |
 
 Nx’s inferred `web-ui:build-storybook` target caches `{options.output-dir}`. Chromatic always appends `--output-dir` under `os.tmpdir()` (`/tmp/chromatic-…` on GitHub-hosted runners). Nx then fails with `Cache output is outside the workspace` even though Storybook itself built (first CI run, exit 105). `--skip-nx-cache` is required so Chromatic can keep its temp output-dir.

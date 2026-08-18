@@ -235,7 +235,7 @@ jobs:
         run: git diff --exit-code -- yarn.lock
 
   chromatic:
-    name: Chromatic UI Tests
+    name: Publish to Chromatic
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: prepare-dependencies
@@ -272,7 +272,7 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: git diff --exit-code -- yarn.lock
 
-      - name: Run Chromatic UI Tests
+      - name: Publish Storybook to Chromatic
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           CHROMATIC_AUTO_ACCEPT: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release/')) }}
@@ -289,7 +289,7 @@ jobs:
             exit 1
           fi
 
-          extra=()
+          extra=(--exit-zero-on-changes)
           if [ "${CHROMATIC_AUTO_ACCEPT}" = 'true' ]; then
             extra+=(--auto-accept-changes)
           fi
@@ -308,9 +308,23 @@ jobs:
           if [ "${code}" -eq 11 ]; then
             echo '::warning title=Chromatic quota reached::Free-plan snapshot cap reached (CLI exit 11). Visual tests are paused until the next billing cycle. CI continues per ADR 0027.'
             {
-              echo '## Chromatic UI Tests'
+              echo '## Publish to Chromatic'
               echo
-              echo 'Snapshot quota reached (`ACCOUNT_QUOTA_REACHED`, exit 11). Job passed by policy so merges are not frozen for the rest of the month.'
+              echo 'Snapshot quota reached (`ACCOUNT_QUOTA_REACHED`, exit 11). Job passed by policy so the rest of CI is not frozen for the rest of the month.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          # BUILD_HAS_CHANGES: capture succeeded; review lives on Chromatic's "UI Tests"
+          # GitHub status (pending until Accept/Deny). Do not fail this job — a re-run
+          # recaptures snapshots and burns free-tier quota.
+          if [ "${code}" -eq 1 ]; then
+            echo '::notice title=Visual changes awaiting review::Accept or Deny in Chromatic. The UI Tests check stays pending until then. Do not re-run this job.'
+            {
+              echo '## Publish to Chromatic'
+              echo
+              echo 'Unreviewed visual changes (`BUILD_HAS_CHANGES`). This job passed so snapshots are not recaptured.'
+              echo 'Watch Chromatic’s **UI Tests** check: pending until Accept (green) or Deny (red).'
             } >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
