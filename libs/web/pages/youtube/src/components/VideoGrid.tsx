@@ -15,6 +15,7 @@ interface VideoGridProps {
   totalPages: number;
   onPageChange: (page: number) => void;
   total: number;
+  onWatchedToggle?: (videoId: string, watched: boolean) => void;
 }
 
 const SORT_OPTIONS: { value: SortOption; label: string }[] = [
@@ -34,6 +35,7 @@ export function VideoGrid({
   totalPages,
   onPageChange,
   total,
+  onWatchedToggle,
 }: VideoGridProps) {
   return (
     <div className="space-y-4">
@@ -66,7 +68,7 @@ export function VideoGrid({
       </p>
 
       {/* Grid */}
-      {loading ? (
+      {loading && videos.length === 0 ? (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {Array.from({ length: 8 }).map((_, i) => (
             <Skeleton key={i} className="aspect-video w-full rounded-lg" />
@@ -79,7 +81,11 @@ export function VideoGrid({
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {videos.map((video) => (
-            <VideoCard key={video.id} video={video} />
+            <VideoCard
+              key={video.id}
+              video={video}
+              onWatchedToggle={onWatchedToggle}
+            />
           ))}
         </div>
       )}

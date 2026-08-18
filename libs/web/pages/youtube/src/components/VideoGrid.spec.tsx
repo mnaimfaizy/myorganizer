@@ -28,6 +28,7 @@ const makeVideo = (id: string, title: string): YouTubeVideo => ({
   thumbnail: `https://example.com/${id}.jpg`,
   publishedAt: '2024-01-01T00:00:00Z',
   description: '',
+  watched: false,
 });
 
 const defaultProps = {

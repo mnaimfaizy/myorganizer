@@ -1268,7 +1268,9 @@ function buildGateInstructions(
   const common = [
     `- Quality gate for this slice: \`gate:${gate}\` (ADR 0012 / \`.claude/checklist.md\`).`,
     `- Prefer short specialist reports (\`PASS|FAIL|ESCALATE\` + ≤5 bullets).`,
-    `- ComponentReviewer FAIL loops: max 3, then escalate with a diagnosis.`,
+    `- Gated Pipeline reject-cycles: max 2 (ComponentReviewer and TestReviewer), then escalate with a diagnosis (ADR 0017).`,
+    `- Hitting the cap, a repeated FAIL, or a static/reviewer PASS then Runner/tsc/eslint FAIL is a Pipeline Incident — comment \`## Pipeline Incident\` on the Slice Issue.`,
+    `- \`/code-review\` runs once per Slice after deterministic checks are green, not after every specialist hop.`,
   ];
 
   if (gate === 'mechanical') {

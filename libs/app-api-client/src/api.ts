@@ -215,46 +215,198 @@ export interface ConfirmResetPasswordBody {
 /**
  * 
  * @export
- * @interface CronResultResponse
+ * @interface CronDigest200Response
  */
-export interface CronResultResponse {
+export interface CronDigest200Response {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronDigest200Response
+     */
+    'ran': boolean;
     /**
      * 
      * @type {number}
-     * @memberof CronResultResponse
+     * @memberof CronDigest200Response
      */
-    'usersSynced': number;
+    'processed': number;
     /**
      * 
      * @type {number}
-     * @memberof CronResultResponse
+     * @memberof CronDigest200Response
      */
-    'notificationsSent': number;
+    'sent': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigest200Response
+     */
+    'skippedEmpty': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigest200Response
+     */
+    'notDue': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigest200Response
+     */
+    'duplicates': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigest200Response
+     */
+    'failed': number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronDigest200Response
+     */
+    'done': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof CronDigest200Response
+     */
+    'message': string;
+}
+/**
+ * Result of one bounded pass of the weekly digest worker.
+ * @export
+ * @interface CronDigestResponse
+ */
+export interface CronDigestResponse {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronDigestResponse
+     */
+    'ran': boolean;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigestResponse
+     */
+    'processed': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigestResponse
+     */
+    'sent': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigestResponse
+     */
+    'skippedEmpty': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigestResponse
+     */
+    'notDue': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigestResponse
+     */
+    'duplicates': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronDigestResponse
+     */
+    'failed': number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronDigestResponse
+     */
+    'done': boolean;
 }
 /**
  * 
  * @export
- * @interface CronSyncAndNotify200Response
+ * @interface CronSync200Response
  */
-export interface CronSyncAndNotify200Response {
+export interface CronSync200Response {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronSync200Response
+     */
+    'ran': boolean;
     /**
      * 
      * @type {number}
-     * @memberof CronSyncAndNotify200Response
+     * @memberof CronSync200Response
+     */
+    'processed': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronSync200Response
      */
     'usersSynced': number;
     /**
      * 
      * @type {number}
-     * @memberof CronSyncAndNotify200Response
+     * @memberof CronSync200Response
      */
-    'notificationsSent': number;
+    'failed': number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronSync200Response
+     */
+    'done': boolean;
     /**
      * 
      * @type {string}
-     * @memberof CronSyncAndNotify200Response
+     * @memberof CronSync200Response
      */
     'message': string;
+}
+/**
+ * Result of one bounded pass of the metadata sync worker.
+ * @export
+ * @interface CronSyncResponse
+ */
+export interface CronSyncResponse {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronSyncResponse
+     */
+    'ran': boolean;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronSyncResponse
+     */
+    'processed': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronSyncResponse
+     */
+    'usersSynced': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof CronSyncResponse
+     */
+    'failed': number;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof CronSyncResponse
+     */
+    'done': boolean;
 }
 /**
  * 
@@ -541,13 +693,7 @@ export interface GetLatestVaultBackupResponse {
  */
 export interface GetNotificationSettings200Response {
     /**
-     * 
-     * @type {number}
-     * @memberof GetNotificationSettings200Response
-     */
-    'intervalDays': number;
-    /**
-     * 
+     * Whether the User has opted in to the weekly New-only digest.
      * @type {boolean}
      * @memberof GetNotificationSettings200Response
      */
@@ -558,6 +704,18 @@ export interface GetNotificationSettings200Response {
      * @memberof GetNotificationSettings200Response
      */
     'lastNotifiedAt': string | null;
+    /**
+     * Preferred send day in the User\'s own week, 0 = Sunday .. 6 = Saturday.
+     * @type {number}
+     * @memberof GetNotificationSettings200Response
+     */
+    'preferredWeekday': number;
+    /**
+     * IANA time zone the weekday is evaluated in. Null means UTC.
+     * @type {string}
+     * @memberof GetNotificationSettings200Response
+     */
+    'timeZone': string | null;
     /**
      * 
      * @type {string}
@@ -575,6 +733,49 @@ export interface GetSubscriptions200Response {
      * 
      * @type {string}
      * @memberof GetSubscriptions200Response
+     */
+    'message': string;
+}
+/**
+ * 
+ * @export
+ * @interface GetSyncStatus200Response
+ */
+export interface GetSyncStatus200Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'status': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'lastSyncedAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'lastSyncAttemptAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'lastSyncError': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'retryAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
      */
     'message': string;
 }
@@ -927,16 +1128,22 @@ export interface Login401Response {
 export interface NotificationSettingsBody {
     /**
      * 
-     * @type {number}
-     * @memberof NotificationSettingsBody
-     */
-    'intervalDays'?: number;
-    /**
-     * 
      * @type {boolean}
      * @memberof NotificationSettingsBody
      */
     'enabled'?: boolean;
+    /**
+     * 
+     * @type {number}
+     * @memberof NotificationSettingsBody
+     */
+    'preferredWeekday'?: number;
+    /**
+     * 
+     * @type {string}
+     * @memberof NotificationSettingsBody
+     */
+    'timeZone'?: string | null;
 }
 /**
  * 
@@ -945,13 +1152,7 @@ export interface NotificationSettingsBody {
  */
 export interface NotificationSettingsResponse {
     /**
-     * 
-     * @type {number}
-     * @memberof NotificationSettingsResponse
-     */
-    'intervalDays': number;
-    /**
-     * 
+     * Whether the User has opted in to the weekly New-only digest.
      * @type {boolean}
      * @memberof NotificationSettingsResponse
      */
@@ -962,6 +1163,18 @@ export interface NotificationSettingsResponse {
      * @memberof NotificationSettingsResponse
      */
     'lastNotifiedAt': string | null;
+    /**
+     * Preferred send day in the User\'s own week, 0 = Sunday .. 6 = Saturday.
+     * @type {number}
+     * @memberof NotificationSettingsResponse
+     */
+    'preferredWeekday': number;
+    /**
+     * IANA time zone the weekday is evaluated in. Null means UTC.
+     * @type {string}
+     * @memberof NotificationSettingsResponse
+     */
+    'timeZone': string | null;
 }
 /**
  * Make all properties in T optional
@@ -1376,6 +1589,31 @@ export interface ResetPasswordByEmailBody {
 /**
  * 
  * @export
+ * @interface SetVideoWatched200Response
+ */
+export interface SetVideoWatched200Response {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SetVideoWatched200Response
+     */
+    'ok': boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof SetVideoWatched200Response
+     */
+    'watched': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof SetVideoWatched200Response
+     */
+    'message': string;
+}
+/**
+ * 
+ * @export
  * @interface StatusResponse
  */
 export interface StatusResponse {
@@ -1444,46 +1682,143 @@ export interface SubscriptionResponse {
 /**
  * 
  * @export
+ * @interface SyncResponse
+ */
+export interface SyncResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncResponse
+     */
+    'status': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncResponse
+     */
+    'lastSyncedAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncResponse
+     */
+    'lastSyncAttemptAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncResponse
+     */
+    'lastSyncError': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncResponse
+     */
+    'retryAt': string | null;
+    /**
+     * 
+     * @type {number}
+     * @memberof SyncResponse
+     */
+    'synced': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof SyncResponse
+     */
+    'videosSynced': number;
+}
+/**
+ * 
+ * @export
+ * @interface SyncStatusResponse
+ */
+export interface SyncStatusResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncStatusResponse
+     */
+    'status': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncStatusResponse
+     */
+    'lastSyncedAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncStatusResponse
+     */
+    'lastSyncAttemptAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncStatusResponse
+     */
+    'lastSyncError': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncStatusResponse
+     */
+    'retryAt': string | null;
+}
+/**
+ * 
+ * @export
  * @interface SyncSubscriptions200Response
  */
 export interface SyncSubscriptions200Response {
     /**
      * 
-     * @type {number}
+     * @type {string}
      * @memberof SyncSubscriptions200Response
      */
-    'videosSynced': number;
+    'status': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncSubscriptions200Response
+     */
+    'lastSyncedAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncSubscriptions200Response
+     */
+    'lastSyncAttemptAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncSubscriptions200Response
+     */
+    'lastSyncError': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncSubscriptions200Response
+     */
+    'retryAt': string | null;
     /**
      * 
      * @type {number}
      * @memberof SyncSubscriptions200Response
      */
     'synced': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof SyncSubscriptions200Response
+     */
+    'videosSynced': number;
     /**
      * 
      * @type {string}
      * @memberof SyncSubscriptions200Response
      */
     'message': string;
-}
-/**
- * 
- * @export
- * @interface SyncSubscriptions200ResponseAnyOf
- */
-export interface SyncSubscriptions200ResponseAnyOf {
-    /**
-     * 
-     * @type {number}
-     * @memberof SyncSubscriptions200ResponseAnyOf
-     */
-    'videosSynced': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof SyncSubscriptions200ResponseAnyOf
-     */
-    'synced': number;
 }
 /**
  * 
@@ -1529,6 +1864,51 @@ export interface ToggleSubscriptionRequest {
      * @memberof ToggleSubscriptionRequest
      */
     'enabled': boolean;
+}
+/**
+ * 
+ * @export
+ * @interface UnsubscribeBody
+ */
+export interface UnsubscribeBody {
+    /**
+     * 
+     * @type {string}
+     * @memberof UnsubscribeBody
+     */
+    'token': string;
+}
+/**
+ * 
+ * @export
+ * @interface UnsubscribeFromDigest200Response
+ */
+export interface UnsubscribeFromDigest200Response {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof UnsubscribeFromDigest200Response
+     */
+    'ok': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof UnsubscribeFromDigest200Response
+     */
+    'message': string;
+}
+/**
+ * 
+ * @export
+ * @interface UnsubscribeResponse
+ */
+export interface UnsubscribeResponse {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof UnsubscribeResponse
+     */
+    'ok': boolean;
 }
 /**
  * 
@@ -1952,10 +2332,28 @@ export interface VideoResponse {
     'publishedAt': string;
     /**
      * 
+     * @type {boolean}
+     * @memberof VideoResponse
+     */
+    'watched': boolean;
+    /**
+     * 
      * @type {string}
      * @memberof VideoResponse
      */
     'channelTitle'?: string;
+    /**
+     * Runtime in seconds, or null when this upload has not been classified yet.
+     * @type {number}
+     * @memberof VideoResponse
+     */
+    'durationSeconds': number | null;
+    /**
+     * Whether this Cached Upload is a Short. Unclassified uploads are never Shorts.
+     * @type {boolean}
+     * @memberof VideoResponse
+     */
+    'isShort': boolean;
 }
 /**
  * 
@@ -1993,6 +2391,38 @@ export interface VideosPageResponse {
      * @memberof VideosPageResponse
      */
     'totalPages': number;
+}
+/**
+ * 
+ * @export
+ * @interface WatchedBody
+ */
+export interface WatchedBody {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof WatchedBody
+     */
+    'watched': boolean;
+}
+/**
+ * 
+ * @export
+ * @interface WatchedResponse
+ */
+export interface WatchedResponse {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof WatchedResponse
+     */
+    'ok': boolean;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof WatchedResponse
+     */
+    'watched': boolean;
 }
 /**
  * 
@@ -4441,12 +4871,44 @@ export class VaultBackupsApi extends BaseAPI {
 export const YouTubeApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
         /**
-         * Cron-only endpoint: syncs all users\' videos and sends due notifications. Authenticated via X-Cron-Secret header instead of JWT.
+         * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        cronSyncAndNotify: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
-            const localVarPath = `/youtube/cron/sync-and-notify`;
+        cronDigest: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/cron/digest`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication cron-secret required
+            await setApiKeyToObject(localVarHeaderParameter, "X-Cron-Secret", configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Cron-only endpoint: runs one bounded pass of the metadata sync worker. Authenticated via X-Cron-Secret header instead of JWT.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        cronSync: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/cron/sync`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -4638,16 +5100,50 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             };
         },
         /**
+         * Returns the latest cached-video sync outcome and retry time.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getSyncStatus: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/sync-status`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Returns cached videos with sorting, searching, and pagination.
          * @param {GetVideosSortEnum} [sort] Sort order: latest | oldest | az
          * @param {string} [search] Filter by video title
          * @param {number} [page] Page number (1-based)
          * @param {number} [limit] Items per page
          * @param {string} [channelId] 
+         * @param {GetVideosKindEnum} [kind] Library slice by runtime: short | long | all (default all)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        getVideos: async (sort?: GetVideosSortEnum, search?: string, page?: number, limit?: number, channelId?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        getVideos: async (sort?: GetVideosSortEnum, search?: string, page?: number, limit?: number, channelId?: string, kind?: GetVideosKindEnum, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/youtube/videos`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -4682,6 +5178,10 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
 
             if (channelId !== undefined) {
                 localVarQueryParameter['channelId'] = channelId;
+            }
+
+            if (kind !== undefined) {
+                localVarQueryParameter['kind'] = kind;
             }
 
 
@@ -4768,6 +5268,49 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             };
         },
         /**
+         * Marks a Cached Upload as Watched or New.
+         * @param {string} videoId 
+         * @param {WatchedBody} watchedBody 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        setVideoWatched: async (videoId: string, watchedBody: WatchedBody, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'videoId' is not null or undefined
+            assertParamExists('setVideoWatched', 'videoId', videoId)
+            // verify required parameter 'watchedBody' is not null or undefined
+            assertParamExists('setVideoWatched', 'watchedBody', watchedBody)
+            const localVarPath = `/youtube/videos/{videoId}/watched`
+                .replace(`{${"videoId"}}`, encodeURIComponent(String(videoId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PATCH', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(watchedBody, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Fetches fresh subscriptions from YouTube and syncs to DB.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4844,6 +5387,41 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             };
         },
         /**
+         * Turns the weekly digest off from the link carried by every digest email. Unauthenticated by design — the opaque token is the only credential a mail client can present.
+         * @param {UnsubscribeBody} unsubscribeBody 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        unsubscribeFromDigest: async (unsubscribeBody: UnsubscribeBody, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'unsubscribeBody' is not null or undefined
+            assertParamExists('unsubscribeFromDigest', 'unsubscribeBody', unsubscribeBody)
+            const localVarPath = `/youtube/digest/unsubscribe`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(unsubscribeBody, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Updates the user\'s YouTube notification preferences.
          * @param {NotificationSettingsBody} notificationSettingsBody 
          * @param {*} [options] Override http request option.
@@ -4893,14 +5471,25 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = YouTubeApiAxiosParamCreator(configuration)
     return {
         /**
-         * Cron-only endpoint: syncs all users\' videos and sends due notifications. Authenticated via X-Cron-Secret header instead of JWT.
+         * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async cronSyncAndNotify(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CronSyncAndNotify200Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.cronSyncAndNotify(options);
+        async cronDigest(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CronDigest200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.cronDigest(options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
-            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.cronSyncAndNotify']?.[localVarOperationServerIndex]?.url;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.cronDigest']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Cron-only endpoint: runs one bounded pass of the metadata sync worker. Authenticated via X-Cron-Secret header instead of JWT.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async cronSync(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<CronSync200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.cronSync(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.cronSync']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -4959,17 +5548,29 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Returns the latest cached-video sync outcome and retry time.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getSyncStatus(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetSyncStatus200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getSyncStatus(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getSyncStatus']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Returns cached videos with sorting, searching, and pagination.
          * @param {GetVideosSortEnum} [sort] Sort order: latest | oldest | az
          * @param {string} [search] Filter by video title
          * @param {number} [page] Page number (1-based)
          * @param {number} [limit] Items per page
          * @param {string} [channelId] 
+         * @param {GetVideosKindEnum} [kind] Library slice by runtime: short | long | all (default all)
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async getVideos(sort?: GetVideosSortEnum, search?: string, page?: number, limit?: number, channelId?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetVideos200Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getVideos(sort, search, page, limit, channelId, options);
+        async getVideos(sort?: GetVideosSortEnum, search?: string, page?: number, limit?: number, channelId?: string, kind?: GetVideosKindEnum, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetVideos200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getVideos(sort, search, page, limit, channelId, kind, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getVideos']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -4998,6 +5599,19 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Marks a Cached Upload as Watched or New.
+         * @param {string} videoId 
+         * @param {WatchedBody} watchedBody 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async setVideoWatched(videoId: string, watchedBody: WatchedBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SetVideoWatched200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.setVideoWatched(videoId, watchedBody, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.setVideoWatched']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Fetches fresh subscriptions from YouTube and syncs to DB.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5019,6 +5633,18 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.toggleSubscription(subscriptionId, toggleSubscriptionRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['YouTubeApi.toggleSubscription']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Turns the weekly digest off from the link carried by every digest email. Unauthenticated by design — the opaque token is the only credential a mail client can present.
+         * @param {UnsubscribeBody} unsubscribeBody 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async unsubscribeFromDigest(unsubscribeBody: UnsubscribeBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<UnsubscribeFromDigest200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.unsubscribeFromDigest(unsubscribeBody, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.unsubscribeFromDigest']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -5044,12 +5670,20 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
     const localVarFp = YouTubeApiFp(configuration)
     return {
         /**
-         * Cron-only endpoint: syncs all users\' videos and sends due notifications. Authenticated via X-Cron-Secret header instead of JWT.
+         * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        cronSyncAndNotify(options?: RawAxiosRequestConfig): AxiosPromise<CronSyncAndNotify200Response> {
-            return localVarFp.cronSyncAndNotify(options).then((request) => request(axios, basePath));
+        cronDigest(options?: RawAxiosRequestConfig): AxiosPromise<CronDigest200Response> {
+            return localVarFp.cronDigest(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Cron-only endpoint: runs one bounded pass of the metadata sync worker. Authenticated via X-Cron-Secret header instead of JWT.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        cronSync(options?: RawAxiosRequestConfig): AxiosPromise<CronSync200Response> {
+            return localVarFp.cronSync(options).then((request) => request(axios, basePath));
         },
         /**
          * Disconnects the user\'s YouTube account after revoking the token.
@@ -5092,13 +5726,21 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
             return localVarFp.getSubscriptions(options).then((request) => request(axios, basePath));
         },
         /**
+         * Returns the latest cached-video sync outcome and retry time.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getSyncStatus(options?: RawAxiosRequestConfig): AxiosPromise<GetSyncStatus200Response> {
+            return localVarFp.getSyncStatus(options).then((request) => request(axios, basePath));
+        },
+        /**
          * Returns cached videos with sorting, searching, and pagination.
          * @param {YouTubeApiGetVideosRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
         getVideos(requestParameters: YouTubeApiGetVideosRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<GetVideos200Response> {
-            return localVarFp.getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, requestParameters.channelId, options).then((request) => request(axios, basePath));
+            return localVarFp.getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, requestParameters.channelId, requestParameters.kind, options).then((request) => request(axios, basePath));
         },
         /**
          * Returns videos grouped by channel for the carousel view.
@@ -5118,6 +5760,15 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
             return localVarFp.handleCallback(requestParameters.handleCallbackRequest, options).then((request) => request(axios, basePath));
         },
         /**
+         * Marks a Cached Upload as Watched or New.
+         * @param {YouTubeApiSetVideoWatchedRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        setVideoWatched(requestParameters: YouTubeApiSetVideoWatchedRequest, options?: RawAxiosRequestConfig): AxiosPromise<SetVideoWatched200Response> {
+            return localVarFp.setVideoWatched(requestParameters.videoId, requestParameters.watchedBody, options).then((request) => request(axios, basePath));
+        },
+        /**
          * Fetches fresh subscriptions from YouTube and syncs to DB.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5133,6 +5784,15 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
          */
         toggleSubscription(requestParameters: YouTubeApiToggleSubscriptionRequest, options?: RawAxiosRequestConfig): AxiosPromise<ToggleSubscription200Response> {
             return localVarFp.toggleSubscription(requestParameters.subscriptionId, requestParameters.toggleSubscriptionRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Turns the weekly digest off from the link carried by every digest email. Unauthenticated by design — the opaque token is the only credential a mail client can present.
+         * @param {YouTubeApiUnsubscribeFromDigestRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        unsubscribeFromDigest(requestParameters: YouTubeApiUnsubscribeFromDigestRequest, options?: RawAxiosRequestConfig): AxiosPromise<UnsubscribeFromDigest200Response> {
+            return localVarFp.unsubscribeFromDigest(requestParameters.unsubscribeBody, options).then((request) => request(axios, basePath));
         },
         /**
          * Updates the user\'s YouTube notification preferences.
@@ -5186,6 +5846,13 @@ export interface YouTubeApiGetVideosRequest {
      * @memberof YouTubeApiGetVideos
      */
     readonly channelId?: string
+
+    /**
+     * Library slice by runtime: short | long | all (default all)
+     * @type {'short' | 'long' | 'all'}
+     * @memberof YouTubeApiGetVideos
+     */
+    readonly kind?: GetVideosKindEnum
 }
 
 /**
@@ -5200,6 +5867,27 @@ export interface YouTubeApiHandleCallbackRequest {
      * @memberof YouTubeApiHandleCallback
      */
     readonly handleCallbackRequest: HandleCallbackRequest
+}
+
+/**
+ * Request parameters for setVideoWatched operation in YouTubeApi.
+ * @export
+ * @interface YouTubeApiSetVideoWatchedRequest
+ */
+export interface YouTubeApiSetVideoWatchedRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof YouTubeApiSetVideoWatched
+     */
+    readonly videoId: string
+
+    /**
+     * 
+     * @type {WatchedBody}
+     * @memberof YouTubeApiSetVideoWatched
+     */
+    readonly watchedBody: WatchedBody
 }
 
 /**
@@ -5224,6 +5912,20 @@ export interface YouTubeApiToggleSubscriptionRequest {
 }
 
 /**
+ * Request parameters for unsubscribeFromDigest operation in YouTubeApi.
+ * @export
+ * @interface YouTubeApiUnsubscribeFromDigestRequest
+ */
+export interface YouTubeApiUnsubscribeFromDigestRequest {
+    /**
+     * 
+     * @type {UnsubscribeBody}
+     * @memberof YouTubeApiUnsubscribeFromDigest
+     */
+    readonly unsubscribeBody: UnsubscribeBody
+}
+
+/**
  * Request parameters for updateNotificationSettings operation in YouTubeApi.
  * @export
  * @interface YouTubeApiUpdateNotificationSettingsRequest
@@ -5245,13 +5947,23 @@ export interface YouTubeApiUpdateNotificationSettingsRequest {
  */
 export class YouTubeApi extends BaseAPI {
     /**
-     * Cron-only endpoint: syncs all users\' videos and sends due notifications. Authenticated via X-Cron-Secret header instead of JWT.
+     * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof YouTubeApi
      */
-    public cronSyncAndNotify(options?: RawAxiosRequestConfig) {
-        return YouTubeApiFp(this.configuration).cronSyncAndNotify(options).then((request) => request(this.axios, this.basePath));
+    public cronDigest(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).cronDigest(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Cron-only endpoint: runs one bounded pass of the metadata sync worker. Authenticated via X-Cron-Secret header instead of JWT.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public cronSync(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).cronSync(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -5305,6 +6017,16 @@ export class YouTubeApi extends BaseAPI {
     }
 
     /**
+     * Returns the latest cached-video sync outcome and retry time.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public getSyncStatus(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).getSyncStatus(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * Returns cached videos with sorting, searching, and pagination.
      * @param {YouTubeApiGetVideosRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
@@ -5312,7 +6034,7 @@ export class YouTubeApi extends BaseAPI {
      * @memberof YouTubeApi
      */
     public getVideos(requestParameters: YouTubeApiGetVideosRequest = {}, options?: RawAxiosRequestConfig) {
-        return YouTubeApiFp(this.configuration).getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, requestParameters.channelId, options).then((request) => request(this.axios, this.basePath));
+        return YouTubeApiFp(this.configuration).getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, requestParameters.channelId, requestParameters.kind, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -5337,6 +6059,17 @@ export class YouTubeApi extends BaseAPI {
     }
 
     /**
+     * Marks a Cached Upload as Watched or New.
+     * @param {YouTubeApiSetVideoWatchedRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public setVideoWatched(requestParameters: YouTubeApiSetVideoWatchedRequest, options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).setVideoWatched(requestParameters.videoId, requestParameters.watchedBody, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * Fetches fresh subscriptions from YouTube and syncs to DB.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -5355,6 +6088,17 @@ export class YouTubeApi extends BaseAPI {
      */
     public toggleSubscription(requestParameters: YouTubeApiToggleSubscriptionRequest, options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).toggleSubscription(requestParameters.subscriptionId, requestParameters.toggleSubscriptionRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Turns the weekly digest off from the link carried by every digest email. Unauthenticated by design — the opaque token is the only credential a mail client can present.
+     * @param {YouTubeApiUnsubscribeFromDigestRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public unsubscribeFromDigest(requestParameters: YouTubeApiUnsubscribeFromDigestRequest, options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).unsubscribeFromDigest(requestParameters.unsubscribeBody, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -5378,5 +6122,14 @@ export const GetVideosSortEnum = {
     Az: 'az'
 } as const;
 export type GetVideosSortEnum = typeof GetVideosSortEnum[keyof typeof GetVideosSortEnum];
+/**
+ * @export
+ */
+export const GetVideosKindEnum = {
+    Short: 'short',
+    Long: 'long',
+    All: 'all'
+} as const;
+export type GetVideosKindEnum = typeof GetVideosKindEnum[keyof typeof GetVideosKindEnum];
 
 

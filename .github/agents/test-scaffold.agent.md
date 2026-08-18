@@ -2,7 +2,7 @@
 description: 'Use when creating or updating MyOrganizer test suites: Jest unit tests, Jest integration tests, React hook/component integration tests, or Playwright E2E specs. This agent edits test files directly after reading the implementation, building a behavior matrix, and validating that each test matches real behavior.'
 name: 'TestScaffold'
 tools: [read, search, edit, execute]
-model: ['Gemini 3.6 Flash (copilot)']
+model: ['GPT-5.6 Luna (copilot)']
 user-invocable: true
 argument-hint: 'Requirement summary + project + source/test paths + behavior matrix + test type'
 ---

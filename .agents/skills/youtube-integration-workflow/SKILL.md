@@ -14,6 +14,7 @@ description: 'Use when working on YouTube OAuth, subscription sync, cached video
 
 ## Core Rules
 
+- **Before any focused-watching UI work, read the [prototype reference map](https://github.com/mnaimfaizy/myorganizer/issues/264#issuecomment-5325130655) on PRD #264** and the locked prototype variant it names for the surface you are touching. The Wayfinder map (#242) locked one variant per direction; a PRD or slice issue only summarises that lock, while the prototype defines the actual interaction model. Promote its decision-rich shapes; never copy its markup wholesale or ship a prototype route.
 - Use backend YouTube APIs through the generated client from the frontend.
 - Treat Google OAuth tokens as backend-managed encrypted-at-rest data, separate from the E2EE vault.
 - Do not call Google APIs directly from the browser for synced data.

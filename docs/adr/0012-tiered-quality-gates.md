@@ -4,7 +4,7 @@ Mandatory multi-agent chains (TestScaffold → TestReviewer → TestRunner, Comp
 
 ## Status
 
-accepted
+accepted — Gated Pipeline retry cap amended by [ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md) (3 → 2 reject-cycles)
 
 ## Decision
 
@@ -12,11 +12,11 @@ Quality depth is selected by a **gate tier**, not by “always full pipeline.”
 
 ### Gate tiers
 
-| Tier              | When                                                                                                                                                      | Allowed execution                                                                                                   | Required gates                                                                                         |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `gate:mechanical` | Fixture/type retarget, rename, delete dead code, selector-only E2E string fix, already-satisfied AC verification, import/path fix with no behavior change | Main agent may edit directly (interactive or AFK)                                                                   | Focused lint + focused tests (or `tsc` for type-only). No specialist chain. Short report (≤5 bullets). |
-| `gate:standard`   | Single-surface behavior change: one component props/state fix, one schema field, one assertion suite update                                               | One specialist hop when that artifact type changes (e.g. TestScaffold **or** ComponentBuilder), not both by default | Specialist + matching Reviewer **or** Runner once. Collapse redundant re-runs. Cap retries at 3.       |
-| `gate:full`       | New UI primitive/feature module, vault/crypto, API contract, multi-file product behavior, ambiguous UX                                                    | Current mandatory chains. **API Contract** uses One-shot Specialists (ADR 0015), not a Gated Pipeline.              | Full documented pipelines. ComponentReviewer retry cap = 3 (mirror test pipeline). API Contract: PrismaWriter → ApiWriter → ApiSync, then leave. |
+| Tier              | When                                                                                                                                                      | Allowed execution                                                                                                   | Required gates                                                                                                                                                  |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gate:mechanical` | Fixture/type retarget, rename, delete dead code, selector-only E2E string fix, already-satisfied AC verification, import/path fix with no behavior change | Main agent may edit directly (interactive or AFK)                                                                   | Focused lint + focused tests (or `tsc` for type-only). No specialist chain. Short report (≤5 bullets).                                                          |
+| `gate:standard`   | Single-surface behavior change: one component props/state fix, one schema field, one assertion suite update                                               | One specialist hop when that artifact type changes (e.g. TestScaffold **or** ComponentBuilder), not both by default | Specialist + matching Reviewer **or** Runner once. Collapse redundant re-runs. Cap retries at 2 ([ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md)). |
+| `gate:full`       | New UI primitive/feature module, vault/crypto, API contract, multi-file product behavior, ambiguous UX                                                    | Current mandatory chains. **API Contract** uses One-shot Specialists (ADR 0015), not a Gated Pipeline.              | Full documented pipelines. ComponentReviewer retry cap = 2 (mirror test pipeline; [ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md)). API Contract: PrismaWriter → ApiWriter → ApiSync, then leave. |
 
 ### Session modes (same tiers, different entry)
 
@@ -81,7 +81,7 @@ No novel-length checklist dumps unless `gate:full` and the reviewer rejected onc
 
 - Update `.claude/checklist.md`, `CLAUDE.md`, `AGENTS.md` to replace absolute “NO EXCEPTIONS” with tiered rules + mechanical criteria.
 - Extend `to-issues` / `create-labels` with `gate:*`; teach Sandcastle prompt builder to inject tier rules.
-- Add ComponentReviewer max-retry = 3 (parity with unit-test pipeline).
+- Add ComponentReviewer max-retry = 2 (parity with unit-test pipeline; [ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md) amended 3 → 2).
 - Extend `/implement` and `/ask-matt` with an **ad-hoc, no-ticket** playbook that classifies gate tier first.
 - Align Cursor premium models on static gates (TestReviewer) with cost policy unless benchmarks justify otherwise.
 - Fix stale checklist pointer to missing `.claude/commands/component-builder.md`.

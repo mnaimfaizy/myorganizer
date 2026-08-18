@@ -63,14 +63,14 @@ Config/docs/type-only edits with no behavior change may stay mechanical or direc
 
 ## Step 3: Task Classification Matrix (by gate)
 
-| File Pattern                                                              | `gate:mechanical`                                                                   | `gate:standard`                                                                    | `gate:full`                                                                          |
-| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Playwright `*.spec.ts`                                                    | Direct edit (selector/string only) + note; no E2EPlanner                            | TestScaffold + TestReviewer (structural); skip E2EPlanner if flow matrix unchanged | E2EPlanner → TestScaffold → TestReviewer (structural); never execute E2E in AFK      |
-| Jest `*.test.ts` / page `*.spec.tsx`                                      | Direct edit (fixture/type retarget) + focused jest                                  | TestScaffold → TestReviewer → TestRunner                                           | Same full pipeline (max 3 retries)                                                   |
-| `*.stories.tsx`                                                           | Direct edit only for rename/import path                                             | StorybookCurator                                                                   | StorybookCurator                                                                     |
-| Components `libs/web-ui/` / `libs/web/pages/`                             | Direct edit only for rename/import/dead delete; run `yarn component:hygiene <path>` | ComponentBuilder → ComponentReviewer                                               | ComponentBuilder → ComponentReviewer (max 3 FAIL loops) + Storybook/tests after PASS |
-| API Contract (controllers, DTOs, Prisma schema for a public HTTP surface) | Direct edit only for rename/import/comment                                          | PrismaWriter (if schema) → ApiWriter → ApiSync (skip unused hops)                  | Same one-shot hops (ADR 0015). Then leave — Jest stays its Gated Pipeline            |
-| Config / docs / types                                                     | Direct edit OK                                                                      | Direct edit OK                                                                     | Direct edit OK                                                                       |
+| File Pattern                                                              | `gate:mechanical`                                                                   | `gate:standard`                                                                    | `gate:full`                                                                                     |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Playwright `*.spec.ts`                                                    | Direct edit (selector/string only) + note; no E2EPlanner                             | TestScaffold + TestReviewer (structural); skip E2EPlanner if flow matrix unchanged   | E2EPlanner → TestScaffold → TestReviewer (structural); never execute E2E in AFK                  |
+| Jest `*.test.ts` / page `*.spec.tsx`                                      | Direct edit (fixture/type retarget) + focused jest                                   | TestScaffold → TestReviewer → TestRunner                                             | Same full pipeline (max 2 reject-cycles; ADR 0017)                                               |
+| `*.stories.tsx`                                                           | Direct edit only for rename/import path                                              | StorybookCurator                                                                       | StorybookCurator                                                                                    |
+| Components `libs/web-ui/` / `libs/web/pages/`                             | Direct edit only for rename/import/dead delete; run `yarn component:hygiene <path>` | ComponentBuilder → ComponentReviewer                                                 | ComponentBuilder → ComponentReviewer (max 2 FAIL cycles; ADR 0017) + Storybook/tests after PASS  |
+| API Contract (controllers, DTOs, Prisma schema for a public HTTP surface) | Direct edit only for rename/import/comment                                           | PrismaWriter (if schema) → ApiWriter → ApiSync (skip unused hops)                     | Same one-shot hops (ADR 0015). Then leave — Jest stays its Gated Pipeline                        |
+| Config / docs / types                                                     | Direct edit OK                                                                        | Direct edit OK                                                                         | Direct edit OK                                                                                      |
 
 Skills:
 
@@ -88,9 +88,10 @@ Deterministic component checks (any gate): `yarn component:hygiene <path>` — t
 
 1. **Behavioral / structural work** on tests, stories, or components **must** use the matching specialist path for that gate — do not “quietly” hand-edit to skip Reviewer on `standard`/`full`.
 2. **Mechanical work** may be edited by the main agent; still run focused deterministic checks and state `gate:mechanical` explicitly.
-3. **ComponentReviewer** and **TestReviewer** retries: max **3** cycles, then escalate to the main agent / human.
+3. **ComponentReviewer** and **TestReviewer** retries: max **2** cycles (ADR 0017), then escalate to the main agent / human. Hitting the cap, a repeated FAIL, or a static PASS then Runner/`tsc`/`eslint` FAIL is a Pipeline Incident — comment `## Pipeline Incident` on the Slice Issue.
 4. Specialist reports: `PASS|FAIL|ESCALATE` + ≤5 bullets unless `gate:full` after a rejection needs detail.
 5. E2E chain when required: **E2EPlanner → TestScaffold → TestReviewer (structural only)**. Never execute Playwright autonomously in Sandcastle.
+6. `/code-review` runs once per Slice after deterministic checks are green, not after every specialist hop.
 
 ---
 

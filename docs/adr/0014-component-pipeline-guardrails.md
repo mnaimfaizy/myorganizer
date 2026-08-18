@@ -12,7 +12,7 @@ The importer scan was the worst of both problems: ComponentReviewer was told to 
 
 ## Status
 
-accepted
+accepted — retry cap amended by [ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md) (3 → 2 reject-cycles)
 
 ## Considered Options
 
@@ -80,3 +80,4 @@ The cleanup was deliberately split by risk: named props-interface extraction was
 - `ComponentReviewer` gains `execute`; its tool grant must stay `[read, search, execute]` across all four harnesses.
 - `docs/ui/GUIDELINES.md` §8 documents the three-layer split; the agents no longer paraphrase §§1–7.
 - Targeted scans remain useful during development, while CI and staged pre-commit checks enforce the zero-warning baseline explicitly.
+- **2026-08-17 addendum**: Issue #354 hit the gap this left open — `ComponentReviewer` graded hygiene warnings as advisory (`PASS_WITH_WARNINGS`) on both review cycles, then pre-commit's `--max-warnings=0` staged check hard-failed on the identical finding, costing a mechanical fix outside the counted reject-cycle budget. `--max-warnings=0` was already mode-agnostic (works with explicit file paths, not only `--all`/`--staged`) but neither agent's documented invocation used it, and the usage string's examples implied otherwise. `ComponentBuilder`'s self-check and `ComponentReviewer`'s Tier 1 gate both now run `--max-warnings=0` on every pass, so a warning that will fail pre-commit is caught during review — using the normal 2-cycle budget (ADR 0017) — instead of surfacing for the first time at `git commit`. "Targeted local scans" above still means ad hoc runs without the flag; the specialists are no longer in that category.

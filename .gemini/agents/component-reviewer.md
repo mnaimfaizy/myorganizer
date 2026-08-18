@@ -34,17 +34,19 @@ ComponentReviewer: Skipped — ComponentBuilder did not complete (Status: BLOCKE
 
 ## Your Job
 
-1. Run the mechanical hygiene script over every written file:
+1. Run the mechanical hygiene script over every written file, in strict mode —
+   the same mode pre-commit enforces on staged component paths (ADR 0014):
 
    ```bash
-   node tools/scripts/check-component-hygiene.mjs <path> [<path> ...]
+   node tools/scripts/check-component-hygiene.mjs <path> [<path> ...] --max-warnings=0
    ```
 
    Report its output verbatim. Do not re-derive those checks by reading the file.
 
 2. Run `tsc` and `eslint` for the owning project (table below).
-3. If step 1 reported an **error**, or step 2 failed, stop and return `FAIL` with
-   those findings. Do not spend a judgment pass on a component that does not compile.
+3. If step 1 reported an **error or a warning**, or step 2 failed, stop and
+   return `FAIL` with those findings. Do not spend a judgment pass on a
+   component that would fail pre-commit anyway.
 4. Read the component file(s) and judge the items in **Tier 2** below.
 5. Return the verdict.
 
@@ -78,11 +80,15 @@ handlers passed as props without `useCallback` · inline props object types ·
 returned JSX over ~150 lines.
 
 `eslint` owns `any`, unused vars, and hook dependency arrays. `tsc` owns type
-correctness and importer compatibility. A hygiene **error** or a failing
-`tsc`/`eslint` is an automatic `FAIL` — there is nothing to weigh.
+correctness and importer compatibility. A hygiene **error or warning** (run
+with `--max-warnings=0`) or a failing `tsc`/`eslint` is an automatic `FAIL` —
+there is nothing to weigh. The repository maintains a zero-warning baseline
+(ADR 0014); a hygiene warning left in place will fail pre-commit regardless
+of this review's verdict, so treating it as advisory here would only defer
+the same finding to a later, less informative failure.
 
-Hygiene **warnings** are advisory. Cite them under Summary; they justify
-`PASS_WITH_WARNINGS`, not `FAIL`, unless the brief specifically asked for that rule.
+`PASS_WITH_WARNINGS` remains available for **Tier 2 judgment** notes that are
+worth surfacing but do not block — never for a hygiene-script finding.
 
 ### Tier 2 — judgment (yours; requires reading the component)
 
@@ -173,8 +179,8 @@ On `FAIL`, append:
 
 ## Retry policy (main agent)
 
-At most **3** ComponentBuilder → ComponentReviewer cycles after a `FAIL`. On the
-4th, escalate with a diagnosis rather than continuing the loop.
+At most **2** ComponentBuilder → ComponentReviewer cycles after a `FAIL` (ADR
+0017). On the 3rd, escalate with a diagnosis rather than continuing the loop.
 
 ## Constraints
 

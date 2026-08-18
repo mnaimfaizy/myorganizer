@@ -15,9 +15,13 @@ import {
   Tags,
 } from 'tsoa';
 import { requireUserId } from '../guards/AuthGuard';
-import youTubeNotificationService from '../services/YouTubeNotificationService';
+import youTubeDigestService from '../services/YouTubeDigestService';
+import youTubeSyncWorkerService from '../services/YouTubeSyncWorkerService';
 import youtubeSyncService, {
+  YouTubeRefreshResult,
+  YouTubeSyncStatusDTO,
   YouTubeVideoWithChannel,
+  isShortDuration,
 } from '../services/YouTubeSyncService';
 
 type YouTubeErrorResponse = { message: string };
@@ -50,7 +54,12 @@ interface VideoResponse {
   title: string;
   thumbnail: string | null;
   publishedAt: string;
+  watched: boolean;
   channelTitle?: string;
+  /** Runtime in seconds, or null when this upload has not been classified yet. */
+  durationSeconds: number | null;
+  /** Whether this Cached Upload is a Short. Unclassified uploads are never Shorts. */
+  isShort: boolean;
 }
 
 interface VideosPageResponse {
@@ -69,19 +78,104 @@ interface ChannelCarouselResponse {
 }
 
 interface NotificationSettingsResponse {
-  intervalDays: number;
+  /** Whether the User has opted in to the weekly New-only digest. */
   enabled: boolean;
   lastNotifiedAt: string | null;
+  /** Preferred send day in the User's own week, 0 = Sunday .. 6 = Saturday. */
+  preferredWeekday: number;
+  /** IANA time zone the weekday is evaluated in. Null means UTC. */
+  timeZone: string | null;
 }
 
 interface NotificationSettingsBody {
-  intervalDays?: number;
   enabled?: boolean;
+  preferredWeekday?: number;
+  timeZone?: string | null;
 }
 
-interface CronResultResponse {
+/** Result of one bounded pass of the metadata sync worker. */
+interface CronSyncResponse {
+  ran: boolean;
+  processed: number;
   usersSynced: number;
-  notificationsSent: number;
+  failed: number;
+  done: boolean;
+}
+
+/** Result of one bounded pass of the weekly digest worker. */
+interface CronDigestResponse {
+  ran: boolean;
+  processed: number;
+  sent: number;
+  skippedEmpty: number;
+  notDue: number;
+  duplicates: number;
+  failed: number;
+  done: boolean;
+}
+
+interface UnsubscribeBody {
+  token: string;
+}
+
+interface UnsubscribeResponse {
+  ok: boolean;
+}
+
+interface SyncStatusResponse {
+  status: string;
+  lastSyncedAt: string | null;
+  lastSyncAttemptAt: string | null;
+  lastSyncError: string | null;
+  retryAt: string | null;
+}
+
+interface SyncResponse extends SyncStatusResponse {
+  synced: number;
+  videosSynced: number;
+}
+
+interface WatchedBody {
+  watched: boolean;
+}
+
+interface WatchedResponse {
+  ok: boolean;
+  watched: boolean;
+}
+
+function toSyncStatusResponse(
+  status: YouTubeSyncStatusDTO,
+): SyncStatusResponse {
+  return {
+    status: status.status,
+    lastSyncedAt: status.lastSyncedAt?.toISOString() ?? null,
+    lastSyncAttemptAt: status.lastSyncAttemptAt?.toISOString() ?? null,
+    lastSyncError: status.lastSyncError,
+    retryAt: status.retryAt?.toISOString() ?? null,
+  };
+}
+
+function toNotificationSettingsResponse(settings: {
+  enabled: boolean;
+  lastNotifiedAt: Date | null;
+  preferredWeekday: number;
+  timeZone: string | null;
+}): NotificationSettingsResponse {
+  return {
+    enabled: settings.enabled,
+    lastNotifiedAt: settings.lastNotifiedAt?.toISOString() ?? null,
+    preferredWeekday: settings.preferredWeekday,
+    timeZone: settings.timeZone,
+  };
+}
+
+function toSyncResponse(result: YouTubeRefreshResult): SyncResponse {
+  return {
+    synced: result.subscriptionsSynced,
+    videosSynced: result.videosSynced,
+    ...toSyncStatusResponse(result),
+  };
 }
 
 // ─── Controller ─────────────────────────────────────────────────
@@ -179,11 +273,19 @@ export class YouTubeController extends Controller {
   @Security('jwt')
   public async syncSubscriptions(
     @Request() req: ExRequest,
-  ): Promise<{ synced: number; videosSynced: number } | YouTubeErrorResponse> {
+  ): Promise<SyncResponse | YouTubeErrorResponse> {
     const userId = requireUserId(req);
-    const subs = await youtubeSyncService.syncSubscriptions(userId);
-    const videosSynced = await youtubeSyncService.syncVideosForUser(userId);
-    return { synced: subs.length, videosSynced };
+    return toSyncResponse(await youtubeSyncService.manualRefresh(userId));
+  }
+
+  /** Returns the latest cached-video sync outcome and retry time. */
+  @Get('/sync-status')
+  @Security('jwt')
+  public async getSyncStatus(
+    @Request() req: ExRequest,
+  ): Promise<SyncStatusResponse | YouTubeErrorResponse> {
+    const userId = requireUserId(req);
+    return toSyncStatusResponse(await youtubeSyncService.getSyncStatus(userId));
   }
 
   /**
@@ -211,6 +313,7 @@ export class YouTubeController extends Controller {
    * @param search  Filter by video title
    * @param page  Page number (1-based)
    * @param limit  Items per page
+   * @param kind  Library slice by runtime: short | long | all (default all)
    */
   @Get('/videos')
   @Security('jwt')
@@ -221,6 +324,7 @@ export class YouTubeController extends Controller {
     @Query() page?: number,
     @Query() limit?: number,
     @Query() channelId?: string,
+    @Query() kind?: 'short' | 'long' | 'all',
   ): Promise<VideosPageResponse | YouTubeErrorResponse> {
     const userId = requireUserId(req);
     const result = await youtubeSyncService.getVideos(userId, {
@@ -229,6 +333,7 @@ export class YouTubeController extends Controller {
       page,
       limit,
       channelId,
+      kind,
     });
     return {
       ...result,
@@ -239,9 +344,33 @@ export class YouTubeController extends Controller {
         title: v.title,
         thumbnail: v.thumbnail,
         publishedAt: v.publishedAt.toISOString(),
+        watched: v.watched,
         channelTitle: v.subscription?.channelTitle ?? undefined,
+        durationSeconds: v.durationSeconds,
+        isShort: isShortDuration(v.durationSeconds),
       })),
     };
+  }
+
+  /** Marks a Cached Upload as Watched or New. */
+  @Patch('/videos/{videoId}/watched')
+  @Security('jwt')
+  public async setVideoWatched(
+    @Request() req: ExRequest,
+    @Path() videoId: string,
+    @Body() body: WatchedBody,
+  ): Promise<WatchedResponse | YouTubeErrorResponse> {
+    const userId = requireUserId(req);
+    const updated = await youtubeSyncService.setVideoWatched(
+      userId,
+      videoId,
+      body.watched,
+    );
+    if (updated === 0) {
+      this.setStatus(404);
+      return { message: 'Cached Upload not found' };
+    }
+    return { ok: true, watched: body.watched };
   }
 
   /**
@@ -265,6 +394,9 @@ export class YouTubeController extends Controller {
         title: v.title,
         thumbnail: v.thumbnail,
         publishedAt: v.publishedAt.toISOString(),
+        watched: v.watched,
+        durationSeconds: v.durationSeconds,
+        isShort: isShortDuration(v.durationSeconds),
       })),
     }));
   }
@@ -279,11 +411,7 @@ export class YouTubeController extends Controller {
   ): Promise<NotificationSettingsResponse | YouTubeErrorResponse> {
     const userId = requireUserId(req);
     const settings = await youtubeSyncService.getNotificationSettings(userId);
-    return {
-      intervalDays: settings.intervalDays,
-      enabled: settings.enabled,
-      lastNotifiedAt: settings.lastNotifiedAt?.toISOString() ?? null,
-    };
+    return toNotificationSettingsResponse(settings);
   }
 
   /**
@@ -296,27 +424,76 @@ export class YouTubeController extends Controller {
     @Body() body: NotificationSettingsBody,
   ): Promise<NotificationSettingsResponse | YouTubeErrorResponse> {
     const userId = requireUserId(req);
-    const updated = await youtubeSyncService.updateNotificationSettings(
-      userId,
-      body,
-    );
+    try {
+      const updated = await youtubeSyncService.updateNotificationSettings(
+        userId,
+        body,
+      );
+      return toNotificationSettingsResponse(updated);
+    } catch (error) {
+      this.setStatus(400);
+      return {
+        message:
+          error instanceof Error
+            ? error.message
+            : 'Invalid notification settings.',
+      };
+    }
+  }
+
+  /**
+   * Turns the weekly digest off from the link carried by every digest email.
+   * Unauthenticated by design — the opaque token is the only credential a
+   * mail client can present.
+   */
+  @Post('/digest/unsubscribe')
+  public async unsubscribeFromDigest(
+    @Body() body: UnsubscribeBody,
+  ): Promise<UnsubscribeResponse | YouTubeErrorResponse> {
+    const ok = await youTubeDigestService.unsubscribe(body.token);
+    if (!ok) {
+      this.setStatus(404);
+      return { message: 'Unknown unsubscribe link.' };
+    }
+    return { ok: true };
+  }
+
+  /**
+   * Cron-only endpoint: runs one bounded pass of the metadata sync worker.
+   * Authenticated via X-Cron-Secret header instead of JWT.
+   */
+  @Post('/cron/sync')
+  @Security('cron-secret')
+  public async cronSync(): Promise<CronSyncResponse | YouTubeErrorResponse> {
+    const result = await youTubeSyncWorkerService.runSyncWorker();
     return {
-      intervalDays: updated.intervalDays,
-      enabled: updated.enabled,
-      lastNotifiedAt: updated.lastNotifiedAt?.toISOString() ?? null,
+      ran: result.ran,
+      processed: result.processed,
+      usersSynced: result.usersSynced,
+      failed: result.failed,
+      done: result.done,
     };
   }
 
   /**
-   * Cron-only endpoint: syncs all users' videos and sends due notifications.
-   * Authenticated via X-Cron-Secret header instead of JWT.
+   * Cron-only endpoint: runs one bounded pass of the weekly digest worker.
+   * Separate from `/cron/sync` so neither job can starve or fail the other.
    */
-  @Post('/cron/sync-and-notify')
+  @Post('/cron/digest')
   @Security('cron-secret')
-  public async cronSyncAndNotify(): Promise<
-    CronResultResponse | YouTubeErrorResponse
+  public async cronDigest(): Promise<
+    CronDigestResponse | YouTubeErrorResponse
   > {
-    const result = await youTubeNotificationService.syncAndNotifyAll();
-    return result;
+    const result = await youTubeDigestService.runDigestWorker();
+    return {
+      ran: result.ran,
+      processed: result.processed,
+      sent: result.sent,
+      skippedEmpty: result.skippedEmpty,
+      notDue: result.notDue,
+      duplicates: result.duplicates,
+      failed: result.failed,
+      done: result.done,
+    };
   }
 }

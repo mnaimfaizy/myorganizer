@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-08-07",
+  "reviewedAt": "2026-08-09",
   "decision": {
     "defaultRule": "Pin models by agent role and harness; after repeated failures, escalate the decision to the main agent or a human instead of allowing an automatic model change.",
     "tiers": {
@@ -58,11 +58,7 @@
     "component-reviewer": {
       "tier": "T2",
       "models": {
-        "copilot": [
-          "Claude Sonnet 5 (copilot)",
-          "Grok 4.5 (copilot)",
-          "GPT-5.6 Terra (copilot)"
-        ],
+        "copilot": ["Grok 4.5 (copilot)", "GPT-5.6 Terra (copilot)"],
         "claude": "sonnet",
         "cursor": "grok-4.5",
         "gemini": "gemini-3.6-flash"
@@ -202,7 +198,7 @@
     "test-scaffold": {
       "tier": "T1",
       "models": {
-        "copilot": ["Gemini 3.6 Flash (copilot)"],
+        "copilot": ["GPT-5.6 Luna (copilot)"],
         "claude": "haiku",
         "cursor": "composer-2.5",
         "gemini": "gemini-3.6-flash"

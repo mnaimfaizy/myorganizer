@@ -8,6 +8,8 @@ disable-model-invocation: true
 
 Adapted from [mattpocock/skills — implement](https://github.com/mattpocock/skills/tree/main/skills/engineering/implement) for MyOrganizer workflows.
 
+Claude Code resolves this file through the committed `.claude/skills` → `../.agents/skills` symlink, so this project-scoped `implement` skill takes precedence over the unmodified upstream one installed globally at `~/.claude/skills/implement`.
+
 Implement the work described by the user in the spec, PRD, slice issue, ticket set, **or ad-hoc request** (no ticket required).
 
 ## Before you start

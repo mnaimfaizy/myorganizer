@@ -1,0 +1,18 @@
+# ComponentBuilder gains `execute`, scoped by instruction to git history and its own hygiene self-check
+
+Issue #354 needed `ComponentBuilder` to read a locked prototype's exact markup from a local-only branch (`docs/features/youtube-prototype-references.md`'s documented `git show <branch>:<path>` pattern) — but `ComponentBuilder`'s tool grant (`[read, edit, search, todo]`, no `execute`) made that impossible. The main agent transcribed the prototype into the Structured Spec instead; the built component still drifted on three details (a hidden section heading, a dropped mobile count, lost sticky positioning), caught only by `/code-review`'s Spec axis after the fact. Separately, Step 6 of `ComponentBuilder`'s own instructions already told it to run `check-component-hygiene.mjs` as a self-check — a command it had no tool to execute, a latent gap present since ADR 0014.
+
+## Decision
+
+`ComponentBuilder`'s canonical tool grant becomes `[read, edit, search, execute, todo]`. Its instructions restrict `execute` by documentation, not by mechanism, to exactly two uses: the Step 6 hygiene self-check, and read-only git history inspection (`git show`, `git log`, `git diff`) when a spec names a locked prototype. This mirrors the precedent `ComponentReviewer` already set in ADR 0014 — full `execute` access, a documented narrow purpose, no hard technical boundary enforcing the restriction beyond the agent following its own prompt.
+
+## Considered Options
+
+- **Build a narrow dedicated tool** (e.g. a `read-prototype.mjs` wrapper script exposed as its own grantable capability, so `ComponentBuilder` could be scoped to exactly that and nothing else) — rejected for now. It would give a real technical boundary instead of a documented one, but this repo's sub-agent tooling has no mechanism for granting a single script as an isolated capability separate from `execute` generally; building one is new infrastructure for a single narrow use case, and the existing global permission list (`.claude/settings.json`) already fences the commands that would matter if `ComponentBuilder` used `execute` for something outside its documented purpose.
+- **Keep the narrow grant, require the main agent to transcribe prototypes into every spec** — rejected. This is what issue #354 actually did, and it still produced three undisclosed deviations from the locked prototype. A paraphrase is one more copy to drift, the same complaint ADR 0014 raised about repeating `docs/ui/GUIDELINES.md` inside `ComponentReviewer`'s own prompt.
+
+## Consequences
+
+- The repository's global `permissions.allow`/`deny` lists (`.claude/settings.json`) already pre-approve read-only git commands and block destructive ones (`push --force`, `reset --hard`, `checkout --`, `branch -D`, ...) regardless of which agent invokes them — that gate is the actual technical backstop against `execute` misuse, not `ComponentBuilder`'s adherence to its documented scope.
+- `.cursor/agents/*.md` carries no `tools:` frontmatter field at all (Cursor gates tool access outside the agent file), so this change has no Cursor-side artifact to update.
+- The sync script (`tools/scripts/sync-subagents.mjs`) deliberately preserves existing harness frontmatter — including `tools:` — verbatim on sync, syncing only the body, specifically so a routine canonical-body edit cannot silently widen a tool grant. Changing `ComponentBuilder`'s actual capability required hand-editing `.claude/agents/component-builder.md` and `.gemini/agents/component-builder.md` directly, in addition to the canonical `.github/agents/component-builder.agent.md` — a canonical-only edit would have had no effect on already-existing harness files.

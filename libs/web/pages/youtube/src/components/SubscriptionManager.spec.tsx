@@ -1,3 +1,4 @@
+import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import type { YouTubeSubscription } from '../types';
 import { SubscriptionManager } from './SubscriptionManager';
@@ -118,5 +119,19 @@ describe('SubscriptionManager', () => {
     expect(imgs[0].getAttribute('src')).toBe('https://example.com/thumb1.jpg');
     // Second sub should have a letter fallback
     expect(screen.getByText('B')).toBeTruthy();
+  });
+
+  it('should render privacy statement and link to data privacy page', () => {
+    render(<SubscriptionManager {...defaultProps} />);
+    expect(
+      screen.getByText(/Metadata only — never video files/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Watched is yes\/no, not analytics/),
+    ).toBeInTheDocument();
+    const privacyLink = screen.getByRole('link', {
+      name: /How we store your data/i,
+    });
+    expect(privacyLink).toHaveAttribute('href', '/youtube/data-privacy');
   });
 });

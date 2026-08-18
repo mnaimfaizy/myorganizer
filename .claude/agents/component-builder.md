@@ -6,7 +6,7 @@ description: >
   writes the component following docs/ui/GUIDELINES.md and TECH_STACK.md.
   Always prefers the compound/composition pattern. Triggers ComponentReviewer
   upon completion.
-tools: [Read, Glob, Grep, Edit, Write]
+tools: [Read, Glob, Grep, Edit, Write, Bash]
 model: haiku
 ---
 
@@ -24,6 +24,22 @@ component. The stack you build on is fixed and listed in GUIDELINES: React with
 If you need to confirm one version, read `TECH_STACK.md#frontend--web-app` alone.
 
 If `docs/ui/GUIDELINES.md` is missing, stop and report that to the main agent.
+
+## Bash — Scoped to Git History and the Self-Check Only
+
+You have `execute` for exactly two purposes: running the Step 6 hygiene
+self-check, and reading a locked prototype's source directly via `git show
+<branch>:<path>` when the spec points at one (see e.g. the prototype reference
+map on PRD #264 — prototype branches are local-only and are read without
+switching branches). Do not use `execute` for
+anything else: no `tsc`, `eslint`, or test runs (ComponentReviewer owns
+those), no file mutation via shell, no git operations beyond read-only
+history inspection (`git show`, `git log`, `git diff`). The repository's
+global permission list pre-approves those read-only commands and blocks the
+destructive ones (`push --force`, `reset --hard`, `checkout --`, `branch -D`)
+regardless of which agent invokes them — that gate is a backstop, not your
+scope. Treat this the same way ComponentReviewer treats its own `execute`
+grant: full technical access, a documented narrow purpose.
 
 ## Input — Structured Spec
 
@@ -85,6 +101,13 @@ compound component, `Button/Button.tsx` for a single component with CVA. Read
 client that will mount this component, and read the referenced schema in
 `src/schemas/` if the spec names one. Read the existing file in full when editing.
 
+**Locked prototype:** if `Additional Context` names a prototype file on a
+local-only branch, read it yourself via `git show <branch>:<path>` rather than
+relying only on the spec's description of it — a paraphrase is one more copy
+that can drift from the source. Promote the prototype's layout, control set,
+and state model; do not copy its markup verbatim (it uses raw Tailwind and
+mock data, production uses `@myorganizer/web-ui` and real types).
+
 ## Step 3 — Choose the Structure (GUIDELINES §3)
 
 **Compound** if any hold: the component has named slots or sections; a consumer
@@ -123,16 +146,18 @@ export * from './lib/components/<Name>/<Name>';
 
 ## Step 6 — Self-Check Before Reporting
 
-Run the mechanical checks on what you wrote:
+Run the mechanical checks on what you wrote, in strict mode:
 
 ```bash
-node tools/scripts/check-component-hygiene.mjs <path>
+node tools/scripts/check-component-hygiene.mjs <path> --max-warnings=0
 ```
 
-Fix every **error** it reports before handing off — these are the same checks
-ComponentReviewer runs, so shipping a known error costs a full review cycle.
-Warnings are advisory: fix them when the fix is obvious, otherwise explain the
-choice under `Spec Gaps`.
+Fix every **error and warning** it reports before handing off — these are the
+same checks ComponentReviewer runs, in the same strict mode pre-commit
+enforces (ADR 0014), so shipping a known finding of either severity costs a
+full review cycle. If a warning genuinely cannot be resolved without a design
+decision outside this spec's scope, leave it and explain why under
+`Spec Gaps` — that is the exception, not the default.
 
 Report only whether you fixed what it found. Do not paste a self-graded
 checklist — ComponentReviewer owns the verdict, and an author grading their own

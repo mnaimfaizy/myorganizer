@@ -59,11 +59,11 @@ Use `.agents/skills/playwright-e2e-workflow/SKILL.md` for Playwright specs in `a
 8. After `TestScaffold` reports back, delegate the full output to `TestReviewer` with the test file path and project name.
 9. Handle `TestReviewer` verdict:
    - **APPROVED** → proceed to step 10.
-   - **REJECTED** → send a targeted revision brief back to `TestScaffold` listing the specific failing checklist items (counts as one retry; max 3 retries total before escalating to the main agent with full history).
+   - **REJECTED** → send a targeted revision brief back to `TestScaffold` listing the specific failing checklist items (counts as one retry; max 2 reject-cycles total before escalating to the main agent with full history; ADR 0017).
 10. Delegate the `TestReviewer`-approved output to `TestRunner`.
 11. Handle `TestRunner` verdict:
     - **PASS** → accept; report to main agent.
-    - **FAIL(test_wrong)** → send diagnosis back to `TestScaffold` as a revision brief (retry counter applies; max 3 total).
+    - **FAIL(test_wrong)** → send diagnosis back to `TestScaffold` as a revision brief (retry counter applies; max 2 total). A Reviewer PASS then Runner FAIL is a Pipeline Incident.
     - **FAIL(code_broken)** → escalate to main agent with full report; do not retry.
     - **ESCALATE** → escalate to main agent with full context.
     - **NEEDS_HUMAN_REVIEW** → relay PR comment and `needs-e2e-review` label action; accept result.
@@ -102,18 +102,18 @@ Example split for a hook with 22 justified tests:
 TestScaffold → TestReviewer → TestRunner → main agent
      ↑              |
      └──────────────┘
-      REJECTED: max 3 retries total
+      REJECTED: max 2 reject-cycles (ADR 0017)
      ↑
-     └──── FAIL(test_wrong) also counts toward the same 3-retry cap
+     └──── FAIL(test_wrong) also counts toward the same cap
 ```
 
-**Retry cap**: Each `REJECTED` from TestReviewer or `FAIL(test_wrong)` from TestRunner that sends back to TestScaffold increments the retry counter. After **3 total retries**, escalate to the main agent with the full chain history.
+**Retry cap**: Each `REJECTED` from TestReviewer or `FAIL(test_wrong)` from TestRunner that sends back to TestScaffold increments the retry counter. After **2 reject-cycles**, escalate to the main agent with the full chain history. Hitting the cap, a repeated FAIL, or a Reviewer PASS then Runner FAIL is a **Pipeline Incident** — comment `## Pipeline Incident` on the Slice Issue. `/code-review` runs once per Slice after checks are green, not after every hop.
 
 **Escalate to main agent when**:
 
 - TestRunner returns `FAIL(code_broken)` — the implementation needs fixing, not the test
 - TestRunner returns `ESCALATE` — tests hung and one-at-a-time recovery failed
-- Retry counter reaches 3 — recurring issues need human judgment
+- Retry counter reaches 2 — recurring issues need human judgment; file a Pipeline Incident
 
 **Accept and pass to main agent when**:
 

@@ -21,6 +21,19 @@ const nextConfig = {
   ...(process.env.VERCEL === '1' ? {} : { output: 'standalone' }),
   poweredByHeader: false,
   nx: {},
+  async redirects() {
+    return [
+      {
+        // The per-channel grid was replaced by the channel directory on
+        // /dashboard/youtube, which is the locked long-form home (PRD #264,
+        // Variant C / issue #250). Digest emails already sitting in Users'
+        // inboxes point at the old path, so it is redirected, not removed.
+        source: '/dashboard/youtube/channel/:channelId',
+        destination: '/dashboard/youtube?channel=:channelId',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 const plugins = [

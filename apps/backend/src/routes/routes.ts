@@ -61,6 +61,32 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "SyncResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "status": {"dataType":"string","required":true},
+            "lastSyncedAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "lastSyncAttemptAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "lastSyncError": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "retryAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "synced": {"dataType":"double","required":true},
+            "videosSynced": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "SyncStatusResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "status": {"dataType":"string","required":true},
+            "lastSyncedAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "lastSyncAttemptAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "lastSyncError": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "retryAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "VideoResponse": {
         "dataType": "refObject",
         "properties": {
@@ -70,7 +96,10 @@ const models: TsoaRoute.Models = {
             "title": {"dataType":"string","required":true},
             "thumbnail": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "publishedAt": {"dataType":"string","required":true},
+            "watched": {"dataType":"boolean","required":true},
             "channelTitle": {"dataType":"string"},
+            "durationSeconds": {"dataType":"union","subSchemas":[{"dataType":"double"},{"dataType":"enum","enums":[null]}],"required":true},
+            "isShort": {"dataType":"boolean","required":true},
         },
         "additionalProperties": false,
     },
@@ -83,6 +112,23 @@ const models: TsoaRoute.Models = {
             "page": {"dataType":"double","required":true},
             "limit": {"dataType":"double","required":true},
             "totalPages": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "WatchedResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "ok": {"dataType":"boolean","required":true},
+            "watched": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "WatchedBody": {
+        "dataType": "refObject",
+        "properties": {
+            "watched": {"dataType":"boolean","required":true},
         },
         "additionalProperties": false,
     },
@@ -101,9 +147,10 @@ const models: TsoaRoute.Models = {
     "NotificationSettingsResponse": {
         "dataType": "refObject",
         "properties": {
-            "intervalDays": {"dataType":"double","required":true},
             "enabled": {"dataType":"boolean","required":true},
             "lastNotifiedAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "preferredWeekday": {"dataType":"double","required":true},
+            "timeZone": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
         },
         "additionalProperties": false,
     },
@@ -111,17 +158,52 @@ const models: TsoaRoute.Models = {
     "NotificationSettingsBody": {
         "dataType": "refObject",
         "properties": {
-            "intervalDays": {"dataType":"double"},
             "enabled": {"dataType":"boolean"},
+            "preferredWeekday": {"dataType":"double"},
+            "timeZone": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
         },
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "CronResultResponse": {
+    "UnsubscribeResponse": {
         "dataType": "refObject",
         "properties": {
+            "ok": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "UnsubscribeBody": {
+        "dataType": "refObject",
+        "properties": {
+            "token": {"dataType":"string","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CronSyncResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "ran": {"dataType":"boolean","required":true},
+            "processed": {"dataType":"double","required":true},
             "usersSynced": {"dataType":"double","required":true},
-            "notificationsSent": {"dataType":"double","required":true},
+            "failed": {"dataType":"double","required":true},
+            "done": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "CronDigestResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "ran": {"dataType":"boolean","required":true},
+            "processed": {"dataType":"double","required":true},
+            "sent": {"dataType":"double","required":true},
+            "skippedEmpty": {"dataType":"double","required":true},
+            "notDue": {"dataType":"double","required":true},
+            "duplicates": {"dataType":"double","required":true},
+            "failed": {"dataType":"double","required":true},
+            "done": {"dataType":"boolean","required":true},
         },
         "additionalProperties": false,
     },
@@ -605,6 +687,37 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsYouTubeController_getSyncStatus: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+        };
+        app.get('/youtube/sync-status',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.getSyncStatus)),
+
+            async function YouTubeController_getSyncStatus(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_getSyncStatus, request, response });
+
+                const controller = new YouTubeController();
+
+              await templateService.apiHandler({
+                methodName: 'getSyncStatus',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsYouTubeController_toggleSubscription: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 subscriptionId: {"in":"path","name":"subscriptionId","required":true,"dataType":"string"},
@@ -645,6 +758,7 @@ export function RegisterRoutes(app: Router) {
                 page: {"in":"query","name":"page","dataType":"double"},
                 limit: {"in":"query","name":"limit","dataType":"double"},
                 channelId: {"in":"query","name":"channelId","dataType":"string"},
+                kind: {"in":"query","name":"kind","dataType":"union","subSchemas":[{"dataType":"enum","enums":["short"]},{"dataType":"enum","enums":["long"]},{"dataType":"enum","enums":["all"]}]},
         };
         app.get('/youtube/videos',
             authenticateMiddleware([{"jwt":[]}]),
@@ -663,6 +777,39 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'getVideos',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsYouTubeController_setVideoWatched: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                videoId: {"in":"path","name":"videoId","required":true,"dataType":"string"},
+                body: {"in":"body","name":"body","required":true,"ref":"WatchedBody"},
+        };
+        app.patch('/youtube/videos/:videoId/watched',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.setVideoWatched)),
+
+            async function YouTubeController_setVideoWatched(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_setVideoWatched, request, response });
+
+                const controller = new YouTubeController();
+
+              await templateService.apiHandler({
+                methodName: 'setVideoWatched',
                 controller,
                 response,
                 next,
@@ -768,25 +915,85 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-        const argsYouTubeController_cronSyncAndNotify: Record<string, TsoaRoute.ParameterSchema> = {
+        const argsYouTubeController_unsubscribeFromDigest: Record<string, TsoaRoute.ParameterSchema> = {
+                body: {"in":"body","name":"body","required":true,"ref":"UnsubscribeBody"},
         };
-        app.post('/youtube/cron/sync-and-notify',
-            authenticateMiddleware([{"cron-secret":[]}]),
+        app.post('/youtube/digest/unsubscribe',
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
-            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.cronSyncAndNotify)),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.unsubscribeFromDigest)),
 
-            async function YouTubeController_cronSyncAndNotify(request: ExRequest, response: ExResponse, next: any) {
+            async function YouTubeController_unsubscribeFromDigest(request: ExRequest, response: ExResponse, next: any) {
 
             // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
             let validatedArgs: any[] = [];
             try {
-                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_cronSyncAndNotify, request, response });
+                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_unsubscribeFromDigest, request, response });
 
                 const controller = new YouTubeController();
 
               await templateService.apiHandler({
-                methodName: 'cronSyncAndNotify',
+                methodName: 'unsubscribeFromDigest',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsYouTubeController_cronSync: Record<string, TsoaRoute.ParameterSchema> = {
+        };
+        app.post('/youtube/cron/sync',
+            authenticateMiddleware([{"cron-secret":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.cronSync)),
+
+            async function YouTubeController_cronSync(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_cronSync, request, response });
+
+                const controller = new YouTubeController();
+
+              await templateService.apiHandler({
+                methodName: 'cronSync',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsYouTubeController_cronDigest: Record<string, TsoaRoute.ParameterSchema> = {
+        };
+        app.post('/youtube/cron/digest',
+            authenticateMiddleware([{"cron-secret":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.cronDigest)),
+
+            async function YouTubeController_cronDigest(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_cronDigest, request, response });
+
+                const controller = new YouTubeController();
+
+              await templateService.apiHandler({
+                methodName: 'cronDigest',
                 controller,
                 response,
                 next,

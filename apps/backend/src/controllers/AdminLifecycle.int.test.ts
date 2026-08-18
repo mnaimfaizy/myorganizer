@@ -103,7 +103,12 @@ jest.mock('../services/VaultBackupService', () => ({
   default: {},
 }));
 
-jest.mock('../services/YouTubeNotificationService', () => ({
+jest.mock('../services/YouTubeSyncWorkerService', () => ({
+  __esModule: true,
+  default: {},
+}));
+
+jest.mock('../services/YouTubeDigestService', () => ({
   __esModule: true,
   default: {},
 }));

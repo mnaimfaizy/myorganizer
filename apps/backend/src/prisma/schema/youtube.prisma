@@ -1,69 +1,131 @@
 model YouTubeIntegration {
-    id                          String      @id @default(cuid())
-    userId                      String      @unique
-    encrypted_access_token      String
-    encrypted_refresh_token     String
-    token_iv                    String
-    token_auth_tag              String
-    status                      String      @default("connected")
-    createdAt                   DateTime    @default(now())
-    updatedAt                   DateTime    @updatedAt
+  id                      String    @id @default(cuid())
+  userId                  String    @unique
+  encrypted_access_token  String
+  encrypted_refresh_token String
+  token_iv                String
+  token_auth_tag          String
+  status                  String    @default("connected")
+  lastSyncAttemptAt       DateTime?
+  lastSyncStatus          String    @default("never")
+  lastSyncError           String?
+  lastManualRefreshAt     DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
-    user                        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-    subscriptions               YouTubeSubscription[]
+  user          User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptions YouTubeSubscription[]
 
-    @@index([userId])
+  @@index([userId])
 }
 
 model YouTubeSubscription {
-    id                      String      @id @default(cuid())
-    userId                  String
-    channelId               String
-    channelTitle            String
-    channelThumbnail        String?
-    uploadsPlaylistId       String
-    enabled                 Boolean     @default(true)
-    lastSyncedAt            DateTime?
-    createdAt               DateTime    @default(now())
-    updatedAt               DateTime    @updatedAt
+  id                String    @id @default(cuid())
+  userId            String
+  channelId         String
+  channelTitle      String
+  channelThumbnail  String?
+  uploadsPlaylistId String
+  enabled           Boolean   @default(true)
+  lastSyncedAt      DateTime?
+  disabledAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-    user                    User        @relation(fields: [userId], references: [id], onDelete: Cascade, map: "YouTubeSub_user_fkey")
-    integration             YouTubeIntegration @relation(fields: [userId], references: [userId], onDelete: Cascade, map: "YouTubeSub_integration_fkey")
-    videos                  YouTubeVideo[]
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade, map: "YouTubeSub_user_fkey")
+  integration YouTubeIntegration @relation(fields: [userId], references: [userId], onDelete: Cascade, map: "YouTubeSub_integration_fkey")
+  videos      YouTubeVideo[]
 
-    @@unique([userId, channelId])
-    @@index([userId])
+  @@unique([userId, channelId])
+  @@index([userId])
 }
 
 model YouTubeVideo {
-    id                  String      @id @default(cuid())
-    userId              String
-    videoId             String
-    channelId           String
-    title               String
-    thumbnail           String?
-    publishedAt         DateTime
-    createdAt           DateTime    @default(now())
+  id              String   @id @default(cuid())
+  userId          String
+  videoId         String
+  channelId       String
+  title           String
+  thumbnail       String?
+  publishedAt     DateTime
+  // Runtime in seconds, from the uploads sync. Nullable because rows cached
+  // before duration was collected have never been classified — those are
+  // treated as long-form until the next sync backfills them, so nothing
+  // silently disappears from the channel-first home.
+  durationSeconds Int?
+  watched         Boolean  @default(false)
+  createdAt       DateTime @default(now())
 
-    user                User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-    subscription        YouTubeSubscription @relation(fields: [userId, channelId], references: [userId, channelId], onDelete: Cascade)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscription YouTubeSubscription @relation(fields: [userId, channelId], references: [userId, channelId], onDelete: Cascade)
 
-    @@unique([userId, videoId])
-    @@index([userId])
-    @@index([userId, channelId])
-    @@index([publishedAt])
+  @@unique([userId, videoId])
+  @@index([userId])
+  @@index([userId, channelId])
+  @@index([publishedAt])
 }
 
 model YouTubeNotificationSettings {
-    id              String      @id @default(cuid())
-    userId          String      @unique
-    intervalDays    Int         @default(7)
-    lastNotifiedAt  DateTime?
-    enabled         Boolean     @default(true)
-    createdAt       DateTime    @default(now())
-    updatedAt       DateTime    @updatedAt
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  intervalDays     Int       @default(7)
+  lastNotifiedAt   DateTime?
+  // The weekly digest is opt-in: connecting YouTube must not start mailing
+  // anyone. `enabled` only flips to true when the User asks for it.
+  enabled          Boolean   @default(false)
+  // When the User opted in. Used as the digest window start for the first
+  // send, so an opt-in never back-fills months of Cached Uploads.
+  optedInAt        DateTime?
+  // Day of week the User prefers, 0 = Sunday .. 6 = Saturday, evaluated in
+  // `timeZone` (IANA). Null timeZone falls back to UTC.
+  preferredWeekday Int       @default(1)
+  timeZone         String?
+  // Stable per-User secret used in the one-click unsubscribe link that every
+  // digest email must carry.
+  unsubscribeToken String?   @unique
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 
-    user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-    @@index([userId])
+  @@index([userId])
+}
+
+/// Idempotent delivery ledger: at most one digest per User per period.
+/// The unique key is claimed before the mail is handed to SMTP, so a worker
+/// that dies mid-send can never double-mail the same period on resume.
+model YouTubeDigestDelivery {
+  id        String    @id @default(cuid())
+  userId    String
+  /// Local ISO week the digest covers, e.g. "2026-W33".
+  periodKey String
+  /// claimed | sent | failed. `skipped_empty` is a worker outcome only;
+  /// an empty Window does not write a row (ADR 0016).
+  status    String    @default("claimed")
+  itemCount Int       @default(0)
+  sentAt    DateTime?
+  error     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, periodKey])
+  @@index([userId])
+}
+
+/// Single-row-per-worker DB lease plus resumable cursor. Complements the
+/// host-level `flock` in the cron wrapper: flock stops two processes on one
+/// box, this stops two boxes (or a stale flock) from overlapping.
+model YouTubeWorkerLease {
+  id         String   @id @default(cuid())
+  /// Worker name, e.g. "youtube-digest" or "youtube-sync".
+  name       String   @unique
+  /// Opaque id of the process currently holding the lease.
+  owner      String
+  acquiredAt DateTime @default(now())
+  expiresAt  DateTime
+  /// Last userId processed in this pass; null means "start from the top".
+  cursor     String?
+  updatedAt  DateTime @updatedAt
 }

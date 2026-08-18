@@ -83,10 +83,18 @@ jest.mock('../services/YouTubeSyncService', () => ({
   },
 }));
 
-jest.mock('../services/YouTubeNotificationService', () => ({
+jest.mock('../services/YouTubeSyncWorkerService', () => ({
   __esModule: true,
   default: {
-    syncAndNotifyAll: jest.fn(),
+    runSyncWorker: jest.fn(),
+  },
+}));
+
+jest.mock('../services/YouTubeDigestService', () => ({
+  __esModule: true,
+  default: {
+    runDigestWorker: jest.fn(),
+    unsubscribe: jest.fn(),
   },
 }));
 
@@ -179,50 +187,153 @@ describe('YouTubeController (HTTP integration)', () => {
     expect(youtubeSyncService.getAuthUrl).toHaveBeenCalledWith('user-1');
   });
 
-  test('requires X-Cron-Secret for POST /youtube/cron/sync-and-notify', async () => {
+  test('requires X-Cron-Secret for POST /youtube/cron/sync', async () => {
     const app = makeApp();
-    const youTubeNotificationService =
-      require('../services/YouTubeNotificationService').default;
+    const youTubeSyncWorkerService =
+      require('../services/YouTubeSyncWorkerService').default;
 
-    const res = await request(app).post('/youtube/cron/sync-and-notify');
+    const res = await request(app).post('/youtube/cron/sync');
 
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ message: 'Unauthorized' });
-    expect(youTubeNotificationService.syncAndNotifyAll).not.toHaveBeenCalled();
+    expect(youTubeSyncWorkerService.runSyncWorker).not.toHaveBeenCalled();
   });
 
-  test('rejects wrong X-Cron-Secret for POST /youtube/cron/sync-and-notify', async () => {
+  test('rejects wrong X-Cron-Secret for POST /youtube/cron/sync', async () => {
     const app = makeApp();
-    const youTubeNotificationService =
-      require('../services/YouTubeNotificationService').default;
+    const youTubeSyncWorkerService =
+      require('../services/YouTubeSyncWorkerService').default;
 
     const res = await request(app)
-      .post('/youtube/cron/sync-and-notify')
+      .post('/youtube/cron/sync')
       .set('X-Cron-Secret', 'wrong-secret');
 
     expect(res.status).toBe(401);
     expect(res.body).toEqual({ message: 'Unauthorized' });
-    expect(youTubeNotificationService.syncAndNotifyAll).not.toHaveBeenCalled();
+    expect(youTubeSyncWorkerService.runSyncWorker).not.toHaveBeenCalled();
   });
 
-  test('runs cron sync-and-notify with valid X-Cron-Secret', async () => {
+  test('runs cron sync with valid X-Cron-Secret', async () => {
     const app = makeApp();
-    const youTubeNotificationService =
-      require('../services/YouTubeNotificationService').default;
+    const youTubeSyncWorkerService =
+      require('../services/YouTubeSyncWorkerService').default;
 
-    youTubeNotificationService.syncAndNotifyAll.mockResolvedValue({
-      usersSynced: 3,
-      notificationsSent: 2,
+    youTubeSyncWorkerService.runSyncWorker.mockResolvedValue({
+      ran: true,
+      processed: 10,
+      usersSynced: 8,
+      failed: 2,
+      done: false,
     });
 
     const res = await request(app)
-      .post('/youtube/cron/sync-and-notify')
+      .post('/youtube/cron/sync')
       .set('X-Cron-Secret', CRON_SECRET);
 
     expect(res.status).toBe(200);
-    expect(res.body).toEqual({ usersSynced: 3, notificationsSent: 2 });
-    expect(youTubeNotificationService.syncAndNotifyAll).toHaveBeenCalledTimes(
-      1,
+    expect(res.body).toEqual({
+      ran: true,
+      processed: 10,
+      usersSynced: 8,
+      failed: 2,
+      done: false,
+    });
+    expect(youTubeSyncWorkerService.runSyncWorker).toHaveBeenCalledTimes(1);
+  });
+
+  test('requires X-Cron-Secret for POST /youtube/cron/digest', async () => {
+    const app = makeApp();
+    const youTubeDigestService =
+      require('../services/YouTubeDigestService').default;
+
+    const res = await request(app).post('/youtube/cron/digest');
+
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ message: 'Unauthorized' });
+    expect(youTubeDigestService.runDigestWorker).not.toHaveBeenCalled();
+  });
+
+  test('rejects wrong X-Cron-Secret for POST /youtube/cron/digest', async () => {
+    const app = makeApp();
+    const youTubeDigestService =
+      require('../services/YouTubeDigestService').default;
+
+    const res = await request(app)
+      .post('/youtube/cron/digest')
+      .set('X-Cron-Secret', 'wrong-secret');
+
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ message: 'Unauthorized' });
+    expect(youTubeDigestService.runDigestWorker).not.toHaveBeenCalled();
+  });
+
+  test('runs cron digest with valid X-Cron-Secret', async () => {
+    const app = makeApp();
+    const youTubeDigestService =
+      require('../services/YouTubeDigestService').default;
+
+    youTubeDigestService.runDigestWorker.mockResolvedValue({
+      ran: true,
+      processed: 25,
+      sent: 18,
+      skippedEmpty: 4,
+      notDue: 2,
+      duplicates: 1,
+      failed: 0,
+      done: false,
+    });
+
+    const res = await request(app)
+      .post('/youtube/cron/digest')
+      .set('X-Cron-Secret', CRON_SECRET);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      ran: true,
+      processed: 25,
+      sent: 18,
+      skippedEmpty: 4,
+      notDue: 2,
+      duplicates: 1,
+      failed: 0,
+      done: false,
+    });
+    expect(youTubeDigestService.runDigestWorker).toHaveBeenCalledTimes(1);
+  });
+
+  test('unsubscribes from digest with valid token (no auth headers)', async () => {
+    const app = makeApp();
+    const youTubeDigestService =
+      require('../services/YouTubeDigestService').default;
+
+    youTubeDigestService.unsubscribe.mockResolvedValue(true);
+
+    const res = await request(app)
+      .post('/youtube/digest/unsubscribe')
+      .send({ token: 'valid-unsubscribe-token' });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ ok: true });
+    expect(youTubeDigestService.unsubscribe).toHaveBeenCalledWith(
+      'valid-unsubscribe-token',
+    );
+  });
+
+  test('returns 404 when unsubscribe token is invalid (no auth headers)', async () => {
+    const app = makeApp();
+    const youTubeDigestService =
+      require('../services/YouTubeDigestService').default;
+
+    youTubeDigestService.unsubscribe.mockResolvedValue(false);
+
+    const res = await request(app)
+      .post('/youtube/digest/unsubscribe')
+      .send({ token: 'invalid-token' });
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ message: 'Unknown unsubscribe link.' });
+    expect(youTubeDigestService.unsubscribe).toHaveBeenCalledWith(
+      'invalid-token',
     );
   });
 
@@ -230,7 +341,7 @@ describe('YouTubeController (HTTP integration)', () => {
     const app = makeApp();
 
     const jwtRes = await request(app).get('/youtube/auth-url');
-    const cronRes = await request(app).post('/youtube/cron/sync-and-notify');
+    const cronRes = await request(app).post('/youtube/cron/sync');
 
     expect(jwtRes.status).toBe(401);
     expect(cronRes.status).toBe(401);

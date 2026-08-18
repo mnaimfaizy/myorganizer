@@ -2,23 +2,32 @@
 
 import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 import { RefreshCw } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { useCallback, useMemo, useState } from 'react';
 import {
+  formatRetryAt,
+  useChannelUploads,
+  useVideoQueue,
   useYouTubeCarousel,
   useYouTubeConnect,
   useYouTubeStatus,
   useYouTubeSubscriptions,
-  useYouTubeVideos,
+  useYouTubeSyncStatus,
 } from '../hooks';
-import type { ViewMode } from '../types';
 import { SubscriptionManager } from './SubscriptionManager';
-import { VideoCarousel } from './VideoCarousel';
-import { VideoGrid } from './VideoGrid';
+import { ChannelDirectory } from './ChannelDirectory';
+import { QueueRail } from './QueueRail';
+import { SyncFreshnessIndicator } from './SyncFreshnessIndicator';
+import { YouTubeConnectPrompt } from './YouTubeConnectPrompt';
 
 export function YouTubePageClient() {
   const { connected, status, refresh: refreshStatus } = useYouTubeStatus();
   const { connect, disconnect } = useYouTubeConnect();
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const handleDisconnect = useCallback(async () => {
+    await disconnect();
+    await refreshStatus();
+  }, [disconnect, refreshStatus]);
 
   if (status === 'loading') {
     return (
@@ -29,88 +38,122 @@ export function YouTubePageClient() {
   }
 
   if (!connected) {
-    return <ConnectPrompt status={status} onConnect={connect} />;
+    return (
+      <YouTubeConnectPrompt
+        onConnect={connect}
+        statusMessage={
+          status === 'revoked'
+            ? 'Your previous connection was revoked. Please reconnect.'
+            : undefined
+        }
+      />
+    );
   }
 
-  return (
-    <ConnectedDashboard
-      viewMode={viewMode}
-      onViewModeChange={setViewMode}
-      onDisconnect={async () => {
-        await disconnect();
-        await refreshStatus();
-      }}
-    />
-  );
-}
-
-interface ConnectPromptProps {
-  status: string;
-  onConnect: () => void;
-}
-
-function ConnectPrompt({ status, onConnect }: ConnectPromptProps) {
-  return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
-      <div className="rounded-full bg-red-100 p-4 dark:bg-red-900/30">
-        <svg
-          viewBox="0 0 24 24"
-          className="h-12 w-12 text-red-600 dark:text-red-400"
-          fill="currentColor"
-        >
-          <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
-        </svg>
-      </div>
-      <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-        Connect Your YouTube Account
-      </h2>
-      <p className="max-w-md text-center text-sm text-gray-500">
-        Link your YouTube account to view and manage videos from your subscribed
-        channels. We only request read-only access.
-      </p>
-      {status === 'revoked' && (
-        <p className="text-sm text-yellow-600 dark:text-yellow-400">
-          Your previous connection was revoked. Please reconnect.
-        </p>
-      )}
-      <Button onClick={onConnect}>Connect YouTube</Button>
-    </div>
-  );
+  return <ConnectedDashboard onDisconnect={handleDisconnect} />;
 }
 
 interface ConnectedDashboardProps {
-  viewMode: ViewMode;
-  onViewModeChange: (mode: ViewMode) => void;
   onDisconnect: () => void;
 }
 
-function ConnectedDashboard({
-  viewMode,
-  onViewModeChange,
-  onDisconnect,
-}: ConnectedDashboardProps) {
+function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
+  // Digest mail and the subscription list deep-link a channel here. Read once
+  // as the directory's initial selection rather than driving it from the URL,
+  // so the User's own clicks are not fighting a stale query string.
+  const deepLinkedChannelId = useSearchParams().get('channel');
   const subs = useYouTubeSubscriptions();
-  const gridData = useYouTubeVideos();
   const carouselData = useYouTubeCarousel();
-  const { sync: syncSubs } = subs;
-  const { refresh: refreshGrid } = gridData;
-  const { refresh: refreshCarousel } = carouselData;
+  const syncStatus = useYouTubeSyncStatus();
   const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+
+  const isCooldownActive = !!syncStatus.isCooldownActive;
+
+  const channelUploads = useChannelUploads();
+
+  // A channel the User expanded shows its full cached snapshot; every other
+  // channel keeps the bounded slice the list endpoint returned.
+  const channels = useMemo(
+    () =>
+      carouselData.channels.map((channel) => {
+        const expanded = channelUploads.uploadsByChannel[channel.channelId];
+        return expanded ? { ...channel, videos: expanded } : channel;
+      }),
+    [carouselData.channels, channelUploads.uploadsByChannel],
+  );
+
+  const library = useMemo(
+    () => channels.flatMap((channel) => channel.videos),
+    [channels],
+  );
+
+  const queue = useVideoQueue(library);
+
+  // Which surface owns the single active player. The queue rail and the
+  // channel directory each carry their own player per the locked Variant B
+  // and Variant C models, but only one of them may be playing: two YouTube
+  // embeds running at once means two audio streams and two near-end handlers
+  // racing to mark uploads Watched. Nothing plays on arrival, so the
+  // directory — the home surface — holds the claim until the rail takes it.
+  const [playbackOwner, setPlaybackOwner] = useState<'directory' | 'queue'>(
+    'directory',
+  );
+
+  const handleDirectoryPlaybackClaim = useCallback(() => {
+    setPlaybackOwner('directory');
+    // Leaves the queue contents alone — only the playing pointer is cleared,
+    // so the rail keeps its order and the User can resume it.
+    queue.stop();
+  }, [queue]);
+
+  const handleQueuePlaybackClaim = useCallback(() => {
+    setPlaybackOwner('queue');
+  }, []);
+
+  const handleWatchedToggle = useCallback(
+    (videoId: string, watched: boolean) => {
+      // Both stores hold their own copy of an upload, so a Watched change has
+      // to land in each or an expanded channel would show a stale badge.
+      carouselData.updateWatched(videoId, watched);
+      channelUploads.updateWatched(videoId, watched);
+    },
+    [carouselData, channelUploads],
+  );
 
   const handleSync = useCallback(async () => {
+    if (isCooldownActive) return;
     setSyncing(true);
+    setSyncError(null);
     try {
-      await syncSubs();
-      // Sync also fetches videos on the backend now, refresh both views
-      await Promise.all([refreshGrid(), refreshCarousel()]);
+      // Use the authoritative trigger so we get sync-status details
+      await syncStatus.triggerSync();
+      // Refresh lists but don't fail the whole flow — preserve cached data on failures
+      const results = await Promise.allSettled([
+        subs.refresh(),
+        carouselData.refresh(),
+      ]);
+      const hadFailure = results.some((r) => r.status === 'rejected');
+      if (hadFailure) {
+        setSyncError('Refresh failed — showing cached data');
+      }
+      // Refresh authoritative sync status
+      await syncStatus.refresh();
+    } catch (err: unknown) {
+      setSyncError(err instanceof Error ? err.message : String(err));
     } finally {
       setSyncing(false);
     }
-  }, [syncSubs, refreshGrid, refreshCarousel]);
+  }, [isCooldownActive, syncStatus, subs, carouselData]);
 
-  const handleRefreshVideos = useCallback(async () => {
-    await Promise.all([refreshGrid(), refreshCarousel()]);
-  }, [refreshGrid, refreshCarousel]);
+  const handleRetryClick = useCallback(async () => {
+    if (isCooldownActive) return;
+    await handleSync();
+  }, [isCooldownActive, handleSync]);
+
+  const handleDirectoryRetry = useCallback(() => {
+    carouselData.refresh();
+  }, [carouselData]);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -120,65 +163,83 @@ function ConnectedDashboard({
         onSync={handleSync}
         onToggle={subs.toggle}
         onDisconnect={onDisconnect}
+        syncRetryAt={syncStatus.status?.retryAt}
       />
 
       <Card className="p-4">
-        <div className="flex items-center justify-between">
-          <CardTitle>Videos</CardTitle>
-          <div className="flex gap-2">
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <CardTitle>Videos</CardTitle>
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleRefreshVideos}
-              disabled={gridData.loading || carouselData.loading}
-              title="Refresh videos"
+              asChild
+              aria-label="Shorts — daily time budget applies"
+            >
+              <Link href="/dashboard/youtube/shorts">Shorts</Link>
+            </Button>
+          </div>
+          <div className="flex items-start gap-2">
+            <SyncFreshnessIndicator status={syncStatus.status} />
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleRetryClick}
+              disabled={
+                carouselData.loading ||
+                syncStatus.loading ||
+                syncing ||
+                isCooldownActive
+              }
+              aria-label={
+                isCooldownActive && syncStatus.status?.retryAt
+                  ? `Retry disabled until ${formatRetryAt(syncStatus.status?.retryAt) ?? syncStatus.status?.retryAt}`
+                  : 'Retry sync'
+              }
+              title={
+                isCooldownActive && syncStatus.status?.retryAt
+                  ? `Retry disabled until ${formatRetryAt(syncStatus.status?.retryAt) ?? syncStatus.status?.retryAt}`
+                  : 'Retry sync'
+              }
             >
               <RefreshCw
-                className={`h-4 w-4 ${gridData.loading || carouselData.loading ? 'animate-spin' : ''}`}
+                className={`h-4 w-4 ${carouselData.loading || syncStatus.loading || syncing ? 'animate-spin' : ''}`}
               />
-            </Button>
-            <Button
-              variant={viewMode === 'grid' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => onViewModeChange('grid')}
-            >
-              Grid
-            </Button>
-            <Button
-              variant={viewMode === 'carousel' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => onViewModeChange('carousel')}
-            >
-              Carousel
             </Button>
           </div>
         </div>
-        {gridData.total === 0 && !gridData.loading && (
-          <p className="mt-2 text-sm text-gray-500">
-            No videos yet. Click &quot;Sync from YouTube&quot; above to fetch
-            your subscriptions and their latest videos.
-          </p>
-        )}
-        <CardContent className="mt-4">
-          {viewMode === 'grid' ? (
-            <VideoGrid
-              videos={gridData.videos}
-              loading={gridData.loading}
-              sort={gridData.sort}
-              onSortChange={gridData.setSort}
-              search={gridData.search}
-              onSearchChange={gridData.setSearch}
-              page={gridData.page}
-              totalPages={gridData.totalPages}
-              onPageChange={gridData.setPage}
-              total={gridData.total}
-            />
-          ) : (
-            <VideoCarousel
-              channels={carouselData.channels}
-              loading={carouselData.loading}
-            />
+        <CardContent className="mt-4 space-y-6">
+          {syncError && (
+            <div
+              role="alert"
+              aria-live="assertive"
+              className="mb-2 text-sm text-red-600 dark:text-red-400"
+            >
+              {syncError}
+            </div>
           )}
+          <QueueRail
+            queue={queue}
+            onWatchedToggle={handleWatchedToggle}
+            onPlaybackClaim={handleQueuePlaybackClaim}
+          />
+          <ChannelDirectory
+            channels={channels}
+            loading={carouselData.loading}
+            error={carouselData.error}
+            onRetry={handleDirectoryRetry}
+            onWatchedToggle={handleWatchedToggle}
+            onAddToQueue={queue.add}
+            isQueued={queue.isQueued}
+            queueFull={queue.isFull}
+            playbackSuspended={playbackOwner !== 'directory'}
+            onPlaybackClaim={handleDirectoryPlaybackClaim}
+            initialChannelId={deepLinkedChannelId}
+            onLoadMoreUploads={channelUploads.loadChannel}
+            loadingMoreChannelIds={channelUploads.loadingChannelIds}
+            fullyLoadedChannelIds={channelUploads.fullyLoadedChannelIds}
+          />
         </CardContent>
       </Card>
     </div>

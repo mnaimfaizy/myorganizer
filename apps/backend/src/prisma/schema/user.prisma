@@ -1,61 +1,62 @@
 enum UserRole {
-    user
-    platform_admin
+  user
+  platform_admin
 }
 
 enum AdminAuditAction {
-    disable
-    enable
-    force_logout
-    resend_verification
-    promote
-    demote
+  disable
+  enable
+  force_logout
+  resend_verification
+  promote
+  demote
 }
 
 model User {
-    id                              String      @id @default(cuid()) 
-    name                            String?
-    first_name                      String
-    last_name                       String
-    phone                           String?
-    email                           String      @unique
-    password                        String
-    reset_password_token            String?
-    email_verification_token         String?
-    email_verification_timestamp    DateTime? 
-    blacklisted_tokens              String[]
-    role                            UserRole    @default(user)
-    disabled                        Boolean     @default(false)
-    /// When set, refresh/access tokens with iat before this timestamp are rejected.
-    sessions_invalidated_at         DateTime?
+  id                           String    @id @default(cuid())
+  name                         String?
+  first_name                   String
+  last_name                    String
+  phone                        String?
+  email                        String    @unique
+  password                     String
+  reset_password_token         String?
+  email_verification_token     String?
+  email_verification_timestamp DateTime?
+  blacklisted_tokens           String[]
+  role                         UserRole  @default(user)
+  disabled                     Boolean   @default(false)
+  /// When set, refresh/access tokens with iat before this timestamp are rejected.
+  sessions_invalidated_at      DateTime?
 
-    encrypted_vault                  EncryptedVault?
-    vault_backup_records             VaultBackupRecord[]
-    youtube_integration              YouTubeIntegration?
-    youtube_subscriptions            YouTubeSubscription[]
-    youtube_videos                   YouTubeVideo[]
-    youtube_notification_settings    YouTubeNotificationSettings?
+  encrypted_vault               EncryptedVault?
+  vault_backup_records          VaultBackupRecord[]
+  youtube_integration           YouTubeIntegration?
+  youtube_subscriptions         YouTubeSubscription[]
+  youtube_videos                YouTubeVideo[]
+  youtube_notification_settings YouTubeNotificationSettings?
+  youtube_digest_deliveries     YouTubeDigestDelivery[]
 
-    admin_audit_logs_as_actor        AdminAuditLog[] @relation("AdminAuditActor")
-    admin_audit_logs_as_target       AdminAuditLog[] @relation("AdminAuditTarget")
+  admin_audit_logs_as_actor  AdminAuditLog[] @relation("AdminAuditActor")
+  admin_audit_logs_as_target AdminAuditLog[] @relation("AdminAuditTarget")
 
-    @@index([email])
-    @@index([role])
+  @@index([email])
+  @@index([role])
 }
 
 /// Durable record of Platform Admin mutations on Users.
 model AdminAuditLog {
-    id              String           @id @default(cuid())
-    actor_user_id   String
-    target_user_id  String
-    action          AdminAuditAction
-    created_at      DateTime         @default(now())
-    meta            Json?
+  id             String           @id @default(cuid())
+  actor_user_id  String
+  target_user_id String
+  action         AdminAuditAction
+  created_at     DateTime         @default(now())
+  meta           Json?
 
-    actor           User             @relation("AdminAuditActor", fields: [actor_user_id], references: [id])
-    target          User             @relation("AdminAuditTarget", fields: [target_user_id], references: [id])
+  actor  User @relation("AdminAuditActor", fields: [actor_user_id], references: [id])
+  target User @relation("AdminAuditTarget", fields: [target_user_id], references: [id])
 
-    @@index([created_at])
-    @@index([actor_user_id])
-    @@index([target_user_id])
+  @@index([created_at])
+  @@index([actor_user_id])
+  @@index([target_user_id])
 }

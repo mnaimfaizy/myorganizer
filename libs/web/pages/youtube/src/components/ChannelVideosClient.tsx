@@ -31,6 +31,7 @@ export default function ChannelVideosClient({
     totalPages,
     setPage,
     total,
+    updateWatched,
   } = useYouTubeVideos(channelId);
 
   // Derive channel title from the first video (all share the same channel)
@@ -70,6 +71,7 @@ export default function ChannelVideosClient({
             totalPages={totalPages}
             onPageChange={setPage}
             total={total}
+            onWatchedToggle={updateWatched}
           />
         </CardContent>
       </Card>

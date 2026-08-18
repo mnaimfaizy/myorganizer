@@ -77,6 +77,80 @@
         "type": "object",
         "additionalProperties": false
       },
+      "SyncResponse": {
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "lastSyncedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastSyncAttemptAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastSyncError": {
+            "type": "string",
+            "nullable": true
+          },
+          "retryAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "synced": {
+            "type": "number",
+            "format": "double"
+          },
+          "videosSynced": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "required": [
+          "status",
+          "lastSyncedAt",
+          "lastSyncAttemptAt",
+          "lastSyncError",
+          "retryAt",
+          "synced",
+          "videosSynced"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "SyncStatusResponse": {
+        "properties": {
+          "status": {
+            "type": "string"
+          },
+          "lastSyncedAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastSyncAttemptAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastSyncError": {
+            "type": "string",
+            "nullable": true
+          },
+          "retryAt": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "status",
+          "lastSyncedAt",
+          "lastSyncAttemptAt",
+          "lastSyncError",
+          "retryAt"
+        ],
+        "type": "object",
+        "additionalProperties": false
+      },
       "VideoResponse": {
         "properties": {
           "id": {
@@ -98,8 +172,21 @@
           "publishedAt": {
             "type": "string"
           },
+          "watched": {
+            "type": "boolean"
+          },
           "channelTitle": {
             "type": "string"
+          },
+          "durationSeconds": {
+            "type": "number",
+            "format": "double",
+            "nullable": true,
+            "description": "Runtime in seconds, or null when this upload has not been classified yet."
+          },
+          "isShort": {
+            "type": "boolean",
+            "description": "Whether this Cached Upload is a Short. Unclassified uploads are never Shorts."
           }
         },
         "required": [
@@ -108,7 +195,10 @@
           "channelId",
           "title",
           "thumbnail",
-          "publishedAt"
+          "publishedAt",
+          "watched",
+          "durationSeconds",
+          "isShort"
         ],
         "type": "object",
         "additionalProperties": false
@@ -142,6 +232,29 @@
         "type": "object",
         "additionalProperties": false
       },
+      "WatchedResponse": {
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "watched": {
+            "type": "boolean"
+          }
+        },
+        "required": ["ok", "watched"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "WatchedBody": {
+        "properties": {
+          "watched": {
+            "type": "boolean"
+          }
+        },
+        "required": ["watched"],
+        "type": "object",
+        "additionalProperties": false
+      },
       "ChannelCarouselResponse": {
         "properties": {
           "channelId": {
@@ -167,47 +280,141 @@
       },
       "NotificationSettingsResponse": {
         "properties": {
-          "intervalDays": {
-            "type": "number",
-            "format": "double"
-          },
           "enabled": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Whether the User has opted in to the weekly New-only digest."
           },
           "lastNotifiedAt": {
             "type": "string",
             "nullable": true
+          },
+          "preferredWeekday": {
+            "type": "number",
+            "format": "double",
+            "description": "Preferred send day in the User's own week, 0 = Sunday .. 6 = Saturday."
+          },
+          "timeZone": {
+            "type": "string",
+            "nullable": true,
+            "description": "IANA time zone the weekday is evaluated in. Null means UTC."
           }
         },
-        "required": ["intervalDays", "enabled", "lastNotifiedAt"],
+        "required": [
+          "enabled",
+          "lastNotifiedAt",
+          "preferredWeekday",
+          "timeZone"
+        ],
         "type": "object",
         "additionalProperties": false
       },
       "NotificationSettingsBody": {
         "properties": {
-          "intervalDays": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "preferredWeekday": {
             "type": "number",
             "format": "double"
           },
-          "enabled": {
-            "type": "boolean"
+          "timeZone": {
+            "type": "string",
+            "nullable": true
           }
         },
         "type": "object",
         "additionalProperties": false
       },
-      "CronResultResponse": {
+      "UnsubscribeResponse": {
         "properties": {
+          "ok": {
+            "type": "boolean"
+          }
+        },
+        "required": ["ok"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "UnsubscribeBody": {
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": ["token"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "CronSyncResponse": {
+        "description": "Result of one bounded pass of the metadata sync worker.",
+        "properties": {
+          "ran": {
+            "type": "boolean"
+          },
+          "processed": {
+            "type": "number",
+            "format": "double"
+          },
           "usersSynced": {
             "type": "number",
             "format": "double"
           },
-          "notificationsSent": {
+          "failed": {
             "type": "number",
             "format": "double"
+          },
+          "done": {
+            "type": "boolean"
           }
         },
-        "required": ["usersSynced", "notificationsSent"],
+        "required": ["ran", "processed", "usersSynced", "failed", "done"],
+        "type": "object",
+        "additionalProperties": false
+      },
+      "CronDigestResponse": {
+        "description": "Result of one bounded pass of the weekly digest worker.",
+        "properties": {
+          "ran": {
+            "type": "boolean"
+          },
+          "processed": {
+            "type": "number",
+            "format": "double"
+          },
+          "sent": {
+            "type": "number",
+            "format": "double"
+          },
+          "skippedEmpty": {
+            "type": "number",
+            "format": "double"
+          },
+          "notDue": {
+            "type": "number",
+            "format": "double"
+          },
+          "duplicates": {
+            "type": "number",
+            "format": "double"
+          },
+          "failed": {
+            "type": "number",
+            "format": "double"
+          },
+          "done": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "ran",
+          "processed",
+          "sent",
+          "skippedEmpty",
+          "notDue",
+          "duplicates",
+          "failed",
+          "done"
+        ],
         "type": "object",
         "additionalProperties": false
       },
@@ -1073,18 +1280,7 @@
                 "schema": {
                   "anyOf": [
                     {
-                      "properties": {
-                        "videosSynced": {
-                          "type": "number",
-                          "format": "double"
-                        },
-                        "synced": {
-                          "type": "number",
-                          "format": "double"
-                        }
-                      },
-                      "required": ["videosSynced", "synced"],
-                      "type": "object"
+                      "$ref": "#/components/schemas/SyncResponse"
                     },
                     {
                       "$ref": "#/components/schemas/YouTubeErrorResponse"
@@ -1096,6 +1292,38 @@
           }
         },
         "description": "Fetches fresh subscriptions from YouTube and syncs to DB.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/youtube/sync-status": {
+      "get": {
+        "operationId": "GetSyncStatus",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/SyncStatusResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/YouTubeErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Returns the latest cached-video sync outcome and retry time.",
         "tags": ["YouTube"],
         "security": [
           {
@@ -1244,8 +1472,69 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "description": "Library slice by runtime: short | long | all (default all)",
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["short", "long", "all"]
+            }
           }
         ]
+      }
+    },
+    "/youtube/videos/{videoId}/watched": {
+      "patch": {
+        "operationId": "SetVideoWatched",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/WatchedResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/YouTubeErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Marks a Cached Upload as Watched or New.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "jwt": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "videoId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WatchedBody"
+              }
+            }
+          }
+        }
       }
     },
     "/youtube/videos/carousel": {
@@ -1355,9 +1644,9 @@
         }
       }
     },
-    "/youtube/cron/sync-and-notify": {
+    "/youtube/digest/unsubscribe": {
       "post": {
-        "operationId": "CronSyncAndNotify",
+        "operationId": "UnsubscribeFromDigest",
         "responses": {
           "200": {
             "description": "Ok",
@@ -1366,7 +1655,7 @@
                 "schema": {
                   "anyOf": [
                     {
-                      "$ref": "#/components/schemas/CronResultResponse"
+                      "$ref": "#/components/schemas/UnsubscribeResponse"
                     },
                     {
                       "$ref": "#/components/schemas/YouTubeErrorResponse"
@@ -1377,7 +1666,77 @@
             }
           }
         },
-        "description": "Cron-only endpoint: syncs all users' videos and sends due notifications.\nAuthenticated via X-Cron-Secret header instead of JWT.",
+        "description": "Turns the weekly digest off from the link carried by every digest email.\nUnauthenticated by design — the opaque token is the only credential a\nmail client can present.",
+        "tags": ["YouTube"],
+        "security": [],
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UnsubscribeBody"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/youtube/cron/sync": {
+      "post": {
+        "operationId": "CronSync",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CronSyncResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/YouTubeErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Cron-only endpoint: runs one bounded pass of the metadata sync worker.\nAuthenticated via X-Cron-Secret header instead of JWT.",
+        "tags": ["YouTube"],
+        "security": [
+          {
+            "cron-secret": []
+          }
+        ],
+        "parameters": []
+      }
+    },
+    "/youtube/cron/digest": {
+      "post": {
+        "operationId": "CronDigest",
+        "responses": {
+          "200": {
+            "description": "Ok",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/CronDigestResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/YouTubeErrorResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "description": "Cron-only endpoint: runs one bounded pass of the weekly digest worker.\nSeparate from `/cron/sync` so neither job can starve or fail the other.",
         "tags": ["YouTube"],
         "security": [
           {

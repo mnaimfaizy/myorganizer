@@ -7,7 +7,9 @@ import {
   CardTitle,
   Skeleton,
 } from '@myorganizer/web-ui';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { formatRetryAt, isRetryCooldownActive } from '../hooks';
 import type { YouTubeSubscription } from '../types';
 
 interface SubscriptionManagerProps {
@@ -16,6 +18,7 @@ interface SubscriptionManagerProps {
   onSync: () => void;
   onToggle: (id: string, enabled: boolean) => void;
   onDisconnect: () => void;
+  syncRetryAt?: string | null;
 }
 
 export function SubscriptionManager({
@@ -24,8 +27,13 @@ export function SubscriptionManager({
   onSync,
   onToggle,
   onDisconnect,
+  syncRetryAt,
 }: SubscriptionManagerProps) {
   const router = useRouter();
+  const isCooldownActive = !!(
+    syncRetryAt && isRetryCooldownActive(syncRetryAt)
+  );
+  const retryLabel = formatRetryAt(syncRetryAt);
 
   return (
     <Card className="p-4">
@@ -35,8 +43,21 @@ export function SubscriptionManager({
           <Button
             variant="outline"
             size="sm"
-            onClick={onSync}
-            disabled={loading}
+            onClick={() => {
+              if (isCooldownActive) return;
+              onSync();
+            }}
+            disabled={loading || isCooldownActive}
+            aria-label={
+              isCooldownActive && retryLabel
+                ? `Sync disabled until ${retryLabel}`
+                : undefined
+            }
+            title={
+              isCooldownActive && retryLabel
+                ? `Sync disabled until ${retryLabel}`
+                : undefined
+            }
           >
             {loading ? 'Syncing…' : 'Sync from YouTube'}
           </Button>
@@ -49,6 +70,19 @@ export function SubscriptionManager({
             Disconnect
           </Button>
         </div>
+      </div>
+      <div className="text-xs text-gray-500 dark:text-gray-400">
+        <ul className="list-disc list-inside space-y-0.5 mb-2">
+          <li>Metadata only — never video files</li>
+          <li>Watched is yes/no, not analytics</li>
+          <li>Latest 100 uploads cached per channel</li>
+          <li>30 days after you disable a channel</li>
+          <li>Disconnecting deletes all metadata</li>
+          <li>Shorts budget is tracked locally</li>
+        </ul>
+        <Link href="/youtube/data-privacy" className="underline">
+          How we store your data
+        </Link>
       </div>
       <CardContent className="mt-4">
         {loading && subscriptions.length === 0 ? (
@@ -71,7 +105,7 @@ export function SubscriptionManager({
                   className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
                   onClick={() =>
                     router.push(
-                      `/dashboard/youtube/channel/${encodeURIComponent(sub.channelId)}`,
+                      `/dashboard/youtube?channel=${encodeURIComponent(sub.channelId)}`,
                     )
                   }
                 >
@@ -96,8 +130,9 @@ export function SubscriptionManager({
                     checked={sub.enabled}
                     onChange={() => onToggle(sub.id, !sub.enabled)}
                     className="peer sr-only"
+                    aria-label={`Toggle subscription for ${sub.channelTitle}`}
                   />
-                  <div className="peer h-5 w-9 rounded-full bg-gray-200 after:absolute after:start-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-gray-700" />
+                  <div className="peer h-5 w-9 rounded-full bg-gray-200 after:absolute after:start-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-gray-700" />
                 </label>
               </li>
             ))}
