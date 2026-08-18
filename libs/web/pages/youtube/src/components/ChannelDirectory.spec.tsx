@@ -255,7 +255,7 @@ describe('ChannelDirectory', () => {
   });
 
   describe('Keyboard navigation — channel list (desktop)', () => {
-    it('ArrowRight moves focus and selection to next desktop channel button', () => {
+    it('ArrowDown moves focus and selection to next desktop channel button', () => {
       const videos = [makeVideo('1', 'Video 1')];
       const channels = [
         makeChannel('ch-1', 'Channel 1', videos),
@@ -276,9 +276,9 @@ describe('ChannelDirectory', () => {
         : [];
       expect(desktopButtons.length).toBe(3);
 
-      // Focus on first button and press ArrowRight
+      // Focus on first button and press ArrowDown
       desktopButtons[0].focus();
-      fireEvent.keyDown(desktopButtons[0], { key: 'ArrowRight' });
+      fireEvent.keyDown(desktopButtons[0], { key: 'ArrowDown' });
 
       // Focus should move to second button
       expect(desktopButtons[1]).toHaveFocus();
@@ -288,7 +288,7 @@ describe('ChannelDirectory', () => {
       expect(detailH2?.textContent).toBe('Channel 2');
     });
 
-    it('ArrowLeft moves focus and selection to previous desktop channel button', () => {
+    it('ArrowUp moves focus and selection to previous desktop channel button', () => {
       const videos = [makeVideo('1', 'Video 1')];
       const channels = [
         makeChannel('ch-1', 'Channel 1', videos),
@@ -307,7 +307,7 @@ describe('ChannelDirectory', () => {
 
       // Start on second button
       desktopButtons[1].focus();
-      fireEvent.keyDown(desktopButtons[1], { key: 'ArrowLeft' });
+      fireEvent.keyDown(desktopButtons[1], { key: 'ArrowUp' });
 
       expect(desktopButtons[0]).toHaveFocus();
       const detailH2 = container.querySelector('div.flex-1 h2');
@@ -344,6 +344,58 @@ describe('ChannelDirectory', () => {
       expect(desktopButtons[2]).toHaveFocus();
       detailH2 = container.querySelector('div.flex-1 h2');
       expect(detailH2?.textContent).toBe('Channel 3');
+    });
+
+    it('ignores the horizontal axis, because the desktop list is vertical', () => {
+      const videos = [makeVideo('1', 'Video 1')];
+      const channels = [
+        makeChannel('ch-1', 'Channel 1', videos),
+        makeChannel('ch-2', 'Channel 2', videos),
+      ];
+
+      const { container } = render(
+        <ChannelDirectory channels={channels} loading={false} error={null} />,
+      );
+
+      const desktopNav = container.querySelector('aside')?.querySelector('nav');
+      const desktopButtons = desktopNav
+        ? within(desktopNav).getAllByRole('button')
+        : [];
+
+      desktopButtons[0].focus();
+      fireEvent.keyDown(desktopButtons[0], { key: 'ArrowRight' });
+      expect(desktopButtons[0]).toHaveFocus();
+
+      fireEvent.keyDown(desktopButtons[0], { key: 'ArrowLeft' });
+      expect(desktopButtons[0]).toHaveFocus();
+
+      const detailH2 = container.querySelector('div.flex-1 h2');
+      expect(detailH2?.textContent).toBe('Channel 1');
+    });
+
+    it('stops at the ends rather than wrapping', () => {
+      const videos = [makeVideo('1', 'Video 1')];
+      const channels = [
+        makeChannel('ch-1', 'Channel 1', videos),
+        makeChannel('ch-2', 'Channel 2', videos),
+      ];
+
+      const { container } = render(
+        <ChannelDirectory channels={channels} loading={false} error={null} />,
+      );
+
+      const desktopNav = container.querySelector('aside')?.querySelector('nav');
+      const desktopButtons = desktopNav
+        ? within(desktopNav).getAllByRole('button')
+        : [];
+
+      desktopButtons[0].focus();
+      fireEvent.keyDown(desktopButtons[0], { key: 'ArrowUp' });
+      expect(desktopButtons[0]).toHaveFocus();
+
+      desktopButtons[1].focus();
+      fireEvent.keyDown(desktopButtons[1], { key: 'ArrowDown' });
+      expect(desktopButtons[1]).toHaveFocus();
     });
   });
 
@@ -382,6 +434,37 @@ describe('ChannelDirectory', () => {
       expect(mobileButtons[1]).toHaveFocus();
       const detailH2 = container.querySelector('div.flex-1 h2');
       expect(detailH2?.textContent).toBe('Channel 2');
+    });
+
+    it('ignores the vertical axis, leaving page scroll alone on the chip row', () => {
+      const videos = [makeVideo('1', 'Video 1')];
+      const channels = [
+        makeChannel('ch-1', 'Channel 1', videos),
+        makeChannel('ch-2', 'Channel 2', videos),
+      ];
+
+      const { container } = render(
+        <ChannelDirectory channels={channels} loading={false} error={null} />,
+      );
+
+      const mobileDiv = Array.from(container.querySelectorAll('div')).find(
+        (div) =>
+          div.classList.contains('lg:hidden') &&
+          div.querySelector('nav[aria-label="Enabled channels"]'),
+      );
+      const mobileNav = mobileDiv?.querySelector('nav');
+      const mobileButtons = mobileNav
+        ? within(mobileNav).getAllByRole('button')
+        : [];
+
+      mobileButtons[0].focus();
+      const scrollEvent = fireEvent.keyDown(mobileButtons[0], {
+        key: 'ArrowDown',
+      });
+
+      expect(mobileButtons[0]).toHaveFocus();
+      // Not handled here, so the browser keeps its default scroll behaviour.
+      expect(scrollEvent).toBe(true);
     });
   });
 

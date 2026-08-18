@@ -84,38 +84,39 @@ export function ChannelDirectory({
       index: number,
       layoutType: 'desktop' | 'mobile',
     ) => {
+      if (channels.length === 0) return;
+
+      // Each layout answers to its own axis, per the WAI-ARIA keyboard
+      // conventions: the desktop directory is a vertical list, the mobile
+      // chip row a horizontal one. Binding both axes in both layouts would
+      // mean swallowing page scroll on the chip row to no purpose, and
+      // leaving a vertical list that only answers Left/Right — which is what
+      // this did before — is simply the wrong axis for the shape on screen.
+      const nextKey = layoutType === 'desktop' ? 'ArrowDown' : 'ArrowRight';
+      const previousKey = layoutType === 'desktop' ? 'ArrowUp' : 'ArrowLeft';
+
+      let targetIndex: number | null = null;
+      if (e.key === nextKey) {
+        targetIndex = Math.min(index + 1, channels.length - 1);
+      } else if (e.key === previousKey) {
+        targetIndex = Math.max(index - 1, 0);
+      } else if (e.key === 'Home') {
+        targetIndex = 0;
+      } else if (e.key === 'End') {
+        targetIndex = channels.length - 1;
+      }
+
+      if (targetIndex === null) return;
+
+      e.preventDefault();
       const refs =
         layoutType === 'desktop'
           ? channelDesktopRefs.current
           : channelMobileRefs.current;
-      if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        const nextIndex = Math.min(index + 1, channels.length - 1);
-        refs[nextIndex]?.focus();
-        setSelectedChannelId(channels[nextIndex].channelId);
-        setPickedVideoId(null);
-        setFocusedVideoIndex(0);
-      } else if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        const prevIndex = Math.max(index - 1, 0);
-        refs[prevIndex]?.focus();
-        setSelectedChannelId(channels[prevIndex].channelId);
-        setPickedVideoId(null);
-        setFocusedVideoIndex(0);
-      } else if (e.key === 'Home') {
-        e.preventDefault();
-        refs[0]?.focus();
-        setSelectedChannelId(channels[0].channelId);
-        setPickedVideoId(null);
-        setFocusedVideoIndex(0);
-      } else if (e.key === 'End') {
-        e.preventDefault();
-        const lastIndex = channels.length - 1;
-        refs[lastIndex]?.focus();
-        setSelectedChannelId(channels[lastIndex].channelId);
-        setPickedVideoId(null);
-        setFocusedVideoIndex(0);
-      }
+      refs[targetIndex]?.focus();
+      setSelectedChannelId(channels[targetIndex].channelId);
+      setPickedVideoId(null);
+      setFocusedVideoIndex(0);
     },
     [channels],
   );
