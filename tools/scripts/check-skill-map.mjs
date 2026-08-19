@@ -304,35 +304,23 @@ const section = (heading) => {
 };
 const pkgs = (s) =>
   [...s.matchAll(/`([\w.-]+\/[\w.-]+@[\w.-]+)`/g)].map((m) => m[1]);
-// Tiers name the install scope, not the strength of the recommendation (ADR 0030).
+// Project scope is the only approved scope (ADR 0032). A personal-scope tier would be an
+// approval this repo cannot steward: not committed, not reviewable, and \u2014 as four months of
+// an uninstalled list showed \u2014 silently decaying.
 const projectScope = [
   ...new Set(
     pkgs(section('## Project Scope \u2014 Upstream-Owned, committed')),
   ),
-];
-const recommended = [
-  ...new Set(
-    pkgs(section('## Personal Scope \u2014 recommended, not committed')),
-  ),
-];
-const situational = [
-  ...new Set(pkgs(section('## Personal Scope \u2014 situational'))),
 ];
 eq(
   'upstreamOwnedSkillCount',
   upstreamOwned.size,
   manifest.upstreamOwnedSkillCount,
 );
-eq(
-  'personalScopeRecommendedCount',
-  recommended.length,
-  manifest.personalScopeRecommendedCount,
-);
-eq(
-  'personalScopeSituationalCount',
-  situational.length,
-  manifest.personalScopeSituationalCount,
-);
+if (/^## Personal Scope/m.test(ext))
+  note(
+    'EXTERNAL_SKILLS.md has a Personal Scope section \u2014 ADR 0032 removed that tier; approve at project scope or not at all',
+  );
 
 // The project-scope tier and the lockfile are two records of one fact. They must agree, or the
 // document is describing an install that did not happen (or missing one that did).
@@ -340,7 +328,7 @@ const projectNames = new Set(projectScope.map((p) => p.split('@').pop()));
 for (const n of projectNames)
   if (!upstreamOwned.has(n))
     note(
-      `EXTERNAL_SKILLS.md lists ${n} as project scope, but skills-lock.json does not \u2014 install it or move it to a personal-scope tier`,
+      `EXTERNAL_SKILLS.md lists ${n} as project scope, but skills-lock.json does not \u2014 install it or remove the entry`,
     );
 for (const n of upstreamOwned)
   if (!projectNames.has(n))
@@ -349,9 +337,7 @@ for (const n of upstreamOwned)
     );
 
 const approvedExternalSkills = new Set(
-  [...projectScope, ...recommended, ...situational].map((p) =>
-    p.split('@').pop(),
-  ),
+  projectScope.map((p) => p.split('@').pop()),
 );
 
 // ── DERIVED: dangling references ────────────────────────────────────────────
@@ -457,6 +443,27 @@ for (const dir of linkRoots) {
   }
 }
 
+// ── DERIVED: the visible counters ───────────────────────────────────────────
+// The manifest is checked; the prose beside it was not, and drifted — the header still claimed
+// "thirteen approved third-party skills … uninstalled" after that tier was removed. A reader
+// believes the big number, not the JSON, so assert the counters a human actually sees.
+const counters = [
+  ...page.matchAll(/<div class="count"><b>(\d+)<\/b><span>([^<]+)<\/span>/g),
+].map((m) => [m[2].trim(), Number(m[1])]);
+const expectedCounters = {
+  'repo-native skills': nativeDirs.length,
+  'upstream-owned': upstreamOwned.size,
+  'sub-agents': canonical.length,
+};
+for (const [label, shown] of counters) {
+  const want = expectedCounters[label];
+  if (want !== undefined && want !== shown)
+    note(`header counter "${label}": source says ${want}, page shows ${shown}`);
+}
+for (const label of Object.keys(expectedCounters))
+  if (!counters.some(([l]) => l === label))
+    note(`header counter "${label}" is missing from the page`);
+
 // ── The reading test, enforced ──────────────────────────────────────────────
 // Every Tier-1 tooltip must carry the description verbatim. This is the whole point of the
 // page: the description is what the model matches on, so a drifted copy misreports routing.
@@ -522,7 +529,7 @@ if (findings.length > 0) {
 console.log(
   `skill-map: OK — ${nativeDirs.length} repo-native + ${upstreamOwned.size} upstream-owned skills, ` +
     `${canonical.length} sub-agents, ${ssPairs} skill→skill, ${agentEdges} skill→agent, ` +
-    `${recommended.length + situational.length} personal-scope approved; all ${
+    `${projectScope.length} approved external; all ${
       skills.filter((s) => s.description).length
     } descriptions verbatim`,
 );

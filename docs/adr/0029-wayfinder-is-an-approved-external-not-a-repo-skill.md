@@ -8,7 +8,9 @@ The seam is the **PRD goal sentence**. `/wayfinder` runs while you still cannot 
 
 ## Status
 
-accepted
+superseded by [ADR 0032](0032-no-personal-scope-external-skills.md)
+
+The `/wayfinder` route it preserved is gone, along with the personal-scope tier that made the approval possible. This ADR rejected removing the route because doing so "would remove a capability to silence a warning" — but nobody ever installed `wayfinder`, so the route pointed at nothing throughout. The approval legitimised a dangling reference instead of fixing it. What survives is the general rule below, and the reasoning about seams between overlapping skills.
 
 ## Considered Options
 
