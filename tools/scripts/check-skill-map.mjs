@@ -443,6 +443,19 @@ for (const dir of linkRoots) {
   }
 }
 
+// ── DERIVED: no vestiges of the removed Tier 3 ──────────────────────────────
+// ADR 0032 removed Tier 3. Deleting a branch mid-expression leaves code that still parses: the
+// tier-3 arm of `tipHTML` was cut and its continuation lines survived as a dangling `+ …`
+// statement, valid JavaScript that threw on `d.pkg` for every node and silently killed every
+// tooltip. `node --check` cannot see that; a grep for the vestiges can.
+for (const vestige of ['d.pkg', 'extNodes', 'tier === 3', 'd.optional'])
+  if (
+    new RegExp(`(?<![A-Za-z])${vestige.replace(/[.[\]]/g, '\\$&')}`).test(page)
+  )
+    note(
+      `${PAGE} still references \`${vestige}\` — a Tier 3 leftover; that tier was removed in ADR 0032`,
+    );
+
 // ── DERIVED: the visible counters ───────────────────────────────────────────
 // The manifest is checked; the prose beside it was not, and drifted — the header still claimed
 // "thirteen approved third-party skills … uninstalled" after that tier was removed. A reader
