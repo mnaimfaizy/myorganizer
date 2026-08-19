@@ -2,6 +2,12 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import {
+  classifyCommit,
+  resolveNotesPlan,
+  upsertChangelogSection,
+} from './lib/release-notes.mjs';
+
 function assertNodeVersion() {
   const major = Number(String(process.versions.node).split('.')[0]);
   if (!Number.isFinite(major) || major < 22) {
@@ -91,6 +97,21 @@ function parseArgs(argv) {
       continue;
     }
 
+    if (token.startsWith('--notes-from=')) {
+      args.notesFrom = token.slice('--notes-from='.length);
+      continue;
+    }
+
+    if (token === '--notes-from') {
+      const next = argv[i + 1];
+      if (!next || next.startsWith('-')) {
+        die('Missing value for --notes-from option.');
+      }
+      args.notesFrom = next;
+      i += 1;
+      continue;
+    }
+
     if (token.startsWith('--version=')) {
       args.version = token.slice('--version='.length);
       continue;
@@ -131,6 +152,24 @@ function toPackageJsonVersion(tagVersion) {
   return String(tagVersion).startsWith('v')
     ? String(tagVersion).slice(1)
     : String(tagVersion);
+}
+
+function readRootPackageJsonVersion() {
+  const json = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  if (!json || typeof json !== 'object') {
+    die('Failed to parse package.json');
+  }
+  return json.version;
+}
+
+function assertPackageJsonVersionMatches(expectedVersion) {
+  const actual = readRootPackageJsonVersion();
+  if (actual !== expectedVersion) {
+    die(
+      `package.json version is ${actual}, expected ${expectedVersion}. ` +
+        'Run `release:cut` first, or check out the release branch.',
+    );
+  }
 }
 
 function updateRootPackageJsonVersion(nextVersion, { dryRun }) {
@@ -187,20 +226,6 @@ function assertUpToDateWithOrigin(branch) {
   if (local !== remote) {
     die(
       `Local ${branch} is not up to date with origin/${branch}. Run: git pull --ff-only`,
-    );
-  }
-}
-
-function assertNotBehindOrigin(branch) {
-  runInherit('git fetch origin --prune');
-
-  // Allow local branch to be ahead, but not behind.
-  // Equivalent to: origin/branch must be an ancestor of branch.
-  try {
-    run(`git merge-base --is-ancestor origin/${branch} ${branch}`);
-  } catch {
-    die(
-      `Local ${branch} is behind origin/${branch}. Run: git pull --ff-only before tagging.`,
     );
   }
 }
@@ -291,28 +316,26 @@ function getGitHubRepoSlugFromRemote() {
   }
 }
 
-function classifyCommit(subject, body) {
-  const s = String(subject || '').trim();
-  const b = String(body || '');
-
-  const hasBreaking = /BREAKING CHANGE:/i.test(b);
-  const m = /^([a-zA-Z]+)(\([^)]*\))?(!)?:\s+(.+)$/.exec(s);
-
-  if (!m) {
-    return {
-      type: 'other',
-      scope: null,
-      description: s || '(no subject)',
-      breaking: hasBreaking,
-    };
+function readAuthoredNotes(notesFrom, versionTag) {
+  if (!fs.existsSync(notesFrom)) {
+    die(`--notes-from file not found: ${notesFrom}`);
   }
 
-  const type = m[1].toLowerCase();
-  const scope = m[2] ? m[2].slice(1, -1) : null;
-  const bang = Boolean(m[3]);
-  const description = m[4];
+  const content = fs.readFileSync(notesFrom, 'utf8');
+  if (!content.trim()) {
+    die(`--notes-from file is empty: ${notesFrom}`);
+  }
 
-  return { type, scope, description, breaking: bang || hasBreaking };
+  // A stale draft for the previous version is the likely mistake here, and it
+  // would ship as the GitHub Release body. Warn rather than block: notes that
+  // never name the version are unusual but not wrong.
+  if (!content.includes(versionTag)) {
+    console.warn(
+      `Warning: ${notesFrom} never mentions ${versionTag}. Check you are not passing a stale draft.`,
+    );
+  }
+
+  return content.endsWith('\n') ? content : `${content}\n`;
 }
 
 function generateReleaseNotesMarkdown({ versionTag, previousTag }) {
@@ -420,50 +443,17 @@ function generateChangelogEntryMarkdown({ versionTag, previousTag }) {
 
 function updateChangelogFile({ versionTag, previousTag, dryRun }) {
   const filePath = 'CHANGELOG.md';
-  const heading = '# Changelog\n\n';
 
   const entry = generateChangelogEntryMarkdown({
     versionTag,
     previousTag,
   }).trimEnd();
 
-  let existing = '';
-  if (fs.existsSync(filePath)) {
-    existing = fs.readFileSync(filePath, 'utf8');
-  } else {
-    existing = heading;
-  }
+  const existing = fs.existsSync(filePath)
+    ? fs.readFileSync(filePath, 'utf8')
+    : '';
 
-  if (!existing.trim()) {
-    existing = heading;
-  }
-
-  if (!existing.startsWith('# Changelog')) {
-    existing = `${heading}${existing.trimStart()}`;
-  }
-
-  // Replace existing section for this version if present; otherwise insert at top.
-  // Section boundaries are "## vX.Y.Z" ... until next "## " or EOF.
-  const escaped = String(versionTag).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const sectionRe = new RegExp(
-    `(^## ${escaped}\\b[\\s\\S]*?)(?=^## \\S|\\Z)`,
-    'm',
-  );
-
-  let nextContent;
-  if (sectionRe.test(existing)) {
-    nextContent = existing.replace(sectionRe, `${entry}\n\n`);
-  } else {
-    // Insert right after the initial heading block.
-    const firstEntryIdx = existing.indexOf('\n## ');
-    if (firstEntryIdx === -1) {
-      nextContent = `${existing.trimEnd()}\n\n${entry}\n`;
-    } else {
-      const head = existing.slice(0, firstEntryIdx).trimEnd();
-      const rest = existing.slice(firstEntryIdx).trimStart();
-      nextContent = `${head}\n\n${entry}\n\n${rest}\n`;
-    }
-  }
+  const nextContent = upsertChangelogSection(existing, { versionTag, entry });
 
   if (dryRun) {
     console.log(`[dry-run] update ${filePath} for ${versionTag}`);
@@ -479,6 +469,7 @@ function printHelp() {
 
 Usage:
   node tools/scripts/release.mjs cut --version v1.2.3 [--push] [--dry-run]
+    [--notes-from <path>] [--notes-file <path>] [--no-notes] [--no-version-bump]
   node tools/scripts/release.mjs tag --version v1.2.3 [--push] [--dry-run]
 
 What it does:
@@ -491,28 +482,37 @@ What it does:
     - optionally pushes the branch (with --push)
     - updates CHANGELOG.md with generated notes and commits it (default)
       - use --no-notes to skip
-      - use --notes-file <path> to also write the generated notes to a file
+      - use --notes-file <path> to also write the notes to a file
     - prints release notes to stdout if --notes-file is NOT provided
-      - use --no-notes to skip
-      - use --notes-file <path> to write notes to a file
+
+    Release notes source:
+      - default: assembled from the commit range
+      - --notes-from <path>: use hand-written prose from <path> verbatim.
+        Writes it to --notes-file (default RELEASE_NOTES.md) inside the same
+        release commit, so authored notes cost no extra commit. Point it at a
+        file outside the repo or a gitignored one -- cut requires a clean tree.
+        CHANGELOG.md stays generated in both cases; the authored prose is the
+        GitHub Release body, which publish-github-release.yml reads from the
+        notes file at the tagged commit.
+      - --notes-from cannot be combined with --no-notes.
 
   tag:
     - checks clean working tree
     - verifies you are on the release branch (release/<version>)
-    - ensures root package.json version matches X.Y.Z and commits it (default)
-      - use --no-version-bump to skip
+    - verifies local release branch is in sync with origin
+    - verifies root package.json version already matches X.Y.Z
     - creates an annotated tag vX.Y.Z (if not exists)
     - optionally pushes the tag (with --push)
-    - updates CHANGELOG.md with generated notes and commits it (default)
-      - use --no-notes to skip
-      - use --notes-file <path> to also write the generated notes to a file
-    - prints release notes to stdout if --notes-file is NOT provided
-      - use --no-notes to skip
-      - use --notes-file <path> to write notes to a file
+
+    tag never writes files or creates commits. Run it only after the
+    production deploy succeeds: the tag records which commit went live, so
+    it must name the exact SHA that CI verified and a reviewer approved.
+    --no-notes, --notes-file, and --no-version-bump apply to cut only.
 
 Notes:
   - This script does NOT trigger GitHub Actions for you.
-  - Production deploy is manual in GitHub Actions (Deploy Production workflow).`;
+  - Production deploys require required-reviewer approval on the 'production'
+    GitHub Environment. See docs/adr/0028-*.md.`;
 
   console.log(`\n${HELP_TEXT}`);
 }
@@ -540,8 +540,28 @@ if (!version) {
 
 const releaseBranch = `release/${version}`;
 const packageJsonVersion = toPackageJsonVersion(version);
-const shouldGenerateNotes = !args.skipNotes;
+
 args.notesFile = normalizeNotesFilePath(args.notesFile);
+
+const notesPlan = resolveNotesPlan({
+  notesFrom: args.notesFrom,
+  notesFile: args.notesFile,
+  skipNotes: args.skipNotes,
+});
+
+if (notesPlan.error) {
+  die(notesPlan.error);
+}
+
+if (command === 'tag' && (args.notesFrom || args.notesFile || args.skipNotes)) {
+  console.warn(
+    'Note: --notes-from, --notes-file, and --no-notes apply to `cut` only. `tag` never writes files.',
+  );
+}
+
+const shouldGenerateNotes = notesPlan.mode !== 'none';
+args.notesFile = notesPlan.notesFile;
+
 const previousTag = shouldGenerateNotes
   ? getLatestReachableSemverTag({ excludeTag: version })
   : null;
@@ -567,15 +587,24 @@ if (command === 'cut') {
 
   let notes = null;
   if (shouldGenerateNotes) {
-    notes = generateReleaseNotesMarkdown({
-      versionTag: version,
-      previousTag,
-    });
+    notes =
+      notesPlan.mode === 'authored'
+        ? readAuthoredNotes(notesPlan.notesFrom, version)
+        : generateReleaseNotesMarkdown({
+            versionTag: version,
+            previousTag,
+          });
 
     if (args.notesFile) {
       ensureParentDirExists(args.notesFile, { dryRun: args.dryRun });
       if (args.dryRun) {
-        console.log(`[dry-run] write release notes -> ${args.notesFile}`);
+        const source =
+          notesPlan.mode === 'authored'
+            ? `${notesPlan.notesFrom} (authored)`
+            : 'generated';
+        console.log(
+          `[dry-run] write release notes -> ${args.notesFile} (from ${source})`,
+        );
       } else {
         fs.writeFileSync(args.notesFile, notes, 'utf8');
       }
@@ -644,83 +673,16 @@ if (command === 'cut') {
 }
 
 // command === 'tag'
+//
+// Tagging is a receipt, not a build step: the tag records that this version
+// reached production (ADR 0028). It must not write files or create commits.
+// Notes, the version bump, and the CHANGELOG entry all belong to `cut` -- a
+// commit created here would move the branch past the exact SHA that CI
+// verified and a reviewer approved, so the tag would name a commit that was
+// never deployed.
 assertOnBranch(releaseBranch);
-
-// If we plan to push, allow local to be ahead of origin (we'll push before tagging).
-// If not pushing, be strict to avoid creating a tag that only exists locally.
-if (args.push) {
-  assertNotBehindOrigin(releaseBranch);
-} else {
-  assertUpToDateWithOrigin(releaseBranch);
-}
-
-let didTagPreCommitChanges = false;
-
-let notes = null;
-if (shouldGenerateNotes) {
-  notes = generateReleaseNotesMarkdown({
-    versionTag: version,
-    previousTag,
-  });
-
-  if (args.notesFile) {
-    ensureParentDirExists(args.notesFile, { dryRun: args.dryRun });
-    if (args.dryRun) {
-      console.log(`[dry-run] write release notes -> ${args.notesFile}`);
-    } else {
-      fs.writeFileSync(args.notesFile, notes, 'utf8');
-    }
-    didTagPreCommitChanges = true;
-  }
-}
-
-if (!args.skipVersionBump) {
-  didTagPreCommitChanges =
-    updateRootPackageJsonVersion(packageJsonVersion, {
-      dryRun: args.dryRun,
-    }) || didTagPreCommitChanges;
-}
-
-if (shouldGenerateNotes) {
-  didTagPreCommitChanges =
-    updateChangelogFile({
-      versionTag: version,
-      previousTag,
-      dryRun: args.dryRun,
-    }) || didTagPreCommitChanges;
-}
-
-if (didTagPreCommitChanges) {
-  const filesToAdd = ['package.json', 'CHANGELOG.md'];
-  if (args.notesFile) {
-    filesToAdd.push(args.notesFile);
-  }
-  const addCmd = `git add ${filesToAdd.map(quoteShellArg).join(' ')}`;
-  const commitCmd = `git commit -m "chore(release): ${version}"`;
-
-  if (args.dryRun) {
-    console.log(`[dry-run] ${addCmd}`);
-    console.log(`[dry-run] ${commitCmd}`);
-  } else {
-    runInherit(addCmd);
-    runInherit(commitCmd);
-  }
-}
-
-if (args.push && !args.dryRun) {
-  // If we created a commit (version bump), make sure origin branch also advances.
-  // This keeps the branch/tag aligned for CI/CD and traceability.
-  runInherit(`git push origin ${releaseBranch}`);
-}
-
-if (shouldGenerateNotes) {
-  if (args.notesFile) {
-    console.log(`\nRelease notes written to: ${args.notesFile}`);
-  } else {
-    console.log(`\n--- RELEASE NOTES (${version}) ---\n`);
-    process.stdout.write(notes);
-  }
-}
+assertUpToDateWithOrigin(releaseBranch);
+assertPackageJsonVersionMatches(packageJsonVersion);
 
 if (tagExists(version)) {
   die(`Tag already exists: ${version}`);
