@@ -11,13 +11,20 @@ git update-index --again
 corepack yarn libs:markdown:check
 # The skill atlas asserts counts and verbatim descriptions about the skill system, so it rots
 # the moment a skill is added, renamed, or given a new description. Gated on the sources it
-# reads: an unrelated commit must not fail on drift it did not introduce.
+# reads: an unrelated commit must not fail on drift it did not introduce. That list must include
+# every input the check grew — the lockfile that names Upstream-Owned Skills, the two config
+# files that must cover them, and the script itself. It did not, and the commit that scoped
+# .gitattributes slipped through this gate untested as a result.
 if ! git diff --cached --quiet --diff-filter=ACMRTD -- \
  .agents/skills \
  .github/agents \
  .claude/agents \
  AGENTS.md \
- docs/agents/skill-atlas.html
+ docs/agents/skill-atlas.html \
+ skills-lock.json \
+ .prettierignore \
+ .gitattributes \
+ tools/scripts/check-skill-map.mjs
 then
 corepack yarn skills:map:check
 fi

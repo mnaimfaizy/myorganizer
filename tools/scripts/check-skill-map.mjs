@@ -391,11 +391,25 @@ eqList(
 const prettierIgnore = existsSync('.prettierignore')
   ? readFileSync('.prettierignore', 'utf8')
   : '';
-for (const d of upstreamOwned)
+const gitAttributes = existsSync('.gitattributes')
+  ? readFileSync('.gitattributes', 'utf8')
+  : '';
+for (const d of upstreamOwned) {
   if (!prettierIgnore.includes(`${SKILLS_DIR}/${d}/`))
     note(
       `${SKILLS_DIR}/${d}/ is Upstream-Owned but not in .prettierignore — formatting would re-fork it`,
     );
+  if (!gitAttributes.includes(`${SKILLS_DIR}/${d}/`))
+    note(
+      `${SKILLS_DIR}/${d}/ is Upstream-Owned but not in .gitattributes — mark it linguist-generated`,
+    );
+}
+// The same attribute must not be claimed for the tree as a whole: repo-native skills are
+// hand-written instruction files, and marking them generated collapses their diffs in review.
+if (/^\.agents\/skills\/\*\* .*linguist-generated/m.test(gitAttributes))
+  note(
+    '.gitattributes marks all of .agents/skills/** as linguist-generated — that hides repo-native skill diffs from review; scope it to the Upstream-Owned directories',
+  );
 
 // ── DERIVED: links from repo-native skills into Upstream-Owned Skills ───────
 // The only silent failure mode this externalisation introduces. `improve-codebase-architecture`
