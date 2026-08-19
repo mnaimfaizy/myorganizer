@@ -1,3 +1,8 @@
+---
+name: sub-agent-sync-workflow
+description: Keep sub-agent definitions synchronized across harnesses from the canonical `.github/agents` bodies. Use when adding, removing, renaming, or editing a sub-agent, or when `yarn agents:sync:check` reports drift.
+---
+
 # Sub-Agent Synchronization Workflow
 
 Use this workflow whenever any sub-agent file changes in any harness directory.

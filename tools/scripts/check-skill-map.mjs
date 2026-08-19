@@ -125,9 +125,18 @@ const eqList = (label, actual, claimed) => {
 };
 
 eq('repoSkillDirCount', skillDirs.length, manifest.repoSkillDirCount);
+// A skill without `name:`/`description:` frontmatter is not routable: the model matches on the
+// description, so an absent one silently removes the skill from every chooser. This is checked
+// against the source, not against the manifest — a page that faithfully records the defect would
+// otherwise keep the check green forever.
+const missingFm = skills.filter((s) => !s.fm?.name || !s.description);
+for (const s of missingFm)
+  note(
+    `${s.dir}/SKILL.md is missing ${!s.fm?.name ? 'name:' : 'description:'} frontmatter — a skill with no description is unroutable`,
+  );
 eqList(
   'repoSkillsMissingFrontmatter',
-  skills.filter((s) => !s.description).map((s) => s.dir),
+  missingFm.map((s) => s.dir),
   manifest.repoSkillsMissingFrontmatter,
 );
 eqList(
@@ -290,6 +299,10 @@ eq(
   manifest.externalApprovedOptionalCount,
 );
 
+const approvedExternalSkills = new Set(
+  [...defaults, ...optional].map((p) => p.split('@').pop()),
+);
+
 const vendored = [...defaults, ...optional].filter((p) =>
   skillDirs.includes(p.split('@').pop()),
 );
@@ -303,6 +316,10 @@ eq(
 // Backticked `/slug` invocations that name no skill. Two are known aliases with no registry
 // behind them, and `/tmp` is a filesystem path; the vendored third-party guides are upstream
 // prose and are not scanned.
+// Approved externals are named by their `owner/pkg@skill` entry in EXTERNAL_SKILLS.md and
+// installed per-developer rather than committed here, so `/wayfinder` resolves at runtime for
+// anyone who ran the install even though no directory backs it. Reading the approval list keeps
+// approving an external from failing this check on the reference that approval legitimises.
 const ALIASES = new Set(['commit', 'create-pr']);
 const NOT_INVOCATIONS = new Set(['tmp']);
 const dangling = new Set();
@@ -310,7 +327,12 @@ for (const d of skillDirs) {
   if (d === 'modern-web-guidance') continue; // vendored upstream docs
   for (const m of skillText.get(d).matchAll(/`\/([a-z][a-z0-9-]{2,})`/g)) {
     const s = m[1];
-    if (skillDirs.includes(s) || ALIASES.has(s) || NOT_INVOCATIONS.has(s))
+    if (
+      skillDirs.includes(s) ||
+      approvedExternalSkills.has(s) ||
+      ALIASES.has(s) ||
+      NOT_INVOCATIONS.has(s)
+    )
       continue;
     dangling.add(s);
   }
