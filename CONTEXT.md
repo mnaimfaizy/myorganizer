@@ -304,6 +304,10 @@ _Avoid_: memory file, system prompt, copilot instructions (as the general name)
 An on-demand workflow a Harness loads when the task matches. The repo has one Skill tree; Harnesses discover it natively or via a Harness Adapter and must not copy the body.
 _Avoid_: command, rule, workflow file (when you mean the Skill)
 
+**Upstream-Owned Skill**:
+A Skill under `.agents/skills/` whose body is authored upstream and refreshed by the Skills CLI, listed in `skills-lock.json`. It is never hand-edited, and tooling must not read it as this repo's routing configuration. Its complement is a repo-native Skill.
+_Avoid_: vendored, external, third-party, installed skill
+
 **Harness Adapter**:
 A Harness-specific discovery file that exists so that Harness finds an Instruction File or Skill, and that must not restate policy. Distinct from a Platform Adapter.
 _Avoid_: Adapter (unqualified), copy, wrapper, sync target

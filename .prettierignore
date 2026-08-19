@@ -12,6 +12,14 @@ docs/agents/agent-journey.html
 docs/agents/skill-atlas.html
 docs/vault/trust-boundary.html
 docs/vault/lifecycle.html
+
+# Upstream-Owned Skills (ADR 0030). Formatting these re-forks them: Prettier's markdown
+# normalisation is exactly how the previous `codebase-design` fork acquired its only divergence
+# from upstream. Keep in step with skills-lock.json — check-skill-map.mjs asserts it.
+.agents/skills/codebase-design/
+.agents/skills/handoff/
+.agents/skills/modern-web-guidance/
+.agents/skills/prototype/
 tools/assets/dc-runtime
 apps/backend/src/swagger/swagger.yaml
 apps/myorganizer/next-env.d.ts
