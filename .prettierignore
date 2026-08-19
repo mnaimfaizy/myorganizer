@@ -17,6 +17,8 @@ docs/vault/lifecycle.html
 # normalisation is exactly how the previous `codebase-design` fork acquired its only divergence
 # from upstream. Keep in step with skills-lock.json — check-skill-map.mjs asserts it.
 .agents/skills/codebase-design/
+.agents/skills/diagnosing-bugs/
+.agents/skills/domain-modeling/
 .agents/skills/handoff/
 .agents/skills/modern-web-guidance/
 .agents/skills/prototype/

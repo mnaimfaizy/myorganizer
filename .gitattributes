@@ -32,6 +32,8 @@
 # deliberately — they are hand-written instruction files, and marking them generated hid their
 # diffs from review. Keep in step with skills-lock.json; check-skill-map.mjs asserts it.
 .agents/skills/codebase-design/** linguist-generated=true whitespace=-trailing-space
+.agents/skills/diagnosing-bugs/** linguist-generated=true whitespace=-trailing-space
+.agents/skills/domain-modeling/** linguist-generated=true whitespace=-trailing-space
 .agents/skills/handoff/** linguist-generated=true whitespace=-trailing-space
 .agents/skills/modern-web-guidance/** linguist-generated=true whitespace=-trailing-space
 .agents/skills/prototype/** linguist-generated=true whitespace=-trailing-space
