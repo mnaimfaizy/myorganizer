@@ -32,6 +32,8 @@ Exact package and skill names below were verified with `npx skills find` on Apri
   - Add only if the task is actively editing shadcn-style components.
 - `obra/superpowers@systematic-debugging`
   - Add only when the work is debugging-heavy and the extra workflow help is worth the additional skill surface.
+- `mattpocock/skills@wayfinder`
+  - Add when an effort is too foggy to write a PRD goal sentence for. The seam is the goal sentence: `/wayfinder` runs while you still cannot write it, `/to-prd` takes over the moment you can. Verified with `npx skills find` on August 19, 2026.
 
 ## Install Commands
 
@@ -52,6 +54,7 @@ Install optional add-ons only when justified:
 ```sh
 npx skills add shadcn/ui --skill shadcn -y
 npx skills add obra/superpowers --skill systematic-debugging -y
+npx skills add mattpocock/skills --skill wayfinder -y
 ```
 
 Update project-level installs periodically:
