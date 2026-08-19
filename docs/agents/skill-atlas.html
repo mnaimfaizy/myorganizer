@@ -1,0 +1,1274 @@
+<title>Skill Atlas</title>
+
+<style>
+/* &#x2500;&#x2500; Tokens: full light palette on bare :root &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; */
+:root {
+  --bg:        #f4f3ef;
+  --surface:   #fffefb;
+  --surface-2: #eae8e1;
+  --surface-3: #dedcd3;
+  --ink:       #1a1c20;
+  --ink-2:     #53565c;
+  --ink-3:     #85888f;
+  --line:      #d6d3ca;
+  --line-2:    #bfbcb1;
+
+  --accent:    #9a5b12;   /* signal ochre &#x2014; hands-off pipeline, selection */
+  --accent-sf: #f3e6d1;
+  --warn:      #a4302a;   /* warns-off */
+  --warn-sf:   #f6e2df;
+  --halt:      #7a5f00;   /* human gate */
+  --halt-sf:   #f4ecd0;
+  --vocab:     #3f6672;   /* reads-vocabulary-from */
+  --route:     #797d85;   /* routes-to */
+
+  --tier2:     #6d7580;
+  --tier3:     #9a9ba0;
+
+  --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --r: 4px;
+  --shadow: 0 1px 2px rgba(26,28,32,.08), 0 8px 24px rgba(26,28,32,.10);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:        #131519;
+    --surface:   #1b1e24;
+    --surface-2: #23272e;
+    --surface-3: #2d323a;
+    --ink:       #e9e7e1;
+    --ink-2:     #a4a9b2;
+    --ink-3:     #757a83;
+    --line:      #313640;
+    --line-2:    #434a56;
+
+    --accent:    #e0a350;
+    --accent-sf: #33291a;
+    --warn:      #f08176;
+    --warn-sf:   #3a2220;
+    --halt:      #d9b45a;
+    --halt-sf:   #322a17;
+    --vocab:     #86b7c6;
+    --route:     #8b9099;
+
+    --tier2:     #7d848e;
+    --tier3:     #6c7178;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.5), 0 10px 28px rgba(0,0,0,.45);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg:        #131519;
+  --surface:   #1b1e24;
+  --surface-2: #23272e;
+  --surface-3: #2d323a;
+  --ink:       #e9e7e1;
+  --ink-2:     #a4a9b2;
+  --ink-3:     #757a83;
+  --line:      #313640;
+  --line-2:    #434a56;
+
+  --accent:    #e0a350;
+  --accent-sf: #33291a;
+  --warn:      #f08176;
+  --warn-sf:   #3a2220;
+  --halt:      #d9b45a;
+  --halt-sf:   #322a17;
+  --vocab:     #86b7c6;
+  --route:     #8b9099;
+
+  --tier2:     #7d848e;
+  --tier3:     #6c7178;
+
+  --shadow: 0 1px 2px rgba(0,0,0,.5), 0 10px 28px rgba(0,0,0,.45);
+}
+
+/* &#x2500;&#x2500; Base &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; */
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+}
+.wrap { max-width: 1520px; margin: 0 auto; padding: 28px 20px 72px; }
+
+h1, h2, h3 { text-wrap: balance; margin: 0; font-weight: 600; }
+h1 { font-size: clamp(26px, 3.4vw, 38px); letter-spacing: -.02em; }
+h2 { font-size: 15px; letter-spacing: .10em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+h3 { font-size: 14px; }
+p  { margin: 0; }
+code, .mono { font-family: var(--mono); font-size: .875em; }
+
+a { color: var(--accent); }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* &#x2500;&#x2500; Header &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; */
+header.masthead {
+  display: flex; flex-wrap: wrap; gap: 24px 32px;
+  align-items: flex-end; justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 20px; margin-bottom: 22px;
+}
+.eyebrow {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-3); margin-bottom: 8px;
+}
+.masthead p.lede { max-width: 62ch; color: var(--ink-2); margin-top: 10px; font-size: 15px; }
+.counts { display: flex; gap: 26px; flex-wrap: wrap; }
+.count { text-align: right; }
+.count b { display: block; font-family: var(--mono); font-size: 26px; font-weight: 600; letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+.count span { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); }
+
+/* &#x2500;&#x2500; Extraction hazard note &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; */
+.hazard {
+  border: 1px solid var(--vocab);
+  border-left-width: 3px;
+  background: var(--surface);
+  padding: 13px 16px; border-radius: var(--r);
+  max-width: 105ch;
+  font-size: 13px; color: var(--ink-2); line-height: 1.55;
+}
+.hazard b.htitle { color: var(--vocab); font-family: var(--mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase; display: block; margin-bottom: 6px; }
+.hazard code, .hazard b { color: var(--ink); }
+
+/* &#x2500;&#x2500; Reading test &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; */
+.reading-test {
+  border-left: 3px solid var(--accent);
+  background: var(--accent-sf);
+  padding: 14px 18px; border-radius: 0 var(--r) var(--r) 0;
+  margin-bottom: 24px; max-width: 105ch;
+  font-size: 14.5px; color: var(--ink);
+}
+
+/* &#x2500;&#x2500; Stage &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; */
+.stage { display: grid; grid-template-columns: minmax(0,1fr) 330px; gap: 18px; align-items: start; }
+@media (max-width: 1080px) { .stage { grid-template-columns: minmax(0,1fr); } }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  min-width: 0;
+}
+.panel > .phead {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 14px; border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.panel > .pbody { padding: 14px; }
+
+/* graph */
+.graphwrap { position: relative; }
+#graph { display: block; width: 100%; height: clamp(520px, 78vh, 900px); touch-action: none; cursor: grab; background: var(--surface); }
+#graph.dragging { cursor: grabbing; }
+
+.gcontrols { display: flex; gap: 6px; flex-wrap: wrap; }
+button, .btn {
+  font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em;
+  background: var(--surface-2); color: var(--ink);
+  border: 1px solid var(--line-2); border-radius: 3px;
+  padding: 5px 9px; cursor: pointer;
+}
+button:hover { background: var(--surface-3); }
+button[disabled] { opacity: .42; cursor: not-allowed; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+:root:not([data-theme="light"]) button.primary { color: #16181c; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) button.primary { color: #fffefb; } }
+:root[data-theme="light"] button.primary { color: #fffefb; }
+:root[data-theme="dark"] button.primary { color: #16181c; }
+
+/* legend */
+.legend { display: grid; gap: 9px; }
+.legend .lrow { display: grid; grid-template-columns: 62px 1fr; gap: 10px; align-items: center; }
+.legend svg { display: block; }
+.legend .ltext { font-size: 12.5px; line-height: 1.35; }
+.legend .ltext b { font-family: var(--mono); font-size: 11.5px; font-weight: 600; }
+.legend .ltext i { font-style: normal; color: var(--ink-3); display: block; font-size: 11.5px; }
+.legend label { display: contents; cursor: pointer; }
+.legend input { grid-column: 1; }
+
+.tierkey { display: grid; gap: 8px; margin-top: 14px; padding-top: 13px; border-top: 1px solid var(--line); }
+.tierkey .trow { display: grid; grid-template-columns: 62px 1fr; gap: 10px; align-items: center; font-size: 12.5px; }
+.tierkey .trow i { font-style: normal; color: var(--ink-3); display: block; font-size: 11.5px; }
+
+/* &#x2500;&#x2500; SVG node & edge styling &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; */
+.edge { fill: none; pointer-events: none; }
+.edge.t-A { stroke: var(--route); stroke-width: 1;   opacity: .30; }
+.edge.t-B { stroke: var(--accent); stroke-width: 2.6; opacity: .82; }
+.edge.t-C { stroke: var(--warn);  stroke-width: 2;   opacity: .92; stroke-dasharray: 5 3.5; }
+.edge.t-D { stroke: var(--vocab); stroke-width: 1.2; opacity: .8; stroke-dasharray: 1 3.4; stroke-linecap: round; }
+.edge.t-S { stroke: var(--tier2); stroke-width: 1;   opacity: .45; }
+.edge.t-S.cond { stroke-dasharray: 3 3; }
+.edge.hidden { display: none; }
+.edge.dim { opacity: .07 !important; }
+.edge.lit  { opacity: 1 !important; }
+.edge.t-A.lit { stroke-width: 1.6; }
+.edge.pulse { stroke-width: 4; opacity: 1 !important; }
+
+.node { cursor: pointer; }
+.node .chip {
+  fill: var(--surface-2); stroke: var(--line-2); stroke-width: 1; rx: 3;
+}
+.node .lbl { font-family: var(--mono); font-size: 13px; fill: var(--ink); dominant-baseline: middle; }
+.node .badge { font-family: var(--mono); font-size: 9.5px; font-weight: 700; letter-spacing: .04em; dominant-baseline: middle; }
+
+.node.human .chip { stroke: var(--halt); stroke-width: 2; fill: var(--halt-sf); }
+.node.nodesc .chip { stroke: var(--warn); stroke-width: 1.6; stroke-dasharray: 4 3; fill: var(--warn-sf); }
+.node.human .badge { fill: var(--halt); }
+.node.nodesc .badge { fill: var(--warn); }
+
+.node.t2 .chip { fill: var(--surface); stroke: var(--line); stroke-dasharray: 2 2; }
+.node.t2 .lbl { font-size: 11px; fill: var(--tier2); }
+.node.t3 .chip { fill: none; stroke: var(--line); }
+.node.t3 .lbl { font-size: 10.5px; fill: var(--tier3); }
+.node.t3.opt .chip { stroke-dasharray: 3 3; }
+
+.node.dim { opacity: .18; }
+.node.sel .chip { stroke: var(--accent); stroke-width: 2.5; }
+.node.walk .chip { stroke: var(--accent); stroke-width: 2.5; fill: var(--accent-sf); }
+.node.halted .chip { stroke: var(--halt); stroke-width: 3; fill: var(--halt-sf); }
+.node:hover .chip, .node:focus-visible .chip { stroke: var(--ink); }
+.node:focus { outline: none; }
+.node:focus-visible .focusring { stroke: var(--accent); stroke-width: 2; fill: none; rx: 6; }
+
+#t2layer, #t3layer { transition: opacity .18s ease; }
+.satellite-off #t2layer { opacity: .34; }
+
+/* &#x2500;&#x2500; Tooltip &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; */
+#tip {
+  position: fixed; margin: 0; inset: auto;
+  max-width: min(400px, calc(100vw - 24px));
+  background: var(--surface); color: var(--ink);
+  border: 1px solid var(--line-2); border-radius: var(--r);
+  box-shadow: var(--shadow);
+  padding: 12px 14px; font-size: 13px; z-index: 90;
+}
+#tip:not(:is(:popover-open, .\:popover-open, .fallback-open)) { display: none; }
+#tip .tname { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+#tip .tmeta { font-family: var(--mono); font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 6px; }
+#tip .tdesc { margin-top: 8px; white-space: pre-wrap; color: var(--ink-2); font-size: 12.5px; line-height: 1.5; max-height: 40vh; overflow-y: auto; }
+#tip .tabsent { margin-top: 8px; color: var(--warn); font-size: 12.5px; }
+#tip .tflag { display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: .05em; padding: 1px 5px; border-radius: 2px; margin: 6px 4px 0 0; }
+.flag-human { background: var(--halt-sf); color: var(--halt); border: 1px solid var(--halt); }
+.flag-warn  { background: var(--warn-sf);  color: var(--warn);  border: 1px solid var(--warn); }
+.flag-note  { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line-2); }
+
+/* &#x2500;&#x2500; Inspector &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; */
+#inspector .pbody { display: grid; gap: 12px; }
+.insp-name { font-family: var(--mono); font-size: 16px; font-weight: 600; word-break: break-word; }
+.insp-alias { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.insp-desc { font-size: 13px; color: var(--ink-2); white-space: pre-wrap; line-height: 1.5; max-height: 230px; overflow-y: auto; padding-right: 4px; }
+.insp-absent { font-size: 13px; color: var(--warn); }
+.edgelist { display: grid; gap: 5px; margin-top: 2px; }
+.edgelist .el { display: grid; grid-template-columns: 16px 1fr; gap: 8px; font-size: 12.5px; align-items: baseline; }
+.edgelist .glyph { font-family: var(--mono); font-size: 12px; font-weight: 700; }
+.g-A { color: var(--route); } .g-B { color: var(--accent); } .g-C { color: var(--warn); } .g-D { color: var(--vocab); } .g-S { color: var(--tier2); }
+.edgelist button.link {
+  background: none; border: 0; padding: 0; font-family: var(--mono); font-size: 12px;
+  color: var(--ink); text-align: left; text-decoration: underline; text-decoration-color: var(--line-2);
+  text-underline-offset: 2px;
+}
+.edgelist button.link:hover { color: var(--accent); background: none; }
+.subhead { font-family: var(--mono); font-size: 10.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--ink-3); margin-top: 8px; }
+
+/* traversal */
+#trav { display: grid; gap: 10px; }
+.travsteps { display: grid; gap: 3px; font-family: var(--mono); font-size: 11.5px; max-height: 200px; overflow-y: auto; }
+.travsteps .st { padding: 3px 6px; border-radius: 2px; color: var(--ink-3); border-left: 2px solid transparent; }
+.travsteps .st.done { color: var(--ink-2); border-left-color: var(--line-2); }
+.travsteps .st.now  { color: var(--ink); background: var(--accent-sf); border-left-color: var(--accent); }
+.travsteps .st.halt { color: var(--halt); background: var(--halt-sf); border-left-color: var(--halt); }
+.haltbox { background: var(--halt-sf); border: 1px solid var(--halt); border-radius: var(--r); padding: 10px 12px; font-size: 12.5px; color: var(--ink); display: grid; gap: 8px; }
+.haltbox b { color: var(--halt); font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.muted { color: var(--ink-3); font-size: 12.5px; }
+
+/* &#x2500;&#x2500; Lower panels &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; */
+.panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; margin-top: 22px; }
+.panels .pbody { display: grid; gap: 10px; font-size: 13px; }
+ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+ul.plain li { display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: baseline; font-size: 12.5px; }
+.tag { font-family: var(--mono); font-size: 10px; letter-spacing: .05em; padding: 1px 5px; border-radius: 2px; white-space: nowrap; }
+.pillbtn {
+  font-family: var(--mono); font-size: 11.5px; background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 3px; padding: 4px 8px; text-align: left; cursor: pointer; color: var(--ink);
+}
+.lookup { display: grid; gap: 6px; }
+.lookup .lq { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; border-bottom: 1px dotted var(--line); padding-bottom: 6px; }
+.lookup .lq span { font-size: 12.5px; color: var(--ink-2); }
+pre.cmd {
+  font-family: var(--mono); font-size: 11px; background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 3px; padding: 8px 10px; margin: 0;
+  overflow-x: auto; white-space: pre; color: var(--ink-2);
+}
+table.ext { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.ext td { padding: 4px 6px 4px 0; border-bottom: 1px solid var(--line); vertical-align: baseline; }
+table.ext td.pkg { font-family: var(--mono); font-size: 11px; word-break: break-all; }
+.scrollx { overflow-x: auto; }
+
+footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 12px; display: grid; gap: 6px; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div>
+    <div class="eyebrow">MyOrganizer &#xb7; .agents/skills &#xb7; .github/agents</div>
+    <h1>Skill Atlas</h1>
+    <p class="lede">Thirty-five repo-owned skills route a task to each other and delegate execution down to twenty-two one-shot sub-agents, while thirteen approved third-party skills sit outside the repo, unvendored and uninstalled.</p>
+  </div>
+  <div class="counts">
+    <div class="count"><b>35</b><span>repo skills</span></div>
+    <div class="count"><b>22</b><span>sub-agents</span></div>
+    <div class="count"><b>13</b><span>approved, absent</span></div>
+    <div class="count"><b>5</b><span>warns-off edges</span></div>
+  </div>
+</header>
+
+<p class="reading-test"><strong>If you add a skill and it does not appear here with a description in its tooltip, its <code>SKILL.md</code> frontmatter is missing or its <code>description:</code> is unusable &#x2014; the model cannot route to it.</strong></p>
+
+<div class="stage">
+
+  <!-- &#x2500;&#x2500; GRAPH &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; -->
+  <section class="panel graphwrap" aria-label="Skill graph">
+    <div class="phead">
+      <h2>Routing field</h2>
+      <div class="gcontrols">
+        <button type="button" id="btnSat" aria-pressed="false">sub-agents: on focus</button>
+        <button type="button" id="btnZin" aria-label="Zoom in">+</button>
+        <button type="button" id="btnZout" aria-label="Zoom out">&#x2212;</button>
+        <button type="button" id="btnReset">reset view</button>
+        <span class="mono" style="font-size:10.5px; color:var(--ink-3); align-self:center;">drag to pan &#183; &#8984;/ctrl+scroll to zoom</span>
+      </div>
+    </div>
+    <svg id="graph" role="application" aria-label="Force-directed map of 35 repo skills, 22 sub-agents and 13 approved-but-uninstalled external skills. Use Tab to move between nodes; Enter to select and run a traversal.">
+      <defs>
+        <marker id="ar-A" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M0,1.5 L9,5 L0,8.5 Z" fill="var(--route)"/>
+        </marker>
+        <marker id="ar-B" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5.2" markerHeight="5.2" orient="auto-start-reverse">
+          <path d="M0,0.5 L9.5,5 L0,9.5 Z" fill="var(--accent)"/>
+        </marker>
+        <marker id="ar-D" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M1,2 L8.5,5 L1,8" fill="none" stroke="var(--vocab)" stroke-width="1.4"/>
+        </marker>
+        <!-- warns-off terminator: inverted. A barred stop, never an arrow. -->
+        <marker id="ar-C" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <circle cx="6" cy="6" r="4.6" fill="none" stroke="var(--warn)" stroke-width="1.6"/>
+          <path d="M3.2,3.2 L8.8,8.8" stroke="var(--warn)" stroke-width="1.6"/>
+        </marker>
+        <marker id="ar-S" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+          <path d="M0,2 L8.5,5 L0,8 Z" fill="var(--tier2)"/>
+        </marker>
+      </defs>
+      <g id="viewport">
+        <g id="edgelayer"></g>
+        <!-- Tier 1 first in the DOM so Tab reaches the skills before the satellites and the outer ring. -->
+        <g id="nodelayer"></g>
+        <g id="t2layer"></g>
+        <g id="t3layer"></g>
+      </g>
+    </svg>
+  </section>
+
+  <!-- &#x2500;&#x2500; RIGHT RAIL &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; -->
+  <div style="display:grid; gap:18px; min-width:0;">
+
+    <section class="panel" aria-label="Edge legend">
+      <div class="phead"><h2>Edge types</h2></div>
+      <div class="pbody">
+        <div class="legend" id="legend">
+          <label><input type="checkbox" data-t="B" checked>
+            <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H52" stroke="var(--accent)" stroke-width="2.6" fill="none" marker-end="url(#ar-B)"/></svg>
+            <span class="ltext"><b>hands-off-to</b> &#x2014; heaviest. This runs after that. <i>Carries the pulse. 22 drawn.</i></span>
+          </label>
+          <label><input type="checkbox" data-t="C" checked>
+            <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H50" stroke="var(--warn)" stroke-width="2" stroke-dasharray="5 3.5" fill="none" marker-end="url(#ar-C)"/></svg>
+            <span class="ltext"><b>warns-off</b> &#x2014; dashed, barred terminator. Do <em>not</em> go here. <i>Never animates as a path. 5 drawn.</i></span>
+          </label>
+          <label><input type="checkbox" data-t="A" checked>
+            <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H52" stroke="var(--route)" stroke-width="1" fill="none" marker-end="url(#ar-A)"/></svg>
+            <span class="ltext"><b>routes-to</b> &#x2014; thin. Go here instead. <i>Glows on selection, does not propagate. 31 drawn.</i></span>
+          </label>
+          <label><input type="checkbox" data-t="D" checked>
+            <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H52" stroke="var(--vocab)" stroke-width="1.2" stroke-dasharray="1 3.4" stroke-linecap="round" fill="none" marker-end="url(#ar-D)"/></svg>
+            <span class="ltext"><b>reads-vocabulary-from</b> &#x2014; dotted, lightest. Load this first; it defines the terms. <i>5 drawn.</i></span>
+          </label>
+          <label><input type="checkbox" data-t="S" checked>
+            <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H52" stroke="var(--tier2)" stroke-width="1" fill="none" marker-end="url(#ar-S)"/></svg>
+            <span class="ltext"><b>delegates-to sub-agent</b> &#x2014; Tier 2. <i>Dashed variant = conditional. 51 drawn.</i></span>
+          </label>
+        </div>
+
+        <div class="tierkey">
+          <div class="trow">
+            <svg width="62" height="20" aria-hidden="true"><rect x="4" y="3" width="54" height="14" rx="3" fill="var(--halt-sf)" stroke="var(--halt)" stroke-width="2"/><text x="10" y="11" font-family="var(--mono)" font-size="8.5" font-weight="700" fill="var(--halt)" dominant-baseline="middle">HUMAN</text></svg>
+            <span>Human-invoke only<i><code>disable-model-invocation: true</code> &#x2014; you must type it. Halts traversal.</i></span>
+          </div>
+          <div class="trow">
+            <svg width="62" height="20" aria-hidden="true"><rect x="4" y="3" width="54" height="14" rx="3" fill="var(--warn-sf)" stroke="var(--warn)" stroke-width="1.6" stroke-dasharray="4 3"/><text x="12" y="11" font-family="var(--mono)" font-size="8.5" font-weight="700" fill="var(--warn)" dominant-baseline="middle">NO&#160;FM</text></svg>
+            <span>No frontmatter<i>No <code>description:</code> exists. Not invented here.</i></span>
+          </div>
+          <div class="trow">
+            <svg width="62" height="20" aria-hidden="true"><rect x="10" y="4" width="42" height="12" rx="3" fill="var(--surface)" stroke="var(--line)" stroke-dasharray="2 2"/></svg>
+            <span>Tier 2 sub-agent<i>Not a runnable answer. Shown on focus.</i></span>
+          </div>
+          <div class="trow">
+            <svg width="62" height="20" aria-hidden="true"><rect x="10" y="4" width="42" height="12" rx="3" fill="none" stroke="var(--line)"/></svg>
+            <span>Tier 3 external<i>Approved &#xb7; not installed. Edgeless by definition.</i></span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel" id="inspector" aria-label="Selected node">
+      <div class="phead"><h2>Inspector</h2><button type="button" id="btnClear">clear</button></div>
+      <div class="pbody" id="inspBody">
+        <p class="muted">Hover, click, or <code>Tab</code> to a node. Everything a tooltip shows also appears here, so a screenshot loses nothing.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Traversal">
+      <div class="phead"><h2>Traversal</h2><span class="mono" id="motionMode" style="font-size:10.5px; color:var(--ink-3);"></span></div>
+      <div class="pbody" id="trav">
+        <p class="muted">Select a node to walk its real <b>hands-off</b> chain, one hop at a time. Warns-off edges are never walked.</p>
+      </div>
+    </section>
+  </div>
+</div>
+
+<!-- &#x2500;&#x2500; LOWER PANELS &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; -->
+<div class="panels">
+
+  <section class="panel">
+    <div class="phead"><h2>Task &#x2192; skill</h2></div>
+    <div class="pbody">
+      <p class="muted">Trigger phrasings taken from the skills' own <code>description:</code> fields. Pick one to focus the node and run its chain.</p>
+      <div class="lookup" id="lookup"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="phead"><h2>Chooser drift</h2></div>
+    <div class="pbody">
+      <p>The <code>## Workflows</code> chooser in <code>AGENTS.md</code> is the document that claims to answer &#x201c;which skill do I run.&#x201d; It lists <b>20 of 35</b>. The repo's own routing table is <b>43% incomplete</b>, and the omissions are the domain workflows a maintainer reaches for most.</p>
+      <div class="subhead">On disk &#xb7; absent from the chooser (15)</div>
+      <div class="lookup" id="drift"></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="phead"><h2>Broken &amp; dangling</h2></div>
+    <div class="pbody">
+      <ul class="plain">
+        <li><span class="tag flag-warn">NO&#160;FM</span><span><code>sub-agent-sync-workflow/SKILL.md</code> has no YAML frontmatter at all &#x2014; it opens directly on <code># Sub-Agent Synchronization Workflow</code>. Every sibling carries <code>name:</code> and <code>description:</code>. The runtime falls back to the H1, so the model has no trigger sentence to match. <b>No description is shown for it anywhere on this page, because none exists.</b></span></li>
+        <li><span class="tag flag-warn">ORPHAN</span><span><code>Audit</code>, <code>DepAudit</code>, <code>Docs</code> are canonical in <code>.github/agents/</code> and referenced by no skill. Three of 22 sub-agents are unreachable through the skill layer.</span></li>
+        <li><span class="tag flag-warn">DANGLING</span><span><code>ask-matt/SKILL.md:43</code> routes &#x201c;huge / foggy effort&#x201d; to <code>/wayfinder</code> &#x201c;if installed globally.&#x201d; No such skill exists in this repo.</span></li>
+        <li><span class="tag flag-note">HUB&#160;ARTEFACT</span><span><code>handoff</code> is drawn with <b>zero outbound edges</b>. All eight of its apparent references come from a single line, <code>handoff/SKILL.md:16</code>, which names skills only as <em>examples</em> of what to write into a handoff document. A naive extractor promotes it to a false hub.</span></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="phead"><h2>Alias hazard</h2></div>
+    <div class="pbody">
+      <p>Two skills are routinely invoked under a name that is not their directory name. A maintainer answering &#x201c;which skill do I run&#x201d; needs the string they actually type.</p>
+      <ul class="plain">
+        <li><span class="tag flag-note">TYPE</span><span><code>/commit</code> &#x2192; node <code>commit-change-workflow</code> &nbsp;&#xb7;&nbsp; <code>implement/SKILL.md:126</code></span></li>
+        <li><span class="tag flag-note">TYPE</span><span><code>/create-pr</code> &#x2192; node <code>create-pull-request-workflow</code> &nbsp;&#xb7;&nbsp; <code>implement/SKILL.md:128</code></span></li>
+      </ul>
+      <p class="muted">Inferred &#x2014; these read as informal shorthand in the skill bodies. No alias registry file exists to back either name.</p>
+    </div>
+  </section>
+
+  <section class="panel" style="grid-column: 1 / -1;">
+    <div class="phead"><h2>Approved &#xb7; not installed</h2></div>
+    <div class="pbody">
+      <p>Thirteen third-party skills are approved for project-scope install in <code>.agents/skills/EXTERNAL_SKILLS.md</code> but deliberately <b>not vendored</b> &#x2014; to keep the repo lean, avoid freezing copies of external packages, and review and update them independently. They have no files, no frontmatter, and no edges. They cannot be run today.</p>
+      <div class="scrollx"><table class="ext" id="extTable"></table></div>
+      <div class="subhead">Install (default set)</div>
+      <pre class="cmd">npx skills add vercel-labs/next-skills --skill next-best-practices next-cache-components -y
+npx skills add vercel-labs/agent-skills --skill vercel-react-best-practices vercel-composition-patterns web-design-guidelines -y
+npx skills add anthropics/skills --skill frontend-design -y
+npx skills add GoogleChrome/modern-web-guidance --skill modern-web-guidance -y
+npx skills add wshobson/agents --skill nodejs-backend-patterns tailwind-design-system -y
+npx skills add currents-dev/playwright-best-practices-skill --skill playwright-best-practices -y
+npx skills add xixu-me/skills --skill github-actions-docs -y</pre>
+      <div class="subhead">Install (optional add-ons)</div>
+      <pre class="cmd">npx skills add shadcn/ui --skill shadcn -y                      # only if actively editing shadcn-style components
+npx skills add obra/superpowers --skill systematic-debugging -y  # only when the work is debugging-heavy</pre>
+      <p class="muted"><code>GoogleChrome/modern-web-guidance@modern-web-guidance</code> is the one external skill that <b>was</b> vendored &#x2014; it exists as a real directory at <code>.agents/skills/modern-web-guidance/</code> with a <code>guides/</code> subtree. It is drawn <b>once</b>, in Tier 1. Its outer-ring counterpart is suppressed.</p>
+    </div>
+  </section>
+</div>
+
+<footer class="foot">
+  <div>Node labels are <code>name:</code> frontmatter values. Tier-1 tooltips carry the <code>description:</code> value <b>verbatim</b> &#x2014; that string is the exact text the model matches when deciding whether to load a skill, so anything else would misreport routing behaviour.</div>
+  <div class="hazard">
+    <b class="htitle">Extraction hazard</b>
+    Sub-agent edges must be matched on <b>word boundaries</b>. A substring search for <code>TestRunner</code> returns 8 spurious hits in <code>nx-monorepo-workflow</code> from the Nx CLI flag <code>--unitTestRunner=jest</code>. Three further agent names &mdash; <code>Audit</code>, <code>Docs</code> and <code>Commit</code> &mdash; are ordinary English words and need hand-verification even with boundaries. This atlas asserts <b>51</b> skill&#8594;agent edges after those exclusions.
+  </div>
+  <div>Read from source on 2026-08-19. Diff this page against the filesystem with the embedded <code>skill-atlas-manifest</code> block, following the precedent of <code>tools/scripts/check-agent-map.mjs</code>.</div>
+</footer>
+
+</div>
+
+<div id="tip" popover="manual" role="tooltip"></div>
+
+<script type="application/json" id="skill-atlas-manifest">
+{
+  "id": "skill-atlas-manifest",
+  "generatedFrom": ".agents/skills, .github/agents, AGENTS.md",
+  "repoSkillDirCount": 35,
+  "repoSkillsMissingFrontmatter": ["sub-agent-sync-workflow"],
+  "repoSkillsHumanInvokeOnly": ["ask-matt", "handoff", "implement", "triage", "upstream-brief"],
+  "repoSkillsAbsentFromAgentsMdChooser": 15,
+  "subAgentCanonicalFileCount": 22,
+  "subAgentMirrorFileCount": 22,
+  "subAgentsUnreferencedBySkills": ["Audit", "DepAudit", "Docs"],
+  "skillToSkillEdgeCount": 71,
+  "skillToSkillEdgesRenderedCount": 63,
+  "skillToSkillWarnsOffEdgeCount": 5,
+  "skillToSubAgentEdgeCount": 51,
+  "externalApprovedDefaultCount": 11,
+  "externalApprovedOptionalCount": 2,
+  "externalApprovedVendoredCount": 1,
+  "danglingSkillReferences": ["wayfinder"]
+}
+</script>
+
+<script>
+"use strict";
+
+/* Verbatim `description:` frontmatter values, extracted from .agents/skills/<dir>/SKILL.md */
+const SKILL_FM = [{"dir":"ask-matt","name":"ask-matt","description":"Ask which MyOrganizer skill or workflow to run next. Use when the right path is unclear and you need a routing recommendation."},{"dir":"auth-session-workflow","name":"auth-session-workflow","description":"Use when changing login, logout, registration, refresh-token flow, email verification, token storage, or auth UI helpers in MyOrganizer."},{"dir":"backend-api-contract-change","name":"backend-api-contract-change","description":"Use when adding or changing backend REST endpoints, DTOs, validation, Prisma schema, auth responses, OpenAPI output, or generated API client behavior in MyOrganizer. Orchestrates PrismaWriter \u2192 ApiWriter \u2192 ApiSync as One-shot Specialists (ADR 0015)."},{"dir":"code-review","name":"code-review","description":"Review changes since a fixed point (commit, branch, tag, or merge-base) along two axes \u2014 Standards (repo coding standards) and Spec (originating issue/PRD). Runs both reviews in parallel sub-agents and reports them side by side. Use when reviewing a branch, PR, WIP changes, or when asked to \"review since X\"."},{"dir":"codebase-design","name":"codebase-design","description":"Shared vocabulary for designing deep modules. Use when designing or improving a module's interface, finding deepening opportunities, deciding where a seam goes, making code more testable or AI-navigable, or when the improve-codebase-architecture skill needs the deep-module vocabulary."},{"dir":"commit-change-workflow","name":"commit-change-workflow","description":"Use when the user asks to commit changes, make a commit, git commit the current work, commit this branch, or save the current staged work as a commit in MyOrganizer. Use the existing Commit sub-agent to draft the message, then execute the commit through the shared workflow so Husky is allowed to finish."},{"dir":"component-builder","name":"component-builder","description":"Use when creating or editing a React component in libs/web-ui/ or libs/web/pages/. Classify gate tier, build a Structured Spec, and delegate to ComponentBuilder then ComponentReviewer."},{"dir":"create-hooks","name":"create-hooks","description":"Create and maintain multi-harness agent hooks for GitHub Copilot, Cursor IDE/CLI, and Claude Code. Use when adding, fixing, or reviewing hooks, preToolUse/postToolUse scripts, .github/hooks, .cursor/hooks.json, or .claude/settings.json hook blocks."},{"dir":"create-pull-request-workflow","name":"create-pull-request-workflow","description":"Use when the user asks to create a pull request, open a PR, raise a PR for the current branch, publish this branch as a PR, or submit the current branch for review in MyOrganizer. Delegate title, Surface Labels, and body to the PrAuthor sub-agent, then run the shared ai:create-pr runner with --title, --body-file, and --label. Push upstream, assign the authenticated GitHub user, and keep reviewers empty unless the user explicitly names one."},{"dir":"dep-sync","name":"dep-sync","description":"Synchronise TECH_STACK.md and the fixed set of authoritative files when dependencies are installed, updated, or removed. Proposes changes and requires user confirmation before writing anything."},{"dir":"design-brief","name":"design-brief","description":"Design brief for a Designer agent \u2014 turns a request for a visual (diagram, animated walkthrough, explainer page) into a prompt someone else executes. Grounds every claim in real source constants when the subject is code; interviews the user when it is not."},{"dir":"diagnosing-bugs","name":"diagnosing-bugs","description":"Diagnosis loop for hard bugs and performance regressions. Use when the user says \"diagnose\"/\"debug this\", or reports something broken/throwing/failing/slow."},{"dir":"domain-modeling","name":"domain-modeling","description":"Build and sharpen a project's domain model. Use when the user wants to pin down domain terminology or a ubiquitous language, record an architectural decision, or when another skill needs to maintain the domain model."},{"dir":"frontend-page-library-workflow","name":"frontend-page-library-workflow","description":"Use when adding or changing frontend pages, dashboard flows, forms, or route implementations in MyOrganizer's Next.js app and page libraries."},{"dir":"github-issue-creation-workflow","name":"github-issue-creation-workflow","description":"Use when the user asks to create a standalone GitHub issue for an ad-hoc bug, task, or follow-up in MyOrganizer. Do not use for PRD Issues, PRD slices, or publishing a grill/to-prd plan \u2014 those use to-prd or to-issues. Delegate to IssueCreator for duplicate checks, detail collection, label validation, and issue creation."},{"dir":"grill-with-docs","name":"grill-with-docs","description":"Grilling session that challenges your plan against the existing domain model, sharpens terminology, and updates documentation (CONTEXT.md, ADRs) inline as decisions crystallise. Use when you want to stress-test a plan against the project's language and documented decisions. Publishing the agreed plan as tracked work is to-prd, not IssueCreator."},{"dir":"handoff","name":"handoff","description":"Compact the current conversation into a handoff document for another agent to pick up."},{"dir":"implement","name":"implement","description":"Implement a piece of work based on a spec, PRD, or set of tickets. Use when the user wants hands-on delivery of an agreed plan in the current session."},{"dir":"improve-codebase-architecture","name":"improve-codebase-architecture","description":"Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one you pick."},{"dir":"modern-web-guidance","name":"modern-web-guidance","description":"Search tool for modern web development best practices. MANDATORY: Execute FIRST for all HTML/CSS and clientside JS tasks. Do NOT skip \u2014 web APIs evolve rapidly and training weights contain obsolete patterns.\n\nTrigger immediately for:\n- UI/Layout: Modals, dialogs, popovers, Glassmorphism/backdrop-filters, anchor positioning, container queries, `:has()`, `:user-valid`.\n- Scroll/Motion: View Transitions, Scroll-driven animations, scroll parallax/reveals.\n- Performance: CWV (LCP, INP), content-visibility, Fetch Priority, image optimization.\n- System/APIs: Local filesystem access, WebUSB, WebSockets sync, WebAssembly widgets.\n- Frameworks: Adapting layout/styles in React, Vue, Angular.\n- General Frontend: Forms, autofill, advanced inputs, custom scrollbars, modern component states, etc.\n\nDO NOT trigger for:\n- Backend: Database SQL, ORMs, Express API routes.\n- Pipelines: CI/CD deployment, Docker, Actions.\n- Generic: Local scripts (Python/Go tools), ESLint, Git."},{"dir":"nx-monorepo-workflow","name":"nx-monorepo-workflow","description":"Use when generating new Nx libraries, applications, components, or other Nx artifacts in MyOrganizer. Prefer the Nx CLI over manual file creation."},{"dir":"playwright-e2e-workflow","name":"playwright-e2e-workflow","description":"Use when adding or changing Playwright end-to-end tests, validating critical user flows, or updating browser automation in MyOrganizer. Build a behavior-first flow matrix, keep browser specs deterministic, and delegate implementation to TestScaffold only with a precise E2E brief."},{"dir":"prisma-migration-workflow","name":"prisma-migration-workflow","description":"Use when editing Prisma schema files, creating migrations, regenerating Prisma client types, or changing database structure in MyOrganizer."},{"dir":"prototype","name":"prototype","description":"Build throwaway prototypes to answer design questions quickly. Use when you need to sanity-check logic/state behavior or compare multiple UI directions before committing to production implementation."},{"dir":"release-and-deploy-workflow","name":"release-and-deploy-workflow","description":"Use when cutting releases, preparing staging or production deployments, updating release automation, or validating GitHub Actions deployment flow for MyOrganizer."},{"dir":"storybook-delegation-workflow","name":"storybook-delegation-workflow","description":"Use when adding, editing, reviewing, or refactoring Storybook stories (`*.stories.tsx`) for MyOrganizer UI components. Delegate implementation to StorybookCurator, require requirement analysis first, and review for completeness, accessibility, and UX quality."},{"dir":"sub-agent-sync-workflow","name":"sub-agent-sync-workflow","description":null},{"dir":"tdd","name":"tdd","description":"Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions \"red-green-refactor\", or wants integration tests."},{"dir":"to-issues","name":"to-issues","description":"Use when a PRD Issue exists and needs to be broken into Slice Issues for autonomous agents. Reads the PRD, explores the codebase, drafts vertical slices (AFK/HITL), quizzes the user, and publishes each slice with the full label set. Always run to-prd first. Do not use for standalone ad-hoc issues \u2014 those use github-issue-creation-workflow."},{"dir":"to-prd","name":"to-prd","description":"Use when the user wants to plan a new feature for MyOrganizer, or to publish a grill/spec session as a PRD Issue. Explores the codebase, sketches test seams, gets user approval, writes a PRD, and publishes it as a GitHub Issue. Always use this skill for planned features \u2014 not for ad-hoc bugs, one-off tasks, or standalone IssueCreator tickets."},{"dir":"triage","name":"triage","description":"Use when triaging existing GitHub issues or external PRs through the state machine (needs-triage, ready-for-agent, wontfix). Do not use to create new issues \u2014 ad-hoc tickets use github-issue-creation-workflow; PRDs use to-prd."},{"dir":"unit-test-delegation-workflow","name":"unit-test-delegation-workflow","description":"Use when a task requires creating or updating Jest unit tests, Jest integration tests, React hook/component integration tests, or specific Jest test cases in MyOrganizer. Delegate implementation to TestScaffold with a behavior matrix and review for correctness, scope, mock hygiene, duplicate output, and validation results."},{"dir":"upstream-brief","name":"upstream-brief","description":"Write one Upstream Brief comparing repo-owned instructions to official docs for subjects and target versions the human names."},{"dir":"vault-feature-workflow","name":"vault-feature-workflow","description":"Use when working on vault-backed features, encrypted blob types, vault export/import, ciphertext-only sync, or browser vault flows in MyOrganizer."},{"dir":"youtube-integration-workflow","name":"youtube-integration-workflow","description":"Use when working on YouTube OAuth, subscription sync, cached videos, notification settings, cron sync, or the dashboard YouTube page in MyOrganizer."}];
+
+const HUMAN_ONLY = ["ask-matt","handoff","implement","triage","upstream-brief"];
+const ALIASES = { "commit-change-workflow": "/commit", "create-pull-request-workflow": "/create-pr" };
+
+/* Skills present in the AGENTS.md `## Workflows` chooser (20 of 35). */
+const IN_CHOOSER = new Set(["commit-change-workflow","create-pull-request-workflow","github-issue-creation-workflow",
+  "to-prd","to-issues","triage","unit-test-delegation-workflow","playwright-e2e-workflow","storybook-delegation-workflow",
+  "component-builder","backend-api-contract-change","implement","code-review","tdd","release-and-deploy-workflow",
+  "grill-with-docs","upstream-brief","domain-modeling","improve-codebase-architecture","sub-agent-sync-workflow"]);
+
+/* Per-node routing notes that are facts, not description text. */
+const NOTES = {
+  "handoff": "Zero outbound edges by design. Its eight apparent references all come from one line (handoff/SKILL.md:16) that names skills only as examples of what to put in a handoff document \u2014 that is not routing.",
+  "ask-matt": "Router with out-degree 21. High degree here is a hub artefact, not importance. Its /triage on-ramp is scoped to incoming/raw issues only \u2014 not slices /to-issues has already made agent-ready (ask-matt/SKILL.md:41). It also routes to /wayfinder (:43), which does not exist in this repo.",
+  "dep-sync": "Halts traversal: proposes changes and requires user confirmation before writing anything (dep-sync/SKILL.md:3).",
+  "modern-web-guidance": "The one external skill that was vendored. Also listed in EXTERNAL_SKILLS.md as GoogleChrome/modern-web-guidance@modern-web-guidance; drawn once, here in Tier 1.",
+  "sub-agent-sync-workflow": "SKILL.md:1 opens directly on the H1 with no YAML frontmatter block."
+};
+
+/* \u2500\u2500 Skill \u2192 skill edges. A routes-to \u00b7 B hands-off-to \u00b7 C warns-off \u00b7 D reads-vocabulary-from \u2500\u2500 */
+const SS = [
+  /* B \u2014 hands-off-to (22) */
+  ["to-prd","to-issues","B","to-prd/config.md:35 \u2014 the PRD must carry a `## Slices` section, initially empty; to-issues populates it."],
+  ["to-issues","implement","B","to-issues/SKILL.md:48, to-issues/config.md:50"],
+  ["implement","commit-change-workflow","B","implement/SKILL.md:126 \u2014 invoked as /commit"],
+  ["implement","create-pull-request-workflow","B","implement/SKILL.md:128 \u2014 invoked as /create-pr"],
+  ["implement","tdd","B","implement/SKILL.md:45"],
+  ["implement","code-review","B","implement/SKILL.md:35 \u2014 gate:full and large standard diffs only"],
+  ["implement","auth-session-workflow","B","implement/SKILL.md:55"],
+  ["implement","backend-api-contract-change","B","implement/SKILL.md:53"],
+  ["implement","component-builder","B","implement/SKILL.md:52"],
+  ["implement","frontend-page-library-workflow","B","implement/SKILL.md:51"],
+  ["implement","prisma-migration-workflow","B","implement/SKILL.md:56"],
+  ["implement","vault-feature-workflow","B","implement/SKILL.md:54"],
+  ["implement","youtube-integration-workflow","B","implement/SKILL.md:57"],
+  ["component-builder","storybook-delegation-workflow","B","component-builder/SKILL.md:78"],
+  ["component-builder","unit-test-delegation-workflow","B","component-builder/SKILL.md:79"],
+  ["frontend-page-library-workflow","component-builder","B","frontend-page-library-workflow/SKILL.md:20"],
+  ["diagnosing-bugs","improve-codebase-architecture","B","diagnosing-bugs/SKILL.md:144 \u2014 hand off when the finding is a missing seam"],
+  ["improve-codebase-architecture","grill-with-docs","B","improve-codebase-architecture/SKILL.md:67"],
+  ["improve-codebase-architecture","domain-modeling","B","improve-codebase-architecture/SKILL.md:22, :71"],
+  ["grill-with-docs","to-prd","B","grill-with-docs/SKILL.md:14"],
+  ["unit-test-delegation-workflow","code-review","B","unit-test-delegation-workflow/SKILL.md:110 \u2014 /code-review runs once per Slice after checks are green, NOT after every hop."],
+  ["unit-test-delegation-workflow","playwright-e2e-workflow","B","unit-test-delegation-workflow/SKILL.md:17"],
+
+  /* C \u2014 warns-off (5) */
+  ["backend-api-contract-change","auth-session-workflow","C","backend-api-contract-change/SKILL.md:18 \u2014 \u201cDo not use this skill as the writer for cookie/refresh/session behavior.\u201d"],
+  ["backend-api-contract-change","vault-feature-workflow","C","backend-api-contract-change/SKILL.md:18 \u2014 \u201c\u2026or vault plaintext rules.\u201d"],
+  ["backend-api-contract-change","unit-test-delegation-workflow","C","backend-api-contract-change/SKILL.md:45 \u2014 \u201cLeave this skill. \u2026 Do not pull TestScaffold in here.\u201d"],
+  ["grill-with-docs","github-issue-creation-workflow","C","grill-with-docs/SKILL.md:14 \u2014 \u201cDo not use github-issue-creation-workflow or the IssueCreator agent.\u201d"],
+  ["github-issue-creation-workflow","to-prd","C","github-issue-creation-workflow/SKILL.md:3, :11 \u2014 \u201cDo not use for PRD Issues, PRD slices, or publishing a grill/to-prd plan.\u201d"],
+
+  /* D \u2014 reads-vocabulary-from (5) */
+  ["improve-codebase-architecture","codebase-design","D","improve-codebase-architecture/SKILL.md:10 \u2014 \u201cBefore doing anything else, read \u2026 it defines the vocabulary.\u201d"],
+  ["tdd","codebase-design","D","tdd/SKILL.md:55, tdd/refactoring.md:7"],
+  ["backend-api-contract-change","prisma-migration-workflow","D","backend-api-contract-change/SKILL.md:23 \u2014 PrismaWriter reads the runbook; do not copy it."],
+  ["dep-sync","grill-with-docs","D","dep-sync/SKILL.md:29"],
+  ["create-hooks","dep-sync","D","create-hooks/SKILL.md:164"],
+
+  /* A \u2014 routes-to (31) */
+  ["github-issue-creation-workflow","to-issues","A","github-issue-creation-workflow/SKILL.md:17"],
+  ["github-issue-creation-workflow","triage","A","github-issue-creation-workflow/SKILL.md:18"],
+  ["tdd","unit-test-delegation-workflow","A","tdd/SKILL.md"],
+  ["to-issues","github-issue-creation-workflow","A","to-issues/SKILL.md"],
+  ["to-issues","to-prd","A","to-issues/SKILL.md \u2014 always run to-prd first"],
+  ["to-prd","grill-with-docs","A","to-prd/SKILL.md"],
+  ["to-prd","github-issue-creation-workflow","A","to-prd/SKILL.md"],
+  ["triage","domain-modeling","A","triage/SKILL.md"],
+  ["triage","grill-with-docs","A","triage/SKILL.md"],
+  ["implement","to-issues","A","implement/SKILL.md \u2014 back-reference to the slice that spawned it"]
+];
+/* ask-matt is the router: 21 routes-to targets, ask-matt/SKILL.md:17-81 */
+["grill-with-docs","prototype","handoff","to-prd","to-issues","github-issue-creation-workflow","implement","tdd",
+ "code-review","triage","diagnosing-bugs","improve-codebase-architecture","codebase-design","domain-modeling",
+ "unit-test-delegation-workflow","playwright-e2e-workflow","storybook-delegation-workflow","backend-api-contract-change",
+ "prisma-migration-workflow","release-and-deploy-workflow","upstream-brief"]
+  .forEach(t => SS.push(["ask-matt", t, "A", "ask-matt/SKILL.md:17-81 \u2014 router"]));
+
+/* \u2500\u2500 Skill \u2192 sub-agent edges (51 drawn; see the false-positive note below) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+const AGENTS = {
+  "ApiSync": ["ask-matt","backend-api-contract-change","implement","to-issues"],
+  "ApiWriter": ["ask-matt","backend-api-contract-change","implement","to-issues"],
+  "Audit": [],
+  "CodeExplorer": ["design-brief","improve-codebase-architecture","sub-agent-sync-workflow","to-issues","to-prd"],
+  "Commit": ["commit-change-workflow"],
+  "ComponentBuilder": ["component-builder","to-issues"],
+  "ComponentReviewer": ["component-builder","to-issues"],
+  "DepAudit": [],
+  "DepSync": ["dep-sync"],
+  "Docs": [],
+  "E2EPlanner": ["ask-matt","playwright-e2e-workflow"],
+  "IssueCreator": ["github-issue-creation-workflow","grill-with-docs","implement","to-issues","to-prd"],
+  "PrAuthor": ["create-pull-request-workflow"],
+  "PreflightCheck": ["release-and-deploy-workflow"],
+  "PrismaWriter": ["ask-matt","backend-api-contract-change","implement","to-issues"],
+  "ReleaseNotes": ["release-and-deploy-workflow"],
+  "Research": ["upstream-brief"],
+  "StorybookCurator": ["component-builder","storybook-delegation-workflow","to-issues"],
+  "TestReviewer": ["playwright-e2e-workflow","tdd","to-issues","unit-test-delegation-workflow"],
+  "TestRunner": ["tdd","to-issues","unit-test-delegation-workflow"],
+  "TestScaffold": ["backend-api-contract-change","component-builder","playwright-e2e-workflow","tdd","to-issues","unit-test-delegation-workflow"],
+  "VersionBump": ["release-and-deploy-workflow"]
+};
+const AGENT_NOTE = {
+  "Research": "Conditional \u2014 upstream-brief/SKILL.md:58: \u201cIf the host has a Research specialist, use it as the worker. Otherwise the same agent fetches the pages.\u201d",
+  "Audit": "Orphan. Canonical in .github/agents/ but referenced by no skill.",
+  "DepAudit": "Orphan. Canonical in .github/agents/ but referenced by no skill.",
+  "Docs": "Orphan. Canonical in .github/agents/ but referenced by no skill."
+};
+
+/* \u2500\u2500 Tier 3 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+const EXTERNAL = [
+  ["vercel-labs/next-skills@next-best-practices", false],
+  ["vercel-labs/next-skills@next-cache-components", false],
+  ["vercel-labs/agent-skills@vercel-react-best-practices", false],
+  ["vercel-labs/agent-skills@vercel-composition-patterns", false],
+  ["anthropics/skills@frontend-design", false],
+  ["vercel-labs/agent-skills@web-design-guidelines", false],
+  ["GoogleChrome/modern-web-guidance@modern-web-guidance", false, "VENDORED"],
+  ["wshobson/agents@nodejs-backend-patterns", false],
+  ["wshobson/agents@tailwind-design-system", false],
+  ["currents-dev/playwright-best-practices-skill@playwright-best-practices", false],
+  ["xixu-me/skills@github-actions-docs", false],
+  ["shadcn/ui@shadcn", true, "add only if the task is actively editing shadcn-style components"],
+  ["obra/superpowers@systematic-debugging", true, "add only when the work is debugging-heavy"]
+];
+
+const LOOKUP = [
+  ["\u201cwhich skill do I run next?\u201d", "ask-matt"],
+  ["\u201cplan a new feature\u201d", "to-prd"],
+  ["\u201csplit the PRD into slices\u201d", "to-issues"],
+  ["\u201cbuild the agreed work\u201d", "implement"],
+  ["\u201csomething is broken / slow\u201d", "diagnosing-bugs"],
+  ["\u201ccommit this\u201d", "commit-change-workflow"],
+  ["\u201copen a PR\u201d", "create-pull-request-workflow"],
+  ["\u201cadd a REST endpoint or DTO\u201d", "backend-api-contract-change"],
+  ["\u201cchange the Prisma schema\u201d", "prisma-migration-workflow"],
+  ["\u201cnew React component\u201d", "component-builder"],
+  ["\u201cJest tests for this\u201d", "unit-test-delegation-workflow"],
+  ["\u201cPlaywright E2E flow\u201d", "playwright-e2e-workflow"],
+  ["\u201cvault / encrypted blobs\u201d", "vault-feature-workflow"],
+  ["\u201clogin, refresh, verification\u201d", "auth-session-workflow"],
+  ["\u201ccut a release\u201d", "release-and-deploy-workflow"],
+  ["\u201cHTML/CSS or clientside JS\u201d", "modern-web-guidance"]
+];
+
+/* \u2550\u2550 Build the model \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+const skills = SKILL_FM.map(s => ({
+  id: s.dir, tier: 1, name: s.name, desc: s.description,
+  human: HUMAN_ONLY.includes(s.dir),
+  alias: ALIASES[s.dir] || null,
+  inChooser: IN_CHOOSER.has(s.dir),
+  note: NOTES[s.dir] || null
+}));
+const byId = new Map(skills.map(s => [s.id, s]));
+
+const agentNodes = Object.keys(AGENTS).map(a => ({
+  id: "agent:" + a, tier: 2, name: a, parents: AGENTS[a],
+  orphan: AGENTS[a].length === 0, note: AGENT_NOTE[a] || null
+}));
+const extNodes = EXTERNAL.filter(e => !e[2] || e[2] !== "VENDORED").map(e => ({
+  id: "ext:" + e[0], tier: 3, name: e[0].split("@").pop(), pkg: e[0], optional: e[1], why: e[2] || null
+}));
+
+/* edges */
+let EDGES = SS.map(e => ({ s: e[0], t: e[1], type: e[2], src: e[3] }));
+Object.entries(AGENTS).forEach(([a, ps]) => ps.forEach(p =>
+  EDGES.push({ s: p, t: "agent:" + a, type: "S", cond: a === "Research", src: AGENT_NOTE[a] || (".github/agents/" ) })
+));
+/* Guard the brief's two traps, structurally rather than by trusting the data. */
+EDGES = EDGES.filter(e => e.s !== "handoff");
+
+const NODES = new Map();
+skills.forEach(n => NODES.set(n.id, n));
+agentNodes.forEach(n => NODES.set(n.id, n));
+extNodes.forEach(n => NODES.set(n.id, n));
+
+const out = new Map(), inn = new Map();
+EDGES.forEach(e => {
+  if (!out.has(e.s)) out.set(e.s, []); out.get(e.s).push(e);
+  if (!inn.has(e.t)) inn.set(e.t, []); inn.get(e.t).push(e);
+});
+
+/* \u2550\u2550 Layout: deterministic force sim over Tier 1 only \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+const W = 1120, H = 800;
+function prng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+
+const CH = 7.85, PADX = 12, NH = 24;
+skills.forEach(n => { n.w = Math.round(n.name.length * CH) + PADX * 2 + (n.human || !n.desc ? 36 : 0); n.h = NH; });
+
+(function layout() {
+  const rnd = prng(20260819);
+  const n = skills.length;
+  skills.forEach((d, i) => {
+    const a = (i / n) * Math.PI * 2, r = 240 + rnd() * 90;
+    d.x = W / 2 + Math.cos(a) * r; d.y = H / 2 + Math.sin(a) * r * 0.78;
+    d.vx = 0; d.vy = 0;
+  });
+  const links = EDGES.filter(e => byId.has(e.s) && byId.has(e.t))
+    .map(e => ({ a: byId.get(e.s), b: byId.get(e.t), k: e.type === "B" ? 0.055 : e.type === "A" ? 0.012 : 0.03,
+                 len: e.type === "B" ? 150 : e.type === "A" ? 265 : 190 }));
+
+  for (let it = 0; it < 900; it++) {
+    const cool = 1 - it / 900;
+    // repulsion (all pairs, 35 nodes)
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      const a = skills[i], b = skills[j];
+      let dx = b.x - a.x, dy = b.y - a.y;
+      let d2 = dx * dx + dy * dy; if (d2 < 1) { dx = 0.7; dy = 0.4; d2 = 1; }
+      const d = Math.sqrt(d2);
+      const minD = (a.w + b.w) / 2 + 26;
+      let f = 20000 / d2;
+      if (d < minD) f += (minD - d) * 0.36;          // rectangular-ish separation
+      const ux = dx / d, uy = dy / d;
+      a.vx -= ux * f; a.vy -= uy * f * 1.5;
+      b.vx += ux * f; b.vy += uy * f * 1.5;
+    }
+    // springs
+    for (const l of links) {
+      const dx = l.b.x - l.a.x, dy = l.b.y - l.a.y;
+      const d = Math.max(1, Math.hypot(dx, dy));
+      const f = (d - l.len) * l.k;
+      const ux = dx / d, uy = dy / d;
+      l.a.vx += ux * f; l.a.vy += uy * f;
+      l.b.vx -= ux * f; l.b.vy -= uy * f;
+    }
+    // gravity toward centre, gentle
+    for (const d of skills) {
+      d.vx += (W / 2 - d.x) * 0.0045;
+      d.vy += (H / 2 - d.y) * 0.0075;
+      d.x += Math.max(-14, Math.min(14, d.vx * 0.22 * cool));
+      d.y += Math.max(-14, Math.min(14, d.vy * 0.22 * cool));
+      d.vx *= 0.82; d.vy *= 0.82;
+    }
+  }
+  // normalise into the viewBox
+  const xs = skills.map(d => d.x), ys = skills.map(d => d.y);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const sx = 820 / Math.max(1, x1 - x0), sy = 540 / Math.max(1, y1 - y0);
+  const s = Math.min(sx, sy);
+  const ox = (W - (x1 - x0) * s) / 2, oy = (H - (y1 - y0) * s) / 2;
+  skills.forEach(d => { d.x = ox + (d.x - x0) * s; d.y = oy + (d.y - y0) * s; });
+})();
+
+/* Tier 3 ring, outside everything. */
+extNodes.forEach((d, i) => {
+  const a = -Math.PI / 2 + (i / extNodes.length) * Math.PI * 2;
+  d.x = W / 2 + Math.cos(a) * 500;
+  d.y = H / 2 + Math.sin(a) * 362;
+  d.w = Math.round(d.name.length * 6.6) + 18; d.h = 18;
+});
+
+/* Tier 2 satellites: orbit the mean of their parents; orphans park bottom-left. */
+agentNodes.forEach((d, i) => {
+  d.w = Math.round(d.name.length * 6.8) + 18; d.h = 19;
+  const ps = d.parents.map(p => byId.get(p)).filter(Boolean);
+  if (!ps.length) { d.x = 120; d.y = H - 40; return; }
+  const mx = ps.reduce((a, p) => a + p.x, 0) / ps.length;
+  const my = ps.reduce((a, p) => a + p.y, 0) / ps.length;
+  const a = (i / agentNodes.length) * Math.PI * 2;
+  d.x = mx + Math.cos(a) * 86; d.y = my + Math.sin(a) * 62;
+});
+// spread orphans along the bottom
+(function () {
+  const orph = agentNodes.filter(d => d.orphan);
+  orph.forEach((d, i) => { d.x = 150 + i * 150; d.y = H - 26; });
+})();
+
+/* \u2550\u2550 Render \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+const SVGNS = "http://www.w3.org/2000/svg";
+const svg = document.getElementById("graph");
+const vp = document.getElementById("viewport");
+const elEdges = document.getElementById("edgelayer");
+const el1 = document.getElementById("nodelayer");
+const el2 = document.getElementById("t2layer");
+const el3 = document.getElementById("t3layer");
+const mk = (t, a) => { const e = document.createElementNS(SVGNS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
+
+/* Clip a segment at each chip's rectangular boundary. */
+function clipRect(cx, cy, w, h, tx, ty) {
+  const dx = tx - cx, dy = ty - cy;
+  if (!dx && !dy) return [cx, cy];
+  const hw = w / 2 + 4, hh = h / 2 + 4;
+  const sx = dx ? hw / Math.abs(dx) : Infinity;
+  const sy = dy ? hh / Math.abs(dy) : Infinity;
+  const s = Math.min(sx, sy);
+  return [cx + dx * s, cy + dy * s];
+}
+
+const edgeEls = new Map();
+EDGES.forEach((e, i) => {
+  const a = NODES.get(e.s), b = NODES.get(e.t);
+  if (!a || !b) return;
+  const p = mk("path", { class: "edge t-" + e.type + (e.cond ? " cond" : ""), "marker-end": "url(#ar-" + e.type + ")" });
+  e._i = i; e._el = p; edgeEls.set(i, e);
+  elEdges.appendChild(p);
+});
+function drawEdges() {
+  EDGES.forEach(e => {
+    if (!e._el) return;
+    const a = NODES.get(e.s), b = NODES.get(e.t);
+    const [x1, y1] = clipRect(a.x, a.y, a.w, a.h, b.x, b.y);
+    const [x2, y2] = clipRect(b.x, b.y, b.w, b.h, a.x, a.y);
+    e._el.setAttribute("d", "M" + x1.toFixed(1) + "," + y1.toFixed(1) + " L" + x2.toFixed(1) + "," + y2.toFixed(1));
+  });
+}
+
+const nodeEls = new Map();
+function renderNode(d, parent, cls) {
+  const g = mk("g", { class: "node " + cls, tabindex: "0", role: "button",
+    "aria-label": d.tier === 1 ? (d.name + (d.human ? ", human-invoke only" : "") + (d.desc ? "" : ", no description")) :
+                  d.tier === 2 ? ("sub-agent " + d.name + (d.orphan ? ", orphan" : "")) :
+                  ("external skill " + d.pkg + ", approved but not installed") });
+  g.appendChild(mk("rect", { class: "focusring", x: -d.w / 2 - 4, y: -d.h / 2 - 4, width: d.w + 8, height: d.h + 8, fill: "none", stroke: "none" }));
+  g.appendChild(mk("rect", { class: "chip", x: -d.w / 2, y: -d.h / 2, width: d.w, height: d.h }));
+  const t = mk("text", { class: "lbl", x: -d.w / 2 + PADX, y: 0.5 });
+  t.textContent = d.name; g.appendChild(t);
+  if (d.tier === 1 && (d.human || !d.desc)) {
+    const bd = mk("text", { class: "badge", x: d.w / 2 - PADX - 30, y: 0.5 });
+    bd.textContent = d.human ? "HUMAN" : "NO FM"; g.appendChild(bd);
+  }
+  g.setAttribute("transform", "translate(" + d.x.toFixed(1) + "," + d.y.toFixed(1) + ")");
+  parent.appendChild(g);
+  nodeEls.set(d.id, g);
+  wire(g, d);
+}
+extNodes.forEach(d => renderNode(d, el3, "t3" + (d.optional ? " opt" : "")));
+agentNodes.forEach(d => renderNode(d, el2, "t2" + (d.orphan ? " orphan" : "")));
+skills.forEach(d => renderNode(d, el1, (d.human ? "human " : "") + (d.desc ? "" : "nodesc ")));
+drawEdges();
+
+/* \u2550\u2550 Pan / zoom \u2014 contained; body never scrolls sideways \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+const bounds = (function () {
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  NODES.forEach(n => {
+    if (n.tier === 2) return;
+    x0 = Math.min(x0, n.x - n.w / 2); x1 = Math.max(x1, n.x + n.w / 2);
+    y0 = Math.min(y0, n.y - n.h / 2); y1 = Math.max(y1, n.y + n.h / 2);
+  });
+  const pad = 26;
+  return { x0: x0 - pad, y0: y0 - pad, x1: x1 + pad, y1: y1 + pad };
+})();
+let view = { x: bounds.x0, y: bounds.y0, w: bounds.x1 - bounds.x0, h: bounds.y1 - bounds.y0 };
+const HOME = Object.assign({}, view);
+function applyView() { svg.setAttribute("viewBox", view.x + " " + view.y + " " + view.w + " " + view.h); }
+applyView();
+function zoom(f, cx, cy) {
+  const nw = Math.max(280, Math.min(2400, view.w * f));
+  const k = nw / view.w;
+  if (cx === undefined) { cx = view.x + view.w / 2; cy = view.y + view.h / 2; }
+  view.x = cx - (cx - view.x) * k; view.y = cy - (cy - view.y) * k;
+  view.w = nw; view.h = view.h * k; applyView();
+}
+/* Plain wheel keeps scrolling the page; the canvas only claims it with a modifier. */
+svg.addEventListener("wheel", ev => {
+  if (!ev.ctrlKey && !ev.metaKey) return;
+  ev.preventDefault();
+  const p = toSvg(ev.clientX, ev.clientY); zoom(ev.deltaY > 0 ? 1.12 : 0.89, p.x, p.y);
+}, { passive: false });
+function toSvg(cx, cy) { const r = svg.getBoundingClientRect();
+  return { x: view.x + (cx - r.left) / r.width * view.w, y: view.y + (cy - r.top) / r.height * view.h }; }
+let drag = null;
+svg.addEventListener("pointerdown", ev => {
+  if (ev.target.closest(".node")) return;
+  drag = { x: ev.clientX, y: ev.clientY, vx: view.x, vy: view.y };
+  svg.classList.add("dragging"); svg.setPointerCapture(ev.pointerId);
+});
+svg.addEventListener("pointermove", ev => {
+  if (!drag) return;
+  const r = svg.getBoundingClientRect();
+  view.x = drag.vx - (ev.clientX - drag.x) / r.width * view.w;
+  view.y = drag.vy - (ev.clientY - drag.y) / r.height * view.h;
+  applyView();
+});
+["pointerup", "pointercancel"].forEach(t => svg.addEventListener(t, () => { drag = null; svg.classList.remove("dragging"); }));
+document.getElementById("btnZin").onclick = () => zoom(0.82);
+document.getElementById("btnZout").onclick = () => zoom(1.22);
+document.getElementById("btnReset").onclick = () => { view = Object.assign({}, HOME); applyView(); };
+
+/* \u2550\u2550 Tooltip \u2014 hover, click and :focus-visible share one surface \u2550\u2550\u2550\u2550\u2550 */
+const tip = document.getElementById("tip");
+const hasPopover = "popover" in HTMLElement.prototype;
+function showTip(d, anchorEl) {
+  tip.innerHTML = tipHTML(d);
+  if (hasPopover) { try { tip.hidePopover(); } catch (e) {} try { tip.showPopover(); } catch (e) {} }
+  else tip.classList.add("fallback-open");
+  const r = anchorEl.getBoundingClientRect();
+  const tr = tip.getBoundingClientRect();
+  let left = r.left + r.width / 2 - tr.width / 2;
+  let top = r.bottom + 10;
+  if (top + tr.height > innerHeight - 8) top = Math.max(8, r.top - tr.height - 10);
+  left = Math.max(8, Math.min(left, innerWidth - tr.width - 8));
+  tip.style.left = left + "px"; tip.style.top = top + "px";
+}
+function hideTip() {
+  if (hasPopover) { try { tip.hidePopover(); } catch (e) {} }
+  tip.classList.remove("fallback-open");
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function tipHTML(d) {
+  if (d.tier === 3) return '<div class="tmeta">Tier 3 \u00b7 approved \u00b7 not installed</div>'
+    + '<div class="tname">' + esc(d.pkg) + "</div>"
+    + '<div class="tabsent">No files, no frontmatter, no edges. There is no description to show \u2014 this skill is not in the repo.</div>'
+    + (d.why ? '<div class="tdesc">' + esc(d.why) + "</div>" : "")
+    + '<div class="tdesc mono">npx skills add ' + esc(d.pkg.split("@")[0]) + " --skill " + esc(d.pkg.split("@").pop()) + " -y</div>"
+    + (d.optional ? '<span class="tflag flag-note">OPTIONAL ADD-ON</span>' : "");
+  if (d.tier === 2) return '<div class="tmeta">Tier 2 \u00b7 sub-agent</div><div class="tname">' + esc(d.name) + "</div>"
+    + '<div class="tdesc">Canonical body: <span class="mono">.github/agents/*.agent.md</span>. Mirrored to <span class="mono">.claude/agents/</span> by <span class="mono">yarn agents:sync</span>.</div>'
+    + (d.note ? '<div class="tabsent">' + esc(d.note) + "</div>" : "")
+    + (d.parents.length ? '<div class="tdesc">Invoked by: ' + d.parents.map(esc).join(", ") + "</div>" : "");
+  let h = '<div class="tmeta">Tier 1 \u00b7 repo skill' + (d.alias ? " \u00b7 type " + esc(d.alias) : "") + "</div>";
+  h += '<div class="tname">' + esc(d.name) + "</div>";
+  if (d.desc) h += '<div class="tdesc">' + esc(d.desc) + "</div>";
+  else h += '<div class="tabsent"><b>No <code>description:</code> exists.</b> SKILL.md has no YAML frontmatter. Nothing is shown here because nothing is there \u2014 an invented description would be worse than none.</div>';
+  if (d.human) h += '<span class="tflag flag-human">HUMAN-INVOKE ONLY</span>';
+  if (!d.inChooser) h += '<span class="tflag flag-warn">ABSENT FROM AGENTS.md CHOOSER</span>';
+  if (d.note) h += '<div class="tdesc" style="border-top:1px solid var(--line); padding-top:8px;">' + esc(d.note) + "</div>";
+  return h;
+}
+
+/* \u2550\u2550 Selection, inspector, highlight \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+let selected = null;
+function wire(g, d) {
+  g.addEventListener("pointerenter", () => showTip(d, g));
+  g.addEventListener("pointerleave", () => { if (document.activeElement !== g) hideTip(); });
+  g.addEventListener("focus", () => { if (g.matches(":focus-visible")) showTip(d, g); });
+  g.addEventListener("blur", hideTip);
+  g.addEventListener("click", ev => { ev.stopPropagation(); select(d.id); showTip(d, g); });
+  g.addEventListener("keydown", ev => {
+    if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select(d.id); showTip(d, g); }
+    if (ev.key === "Escape") hideTip();
+  });
+}
+document.addEventListener("keydown", ev => { if (ev.key === "Escape") hideTip(); });
+
+const TYPE_NAME = { A: "routes-to", B: "hands-off-to", C: "warns-off", D: "reads-vocabulary-from", S: "delegates-to" };
+const TYPE_GLYPH = { A: "\u2192", B: "\u21d2", C: "\u2298", D: "\u22ef", S: "\u21b3" };
+
+function nodeName(id) { const n = NODES.get(id); return n ? n.name : id; }
+
+function select(id) {
+  selected = id;
+  const d = NODES.get(id);
+  // node classes
+  nodeEls.forEach((g, k) => { g.classList.remove("sel", "dim", "walk", "halted"); });
+  EDGES.forEach(e => { if (e._el) e._el.classList.remove("lit", "dim", "pulse"); });
+  if (!d) { renderInspector(null); renderTrav(null); return; }
+  nodeEls.get(id).classList.add("sel");
+  const touched = new Set([id]);
+  (out.get(id) || []).forEach(e => { e._el && e._el.classList.add("lit"); touched.add(e.t); });
+  (inn.get(id) || []).forEach(e => { e._el && e._el.classList.add("lit"); touched.add(e.s); });
+  nodeEls.forEach((g, k) => { if (!touched.has(k)) g.classList.add("dim"); });
+  EDGES.forEach(e => { if (e._el && !e._el.classList.contains("lit")) e._el.classList.add("dim"); });
+  renderInspector(d);
+  buildTraversal(id);
+}
+
+function renderInspector(d) {
+  const b = document.getElementById("inspBody");
+  if (!d) { b.innerHTML = '<p class="muted">Hover, click, or <code>Tab</code> to a node. Everything a tooltip shows also appears here, so a screenshot loses nothing.</p>'; return; }
+  let h = "";
+  if (d.tier === 1) {
+    h += '<div><div class="insp-name">' + esc(d.name) + "</div>";
+    if (d.alias) h += '<div class="insp-alias">you type: ' + esc(d.alias) + "</div>";
+    h += "</div>";
+    h += "<div>";
+    if (d.human) h += '<span class="tflag flag-human">HUMAN-INVOKE ONLY</span>';
+    if (!d.desc) h += '<span class="tflag flag-warn">NO FRONTMATTER</span>';
+    if (!d.inChooser) h += '<span class="tflag flag-warn">NOT IN AGENTS.md CHOOSER</span>';
+    h += "</div>";
+    h += '<div class="subhead">description: (verbatim)</div>';
+    h += d.desc ? '<div class="insp-desc">' + esc(d.desc) + "</div>"
+                : '<div class="insp-absent">Absent. <code>SKILL.md</code> has no YAML frontmatter block, so no <code>description:</code> string exists to quote. None is invented here.</div>';
+    if (d.note) { h += '<div class="subhead">routing note</div><div class="insp-desc">' + esc(d.note) + "</div>"; }
+  } else if (d.tier === 2) {
+    h += '<div class="insp-name">' + esc(d.name) + '</div><div class="muted">Tier 2 sub-agent \u00b7 <code>.github/agents/</code></div>';
+    if (d.note) h += '<div class="insp-absent">' + esc(d.note) + "</div>";
+  } else {
+    h += '<div class="insp-name" style="font-size:13px;">' + esc(d.pkg) + '</div><div class="muted">Tier 3 \u00b7 approved \u00b7 not installed' + (d.optional ? " \u00b7 optional add-on" : "") + "</div>";
+    if (d.why) h += '<div class="insp-desc">' + esc(d.why) + "</div>";
+    h += '<div class="insp-absent">No description exists \u2014 the package is not vendored into this repo.</div>';
+    h += '<pre class="cmd">npx skills add ' + esc(d.pkg.split("@")[0]) + " --skill " + esc(d.pkg.split("@").pop()) + " -y</pre>";
+  }
+  const o = out.get(d.id) || [], i = inn.get(d.id) || [];
+  if (o.length) {
+    h += '<div class="subhead">outbound (' + o.length + ")</div><div class='edgelist'>";
+    o.forEach(e => { h += '<div class="el"><span class="glyph g-' + e.type + '">' + TYPE_GLYPH[e.type] + '</span><span><button class="link" data-go="' + esc(e.t) + '">' + esc(nodeName(e.t)) + '</button> <span class="muted">' + TYPE_NAME[e.type] + (e.cond ? " \u00b7 conditional" : "") + "</span></span></div>"; });
+    h += "</div>";
+  } else if (d.tier === 1) {
+    h += '<div class="subhead">outbound (0)</div><p class="muted">' + (d.id === "handoff" ? "Suppressed by design \u2014 see the routing note above." : "None.") + "</p>";
+  }
+  if (i.length) {
+    h += '<div class="subhead">inbound (' + i.length + ")</div><div class='edgelist'>";
+    i.forEach(e => { h += '<div class="el"><span class="glyph g-' + e.type + '">' + TYPE_GLYPH[e.type] + '</span><span><button class="link" data-go="' + esc(e.s) + '">' + esc(nodeName(e.s)) + '</button> <span class="muted">' + TYPE_NAME[e.type] + "</span></span></div>"; });
+    h += "</div>";
+  }
+  b.innerHTML = h;
+  b.querySelectorAll("button[data-go]").forEach(btn => btn.onclick = () => {
+    const t = btn.getAttribute("data-go"); select(t);
+    const g = nodeEls.get(t); if (g) g.focus();
+  });
+}
+document.getElementById("btnClear").onclick = () => { select(null); hideTip(); };
+
+/* \u2550\u2550 Traversal \u2014 walks hands-off (B) edges only, then sub-agents \u2550\u2550\u2550\u2550\u2550 */
+const HALTS = {
+  "ask-matt": "Human-invoke only. The model cannot load this \u2014 type /ask-matt yourself.",
+  "handoff": "Human-invoke only. The model cannot load this \u2014 type /handoff yourself.",
+  "implement": "Human-invoke only. The model cannot load this \u2014 type /implement yourself.",
+  "triage": "Human-invoke only. The model cannot load this \u2014 type /triage yourself.",
+  "upstream-brief": "Human-invoke only. The model cannot load this \u2014 type /upstream-brief yourself.",
+  "dep-sync": "Proposes changes and requires your confirmation before writing anything (dep-sync/SKILL.md:3)."
+};
+
+let chain = [], step = -1, timer = null;
+const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+document.getElementById("motionMode").textContent = reduced.matches ? "stepped (reduced motion)" : "";
+reduced.addEventListener("change", () => {
+  document.getElementById("motionMode").textContent = reduced.matches ? "stepped (reduced motion)" : "";
+  if (selected) buildTraversal(selected);
+});
+
+function buildTraversal(rootId) {
+  chain = []; step = -1; clearTimeout(timer); timer = null;
+  const seen = new Set([rootId]);
+  const visited = [rootId];
+  /* Phase 1 \u2014 the skill chain. Hands-off (B) is the pipeline; reads-vocabulary-from (D)
+     is a real prerequisite hop, so it propagates too. Warns-off (C) never does: a
+     prohibition is not a route. Routes-to (A) glows on selection but does not propagate. */
+  (function walk(id, depth) {
+    if (depth > 7) return;
+    const hops = (out.get(id) || []).filter(e => e.type === "B" || e.type === "D");
+    hops.sort((a, b) => (a.type === "B" ? 0 : 1) - (b.type === "B" ? 0 : 1));
+    for (const e of hops) {
+      if (seen.has(e.t)) continue;
+      seen.add(e.t); visited.push(e.t);
+      chain.push({ from: id, to: e.t, edge: e, kind: e.type, halt: HALTS[e.t] || null });
+      if (HALTS[e.t]) continue;      // never auto-descend past a human gate
+      walk(e.t, depth + 1);
+    }
+  })(rootId, 0);
+  /* Phase 2 \u2014 the sub-agents each visited skill delegates to. */
+  visited.forEach(id => {
+    (out.get(id) || []).filter(e => e.type === "S").forEach(e => {
+      if (seen.has(e.t)) return;
+      seen.add(e.t);
+      chain.push({ from: id, to: e.t, edge: e, kind: "S", halt: null, agent: true });
+    });
+  });
+  renderTrav(rootId);
+}
+
+function renderTrav(rootId) {
+  const el = document.getElementById("trav");
+  if (!rootId) { el.innerHTML = '<p class="muted">Select a node to walk its real <b>hands-off</b> chain, one hop at a time. Warns-off edges are never walked.</p>'; return; }
+  const root = NODES.get(rootId);
+  const rootHalt = HALTS[rootId] || null;
+  if (!chain.length) {
+    el.innerHTML = (rootHalt ? '<div class="haltbox"><b>Human gate</b><div>' + esc(rootHalt) + "</div></div>" : "")
+      + '<p class="muted"><code>' + esc(root.name) + '</code> has no outbound chain to walk. Nothing runs after it'
+      + (rootId === "handoff" ? " \u2014 its outbound edges are suppressed by design." : ".") + "</p>";
+    return;
+  }
+  const cur = chain[step];
+  const halted = cur && cur.halt && !cur._passed;
+  let h = "";
+  if (rootHalt) h += '<div class="haltbox"><b>Human gate at the root</b><div>' + esc(rootHalt) + "</div></div>";
+  h += '<div style="display:flex; gap:6px; flex-wrap:wrap;">';
+  h += '<button type="button" class="primary" id="tRun">' + (step < 0 ? (reduced.matches ? "step \u25b8" : "run chain \u25b8") : (halted ? "continue past halt \u25b8" : (reduced.matches ? "next step \u25b8" : (timer ? "pause" : "resume \u25b8")))) + "</button>";
+  h += '<button type="button" id="tReset">reset</button>';
+  h += "</div>";
+  if (halted) {
+    h += '<div class="haltbox"><b>Halted \u2014 human gate</b><div>' + esc(cur.halt) + "</div><div class='muted'>The traversal will not advance on its own. Click <em>continue past halt</em> to acknowledge and carry on.</div></div>";
+  }
+  h += '<div class="travsteps">';
+  h += '<div class="st ' + (step < 0 ? "now" : "done") + '">0 \u00b7 ' + esc(root.name) + "</div>";
+  chain.forEach((c, i) => {
+    const cls = i === step ? (c.halt && !c._passed ? "halt" : "now") : (i < step ? "done" : "");
+    const gl = c.kind === "S" ? "\u21b3 " : c.kind === "D" ? "\u22ef " : "\u21d2 ";
+    h += '<div class="st ' + cls + '">' + (i + 1) + " \u00b7 " + gl + esc(nodeName(c.to))
+       + (c.kind === "D" ? '  <span class="muted">prerequisite</span>' : "")
+       + (c.halt ? "  \u23f8" : "") + "</div>";
+  });
+  h += "</div>";
+  h += '<p class="muted">Walked: <b>hands-off</b> (&#8658;), <b>reads-vocabulary-from</b> (&#8943;, a real prerequisite) and <b>delegates-to</b> (&#8627;). A prohibition is not a route, so <b>warns-off</b> edges never animate as a path.</p>';
+  el.innerHTML = h;
+  document.getElementById("tRun").onclick = onRun;
+  document.getElementById("tReset").onclick = () => { clearTimeout(timer); timer = null; step = -1; chain.forEach(c => c._passed = false); paint(); renderTrav(rootId); };
+}
+
+function onRun() {
+  const cur = chain[step];
+  if (cur && cur.halt && !cur._passed) { cur._passed = true; advance(); return; }
+  if (!reduced.matches && timer) { clearTimeout(timer); timer = null; renderTrav(selected); return; }
+  advance();
+}
+
+function advance() {
+  if (step >= chain.length - 1) { clearTimeout(timer); timer = null; renderTrav(selected); return; }
+  step++;
+  paint();
+  const cur = chain[step];
+  if (cur.halt && !cur._passed) { clearTimeout(timer); timer = null; renderTrav(selected); return; }
+  renderTrav(selected);
+  if (!reduced.matches) { timer = setTimeout(advance, 780); }
+}
+
+function paint() {
+  EDGES.forEach(e => e._el && e._el.classList.remove("pulse"));
+  nodeEls.forEach(g => g.classList.remove("walk", "halted"));
+  for (let i = 0; i <= step; i++) {
+    const c = chain[i];
+    if (c.edge._el) c.edge._el.classList.add("pulse");
+    const g = nodeEls.get(c.to);
+    if (g) g.classList.add(i === step && c.halt && !c._passed ? "halted" : "walk");
+  }
+}
+
+/* \u2550\u2550 Legend filters \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+document.getElementById("legend").addEventListener("change", ev => {
+  const t = ev.target.getAttribute("data-t");
+  EDGES.forEach(e => { if (e.type === t && e._el) e._el.classList.toggle("hidden", !ev.target.checked); });
+});
+
+/* Sub-agent visibility */
+let satOn = false;
+const btnSat = document.getElementById("btnSat");
+function applySat() {
+  el2.style.display = satOn ? "" : "none";
+  EDGES.forEach(e => { if (e.type === "S" && e._el) e._el.style.display = satOn ? "" : "none"; });
+  btnSat.textContent = satOn ? "sub-agents: always on" : "sub-agents: on focus";
+  btnSat.setAttribute("aria-pressed", String(satOn));
+}
+btnSat.onclick = () => { satOn = !satOn; applySat(); };
+applySat();
+// reveal a skill's satellites when it is selected
+const _select = select;
+select = function (id) {
+  _select(id);
+  if (!satOn) {
+    const show = [];
+    if (id) (out.get(id) || []).forEach(e => { if (e.type === "S") show.push(e.t); });
+    const shown = new Set(show);
+    el2.style.display = show.length ? "" : "none";
+    agentNodes.forEach(a => { const g = nodeEls.get(a.id); if (g) g.style.display = shown.has(a.id) ? "" : "none"; });
+    EDGES.forEach(e => { if (e.type === "S" && e._el) e._el.style.display = shown.has(e.t) && e.s === id ? "" : "none"; });
+    /* Arc the satellites around the node that summoned them, so they read as its orbit. */
+    if (show.length) {
+      const host = NODES.get(id);
+      const r = host.w / 2 + 96;
+      show.forEach((aid, i) => {
+        const a = NODES.get(aid);
+        const ang = -Math.PI / 2 + (i - (show.length - 1) / 2) * (Math.PI * 1.7 / Math.max(4, show.length));
+        a.x = host.x + Math.cos(ang) * (r + a.w / 2);
+        a.y = host.y + Math.sin(ang) * (r * 0.72);
+        const g = nodeEls.get(aid);
+        if (g) g.setAttribute("transform", "translate(" + a.x.toFixed(1) + "," + a.y.toFixed(1) + ")");
+      });
+      drawEdges();
+    }
+  }
+};
+
+/* \u2550\u2550 Side panel content \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
+const lk = document.getElementById("lookup");
+LOOKUP.forEach(([q, id]) => {
+  const row = document.createElement("div"); row.className = "lq";
+  const s = document.createElement("span"); s.textContent = q;
+  const b = document.createElement("button"); b.className = "pillbtn"; b.textContent = id;
+  b.onclick = () => { select(id); const g = nodeEls.get(id); if (g) { g.focus(); centerOn(NODES.get(id)); } document.getElementById("graph").scrollIntoView({ block: "center", behavior: reduced.matches ? "auto" : "smooth" }); };
+  row.append(s, b); lk.appendChild(row);
+});
+function centerOn(d) { if (!d) return; view.x = d.x - view.w / 2; view.y = d.y - view.h / 2; applyView(); }
+
+const dr = document.getElementById("drift");
+skills.filter(s => !s.inChooser).forEach(s => {
+  const row = document.createElement("div"); row.className = "lq";
+  const t = document.createElement("span");
+  t.textContent = s.human ? "human-invoke only" : (s.desc ? "" : "no frontmatter");
+  const b = document.createElement("button"); b.className = "pillbtn"; b.textContent = s.name;
+  b.onclick = () => { select(s.id); const g = nodeEls.get(s.id); if (g) { g.focus(); centerOn(s); } };
+  row.append(b, t); row.style.gridTemplateColumns = "auto 1fr";
+  dr.appendChild(row);
+});
+
+const tb = document.getElementById("extTable");
+EXTERNAL.forEach(e => {
+  const tr = document.createElement("tr");
+  const a = document.createElement("td"); a.className = "pkg"; a.textContent = e[0];
+  const b = document.createElement("td");
+  if (e[2] === "VENDORED") { b.innerHTML = '<span class="tag flag-note">VENDORED \u00b7 drawn once in Tier 1</span>'; }
+  else if (e[1]) { b.innerHTML = '<span class="tag flag-note">OPTIONAL</span> ' + esc(e[2] || ""); }
+  else { b.innerHTML = '<span class="muted">default set \u00b7 approved \u00b7 not installed</span>'; }
+  tr.append(a, b); tb.appendChild(tr);
+});
+
+/* Click empty canvas clears */
+svg.addEventListener("click", ev => { if (!ev.target.closest(".node")) { select(null); hideTip(); } });
+
+/* Self-check, surfaced to console only. */
+(function selfCheck() {
+  const t1 = skills.length, t2 = agentNodes.length, t3 = extNodes.length;
+  const ss = EDGES.filter(e => e.type !== "S");
+  console.log("[skill-atlas] tier1=" + t1 + " tier2=" + t2 + " tier3=" + t3 + " total=" + (t1 + t2 + t3));
+  console.log("[skill-atlas] skill\u2192skill drawn=" + ss.length +
+    " {A:" + ss.filter(e => e.type === "A").length + ", B:" + ss.filter(e => e.type === "B").length +
+    ", C:" + ss.filter(e => e.type === "C").length + ", D:" + ss.filter(e => e.type === "D").length + "}" +
+    " skill\u2192agent=" + EDGES.filter(e => e.type === "S").length);
+  console.log("[skill-atlas] handoff outbound=" + (out.get("handoff") || []).length +
+    " \u00b7 mwg nodes=" + [...NODES.values()].filter(n => (n.name || "").includes("modern-web-guidance")).length +
+    " \u00b7 missing description=" + skills.filter(s => !s.desc).map(s => s.id).join(","));
+})();
+</script>
