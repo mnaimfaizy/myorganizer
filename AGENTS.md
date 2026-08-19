@@ -78,6 +78,9 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Use the generated API client when it covers the endpoint.
 - Add or update focused tests for changed behavior.
 - Keep docs concise and link to existing docs when possible.
+- Standards live in the documents indexed by [`CODING_STANDARDS.md`](CODING_STANDARDS.md). Add a rule to its source document and link, rather than restating it in the index.
+- `CONTEXT.md` is the domain glossary — read it before changing domain language, and do not redefine a term it already carries; sharpen or extend instead. A new term touching encrypted data must say whether it means plaintext (client-only) or ciphertext (server-storable).
+- ADRs in `docs/adr/` are numbered sequentially from `0001`. Scan for the highest existing number before adding one.
 - Classify `gate:*` first ([ADR 0012](docs/adr/0012-tiered-quality-gates.md)). When unsure → promote.
 - Before issuing 3 or more consecutive read/search operations to locate something in the codebase, stop and delegate to `CodeExplorer` (`.github/agents/explore.agent.md`). Provide an Explore Request with a `Goal` sentence; optionally include `Known Locations`, `Search Hints`, `Out of Scope`, and `Expected Output`. CodeExplorer returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
 - Keep `.github/agents` as the canonical Sub-agent body source. Keep `CodeExplorer` in `.cursor/agents/explore.md` on `model: composer-2.5`.
@@ -184,7 +187,10 @@ Use [`.claude/checklist.md`](.claude/checklist.md) Step 0 → file-type matrix.
 - Do not put app-local shared helpers under `apps/myorganizer/src/lib/**`.
 - Do not store vault plaintext on the server or add plaintext task APIs.
 - Do not hand-edit generated API client code.
-- Do not commit secrets or production credentials.
+- Do not commit secrets or production credentials, and do not paste them into chat, logs, or issue
+  bodies. This covers vault plaintext, JWT and session cookies, SMTP credentials, and environment
+  file values. Redact instead — `Authorization: <REDACTED>` and similar. If redacted output is not
+  enough to diagnose a problem, say so and ask rather than pasting the real value.
 - Do not run `git commit` directly or `git add .`; use `corepack yarn ai:commit --message-file <path>`.
 - Do not cancel, background, or abandon a running `yarn ai:commit` while Husky checks are still executing.
 - Do not run `gh pr create` directly; draft with the `PrAuthor` sub-agent, then `corepack yarn ai:create-pr --title <text> --body-file <path>`.

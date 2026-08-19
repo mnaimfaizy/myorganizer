@@ -416,8 +416,14 @@ if (/^\.agents\/skills\/\*\* .*linguist-generated/m.test(gitAttributes))
 // links `../codebase-design/DEEPENING.md`; if a future `npx skills update -p` renames or drops
 // that file upstream, the link rots and nothing else notices — the skill still loads, it just
 // points at nothing. Assert every such link resolves to a real file.
-for (const from of nativeDirs) {
-  const dir = join(SKILLS_DIR, from);
+// `.github/prompts/*.prompt.md` links into skill directories too, from outside the skill tree.
+// Those links are as breakable as the in-tree ones and were not covered until a prompt file was
+// found pointing at an Upstream-Owned companion file.
+const linkRoots = [
+  ...nativeDirs.map((d) => join(SKILLS_DIR, d)),
+  ...(existsSync('.github/prompts') ? ['.github/prompts'] : []),
+];
+for (const dir of linkRoots) {
   const walk = (d, out = []) => {
     for (const f of readdirSync(d)) {
       const q = join(d, f);
@@ -428,8 +434,20 @@ for (const from of nativeDirs) {
   };
   for (const file of walk(dir)) {
     const body = readFileSync(file, 'utf8');
-    for (const m of body.matchAll(/]\(\.\.\/([a-z0-9-]+)\/([^)#]+)/g)) {
-      const [, target, rel] = m;
+    // Two link shapes: a relative hop between skill dirs, and a repo-rooted path used by the
+    // prompt files. Both resolve to `.agents/skills/<skill>/<file>`.
+    const links = [
+      ...[...body.matchAll(/]\(\.\.\/([a-z0-9-]+)\/([^)#\s]+)/g)].map((m) => [
+        m[1],
+        m[2],
+      ]),
+      ...[
+        ...body.matchAll(
+          /`?\.agents\/skills\/([a-z0-9-]+)\/([A-Za-z0-9_.-]+\.md)`?/g,
+        ),
+      ].map((m) => [m[1], m[2]]),
+    ];
+    for (const [target, rel] of links) {
       if (!upstreamOwned.has(target)) continue;
       if (!existsSync(join(SKILLS_DIR, target, rel)))
         note(

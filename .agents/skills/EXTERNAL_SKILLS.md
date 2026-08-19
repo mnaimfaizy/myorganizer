@@ -12,6 +12,8 @@ Installed into `.agents/skills/` and committed. These are **Upstream-Owned Skill
 
 - `GoogleChrome/modern-web-guidance@modern-web-guidance`
 - `mattpocock/skills@codebase-design`
+- `mattpocock/skills@diagnosing-bugs`
+- `mattpocock/skills@domain-modeling`
 - `mattpocock/skills@handoff`
 - `mattpocock/skills@prototype`
 
@@ -19,7 +21,7 @@ Repo-native skills may route to these by name and may link into them by relative
 
 ```sh
 npx skills add GoogleChrome/modern-web-guidance --skill modern-web-guidance -y
-npx skills add mattpocock/skills --skill codebase-design handoff prototype -y
+npx skills add mattpocock/skills --skill codebase-design diagnosing-bugs domain-modeling handoff prototype -y
 ```
 
 Refresh them, review the diff, and commit it:

@@ -37,16 +37,7 @@ Look for the originating spec, in this order:
 
 ### 3. Identify the standards sources
 
-Start with MyOrganizer's documented standards:
-
-- `AGENTS.md` (root and nearest nested `AGENTS.md` for touched areas)
-- `CLAUDE.md` (delegation rules, workflow conventions)
-- `docs/ui/GUIDELINES.md` (UI components)
-- `docs/testing/README.md` (test conventions)
-- `CONTEXT.md` and relevant `docs/adr/*.md` when domain boundaries matter
-- Vault ciphertext-only rules (`libs/web-vault/AGENTS.md`, `libs/vault-core/AGENTS.md`)
-
-Also include any repo-wide docs such as `CODING_STANDARDS.md` or `CONTRIBUTING.md` if they exist.
+Read [`CODING_STANDARDS.md`](../../../CODING_STANDARDS.md) at the repo root. It indexes every document that holds a standard, and it exists so this step is a lookup rather than a search.
 
 On top of whatever the repo documents, the Standards axis always carries the **smell baseline** below — a fixed set of Fowler code smells (_Refactoring_, ch.3) that applies even when a repo documents nothing. Two rules bind it:
 
