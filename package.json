@@ -55,6 +55,7 @@
     "agents:sync:check": "node tools/scripts/sync-subagents.mjs --check && node tools/scripts/sync-agent-models.mjs --check",
     "agents:sync:test": "node --test tools/scripts/lib/harness-sections.test.mjs",
     "agents:map:check": "node tools/scripts/check-agent-map.mjs",
+    "skills:map:check": "node tools/scripts/check-skill-map.mjs",
     "vault:pages:check": "node tools/scripts/check-vault-pages.mjs",
     "readme:check": "node tools/scripts/check-readme.mjs",
     "libs:markdown:check": "node tools/scripts/check-libs-markdown.mjs",
