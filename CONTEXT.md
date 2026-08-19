@@ -230,6 +230,10 @@ _Avoid_: review loop, QA cycle, writer-reviewer loop
 A sub-agent that performs one assigned job, returns a report of what it did, and stops. The orchestrator does not send the work back for another round.
 _Avoid_: writer-reviewer loop, retry cycle, gated hop (when you mean this shape)
 
+**Standing Specialist**:
+A Sub-agent declared `user-invocable`, entered directly by a human or the main agent rather than as a hop in a Skill's chain. Belonging to no pipeline is a shape, not a defect.
+_Avoid_: orphan agent, unused agent, unreferenced sub-agent, ad-hoc agent
+
 **Orchestrator Patch**:
 The main agent's local fix to an obvious miss in a One-shot Specialist's output — an annotation, a field, an import, or a command the report claimed but skipped. Not a re-delegation. If the specialist missed the assignment, the orchestrator stops and surfaces it; it does not open a loop.
 _Avoid_: retry, reviewer fix, send-back
