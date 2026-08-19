@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import {
   classifyCommit,
+  resolveNotesPlan,
   upsertChangelogSection,
 } from './lib/release-notes.mjs';
 
@@ -93,6 +94,21 @@ function parseArgs(argv) {
         args.notesFile = next;
         i += 1;
       }
+      continue;
+    }
+
+    if (token.startsWith('--notes-from=')) {
+      args.notesFrom = token.slice('--notes-from='.length);
+      continue;
+    }
+
+    if (token === '--notes-from') {
+      const next = argv[i + 1];
+      if (!next || next.startsWith('-')) {
+        die('Missing value for --notes-from option.');
+      }
+      args.notesFrom = next;
+      i += 1;
       continue;
     }
 
@@ -300,6 +316,28 @@ function getGitHubRepoSlugFromRemote() {
   }
 }
 
+function readAuthoredNotes(notesFrom, versionTag) {
+  if (!fs.existsSync(notesFrom)) {
+    die(`--notes-from file not found: ${notesFrom}`);
+  }
+
+  const content = fs.readFileSync(notesFrom, 'utf8');
+  if (!content.trim()) {
+    die(`--notes-from file is empty: ${notesFrom}`);
+  }
+
+  // A stale draft for the previous version is the likely mistake here, and it
+  // would ship as the GitHub Release body. Warn rather than block: notes that
+  // never name the version are unusual but not wrong.
+  if (!content.includes(versionTag)) {
+    console.warn(
+      `Warning: ${notesFrom} never mentions ${versionTag}. Check you are not passing a stale draft.`,
+    );
+  }
+
+  return content.endsWith('\n') ? content : `${content}\n`;
+}
+
 function generateReleaseNotesMarkdown({ versionTag, previousTag }) {
   const slug = getGitHubRepoSlugFromRemote();
   const title = `# Release ${versionTag}`;
@@ -431,6 +469,7 @@ function printHelp() {
 
 Usage:
   node tools/scripts/release.mjs cut --version v1.2.3 [--push] [--dry-run]
+    [--notes-from <path>] [--notes-file <path>] [--no-notes] [--no-version-bump]
   node tools/scripts/release.mjs tag --version v1.2.3 [--push] [--dry-run]
 
 What it does:
@@ -443,10 +482,19 @@ What it does:
     - optionally pushes the branch (with --push)
     - updates CHANGELOG.md with generated notes and commits it (default)
       - use --no-notes to skip
-      - use --notes-file <path> to also write the generated notes to a file
+      - use --notes-file <path> to also write the notes to a file
     - prints release notes to stdout if --notes-file is NOT provided
-      - use --no-notes to skip
-      - use --notes-file <path> to write notes to a file
+
+    Release notes source:
+      - default: assembled from the commit range
+      - --notes-from <path>: use hand-written prose from <path> verbatim.
+        Writes it to --notes-file (default RELEASE_NOTES.md) inside the same
+        release commit, so authored notes cost no extra commit. Point it at a
+        file outside the repo or a gitignored one -- cut requires a clean tree.
+        CHANGELOG.md stays generated in both cases; the authored prose is the
+        GitHub Release body, which publish-github-release.yml reads from the
+        notes file at the tagged commit.
+      - --notes-from cannot be combined with --no-notes.
 
   tag:
     - checks clean working tree
@@ -492,8 +540,28 @@ if (!version) {
 
 const releaseBranch = `release/${version}`;
 const packageJsonVersion = toPackageJsonVersion(version);
-const shouldGenerateNotes = !args.skipNotes;
+
 args.notesFile = normalizeNotesFilePath(args.notesFile);
+
+const notesPlan = resolveNotesPlan({
+  notesFrom: args.notesFrom,
+  notesFile: args.notesFile,
+  skipNotes: args.skipNotes,
+});
+
+if (notesPlan.error) {
+  die(notesPlan.error);
+}
+
+if (command === 'tag' && (args.notesFrom || args.notesFile || args.skipNotes)) {
+  console.warn(
+    'Note: --notes-from, --notes-file, and --no-notes apply to `cut` only. `tag` never writes files.',
+  );
+}
+
+const shouldGenerateNotes = notesPlan.mode !== 'none';
+args.notesFile = notesPlan.notesFile;
+
 const previousTag = shouldGenerateNotes
   ? getLatestReachableSemverTag({ excludeTag: version })
   : null;
@@ -519,15 +587,24 @@ if (command === 'cut') {
 
   let notes = null;
   if (shouldGenerateNotes) {
-    notes = generateReleaseNotesMarkdown({
-      versionTag: version,
-      previousTag,
-    });
+    notes =
+      notesPlan.mode === 'authored'
+        ? readAuthoredNotes(notesPlan.notesFrom, version)
+        : generateReleaseNotesMarkdown({
+            versionTag: version,
+            previousTag,
+          });
 
     if (args.notesFile) {
       ensureParentDirExists(args.notesFile, { dryRun: args.dryRun });
       if (args.dryRun) {
-        console.log(`[dry-run] write release notes -> ${args.notesFile}`);
+        const source =
+          notesPlan.mode === 'authored'
+            ? `${notesPlan.notesFrom} (authored)`
+            : 'generated';
+        console.log(
+          `[dry-run] write release notes -> ${args.notesFile} (from ${source})`,
+        );
       } else {
         fs.writeFileSync(args.notesFile, notes, 'utf8');
       }
