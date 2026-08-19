@@ -50,6 +50,7 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Sub-agent model/catalog audit: `yarn agents:models:audit`.
 - Sandcastle loop usage summary: `yarn agents:usage:report`.
 - Root README check: `yarn readme:check`.
+- Skill atlas check: `yarn skills:map:check` (asserts `docs/agents/skill-atlas.html` against `.agents/skills`, `.github/agents`, and `AGENTS.md`).
 - Libs markdown allowlist: `yarn libs:markdown:check` (Husky + CI; do not skip).
 
 ## Architecture

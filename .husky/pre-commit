@@ -9,6 +9,18 @@ corepack yarn format:write --uncommitted
 (cd apps/backend/src && npx prisma format --schema prisma/schema >/dev/null)
 git update-index --again
 corepack yarn libs:markdown:check
+# The skill atlas asserts counts and verbatim descriptions about the skill system, so it rots
+# the moment a skill is added, renamed, or given a new description. Gated on the sources it
+# reads: an unrelated commit must not fail on drift it did not introduce.
+if ! git diff --cached --quiet --diff-filter=ACMRTD -- \
+ .agents/skills \
+ .github/agents \
+ .claude/agents \
+ AGENTS.md \
+ docs/agents/skill-atlas.html
+then
+corepack yarn skills:map:check
+fi
 corepack yarn test:hygiene --staged
 if ! git diff --cached --quiet --diff-filter=ACMRT -- \
  libs/web-ui/src/lib/components \
