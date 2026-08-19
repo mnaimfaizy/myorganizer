@@ -885,6 +885,10 @@ agentNodes.forEach(d => renderNode(d, el2, "t2" + (d.orphan ? " orphan" : "")));
 skills.forEach(d => renderNode(d, el1, (d.human ? "human " : "") + (d.desc ? "" : "nodesc ")));
 drawEdges();
 
+/* Declared before the first applyView() below, which repositions the tooltip: a `let` read
+   during that call while still in its temporal dead zone would throw. */
+let tipAnchor = null;
+
 /* The layout as computed, so "reset" can undo a reader's rearranging. */
 const HOME_POS = new Map();
 NODES.forEach(n => HOME_POS.set(n.id, { x: n.x, y: n.y }));
@@ -902,7 +906,10 @@ const bounds = (function () {
 })();
 let view = { x: bounds.x0, y: bounds.y0, w: bounds.x1 - bounds.x0, h: bounds.y1 - bounds.y0 };
 const HOME = Object.assign({}, view);
-function applyView() { svg.setAttribute("viewBox", view.x + " " + view.y + " " + view.w + " " + view.h); }
+function applyView() {
+  svg.setAttribute("viewBox", view.x + " " + view.y + " " + view.w + " " + view.h);
+  positionTip();
+}
 applyView();
 function zoom(f, cx, cy) {
   const nw = Math.max(280, Math.min(2400, view.w * f));
@@ -944,11 +951,19 @@ document.getElementById("btnReset").onclick = () => {
 /* \u2550\u2550 Tooltip \u2014 hover, click and :focus-visible share one surface \u2550\u2550\u2550\u2550\u2550 */
 const tip = document.getElementById("tip");
 const hasPopover = "popover" in HTMLElement.prototype;
-function showTip(d, anchorEl) {
-  tip.innerHTML = tipHTML(d);
-  if (hasPopover) { try { tip.hidePopover(); } catch (e) {} try { tip.showPopover(); } catch (e) {} }
-  else tip.classList.add("fallback-open");
-  const r = anchorEl.getBoundingClientRect();
+/* The tooltip is `position: fixed`, so a position computed once is a position relative to the
+   viewport, not to the chip it describes: scrolling, panning or zooming left it floating on its
+   own while its node moved away. Keep the anchor and re-solve on every event that can move
+   either one, and withdraw the tooltip when its node is no longer on screen. */
+function positionTip() {
+  if (!tipAnchor) return;
+  const r = tipAnchor.getBoundingClientRect();
+  const gr = svg.getBoundingClientRect();
+  // Gone from the viewport, or clipped out of the graph panel: the tooltip has nothing to point
+  // at, and a tooltip pointing at nothing is worse than no tooltip.
+  const offScreen = r.bottom < 0 || r.top > innerHeight || r.right < 0 || r.left > innerWidth;
+  const outsidePanel = r.bottom < gr.top || r.top > gr.bottom || r.right < gr.left || r.left > gr.right;
+  if (offScreen || outsidePanel) { hideTip(); return; }
   const tr = tip.getBoundingClientRect();
   let left = r.left + r.width / 2 - tr.width / 2;
   let top = r.bottom + 10;
@@ -956,10 +971,23 @@ function showTip(d, anchorEl) {
   left = Math.max(8, Math.min(left, innerWidth - tr.width - 8));
   tip.style.left = left + "px"; tip.style.top = top + "px";
 }
+
+function showTip(d, anchorEl) {
+  tip.innerHTML = tipHTML(d);
+  if (hasPopover) { try { tip.hidePopover(); } catch (e) {} try { tip.showPopover(); } catch (e) {} }
+  else tip.classList.add("fallback-open");
+  tipAnchor = anchorEl;
+  positionTip();
+}
 function hideTip() {
+  tipAnchor = null;
   if (hasPopover) { try { tip.hidePopover(); } catch (e) {} }
   tip.classList.remove("fallback-open");
 }
+
+/* Capture phase: the graph panel and the description block scroll independently of the page. */
+addEventListener("scroll", positionTip, { passive: true, capture: true });
+addEventListener("resize", positionTip, { passive: true });
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function tipHTML(d) {
