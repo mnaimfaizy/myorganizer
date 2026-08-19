@@ -40,7 +40,7 @@ Keep grilling → PRD → issue slicing in **one unbroken context** when possibl
 
 - **Bugs and requests piling up** → **`/triage`** (incoming/raw issues only — not slices `/to-issues` already made agent-ready).
 - **Something's broken** → **`/diagnosing-bugs`** (hard bugs, flakes, regressions). Refuse theories until there is a tight red-capable feedback loop; hand off to **`/improve-codebase-architecture`** when the finding is a missing seam.
-- **Huge / foggy effort (cannot yet write the PRD's goal sentence)** → **`/wayfinder`** (approved optional add-on — see `EXTERNAL_SKILLS.md`; install it if `npx skills list` does not show it). The moment you _can_ write that sentence, stop and switch to **`/to-prd`**.
+- **Huge / foggy effort (cannot yet write the PRD's goal sentence)** → **`/grill-with-docs`**. Interview until the abstractions have edges; the moment you _can_ write that sentence, switch to **`/to-prd`**.
 
 ## Codebase health
 

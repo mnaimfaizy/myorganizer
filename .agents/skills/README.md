@@ -64,8 +64,8 @@ Third-party skills come in two scopes, and the scope decides everything (ADR 003
 
 **Project scope** installs into this directory and is committed — an **Upstream-Owned Skill**. Never hand-edit one; refresh it with `npx skills update -p` and commit the diff. `skills-lock.json` is the registry, and `yarn skills:map:check` reads it to tell upstream-owned directories from repo-native ones. Four skills are in this tier: `codebase-design`, `handoff`, `modern-web-guidance`, `prototype`.
 
-**Personal scope** (`npx skills add … -g`) installs on one developer's machine and is never committed. It is absent from fresh clones and from CI, so no repo skill may depend on one.
+**Personal scope** is no longer approved. A skill on one developer's machine cannot be updated, reviewed, or vouched for by this repo, and the thirteen personal-scope recommendations went four months with nobody installing any of them while two died upstream (ADR 0032). For fast-moving framework knowledge, run `upstream-brief` — it audits repo-owned instructions against official docs for a named `subject@version` and keeps the result here, under review.
 
-See `EXTERNAL_SKILLS.md` for the approved set in each tier.
+See `EXTERNAL_SKILLS.md` for the approved set.
 
 See `EXTERNAL_SKILLS.md` for the approved project-scope third-party skill set.

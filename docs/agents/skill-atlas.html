@@ -232,8 +232,6 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 
 .node.t2 .chip { fill: var(--surface); stroke: var(--line); stroke-dasharray: 2 2; }
 .node.t2 .lbl { font-size: 11px; fill: var(--tier2); }
-.node.t3 .chip { fill: none; stroke: var(--line); }
-.node.t3 .lbl { font-size: 10.5px; fill: var(--tier3); }
 .node.t3.opt .chip { stroke-dasharray: 3 3; }
 
 .node.dim { opacity: .18; }
@@ -244,7 +242,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .node:focus { outline: none; }
 .node:focus-visible .focusring { stroke: var(--accent); stroke-width: 2; fill: none; rx: 6; }
 
-#t2layer, #t3layer { transition: opacity .18s ease; }
+#t2layer { transition: opacity .18s ease; }
 .satellite-off #t2layer { opacity: .34; }
 
 /* &#x2500;&#x2500; Tooltip &#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500; */
@@ -331,12 +329,12 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
   <div>
     <div class="eyebrow">MyOrganizer &#xb7; .agents/skills &#xb7; .github/agents</div>
     <h1>Skill Atlas</h1>
-    <p class="lede">Thirty-five repo-owned skills route a task to each other and delegate execution down to twenty-two one-shot sub-agents, while thirteen approved third-party skills sit outside the repo, unvendored and uninstalled.</p>
+    <p class="lede">Thirty-five skills route a task to each other and delegate execution down to twenty-two one-shot sub-agents. Twenty-nine are written here; six are Upstream-Owned &#x2014; installed from a third party, committed, and never hand-edited.</p>
   </div>
   <div class="counts">
-    <div class="count"><b>35</b><span>repo skills</span></div>
+    <div class="count"><b>29</b><span>repo-native skills</span></div>
+    <div class="count"><b>6</b><span>upstream-owned</span></div>
     <div class="count"><b>22</b><span>sub-agents</span></div>
-    <div class="count"><b>13</b><span>approved, absent</span></div>
     <div class="count"><b>5</b><span>warns-off edges</span></div>
   </div>
 </header>
@@ -357,7 +355,7 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
         <span class="mono" style="font-size:10.5px; color:var(--ink-3); align-self:center;">drag to pan &#183; &#8984;/ctrl+scroll to zoom</span>
       </div>
     </div>
-    <svg id="graph" role="application" aria-label="Force-directed map of 35 repo skills, 22 sub-agents and 13 approved-but-uninstalled external skills. Use Tab to move between nodes; Enter to select and run a traversal.">
+    <svg id="graph" role="application" aria-label="Force-directed map of 35 skills (29 repo-native, 6 Upstream-Owned) and 22 sub-agents. Use Tab to move between nodes; Enter to select and run a traversal.">
       <defs>
         <marker id="ar-A" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M0,1.5 L9,5 L0,8.5 Z" fill="var(--route)"/>
@@ -382,7 +380,6 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
         <!-- Tier 1 first in the DOM so Tab reaches the skills before the satellites and the outer ring. -->
         <g id="nodelayer"></g>
         <g id="t2layer"></g>
-        <g id="t3layer"></g>
       </g>
     </svg>
   </section>
@@ -428,10 +425,6 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
           <div class="trow">
             <svg width="62" height="20" aria-hidden="true"><rect x="10" y="4" width="42" height="12" rx="3" fill="var(--surface)" stroke="var(--line)" stroke-dasharray="2 2"/></svg>
             <span>Tier 2 sub-agent<i>Not a runnable answer. Shown on focus.</i></span>
-          </div>
-          <div class="trow">
-            <svg width="62" height="20" aria-hidden="true"><rect x="10" y="4" width="42" height="12" rx="3" fill="none" stroke="var(--line)"/></svg>
-            <span>Tier 3 external<i>Approved &#xb7; not installed. Edgeless by definition.</i></span>
           </div>
         </div>
       </div>
@@ -547,8 +540,6 @@ npx skills add obra/superpowers --skill systematic-debugging -y  # only when the
   "skillToSkillWarnsOffEdgeCount": 5,
   "skillToSubAgentEdgeCount": 51,
   "upstreamOwnedSkillCount": 6,
-  "personalScopeRecommendedCount": 10,
-  "personalScopeSituationalCount": 3,
   "danglingSkillReferences": []
 }
 </script>
@@ -668,15 +659,14 @@ const AGENTS = {
 };
 const AGENT_NOTE = {
   "Research": "Conditional \u2014 upstream-brief/SKILL.md:58: \u201cIf the host has a Research specialist, use it as the worker. Otherwise the same agent fetches the pages.\u201d",
-  "Audit": "Orphan. Canonical in .github/agents/ but referenced by no skill.",
-  "DepAudit": "Orphan. Canonical in .github/agents/ but referenced by no skill.",
-  "Docs": "Orphan. Canonical in .github/agents/ but referenced by no skill."
+  "Audit": "Standing Specialist \u2014 user-invocable, in no pipeline. Belonging to no chain is its shape, not a defect (CONTEXT.md).",
+  "DepAudit": "Standing Specialist \u2014 user-invocable, in no pipeline. Belonging to no chain is its shape, not a defect (CONTEXT.md).",
+  "Docs": "Standing Specialist \u2014 user-invocable, in no pipeline. Belonging to no chain is its shape, not a defect (CONTEXT.md)."
 };
 
-/* \u2500\u2500 Tier 3 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
-/* [package, scope, note]. Scope is the load-bearing field: `project` skills are committed and
-   drawn once in Tier 1; `personal` skills exist only where a developer installed them, so no
-   repo skill may depend on one and they are drawn here in Tier 3. */
+/* \u2500\u2500 Approved externals \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+/* [package, scope, note]. Every approved external is project scope, so each is already an
+   Upstream-Owned node in Tier 1 and is listed here only for its package identity. */
 const EXTERNAL = [
   ["GoogleChrome/modern-web-guidance@modern-web-guidance", "project", "the only external that executes: invokes npx modern-web-guidance@latest at use time"],
   ["mattpocock/skills@codebase-design", "project", "repo-native skills link into it by relative path; the check asserts those links resolve"],
@@ -684,19 +674,6 @@ const EXTERNAL = [
   ["mattpocock/skills@domain-modeling", "project", "owns CONTEXT-FORMAT.md and ADR-FORMAT.md; grill-with-docs links across rather than keeping a second copy"],
   ["mattpocock/skills@handoff", "project", null],
   ["mattpocock/skills@prototype", "project", null],
-  ["vercel-labs/next-skills@next-best-practices", "personal", null],
-  ["vercel-labs/next-skills@next-cache-components", "personal", null],
-  ["vercel-labs/agent-skills@vercel-react-best-practices", "personal", null],
-  ["vercel-labs/agent-skills@vercel-composition-patterns", "personal", null],
-  ["anthropics/skills@frontend-design", "personal", null],
-  ["vercel-labs/agent-skills@web-design-guidelines", "personal", null],
-  ["wshobson/agents@nodejs-backend-patterns", "personal", null],
-  ["wshobson/agents@tailwind-design-system", "personal", null],
-  ["currents-dev/playwright-best-practices-skill@playwright-best-practices", "personal", null],
-  ["xixu-me/skills@github-actions-docs", "personal", null],
-  ["mattpocock/skills@wayfinder", "personal", "situational \u2014 when you cannot yet write the PRD goal sentence"],
-  ["shadcn/ui@shadcn", "personal", "situational \u2014 only when editing shadcn-style components"],
-  ["obra/superpowers@systematic-debugging", "personal", "situational \u2014 only when the work is debugging-heavy"]
 ];
 
 const LOOKUP = [
@@ -732,9 +709,9 @@ const agentNodes = Object.keys(AGENTS).map(a => ({
   id: "agent:" + a, tier: 2, name: a, parents: AGENTS[a],
   orphan: AGENTS[a].length === 0, note: AGENT_NOTE[a] || null
 }));
-const extNodes = EXTERNAL.filter(e => e[1] === "personal").map(e => ({
-  id: "ext:" + e[0], tier: 3, name: e[0].split("@").pop(), pkg: e[0], optional: /^situational/.test(e[2] || ""), why: e[2] || null
-}));
+/* No Tier 3. Every approved external is project scope, so it is already an Upstream-Owned node
+   in Tier 1. Personal-scope approvals were dropped: this repo cannot steward vendor skills it
+   cannot update or review, and `upstream-brief` covers the need from inside the repo. */
 
 /* edges */
 let EDGES = SS.map(e => ({ s: e[0], t: e[1], type: e[2], src: e[3] }));
@@ -747,7 +724,6 @@ Object.entries(AGENTS).forEach(([a, ps]) => ps.forEach(p =>
 const NODES = new Map();
 skills.forEach(n => NODES.set(n.id, n));
 agentNodes.forEach(n => NODES.set(n.id, n));
-extNodes.forEach(n => NODES.set(n.id, n));
 
 const out = new Map(), inn = new Map();
 EDGES.forEach(e => {
@@ -816,13 +792,6 @@ skills.forEach(n => { n.w = Math.round(n.name.length * CH) + PADX * 2 + (n.human
   skills.forEach(d => { d.x = ox + (d.x - x0) * s; d.y = oy + (d.y - y0) * s; });
 })();
 
-/* Tier 3 ring, outside everything. */
-extNodes.forEach((d, i) => {
-  const a = -Math.PI / 2 + (i / extNodes.length) * Math.PI * 2;
-  d.x = W / 2 + Math.cos(a) * 500;
-  d.y = H / 2 + Math.sin(a) * 362;
-  d.w = Math.round(d.name.length * 6.6) + 18; d.h = 18;
-});
 
 /* Tier 2 satellites: orbit the mean of their parents; orphans park bottom-left. */
 agentNodes.forEach((d, i) => {
@@ -847,7 +816,6 @@ const vp = document.getElementById("viewport");
 const elEdges = document.getElementById("edgelayer");
 const el1 = document.getElementById("nodelayer");
 const el2 = document.getElementById("t2layer");
-const el3 = document.getElementById("t3layer");
 const mk = (t, a) => { const e = document.createElementNS(SVGNS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
 
 /* Clip a segment at each chip's rectangular boundary. */
@@ -898,7 +866,6 @@ function renderNode(d, parent, cls) {
   nodeEls.set(d.id, g);
   wire(g, d);
 }
-extNodes.forEach(d => renderNode(d, el3, "t3" + (d.optional ? " opt" : "")));
 agentNodes.forEach(d => renderNode(d, el2, "t2" + (d.orphan ? " orphan" : "")));
 skills.forEach(d => renderNode(d, el1, (d.human ? "human " : "") + (d.desc ? "" : "nodesc ")));
 drawEdges();
@@ -973,10 +940,6 @@ function hideTip() {
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function tipHTML(d) {
-  if (d.tier === 3) return '<div class="tmeta">Tier 3 \u00b7 approved \u00b7 not installed</div>'
-    + '<div class="tname">' + esc(d.pkg) + "</div>"
-    + '<div class="tabsent">No files, no frontmatter, no edges. There is no description to show \u2014 this skill is not in the repo.</div>'
-    + (d.why ? '<div class="tdesc">' + esc(d.why) + "</div>" : "")
     + '<div class="tdesc mono">npx skills add ' + esc(d.pkg.split("@")[0]) + " --skill " + esc(d.pkg.split("@").pop()) + " -y</div>"
     + (d.optional ? '<span class="tflag flag-note">OPTIONAL ADD-ON</span>' : "");
   if (d.tier === 2) return '<div class="tmeta">Tier 2 \u00b7 sub-agent</div><div class="tname">' + esc(d.name) + "</div>"
@@ -1051,11 +1014,6 @@ function renderInspector(d) {
   } else if (d.tier === 2) {
     h += '<div class="insp-name">' + esc(d.name) + '</div><div class="muted">Tier 2 sub-agent \u00b7 <code>.github/agents/</code></div>';
     if (d.note) h += '<div class="insp-absent">' + esc(d.note) + "</div>";
-  } else {
-    h += '<div class="insp-name" style="font-size:13px;">' + esc(d.pkg) + '</div><div class="muted">Tier 3 \u00b7 approved \u00b7 not installed' + (d.optional ? " \u00b7 optional add-on" : "") + "</div>";
-    if (d.why) h += '<div class="insp-desc">' + esc(d.why) + "</div>";
-    h += '<div class="insp-absent">No description exists \u2014 the package is not vendored into this repo.</div>';
-    h += '<pre class="cmd">npx skills add ' + esc(d.pkg.split("@")[0]) + " --skill " + esc(d.pkg.split("@").pop()) + " -y</pre>";
   }
   const o = out.get(d.id) || [], i = inn.get(d.id) || [];
   if (o.length) {
@@ -1275,9 +1233,9 @@ svg.addEventListener("click", ev => { if (!ev.target.closest(".node")) { select(
 
 /* Self-check, surfaced to console only. */
 (function selfCheck() {
-  const t1 = skills.length, t2 = agentNodes.length, t3 = extNodes.length;
+  const t1 = skills.length, t2 = agentNodes.length;
   const ss = EDGES.filter(e => e.type !== "S");
-  console.log("[skill-atlas] tier1=" + t1 + " tier2=" + t2 + " tier3=" + t3 + " total=" + (t1 + t2 + t3));
+  console.log("[skill-atlas] tier1=" + t1 + " tier2=" + t2 + " total=" + (t1 + t2));
   console.log("[skill-atlas] skill\u2192skill drawn=" + ss.length +
     " {A:" + ss.filter(e => e.type === "A").length + ", B:" + ss.filter(e => e.type === "B").length +
     ", C:" + ss.filter(e => e.type === "C").length + ", D:" + ss.filter(e => e.type === "D").length + "}" +
