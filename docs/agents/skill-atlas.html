@@ -174,6 +174,9 @@ header.masthead {
 .graphwrap { position: relative; }
 #graph { display: block; width: 100%; height: clamp(520px, 78vh, 900px); touch-action: none; cursor: grab; background: var(--surface); }
 #graph.dragging { cursor: grabbing; }
+.node { cursor: grab; }
+.node.moving { cursor: grabbing; }
+.node.moving .chip { filter: brightness(1.15); }
 
 .gcontrols { display: flex; gap: 6px; flex-wrap: wrap; }
 button, .btn {
@@ -351,8 +354,8 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
         <button type="button" id="btnSat" aria-pressed="false">sub-agents: on focus</button>
         <button type="button" id="btnZin" aria-label="Zoom in">+</button>
         <button type="button" id="btnZout" aria-label="Zoom out">&#x2212;</button>
-        <button type="button" id="btnReset">reset view</button>
-        <span class="mono" style="font-size:10.5px; color:var(--ink-3); align-self:center;">drag to pan &#183; &#8984;/ctrl+scroll to zoom</span>
+        <button type="button" id="btnReset">reset layout</button>
+        <span class="mono" style="font-size:10.5px; color:var(--ink-3); align-self:center;">drag a node to move it &#183; drag the canvas to pan &#183; &#8984;/ctrl+scroll to zoom &#183; arrows nudge a focused node</span>
       </div>
     </div>
     <svg id="graph" role="application" aria-label="Force-directed map of 35 skills (29 repo-native, 6 Upstream-Owned) and 22 sub-agents. Use Tab to move between nodes; Enter to select and run a traversal.">
@@ -472,8 +475,8 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
       <ul class="plain">
         <li><span class="tag flag-note">ALL&#160;35&#160;ROUTABLE</span><span>Every skill carries <code>name:</code> and <code>description:</code> frontmatter. <code>sub-agent-sync-workflow</code> was the one exception until it was given a trigger sentence; <code>check-skill-map.mjs</code> now fails on a missing one <b>against the source</b>, so a future gap cannot be papered over by recording it faithfully here.</span></li>
         <li><span class="tag flag-note">STANDING&#160;SPECIALIST</span><span><code>Audit</code>, <code>DepAudit</code>, <code>Docs</code> are <code>user-invocable</code> and belong to no pipeline. Belonging to no chain is their shape, not a defect &#x2014; they are entered directly. See <b>Standing Specialist</b> in <code>CONTEXT.md</code>.</span></li>
-        <li><span class="tag flag-note">APPROVED&#160;EXTERNAL</span><span><code>ask-matt/SKILL.md:43</code> routes to <code>/wayfinder</code>, which is <b>deliberately</b> not in this repo: it is an approved optional add-on in <code>EXTERNAL_SKILLS.md</code>, installed per-developer. The seam is the PRD goal sentence &#x2014; <code>/wayfinder</code> while you cannot write it, <code>/to-prd</code> once you can (ADR 0029).</span></li>
-        <li><span class="tag flag-note">UPSTREAM-OWNED</span><span>Four skills &#x2014; <code>codebase-design</code>, <code>handoff</code>, <code>modern-web-guidance</code>, <code>prototype</code> &#x2014; have bodies authored upstream and refreshed by the Skills CLI. They are drawn in Tier 1 because they load like any other skill, but they contribute <b>no outbound edges</b>: their prose is someone else&#x27;s writing, not this repo&#x27;s routing configuration. <code>skills-lock.json</code> is the registry the check reads.</span></li>
+        <li><span class="tag flag-note">NO&#160;PERSONAL&#160;SCOPE</span><span>Every approved third-party skill is committed here. The thirteen personal-scope approvals were dropped: nobody installed one in four months, and one package died upstream unnoticed. <code>ask-matt</code> now routes a foggy effort to <code>/grill-with-docs</code> rather than to <code>/wayfinder</code>, which was never installed and pointed at nothing (ADR 0032).</span></li>
+        <li><span class="tag flag-note">UPSTREAM-OWNED</span><span>Six skills &#x2014; <code>codebase-design</code>, <code>diagnosing-bugs</code>, <code>domain-modeling</code>, <code>handoff</code>, <code>modern-web-guidance</code>, <code>prototype</code> &#x2014; have bodies authored upstream and refreshed by the Skills CLI. They are drawn in Tier 1 because they load like any other skill, but they contribute <b>no outbound edges</b>: their prose is someone else&#x27;s writing, not this repo&#x27;s routing configuration. <code>skills-lock.json</code> is the registry the check reads.</span></li>
         <li><span class="tag flag-note">FALSE&#160;HUB,&#160;RESOLVED</span><span><code>handoff</code> used to draw eight outbound edges from one line that named skills as <em>examples</em> of what to write into a handoff document. That line was this repo&#x27;s own addition to the upstream body; it went when the fork did. Found and drawn edges now agree at <b>63</b>, so the page no longer suppresses anything.</span></li>
       </ul>
     </div>
@@ -492,22 +495,13 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
   </section>
 
   <section class="panel" style="grid-column: 1 / -1;">
-    <div class="phead"><h2>Approved &#xb7; not installed</h2></div>
+    <div class="phead"><h2>Upstream-Owned skills</h2></div>
     <div class="pbody">
-      <p>Thirteen third-party skills are approved for project-scope install in <code>.agents/skills/EXTERNAL_SKILLS.md</code> but deliberately <b>not vendored</b> &#x2014; to keep the repo lean, avoid freezing copies of external packages, and review and update them independently. They have no files, no frontmatter, and no edges. They cannot be run today.</p>
+      <p>Six of the thirty-five skills have bodies authored upstream. They are installed at <b>project scope</b>, committed to this repo, and listed in <code>skills-lock.json</code>, which is the registry <code>check-skill-map.mjs</code> reads to tell them from repo-native ones. Never hand-edit them: an edit is lost at the next refresh and nothing warns you. They are drawn in Tier 1 like any other skill, badged <b>UPSTREAM-OWNED</b>, and contribute <b>no outbound edges</b> &#x2014; their prose is someone else&#x27;s writing, not this repo&#x27;s routing configuration.</p>
       <div class="scrollx"><table class="ext" id="extTable"></table></div>
-      <div class="subhead">Install (default set)</div>
-      <pre class="cmd">npx skills add vercel-labs/next-skills --skill next-best-practices next-cache-components -y
-npx skills add vercel-labs/agent-skills --skill vercel-react-best-practices vercel-composition-patterns web-design-guidelines -y
-npx skills add anthropics/skills --skill frontend-design -y
-npx skills add GoogleChrome/modern-web-guidance --skill modern-web-guidance -y
-npx skills add wshobson/agents --skill nodejs-backend-patterns tailwind-design-system -y
-npx skills add currents-dev/playwright-best-practices-skill --skill playwright-best-practices -y
-npx skills add xixu-me/skills --skill github-actions-docs -y</pre>
-      <div class="subhead">Install (optional add-ons)</div>
-      <pre class="cmd">npx skills add shadcn/ui --skill shadcn -y                      # only if actively editing shadcn-style components
-npx skills add obra/superpowers --skill systematic-debugging -y  # only when the work is debugging-heavy</pre>
-      <p class="muted"><code>GoogleChrome/modern-web-guidance@modern-web-guidance</code> is the one external skill that <b>was</b> vendored &#x2014; it exists as a real directory at <code>.agents/skills/modern-web-guidance/</code> with a <code>guides/</code> subtree. It is drawn <b>once</b>, in Tier 1. Its outer-ring counterpart is suppressed.</p>
+      <div class="subhead">Refresh, review the diff, commit it</div>
+      <pre class="cmd">npx skills update -p</pre>
+      <p class="muted">Personal-scope approvals were removed (ADR 0032). Thirteen third-party skills sat approved-but-uninstalled for four months while one package died upstream unnoticed &#x2014; a skill this repo cannot update or review is not one it can vouch for. For fast-moving framework knowledge, run <code>upstream-brief</code>: it audits repo-owned instructions against official docs for a named <code>subject@version</code> and keeps the finding here, under review.</p>
     </div>
   </section>
 </div>
@@ -568,7 +562,7 @@ const IN_CHOOSER = new Set(["commit-change-workflow","create-pull-request-workfl
 /* Per-node routing notes that are facts, not description text. */
 const NOTES = {
   "handoff": "Upstream-Owned. It once appeared to have eight outbound references, all from a single line naming skills as examples rather than routing \u2014 a false hub. That line was this repo's own addition and went when the fork did.",
-  "ask-matt": "Router with out-degree 21. High degree here is a hub artefact, not importance. Its /triage on-ramp is scoped to incoming/raw issues only \u2014 not slices /to-issues has already made agent-ready (ask-matt/SKILL.md:41). Its /wayfinder route (:43) leaves the repo: wayfinder is an approved optional external, installed per-developer, and the handover seam is the PRD goal sentence (ADR 0029).",
+  "ask-matt": "Router with out-degree 21. High degree here is a hub artefact, not importance. Its /triage on-ramp is scoped to incoming/raw issues only \u2014 not slices /to-issues has already made agent-ready (ask-matt/SKILL.md:41). Its foggy-effort on-ramp is /grill-with-docs (:43); the former /wayfinder route was dropped with personal-scope approvals (ADR 0032).",
   "dep-sync": "Halts traversal: proposes changes and requires user confirmation before writing anything (dep-sync/SKILL.md:3).",
   "modern-web-guidance": "Upstream-Owned, and the only one that executes: it invokes npx modern-web-guidance@latest at use time. Listed in EXTERNAL_SKILLS.md; drawn once, here in Tier 1."
 };
@@ -732,10 +726,12 @@ EDGES.forEach(e => {
 });
 
 /* \u2550\u2550 Layout: deterministic force sim over Tier 1 only \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
-const W = 1120, H = 800;
+const W = 1560, H = 1040;
 function prng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 
 const CH = 7.85, PADX = 12, NH = 24;
+/* Minimum clear space between two chips, enforced after the sim. */
+const GAPX = 34, GAPY = 22;
 skills.forEach(n => { n.w = Math.round(n.name.length * CH) + PADX * 2 + (n.human || !n.desc ? 36 : 0); n.h = NH; });
 
 (function layout() {
@@ -748,22 +744,22 @@ skills.forEach(n => { n.w = Math.round(n.name.length * CH) + PADX * 2 + (n.human
   });
   const links = EDGES.filter(e => byId.has(e.s) && byId.has(e.t))
     .map(e => ({ a: byId.get(e.s), b: byId.get(e.t), k: e.type === "B" ? 0.055 : e.type === "A" ? 0.012 : 0.03,
-                 len: e.type === "B" ? 150 : e.type === "A" ? 265 : 190 }));
+                 len: e.type === "B" ? 210 : e.type === "A" ? 350 : 260 }));
 
-  for (let it = 0; it < 900; it++) {
-    const cool = 1 - it / 900;
+  for (let it = 0; it < 1400; it++) {
+    const cool = 1 - it / 1400;
     // repulsion (all pairs, 35 nodes)
     for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
       const a = skills[i], b = skills[j];
       let dx = b.x - a.x, dy = b.y - a.y;
       let d2 = dx * dx + dy * dy; if (d2 < 1) { dx = 0.7; dy = 0.4; d2 = 1; }
       const d = Math.sqrt(d2);
-      const minD = (a.w + b.w) / 2 + 26;
-      let f = 20000 / d2;
-      if (d < minD) f += (minD - d) * 0.36;          // rectangular-ish separation
+      const minD = (a.w + b.w) / 2 + GAPX;
+      let f = 34000 / d2;
+      if (d < minD) f += (minD - d) * 0.55;          // rectangular-ish separation
       const ux = dx / d, uy = dy / d;
-      a.vx -= ux * f; a.vy -= uy * f * 1.5;
-      b.vx += ux * f; b.vy += uy * f * 1.5;
+      a.vx -= ux * f * 1.10; a.vy -= uy * f * 1.20;
+      b.vx += ux * f * 1.10; b.vy += uy * f * 1.20;
     }
     // springs
     for (const l of links) {
@@ -776,20 +772,40 @@ skills.forEach(n => { n.w = Math.round(n.name.length * CH) + PADX * 2 + (n.human
     }
     // gravity toward centre, gentle
     for (const d of skills) {
-      d.vx += (W / 2 - d.x) * 0.0045;
-      d.vy += (H / 2 - d.y) * 0.0075;
+      d.vx += (W / 2 - d.x) * 0.0042;
+      d.vy += (H / 2 - d.y) * 0.0098;
       d.x += Math.max(-14, Math.min(14, d.vx * 0.22 * cool));
       d.y += Math.max(-14, Math.min(14, d.vy * 0.22 * cool));
       d.vx *= 0.82; d.vy *= 0.82;
     }
   }
-  // normalise into the viewBox
+  // Hard de-overlap. The spring/repulsion pass leaves chips touching because the labels are
+  // rectangles up to ~240px wide while the repulsion term is radial. Separate along the axis of
+  // least penetration until nothing overlaps, so every edge has somewhere to be drawn.
+  for (let pass = 0; pass < 120; pass++) {
+    let moved = false;
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+      const a = skills[i], b = skills[j];
+      const dx = b.x - a.x, dy = b.y - a.y;
+      const ox = (a.w + b.w) / 2 + GAPX - Math.abs(dx);
+      const oy = (a.h + b.h) / 2 + GAPY - Math.abs(dy);
+      if (ox <= 0 || oy <= 0) continue;
+      if (ox < oy) {
+        const push = (dx >= 0 ? ox : -ox) / 2;
+        a.x -= push; b.x += push;
+      } else {
+        const push = (dy >= 0 ? oy : -oy) / 2;
+        a.y -= push; b.y += push;
+      }
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  // Translate to a positive origin. Do NOT scale down: the viewBox is derived from these bounds
+  // further below, so squeezing the sim into a fixed box only cost legibility for nothing.
   const xs = skills.map(d => d.x), ys = skills.map(d => d.y);
-  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
-  const sx = 820 / Math.max(1, x1 - x0), sy = 540 / Math.max(1, y1 - y0);
-  const s = Math.min(sx, sy);
-  const ox = (W - (x1 - x0) * s) / 2, oy = (H - (y1 - y0) * s) / 2;
-  skills.forEach(d => { d.x = ox + (d.x - x0) * s; d.y = oy + (d.y - y0) * s; });
+  const x0 = Math.min(...xs), y0 = Math.min(...ys);
+  skills.forEach(d => { d.x += 60 - x0; d.y += 60 - y0; });
 })();
 
 
@@ -851,8 +867,7 @@ const nodeEls = new Map();
 function renderNode(d, parent, cls) {
   const g = mk("g", { class: "node " + cls, tabindex: "0", role: "button",
     "aria-label": d.tier === 1 ? (d.name + (d.human ? ", human-invoke only" : "") + (d.desc ? "" : ", no description")) :
-                  d.tier === 2 ? ("sub-agent " + d.name + (d.orphan ? ", orphan" : "")) :
-                  ("external skill " + d.pkg + ", approved but not installed") });
+                  ("sub-agent " + d.name + (d.orphan ? ", orphan" : "")) });
   g.appendChild(mk("rect", { class: "focusring", x: -d.w / 2 - 4, y: -d.h / 2 - 4, width: d.w + 8, height: d.h + 8, fill: "none", stroke: "none" }));
   g.appendChild(mk("rect", { class: "chip", x: -d.w / 2, y: -d.h / 2, width: d.w, height: d.h }));
   const t = mk("text", { class: "lbl", x: -d.w / 2 + PADX, y: 0.5 });
@@ -869,6 +884,10 @@ function renderNode(d, parent, cls) {
 agentNodes.forEach(d => renderNode(d, el2, "t2" + (d.orphan ? " orphan" : "")));
 skills.forEach(d => renderNode(d, el1, (d.human ? "human " : "") + (d.desc ? "" : "nodesc ")));
 drawEdges();
+
+/* The layout as computed, so "reset" can undo a reader's rearranging. */
+const HOME_POS = new Map();
+NODES.forEach(n => HOME_POS.set(n.id, { x: n.x, y: n.y }));
 
 /* \u2550\u2550 Pan / zoom \u2014 contained; body never scrolls sideways \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 const bounds = (function () {
@@ -916,7 +935,11 @@ svg.addEventListener("pointermove", ev => {
 ["pointerup", "pointercancel"].forEach(t => svg.addEventListener(t, () => { drag = null; svg.classList.remove("dragging"); }));
 document.getElementById("btnZin").onclick = () => zoom(0.82);
 document.getElementById("btnZout").onclick = () => zoom(1.22);
-document.getElementById("btnReset").onclick = () => { view = Object.assign({}, HOME); applyView(); };
+document.getElementById("btnReset").onclick = () => {
+  view = Object.assign({}, HOME); applyView();
+  NODES.forEach(n => { n.x = HOME_POS.get(n.id).x; n.y = HOME_POS.get(n.id).y; placeNode(n); });
+  drawEdges();
+};
 
 /* \u2550\u2550 Tooltip \u2014 hover, click and :focus-visible share one surface \u2550\u2550\u2550\u2550\u2550 */
 const tip = document.getElementById("tip");
@@ -940,8 +963,6 @@ function hideTip() {
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
 function tipHTML(d) {
-    + '<div class="tdesc mono">npx skills add ' + esc(d.pkg.split("@")[0]) + " --skill " + esc(d.pkg.split("@").pop()) + " -y</div>"
-    + (d.optional ? '<span class="tflag flag-note">OPTIONAL ADD-ON</span>' : "");
   if (d.tier === 2) return '<div class="tmeta">Tier 2 \u00b7 sub-agent</div><div class="tname">' + esc(d.name) + "</div>"
     + '<div class="tdesc">Canonical body: <span class="mono">.github/agents/*.agent.md</span>. Mirrored to <span class="mono">.claude/agents/</span> by <span class="mono">yarn agents:sync</span>.</div>'
     + (d.note ? '<div class="tabsent">' + esc(d.note) + "</div>" : "")
@@ -958,15 +979,79 @@ function tipHTML(d) {
 
 /* \u2550\u2550 Selection, inspector, highlight \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */
 let selected = null;
+/* \u2550\u2550 Node dragging \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+   The layout is a starting position, not a verdict. A dense region is often only readable once
+   you pull one node aside, so any node can be moved. Movement is free-form and never re-runs the
+   simulation: a reader who has arranged a corner should not have it rearranged under them. */
+let nodeDrag = null;
+const DRAG_SLOP = 3;   // below this, it was a click, not a drag
+
+function placeNode(d) {
+  const g = nodeEls.get(d.id);
+  if (g) g.setAttribute("transform", "translate(" + d.x.toFixed(1) + "," + d.y.toFixed(1) + ")");
+}
+
+function onNodePointerDown(ev, d, g) {
+  if (ev.button) return;                       // primary button only
+  // Clear here, not only after a click. A drag that ends with the pointer off this node fires no
+  // click, so a flag armed at pointerup would survive and silently swallow the next real click.
+  g._suppressClick = false;
+  const p = toSvg(ev.clientX, ev.clientY);
+  nodeDrag = { d, g, ox: p.x - d.x, oy: p.y - d.y, moved: false, sx: ev.clientX, sy: ev.clientY };
+  // Capture keeps the drag alive when the pointer outruns the chip. It can throw if the pointer
+  // is already gone; losing capture degrades the drag, it must not abort the handler.
+  try { g.setPointerCapture(ev.pointerId); } catch (_) { /* drag still tracks via svg events */ }
+  ev.stopPropagation();                        // do not also start a canvas pan
+}
+
+function onNodePointerMove(ev) {
+  if (!nodeDrag) return;
+  if (!nodeDrag.moved &&
+      Math.hypot(ev.clientX - nodeDrag.sx, ev.clientY - nodeDrag.sy) < DRAG_SLOP) return;
+  if (!nodeDrag.moved) { nodeDrag.moved = true; nodeDrag.g.classList.add("moving"); hideTip(); }
+  const p = toSvg(ev.clientX, ev.clientY);
+  nodeDrag.d.x = p.x - nodeDrag.ox;
+  nodeDrag.d.y = p.y - nodeDrag.oy;
+  placeNode(nodeDrag.d);
+  drawEdges();
+}
+
+function endNodeDrag() {
+  if (!nodeDrag) return;
+  nodeDrag.g.classList.remove("moving");
+  // A drag that moved must not also fire select(); the click event arrives after pointerup.
+  const wasMoved = nodeDrag.moved;
+  nodeDrag = null;
+  return wasMoved;
+}
+
 function wire(g, d) {
-  g.addEventListener("pointerenter", () => showTip(d, g));
+  g.addEventListener("pointerenter", () => { if (!nodeDrag) showTip(d, g); });
   g.addEventListener("pointerleave", () => { if (document.activeElement !== g) hideTip(); });
   g.addEventListener("focus", () => { if (g.matches(":focus-visible")) showTip(d, g); });
   g.addEventListener("blur", hideTip);
-  g.addEventListener("click", ev => { ev.stopPropagation(); select(d.id); showTip(d, g); });
+  g.addEventListener("pointerdown", ev => onNodePointerDown(ev, d, g));
+  g.addEventListener("pointermove", onNodePointerMove);
+  ["pointerup", "pointercancel"].forEach(t => g.addEventListener(t, () => {
+    if (endNodeDrag()) g._suppressClick = true;
+  }));
+  g.addEventListener("click", ev => {
+    ev.stopPropagation();
+    if (g._suppressClick) { g._suppressClick = false; return; }
+    select(d.id); showTip(d, g);
+  });
   g.addEventListener("keydown", ev => {
     if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); select(d.id); showTip(d, g); }
     if (ev.key === "Escape") hideTip();
+    // Keyboard equivalent of dragging. A pointer-only affordance would put the decluttering
+    // this exists for out of reach for anyone not using a mouse.
+    const step = ev.shiftKey ? 24 : 8;
+    const nudge = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[ev.key];
+    if (nudge) {
+      ev.preventDefault();
+      d.x += nudge[0]; d.y += nudge[1];
+      placeNode(d); drawEdges();
+    }
   });
 }
 document.addEventListener("keydown", ev => { if (ev.key === "Escape") hideTip(); });
@@ -1222,9 +1307,7 @@ EXTERNAL.forEach(e => {
   const tr = document.createElement("tr");
   const a = document.createElement("td"); a.className = "pkg"; a.textContent = e[0];
   const b = document.createElement("td");
-  if (e[1] === "project") { b.innerHTML = '<span class="tag flag-note">PROJECT SCOPE \u00b7 Upstream-Owned \u00b7 drawn once in Tier 1</span> ' + esc(e[2] || ""); }
-  else if (e[1]) { b.innerHTML = '<span class="tag flag-note">OPTIONAL</span> ' + esc(e[2] || ""); }
-  else { b.innerHTML = '<span class="muted">default set \u00b7 approved \u00b7 not installed</span>'; }
+  b.innerHTML = '<span class="tag flag-note">PROJECT SCOPE \u00b7 Upstream-Owned</span> ' + esc(e[2] || "");
   tr.append(a, b); tb.appendChild(tr);
 });
 
