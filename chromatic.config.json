@@ -3,6 +3,7 @@
   "onlyChanged": true,
   "exitZeroOnChanges": true,
   "storybookConfigDir": "libs/web-ui/.storybook",
+  "storybookBaseDir": "libs/web-ui",
   "buildScriptName": "build-storybook",
   "zip": true,
   "externals": [

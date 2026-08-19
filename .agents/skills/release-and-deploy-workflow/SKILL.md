@@ -68,6 +68,8 @@ Combine their output into a single block:
 3. **Why** — the strongest commit signal that drove the bump.
 4. **Alternatives** — the next bump down (or up), and when it would be right instead.
 5. **Draft release notes** — user-facing bullets grouped Added / Fixed / Changed. Not a raw `git log`.
+   These are the notes Phase 2 ships via `--notes-from`, so draft them properly here rather than
+   planning to fix them after the cut.
 
 Then **stop and wait** for the user to confirm the version and edit the notes. "Confirm if in doubt"
 is not enough — everything after this phase writes to `origin`.
@@ -79,28 +81,40 @@ if the user still wants to cut, proceed with the version they name.
 
 ## Phase 2 — Cut the release branch
 
-Only after the user confirms. Write the agreed notes to `RELEASE_NOTES.md`, then:
+Only after the user confirms. Save the agreed Phase 1 notes to a scratch file **outside the repo**
+(`cut` requires a clean tree, so an edited `RELEASE_NOTES.md` in the working directory will block
+it), then pass that file to `--notes-from`:
 
 ```sh
-yarn release:cut --version vX.Y.Z --push --notes-file RELEASE_NOTES.md
+yarn release:cut --version vX.Y.Z --push --notes-from <scratch>/release-notes.md
 ```
+
+That writes the prose to `RELEASE_NOTES.md` inside the release commit. Do **not** cut first and fix
+the notes afterwards — a later commit moves the branch head past the SHA that CI verifies and the
+reviewer approves in Phases 3–4, and the Phase 5 tag would then name a commit that never deployed.
 
 Flags:
 
 - `--push` — push the branch to `origin` immediately
-- `--notes-file RELEASE_NOTES.md` — write notes to file AND include it in the release commit
+- `--notes-from <path>` — use hand-written prose verbatim as the release notes
+- `--notes-file <path>` — where notes are written (default `RELEASE_NOTES.md`)
 - `--dry-run` — preview all steps without side effects
 - `--no-version-bump` — skip `package.json` update (rare; use only if bumped manually)
-- `--no-notes` — skip CHANGELOG/notes generation (rare)
+- `--no-notes` — skip CHANGELOG/notes generation (rare; cannot be combined with `--notes-from`)
 
 The script will:
 
 1. Assert clean tree on `main`, up-to-date with `origin/main`
 2. Create `release/vX.Y.Z`
 3. Bump `package.json` version → `X.Y.Z`
-4. Generate and write CHANGELOG entry (and `RELEASE_NOTES.md` if `--notes-file` given)
-5. Commit: `chore(release): vX.Y.Z`
-6. Push branch (if `--push`)
+4. Write `RELEASE_NOTES.md` — authored prose with `--notes-from`, otherwise generated
+5. Generate and write the CHANGELOG entry — **always** generated from the commit range, never the
+   authored prose, so `CHANGELOG.md` stays a uniform commit log across every release
+6. Commit: `chore(release): vX.Y.Z`
+7. Push branch (if `--push`)
+
+`RELEASE_NOTES.md` is a rolling file: the next release overwrites it. Authored prose survives on the
+GitHub Release page, which `publish-github-release.yml` builds from the file at the tagged commit.
 
 The script cannot tag. Tagging is Phase 5, and only after production is confirmed live.
 
