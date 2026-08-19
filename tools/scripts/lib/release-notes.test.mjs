@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { classifyCommit, upsertChangelogSection } from './release-notes.mjs';
+import {
+  classifyCommit,
+  DEFAULT_NOTES_FILE,
+  resolveNotesPlan,
+  upsertChangelogSection,
+} from './release-notes.mjs';
 
 /**
  * A generated entry body carries its own `## Changes since ...` sub-heading at
@@ -149,6 +154,68 @@ test('seeds the title when the changelog is empty', () => {
   assert.match(result, /^# Changelog\n/);
   assert.ok(result.includes('## v0.1.0'));
   assert.ok(result.endsWith('\n'));
+});
+
+test('notes plan defaults to generated notes', () => {
+  assert.deepEqual(resolveNotesPlan({}), {
+    mode: 'generated',
+    notesFile: null,
+    notesFrom: null,
+  });
+
+  assert.deepEqual(resolveNotesPlan({ notesFile: 'RELEASE_NOTES.md' }), {
+    mode: 'generated',
+    notesFile: 'RELEASE_NOTES.md',
+    notesFrom: null,
+  });
+});
+
+test('notes plan gives authored prose a destination by default', () => {
+  const plan = resolveNotesPlan({ notesFrom: '/tmp/draft.md' });
+
+  assert.equal(plan.mode, 'authored');
+  assert.equal(plan.notesFrom, '/tmp/draft.md');
+  assert.equal(
+    plan.notesFile,
+    DEFAULT_NOTES_FILE,
+    'authored notes must not be read and then discarded',
+  );
+});
+
+test('notes plan honours an explicit destination for authored prose', () => {
+  const plan = resolveNotesPlan({
+    notesFrom: '/tmp/draft.md',
+    notesFile: 'docs/NOTES.md',
+  });
+
+  assert.equal(plan.mode, 'authored');
+  assert.equal(plan.notesFile, 'docs/NOTES.md');
+});
+
+test('notes plan rejects --no-notes combined with --notes-from', () => {
+  const plan = resolveNotesPlan({
+    notesFrom: '/tmp/draft.md',
+    skipNotes: true,
+  });
+
+  assert.ok(plan.error, 'contradictory flags must not silently pick a winner');
+  assert.match(plan.error, /--no-notes/);
+  assert.match(plan.error, /--notes-from/);
+  assert.equal(plan.mode, undefined);
+});
+
+test('notes plan skips notes entirely with --no-notes', () => {
+  assert.deepEqual(resolveNotesPlan({ skipNotes: true }), {
+    mode: 'none',
+    notesFile: null,
+    notesFrom: null,
+  });
+
+  // --notes-file alone is not enough to re-enable notes.
+  assert.equal(
+    resolveNotesPlan({ skipNotes: true, notesFile: 'RELEASE_NOTES.md' }).mode,
+    'none',
+  );
 });
 
 test('classifies conventional commit types', () => {

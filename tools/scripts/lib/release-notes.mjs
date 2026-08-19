@@ -7,6 +7,52 @@
 
 export const CHANGELOG_TITLE = '# Changelog';
 
+export const DEFAULT_NOTES_FILE = 'RELEASE_NOTES.md';
+
+/**
+ * Decide where release notes come from and where they are written.
+ *
+ * Three modes:
+ * - `authored`  -- prose supplied by `--notes-from`, written verbatim.
+ * - `generated` -- assembled from the commit range (the default).
+ * - `none`      -- `--no-notes`; neither the notes file nor the CHANGELOG
+ *                  entry is touched.
+ *
+ * The CHANGELOG entry stays generated in every mode. Authored prose is the
+ * GitHub Release body, which `publish-github-release.yml` reads from the notes
+ * file at the tagged commit; the CHANGELOG remains a uniform commit log.
+ *
+ * @returns {{mode: 'authored'|'generated'|'none', notesFile: string|null,
+ *   notesFrom: string|null, error?: undefined} | {error: string}}
+ */
+export function resolveNotesPlan({ notesFrom, notesFile, skipNotes } = {}) {
+  const from = notesFrom || null;
+  const file = notesFile || null;
+
+  if (skipNotes && from) {
+    return {
+      error:
+        '--no-notes cannot be combined with --notes-from. Drop one: --no-notes skips notes entirely, --notes-from supplies them.',
+    };
+  }
+
+  if (skipNotes) {
+    return { mode: 'none', notesFile: null, notesFrom: null };
+  }
+
+  if (from) {
+    // Authored prose has to land somewhere, so default the destination
+    // rather than silently reading a file and discarding it.
+    return {
+      mode: 'authored',
+      notesFile: file || DEFAULT_NOTES_FILE,
+      notesFrom: from,
+    };
+  }
+
+  return { mode: 'generated', notesFile: file, notesFrom: null };
+}
+
 /**
  * Matches a CHANGELOG version heading: `## v1.2.3 - 2026-01-01`.
  *
