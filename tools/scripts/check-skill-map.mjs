@@ -30,13 +30,21 @@ const AGENTS_DIR = '.github/agents';
 const AGENTS_MIRROR = '.claude/agents';
 const AGENTS_MD = 'AGENTS.md';
 const EXTERNAL_MD = join(SKILLS_DIR, 'EXTERNAL_SKILLS.md');
+const SKILLS_LOCK = 'skills-lock.json';
 
 const fail = (msg) => {
   console.error(`skill-map: ${msg}`);
   process.exit(2);
 };
 
-for (const p of [PAGE, SKILLS_DIR, AGENTS_DIR, AGENTS_MD, EXTERNAL_MD]) {
+for (const p of [
+  PAGE,
+  SKILLS_DIR,
+  AGENTS_DIR,
+  AGENTS_MD,
+  EXTERNAL_MD,
+  SKILLS_LOCK,
+]) {
   if (!existsSync(p)) fail(`${p} not found`);
 }
 
@@ -195,8 +203,25 @@ const skillText = new Map(
   }),
 );
 
+// ── Upstream-Owned Skills (CONTEXT.md) ──────────────────────────────────────
+// `skills-lock.json` is written by the Skills CLI and names every skill whose body is authored
+// upstream. Their prose is someone else's writing, not this repo's routing configuration, so it
+// is never scanned for outbound edges, sub-agent names, or `/slug` invocations. Reading the
+// lockfile rather than hard-coding names means the next `skills add` needs no change here — and
+// a skill copied in by hand, bypassing the CLI, is treated as repo-native and fails loudly for
+// its missing description. That is the intended outcome: EXTERNAL_SKILLS.md says not to do that.
+const upstreamOwned = new Set(
+  Object.keys(JSON.parse(readFileSync(SKILLS_LOCK, 'utf8')).skills ?? {}),
+);
+for (const d of upstreamOwned)
+  if (!skillDirs.includes(d))
+    note(
+      `skills-lock.json names ${d}, but ${SKILLS_DIR}/${d} does not exist — run \`npx skills update -p\``,
+    );
+const nativeDirs = skillDirs.filter((d) => !upstreamOwned.has(d));
+
 let ssPairs = 0;
-for (const from of skillDirs) {
+for (const from of nativeDirs) {
   for (const to of skillDirs) {
     if (from === to) continue;
     const re = new RegExp(`skills/${to}/|\`${to}\`|/${to}(?![A-Za-z0-9-])`);
@@ -205,27 +230,20 @@ for (const from of skillDirs) {
 }
 eq('skillToSkillEdgeCount', ssPairs, manifest.skillToSkillEdgeCount);
 
-// The atlas suppresses `handoff`'s outbound references: all of them come from one line that
-// names skills as examples, not as routing. That suppression is the only gap between the raw
-// pair count and what the page draws, so the two keys must differ by exactly that much.
-let handoffOut = 0;
-for (const to of skillDirs) {
-  if (to === 'handoff') continue;
-  const re = new RegExp(`skills/${to}/|\`${to}\`|/${to}(?![A-Za-z0-9-])`);
-  if (re.test(skillText.get('handoff'))) handoffOut++;
-}
-eq(
-  'skillToSkillEdgesRenderedCount',
-  ssPairs - handoffOut,
-  manifest.skillToSkillEdgesRenderedCount,
-);
+// `handoff` used to need a special case here: eight outbound references from one line that
+// named skills as examples rather than routing, making it a false hub. It is now Upstream-Owned,
+// so the general rule above excludes it and the page draws exactly what this counts. There is no
+// longer a gap between found and rendered, which is why `skillToSkillEdgesRenderedCount` is gone.
 
 // ── Skill → sub-agent (DERIVED, with a REVIEWED exclusion list) ─────────────
 // Word boundaries are mandatory: a plain substring search for `TestRunner` matches the Nx CLI
 // flag `--unitTestRunner=jest` 8 times in nx-monorepo-workflow. Even with boundaries, four
 // agent names are ordinary English words and need the hand-verified exclusions below.
+// Upstream-Owned Skills are excluded wholesale before this runs, so entries here cover only
+// repo-native prose. The former `Audit: ['modern-web-guidance']` entry is gone with it: any of
+// the 22 agent names can collide with upstream English, and enumerating those collisions one
+// red check at a time does not scale.
 const AGENT_FALSE_POSITIVES = {
-  Audit: ['modern-web-guidance'], // prose in guides/privacy and guides/security
   Docs: ['create-hooks', 'design-brief'], // a `## Docs` heading; the English word
   Commit: ['implement', 'release-and-deploy-workflow'], // "Commit/PR only if…", "5. Commit:"
 };
@@ -235,7 +253,7 @@ const unreferenced = [];
 for (const a of agentNames) {
   const re = new RegExp(`(?<![A-Za-z])${a}(?![A-Za-z])`);
   const excluded = AGENT_FALSE_POSITIVES[a] ?? [];
-  const parents = skillDirs.filter(
+  const parents = nativeDirs.filter(
     (d) => re.test(skillText.get(d)) && !excluded.includes(d),
   );
   // A stale exclusion is as dangerous as a missing one: it silently drops a real edge.
@@ -286,30 +304,54 @@ const section = (heading) => {
 };
 const pkgs = (s) =>
   [...s.matchAll(/`([\w.-]+\/[\w.-]+@[\w.-]+)`/g)].map((m) => m[1]);
-const defaults = [...new Set(pkgs(section('## Default Install Set')))];
-const optional = [...new Set(pkgs(section('## Optional Add-Ons')))];
+// Tiers name the install scope, not the strength of the recommendation (ADR 0030).
+const projectScope = [
+  ...new Set(
+    pkgs(section('## Project Scope \u2014 Upstream-Owned, committed')),
+  ),
+];
+const recommended = [
+  ...new Set(
+    pkgs(section('## Personal Scope \u2014 recommended, not committed')),
+  ),
+];
+const situational = [
+  ...new Set(pkgs(section('## Personal Scope \u2014 situational'))),
+];
 eq(
-  'externalApprovedDefaultCount',
-  defaults.length,
-  manifest.externalApprovedDefaultCount,
+  'upstreamOwnedSkillCount',
+  upstreamOwned.size,
+  manifest.upstreamOwnedSkillCount,
 );
 eq(
-  'externalApprovedOptionalCount',
-  optional.length,
-  manifest.externalApprovedOptionalCount,
+  'personalScopeRecommendedCount',
+  recommended.length,
+  manifest.personalScopeRecommendedCount,
 );
+eq(
+  'personalScopeSituationalCount',
+  situational.length,
+  manifest.personalScopeSituationalCount,
+);
+
+// The project-scope tier and the lockfile are two records of one fact. They must agree, or the
+// document is describing an install that did not happen (or missing one that did).
+const projectNames = new Set(projectScope.map((p) => p.split('@').pop()));
+for (const n of projectNames)
+  if (!upstreamOwned.has(n))
+    note(
+      `EXTERNAL_SKILLS.md lists ${n} as project scope, but skills-lock.json does not \u2014 install it or move it to a personal-scope tier`,
+    );
+for (const n of upstreamOwned)
+  if (!projectNames.has(n))
+    note(
+      `skills-lock.json contains ${n}, but EXTERNAL_SKILLS.md does not list it under project scope \u2014 every committed external needs an approval entry`,
+    );
 
 const approvedExternalSkills = new Set(
-  [...defaults, ...optional].map((p) => p.split('@').pop()),
-);
-
-const vendored = [...defaults, ...optional].filter((p) =>
-  skillDirs.includes(p.split('@').pop()),
-);
-eq(
-  'externalApprovedVendoredCount',
-  vendored.length,
-  manifest.externalApprovedVendoredCount,
+  [...projectScope, ...recommended, ...situational].map((p) =>
+    p.split('@').pop(),
+  ),
 );
 
 // ── DERIVED: dangling references ────────────────────────────────────────────
@@ -323,8 +365,7 @@ eq(
 const ALIASES = new Set(['commit', 'create-pr']);
 const NOT_INVOCATIONS = new Set(['tmp']);
 const dangling = new Set();
-for (const d of skillDirs) {
-  if (d === 'modern-web-guidance') continue; // vendored upstream docs
+for (const d of nativeDirs) {
   for (const m of skillText.get(d).matchAll(/`\/([a-z][a-z0-9-]{2,})`/g)) {
     const s = m[1];
     if (
@@ -342,6 +383,47 @@ eqList(
   [...dangling],
   manifest.danglingSkillReferences,
 );
+
+// ── DERIVED: Upstream-Owned Skills are exempt from Prettier ────────────────
+// Not cosmetic. Prettier's markdown normalisation rewrites upstream bodies on every commit,
+// which is how the previous `codebase-design` fork came to differ from upstream by 3% of its
+// lines with no intent behind any of it. An unignored upstream skill silently re-forks.
+const prettierIgnore = existsSync('.prettierignore')
+  ? readFileSync('.prettierignore', 'utf8')
+  : '';
+for (const d of upstreamOwned)
+  if (!prettierIgnore.includes(`${SKILLS_DIR}/${d}/`))
+    note(
+      `${SKILLS_DIR}/${d}/ is Upstream-Owned but not in .prettierignore — formatting would re-fork it`,
+    );
+
+// ── DERIVED: links from repo-native skills into Upstream-Owned Skills ───────
+// The only silent failure mode this externalisation introduces. `improve-codebase-architecture`
+// links `../codebase-design/DEEPENING.md`; if a future `npx skills update -p` renames or drops
+// that file upstream, the link rots and nothing else notices — the skill still loads, it just
+// points at nothing. Assert every such link resolves to a real file.
+for (const from of nativeDirs) {
+  const dir = join(SKILLS_DIR, from);
+  const walk = (d, out = []) => {
+    for (const f of readdirSync(d)) {
+      const q = join(d, f);
+      if (statSync(q).isDirectory()) walk(q, out);
+      else if (f.endsWith('.md')) out.push(q);
+    }
+    return out;
+  };
+  for (const file of walk(dir)) {
+    const body = readFileSync(file, 'utf8');
+    for (const m of body.matchAll(/]\(\.\.\/([a-z0-9-]+)\/([^)#]+)/g)) {
+      const [, target, rel] = m;
+      if (!upstreamOwned.has(target)) continue;
+      if (!existsSync(join(SKILLS_DIR, target, rel)))
+        note(
+          `${file} links ../${target}/${rel}, which no longer exists — ${target} is Upstream-Owned, so \`npx skills update -p\` can move it`,
+        );
+    }
+  }
+}
 
 // ── The reading test, enforced ──────────────────────────────────────────────
 // Every Tier-1 tooltip must carry the description verbatim. This is the whole point of the
@@ -406,9 +488,9 @@ if (findings.length > 0) {
 }
 
 console.log(
-  `skill-map: OK — ${skillDirs.length} skills, ${canonical.length} sub-agents, ` +
-    `${ssPairs} skill→skill refs (${ssPairs - handoffOut} drawn), ${agentEdges} skill→agent, ` +
-    `${defaults.length + optional.length} approved external; all ${
+  `skill-map: OK — ${nativeDirs.length} repo-native + ${upstreamOwned.size} upstream-owned skills, ` +
+    `${canonical.length} sub-agents, ${ssPairs} skill→skill, ${agentEdges} skill→agent, ` +
+    `${recommended.length + situational.length} personal-scope approved; all ${
       skills.filter((s) => s.description).length
     } descriptions verbatim`,
 );

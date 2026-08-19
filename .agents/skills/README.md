@@ -35,8 +35,8 @@ Committed sixth wave:
 
 Committed seventh wave:
 
-- `prototype` (adapted from `mattpocock/skills`)
-- `handoff` (adapted from `mattpocock/skills`)
+- `prototype` (later returned upstream — now an Upstream-Owned Skill; see ADR 0030)
+- `handoff` (later returned upstream — now an Upstream-Owned Skill; see ADR 0030)
 - `ask-matt` (adapted from `mattpocock/skills`, tweaked for MyOrganizer routing)
 
 Committed eighth wave:
@@ -60,6 +60,12 @@ These skills capture project-specific workflows that are easy for agents to miss
 
 Note: these are VS Code workspace skills stored in `.agents/skills`. They are intended for agent discovery inside the editor. They may not appear in `npx skills list`, which focuses on skills installed through the `skills` CLI.
 
-Third-party skills are not vendored into this repository by default. That keeps the repo lean, avoids freezing copies of external skill packages, and makes it easier to review and update them independently.
+Third-party skills come in two scopes, and the scope decides everything (ADR 0030).
+
+**Project scope** installs into this directory and is committed — an **Upstream-Owned Skill**. Never hand-edit one; refresh it with `npx skills update -p` and commit the diff. `skills-lock.json` is the registry, and `yarn skills:map:check` reads it to tell upstream-owned directories from repo-native ones. Four skills are in this tier: `codebase-design`, `handoff`, `modern-web-guidance`, `prototype`.
+
+**Personal scope** (`npx skills add … -g`) installs on one developer's machine and is never committed. It is absent from fresh clones and from CI, so no repo skill may depend on one.
+
+See `EXTERNAL_SKILLS.md` for the approved set in each tier.
 
 See `EXTERNAL_SKILLS.md` for the approved project-scope third-party skill set.
