@@ -236,6 +236,14 @@ _Avoid_: Blocked issue, human task
 The `yarn dispatch-agents --prd <issue-number>` command that triggers the sandcastle orchestrator. Reads AFK Slice Issues labelled `ready-for-agent`, creates the feature branch **locally (never pushed)**, and runs one sandcastle agent per slice — one at a time, in Docker isolation — fast-forwarding each finished slice into the local feature branch and closing the slice issue. Integration is local: you push the feature branch and open one PR to `main` by hand.
 _Avoid_: Agent runner, orchestrator command, run-agents
 
+**Interrupted Slice**:
+An AFK Slice whose agent run ended without a completion signal — quota exhaustion, timeout, or crash — leaving unfinished work on its slice branch. Resumed by the next `dispatch-agents`, never silently discarded.
+_Avoid_: Failed slice, crashed slice, partial slice
+
+**Slice Checkpoint**:
+The commit capturing an Interrupted Slice's uncommitted work on its slice branch. Unreviewed and ungated — a resuming agent audits it before building on it, and never treats it as finished work.
+_Avoid_: WIP commit (as the general name), draft commit, savepoint
+
 **Issue Orchestration Label**:
 A GitHub label from the ADR 0002 vocabulary that coordinates planning tools and dispatch-agents. Applies to Issues only — never to Pull Requests.
 _Avoid_: agent label, workflow label, status label (as the general name)
