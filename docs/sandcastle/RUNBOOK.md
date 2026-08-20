@@ -357,6 +357,10 @@ TestRunner`. A spec file existing in the tree is not evidence a pipeline ran —
   tells the agent this explicitly, but check it yourself before trusting a green run.
 - Check `package.json` and `TECH_STACK.md`: a slice that added a dependency did not necessarily go
   through `dep-sync`.
+- **Nothing in a checkpoint has been linted, type-checked, or tested.** The preservation commit uses
+  `--no-verify` on purpose, so husky never reformats half-written work — which also means the build
+  gate is the first thing to look at it. Expect a resumed slice to fail the gate on errors the
+  interrupted run left behind, not on anything the resuming agent did.
 
 ### The `dispatch-waves` label trap
 

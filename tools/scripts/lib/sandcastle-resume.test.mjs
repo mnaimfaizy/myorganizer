@@ -117,7 +117,7 @@ test('a non-numeric commit count is treated as no work rather than resumed', () 
   );
 });
 
-test('the resume brief carries all five guardrails', () => {
+test('the resume brief carries all six guardrails', () => {
   const brief = buildResumeBrief({
     basePrompt: 'BASE PROMPT BODY',
     issueNumber: 396,
@@ -125,7 +125,7 @@ test('the resume brief carries all five guardrails', () => {
     checkpoint: { sha: '1f056fa', files: ['a.ts', 'b.ts'] },
   });
 
-  assert.equal(RESUME_GUARDRAILS.length, 5);
+  assert.equal(RESUME_GUARDRAILS.length, 6);
   for (const guardrail of RESUME_GUARDRAILS) {
     assert.ok(
       brief.includes(guardrail),
@@ -146,6 +146,25 @@ test('the resume brief states that existing files do not satisfy a pipeline', ()
 
   assert.match(brief, /do NOT satisfy a Gated Pipeline/);
   assert.match(brief, /does not mean TestScaffold ran/);
+});
+
+test('the resume brief demands deterministic checks over inherited work', () => {
+  // Regression: on the first live resume of #396 the agent inventoried the checkpoint,
+  // judged every acceptance criterion met, committed nothing, and stopped. The build
+  // gate then failed on two `import/first` errors that had been sitting in the
+  // checkpoint since the interrupted run — which was killed long before any gate could
+  // see them, and whose commit used --no-verify by design. Auditing the checkpoint for
+  // *completeness* is not the same as running lint over it.
+  const brief = buildResumeBrief({
+    basePrompt: 'BASE',
+    issueNumber: 396,
+    sliceBranch: 'slice/396-x',
+    checkpoint: { sha: '1f056fa', files: ['a.test.ts'] },
+  });
+
+  assert.match(brief, /has passed a deterministic check/);
+  assert.match(brief, /--no-verify/);
+  assert.match(brief, /BEFORE you report this slice complete/);
 });
 
 test('the resume brief preserves the original prompt', () => {

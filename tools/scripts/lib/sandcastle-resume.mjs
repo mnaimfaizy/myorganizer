@@ -65,7 +65,7 @@ export function decideSliceDisposition({
 }
 
 /**
- * The five guardrails a resumed agent is held to.
+ * The six guardrails a resumed agent is held to.
  *
  * An interrupted agent stops mid-thought, so whatever it left behind is unreviewed by
  * construction — the run died before any reviewer saw it. These exist to stop a fresh
@@ -77,6 +77,7 @@ export const RESUME_GUARDRAILS = Object.freeze([
   'Do NOT restart from scratch and do NOT revert files wholesale. If part of the checkpoint is wrong, change it forward and say why.',
   'Report your inventory BEFORE your first edit: which acceptance criteria are met, which are partial, and which are untouched.',
   'Files present in the checkpoint do NOT satisfy a Gated Pipeline. A spec file already in the tree does not mean TestScaffold ran, was reviewed, or passed — route it through the pipelines named above regardless.',
+  'Nothing in the checkpoint has passed a deterministic check. It was committed with `--no-verify` while the run was being killed, so lint, tsc and the test suite have never once seen it. Run them over the checkpoint\u2019s files and fix what they report BEFORE you report this slice complete \u2014 a finished-looking file is not a checked one.',
 ]);
 
 /**

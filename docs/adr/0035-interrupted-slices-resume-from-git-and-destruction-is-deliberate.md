@@ -22,6 +22,8 @@ Resume is guarded by `merge-base(sliceBranch, baseRef) == baseRef`. Slices stack
 
 A resumed agent is given an **audit-first** prompt: the original slice brief, an inventory of the checkpoint, and an instruction to assess what is actually done against the acceptance criteria and report that before editing anything. It must not reset, rebase, or amend the checkpoint; corrections go forward as normal commits. Critically, **files present in a checkpoint do not satisfy a Gated Pipeline** — a resumed `gate:full` slice that finds a spec file in the tree must still route it through `TestScaffold → TestReviewer → TestRunner`, because "the file exists" is not "the pipeline ran".
 
+For the same reason, **nothing in a checkpoint has passed a deterministic check**. The preservation commit uses `--no-verify` deliberately, so husky never lints work that was half-written when the run died — which means lint, `tsc`, and the suite have not once seen it. A resumed agent must run them over the checkpoint’s files before reporting the slice complete. Auditing a checkpoint for _completeness_ and checking it are different acts, and the first live resume proved an agent will do the former and skip the latter.
+
 Quota exhaustion may also be waited out rather than crashed on, via an opt-in `--wait-for-quota`, capped at two waits per run. Detection is a scan of the tail of the slice log, since the thrown error does not carry the cause. If the reset timestamp cannot be parsed, the run does **not** sleep a guessed interval — it crashes with the checkpoint preserved and says why.
 
 `maxIterations` drops from 25 to 2.
