@@ -13,7 +13,11 @@ import {
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import {
+  MAX_QUOTA_WAITS,
   SLICE_DISPOSITIONS,
+  classifyRunFailure,
+  decideWaitPolicy,
+  tailLines,
   buildResumeBrief,
   decideSliceDisposition,
   isDiscardRequested,
@@ -235,6 +239,11 @@ Flags:
                          base, integration target — then exit. Touches no worktree,
                          container, or GitHub state, and builds no sandbox image.
   --yes, -y              Skip the sweep confirmation prompt.
+  --wait-for-quota       On a provider usage limit, park the run until the limit
+                         resets and then resume the slice, instead of exiting.
+                         Capped at 2 waits per run; never sleeps on an unreadable
+                         reset time, and never on a provider whose limit format
+                         is unknown.
   --fresh                Discard a slice's preserved checkpoint and start it over.
                          Without it, an interrupted slice RESUMES. In PRD mode this
                          must name its slice: --prd <n> --issue <slice> --fresh.
@@ -319,6 +328,11 @@ const assumeYes = process.argv.includes('--yes') || process.argv.includes('-y');
 // Resume is the default for a slice carrying a checkpoint, so discarding that work
 // is an explicit act. Scope is validated once the mode is known — see below.
 const discardRequested = isDiscardRequested(process.argv);
+
+// Opt-in: a run that goes silent for hours is a severe surprise, so the flag
+// documents the behaviour at the call site. See ADR 0035.
+const waitForQuota = process.argv.includes('--wait-for-quota');
+let quotaWaitsTaken = 0;
 
 const discardScope = validateDiscardScope({
   discardRequested,
@@ -1181,7 +1195,10 @@ function sliceLogPathFor(issueNumber: number): string | undefined {
  * classifying it — provider-specific limit matchers belong to PRD #401, and this
  * orchestrator runs claude, cursor, and copilot.
  */
-function crashLogTail(issueNumber: number, lines = 15): string | undefined {
+function readSliceLogTail(
+  issueNumber: number,
+  lines = 15,
+): { path: string; tail: string[] } | undefined {
   const logPath = sliceLogPathFor(issueNumber);
   if (!logPath) return undefined;
   let contents: string;
@@ -1190,12 +1207,16 @@ function crashLogTail(issueNumber: number, lines = 15): string | undefined {
   } catch {
     return undefined;
   }
-  const tail = contents
-    .split('\n')
-    .filter((line) => line.trim() !== '')
-    .slice(-lines);
+  const tail = tailLines(contents, lines);
   if (tail.length === 0) return undefined;
-  return `  log tail (${logPath}):\n${tail
+  return { path: logPath, tail };
+}
+
+function formatCrashLogTail(
+  log: { path: string; tail: string[] } | undefined,
+): string | undefined {
+  if (!log) return undefined;
+  return `  log tail (${log.path}):\n${log.tail
     .map((line) => `    ${line}`)
     .join('\n')}`;
 }
@@ -2080,12 +2101,52 @@ while (pendingSlices.length > 0) {
     const checkpoint = preserveInterruptedSlice(issue, sliceBranch);
 
     console.error(`  ✗ #${issue.number} crashed: ${String(e)}`);
-    const tail = crashLogTail(issue.number);
+    const log = readSliceLogTail(issue.number);
+    const tail = formatCrashLogTail(log);
     if (tail) {
       console.error(
         `  [#${issue.number}] the thrown error may be trailing stderr noise rather than the cause:`,
       );
       console.error(tail);
+    }
+
+    // Was this a provider usage limit, and did the maintainer ask us to wait it out?
+    // Classification is provider-keyed: a provider whose limit format we have never
+    // observed classifies as `unknown` and never triggers a wait.
+    const classification = classifyRunFailure({
+      agentKind,
+      logTail: log?.tail ?? [],
+      now: new Date(),
+    });
+    const waitDecision = decideWaitPolicy({
+      classification,
+      waitEnabled: waitForQuota,
+      waitsTaken: quotaWaitsTaken,
+    });
+
+    if (waitDecision.action === 'wait' && waitDecision.until) {
+      const untilMs = waitDecision.until.getTime() - Date.now();
+      // A small margin past the stated reset: waking exactly on it risks meeting the
+      // same wall and burning one of the two waits for nothing.
+      const sleepMs = Math.max(untilMs, 0) + 5 * 60 * 1000;
+      quotaWaitsTaken += 1;
+      console.error(
+        `  [#${issue.number}] provider limit hit — ${classification.evidence ?? 'no detail'}\n` +
+          `      Parking until ${waitDecision.until.toISOString()} (+5m margin), ` +
+          `wait ${quotaWaitsTaken}/${MAX_QUOTA_WAITS}.\n` +
+          `      The slice will RESUME from its checkpoint, not restart.`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, sleepMs));
+      console.log(`  [#${issue.number}] resuming after the limit reset.`);
+      // Back into the queue: the next pass finds the checkpoint and resumes it.
+      pendingSlices.push(issue);
+      continue;
+    }
+
+    if (waitForQuota) {
+      console.error(
+        `  [#${issue.number}] not waiting — ${waitDecision.reason}.`,
+      );
     }
 
     if (checkpoint) {

@@ -226,3 +226,181 @@ export function planWaveForwarding(argv) {
 
   return { ok: true, message: '', forwarded };
 }
+
+// ─── Provider usage limits ────────────────────────────────────────────────────
+// This orchestrator dispatches three different agents, so "did we hit a usage limit"
+// cannot be one hardcoded string match. Each provider contributes its own matchers;
+// a provider with none classifies as `unknown`, which is the correct answer rather
+// than a gap — their message formats are not ours to guess, and a wrong guess is
+// worse than no guess because it can trigger a multi-hour sleep.
+//
+// The thrown agent error is NOT the input. It carries whatever was last on stderr,
+// routinely a trailing warning rather than the cause. The log tail is.
+
+export const LIMIT_CLASSIFICATIONS = Object.freeze({
+  limitHit: 'limit-hit',
+  other: 'other',
+  unknown: 'unknown',
+});
+
+/**
+ * Per-provider matchers over a log tail.
+ *
+ * Claude Code is the only provider whose limit message we have observed. Cursor and
+ * Copilot intentionally have none: add a matcher when a real message is captured,
+ * never a guessed one.
+ */
+export const LIMIT_MATCHERS = Object.freeze({
+  claude: Object.freeze([
+    /you've hit your (?:session|usage) limit/i,
+    /\bsession limit reached\b/i,
+    /\busage limit reached\b/i,
+  ]),
+  cursor: Object.freeze([]),
+  copilot: Object.freeze([]),
+});
+
+/** The last `count` non-empty lines of a log. Only the tail is ever classified. */
+export function tailLines(contents, count = 15) {
+  return String(contents ?? '')
+    .split('\n')
+    .map((line) => line.trimEnd())
+    .filter((line) => line.trim() !== '')
+    .slice(-count);
+}
+
+/**
+ * Parse a reset time out of a limit message.
+ *
+ * Returns undefined whenever the text cannot be read with confidence. That is
+ * load-bearing: the wait policy refuses to sleep without a parsed time rather than
+ * guessing a window, because a wrong guess either wastes hours or wakes into the
+ * same wall and burns a retry.
+ *
+ * @param {string} text
+ * @param {Date} now
+ * @returns {Date|undefined}
+ */
+export function parseResetTime(text, now) {
+  // Observed shape: "resets 4:30am (UTC)". Only UTC is accepted — a bare local time
+  // would be ambiguous across the machines this runs on.
+  const match =
+    /resets\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*(am|pm)\s*\(UTC\)/i.exec(
+      String(text ?? ''),
+    );
+  if (!match) return undefined;
+
+  let hour = Number.parseInt(match[1], 10);
+  const minute = match[2] ? Number.parseInt(match[2], 10) : 0;
+  const meridiem = match[3].toLowerCase();
+
+  if (hour < 1 || hour > 12 || minute > 59) return undefined;
+  if (meridiem === 'pm' && hour !== 12) hour += 12;
+  if (meridiem === 'am' && hour === 12) hour = 0;
+
+  const reset = new Date(
+    Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate(),
+      hour,
+      minute,
+      0,
+      0,
+    ),
+  );
+  // A reset time already past today refers to tomorrow.
+  if (reset.getTime() <= now.getTime()) {
+    reset.setUTCDate(reset.getUTCDate() + 1);
+  }
+  return reset;
+}
+
+/**
+ * Classify why a run ended, from the tail of its log.
+ *
+ * @param {object} input
+ * @param {'claude'|'cursor'|'copilot'} input.agentKind
+ * @param {string[]} input.logTail  Already tailed — see tailLines.
+ * @param {Date} input.now
+ * @returns {{ kind: string, resetAt: Date|undefined, evidence: string|undefined }}
+ */
+export function classifyRunFailure({ agentKind, logTail, now }) {
+  const matchers = LIMIT_MATCHERS[agentKind];
+
+  // A provider we have no matchers for is `unknown`, never `other`: the difference is
+  // "we did not look" versus "we looked and it was not a limit".
+  if (!matchers || matchers.length === 0) {
+    return {
+      kind: LIMIT_CLASSIFICATIONS.unknown,
+      resetAt: undefined,
+      evidence: undefined,
+    };
+  }
+
+  const lines = Array.isArray(logTail) ? logTail : [];
+  for (const line of lines) {
+    if (matchers.some((matcher) => matcher.test(line))) {
+      return {
+        kind: LIMIT_CLASSIFICATIONS.limitHit,
+        resetAt: parseResetTime(line, now),
+        evidence: line.trim(),
+      };
+    }
+  }
+
+  return {
+    kind: LIMIT_CLASSIFICATIONS.other,
+    resetAt: undefined,
+    evidence: undefined,
+  };
+}
+
+/** How many times one run may wait out a provider limit before giving up. */
+export const MAX_QUOTA_WAITS = 2;
+
+/**
+ * Decide whether to park the run until a limit resets, or exit with the work
+ * preserved.
+ *
+ * @param {object} input
+ * @param {{kind: string, resetAt: Date|undefined}} input.classification
+ * @param {boolean} input.waitEnabled   Did the maintainer opt in?
+ * @param {number}  input.waitsTaken    Waits already spent this run.
+ * @param {number}  [input.maxWaits]
+ * @returns {{ action: 'wait'|'exit', until: Date|undefined, reason: string }}
+ */
+export function decideWaitPolicy({
+  classification,
+  waitEnabled,
+  waitsTaken,
+  maxWaits = MAX_QUOTA_WAITS,
+}) {
+  const exit = (reason) => ({ action: 'exit', until: undefined, reason });
+
+  if (!waitEnabled) return exit('waiting was not requested');
+
+  if (classification.kind !== LIMIT_CLASSIFICATIONS.limitHit) {
+    return exit(
+      classification.kind === LIMIT_CLASSIFICATIONS.unknown
+        ? 'this provider reports no limit format we recognise'
+        : 'the run did not end on a provider limit',
+    );
+  }
+
+  // Never sleep blind. An unreadable timestamp means the format changed or the
+  // message was truncated; guessing a window is worse than stopping.
+  if (!(classification.resetAt instanceof Date)) {
+    return exit('the reset time could not be read from the limit message');
+  }
+
+  if (waitsTaken >= maxWaits) {
+    return exit(`the wait limit of ${maxWaits} for this run is exhausted`);
+  }
+
+  return {
+    action: 'wait',
+    until: classification.resetAt,
+    reason: `provider limit resets at ${classification.resetAt.toISOString()}`,
+  };
+}

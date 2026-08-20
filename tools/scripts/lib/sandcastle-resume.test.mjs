@@ -7,6 +7,12 @@ import test from 'node:test';
 
 import {
   DISCARD_FLAG,
+  LIMIT_CLASSIFICATIONS,
+  MAX_QUOTA_WAITS,
+  classifyRunFailure,
+  decideWaitPolicy,
+  parseResetTime,
+  tailLines,
   RESUME_GUARDRAILS,
   SLICE_DISPOSITIONS,
   buildResumeBrief,
@@ -294,4 +300,204 @@ test('the wave driver keeps its own flags to itself', () => {
   assert.equal(result.forwarded.includes('401'), false);
   assert.equal(result.forwarded.includes('--plan'), false);
   assert.deepEqual(result.forwarded, ['--agent', 'copilot']);
+});
+
+// ─── Provider usage limits ────────────────────────────────────────────────────
+
+// The real message observed when slice #396 died mid-run.
+const CLAUDE_LIMIT_LINE = "You've hit your session limit · resets 4:30am (UTC)";
+const NOW = new Date('2026-08-20T03:03:00Z');
+
+test('the observed Claude limit message classifies as a limit hit', () => {
+  const result = classifyRunFailure({
+    agentKind: 'claude',
+    logTail: ['Bash(ls)', CLAUDE_LIMIT_LINE],
+    now: NOW,
+  });
+
+  assert.equal(result.kind, LIMIT_CLASSIFICATIONS.limitHit);
+  assert.ok(result.resetAt instanceof Date);
+  assert.equal(result.resetAt.toISOString(), '2026-08-20T04:30:00.000Z');
+});
+
+test('cursor classifies as unknown — we have no matcher, and must not guess', () => {
+  // This is an asserted expectation, NOT a gap. Guessing a message format we have
+  // never observed could park a run for hours on a failure that was not a limit.
+  const result = classifyRunFailure({
+    agentKind: 'cursor',
+    logTail: [CLAUDE_LIMIT_LINE],
+    now: NOW,
+  });
+
+  assert.equal(result.kind, LIMIT_CLASSIFICATIONS.unknown);
+});
+
+test('copilot classifies as unknown for the same reason', () => {
+  assert.equal(
+    classifyRunFailure({
+      agentKind: 'copilot',
+      logTail: [CLAUDE_LIMIT_LINE],
+      now: NOW,
+    }).kind,
+    LIMIT_CLASSIFICATIONS.unknown,
+  );
+});
+
+test('unknown is distinct from other — "did not look" is not "looked and found nothing"', () => {
+  const unknown = classifyRunFailure({
+    agentKind: 'cursor',
+    logTail: ['some failure'],
+    now: NOW,
+  });
+  const other = classifyRunFailure({
+    agentKind: 'claude',
+    logTail: ['some failure'],
+    now: NOW,
+  });
+
+  assert.equal(unknown.kind, LIMIT_CLASSIFICATIONS.unknown);
+  assert.equal(other.kind, LIMIT_CLASSIFICATIONS.other);
+  assert.notEqual(unknown.kind, other.kind);
+});
+
+test('only the tail is classified, so an agent writing about limits cannot trip it', () => {
+  // An agent that reads or writes the words mid-run must not look like a limit hit.
+  const wholeLog = [
+    'Read(docs/limits.md)',
+    CLAUDE_LIMIT_LINE,
+    ...Array.from({ length: 40 }, (_, i) => `Bash(step ${i})`),
+  ].join('\n');
+
+  const result = classifyRunFailure({
+    agentKind: 'claude',
+    logTail: tailLines(wholeLog, 15),
+    now: NOW,
+  });
+
+  assert.equal(result.kind, LIMIT_CLASSIFICATIONS.other);
+});
+
+test('tailLines drops blank lines and keeps the last n', () => {
+  const tail = tailLines('a\n\n\nb\nc\n\n', 2);
+  assert.deepEqual(tail, ['b', 'c']);
+});
+
+test('a reset time earlier in the day than now means tomorrow', () => {
+  const reset = parseResetTime(
+    'resets 2:00am (UTC)',
+    new Date('2026-08-20T03:03:00Z'),
+  );
+  assert.equal(reset.toISOString(), '2026-08-21T02:00:00.000Z');
+});
+
+test('parseResetTime handles pm and bare hours', () => {
+  assert.equal(
+    parseResetTime('resets 11pm (UTC)', NOW).toISOString(),
+    '2026-08-20T23:00:00.000Z',
+  );
+  assert.equal(
+    parseResetTime('resets at 12:15am (UTC)', NOW).toISOString(),
+    '2026-08-21T00:15:00.000Z',
+  );
+});
+
+test('parseResetTime returns undefined rather than guessing', () => {
+  for (const text of [
+    'resets soon',
+    'resets 4:30am', // no timezone — ambiguous across machines
+    'resets 25:00am (UTC)', // impossible hour
+    "You've hit your session limit",
+    '',
+  ]) {
+    assert.equal(parseResetTime(text, NOW), undefined, `parsed: ${text}`);
+  }
+});
+
+// ─── Wait policy ──────────────────────────────────────────────────────────────
+
+const limitHit = (resetAt) => ({
+  kind: LIMIT_CLASSIFICATIONS.limitHit,
+  resetAt,
+});
+
+test('waits until the reset when opted in and the time is known', () => {
+  const until = new Date('2026-08-20T04:30:00Z');
+  const decision = decideWaitPolicy({
+    classification: limitHit(until),
+    waitEnabled: true,
+    waitsTaken: 0,
+  });
+
+  assert.equal(decision.action, 'wait');
+  assert.equal(decision.until.toISOString(), until.toISOString());
+});
+
+test('never waits unless the maintainer opted in', () => {
+  const decision = decideWaitPolicy({
+    classification: limitHit(new Date('2026-08-20T04:30:00Z')),
+    waitEnabled: false,
+    waitsTaken: 0,
+  });
+
+  assert.equal(decision.action, 'exit');
+});
+
+test('never sleeps blind when the reset time could not be read', () => {
+  // The guard that keeps a provider changing its message format from becoming a
+  // multi-hour sleep.
+  const decision = decideWaitPolicy({
+    classification: limitHit(undefined),
+    waitEnabled: true,
+    waitsTaken: 0,
+  });
+
+  assert.equal(decision.action, 'exit');
+  assert.match(decision.reason, /reset time could not be read/);
+});
+
+test('never waits on an unknown provider even with waiting enabled', () => {
+  const decision = decideWaitPolicy({
+    classification: { kind: LIMIT_CLASSIFICATIONS.unknown, resetAt: undefined },
+    waitEnabled: true,
+    waitsTaken: 0,
+  });
+
+  assert.equal(decision.action, 'exit');
+  assert.match(decision.reason, /no limit format we recognise/);
+});
+
+test('never waits when the run did not end on a limit', () => {
+  assert.equal(
+    decideWaitPolicy({
+      classification: { kind: LIMIT_CLASSIFICATIONS.other, resetAt: undefined },
+      waitEnabled: true,
+      waitsTaken: 0,
+    }).action,
+    'exit',
+  );
+});
+
+test('the wait cap is enforced', () => {
+  const until = new Date('2026-08-20T04:30:00Z');
+
+  assert.equal(
+    decideWaitPolicy({
+      classification: limitHit(until),
+      waitEnabled: true,
+      waitsTaken: MAX_QUOTA_WAITS - 1,
+    }).action,
+    'wait',
+  );
+
+  const exhausted = decideWaitPolicy({
+    classification: limitHit(until),
+    waitEnabled: true,
+    waitsTaken: MAX_QUOTA_WAITS,
+  });
+  assert.equal(exhausted.action, 'exit');
+  assert.match(exhausted.reason, /wait limit/);
+});
+
+test('the cap is two — three limit hits is more than a day of wall clock', () => {
+  assert.equal(MAX_QUOTA_WAITS, 2);
 });
