@@ -12,6 +12,11 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
+import {
+  SLICE_DISPOSITIONS,
+  buildResumeBrief,
+  decideSliceDisposition,
+} from '../tools/scripts/lib/sandcastle-resume.mjs';
 
 const REPO = 'mnaimfaizy/myorganizer';
 const SANDBOX_IMAGE = 'sandcastle:myorganizer';
@@ -1060,6 +1065,78 @@ function finalizeSliceBranch(issue: Issue, sliceBranch: string): boolean {
 // slice again from a clean base) keeps working untouched. See ADR 0035; resuming from
 // a checkpoint rather than merely surviving is PRD #401.
 
+/**
+ * Read the git facts the resume decision needs. Impure by nature — kept here rather
+ * than in the decision library so the decision itself stays testable without git.
+ */
+function inspectSliceBranch(sliceBranch: string): {
+  branchExists: boolean;
+  commitsAhead: number;
+  mergeBaseMatchesBase: boolean;
+} {
+  if (!gitRefExists(sliceBranch)) {
+    return {
+      branchExists: false,
+      commitsAhead: 0,
+      mergeBaseMatchesBase: false,
+    };
+  }
+
+  const commitsAhead = Number.parseInt(
+    (
+      spawnSync('git', ['rev-list', '--count', `${baseRef}..${sliceBranch}`], {
+        encoding: 'utf8',
+        windowsHide: true,
+      }).stdout || ''
+    ).trim(),
+    10,
+  );
+
+  const mergeBase = (
+    spawnSync('git', ['merge-base', sliceBranch, baseRef], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+  const baseSha = (
+    spawnSync('git', ['rev-parse', baseRef], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+
+  return {
+    branchExists: true,
+    commitsAhead,
+    mergeBaseMatchesBase: mergeBase !== '' && mergeBase === baseSha,
+  };
+}
+
+/** The checkpoint sitting on a slice branch, for the resume brief's inventory. */
+function readSliceCheckpoint(
+  sliceBranch: string,
+): { sha: string; files: string[] } | undefined {
+  const sha = (
+    spawnSync('git', ['rev-parse', '--short', sliceBranch], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+  if (!sha) return undefined;
+
+  const files = (
+    spawnSync('git', ['diff', '--name-only', `${baseRef}..${sliceBranch}`], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  )
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '');
+
+  return { sha, files };
+}
+
 type SliceCheckpoint = {
   readonly sha: string;
   readonly tag: string;
@@ -1613,6 +1690,14 @@ if (dryRun) {
   process.exit(0);
 }
 
+// PRD mode has no confirmation prompt by design — it is the AFK path. That made its
+// branch handling invisible: nothing was printed before a slice branch was deleted
+// and recreated. Printing the plan costs nothing and is what makes destruction
+// observable. See ADR 0035.
+if (mode === 'prd') {
+  printPlanPreview();
+}
+
 // A sweep is the only mode where no human named the work. Everything selected here
 // spends real model quota, so the set is shown and confirmed before the first
 // container starts.
@@ -1689,33 +1774,93 @@ while (pendingSlices.length > 0) {
       `\n  → #${issue.number} on ${sliceBranch} (${agentKind}:${model})`,
     );
 
-    // Fresh slice branch + worktree off the CURRENT local feature head, so this
-    // slice (processed one by one) builds on every previously-integrated slice.
-    // Clear any stale branch/worktree from an earlier run first — including one
-    // filed under a different type prefix, if this issue's labels have changed
-    // since it last ran.
-    const staleBranches = [sliceBranch, ...staleWorkBranchesFor(issue)];
-    for (const stale of staleBranches) {
-      const stalePath = join(worktreesDir, stale.replace(/\//g, '-'));
-      if (existsSync(stalePath)) {
-        spawnSync('git', ['worktree', 'remove', '--force', stalePath], {
+    // Does this slice already carry a Slice Checkpoint from an interrupted run?
+    // Resume is the default; destroying preserved work is the deliberate act.
+    const disposition = decideSliceDisposition(inspectSliceBranch(sliceBranch));
+
+    if (disposition === SLICE_DISPOSITIONS.skipStale) {
+      // Slices stack, so a checkpoint left behind while later slices integrated is
+      // based on a head that is no longer in the feature branch's history. Rebasing
+      // it is a judgement call and deleting it destroys work nobody has reviewed —
+      // so do neither, and say so.
+      console.error(
+        `  ⚠ #${issue.number} ${sliceBranch} carries a checkpoint based on a superseded ` +
+          `head — skipping.\n` +
+          `      Rebase it onto ${baseRef} and re-run, or discard it deliberately.\n` +
+          `      Recovery: docs/sandcastle/RUNBOOK.md — "Recovering an interrupted run".`,
+      );
+      ghSilent([
+        'issue',
+        'edit',
+        String(issue.number),
+        '--repo',
+        REPO,
+        '--remove-label',
+        'status:in-progress',
+      ]);
+      results.push({
+        issue,
+        sliceBranch,
+        commits: 0,
+        merged: false,
+        reason: 'checkpoint is based on a superseded head',
+      });
+      continue;
+    }
+
+    const checkpoint =
+      disposition === SLICE_DISPOSITIONS.resume
+        ? readSliceCheckpoint(sliceBranch)
+        : undefined;
+
+    const worktreePath = join(worktreesDir, sliceBranch.replace(/\//g, '-'));
+
+    if (checkpoint) {
+      console.log(
+        `  [#${issue.number}] resuming from checkpoint ${checkpoint.sha} ` +
+          `(${checkpoint.files.length} file(s)) — the branch is kept, not recreated.`,
+      );
+      // The branch and its commits stay. Only the worktree is rebuilt, so the agent
+      // gets a clean checkout of the checkpoint rather than whatever partial state
+      // the interrupted container left on disk.
+      if (existsSync(worktreePath)) {
+        spawnSync('git', ['worktree', 'remove', '--force', worktreePath], {
           encoding: 'utf8',
           windowsHide: true,
         });
       }
-    }
-    const worktreePath = join(worktreesDir, sliceBranch.replace(/\//g, '-'));
-    spawnSync('git', ['worktree', 'prune'], {
-      encoding: 'utf8',
-      windowsHide: true,
-    });
-    for (const stale of staleBranches) {
-      spawnSync('git', ['branch', '-D', stale], {
+      spawnSync('git', ['worktree', 'prune'], {
         encoding: 'utf8',
         windowsHide: true,
       });
+    } else {
+      // Fresh slice branch + worktree off the CURRENT local feature head, so this
+      // slice (processed one by one) builds on every previously-integrated slice.
+      // Clear any stale branch/worktree from an earlier run first — including one
+      // filed under a different type prefix, if this issue's labels have changed
+      // since it last ran.
+      const staleBranches = [sliceBranch, ...staleWorkBranchesFor(issue)];
+      for (const stale of staleBranches) {
+        const stalePath = join(worktreesDir, stale.replace(/\//g, '-'));
+        if (existsSync(stalePath)) {
+          spawnSync('git', ['worktree', 'remove', '--force', stalePath], {
+            encoding: 'utf8',
+            windowsHide: true,
+          });
+        }
+      }
+      spawnSync('git', ['worktree', 'prune'], {
+        encoding: 'utf8',
+        windowsHide: true,
+      });
+      for (const stale of staleBranches) {
+        spawnSync('git', ['branch', '-D', stale], {
+          encoding: 'utf8',
+          windowsHide: true,
+        });
+      }
+      gitCmd(['branch', sliceBranch, baseRef]);
     }
-    gitCmd(['branch', sliceBranch, baseRef]);
     const wt = spawnSync(
       'git',
       ['worktree', 'add', worktreePath, sliceBranch],
@@ -1767,11 +1912,24 @@ while (pendingSlices.length > 0) {
           ],
         },
       },
-      maxIterations: 25,
+      // Iterations after the first do NOT resume the agent session: each spins a
+      // fresh sandbox, re-runs the dependency install, and receives the identical
+      // prompt. They are cold restarts, not continuations, so an agent that failed
+      // to signal completion once meets the same wall again at full price. Two buys
+      // one honest retry for a transient container fault; genuine continuation is
+      // the resume path, which supplies a different prompt. See ADR 0035.
+      maxIterations: 2,
       // Quiet stretches (codegen, builds) can exceed the 600s default and trip the
       // idle watchdog; give long-running slices headroom.
       idleTimeoutSeconds: 1800,
-      prompt: buildPrompt(issue, sliceBranch),
+      prompt: checkpoint
+        ? buildResumeBrief({
+            basePrompt: buildPrompt(issue, sliceBranch),
+            issueNumber: issue.number,
+            sliceBranch,
+            checkpoint,
+          })
+        : buildPrompt(issue, sliceBranch),
     });
 
     logRunUsage(issue.number, agentKind, model, result);

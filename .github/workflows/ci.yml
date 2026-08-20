@@ -506,6 +506,9 @@ jobs:
       - name: Check Jest test hygiene
         run: corepack yarn test:hygiene --all
 
+      - name: Sandcastle resume decision contracts
+        run: corepack yarn sandcastle:resume:test
+
       - name: Check libs markdown allowlist
         run: corepack yarn libs:markdown:check
 
