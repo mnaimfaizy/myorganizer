@@ -11,7 +11,6 @@ See [ADR 0034](../../docs/adr/0034-emails-share-one-shell-and-are-built-to-degra
 
 - Test: `yarn nx test email-shell`.
 - Lint: `yarn nx lint email-shell`.
-- Regenerate the email logo PNG: `yarn nx run email-shell:build-logo`.
 
 ## Do
 
@@ -19,8 +18,11 @@ See [ADR 0034](../../docs/adr/0034-emails-share-one-shell-and-are-built-to-degra
 - Escape every interpolated value.
 - Resolve colours from `@myorganizer/design-tokens`; never hardcode hex.
 - Keep layout table-based with inline CSS, fluid, single-column.
-- Edit `apps/myorganizer/public/images/logo-email.svg`, regenerate with `build-logo`, and commit
-  both the SVG source and `src/assets/logo-email.png` together.
+- Treat `src/assets/logo-email.png` as a checked-in asset, not a build output. Mail clients
+  cannot render SVG, so the raster is committed; `logo-email.svg` is the editable source.
+- When the logo changes, export the PNG at 420px wide (3x the 140px display width, for retina)
+  and commit it alongside the SVG. This is deliberately a manual step: the logo changes rarely,
+  and a build-time rasterizer costs a native dependency in every sandbox install for no gain.
 
 ## Do Not
 
