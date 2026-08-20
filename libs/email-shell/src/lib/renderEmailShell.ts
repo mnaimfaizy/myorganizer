@@ -96,7 +96,7 @@ function logoAttachment(): EmailAttachment {
 
 function renderHtml(options: RenderEmailShellOptions, year: number): string {
   const preheaderHtml = renderPreheaderHtml(options.preheader);
-  const bodyHtml = options.blocks.map(renderBlockHtml).join('');
+  const bodyHtml = renderBlocksHtml(options.blocks);
   const footerHtml = renderFooterHtml(options, year);
 
   return `<!doctype html>
@@ -143,10 +143,33 @@ function renderPreheaderHtml(preheader: string): string {
   return `<div style="display: none; font-size: 1px; line-height: 1px; max-height: 0; max-width: 0; opacity: 0; overflow: hidden; mso-hide: all;">${escapeHtml(preheader)}${padding}</div>`;
 }
 
-function renderBlockHtml(block: EmailBodyBlock): string {
+/**
+ * Renders the body blocks, numbering headings as it goes.
+ *
+ * ADR 0034 asks for semantic headings, which means one `<h1>` per message and
+ * `<h2>` for anything under it. A block cannot know its own level, so the
+ * decision is made here rather than inside {@link renderBlockHtml}: the first
+ * heading a body declares is its title, the rest are sections.
+ */
+function renderBlocksHtml(blocks: EmailBodyBlock[]): string {
+  let headingsSoFar = 0;
+  return blocks
+    .map((block) => {
+      if (block.kind === 'heading') headingsSoFar += 1;
+      return renderBlockHtml(block, headingsSoFar <= 1 ? 'h1' : 'h2');
+    })
+    .join('');
+}
+
+function renderBlockHtml(
+  block: EmailBodyBlock,
+  headingTag: 'h1' | 'h2',
+): string {
   switch (block.kind) {
     case 'heading':
-      return `<tr><td style="padding: 0 0 ${spaceMd} 0; font-family: ${fontDisplay}; font-size: 22px; line-height: 28px; font-weight: 700; color: ${colorPrimary};">${escapeHtml(block.text)}</td></tr>`;
+      // `margin: 0` because clients apply their own heading margins, and the
+      // row's padding is what the shell's spacing scale actually controls.
+      return `<tr><td style="padding: 0 0 ${spaceMd} 0;"><${headingTag} style="margin: 0; font-family: ${fontDisplay}; font-size: 22px; line-height: 28px; font-weight: 700; color: ${colorPrimary};">${escapeHtml(block.text)}</${headingTag}></td></tr>`;
     case 'paragraph':
       return `<tr><td style="padding: 0 0 ${spaceMd} 0; font-family: ${fontBody}; font-size: 15px; line-height: 22px; color: ${colorPrimary};">${escapeHtml(block.text)}</td></tr>`;
     case 'button':

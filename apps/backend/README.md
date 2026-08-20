@@ -125,7 +125,6 @@ Note: The repo sets `package.json.engines.node` to `>=22.0.0`.
 
    ```env
    # Application
-   APP_NAME="My Organizer"
    # Used to build email verification/reset links
    APP_FRONTEND_URL=http://localhost:4200
    PORT=3000

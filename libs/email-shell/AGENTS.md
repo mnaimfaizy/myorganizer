@@ -12,7 +12,8 @@ See [ADR 0034](../../docs/adr/0034-emails-share-one-shell-and-are-built-to-degra
 ## Commands
 
 - Test: `yarn nx test email-shell`.
-- Lint: `yarn nx lint email-shell`.
+- Lint: `yarn nx run email-shell:eslint:lint`. This library has no `lint` target of its own — the
+  one it runs is inferred by `@nx/eslint/plugin`, which nx.json names `eslint:lint`.
 
 ## Do
 
@@ -27,6 +28,10 @@ See [ADR 0034](../../docs/adr/0034-emails-share-one-shell-and-are-built-to-degra
 - Size media rows in percentages. `EmailMediaItem` deliberately has no width field: fixed pixel
   widths inside an unconstrained cell are what made the Weekly Digest scroll horizontally on a
   phone.
+- Emit headings as real heading elements — the first `heading` block in a body is its `<h1>`, any
+  later one an `<h2>`. ADR 0034 asks for semantic headings, and a styled `<td>` is not one. The
+  level is decided while the blocks are rendered, not by the caller: a block cannot know whether
+  it is the title.
 - `logo-email.svg` is the editable source; `src/assets/logo-email.png` is generated from it.
   Mail clients cannot render SVG, so the raster is committed as well — but regenerate it,
   never hand-edit it.

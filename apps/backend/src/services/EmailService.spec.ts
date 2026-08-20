@@ -76,8 +76,8 @@ describe('EmailService', () => {
     });
   });
 
-  describe('sendEmail with CID attachments', () => {
-    it('should attach CID attachments and preserve html references', async () => {
+  describe('sendEmail attachment pass-through', () => {
+    it('should pass through single attachment to nodemailer unchanged', async () => {
       const attachment: MailAttachment = {
         filename: 'logo.png',
         content: Buffer.from('fake-png-data'),
@@ -93,13 +93,15 @@ describe('EmailService', () => {
       await sendEmail('user@example.com', 'Test', message);
 
       const mailOptions = mockSendMail.mock.calls[0][0];
-      expect(mailOptions.attachments).toBeDefined();
-      expect(mailOptions.attachments).toHaveLength(1);
-      expect(mailOptions.attachments[0]).toEqual(attachment);
-      expect(mailOptions.html).toContain('cid:company-logo');
+      // Verify the sender forwards html, text, and attachments unchanged.
+      expect(mailOptions.html).toBe(message.html);
+      expect(mailOptions.text).toBe(message.text);
+      expect(mailOptions.attachments).toEqual(message.attachments);
+      // CID linkage invariant (every attachment referenced, every reference attached)
+      // is owned by the shell, not the sender. See assertCidLinkage in email-shell.
     });
 
-    it('should pass through multiple attachments', async () => {
+    it('should pass through multiple attachments to nodemailer unchanged', async () => {
       const attachments: MailAttachment[] = [
         {
           filename: 'logo.png',
@@ -122,9 +124,10 @@ describe('EmailService', () => {
       await sendEmail('user@example.com', 'Test', message);
 
       const mailOptions = mockSendMail.mock.calls[0][0];
-      expect(mailOptions.attachments).toHaveLength(2);
-      expect(mailOptions.attachments[0].cid).toBe('logo');
-      expect(mailOptions.attachments[1].cid).toBe('footer');
+      // Verify the sender forwards html, text, and attachments unchanged.
+      expect(mailOptions.html).toBe(message.html);
+      expect(mailOptions.text).toBe(message.text);
+      expect(mailOptions.attachments).toEqual(message.attachments);
     });
   });
 

@@ -1,10 +1,3 @@
-import { beforeEach, describe, expect, jest, it } from '@jest/globals';
-import { EMAIL_LOGO_CID, collectCidReferences } from '@myorganizer/email-shell';
-import { colorPrimary } from '@myorganizer/design-tokens';
-import type { EmailMessage } from './EmailService';
-import type { User } from '../prisma';
-import userService from './UserService';
-
 jest.mock('../prisma', () => {
   const __mockPrisma = {
     user: {
@@ -37,6 +30,15 @@ jest.mock('../helpers/ApiTokens', () => ({
   },
 }));
 
+type EmailMessage = import('./EmailService').EmailMessage;
+type User = import('../prisma').User;
+
+const {
+  EMAIL_LOGO_CID,
+  collectCidReferences,
+} = require('@myorganizer/email-shell');
+const { colorPrimary } = require('@myorganizer/design-tokens');
+const userService = require('./UserService').default;
 const mockSendEmail = require('./EmailService').__mockSendEmail as jest.Mock;
 const apiTokens = require('../helpers/ApiTokens').default as {
   generateEmailVerificationToken: jest.Mock;

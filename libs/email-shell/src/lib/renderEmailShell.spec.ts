@@ -264,6 +264,74 @@ describe('renderEmailShell', () => {
 
       expect(result.text).toContain('Tom & Jerry');
     });
+
+    it('single heading renders as h1', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [{ kind: 'heading', text: 'Main Title' }],
+      });
+
+      expect(result.html).toContain('<h1');
+      expect(result.html).toContain('Main Title');
+      expect(result.html).toContain('</h1>');
+      expect(result.html).not.toContain('<h2');
+    });
+
+    it('first heading renders as h1, subsequent headings as h2', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          { kind: 'heading', text: 'Main Title' },
+          { kind: 'paragraph', text: 'Some content' },
+          { kind: 'heading', text: 'Section Two' },
+          { kind: 'heading', text: 'Section Three' },
+        ],
+      });
+
+      // First heading is h1
+      expect(result.html).toContain('<h1');
+      expect(result.html).toContain('Main Title');
+      expect(result.html).toContain('</h1>');
+
+      // Subsequent headings are h2
+      const h2Regex = /<h2[^>]*>[\s\S]*?<\/h2>/g;
+      const h2Matches = result.html.match(h2Regex);
+      expect(h2Matches).toHaveLength(2);
+      expect(result.html).toContain('Section Two');
+      expect(result.html).toContain('Section Three');
+
+      // Never has two h1s
+      const h1Regex = /<h1[^>]*>/g;
+      const h1Matches = result.html.match(h1Regex);
+      expect(h1Matches).toHaveLength(1);
+    });
+
+    it('heading escaping and element structure hold together', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [{ kind: 'heading', text: '<script>alert(1)</script>' }],
+      });
+
+      // Verify the h1 element contains escaped text
+      const h1Match = result.html.match(/<h1[^>]*>([^<]*)<\/h1>/);
+      expect(h1Match).not.toBeNull();
+      expect(h1Match?.[1]).toBe('&lt;script&gt;alert(1)&lt;/script&gt;');
+      expect(result.html).not.toContain('<h1><script>');
+    });
+
+    it('heading margin is 0 in element style', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [{ kind: 'heading', text: 'Title' }],
+      });
+
+      // Verify margin: 0 is in the h1 style attribute
+      expect(result.html).toContain('<h1 style="margin: 0;');
+    });
   });
 
   describe('block rendering: paragraph', () => {
@@ -1052,7 +1120,13 @@ describe('renderEmailShell', () => {
         ],
       });
 
-      expect(result.html).toContain('width: 100%');
+      // Extract the media row's td (not the outer table) by matching the specific row structure
+      // Media row td contains padding, border-bottom, and width: 100%
+      const mediaRowMatch = result.html.match(
+        /<td style="width: 100%; padding:[^"]*; border-bottom:[^"]*">/,
+      );
+      expect(mediaRowMatch).not.toBeNull();
+      expect(mediaRowMatch?.[0]).toContain('width: 100%');
     });
 
     it('renders mediaList item without imageUrl (text-only)', () => {
