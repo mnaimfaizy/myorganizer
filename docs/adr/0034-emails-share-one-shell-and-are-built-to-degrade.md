@@ -18,6 +18,8 @@ The shell is **parameterised by email class, not uniform**. A Transactional Emai
 
 The shell lives in a shared library rendering to an HTML string, consumed by the backend. It carries Storybook stories with fixture data, which places it under the existing Chromatic visual gate.
 
+The **CID linkage invariant belongs to the shell, not the sender**: a message's attachments and the body it ships with must describe the same set of Content-IDs. The shell returns its attachments alongside its HTML and asserts the two match on every render. The alternative — validating in the shared mail sender — was rejected because the sender is a pass-through that never sees how a body was built, so all it can check is that two things it was handed happen to agree; a caller that hands it a matched-but-wrong pair passes. The shell is the only place that knows what it just referenced.
+
 Emails are built to **degrade into correct, not into broken**:
 
 - The logo is a CID attachment, not a hosted URL.
@@ -43,3 +45,5 @@ Stories render in a browser, which is not an email client. They will catch a mis
 Migrating the Weekly Digest is more than a wrapper swap. It emits thumbnails at fixed pixel widths inside an unconstrained table, which is the classic horizontal-scroll email on a narrow phone; its rows have to be made fluid.
 
 Raster PNG logo assets must be produced and kept in sync with the SVG sources, because SVG does not render in Gmail, Outlook, or Yahoo. Adding CID attachments also requires attachment support in the shared mail sender, which today accepts only a recipient, subject, and HTML body.
+
+The raster ships twice — as a `.png` for review and as a base64 TypeScript literal the shell attaches — so that rendering an email stays a pure function with no disk access. Resolving an asset path that differs between the TypeScript sources and the webpack bundle is the same dist-versus-dev candidate lookup that guarded the auth templates, and reintroducing it for the logo would trade one invisible failure for another.

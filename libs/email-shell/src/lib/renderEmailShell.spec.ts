@@ -6,6 +6,8 @@ import {
   colorPrimary,
   colorSurface,
 } from '@myorganizer/design-tokens';
+import { collectCidReferences } from './cidLinkage';
+import { EMAIL_LOGO_CID, EMAIL_BRAND_NAME } from './renderEmailShell';
 import { renderEmailShell } from './renderEmailShell';
 import type { EmailBodyBlock } from './types';
 
@@ -704,6 +706,536 @@ describe('renderEmailShell', () => {
 
       expect(result.text).not.toContain('cid:');
       expect(result.text).not.toContain('img');
+    });
+  });
+
+  describe('attachments', () => {
+    it('returns exactly one attachment for transactional email', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [],
+      });
+
+      expect(result.attachments).toHaveLength(1);
+    });
+
+    it('returns exactly one attachment for notification email', () => {
+      const result = renderEmailShell({
+        emailClass: 'notification',
+        preheader: 'Test',
+        blocks: [],
+        unsubscribeUrl: 'https://example.com/unsub',
+      });
+
+      expect(result.attachments).toHaveLength(1);
+    });
+
+    it('logo attachment has correct filename and contentType', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [],
+      });
+
+      expect(result.attachments[0].filename).toBe('logo-email.png');
+      expect(result.attachments[0].contentType).toBe('image/png');
+    });
+
+    it('logo attachment has correct cid', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [],
+      });
+
+      expect(result.attachments[0].cid).toBe(EMAIL_LOGO_CID);
+    });
+
+    it('logo attachment has contentDisposition inline', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [],
+      });
+
+      expect(result.attachments[0].contentDisposition).toBe('inline');
+    });
+
+    it('logo attachment content is a non-empty Buffer with PNG magic number', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [],
+      });
+
+      const content = result.attachments[0].content;
+      expect(Buffer.isBuffer(content)).toBe(true);
+      expect(content.length).toBeGreaterThan(0);
+      // PNG magic number: 0x89 'P' 'N' 'G'
+      expect(content[0]).toBe(0x89);
+      expect(content[1]).toBe(0x50); // 'P'
+      expect(content[2]).toBe(0x4e); // 'N'
+      expect(content[3]).toBe(0x47); // 'G'
+    });
+  });
+
+  describe('CID linkage validation', () => {
+    it('shell builds html that references all attachments', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [],
+      });
+
+      const referenced = collectCidReferences(result.html);
+      const attached = result.attachments.map((a) => a.cid);
+
+      expect(referenced).toEqual(attached);
+    });
+
+    it('CID linkage holds for notification email with complex body', () => {
+      const result = renderEmailShell({
+        emailClass: 'notification',
+        preheader: 'Weekly digest',
+        blocks: [
+          { kind: 'heading', text: 'Your digest' },
+          { kind: 'paragraph', text: 'Here is what is new.' },
+          { kind: 'button', label: 'View', url: 'https://example.com' },
+        ],
+        unsubscribeUrl: 'https://example.com/unsub',
+      });
+
+      const referenced = collectCidReferences(result.html);
+      const attached = result.attachments.map((a) => a.cid);
+
+      expect(referenced).toEqual(attached);
+    });
+  });
+
+  describe('mediaList block rendering', () => {
+    it('renders mediaList item title, meta, and url', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'mediaList',
+            items: [
+              {
+                title: 'Breaking News',
+                meta: 'NewsChannel · Jan 15',
+                url: 'https://news.example.com/story-1',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.html).toContain('Breaking News');
+      expect(result.html).toContain('NewsChannel · Jan 15');
+      expect(result.html).toContain('https://news.example.com/story-1');
+    });
+
+    it('escapes title, meta, and url in mediaList', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'mediaList',
+            items: [
+              {
+                title: '<script>alert(1)</script>',
+                meta: 'Channel & Date',
+                url: 'https://example.com?a=1&b=2"onload="alert(1)',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+      expect(result.html).toContain('Channel &amp; Date');
+      expect(result.html).toContain('&amp;b=2&quot;onload=&quot;alert(1)');
+      expect(result.html).not.toContain('<script>');
+      expect(result.html).not.toContain('onload="alert(1)');
+    });
+
+    it('renders thumbnail img with imageUrl', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'mediaList',
+            items: [
+              {
+                title: 'Video Title',
+                meta: 'Channel',
+                url: 'https://example.com',
+                imageUrl: 'https://cdn.example.com/thumb.jpg',
+                imageAlt: 'Video thumbnail',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.html).toContain('<img');
+      expect(result.html).toContain('src="https://cdn.example.com/thumb.jpg"');
+      expect(result.html).toContain('alt="Video thumbnail"');
+    });
+
+    it('thumbnail img has width="100%" attribute and css', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'mediaList',
+            items: [
+              {
+                title: 'Video',
+                meta: 'Channel',
+                url: 'https://example.com',
+                imageUrl: 'https://cdn.example.com/thumb.jpg',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.html).toContain('width="100%"');
+      expect(result.html).toContain('width: 100%');
+    });
+
+    it('thumbnail img has height: auto in css', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'mediaList',
+            items: [
+              {
+                title: 'Video',
+                meta: 'Channel',
+                url: 'https://example.com',
+                imageUrl: 'https://cdn.example.com/thumb.jpg',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.html).toContain('height: auto');
+      expect(result.html).not.toContain('height="');
+    });
+
+    it('thumbnail img does not have fixed pixel width or height', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'mediaList',
+            items: [
+              {
+                title: 'Video',
+                meta: 'Channel',
+                url: 'https://example.com',
+                imageUrl: 'https://cdn.example.com/thumb.jpg',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.html).not.toContain('width="168"');
+      expect(result.html).not.toContain('height="94"');
+    });
+
+    it('mediaList row td has width: 100%', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'mediaList',
+            items: [
+              {
+                title: 'Video',
+                meta: 'Channel',
+                url: 'https://example.com',
+                imageUrl: 'https://cdn.example.com/thumb.jpg',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.html).toContain('width: 100%');
+    });
+
+    it('renders mediaList item without imageUrl (text-only)', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'mediaList',
+            items: [
+              {
+                title: 'Article',
+                meta: 'Source · Date',
+                url: 'https://example.com/article',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.html).toContain('Article');
+      expect(result.html).toContain('Source · Date');
+      expect(result.html).toContain('https://example.com/article');
+      // Should not contain an img tag for this item
+      expect(result.html.split('<img').length - 1).toBe(1); // only the logo img
+    });
+
+    it('renders mediaList item with null imageUrl (text-only)', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'mediaList',
+            items: [
+              {
+                title: 'Article',
+                meta: 'Source · Date',
+                url: 'https://example.com/article',
+                imageUrl: null,
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.html).toContain('Article');
+      expect(result.html).not.toContain('src="null"');
+      expect(result.html.split('<img').length - 1).toBe(1); // only the logo img
+    });
+
+    it('renders mediaList in text version as dash-separated lines', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'mediaList',
+            items: [
+              {
+                title: 'Video One',
+                meta: 'Channel A',
+                url: 'https://example.com/v1',
+              },
+              {
+                title: 'Video Two',
+                meta: 'Channel B',
+                url: 'https://example.com/v2',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.text).toContain('- Video One (Channel A): https://example.com/v1');
+      expect(result.text).toContain('- Video Two (Channel B): https://example.com/v2');
+    });
+  });
+
+  describe('footnote block rendering', () => {
+    it('renders footnote text', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'footnote',
+            text: 'We never store your passwords.',
+          },
+        ],
+      });
+
+      expect(result.html).toContain('We never store your passwords.');
+    });
+
+    it('renders footnote links separated by middot', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'footnote',
+            text: 'Privacy policy',
+            links: [
+              { label: 'Privacy', url: 'https://example.com/privacy' },
+              { label: 'Terms', url: 'https://example.com/terms' },
+            ],
+          },
+        ],
+      });
+
+      expect(result.html).toContain('Privacy policy');
+      expect(result.html).toContain('href="https://example.com/privacy"');
+      expect(result.html).toContain('href="https://example.com/terms"');
+      expect(result.html).toContain('Privacy');
+      expect(result.html).toContain('Terms');
+      expect(result.html).toContain('&middot;');
+    });
+
+    it('escapes footnote text', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'footnote',
+            text: 'Tom & Jerry <love> cookies',
+          },
+        ],
+      });
+
+      expect(result.html).toContain('Tom &amp; Jerry &lt;love&gt; cookies');
+      expect(result.html).not.toContain('Tom & Jerry');
+    });
+
+    it('escapes footnote link labels and urls', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'footnote',
+            text: 'Links',
+            links: [
+              {
+                label: 'Click "here" & go',
+                url: 'https://example.com?a=1&b=2"onclick="alert(1)',
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result.html).toContain('Click &quot;here&quot; &amp; go');
+      expect(result.html).toContain('&amp;b=2&quot;onclick=&quot;alert(1)');
+      expect(result.html).not.toContain('onclick="alert(1)');
+    });
+
+    it('renders footnote without links', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'footnote',
+            text: 'Just text, no links.',
+          },
+        ],
+      });
+
+      expect(result.html).toContain('Just text, no links.');
+      // Should not have any links in this footnote (but still has footer unsubscribe if notification)
+    });
+
+    it('renders footnote in text version as text followed by link lines', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'footnote',
+            text: 'Learn more',
+            links: [
+              { label: 'Privacy', url: 'https://example.com/privacy' },
+              { label: 'Terms', url: 'https://example.com/terms' },
+            ],
+          },
+        ],
+      });
+
+      expect(result.text).toContain('Learn more');
+      expect(result.text).toContain('Privacy: https://example.com/privacy');
+      expect(result.text).toContain('Terms: https://example.com/terms');
+    });
+
+    it('footnote with no links renders link line omitted in html', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [
+          {
+            kind: 'footnote',
+            text: 'Standalone text',
+            links: [],
+          },
+        ],
+      });
+
+      expect(result.html).toContain('Standalone text');
+      // Should not have a link line since links array is empty
+      const footnoteSection = result.html.substring(
+        result.html.indexOf('Standalone text'),
+      );
+      expect(footnoteSection).not.toContain('href');
+    });
+  });
+
+  describe('EMAIL_BRAND_NAME export', () => {
+    it('exports EMAIL_BRAND_NAME as MyOrganizer', () => {
+      expect(EMAIL_BRAND_NAME).toBe('MyOrganizer');
+    });
+
+    it('EMAIL_BRAND_NAME appears in html footer', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [],
+      });
+
+      expect(result.html).toContain(`© ${new Date().getFullYear()} ${EMAIL_BRAND_NAME}`);
+    });
+
+    it('EMAIL_BRAND_NAME appears in html title tag', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [],
+      });
+
+      expect(result.html).toContain(`<title>${EMAIL_BRAND_NAME}</title>`);
+    });
+
+    it('EMAIL_BRAND_NAME appears in logo alt text', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [],
+      });
+
+      expect(result.html).toContain(`alt="${EMAIL_BRAND_NAME}"`);
+    });
+
+    it('EMAIL_BRAND_NAME appears in text footer', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Test',
+        blocks: [],
+      });
+
+      expect(result.text).toContain(`© ${new Date().getFullYear()} ${EMAIL_BRAND_NAME}`);
     });
   });
 });

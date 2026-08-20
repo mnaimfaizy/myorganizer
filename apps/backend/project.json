@@ -12,7 +12,7 @@
         "webpackConfig": "apps/backend/webpack.config.js",
         "main": "apps/backend/src/main.ts",
         "tsConfig": "apps/backend/tsconfig.app.json",
-        "assets": ["apps/backend/src/assets", "apps/backend/src/templates"],
+        "assets": ["apps/backend/src/assets"],
         "externalDependencies": "all",
         "generatePackageJson": true,
         "outputHashing": "none",

@@ -1,7 +1,6 @@
+import { EMAIL_BRAND_NAME, renderEmailShell } from '@myorganizer/email-shell';
 import bcrypt from 'bcrypt';
-import fs from 'fs';
 import { JsonWebTokenError, JwtPayload, TokenExpiredError } from 'jsonwebtoken';
-import path from 'path';
 import {
   EmailAlreadyVerifiedError,
   LastPlatformAdminError,
@@ -430,19 +429,28 @@ class UserService {
     );
     const verifyUrl = `${frontendBaseUrl}/verify/email?token=${token}`;
 
-    const htmlTemplate = this.readHtmlTemplate('verify-email.html');
-
-    // Replace placeholders with actual values
-    const filledTemplate = htmlTemplate
-      .replace('[Verification Link]', verifyUrl)
-      .replace('[Your Company]', process.env.APP_NAME)
-      .replace('[Your Company]', process.env.APP_NAME);
+    // Transactional Email: a User who opted out of this could never activate
+    // their account, so the class declaration is what keeps the shell from
+    // putting an unsubscribe link on it (ADR 0034).
+    const message = renderEmailShell({
+      emailClass: 'transactional',
+      preheader: 'Confirm your email address to finish setting up your account.',
+      blocks: [
+        { kind: 'heading', text: `Welcome to ${EMAIL_BRAND_NAME}` },
+        {
+          kind: 'paragraph',
+          text: 'Thank you for registering. Confirm your email address to activate your account.',
+        },
+        { kind: 'button', label: 'Verify email', url: verifyUrl },
+        {
+          kind: 'paragraph',
+          text: 'If you did not create an account, no further action is required.',
+        },
+      ],
+    });
 
     try {
-      await sendEmail(user.email, 'Verify your email', {
-        html: filledTemplate,
-        text: `Verify your email by visiting: ${verifyUrl}`,
-      });
+      await sendEmail(user.email, 'Verify your email', message);
       return token;
     } catch {
       return new Error('Failed to send verification email');
@@ -460,43 +468,29 @@ class UserService {
     );
     const resetUrl = `${frontendBaseUrl}/reset/password?token=${token}`;
 
-    const htmlTemplate = this.readHtmlTemplate('reset-password.html');
-
-    // Replace placeholders with actual values
-    const filledTemplate = htmlTemplate
-      .replace('[Reset Link]', resetUrl)
-      .replace('[Your Company]', process.env.APP_NAME);
+    const message = renderEmailShell({
+      emailClass: 'transactional',
+      preheader: 'Use the link inside to choose a new password.',
+      blocks: [
+        { kind: 'heading', text: 'Reset your password' },
+        {
+          kind: 'paragraph',
+          text: 'We received a request to reset your password. Use the button below to choose a new one.',
+        },
+        { kind: 'button', label: 'Reset password', url: resetUrl },
+        {
+          kind: 'paragraph',
+          text: 'If you did not request a password reset, no further action is required.',
+        },
+      ],
+    });
 
     try {
-      await sendEmail(user.email, 'Reset your password', {
-        html: filledTemplate,
-        text: `Reset your password by visiting: ${resetUrl}`,
-      });
+      await sendEmail(user.email, 'Reset your password', message);
       return token;
     } catch {
       return new Error('Failed to send password reset email');
     }
-  }
-
-  private readHtmlTemplate(fileName: string): string {
-    const candidates = [
-      // Nx webpack build output (templates are copied as an asset)
-      path.join(__dirname, 'templates', fileName),
-      // Fallback for alternate runtimes/layouts
-      path.join(__dirname, '../templates', fileName),
-    ];
-
-    for (const templatePath of candidates) {
-      if (fs.existsSync(templatePath)) {
-        return fs.readFileSync(templatePath, 'utf8');
-      }
-    }
-
-    throw new Error(
-      `Email template '${fileName}' not found. Looked in: ${candidates.join(
-        ', ',
-      )}`,
-    );
   }
 
   async logout(userId: string, refreshToken: string): Promise<User> {

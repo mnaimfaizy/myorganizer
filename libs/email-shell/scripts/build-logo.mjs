@@ -14,7 +14,7 @@
  *
  * Run via:  yarn nx run email-shell:build-logo
  */
-import { readFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -33,6 +33,8 @@ const SVG_SOURCE = join(
 );
 const OUT_DIR = join(here, '..', 'src', 'assets');
 const OUT_FILE = join(OUT_DIR, 'logo-email.png');
+const GENERATED_DIR = join(here, '..', 'src', 'generated');
+const GENERATED_FILE = join(GENERATED_DIR, 'logoEmailPng.ts');
 
 // 3x the 140px display width the Email Shell template requests, so the logo
 // stays crisp on retina displays.
@@ -57,6 +59,44 @@ function heightForWidth(svg) {
   }
 
   return Math.round((OUTPUT_WIDTH * height) / width);
+}
+
+/**
+ * Emits the PNG a second time as a base64 TypeScript literal.
+ *
+ * The shell attaches the logo from this module rather than reading the `.png`
+ * off disk, because the file sits at one path in the TypeScript sources and
+ * another inside the webpack bundle the backend ships. Resolving that
+ * difference at runtime is the dist-versus-dev candidate-path lookup ADR 0034
+ * set out to remove, so the bytes are compiled in instead.
+ *
+ * @param {Buffer} png
+ */
+function writeBase64Module(png) {
+  const base64 = png.toString('base64');
+  const lines = (base64.match(/.{1,96}/g) ?? []).map((chunk) => `  '${chunk}'`);
+
+  mkdirSync(GENERATED_DIR, { recursive: true });
+  writeFileSync(
+    GENERATED_FILE,
+    [
+      '/**',
+      ' * GENERATED FILE — do not edit.',
+      ' *',
+      ' * Produced by `yarn nx run email-shell:build-logo` from',
+      ' * `libs/email-shell/src/assets/logo-email.png`.',
+      ' *',
+      ' * The logo ships as a base64 literal rather than a file the shell reads at',
+      ' * runtime. A mail body must be renderable from a pure function with no disk',
+      ' * access, and the alternative — resolving an asset path that differs between',
+      ' * the TypeScript sources and the webpack bundle — is the exact dist-versus-dev',
+      ' * lookup that used to guard the auth templates (ADR 0034).',
+      ' */',
+      'export const LOGO_EMAIL_PNG_BASE64 =',
+      `${lines.join(' +\n')};`,
+      '',
+    ].join('\n'),
+  );
 }
 
 async function run() {
@@ -92,9 +132,13 @@ async function run() {
     await browser.close();
   }
 
+  writeBase64Module(readFileSync(OUT_FILE));
+
   console.log(
     `email-shell: generated ${relative(repoRoot, OUT_FILE)} ` +
-      `(${OUTPUT_WIDTH}x${outputHeight}) from ${relative(repoRoot, SVG_SOURCE)}.`,
+      `(${OUTPUT_WIDTH}x${outputHeight}) and ` +
+      `${relative(repoRoot, GENERATED_FILE)} ` +
+      `from ${relative(repoRoot, SVG_SOURCE)}.`,
   );
 }
 

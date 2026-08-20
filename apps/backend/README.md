@@ -443,7 +443,6 @@ apps/backend/
 │   ├── swagger/             # Generated API documentation
 │   │   ├── swagger.json
 │   │   └── swagger.yaml
-│   ├── templates/           # Email templates, etc.
 │   ├── types/               # TypeScript type definitions
 │   ├── utils/               # Utility functions
 │   │   └── passport.ts      # Passport configuration
@@ -648,7 +647,6 @@ This will:
 dist/apps/backend/
 ├── main.js              # Bundled application
 ├── assets/              # Static assets
-├── templates/           # Templates
 └── package.json         # Production dependencies
 ```
 
