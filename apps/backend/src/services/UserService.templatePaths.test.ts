@@ -1,6 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 
+import sendEmail from './EmailService';
+import userService from './UserService';
+
+// jest.mock calls are hoisted above these imports at transform time, so the mocks are
+// installed before either module is evaluated despite appearing below them here.
 jest.mock('../prisma', () => ({
   __esModule: true,
   createPrismaClient: jest.fn(() => ({
@@ -8,9 +13,6 @@ jest.mock('../prisma', () => ({
   })),
   PrismaClient: jest.fn(),
 }));
-
-import sendEmail from './EmailService';
-import userService from './UserService';
 
 jest.mock('./EmailService', () => ({
   __esModule: true,
@@ -38,7 +40,7 @@ describe('UserService email template paths', () => {
     process.env.APP_NAME = 'MyOrganizer';
 
     readFileSyncSpy.mockReturnValue(
-      '<a href="[Verification Link]">Verify</a> - [Your Company]'
+      '<a href="[Verification Link]">Verify</a> - [Your Company]',
     );
   });
 
@@ -54,13 +56,13 @@ describe('UserService email template paths', () => {
     const distTemplatePath = path.join(
       serviceDir,
       'templates',
-      'verify-email.html'
+      'verify-email.html',
     );
     const fallbackTemplatePath = path.join(
       serviceDir,
       '..',
       'templates',
-      'verify-email.html'
+      'verify-email.html',
     );
 
     existsSyncSpy.mockImplementation((p: any) => p === distTemplatePath);
@@ -74,7 +76,7 @@ describe('UserService email template paths', () => {
     expect(readFileSyncSpy).toHaveBeenCalledWith(distTemplatePath, 'utf8');
     expect(readFileSyncSpy).not.toHaveBeenCalledWith(
       fallbackTemplatePath,
-      'utf8'
+      'utf8',
     );
 
     expect(sendEmail).toHaveBeenCalledTimes(1);
@@ -83,12 +85,12 @@ describe('UserService email template paths', () => {
       'Verify your email',
       expect.objectContaining({
         html: expect.stringContaining(
-          'http://localhost:3000/verify/email?token=test-token'
+          'http://localhost:3000/verify/email?token=test-token',
         ),
         text: expect.stringContaining(
-          'http://localhost:3000/verify/email?token=test-token'
+          'http://localhost:3000/verify/email?token=test-token',
         ),
-      })
+      }),
     );
   });
 
@@ -99,13 +101,13 @@ describe('UserService email template paths', () => {
     const distTemplatePath = path.join(
       serviceDir,
       'templates',
-      'verify-email.html'
+      'verify-email.html',
     );
     const fallbackTemplatePath = path.join(
       serviceDir,
       '..',
       'templates',
-      'verify-email.html'
+      'verify-email.html',
     );
 
     existsSyncSpy.mockImplementation((p: any) => p === fallbackTemplatePath);
