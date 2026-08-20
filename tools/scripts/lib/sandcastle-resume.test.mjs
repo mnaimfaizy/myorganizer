@@ -6,10 +6,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  DISCARD_FLAG,
   RESUME_GUARDRAILS,
   SLICE_DISPOSITIONS,
   buildResumeBrief,
   decideSliceDisposition,
+  isDiscardRequested,
+  planWaveForwarding,
+  validateDiscardScope,
 } from './sandcastle-resume.mjs';
 
 const usableCheckpoint = {
@@ -183,4 +187,111 @@ test('the resume brief does not inline the diff', () => {
 
   assert.ok(!brief.includes('diff --git'));
   assert.match(brief, /git show aaa111/);
+});
+
+// ─── Discarding a checkpoint ──────────────────────────────────────────────────
+
+const argv = (...args) => ['node', 'main.mts', ...args];
+
+test('the discard flag is recognised in argv', () => {
+  assert.equal(isDiscardRequested(argv('--prd', '401', DISCARD_FLAG)), true);
+  assert.equal(isDiscardRequested(argv('--prd', '401')), false);
+});
+
+test('a discard in PRD mode must name the slice it applies to', () => {
+  const result = validateDiscardScope({
+    discardRequested: true,
+    mode: 'prd',
+    issueNumber: undefined,
+  });
+
+  assert.equal(result.ok, false);
+  assert.match(result.message, /--issue/);
+});
+
+test('a discard in PRD mode is accepted when a slice is targeted', () => {
+  assert.equal(
+    validateDiscardScope({
+      discardRequested: true,
+      mode: 'prd',
+      issueNumber: 396,
+    }).ok,
+    true,
+  );
+});
+
+test('a discard is refused in sweep mode', () => {
+  // A sweep selects work nobody named, so a blanket discard would destroy
+  // checkpoints the maintainer has never looked at.
+  const result = validateDiscardScope({
+    discardRequested: true,
+    mode: 'sweep',
+  });
+
+  assert.equal(result.ok, false);
+});
+
+test('issue mode accepts a discard — the issue is already the target', () => {
+  assert.equal(
+    validateDiscardScope({
+      discardRequested: true,
+      mode: 'issue',
+      issueNumber: 42,
+    }).ok,
+    true,
+  );
+});
+
+test('no discard requested is always in scope', () => {
+  for (const mode of ['prd', 'issue', 'sweep']) {
+    assert.equal(
+      validateDiscardScope({ discardRequested: false, mode }).ok,
+      true,
+    );
+  }
+});
+
+// ─── Wave driver forwarding ───────────────────────────────────────────────────
+
+test('the wave driver refuses the discard flag', () => {
+  const result = planWaveForwarding(argv('--prd', '401', DISCARD_FLAG));
+
+  assert.equal(result.ok, false);
+  assert.match(result.message, /not accepted by the wave driver/);
+});
+
+test('the wave driver refusal names the single-slice command to use instead', () => {
+  const result = planWaveForwarding(argv('--prd', '401', DISCARD_FLAG));
+
+  assert.match(result.message, /--issue <slice>/);
+  assert.match(result.message, /dispatch-waves\.mts --prd/);
+});
+
+test('the wave driver never forwards the discard flag', () => {
+  const result = planWaveForwarding(argv('--prd', '401', DISCARD_FLAG));
+
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.forwarded, []);
+  assert.equal(result.forwarded.includes(DISCARD_FLAG), false);
+});
+
+test('the wave driver forwards flags it does not own', () => {
+  const result = planWaveForwarding(
+    argv('--prd', '401', '--agent', 'cursor', '--model', 'x'),
+  );
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.forwarded, ['--agent', 'cursor', '--model', 'x']);
+});
+
+test('the wave driver keeps its own flags to itself', () => {
+  const result = planWaveForwarding(
+    argv('--prd', '401', '--plan', '--agent', 'copilot'),
+  );
+
+  assert.equal(result.ok, true);
+  assert.equal(result.forwarded.includes('--prd'), false);
+  assert.equal(result.forwarded.includes('401'), false);
+  assert.equal(result.forwarded.includes('--plan'), false);
+  assert.deepEqual(result.forwarded, ['--agent', 'copilot']);
 });

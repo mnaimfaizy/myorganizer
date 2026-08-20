@@ -16,6 +16,8 @@ import {
   SLICE_DISPOSITIONS,
   buildResumeBrief,
   decideSliceDisposition,
+  isDiscardRequested,
+  validateDiscardScope,
 } from '../tools/scripts/lib/sandcastle-resume.mjs';
 
 const REPO = 'mnaimfaizy/myorganizer';
@@ -214,6 +216,7 @@ Usage:
   Sweep mode      yarn dispatch-agents --all-standalone [--limit <n>] [--base <ref>]
 
   All accept [--agent claude|cursor|copilot] [--model <model>] [--dry-run]
+  Interrupted slices resume by default; --fresh discards one deliberately.
 
 Flags:
   --prd <issue-number>   PRD issue number to dispatch. Slices integrate into the
@@ -232,6 +235,9 @@ Flags:
                          base, integration target — then exit. Touches no worktree,
                          container, or GitHub state, and builds no sandbox image.
   --yes, -y              Skip the sweep confirmation prompt.
+  --fresh                Discard a slice's preserved checkpoint and start it over.
+                         Without it, an interrupted slice RESUMES. In PRD mode this
+                         must name its slice: --prd <n> --issue <slice> --fresh.
   --agent <name>         Agent provider to use (default: SANDCASTLE_AGENT or claude)
   --model <model>        Override the model for this run (default: env/provider routing)
   --help                 Show this help text
@@ -309,6 +315,17 @@ if (baseFlag && mode === 'prd') {
 
 const dryRun = process.argv.includes('--dry-run');
 const assumeYes = process.argv.includes('--yes') || process.argv.includes('-y');
+
+// Resume is the default for a slice carrying a checkpoint, so discarding that work
+// is an explicit act. Scope is validated once the mode is known — see below.
+const discardRequested = isDiscardRequested(process.argv);
+
+const discardScope = validateDiscardScope({
+  discardRequested,
+  mode,
+  issueNumber,
+});
+if (!discardScope.ok) fail(discardScope.message);
 
 const limitValue = getArgValue('limit');
 if (limitValue && mode !== 'sweep') {
@@ -1776,7 +1793,10 @@ while (pendingSlices.length > 0) {
 
     // Does this slice already carry a Slice Checkpoint from an interrupted run?
     // Resume is the default; destroying preserved work is the deliberate act.
-    const disposition = decideSliceDisposition(inspectSliceBranch(sliceBranch));
+    const disposition = decideSliceDisposition({
+      ...inspectSliceBranch(sliceBranch),
+      discardRequested,
+    });
 
     if (disposition === SLICE_DISPOSITIONS.skipStale) {
       // Slices stack, so a checkpoint left behind while later slices integrated is

@@ -41,7 +41,8 @@ fi
 if ! git diff --cached --quiet --diff-filter=ACMRT -- \
  tools/scripts/lib/sandcastle-resume.mjs \
  tools/scripts/lib/sandcastle-resume.test.mjs \
- .sandcastle/main.mts
+ .sandcastle/main.mts \
+ .sandcastle/dispatch-waves.mts
 then
 corepack yarn sandcastle:resume:test
 fi

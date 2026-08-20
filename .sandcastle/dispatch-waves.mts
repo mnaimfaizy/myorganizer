@@ -21,6 +21,8 @@ import dotenv from 'dotenv';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 
+import { planWaveForwarding } from '../tools/scripts/lib/sandcastle-resume.mjs';
+
 dotenv.config({ path: join(process.cwd(), '.sandcastle', '.env') });
 
 const REPO = 'mnaimfaizy/myorganizer';
@@ -40,6 +42,7 @@ Flags:
   --agent <name>         Forwarded to dispatch-agents
   --model <model>        Forwarded to dispatch-agents
   --plan                 Preview wave ordering only
+  (--fresh is refused here — discard one slice with dispatch-agents instead)
   --help                 Show this help text
 
 Environment:
@@ -72,18 +75,13 @@ if (prdFlag === -1 || !process.argv[prdFlag + 1]) {
 const prdNumber = parseInt(process.argv[prdFlag + 1], 10);
 if (isNaN(prdNumber)) fail('--prd must be a number.');
 
-const forwardedArgs: string[] = [];
-for (let i = 2; i < process.argv.length; i++) {
-  const arg = process.argv[i];
-  if (arg === '--prd') {
-    i += 1;
-    continue;
-  }
-  if (arg === '--plan') {
-    continue;
-  }
-  forwardedArgs.push(arg);
-}
+// Everything this driver does not own itself forwards to the orchestrator — except
+// the discard flag, which it refuses outright. A discard is a surgical instruction
+// about ONE inspected attempt; a wave run spans every slice in the PRD, so forwarding
+// it would destroy checkpoints across the whole feature. See ADR 0035.
+const forwarding = planWaveForwarding(process.argv);
+if (!forwarding.ok) fail(forwarding.message);
+const forwardedArgs: string[] = forwarding.forwarded;
 
 // ─── Fetch all AFK slices for this PRD ────────────────────────────────────────
 
@@ -279,12 +277,24 @@ for (let i = 0; i < waves.length; i++) {
   });
 
   if (failedSlices.length > 0) {
+    const incomplete = failedSlices.map((n) => `#${n}`).join(', ');
     fail(
-      `Wave ${i + 1} did not fully complete. Incomplete: ${failedSlices
-        .map((n) => `#${n}`)
-        .join(', ')}.\n` +
-        `These slices block later waves. Fix them, then re-run — completed ` +
-        `waves are detected via status:done and skipped automatically.`,
+      `Wave ${i + 1} did not fully complete. Incomplete: ${incomplete}.\n` +
+        `These slices block later waves.\n\n` +
+        `An incomplete slice may have been INTERRUPTED rather than broken. If so its\n` +
+        `work was preserved as a Slice Checkpoint on its slice branch and re-running\n` +
+        `resumes from it — nothing is lost by trying again. Check with:\n` +
+        `  git log --oneline <base>..slice/<n>-<slug>\n\n` +
+        `Recovery:\n` +
+        `  • Re-run THIS driver — it recomputes the wave gating and skips completed\n` +
+        `    waves via status:done. This is the normal path.\n` +
+        `  • To throw one attempt away first:\n` +
+        `      npx tsx .sandcastle/main.mts --prd ${prdNumber} --issue <slice> --fresh\n\n` +
+        `Do NOT recover with a plain \`dispatch-agents --prd ${prdNumber}\`. This driver gates\n` +
+        `each wave by removing \`ready-for-agent\` from every other slice and does not\n` +
+        `restore it on exit, so a direct dispatch right now would see ONLY wave ${i + 1}\n` +
+        `and silently skip every later wave.\n\n` +
+        `See docs/sandcastle/RUNBOOK.md — "Recovering an interrupted run".`,
     );
   }
 

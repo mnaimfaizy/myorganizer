@@ -135,3 +135,94 @@ export function buildResumeBrief({
     basePrompt,
   ].join('\n');
 }
+
+// ─── Discarding a checkpoint ──────────────────────────────────────────────────
+// Resume is the default, so destroying preserved work needs an argument. These
+// helpers decide whether that argument was given and whether it was given somewhere
+// it is allowed to apply.
+
+/** The flag that discards a Slice Checkpoint instead of resuming from it. */
+export const DISCARD_FLAG = '--fresh';
+
+/** @param {string[]} argv */
+export function isDiscardRequested(argv) {
+  return argv.includes(DISCARD_FLAG);
+}
+
+/**
+ * A discard is a surgical instruction about ONE attempt a maintainer has inspected
+ * and judged worthless. Applied to a whole PRD it becomes "destroy any checkpoint you
+ * encounter", which is the blast radius resume exists to remove — so in PRD mode the
+ * flag is only accepted alongside the per-slice targeting that already exists.
+ *
+ * @param {object} input
+ * @param {boolean} input.discardRequested
+ * @param {'prd'|'issue'|'sweep'} input.mode
+ * @param {number} [input.issueNumber]  The `--issue` target, when one was given.
+ * @returns {{ ok: boolean, message: string }}  `message` is empty when ok.
+ */
+export function validateDiscardScope({ discardRequested, mode, issueNumber }) {
+  if (!discardRequested) return { ok: true, message: '' };
+
+  if (mode === 'prd' && issueNumber === undefined) {
+    return {
+      ok: false,
+      message:
+        `${DISCARD_FLAG} discards preserved work, so it must name the slice it applies to.\n` +
+        `Re-run with the slice targeted:  --prd <n> --issue <slice> ${DISCARD_FLAG}`,
+    };
+  }
+
+  if (mode === 'sweep') {
+    return {
+      ok: false,
+      message:
+        `${DISCARD_FLAG} is not accepted in sweep mode — a sweep selects work nobody named,\n` +
+        `so a blanket discard would destroy checkpoints you have never seen.\n` +
+        `Discard one issue at a time:  --issue <n> ${DISCARD_FLAG}`,
+    };
+  }
+
+  return { ok: true, message: '' };
+}
+
+/**
+ * Decide what the wave driver forwards to the orchestrator.
+ *
+ * The wave driver is a bulk unattended pass across an entire PRD, so it refuses the
+ * discard flag outright rather than forwarding it: composing "discard" with "every
+ * slice in this PRD" is exactly the blast radius this feature removes. Everything the
+ * driver does not own itself still forwards untouched.
+ *
+ * @param {string[]} argv  Full process argv.
+ * @returns {{ ok: boolean, message: string, forwarded: string[] }}
+ */
+export function planWaveForwarding(argv) {
+  if (isDiscardRequested(argv)) {
+    return {
+      ok: false,
+      forwarded: [],
+      message:
+        `${DISCARD_FLAG} is not accepted by the wave driver.\n` +
+        `It discards preserved work, and a wave run spans every slice in the PRD — so it\n` +
+        `would destroy checkpoints across the whole feature, not the one you meant.\n\n` +
+        `Discard the single attempt you inspected, then re-run the waves:\n` +
+        `  npx tsx .sandcastle/main.mts --prd <n> --issue <slice> ${DISCARD_FLAG}\n` +
+        `  npx tsx .sandcastle/dispatch-waves.mts --prd <n>`,
+    };
+  }
+
+  const forwarded = [];
+  for (let index = 2; index < argv.length; index += 1) {
+    const arg = argv[index];
+    // --prd and --plan are the driver's own; everything else belongs downstream.
+    if (arg === '--prd') {
+      index += 1;
+      continue;
+    }
+    if (arg === '--plan') continue;
+    forwarded.push(arg);
+  }
+
+  return { ok: true, message: '', forwarded };
+}
