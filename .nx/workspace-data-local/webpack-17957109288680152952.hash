@@ -1,0 +1,132 @@
+{
+  "14260736254479815122": {
+    "targets": {
+      "build": {
+        "command": "webpack-cli build",
+        "options": {
+          "cwd": "apps/backend",
+          "args": [
+            "--node-env=production"
+          ]
+        },
+        "cache": true,
+        "dependsOn": [
+          "^build"
+        ],
+        "inputs": [
+          "production",
+          "^production",
+          {
+            "externalDependencies": [
+              "webpack-cli"
+            ]
+          },
+          {
+            "json": "{workspaceRoot}/tsconfig.json",
+            "fields": [
+              "extends",
+              "files",
+              "include"
+            ]
+          }
+        ],
+        "outputs": [],
+        "metadata": {
+          "technologies": [
+            "webpack"
+          ],
+          "description": "Runs Webpack build",
+          "help": {
+            "command": "yarn webpack-cli build --help",
+            "example": {
+              "options": {
+                "json": "stats.json"
+              },
+              "args": [
+                "--profile"
+              ]
+            }
+          }
+        }
+      },
+      "serve": {
+        "continuous": true,
+        "command": "webpack-cli serve",
+        "options": {
+          "cwd": "apps/backend",
+          "args": [
+            "--node-env=development"
+          ]
+        },
+        "metadata": {
+          "technologies": [
+            "webpack"
+          ],
+          "description": "Starts Webpack dev server",
+          "help": {
+            "command": "yarn webpack-cli serve --help",
+            "example": {
+              "options": {
+                "args": [
+                  "--client-progress",
+                  "--history-api-fallback "
+                ]
+              }
+            }
+          }
+        }
+      },
+      "preview": {
+        "continuous": true,
+        "command": "webpack-cli serve",
+        "options": {
+          "cwd": "apps/backend",
+          "args": [
+            "--node-env=production"
+          ]
+        },
+        "metadata": {
+          "technologies": [
+            "webpack"
+          ],
+          "description": "Starts Webpack dev server in production mode",
+          "help": {
+            "command": "yarn webpack-cli serve --help",
+            "example": {
+              "options": {
+                "args": [
+                  "--client-progress",
+                  "--history-api-fallback "
+                ]
+              }
+            }
+          }
+        }
+      },
+      "serve-static": {
+        "continuous": true,
+        "dependsOn": [
+          "build"
+        ],
+        "executor": "@nx/web:file-server",
+        "options": {
+          "buildTarget": "build",
+          "spa": true
+        }
+      },
+      "build-deps": {
+        "dependsOn": [
+          "^build"
+        ]
+      },
+      "watch-deps": {
+        "continuous": true,
+        "dependsOn": [
+          "build-deps"
+        ],
+        "command": "yarn nx watch --projects backend --includeDependentProjects -- yarn nx build-deps backend"
+      }
+    },
+    "metadata": {}
+  }
+}

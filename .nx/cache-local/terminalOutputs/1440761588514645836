@@ -1,0 +1,51 @@
+
+Linting "web-pages-mobile-numbers"...
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/mobile-numbers/src/components/AddLocationPageClient.tsx[24m[0m
+[0m  [2m70:19[22m  [33mwarning[39m  Compilation Skipped: Use of incompatible library[0m
+[0m[0m
+[0mThis API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.[0m
+[0m[0m
+[0m/home/agent/workspace/libs/web/pages/mobile-numbers/src/components/AddLocationPageClient.tsx:70:19[0m
+[0m  68 |   });[0m
+[0m  69 |[0m
+[0m> 70 |   const orgName = usageForm.watch('orgName');[0m
+[0m     |                   ^^^^^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.[0m
+[0m  71 |   const orgType = usageForm.watch('orgType');[0m
+[0m  72 |   const updateMethod = usageForm.watch('updateMethod');[0m
+[0m  73 |   const priority = usageForm.watch('priority');  [2mreact-hooks/incompatible-library[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/mobile-numbers/src/components/MobileNumbersPageClient.tsx[24m[0m
+[0m  [2m30:19[22m  [33mwarning[39m  Unnecessary escape character: \(                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     [2mno-useless-escape[22m[0m
+[0m  [2m30:21[22m  [33mwarning[39m  Unnecessary escape character: \)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     [2mno-useless-escape[22m[0m
+[0m  [2m66:17[22m  [33mwarning[39m  Compilation Skipped: Use of incompatible library[0m
+[0m[0m
+[0mThis API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.[0m
+[0m[0m
+[0m/home/agent/workspace/libs/web/pages/mobile-numbers/src/components/MobileNumbersPageClient.tsx:66:17[0m
+[0m  64 |   });[0m
+[0m  65 |[0m
+[0m> 66 |   const label = addForm.watch('label');[0m
+[0m     |                 ^^^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.[0m
+[0m  67 |   const countryCode = addForm.watch('countryCode');[0m
+[0m  68 |   const phoneNumber = addForm.watch('phoneNumber');[0m
+[0m  69 |   const canAdd = addForm.formState.isValid;  [2mreact-hooks/incompatible-library[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/mobile-numbers/src/components/UsageLocationsTable.tsx[24m[0m
+[0m  [2m142:17[22m  [33mwarning[39m  Compilation Skipped: Use of incompatible library[0m
+[0m[0m
+[0mThis API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.[0m
+[0m[0m
+[0m/home/agent/workspace/libs/web/pages/mobile-numbers/src/components/UsageLocationsTable.tsx:142:17[0m
+[0m  140 |   );[0m
+[0m  141 |[0m
+[0m> 142 |   const table = useReactTable({[0m
+[0m      |                 ^^^^^^^^^^^^^ TanStack Table's `useReactTable()` API returns functions that cannot be memoized safely[0m
+[0m  143 |     data: props.usageLocations,[0m
+[0m  144 |     columns,[0m
+[0m  145 |     getCoreRowModel: getCoreRowModel(),  [2mreact-hooks/incompatible-library[22m[0m
+[0m[0m
+[0m[33m[1m✖ 5 problems (0 errors, 5 warnings)[22m[39m[0m
+[0m[33m[1m[22m[39m[0m
+✖ 5 problems (0 errors, 5 warnings)
+

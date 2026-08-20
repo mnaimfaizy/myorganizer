@@ -1,0 +1,67 @@
+
+Linting "web-pages-youtube"...
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/youtube/src/components/QueueRail.spec.tsx[24m[0m
+[0m  [2m44:12[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/youtube/src/components/QueueRail.tsx[24m[0m
+[0m   [2m66:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 'queue'. Either include it or remove the dependency array. Mutable values like 'queue.current' aren't valid dependencies because mutating them doesn't re-render the component                        [2mreact-hooks/exhaustive-deps[22m[0m
+[0m   [2m71:6[22m  [33mwarning[39m  React Hook useEffect has a missing dependency: 'queue'. Either include it or remove the dependency array. If 'setWatched' needs the current value of 'queue', you can also switch to useReducer instead of useState and read 'queue' in the reducer  [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m104:6[22m  [33mwarning[39m  React Hook useCallback has a missing dependency: 'queue'. Either include it or remove the dependency array. Mutable values like 'queue.current' aren't valid dependencies because mutating them doesn't re-render the component                      [2mreact-hooks/exhaustive-deps[22m[0m
+[0m  [2m109:6[22m  [33mwarning[39m  React Hook useCallback has a missing dependency: 'queue'. Either include it or remove the dependency array. Mutable values like 'queue.current' aren't valid dependencies because mutating them doesn't re-render the component                      [2mreact-hooks/exhaustive-deps[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/youtube/src/components/ShortsHardStop.spec.tsx[24m[0m
+[0m   [2m5:36[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m13:31[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/youtube/src/components/ShortsPageClient.spec.tsx[24m[0m
+[0m  [2m16:45[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m20:29[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m28:31[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m40:6[22m   [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m70:43[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m73:23[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m88:40[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/youtube/src/components/ShortsPlayerPanel.spec.tsx[24m[0m
+[0m   [2m5:45[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m31:12[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m48:22[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m57:22[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m66:22[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/youtube/src/components/SubscriptionManager.spec.tsx[24m[0m
+[0m  [2m13:36[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m16:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m19:42[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m22:29[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m23:29[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/youtube/src/components/VideoGrid.spec.tsx[24m[0m
+[0m   [2m7:36[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m10:18[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m11:29[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m17:26[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/youtube/src/components/YouTubeConnectPrompt.spec.tsx[24m[0m
+[0m   [2m6:54[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m17:31[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/youtube/src/components/YouTubeDataPrivacyClient.spec.tsx[24m[0m
+[0m   [2m6:45[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m10:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m13:42[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m19:31[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/youtube/src/components/YouTubePageClient.spec.tsx[24m[0m
+[0m  [2m37:36[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m40:35[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m43:42[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m46:29[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m47:18[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m48:29[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[33m[1m✖ 40 problems (0 errors, 40 warnings)[22m[39m[0m
+[0m[33m[1m[22m[39m[0m
+✖ 40 problems (0 errors, 40 warnings)
+

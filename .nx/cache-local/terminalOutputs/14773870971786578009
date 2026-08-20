@@ -1,0 +1,10 @@
+
+Linting "myorganizer"...
+[0m[0m
+[0m[4m/home/agent/workspace/apps/myorganizer/src/app/api/hello/route.ts[24m[0m
+[0m  [2m1:27[22m  [33mwarning[39m  'request' is defined but never used. Allowed unused args must match /^_/u  [2munused-imports/no-unused-vars[22m[0m
+[0m[0m
+[0m[33m[1m✖ 1 problem (0 errors, 1 warning)[22m[39m[0m
+[0m[33m[1m[22m[39m[0m
+✖ 1 problem (0 errors, 1 warning)
+

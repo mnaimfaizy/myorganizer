@@ -1,0 +1,258 @@
+
+Linting "web-pages-groceries"...
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-list-detail/__tests__/AddExistingItemDialog.spec.tsx[24m[0m
+[0m  [2m13:53[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m26:51[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m30:67[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m43:25[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m48:52[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m56:70[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m75:19[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-list-detail/__tests__/AddItemDialog.integration.spec.tsx[24m[0m
+[0m   [2m11:25[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m22:43[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m26:51[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m35:53[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m48:40[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m49:39[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m50:38[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m51:44[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m52:39[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m60:24[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m64:50[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m72:45[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m93:48[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m106:46[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m115:48[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m127:65[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m142:40[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m143:44[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m144:28[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m159:24[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m192:75[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-list-detail/__tests__/DeleteCatalogItemDialog.spec.tsx[24m[0m
+[0m   [2m14:53[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m27:51[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m30:39[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m31:38[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m32:44[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m33:39[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m35:67[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m48:25[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m53:52[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m199:5[22m   [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-list-detail/__tests__/EditItemDialog.integration.spec.tsx[24m[0m
+[0m   [2m11:25[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m22:43[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m26:28[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m31:51[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m40:53[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m53:40[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m54:39[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m55:38[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m56:44[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m57:39[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m65:24[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m69:50[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m77:45[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m98:48[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m111:46[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m120:48[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m132:65[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m149:40[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m151:44[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m153:28[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m196:19[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m208:68[22m  [33mwarning[39m  Unexpected any. Specify a different type                                                      [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m243:7[22m   [33mwarning[39m  'sampleMinimalItem' is assigned a value but never used                                        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m243:7[22m   [33mwarning[39m  'sampleMinimalItem' is assigned a value but never used. Allowed unused vars must match /^_/u  [2munused-imports/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-list-detail/__tests__/GroceryListView.spec.tsx[24m[0m
+[0m   [2m42:59[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m63:64[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m79:46[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m85:71[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m110:42[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m113:47[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m121:65[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m152:58[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m177:6[22m   [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m207:6[22m   [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m227:73[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m249:70[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m316:60[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-list-detail/__tests__/LinksInput.spec.tsx[24m[0m
+[0m   [2m6:25[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m12:43[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m17:50[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m21:29[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m25:33[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m42:45[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m46:48[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m52:46[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m56:48[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m82:19[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m83:18[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m90:23[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-list-detail/__tests__/TripBoardLineRow.spec.tsx[24m[0m
+[0m  [2m14:59[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m35:64[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m51:46[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m57:71[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m82:70[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-list-detail/__tests__/editItemSchema.spec.ts[24m[0m
+[0m   [2m92:23[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m100:23[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m126:28[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m135:41[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-list-detail/components/EditItemDialog.tsx[24m[0m
+[0m  [2m64:15[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-page/GroceriesErrorBoundary.tsx[24m[0m
+[0m  [2m29:46[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-page/__tests__/CreateListDialog.spec.tsx[24m[0m
+[0m  [2m15:53[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m29:51[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m37:39[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m41:38[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m45:44[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m49:50[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m65:6[22m   [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m81:67[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-page/__tests__/DeleteListConfirmDialog.spec.tsx[24m[0m
+[0m  [2m13:48[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m24:46[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m29:39[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m32:45[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m37:34[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m40:33[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m43:62[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-page/__tests__/GroceriesPageClient.spec.tsx[24m[0m
+[0m    [2m17:36[22m  [33mwarning[39m  Unexpected any. Specify a different type                                          [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m    [2m36:6[22m   [33mwarning[39m  Unexpected any. Specify a different type                                          [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m    [2m50:41[22m  [33mwarning[39m  Unexpected any. Specify a different type                                          [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m    [2m58:25[22m  [33mwarning[39m  Unexpected any. Specify a different type                                          [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m    [2m61:31[22m  [33mwarning[39m  Unexpected any. Specify a different type                                          [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m    [2m71:9[22m   [33mwarning[39m  'React' is assigned a value but never used                                        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m    [2m71:9[22m   [33mwarning[39m  'React' is assigned a value but never used. Allowed unused vars must match /^_/u  [2munused-imports/no-unused-vars[22m[0m
+[0m    [2m80:6[22m   [33mwarning[39m  Unexpected any. Specify a different type                                          [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m110:71[22m  [33mwarning[39m  Unexpected any. Specify a different type                                          [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m140:6[22m   [33mwarning[39m  Unexpected any. Specify a different type                                          [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m168:6[22m   [33mwarning[39m  Unexpected any. Specify a different type                                          [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m383:23[22m  [33mwarning[39m  Forbidden non-null assertion                                                      [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m697:23[22m  [33mwarning[39m  Forbidden non-null assertion                                                      [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m714:23[22m  [33mwarning[39m  Forbidden non-null assertion                                                      [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m733:23[22m  [33mwarning[39m  Forbidden non-null assertion                                                      [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m756:23[22m  [33mwarning[39m  Forbidden non-null assertion                                                      [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m   [2m779:23[22m  [33mwarning[39m  Forbidden non-null assertion                                                      [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m1082:23[22m  [33mwarning[39m  Forbidden non-null assertion                                                      [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m1112:23[22m  [33mwarning[39m  Forbidden non-null assertion                                                      [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m1251:23[22m  [33mwarning[39m  Forbidden non-null assertion                                                      [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-page/__tests__/RenameListDialog.spec.tsx[24m[0m
+[0m    [2m2:46[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m    [2m8:44[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m13:37[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m16:43[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m21:32[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m24:31[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m27:18[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m28:36[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m214:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m256:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m271:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m286:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m298:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m317:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m331:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m349:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m365:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m379:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m394:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m410:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m432:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m446:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m493:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m594:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m621:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m641:20[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-page/__tests__/TripBoardIndex.spec.tsx[24m[0m
+[0m   [2m12:59[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m33:64[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m49:46[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m55:52[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m63:53[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m79:40[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m81:58[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m89:70[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m722:18[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-page/__tests__/TripBoardTripCard.spec.tsx[24m[0m
+[0m  [2m10:59[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m31:64[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m47:46[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m53:52[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-page/components/CreateListDialog.tsx[24m[0m
+[0m  [2m31:6[22m  [33mwarning[39m  'CreateListFormData' is defined but never used                                        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m31:6[22m  [33mwarning[39m  'CreateListFormData' is defined but never used. Allowed unused vars must match /^_/u  [2munused-imports/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/groceries-page/components/RenameListDialog.tsx[24m[0m
+[0m  [2m32:6[22m  [33mwarning[39m  'RenameListFormData' is defined but never used                                        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m32:6[22m  [33mwarning[39m  'RenameListFormData' is defined but never used. Allowed unused vars must match /^_/u  [2munused-imports/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/shared/components/__tests__/CategoryFilterBar.spec.tsx[24m[0m
+[0m    [2m3:17[22m  [33mwarning[39m  Unexpected any. Specify a different type                                             [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m280:15[22m  [33mwarning[39m  'rerender' is assigned a value but never used                                        [2m@typescript-eslint/no-unused-vars[22m[0m
+[0m  [2m280:15[22m  [33mwarning[39m  'rerender' is assigned a value but never used. Allowed unused vars must match /^_/u  [2munused-imports/no-unused-vars[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/shared/components/__tests__/CategorySelect.spec.tsx[24m[0m
+[0m   [2m14:55[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m31:50[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m39:24[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m52:41[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m58:50[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m68:54[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m71:30[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m   [2m91:24[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m146:21[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m187:45[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m207:21[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m221:21[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m239:21[22m  [33mwarning[39m  Forbidden non-null assertion              [2m@typescript-eslint/no-non-null-assertion[22m[0m
+[0m  [2m265:36[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[4m/home/agent/workspace/libs/web/pages/groceries/src/shared/constants/__tests__/categories.spec.ts[24m[0m
+[0m  [2m119:44[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m120:42[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m121:50[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m122:42[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m127:40[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m132:51[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m133:44[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m134:39[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m140:44[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m141:42[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m142:50[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m143:42[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m148:40[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m153:51[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m154:44[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m  [2m155:39[22m  [33mwarning[39m  Unexpected any. Specify a different type  [2m@typescript-eslint/no-explicit-any[22m[0m
+[0m[0m
+[0m[33m[1m✖ 209 problems (0 errors, 209 warnings)[22m[39m[0m
+[0m[33m[1m[22m[39m[0m
+✖ 209 problems (0 errors, 209 warnings)
+
