@@ -5,8 +5,12 @@ MyOrganizer is a personal organization app with end-to-end encrypted storage for
 ## Domain
 
 **Vault**:
-Client-side encrypted storage. The server stores only ciphertext; it never sees plaintext values.
+A single User's end-to-end encrypted storage. Exactly one Vault per User. The server stores only its Ciphertext; it never sees plaintext values. A Vault is owned by a User on every surface it appears on — a device holding a Local Vault does not own it.
 _Avoid_: Encrypted storage, secure store, lockbox
+
+**Local Vault**:
+The on-device copy of one User's Vault, holding that User's Ciphertext and wrapped Master Key. It is owned by the User, not by the device: one browser or device may hold several Local Vaults, at most one per User who has signed in there, and a Local Vault is never adopted by a User other than its owner. May diverge from the server's Ciphertext until reconciled.
+_Avoid_: the local vault (as a device-wide singleton), browser vault, device vault, cached vault
 
 **Ciphertext**:
 The encrypted blob format produced by the Vault for all vault-backed data types.
@@ -187,6 +191,10 @@ _Avoid_: shim, wrapper, provider
 **Vault Unlock**:
 The client-side action of deriving the Master Key from the User's passphrase so vault Ciphertext can be decrypted for the session. No plaintext or key leaves the device.
 _Avoid_: vault login, decrypt vault, open vault
+
+**Vault Claim**:
+The act of a User proving a Local Vault is theirs by unlocking it — a successful Master Key unwrap is the proof, since a failed unwrap means the Vault belongs to someone else. Used to assign an owner to a Local Vault that has none. Claiming never moves a Vault between Users; it only records an ownership that already held.
+_Avoid_: adopt vault, take over vault, assign vault, link vault
 
 **Master Key**:
 The symmetric key derived from the passphrase (PBKDF2 → AES-GCM) that decrypts vault Ciphertext. Never sent to the server.
