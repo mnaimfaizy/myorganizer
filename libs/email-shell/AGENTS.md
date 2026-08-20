@@ -18,11 +18,15 @@ See [ADR 0034](../../docs/adr/0034-emails-share-one-shell-and-are-built-to-degra
 - Escape every interpolated value.
 - Resolve colours from `@myorganizer/design-tokens`; never hardcode hex.
 - Keep layout table-based with inline CSS, fluid, single-column.
-- Treat `src/assets/logo-email.png` as a checked-in asset, not a build output. Mail clients
-  cannot render SVG, so the raster is committed; `logo-email.svg` is the editable source.
-- When the logo changes, export the PNG at 420px wide (3x the 140px display width, for retina)
-  and commit it alongside the SVG. This is deliberately a manual step: the logo changes rarely,
-  and a build-time rasterizer costs a native dependency in every sandbox install for no gain.
+- `logo-email.svg` is the editable source; `src/assets/logo-email.png` is generated from it.
+  Mail clients cannot render SVG, so the raster is committed as well — but regenerate it,
+  never hand-edit it.
+- After changing the SVG, run `yarn nx run email-shell:build-logo` and commit both files.
+  The script rasterizes at 420px wide (3x the 140px display width, for retina) and derives the
+  height from the SVG's own viewBox, so a reshaped logo cannot silently distort.
+- The rasterizer is Playwright's headless Chromium, already a devDependency for E2E. Do not
+  swap it for a native image library: those compile or fetch a platform binary on every install,
+  which is what broke the #396 sandbox dispatch at `yarn install --immutable`.
 
 ## Do Not
 
@@ -30,7 +34,7 @@ See [ADR 0034](../../docs/adr/0034-emails-share-one-shell-and-are-built-to-degra
   unsubscribe link from ever reaching Transactional Email.
 - Do not add a hosted-URL logo, a CSS `<style>` block the layout depends on, or a
   `prefers-color-scheme` dependency (rejected in ADR 0034).
-- Do not hand-edit `src/assets/logo-email.png` — regenerate it from the SVG source instead.
+- Do not hand-edit `src/assets/logo-email.png` — run the `build-logo` target instead.
 - Do not add a light/dark logo pair — ADR 0034 calls for one logo whose colours survive forced
   client-side dark-mode inversion.
 - Do not wire a consumer into this library from this slice; that is separate follow-on work.
