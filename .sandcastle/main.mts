@@ -2,7 +2,14 @@ import { claudeCode, copilot, cursor, run } from '@ai-hero/sandcastle';
 import { docker } from '@ai-hero/sandcastle/sandboxes/docker';
 import dotenv from 'dotenv';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 
@@ -1044,6 +1051,148 @@ function finalizeSliceBranch(issue: Issue, sliceBranch: string): boolean {
   return true;
 }
 
+// ─── Interrupted slices ─────────────────────────────────────────────
+// An agent run that ends without a completion signal — a provider limit, a timeout,
+// a container fault — leaves its work uncommitted in the preserved worktree, and the
+// slice branch itself is force-deleted the next time this issue is dispatched. Commit
+// that work as a Slice Checkpoint and TAG it: the tag keeps the commit reachable after
+// `git branch -D`, so the existing gate-failure retry flow (delete the branch, run the
+// slice again from a clean base) keeps working untouched. See ADR 0035; resuming from
+// a checkpoint rather than merely surviving is PRD #401.
+
+type SliceCheckpoint = {
+  readonly sha: string;
+  readonly tag: string;
+  readonly fileCount: number;
+};
+
+/** Newest sandcastle log for this issue, or undefined when none was written. */
+function sliceLogPathFor(issueNumber: number): string | undefined {
+  const logsDir = join(process.cwd(), '.sandcastle', 'logs');
+  if (!existsSync(logsDir)) return undefined;
+  const suffix = `--${issueNumber}.log`;
+  const candidates = readdirSync(logsDir)
+    .filter((name) => name.endsWith(suffix))
+    .map((name) => join(logsDir, name))
+    .filter((path) => existsSync(path));
+  if (candidates.length === 0) return undefined;
+  return candidates.sort(
+    (left, right) => statSync(right).mtimeMs - statSync(left).mtimeMs,
+  )[0];
+}
+
+/**
+ * The thrown AgentError carries whatever was last on stderr, which is routinely a
+ * trailing warning rather than the cause. Surface the log tail next to it instead of
+ * classifying it — provider-specific limit matchers belong to PRD #401, and this
+ * orchestrator runs claude, cursor, and copilot.
+ */
+function crashLogTail(issueNumber: number, lines = 15): string | undefined {
+  const logPath = sliceLogPathFor(issueNumber);
+  if (!logPath) return undefined;
+  let contents: string;
+  try {
+    contents = readFileSync(logPath, 'utf8');
+  } catch {
+    return undefined;
+  }
+  const tail = contents
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .slice(-lines);
+  if (tail.length === 0) return undefined;
+  return `  log tail (${logPath}):\n${tail
+    .map((line) => `    ${line}`)
+    .join('\n')}`;
+}
+
+/**
+ * Commit whatever the interrupted agent left behind onto its slice branch and tag it.
+ * Returns the checkpoint, or undefined when there was nothing to preserve.
+ *
+ * --no-verify is deliberate: husky would lint and format half-finished code and
+ * corrupt the very evidence being preserved. This mirrors the capture
+ * finalizeSliceBranch performs on the success path.
+ */
+function preserveInterruptedSlice(
+  issue: Issue,
+  sliceBranch: string,
+): SliceCheckpoint | undefined {
+  if (!gitRefExists(sliceBranch)) return undefined;
+
+  const worktreePath = join(worktreesDir, sliceBranch.replace(/\//g, '-'));
+  if (existsSync(worktreePath)) {
+    const dirty = (
+      spawnSync('git', ['-C', worktreePath, 'status', '--porcelain'], {
+        encoding: 'utf8',
+        windowsHide: true,
+      }).stdout || ''
+    ).trim();
+    if (dirty) {
+      spawnSync('git', ['-C', worktreePath, 'add', '-A'], {
+        encoding: 'utf8',
+        windowsHide: true,
+      });
+      const commit = spawnSync(
+        'git',
+        [
+          '-C',
+          worktreePath,
+          'commit',
+          '--no-verify',
+          '-m',
+          `wip(slice): checkpoint interrupted #${issue.number} agent run\n\n` +
+            `The agent run ended without a completion signal and this work was left\n` +
+            `uncommitted in the preserved worktree. NOT reviewed, NOT gated, NOT ready\n` +
+            `to ship — files present here do not mean a Gated Pipeline ran.\n\n` +
+            `Refs #${issue.number}`,
+        ],
+        { encoding: 'utf8', windowsHide: true },
+      );
+      if (commit.status !== 0) {
+        console.error(
+          `  [#${issue.number}] could not commit the interrupted worktree:\n${commit.stderr}`,
+        );
+      }
+    }
+  }
+
+  // Nothing ahead of the base means there is no work to protect.
+  const ahead = (
+    spawnSync('git', ['rev-list', '--count', `${baseRef}..${sliceBranch}`], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+  if (ahead === '' || ahead === '0') return undefined;
+
+  const sha = (
+    spawnSync('git', ['rev-parse', '--short', sliceBranch], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+
+  // -f so a later interruption of the same slice re-points the tag at the newer
+  // checkpoint rather than failing and leaving the run without protection.
+  const tag = `wip/${issue.number}-checkpoint`;
+  spawnSync('git', ['tag', '-f', tag, sliceBranch], {
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+
+  const fileCount = (
+    spawnSync('git', ['diff', '--name-only', `${baseRef}..${sliceBranch}`], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  )
+    .split('\n')
+    .filter((line) => line.trim() !== '').length;
+
+  return { sha, tag, fileCount };
+}
+
 // ─── Build gate ───────────────────────────────────────────────────────────────
 // Before a slice is fast-forwarded into the LOCAL feature branch, lint its changed
 // projects in a Docker container against the LOCAL slice branch. Fail closed: if the
@@ -1747,7 +1896,47 @@ while (pendingSlices.length > 0) {
       '--remove-label',
       'status:in-progress',
     ]);
+
+    // Preserve BEFORE reporting: the agent's work is the expensive thing here, and
+    // the next dispatch of this issue deletes the branch it lives on.
+    const checkpoint = preserveInterruptedSlice(issue, sliceBranch);
+
     console.error(`  ✗ #${issue.number} crashed: ${String(e)}`);
+    const tail = crashLogTail(issue.number);
+    if (tail) {
+      console.error(
+        `  [#${issue.number}] the thrown error may be trailing stderr noise rather than the cause:`,
+      );
+      console.error(tail);
+    }
+
+    if (checkpoint) {
+      console.error(
+        `  [#${issue.number}] checkpoint ${checkpoint.sha} on ${sliceBranch} ` +
+          `(${checkpoint.fileCount} file(s)), tagged ${checkpoint.tag}.\n` +
+          `      The tag keeps this work reachable if the branch is later deleted.\n` +
+          `      Recovery: docs/sandcastle/RUNBOOK.md — "Recovering an interrupted run".`,
+      );
+      ghSilent([
+        'issue',
+        'comment',
+        String(issue.number),
+        '--repo',
+        REPO,
+        '--body',
+        `Agent run ended without a completion signal. Its work was preserved as a ` +
+          `Slice Checkpoint \`${checkpoint.sha}\` on the local branch \`${sliceBranch}\` ` +
+          `(${checkpoint.fileCount} file(s)), tagged \`${checkpoint.tag}\`.\n\n` +
+          `This is local and unpushed, and it is **not** reviewed or gated — files ` +
+          `present in a checkpoint do not mean a Gated Pipeline ran. See ` +
+          `\`docs/sandcastle/RUNBOOK.md\` under "Recovering an interrupted run".`,
+      ]);
+    } else {
+      console.error(
+        `  [#${issue.number}] nothing to preserve — the run left no work on ${sliceBranch}.`,
+      );
+    }
+
     crashed.push({ issue, error: String(e) });
   }
 }

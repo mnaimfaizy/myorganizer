@@ -44,6 +44,15 @@ RUN curl -fsSL https://claude.ai/install.sh | bash
 # Add Cursor/Claude to PATH
 ENV PATH="/home/agent/.local/bin:$PATH"
 
+# Pre-accept the workspace trust dialog. Sandcastle always bind-mounts the worktree at
+# this fixed path, and without this Claude Code refuses to load the repo's
+# .claude/settings.json allowlist ("Ignoring N permissions.allow entries ... this
+# workspace has not been trusted"), costing permission friction on every run. That
+# warning is also the last thing on stderr, so sandcastle reports IT as the agent error
+# and hides the real failure. Merge rather than overwrite: the installer above may
+# already own this file.
+RUN node -e "const f='/home/agent/.claude.json',fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync(f,'utf8'))}catch{}j.projects=j.projects||{};j.projects['/home/agent/workspace']={...(j.projects['/home/agent/workspace']||{}),hasTrustDialogAccepted:true};fs.writeFileSync(f,JSON.stringify(j,null,2))"
+
 WORKDIR /home/agent
 
 # Prevent Nx from connecting to a background daemon or spawning a plugin-isolation
