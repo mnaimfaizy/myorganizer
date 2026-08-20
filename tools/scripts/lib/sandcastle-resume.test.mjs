@@ -9,6 +9,8 @@ import {
   DISCARD_FLAG,
   LIMIT_CLASSIFICATIONS,
   MAX_QUOTA_WAITS,
+  MAX_WAIT_MS,
+  RUN_START_MARKER,
   classifyRunFailure,
   decideWaitPolicy,
   parseResetTime,
@@ -426,6 +428,7 @@ test('waits until the reset when opted in and the time is known', () => {
     classification: limitHit(until),
     waitEnabled: true,
     waitsTaken: 0,
+    now: NOW,
   });
 
   assert.equal(decision.action, 'wait');
@@ -437,6 +440,7 @@ test('never waits unless the maintainer opted in', () => {
     classification: limitHit(new Date('2026-08-20T04:30:00Z')),
     waitEnabled: false,
     waitsTaken: 0,
+    now: NOW,
   });
 
   assert.equal(decision.action, 'exit');
@@ -449,6 +453,7 @@ test('never sleeps blind when the reset time could not be read', () => {
     classification: limitHit(undefined),
     waitEnabled: true,
     waitsTaken: 0,
+    now: NOW,
   });
 
   assert.equal(decision.action, 'exit');
@@ -460,6 +465,7 @@ test('never waits on an unknown provider even with waiting enabled', () => {
     classification: { kind: LIMIT_CLASSIFICATIONS.unknown, resetAt: undefined },
     waitEnabled: true,
     waitsTaken: 0,
+    now: NOW,
   });
 
   assert.equal(decision.action, 'exit');
@@ -472,6 +478,7 @@ test('never waits when the run did not end on a limit', () => {
       classification: { kind: LIMIT_CLASSIFICATIONS.other, resetAt: undefined },
       waitEnabled: true,
       waitsTaken: 0,
+      now: NOW,
     }).action,
     'exit',
   );
@@ -485,6 +492,7 @@ test('the wait cap is enforced', () => {
       classification: limitHit(until),
       waitEnabled: true,
       waitsTaken: MAX_QUOTA_WAITS - 1,
+      now: NOW,
     }).action,
     'wait',
   );
@@ -493,6 +501,7 @@ test('the wait cap is enforced', () => {
     classification: limitHit(until),
     waitEnabled: true,
     waitsTaken: MAX_QUOTA_WAITS,
+    now: NOW,
   });
   assert.equal(exhausted.action, 'exit');
   assert.match(exhausted.reason, /wait limit/);
@@ -500,4 +509,92 @@ test('the wait cap is enforced', () => {
 
 test('the cap is two — three limit hits is more than a day of wall clock', () => {
   assert.equal(MAX_QUOTA_WAITS, 2);
+});
+
+// ─── Regression: stale log content from an earlier run ────────────────────────
+// A slice log is appended to across runs. On 2026-08-20 a resumed #396 failed at
+// `yarn install --immutable`, but the tail of the FILE still held the previous run's
+// limit message nine lines further up — so it was classified as a usage limit and the
+// run parked for roughly twenty hours on a failure that was never a limit.
+
+const TWO_RUN_LOG = [
+  `${RUN_START_MARKER} 2026-08-20T03:03:59.768Z ---`,
+  'Bash(npx tsc --noEmit)',
+  'Let me review what TestScaffold actually wrote before sending it to TestReviewer.',
+  "You've hit your session limit · resets 4:30am (UTC)",
+  'Agent invocation failed: claude-code exited with code 1:',
+  `${RUN_START_MARKER} 2026-08-20T08:59:56.452Z ---`,
+  'Sandcastle Run',
+  '  Agent: #396',
+  '  Max iterations: 2',
+  'Iteration 1/2',
+  'Setting up sandbox',
+  'Command failed in sandbox (corepack yarn install --immutable): exit 1',
+].join('\n');
+
+test('the tail is scoped to the current run, not the whole file', () => {
+  const tail = tailLines(TWO_RUN_LOG, 15);
+
+  assert.ok(
+    tail.every((line) => !line.includes('session limit')),
+    "the previous run's limit message leaked into the current run's tail",
+  );
+  assert.ok(tail[0].includes('2026-08-20T08:59:56.452Z'));
+});
+
+test('an install failure after an earlier limit is NOT a limit hit', () => {
+  const result = classifyRunFailure({
+    agentKind: 'claude',
+    logTail: tailLines(TWO_RUN_LOG, 15),
+    now: new Date('2026-08-20T09:05:00Z'),
+  });
+
+  assert.equal(result.kind, LIMIT_CLASSIFICATIONS.other);
+});
+
+test('a log with no run marker still classifies — single-run logs are valid', () => {
+  const result = classifyRunFailure({
+    agentKind: 'claude',
+    logTail: tailLines(
+      "You've hit your session limit · resets 4:30am (UTC)",
+      15,
+    ),
+    now: new Date('2026-08-20T03:03:00Z'),
+  });
+
+  assert.equal(result.kind, LIMIT_CLASSIFICATIONS.limitHit);
+});
+
+// ─── Regression: an implausibly distant reset ─────────────────────────────────
+
+test('refuses to wait for a reset further ahead than the bound', () => {
+  // Independent of how the classification was reached, so it still holds if the
+  // run-boundary scoping fails for a reason we have not thought of. The real misfire
+  // computed a reset ~19.5h out; a usage window is hours, not most of a day.
+  const now = new Date('2026-08-20T09:00:00Z');
+  const decision = decideWaitPolicy({
+    classification: limitHit(new Date('2026-08-21T04:30:00Z')),
+    waitEnabled: true,
+    waitsTaken: 0,
+    now,
+  });
+
+  assert.equal(decision.action, 'exit');
+  assert.match(decision.reason, /further than the/);
+});
+
+test('a reset inside the bound is still waited for', () => {
+  const now = new Date('2026-08-20T03:00:00Z');
+  const decision = decideWaitPolicy({
+    classification: limitHit(new Date('2026-08-20T04:30:00Z')),
+    waitEnabled: true,
+    waitsTaken: 0,
+    now,
+  });
+
+  assert.equal(decision.action, 'wait');
+});
+
+test('the wait bound is six hours', () => {
+  assert.equal(MAX_WAIT_MS, 6 * 60 * 60 * 1000);
 });

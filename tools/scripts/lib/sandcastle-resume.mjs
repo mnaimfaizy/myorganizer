@@ -260,9 +260,31 @@ export const LIMIT_MATCHERS = Object.freeze({
   copilot: Object.freeze([]),
 });
 
-/** The last `count` non-empty lines of a log. Only the tail is ever classified. */
+/**
+ * Marker sandcastle writes when a run begins. A slice log is APPENDED to across runs,
+ * so this is what separates them.
+ */
+export const RUN_START_MARKER = '--- Run started:';
+
+/**
+ * The last `count` non-empty lines of the CURRENT run in a slice log.
+ *
+ * Scoping to the current run is not a nicety. Slice logs accumulate: re-dispatching
+ * an issue appends to the same file, so a plain tail-of-file can reach back past the
+ * run boundary and classify the PREVIOUS run's ending as this one's. That produced a
+ * real misfire — a dependency-install failure was read as a usage limit because the
+ * prior run's limit message was still within 15 lines of the end — and parked a run
+ * for roughly twenty hours.
+ *
+ * When no marker is present the whole file is used, which is correct for a
+ * single-run log. `boundMaxWait` covers the case where the marker format changes.
+ */
 export function tailLines(contents, count = 15) {
-  return String(contents ?? '')
+  const text = String(contents ?? '');
+  const lastRunStart = text.lastIndexOf(RUN_START_MARKER);
+  const currentRun = lastRunStart === -1 ? text : text.slice(lastRunStart);
+
+  return currentRun
     .split('\n')
     .map((line) => line.trimEnd())
     .filter((line) => line.trim() !== '')
@@ -360,6 +382,17 @@ export function classifyRunFailure({ agentKind, logTail, now }) {
 export const MAX_QUOTA_WAITS = 2;
 
 /**
+ * The furthest ahead a reset time may plausibly be before we refuse to trust it.
+ *
+ * A provider's usage window is measured in hours, so a reset further out than this
+ * means something is wrong — a stale message from an earlier run, a truncated line, a
+ * changed format — and sleeping on it wastes most of a day. Independent of how the
+ * classification was reached, so it still holds if the run-boundary scoping above
+ * fails for a reason we have not thought of.
+ */
+export const MAX_WAIT_MS = 6 * 60 * 60 * 1000;
+
+/**
  * Decide whether to park the run until a limit resets, or exit with the work
  * preserved.
  *
@@ -367,14 +400,18 @@ export const MAX_QUOTA_WAITS = 2;
  * @param {{kind: string, resetAt: Date|undefined}} input.classification
  * @param {boolean} input.waitEnabled   Did the maintainer opt in?
  * @param {number}  input.waitsTaken    Waits already spent this run.
+ * @param {Date}    [input.now]
  * @param {number}  [input.maxWaits]
+ * @param {number}  [input.maxWaitMs]   Reject a reset further ahead than this.
  * @returns {{ action: 'wait'|'exit', until: Date|undefined, reason: string }}
  */
 export function decideWaitPolicy({
   classification,
   waitEnabled,
   waitsTaken,
+  now = new Date(),
   maxWaits = MAX_QUOTA_WAITS,
+  maxWaitMs = MAX_WAIT_MS,
 }) {
   const exit = (reason) => ({ action: 'exit', until: undefined, reason });
 
@@ -396,6 +433,16 @@ export function decideWaitPolicy({
 
   if (waitsTaken >= maxWaits) {
     return exit(`the wait limit of ${maxWaits} for this run is exhausted`);
+  }
+
+  // Sanity-bound the window. A reset further out than a provider's usage window is
+  // not believable, and the cost of trusting it is most of a day parked for nothing.
+  const untilMs = classification.resetAt.getTime() - now.getTime();
+  if (untilMs > maxWaitMs) {
+    return exit(
+      `the reset time is ${Math.round(untilMs / 3_600_000)}h away, further than the ` +
+        `${Math.round(maxWaitMs / 3_600_000)}h bound — treating it as not trustworthy`,
+    );
   }
 
   return {

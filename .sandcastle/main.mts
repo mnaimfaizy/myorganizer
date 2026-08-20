@@ -2113,15 +2113,17 @@ while (pendingSlices.length > 0) {
     // Was this a provider usage limit, and did the maintainer ask us to wait it out?
     // Classification is provider-keyed: a provider whose limit format we have never
     // observed classifies as `unknown` and never triggers a wait.
+    const failedAt = new Date();
     const classification = classifyRunFailure({
       agentKind,
       logTail: log?.tail ?? [],
-      now: new Date(),
+      now: failedAt,
     });
     const waitDecision = decideWaitPolicy({
       classification,
       waitEnabled: waitForQuota,
       waitsTaken: quotaWaitsTaken,
+      now: failedAt,
     });
 
     if (waitDecision.action === 'wait' && waitDecision.until) {
