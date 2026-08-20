@@ -18,6 +18,9 @@ import {
   parseResetTime,
   tailLines,
   RESUME_GUARDRAILS,
+  MAINTAINER_NOTE_MARKER,
+  extractMaintainerNotes,
+  withMaintainerNotes,
   SLICE_DISPOSITIONS,
   buildResumeBrief,
   decideSliceDisposition,
@@ -650,4 +653,95 @@ test('the duration makes an implausible wait obvious', () => {
   );
 
   assert.match(short, /in 1h 30m/);
+});
+
+// ─── Maintainer notes ─────────────────────────────────────────────────────────
+
+test('a comment without the marker is not a maintainer note', () => {
+  // The orchestrator posts its own comments on these issues. Replaying an unblock
+  // notice or a Pipeline Incident back to an agent is noise at best.
+  const notes = extractMaintainerNotes([
+    { body: 'Unblocked: every blocker is now closed.' },
+    { body: '## Pipeline Incident\n\nTestReviewer hit the retry cap.' },
+    { body: 'lgtm' },
+  ]);
+
+  assert.deepEqual(notes, []);
+});
+
+test('text under the marker is taken and preamble above it is dropped', () => {
+  const notes = extractMaintainerNotes([
+    {
+      body: [
+        'Had a look at the checkpoint this morning.',
+        '',
+        MAINTAINER_NOTE_MARKER,
+        '',
+        'The CID linkage assertion cannot fail — rewrite it.',
+      ].join('\n'),
+    },
+  ]);
+
+  assert.deepEqual(notes, [
+    'The CID linkage assertion cannot fail — rewrite it.',
+  ]);
+});
+
+test('the marker is matched case-insensitively', () => {
+  // Failing silently on capitalisation is the worst outcome: the maintainer believes
+  // the note was filed and the agent never sees it.
+  const notes = extractMaintainerNotes([
+    { body: '## maintainer review\n\nlowercase still counts' },
+  ]);
+
+  assert.deepEqual(notes, ['lowercase still counts']);
+});
+
+test('an empty note is not carried', () => {
+  const notes = extractMaintainerNotes([
+    { body: `${MAINTAINER_NOTE_MARKER}\n\n   ` },
+  ]);
+  assert.deepEqual(notes, []);
+});
+
+test('notes keep the order they were filed and survive multi-line bodies', () => {
+  const notes = extractMaintainerNotes([
+    { body: `${MAINTAINER_NOTE_MARKER}\nfirst` },
+    { body: 'unrelated' },
+    { body: `${MAINTAINER_NOTE_MARKER}\nsecond\n\n- with a list` },
+  ]);
+
+  assert.deepEqual(notes, ['first', 'second\n\n- with a list']);
+});
+
+test('extraction tolerates missing or malformed comment payloads', () => {
+  assert.deepEqual(extractMaintainerNotes(undefined), []);
+  assert.deepEqual(extractMaintainerNotes([]), []);
+  assert.deepEqual(extractMaintainerNotes([null, {}, { body: null }]), []);
+});
+
+test('a prompt with no notes is returned untouched', () => {
+  assert.equal(withMaintainerNotes('BASE PROMPT', []), 'BASE PROMPT');
+  assert.equal(withMaintainerNotes('BASE PROMPT', undefined), 'BASE PROMPT');
+});
+
+test('notes are appended after the issue body and declared binding', () => {
+  // Regression: #396 was dispatched three times while three reviewed findings sat in
+  // a comment the agent could not see, because only issue.body reached the prompt.
+  const prompt = withMaintainerNotes('ORIGINAL BRIEF', [
+    'Decide who owns the CID linkage invariant.',
+  ]);
+
+  assert.ok(prompt.startsWith('ORIGINAL BRIEF'));
+  assert.match(prompt, /Treat this as binding/);
+  assert.match(prompt, /this wins/);
+  assert.match(prompt, /Decide who owns the CID linkage invariant\./);
+});
+
+test('multiple notes are numbered so a prompt can reference one', () => {
+  const prompt = withMaintainerNotes('BASE', ['first thing', 'second thing']);
+
+  assert.match(prompt, /### Note 1/);
+  assert.match(prompt, /### Note 2/);
+  assert.match(prompt, /following instructions/);
 });

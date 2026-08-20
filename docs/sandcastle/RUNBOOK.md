@@ -357,6 +357,12 @@ TestRunner`. A spec file existing in the tree is not evidence a pipeline ran —
   tells the agent this explicitly, but check it yourself before trusting a green run.
 - Check `package.json` and `TECH_STACK.md`: a slice that added a dependency did not necessarily go
   through `dep-sync`.
+- **Findings you write down must go under a `## Maintainer Review` heading to travel.** The
+  orchestrator interpolates only the issue _body_ into a prompt, so an ordinary comment is
+  invisible to the next agent. A comment containing that heading has everything below it appended
+  to the brief and marked binding. Anything above the heading is dropped, and a comment without
+  it is ignored entirely — that is what keeps sandcastle's own status comments out of the prompt.
+
 - **Nothing in a checkpoint has been linted, type-checked, or tested.** The preservation commit uses
   `--no-verify` on purpose, so husky never reformats half-written work — which also means the build
   gate is the first thing to look at it. Expect a resumed slice to fail the gate on errors the

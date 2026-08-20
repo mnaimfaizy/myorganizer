@@ -23,6 +23,8 @@ import {
   decideSliceDisposition,
   isDiscardRequested,
   validateDiscardScope,
+  extractMaintainerNotes,
+  withMaintainerNotes,
 } from '../tools/scripts/lib/sandcastle-resume.mjs';
 
 const REPO = 'mnaimfaizy/myorganizer';
@@ -1563,6 +1565,36 @@ function buildGateInstructions(
   ];
 }
 
+/**
+ * Read the maintainer notes filed on an issue.
+ *
+ * Fetched here, per dispatched slice, rather than added to the issue LIST queries:
+ * those pull up to 200 issues and would carry every comment on all of them for the
+ * sake of the handful actually being run.
+ *
+ * A failure to read comments must not stop a dispatch — the issue body is still a
+ * complete brief — so this degrades to "no notes" and says so.
+ */
+function readMaintainerNotes(issueNumber: number): string[] {
+  try {
+    const { comments } = ghJson<{ comments?: Array<{ body?: string }> }>([
+      'issue',
+      'view',
+      String(issueNumber),
+      '--repo',
+      REPO,
+      '--json',
+      'comments',
+    ]);
+    return extractMaintainerNotes(comments);
+  } catch {
+    console.warn(
+      `  [#${issueNumber}] could not read issue comments; dispatching on the issue body alone.`,
+    );
+    return [];
+  }
+}
+
 function buildPrompt(issue: Issue, sliceBranch: string): string {
   const gate = resolveGate(issue);
   return [
@@ -1855,6 +1887,13 @@ while (pendingSlices.length > 0) {
         ? readSliceCheckpoint(sliceBranch)
         : undefined;
 
+    const maintainerNotes = readMaintainerNotes(issue.number);
+    if (maintainerNotes.length > 0) {
+      console.log(
+        `  [#${issue.number}] carrying ${maintainerNotes.length} maintainer note(s) into the brief.`,
+      );
+    }
+
     const worktreePath = join(worktreesDir, sliceBranch.replace(/\//g, '-'));
 
     if (checkpoint) {
@@ -1964,14 +2003,22 @@ while (pendingSlices.length > 0) {
       // Quiet stretches (codegen, builds) can exceed the 600s default and trip the
       // idle watchdog; give long-running slices headroom.
       idleTimeoutSeconds: 1800,
-      prompt: checkpoint
-        ? buildResumeBrief({
-            basePrompt: buildPrompt(issue, sliceBranch),
-            issueNumber: issue.number,
-            sliceBranch,
-            checkpoint,
-          })
-        : buildPrompt(issue, sliceBranch),
+      prompt: (() => {
+        // Notes wrap the base prompt, so the resume brief inherits them too: a
+        // maintainer reviewing a checkpoint is the likeliest author of one.
+        const basePrompt = withMaintainerNotes(
+          buildPrompt(issue, sliceBranch),
+          maintainerNotes,
+        );
+        return checkpoint
+          ? buildResumeBrief({
+              basePrompt,
+              issueNumber: issue.number,
+              sliceBranch,
+              checkpoint,
+            })
+          : basePrompt;
+      })(),
     });
 
     logRunUsage(issue.number, agentKind, model, result);
