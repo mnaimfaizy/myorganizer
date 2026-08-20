@@ -273,14 +273,15 @@
 
 ## Build & Transpilation
 
-| Package               | Version | Purpose                                                    |
-| --------------------- | ------- | ---------------------------------------------------------- |
-| `@swc/core`           | 1.15.8  | SWC transpiler — faster alternative to Babel for Nx builds |
-| `@swc-node/register`  | 1.11.1  | SWC integration for Node.js require hooks                  |
-| `@swc/helpers`        | 0.5.18  | SWC runtime helpers                                        |
-| `@babel/core`         | 7.28.6  | Babel — used by babel-jest for test transforms             |
-| `@babel/preset-react` | 7.28.5  | Babel React preset for test transforms                     |
-| `webpack-cli`         | 6.0.1   | Webpack CLI — used by `@nx/webpack` builds                 |
+| Package               | Version | Purpose                                                         |
+| --------------------- | ------- | --------------------------------------------------------------- |
+| `@swc/core`           | 1.15.8  | SWC transpiler — faster alternative to Babel for Nx builds      |
+| `@swc-node/register`  | 1.11.1  | SWC integration for Node.js require hooks                       |
+| `@swc/helpers`        | 0.5.18  | SWC runtime helpers                                             |
+| `@babel/core`         | 7.28.6  | Babel — used by babel-jest for test transforms                  |
+| `@babel/preset-react` | 7.28.5  | Babel React preset for test transforms                          |
+| `webpack-cli`         | 6.0.1   | Webpack CLI — used by `@nx/webpack` builds                      |
+| `sharp`               | 0.35.0  | Rasterizes the email logo SVG to PNG (`email-shell:build-logo`) |
 
 ---
 

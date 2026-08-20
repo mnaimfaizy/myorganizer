@@ -522,7 +522,11 @@ describe('YouTubeDigestService', () => {
         monday,
       );
 
-      const html = (mockSendEmail as jest.Mock).mock.calls[0][2] as string;
+      const messageArg = (mockSendEmail as jest.Mock).mock.calls[0][2] as {
+        html: string;
+        text: string;
+      };
+      const html = messageArg.html;
       expect(html).toContain(
         'https://app.example.com/youtube/unsubscribe?token=token123',
       );
@@ -576,7 +580,11 @@ describe('YouTubeDigestService', () => {
         monday,
       );
 
-      const html = (mockSendEmail as jest.Mock).mock.calls[0][2] as string;
+      const messageArg = (mockSendEmail as jest.Mock).mock.calls[0][2] as {
+        html: string;
+        text: string;
+      };
+      const html = messageArg.html;
       expect(html).toContain('https://app.example.com/youtube/data-privacy');
       expect(html).toContain('How we store your data');
     });

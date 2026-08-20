@@ -439,7 +439,10 @@ class UserService {
       .replace('[Your Company]', process.env.APP_NAME);
 
     try {
-      await sendEmail(user.email, 'Verify your email', filledTemplate);
+      await sendEmail(user.email, 'Verify your email', {
+        html: filledTemplate,
+        text: `Verify your email by visiting: ${verifyUrl}`,
+      });
       return token;
     } catch {
       return new Error('Failed to send verification email');
@@ -465,7 +468,10 @@ class UserService {
       .replace('[Your Company]', process.env.APP_NAME);
 
     try {
-      await sendEmail(user.email, 'Reset your password', filledTemplate);
+      await sendEmail(user.email, 'Reset your password', {
+        html: filledTemplate,
+        text: `Reset your password by visiting: ${resetUrl}`,
+      });
       return token;
     } catch {
       return new Error('Failed to send password reset email');

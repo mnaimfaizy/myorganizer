@@ -1,6 +1,14 @@
 import fs from 'fs';
 import path from 'path';
 
+jest.mock('../prisma', () => ({
+  __esModule: true,
+  createPrismaClient: jest.fn(() => ({
+    user: {},
+  })),
+  PrismaClient: jest.fn(),
+}));
+
 import sendEmail from './EmailService';
 import userService from './UserService';
 
@@ -73,9 +81,14 @@ describe('UserService email template paths', () => {
     expect(sendEmail).toHaveBeenCalledWith(
       'test@example.com',
       'Verify your email',
-      expect.stringContaining(
-        'http://localhost:3000/verify/email?token=test-token'
-      )
+      expect.objectContaining({
+        html: expect.stringContaining(
+          'http://localhost:3000/verify/email?token=test-token'
+        ),
+        text: expect.stringContaining(
+          'http://localhost:3000/verify/email?token=test-token'
+        ),
+      })
     );
   });
 

@@ -258,11 +258,12 @@ export class YouTubeDigestService {
 
       const token = await this.ensureUnsubscribeToken(userId, settings);
       const html = this.buildDigestHtml(user.first_name, videos, token);
+      const text = this.buildDigestText(user.first_name, videos, token);
 
       await sendEmail(
         user.email,
         `${videos.length} new video${videos.length > 1 ? 's' : ''} waiting in MyOrganizer`,
-        html,
+        { html, text },
       );
 
       await this.finishPeriod(userId, periodKey, 'sent', videos.length);
@@ -401,6 +402,38 @@ export class YouTubeDigestService {
         </p>
       </div>
     `;
+  }
+
+  private buildDigestText(
+    firstName: string,
+    videos: DigestVideo[],
+    unsubscribeToken: string,
+  ): string {
+    const base = frontendUrl();
+    const homeUrl = `${base}/dashboard/youtube`;
+    const privacyUrl = `${base}/youtube/data-privacy`;
+    const settingsUrl = `${base}/dashboard/youtube`;
+    const unsubscribeUrl = `${base}/youtube/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`;
+
+    const lines = videos.map((video) => {
+      const watchUrl = `${base}/dashboard/youtube?channel=${encodeURIComponent(video.channelId)}`;
+      return `- ${video.title} (${video.subscription.channelTitle}): ${watchUrl}`;
+    });
+
+    return [
+      `Hi ${firstName},`,
+      '',
+      'Here is what is still new from your enabled channels. Watched uploads are left out.',
+      '',
+      ...lines,
+      '',
+      `Open MyOrganizer: ${homeUrl}`,
+      '',
+      'MyOrganizer stores YouTube metadata only — never video files.',
+      `How we store your data: ${privacyUrl}`,
+      `Digest settings: ${settingsUrl}`,
+      `Unsubscribe: ${unsubscribeUrl}`,
+    ].join('\n');
   }
 
   private escapeHtml(str: string): string {
