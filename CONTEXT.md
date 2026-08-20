@@ -114,6 +114,20 @@ _Avoid_: Kick, revoke access, sign out user, terminate session, ban
 The interval during which a repeat request for a verification or reset email is refused. It is not a separate timer — the still-valid outstanding token _is_ the cooldown, so the wait always equals that token's remaining life.
 _Avoid_: Rate limit, throttle, spam guard, backoff
 
+## Email
+
+**Transactional Email**:
+Mail a User receives because an action of theirs requires it — verifying an address, resetting a passphrase. It carries no unsubscribe option, because opting out of it would lock the User out of their own account. Delivery is a correctness requirement, not a preference.
+_Avoid_: system email, auth email, automated email, notification
+
+**Notification Email**:
+Mail a User receives because they opted in to being told about something, the Weekly Digest being the only one today. It always offers a way to stop receiving it, and a User who never opens one loses nothing they are entitled to.
+_Avoid_: marketing email, newsletter, alert, transactional email
+
+**Email Shell**:
+The shared frame every MyOrganizer email is rendered inside — logo, brand colours, typography, and footer. Each email supplies only its body and declares whether it is a Transactional Email or a Notification Email; the declaration is what decides the footer, so the shell can never put an unsubscribe link on mail a User must not opt out of.
+_Avoid_: email template, layout, wrapper, base template
+
 ## YouTube (focused watching)
 
 **Followed Channel**:
