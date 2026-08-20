@@ -272,6 +272,77 @@ For a standalone run, substitute the `issue/<n>-<slug>` branch the summary print
 Slices run **serially** (one by one), so there is no concurrency knob — each slice's ~2.6GB
 `node_modules` worktree exists one at a time during its run.
 
+## Recovering an interrupted run
+
+A slice whose agent dies mid-run — most often by exhausting the five-hour subscription quota —
+is an **Interrupted Slice**. Its work is recoverable, but **not automatically, and not for long**.
+Read this before re-running anything.
+
+> The behaviour described in [ADR 0035](../adr/0035-interrupted-slices-resume-from-git-and-destruction-is-deliberate.md)
+> — resume-by-default, `--fresh`, `--wait-for-quota` — is **decided but not yet implemented**.
+> Until it lands, recovery is the manual procedure below.
+
+### 1. Do not re-run yet
+
+`dispatch-agents` force-deletes a slice's branch and worktree before recreating them
+(`main.mts`, the stale-branch cleanup). Re-running an interrupted slice **destroys the previous
+attempt first**. Salvage before you dispatch.
+
+### 2. Find out what actually happened
+
+The thrown `AgentError` carries whatever was last on stderr, which is frequently an unrelated
+warning — not the real cause. The cause is in the slice log:
+
+```bash
+tail -40 .sandcastle/logs/slice-<n>-<slug>--<n>.log
+```
+
+`You've hit your session limit · resets <time>` means quota, and the work is usually sound as far
+as it got. Anything else deserves a closer read before you trust the diff.
+
+### 3. Salvage the work
+
+Sandcastle preserves the worktree on error (it prints `Worktree preserved at …`), but the changes
+are left **uncommitted**, and the branch itself is what the next run deletes. Commit them onto the
+slice branch:
+
+```bash
+W=.sandcastle/worktrees/slice-<n>-<slug>
+git -C "$W" add -A
+git -C "$W" commit --no-verify -m "wip(slice): checkpoint interrupted #<n> agent run"
+git tag wip/<n>-checkpoint                       # survives a later `git branch -D`
+```
+
+`--no-verify` is deliberate: Husky would lint and format half-finished code and corrupt the
+evidence. This is the same capture `finalizeSliceBranch` performs on the success path.
+
+### 4. Check the checkpoint is still usable
+
+Slices stack — each is cut from the live feature head. If later slices integrated while this one
+sat around, the checkpoint is based on a superseded head and must be rebased or abandoned:
+
+```bash
+[ "$(git merge-base slice/<n>-<slug> feat/<slug>)" = "$(git rev-parse feat/<slug>)" ] \
+  && echo RESUMABLE || echo STALE
+```
+
+### 5. Review before resuming
+
+An interrupted agent stops mid-thought. Treat generated test files in the checkpoint as
+**unreviewed** — a spec file existing in the tree does not mean `TestScaffold → TestReviewer →
+TestRunner` ran. Check `package.json` and `TECH_STACK.md` too: a slice that added a dependency
+did not necessarily go through `dep-sync`.
+
+### The `dispatch-waves` label trap
+
+`dispatch-waves` gates each wave by rewriting `ready-for-agent` across every slice in the PRD, and
+it aborts the whole driver the moment one slice does not reach `status:done` — **without restoring
+those labels**. After an abort, later waves' slices have had `ready-for-agent` stripped.
+
+Consequence: recovering with a plain `dispatch-agents --prd <n>` sees **only the aborted wave**;
+the remaining waves are invisible. Re-run `dispatch-waves --prd <n>` instead — it recomputes the
+gating from scratch and skips completed waves via `status:done`.
+
 ## Maintenance & gotchas
 
 - **Disk:** `.sandcastle/.yarn-cache` (shared CAS cache, ~2GB) + the active slice's `node_modules`
