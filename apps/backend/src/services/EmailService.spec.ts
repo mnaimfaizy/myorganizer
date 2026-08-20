@@ -7,6 +7,7 @@ const mockNodemailer = jest.mocked(nodemailer);
 
 describe('EmailService', () => {
   let mockSendMail: jest.Mock;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- nodemailer's Transporter has 25+ internal fields irrelevant to this mock
   let mockTransporter: any;
 
   beforeEach(() => {
@@ -153,7 +154,9 @@ describe('EmailService', () => {
       );
 
       const mailOptions = mockSendMail.mock.calls[0][0];
-      expect(mailOptions.to).toBe('user1@example.com,user2@example.com,user3@example.com');
+      expect(mailOptions.to).toBe(
+        'user1@example.com,user2@example.com,user3@example.com',
+      );
     });
   });
 

@@ -65,12 +65,14 @@ describe('UserService email template paths', () => {
       'verify-email.html',
     );
 
-    existsSyncSpy.mockImplementation((p: any) => p === distTemplatePath);
+    existsSyncSpy.mockImplementation(
+      (p: fs.PathLike) => p === distTemplatePath,
+    );
 
     await userService.sendVerificationMail({
       id: 'user-1',
       email: 'test@example.com',
-    } as any);
+    } as Parameters<typeof userService.sendVerificationMail>[0]);
 
     expect(existsSyncSpy).toHaveBeenCalledWith(distTemplatePath);
     expect(readFileSyncSpy).toHaveBeenCalledWith(distTemplatePath, 'utf8');
@@ -110,12 +112,14 @@ describe('UserService email template paths', () => {
       'verify-email.html',
     );
 
-    existsSyncSpy.mockImplementation((p: any) => p === fallbackTemplatePath);
+    existsSyncSpy.mockImplementation(
+      (p: fs.PathLike) => p === fallbackTemplatePath,
+    );
 
     await userService.sendVerificationMail({
       id: 'user-1',
       email: 'test@example.com',
-    } as any);
+    } as Parameters<typeof userService.sendVerificationMail>[0]);
 
     expect(existsSyncSpy).toHaveBeenCalledWith(distTemplatePath);
     expect(existsSyncSpy).toHaveBeenCalledWith(fallbackTemplatePath);
