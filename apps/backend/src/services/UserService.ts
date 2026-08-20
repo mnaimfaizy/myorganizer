@@ -434,7 +434,8 @@ class UserService {
     // putting an unsubscribe link on it (ADR 0034).
     const message = renderEmailShell({
       emailClass: 'transactional',
-      preheader: 'Confirm your email address to finish setting up your account.',
+      preheader:
+        'Confirm your email address to finish setting up your account.',
       blocks: [
         { kind: 'heading', text: `Welcome to ${EMAIL_BRAND_NAME}` },
         {

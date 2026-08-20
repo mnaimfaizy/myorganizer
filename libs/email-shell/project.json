@@ -8,10 +8,7 @@
   "targets": {
     "build-logo": {
       "executor": "nx:run-commands",
-      "outputs": [
-        "{projectRoot}/src/assets",
-        "{projectRoot}/src/generated"
-      ],
+      "outputs": ["{projectRoot}/src/assets", "{projectRoot}/src/generated"],
       "inputs": [
         "{workspaceRoot}/apps/myorganizer/public/images/logo-email.svg",
         "{projectRoot}/scripts/build-logo.mjs"

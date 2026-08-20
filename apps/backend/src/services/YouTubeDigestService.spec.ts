@@ -1,3 +1,4 @@
+import { collectCidReferences } from '@myorganizer/email-shell';
 import { YouTubeDigestService, DIGEST_ITEM_CAP } from './YouTubeDigestService';
 
 jest.mock('./WorkerLeaseService', () => {
@@ -715,6 +716,325 @@ describe('YouTubeDigestService', () => {
       const call = (mockPrisma.youTubeVideo.findMany as jest.Mock).mock
         .calls[0][0];
       expect(call.where.publishedAt).toEqual({ gt: connectedAt });
+    });
+
+    it('digest renders as Notification Email with Unsubscribe in html and text', async () => {
+      const monday = new Date('2026-01-05T12:00:00Z');
+      process.env.APP_FRONTEND_URL = 'https://app.example.com';
+      (
+        mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
+      ).mockResolvedValue({
+        userId: 'user-1',
+        enabled: true,
+        timeZone: 'UTC',
+        preferredWeekday: 1,
+        lastNotifiedAt: null,
+        optedInAt: new Date('2025-12-01'),
+        unsubscribeToken: 'token123',
+      });
+      (mockPrisma.youTubeDigestDelivery.create as jest.Mock).mockResolvedValue(
+        {},
+      );
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([
+        {
+          videoId: 'v1',
+          channelId: 'chan-1',
+          title: 'Test Video',
+          thumbnail: 'https://cdn.example.com/thumb.jpg',
+          publishedAt: new Date('2026-01-02'),
+          subscription: { channelTitle: 'Test Channel' },
+        },
+      ]);
+      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+        email: 'user@example.com',
+        first_name: 'John',
+      });
+
+      await service.deliverDigestForUser(
+        'user-1',
+        new Date('2025-11-01'),
+        monday,
+      );
+
+      const messageArg = (mockSendEmail as jest.Mock).mock.calls[0][2] as {
+        html: string;
+        text: string;
+      };
+      const html = messageArg.html;
+      const text = messageArg.text;
+
+      expect(html).toMatch(/^<!doctype html>/i);
+      expect(html).toContain('Unsubscribe');
+      expect(html).toContain(
+        'https://app.example.com/youtube/unsubscribe?token=token123',
+      );
+      expect(text).toContain(
+        'Unsubscribe: https://app.example.com/youtube/unsubscribe?token=token123',
+      );
+    });
+
+    it('digest keeps privacy and settings links in footer', async () => {
+      const monday = new Date('2026-01-05T12:00:00Z');
+      process.env.APP_FRONTEND_URL = 'https://app.example.com';
+      (
+        mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
+      ).mockResolvedValue({
+        userId: 'user-1',
+        enabled: true,
+        timeZone: 'UTC',
+        preferredWeekday: 1,
+        lastNotifiedAt: null,
+        optedInAt: new Date('2025-12-01'),
+        unsubscribeToken: 'token123',
+      });
+      (mockPrisma.youTubeDigestDelivery.create as jest.Mock).mockResolvedValue(
+        {},
+      );
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([
+        {
+          videoId: 'v1',
+          channelId: 'chan-1',
+          title: 'Test Video',
+          thumbnail: 'https://cdn.example.com/thumb.jpg',
+          publishedAt: new Date('2026-01-02'),
+          subscription: { channelTitle: 'Test Channel' },
+        },
+      ]);
+      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+        email: 'user@example.com',
+        first_name: 'John',
+      });
+
+      await service.deliverDigestForUser(
+        'user-1',
+        new Date('2025-11-01'),
+        monday,
+      );
+
+      const messageArg = (mockSendEmail as jest.Mock).mock.calls[0][2] as {
+        html: string;
+      };
+      const html = messageArg.html;
+
+      expect(html).toContain('https://app.example.com/youtube/data-privacy');
+      expect(html).toContain('How we store your data');
+      expect(html).toContain('https://app.example.com/dashboard/youtube');
+      expect(html).toContain('Digest settings');
+    });
+
+    it('digest rows are fluid: thumbnail has width 100% and no fixed dimensions', async () => {
+      const monday = new Date('2026-01-05T12:00:00Z');
+      process.env.APP_FRONTEND_URL = 'https://app.example.com';
+      (
+        mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
+      ).mockResolvedValue({
+        userId: 'user-1',
+        enabled: true,
+        timeZone: 'UTC',
+        preferredWeekday: 1,
+        lastNotifiedAt: null,
+        optedInAt: new Date('2025-12-01'),
+        unsubscribeToken: 'token123',
+      });
+      (mockPrisma.youTubeDigestDelivery.create as jest.Mock).mockResolvedValue(
+        {},
+      );
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([
+        {
+          videoId: 'v1',
+          channelId: 'chan-1',
+          title: 'Test Video',
+          thumbnail: 'https://cdn.example.com/thumb.jpg',
+          publishedAt: new Date('2026-01-02'),
+          subscription: { channelTitle: 'Test Channel' },
+        },
+      ]);
+      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+        email: 'user@example.com',
+        first_name: 'John',
+      });
+
+      await service.deliverDigestForUser(
+        'user-1',
+        new Date('2025-11-01'),
+        monday,
+      );
+
+      const messageArg = (mockSendEmail as jest.Mock).mock.calls[0][2] as {
+        html: string;
+      };
+      const html = messageArg.html;
+
+      // Thumbnail should have width="100%" attribute and width: 100%; height: auto in css
+      const imgMatch = html.match(
+        /<img[^>]*src="https:\/\/cdn\.example\.com\/thumb\.jpg"[^>]*>/,
+      );
+      expect(imgMatch).not.toBeNull();
+      const thumbnailImg = imgMatch?.[0] ?? '';
+      expect(thumbnailImg).toContain('width="100%"');
+      expect(thumbnailImg).toContain('width: 100%');
+      expect(thumbnailImg).toContain('height: auto');
+      // No fixed pixel dimensions from old digest (168x94)
+      expect(thumbnailImg).not.toContain('width="168"');
+      expect(thumbnailImg).not.toContain('height="94"');
+    });
+
+    it('digest ships logo CID and linkage holds', async () => {
+      const monday = new Date('2026-01-05T12:00:00Z');
+      process.env.APP_FRONTEND_URL = 'https://app.example.com';
+      (
+        mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
+      ).mockResolvedValue({
+        userId: 'user-1',
+        enabled: true,
+        timeZone: 'UTC',
+        preferredWeekday: 1,
+        lastNotifiedAt: null,
+        optedInAt: new Date('2025-12-01'),
+        unsubscribeToken: 'token123',
+      });
+      (mockPrisma.youTubeDigestDelivery.create as jest.Mock).mockResolvedValue(
+        {},
+      );
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([
+        {
+          videoId: 'v1',
+          channelId: 'chan-1',
+          title: 'Test Video',
+          thumbnail: 'https://cdn.example.com/thumb.jpg',
+          publishedAt: new Date('2026-01-02'),
+          subscription: { channelTitle: 'Test Channel' },
+        },
+      ]);
+      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+        email: 'user@example.com',
+        first_name: 'John',
+      });
+
+      await service.deliverDigestForUser(
+        'user-1',
+        new Date('2025-11-01'),
+        monday,
+      );
+
+      const messageArg = (mockSendEmail as jest.Mock).mock.calls[0][2];
+      const referencedCids = collectCidReferences(messageArg.html);
+      const attachmentCids = messageArg.attachments.map((a) => a.cid);
+
+      expect(messageArg.attachments).toHaveLength(1);
+      expect(messageArg.attachments[0].contentType).toBe('image/png');
+      expect(referencedCids).toEqual(attachmentCids);
+    });
+
+    it('digest plain-text lists videos as dash-lines with title, channel, date, and url', async () => {
+      const monday = new Date('2026-01-05T12:00:00Z');
+      process.env.APP_FRONTEND_URL = 'https://app.example.com';
+      (
+        mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
+      ).mockResolvedValue({
+        userId: 'user-1',
+        enabled: true,
+        timeZone: 'UTC',
+        preferredWeekday: 1,
+        lastNotifiedAt: null,
+        optedInAt: new Date('2025-12-01'),
+        unsubscribeToken: 'token123',
+      });
+      (mockPrisma.youTubeDigestDelivery.create as jest.Mock).mockResolvedValue(
+        {},
+      );
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([
+        {
+          videoId: 'v1',
+          channelId: 'chan-1',
+          title: 'Video One',
+          thumbnail: 'https://cdn.example.com/thumb1.jpg',
+          publishedAt: new Date('2026-01-02'),
+          subscription: { channelTitle: 'Channel A' },
+        },
+        {
+          videoId: 'v2',
+          channelId: 'chan-2',
+          title: 'Video Two',
+          thumbnail: 'https://cdn.example.com/thumb2.jpg',
+          publishedAt: new Date('2026-01-01'),
+          subscription: { channelTitle: 'Channel B' },
+        },
+      ]);
+      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+        email: 'user@example.com',
+        first_name: 'John',
+      });
+
+      await service.deliverDigestForUser(
+        'user-1',
+        new Date('2025-11-01'),
+        monday,
+      );
+
+      const messageArg = (mockSendEmail as jest.Mock).mock.calls[0][2];
+      const text = messageArg.text;
+
+      // Check the format matches: - <title> (<channel> · <date>): <url>
+      expect(text).toContain(
+        '- Video One (Channel A · 1/2/2026): https://app.example.com/dashboard/youtube?channel=chan-1',
+      );
+      expect(text).toContain(
+        '- Video Two (Channel B · 1/1/2026): https://app.example.com/dashboard/youtube?channel=chan-2',
+      );
+    });
+
+    it('digest escaping survives migration: script tags and ampersands', async () => {
+      const monday = new Date('2026-01-05T12:00:00Z');
+      process.env.APP_FRONTEND_URL = 'https://app.example.com';
+      (
+        mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
+      ).mockResolvedValue({
+        userId: 'user-1',
+        enabled: true,
+        timeZone: 'UTC',
+        preferredWeekday: 1,
+        lastNotifiedAt: null,
+        optedInAt: new Date('2025-12-01'),
+        unsubscribeToken: 'token123',
+      });
+      (mockPrisma.youTubeDigestDelivery.create as jest.Mock).mockResolvedValue(
+        {},
+      );
+      (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue([
+        {
+          videoId: 'v1',
+          channelId: 'chan-1',
+          title: 'Watch <script>alert(1)</script>',
+          thumbnail: 'https://cdn.example.com/thumb.jpg',
+          publishedAt: new Date('2026-01-02'),
+          subscription: { channelTitle: 'Channel & Co' },
+        },
+      ]);
+      (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+        email: 'user@example.com',
+        first_name: 'John',
+      });
+
+      await service.deliverDigestForUser(
+        'user-1',
+        new Date('2025-11-01'),
+        monday,
+      );
+
+      const messageArg = (mockSendEmail as jest.Mock).mock.calls[0][2];
+      const html = messageArg.html;
+      const text = messageArg.text;
+
+      // HTML should have escaped forms
+      expect(html).toContain('Watch &lt;script&gt;alert(1)&lt;/script&gt;');
+      expect(html).toContain('Channel &amp; Co');
+      expect(html).not.toContain('<script>alert(1)</script>');
+      expect(html).not.toContain('Channel & Co');
+
+      // Text should have unescaped forms
+      expect(text).toContain('Watch <script>alert(1)</script>');
+      expect(text).toContain('Channel & Co');
     });
   });
 

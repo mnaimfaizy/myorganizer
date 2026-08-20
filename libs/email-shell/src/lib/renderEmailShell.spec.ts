@@ -7,15 +7,15 @@ import {
   colorSurface,
 } from '@myorganizer/design-tokens';
 import { collectCidReferences } from './cidLinkage';
-import { EMAIL_LOGO_CID, EMAIL_BRAND_NAME } from './renderEmailShell';
-import { renderEmailShell } from './renderEmailShell';
+import { EMAIL_BRAND_NAME, renderEmailShell } from './renderEmailShell';
+import { EMAIL_LOGO_CID } from './types';
 import type { EmailBodyBlock } from './types';
 
 describe('renderEmailShell', () => {
   describe('validation: emailClass', () => {
     it('throws when options is null', () => {
       expect(() => {
-        renderEmailShell(null as any);
+        renderEmailShell(null as never);
       }).toThrow(
         'renderEmailShell requires options.emailClass to be "transactional" or "notification"',
       );
@@ -23,7 +23,7 @@ describe('renderEmailShell', () => {
 
     it('throws when options is undefined', () => {
       expect(() => {
-        renderEmailShell(undefined as any);
+        renderEmailShell(undefined as never);
       }).toThrow(
         'renderEmailShell requires options.emailClass to be "transactional" or "notification"',
       );
@@ -34,7 +34,7 @@ describe('renderEmailShell', () => {
         renderEmailShell({
           preheader: 'Test',
           blocks: [],
-        } as any);
+        } as never);
       }).toThrow(
         'renderEmailShell requires options.emailClass to be "transactional" or "notification"',
       );
@@ -43,7 +43,7 @@ describe('renderEmailShell', () => {
     it('throws when emailClass is an invalid string', () => {
       expect(() => {
         renderEmailShell({
-          emailClass: 'promotional' as any,
+          emailClass: 'promotional' as never,
           preheader: 'Test',
           blocks: [],
         });
@@ -55,7 +55,7 @@ describe('renderEmailShell', () => {
     it('throws when emailClass is an empty string', () => {
       expect(() => {
         renderEmailShell({
-          emailClass: '' as any,
+          emailClass: '' as never,
           preheader: 'Test',
           blocks: [],
         });
@@ -72,7 +72,7 @@ describe('renderEmailShell', () => {
           emailClass: 'notification',
           preheader: 'Test',
           blocks: [],
-        } as any);
+        } as never);
       }).toThrow('A Notification Email must supply unsubscribeUrl.');
     });
 
@@ -94,7 +94,7 @@ describe('renderEmailShell', () => {
         renderEmailShell({
           emailClass: 'transactional',
           blocks: [],
-        } as any);
+        } as never);
       }).toThrow('renderEmailShell requires a preheader.');
     });
 
@@ -811,6 +811,77 @@ describe('renderEmailShell', () => {
 
       expect(referenced).toEqual(attached);
     });
+
+    it('transactional email with mediaList external imageUrl: CID linkage proves external thumbnails are not CID references', () => {
+      const result = renderEmailShell({
+        emailClass: 'transactional',
+        preheader: 'Digest',
+        blocks: [
+          {
+            kind: 'mediaList',
+            items: [
+              {
+                title: 'Video 1',
+                meta: 'Channel A',
+                url: 'https://example.com/video1',
+                imageUrl: 'https://cdn.example.com/thumb1.jpg',
+              },
+              {
+                title: 'Video 2',
+                meta: 'Channel B',
+                url: 'https://example.com/video2',
+                imageUrl: 'https://cdn.example.com/thumb2.jpg',
+              },
+            ],
+          },
+        ],
+      });
+
+      const referenced = collectCidReferences(result.html);
+      const attached = result.attachments.map((a) => a.cid);
+
+      // Only the logo CID is referenced; external http(s) thumbnails are NOT
+      // converted to CID references and do NOT require attachments
+      expect(referenced).toEqual([EMAIL_LOGO_CID]);
+      expect(attached).toEqual([EMAIL_LOGO_CID]);
+      expect(referenced).toEqual(attached);
+    });
+
+    it('notification email with mediaList external imageUrl: CID linkage holds and proves external thumbnails are not attachments', () => {
+      const result = renderEmailShell({
+        emailClass: 'notification',
+        preheader: 'Weekly digest',
+        blocks: [
+          {
+            kind: 'mediaList',
+            items: [
+              {
+                title: 'Video 1',
+                meta: 'Channel A · Jan 15',
+                url: 'https://example.com/video1',
+                imageUrl: 'https://cdn.example.com/thumb1.jpg',
+              },
+              {
+                title: 'Video 2',
+                meta: 'Channel B · Jan 14',
+                url: 'https://example.com/video2',
+                imageUrl: 'https://cdn.example.com/thumb2.jpg',
+              },
+            ],
+          },
+        ],
+        unsubscribeUrl: 'https://example.com/unsub',
+      });
+
+      const referenced = collectCidReferences(result.html);
+      const attached = result.attachments.map((a) => a.cid);
+
+      // Only the logo CID is referenced; external http(s) thumbnails are NOT
+      // converted to CID references and do NOT require attachments
+      expect(referenced).toEqual([EMAIL_LOGO_CID]);
+      expect(attached).toEqual([EMAIL_LOGO_CID]);
+      expect(referenced).toEqual(attached);
+    });
   });
 
   describe('mediaList block rendering', () => {
@@ -930,7 +1001,13 @@ describe('renderEmailShell', () => {
       });
 
       expect(result.html).toContain('height: auto');
-      expect(result.html).not.toContain('height="');
+      // Extract the media item's img tag (not the logo)
+      const imgMatch = result.html.match(
+        /<img[^>]*src="https:\/\/cdn\.example\.com\/thumb\.jpg"[^>]*>/,
+      );
+      expect(imgMatch).not.toBeNull();
+      const mediaItemImg = imgMatch?.[0] ?? '';
+      expect(mediaItemImg).not.toContain('height="');
     });
 
     it('thumbnail img does not have fixed pixel width or height', () => {
@@ -1050,8 +1127,12 @@ describe('renderEmailShell', () => {
         ],
       });
 
-      expect(result.text).toContain('- Video One (Channel A): https://example.com/v1');
-      expect(result.text).toContain('- Video Two (Channel B): https://example.com/v2');
+      expect(result.text).toContain(
+        '- Video One (Channel A): https://example.com/v1',
+      );
+      expect(result.text).toContain(
+        '- Video Two (Channel B): https://example.com/v2',
+      );
     });
   });
 
@@ -1205,7 +1286,9 @@ describe('renderEmailShell', () => {
         blocks: [],
       });
 
-      expect(result.html).toContain(`© ${new Date().getFullYear()} ${EMAIL_BRAND_NAME}`);
+      expect(result.html).toContain(
+        `&copy; ${new Date().getFullYear()} ${EMAIL_BRAND_NAME}`,
+      );
     });
 
     it('EMAIL_BRAND_NAME appears in html title tag', () => {
@@ -1235,7 +1318,9 @@ describe('renderEmailShell', () => {
         blocks: [],
       });
 
-      expect(result.text).toContain(`© ${new Date().getFullYear()} ${EMAIL_BRAND_NAME}`);
+      expect(result.text).toContain(
+        `© ${new Date().getFullYear()} ${EMAIL_BRAND_NAME}`,
+      );
     });
   });
 });
