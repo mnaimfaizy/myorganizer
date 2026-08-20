@@ -15,6 +15,7 @@ import { createInterface } from 'node:readline/promises';
 import {
   MAX_QUOTA_WAITS,
   SLICE_DISPOSITIONS,
+  formatWaitWindow,
   classifyRunFailure,
   decideWaitPolicy,
   tailLines,
@@ -2132,11 +2133,14 @@ while (pendingSlices.length > 0) {
       // same wall and burning one of the two waits for nothing.
       const sleepMs = Math.max(untilMs, 0) + 5 * 60 * 1000;
       quotaWaitsTaken += 1;
+      // Local time and duration, not a UTC timestamp: the sleep length is the same
+      // either way, but a person can only judge whether it is SANE from the duration.
       console.error(
         `  [#${issue.number}] provider limit hit — ${classification.evidence ?? 'no detail'}\n` +
-          `      Parking until ${waitDecision.until.toISOString()} (+5m margin), ` +
-          `wait ${quotaWaitsTaken}/${MAX_QUOTA_WAITS}.\n` +
-          `      The slice will RESUME from its checkpoint, not restart.`,
+          `      Parking until ${formatWaitWindow(waitDecision.until, failedAt)}, ` +
+          `+5m margin, wait ${quotaWaitsTaken}/${MAX_QUOTA_WAITS}.\n` +
+          `      The slice will RESUME from its checkpoint, not restart.\n` +
+          `      Ctrl-C is safe — the checkpoint is already committed.`,
       );
       await new Promise((resolve) => setTimeout(resolve, sleepMs));
       console.log(`  [#${issue.number}] resuming after the limit reset.`);

@@ -451,3 +451,42 @@ export function decideWaitPolicy({
     reason: `provider limit resets at ${classification.resetAt.toISOString()}`,
   };
 }
+
+// ─── Reporting a wait ─────────────────────────────────────────────────────────
+
+/** A duration as `19h 25m` / `45m`, for a human deciding whether to let a run park. */
+export function formatDuration(ms) {
+  const totalMinutes = Math.max(0, Math.round(ms / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return hours === 0 ? `${minutes}m` : `${hours}h ${minutes}m`;
+}
+
+/**
+ * Describe a wait window in the operator's own timezone, with the duration.
+ *
+ * Reset times arrive in UTC and the sleep itself is an absolute delta, so the zone
+ * never affects how long a run parks. It does affect whether a person notices that
+ * the wait is wrong: `2026-08-21T04:30:00.000Z` reads as unremarkable, while
+ * `21 Aug, 2:30 pm AEST (in 19h 25m)` is obviously not a five-hour usage window.
+ * The duration is the part that makes a mistake visible.
+ *
+ * @param {Date} until
+ * @param {Date} now
+ * @param {string} [timeZone]  Defaults to the host's zone.
+ */
+export function formatWaitWindow(until, now, timeZone = undefined) {
+  // Explicit components rather than dateStyle/timeStyle: those cannot be combined
+  // with timeZoneName, and naming the zone is the point.
+  const local = new Intl.DateTimeFormat('en-AU', {
+    timeZone,
+    day: 'numeric',
+    month: 'short',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+    timeZoneName: 'short',
+  }).format(until);
+
+  return `${local} (in ${formatDuration(until.getTime() - now.getTime())})`;
+}

@@ -11,6 +11,8 @@ import {
   MAX_QUOTA_WAITS,
   MAX_WAIT_MS,
   RUN_START_MARKER,
+  formatDuration,
+  formatWaitWindow,
   classifyRunFailure,
   decideWaitPolicy,
   parseResetTime,
@@ -597,4 +599,36 @@ test('a reset inside the bound is still waited for', () => {
 
 test('the wait bound is six hours', () => {
   assert.equal(MAX_WAIT_MS, 6 * 60 * 60 * 1000);
+});
+
+// ─── Reporting a wait ─────────────────────────────────────────────────────────
+
+test('durations read in hours and minutes', () => {
+  assert.equal(formatDuration(19.42 * 3600000), '19h 25m');
+  assert.equal(formatDuration(45 * 60000), '45m');
+  assert.equal(formatDuration(2 * 3600000), '2h 0m');
+  assert.equal(formatDuration(-5000), '0m');
+});
+
+test('a wait window is shown in the operator timezone with its duration', () => {
+  const window = formatWaitWindow(
+    new Date('2026-08-21T04:30:00Z'),
+    new Date('2026-08-20T09:05:00Z'),
+    'Australia/Sydney',
+  );
+
+  // The same instant is 2:30 pm the next day in AEST. Printing it as UTC is what
+  // made a nineteen-hour park look unremarkable.
+  assert.match(window, /2:30 pm/);
+  assert.match(window, /in 19h 25m/);
+});
+
+test('the duration makes an implausible wait obvious', () => {
+  const short = formatWaitWindow(
+    new Date('2026-08-20T04:30:00Z'),
+    new Date('2026-08-20T03:00:00Z'),
+    'Australia/Sydney',
+  );
+
+  assert.match(short, /in 1h 30m/);
 });
