@@ -3,6 +3,10 @@ FROM node:22-bookworm
 # Install system dependencies.
 # build-essential + python3: required to compile native modules (bcrypt).
 # libssl-dev: required by Prisma client at runtime.
+# default-jre-headless: openapi-generator-cli is a Java tool, so `yarn
+#   openapi:sync` and `yarn openapi:check` cannot run without a JRE. Omitting it
+#   made issue #408 unfixable in the sandbox: the agent regenerated the spec,
+#   hit `java: not found` on the client, and was left mid-regeneration.
 RUN apt-get update && apt-get install -y \
   git \
   curl \
@@ -10,6 +14,7 @@ RUN apt-get update && apt-get install -y \
   build-essential \
   python3 \
   libssl-dev \
+  default-jre-headless \
   && rm -rf /var/lib/apt/lists/*
 
 # Install GitHub CLI
@@ -65,6 +70,16 @@ RUN uv tool install "graphifyy[mcp]==0.9.43"
 # and hides the real failure. Merge rather than overwrite: the installer above may
 # already own this file.
 RUN node -e "const f='/home/agent/.claude.json',fs=require('fs');let j={};try{j=JSON.parse(fs.readFileSync(f,'utf8'))}catch{}j.projects=j.projects||{};j.projects['/home/agent/workspace']={...(j.projects['/home/agent/workspace']||{}),hasTrustDialogAccepted:true};fs.writeFileSync(f,JSON.stringify(j,null,2))"
+
+# Tell the repo's PreToolUse hooks they are running inside the sandbox, so they
+# lift the workflow guards on generated paths (app-api-client, api-specs,
+# swagger, generated design tokens, Prisma migrations). Those guards exist to
+# stop a hand-edit in chat or local development; in a disposable container they
+# only block legitimate work, including the `git restore` an agent needs to undo
+# its own mistake. Secret guards (.env, credentials, key material) are NOT
+# lifted — the transcript still leaves the container. See
+# tools/scripts/copilot-hooks/pre-tool-use.mjs.
+ENV MYORGANIZER_SANDBOX=1
 
 WORKDIR /home/agent
 

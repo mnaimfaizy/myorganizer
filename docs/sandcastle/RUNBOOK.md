@@ -417,8 +417,36 @@ git tag wip/<n>-checkpoint
 `--no-verify` is deliberate: husky would lint and format half-finished code and corrupt the
 evidence being preserved.
 
+## Guardrails inside the sandbox
+
+The repo's `PreToolUse` hooks run in the container too — the image pre-accepts the workspace
+trust dialog, so `.claude/settings.json` loads. Those hooks split into two categories, and only
+one of them applies in here.
+
+**Workflow guards are lifted.** The blocks on generated and tool-owned paths — the API client,
+the synced spec, generated Swagger, generated design tokens, Prisma migrations — exist to stop a
+hand-edit during chat or local development. In a disposable container they protect nothing and
+actively cause harm: in the run on issue #408 they rejected every `git restore` the agent tried
+after a botched regeneration, so it was left holding a deletion it could not undo and committed
+it instead. The image sets `MYORGANIZER_SANDBOX=1`, which
+`tools/scripts/copilot-hooks/pre-tool-use.mjs` reads to skip them.
+
+**Secret guards stay active.** Reads and writes of `.env`, credentials, and key material are
+still blocked. The container's filesystem is disposable, but the transcript is not — it is
+written to `.sandcastle/logs/` on the host and fed back into model context, so that is where a
+leaked credential would end up.
+
+Because the marker is read by the shared hook script rather than by harness config, all three
+harnesses (Claude, Cursor, Copilot) inherit this without separate wiring. Behavior in both modes
+is pinned by `tools/scripts/copilot-hooks/__tests__/pre-tool-use.spec.ts`.
+
+To reproduce the sandbox behavior locally: `MYORGANIZER_SANDBOX=1 yarn nx test tools`.
+
 ## Maintenance & gotchas
 
+- **The image ships a JRE.** `openapi-generator-cli` is a Java tool, so `yarn openapi:sync` and
+  `yarn openapi:check` need one. Before `default-jre-headless` was added, an agent asked to
+  resync the API client got `java: not found` partway through and could not finish.
 - **Disk:** `.sandcastle/.yarn-cache` (shared CAS cache, ~2GB) + the active slice's `node_modules`
   (~2.6GB; one at a time since slices run serially) + a transient gate worktree. Check headroom
   (`df -h .`).
