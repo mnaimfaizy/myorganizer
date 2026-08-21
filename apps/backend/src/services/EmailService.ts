@@ -1,6 +1,14 @@
 import nodemailer, { SendMailOptions } from 'nodemailer';
 import winston from 'winston';
 
+export type MailAttachment = NonNullable<SendMailOptions['attachments']>[number];
+
+export interface EmailMessage {
+  html: string;
+  text: string;
+  attachments?: MailAttachment[];
+}
+
 const logger = winston.createLogger({
   level: 'debug',
   format: winston.format.json(),
@@ -100,15 +108,17 @@ const getEmailService = (): EmailService => {
 const sendEmail = async (
   to: string | string[],
   subject: string,
-  html: string,
+  message: EmailMessage,
 ): Promise<void> => {
   const emailService = getEmailService();
 
-  const mailOptions = {
+  const mailOptions: SendMailOptions = {
     from: process.env.EMAIL_SENDER,
     to: Array.isArray(to) ? to.join(',') : to,
     subject: subject,
-    html: html,
+    html: message.html,
+    text: message.text,
+    attachments: message.attachments,
   };
 
   logger.info(`Sending mail to - ${to}`);

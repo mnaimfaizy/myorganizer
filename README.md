@@ -117,6 +117,7 @@ myorganizer/
 │   ├── auth/             # Session module, route guards, refresh contract
 │   ├── core/             # Shared utilities and types
 │   ├── design-tokens/    # W3C DTCG tokens → CSS, TypeScript, Tailwind
+│   ├── email-shell/      # Shared HTML/text email frame (logo, colours, footer)
 │   ├── vault-core/       # Vault envelope format and migrations
 │   ├── web/pages/        # One library per route — all page logic lives here
 │   ├── web-ui/           # Radix component library

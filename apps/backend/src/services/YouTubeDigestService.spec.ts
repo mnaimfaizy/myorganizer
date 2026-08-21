@@ -1,3 +1,4 @@
+import { collectCidReferences } from '@myorganizer/email-shell';
 import { YouTubeDigestService, DIGEST_ITEM_CAP } from './YouTubeDigestService';
 
 jest.mock('./WorkerLeaseService', () => {
@@ -69,6 +70,68 @@ const mockSendEmail = require('./EmailService').__mockSendEmail;
 const mockSyncVideosForUser =
   require('./YouTubeSyncService').__mockSyncVideosForUser;
 
+interface DigestDeliveryInput {
+  videoId: string;
+  channelId?: string;
+  title: string;
+  thumbnail?: string | null;
+  publishedAt: Date;
+  channelTitle: string;
+}
+
+async function deliverDigestAndCapture(
+  videos: DigestDeliveryInput[] = [],
+  options?: {
+    userId?: string;
+    email?: string;
+    firstName?: string;
+    unsubscribeToken?: string;
+    connectedAt?: Date;
+  },
+) {
+  const userId = options?.userId ?? 'user-1';
+  const email = options?.email ?? 'user@example.com';
+  const firstName = options?.firstName ?? 'John';
+  const unsubscribeToken = options?.unsubscribeToken ?? 'token123';
+  const connectedAt = options?.connectedAt ?? new Date('2025-12-01');
+  const monday = new Date('2026-01-05T12:00:00Z');
+
+  process.env.APP_FRONTEND_URL = 'https://app.example.com';
+
+  (
+    mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
+  ).mockResolvedValue({
+    userId,
+    enabled: true,
+    timeZone: 'UTC',
+    preferredWeekday: 1,
+    lastNotifiedAt: null,
+    optedInAt: connectedAt,
+    unsubscribeToken,
+  });
+  (mockPrisma.youTubeDigestDelivery.create as jest.Mock).mockResolvedValue({});
+  (mockPrisma.youTubeVideo.findMany as jest.Mock).mockResolvedValue(
+    videos.map((v) => ({
+      videoId: v.videoId,
+      channelId: v.channelId ?? 'default-chan',
+      title: v.title,
+      thumbnail: v.thumbnail ?? null,
+      publishedAt: v.publishedAt,
+      subscription: { channelTitle: v.channelTitle },
+    })),
+  );
+  (mockPrisma.user.findUnique as jest.Mock).mockResolvedValue({
+    email,
+    first_name: firstName,
+  });
+
+  const service = new YouTubeDigestService(mockPrisma, mockLeases);
+  await service.deliverDigestForUser(userId, new Date('2025-11-01'), monday);
+
+  const messageArg = (mockSendEmail as jest.Mock).mock.calls[0]?.[2];
+  return messageArg;
+}
+
 describe('YouTubeDigestService', () => {
   let service: YouTubeDigestService;
   const now = new Date('2026-01-15T12:00:00Z');
@@ -79,6 +142,10 @@ describe('YouTubeDigestService', () => {
     // that makes sendEmail reject would otherwise poison every later test.
     (mockSendEmail as jest.Mock).mockResolvedValue(undefined);
     service = new YouTubeDigestService(mockPrisma, mockLeases);
+  });
+
+  afterEach(() => {
+    delete process.env.APP_FRONTEND_URL;
   });
 
   describe('runDigestWorker', () => {
@@ -191,10 +258,6 @@ describe('YouTubeDigestService', () => {
   });
 
   describe('deliverDigestForUser', () => {
-    afterEach(() => {
-      delete process.env.APP_FRONTEND_URL;
-    });
-
     it('should return not_due when no settings row exists', async () => {
       (
         mockPrisma.youTubeNotificationSettings.findUnique as jest.Mock
@@ -522,7 +585,11 @@ describe('YouTubeDigestService', () => {
         monday,
       );
 
-      const html = (mockSendEmail as jest.Mock).mock.calls[0][2] as string;
+      const messageArg = (mockSendEmail as jest.Mock).mock.calls[0][2] as {
+        html: string;
+        text: string;
+      };
+      const html = messageArg.html;
       expect(html).toContain(
         'https://app.example.com/youtube/unsubscribe?token=token123',
       );
@@ -576,7 +643,11 @@ describe('YouTubeDigestService', () => {
         monday,
       );
 
-      const html = (mockSendEmail as jest.Mock).mock.calls[0][2] as string;
+      const messageArg = (mockSendEmail as jest.Mock).mock.calls[0][2] as {
+        html: string;
+        text: string;
+      };
+      const html = messageArg.html;
       expect(html).toContain('https://app.example.com/youtube/data-privacy');
       expect(html).toContain('How we store your data');
     });
@@ -707,6 +778,156 @@ describe('YouTubeDigestService', () => {
       const call = (mockPrisma.youTubeVideo.findMany as jest.Mock).mock
         .calls[0][0];
       expect(call.where.publishedAt).toEqual({ gt: connectedAt });
+    });
+
+    it('digest renders as Notification Email with Unsubscribe in html and text', async () => {
+      const message = await deliverDigestAndCapture([
+        {
+          videoId: 'v1',
+          channelId: 'chan-1',
+          title: 'Test Video',
+          thumbnail: 'https://cdn.example.com/thumb.jpg',
+          publishedAt: new Date('2026-01-02'),
+          channelTitle: 'Test Channel',
+        },
+      ]);
+
+      const html = message.html;
+      const text = message.text;
+
+      expect(html).toMatch(/^<!doctype html>/i);
+      expect(html).toContain('Unsubscribe');
+      expect(html).toContain(
+        'https://app.example.com/youtube/unsubscribe?token=token123',
+      );
+      expect(text).toContain(
+        'Unsubscribe: https://app.example.com/youtube/unsubscribe?token=token123',
+      );
+    });
+
+    it('digest keeps privacy and settings links in footer', async () => {
+      const message = await deliverDigestAndCapture([
+        {
+          videoId: 'v1',
+          channelId: 'chan-1',
+          title: 'Test Video',
+          thumbnail: 'https://cdn.example.com/thumb.jpg',
+          publishedAt: new Date('2026-01-02'),
+          channelTitle: 'Test Channel',
+        },
+      ]);
+
+      const html = message.html;
+
+      expect(html).toContain('https://app.example.com/youtube/data-privacy');
+      expect(html).toContain('How we store your data');
+      expect(html).toContain('https://app.example.com/dashboard/youtube');
+      expect(html).toContain('Digest settings');
+    });
+
+    it('digest rows are fluid: thumbnail has width 100% and no fixed dimensions', async () => {
+      const message = await deliverDigestAndCapture([
+        {
+          videoId: 'v1',
+          channelId: 'chan-1',
+          title: 'Test Video',
+          thumbnail: 'https://cdn.example.com/thumb.jpg',
+          publishedAt: new Date('2026-01-02'),
+          channelTitle: 'Test Channel',
+        },
+      ]);
+
+      const html = message.html;
+
+      // Thumbnail should have width="100%" attribute and width: 100%; height: auto in css
+      const imgMatch = html.match(
+        /<img[^>]*src="https:\/\/cdn\.example\.com\/thumb\.jpg"[^>]*>/,
+      );
+      expect(imgMatch).not.toBeNull();
+      const thumbnailImg = imgMatch?.[0] ?? '';
+      expect(thumbnailImg).toContain('width="100%"');
+      expect(thumbnailImg).toContain('width: 100%');
+      expect(thumbnailImg).toContain('height: auto');
+      // No fixed pixel dimensions from old digest (168x94)
+      expect(thumbnailImg).not.toContain('width="168"');
+      expect(thumbnailImg).not.toContain('height="94"');
+    });
+
+    it('digest ships logo CID and linkage holds', async () => {
+      const message = await deliverDigestAndCapture([
+        {
+          videoId: 'v1',
+          channelId: 'chan-1',
+          title: 'Test Video',
+          thumbnail: 'https://cdn.example.com/thumb.jpg',
+          publishedAt: new Date('2026-01-02'),
+          channelTitle: 'Test Channel',
+        },
+      ]);
+
+      const referencedCids = collectCidReferences(message.html);
+      const attachmentCids = message.attachments.map((a) => a.cid);
+
+      expect(message.attachments).toHaveLength(1);
+      expect(message.attachments[0].contentType).toBe('image/png');
+      expect(referencedCids).toEqual(attachmentCids);
+    });
+
+    it('digest plain-text lists videos as dash-lines with title, channel, date, and url', async () => {
+      const message = await deliverDigestAndCapture([
+        {
+          videoId: 'v1',
+          channelId: 'chan-1',
+          title: 'Video One',
+          thumbnail: 'https://cdn.example.com/thumb1.jpg',
+          publishedAt: new Date('2026-01-02'),
+          channelTitle: 'Channel A',
+        },
+        {
+          videoId: 'v2',
+          channelId: 'chan-2',
+          title: 'Video Two',
+          thumbnail: 'https://cdn.example.com/thumb2.jpg',
+          publishedAt: new Date('2026-01-01'),
+          channelTitle: 'Channel B',
+        },
+      ]);
+
+      const text = message.text;
+
+      // Check the format matches: - <title> (<channel> · <date>): <url>
+      expect(text).toContain(
+        '- Video One (Channel A · 1/2/2026): https://app.example.com/dashboard/youtube?channel=chan-1',
+      );
+      expect(text).toContain(
+        '- Video Two (Channel B · 1/1/2026): https://app.example.com/dashboard/youtube?channel=chan-2',
+      );
+    });
+
+    it('digest escaping survives migration: script tags and ampersands', async () => {
+      const message = await deliverDigestAndCapture([
+        {
+          videoId: 'v1',
+          channelId: 'chan-1',
+          title: 'Watch <script>alert(1)</script>',
+          thumbnail: 'https://cdn.example.com/thumb.jpg',
+          publishedAt: new Date('2026-01-02'),
+          channelTitle: 'Channel & Co',
+        },
+      ]);
+
+      const html = message.html;
+      const text = message.text;
+
+      // HTML should have escaped forms
+      expect(html).toContain('Watch &lt;script&gt;alert(1)&lt;/script&gt;');
+      expect(html).toContain('Channel &amp; Co');
+      expect(html).not.toContain('<script>alert(1)</script>');
+      expect(html).not.toContain('Channel & Co');
+
+      // Text should have unescaped forms
+      expect(text).toContain('Watch <script>alert(1)</script>');
+      expect(text).toContain('Channel & Co');
     });
   });
 

@@ -92,7 +92,6 @@ Before you begin, ensure you have the following installed on your system:
 
    ```env
    # Application
-   APP_NAME="My Organizer"
    APP_FRONTEND_URL=http://localhost:4200
 
    # Server
