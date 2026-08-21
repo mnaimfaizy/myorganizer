@@ -202,9 +202,8 @@ describe('EmailService', () => {
 
       await sendEmail('user@example.com', 'Subject', message);
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- nodemailer's TransportOptions types don't expose auth at this level
       const createTransportCall = mockNodemailer.createTransport.mock
-        .calls[0][0] as any;
+        .calls[0][0] as Record<string, unknown>;
       expect(createTransportCall.auth).toBeUndefined();
     });
   });
