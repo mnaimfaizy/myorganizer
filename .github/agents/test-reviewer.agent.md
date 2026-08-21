@@ -38,23 +38,69 @@ the gate, and a gate the author fills in for you is not a gate.
 5. Verify the judgment checklist below — the items a script cannot decide.
 6. Return APPROVED or REJECTED with an annotated checklist.
 
-## Commands By Project
+## Resolving The Commands
 
-| Owning project                        | Typecheck                                                | Lint                           |
-| ------------------------------------- | -------------------------------------------------------- | ------------------------------ |
-| `apps/backend`                        | `npx tsc -p apps/backend/tsconfig.spec.json --noEmit`    | `yarn nx lint backend`         |
-| `apps/myorganizer`                    | `npx tsc -p apps/myorganizer/tsconfig.json --noEmit`     | `yarn nx lint myorganizer`     |
-| `libs/web-ui`                         | `npx tsc -p libs/web-ui/tsconfig.lib.json --noEmit`      | `yarn nx lint web-ui`          |
-| `libs/auth`                           | `npx tsc -p libs/auth/tsconfig.spec.json --noEmit`       | `yarn nx lint auth`            |
-| `libs/core`                           | `npx tsc -p libs/core/tsconfig.lib.json --noEmit`        | `yarn nx lint core`            |
-| `libs/vault-core`                     | `npx tsc -p libs/vault-core/tsconfig.lib.json --noEmit`  | `yarn nx lint vault-core`      |
-| `libs/web-vault`, `libs/web-vault-ui` | `npx tsc -p <lib>/tsconfig.lib.json --noEmit`            | `yarn nx lint <lib-name>`      |
-| `libs/web/pages/*`                    | `npx tsc -p <lib>/tsconfig.lib.json --noEmit`            | `yarn nx lint <lib-name>`      |
-| `apps/myorganizer-e2e`                | `npx tsc -p apps/myorganizer-e2e/tsconfig.json --noEmit` | `yarn nx lint myorganizer-e2e` |
+Do NOT read the commands from a table. Derive them from the workspace every time.
 
-Backend uses a dedicated `tsconfig.spec.json`. If a `tsconfig.*` path above does not
-exist in the repo, fall back to `yarn nx lint <project>` alone and record
-`tsc: NOT RUN (<reason>)` rather than guessing a path.
+A checked-in map of project to config is a cache of workspace facts with no invalidation.
+When `libs/email-shell` was added it was simply absent from such a table, so this reviewer
+guessed `tsconfig.lib.json` — which excludes spec files — and `yarn nx lint email-shell`,
+a target that does not exist for that library. It returned PASS twice while a `tsc` error
+and six `import/first` errors sat in the diff. Both were avoidable by looking. See
+[ADR 0036](../../docs/adr/0036-sub-agent-work-is-auditable-and-gate-commands-are-derived.md).
+
+### 1. Owning project
+
+Walk up from the test file to the nearest `project.json` and read its `name`. That
+directory is the project root for everything below.
+
+### 2. Typecheck config — prefer the spec config
+
+In the project root, take the FIRST that exists:
+
+1. `tsconfig.spec.json`
+2. `tsconfig.lib.json`
+3. `tsconfig.json`
+
+`tsconfig.lib.json` normally **excludes spec files**, so choosing it while a
+`tsconfig.spec.json` sits beside it typechecks everything except the code under review and
+reports success. Check for the spec config before falling through — do not assume a library
+lacks one.
+
+```
+npx tsc -p <projectRoot>/<chosen>.json --noEmit
+```
+
+### 3. Lint target — ask Nx for the real name
+
+```
+npx nx show project <name> --json
+```
+
+Read the `targets` keys and use the first of `lint`, then `eslint:lint`. They are not
+interchangeable: `backend` defines both, while `email-shell` declares no `lint` at all and
+only gains `eslint:lint` from the Nx eslint plugin.
+
+```
+npx nx run <name>:<target>
+```
+
+Never run `yarn nx lint <name>` without confirming that target exists, and never fall back
+to a bare `npx eslint <files>` — that resolves the ROOT eslint config rather than the
+project's, so project-scoped rules such as `import/first` are silently not enforced.
+
+### 4. When resolution fails, say so
+
+If the project cannot be resolved, `nx show project` errors, or no listed tsconfig exists,
+record `tsc: NOT RUN (<reason>)` / `eslint: NOT RUN (<reason>)` and carry it into the report.
+**Never substitute a plausible-looking path or target.** A guess that runs is worse than an
+honest skip, because it reports PASS.
+
+### 5. A command that did nothing is NOT RUN
+
+Before recording PASS, confirm the command actually inspected the files. `Could not find
+project`, `Cannot find configuration for task`, an empty target list, or zero files checked
+are all `NOT RUN`, never PASS. Both failures above reported success while checking nothing.
 
 ## E2E Files — Structural Review Only
 
