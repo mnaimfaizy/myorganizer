@@ -1,10 +1,29 @@
 services:
   myorganizer_db:
-    image: bitnami/postgresql
+    # Pinned by digest, not by tag, because `bitnami/postgresql` no longer
+    # publishes version tags at all — only `latest` (Bitnami's move to Secure
+    # Images). This digest is PostgreSQL 18.4.0, built 2026-06-08, and it is a
+    # multi-arch manifest list (linux/amd64 + linux/arm64), so it resolves on
+    # Intel and Apple Silicon alike.
+    #
+    # Unpinned, `latest` drifts silently: it moved on 2026-08-18 while this
+    # digest is from June. A drifting tag that crosses a PostgreSQL major
+    # version will refuse to open an existing data directory, and the failure
+    # looks like an ownership or corruption problem rather than a version one.
+    #
+    # To move deliberately: pull the new `latest`, read its
+    # `org.opencontainers.image.version` label, confirm the major matches the
+    # data directory, then replace the digest below.
+    image: bitnami/postgresql@sha256:638095e080399612204f0123bae5b669867d549b43342dc316d05a78cdda643a
     restart: always
     container_name: myorganizer_db
     env_file: '.env'
-    user: root
+    # No `user:` override here. The image already runs as uid 1001, and Docker
+    # Desktop maps a host bind mount's files to the container's CONFIGURED user.
+    # With `user: root` the data directory presents as 0:0 while the entrypoint
+    # drops privileges to 1001 to start postgres, which then fails with
+    # `FATAL: data directory "/bitnami/postgresql/data" has wrong ownership`.
+    # At the image default the same directory presents as 1001:0 and matches.
     volumes:
       - .database:/bitnami/postgresql
     ports:
