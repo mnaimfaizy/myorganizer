@@ -529,6 +529,14 @@ jobs:
       - name: OpenAPI artifact checker contracts
         run: corepack yarn openapi:artifacts:test
 
+      - name: Lint coverage checker contracts
+        run: corepack yarn lint:coverage:test
+
+      # Asserts every project Nx can lint is reachable as `lint`, the target the
+      # lint job selects. Five projects were outside it until #426.
+      - name: Check lint gate coverage
+        run: corepack yarn lint:coverage:check
+
       - name: Check libs markdown allowlist
         run: corepack yarn libs:markdown:check
 

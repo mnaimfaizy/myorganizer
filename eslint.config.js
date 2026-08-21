@@ -13,6 +13,8 @@ module.exports = [
       'apps/backend/src/prisma/',
       'apps/backend/prisma/prisma-client',
       'apps/backend/prisma/migrations',
+      // Vendored minified React runtime shipped with the agent tooling assets.
+      'tools/assets/dc-runtime/**',
       '**/vite.config.*.timestamp*',
       '**/vitest.config.*.timestamp*',
     ],

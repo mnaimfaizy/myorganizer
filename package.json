@@ -62,6 +62,8 @@
     "vault:pages:check": "node tools/scripts/check-vault-pages.mjs",
     "readme:check": "node tools/scripts/check-readme.mjs",
     "libs:markdown:check": "node tools/scripts/check-libs-markdown.mjs",
+    "lint:coverage:check": "node tools/scripts/check-lint-coverage.mjs",
+    "lint:coverage:test": "node --test tools/scripts/check-lint-coverage.test.mjs",
     "auth:pages:check": "node tools/scripts/check-auth-pages.mjs",
     "agents:models:audit": "node tools/scripts/audit-agent-model-catalog.mjs",
     "agents:usage:report": "node tools/scripts/report-agent-usage.mjs",

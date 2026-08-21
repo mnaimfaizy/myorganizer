@@ -254,7 +254,7 @@ function setupBackend(page: Page) {
       const body = (request.postDataJSON?.() ?? {}) as { meta?: unknown };
       serverMeta = body.meta;
       serverMetaUpdatedAt = new Date().toISOString();
-      serverMetaEtag = `W/\"${Date.now()}\"`;
+      serverMetaEtag = `W/"${Date.now()}"`;
       await route.fulfill({
         status: 200,
         headers,
@@ -314,7 +314,7 @@ function setupBackend(page: Page) {
       const body = (request.postDataJSON?.() ?? {}) as { blob?: unknown };
       serverBlobs[type] = body.blob ?? null;
       serverBlobUpdatedAt[type] = new Date().toISOString();
-      serverBlobEtags[type] = `W/\"${Date.now()}\"`;
+      serverBlobEtags[type] = `W/"${Date.now()}"`;
       await route.fulfill({
         status: 200,
         headers,

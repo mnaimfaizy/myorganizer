@@ -81,7 +81,9 @@ async function login(
   } catch {
     try {
       await page.waitForLoadState('domcontentloaded');
-    } catch {}
+    } catch {
+      // Both load states timed out; continue anyway — the assertions below decide the test.
+    }
   }
 
   if (options.webkitDelayMs > 0)
@@ -148,7 +150,9 @@ async function unlockWithPassphrase(
   } catch {
     try {
       await page.waitForLoadState('networkidle', { timeout: 10000 });
-    } catch {}
+    } catch {
+      // Neither the row nor the network settled; continue anyway — the caller re-asserts.
+    }
   }
 
   await page.waitForTimeout(1000);
@@ -377,7 +381,9 @@ test.describe('Groceries Items (E2E)', () => {
     // Clear local storage to isolate tests (vault state)
     try {
       await page.evaluate(() => window.localStorage.clear());
-    } catch {}
+    } catch {
+      // Teardown only: the page may already be closed, and that must not fail the test.
+    }
   });
 
   test('1 — Add Single Item (full fields) ', async ({ page }, testInfo) => {

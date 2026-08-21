@@ -52,10 +52,12 @@ Derive them from the workspace; do not read them from a table.
    its `name`. That directory is the project root.
 2. **Typecheck config** — first that exists in the project root: `tsconfig.spec.json`,
    `tsconfig.lib.json`, `tsconfig.json`. Then `npx tsc -p <chosen> --noEmit`.
-3. **Lint target** — `npx nx show project <name> --json`, read the `targets` keys, use the
-   first of `lint` then `eslint:lint`, and run `npx nx run <name>:<target>`. These are not
-   interchangeable, and a library may define neither explicitly — `eslint:lint` is often
-   inferred by the Nx plugin.
+3. **Lint target** — `npx nx show project <name> --json`, read the `targets` keys, and run
+   `npx nx run <name>:lint`. Every project ESLint covers exposes it under that one name,
+   whether declared in `project.json` or inferred by the Nx plugin. Do not reach for
+   `eslint:lint`: that name went away with issue #426, and `yarn lint:coverage:check` now
+   fails CI if any ESLint target is named anything else. A project with no `lint` target is
+   genuinely not linted — record `NOT RUN` rather than substituting a command.
 4. **Never guess.** If the project, a tsconfig, or a lint target cannot be resolved, record
    `NOT RUN (<reason>)`. Never fall back to a bare `npx eslint <files>`: that resolves the
    ROOT eslint config, not the project's, so project-scoped rules are silently unenforced.
