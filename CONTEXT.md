@@ -256,6 +256,10 @@ _Avoid_: PR label (as a second vocabulary), topic tag, category
 A specialist chain that retries between agents until a reviewer or runner verdict passes, with a cap. Components and Jest use this shape. Hitting the cap is a stop, not another silent retry.
 _Avoid_: review loop, QA cycle, writer-reviewer loop
 
+**Gate Coverage**:
+The set of projects a gate actually reaches, which is not the set its command appears to name. A project can sit inside a gate's invocation and outside its reach: `nx affected -t lint` selects only projects declaring a target named `lint`, so a project whose ESLint target carries another name passes by being invisible. Asserted by a check; never inferred from a green run.
+_Avoid_: test coverage, CI coverage, gate scope
+
 **One-shot Specialist**:
 A sub-agent that performs one assigned job, returns a report of what it did, and stops. The orchestrator does not send the work back for another round.
 _Avoid_: writer-reviewer loop, retry cycle, gated hop (when you mean this shape)

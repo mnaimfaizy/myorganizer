@@ -113,16 +113,30 @@ Two facts frame every finding below:
 - **Claim:** Nx v23 deprecates executor-based tooling in favour of inferred plugin targets, naming
   "Jest, Cypress, Playwright, Webpack, Storybook, Next.js, ESLint, and others", with removal in v24.
 - **Source:** [Nx 23 Release](https://nx.dev/blog/nx-23-release) — vendor release notes, deprecations table
-- **Local evidence:** The repo runs the opposite pattern. `nx.json` moves the inferred
-  `@nx/eslint/plugin` target aside to `targetName: "eslint:lint"`, and 22 explicit executor targets are
-  declared by hand across `apps/*/project.json` and `libs/**/project.json` — 8 × `@nx/eslint:lint`,
-  7 × `@nx/jest:jest`, 3 × `@nx/playwright:playwright`, 1 each of `@nx/webpack:webpack`,
-  `@nx/next:server`, `@nx/next:build`, `@nx/js:node`. Every instruction file teaches
-  `yarn nx lint <project>` (`AGENTS.md:23,38`, `DEVELOPMENT.md:596-603`, and ten Skill runbooks), which
-  resolves through the hand-declared executor target, not the inferred one. Meanwhile
-  `.agents/skills/nx-monorepo-workflow/SKILL.md:20` forbids hand-editing `project.json` — the
-  instruction and the configuration already contradict each other, and v24 will remove the pattern the
-  configuration depends on.
+- **Local evidence:** The repo runs the opposite pattern. `nx.json` renames the inferred
+  `@nx/eslint/plugin` target to `targetName: "eslint:lint"`, and **54** explicit executor targets are
+  declared by hand across `apps/*/project.json` and `libs/**/project.json` — 27 × `@nx/eslint:lint`,
+  20 × `@nx/jest:jest`, 3 × `@nx/playwright:playwright`, 1 each of `@nx/webpack:webpack`,
+  `@nx/next:server`, `@nx/next:build`, `@nx/js:node`.
+
+  > **Correction.** An earlier draft of this brief put the total at 22 (8 lint, 7 test). That count
+  > covered `apps/` only, despite the sentence claiming `libs/**`. All twelve `libs/web/pages/*`
+  > projects and the mobile libraries declare both targets by hand. Recounted with
+  > `grep -rh '"executor"' --include=project.json apps libs tools`. The v24 migration is more than
+  > twice the size this brief first reported.
+  >
+  > The same draft described the `eslint:lint` rename as deliberate — configuration chosen "so that
+  > hand-declared executor targets can own the real names". It was not.
+  > `git log -S'eslint:lint' -- nx.json` returns one commit, `84b3432`, a squashed feature PR about
+  > frontend auth whose message never mentions eslint, Nx, or targets. Explicit `project.json` targets
+  > override inferred ones without it. The rename excluded five projects from the lint gate — `auth`,
+  > `email-shell`, `tools`, `mobile`, `myorganizer-e2e` — tracked as issue #426. Every instruction file teaches
+  > `yarn nx lint <project>` (`AGENTS.md:23,38`, `DEVELOPMENT.md:596-603`, and ten Skill runbooks), which
+  > resolves through the hand-declared executor target, not the inferred one. Meanwhile
+  > `.agents/skills/nx-monorepo-workflow/SKILL.md:20` forbids hand-editing `project.json` — the
+  > instruction and the configuration already contradict each other, and v24 will remove the pattern the
+  > configuration depends on.
+
 - **Disposition:** plan (instruction wording) + follow-on (the `project.json` targets themselves)
 
 _Checked and clear:_ v23 deprecates ESLint v8 support in favour of v9+; this repo is on `eslint` 9.39.2.
@@ -220,7 +234,7 @@ Repo-owned instructions and hygiene/test scripts only. No package bumps. No appl
   "all at version 22" (runbook:228) with a pointer to `TECH_STACK.md`, so the next major hop is one file,
   not a grep sweep. This matches the rule `AGENTS.md` already applies to Next.js.
 - **Nx workflow Skill** executor guidance: SKILL.md:20 forbids hand-editing `project.json` while the repo
-  declares 22 executor targets by hand. Either the rule states the exception, or it names the
+  declares 54 executor targets by hand. Either the rule states the exception, or it names the
   inferred-plugin direction as the target state. Pick one before v24 forces the question.
 - **Nx workflow Skill / DEVELOPMENT.md**: record that Nx 22 is on LTS until roughly June 2027 and that
   22.7.x carries security fixes only, so the next Nx work item is a v23 migration, not a patch bump.
@@ -233,9 +247,12 @@ grilling.
 - `apps/myorganizer/next.config.js` uses the deprecated `@nx/next` `withNx` helper — removal in v24 — code
 - `apps/backend/webpack.config.js` uses the deprecated `composePlugins` / `withNx` webpack helpers; the
   replacement is `NxAppWebpackPlugin` — removal in v24 — code
-- 22 hand-declared executor targets across `apps/*/project.json` and `libs/**/project.json`, plus the
-  `targetName: "eslint:lint"` sidestep in `nx.json`, sit on the executor-based path that v23 deprecates
-  and v24 removes. Migrating to inferred plugin targets is a single coordinated change, not seven — code
+- 54 hand-declared executor targets across `apps/*/project.json` and `libs/**/project.json` sit on the
+  executor-based path that v23 deprecates and v24 removes. Migrating to inferred plugin targets is a
+  single coordinated change, not seven — code
+- The `targetName: "eslint:lint"` rename in `nx.json` is a defect rather than a migration item: it
+  removes five projects from the lint gate today, independently of anything v23 or v24 does. Filed as
+  issue #426 — code
 - `TECH_STACK.md` records all seventeen Nx packages at `22.3.3` while `package.json` pins `22.7.7`. The
   adapter reads `TECH_STACK.md` as the current-version source, so every future Upstream Brief inherits
   this drift. Run the `dep-sync` Skill — code
