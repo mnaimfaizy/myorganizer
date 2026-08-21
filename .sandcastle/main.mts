@@ -12,6 +12,20 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
+import {
+  MAX_QUOTA_WAITS,
+  SLICE_DISPOSITIONS,
+  formatWaitWindow,
+  classifyRunFailure,
+  decideWaitPolicy,
+  tailLines,
+  buildResumeBrief,
+  decideSliceDisposition,
+  isDiscardRequested,
+  validateDiscardScope,
+  extractMaintainerNotes,
+  withMaintainerNotes,
+} from '../tools/scripts/lib/sandcastle-resume.mjs';
 
 const REPO = 'mnaimfaizy/myorganizer';
 const SANDBOX_IMAGE = 'sandcastle:myorganizer';
@@ -209,6 +223,7 @@ Usage:
   Sweep mode      yarn dispatch-agents --all-standalone [--limit <n>] [--base <ref>]
 
   All accept [--agent claude|cursor|copilot] [--model <model>] [--dry-run]
+  Interrupted slices resume by default; --fresh discards one deliberately.
 
 Flags:
   --prd <issue-number>   PRD issue number to dispatch. Slices integrate into the
@@ -227,6 +242,14 @@ Flags:
                          base, integration target — then exit. Touches no worktree,
                          container, or GitHub state, and builds no sandbox image.
   --yes, -y              Skip the sweep confirmation prompt.
+  --wait-for-quota       On a provider usage limit, park the run until the limit
+                         resets and then resume the slice, instead of exiting.
+                         Capped at 2 waits per run; never sleeps on an unreadable
+                         reset time, and never on a provider whose limit format
+                         is unknown.
+  --fresh                Discard a slice's preserved checkpoint and start it over.
+                         Without it, an interrupted slice RESUMES. In PRD mode this
+                         must name its slice: --prd <n> --issue <slice> --fresh.
   --agent <name>         Agent provider to use (default: SANDCASTLE_AGENT or claude)
   --model <model>        Override the model for this run (default: env/provider routing)
   --help                 Show this help text
@@ -304,6 +327,22 @@ if (baseFlag && mode === 'prd') {
 
 const dryRun = process.argv.includes('--dry-run');
 const assumeYes = process.argv.includes('--yes') || process.argv.includes('-y');
+
+// Resume is the default for a slice carrying a checkpoint, so discarding that work
+// is an explicit act. Scope is validated once the mode is known — see below.
+const discardRequested = isDiscardRequested(process.argv);
+
+// Opt-in: a run that goes silent for hours is a severe surprise, so the flag
+// documents the behaviour at the call site. See ADR 0035.
+const waitForQuota = process.argv.includes('--wait-for-quota');
+let quotaWaitsTaken = 0;
+
+const discardScope = validateDiscardScope({
+  discardRequested,
+  mode,
+  issueNumber,
+});
+if (!discardScope.ok) fail(discardScope.message);
 
 const limitValue = getArgValue('limit');
 if (limitValue && mode !== 'sweep') {
@@ -1060,6 +1099,78 @@ function finalizeSliceBranch(issue: Issue, sliceBranch: string): boolean {
 // slice again from a clean base) keeps working untouched. See ADR 0035; resuming from
 // a checkpoint rather than merely surviving is PRD #401.
 
+/**
+ * Read the git facts the resume decision needs. Impure by nature — kept here rather
+ * than in the decision library so the decision itself stays testable without git.
+ */
+function inspectSliceBranch(sliceBranch: string): {
+  branchExists: boolean;
+  commitsAhead: number;
+  mergeBaseMatchesBase: boolean;
+} {
+  if (!gitRefExists(sliceBranch)) {
+    return {
+      branchExists: false,
+      commitsAhead: 0,
+      mergeBaseMatchesBase: false,
+    };
+  }
+
+  const commitsAhead = Number.parseInt(
+    (
+      spawnSync('git', ['rev-list', '--count', `${baseRef}..${sliceBranch}`], {
+        encoding: 'utf8',
+        windowsHide: true,
+      }).stdout || ''
+    ).trim(),
+    10,
+  );
+
+  const mergeBase = (
+    spawnSync('git', ['merge-base', sliceBranch, baseRef], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+  const baseSha = (
+    spawnSync('git', ['rev-parse', baseRef], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+
+  return {
+    branchExists: true,
+    commitsAhead,
+    mergeBaseMatchesBase: mergeBase !== '' && mergeBase === baseSha,
+  };
+}
+
+/** The checkpoint sitting on a slice branch, for the resume brief's inventory. */
+function readSliceCheckpoint(
+  sliceBranch: string,
+): { sha: string; files: string[] } | undefined {
+  const sha = (
+    spawnSync('git', ['rev-parse', '--short', sliceBranch], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+  if (!sha) return undefined;
+
+  const files = (
+    spawnSync('git', ['diff', '--name-only', `${baseRef}..${sliceBranch}`], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  )
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '');
+
+  return { sha, files };
+}
+
 type SliceCheckpoint = {
   readonly sha: string;
   readonly tag: string;
@@ -1087,7 +1198,10 @@ function sliceLogPathFor(issueNumber: number): string | undefined {
  * classifying it — provider-specific limit matchers belong to PRD #401, and this
  * orchestrator runs claude, cursor, and copilot.
  */
-function crashLogTail(issueNumber: number, lines = 15): string | undefined {
+function readSliceLogTail(
+  issueNumber: number,
+  lines = 15,
+): { path: string; tail: string[] } | undefined {
   const logPath = sliceLogPathFor(issueNumber);
   if (!logPath) return undefined;
   let contents: string;
@@ -1096,12 +1210,16 @@ function crashLogTail(issueNumber: number, lines = 15): string | undefined {
   } catch {
     return undefined;
   }
-  const tail = contents
-    .split('\n')
-    .filter((line) => line.trim() !== '')
-    .slice(-lines);
+  const tail = tailLines(contents, lines);
   if (tail.length === 0) return undefined;
-  return `  log tail (${logPath}):\n${tail
+  return { path: logPath, tail };
+}
+
+function formatCrashLogTail(
+  log: { path: string; tail: string[] } | undefined,
+): string | undefined {
+  if (!log) return undefined;
+  return `  log tail (${log.path}):\n${log.tail
     .map((line) => `    ${line}`)
     .join('\n')}`;
 }
@@ -1447,6 +1565,36 @@ function buildGateInstructions(
   ];
 }
 
+/**
+ * Read the maintainer notes filed on an issue.
+ *
+ * Fetched here, per dispatched slice, rather than added to the issue LIST queries:
+ * those pull up to 200 issues and would carry every comment on all of them for the
+ * sake of the handful actually being run.
+ *
+ * A failure to read comments must not stop a dispatch — the issue body is still a
+ * complete brief — so this degrades to "no notes" and says so.
+ */
+function readMaintainerNotes(issueNumber: number): string[] {
+  try {
+    const { comments } = ghJson<{ comments?: Array<{ body?: string }> }>([
+      'issue',
+      'view',
+      String(issueNumber),
+      '--repo',
+      REPO,
+      '--json',
+      'comments',
+    ]);
+    return extractMaintainerNotes(comments);
+  } catch {
+    console.warn(
+      `  [#${issueNumber}] could not read issue comments; dispatching on the issue body alone.`,
+    );
+    return [];
+  }
+}
+
 function buildPrompt(issue: Issue, sliceBranch: string): string {
   const gate = resolveGate(issue);
   return [
@@ -1613,6 +1761,14 @@ if (dryRun) {
   process.exit(0);
 }
 
+// PRD mode has no confirmation prompt by design — it is the AFK path. That made its
+// branch handling invisible: nothing was printed before a slice branch was deleted
+// and recreated. Printing the plan costs nothing and is what makes destruction
+// observable. See ADR 0035.
+if (mode === 'prd') {
+  printPlanPreview();
+}
+
 // A sweep is the only mode where no human named the work. Everything selected here
 // spends real model quota, so the set is shown and confirmed before the first
 // container starts.
@@ -1689,33 +1845,103 @@ while (pendingSlices.length > 0) {
       `\n  → #${issue.number} on ${sliceBranch} (${agentKind}:${model})`,
     );
 
-    // Fresh slice branch + worktree off the CURRENT local feature head, so this
-    // slice (processed one by one) builds on every previously-integrated slice.
-    // Clear any stale branch/worktree from an earlier run first — including one
-    // filed under a different type prefix, if this issue's labels have changed
-    // since it last ran.
-    const staleBranches = [sliceBranch, ...staleWorkBranchesFor(issue)];
-    for (const stale of staleBranches) {
-      const stalePath = join(worktreesDir, stale.replace(/\//g, '-'));
-      if (existsSync(stalePath)) {
-        spawnSync('git', ['worktree', 'remove', '--force', stalePath], {
+    // Does this slice already carry a Slice Checkpoint from an interrupted run?
+    // Resume is the default; destroying preserved work is the deliberate act.
+    const disposition = decideSliceDisposition({
+      ...inspectSliceBranch(sliceBranch),
+      discardRequested,
+    });
+
+    if (disposition === SLICE_DISPOSITIONS.skipStale) {
+      // Slices stack, so a checkpoint left behind while later slices integrated is
+      // based on a head that is no longer in the feature branch's history. Rebasing
+      // it is a judgement call and deleting it destroys work nobody has reviewed —
+      // so do neither, and say so.
+      console.error(
+        `  ⚠ #${issue.number} ${sliceBranch} carries a checkpoint based on a superseded ` +
+          `head — skipping.\n` +
+          `      Rebase it onto ${baseRef} and re-run, or discard it deliberately.\n` +
+          `      Recovery: docs/sandcastle/RUNBOOK.md — "Recovering an interrupted run".`,
+      );
+      ghSilent([
+        'issue',
+        'edit',
+        String(issue.number),
+        '--repo',
+        REPO,
+        '--remove-label',
+        'status:in-progress',
+      ]);
+      results.push({
+        issue,
+        sliceBranch,
+        commits: 0,
+        merged: false,
+        reason: 'checkpoint is based on a superseded head',
+      });
+      continue;
+    }
+
+    const checkpoint =
+      disposition === SLICE_DISPOSITIONS.resume
+        ? readSliceCheckpoint(sliceBranch)
+        : undefined;
+
+    const maintainerNotes = readMaintainerNotes(issue.number);
+    if (maintainerNotes.length > 0) {
+      console.log(
+        `  [#${issue.number}] carrying ${maintainerNotes.length} maintainer note(s) into the brief.`,
+      );
+    }
+
+    const worktreePath = join(worktreesDir, sliceBranch.replace(/\//g, '-'));
+
+    if (checkpoint) {
+      console.log(
+        `  [#${issue.number}] resuming from checkpoint ${checkpoint.sha} ` +
+          `(${checkpoint.files.length} file(s)) — the branch is kept, not recreated.`,
+      );
+      // The branch and its commits stay. Only the worktree is rebuilt, so the agent
+      // gets a clean checkout of the checkpoint rather than whatever partial state
+      // the interrupted container left on disk.
+      if (existsSync(worktreePath)) {
+        spawnSync('git', ['worktree', 'remove', '--force', worktreePath], {
           encoding: 'utf8',
           windowsHide: true,
         });
       }
-    }
-    const worktreePath = join(worktreesDir, sliceBranch.replace(/\//g, '-'));
-    spawnSync('git', ['worktree', 'prune'], {
-      encoding: 'utf8',
-      windowsHide: true,
-    });
-    for (const stale of staleBranches) {
-      spawnSync('git', ['branch', '-D', stale], {
+      spawnSync('git', ['worktree', 'prune'], {
         encoding: 'utf8',
         windowsHide: true,
       });
+    } else {
+      // Fresh slice branch + worktree off the CURRENT local feature head, so this
+      // slice (processed one by one) builds on every previously-integrated slice.
+      // Clear any stale branch/worktree from an earlier run first — including one
+      // filed under a different type prefix, if this issue's labels have changed
+      // since it last ran.
+      const staleBranches = [sliceBranch, ...staleWorkBranchesFor(issue)];
+      for (const stale of staleBranches) {
+        const stalePath = join(worktreesDir, stale.replace(/\//g, '-'));
+        if (existsSync(stalePath)) {
+          spawnSync('git', ['worktree', 'remove', '--force', stalePath], {
+            encoding: 'utf8',
+            windowsHide: true,
+          });
+        }
+      }
+      spawnSync('git', ['worktree', 'prune'], {
+        encoding: 'utf8',
+        windowsHide: true,
+      });
+      for (const stale of staleBranches) {
+        spawnSync('git', ['branch', '-D', stale], {
+          encoding: 'utf8',
+          windowsHide: true,
+        });
+      }
+      gitCmd(['branch', sliceBranch, baseRef]);
     }
-    gitCmd(['branch', sliceBranch, baseRef]);
     const wt = spawnSync(
       'git',
       ['worktree', 'add', worktreePath, sliceBranch],
@@ -1767,11 +1993,32 @@ while (pendingSlices.length > 0) {
           ],
         },
       },
-      maxIterations: 25,
+      // Iterations after the first do NOT resume the agent session: each spins a
+      // fresh sandbox, re-runs the dependency install, and receives the identical
+      // prompt. They are cold restarts, not continuations, so an agent that failed
+      // to signal completion once meets the same wall again at full price. Two buys
+      // one honest retry for a transient container fault; genuine continuation is
+      // the resume path, which supplies a different prompt. See ADR 0035.
+      maxIterations: 2,
       // Quiet stretches (codegen, builds) can exceed the 600s default and trip the
       // idle watchdog; give long-running slices headroom.
       idleTimeoutSeconds: 1800,
-      prompt: buildPrompt(issue, sliceBranch),
+      prompt: (() => {
+        // Notes wrap the base prompt, so the resume brief inherits them too: a
+        // maintainer reviewing a checkpoint is the likeliest author of one.
+        const basePrompt = withMaintainerNotes(
+          buildPrompt(issue, sliceBranch),
+          maintainerNotes,
+        );
+        return checkpoint
+          ? buildResumeBrief({
+              basePrompt,
+              issueNumber: issue.number,
+              sliceBranch,
+              checkpoint,
+            })
+          : basePrompt;
+      })(),
     });
 
     logRunUsage(issue.number, agentKind, model, result);
@@ -1902,12 +2149,57 @@ while (pendingSlices.length > 0) {
     const checkpoint = preserveInterruptedSlice(issue, sliceBranch);
 
     console.error(`  ✗ #${issue.number} crashed: ${String(e)}`);
-    const tail = crashLogTail(issue.number);
+    const log = readSliceLogTail(issue.number);
+    const tail = formatCrashLogTail(log);
     if (tail) {
       console.error(
         `  [#${issue.number}] the thrown error may be trailing stderr noise rather than the cause:`,
       );
       console.error(tail);
+    }
+
+    // Was this a provider usage limit, and did the maintainer ask us to wait it out?
+    // Classification is provider-keyed: a provider whose limit format we have never
+    // observed classifies as `unknown` and never triggers a wait.
+    const failedAt = new Date();
+    const classification = classifyRunFailure({
+      agentKind,
+      logTail: log?.tail ?? [],
+      now: failedAt,
+    });
+    const waitDecision = decideWaitPolicy({
+      classification,
+      waitEnabled: waitForQuota,
+      waitsTaken: quotaWaitsTaken,
+      now: failedAt,
+    });
+
+    if (waitDecision.action === 'wait' && waitDecision.until) {
+      const untilMs = waitDecision.until.getTime() - Date.now();
+      // A small margin past the stated reset: waking exactly on it risks meeting the
+      // same wall and burning one of the two waits for nothing.
+      const sleepMs = Math.max(untilMs, 0) + 5 * 60 * 1000;
+      quotaWaitsTaken += 1;
+      // Local time and duration, not a UTC timestamp: the sleep length is the same
+      // either way, but a person can only judge whether it is SANE from the duration.
+      console.error(
+        `  [#${issue.number}] provider limit hit — ${classification.evidence ?? 'no detail'}\n` +
+          `      Parking until ${formatWaitWindow(waitDecision.until, failedAt)}, ` +
+          `+5m margin, wait ${quotaWaitsTaken}/${MAX_QUOTA_WAITS}.\n` +
+          `      The slice will RESUME from its checkpoint, not restart.\n` +
+          `      Ctrl-C is safe — the checkpoint is already committed.`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, sleepMs));
+      console.log(`  [#${issue.number}] resuming after the limit reset.`);
+      // Back into the queue: the next pass finds the checkpoint and resumes it.
+      pendingSlices.push(issue);
+      continue;
+    }
+
+    if (waitForQuota) {
+      console.error(
+        `  [#${issue.number}] not waiting — ${waitDecision.reason}.`,
+      );
     }
 
     if (checkpoint) {

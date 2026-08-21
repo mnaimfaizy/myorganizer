@@ -56,8 +56,12 @@ testem.log
 .DS_Store
 Thumbs.db
 
-.nx/cache
-.nx/workspace-data
+# Nx caches and derived workspace data. Globbed rather than named: Nx writes
+# `-local` variants when it runs outside its default cache location (the sandcastle
+# container does), and sandcastle finalizes a slice with `git add -A`, so anything
+# unmatched here lands in a commit. #396 swept 155k lines of cache in this way.
+.nx/cache*
+.nx/workspace-data*
 
 # Yarn Berry local artifacts
 .yarn/*
