@@ -77,7 +77,13 @@ const PATH_KEYS = new Set([
   'targets',
 ]);
 
-const PROTECTED_PATTERNS = [
+/**
+ * Workflow guards: generated or tool-owned outputs that must be regenerated
+ * rather than hand-edited. These are lifted inside the sandbox (see SANDBOX
+ * below) — there they are pure friction, and blocking them also blocks the
+ * recovery commands an agent needs to undo its own mistake.
+ */
+const WORKFLOW_PROTECTED_PATTERNS = [
   {
     pattern: /(^|[^a-z0-9])libs\/app-api-client\/src(?:\/|$)/i,
     reason:
@@ -103,6 +109,15 @@ const PROTECTED_PATTERNS = [
     reason:
       'Direct edits to Prisma migrations are blocked. Update the schema and use the migration workflow instead.',
   },
+];
+
+/**
+ * Secret guards: writes that would put credentials or key material into the
+ * repository. These stay active everywhere, sandbox included — the sandbox
+ * filesystem is disposable, but the transcript is not: it is written to
+ * .sandcastle/logs on the host and fed back into model context.
+ */
+const SECRET_WRITE_PATTERNS = [
   {
     pattern: /(^|[^a-z0-9])(?:\.env(?:\.[^/]+)?|[^/]+\.env)(?:$|[^a-z0-9])/i,
     exclude: (normalized) => /\.env\.example(?:$|[^a-z0-9])/.test(normalized),
@@ -121,6 +136,24 @@ const PROTECTED_PATTERNS = [
       'Direct edits to key or certificate files are blocked. Keep secret material out of the repository.',
   },
 ];
+
+/**
+ * Sandcastle runs the agent in a disposable container against a throwaway
+ * worktree, so the workflow guards buy nothing there: the agent cannot damage
+ * anything a human keeps, and the guards demonstrably trap it. In run #408 the
+ * block on generated paths rejected every `git restore` the agent attempted
+ * after a botched regeneration, leaving it holding a deletion it could not undo
+ * and committed instead. Allow/deny lists are a chat and local-development
+ * affordance; the sandbox is the place the agent is meant to be free.
+ *
+ * Set by `ENV MYORGANIZER_SANDBOX=1` in .sandcastle/Dockerfile. Secret guards
+ * are deliberately NOT lifted — see SECRET_WRITE_PATTERNS above.
+ */
+const SANDBOX = process.env.MYORGANIZER_SANDBOX === '1';
+
+const PROTECTED_PATTERNS = SANDBOX
+  ? SECRET_WRITE_PATTERNS
+  : [...WORKFLOW_PROTECTED_PATTERNS, ...SECRET_WRITE_PATTERNS];
 
 /**
  * Read-side guard. `PROTECTED_PATTERNS` stops *writes* to generated and secret

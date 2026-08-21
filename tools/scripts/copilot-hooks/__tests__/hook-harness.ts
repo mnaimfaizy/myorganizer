@@ -14,6 +14,11 @@ export interface HookOutcome {
   reason: string;
 }
 
+/** Options accepted by every helper here; `sandbox` picks the hook's mode. */
+export interface HookRunOptions {
+  sandbox?: boolean;
+}
+
 /**
  * Invoke a hook exactly as a harness does: JSON payload on stdin, decision on
  * stdout, block signalled by exit code 2.
@@ -22,10 +27,24 @@ export interface HookOutcome {
  * compiles to CommonJS — so they are exercised as subprocesses rather than
  * imported.
  */
-export function runHook(hookPath: string, payload: unknown): HookOutcome {
+export function runHook(
+  hookPath: string,
+  payload: unknown,
+  options?: HookRunOptions,
+): HookOutcome {
+  // The hooks read the sandbox marker from the environment, so the two modes
+  // have to be driven through the child process rather than a module flag.
+  const childEnv = { ...process.env };
+  if (options?.sandbox) {
+    childEnv.MYORGANIZER_SANDBOX = '1';
+  } else {
+    delete childEnv.MYORGANIZER_SANDBOX;
+  }
+
   const result = spawnSync(process.execPath, [hookPath], {
     input: JSON.stringify(payload),
     encoding: 'utf8',
+    env: childEnv,
   });
 
   let decision = '';
@@ -46,16 +65,21 @@ export function expectDenied(
   hookPath: string,
   payload: unknown,
   reasonPattern: RegExp,
+  options?: HookRunOptions,
 ): void {
-  const outcome = runHook(hookPath, payload);
+  const outcome = runHook(hookPath, payload, options);
 
   expect(outcome.status).toBe(DENY_EXIT_CODE);
   expect(outcome.decision).toBe('deny');
   expect(outcome.reason).toMatch(reasonPattern);
 }
 
-export function expectAllowed(hookPath: string, payload: unknown): void {
-  const outcome = runHook(hookPath, payload);
+export function expectAllowed(
+  hookPath: string,
+  payload: unknown,
+  options?: HookRunOptions,
+): void {
+  const outcome = runHook(hookPath, payload, options);
 
   expect(outcome.status).toBe(0);
   expect(outcome.decision).toBe('allow');
