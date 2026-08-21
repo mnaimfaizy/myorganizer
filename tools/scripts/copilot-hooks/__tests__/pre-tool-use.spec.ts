@@ -307,4 +307,73 @@ describe('pre-tool-use hook', () => {
       expect(outcome.decision).toBe('allow');
     });
   });
+
+  // Sandcastle sets MYORGANIZER_SANDBOX=1 in its image. The workflow guards
+  // exist to stop hand-edits during chat and local development; inside a
+  // disposable container they only block legitimate work. In run #408 they
+  // rejected every `git restore` the agent tried after a botched regeneration,
+  // so it committed a deletion it could not undo. Secret guards do not lift:
+  // the container holds live credentials and the transcript leaves the host.
+  describe('sandbox mode', () => {
+    const sandbox = { sandbox: true };
+
+    it('should allow editing the generated API client', () => {
+      expectAllowed(
+        PRE_TOOL_USE_HOOK,
+        { tool_name: 'Edit', tool_input: { file_path: GENERATED_CLIENT } },
+        sandbox,
+      );
+    });
+
+    it('should allow editing the synced OpenAPI spec', () => {
+      expectAllowed(
+        PRE_TOOL_USE_HOOK,
+        { tool_name: 'Edit', tool_input: { file_path: GENERATED_SPEC } },
+        sandbox,
+      );
+    });
+
+    it('should allow restoring a generated path, the recovery #408 could not run', () => {
+      expectAllowed(
+        PRE_TOOL_USE_HOOK,
+        shellPayload('Bash', `git restore ${GENERATED_CLIENT}`),
+        sandbox,
+      );
+    });
+
+    it('should still deny writing an environment file', () => {
+      expectDenied(
+        PRE_TOOL_USE_HOOK,
+        { tool_name: 'Edit', tool_input: { file_path: ENV_FILE } },
+        /environment/i,
+        sandbox,
+      );
+    });
+
+    it('should still deny reading an environment file', () => {
+      expectDenied(
+        PRE_TOOL_USE_HOOK,
+        { tool_name: 'Read', tool_input: { file_path: ENV_FILE } },
+        /environment/i,
+        sandbox,
+      );
+    });
+
+    it('should still deny reading private key material', () => {
+      expectDenied(
+        PRE_TOOL_USE_HOOK,
+        { tool_name: 'Read', tool_input: { file_path: PRIVATE_SSH_KEY } },
+        /key/i,
+        sandbox,
+      );
+    });
+
+    it('should keep the workflow guards active outside the sandbox', () => {
+      expectDenied(
+        PRE_TOOL_USE_HOOK,
+        { tool_name: 'Edit', tool_input: { file_path: GENERATED_CLIENT } },
+        /generated api client/i,
+      );
+    });
+  });
 });

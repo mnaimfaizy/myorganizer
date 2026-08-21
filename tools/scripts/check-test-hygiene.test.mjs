@@ -110,6 +110,84 @@ test('rejects a helper name when its exported body has no assertion', (t) => {
   assert.match(result.stdout, /ERROR no-assertions/);
 });
 
+// Assertion credit used to be decided by the first braced block after the
+// declaration, which is the body only when nothing earlier in the signature
+// carries one. Ordinary TypeScript breaks that: an inline parameter type, a
+// braced default, a destructured parameter, or an object return type all put a
+// brace in front of the body. Each shape below silently stripped credit from
+// every spec that called the helper, turning a real assertion into a
+// no-assertions error.
+const SIGNATURE_SHAPES = [
+  [
+    'an inline object parameter type and a braced default',
+    'export function expectAllowed(\n  value: string,\n  options: { sandbox?: boolean } = {},\n): void {\n  expect(value).toBe(options.sandbox ? true : true);\n}\n',
+  ],
+  [
+    'a destructured parameter',
+    'export function expectAllowed({ value }: { value: string }): void {\n  expect(value).toBe(true);\n}\n',
+  ],
+  [
+    'an object return type',
+    'export function expectAllowed(value: string): { ok: boolean } {\n  expect(value).toBe(true);\n  return { ok: true };\n}\n',
+  ],
+  [
+    'an arrow with a braced default',
+    'export const expectAllowed = (options: { a?: number } = {}): void => {\n  expect(options).toBeDefined();\n};\n',
+  ],
+  [
+    'a generic and an object parameter',
+    'export function expectAllowed<T>(options: { value: T }): void {\n  expect(options.value).toBe(true);\n}\n',
+  ],
+];
+
+for (const [shape, source] of SIGNATURE_SHAPES) {
+  test(`credits a helper that asserts despite ${shape}`, (t) => {
+    const workspace = createWorkspace(t);
+    writeFixture(workspace, 'assertions.ts', source);
+    const file = writeFixture(
+      workspace,
+      'shape.test.ts',
+      [
+        "import { expectAllowed } from './assertions';",
+        '',
+        "test('helper', () => {",
+        "  expectAllowed('allowed');",
+        '});',
+        '',
+      ].join('\n'),
+    );
+
+    const result = runChecker(workspace, file);
+
+    assert.equal(result.status, 0, result.stdout);
+    assert.doesNotMatch(result.stdout, /no-assertions/);
+  });
+}
+
+test('still rejects a non-asserting helper that carries a braced signature', (t) => {
+  const workspace = createWorkspace(t);
+  writeFixture(
+    workspace,
+    'assertions.ts',
+    'export function expectAllowed(options: { a?: number } = {}): number {\n  return options.a ?? 1;\n}\n',
+  );
+  const file = writeFixture(
+    workspace,
+    'still-false-helper.test.ts',
+    [
+      "import { expectAllowed } from './assertions';",
+      '',
+      "test('false helper', () => { expectAllowed(); });",
+      '',
+    ].join('\n'),
+  );
+
+  const result = runChecker(workspace, file);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR no-assertions/);
+});
+
 test('--all checks tracked Jest files, excludes E2E, and prints concise output', (t) => {
   const workspace = createWorkspace(t);
   initializeRepository(workspace);

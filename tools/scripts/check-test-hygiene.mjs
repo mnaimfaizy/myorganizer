@@ -22,6 +22,7 @@ import process from 'node:process';
 
 import {
   blockAfter,
+  signatureBodyAfter,
   lineOf,
   maskNonCode,
   normalize,
@@ -300,12 +301,15 @@ function importedBindings(raw, code) {
 function exportedHelperHasAssertion(raw, exportedName) {
   const code = maskNonCode(raw);
   const escapedName = exportedName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // `<[^(]*>` lets a generic parameter list sit between the name and the
+  // parameters. Without it a generic helper is not recognised as a declaration
+  // at all, and every spec calling it loses assertion credit.
   const declarationRe = new RegExp(
-    `\\bexport\\s+(?:(?:async\\s+)?function\\s+${escapedName}\\s*\\(|const\\s+${escapedName}\\s*=)`,
+    `\\bexport\\s+(?:(?:async\\s+)?function\\s+${escapedName}\\s*(?:<[^(]*>)?\\s*\\(|const\\s+${escapedName}\\s*=)`,
   );
   const declaration = declarationRe.exec(code);
   if (!declaration) return false;
-  return /\bexpect\s*\(/.test(blockAfter(code, declaration.index));
+  return /\bexpect\s*\(/.test(signatureBodyAfter(code, declaration.index));
 }
 
 async function countCalledLocalAssertionHelpers(file, raw, code) {
