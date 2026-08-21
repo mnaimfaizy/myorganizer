@@ -165,7 +165,6 @@ app.use(cookieParser());
 
 // Serve the static files
 app.use('/assets', express.static(path.join(__dirname, 'assets')));
-app.use('/templates', express.static(path.join(__dirname, 'templates')));
 
 // Initialize passport
 app.use(passport.initialize());

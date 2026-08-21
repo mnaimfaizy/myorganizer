@@ -1,3 +1,9 @@
+import {
+  EMAIL_BRAND_NAME,
+  EmailMediaItem,
+  RenderedEmail,
+  renderEmailShell,
+} from '@myorganizer/email-shell';
 import { randomBytes } from 'crypto';
 import winston from 'winston';
 import { isoWeekKey, localWeekday } from '../helpers/localCalendar';
@@ -257,12 +263,12 @@ export class YouTubeDigestService {
       }
 
       const token = await this.ensureUnsubscribeToken(userId, settings);
-      const html = this.buildDigestHtml(user.first_name, videos, token);
+      const message = this.buildDigestEmail(user.first_name, videos, token);
 
       await sendEmail(
         user.email,
-        `${videos.length} new video${videos.length > 1 ? 's' : ''} waiting in MyOrganizer`,
-        html,
+        `${videos.length} new video${videos.length > 1 ? 's' : ''} waiting in ${EMAIL_BRAND_NAME}`,
+        message,
       );
 
       await this.finishPeriod(userId, periodKey, 'sent', videos.length);
@@ -347,68 +353,66 @@ export class YouTubeDigestService {
     return updated.count > 0;
   }
 
-  private buildDigestHtml(
+  /**
+   * Render the Weekly Digest inside the Email Shell as a Notification Email.
+   *
+   * The digest used to build its own HTML with literal hex colours, a fixed
+   * 168px thumbnail, and a footer of its own — one of the two divergent styles
+   * ADR 0034 collapsed. It now supplies only a body: the shell owns the frame,
+   * the logo, the colours, the copyright line, and the unsubscribe link the
+   * `notification` class requires.
+   */
+  private buildDigestEmail(
     firstName: string,
     videos: DigestVideo[],
     unsubscribeToken: string,
-  ): string {
+  ): RenderedEmail {
     const base = frontendUrl();
     const homeUrl = `${base}/dashboard/youtube`;
     const settingsUrl = `${base}/dashboard/youtube`;
     const privacyUrl = `${base}/youtube/data-privacy`;
     const unsubscribeUrl = `${base}/youtube/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`;
 
-    const rows = videos
-      .map((video) => {
-        // Every link lands back in MyOrganizer, never on youtube.com — the
-        // digest exists to return the User to the focused experience, which
-        // means the channel directory itself (PRD #264, Variant C / issue
-        // #250) with the channel preselected, not a separate grid.
-        const watchUrl = `${base}/dashboard/youtube?channel=${encodeURIComponent(video.channelId)}`;
-        return `
-      <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #eee;">
-          <a href="${watchUrl}" style="text-decoration: none; color: #1a1a1a;">
-            ${video.thumbnail ? `<img src="${this.escapeHtml(video.thumbnail)}" alt="" width="168" height="94" style="border-radius: 4px; margin-bottom: 4px; display: block;" />` : ''}
-            <strong>${this.escapeHtml(video.title)}</strong>
-          </a>
-          <br/>
-          <span style="color: #666; font-size: 13px;">
-            ${this.escapeHtml(video.subscription.channelTitle)} &middot; ${video.publishedAt.toLocaleDateString()}
-          </span>
-        </td>
-      </tr>`;
-      })
-      .join('');
+    const items: EmailMediaItem[] = videos.map((video) => ({
+      // Every link lands back in MyOrganizer, never on youtube.com — the
+      // digest exists to return the User to the focused experience, which
+      // means the channel directory itself (PRD #264, Variant C / issue
+      // #250) with the channel preselected, not a separate grid.
+      url: `${base}/dashboard/youtube?channel=${encodeURIComponent(video.channelId)}`,
+      title: video.title,
+      meta: `${video.subscription.channelTitle} · ${video.publishedAt.toLocaleDateString()}`,
+      imageUrl: video.thumbnail,
+      // The title sits next to the thumbnail as text, so announcing it twice
+      // only adds noise for a screen reader.
+      imageAlt: '',
+    }));
 
-    return `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #1a1a1a;">Hi ${this.escapeHtml(firstName)},</h2>
-        <p style="color: #444;">Here is what is still new from your enabled channels. Watched uploads are left out.</p>
-        <p style="margin: 20px 0;">
-          <a href="${homeUrl}" style="background: #1a1a1a; color: #fff; padding: 10px 18px; border-radius: 6px; text-decoration: none; display: inline-block;">
-            Open MyOrganizer
-          </a>
-        </p>
-        <table cellpadding="0" cellspacing="0" style="width: 100%;">
-          ${rows}
-        </table>
-        <p style="margin-top: 24px; color: #666; font-size: 13px;">
-          MyOrganizer stores YouTube metadata only — never video files.
-          <a href="${privacyUrl}" style="color: #666;">How we store your data</a> &middot;
-          <a href="${settingsUrl}" style="color: #666;">Digest settings</a> &middot;
-          <a href="${unsubscribeUrl}" style="color: #666;">Unsubscribe</a>
-        </p>
-      </div>
-    `;
-  }
-
-  private escapeHtml(str: string): string {
-    return str
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
+    return renderEmailShell({
+      emailClass: 'notification',
+      unsubscribeUrl,
+      preheader: `${videos.length} new video${videos.length > 1 ? 's' : ''} from your enabled channels.`,
+      blocks: [
+        { kind: 'heading', text: `Hi ${firstName},` },
+        {
+          kind: 'paragraph',
+          text: 'Here is what is still new from your enabled channels. Watched uploads are left out.',
+        },
+        {
+          kind: 'button',
+          label: `Open ${EMAIL_BRAND_NAME}`,
+          url: homeUrl,
+        },
+        { kind: 'mediaList', items },
+        {
+          kind: 'footnote',
+          text: `${EMAIL_BRAND_NAME} stores YouTube metadata only — never video files.`,
+          links: [
+            { label: 'How we store your data', url: privacyUrl },
+            { label: 'Digest settings', url: settingsUrl },
+          ],
+        },
+      ],
+    });
   }
 }
 
