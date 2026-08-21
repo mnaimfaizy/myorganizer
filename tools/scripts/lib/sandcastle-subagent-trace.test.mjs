@@ -8,6 +8,7 @@ import test from 'node:test';
 import {
   parseSubagentTranscript,
   formatSubagentIndex,
+  formatTokens,
 } from './sandcastle-subagent-trace.mjs';
 
 function line(record) {
@@ -20,6 +21,7 @@ function assistantTurn({
   attributionSkill,
   content = [],
   usage,
+  model,
 }) {
   return line({
     parentUuid: 'x',
@@ -28,7 +30,12 @@ function assistantTurn({
     type: 'assistant',
     ...(attributionAgent ? { attributionAgent } : {}),
     ...(attributionSkill ? { attributionSkill } : {}),
-    message: { role: 'assistant', content, ...(usage ? { usage } : {}) },
+    message: {
+      role: 'assistant',
+      content,
+      ...(model ? { model } : {}),
+      ...(usage ? { usage } : {}),
+    },
   });
 }
 
@@ -186,4 +193,110 @@ test('formatSubagentIndex labels an agent by type when known, and by id when not
   assert.match(rendered, /## agent bbb999/);
   assert.match(rendered, /`agent-aaa\.jsonl`/);
   assert.match(rendered, /`agent-bbb999\.jsonl`/);
+});
+
+// ─── Token formatting ─────────────────────────────────────────────────────────
+
+test('token counts render as k / m / b', () => {
+  assert.equal(formatTokens(0), '0');
+  assert.equal(formatTokens(999), '999');
+  assert.equal(formatTokens(1000), '1k');
+  assert.equal(formatTokens(1500), '1.5k');
+  assert.equal(formatTokens(1_000_000), '1m');
+  assert.equal(formatTokens(2_400_000_000), '2.4b');
+});
+
+test('a fraction is shown only below ten units', () => {
+  // 205k, not 204.8k: a decimal at that magnitude is precision nobody acts on, while
+  // 1.7m without one would round to 2m and lose the comparison the index exists for.
+  assert.equal(formatTokens(204751), '205k');
+  assert.equal(formatTokens(1702754), '1.7m');
+  assert.equal(formatTokens(63716), '64k');
+});
+
+test('token formatting survives malformed input', () => {
+  assert.equal(formatTokens(Number.NaN), '0');
+  assert.equal(formatTokens(undefined), '0');
+  assert.equal(formatTokens(-1500), '-1.5k');
+});
+
+// ─── Model and MCP attribution ────────────────────────────────────────────────
+
+test('the model is taken from the assistant turn', () => {
+  // Sub-agents are routed per-agent, so this is not necessarily the orchestrator's
+  // model — a run reported claude-opus-5 while all three sub-agents ran haiku-4.5.
+  const jsonl = assistantTurn({
+    attributionAgent: 'CodeExplorer',
+    model: 'claude-haiku-4-5-20251001',
+    content: [],
+  });
+
+  assert.equal(
+    parseSubagentTranscript(jsonl).model,
+    'claude-haiku-4-5-20251001',
+  );
+});
+
+test('a transcript with no model reports undefined rather than guessing', () => {
+  assert.equal(
+    parseSubagentTranscript(assistantTurn({ content: [] })).model,
+    undefined,
+  );
+});
+
+test('MCP servers are derived from mcp__server__tool call names', () => {
+  const jsonl = [
+    assistantTurn({
+      content: [
+        { type: 'tool_use', name: 'mcp__graphify__query_graph', input: {} },
+        { type: 'tool_use', name: 'mcp__graphify__get_neighbors', input: {} },
+        { type: 'tool_use', name: 'mcp__other_server__do_thing', input: {} },
+        { type: 'tool_use', name: 'Read', input: {} },
+      ],
+    }),
+  ].join('\n');
+
+  assert.deepEqual(parseSubagentTranscript(jsonl).mcpServers, [
+    'graphify',
+    'other_server',
+  ]);
+});
+
+test('no MCP calls yields an empty server list, not a missing one', () => {
+  const summary = parseSubagentTranscript(
+    assistantTurn({ content: [{ type: 'tool_use', name: 'Grep', input: {} }] }),
+  );
+  assert.deepEqual(summary.mcpServers, []);
+});
+
+test('the index always states MCP servers, including when none ran', () => {
+  // Regression: CodeExplorer ran 51 turns and 1.7m cache-read tokens on #398 without
+  // ever reaching graphify, because the server was not installed in the sandbox. A
+  // silent absence reads as "no MCP was needed"; the line has to be there to be missed.
+  const rendered = formatSubagentIndex(
+    [
+      {
+        ...parseSubagentTranscript(
+          assistantTurn({
+            attributionAgent: 'CodeExplorer',
+            model: 'claude-haiku-4-5-20251001',
+            content: [{ type: 'tool_use', name: 'Grep', input: {} }],
+            usage: {
+              input_tokens: 3466,
+              cache_creation_input_tokens: 204751,
+              cache_read_input_tokens: 1702754,
+              output_tokens: 8590,
+            },
+          }),
+        ),
+        fileName: 'agent-x.jsonl',
+      },
+    ],
+    { issueNumber: 398, sliceBranch: 'slice/398-x' },
+  );
+
+  assert.match(rendered, /- MCP servers: none invoked/);
+  assert.match(rendered, /- Model: claude-haiku-4-5-20251001/);
+  assert.match(rendered, /cache-read 1\.7m/);
+  assert.match(rendered, /Peak context: 1\.9m tokens/);
 });

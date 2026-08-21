@@ -30,6 +30,7 @@ import {
 import {
   parseSubagentTranscript,
   formatSubagentIndex,
+  formatTokens,
 } from '../tools/scripts/lib/sandcastle-subagent-trace.mjs';
 
 const REPO = 'mnaimfaizy/myorganizer';
@@ -1744,10 +1745,10 @@ function logRunUsage(
   writeLog(
     `  [#${issueNumber}] ${agentKind}:${model} tokens (sum of each iteration's ` +
       `final-turn snapshot — NOT a true run total; see IterationUsage in sandcastle) — ` +
-      `input ${totals.inputTokens}, ` +
-      `cache-write ${totals.cacheCreationInputTokens}, ` +
-      `cache-read ${totals.cacheReadInputTokens}, ` +
-      `output ${totals.outputTokens}.`,
+      `input ${formatTokens(totals.inputTokens)}, ` +
+      `cache-write ${formatTokens(totals.cacheCreationInputTokens)}, ` +
+      `cache-read ${formatTokens(totals.cacheReadInputTokens)}, ` +
+      `output ${formatTokens(totals.outputTokens)}.`,
   );
 }
 
