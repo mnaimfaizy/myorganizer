@@ -14,7 +14,11 @@
       }
     },
     "lint": {
-      "executor": "nx:noop"
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "commands": ["node tools/scripts/check-openapi-artifacts.mjs"]
+      }
     }
   },
   "implicitDependencies": ["api-specs"],
