@@ -272,6 +272,29 @@ For a standalone run, substitute the `issue/<n>-<slug>` branch the summary print
 Slices run **serially** (one by one), so there is no concurrency knob — each slice's ~2.6GB
 `node_modules` worktree exists one at a time during its run.
 
+### Tracing sub-agent work
+
+A slice's agent commonly spawns its own sub-agents (`TestReviewer`, `ComponentBuilder`, and so
+on). By default the flat slice log shows their tool calls inline, typographically identical to
+the top-level agent's — there is no marker for where a sub-agent's work starts or ends. See
+[ADR 0036](../adr/0036-sub-agent-work-is-auditable-and-gate-commands-are-derived.md) for why that
+made a real gate failure (slice #397) invisible.
+
+```bash
+npx tsx .sandcastle/main.mts --prd <n> --trace-subagents
+```
+
+Sandcastle captures every sub-agent's session transcript to the host automatically — this flag
+just relocates and summarizes what was already captured, to
+`.sandcastle/logs/subagents/<issue>/`:
+
+- `agent-<id>.jsonl` — the sub-agent's own captured session, unmodified.
+- `index.md` — one entry per sub-agent: its type (`TestReviewer`, `ComponentBuilder`, ...), turn
+  count, peak context tokens, summed per-turn token usage, and tool-call counts.
+
+Without the flag, output stays byte-for-byte what it is today — one flat log per slice. A slice
+that spawned no sub-agents writes nothing under `subagents/` either way.
+
 ## Recovering an interrupted run
 
 A slice whose agent dies mid-run — most often by exhausting the provider's usage window — is an

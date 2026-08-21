@@ -9,8 +9,9 @@ import {
   readFileSync,
   readdirSync,
   statSync,
+  writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import {
   MAX_QUOTA_WAITS,
@@ -26,6 +27,11 @@ import {
   extractMaintainerNotes,
   withMaintainerNotes,
 } from '../tools/scripts/lib/sandcastle-resume.mjs';
+import {
+  parseSubagentTranscript,
+  formatSubagentIndex,
+  formatTokens,
+} from '../tools/scripts/lib/sandcastle-subagent-trace.mjs';
 
 const REPO = 'mnaimfaizy/myorganizer';
 const SANDBOX_IMAGE = 'sandcastle:myorganizer';
@@ -250,6 +256,10 @@ Flags:
   --fresh                Discard a slice's preserved checkpoint and start it over.
                          Without it, an interrupted slice RESUMES. In PRD mode this
                          must name its slice: --prd <n> --issue <slice> --fresh.
+  --trace-subagents      Write per-sub-agent transcripts to
+                         .sandcastle/logs/subagents/<issue>/, each with its tool
+                         calls, peak context, and token usage. Without it, output is
+                         byte-for-byte what it is today — one flat log per slice.
   --agent <name>         Agent provider to use (default: SANDCASTLE_AGENT or claude)
   --model <model>        Override the model for this run (default: env/provider routing)
   --help                 Show this help text
@@ -336,6 +346,12 @@ const discardRequested = isDiscardRequested(process.argv);
 // documents the behaviour at the call site. See ADR 0035.
 const waitForQuota = process.argv.includes('--wait-for-quota');
 let quotaWaitsTaken = 0;
+
+// Opt-in, per ADR 0036: without it, output stays byte-for-byte what it is today — one
+// flat log per slice. Sandcastle 0.12.0 already captures every sub-agent transcript to
+// the host unconditionally (see captureSubagentTraces below); this flag only decides
+// whether main.mts relocates and summarizes what was already captured.
+const traceSubagents = process.argv.includes('--trace-subagents');
 
 const discardScope = validateDiscardScope({
   discardRequested,
@@ -863,6 +879,22 @@ function nextReadySlice(pending: Issue[]): Issue | undefined {
 // passes on a fresh checkout.
 const yarnCacheDir = join(process.cwd(), '.sandcastle', '.yarn-cache');
 mkdirSync(yarnCacheDir, { recursive: true });
+
+// Claude Code's per-project session store, bind-mounted into the agent container at
+// /home/agent/.claude/projects so every transcript — including each sub-agent's
+// <sessionId>/subagents/agent-*.jsonl — lands on the host AS IT IS WRITTEN.
+//
+// Sandcastle's own capture cannot cover a crash: `invokeAgent` throws before the
+// "Capturing session" step ever runs, so a run killed by a provider limit left its
+// sub-agent transcripts inside a container that is then torn down. That is exactly the
+// run whose sub-agent behaviour you most want to read. A mount sidesteps the ordering
+// entirely — there is nothing to copy out, because it was never only inside.
+//
+// Deliberately NOT the host's real ~/.claude/projects: sandcastle still captures to
+// that store on the success path, and pointing both at one directory would have the
+// capture copying a file onto itself.
+const sessionsDir = join(process.cwd(), '.sandcastle', 'sessions');
+mkdirSync(sessionsDir, { recursive: true });
 
 // Env that makes every container use the bind-mounted global cache.
 const YARN_CACHE_ENV = {
@@ -1392,6 +1424,10 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
         '-e',
         'NX_SKIP_NX_CACHE=true',
         '-e',
+        'NX_CACHE_DIRECTORY=/home/agent/workspace/.nx/cache',
+        '-e',
+        'NX_WORKSPACE_DATA_DIRECTORY=/home/agent/workspace/.nx/workspace-data',
+        '-e',
         `YARN_ENABLE_GLOBAL_CACHE=${YARN_CACHE_ENV.YARN_ENABLE_GLOBAL_CACHE}`,
         '-e',
         `YARN_GLOBAL_FOLDER=${YARN_CACHE_ENV.YARN_GLOBAL_FOLDER}`,
@@ -1723,11 +1759,164 @@ function logRunUsage(
     ...totals,
   });
   writeLog(
-    `  [#${issueNumber}] ${agentKind}:${model} tokens — ` +
-      `input ${totals.inputTokens}, ` +
-      `cache-write ${totals.cacheCreationInputTokens}, ` +
-      `cache-read ${totals.cacheReadInputTokens}, ` +
-      `output ${totals.outputTokens}.`,
+    `  [#${issueNumber}] ${agentKind}:${model} tokens (sum of each iteration's ` +
+      `final-turn snapshot — NOT a true run total; see IterationUsage in sandcastle) — ` +
+      `input ${formatTokens(totals.inputTokens)}, ` +
+      `cache-write ${formatTokens(totals.cacheCreationInputTokens)}, ` +
+      `cache-read ${formatTokens(totals.cacheReadInputTokens)}, ` +
+      `output ${formatTokens(totals.outputTokens)}.`,
+  );
+}
+
+// ─── Sub-agent traces (--trace-subagents) ──────────────────────────────────────
+// Sandcastle 0.12.0's Claude Code provider captures every sub-agent transcript to the
+// host automatically and unconditionally — RunResult.iterations[].sessionFilePath
+// already points at the captured main session, and its sibling
+// <sessionId>/subagents/agent-*.jsonl files are captured the same way, with no flag
+// of ours involved. This function does not create that data; it only relocates and
+// summarizes what sandcastle already wrote, into a stable path under version control
+// convention. See docs/adr/0036 and the spike recorded on issue #411.
+function captureSubagentTraces(
+  issue: Issue,
+  result: Awaited<ReturnType<typeof run>>,
+): void {
+  if (!traceSubagents) return;
+
+  const destDir = join(
+    process.cwd(),
+    '.sandcastle',
+    'logs',
+    'subagents',
+    String(issue.number),
+  );
+  const multiIteration = result.iterations.length > 1;
+
+  const summaries: Array<
+    ReturnType<typeof parseSubagentTranscript> & { fileName: string }
+  > = [];
+
+  result.iterations.forEach((iteration, iterationIndex) => {
+    if (!iteration.sessionId || !iteration.sessionFilePath) return;
+
+    const subagentsDir = join(
+      dirname(iteration.sessionFilePath),
+      iteration.sessionId,
+      'subagents',
+    );
+    if (!existsSync(subagentsDir)) return;
+
+    const files = readdirSync(subagentsDir).filter(
+      (name) => name.startsWith('agent-') && name.endsWith('.jsonl'),
+    );
+    if (files.length === 0) return;
+
+    mkdirSync(destDir, { recursive: true });
+    for (const fileName of files) {
+      const jsonl = readFileSync(join(subagentsDir, fileName), 'utf8');
+      const summary = parseSubagentTranscript(jsonl);
+      const destFileName = multiIteration
+        ? `iteration-${iterationIndex}--${fileName}`
+        : fileName;
+      writeFileSync(join(destDir, destFileName), jsonl);
+      summaries.push({ ...summary, fileName: destFileName });
+    }
+  });
+
+  if (summaries.length === 0) return;
+
+  writeFileSync(
+    join(destDir, 'index.md'),
+    formatSubagentIndex(summaries, {
+      issueNumber: issue.number,
+      sliceBranch: sliceBranchFor(issue),
+    }),
+  );
+  console.log(
+    `  [#${issue.number}] traced ${summaries.length} sub-agent invocation(s) → ${destDir}`,
+  );
+}
+
+/**
+ * Recover sub-agent transcripts for a run that CRASHED.
+ *
+ * The success path reads `RunResult.iterations[].sessionFilePath`. A crash has no
+ * result — `run()` threw — so there is no session id to look up, and sandcastle never
+ * reached its capture step either. What there is: the bind-mounted session store, into
+ * which Claude Code wrote every transcript live.
+ *
+ * Sessions are selected by mtime against the moment this run started rather than by id.
+ * The store is per-repo and dispatch is one slice at a time, so anything written after
+ * that instant belongs to the run that just died. A stale directory from an earlier
+ * slice cannot qualify, and the worst case is recovering nothing rather than the wrong
+ * thing.
+ */
+function recoverSubagentTracesAfterCrash(
+  issue: Issue,
+  runStartedAt: Date,
+): void {
+  if (!traceSubagents) return;
+
+  const destDir = join(
+    process.cwd(),
+    '.sandcastle',
+    'logs',
+    'subagents',
+    String(issue.number),
+  );
+
+  const summaries: Array<
+    ReturnType<typeof parseSubagentTranscript> & { fileName: string }
+  > = [];
+
+  const collectFrom = (subagentsDir: string): void => {
+    if (!existsSync(subagentsDir)) return;
+    for (const fileName of readdirSync(subagentsDir)) {
+      if (!fileName.startsWith('agent-') || !fileName.endsWith('.jsonl')) {
+        continue;
+      }
+      const filePath = join(subagentsDir, fileName);
+      if (statSync(filePath).mtime < runStartedAt) continue;
+
+      const jsonl = readFileSync(filePath, 'utf8');
+      mkdirSync(destDir, { recursive: true });
+      writeFileSync(join(destDir, fileName), jsonl);
+      summaries.push({ ...parseSubagentTranscript(jsonl), fileName });
+    }
+  };
+
+  // <sessionsDir>/<encodedProjectPath>/<sessionId>/subagents/agent-*.jsonl — the
+  // encoding is sandcastle's business, so both levels are walked rather than derived.
+  const walk = (dir: string, depth: number): void => {
+    if (!existsSync(dir)) return;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const child = join(dir, entry.name);
+      if (entry.name === 'subagents') collectFrom(child);
+      else if (depth > 0) walk(child, depth - 1);
+    }
+  };
+
+  try {
+    walk(sessionsDir, 2);
+  } catch (error) {
+    console.warn(
+      `  [#${issue.number}] could not recover sub-agent traces: ` +
+        `${error instanceof Error ? error.message : String(error)}`,
+    );
+    return;
+  }
+
+  if (summaries.length === 0) return;
+
+  writeFileSync(
+    join(destDir, 'index.md'),
+    formatSubagentIndex(summaries, {
+      issueNumber: issue.number,
+      sliceBranch: sliceBranchFor(issue),
+    }),
+  );
+  console.log(
+    `  [#${issue.number}] recovered ${summaries.length} sub-agent transcript(s) from the crashed run → ${destDir}`,
   );
 }
 
@@ -1839,6 +2028,10 @@ while (pendingSlices.length > 0) {
     '--add-label',
     'status:in-progress',
   ]);
+
+  // Stamped before the try so the catch can see it: the crash path uses it to tell
+  // this run's session transcripts from an earlier slice's by mtime.
+  const crashedRunStartedAt = new Date();
 
   try {
     console.log(
@@ -1963,6 +2156,14 @@ while (pendingSlices.length > 0) {
           NX_DAEMON: 'false',
           NX_ISOLATE_PLUGINS: 'false',
           NX_SKIP_NX_CACHE: 'true',
+          // Pin the cache to the bind-mounted worktree itself. Unset, Nx tries to
+          // resolve a "main worktree" root to share the cache across worktrees —
+          // a path that does not exist inside the container — and falls back to
+          // .nx/cache-local / .nx/workspace-data-local (both gitignored, but the
+          // resolution failure is still wasted work every run). See ADR 0036.
+          NX_CACHE_DIRECTORY: '/home/agent/workspace/.nx/cache',
+          NX_WORKSPACE_DATA_DIRECTORY:
+            '/home/agent/workspace/.nx/workspace-data',
           ...providerEnvironment(),
           ...YARN_CACHE_ENV,
         },
@@ -1971,6 +2172,10 @@ while (pendingSlices.length > 0) {
         // across slices.
         mounts: [
           { hostPath: yarnCacheDir, sandboxPath: '/home/agent/.yarn-cache' },
+          {
+            hostPath: sessionsDir,
+            sandboxPath: '/home/agent/.claude/projects',
+          },
         ],
       }),
       name: `#${issue.number}`,
@@ -2022,6 +2227,7 @@ while (pendingSlices.length > 0) {
     });
 
     logRunUsage(issue.number, agentKind, model, result);
+    captureSubagentTraces(issue, result);
 
     // Finalize → gate → integrate, all LOCAL. No push, no PR.
     // Standalone runs stop after the gate: with no integration branch the work
@@ -2147,6 +2353,10 @@ while (pendingSlices.length > 0) {
     // Preserve BEFORE reporting: the agent's work is the expensive thing here, and
     // the next dispatch of this issue deletes the branch it lives on.
     const checkpoint = preserveInterruptedSlice(issue, sliceBranch);
+
+    // Same reasoning applied to the transcripts: a crashed run is the one whose
+    // sub-agent behaviour you most want to read, and sandcastle never captured it.
+    recoverSubagentTracesAfterCrash(issue, crashedRunStartedAt);
 
     console.error(`  ✗ #${issue.number} crashed: ${String(e)}`);
     const log = readSliceLogTail(issue.number);

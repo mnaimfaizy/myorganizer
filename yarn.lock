@@ -12,9 +12,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ai-hero/sandcastle@npm:0.7.0":
-  version: 0.7.0
-  resolution: "@ai-hero/sandcastle@npm:0.7.0"
+"@ai-hero/sandcastle@npm:0.12.0":
+  version: 0.12.0
+  resolution: "@ai-hero/sandcastle@npm:0.12.0"
   dependencies:
     "@clack/prompts": "npm:^1.1.0"
   peerDependencies:
@@ -27,7 +27,7 @@ __metadata:
       optional: true
   bin:
     sandcastle: dist/main.js
-  checksum: 10c0/ae8c44075bb2cd6510c9dc05d464bfdbb82449fbb0f743514cb073bf9aceed68d214fdf853521dff01d287f798b9b82f51965231c0cc9f3585b23b51dbbf1d90
+  checksum: 10c0/dff31c6f7a73dd0b30a302800027e8eef24255a82345ae9887a6180411cb3218f2ba9ca6721e1c1ed4ff20e7d6fc210a312fd8b4f1dfbf03737c10ba25ff622f
   languageName: node
   linkType: hard
 
@@ -5813,7 +5813,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@myorganizer/source@workspace:."
   dependencies:
-    "@ai-hero/sandcastle": "npm:0.7.0"
+    "@ai-hero/sandcastle": "npm:0.12.0"
     "@babel/core": "npm:7.28.6"
     "@babel/preset-react": "npm:7.28.5"
     "@driimus/nx-plugin-openapi": "npm:3.1.2"
