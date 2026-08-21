@@ -10,6 +10,7 @@ import {
   normalizeText,
   readPayloadOrExit,
   SHELL_TOOL_NAMES,
+  stripHeredocBodies,
 } from './lib.mjs';
 
 /** Read-only tools across harnesses. Not mutating, but they can exfiltrate. */
@@ -333,11 +334,13 @@ function inspectNode(node, key = '') {
   }
 
   if (COMMAND_KEYS.has(key)) {
-    if (!isLikelyWriteCommand(node)) {
+    const command = stripHeredocBodies(node);
+
+    if (!isLikelyWriteCommand(command)) {
       return null;
     }
 
-    return getProtectedPathReason(node);
+    return getProtectedPathReason(command);
   }
 
   if (PATH_KEYS.has(key)) {
@@ -372,11 +375,13 @@ function inspectToolInput(toolName, toolInput) {
       toolName === 'powershell' ||
       toolName === 'runterminalcommand'
     ) {
-      if (!isLikelyWriteCommand(toolInput)) {
+      const command = stripHeredocBodies(toolInput);
+
+      if (!isLikelyWriteCommand(command)) {
         return null;
       }
 
-      return getProtectedPathReason(toolInput);
+      return getProtectedPathReason(command);
     }
 
     if (!looksLikePath(toolInput)) {
@@ -412,7 +417,12 @@ async function main() {
   }
 
   if (SHELL_TOOL_NAMES.has(toolName)) {
-    const readReason = getSecretReadReason(extractCommand(toolInput));
+    // Same reasoning as the write guard: a heredoc body that *names* an env
+    // file is prose, not a read of it. Actual secret values in that body are
+    // still caught by secret-scan.mjs, which scans content on purpose.
+    const readReason = getSecretReadReason(
+      stripHeredocBodies(extractCommand(toolInput)),
+    );
     if (readReason) {
       denyTool(readReason);
     }
