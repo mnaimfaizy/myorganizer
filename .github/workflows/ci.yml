@@ -477,6 +477,15 @@ jobs:
         with:
           node-version: '22'
 
+      - name: Setup Java 21
+        # openapi:check regenerates the client via openapi-generator-cli, which is
+        # a Java tool. Pinned explicitly rather than relying on the runner image's
+        # preinstalled JDK, which is not part of the runner's stability contract.
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: '21'
+
       - name: Restore dependency cache
         id: dependency-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -493,6 +502,11 @@ jobs:
       - name: Verify frozen lockfile
         if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: git diff --exit-code -- yarn.lock
+
+      - name: Check OpenAPI spec and generated client are in sync
+        # Regenerates the spec and client, then asserts a clean tree. Runs before
+        # the hygiene steps so an unrelated step cannot dirty the tree first.
+        run: corepack yarn openapi:check
 
       - name: Component hygiene checker contracts
         run: corepack yarn component:hygiene:test
@@ -511,6 +525,9 @@ jobs:
 
       - name: Sandcastle sub-agent trace contracts
         run: corepack yarn sandcastle:subagent-trace:test
+
+      - name: OpenAPI artifact checker contracts
+        run: corepack yarn openapi:artifacts:test
 
       - name: Check libs markdown allowlist
         run: corepack yarn libs:markdown:check
