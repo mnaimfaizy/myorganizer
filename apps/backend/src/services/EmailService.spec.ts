@@ -1,9 +1,18 @@
 import nodemailer from 'nodemailer';
+import winston from 'winston';
 import sendEmail, { EmailMessage, MailAttachment } from './EmailService';
+
+jest.mock('winston', () => ({
+  createLogger: jest.fn(() => ({ error: jest.fn(), info: jest.fn() })),
+  format: { json: jest.fn(() => ({})) },
+  transports: { Console: jest.fn() },
+}));
 
 jest.mock('nodemailer');
 
 const mockNodemailer = jest.mocked(nodemailer);
+// EmailService builds its logger once at module load; grab that instance here.
+const mockLogger = jest.mocked(winston.createLogger).mock.results[0].value;
 
 describe('EmailService', () => {
   let mockSendMail: jest.Mock;
@@ -16,8 +25,8 @@ describe('EmailService', () => {
     // Set up env vars for SMTP provider
     process.env.MAIL_HOST = 'localhost';
     process.env.MAIL_PORT = '1025';
-    process.env.MAIL_USERNAME = undefined;
-    process.env.MAIL_PASSWORD = undefined;
+    delete process.env.MAIL_USERNAME;
+    delete process.env.MAIL_PASSWORD;
     process.env.MAIL_SECURE = 'false';
     process.env.EMAIL_SENDER = 'noreply@example.com';
     process.env.DEFAULT_EMAIL_PROVIDER = 'smtp';
@@ -188,6 +197,56 @@ describe('EmailService', () => {
 
       const mailOptions = mockSendMail.mock.calls[0][0];
       expect(mailOptions.from).toBe('custom-sender@example.com');
+    });
+  });
+
+  describe('sendEmail SMTP auth configuration', () => {
+    it('should construct transport with auth: undefined when credentials are not set', async () => {
+      // beforeEach deletes MAIL_USERNAME and MAIL_PASSWORD via delete (not = undefined)
+      // so they should be undefined, and auth should be omitted or undefined
+      const message: EmailMessage = {
+        html: '<p>Test</p>',
+        text: 'Test',
+      };
+
+      await sendEmail('user@example.com', 'Subject', message);
+
+      const createTransportCall = mockNodemailer.createTransport.mock
+        .calls[0][0] as Record<string, unknown>;
+      expect(createTransportCall.auth).toBeUndefined();
+    });
+  });
+
+  describe('sendEmail delivery failure', () => {
+    it('should resolve successfully even when transporter callback receives an error', async () => {
+      // This test pins current behavior: sendEmail resolves (does not reject)
+      // when the underlying transporter.sendMail callback reports a delivery error.
+      // See issue #409.
+      const deliveryError = new Error('SMTP connection failed');
+      mockSendMail = jest.fn((mailOptions, callback) => {
+        // Simulate a delivery failure by calling callback with an error
+        callback(deliveryError, null);
+      });
+
+      mockTransporter = {
+        sendMail: mockSendMail,
+      };
+
+      mockNodemailer.createTransport.mockReturnValue(mockTransporter);
+
+      const message: EmailMessage = {
+        html: '<p>Test</p>',
+        text: 'Test',
+      };
+
+      // This should not throw or reject, even though the callback received an error
+      await expect(
+        sendEmail('user@example.com', 'Subject', message),
+      ).resolves.toBeUndefined();
+
+      expect(mockSendMail).toHaveBeenCalledTimes(1);
+      expect(mockLogger.error).toHaveBeenCalledTimes(1);
+      expect(mockLogger.error).toHaveBeenCalledWith(deliveryError);
     });
   });
 });
