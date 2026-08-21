@@ -428,6 +428,11 @@ evidence being preserved.
   for the PRD PR. If you delete the local branch you lose the integrated work — push it first.
 - **Retire the old cache:** delete `.sandcastle/node_modules_linux_cache/` if present — it's no
   longer used (the seed step and lockfile-hash invalidation were removed).
+- **Rebuild the sandbox image after any `.sandcastle/Dockerfile` change:**
+  `ensureSandboxImage()` only builds `sandcastle:myorganizer` when the image is missing, so an
+  existing image silently keeps the old contents. Force a rebuild with
+  `docker image rm sandcastle:myorganizer` before the next dispatch. See `docs/graphify.md` for
+  why this matters for the mounted graphify graph.
 - **Never put the repo on `/mnt/d`** (or any drvfs/9P mount) for dispatch — that's the ~29 min
   trap.
 - **`Could not fetch from origin (reusing worktree at … as-is, …)` is expected — ignore it.** It

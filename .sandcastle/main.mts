@@ -896,6 +896,72 @@ mkdirSync(yarnCacheDir, { recursive: true });
 const sessionsDir = join(process.cwd(), '.sandcastle', 'sessions');
 mkdirSync(sessionsDir, { recursive: true });
 
+// Graphify's structural graph, bind-mounted read-only into the agent container so
+// CodeExplorer's `graphify` MCP server (declared in .mcp.json) has something to
+// serve. `.mcp.json`'s args already expect `graphify-out/graph.json` relative to
+// the worktree, and MountConfig resolves a relative sandboxPath from that same
+// worktree root — so hostPath/sandboxPath of plain `'graphify-out'` lands exactly
+// there with no MCP config change. Only the primary checkout ever refreshes this
+// graph (`.husky/graphify-refresh.sh` exits early for any linked worktree), so
+// what gets mounted into a sandcastle worktree is always the primary checkout's
+// snapshot, never the slice's own in-progress state. See docs/graphify.md and #413.
+//
+// Conditional on purpose: sandcastle's mount validation requires hostPath to
+// exist, and most contributors have never built a graph. An unconditional mount
+// would turn a documented opt-in supplement into a hard dispatch requirement.
+// Absent, no mount is added and CodeExplorer falls back to Glob/Grep as already
+// documented in .github/agents/explore.agent.md.
+const graphifyGraphPath = join(process.cwd(), 'graphify-out', 'graph.json');
+const graphifyAvailable = existsSync(graphifyGraphPath);
+
+/**
+ * Best-effort provenance line for the mounted graphify graph, injected into the
+ * slice prompt so a sub-agent that never opens docs/graphify.md still learns the
+ * graph can be stale (#413 decision 3 — a prompt is the one channel a sub-agent
+ * demonstrably reads; #396 showed the inverse for anything left only in a doc).
+ *
+ * Graphify records no commit sha of its own, so "built at" is approximated from
+ * graph.json's mtime against history — valid because the graph is always a
+ * same-checkout snapshot (see the mount comment above). The walk is pinned to
+ * `baseRef`, not HEAD: the slice branch is cut from `baseRef`, so a commit found
+ * there is an ancestor by construction. Left on HEAD, dispatching while the
+ * primary checkout sits on an unrelated feature branch would resolve a sha off
+ * that branch, fail the ancestry test, and degrade every prompt to the
+ * unknown-staleness wording below.
+ */
+function graphifyProvenance(sliceBranch: string): string | null {
+  if (!graphifyAvailable) return null;
+
+  const builtAt = statSync(graphifyGraphPath).mtime;
+  const sha = spawnSync(
+    'git',
+    ['log', '-1', `--before=${builtAt.toISOString()}`, '--format=%H', baseRef],
+    { encoding: 'utf8', windowsHide: true },
+  ).stdout.trim();
+  if (!sha) return null;
+  const shortSha = sha.slice(0, 12);
+
+  const isAncestor =
+    spawnSync('git', ['merge-base', '--is-ancestor', sha, sliceBranch], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).status === 0;
+  if (!isAncestor) {
+    return (
+      `A graphify graph is mounted at \`graphify-out/\` for the \`graphify\` MCP server, but its ` +
+      `approximate build commit (\`${shortSha}\`, from graph.json's mtime) is not an ancestor of ` +
+      `\`${sliceBranch}\` — treat its staleness as unknown and confirm any result against the actual file.`
+    );
+  }
+
+  const behind = gitCmd(['rev-list', '--count', `${sha}..${sliceBranch}`]);
+  return (
+    `A graphify graph is mounted at \`graphify-out/\` for the \`graphify\` MCP server (see ` +
+    `docs/graphify.md). Built at approx. \`${shortSha}\`, ${behind} commit(s) behind \`${sliceBranch}\` — ` +
+    `files changed since are not in it. Confirm any graph result against the actual file.`
+  );
+}
+
 // Env that makes every container use the bind-mounted global cache.
 const YARN_CACHE_ENV = {
   YARN_ENABLE_GLOBAL_CACHE: 'true',
@@ -1633,6 +1699,7 @@ function readMaintainerNotes(issueNumber: number): string[] {
 
 function buildPrompt(issue: Issue, sliceBranch: string): string {
   const gate = resolveGate(issue);
+  const graphifyNote = graphifyProvenance(sliceBranch);
   return [
     `You are implementing GitHub Issue #${issue.number}: ${issue.title}`,
     ``,
@@ -1644,6 +1711,7 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     ``,
     `- Dependencies are ALREADY installed in this sandbox before you start (a setup hook runs \`corepack yarn install --immutable\`). Do NOT run \`yarn install\` yourself.`,
     `- Read CLAUDE.md, CONTEXT.md, and TECH_STACK.md before making any changes.`,
+    ...(graphifyNote ? [`- ${graphifyNote}`] : []),
     `- Implement this vertical slice end-to-end (schema → API → UI → tests where applicable).`,
     `- Your working branch is \`${sliceBranch}\` (based on \`${baseRef}\`). Do not switch branches.`,
     ...buildGateInstructions(gate),
@@ -2176,6 +2244,15 @@ while (pendingSlices.length > 0) {
             hostPath: sessionsDir,
             sandboxPath: '/home/agent/.claude/projects',
           },
+          ...(graphifyAvailable
+            ? [
+                {
+                  hostPath: 'graphify-out',
+                  sandboxPath: 'graphify-out',
+                  readonly: true,
+                },
+              ]
+            : []),
         ],
       }),
       name: `#${issue.number}`,

@@ -41,8 +41,21 @@ USER ${AGENT_UID}:${AGENT_GID}
 RUN curl https://cursor.com/install -fsS | bash
 RUN curl -fsSL https://claude.ai/install.sh | bash
 
-# Add Cursor/Claude to PATH
+# Add Cursor/Claude/uv to PATH
 ENV PATH="/home/agent/.local/bin:$PATH"
+
+# Install uv and the graphify MCP server that CodeExplorer's `graphify` entry in
+# .mcp.json declares. Pinned to the exact version that built the host's
+# graphify-out/graph.json (0.9.43 — PyPI latest is already ahead at 0.9.48):
+# graphifyy is pre-1.0 with no on-disk format stability guarantee across
+# releases, so bumping this pin and rebuilding the graph must be one coordinated
+# change, not two independent ones. The [mcp] extra is REQUIRED — plain
+# `graphifyy` makes `graphify-mcp` crash with `ModuleNotFoundError: No module
+# named 'mcp'`, surfacing in Claude Code as "✘ Failed to connect — MCP error
+# -32000". `uv tool install` drops the `graphify`/`graphify-mcp` shims into
+# ~/.local/bin, already on PATH above. See docs/graphify.md.
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+RUN uv tool install "graphifyy[mcp]==0.9.43"
 
 # Pre-accept the workspace trust dialog. Sandcastle always bind-mounts the worktree at
 # this fixed path, and without this Claude Code refuses to load the repo's
