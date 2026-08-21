@@ -1,9 +1,18 @@
 import nodemailer from 'nodemailer';
+import winston from 'winston';
 import sendEmail, { EmailMessage, MailAttachment } from './EmailService';
+
+jest.mock('winston', () => ({
+  createLogger: jest.fn(() => ({ error: jest.fn(), info: jest.fn() })),
+  format: { json: jest.fn(() => ({})) },
+  transports: { Console: jest.fn() },
+}));
 
 jest.mock('nodemailer');
 
 const mockNodemailer = jest.mocked(nodemailer);
+// EmailService builds its logger once at module load; grab that instance here.
+const mockLogger = jest.mocked(winston.createLogger).mock.results[0].value;
 
 describe('EmailService', () => {
   let mockSendMail: jest.Mock;
@@ -213,9 +222,10 @@ describe('EmailService', () => {
       // This test pins current behavior: sendEmail resolves (does not reject)
       // when the underlying transporter.sendMail callback reports a delivery error.
       // See issue #409.
+      const deliveryError = new Error('SMTP connection failed');
       mockSendMail = jest.fn((mailOptions, callback) => {
         // Simulate a delivery failure by calling callback with an error
-        callback(new Error('SMTP connection failed'), null);
+        callback(deliveryError, null);
       });
 
       mockTransporter = {
@@ -235,6 +245,8 @@ describe('EmailService', () => {
       ).resolves.toBeUndefined();
 
       expect(mockSendMail).toHaveBeenCalledTimes(1);
+      expect(mockLogger.error).toHaveBeenCalledTimes(1);
+      expect(mockLogger.error).toHaveBeenCalledWith(deliveryError);
     });
   });
 });
