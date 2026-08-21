@@ -104,7 +104,7 @@
 | Package                          | Version  | Purpose                                         |
 | -------------------------------- | -------- | ----------------------------------------------- |
 | `react-native`                   | ~0.79.3  | Mobile app runtime                              |
-| `@nx/react-native`               | 22.3.3   | Nx plugin for React Native apps/libs            |
+| `@nx/react-native`               | 22.7.7   | Nx plugin for React Native apps/libs            |
 | `@react-navigation/native`       | 7.2.5    | Navigation core                                 |
 | `@react-navigation/native-stack` | 7.16.0   | Native stack navigator                          |
 | `react-native-screens`           | 4.11.1   | Native screen primitives (pinned for RN 0.79)   |
@@ -214,20 +214,22 @@
 
 | Package                      | Version | Purpose                                                             |
 | ---------------------------- | ------- | ------------------------------------------------------------------- |
-| `nx`                         | 22.3.3  | Monorepo build system and task orchestration                        |
-| `@nx/next`                   | 22.3.3  | Nx plugin for Next.js                                               |
-| `@nx/react`                  | 22.3.3  | Nx plugin for React libraries                                       |
-| `@nx/react-native`           | 22.3.3  | Nx plugin for React Native apps and libraries                       |
-| `@nx/express`                | 22.3.3  | Nx plugin for Express                                               |
-| `@nx/node`                   | 22.3.3  | Nx plugin for Node.js                                               |
-| `@nx/js`                     | 22.3.3  | Nx plugin for plain TypeScript libraries                            |
-| `@nx/webpack`                | 22.3.3  | Nx plugin for Webpack builds                                        |
-| `@nx/web`                    | 22.3.3  | Nx plugin for web applications                                      |
-| `@nx/eslint`                 | 22.3.3  | Nx plugin for ESLint integration                                    |
-| `@nx/playwright`             | 22.3.3  | Nx plugin for Playwright                                            |
-| `@nx/storybook`              | 22.3.3  | Nx plugin for Storybook                                             |
-| `@nx/vite`                   | 22.3.3  | Nx plugin for Vite (used by Storybook)                              |
-| `@nx/vitest`                 | 22.3.3  | Nx plugin for Vitest (available but Jest is the active test runner) |
+| `nx`                         | 22.7.7  | Monorepo build system and task orchestration                        |
+| `@nx/next`                   | 22.7.7  | Nx plugin for Next.js                                               |
+| `@nx/react`                  | 22.7.7  | Nx plugin for React libraries                                       |
+| `@nx/react-native`           | 22.7.7  | Nx plugin for React Native apps and libraries                       |
+| `@nx/express`                | 22.7.7  | Nx plugin for Express                                               |
+| `@nx/node`                   | 22.7.7  | Nx plugin for Node.js                                               |
+| `@nx/js`                     | 22.7.7  | Nx plugin for plain TypeScript libraries                            |
+| `@nx/webpack`                | 22.7.7  | Nx plugin for Webpack builds                                        |
+| `@nx/web`                    | 22.7.7  | Nx plugin for web applications                                      |
+| `@nx/eslint`                 | 22.7.7  | Nx plugin for ESLint integration                                    |
+| `@nx/playwright`             | 22.7.7  | Nx plugin for Playwright                                            |
+| `@nx/storybook`              | 22.7.7  | Nx plugin for Storybook                                             |
+| `@nx/vite`                   | 22.7.7  | Nx plugin for Vite (used by Storybook)                              |
+| `@nx/vitest`                 | 22.7.7  | Nx plugin for Vitest (available but Jest is the active test runner) |
+| `@nx/eslint-plugin`          | 22.7.7  | Nx ESLint rules, including module boundary enforcement              |
+| `@nx/workspace`              | 22.7.7  | Nx workspace generators and migrations                              |
 | `@driimus/nx-plugin-openapi` | 3.1.2   | Nx plugin for OpenAPI code generation tasks                         |
 
 ---
@@ -237,7 +239,7 @@
 | Package                         | Version | Purpose                                              |
 | ------------------------------- | ------- | ---------------------------------------------------- |
 | `jest`                          | 30.2.0  | Unit and integration test runner — canonical choice  |
-| `@nx/jest`                      | 22.3.3  | Nx/Jest integration                                  |
+| `@nx/jest`                      | 22.7.7  | Nx/Jest integration                                  |
 | `jest-environment-jsdom`        | 30.2.0  | DOM environment for React component tests            |
 | `jest-environment-node`         | 30.2.0  | Node environment for backend tests                   |
 | `ts-jest`                       | 29.4.9  | TypeScript preprocessor for Jest                     |
