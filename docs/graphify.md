@@ -247,3 +247,51 @@ Two environment settings in the shared script are load-bearing, so do not drop t
 > Branch switching is still uncovered: `git checkout` fires neither hook, so the graph reflects
 > whichever branch last triggered a rebuild. Confirm any graph result against the file, which the
 > agent rules already require.
+
+## Sandboxed agents (Sandcastle)
+
+A sandboxed `CodeExplorer` runs inside a Docker container built from `.sandcastle/Dockerfile`,
+which has no `graphify-out/` of its own and, until #413, no `graphify`/`graphify-mcp` binaries
+either — every sub-agent transcript in the first `--trace-subagents` run (#398) showed
+`MCP servers: none invoked`. Three pieces close that gap without changing `.mcp.json`:
+
+- **The graph is bind-mounted read-only from the host, conditionally.** `.sandcastle/main.mts`
+  mounts `graphify-out` (host) onto `graphify-out` (sandbox worktree root) only when
+  `graphify-out/graph.json` exists on the host at dispatch time — sandcastle's mount validation
+  fails sandbox creation for a missing `hostPath`, so an unconditional mount would turn this
+  documented opt-in supplement into a hard requirement for anyone who has never built a graph.
+  `MountConfig`'s relative-path resolution (`hostPath` from `process.cwd()`, `sandboxPath` from
+  the worktree root) lands the mount exactly where `.mcp.json`'s `args: ["graphify-out/graph.json"]`
+  already expects it — no MCP config change needed.
+- **Only ever the primary checkout's snapshot.** `.husky/graphify-refresh.sh` exits early for any
+  linked worktree on purpose, so a Sandcastle worktree (itself a linked worktree) never races the
+  primary checkout with its own rebuild. What gets mounted into every slice's container is always
+  whatever the primary checkout last refreshed to — never the slice's own in-progress state. That
+  is tolerable because every sanctioned graphify question (`get_neighbors`, `god_nodes`) is about
+  code that already exists, and `CodeExplorer` runs before the slice writes anything.
+- **Provenance is injected into the slice prompt, not left in this doc.** Graphify records no
+  commit sha of its own, so `.sandcastle/main.mts`'s `graphifyProvenance()` approximates "built at"
+  from `graph.json`'s mtime against the primary checkout's own history, then reports how many
+  commits the slice branch has moved past that point — e.g. _"Built at approx. `<sha>`, N commit(s)
+  behind `<branch>` — files changed since are not in it."_ A rule in this document is not something
+  a sub-agent reliably reads (see #396); the prompt is the one channel it demonstrably does.
+
+The container's `graphify`/`graphify-mcp` binaries are installed via `uv tool install
+"graphifyy[mcp]==0.9.43"` in the Dockerfile, pinned to the exact version that built the graph
+currently on the primary checkout's host — not PyPI latest. Nothing guarantees graphify's on-disk
+graph format is stable across its (pre-1.0, 148-release) version history, so bumping this pin and
+rebuilding the host graph is one coordinated change, not two independent ones. The `[mcp]` extra is
+mandatory for the same reason it is on a developer machine (above): without it `graphify-mcp`
+crashes with `ModuleNotFoundError: No module named 'mcp'`. The `/graphify` skill resync (above) is
+explicitly a per-developer step and is **not** needed in the image — the sandbox uses only the MCP
+server, never the skill.
+
+**The sandbox image must be rebuilt after any Dockerfile change here.** `ensureSandboxImage()` in
+`.sandcastle/main.mts` only builds `sandcastle:myorganizer` when the image is missing, so an
+existing image silently keeps whatever it had before — delete it first (`docker image rm
+sandcastle:myorganizer`) to force a rebuild on the next dispatch.
+
+Whether the mount is worth its staleness cost is measured, not assumed: `.sandcastle/main.mts`
+already prints `MCP servers: graphify` or `none invoked` per sub-agent (derived from `mcp__<server>__<tool>`
+call names), giving a per-run comparison against the 1.7m-cache-read Read/Glob/Grep baseline from
+#398.
