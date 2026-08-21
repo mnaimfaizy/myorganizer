@@ -15,6 +15,18 @@ export interface HookOutcome {
 }
 
 /**
+ * Declared as a named interface, and taken as an optional parameter rather than
+ * one defaulted to `{}`, so that no brace appears between a helper's name and
+ * its body. `check-test-hygiene.mjs` decides whether an exported helper counts
+ * as an assertion helper by scanning the first braced block after the
+ * declaration; an inline type literal there would shadow the body and silently
+ * strip assertion credit from every spec that calls these.
+ */
+export interface HookRunOptions {
+  sandbox?: boolean;
+}
+
+/**
  * Invoke a hook exactly as a harness does: JSON payload on stdin, decision on
  * stdout, block signalled by exit code 2.
  *
@@ -25,12 +37,12 @@ export interface HookOutcome {
 export function runHook(
   hookPath: string,
   payload: unknown,
-  options: { sandbox?: boolean } = {},
+  options?: HookRunOptions,
 ): HookOutcome {
   // The hooks read the sandbox marker from the environment, so the two modes
   // have to be driven through the child process rather than a module flag.
   const childEnv = { ...process.env };
-  if (options.sandbox) {
+  if (options?.sandbox) {
     childEnv.MYORGANIZER_SANDBOX = '1';
   } else {
     delete childEnv.MYORGANIZER_SANDBOX;
@@ -60,7 +72,7 @@ export function expectDenied(
   hookPath: string,
   payload: unknown,
   reasonPattern: RegExp,
-  options: { sandbox?: boolean } = {},
+  options?: HookRunOptions,
 ): void {
   const outcome = runHook(hookPath, payload, options);
 
@@ -72,7 +84,7 @@ export function expectDenied(
 export function expectAllowed(
   hookPath: string,
   payload: unknown,
-  options: { sandbox?: boolean } = {},
+  options?: HookRunOptions,
 ): void {
   const outcome = runHook(hookPath, payload, options);
 
