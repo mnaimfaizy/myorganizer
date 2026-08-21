@@ -142,6 +142,10 @@ function ensureSandboxImage(): void {
  * whose own files changed), NOT every web page that imports it. This is the
  * correct scope for a LINT gate, where lint is per-file and an upstream change
  * cannot introduce lint errors in unchanged downstream files.
+ *
+ * This scope is WRONG for type and test gates: a lib whose own files changed can
+ * absolutely break an unchanged consumer's compile or suite. Those targets use
+ * `affectedProjects` instead.
  */
 function changedProjects(base: string, head: string): string[] {
   // Three-dot range: diff the slice head against the MERGE-BASE, i.e. only the
@@ -177,6 +181,44 @@ function changedProjects(base: string, head: string): string[] {
     }
   }
   return [...names];
+}
+
+/**
+ * The Nx projects a slice affects: the projects whose own files changed PLUS every
+ * transitive dependent. This is the correct scope for TYPE and TEST gates — a type
+ * error introduced in `web-pages-dashboard` surfaces when `myorganizer` compiles,
+ * and that consumer's own files never changed.
+ *
+ * Computed on the HOST, not in the gate container: the gate bind-mounts only the
+ * worktree directory, and a linked worktree's `.git` is a file pointing at the
+ * parent repo's git dir, so git (and therefore `--affected`) cannot resolve refs
+ * inside the container. The resolved list is passed to nx as an explicit
+ * `--projects=` argument instead.
+ *
+ * Returns `null` when the project graph cannot be read, so the caller can fail
+ * closed rather than silently gating a narrower set than intended.
+ */
+function affectedProjects(base: string, head: string): string[] | null {
+  const shown = spawnSync(
+    'npx',
+    [
+      'nx',
+      'show',
+      'projects',
+      '--affected',
+      `--base=${base}`,
+      `--head=${head}`,
+    ],
+    { encoding: 'utf8', windowsHide: true, timeout: 300000 },
+  );
+  if (shown.status !== 0) return null;
+  try {
+    const parsed = JSON.parse(shown.stdout) as unknown;
+    if (!Array.isArray(parsed)) return null;
+    return parsed.filter((name): name is string => typeof name === 'string');
+  } catch {
+    return null;
+  }
 }
 
 function ghJson<T>(args: string[]): T {
@@ -1410,11 +1452,16 @@ function preserveInterruptedSlice(
 }
 
 // ─── Build gate ───────────────────────────────────────────────────────────────
-// Before a slice is fast-forwarded into the LOCAL feature branch, lint its changed
-// projects in a Docker container against the LOCAL slice branch. Fail closed: if the
-// gate cannot run or does not pass, the slice is NOT integrated and NOT marked
-// status:done, so we never stack later slices on broken code. Disable with
-// SLICE_GATE=off.
+// Before a slice is fast-forwarded into the LOCAL feature branch, verify it in a
+// Docker container against the LOCAL slice branch. Fail closed: if the gate cannot
+// run or does not pass, the slice is NOT integrated and NOT marked status:done, so
+// we never stack later slices on broken code. Disable with SLICE_GATE=off.
+//
+// The default targets mirror what CI enforces on the eventual PR (`nx affected -t
+// lint`, `nx affected -t test`, `nx build myorganizer|backend`), so a gate-green
+// slice is not one that fails the moment it is pushed. `build` is what typechecks
+// this repo — there is no `typecheck` target — and it is the step that catches a
+// slice whose types do not compile against its consumers.
 function runSliceGate(issue: Issue, sliceBranch: string): boolean {
   if ((process.env.SLICE_GATE ?? '').toLowerCase() === 'off') {
     console.log(
@@ -1423,15 +1470,49 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
     return true;
   }
 
-  const targets = (process.env.SLICE_GATE_TARGETS || 'lint').trim();
+  const targets = (process.env.SLICE_GATE_TARGETS || 'lint test build').trim();
   const targetList = targets.split(/[\s,]+/).filter(Boolean);
 
-  // Gate only the projects whose OWN files this slice changed — not their
-  // transitive dependents. For a per-file lint gate, an upstream change cannot
-  // introduce lint errors downstream.
-  const projects = changedProjects(baseRef, sliceBranch);
-  if (projects.length === 0) {
+  // Two scopes, because the targets have different blast radii.
+  //
+  // `lint` is per-file: an upstream change cannot introduce lint errors in an
+  // unchanged downstream file, so it runs only on projects whose OWN files changed.
+  //
+  // Everything else (`test`, `build`) is cross-project: a lib change routinely
+  // breaks an unchanged consumer's compile or suite, so it runs on the affected
+  // set — changed projects plus their transitive dependents.
+  const perFileTargets = targetList.filter((t) => t === 'lint');
+  const crossProjectTargets = targetList.filter((t) => t !== 'lint');
+
+  const changed = changedProjects(baseRef, sliceBranch);
+  if (changed.length === 0) {
     console.log(`  [#${issue.number}] gate: no project files changed — pass.`);
+    return true;
+  }
+
+  let affected: string[] = [];
+  if (crossProjectTargets.length > 0) {
+    const resolved = affectedProjects(baseRef, sliceBranch);
+    if (resolved === null) {
+      console.error(
+        `  [#${issue.number}] gate: could not resolve the affected project graph for ` +
+          `'${crossProjectTargets.join(' ')}' — failing closed.`,
+      );
+      return false;
+    }
+    affected = resolved;
+  }
+
+  // Each entry becomes one `nx run-many` invocation inside the container.
+  const runs: Array<{ targets: string[]; projects: string[] }> = [
+    { targets: perFileTargets, projects: changed },
+    { targets: crossProjectTargets, projects: affected },
+  ].filter((run) => run.targets.length > 0 && run.projects.length > 0);
+
+  if (runs.length === 0) {
+    console.log(
+      `  [#${issue.number}] gate: no targets resolved to any project — pass.`,
+    );
     return true;
   }
 
@@ -1471,9 +1552,12 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
     // — so the gate validates lock-changing slices correctly, with binaries matching
     // the container — then run nx. Shares the bind-mounted Yarn global cache, so the
     // install is incremental. Fail closed on any failure.
-    console.log(
-      `  [#${issue.number}] gate: installing + running '${targets}' on ${projects.join(', ')} ...`,
-    );
+    for (const run of runs) {
+      console.log(
+        `  [#${issue.number}] gate: will run '${run.targets.join(' ')}' on ${run.projects.join(', ')}`,
+      );
+    }
+    console.log(`  [#${issue.number}] gate: installing + running ...`);
     const gate = spawnSync(
       'docker',
       [
@@ -1505,13 +1589,22 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
         '/bin/bash',
         SANDBOX_IMAGE,
         '-c',
-        `cd /home/agent/workspace && corepack yarn install --immutable && node node_modules/.bin/nx run-many -t ${targetList.join(' ')} --projects=${projects.join(',')} --skip-nx-cache`,
+        [
+          'cd /home/agent/workspace',
+          'corepack yarn install --immutable',
+          ...runs.map(
+            (run) =>
+              `node node_modules/.bin/nx run-many -t ${run.targets.join(' ')} --projects=${run.projects.join(',')} --skip-nx-cache`,
+          ),
+        ].join(' && '),
       ],
       {
         encoding: 'utf8',
         stdio: 'inherit',
         windowsHide: true,
-        timeout: 1800000,
+        // Install + lint + test + a Next.js production build. The 30-minute budget
+        // this carried when the gate ran lint alone is not enough once `build` is in.
+        timeout: 3600000,
       },
     );
 
@@ -1639,7 +1732,12 @@ function buildGateInstructions(
     `- Prefer short specialist reports (\`PASS|FAIL|ESCALATE\` + ≤5 bullets).`,
     `- Gated Pipeline reject-cycles: max 2 (ComponentReviewer and TestReviewer), then escalate with a diagnosis (ADR 0017).`,
     `- Hitting the cap, a repeated FAIL, or a static/reviewer PASS then Runner/tsc/eslint FAIL is a Pipeline Incident — comment \`## Pipeline Incident\` on the Slice Issue.`,
-    `- \`/code-review\` runs once per Slice after deterministic checks are green, not after every specialist hop.`,
+    // Phrased as an imperative with a placement, not as a rate limit. The earlier
+    // wording ("runs once per Slice ... not after every specialist hop") described
+    // frequency without ever telling the agent to run it, and was satisfiable by
+    // never invoking it at all — which is what happened.
+    `- REQUIRED: once your deterministic checks (jest/tsc/eslint) are green and BEFORE your final commit, invoke the \`/code-review\` Skill exactly once for this Slice.`,
+    `- Act on its findings, then re-run the focused checks. Run it once per Slice — not after every specialist hop.`,
   ];
 
   if (gate === 'mechanical') {
@@ -1715,9 +1813,13 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     `- Implement this vertical slice end-to-end (schema → API → UI → tests where applicable).`,
     `- Your working branch is \`${sliceBranch}\` (based on \`${baseRef}\`). Do not switch branches.`,
     ...buildGateInstructions(gate),
-    `- Commit your changes using Conventional Commit messages (\`corepack yarn ai:commit\`).`,
+    // Naming only the runner here left the agent to hand-write the message; the
+    // Commit sub-agent was never invoked. Name the drafting hop explicitly.
+    `- Commit via the \`commit-change-workflow\` Skill: stage the intended paths, have the \`Commit\` sub-agent draft the Conventional Commit message from the STAGED diff, write it to a file, then run \`corepack yarn ai:commit --message-file <path>\`. Do not hand-write the commit message and do not run \`git commit\` directly.`,
+    `- Take the commit type from what the work does (an issue labelled \`bug\` is \`fix\`, not \`feat\`).`,
     `- Do NOT push and do NOT open a PR — this sandbox has no credentials. Just commit locally on your branch; leave nothing uncommitted. The orchestrator integrates your branch into the feature branch on the host.`,
-    `- When implementation is complete, output <promise>COMPLETE</promise>.`,
+    `- Do NOT output the completion promise until ALL of these hold: deterministic checks green; \`/code-review\` run once and its findings addressed; work committed through the \`Commit\` sub-agent + \`ai:commit\`; working tree clean.`,
+    `- When all of the above hold, output <promise>COMPLETE</promise>.`,
     ``,
     `## Running tests in this sandbox`,
     ``,
@@ -2383,7 +2485,7 @@ while (pendingSlices.length > 0) {
       const reason = !hasWork
         ? 'it produced no commits'
         : !gatePassed
-          ? `the build gate (${process.env.SLICE_GATE_TARGETS || 'lint'}) failed`
+          ? `the build gate (${process.env.SLICE_GATE_TARGETS || 'lint test build'}) failed`
           : 'the local fast-forward integration failed';
       ghSilent([
         'issue',
