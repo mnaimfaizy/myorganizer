@@ -1392,6 +1392,10 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
         '-e',
         'NX_SKIP_NX_CACHE=true',
         '-e',
+        'NX_CACHE_DIRECTORY=/home/agent/workspace/.nx/cache',
+        '-e',
+        'NX_WORKSPACE_DATA_DIRECTORY=/home/agent/workspace/.nx/workspace-data',
+        '-e',
         `YARN_ENABLE_GLOBAL_CACHE=${YARN_CACHE_ENV.YARN_ENABLE_GLOBAL_CACHE}`,
         '-e',
         `YARN_GLOBAL_FOLDER=${YARN_CACHE_ENV.YARN_GLOBAL_FOLDER}`,
@@ -1963,6 +1967,14 @@ while (pendingSlices.length > 0) {
           NX_DAEMON: 'false',
           NX_ISOLATE_PLUGINS: 'false',
           NX_SKIP_NX_CACHE: 'true',
+          // Pin the cache to the bind-mounted worktree itself. Unset, Nx tries to
+          // resolve a "main worktree" root to share the cache across worktrees —
+          // a path that does not exist inside the container — and falls back to
+          // .nx/cache-local / .nx/workspace-data-local (both gitignored, but the
+          // resolution failure is still wasted work every run). See ADR 0036.
+          NX_CACHE_DIRECTORY: '/home/agent/workspace/.nx/cache',
+          NX_WORKSPACE_DATA_DIRECTORY:
+            '/home/agent/workspace/.nx/workspace-data',
           ...providerEnvironment(),
           ...YARN_CACHE_ENV,
         },
