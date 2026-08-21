@@ -16,8 +16,8 @@ describe('EmailService', () => {
     // Set up env vars for SMTP provider
     process.env.MAIL_HOST = 'localhost';
     process.env.MAIL_PORT = '1025';
-    process.env.MAIL_USERNAME = undefined;
-    process.env.MAIL_PASSWORD = undefined;
+    delete process.env.MAIL_USERNAME;
+    delete process.env.MAIL_PASSWORD;
     process.env.MAIL_SECURE = 'false';
     process.env.EMAIL_SENDER = 'noreply@example.com';
     process.env.DEFAULT_EMAIL_PROVIDER = 'smtp';
@@ -188,6 +188,54 @@ describe('EmailService', () => {
 
       const mailOptions = mockSendMail.mock.calls[0][0];
       expect(mailOptions.from).toBe('custom-sender@example.com');
+    });
+  });
+
+  describe('sendEmail SMTP auth configuration', () => {
+    it('should construct transport with auth: undefined when credentials are not set', async () => {
+      // beforeEach deletes MAIL_USERNAME and MAIL_PASSWORD via delete (not = undefined)
+      // so they should be undefined, and auth should be omitted or undefined
+      const message: EmailMessage = {
+        html: '<p>Test</p>',
+        text: 'Test',
+      };
+
+      await sendEmail('user@example.com', 'Subject', message);
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- nodemailer's TransportOptions types don't expose auth at this level
+      const createTransportCall = mockNodemailer.createTransport.mock
+        .calls[0][0] as any;
+      expect(createTransportCall.auth).toBeUndefined();
+    });
+  });
+
+  describe('sendEmail delivery failure', () => {
+    it('should resolve successfully even when transporter callback receives an error', async () => {
+      // This test pins current behavior: sendEmail resolves (does not reject)
+      // when the underlying transporter.sendMail callback reports a delivery error.
+      // See issue #409.
+      mockSendMail = jest.fn((mailOptions, callback) => {
+        // Simulate a delivery failure by calling callback with an error
+        callback(new Error('SMTP connection failed'), null);
+      });
+
+      mockTransporter = {
+        sendMail: mockSendMail,
+      };
+
+      mockNodemailer.createTransport.mockReturnValue(mockTransporter);
+
+      const message: EmailMessage = {
+        html: '<p>Test</p>',
+        text: 'Test',
+      };
+
+      // This should not throw or reject, even though the callback received an error
+      await expect(
+        sendEmail('user@example.com', 'Subject', message),
+      ).resolves.toBeUndefined();
+
+      expect(mockSendMail).toHaveBeenCalledTimes(1);
     });
   });
 });
