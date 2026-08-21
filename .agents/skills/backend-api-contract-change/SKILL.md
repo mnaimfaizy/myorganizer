@@ -40,7 +40,7 @@ Do **not** use this skill as the writer for cookie/refresh/session behavior (`au
 3. Read the report and the diff. **Orchestrator Patch** for a local miss (wrong field type, skipped `generate-types`). **Stop** if the specialist missed the assignment, hand-edited a migration, or added plaintext for vault-backed data. Do not re-delegate.
 4. **HTTP surface changed** → delegate **ApiWriter** with an API Contract Brief (capability, paths, request/response, persistence status). Skip this hop if only persistence changed and no public contract moved.
 5. Read the report and the diff. Orchestrator Patch or stop. Do not re-delegate.
-6. **Public contract changed** → delegate **ApiSync** to regenerate (`yarn api-docs:generate` → `yarn openapi:sync` → `yarn api:generate`). Skip if the contract did not change.
+6. **Public contract changed** → delegate **ApiSync** to regenerate (`yarn openapi:sync` — it already covers spec generation and client regeneration). Skip if the contract did not change.
 7. Read the ApiSync report. Orchestrator Patch or stop.
 8. **Leave this skill.** If tests are needed, use `.agents/skills/unit-test-delegation-workflow/SKILL.md` (Gated Pipeline). Do not pull TestScaffold into this chain.
 
