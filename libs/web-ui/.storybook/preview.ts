@@ -1,4 +1,5 @@
 import type { Preview } from '@storybook/react';
+import './bufferPolyfill';
 import './preview-styles.css';
 
 const preview: Preview = {
