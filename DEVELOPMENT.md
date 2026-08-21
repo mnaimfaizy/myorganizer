@@ -62,6 +62,7 @@ Before you begin, ensure you have the following installed on your system:
 - **Node.js** - [Download](https://nodejs.org/)
 - **Corepack-managed Yarn** - Use `corepack yarn ...` directly, or enable Corepack shims if your installation permits it
 - **Git** - [Download](https://git-scm.com/)
+  - **Windows only**: tick the symlink option during install, or run `git config --global core.symlinks true` before cloning, and enable Developer Mode (**Settings → System → For developers**). The repo ships one committed symlink, `.claude/skills`; without symlink support it checks out as a plain text file and Claude Code loads none of the repo skills. See [Windows: Repo Skills Not Loading](#windows-repo-skills-not-loading).
 - **Docker & Docker Compose** - [Download](https://www.docker.com/get-started)
 - **Code Editor** - We recommend [VS Code](https://code.visualstudio.com/) with the Nx Console extension
 
@@ -1151,6 +1152,53 @@ git merge upstream/main
 git add <resolved-files>
 git commit
 ```
+
+### Windows: Repo Skills Not Loading
+
+**Problem**: Claude Code does not offer the repo skills (`/upstream-brief`, `/to-prd`, `/commit-change-workflow`, …), and `.claude/skills` is a small text file instead of a directory.
+
+`.agents/skills` is the single source of truth for repo skills — VS Code and Copilot read that path natively. `.claude/skills` is a committed symlink pointing at it, and it is the only tracked symlink in the repository. Git for Windows sets `core.symlinks=false` unless the symlink option is ticked during install, and that value is copied into `.git/config` when you clone. With it off, Git checks the symlink out as a plain file whose _contents_ are the link target (`../.agents/skills`). Claude Code then finds a file where it expects a directory and discovers zero project skills.
+
+macOS and Linux default to `core.symlinks=true`, so this only affects Windows clones.
+
+```bash
+# Diagnose: prints "../.agents/skills" instead of listing skill directories
+cat .claude/skills
+git config --show-origin --get-all core.symlinks
+```
+
+**Solution**:
+
+1. Enable **Settings → System → For developers → Developer Mode**. This lets Windows create symlinks without elevation.
+
+2. Turn symlinks on for this clone and for future ones:
+
+   ```bash
+   git config --global core.symlinks true
+   git config --local core.symlinks true
+   ```
+
+3. Replace the stub file with the real symlink:
+
+   ```bash
+   rm .claude/skills
+   git checkout -- .claude/skills
+   ```
+
+4. Verify — all three checks should pass:
+
+   ```bash
+   test -L .claude/skills && echo "symlink ok"
+   test -d .claude/skills && echo "resolves ok"
+   git status --porcelain   # must be empty
+   ```
+
+Restart Claude Code if the skills do not appear right away.
+
+Notes:
+
+- The system-wide `C:\Program Files\Git\etc\gitconfig` may still read `false`. Leave it — changing it needs admin rights, and the `--global` and `--local` values take precedence.
+- If you previously worked around this with a directory junction, remove it with `rmdir .claude/skills` (or `cmd //c rmdir`), **never** `rm -rf`. `rm -rf` follows the junction and deletes the contents of `.agents/skills`.
 
 ### Common Errors
 
