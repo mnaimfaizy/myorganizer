@@ -35,4 +35,18 @@ if ! git diff --cached --quiet --diff-filter=ACMRT -- \
 then
 corepack yarn component:hygiene --staged --max-warnings=0
 fi
+# The sandcastle resume and sub-agent-trace decisions are pure functions with no Nx
+# project of their own, so `affected:lint` and `nx affected -t test` never reach them.
+# Run their contracts whenever a module or its consumer is staged.
+if ! git diff --cached --quiet --diff-filter=ACMRT -- \
+ tools/scripts/lib/sandcastle-resume.mjs \
+ tools/scripts/lib/sandcastle-resume.test.mjs \
+ tools/scripts/lib/sandcastle-subagent-trace.mjs \
+ tools/scripts/lib/sandcastle-subagent-trace.test.mjs \
+ .sandcastle/main.mts \
+ .sandcastle/dispatch-waves.mts
+then
+corepack yarn sandcastle:resume:test
+corepack yarn sandcastle:subagent-trace:test
+fi
 corepack yarn affected:lint --uncommitted --outputStyle=static

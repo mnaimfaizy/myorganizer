@@ -65,6 +65,8 @@
     "agents:usage:report": "node tools/scripts/report-agent-usage.mjs",
     "graphify:project-edges": "node tools/scripts/graphify-project-edge-benchmark.mjs",
     "graphify:project-edges:test": "node --test tools/scripts/graphify-project-edge-benchmark.test.mjs",
+    "sandcastle:resume:test": "node --test tools/scripts/lib/sandcastle-resume.test.mjs",
+    "sandcastle:subagent-trace:test": "node --test tools/scripts/lib/sandcastle-subagent-trace.test.mjs",
     "dispatch-agents": "npx tsx .sandcastle/main.mts",
     "dispatch-waves": "npx tsx .sandcastle/dispatch-waves.mts",
     "dispatch-agents:1password": "op run --environment \"$OP_ENVIRONMENT_ID\" -- corepack yarn dispatch-agents",
@@ -362,7 +364,7 @@
     }
   },
   "devDependencies": {
-    "@ai-hero/sandcastle": "0.7.0",
+    "@ai-hero/sandcastle": "0.12.0",
     "@babel/core": "7.28.6",
     "@babel/preset-react": "7.28.5",
     "@driimus/nx-plugin-openapi": "3.1.2",

@@ -272,6 +272,151 @@ For a standalone run, substitute the `issue/<n>-<slug>` branch the summary print
 Slices run **serially** (one by one), so there is no concurrency knob — each slice's ~2.6GB
 `node_modules` worktree exists one at a time during its run.
 
+### Tracing sub-agent work
+
+A slice's agent commonly spawns its own sub-agents (`TestReviewer`, `ComponentBuilder`, and so
+on). By default the flat slice log shows their tool calls inline, typographically identical to
+the top-level agent's — there is no marker for where a sub-agent's work starts or ends. See
+[ADR 0036](../adr/0036-sub-agent-work-is-auditable-and-gate-commands-are-derived.md) for why that
+made a real gate failure (slice #397) invisible.
+
+```bash
+npx tsx .sandcastle/main.mts --prd <n> --trace-subagents
+```
+
+Sandcastle captures every sub-agent's session transcript to the host automatically — this flag
+just relocates and summarizes what was already captured, to
+`.sandcastle/logs/subagents/<issue>/`:
+
+- `agent-<id>.jsonl` — the sub-agent's own captured session, unmodified.
+- `index.md` — one entry per sub-agent: its type (`TestReviewer`, `ComponentBuilder`, ...), turn
+  count, peak context tokens, summed per-turn token usage, and tool-call counts.
+
+Without the flag, output stays byte-for-byte what it is today — one flat log per slice. A slice
+that spawned no sub-agents writes nothing under `subagents/` either way.
+
+## Recovering an interrupted run
+
+A slice whose agent dies mid-run — most often by exhausting the provider's usage window — is an
+**Interrupted Slice**. Its work is preserved automatically as a **Slice Checkpoint** on its slice
+branch, and re-running **resumes** from it.
+
+See [ADR 0035](../adr/0035-interrupted-slices-resume-from-git-and-destruction-is-deliberate.md)
+for why it works this way.
+
+### The short version
+
+```bash
+npx tsx .sandcastle/main.mts --prd <n>          # resumes any interrupted slice
+```
+
+That is the whole recovery for the normal case. Read on only when it does not behave as expected.
+
+### What happens automatically
+
+- The crash path commits whatever the agent left uncommitted onto the slice branch and tags it
+  `wip/<issue>-checkpoint`. The tag keeps the commit reachable even if the branch is later deleted.
+- The crash report prints the tail of the slice log next to the thrown error, because the thrown
+  error carries whatever was last on stderr and is frequently not the cause.
+- The next dispatch resumes from the checkpoint instead of recreating the branch, and hands the
+  agent an audit-first brief: inventory what the checkpoint contains, report it, then continue.
+
+### When a slice is skipped as stale
+
+```
+⚠ #<n> slice/<n>-<slug> carries a checkpoint based on a superseded head — skipping.
+```
+
+Slices stack — each is cut from the live feature head. If later slices integrated while this
+checkpoint sat around, it is based on a head no longer in the feature branch's history, so it can
+neither fast-forward nor be safely built on. The orchestrator will not guess: it leaves the branch
+alone. Rebase it onto the current feature head and re-run, or discard it deliberately.
+
+### Discarding an attempt
+
+Only when you have looked at the work and judged it worthless:
+
+```bash
+npx tsx .sandcastle/main.mts --prd <n> --issue <slice> --fresh
+```
+
+`--fresh` must name its slice in PRD mode and is refused in sweep mode — it destroys preserved
+work, so it never applies to a set you have not inspected. The wave driver refuses it outright:
+discard the one slice with `dispatch-agents`, then re-run the waves.
+
+Inspect before discarding:
+
+```bash
+git show --stat slice/<n>-<slug>
+```
+
+### Waiting out a usage limit
+
+```bash
+npx tsx .sandcastle/dispatch-waves.mts --prd <n> --wait-for-quota
+```
+
+Opt-in. On a recognised usage limit with a readable reset time, the run parks until the reset
+(plus a short margin) and then **resumes** the slice from its checkpoint. Capped at two waits per
+run — a third turns one PRD into more than a day of wall clock.
+
+It deliberately does **not** wait when:
+
+- the reset time cannot be read — a guessed sleep either wastes hours or wakes into the same wall;
+- the provider's limit format is unknown to us. Only Claude Code has an observed format today;
+  `cursor` and `copilot` classify as `unknown` and always preserve-and-exit instead. That is
+  intended, not a gap — adding a matcher for a message we have never seen risks parking a run for
+  hours on a failure that was never a limit.
+
+Most valuable under the wave driver, which aborts the entire remaining PRD when one slice does not
+complete.
+
+### Reviewing before you resume
+
+An interrupted agent stops mid-thought, so its output is unreviewed by construction:
+
+- Generated test files in a checkpoint have **not** been through `TestScaffold → TestReviewer →
+TestRunner`. A spec file existing in the tree is not evidence a pipeline ran — the resume brief
+  tells the agent this explicitly, but check it yourself before trusting a green run.
+- Check `package.json` and `TECH_STACK.md`: a slice that added a dependency did not necessarily go
+  through `dep-sync`.
+- **Findings you write down must go under a `## Maintainer Review` heading to travel.** The
+  orchestrator interpolates only the issue _body_ into a prompt, so an ordinary comment is
+  invisible to the next agent. A comment containing that heading has everything below it appended
+  to the brief and marked binding. Anything above the heading is dropped, and a comment without
+  it is ignored entirely — that is what keeps sandcastle's own status comments out of the prompt.
+
+- **Nothing in a checkpoint has been linted, type-checked, or tested.** The preservation commit uses
+  `--no-verify` on purpose, so husky never reformats half-written work — which also means the build
+  gate is the first thing to look at it. Expect a resumed slice to fail the gate on errors the
+  interrupted run left behind, not on anything the resuming agent did.
+
+### The `dispatch-waves` label trap
+
+`dispatch-waves` gates each wave by rewriting `ready-for-agent` across every slice in the PRD, and
+it aborts the whole driver the moment one slice does not reach `status:done` — **without restoring
+those labels**. After an abort, later waves' slices have had `ready-for-agent` stripped.
+
+Consequence: recovering with a plain `dispatch-agents --prd <n>` sees **only the aborted wave**;
+the remaining waves are invisible. Re-run `dispatch-waves --prd <n>` instead — it recomputes the
+gating from scratch and skips completed waves via `status:done`. The driver's abort message now
+says so, but the trap is worth knowing before you meet it.
+
+### Salvaging by hand
+
+Only needed for a checkpoint created before this behaviour landed, or when the crash path itself
+failed:
+
+```bash
+W=.sandcastle/worktrees/slice-<n>-<slug>
+git -C "$W" add -A
+git -C "$W" commit --no-verify -m "wip(slice): checkpoint interrupted #<n> agent run"
+git tag wip/<n>-checkpoint
+```
+
+`--no-verify` is deliberate: husky would lint and format half-finished code and corrupt the
+evidence being preserved.
+
 ## Maintenance & gotchas
 
 - **Disk:** `.sandcastle/.yarn-cache` (shared CAS cache, ~2GB) + the active slice's `node_modules`
@@ -283,6 +428,11 @@ Slices run **serially** (one by one), so there is no concurrency knob — each s
   for the PRD PR. If you delete the local branch you lose the integrated work — push it first.
 - **Retire the old cache:** delete `.sandcastle/node_modules_linux_cache/` if present — it's no
   longer used (the seed step and lockfile-hash invalidation were removed).
+- **Rebuild the sandbox image after any `.sandcastle/Dockerfile` change:**
+  `ensureSandboxImage()` only builds `sandcastle:myorganizer` when the image is missing, so an
+  existing image silently keeps the old contents. Force a rebuild with
+  `docker image rm sandcastle:myorganizer` before the next dispatch. See `docs/graphify.md` for
+  why this matters for the mounted graphify graph.
 - **Never put the repo on `/mnt/d`** (or any drvfs/9P mount) for dispatch — that's the ~29 min
   trap.
 - **`Could not fetch from origin (reusing worktree at … as-is, …)` is expected — ignore it.** It

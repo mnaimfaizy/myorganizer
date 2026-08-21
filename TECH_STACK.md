@@ -3,7 +3,7 @@
 > **Single source of truth** for installed package versions and canonical technology choices.
 > All agent instruction files and documentation must reference this file rather than declaring versions inline.
 > Owned and kept current by the **DepSync** agent/skill — do not edit versions manually.
-> Last synced from `package.json` on 2026-08-20.
+> Last synced from `package.json` on 2026-08-21.
 
 > **Reading this file as an agent:** it is a lookup table, not a briefing. Read
 > the one section you need. Component work needs
@@ -306,7 +306,7 @@
 
 | Package               | Version | Purpose                                                                      |
 | --------------------- | ------- | ---------------------------------------------------------------------------- |
-| `@ai-hero/sandcastle` | 0.7.0   | Runs Claude Code agents in Docker sandboxes — used by `yarn dispatch-agents` |
+| `@ai-hero/sandcastle` | 0.12.0  | Runs Claude Code agents in Docker sandboxes — used by `yarn dispatch-agents` |
 
 ---
 

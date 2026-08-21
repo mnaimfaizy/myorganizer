@@ -50,13 +50,27 @@ ComponentReviewer: Skipped — ComponentBuilder did not complete (Status: BLOCKE
 4. Read the component file(s) and judge the items in **Tier 2** below.
 5. Return the verdict.
 
-## Commands By Project
+## Resolving The Commands
 
-| Owning project      | Typecheck                                                 | Lint                        |
-| ------------------- | --------------------------------------------------------- | --------------------------- |
-| `libs/web-ui`       | `npx tsc -p libs/web-ui/tsconfig.lib.json --noEmit`       | `yarn nx lint web-ui`       |
-| `libs/web-vault-ui` | `npx tsc -p libs/web-vault-ui/tsconfig.lib.json --noEmit` | `yarn nx lint web-vault-ui` |
-| `libs/web/pages/*`  | `npx tsc -p <lib>/tsconfig.lib.json --noEmit`             | `yarn nx lint <lib-name>`   |
+Derive them from the workspace; do not read them from a table.
+
+1. **Owning project** — walk up from the changed file to the nearest `project.json` and read
+   its `name`. That directory is the project root.
+2. **Typecheck config** — first that exists in the project root: `tsconfig.spec.json`,
+   `tsconfig.lib.json`, `tsconfig.json`. Then `npx tsc -p <chosen> --noEmit`.
+3. **Lint target** — `npx nx show project <name> --json`, read the `targets` keys, use the
+   first of `lint` then `eslint:lint`, and run `npx nx run <name>:<target>`. These are not
+   interchangeable, and a library may define neither explicitly — `eslint:lint` is often
+   inferred by the Nx plugin.
+4. **Never guess.** If the project, a tsconfig, or a lint target cannot be resolved, record
+   `NOT RUN (<reason>)`. Never fall back to a bare `npx eslint <files>`: that resolves the
+   ROOT eslint config, not the project's, so project-scoped rules are silently unenforced.
+5. **A command that did nothing is NOT RUN.** `Could not find project`, `Cannot find
+configuration for task`, or zero files checked are never PASS.
+
+This mirrors `test-reviewer.agent.md`, which carried the same table until a reviewer guessed
+a config that excludes spec files and returned PASS over a red project. See
+[ADR 0036](../../docs/adr/0036-sub-agent-work-is-auditable-and-gate-commands-are-derived.md).
 
 `tsc` over the owning project **is** the importer check. It resolves every
 consumer of the changed export and fails on any incompatibility — with a file and

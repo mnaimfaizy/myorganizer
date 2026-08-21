@@ -2,9 +2,36 @@ import { claudeCode, copilot, cursor, run } from '@ai-hero/sandcastle';
 import { docker } from '@ai-hero/sandcastle/sandboxes/docker';
 import dotenv from 'dotenv';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import {
+  appendFileSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
+import {
+  MAX_QUOTA_WAITS,
+  SLICE_DISPOSITIONS,
+  formatWaitWindow,
+  classifyRunFailure,
+  decideWaitPolicy,
+  tailLines,
+  buildResumeBrief,
+  decideSliceDisposition,
+  isDiscardRequested,
+  validateDiscardScope,
+  extractMaintainerNotes,
+  withMaintainerNotes,
+} from '../tools/scripts/lib/sandcastle-resume.mjs';
+import {
+  parseSubagentTranscript,
+  formatSubagentIndex,
+  formatTokens,
+} from '../tools/scripts/lib/sandcastle-subagent-trace.mjs';
 
 const REPO = 'mnaimfaizy/myorganizer';
 const SANDBOX_IMAGE = 'sandcastle:myorganizer';
@@ -202,6 +229,7 @@ Usage:
   Sweep mode      yarn dispatch-agents --all-standalone [--limit <n>] [--base <ref>]
 
   All accept [--agent claude|cursor|copilot] [--model <model>] [--dry-run]
+  Interrupted slices resume by default; --fresh discards one deliberately.
 
 Flags:
   --prd <issue-number>   PRD issue number to dispatch. Slices integrate into the
@@ -220,6 +248,18 @@ Flags:
                          base, integration target — then exit. Touches no worktree,
                          container, or GitHub state, and builds no sandbox image.
   --yes, -y              Skip the sweep confirmation prompt.
+  --wait-for-quota       On a provider usage limit, park the run until the limit
+                         resets and then resume the slice, instead of exiting.
+                         Capped at 2 waits per run; never sleeps on an unreadable
+                         reset time, and never on a provider whose limit format
+                         is unknown.
+  --fresh                Discard a slice's preserved checkpoint and start it over.
+                         Without it, an interrupted slice RESUMES. In PRD mode this
+                         must name its slice: --prd <n> --issue <slice> --fresh.
+  --trace-subagents      Write per-sub-agent transcripts to
+                         .sandcastle/logs/subagents/<issue>/, each with its tool
+                         calls, peak context, and token usage. Without it, output is
+                         byte-for-byte what it is today — one flat log per slice.
   --agent <name>         Agent provider to use (default: SANDCASTLE_AGENT or claude)
   --model <model>        Override the model for this run (default: env/provider routing)
   --help                 Show this help text
@@ -297,6 +337,28 @@ if (baseFlag && mode === 'prd') {
 
 const dryRun = process.argv.includes('--dry-run');
 const assumeYes = process.argv.includes('--yes') || process.argv.includes('-y');
+
+// Resume is the default for a slice carrying a checkpoint, so discarding that work
+// is an explicit act. Scope is validated once the mode is known — see below.
+const discardRequested = isDiscardRequested(process.argv);
+
+// Opt-in: a run that goes silent for hours is a severe surprise, so the flag
+// documents the behaviour at the call site. See ADR 0035.
+const waitForQuota = process.argv.includes('--wait-for-quota');
+let quotaWaitsTaken = 0;
+
+// Opt-in, per ADR 0036: without it, output stays byte-for-byte what it is today — one
+// flat log per slice. Sandcastle 0.12.0 already captures every sub-agent transcript to
+// the host unconditionally (see captureSubagentTraces below); this flag only decides
+// whether main.mts relocates and summarizes what was already captured.
+const traceSubagents = process.argv.includes('--trace-subagents');
+
+const discardScope = validateDiscardScope({
+  discardRequested,
+  mode,
+  issueNumber,
+});
+if (!discardScope.ok) fail(discardScope.message);
 
 const limitValue = getArgValue('limit');
 if (limitValue && mode !== 'sweep') {
@@ -818,6 +880,88 @@ function nextReadySlice(pending: Issue[]): Issue | undefined {
 const yarnCacheDir = join(process.cwd(), '.sandcastle', '.yarn-cache');
 mkdirSync(yarnCacheDir, { recursive: true });
 
+// Claude Code's per-project session store, bind-mounted into the agent container at
+// /home/agent/.claude/projects so every transcript — including each sub-agent's
+// <sessionId>/subagents/agent-*.jsonl — lands on the host AS IT IS WRITTEN.
+//
+// Sandcastle's own capture cannot cover a crash: `invokeAgent` throws before the
+// "Capturing session" step ever runs, so a run killed by a provider limit left its
+// sub-agent transcripts inside a container that is then torn down. That is exactly the
+// run whose sub-agent behaviour you most want to read. A mount sidesteps the ordering
+// entirely — there is nothing to copy out, because it was never only inside.
+//
+// Deliberately NOT the host's real ~/.claude/projects: sandcastle still captures to
+// that store on the success path, and pointing both at one directory would have the
+// capture copying a file onto itself.
+const sessionsDir = join(process.cwd(), '.sandcastle', 'sessions');
+mkdirSync(sessionsDir, { recursive: true });
+
+// Graphify's structural graph, bind-mounted read-only into the agent container so
+// CodeExplorer's `graphify` MCP server (declared in .mcp.json) has something to
+// serve. `.mcp.json`'s args already expect `graphify-out/graph.json` relative to
+// the worktree, and MountConfig resolves a relative sandboxPath from that same
+// worktree root — so hostPath/sandboxPath of plain `'graphify-out'` lands exactly
+// there with no MCP config change. Only the primary checkout ever refreshes this
+// graph (`.husky/graphify-refresh.sh` exits early for any linked worktree), so
+// what gets mounted into a sandcastle worktree is always the primary checkout's
+// snapshot, never the slice's own in-progress state. See docs/graphify.md and #413.
+//
+// Conditional on purpose: sandcastle's mount validation requires hostPath to
+// exist, and most contributors have never built a graph. An unconditional mount
+// would turn a documented opt-in supplement into a hard dispatch requirement.
+// Absent, no mount is added and CodeExplorer falls back to Glob/Grep as already
+// documented in .github/agents/explore.agent.md.
+const graphifyGraphPath = join(process.cwd(), 'graphify-out', 'graph.json');
+const graphifyAvailable = existsSync(graphifyGraphPath);
+
+/**
+ * Best-effort provenance line for the mounted graphify graph, injected into the
+ * slice prompt so a sub-agent that never opens docs/graphify.md still learns the
+ * graph can be stale (#413 decision 3 — a prompt is the one channel a sub-agent
+ * demonstrably reads; #396 showed the inverse for anything left only in a doc).
+ *
+ * Graphify records no commit sha of its own, so "built at" is approximated from
+ * graph.json's mtime against history — valid because the graph is always a
+ * same-checkout snapshot (see the mount comment above). The walk is pinned to
+ * `baseRef`, not HEAD: the slice branch is cut from `baseRef`, so a commit found
+ * there is an ancestor by construction. Left on HEAD, dispatching while the
+ * primary checkout sits on an unrelated feature branch would resolve a sha off
+ * that branch, fail the ancestry test, and degrade every prompt to the
+ * unknown-staleness wording below.
+ */
+function graphifyProvenance(sliceBranch: string): string | null {
+  if (!graphifyAvailable) return null;
+
+  const builtAt = statSync(graphifyGraphPath).mtime;
+  const sha = spawnSync(
+    'git',
+    ['log', '-1', `--before=${builtAt.toISOString()}`, '--format=%H', baseRef],
+    { encoding: 'utf8', windowsHide: true },
+  ).stdout.trim();
+  if (!sha) return null;
+  const shortSha = sha.slice(0, 12);
+
+  const isAncestor =
+    spawnSync('git', ['merge-base', '--is-ancestor', sha, sliceBranch], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).status === 0;
+  if (!isAncestor) {
+    return (
+      `A graphify graph is mounted at \`graphify-out/\` for the \`graphify\` MCP server, but its ` +
+      `approximate build commit (\`${shortSha}\`, from graph.json's mtime) is not an ancestor of ` +
+      `\`${sliceBranch}\` — treat its staleness as unknown and confirm any result against the actual file.`
+    );
+  }
+
+  const behind = gitCmd(['rev-list', '--count', `${sha}..${sliceBranch}`]);
+  return (
+    `A graphify graph is mounted at \`graphify-out/\` for the \`graphify\` MCP server (see ` +
+    `docs/graphify.md). Built at approx. \`${shortSha}\`, ${behind} commit(s) behind \`${sliceBranch}\` — ` +
+    `files changed since are not in it. Confirm any graph result against the actual file.`
+  );
+}
+
 // Env that makes every container use the bind-mounted global cache.
 const YARN_CACHE_ENV = {
   YARN_ENABLE_GLOBAL_CACHE: 'true',
@@ -1044,6 +1188,227 @@ function finalizeSliceBranch(issue: Issue, sliceBranch: string): boolean {
   return true;
 }
 
+// ─── Interrupted slices ─────────────────────────────────────────────
+// An agent run that ends without a completion signal — a provider limit, a timeout,
+// a container fault — leaves its work uncommitted in the preserved worktree, and the
+// slice branch itself is force-deleted the next time this issue is dispatched. Commit
+// that work as a Slice Checkpoint and TAG it: the tag keeps the commit reachable after
+// `git branch -D`, so the existing gate-failure retry flow (delete the branch, run the
+// slice again from a clean base) keeps working untouched. See ADR 0035; resuming from
+// a checkpoint rather than merely surviving is PRD #401.
+
+/**
+ * Read the git facts the resume decision needs. Impure by nature — kept here rather
+ * than in the decision library so the decision itself stays testable without git.
+ */
+function inspectSliceBranch(sliceBranch: string): {
+  branchExists: boolean;
+  commitsAhead: number;
+  mergeBaseMatchesBase: boolean;
+} {
+  if (!gitRefExists(sliceBranch)) {
+    return {
+      branchExists: false,
+      commitsAhead: 0,
+      mergeBaseMatchesBase: false,
+    };
+  }
+
+  const commitsAhead = Number.parseInt(
+    (
+      spawnSync('git', ['rev-list', '--count', `${baseRef}..${sliceBranch}`], {
+        encoding: 'utf8',
+        windowsHide: true,
+      }).stdout || ''
+    ).trim(),
+    10,
+  );
+
+  const mergeBase = (
+    spawnSync('git', ['merge-base', sliceBranch, baseRef], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+  const baseSha = (
+    spawnSync('git', ['rev-parse', baseRef], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+
+  return {
+    branchExists: true,
+    commitsAhead,
+    mergeBaseMatchesBase: mergeBase !== '' && mergeBase === baseSha,
+  };
+}
+
+/** The checkpoint sitting on a slice branch, for the resume brief's inventory. */
+function readSliceCheckpoint(
+  sliceBranch: string,
+): { sha: string; files: string[] } | undefined {
+  const sha = (
+    spawnSync('git', ['rev-parse', '--short', sliceBranch], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+  if (!sha) return undefined;
+
+  const files = (
+    spawnSync('git', ['diff', '--name-only', `${baseRef}..${sliceBranch}`], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  )
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line !== '');
+
+  return { sha, files };
+}
+
+type SliceCheckpoint = {
+  readonly sha: string;
+  readonly tag: string;
+  readonly fileCount: number;
+};
+
+/** Newest sandcastle log for this issue, or undefined when none was written. */
+function sliceLogPathFor(issueNumber: number): string | undefined {
+  const logsDir = join(process.cwd(), '.sandcastle', 'logs');
+  if (!existsSync(logsDir)) return undefined;
+  const suffix = `--${issueNumber}.log`;
+  const candidates = readdirSync(logsDir)
+    .filter((name) => name.endsWith(suffix))
+    .map((name) => join(logsDir, name))
+    .filter((path) => existsSync(path));
+  if (candidates.length === 0) return undefined;
+  return candidates.sort(
+    (left, right) => statSync(right).mtimeMs - statSync(left).mtimeMs,
+  )[0];
+}
+
+/**
+ * The thrown AgentError carries whatever was last on stderr, which is routinely a
+ * trailing warning rather than the cause. Surface the log tail next to it instead of
+ * classifying it — provider-specific limit matchers belong to PRD #401, and this
+ * orchestrator runs claude, cursor, and copilot.
+ */
+function readSliceLogTail(
+  issueNumber: number,
+  lines = 15,
+): { path: string; tail: string[] } | undefined {
+  const logPath = sliceLogPathFor(issueNumber);
+  if (!logPath) return undefined;
+  let contents: string;
+  try {
+    contents = readFileSync(logPath, 'utf8');
+  } catch {
+    return undefined;
+  }
+  const tail = tailLines(contents, lines);
+  if (tail.length === 0) return undefined;
+  return { path: logPath, tail };
+}
+
+function formatCrashLogTail(
+  log: { path: string; tail: string[] } | undefined,
+): string | undefined {
+  if (!log) return undefined;
+  return `  log tail (${log.path}):\n${log.tail
+    .map((line) => `    ${line}`)
+    .join('\n')}`;
+}
+
+/**
+ * Commit whatever the interrupted agent left behind onto its slice branch and tag it.
+ * Returns the checkpoint, or undefined when there was nothing to preserve.
+ *
+ * --no-verify is deliberate: husky would lint and format half-finished code and
+ * corrupt the very evidence being preserved. This mirrors the capture
+ * finalizeSliceBranch performs on the success path.
+ */
+function preserveInterruptedSlice(
+  issue: Issue,
+  sliceBranch: string,
+): SliceCheckpoint | undefined {
+  if (!gitRefExists(sliceBranch)) return undefined;
+
+  const worktreePath = join(worktreesDir, sliceBranch.replace(/\//g, '-'));
+  if (existsSync(worktreePath)) {
+    const dirty = (
+      spawnSync('git', ['-C', worktreePath, 'status', '--porcelain'], {
+        encoding: 'utf8',
+        windowsHide: true,
+      }).stdout || ''
+    ).trim();
+    if (dirty) {
+      spawnSync('git', ['-C', worktreePath, 'add', '-A'], {
+        encoding: 'utf8',
+        windowsHide: true,
+      });
+      const commit = spawnSync(
+        'git',
+        [
+          '-C',
+          worktreePath,
+          'commit',
+          '--no-verify',
+          '-m',
+          `wip(slice): checkpoint interrupted #${issue.number} agent run\n\n` +
+            `The agent run ended without a completion signal and this work was left\n` +
+            `uncommitted in the preserved worktree. NOT reviewed, NOT gated, NOT ready\n` +
+            `to ship — files present here do not mean a Gated Pipeline ran.\n\n` +
+            `Refs #${issue.number}`,
+        ],
+        { encoding: 'utf8', windowsHide: true },
+      );
+      if (commit.status !== 0) {
+        console.error(
+          `  [#${issue.number}] could not commit the interrupted worktree:\n${commit.stderr}`,
+        );
+      }
+    }
+  }
+
+  // Nothing ahead of the base means there is no work to protect.
+  const ahead = (
+    spawnSync('git', ['rev-list', '--count', `${baseRef}..${sliceBranch}`], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+  if (ahead === '' || ahead === '0') return undefined;
+
+  const sha = (
+    spawnSync('git', ['rev-parse', '--short', sliceBranch], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+
+  // -f so a later interruption of the same slice re-points the tag at the newer
+  // checkpoint rather than failing and leaving the run without protection.
+  const tag = `wip/${issue.number}-checkpoint`;
+  spawnSync('git', ['tag', '-f', tag, sliceBranch], {
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+
+  const fileCount = (
+    spawnSync('git', ['diff', '--name-only', `${baseRef}..${sliceBranch}`], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  )
+    .split('\n')
+    .filter((line) => line.trim() !== '').length;
+
+  return { sha, tag, fileCount };
+}
+
 // ─── Build gate ───────────────────────────────────────────────────────────────
 // Before a slice is fast-forwarded into the LOCAL feature branch, lint its changed
 // projects in a Docker container against the LOCAL slice branch. Fail closed: if the
@@ -1124,6 +1489,10 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
         'NX_ISOLATE_PLUGINS=false',
         '-e',
         'NX_SKIP_NX_CACHE=true',
+        '-e',
+        'NX_CACHE_DIRECTORY=/home/agent/workspace/.nx/cache',
+        '-e',
+        'NX_WORKSPACE_DATA_DIRECTORY=/home/agent/workspace/.nx/workspace-data',
         '-e',
         `YARN_ENABLE_GLOBAL_CACHE=${YARN_CACHE_ENV.YARN_ENABLE_GLOBAL_CACHE}`,
         '-e',
@@ -1298,8 +1667,39 @@ function buildGateInstructions(
   ];
 }
 
+/**
+ * Read the maintainer notes filed on an issue.
+ *
+ * Fetched here, per dispatched slice, rather than added to the issue LIST queries:
+ * those pull up to 200 issues and would carry every comment on all of them for the
+ * sake of the handful actually being run.
+ *
+ * A failure to read comments must not stop a dispatch — the issue body is still a
+ * complete brief — so this degrades to "no notes" and says so.
+ */
+function readMaintainerNotes(issueNumber: number): string[] {
+  try {
+    const { comments } = ghJson<{ comments?: Array<{ body?: string }> }>([
+      'issue',
+      'view',
+      String(issueNumber),
+      '--repo',
+      REPO,
+      '--json',
+      'comments',
+    ]);
+    return extractMaintainerNotes(comments);
+  } catch {
+    console.warn(
+      `  [#${issueNumber}] could not read issue comments; dispatching on the issue body alone.`,
+    );
+    return [];
+  }
+}
+
 function buildPrompt(issue: Issue, sliceBranch: string): string {
   const gate = resolveGate(issue);
+  const graphifyNote = graphifyProvenance(sliceBranch);
   return [
     `You are implementing GitHub Issue #${issue.number}: ${issue.title}`,
     ``,
@@ -1311,6 +1711,7 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     ``,
     `- Dependencies are ALREADY installed in this sandbox before you start (a setup hook runs \`corepack yarn install --immutable\`). Do NOT run \`yarn install\` yourself.`,
     `- Read CLAUDE.md, CONTEXT.md, and TECH_STACK.md before making any changes.`,
+    ...(graphifyNote ? [`- ${graphifyNote}`] : []),
     `- Implement this vertical slice end-to-end (schema → API → UI → tests where applicable).`,
     `- Your working branch is \`${sliceBranch}\` (based on \`${baseRef}\`). Do not switch branches.`,
     ...buildGateInstructions(gate),
@@ -1426,11 +1827,164 @@ function logRunUsage(
     ...totals,
   });
   writeLog(
-    `  [#${issueNumber}] ${agentKind}:${model} tokens — ` +
-      `input ${totals.inputTokens}, ` +
-      `cache-write ${totals.cacheCreationInputTokens}, ` +
-      `cache-read ${totals.cacheReadInputTokens}, ` +
-      `output ${totals.outputTokens}.`,
+    `  [#${issueNumber}] ${agentKind}:${model} tokens (sum of each iteration's ` +
+      `final-turn snapshot — NOT a true run total; see IterationUsage in sandcastle) — ` +
+      `input ${formatTokens(totals.inputTokens)}, ` +
+      `cache-write ${formatTokens(totals.cacheCreationInputTokens)}, ` +
+      `cache-read ${formatTokens(totals.cacheReadInputTokens)}, ` +
+      `output ${formatTokens(totals.outputTokens)}.`,
+  );
+}
+
+// ─── Sub-agent traces (--trace-subagents) ──────────────────────────────────────
+// Sandcastle 0.12.0's Claude Code provider captures every sub-agent transcript to the
+// host automatically and unconditionally — RunResult.iterations[].sessionFilePath
+// already points at the captured main session, and its sibling
+// <sessionId>/subagents/agent-*.jsonl files are captured the same way, with no flag
+// of ours involved. This function does not create that data; it only relocates and
+// summarizes what sandcastle already wrote, into a stable path under version control
+// convention. See docs/adr/0036 and the spike recorded on issue #411.
+function captureSubagentTraces(
+  issue: Issue,
+  result: Awaited<ReturnType<typeof run>>,
+): void {
+  if (!traceSubagents) return;
+
+  const destDir = join(
+    process.cwd(),
+    '.sandcastle',
+    'logs',
+    'subagents',
+    String(issue.number),
+  );
+  const multiIteration = result.iterations.length > 1;
+
+  const summaries: Array<
+    ReturnType<typeof parseSubagentTranscript> & { fileName: string }
+  > = [];
+
+  result.iterations.forEach((iteration, iterationIndex) => {
+    if (!iteration.sessionId || !iteration.sessionFilePath) return;
+
+    const subagentsDir = join(
+      dirname(iteration.sessionFilePath),
+      iteration.sessionId,
+      'subagents',
+    );
+    if (!existsSync(subagentsDir)) return;
+
+    const files = readdirSync(subagentsDir).filter(
+      (name) => name.startsWith('agent-') && name.endsWith('.jsonl'),
+    );
+    if (files.length === 0) return;
+
+    mkdirSync(destDir, { recursive: true });
+    for (const fileName of files) {
+      const jsonl = readFileSync(join(subagentsDir, fileName), 'utf8');
+      const summary = parseSubagentTranscript(jsonl);
+      const destFileName = multiIteration
+        ? `iteration-${iterationIndex}--${fileName}`
+        : fileName;
+      writeFileSync(join(destDir, destFileName), jsonl);
+      summaries.push({ ...summary, fileName: destFileName });
+    }
+  });
+
+  if (summaries.length === 0) return;
+
+  writeFileSync(
+    join(destDir, 'index.md'),
+    formatSubagentIndex(summaries, {
+      issueNumber: issue.number,
+      sliceBranch: sliceBranchFor(issue),
+    }),
+  );
+  console.log(
+    `  [#${issue.number}] traced ${summaries.length} sub-agent invocation(s) → ${destDir}`,
+  );
+}
+
+/**
+ * Recover sub-agent transcripts for a run that CRASHED.
+ *
+ * The success path reads `RunResult.iterations[].sessionFilePath`. A crash has no
+ * result — `run()` threw — so there is no session id to look up, and sandcastle never
+ * reached its capture step either. What there is: the bind-mounted session store, into
+ * which Claude Code wrote every transcript live.
+ *
+ * Sessions are selected by mtime against the moment this run started rather than by id.
+ * The store is per-repo and dispatch is one slice at a time, so anything written after
+ * that instant belongs to the run that just died. A stale directory from an earlier
+ * slice cannot qualify, and the worst case is recovering nothing rather than the wrong
+ * thing.
+ */
+function recoverSubagentTracesAfterCrash(
+  issue: Issue,
+  runStartedAt: Date,
+): void {
+  if (!traceSubagents) return;
+
+  const destDir = join(
+    process.cwd(),
+    '.sandcastle',
+    'logs',
+    'subagents',
+    String(issue.number),
+  );
+
+  const summaries: Array<
+    ReturnType<typeof parseSubagentTranscript> & { fileName: string }
+  > = [];
+
+  const collectFrom = (subagentsDir: string): void => {
+    if (!existsSync(subagentsDir)) return;
+    for (const fileName of readdirSync(subagentsDir)) {
+      if (!fileName.startsWith('agent-') || !fileName.endsWith('.jsonl')) {
+        continue;
+      }
+      const filePath = join(subagentsDir, fileName);
+      if (statSync(filePath).mtime < runStartedAt) continue;
+
+      const jsonl = readFileSync(filePath, 'utf8');
+      mkdirSync(destDir, { recursive: true });
+      writeFileSync(join(destDir, fileName), jsonl);
+      summaries.push({ ...parseSubagentTranscript(jsonl), fileName });
+    }
+  };
+
+  // <sessionsDir>/<encodedProjectPath>/<sessionId>/subagents/agent-*.jsonl — the
+  // encoding is sandcastle's business, so both levels are walked rather than derived.
+  const walk = (dir: string, depth: number): void => {
+    if (!existsSync(dir)) return;
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue;
+      const child = join(dir, entry.name);
+      if (entry.name === 'subagents') collectFrom(child);
+      else if (depth > 0) walk(child, depth - 1);
+    }
+  };
+
+  try {
+    walk(sessionsDir, 2);
+  } catch (error) {
+    console.warn(
+      `  [#${issue.number}] could not recover sub-agent traces: ` +
+        `${error instanceof Error ? error.message : String(error)}`,
+    );
+    return;
+  }
+
+  if (summaries.length === 0) return;
+
+  writeFileSync(
+    join(destDir, 'index.md'),
+    formatSubagentIndex(summaries, {
+      issueNumber: issue.number,
+      sliceBranch: sliceBranchFor(issue),
+    }),
+  );
+  console.log(
+    `  [#${issue.number}] recovered ${summaries.length} sub-agent transcript(s) from the crashed run → ${destDir}`,
   );
 }
 
@@ -1462,6 +2016,14 @@ if (dryRun) {
     'Dry run — no worktree, container, or GitHub write was performed.',
   );
   process.exit(0);
+}
+
+// PRD mode has no confirmation prompt by design — it is the AFK path. That made its
+// branch handling invisible: nothing was printed before a slice branch was deleted
+// and recreated. Printing the plan costs nothing and is what makes destruction
+// observable. See ADR 0035.
+if (mode === 'prd') {
+  printPlanPreview();
 }
 
 // A sweep is the only mode where no human named the work. Everything selected here
@@ -1535,38 +2097,112 @@ while (pendingSlices.length > 0) {
     'status:in-progress',
   ]);
 
+  // Stamped before the try so the catch can see it: the crash path uses it to tell
+  // this run's session transcripts from an earlier slice's by mtime.
+  const crashedRunStartedAt = new Date();
+
   try {
     console.log(
       `\n  → #${issue.number} on ${sliceBranch} (${agentKind}:${model})`,
     );
 
-    // Fresh slice branch + worktree off the CURRENT local feature head, so this
-    // slice (processed one by one) builds on every previously-integrated slice.
-    // Clear any stale branch/worktree from an earlier run first — including one
-    // filed under a different type prefix, if this issue's labels have changed
-    // since it last ran.
-    const staleBranches = [sliceBranch, ...staleWorkBranchesFor(issue)];
-    for (const stale of staleBranches) {
-      const stalePath = join(worktreesDir, stale.replace(/\//g, '-'));
-      if (existsSync(stalePath)) {
-        spawnSync('git', ['worktree', 'remove', '--force', stalePath], {
+    // Does this slice already carry a Slice Checkpoint from an interrupted run?
+    // Resume is the default; destroying preserved work is the deliberate act.
+    const disposition = decideSliceDisposition({
+      ...inspectSliceBranch(sliceBranch),
+      discardRequested,
+    });
+
+    if (disposition === SLICE_DISPOSITIONS.skipStale) {
+      // Slices stack, so a checkpoint left behind while later slices integrated is
+      // based on a head that is no longer in the feature branch's history. Rebasing
+      // it is a judgement call and deleting it destroys work nobody has reviewed —
+      // so do neither, and say so.
+      console.error(
+        `  ⚠ #${issue.number} ${sliceBranch} carries a checkpoint based on a superseded ` +
+          `head — skipping.\n` +
+          `      Rebase it onto ${baseRef} and re-run, or discard it deliberately.\n` +
+          `      Recovery: docs/sandcastle/RUNBOOK.md — "Recovering an interrupted run".`,
+      );
+      ghSilent([
+        'issue',
+        'edit',
+        String(issue.number),
+        '--repo',
+        REPO,
+        '--remove-label',
+        'status:in-progress',
+      ]);
+      results.push({
+        issue,
+        sliceBranch,
+        commits: 0,
+        merged: false,
+        reason: 'checkpoint is based on a superseded head',
+      });
+      continue;
+    }
+
+    const checkpoint =
+      disposition === SLICE_DISPOSITIONS.resume
+        ? readSliceCheckpoint(sliceBranch)
+        : undefined;
+
+    const maintainerNotes = readMaintainerNotes(issue.number);
+    if (maintainerNotes.length > 0) {
+      console.log(
+        `  [#${issue.number}] carrying ${maintainerNotes.length} maintainer note(s) into the brief.`,
+      );
+    }
+
+    const worktreePath = join(worktreesDir, sliceBranch.replace(/\//g, '-'));
+
+    if (checkpoint) {
+      console.log(
+        `  [#${issue.number}] resuming from checkpoint ${checkpoint.sha} ` +
+          `(${checkpoint.files.length} file(s)) — the branch is kept, not recreated.`,
+      );
+      // The branch and its commits stay. Only the worktree is rebuilt, so the agent
+      // gets a clean checkout of the checkpoint rather than whatever partial state
+      // the interrupted container left on disk.
+      if (existsSync(worktreePath)) {
+        spawnSync('git', ['worktree', 'remove', '--force', worktreePath], {
           encoding: 'utf8',
           windowsHide: true,
         });
       }
-    }
-    const worktreePath = join(worktreesDir, sliceBranch.replace(/\//g, '-'));
-    spawnSync('git', ['worktree', 'prune'], {
-      encoding: 'utf8',
-      windowsHide: true,
-    });
-    for (const stale of staleBranches) {
-      spawnSync('git', ['branch', '-D', stale], {
+      spawnSync('git', ['worktree', 'prune'], {
         encoding: 'utf8',
         windowsHide: true,
       });
+    } else {
+      // Fresh slice branch + worktree off the CURRENT local feature head, so this
+      // slice (processed one by one) builds on every previously-integrated slice.
+      // Clear any stale branch/worktree from an earlier run first — including one
+      // filed under a different type prefix, if this issue's labels have changed
+      // since it last ran.
+      const staleBranches = [sliceBranch, ...staleWorkBranchesFor(issue)];
+      for (const stale of staleBranches) {
+        const stalePath = join(worktreesDir, stale.replace(/\//g, '-'));
+        if (existsSync(stalePath)) {
+          spawnSync('git', ['worktree', 'remove', '--force', stalePath], {
+            encoding: 'utf8',
+            windowsHide: true,
+          });
+        }
+      }
+      spawnSync('git', ['worktree', 'prune'], {
+        encoding: 'utf8',
+        windowsHide: true,
+      });
+      for (const stale of staleBranches) {
+        spawnSync('git', ['branch', '-D', stale], {
+          encoding: 'utf8',
+          windowsHide: true,
+        });
+      }
+      gitCmd(['branch', sliceBranch, baseRef]);
     }
-    gitCmd(['branch', sliceBranch, baseRef]);
     const wt = spawnSync(
       'git',
       ['worktree', 'add', worktreePath, sliceBranch],
@@ -1588,6 +2224,14 @@ while (pendingSlices.length > 0) {
           NX_DAEMON: 'false',
           NX_ISOLATE_PLUGINS: 'false',
           NX_SKIP_NX_CACHE: 'true',
+          // Pin the cache to the bind-mounted worktree itself. Unset, Nx tries to
+          // resolve a "main worktree" root to share the cache across worktrees —
+          // a path that does not exist inside the container — and falls back to
+          // .nx/cache-local / .nx/workspace-data-local (both gitignored, but the
+          // resolution failure is still wasted work every run). See ADR 0036.
+          NX_CACHE_DIRECTORY: '/home/agent/workspace/.nx/cache',
+          NX_WORKSPACE_DATA_DIRECTORY:
+            '/home/agent/workspace/.nx/workspace-data',
           ...providerEnvironment(),
           ...YARN_CACHE_ENV,
         },
@@ -1596,6 +2240,19 @@ while (pendingSlices.length > 0) {
         // across slices.
         mounts: [
           { hostPath: yarnCacheDir, sandboxPath: '/home/agent/.yarn-cache' },
+          {
+            hostPath: sessionsDir,
+            sandboxPath: '/home/agent/.claude/projects',
+          },
+          ...(graphifyAvailable
+            ? [
+                {
+                  hostPath: 'graphify-out',
+                  sandboxPath: 'graphify-out',
+                  readonly: true,
+                },
+              ]
+            : []),
         ],
       }),
       name: `#${issue.number}`,
@@ -1618,14 +2275,36 @@ while (pendingSlices.length > 0) {
           ],
         },
       },
-      maxIterations: 25,
+      // Iterations after the first do NOT resume the agent session: each spins a
+      // fresh sandbox, re-runs the dependency install, and receives the identical
+      // prompt. They are cold restarts, not continuations, so an agent that failed
+      // to signal completion once meets the same wall again at full price. Two buys
+      // one honest retry for a transient container fault; genuine continuation is
+      // the resume path, which supplies a different prompt. See ADR 0035.
+      maxIterations: 2,
       // Quiet stretches (codegen, builds) can exceed the 600s default and trip the
       // idle watchdog; give long-running slices headroom.
       idleTimeoutSeconds: 1800,
-      prompt: buildPrompt(issue, sliceBranch),
+      prompt: (() => {
+        // Notes wrap the base prompt, so the resume brief inherits them too: a
+        // maintainer reviewing a checkpoint is the likeliest author of one.
+        const basePrompt = withMaintainerNotes(
+          buildPrompt(issue, sliceBranch),
+          maintainerNotes,
+        );
+        return checkpoint
+          ? buildResumeBrief({
+              basePrompt,
+              issueNumber: issue.number,
+              sliceBranch,
+              checkpoint,
+            })
+          : basePrompt;
+      })(),
     });
 
     logRunUsage(issue.number, agentKind, model, result);
+    captureSubagentTraces(issue, result);
 
     // Finalize → gate → integrate, all LOCAL. No push, no PR.
     // Standalone runs stop after the gate: with no integration branch the work
@@ -1747,7 +2426,96 @@ while (pendingSlices.length > 0) {
       '--remove-label',
       'status:in-progress',
     ]);
+
+    // Preserve BEFORE reporting: the agent's work is the expensive thing here, and
+    // the next dispatch of this issue deletes the branch it lives on.
+    const checkpoint = preserveInterruptedSlice(issue, sliceBranch);
+
+    // Same reasoning applied to the transcripts: a crashed run is the one whose
+    // sub-agent behaviour you most want to read, and sandcastle never captured it.
+    recoverSubagentTracesAfterCrash(issue, crashedRunStartedAt);
+
     console.error(`  ✗ #${issue.number} crashed: ${String(e)}`);
+    const log = readSliceLogTail(issue.number);
+    const tail = formatCrashLogTail(log);
+    if (tail) {
+      console.error(
+        `  [#${issue.number}] the thrown error may be trailing stderr noise rather than the cause:`,
+      );
+      console.error(tail);
+    }
+
+    // Was this a provider usage limit, and did the maintainer ask us to wait it out?
+    // Classification is provider-keyed: a provider whose limit format we have never
+    // observed classifies as `unknown` and never triggers a wait.
+    const failedAt = new Date();
+    const classification = classifyRunFailure({
+      agentKind,
+      logTail: log?.tail ?? [],
+      now: failedAt,
+    });
+    const waitDecision = decideWaitPolicy({
+      classification,
+      waitEnabled: waitForQuota,
+      waitsTaken: quotaWaitsTaken,
+      now: failedAt,
+    });
+
+    if (waitDecision.action === 'wait' && waitDecision.until) {
+      const untilMs = waitDecision.until.getTime() - Date.now();
+      // A small margin past the stated reset: waking exactly on it risks meeting the
+      // same wall and burning one of the two waits for nothing.
+      const sleepMs = Math.max(untilMs, 0) + 5 * 60 * 1000;
+      quotaWaitsTaken += 1;
+      // Local time and duration, not a UTC timestamp: the sleep length is the same
+      // either way, but a person can only judge whether it is SANE from the duration.
+      console.error(
+        `  [#${issue.number}] provider limit hit — ${classification.evidence ?? 'no detail'}\n` +
+          `      Parking until ${formatWaitWindow(waitDecision.until, failedAt)}, ` +
+          `+5m margin, wait ${quotaWaitsTaken}/${MAX_QUOTA_WAITS}.\n` +
+          `      The slice will RESUME from its checkpoint, not restart.\n` +
+          `      Ctrl-C is safe — the checkpoint is already committed.`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, sleepMs));
+      console.log(`  [#${issue.number}] resuming after the limit reset.`);
+      // Back into the queue: the next pass finds the checkpoint and resumes it.
+      pendingSlices.push(issue);
+      continue;
+    }
+
+    if (waitForQuota) {
+      console.error(
+        `  [#${issue.number}] not waiting — ${waitDecision.reason}.`,
+      );
+    }
+
+    if (checkpoint) {
+      console.error(
+        `  [#${issue.number}] checkpoint ${checkpoint.sha} on ${sliceBranch} ` +
+          `(${checkpoint.fileCount} file(s)), tagged ${checkpoint.tag}.\n` +
+          `      The tag keeps this work reachable if the branch is later deleted.\n` +
+          `      Recovery: docs/sandcastle/RUNBOOK.md — "Recovering an interrupted run".`,
+      );
+      ghSilent([
+        'issue',
+        'comment',
+        String(issue.number),
+        '--repo',
+        REPO,
+        '--body',
+        `Agent run ended without a completion signal. Its work was preserved as a ` +
+          `Slice Checkpoint \`${checkpoint.sha}\` on the local branch \`${sliceBranch}\` ` +
+          `(${checkpoint.fileCount} file(s)), tagged \`${checkpoint.tag}\`.\n\n` +
+          `This is local and unpushed, and it is **not** reviewed or gated — files ` +
+          `present in a checkpoint do not mean a Gated Pipeline ran. See ` +
+          `\`docs/sandcastle/RUNBOOK.md\` under "Recovering an interrupted run".`,
+      ]);
+    } else {
+      console.error(
+        `  [#${issue.number}] nothing to preserve — the run left no work on ${sliceBranch}.`,
+      );
+    }
+
     crashed.push({ issue, error: String(e) });
   }
 }
