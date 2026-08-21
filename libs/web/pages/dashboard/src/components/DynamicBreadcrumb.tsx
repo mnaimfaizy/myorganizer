@@ -17,50 +17,67 @@ interface BreadcrumbNavItem {
 }
 
 /**
- * Maps URL paths to breadcrumb labels based on the navigation structure.
- * Supports both single-level routes (/dashboard/tasks) and nested routes (/dashboard/account/vault).
+ * Registry mapping URL segments to breadcrumb labels.
+ * Dynamic segments (like [id] or numeric IDs) resolve to "Details".
  */
-function getBreadcrumbItems(pathname: string): BreadcrumbNavItem[] {
-  // Navigation configuration matching app-sidebar.tsx
-  const routeMap: Record<string, BreadcrumbNavItem[]> = {
-    '/dashboard': [{ label: 'Dashboard', href: '/dashboard' }],
-    '/dashboard/tasks': [
-      { label: 'Dashboard', href: '/dashboard' },
-      { label: 'Tasks', href: '/dashboard/tasks' },
-    ],
-    '/dashboard/groceries': [
-      { label: 'Dashboard', href: '/dashboard' },
-      { label: 'Groceries', href: '/dashboard/groceries' },
-    ],
-    '/dashboard/addresses': [
-      { label: 'Dashboard', href: '/dashboard' },
-      { label: 'Addresses', href: '/dashboard/addresses' },
-    ],
-    '/dashboard/mobile-numbers': [
-      { label: 'Dashboard', href: '/dashboard' },
-      { label: 'Mobile Numbers', href: '/dashboard/mobile-numbers' },
-    ],
-    '/dashboard/subscriptions': [
-      { label: 'Dashboard', href: '/dashboard' },
-      { label: 'Subscriptions', href: '/dashboard/subscriptions' },
-    ],
-    '/dashboard/youtube': [
-      { label: 'Dashboard', href: '/dashboard' },
-      { label: 'YouTube', href: '/dashboard/youtube' },
-    ],
-    '/dashboard/vault-export': [
-      { label: 'Dashboard', href: '/dashboard' },
-      { label: 'Vault Export/Import', href: '/dashboard/vault-export' },
-    ],
-    '/dashboard/account/vault': [
-      { label: 'Dashboard', href: '/dashboard' },
-      { label: 'Account', href: '/dashboard/account' },
-      { label: 'Vault Settings', href: '/dashboard/account/vault' },
-    ],
-  };
+const SEGMENT_LABEL_REGISTRY: Record<string, string> = {
+  tasks: 'Tasks',
+  groceries: 'Groceries',
+  addresses: 'Addresses',
+  'mobile-numbers': 'Mobile Numbers',
+  subscriptions: 'Subscriptions',
+  youtube: 'YouTube',
+  shorts: 'Shorts',
+  callback: 'Connecting',
+  'vault-export': 'Vault Export/Import',
+  account: 'Account',
+  vault: 'Vault Settings',
+  'add-location': 'Add Location',
+};
 
-  // Return the mapped breadcrumbs or fallback to Dashboard only for unknown routes
-  return routeMap[pathname] || [{ label: 'Dashboard', href: '/dashboard' }];
+/**
+ * Maps URL segments to breadcrumb labels based on cumulative path resolution.
+ * Always starts with Dashboard at /dashboard. For each segment after dashboard,
+ * looks up the label in the registry; unrecognized segments resolve to "Details".
+ *
+ * @param pathname - The current pathname from usePathname()
+ * @returns Array of breadcrumb items with label and href, or Dashboard-only fallback
+ */
+export function getBreadcrumbItems(pathname: string): BreadcrumbNavItem[] {
+  // Normalize: remove trailing slash and handle null/empty paths
+  if (!pathname || pathname.trim() === '') {
+    return [{ label: 'Dashboard', href: '/dashboard' }];
+  }
+
+  const normalized =
+    pathname.endsWith('/') && pathname !== '/'
+      ? pathname.slice(0, -1)
+      : pathname;
+
+  // If not in the dashboard, return Dashboard only
+  if (!normalized.startsWith('/dashboard')) {
+    return [{ label: 'Dashboard', href: '/dashboard' }];
+  }
+
+  // Start with Dashboard
+  const items: BreadcrumbNavItem[] = [
+    { label: 'Dashboard', href: '/dashboard' },
+  ];
+
+  // Split path into segments and process each one
+  const parts = normalized.split('/').filter(Boolean); // Remove empty strings
+
+  // Skip the 'dashboard' part; process segments after it
+  const segments = parts.slice(1);
+
+  let cumulativePath = '/dashboard';
+  for (const segment of segments) {
+    cumulativePath += '/' + segment;
+    const label = SEGMENT_LABEL_REGISTRY[segment] || 'Details';
+    items.push({ label, href: cumulativePath });
+  }
+
+  return items;
 }
 
 export function DynamicBreadcrumb(): React.ReactNode {
