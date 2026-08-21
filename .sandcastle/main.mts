@@ -921,8 +921,13 @@ const graphifyAvailable = existsSync(graphifyGraphPath);
  * demonstrably reads; #396 showed the inverse for anything left only in a doc).
  *
  * Graphify records no commit sha of its own, so "built at" is approximated from
- * graph.json's mtime against the primary checkout's own history — valid because
- * the graph is always a same-checkout snapshot (see the mount comment above).
+ * graph.json's mtime against history — valid because the graph is always a
+ * same-checkout snapshot (see the mount comment above). The walk is pinned to
+ * `baseRef`, not HEAD: the slice branch is cut from `baseRef`, so a commit found
+ * there is an ancestor by construction. Left on HEAD, dispatching while the
+ * primary checkout sits on an unrelated feature branch would resolve a sha off
+ * that branch, fail the ancestry test, and degrade every prompt to the
+ * unknown-staleness wording below.
  */
 function graphifyProvenance(sliceBranch: string): string | null {
   if (!graphifyAvailable) return null;
@@ -930,7 +935,7 @@ function graphifyProvenance(sliceBranch: string): string | null {
   const builtAt = statSync(graphifyGraphPath).mtime;
   const sha = spawnSync(
     'git',
-    ['log', '-1', `--before=${builtAt.toISOString()}`, '--format=%H'],
+    ['log', '-1', `--before=${builtAt.toISOString()}`, '--format=%H', baseRef],
     { encoding: 'utf8', windowsHide: true },
   ).stdout.trim();
   if (!sha) return null;

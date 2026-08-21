@@ -271,8 +271,9 @@ either — every sub-agent transcript in the first `--trace-subagents` run (#398
   code that already exists, and `CodeExplorer` runs before the slice writes anything.
 - **Provenance is injected into the slice prompt, not left in this doc.** Graphify records no
   commit sha of its own, so `.sandcastle/main.mts`'s `graphifyProvenance()` approximates "built at"
-  from `graph.json`'s mtime against the primary checkout's own history, then reports how many
-  commits the slice branch has moved past that point — e.g. _"Built at approx. `<sha>`, N commit(s)
+  from `graph.json`'s mtime against the dispatch base ref's history (not HEAD — the primary
+  checkout may be sitting on an unrelated branch), then reports how many commits the slice branch
+  has moved past that point — e.g. _"Built at approx. `<sha>`, N commit(s)
   behind `<branch>` — files changed since are not in it."_ A rule in this document is not something
   a sub-agent reliably reads (see #396); the prompt is the one channel it demonstrably does.
 
