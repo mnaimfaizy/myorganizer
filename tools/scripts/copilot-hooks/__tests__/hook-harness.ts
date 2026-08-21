@@ -14,14 +14,7 @@ export interface HookOutcome {
   reason: string;
 }
 
-/**
- * Declared as a named interface, and taken as an optional parameter rather than
- * one defaulted to `{}`, so that no brace appears between a helper's name and
- * its body. `check-test-hygiene.mjs` decides whether an exported helper counts
- * as an assertion helper by scanning the first braced block after the
- * declaration; an inline type literal there would shadow the body and silently
- * strip assertion credit from every spec that calls these.
- */
+/** Options accepted by every helper here; `sandbox` picks the hook's mode. */
 export interface HookRunOptions {
   sandbox?: boolean;
 }

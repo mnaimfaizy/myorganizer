@@ -133,6 +133,70 @@ export function parenAfter(code, from) {
   return code.slice(open);
 }
 
+/**
+ * Index just past the group closing the `open` character at or after `from`,
+ * or -1 when the group never closes.
+ */
+function endOfBalanced(code, from, open, close) {
+  const start = code.indexOf(open, from);
+  if (start === -1) return -1;
+  let depth = 0;
+  for (let i = start; i < code.length; i += 1) {
+    if (code[i] === open) depth += 1;
+    else if (code[i] === close) {
+      depth -= 1;
+      if (depth === 0) return i + 1;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Returns the *body* block of a function whose declaration begins at `from`,
+ * skipping the parameter list and any return-type annotation.
+ *
+ * `blockAfter` takes the first `{` it sees, which is the body only when nothing
+ * earlier in the signature carries one. That assumption breaks on ordinary
+ * TypeScript: `options: { sandbox?: boolean } = {}` and `): { ok: boolean } {`
+ * both put a brace ahead of the body, and a caller scanning the result for
+ * assertions would read the type instead of the code. Use `blockAfter` for call
+ * expressions such as `it(` or `beforeAll(`, where the first brace really is
+ * the callback body, and this for declarations.
+ */
+export function signatureBodyAfter(code, from) {
+  const paren = code.indexOf('(', from);
+  const firstBrace = code.indexOf('{', from);
+
+  // No parameter list ahead of the body: nothing to skip past.
+  if (paren === -1 || (firstBrace !== -1 && firstBrace < paren)) {
+    return blockAfter(code, from);
+  }
+
+  let cursor = endOfBalanced(code, paren, '(', ')');
+  if (cursor === -1) return '';
+
+  while (cursor < code.length) {
+    const brace = code.indexOf('{', cursor);
+    if (brace === -1) return '';
+
+    // An arrow between here and the next brace means the body follows it, so
+    // anything braced in between belonged to the return type.
+    const arrow = code.indexOf('=>', cursor);
+    if (arrow !== -1 && arrow < brace) return blockAfter(code, arrow);
+
+    const end = endOfBalanced(code, brace, '{', '}');
+    if (end === -1) return code.slice(brace);
+
+    // A brace group still followed by a brace or an arrow was part of the
+    // return type; the body is what comes after it.
+    if (!/^\s*(?:\{|=>)/.test(code.slice(end))) return code.slice(brace, end);
+
+    cursor = end;
+  }
+
+  return '';
+}
+
 /** Normalizes CRLF so offsets and line numbers agree across platforms. */
 export function normalize(source) {
   return source.replace(/\r\n/g, '\n');
