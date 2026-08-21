@@ -9,8 +9,9 @@ import {
   readFileSync,
   readdirSync,
   statSync,
+  writeFileSync,
 } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import {
   MAX_QUOTA_WAITS,
@@ -26,6 +27,10 @@ import {
   extractMaintainerNotes,
   withMaintainerNotes,
 } from '../tools/scripts/lib/sandcastle-resume.mjs';
+import {
+  parseSubagentTranscript,
+  formatSubagentIndex,
+} from '../tools/scripts/lib/sandcastle-subagent-trace.mjs';
 
 const REPO = 'mnaimfaizy/myorganizer';
 const SANDBOX_IMAGE = 'sandcastle:myorganizer';
@@ -250,6 +255,10 @@ Flags:
   --fresh                Discard a slice's preserved checkpoint and start it over.
                          Without it, an interrupted slice RESUMES. In PRD mode this
                          must name its slice: --prd <n> --issue <slice> --fresh.
+  --trace-subagents      Write per-sub-agent transcripts to
+                         .sandcastle/logs/subagents/<issue>/, each with its tool
+                         calls, peak context, and token usage. Without it, output is
+                         byte-for-byte what it is today — one flat log per slice.
   --agent <name>         Agent provider to use (default: SANDCASTLE_AGENT or claude)
   --model <model>        Override the model for this run (default: env/provider routing)
   --help                 Show this help text
@@ -336,6 +345,12 @@ const discardRequested = isDiscardRequested(process.argv);
 // documents the behaviour at the call site. See ADR 0035.
 const waitForQuota = process.argv.includes('--wait-for-quota');
 let quotaWaitsTaken = 0;
+
+// Opt-in, per ADR 0036: without it, output stays byte-for-byte what it is today — one
+// flat log per slice. Sandcastle 0.12.0 already captures every sub-agent transcript to
+// the host unconditionally (see captureSubagentTraces below); this flag only decides
+// whether main.mts relocates and summarizes what was already captured.
+const traceSubagents = process.argv.includes('--trace-subagents');
 
 const discardScope = validateDiscardScope({
   discardRequested,
@@ -1727,11 +1742,80 @@ function logRunUsage(
     ...totals,
   });
   writeLog(
-    `  [#${issueNumber}] ${agentKind}:${model} tokens — ` +
+    `  [#${issueNumber}] ${agentKind}:${model} tokens (sum of each iteration's ` +
+      `final-turn snapshot — NOT a true run total; see IterationUsage in sandcastle) — ` +
       `input ${totals.inputTokens}, ` +
       `cache-write ${totals.cacheCreationInputTokens}, ` +
       `cache-read ${totals.cacheReadInputTokens}, ` +
       `output ${totals.outputTokens}.`,
+  );
+}
+
+// ─── Sub-agent traces (--trace-subagents) ──────────────────────────────────────
+// Sandcastle 0.12.0's Claude Code provider captures every sub-agent transcript to the
+// host automatically and unconditionally — RunResult.iterations[].sessionFilePath
+// already points at the captured main session, and its sibling
+// <sessionId>/subagents/agent-*.jsonl files are captured the same way, with no flag
+// of ours involved. This function does not create that data; it only relocates and
+// summarizes what sandcastle already wrote, into a stable path under version control
+// convention. See docs/adr/0036 and the spike recorded on issue #411.
+function captureSubagentTraces(
+  issue: Issue,
+  result: Awaited<ReturnType<typeof run>>,
+): void {
+  if (!traceSubagents) return;
+
+  const destDir = join(
+    process.cwd(),
+    '.sandcastle',
+    'logs',
+    'subagents',
+    String(issue.number),
+  );
+  const multiIteration = result.iterations.length > 1;
+
+  const summaries: Array<
+    ReturnType<typeof parseSubagentTranscript> & { fileName: string }
+  > = [];
+
+  result.iterations.forEach((iteration, iterationIndex) => {
+    if (!iteration.sessionId || !iteration.sessionFilePath) return;
+
+    const subagentsDir = join(
+      dirname(iteration.sessionFilePath),
+      iteration.sessionId,
+      'subagents',
+    );
+    if (!existsSync(subagentsDir)) return;
+
+    const files = readdirSync(subagentsDir).filter(
+      (name) => name.startsWith('agent-') && name.endsWith('.jsonl'),
+    );
+    if (files.length === 0) return;
+
+    mkdirSync(destDir, { recursive: true });
+    for (const fileName of files) {
+      const jsonl = readFileSync(join(subagentsDir, fileName), 'utf8');
+      const summary = parseSubagentTranscript(jsonl);
+      const destFileName = multiIteration
+        ? `iteration-${iterationIndex}--${fileName}`
+        : fileName;
+      writeFileSync(join(destDir, destFileName), jsonl);
+      summaries.push({ ...summary, fileName: destFileName });
+    }
+  });
+
+  if (summaries.length === 0) return;
+
+  writeFileSync(
+    join(destDir, 'index.md'),
+    formatSubagentIndex(summaries, {
+      issueNumber: issue.number,
+      sliceBranch: sliceBranchFor(issue),
+    }),
+  );
+  console.log(
+    `  [#${issue.number}] traced ${summaries.length} sub-agent invocation(s) → ${destDir}`,
   );
 }
 
@@ -2034,6 +2118,7 @@ while (pendingSlices.length > 0) {
     });
 
     logRunUsage(issue.number, agentKind, model, result);
+    captureSubagentTraces(issue, result);
 
     // Finalize → gate → integrate, all LOCAL. No push, no PR.
     // Standalone runs stop after the gate: with no integration branch the work
