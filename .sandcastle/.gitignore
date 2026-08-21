@@ -1,5 +1,6 @@
 .env
 logs/
 usage/
+sessions/
 worktrees/
 node_modules_linux_cache/
