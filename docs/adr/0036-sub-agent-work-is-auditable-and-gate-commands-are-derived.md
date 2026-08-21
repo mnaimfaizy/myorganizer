@@ -56,3 +56,33 @@ Two adjacent defects surfaced in the same investigation and are recorded here so
 
 - The token line printed after every run reads as a run total but is the **final assistant message's snapshot** — sandcastle documents `IterationUsage` as exactly that. `inputTokens` is `2` in every record ever written. Sub-agent usage is not counted at all. Persisting the session makes real totals derivable.
 - Nx cannot open its SQLite workspace database inside the container, because worktree detection resolves the cache to a main-worktree root that does not exist there. It falls back to `.nx/cache-local` and `.nx/workspace-data-local`, which is why `git add -A` swept 155k lines of cache into a slice commit. `.gitignore` now globs those, but the cause is unset `NX_CACHE_DIRECTORY` and `NX_WORKSPACE_DATA_DIRECTORY` in the sandbox environment.
+
+### Update — spike result (#411)
+
+The spike ran, and both assumptions above were wrong in the same direction — the real
+answer is simpler than either. Sub-agent turns are **not** sidechain records
+interleaved in the main session JSONL at all. Claude Code writes each sub-agent
+invocation to its own file, `<sessionId>/subagents/agent-<agentId>.jsonl`, sibling to
+the main `<sessionId>.jsonl`, plus a `.meta.json` sidecar (`agentType`, `description`,
+the spawning `toolUseId`, `spawnDepth`). Every record in the sub-agent's file already
+carries `isSidechain: true` and `agentId`; every assistant turn additionally carries
+`attributionAgent` / `attributionSkill` and its own full `usage` block. The `isSidechain`
+finding above was correct as far as it went — the _main_ session file really does carry
+zero `true` values — but the reason is that sub-agent turns never enter that file to
+begin with, not that no sub-agents ran.
+
+This means the boundary problem this ADR set out to solve was already solved, by Claude
+Code itself, at the filesystem level — no stream parsing and no `onAgentStreamEvent`
+inference is needed to know where one sub-agent's work starts or ends. Sandcastle
+`0.12.0`'s Claude Code provider already captures the whole `subagents/` directory to the
+host automatically and unconditionally, as part of ordinary session capture — confirmed
+by reading its compiled `captureToHost` implementation, which enumerates
+`agent-*.jsonl` inside the sandbox and copies each one out. `--trace-subagents`
+therefore does no capturing of its own; it only relocates and summarizes transcripts
+sandcastle already wrote to `.sandcastle/logs/subagents/<issue>/`.
+
+One real gap: sandcastle's capture matches only `agent-*.jsonl`, not the `.meta.json`
+sidecar, so that file is lost for an AFK dispatch. Not load-bearing — the same
+`agentType` / `skill` data is already duplicated onto every assistant turn inside the
+captured transcript via `attributionAgent` / `attributionSkill`, so nothing here reads
+the sidecar.
