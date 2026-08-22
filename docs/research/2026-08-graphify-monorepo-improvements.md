@@ -317,9 +317,9 @@ an agreed precision/recall threshold before agent routing is widened.
 
 - [`docs/graphify.md`](../graphify.md) - adoption decision, measured limits, build, and refresh
   behavior.
-- [`graphify-eval-notes.md`](../../graphify-eval-notes.md) - original and corrected pilot runs.
-- [`graphify-test-notes.md`](../../graphify-test-notes.md) - independent evaluation and ground
-  truth.
+- Pilot evaluation notes (`graphify-eval-notes.md`, `graphify-test-notes.md`) - original and
+  corrected pilot runs plus an independent evaluation with ground truth. Removed from the tree;
+  recoverable from git history at commits `f726756` and `8598720`.
 - [`tsconfig.base.json`](../../tsconfig.base.json) - workspace aliases used in the live resolution
   test.
 - [`.graphifyignore`](../../.graphifyignore) - current corpus exclusions.
