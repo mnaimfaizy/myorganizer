@@ -5,7 +5,7 @@ description: >
   MyOrganizer UI components. This agent must analyze requirement quality before
   editing, challenge incomplete/weak requests, and deliver UX + accessibility
   aware stories.
-tools: [Read, Glob, Grep, Edit]
+tools: [Read, Glob, Grep, Edit, Write]
 model: haiku
 ---
 
