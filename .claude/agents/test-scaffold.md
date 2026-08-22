@@ -2,7 +2,7 @@
 name: TestScaffold
 description: >
   Use when creating or updating MyOrganizer test suites: Jest unit tests, Jest integration tests, React hook/component integration tests, or Playwright E2E specs. This agent edits test files directly after reading the implementation, building a behavior matrix, and validating that each test matches real behavior.
-tools: [Read, Glob, Grep, Edit, Bash]
+tools: [Read, Glob, Grep, Edit, Write, Bash]
 model: haiku
 ---
 
