@@ -1,9 +1,22 @@
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import {
+  act,
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react';
 import { ConfirmDeleteDialog } from './ConfirmDeleteDialog';
 
 describe('ConfirmDeleteDialog', () => {
-  it('renders title and description', () => {
+  // Helper to resolve a pending promise
+  const resolvePending = (resolvers: { resolve?: () => void }) => {
+    return act(async () => {
+      resolvers.resolve?.();
+    });
+  };
+
+  it('should render the title and description when open', () => {
     const onOpenChange = jest.fn();
     const onConfirm = jest.fn();
 
@@ -23,7 +36,7 @@ describe('ConfirmDeleteDialog', () => {
     ).toBeInTheDocument();
   });
 
-  it('invokes onConfirm when confirm button is clicked', async () => {
+  it('should invoke onConfirm when the confirm button is clicked', async () => {
     const onOpenChange = jest.fn();
     const onConfirm = jest.fn();
 
@@ -38,12 +51,15 @@ describe('ConfirmDeleteDialog', () => {
     );
 
     const confirmButton = screen.getByRole('button', { name: /delete/i });
-    fireEvent.click(confirmButton);
+
+    await act(async () => {
+      fireEvent.click(confirmButton);
+    });
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
-  it('does not invoke onConfirm when cancel button is clicked', async () => {
+  it('should not invoke onConfirm when the cancel button is clicked', async () => {
     const onOpenChange = jest.fn();
     const onConfirm = jest.fn();
 
@@ -64,7 +80,7 @@ describe('ConfirmDeleteDialog', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
-  it('disables confirm button while onConfirm promise is pending', async () => {
+  it('should disable the confirm button and show pending state while onConfirm promise is pending', async () => {
     const onOpenChange = jest.fn();
     const resolvers: { resolve?: () => void } = {};
     const onConfirm = jest.fn(
@@ -98,20 +114,16 @@ describe('ConfirmDeleteDialog', () => {
     expect(confirmButton).toHaveTextContent('Delete…');
 
     // Resolve the promise
-    if (resolvers.resolve) {
-      resolvers.resolve();
-    }
+    await resolvePending(resolvers);
 
     // Button should be re-enabled after promise resolves
     await waitFor(() => {
       expect(confirmButton).not.toBeDisabled();
+      expect(confirmButton).toHaveTextContent('Delete');
     });
-
-    // Text should return to normal
-    expect(confirmButton).toHaveTextContent('Delete');
   });
 
-  it('disables cancel button while onConfirm promise is pending', async () => {
+  it('should keep the cancel button enabled and allow dismissal while onConfirm promise is pending', async () => {
     const onOpenChange = jest.fn();
     const resolvers: { resolve?: () => void } = {};
     const onConfirm = jest.fn(
@@ -138,22 +150,21 @@ describe('ConfirmDeleteDialog', () => {
 
     fireEvent.click(confirmButton);
 
-    // Cancel button should be disabled while pending
     await waitFor(() => {
-      expect(cancelButton).toBeDisabled();
+      expect(confirmButton).toBeDisabled();
     });
 
-    if (resolvers.resolve) {
-      resolvers.resolve();
-    }
+    // Cancel button should remain enabled while pending
+    expect(cancelButton).not.toBeDisabled();
 
-    // Cancel button should be re-enabled after promise resolves
-    await waitFor(() => {
-      expect(cancelButton).not.toBeDisabled();
-    });
+    // Clicking cancel should still call onOpenChange even while pending
+    fireEvent.click(cancelButton);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+
+    await resolvePending(resolvers);
   });
 
-  it('hides close button while onConfirm promise is pending', async () => {
+  it('should keep the close button visible while onConfirm promise is pending', async () => {
     const onOpenChange = jest.fn();
     const resolvers: { resolve?: () => void } = {};
     const onConfirm = jest.fn(
@@ -181,23 +192,21 @@ describe('ConfirmDeleteDialog', () => {
     fireEvent.click(confirmButton);
 
     await waitFor(() => {
-      // Close button should be hidden while pending
-      closeButton = screen.queryByRole('button', { name: /close/i });
-      expect(closeButton).not.toBeInTheDocument();
+      expect(confirmButton).toBeDisabled();
     });
 
-    if (resolvers.resolve) {
-      resolvers.resolve();
-    }
+    // Close button should remain visible while pending
+    closeButton = screen.queryByRole('button', { name: /close/i });
+    expect(closeButton).toBeInTheDocument();
 
-    await waitFor(() => {
-      // Close button should reappear after promise resolves
-      closeButton = screen.queryByRole('button', { name: /close/i });
-      expect(closeButton).toBeInTheDocument();
-    });
+    await resolvePending(resolvers);
+
+    // Close button should still be visible after promise resolves
+    closeButton = screen.queryByRole('button', { name: /close/i });
+    expect(closeButton).toBeInTheDocument();
   });
 
-  it('prevents dialog dismissal via Escape while pending', async () => {
+  it('should allow dialog dismissal via Escape while onConfirm promise is pending', async () => {
     const onOpenChange = jest.fn();
     const resolvers: { resolve?: () => void } = {};
     const onConfirm = jest.fn(
@@ -224,7 +233,7 @@ describe('ConfirmDeleteDialog', () => {
       expect(confirmButton).toBeDisabled();
     });
 
-    // Find the dialog content element (the DialogContent/DialogPrimitive.Content)
+    // Find the dialog content element
     const dialogContent = screen
       .getByText('Delete?')
       .closest('[role="dialog"]');
@@ -235,18 +244,16 @@ describe('ConfirmDeleteDialog', () => {
       fireEvent.keyDown(dialogContent, { key: 'Escape', code: 'Escape' });
     }
 
-    // onOpenChange should not be called (dialog should not dismiss)
-    expect(onOpenChange).not.toHaveBeenCalled();
+    // onOpenChange should be called (dialog should dismiss)
+    expect(onOpenChange).toHaveBeenCalledWith(false);
 
-    if (resolvers.resolve) {
-      resolvers.resolve();
-    }
+    // onConfirm should not be called again
+    expect(onConfirm).toHaveBeenCalledTimes(1);
 
-    // Verify that the dialog is still open (onOpenChange was not called)
-    expect(onOpenChange).not.toHaveBeenCalled();
+    await resolvePending(resolvers);
   });
 
-  it('allows dialog dismissal via Escape when not pending', async () => {
+  it('should allow dialog dismissal via Escape when not pending', async () => {
     const onOpenChange = jest.fn();
     const onConfirm = jest.fn();
 
@@ -275,7 +282,7 @@ describe('ConfirmDeleteDialog', () => {
     expect(onConfirm).not.toHaveBeenCalled();
   });
 
-  it('handles async onConfirm that completes successfully', async () => {
+  it('should handle async onConfirm that completes successfully', async () => {
     const onOpenChange = jest.fn();
     const onConfirm = jest.fn(() => Promise.resolve());
 
@@ -290,12 +297,67 @@ describe('ConfirmDeleteDialog', () => {
     );
 
     const confirmButton = screen.getByRole('button', { name: /delete/i });
-    fireEvent.click(confirmButton);
+
+    await act(async () => {
+      fireEvent.click(confirmButton);
+    });
 
     await waitFor(() => {
       expect(confirmButton).not.toBeDisabled();
     });
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('should re-enable the confirm button when onConfirm rejects', async () => {
+    const onOpenChange = jest.fn();
+    // Delay rejection to allow pending state to be visible, then throw error
+    const onConfirm = jest.fn(() =>
+      Promise.resolve().then(() => {
+        throw new Error('Deletion failed');
+      }),
+    );
+
+    render(
+      <ConfirmDeleteDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        title="Delete?"
+        description="Are you sure?"
+        onConfirm={onConfirm}
+      />,
+    );
+
+    const confirmButton = screen.getByRole('button', { name: /delete/i });
+    expect(confirmButton).not.toBeDisabled();
+
+    // Suppress console.error and console.warn for unhandled rejection warnings
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => {});
+    const consoleWarnSpy = jest
+      .spyOn(console, 'warn')
+      .mockImplementation(() => {});
+
+    try {
+      fireEvent.click(confirmButton);
+
+      // Button should be disabled while pending and show pending state
+      await waitFor(() => {
+        expect(confirmButton).toBeDisabled();
+        expect(confirmButton).toHaveTextContent('Delete…');
+      });
+
+      // Button should be re-enabled after rejection settles
+      await waitFor(() => {
+        expect(confirmButton).not.toBeDisabled();
+        expect(confirmButton).toHaveTextContent('Delete');
+      });
+
+      expect(onConfirm).toHaveBeenCalledTimes(1);
+    } finally {
+      consoleErrorSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
+    }
   });
 });

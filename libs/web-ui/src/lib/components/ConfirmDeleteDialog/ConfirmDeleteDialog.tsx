@@ -36,6 +36,8 @@ const ConfirmDeleteDialog = React.forwardRef<
     setIsPending(true);
     try {
       await onConfirm();
+    } catch (error) {
+      console.error('ConfirmDeleteDialog: onConfirm rejected:', error);
     } finally {
       setIsPending(false);
     }
@@ -47,22 +49,22 @@ const ConfirmDeleteDialog = React.forwardRef<
 
   const handleOpenChange = useCallback(
     (newOpen: boolean) => {
-      if (!newOpen && !isPending) {
+      if (!newOpen) {
         onOpenChange(false);
       }
     },
-    [onOpenChange, isPending],
+    [onOpenChange],
   );
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent ref={ref} showCloseButton={!isPending}>
+      <DialogContent ref={ref}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={handleCancel} disabled={isPending}>
+          <Button variant="outline" onClick={handleCancel}>
             Cancel
           </Button>
           <Button

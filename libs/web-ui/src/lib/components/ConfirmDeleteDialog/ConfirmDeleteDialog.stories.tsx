@@ -66,10 +66,8 @@ function ConfirmDeleteDialogPendingExample() {
       title="Delete this item?"
       description="This action will be processed and cannot be undone."
       onConfirm={async () => {
-        // Simulate async deletion operation
-        await new Promise((resolve) => {
-          setTimeout(resolve, 2000);
-        });
+        // Simulate async deletion operation - resolves immediately for deterministic testing
+        await Promise.resolve();
         setOpen(false);
       }}
     />
@@ -119,14 +117,16 @@ export const PendingState: Story = {
     // Click the confirm button
     await userEvent.click(confirmButton);
 
-    // Assert that the confirm button is now disabled and shows pending state
-    const pendingButton = within(document.body).getByRole('button', {
-      name: 'Delete…',
+    // Wait for the button text to change and verify the pending state
+    await waitFor(() => {
+      const pendingButton = within(document.body).getByRole('button', {
+        name: 'Delete…',
+      });
+      expect(pendingButton).toBeDisabled();
     });
-    expect(pendingButton).toBeDisabled();
 
-    // Assert that the cancel button is also disabled during the pending operation
-    expect(cancelButton).toBeDisabled();
+    // Assert that the cancel button remains enabled during the pending operation
+    expect(cancelButton).toBeEnabled();
 
     // Wait for the async operation to complete and the dialog to close
     await waitFor(
@@ -135,7 +135,7 @@ export const PendingState: Story = {
           within(document.body).queryByRole('dialog'),
         ).not.toBeInTheDocument();
       },
-      { timeout: 3000 },
+      { timeout: 1000 },
     );
   },
 };
