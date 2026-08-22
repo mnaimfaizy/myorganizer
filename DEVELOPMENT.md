@@ -573,7 +573,7 @@ yarn openapi:check
 
 This ensures:
 
-1. Backend spec is up-to-date
+1. Backend specs are up-to-date (both `swagger.json` and `swagger.yaml`)
 2. `libs/api-specs` contains the latest spec
 3. `libs/app-api-client` is regenerated with new types
 

@@ -22,7 +22,7 @@ yarn openapi:sync
 
 This will:
 
-1. Generate the TSOA YAML spec
+1. Generate the TSOA JSON and YAML specs (`swagger.json` is what `/docs` serves)
 2. Copy it into `libs/api-specs/src/api-specs.openapi.yaml`
 3. Regenerate `libs/app-api-client`
 
