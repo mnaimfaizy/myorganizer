@@ -65,20 +65,146 @@ export function decideSliceDisposition({
 }
 
 /**
- * The six guardrails a resumed agent is held to.
+ * Guardrails every resumed agent is held to, whatever ended the previous run.
  *
- * An interrupted agent stops mid-thought, so whatever it left behind is unreviewed by
- * construction — the run died before any reviewer saw it. These exist to stop a fresh
- * agent reading that output as finished work.
+ * An agent that did not finish leaves work no reviewer has signed off on, so these
+ * exist to stop a fresh agent reading that output as finished.
  */
-export const RESUME_GUARDRAILS = Object.freeze([
-  'The checkpoint is a checkpoint, NOT approved work. Audit it before you extend it.',
-  'Do NOT reset, rebase, or amend the checkpoint commit. It is the maintainer’s anchor for diffing what the interrupted run produced. Correct it FORWARD with normal commits.',
-  'Do NOT restart from scratch and do NOT revert files wholesale. If part of the checkpoint is wrong, change it forward and say why.',
+export const RESUME_GUARDRAILS_COMMON = Object.freeze([
+  'The previous run\u2019s commits are a starting point, NOT approved work. Audit them before you extend them.',
+  'Do NOT reset, rebase, or amend those commits. They are the maintainer\u2019s anchor for diffing what the previous run produced. Correct them FORWARD with normal commits.',
+  'Do NOT restart from scratch and do NOT revert files wholesale. If part of the work is wrong, change it forward and say why.',
   'Report your inventory BEFORE your first edit: which acceptance criteria are met, which are partial, and which are untouched.',
-  'Files present in the checkpoint do NOT satisfy a Gated Pipeline. A spec file already in the tree does not mean TestScaffold ran, was reviewed, or passed — route it through the pipelines named above regardless.',
+]);
+
+/**
+ * The two guardrails that apply ONLY to a genuinely interrupted run.
+ *
+ * Both are statements of fact about a Slice Checkpoint — a commit the ORCHESTRATOR
+ * made with `--no-verify` around a dirty worktree after the agent was killed. They
+ * are false about a run that finished and committed through the Commit sub-agent,
+ * which is why they are no longer unconditional. See ADR 0043.
+ */
+export const INTERRUPTED_GUARDRAILS = Object.freeze([
+  'Files present in the checkpoint do NOT satisfy a Gated Pipeline. A spec file already in the tree does not mean TestScaffold ran, was reviewed, or passed \u2014 route it through the pipelines named above regardless.',
   'Nothing in the checkpoint has passed a deterministic check. It was committed with `--no-verify` while the run was being killed, so lint, tsc and the test suite have never once seen it. Run them over the checkpoint\u2019s files and fix what they report BEFORE you report this slice complete \u2014 a finished-looking file is not a checked one.',
 ]);
+
+/**
+ * The two guardrails that replace them when the previous run FINISHED and the host
+ * gate is what failed.
+ *
+ * Here the pipelines did run and the commit went through husky, so ordering a full
+ * re-run burns a quota window reproducing reviewed work. The instruction inverts:
+ * verify, then fix the gate.
+ */
+export const GATE_FAILURE_GUARDRAILS = Object.freeze([
+  'The previous run finished and committed through the `Commit` sub-agent \u2014 it was the host BUILD GATE that failed, not the agent. Do not re-run a pipeline whose result the handoff below already accounts for; confirm the work exists, then fix what the gate reported.',
+  'Deterministic checks ran inside that run and the commit passed husky. Re-run them to confirm the current state, but treat a green result as expected rather than as new information.',
+]);
+
+/**
+ * Backwards-compatible view: the interrupted-run guardrail set, in order.
+ *
+ * @deprecated Prefer `resumeGuardrails(kind)`.
+ */
+export const RESUME_GUARDRAILS = Object.freeze([
+  ...RESUME_GUARDRAILS_COMMON,
+  ...INTERRUPTED_GUARDRAILS,
+]);
+
+/** How the previous run for a slice ended. */
+export const PRIOR_RUN_KINDS = Object.freeze({
+  interrupted: 'interrupted',
+  gateFailure: 'gate-failure',
+});
+
+/**
+ * The guardrails for one kind of prior run.
+ *
+ * @param {'interrupted'|'gate-failure'} [kind]
+ * @returns {readonly string[]}
+ */
+export function resumeGuardrails(kind = PRIOR_RUN_KINDS.interrupted) {
+  return Object.freeze([
+    ...RESUME_GUARDRAILS_COMMON,
+    ...(kind === PRIOR_RUN_KINDS.gateFailure
+      ? GATE_FAILURE_GUARDRAILS
+      : INTERRUPTED_GUARDRAILS),
+  ]);
+}
+
+// ─── Handoff: what the previous run actually did ──────────────────────────────
+// Git records the FILES a run produced; nothing records which Gated Pipelines ran,
+// whether `/code-review` passed, or why the run ended. That gap cost #447 a full
+// quota window re-running ComponentBuilder, ComponentReviewer, TestScaffold,
+// TestReviewer, TestRunner and `/code-review` over work all six had already cleared.
+//
+// The agent is therefore asked to print a one-line `HANDOFF:` marker as each hop
+// lands, and the orchestrator appends its own verdict the same way. Markers are
+// INCREMENTAL on purpose: a quota kill lands mid-thought, so a summary written only
+// at the end is absent from exactly the run that needed it most.
+//
+// The slice log is the carrier because it always exists — `--trace-subagents` is
+// opt-in, so `logs/subagents/<n>/index.md` may simply not be there. Only marker
+// lines travel: raw log tail would drag a dead agent's mid-thought reasoning into
+// the next brief as if it were instruction. See ADR 0043.
+
+/** Prefix an agent (or the orchestrator) uses to record a completed step. */
+export const HANDOFF_MARKER = 'HANDOFF:';
+
+/** Hard cap on markers carried forward, so a chatty run cannot flood the brief. */
+export const MAX_HANDOFF_LINES = 40;
+
+/**
+ * Pull the `HANDOFF:` markers out of a slice log.
+ *
+ * Reads the LAST run segment, which at prompt-build time is the previous run: the
+ * new run's own marker is not written until sandcastle starts it.
+ *
+ * @param {string} contents  Full slice log.
+ * @param {number} [limit]
+ * @returns {string[]} marker text, in order, without the prefix.
+ */
+export function extractHandoff(contents, limit = MAX_HANDOFF_LINES) {
+  const text = String(contents ?? '');
+  const lastRunStart = text.lastIndexOf(RUN_START_MARKER);
+  const segment = lastRunStart === -1 ? text : text.slice(lastRunStart);
+
+  const seen = new Set();
+  const markers = [];
+  for (const line of segment.split('\n')) {
+    const at = line.indexOf(HANDOFF_MARKER);
+    if (at === -1) continue;
+    const entry = line.slice(at + HANDOFF_MARKER.length).trim();
+    // A marker echoed by the agent AND logged by the orchestrator is one event.
+    if (entry === '' || seen.has(entry)) continue;
+    seen.add(entry);
+    markers.push(entry);
+  }
+  return markers.slice(-limit);
+}
+
+/**
+ * Render the handoff for inclusion in a resume brief. Empty when there is nothing
+ * to say — an absent handoff must read as "unknown", never as "nothing ran".
+ *
+ * @param {string[]} [handoff]
+ * @returns {string[]} lines
+ */
+export function formatHandoffSection(handoff) {
+  if (!handoff || handoff.length === 0) return [];
+  return [
+    ``,
+    `### What the previous run reported`,
+    ``,
+    `Self-reported by that run as each step completed. It is EVIDENCE, not proof:`,
+    `confirm a claim cheaply (the commit exists, the file is in the tree) and then`,
+    `review rather than re-run. Re-run only what these lines do not account for.`,
+    ``,
+    ...handoff.map((entry) => `  - ${entry}`),
+  ];
+}
 
 /**
  * Build the brief for a resumed slice.
@@ -95,6 +221,8 @@ export const RESUME_GUARDRAILS = Object.freeze([
  * @param {object}   input.checkpoint
  * @param {string}   input.checkpoint.sha
  * @param {string[]} [input.checkpoint.files]
+ * @param {'interrupted'|'gate-failure'} [input.kind]  How the previous run ended.
+ * @param {string[]} [input.handoff]       HANDOFF lines from the previous run's log.
  * @returns {string}
  */
 export function buildResumeBrief({
@@ -102,6 +230,8 @@ export function buildResumeBrief({
   issueNumber,
   sliceBranch,
   checkpoint,
+  kind = PRIOR_RUN_KINDS.interrupted,
+  handoff = [],
 }) {
   const files = checkpoint.files ?? [];
   const inventory =
@@ -109,23 +239,38 @@ export function buildResumeBrief({
       ? files.map((file) => `  - ${file}`).join('\n')
       : '  (file list unavailable — read it with `git show --stat`)';
 
+  const interrupted = kind !== PRIOR_RUN_KINDS.gateFailure;
+  const heading = interrupted
+    ? '## RESUMING an interrupted attempt — read this before anything else'
+    : '## RESUMING after a BUILD GATE failure — read this before anything else';
+  const preamble = interrupted
+    ? [
+        `A previous agent run on issue #${issueNumber} was interrupted before it signalled`,
+        `completion. Its work was preserved as a Slice Checkpoint on your branch:`,
+      ]
+    : [
+        `A previous agent run on issue #${issueNumber} FINISHED and committed its work. The`,
+        `host build gate then failed, so the slice was not integrated. Its commits are on`,
+        `your branch:`,
+      ];
+
   return [
-    `## RESUMING an interrupted attempt — read this before anything else`,
+    heading,
     ``,
-    `A previous agent run on issue #${issueNumber} was interrupted before it signalled`,
-    `completion. Its work was preserved as a Slice Checkpoint on your branch:`,
+    ...preamble,
     ``,
     `  branch     ${sliceBranch}`,
-    `  checkpoint ${checkpoint.sha}`,
+    `  head       ${checkpoint.sha}`,
     `  files      ${files.length || 'unknown'}`,
     ``,
     inventory,
     ``,
     `Inspect it with \`git show ${checkpoint.sha}\` and \`git show --stat ${checkpoint.sha}\`.`,
+    ...formatHandoffSection(handoff),
     ``,
     `### Rules for this run`,
     ``,
-    ...RESUME_GUARDRAILS.map(
+    ...resumeGuardrails(kind).map(
       (guardrail, index) => `${index + 1}. ${guardrail}`,
     ),
     ``,

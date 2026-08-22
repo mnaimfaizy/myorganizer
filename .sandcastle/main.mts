@@ -20,6 +20,9 @@ import {
   classifyRunFailure,
   decideWaitPolicy,
   tailLines,
+  extractHandoff,
+  HANDOFF_MARKER,
+  PRIOR_RUN_KINDS,
   buildResumeBrief,
   decideSliceDisposition,
   isDiscardRequested,
@@ -196,7 +199,8 @@ function changedProjects(base: string, head: string): string[] {
  * `--projects=` argument instead.
  *
  * Returns `null` when the project graph cannot be read, so the caller can fail
- * closed rather than silently gating a narrower set than intended.
+ * closed rather than silently gating a narrower set than intended. The reason is
+ * logged here — the caller only knows that resolution failed, not why.
  */
 function affectedProjects(base: string, head: string): string[] | null {
   const shown = spawnSync(
@@ -206,18 +210,42 @@ function affectedProjects(base: string, head: string): string[] | null {
       'show',
       'projects',
       '--affected',
+      // Explicit, never inferred. `nx show` auto-enables JSON only when its
+      // `isAiAgent()` probe fires (CLAUDECODE / CLAUDE_CODE and friends), so
+      // without this flag the identical command prints a newline-delimited list
+      // when run from a plain terminal, JSON.parse throws, and EVERY slice fails
+      // the gate on an unresolvable graph. CI passes it too — see
+      // .github/workflows/ci.yml.
+      '--json',
       `--base=${base}`,
       `--head=${head}`,
     ],
     { encoding: 'utf8', windowsHide: true, timeout: 300000 },
   );
-  if (shown.status !== 0) return null;
+
+  // Every path below returns `null`, and the caller reports only "could not
+  // resolve the affected project graph". Name the actual cause here or the next
+  // breakage costs a whole wave to diagnose.
+  const unresolved = (reason: string): null => {
+    const detail = (shown.stderr || shown.stdout || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .find(Boolean);
+    console.error(
+      `  nx show projects --affected ${reason}${detail ? `: ${detail}` : ''}`,
+    );
+    return null;
+  };
+
+  if (shown.error) return unresolved(`could not run (${shown.error.message})`);
+  if (shown.status !== 0) return unresolved(`exited ${shown.status}`);
   try {
     const parsed = JSON.parse(shown.stdout) as unknown;
-    if (!Array.isArray(parsed)) return null;
+    if (!Array.isArray(parsed))
+      return unresolved('returned a non-array JSON payload');
     return parsed.filter((name): name is string => typeof name === 'string');
   } catch {
-    return null;
+    return unresolved('returned output that is not JSON');
   }
 }
 
@@ -1355,6 +1383,67 @@ function readSliceLogTail(
   return { path: logPath, tail };
 }
 
+/**
+ * What the previous run for this slice was, and what it said it did.
+ *
+ * The two cases look IDENTICAL to `decideSliceDisposition`, which reads only branch
+ * existence, commits-ahead and merge-base — so #447 was told its cleanly committed,
+ * fully reviewed work was an unchecked mid-kill checkpoint, and re-ran six pipelines
+ * to find out otherwise. The tag is what separates them: only the crash path tags a
+ * Slice Checkpoint. A normal commit carries no tag. See ADR 0043.
+ */
+function readPriorRun(
+  issueNumber: number,
+  sliceBranch: string,
+): { kind: string; handoff: string[] } {
+  const tag = `wip/${issueNumber}-checkpoint`;
+  const tagged = (
+    spawnSync('git', ['rev-parse', '--quiet', '--verify', `${tag}^{commit}`], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+  const head = (
+    spawnSync('git', ['rev-parse', `${sliceBranch}^{commit}`], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+
+  const kind =
+    tagged !== '' && tagged === head
+      ? PRIOR_RUN_KINDS.interrupted
+      : PRIOR_RUN_KINDS.gateFailure;
+
+  let handoff: string[] = [];
+  const logPath = sliceLogPathFor(issueNumber);
+  if (logPath) {
+    try {
+      handoff = extractHandoff(readFileSync(logPath, 'utf8'));
+    } catch {
+      /* no log, no handoff — absent must read as "unknown", not "nothing ran" */
+    }
+  }
+  return { kind, handoff };
+}
+
+/**
+ * Append a handoff marker to this slice's log so the NEXT run can read it.
+ *
+ * The orchestrator's own observations (above all the gate verdict) belong in the
+ * same stream as the agent's, because `extractHandoff` reads one carrier. Silent on
+ * failure: a missing log must never take down a dispatch.
+ */
+function appendHandoffToSliceLog(issueNumber: number, entry: string): void {
+  const logPath = sliceLogPathFor(issueNumber);
+  if (!logPath) return;
+  try {
+    appendFileSync(logPath, `\n${HANDOFF_MARKER} ${entry}\n`);
+  } catch {
+    /* the log is a convenience, not a dependency */
+  }
+}
+
 function formatCrashLogTail(
   log: { path: string; tail: string[] } | undefined,
 ): string | undefined {
@@ -1610,6 +1699,16 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
 
     const ok = gate.status === 0;
     console.log(`  [#${issue.number}] gate: ${ok ? 'PASS' : 'FAIL'}.`);
+    // Mirror the verdict into the slice log as a handoff marker. A gate failure is
+    // the one thing about the previous run that git cannot show the next agent, and
+    // without it a resumed agent cannot tell "my code was rejected" from "I was
+    // killed mid-thought" — so it re-runs every pipeline. See ADR 0043.
+    appendHandoffToSliceLog(
+      issue.number,
+      ok
+        ? `gate PASS (${targets})`
+        : `gate FAILED (${targets}) — the agent's work was committed; the HOST GATE rejected it`,
+    );
     return ok;
   } finally {
     spawnSync('git', ['worktree', 'remove', '--force', gatePath], {
@@ -1820,6 +1919,22 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     `- Do NOT push and do NOT open a PR — this sandbox has no credentials. Just commit locally on your branch; leave nothing uncommitted. The orchestrator integrates your branch into the feature branch on the host.`,
     `- Do NOT output the completion promise until ALL of these hold: deterministic checks green; \`/code-review\` run once and its findings addressed; work committed through the \`Commit\` sub-agent + \`ai:commit\`; working tree clean.`,
     `- When all of the above hold, output <promise>COMPLETE</promise>.`,
+    ``,
+    `## Handoff markers (required)`,
+    ``,
+    // Written as each hop LANDS, not summarised at the end: a quota kill stops the
+    // agent mid-thought, so an end-of-run summary is missing from exactly the run a
+    // resume needs it from. See ADR 0043.
+    `Print ONE line the moment each step completes, starting with \`${HANDOFF_MARKER}\`:`,
+    ``,
+    `  ${HANDOFF_MARKER} ComponentBuilder -> ComponentReviewer PASS`,
+    `  ${HANDOFF_MARKER} TestScaffold -> TestReviewer APPROVED -> TestRunner 38 passed`,
+    `  ${HANDOFF_MARKER} /code-review PASS (2 findings addressed)`,
+    `  ${HANDOFF_MARKER} committed <sha> via Commit sub-agent`,
+    ``,
+    `Print each one AS IT HAPPENS — never batch them at the end. If this run is`,
+    `interrupted, these lines are the only record of what already ran, and the next`,
+    `agent re-does every step they do not cover.`,
     ``,
     `## Running tests in this sandbox`,
     ``,
@@ -2259,10 +2374,23 @@ while (pendingSlices.length > 0) {
 
     const worktreePath = join(worktreesDir, sliceBranch.replace(/\//g, '-'));
 
-    if (checkpoint) {
+    const priorRun = checkpoint
+      ? readPriorRun(issue.number, sliceBranch)
+      : undefined;
+
+    if (checkpoint && priorRun) {
+      // Say which of the two it is. "resuming from checkpoint" on a slice whose only
+      // problem was a red gate is the same misreport the agent used to receive.
+      const because =
+        priorRun.kind === PRIOR_RUN_KINDS.interrupted
+          ? 'interrupted run'
+          : 'completed run whose gate failed';
       console.log(
-        `  [#${issue.number}] resuming from checkpoint ${checkpoint.sha} ` +
-          `(${checkpoint.files.length} file(s)) — the branch is kept, not recreated.`,
+        `  [#${issue.number}] resuming from ${because} at ${checkpoint.sha} ` +
+          `(${checkpoint.files.length} file(s)) — the branch is kept, not recreated.` +
+          (priorRun.handoff.length > 0
+            ? `\n  [#${issue.number}] carrying ${priorRun.handoff.length} handoff marker(s) into the brief.`
+            : ''),
       );
       // The branch and its commits stay. Only the worktree is rebuilt, so the agent
       // gets a clean checkout of the checkpoint rather than whatever partial state
@@ -2400,6 +2528,7 @@ while (pendingSlices.length > 0) {
               issueNumber: issue.number,
               sliceBranch,
               checkpoint,
+              ...priorRun,
             })
           : basePrompt;
       })(),

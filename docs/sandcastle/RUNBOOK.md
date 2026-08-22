@@ -326,6 +326,24 @@ branch, and re-running **resumes** from it.
 See [ADR 0035](../adr/0035-interrupted-slices-resume-from-git-and-destruction-is-deliberate.md)
 for why it works this way.
 
+### Two kinds of resume
+
+A branch with commits on it resumes either way, but the reason differs and so does what the next
+agent is told. The orchestrator names it:
+
+```
+resuming from interrupted run at <sha>                  # agent was killed mid-thought
+resuming from completed run whose gate failed at <sha>  # agent finished; the host gate rejected it
+```
+
+The second is **not** unchecked work: its pipelines ran and its commit passed husky. A resumed
+agent is told so, and told to fix what the gate reported rather than re-run those pipelines. The
+two are distinguished by the `wip/<n>-checkpoint` tag, which only the crash path writes.
+
+Both briefs carry the previous run's `HANDOFF:` markers — one line per completed hop, printed as
+work lands and read back out of the slice log. Treat them as the previous run's own claim about
+itself, not as proof. See [ADR 0043](../adr/0043-a-resumed-slice-is-told-what-the-previous-run-did.md).
+
 ### The short version
 
 ```bash

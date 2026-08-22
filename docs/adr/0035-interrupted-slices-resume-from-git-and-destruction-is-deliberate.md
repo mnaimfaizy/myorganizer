@@ -2,7 +2,7 @@
 
 ## Status
 
-accepted
+accepted. Amended by [0043](0043-a-resumed-slice-is-told-what-the-previous-run-did.md): the two guardrails asserting that a checkpoint is unchecked and un-piped apply only to a genuinely interrupted run, and a resumed agent is now told what the previous run reported doing.
 
 ## Context
 
