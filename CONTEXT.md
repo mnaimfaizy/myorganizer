@@ -336,6 +336,10 @@ _Avoid_: feature README, page README, colocated design doc, implementation summa
 A human-facing package readme for an Nx library: what the package is, how to consume it, and what not to hand-edit. At most one per library. Not a feature write-up, page README, or Agent Guide.
 _Avoid_: feature README, page README, Operational README (when you mean a library), Nx scaffold README
 
+**Research Brief**:
+A dated, cited investigation in `docs/research/`, frozen at the date in its filename. Records what was true and sourced on that date; never revised afterward. If it must stay current it is not a Research Brief.
+_Avoid_: research doc, investigation, internal note, planning doc
+
 ## Harness & Instructions
 
 **Harness**:
