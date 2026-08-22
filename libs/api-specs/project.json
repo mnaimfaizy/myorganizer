@@ -10,7 +10,7 @@
       "options": {
         "cwd": "{workspaceRoot}",
         "commands": [
-          "yarn run yaml-api:generate",
+          "yarn run api-docs:generate",
           "node tools/scripts/sync-openapi-spec.mjs",
           "nx run app-api-client:generate-sources"
         ],
