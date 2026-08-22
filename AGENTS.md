@@ -38,7 +38,7 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Lint: `yarn nx lint <project-name>` or `yarn lint`.
 - Format: `yarn format:write`.
 - AI commit: `corepack yarn ai:commit --message-file <path>`.
-- AI PR: draft with the `PrAuthor` sub-agent, then `corepack yarn ai:create-pr --title <text> --body-file <path> [--label <name>] [--reviewer <login>]`.
+- AI PR: draft with the `PrAuthor` sub-agent, then `corepack yarn ai:create-pr --title <text> --body-file <path> --merge-base <sha> [--label <name>] [--reviewer <login>]`. `--merge-base` is the draft's `MERGE-BASE:` SHA; the runner recomputes it and rejects drafts that cannot produce it.
 - API sync after backend contract changes: `yarn openapi:sync`; check drift with `yarn openapi:check`.
 - Release (cut branch): `yarn release:cut --version vX.Y.Z --push --notes-file RELEASE_NOTES.md`.
 - Release (tag after production deploy): `yarn release:tag --version vX.Y.Z --push`.
@@ -84,7 +84,7 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Classify `gate:*` first ([ADR 0012](docs/adr/0012-tiered-quality-gates.md)). When unsure → promote.
 - Before issuing 3 or more consecutive read/search operations to locate something in the codebase, stop and delegate to `CodeExplorer` (`.github/agents/explore.agent.md`). Provide an Explore Request with a `Goal` sentence; optionally include `Known Locations`, `Search Hints`, `Out of Scope`, and `Expected Output`. CodeExplorer returns a structured Explore Summary with `[found]`/`[inferred]` tagged findings and ranked file paths.
 - Keep `.github/agents` as the canonical Sub-agent body source. Keep `CodeExplorer` in `.cursor/agents/explore.md` on `model: composer-2.5`.
-- For PR requests, draft the title and body with the `PrAuthor` sub-agent, then execute `corepack yarn ai:create-pr --title <text> --body-file <path>`. Do not fall back to a title-only PR if `PrAuthor` fails.
+- For PR requests, draft the title and body with the `PrAuthor` sub-agent, then execute `corepack yarn ai:create-pr --title <text> --body-file <path> --merge-base <sha>`. Do not fall back to a title-only PR if `PrAuthor` fails, and do not compute the merge base yourself to satisfy the gate.
 
 ## Workflows
 
@@ -193,6 +193,6 @@ Use [`.claude/checklist.md`](.claude/checklist.md) Step 0 → file-type matrix.
   enough to diagnose a problem, say so and ask rather than pasting the real value.
 - Do not run `git commit` directly or `git add .`; use `corepack yarn ai:commit --message-file <path>`.
 - Do not cancel, background, or abandon a running `yarn ai:commit` while Husky checks are still executing.
-- Do not run `gh pr create` directly; draft with the `PrAuthor` sub-agent, then `corepack yarn ai:create-pr --title <text> --body-file <path>`.
+- Do not run `gh pr create` directly; draft with the `PrAuthor` sub-agent, then `corepack yarn ai:create-pr --title <text> --body-file <path> --merge-base <sha>`.
 - Do not open pull requests from `main` or another base branch directly.
 - Do not leave harness-only agent additions/removals unsynchronized. If one agent is added/removed in canonical, propagate to all harnesses via `yarn agents:sync`.

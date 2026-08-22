@@ -49,4 +49,15 @@ then
 corepack yarn sandcastle:resume:test
 corepack yarn sandcastle:subagent-trace:test
 fi
+# The merge-base proof gate is a pure function with no Nx project of its own, so
+# `affected:lint` and `nx affected -t test` never reach it. It is the only thing
+# standing between a fabricated PrAuthor draft and GitHub (#456), so run its contracts
+# whenever the gate or the runner that calls it is staged.
+if ! git diff --cached --quiet --diff-filter=ACMRT -- \
+ tools/scripts/lib/pr-merge-base.mjs \
+ tools/scripts/lib/pr-merge-base.test.mjs \
+ tools/scripts/ai/create-pr.mjs
+then
+corepack yarn ai:create-pr:test
+fi
 corepack yarn affected:lint --uncommitted --outputStyle=static

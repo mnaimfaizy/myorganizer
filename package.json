@@ -52,7 +52,7 @@
     "ai:commit": "node tools/scripts/ai/commit-change.mjs",
     "ai:commit:test": "node --test tools/scripts/ai/classify-commit-failure.test.mjs",
     "ai:create-pr": "node tools/scripts/ai/create-pr.mjs",
-    "ai:create-pr:test": "node --test tools/scripts/lib/github-labels.test.mjs",
+    "ai:create-pr:test": "node --test tools/scripts/lib/github-labels.test.mjs tools/scripts/lib/pr-merge-base.test.mjs",
     "ai:create-labels": "node tools/scripts/ai/create-labels.mjs",
     "agents:sync": "node tools/scripts/sync-subagents.mjs --apply && node tools/scripts/sync-agent-models.mjs --apply",
     "agents:sync:check": "node tools/scripts/sync-subagents.mjs --check && node tools/scripts/sync-agent-models.mjs --check",
