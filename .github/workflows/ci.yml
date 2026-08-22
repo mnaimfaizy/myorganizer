@@ -543,6 +543,12 @@ jobs:
       - name: Typecheck checker contracts
         run: corepack yarn typecheck:check:test
 
+      # apps/backend/src/prisma is generated and gitignored, so a fresh runner
+      # has no @prisma/client to compile against. backend:test declares this
+      # same dependency; typechecking needs it just as much, and runs first.
+      - name: Generate Prisma client
+        run: corepack yarn nx run backend:generate-types
+
       # Compiles every project tsconfig, lib/app and spec alike. Nothing ran
       # TypeScript in CI before this, so two type errors had reached main.
       - name: Typecheck all projects

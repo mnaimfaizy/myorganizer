@@ -24,6 +24,12 @@
 // tells sub-agents to run `tsc` over the spec config — the repo treated it as a
 // real gate, just an unautomated one.
 //
+// Generated code must exist before this runs. `apps/backend/src/prisma` is
+// gitignored, so a fresh checkout has no `@prisma/client` to compile against and
+// backend reports 33 errors that say nothing about the diff. `backend:test`
+// declares that dependency via `dependsOn`; CI runs `backend:generate-types`
+// before this step for the same reason.
+//
 // Exit 0 = every config compiles. Exit 1 = type errors. Exit 2 = the check
 // could not run.
 import { spawn } from 'node:child_process';
