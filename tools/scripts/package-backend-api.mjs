@@ -304,7 +304,6 @@ fs.writeFileSync(
     '  - `NODE_ENV=production`',
     '  - `PORT=3000` (or set by cPanel)',
     '  - `DATABASE_URL=postgresql://...`',
-    '  - `SESSION_SECRET=...`',
     '  - `CORS_ORIGINS=https://myorganiser.app`',
     '',
     'Notes:',

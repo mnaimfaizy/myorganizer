@@ -114,7 +114,6 @@
     "dotenv": "17.2.3",
     "express": "5.2.1",
     "express-rate-limit": "8.3.2",
-    "express-session": "1.18.2",
     "googleapis": "171.4.0",
     "helmet": "8.1.0",
     "lucide-react": "0.562.0",
