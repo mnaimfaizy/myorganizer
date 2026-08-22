@@ -129,6 +129,54 @@ export function isLikelyWriteCommand(command) {
   );
 }
 
+/**
+ * Remove heredoc bodies from a shell command, keeping the header line.
+ *
+ * The path guards match protected paths against shell command text. A heredoc
+ * body is *content* being written, not a destination being written to, so
+ * scanning it repeats the mistake `WRITE_PATH_KEYS` exists to avoid: a commit
+ * message, PR body, or doc that merely mentions a generated directory gets
+ * blocked as though it edited that directory. That fired on a real session —
+ * writing a commit message that cited a generated spec path.
+ *
+ * The header line survives, so a genuine write to a protected path is still
+ * caught: the redirect target sits on the header, never in the body.
+ *
+ * Handles `<<EOF`, `<<-EOF`, and quoted `<<'EOF'` / `<<"EOF"`. Herestrings
+ * (`<<<`) carry no body and are left alone.
+ */
+export function stripHeredocBodies(command) {
+  const lines = command.split(/\r?\n/);
+  const output = [];
+  const pending = [];
+  let active = null;
+
+  for (const line of lines) {
+    if (active) {
+      // `<<-` allows an indented terminator; plain `<<` requires column zero.
+      const candidate = active.stripIndent ? line.trimStart() : line;
+      if (candidate === active.delimiter) {
+        active = pending.shift() ?? null;
+      }
+
+      continue;
+    }
+
+    output.push(line);
+
+    // One line may open several heredocs (`cmd <<A <<B`); they close in order.
+    for (const match of line.matchAll(
+      /<<(-?)\s*(['"]?)([A-Za-z_][A-Za-z0-9_]*)\2/g,
+    )) {
+      pending.push({ delimiter: match[3], stripIndent: match[1] === '-' });
+    }
+
+    active = pending.shift() ?? null;
+  }
+
+  return output.join('\n');
+}
+
 export function extractCommand(toolInput) {
   if (typeof toolInput === 'string') {
     return toolInput;
