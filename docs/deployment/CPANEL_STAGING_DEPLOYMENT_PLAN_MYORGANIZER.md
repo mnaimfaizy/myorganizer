@@ -203,13 +203,46 @@ ACCESS_JWT_SECRET=<strong-random>
 REFRESH_JWT_SECRET=<strong-random>
 VERIFY_JWT_SECRET=<strong-random>
 RESET_JWT_SECRET=<strong-random>
+
+# Mail — auth verify/reset and the YouTube weekly digest share this transport.
+# EmailService reads DEFAULT_EMAIL_PROVIDER. The MAIL_SERVICE key in
+# .env.example is not read by the app; setting it alone does nothing.
+DEFAULT_EMAIL_PROVIDER=smtp
+MAIL_HOST=<cpanel-server-hostname>   # businessNN.web-hosting.com, not mail.<domain>
+MAIL_PORT=465
+MAIL_SECURE=true
+MAIL_USERNAME=noreply@<domain>
+MAIL_PASSWORD=<mailbox-password>
+EMAIL_SENDER=noreply@<domain>
+
+# YouTube integration
+GOOGLE_CLIENT_ID=<oauth-client-id>
+GOOGLE_CLIENT_SECRET=<oauth-client-secret>
+GOOGLE_REDIRECT_URI=https://myorganiser.app/dashboard/youtube/callback
+YOUTUBE_TOKEN_ENCRYPTION_KEY=<64-char-hex>
+YOUTUBE_CRON_SECRET=<shared-secret>
 ```
 
-#### Step 6: Run Prisma migrations on the server (recommended)
+`MAIL_USERNAME` and `MAIL_PASSWORD` are read as a pair: set only one and the
+transport authenticates as nobody. `YOUTUBE_CRON_SECRET` must **also** exist in
+the cron wrapper's own env file, because cPanel cron does not inherit Passenger
+environment variables. `YOUTUBE_API_BASE_URL` belongs only in that file, never
+here. The mailbox, SPF/DKIM, and crontab steps live in
+[YouTube integration](../features/youtube-integration.md#cpanel-cron-configuration).
+
+#### Step 6: Apply migrations and rebuild the Prisma client (required)
+
+Not optional, and not finished when the migrations apply. Release v0.4.0 served
+production traffic with four unapplied migrations until someone ran the status
+command by hand, and the deploy that fixed them still answered every cron call
+with a 500 because the Prisma client predated the new models (#273). Automating
+this sequence is tracked in #437.
+
+Order matters: **migrate, then generate, then restart.**
 
 Notes:
 
-- `npm ci --omit=dev` runs `prisma generate` automatically (via `postinstall`) so Prisma is built for the server OS.
+- `npm ci --omit=dev` runs `prisma generate` automatically (via `postinstall`) so Prisma is built for the server OS. A deploy that uploads a new bundle over an existing `node_modules` without re-running `npm ci` never triggers that hook, so the client keeps the shape it had at the last install — run `npm run prisma:generate` explicitly.
 - The backend bundle includes `prisma.config.cjs`; `npm run prisma:migrate:deploy` reads `DATABASE_URL` from the process environment or an app-root `.env` file.
 - If you run migrations from SSH and cPanel app environment variables are not inherited, export `DATABASE_URL` in that shell session or create an app-root `.env` file with restricted permissions.
 - Run migrations after `DATABASE_URL` is configured.
@@ -222,11 +255,21 @@ cd ~/myorganizer-api
 # Optional SSH check without printing the secret
 if [ -z "$DATABASE_URL" ]; then echo "DATABASE_URL is not set in this shell"; else echo "DATABASE_URL is set"; fi
 
+# What has not been applied yet (read-only)
+npx prisma migrate status --config prisma.config.cjs
+
 # Apply migrations
 npm run prisma:migrate:deploy
+
+# Rebuild the client against the migrated schema
+npm run prisma:generate
 ```
 
 #### Step 7: Restart the Node app
+
+The restart belongs to Step 6 rather than being a formality: Passenger imported
+the Prisma client at boot and holds it in memory, so regenerating without
+restarting changes nothing the running process can see.
 
 In cPanel Node.js App UI, click **Restart**.
 
@@ -238,10 +281,27 @@ touch tmp/restart.txt
 
 #### Step 8: Verify API
 
-Examples:
+Run all four. The first two are the ones that would have caught the v0.4.0
+deploy described in Step 6.
 
-- Swagger UI: `https://api.myorganiser.app/docs`
-- Health check (if implemented): add one, otherwise test a known endpoint.
+- Swagger UI loads: `https://api.myorganiser.app/docs`
+- `npx prisma migrate status --config prisma.config.cjs` reports nothing pending.
+- A deliberately wrong cron secret is rejected by the app rather than by the web
+  server:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -X POST https://api.myorganiser.app/api/v1/youtube/cron/sync -H 'X-Cron-Secret: wrong' -H 'Content-Type: application/json' -d '{}'
+```
+
+`401` is the pass: the route exists and the request reached Node. `404` means
+the build predates the split cron endpoints. An HTML `403` is LiteSpeed
+refusing the request in front of Node. `500` means the Prisma client is stale
+— return to Step 6.
+
+- One real message arrives from `EMAIL_SENDER`; a password reset for your own
+  account is the quickest trigger. `EmailService` hands nodemailer a callback
+  and logs failures rather than throwing, so a 2xx from the API never proves
+  delivery.
 
 ---
 
@@ -302,6 +362,11 @@ Key deployment differences:
 
 - `CORS_ORIGINS` must include `https://myorganiser.app`.
 - `APP_FRONTEND_URL` must be your real frontend URL for correct email links.
+- Mail must be configured before any feature that sends: email verification,
+  password reset, and the YouTube weekly digest all share one transport.
+- The YouTube integration needs `YOUTUBE_TOKEN_ENCRYPTION_KEY` and
+  `YOUTUBE_CRON_SECRET` here, and a separate env file on the host that runs the
+  cron jobs. Both are listed in Part A, Step 5.
 
 ### Frontend env vars
 
