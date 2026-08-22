@@ -407,5 +407,5 @@ request — it is the most authoritative source.
 - Drive API — [`appDataFolder` reference](https://developers.google.com/drive/api/guides/appdata)
 - Drive API — [files.create with appProperties](https://developers.google.com/drive/api/reference/rest/v3/files)
 - OWASP — [OAuth 2.0 implicit flow guidance](https://cheatsheetseries.owasp.org/cheatsheets/OAuth2_Cheat_Sheet.html)
-- Internal: [E2EE Vault plan](../internal/e2ee-vault-plan.md), [vault export/import UI plan](../internal/vault-export-import-ui.md)
+- Internal: [ADR 0039 — vault crypto suite](../adr/0039-web-and-mobile-vaults-share-one-crypto-suite.md), [ADR 0033 — local vaults are user-owned](../adr/0033-local-vaults-are-user-owned-and-never-silently-destroyed.md), [vault overview](../vault/README.md)
 - Sibling integration: [YouTube OAuth setup](./google-youtube-oauth-setup.md), [YouTube integration architecture](./youtube-integration.md)
