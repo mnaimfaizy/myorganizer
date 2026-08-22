@@ -23,6 +23,7 @@ docs/vault/lifecycle.html
 .agents/skills/modern-web-guidance/
 .agents/skills/prototype/
 tools/assets/dc-runtime
+apps/backend/src/swagger/swagger.json
 apps/backend/src/swagger/swagger.yaml
 apps/myorganizer/next-env.d.ts
 libs/api-specs/src/api-specs.openapi.yaml

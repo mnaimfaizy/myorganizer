@@ -3,4 +3,5 @@ logs/
 usage/
 sessions/
 worktrees/
+gate/
 node_modules_linux_cache/

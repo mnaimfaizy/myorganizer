@@ -264,10 +264,32 @@ For a standalone run, substitute the `issue/<n>-<slug>` branch the summary print
 
 ### Tunables
 
-| Env var              | Default | Purpose                                                            |
-| -------------------- | ------- | ------------------------------------------------------------------ |
-| `SLICE_GATE`         | (on)    | `off` skips the lint gate (integrates without verification).       |
-| `SLICE_GATE_TARGETS` | `lint`  | Space/comma-separated Nx targets the gate runs (e.g. `lint test`). |
+| Env var              | Default           | Purpose                                                                        |
+| -------------------- | ----------------- | ------------------------------------------------------------------------------ |
+| `SLICE_GATE`         | (on)              | `off` skips the gate entirely (integrates without verification).               |
+| `SLICE_GATE_TARGETS` | `lint test build` | Space/comma-separated Nx targets the gate runs (e.g. `lint` for a fast check). |
+
+#### What the gate verifies, and at what scope
+
+The default targets mirror what CI enforces on the eventual PR, so a gate-green slice is not one
+that fails the moment it is pushed. There is no `typecheck` target in this repo — `build` is what
+typechecks it, and it is the step that catches a slice whose types do not compile against its
+consumers.
+
+The gate runs each target at the scope its blast radius calls for:
+
+| Target(s)       | Scope                                     | Why                                                                                                         |
+| --------------- | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `lint`          | projects whose **own files** changed      | Lint is per-file. An upstream change cannot introduce lint errors in an unchanged downstream file.          |
+| `test`, `build` | **affected** (changed + their dependents) | A lib change routinely breaks an unchanged consumer's compile or suite. Scoping to changed files misses it. |
+
+The affected set is resolved on the **host**, not in the gate container: the gate bind-mounts only
+the worktree directory, and a linked worktree's `.git` is a file pointing at the parent repo's git
+dir, so `--affected` cannot resolve refs inside the container. The resolved list is passed to nx as
+an explicit `--projects=` argument. If the project graph cannot be read, the gate **fails closed**.
+
+Budget accordingly: with `build` in the target list a slice gate runs install + lint + test + a
+Next.js production build, and the container timeout is 60 minutes.
 
 Slices run **serially** (one by one), so there is no concurrency knob — each slice's ~2.6GB
 `node_modules` worktree exists one at a time during its run.

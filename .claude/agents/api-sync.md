@@ -19,7 +19,10 @@ You are the API contract sync specialist for MyOrganizer. Your job is to verify 
 
 1. Determine intent: drift check vs full regenerate.
 2. For check: run `yarn openapi:check` and report drift.
-3. For regenerate: run `yarn api-docs:generate` → `yarn openapi:sync` → `yarn api:generate`.
+3. For regenerate: run `yarn openapi:sync` and nothing else. It already generates the TSOA
+   JSON + YAML specs, copies the YAML into `libs/api-specs`, and regenerates the client, so
+   chaining `yarn api-docs:generate` before it or `yarn api:generate` after it just repeats
+   work the target performed.
 4. Diff `libs/app-api-client/src/**` and `libs/api-specs/**` to identify added / removed / changed endpoints and DTOs.
 5. Identify frontend call sites likely affected (search for changed method names under `libs/web/**` and `apps/myorganizer/**`).
 6. Flag breaking changes (removed fields, renamed paths, narrowed types).

@@ -1,7 +1,7 @@
-/* eslint-disable import/first -- jest.mock must precede application imports */
-import { render, screen, waitFor } from '@testing-library/react';
-
+/* eslint-disable import/first */
 jest.mock('@myorganizer/web-vault');
+
+import { render, screen, waitFor } from '@testing-library/react';
 
 import type { Task } from '@myorganizer/core';
 import { loadDecryptedData, normalizeTasks } from '@myorganizer/web-vault';
@@ -37,7 +37,10 @@ describe('TasksSummaryCard', () => {
     it('should display loading message while data is loading', () => {
       // Mock loadDecryptedData to never resolve
       (loadDecryptedData as jest.Mock).mockImplementation(
-        () => new Promise(() => {}),
+        () =>
+          new Promise(() => {
+            // Intentionally empty - promise that never resolves
+          }),
       );
 
       render(<TasksSummaryCard masterKeyBytes={new Uint8Array(32)} />);
@@ -47,7 +50,10 @@ describe('TasksSummaryCard', () => {
     it('should call loadDecryptedData with correct parameters', () => {
       const mockKeyBytes = new Uint8Array(32);
       (loadDecryptedData as jest.Mock).mockImplementation(
-        () => new Promise(() => {}),
+        () =>
+          new Promise(() => {
+            // Intentionally empty - promise that never resolves
+          }),
       );
 
       render(<TasksSummaryCard masterKeyBytes={mockKeyBytes} />);

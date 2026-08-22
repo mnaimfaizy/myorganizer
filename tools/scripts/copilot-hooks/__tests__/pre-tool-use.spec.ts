@@ -10,6 +10,7 @@ const ENV_FILE = '.env';
 const ENV_EXAMPLE = '.env.example';
 const GENERATED_SPEC = 'libs/api-specs/src/api-specs.openapi.yaml';
 const GENERATED_CLIENT = 'libs/app-api-client/src/index.ts';
+const GENERATED_SWAGGER = 'apps/backend/src/swagger/swagger.json';
 const ORDINARY_SOURCE = 'src/app/page.tsx';
 const API_CLIENT_README = 'libs/app-api-client/README.md';
 const API_SPECS_AGENTS = 'libs/api-specs/AGENTS.md';
@@ -204,6 +205,30 @@ describe('pre-tool-use hook', () => {
         shellPayload('Bash', 'echo hi > src/foo.ts'),
       );
     });
+
+    // Heredoc bodies are skipped by the path guard, so the header line is the
+    // only thing standing between an agent and a hand-edited generated file.
+    it('should deny a heredoc writing into generated Swagger output', () => {
+      expectDenied(
+        PRE_TOOL_USE_HOOK,
+        shellPayload(
+          'Bash',
+          [`cat > ${GENERATED_SWAGGER} <<'EOF'`, '{}', 'EOF'].join('\n'),
+        ),
+        /swagger|generated/i,
+      );
+    });
+
+    it('should deny a heredoc writing into an environment file', () => {
+      expectDenied(
+        PRE_TOOL_USE_HOOK,
+        shellPayload(
+          'Bash',
+          [`cat > ${ENV_FILE} <<'EOF'`, 'TOKEN=x', 'EOF'].join('\n'),
+        ),
+        /environment/i,
+      );
+    });
   });
 
   describe('false-positive regressions', () => {
@@ -253,6 +278,71 @@ describe('pre-tool-use hook', () => {
       expectAllowed(
         PRE_TOOL_USE_HOOK,
         shellPayload('Bash', 'echo "--- section ---"'),
+      );
+    });
+
+    // A heredoc body is content, not a destination. Writing a commit message
+    // that cites a generated path was blocked as if it edited that path.
+    it('should allow a heredoc whose body mentions a generated directory', () => {
+      expectAllowed(
+        PRE_TOOL_USE_HOOK,
+        shellPayload(
+          'Bash',
+          [
+            "cat > /tmp/commit-msg.txt <<'EOF'",
+            'chore(openapi): regenerate specs',
+            '',
+            `- Added ${GENERATED_SWAGGER} to .prettierignore`,
+            'EOF',
+          ].join('\n'),
+        ),
+      );
+    });
+
+    it('should allow a heredoc body that names an environment file', () => {
+      expectAllowed(
+        PRE_TOOL_USE_HOOK,
+        shellPayload(
+          'Bash',
+          [
+            "cat > docs/setup.md <<'EOF'",
+            `Copy ${ENV_EXAMPLE} to ${ENV_FILE} and fill in the values.`,
+            'EOF',
+          ].join('\n'),
+        ),
+      );
+    });
+
+    it('should allow an indented heredoc terminator', () => {
+      expectAllowed(
+        PRE_TOOL_USE_HOOK,
+        shellPayload(
+          'Bash',
+          [
+            'cat > /tmp/notes.txt <<-EOF',
+            `  see ${GENERATED_SPEC}`,
+            '  EOF',
+            'echo done',
+          ].join('\n'),
+        ),
+      );
+    });
+
+    // The body is skipped, but the command continues after the terminator —
+    // a write after the heredoc must still be inspected.
+    it('should deny a protected write that follows a heredoc body', () => {
+      expectDenied(
+        PRE_TOOL_USE_HOOK,
+        shellPayload(
+          'Bash',
+          [
+            "cat > /tmp/notes.txt <<'EOF'",
+            'harmless prose',
+            'EOF',
+            `echo x > ${GENERATED_SWAGGER}`,
+          ].join('\n'),
+        ),
+        /swagger|generated/i,
       );
     });
 
