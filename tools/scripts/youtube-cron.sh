@@ -50,7 +50,12 @@ if ! flock -n 9; then
   exit 0
 fi
 
+# The endpoints take no body. The empty JSON object is for LiteSpeed on the
+# Namecheap host: it answers a POST carrying no Content-Type and no body with
+# its own 403 page, before the request ever reaches Node (#273).
 curl --silent --show-error --fail-with-body \
   --max-time "${YOUTUBE_CRON_TIMEOUT_SECONDS:-600}" \
   -X POST "${YOUTUBE_API_BASE_URL%/}/youtube/cron/${WORKER}" \
-  -H "X-Cron-Secret: ${YOUTUBE_CRON_SECRET}"
+  -H "X-Cron-Secret: ${YOUTUBE_CRON_SECRET}" \
+  -H 'Content-Type: application/json' \
+  --data '{}'
