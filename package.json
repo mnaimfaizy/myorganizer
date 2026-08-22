@@ -63,6 +63,7 @@
     "readme:check": "node tools/scripts/check-readme.mjs",
     "libs:markdown:check": "node tools/scripts/check-libs-markdown.mjs",
     "docs:notes:check": "node tools/scripts/check-docs-notes.mjs",
+    "adr:numbering:check": "node tools/scripts/check-adr-numbering.mjs",
     "lint:coverage:check": "node tools/scripts/check-lint-coverage.mjs",
     "lint:coverage:test": "node --test tools/scripts/check-lint-coverage.test.mjs",
     "typecheck:check": "node tools/scripts/check-typecheck.mjs",

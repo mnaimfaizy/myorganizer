@@ -26,6 +26,8 @@ Only include these when they add genuine value. Most ADRs won't need them.
 
 Scan `docs/adr/` for the highest existing number and increment by one.
 
+That scan can only see your own branch, so two pull requests may legitimately open with the same number. The first to merge keeps it; the second renumbers. A merged ADR is never renumbered — supersede it instead, because its number is cited by filename. Gaps in the sequence are expected and must not be repaired.
+
 ## When to offer an ADR
 
 All three of these must be true:
