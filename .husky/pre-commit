@@ -10,6 +10,7 @@ corepack yarn format:write --uncommitted
 git update-index --again
 corepack yarn libs:markdown:check
 corepack yarn docs:notes:check
+corepack yarn adr:numbering:check
 # The skill atlas asserts counts and verbatim descriptions about the skill system, so it rots
 # the moment a skill is added, renamed, or given a new description. Gated on the sources it
 # reads: an unrelated commit must not fail on drift it did not introduce. That list must include

@@ -563,6 +563,13 @@ jobs:
       - name: Check docs notes routing
         run: corepack yarn docs:notes:check
 
+      # ADR numbers collide across concurrent branches, not within one commit:
+      # git merges two differently-named files cleanly. This runs in Test
+      # because that job checks out refs/pull/N/merge — the merged tree, the
+      # only vantage point where both files exist.
+      - name: Check ADR numbering
+        run: corepack yarn adr:numbering:check
+
       - name: Restore Nx computation cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
