@@ -76,6 +76,18 @@ _Avoid_: Pool item, master item, product, favorite (unless UI label), template
 A Grocery List’s reference to a Catalog Item for a trip, carrying trip-local state such as checked and quantity/amount. The same Catalog Item may appear on multiple Grocery Lists at once.
 _Avoid_: Embedded item, list-owned item, row (as domain name)
 
+**Usage Location**:
+An organisation the User must notify when an Address or Mobile Number changes, together with whether that notification has been made yet. It is not a place — it is one line on a change-of-address checklist, carrying the organisation, how it is reached, how urgent it is, and whether it has been updated.
+_Avoid_: Location, place, address usage, linked organisation, contact
+
+**Address**:
+A postal address the User keeps in their Vault, and the anchor for the Usage Locations that must be notified when it changes.
+_Avoid_: Location, place, residence
+
+**Mobile Number**:
+A phone number the User keeps in their Vault, and the anchor for the Usage Locations that must be notified when it changes.
+_Avoid_: Phone, contact number, mobile
+
 ## Identity & Session
 
 **Session**:
