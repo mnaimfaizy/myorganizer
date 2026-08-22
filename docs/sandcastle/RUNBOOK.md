@@ -501,6 +501,15 @@ To reproduce the sandbox behavior locally: `MYORGANIZER_SANDBOX=1 yarn nx test t
   existing image silently keeps the old contents. Force a rebuild with
   `docker image rm sandcastle:myorganizer` before the next dispatch. See `docs/graphify.md` for
   why this matters for the mounted graphify graph.
+- **The sandbox image's Node is pinned to 22.16 — do not float it to `node:22`.** Node 22.17
+  reimplemented `fs.cpSync` in C++ and the new version returns `EACCES` for a recursive directory
+  copy whose destination is on a Docker Desktop bind mount. `@nx/next:build` copies `public/` into
+  `dist/` with exactly that call, so **every** slice's build gate fails with
+  `NX EACCES, Permission denied 'dist/apps/myorganizer/public'` — always after a clean compile and
+  typecheck, which makes it look like a code failure when it is not. It is not permissions: it
+  fails as root, `access()` reports RWX, and `cp -R` works on the same path. Bisected 22.16.0 OK /
+  22.17.1 EACCES / 22.23.2 EACCES / 24.19.0 EACCES. CI is unaffected (ext4, not VirtioFS). See the
+  comment on `FROM` in `.sandcastle/Dockerfile` before changing it.
 - **Never put the repo on `/mnt/d`** (or any drvfs/9P mount) for dispatch — that's the ~29 min
   trap.
 - **`Could not fetch from origin (reusing worktree at … as-is, …)` is expected — ignore it.** It
