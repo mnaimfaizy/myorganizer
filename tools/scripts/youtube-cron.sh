@@ -50,7 +50,35 @@ if ! flock -n 9; then
   exit 0
 fi
 
-curl --silent --show-error --fail-with-body \
+# The endpoints take no body. The empty JSON object is for LiteSpeed on the
+# Namecheap host: it answers a POST carrying no Content-Type and no body with
+# its own 403 page, before the request ever reaches Node (#273).
+#
+# `--fail-with-body` would be the obvious way to print an error response and
+# still exit non-zero, but it needs curl 7.76 and the shared host ships older.
+# Capture the status and body separately so this works on either.
+RESPONSE_BODY="$(mktemp)"
+trap 'rm -f "$RESPONSE_BODY"' EXIT
+
+STATUS="$(curl --silent --show-error \
   --max-time "${YOUTUBE_CRON_TIMEOUT_SECONDS:-600}" \
+  --output "$RESPONSE_BODY" \
+  --write-out '%{http_code}' \
   -X POST "${YOUTUBE_API_BASE_URL%/}/youtube/cron/${WORKER}" \
-  -H "X-Cron-Secret: ${YOUTUBE_CRON_SECRET}"
+  -H "X-Cron-Secret: ${YOUTUBE_CRON_SECRET}" \
+  -H 'Content-Type: application/json' \
+  --data '{}')" || STATUS='000'
+
+cat "$RESPONSE_BODY"
+
+case "$STATUS" in
+  2*) ;;
+  000)
+    echo "youtube-${WORKER}: request failed before a response arrived" >&2
+    exit 1
+    ;;
+  *)
+    echo "youtube-${WORKER}: HTTP ${STATUS}" >&2
+    exit 1
+    ;;
+esac

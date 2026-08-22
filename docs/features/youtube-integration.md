@@ -249,6 +249,18 @@ a Node/CLI cron. The backend deploy zip does **not** include this script;
 place a copy **outside** the Passenger app root so the next FTP deploy does
 not delete it.
 
+The wrapper sends `Content-Type: application/json` and an empty `{}` body even
+though neither endpoint reads one. LiteSpeed on the production host answers a
+POST carrying no content type and no body with its own 403 page, before the
+request reaches Node. These routes can only return 401 or 200 from the app, so
+an HTML 403 is always the web server, never the cron secret (#273).
+
+The wrapper reads the status from `--write-out` rather than using
+`--fail-with-body`, because that flag needs curl 7.76 and the production host
+ships 7.61. A wrapper that uses it exits with `option --fail-with-body: is
+unknown` before making any request, which looks like a dead cron rather than a
+failed one.
+
 ### Host files (outside the Node app root)
 
 ```text
@@ -297,6 +309,13 @@ lease (`ran: false`) as the overlap guard — do not add a CLI job.
 
 Migrating from the old combined job: delete any
 `/cron/sync-and-notify` entry. Leaving it in place will 404.
+
+Both workers open on `YouTubeWorkerLease`, which arrived with the digest
+migration. A deploy that applied the migrations but reused the Prisma client
+generated before them answers every cron call with a 500 and logs `Cannot read
+properties of undefined (reading 'updateMany')`. Run `npm run prisma:generate`
+in the app root and restart the Node.js app — Passenger holds the old client in
+memory, so regenerating alone changes nothing.
 
 ### Production SMTP
 
