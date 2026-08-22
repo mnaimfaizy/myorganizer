@@ -255,6 +255,12 @@ POST carrying no content type and no body with its own 403 page, before the
 request reaches Node. These routes can only return 401 or 200 from the app, so
 an HTML 403 is always the web server, never the cron secret (#273).
 
+The wrapper reads the status from `--write-out` rather than using
+`--fail-with-body`, because that flag needs curl 7.76 and the production host
+ships 7.61. A wrapper that uses it exits with `option --fail-with-body: is
+unknown` before making any request, which looks like a dead cron rather than a
+failed one.
+
 ### Host files (outside the Node app root)
 
 ```text
