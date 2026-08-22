@@ -42,7 +42,9 @@ class MemoryStorage {
 beforeAll(() => {
   // jsdom is not configured for this lib; provide minimal window/storage.
   if (typeof (globalThis as { window?: unknown }).window === 'undefined') {
-    (globalThis as { window: { localStorage: MemoryStorage } }).window = {
+    (
+      globalThis as unknown as { window: { localStorage: MemoryStorage } }
+    ).window = {
       localStorage: new MemoryStorage(),
     };
   }
@@ -50,7 +52,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   (
-    globalThis as { window: { localStorage: MemoryStorage } }
+    globalThis as unknown as { window: { localStorage: MemoryStorage } }
   ).window.localStorage.clear();
 });
 
@@ -196,7 +198,7 @@ describe('importVault', () => {
     });
 
     const stored = (
-      globalThis as { window: { localStorage: MemoryStorage } }
+      globalThis as unknown as { window: { localStorage: MemoryStorage } }
     ).window.localStorage.getItem('myorganizer_vault_v1');
     expect(stored).toBeNull();
   });
@@ -300,8 +302,9 @@ describe('importVault', () => {
   });
 
   test('atomic rollback: prior local vault state is unchanged when import fails', async () => {
-    const storage = (globalThis as { window: { localStorage: MemoryStorage } })
-      .window.localStorage;
+    const storage = (
+      globalThis as unknown as { window: { localStorage: MemoryStorage } }
+    ).window.localStorage;
     storage.setItem(
       'myorganizer_vault_v1',
       JSON.stringify({ version: 1, sentinel: 'before-import' }),

@@ -28,7 +28,7 @@ function makeMeta(overrides: Partial<VaultMetaV1> = {}): VaultMetaV1 {
 }
 
 function makeBlob(overrides: Partial<EncryptedBlobV1> = {}): EncryptedBlobV1 {
-  return { iv: 'iv', ciphertext: 'ciphertext', ...overrides };
+  return { version: 1, iv: 'iv', ciphertext: 'ciphertext', ...overrides };
 }
 
 function httpError(status: number): Error & { response: { status: number } } {
@@ -95,7 +95,7 @@ describe('serverVaultSync', () => {
       api,
       meta: makeMeta({ kdf_salt: 'local' }),
       ifMatch: 'local-etag',
-      onConflict: async () => 'keep-remote',
+      onConflict: async () => 'keep-remote' as const,
     });
 
     expect(result.kind).toBe('kept-remote');
@@ -133,7 +133,7 @@ describe('serverVaultSync', () => {
       api,
       meta,
       ifMatch: 'local-etag',
-      onConflict: async () => 'keep-local',
+      onConflict: async () => 'keep-local' as const,
     });
 
     expect(api.putVaultMeta).toHaveBeenNthCalledWith(1, {
@@ -198,7 +198,7 @@ describe('serverVaultSync', () => {
       type: VaultBlobType.Addresses,
       blob,
       ifMatch: 'local-etag',
-      onConflict: async () => 'keep-local',
+      onConflict: async () => 'keep-local' as const,
     });
 
     expect(api.putVaultBlob).toHaveBeenNthCalledWith(1, {

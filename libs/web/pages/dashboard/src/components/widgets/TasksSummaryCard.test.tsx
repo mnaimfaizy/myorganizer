@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 
 jest.mock('@myorganizer/web-vault');
 
-import type { Task } from '@myorganizer/web-vault';
+import type { Task } from '@myorganizer/core';
 import { loadDecryptedData, normalizeTasks } from '@myorganizer/web-vault';
 import { TasksSummaryCard } from './TasksSummaryCard';
 

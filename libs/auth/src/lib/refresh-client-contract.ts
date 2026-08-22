@@ -90,6 +90,14 @@ export function shouldIncludeRefreshTokenInLoginBody(
 }
 
 export function extractRefreshTokenFromLoginResponse(
+  clientType: 'mobile',
+  response: LoginRefreshResponse,
+): string;
+export function extractRefreshTokenFromLoginResponse(
+  clientType: AuthClientType,
+  response: LoginRefreshResponse,
+): string | undefined;
+export function extractRefreshTokenFromLoginResponse(
   clientType: AuthClientType,
   response: LoginRefreshResponse,
 ): string | undefined {

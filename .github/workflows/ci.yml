@@ -537,6 +537,17 @@ jobs:
       - name: Check lint gate coverage
         run: corepack yarn lint:coverage:check
 
+      - name: Nx graph loader contracts
+        run: corepack yarn nx-graph:test
+
+      - name: Typecheck checker contracts
+        run: corepack yarn typecheck:check:test
+
+      # Compiles every project tsconfig, lib/app and spec alike. Nothing ran
+      # TypeScript in CI before this, so two type errors had reached main.
+      - name: Typecheck all projects
+        run: corepack yarn typecheck:check
+
       - name: Check libs markdown allowlist
         run: corepack yarn libs:markdown:check
 

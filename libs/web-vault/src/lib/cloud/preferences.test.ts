@@ -33,7 +33,9 @@ class MemoryStorage {
 
 beforeAll(() => {
   if (typeof (globalThis as { window?: unknown }).window === 'undefined') {
-    (globalThis as { window: { localStorage: MemoryStorage } }).window = {
+    (
+      globalThis as unknown as { window: { localStorage: MemoryStorage } }
+    ).window = {
       localStorage: new MemoryStorage(),
     };
   }
@@ -42,7 +44,7 @@ beforeAll(() => {
 describe('cloud backup preferences', () => {
   beforeEach(() => {
     (
-      globalThis as { window: { localStorage: MemoryStorage } }
+      globalThis as unknown as { window: { localStorage: MemoryStorage } }
     ).window.localStorage.clear();
   });
 
@@ -63,7 +65,7 @@ describe('cloud backup preferences', () => {
 
   test('invalid stored autoInterval falls back to off', () => {
     (
-      globalThis as { window: { localStorage: MemoryStorage } }
+      globalThis as unknown as { window: { localStorage: MemoryStorage } }
     ).window.localStorage.setItem(
       __INTERNAL_CLOUD_PREFERENCES_KEY,
       JSON.stringify({

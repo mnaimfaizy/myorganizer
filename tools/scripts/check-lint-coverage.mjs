@@ -41,10 +41,10 @@
 //
 // Exit 0 = every lintable project is in the gate. Exit 1 = drift. Exit 2 = the
 // check could not run.
-import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+
+import { GraphUnavailableError, loadProjectGraph } from './lib/nx-graph.mjs';
 
 const GATE_TARGET = 'lint';
 const CONFIG_NAMES = [
@@ -64,29 +64,6 @@ const fail = (msg) => {
 const GRAPH_ARG = process.argv[2];
 const WORKSPACE_ROOT = resolve(process.argv[3] ?? process.cwd());
 
-// Returns [graphFile, cleanup]. The temp directory is ours to remove on every
-// path, not only the failing one.
-function loadGraph() {
-  if (GRAPH_ARG) {
-    if (!existsSync(GRAPH_ARG)) fail(`${GRAPH_ARG} not found`);
-    // Caller supplied the file; it is not ours to remove.
-    return [GRAPH_ARG, () => undefined];
-  }
-
-  const dir = mkdtempSync(join(tmpdir(), 'lint-coverage-'));
-  const cleanup = () => rmSync(dir, { recursive: true, force: true });
-  const file = join(dir, 'graph.json');
-  const result = spawnSync('npx', ['nx', 'graph', '--file', file], {
-    encoding: 'utf8',
-    shell: process.platform === 'win32',
-  });
-  if (result.status !== 0 || !existsSync(file)) {
-    cleanup();
-    fail(`nx graph failed: ${result.stderr?.trim() || 'no output'}`);
-  }
-  return [file, cleanup];
-}
-
 // Nx renders an explicit executor target and an inferred one differently, so
 // recognise both rather than matching on a single field.
 function isEslintTarget(target) {
@@ -103,20 +80,12 @@ function hasEslintConfig(projectRoot) {
   );
 }
 
-const [graphFile, cleanup] = loadGraph();
-
-let parsed;
+let nodes;
 try {
-  parsed = JSON.parse(readFileSync(graphFile, 'utf8'));
+  ({ nodes } = loadProjectGraph(GRAPH_ARG));
 } catch (error) {
-  cleanup();
-  fail(`${graphFile} is not valid JSON: ${error.message}`);
-}
-cleanup();
-
-const nodes = parsed.graph?.nodes ?? parsed.nodes;
-if (!nodes || Object.keys(nodes).length === 0) {
-  fail(`${graphFile} has no project nodes`);
+  if (error instanceof GraphUnavailableError) fail(error.message);
+  throw error;
 }
 
 const findings = [];
