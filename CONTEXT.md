@@ -272,6 +272,14 @@ _Avoid_: review loop, QA cycle, writer-reviewer loop
 The set of projects a gate actually reaches, which is not the set its command appears to name. A project can sit inside a gate's invocation and outside its reach: `nx affected -t lint` selects only projects declaring a target named `lint`, so a project whose ESLint target carries another name passes by being invisible. Asserted by a check; never inferred from a green run.
 _Avoid_: test coverage, CI coverage, gate scope
 
+**Assertion Gate**:
+A gate that compares two artifacts and fails on a factual mismatch, naming the fact that is wrong. It never fails on the shape of a diff, and editing a file never satisfies it. Every gate in this repo is one (ADR 0043); "surface X changed, therefore doc Y must change" is the shape deliberately not built here.
+_Avoid_: drift gate, doc gate, coupling check
+
+**Wired Gate**:
+A gate some pipeline actually invokes. A checker that exists, passes, and is referenced by neither Husky nor a workflow asserts nothing — a distinct failure from Gate Coverage, which is about a wired gate's reach across projects. Matched by exact script name, including through an aggregate runner that is itself wired.
+_Avoid_: enabled gate, active check, gate coverage (for this sense)
+
 **One-shot Specialist**:
 A sub-agent that performs one assigned job, returns a report of what it did, and stops. The orchestrator does not send the work back for another round.
 _Avoid_: writer-reviewer loop, retry cycle, gated hop (when you mean this shape)
