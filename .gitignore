@@ -2,8 +2,10 @@
 
 # compiled output
 dist
-tmp
 /out-tsc
+
+# agent and developer scratch (never committed)
+tmp
 
 # dependencies
 node_modules
