@@ -757,8 +757,13 @@ Good issues help maintainers understand and address problems quickly. Here's how
    - Agent sessions draft first with the `PrAuthor` sub-agent, then pass that draft into the shared runner:
 
      ```bash
-     corepack yarn ai:create-pr --title "feat(scope): short summary" --body-file /tmp/pr-body.md
+     corepack yarn ai:create-pr --title "feat(scope): short summary" --body-file /tmp/pr-body.md --merge-base <sha>
      ```
+
+   - `--merge-base` is the `MERGE-BASE:` SHA from the `PrAuthor` draft. The runner recomputes the
+     merge base and rejects the draft if the SHA is missing or does not match, which is what stops a
+     PR body that was written without ever reading the branch. Pass the agent's SHA; do not compute
+     one to satisfy the check.
 
    - Humans may still run the runner with no title/body; it then builds a thin description from commit subjects:
 
@@ -781,6 +786,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
    - The shared PR workflow:
      - pushes the branch upstream if it is not already tracked
      - uses `--title` / `--body-file` when provided (agent path), otherwise a commit-derived fallback
+     - requires a matching `--merge-base` on the agent path; the bare human/CI path needs none
      - applies `--label` Surface Labels when provided (ADR 0025); default is none
      - assigns the authenticated GitHub user to the PR
      - leaves reviewers empty unless you explicitly pass one
