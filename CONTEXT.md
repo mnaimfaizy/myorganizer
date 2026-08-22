@@ -273,7 +273,7 @@ The set of projects a gate actually reaches, which is not the set its command ap
 _Avoid_: test coverage, CI coverage, gate scope
 
 **Assertion Gate**:
-A gate that compares two artifacts and fails on a factual mismatch, naming the fact that is wrong. It never fails on the shape of a diff, and editing a file never satisfies it. Every gate in this repo is one (ADR 0042); "surface X changed, therefore doc Y must change" is the shape deliberately not built here.
+A gate that compares two artifacts and fails on a factual mismatch, naming the fact that is wrong. It never fails on the shape of a diff, and editing a file never satisfies it. Every gate in this repo is one (ADR 0043); "surface X changed, therefore doc Y must change" is the shape deliberately not built here.
 _Avoid_: drift gate, doc gate, coupling check
 
 **Wired Gate**:
