@@ -3,6 +3,33 @@
 
 jest.mock('@myorganizer/web-ui', () => ({
   useToast: jest.fn(),
+  Dialog: ({
+    children,
+    open,
+  }: {
+    children: React.ReactNode;
+    open?: boolean;
+  }) =>
+    open ? (
+      <div data-testid="radix-dialog-root" role="dialog">
+        {children}
+      </div>
+    ) : null,
+  DialogContent: ({
+    children,
+  }: {
+    children: React.ReactNode;
+    showCloseButton?: boolean;
+  }) => <div data-testid="radix-dialog-content">{children}</div>,
+  DialogHeader: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  DialogTitle: ({ children }: { children: React.ReactNode }) => (
+    <h2>{children}</h2>
+  ),
+  DialogDescription: ({ children }: { children: React.ReactNode }) => (
+    <p>{children}</p>
+  ),
 }));
 
 jest.mock('@myorganizer/web-vault-ui', () => ({
@@ -18,6 +45,7 @@ jest.mock('../workflow');
 jest.mock('./task-form', () => ({
   TaskForm: ({
     onSubmit,
+    submitLabel = 'Submit',
   }: {
     onSubmit: (v: {
       title: string;
@@ -26,7 +54,8 @@ jest.mock('./task-form', () => ({
       description?: string;
       context?: 'personal' | 'work';
       dueDate?: string;
-    }) => void;
+    }) => Promise<void> | void;
+    submitLabel?: string;
   }) => (
     <button
       data-testid="add-task-btn"
@@ -39,9 +68,61 @@ jest.mock('./task-form', () => ({
         })
       }
     >
-      Add Task
+      {submitLabel}
     </button>
   ),
+}));
+
+jest.mock('./task-add-dialog', () => ({
+  TaskAddDialog: ({
+    isOpen,
+    onClose,
+    onSubmit,
+  }: {
+    isOpen: boolean;
+    onClose: () => void;
+    onSubmit: (values: {
+      title: string;
+      description?: string;
+      priority: string;
+      status: string;
+      context?: string;
+      dueDate?: string;
+    }) => Promise<void>;
+  }) => {
+    if (!isOpen) return null;
+    return (
+      <div data-testid="add-dialog">
+        <button data-testid="add-dialog-close" onClick={onClose}>
+          Close
+        </button>
+        {/* Render the mocked TaskForm which will submit */}
+        {/* eslint-disable-next-line */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onSubmit({
+              title: 'New Task',
+              priority: 'high',
+              status: 'pending',
+            })
+              .then(() => {
+                // Form submission succeeded, close dialog
+                onClose();
+              })
+              .catch(() => {
+                // Form submission failed, dialog should stay open
+              });
+          }}
+        >
+          <input type="text" placeholder="Task title" />
+          <button type="submit" data-testid="add-task-btn">
+            Add Task
+          </button>
+        </form>
+      </div>
+    );
+  },
 }));
 
 jest.mock('./task-item', () => ({
@@ -179,10 +260,27 @@ describe('TasksPageClient', () => {
     mockUseTasksWorkflow.mockReturnValue(makeWorkflowState());
   });
 
-  it('renders page with task list section', () => {
+  it('does not render create form on first load', () => {
     render(<TasksPageClient />);
-    expect(screen.getByText('Create task')).toBeInTheDocument();
+    expect(screen.queryByTestId('add-dialog')).not.toBeInTheDocument();
     expect(screen.getByText('Task List')).toBeInTheDocument();
+  });
+
+  it('renders Add Task button in header', () => {
+    render(<TasksPageClient />);
+    const addButton = screen.getByRole('button', { name: 'Add Task' });
+    expect(addButton).toBeInTheDocument();
+  });
+
+  it('opening Add Task button shows dialog with form', async () => {
+    render(<TasksPageClient />);
+    const addButton = screen.getByRole('button', { name: 'Add Task' });
+
+    fireEvent.click(addButton);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('add-dialog')).toBeInTheDocument();
+    });
   });
 
   it('renders tasks from workflow', () => {
@@ -239,7 +337,7 @@ describe('TasksPageClient', () => {
     });
   });
 
-  it('calls addTask on form submit and shows success toast', async () => {
+  it('submitting form in dialog creates task and closes dialog', async () => {
     const mockAddTask = jest.fn().mockResolvedValue({
       ok: true,
       kind: 'created',
@@ -250,6 +348,14 @@ describe('TasksPageClient', () => {
 
     render(<TasksPageClient />);
 
+    // Open the dialog
+    fireEvent.click(screen.getByRole('button', { name: 'Add Task' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('add-dialog')).toBeInTheDocument();
+    });
+
+    // Submit the form in the dialog
     fireEvent.click(screen.getByTestId('add-task-btn'));
 
     await waitFor(() => {
@@ -264,9 +370,14 @@ describe('TasksPageClient', () => {
         }),
       );
     });
+
+    // Dialog should close after successful submission
+    await waitFor(() => {
+      expect(screen.queryByTestId('add-dialog')).not.toBeInTheDocument();
+    });
   });
 
-  it('shows save_failed toast when addTask mutation fails', async () => {
+  it('failed form submission keeps dialog open with values', async () => {
     const mockAddTask = jest.fn().mockResolvedValue({
       ok: false,
       error: { code: 'save_failed' as const, message: 'Save error' },
@@ -277,6 +388,14 @@ describe('TasksPageClient', () => {
 
     render(<TasksPageClient />);
 
+    // Open the dialog
+    fireEvent.click(screen.getByRole('button', { name: 'Add Task' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('add-dialog')).toBeInTheDocument();
+    });
+
+    // Submit the form
     fireEvent.click(screen.getByTestId('add-task-btn'));
 
     await waitFor(() => {
@@ -288,6 +407,36 @@ describe('TasksPageClient', () => {
         }),
       );
     });
+
+    // Dialog should remain open after failed submission
+    expect(screen.getByTestId('add-dialog')).toBeInTheDocument();
+  });
+
+  it('closing dialog via close button dismisses without saving', async () => {
+    const mockAddTask = jest.fn();
+    mockUseTasksWorkflow.mockReturnValue(
+      makeWorkflowState({ addTask: mockAddTask }),
+    );
+
+    render(<TasksPageClient />);
+
+    // Open the dialog
+    fireEvent.click(screen.getByRole('button', { name: 'Add Task' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('add-dialog')).toBeInTheDocument();
+    });
+
+    // Click the close button
+    fireEvent.click(screen.getByTestId('add-dialog-close'));
+
+    // Dialog should close
+    await waitFor(() => {
+      expect(screen.queryByTestId('add-dialog')).not.toBeInTheDocument();
+    });
+
+    // No task should have been added
+    expect(mockAddTask).not.toHaveBeenCalled();
   });
 
   it('opens delete dialog when delete button clicked', async () => {
