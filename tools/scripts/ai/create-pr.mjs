@@ -12,6 +12,10 @@ import {
   surfaceLabelNames,
   syncSurfaceLabelChanges,
 } from '../lib/github-labels.mjs';
+import {
+  checkMergeBaseProof,
+  isAgentDraftInvocation,
+} from '../lib/pr-merge-base.mjs';
 
 const usage = `Usage:
   corepack yarn ai:create-pr [options]
@@ -19,8 +23,9 @@ const usage = `Usage:
 Options:
   --base <branch>         Base branch for the pull request. Defaults to origin/HEAD or main.
   --title <text>          Pull request title. Agent sessions pass the PrAuthor draft; falls back to commit-derived text when omitted.
-  --body <text>           Pull request body text.
+  --body <text>           Pull request body text. Counts as an agent draft, so --merge-base is required with it.
   --body-file <path>      Read the pull request body from a file. Agent sessions pass the PrAuthor draft here.
+  --merge-base <sha>      Merge-base SHA the draft was written from. Required whenever --title or --body-file is passed; it is the PrAuthor draft's MERGE-BASE line and must match this branch.
   --reviewer <login>      Reviewer to request. Repeat the flag or pass a comma-separated list.
   --label <name>          Surface Label to apply (ADR 0025). Repeat the flag or pass a comma-separated list. Default: none.
   --draft                 Create the pull request as a draft.
@@ -40,6 +45,7 @@ function parseArgs(argv) {
     draft: false,
     help: false,
     labels: [],
+    mergeBase: null,
     reviewers: [],
     title: null,
   };
@@ -72,6 +78,12 @@ function parseArgs(argv) {
 
     if (arg === '--body-file') {
       options.bodyFile = argv[index + 1] ?? null;
+      index += 1;
+      continue;
+    }
+
+    if (arg === '--merge-base') {
+      options.mergeBase = argv[index + 1] ?? null;
       index += 1;
       continue;
     }
@@ -170,6 +182,18 @@ function validateLabels(labels, catalog) {
   );
 }
 
+function ensureMergeBaseProof(options, mergeBase) {
+  const result = checkMergeBaseProof({
+    computedMergeBase: mergeBase,
+    isAgentDraft: isAgentDraftInvocation(options),
+    suppliedMergeBase: options.mergeBase,
+  });
+
+  if (!result.ok) {
+    fail(result.message);
+  }
+}
+
 function ensureGhAvailable() {
   run('gh', ['--version']);
 }
@@ -252,9 +276,16 @@ function resolveBaseRef(baseBranch) {
   return baseBranch;
 }
 
-function getBranchCommits(baseBranch) {
-  const baseRef = resolveBaseRef(baseBranch);
-  const mergeBase = trimStdout('git', ['merge-base', baseRef, 'HEAD']);
+function getMergeBase(baseBranch) {
+  // Soft-failed on purpose: a missing merge base is a case the proof gate has a
+  // useful message for, and letting `run` exit here would replace it with raw git
+  // stderr.
+  return trimStdout('git', ['merge-base', resolveBaseRef(baseBranch), 'HEAD'], {
+    allowFailure: true,
+  });
+}
+
+function getBranchCommits(mergeBase) {
   const logOutput = trimStdout('git', [
     'log',
     '--format=%s%x1f%b%x1e',
@@ -526,9 +557,19 @@ const reviewers = normalizeReviewers(options.reviewers);
 const catalog = loadGithubLabelCatalog();
 const labels = normalizeLabelArgs(options.labels);
 const surfaceNames = surfaceLabelNames(catalog);
-const commits = getBranchCommits(baseBranch);
+const mergeBase = getMergeBase(baseBranch);
 
 ensureNotBaseBranch(branch, baseBranch);
+ensureMergeBaseProof(options, mergeBase);
+
+if (!mergeBase) {
+  fail(
+    `Unable to resolve a merge base between '${baseBranch}' and '${branch}'. Fetch the base branch and retry.`,
+  );
+}
+
+const commits = getBranchCommits(mergeBase);
+
 validateReviewers(reviewers);
 validateLabels(labels, catalog);
 ensureUpstreamBranch();

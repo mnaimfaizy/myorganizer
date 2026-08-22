@@ -520,6 +520,9 @@ jobs:
       - name: Check Jest test hygiene
         run: corepack yarn test:hygiene --all
 
+      - name: PR runner label and merge-base gate contracts
+        run: corepack yarn ai:create-pr:test
+
       - name: Sandcastle resume decision contracts
         run: corepack yarn sandcastle:resume:test
 
