@@ -1,3 +1,5 @@
+import type { RefreshToken200Response } from '@myorganizer/app-api-client';
+
 import {
   buildLoginUserBody,
   buildRefreshTokenRequest,
@@ -207,6 +209,31 @@ describe('refresh-client-contract', () => {
       expect(
         resolveRefreshTokenAfterRefresh('mobile', response, 'old-token'),
       ).toBe('new-token');
+    });
+
+    it('accepts the generated refresh response and keeps the stored token', () => {
+      // The exact shape `/auth/refresh` returns — no `refresh_token`, because
+      // the endpoint does not rotate. Both mobile callers pass this type, and
+      // it failed to typecheck (TS2559) while the parameter was a lone
+      // optional field. The value assertion is secondary; the point is that
+      // this file no longer compiles if that regresses.
+      const response: RefreshToken200Response = {
+        token: 'new-access-token',
+        expires_in: 900000,
+        user: {
+          id: 'user-1',
+          name: 'Ada Lovelace',
+          email: 'ada@example.com',
+          firstName: 'Ada',
+          lastName: 'Lovelace',
+          role: 'user',
+          disabled: false,
+        },
+      };
+
+      expect(
+        resolveRefreshTokenAfterRefresh('mobile', response, 'stored-token'),
+      ).toBe('stored-token');
     });
   });
 });

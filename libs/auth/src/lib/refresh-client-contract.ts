@@ -1,4 +1,5 @@
 import type {
+  RefreshToken200Response,
   RefreshTokenRequest,
   UserLoginBody,
 } from '@myorganizer/app-api-client';
@@ -17,6 +18,27 @@ export type LoginCredentials = {
 export type LoginRefreshResponse = {
   refresh_token?: string;
 };
+
+/**
+ * A `/auth/refresh` response as this contract reads it.
+ *
+ * The endpoint returns `{ token, expires_in, user }` and does not rotate the
+ * refresh token today, so `refresh_token` is absent in practice. The field
+ * stays optional rather than being dropped because ADR 0006 keeps two delivery
+ * channels for that token and requires them to stay in sync: a server that
+ * began rotating would send the new token here, and
+ * `resolveRefreshTokenAfterRefresh` already prefers it over the stored one.
+ *
+ * Spelling this as a union of the two real shapes is deliberate. Written as a
+ * lone optional field it is a weak type, and TypeScript rejects the generated
+ * `RefreshToken200Response` for sharing no properties with it — which is
+ * precisely what both mobile callers pass. An index signature does not help
+ * either: `RefreshToken200Response` is an interface, and interfaces carry no
+ * implicit index signature.
+ */
+export type RefreshTokenResponse =
+  | RefreshToken200Response
+  | LoginRefreshResponse;
 
 export function resolveAuthClientType(
   clientType?: string | null,
@@ -68,6 +90,14 @@ export function shouldIncludeRefreshTokenInLoginBody(
 }
 
 export function extractRefreshTokenFromLoginResponse(
+  clientType: 'mobile',
+  response: LoginRefreshResponse,
+): string;
+export function extractRefreshTokenFromLoginResponse(
+  clientType: AuthClientType,
+  response: LoginRefreshResponse,
+): string | undefined;
+export function extractRefreshTokenFromLoginResponse(
   clientType: AuthClientType,
   response: LoginRefreshResponse,
 ): string | undefined {
@@ -85,12 +115,15 @@ export function extractRefreshTokenFromLoginResponse(
 
 export function resolveRefreshTokenAfterRefresh(
   clientType: AuthClientType,
-  response: LoginRefreshResponse,
+  response: RefreshTokenResponse,
   storedRefreshToken?: string | null,
 ): string | null {
   if (clientType !== 'mobile') {
     return null;
   }
 
-  return response.refresh_token ?? storedRefreshToken ?? null;
+  const rotated =
+    'refresh_token' in response ? response.refresh_token : undefined;
+
+  return rotated ?? storedRefreshToken ?? null;
 }

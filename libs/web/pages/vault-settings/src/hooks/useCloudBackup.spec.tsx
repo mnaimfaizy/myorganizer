@@ -35,9 +35,13 @@ class MemoryStorage {
 }
 
 function installWindowShim() {
-  const w = (globalThis as { window?: { localStorage: MemoryStorage } }).window;
+  const w = (
+    globalThis as unknown as { window?: { localStorage: MemoryStorage } }
+  ).window;
   if (!w) {
-    (globalThis as { window: { localStorage: MemoryStorage } }).window = {
+    (
+      globalThis as unknown as { window: { localStorage: MemoryStorage } }
+    ).window = {
       localStorage: new MemoryStorage(),
     };
   } else {
@@ -134,7 +138,7 @@ describe('useCloudBackup', () => {
       render(<HookProbe provider={provider} onState={(s) => (last = s)} />);
     });
     expect(screen.getByTestId('conn').textContent).toBe('connected');
-    expect(last?.autoInterval).toBe('off');
+    expect(last!.autoInterval).toBe('off');
   });
 
   test('connect updates connection and clears errors on success', async () => {

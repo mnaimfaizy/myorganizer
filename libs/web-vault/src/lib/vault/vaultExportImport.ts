@@ -132,12 +132,12 @@ function requireMeta(value: unknown): VaultMetaV1 {
   }
 
   const iterations = rawKdfParams.iterations;
-  if (iterations !== undefined && typeof iterations !== 'number') {
-    throw new Error(
-      'meta.kdf_params.iterations must be a number when provided',
-    );
-  }
   if (iterations !== undefined) {
+    if (typeof iterations !== 'number') {
+      throw new Error(
+        'meta.kdf_params.iterations must be a number when provided',
+      );
+    }
     kdfParams.iterations = iterations;
   }
 

@@ -41,7 +41,9 @@ class MemoryStorage {
 
 beforeAll(() => {
   if (typeof (globalThis as { window?: unknown }).window === 'undefined') {
-    (globalThis as { window: { localStorage: MemoryStorage } }).window = {
+    (
+      globalThis as unknown as { window: { localStorage: MemoryStorage } }
+    ).window = {
       localStorage: new MemoryStorage(),
     };
   }
@@ -49,7 +51,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   (
-    globalThis as { window: { localStorage: MemoryStorage } }
+    globalThis as unknown as { window: { localStorage: MemoryStorage } }
   ).window.localStorage.clear();
 });
 

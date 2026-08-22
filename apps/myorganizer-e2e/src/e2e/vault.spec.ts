@@ -195,7 +195,7 @@ test.describe('Vault (E2E)', () => {
 
           serverMeta = nextMeta;
           serverMetaUpdatedAt = new Date().toISOString();
-          serverMetaEtag = `W/\"${Date.now()}\"`;
+          serverMetaEtag = `W/"${Date.now()}"`;
 
           await route.fulfill({
             status: created ? 201 : 200,
@@ -281,7 +281,7 @@ test.describe('Vault (E2E)', () => {
           const created = !serverBlobs[type];
           serverBlobs[type] = nextBlob;
           serverBlobUpdatedAt[type] = new Date().toISOString();
-          serverBlobEtags[type] = `W/\"${Date.now()}\"`;
+          serverBlobEtags[type] = `W/"${Date.now()}"`;
 
           await route.fulfill({
             status: created ? 201 : 200,

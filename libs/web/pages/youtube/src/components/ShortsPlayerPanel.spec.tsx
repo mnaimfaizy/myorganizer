@@ -23,7 +23,7 @@ jest.mock('./YouTubeVideoPlayer', () => ({
   YouTubeVideoPlayer: ({
     video,
     watched,
-    _onNearEnd,
+    onNearEnd: _onNearEnd,
     onPlay,
     onPlayingChange,
     onPlaybackUnavailable,

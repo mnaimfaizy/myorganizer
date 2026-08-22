@@ -40,7 +40,7 @@ if (!readdirSync(srcDir).includes(dcFile)) {
 }
 
 const repoRoot = process.cwd();
-let html = readFileSync(join(srcDir, dcFile), 'utf8');
+const html = readFileSync(join(srcDir, dcFile), 'utf8');
 
 // Exports have moved the design-system stylesheet around between revisions: older ones use
 // `ds/styles.css`, newer ones nest it under `_ds/<theme-id>/styles.css`.

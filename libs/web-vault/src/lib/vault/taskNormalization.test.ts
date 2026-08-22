@@ -735,7 +735,6 @@ describe('taskNormalization', () => {
           status: 'invalid',
           priority: 'urgent',
           archived: 'yes',
-          priority: 'urgent',
           createdAt: '2024-01-01T00:00:00.000Z',
         },
       ];

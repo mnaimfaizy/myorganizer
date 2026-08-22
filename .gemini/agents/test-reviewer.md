@@ -82,9 +82,14 @@ npx tsc -p <projectRoot>/<chosen>.json --noEmit
 npx nx show project <name> --json
 ```
 
-Read the `targets` keys and use the first of `lint`, then `eslint:lint`. They are not
-interchangeable: `backend` defines both, while `email-shell` declares no `lint` at all and
-only gains `eslint:lint` from the Nx eslint plugin.
+Read the `targets` keys and use `lint`. Every project that ESLint covers exposes it under
+that one name — some declare it in `project.json`, others get it inferred by the Nx eslint
+plugin, and the two look different in the graph but run the same linter.
+
+Do not reach for `eslint:lint`. That name existed until issue #426, when `nx.json` was
+renaming the inferred target and five projects — `email-shell` among them — fell outside
+`nx affected -t lint` entirely. `yarn lint:coverage:check` now fails CI if any ESLint target
+is named anything but `lint`, so a project either has `lint` or is genuinely not linted.
 
 ```
 npx nx run <name>:<target>

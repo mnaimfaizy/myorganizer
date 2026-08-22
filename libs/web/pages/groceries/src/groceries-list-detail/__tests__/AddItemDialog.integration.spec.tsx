@@ -1,6 +1,6 @@
 /** Mocking rule: place jest.mock calls before any imports */
 jest.mock('@myorganizer/web-ui', () => {
-  const React = require('react');
+  const React = require('react') as typeof import('react');
   const {
     Controller,
     FormProvider,

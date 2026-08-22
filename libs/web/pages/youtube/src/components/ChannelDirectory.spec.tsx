@@ -12,7 +12,7 @@ jest.mock('@myorganizer/web-ui', () => ({
     size?: string;
     variant?: string;
   }) => <button {...props}>{children}</button>,
-  Skeleton: ({ className }: unknown) => (
+  Skeleton: ({ className }: { className?: string }) => (
     <div className={className} data-testid="skeleton" />
   ),
 }));
@@ -276,7 +276,7 @@ describe('ChannelDirectory', () => {
       // Find the desktop aside channel buttons
       const aside = container.querySelector('aside');
       expect(aside).toBeInTheDocument();
-      const desktopNav = aside?.querySelector('[role="tablist"]');
+      const desktopNav = aside?.querySelector<HTMLElement>('[role="tablist"]');
       const desktopButtons = desktopNav
         ? within(desktopNav).getAllByRole('tab')
         : [];
@@ -306,7 +306,7 @@ describe('ChannelDirectory', () => {
       );
 
       const aside = container.querySelector('aside');
-      const desktopNav = aside?.querySelector('[role="tablist"]');
+      const desktopNav = aside?.querySelector<HTMLElement>('[role="tablist"]');
       const desktopButtons = desktopNav
         ? within(desktopNav).getAllByRole('tab')
         : [];
@@ -333,7 +333,7 @@ describe('ChannelDirectory', () => {
       );
 
       const aside = container.querySelector('aside');
-      const desktopNav = aside?.querySelector('[role="tablist"]');
+      const desktopNav = aside?.querySelector<HTMLElement>('[role="tablist"]');
       const desktopButtons = desktopNav
         ? within(desktopNav).getAllByRole('tab')
         : [];
@@ -365,7 +365,7 @@ describe('ChannelDirectory', () => {
 
       const desktopNav = container
         .querySelector('aside')
-        ?.querySelector('[role="tablist"]');
+        ?.querySelector<HTMLElement>('[role="tablist"]');
       const desktopButtons = desktopNav
         ? within(desktopNav).getAllByRole('tab')
         : [];
@@ -394,7 +394,7 @@ describe('ChannelDirectory', () => {
 
       const desktopNav = container
         .querySelector('aside')
-        ?.querySelector('[role="tablist"]');
+        ?.querySelector<HTMLElement>('[role="tablist"]');
       const desktopButtons = desktopNav
         ? within(desktopNav).getAllByRole('tab')
         : [];
@@ -430,7 +430,8 @@ describe('ChannelDirectory', () => {
       );
 
       expect(mobileDiv).toBeInTheDocument();
-      const mobileNav = mobileDiv?.querySelector('[role="tablist"]');
+      const mobileNav =
+        mobileDiv?.querySelector<HTMLElement>('[role="tablist"]');
       const mobileButtons = mobileNav
         ? within(mobileNav).getAllByRole('tab')
         : [];
@@ -462,7 +463,8 @@ describe('ChannelDirectory', () => {
           div.classList.contains('lg:hidden') &&
           div.querySelector('[role="tablist"][aria-label="Enabled channels"]'),
       );
-      const mobileNav = mobileDiv?.querySelector('[role="tablist"]');
+      const mobileNav =
+        mobileDiv?.querySelector<HTMLElement>('[role="tablist"]');
       const mobileButtons = mobileNav
         ? within(mobileNav).getAllByRole('tab')
         : [];
@@ -928,7 +930,7 @@ describe('ChannelDirectory', () => {
 
       // Switch to second channel via desktop buttons
       const aside = container.querySelector('aside');
-      const desktopNav = aside?.querySelector('[role="tablist"]');
+      const desktopNav = aside?.querySelector<HTMLElement>('[role="tablist"]');
       const desktopButtons = desktopNav
         ? within(desktopNav).getAllByRole('tab')
         : [];
@@ -1068,7 +1070,7 @@ describe('ChannelDirectory', () => {
 
       const desktopNav = container
         .querySelector('aside')
-        ?.querySelector('[role="tablist"]');
+        ?.querySelector<HTMLElement>('[role="tablist"]');
       const desktopButtons = desktopNav
         ? within(desktopNav).getAllByRole('tab')
         : [];
