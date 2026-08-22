@@ -8,12 +8,11 @@ import express, {
   Response as ExResponse,
   NextFunction,
 } from 'express';
-import session from 'express-session';
 import helmet from 'helmet';
 import * as path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { ValidateError } from 'tsoa';
-import { createCorsOptions, getSessionSecret } from './config/http';
+import { createCorsOptions } from './config/http';
 import { maybeCreateGlobalApiRateLimiterFromEnv } from './middleware/globalRateLimit';
 import { vaultRateLimiter } from './middleware/vaultRateLimit';
 import { bootstrapPlatformAdminFromEnv } from './bootstrap/platformAdminBootstrap';
@@ -144,21 +143,6 @@ for (const mountPath of swaggerMounts) {
 
 // Enable CORS
 app.use(cors(createCorsOptions()));
-
-// Enable session
-app.use(
-  session({
-    secret: getSessionSecret(),
-    resave: false,
-    saveUninitialized: false,
-    proxy: isProd,
-    cookie: {
-      secure: isProd,
-      httpOnly: true,
-      sameSite: 'lax',
-    },
-  }),
-);
 
 // Enable cookie parser
 app.use(cookieParser());
