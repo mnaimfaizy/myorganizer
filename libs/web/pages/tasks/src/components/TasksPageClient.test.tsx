@@ -97,7 +97,6 @@ jest.mock('./task-add-dialog', () => ({
           Close
         </button>
         {/* Render the mocked TaskForm which will submit */}
-        {/* eslint-disable-next-line */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
