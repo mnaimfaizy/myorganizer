@@ -78,6 +78,7 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Use the generated API client when it covers the endpoint.
 - Add or update focused tests for changed behavior.
 - Keep docs concise and link to existing docs when possible.
+- Notes have homes, and there is no catch-all directory ([ADR 0041](docs/adr/0041-internal-notes-have-homes.md)). Planning and history belong in GitHub issues. Durable decisions belong in `docs/adr/`. User- and dev-facing feature behaviour belongs in `docs/features/`. Cited investigation belongs in `docs/research/`, date-prefixed (`YYYY-MM-DD-slug.md`) and frozen at that date — if it must stay current it is not research. Short-lived working files belong in `tmp/` (gitignored) and are never committed. `yarn docs:notes:check` enforces the directory names and the date prefix; Husky and CI run it.
 - Standards live in the documents indexed by [`CODING_STANDARDS.md`](CODING_STANDARDS.md). Add a rule to its source document and link, rather than restating it in the index.
 - `CONTEXT.md` is the domain glossary — read it before changing domain language, and do not redefine a term it already carries; sharpen or extend instead. A new term touching encrypted data must say whether it means plaintext (client-only) or ciphertext (server-storable).
 - ADRs in `docs/adr/` are numbered sequentially from `0001`. Scan for the highest existing number before adding one.

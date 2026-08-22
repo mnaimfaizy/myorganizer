@@ -5,7 +5,7 @@ over MCP. We adopted it for **one narrow, proven win**: fast, free, in-package a
 _"what directly calls / imports / consumes this symbol?"_ plus a god-node orientation map.
 It is a **supplement to `CodeExplorer`/grep and `nx affected`, not a replacement.**
 
-See issue #158 and `graphify-eval-notes.md` for the full evaluation. Scope was deliberately
+See issue #158 for the full evaluation. Scope was deliberately
 limited because of measured blind spots (below).
 
 ## What it's good for
@@ -86,7 +86,7 @@ NOT be used for" above is a standing ban, not a caution.
 
 Two things settled it.
 
-**The cost side collapsed.** The kill argument in `graphify-eval-notes.md` rested as much on
+**The cost side collapsed.** The original kill argument rested as much on
 maintenance — manual rebuilds, staleness — as on capability. #293 made the graph refresh on commit
 and #292 confirmed extraction is complete for authored `.ts`/`.tsx`. What is left costs close to
 nothing.

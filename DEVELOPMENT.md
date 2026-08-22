@@ -303,7 +303,7 @@ myorganizer/
 │   ├── authentication/     # Auth strategy docs
 │   ├── backend/            # Backend docs
 │   ├── deployment/         # Deployment guides
-│   ├── internal/           # Internal planning docs
+│   ├── research/           # Dated, frozen investigation briefs
 │   └── storybook/          # Storybook setup docs
 ├── tools/                   # Build and deployment scripts
 ├── .github/                 # GitHub workflows and templates
@@ -423,7 +423,7 @@ Examples of existing page libraries:
 - `docs/backend/` - Backend-specific documentation
 - `docs/storybook/` - Storybook and Chromatic setup
 - `docs/deployment/` - Deployment guides for different platforms
-- `docs/internal/` - Internal planning and architecture documents
+- `docs/research/` - Dated, cited investigation briefs, frozen at the date in the filename
 
 ### Tools & Configuration
 

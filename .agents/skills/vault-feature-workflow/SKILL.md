@@ -54,6 +54,6 @@ description: 'Use when working on vault-backed features, encrypted blob types, v
 - `.github/copilot-instructions.md`
 - `libs/web-vault/AGENTS.md`
 - `libs/web/pages/AGENTS.md`
-- `docs/internal/e2ee-vault-plan.md`
-- `docs/internal/vault-export-import-ui.md`
-- `docs/internal/address-mobile-usage-plan.md`
+- `docs/vault/README.md`
+- `docs/adr/0039-web-and-mobile-vaults-share-one-crypto-suite.md`
+- `docs/adr/0033-local-vaults-are-user-owned-and-never-silently-destroyed.md`
