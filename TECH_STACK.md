@@ -151,7 +151,6 @@
 | `cookie-parser`      | 1.4.7   | Cookie parsing middleware             |
 | `cors`               | 2.8.5   | Cross-origin resource sharing headers |
 | `express-rate-limit` | 8.3.2   | Request rate limiting                 |
-| `express-session`    | 1.18.2  | Session management                    |
 | `helmet`             | 8.1.0   | HTTP security headers                 |
 
 ### Authentication
