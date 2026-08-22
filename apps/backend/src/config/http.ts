@@ -46,15 +46,3 @@ export function createCorsOptions(): CorsOptions {
     exposedHeaders: ['ETag'],
   };
 }
-
-export function getSessionSecret(): string {
-  const secret = (process.env.SESSION_SECRET || '').trim();
-  if (secret) return secret;
-
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('SESSION_SECRET is required in production');
-  }
-
-  // Dev/test fallback.
-  return 'secret';
-}

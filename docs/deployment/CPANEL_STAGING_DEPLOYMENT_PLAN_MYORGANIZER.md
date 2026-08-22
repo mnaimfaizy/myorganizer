@@ -192,9 +192,6 @@ ROUTER_PREFIX=/api/v1
 # CORS
 CORS_ORIGINS=https://myorganiser.app,https://www.myorganiser.app
 
-# Required in production
-SESSION_SECRET=<strong-random-secret>
-
 # Used in email link generation
 APP_FRONTEND_URL=https://myorganiser.app
 
@@ -363,7 +360,6 @@ See the repository example at `.env.example` for the full list.
 
 Key deployment differences:
 
-- `SESSION_SECRET` must be set in production.
 - `CORS_ORIGINS` must include `https://myorganiser.app`.
 - `APP_FRONTEND_URL` must be your real frontend URL for correct email links.
 - Mail must be configured before any feature that sends: email verification,
@@ -447,7 +443,7 @@ npm run prisma:migrate:deploy
 Check:
 
 - `stderr.log` / `stdout.log` in app folder
-- Missing env vars (especially `SESSION_SECRET`)
+- Missing env vars (especially `DATABASE_URL` and the JWT secrets)
 - Run `npm ci --omit=dev` again if dependencies are missing
 
 ---

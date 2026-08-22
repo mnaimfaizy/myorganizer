@@ -101,7 +101,6 @@ Before you begin, ensure you have the following installed on your system:
    ROUTER_PREFIX=/api/v1
 
    # Security - Generate secure random strings for production
-   SESSION_SECRET=your-session-secret
    ACCESS_JWT_SECRET=your-access-secret
    REFRESH_JWT_SECRET=your-refresh-secret
    VERIFY_JWT_SECRET=your-verify-secret

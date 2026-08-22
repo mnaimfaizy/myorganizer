@@ -54,7 +54,6 @@ This backend application is built with the following technologies:
 - **passport-jwt** - JWT authentication strategy
 - **passport-local** - Local authentication strategy
 - **bcrypt** - Password hashing
-- **express-session** - Session management
 
 ### Utilities
 
@@ -138,9 +137,6 @@ Note: The repo sets `package.json.engines.node` to `>=22.0.0`.
    # - true trust all proxies
    TRUST_PROXY=1
 
-   # Security (required in production)
-   SESSION_SECRET=your-session-secret-here
-
    # Optional: global API rate limiting (recommended in production)
    # Uses in-memory counters by default; for multi-instance deployments you should use a shared store (e.g. Redis).
    # See express-rate-limit store docs: https://express-rate-limit.mintlify.app/reference/stores
@@ -182,7 +178,6 @@ Note: The repo sets `package.json.engines.node` to `>=22.0.0`.
 
    **Important Notes:**
    - `yarn start:backend:prod` runs with `NODE_ENV=production` (and will fail fast if required env vars are missing)
-   - `SESSION_SECRET` is required when `NODE_ENV=production`
    - If you are behind a reverse proxy (common in production), set `TRUST_PROXY` so secure cookies and request IP/proto are detected correctly
    - If you enable `ENABLE_GLOBAL_RATE_LIMIT=true`, the backend will apply a global rate limiter to API routes
    - Generate strong, random secrets for JWT tokens in production
@@ -194,7 +189,6 @@ Note: The repo sets `package.json.engines.node` to `>=22.0.0`.
 
 Minimum env vars to start the backend in production mode:
 
-- `SESSION_SECRET`
 - `ACCESS_JWT_SECRET`, `REFRESH_JWT_SECRET`, `VERIFY_JWT_SECRET`, `RESET_JWT_SECRET`
 - `DATABASE_URL`
 
