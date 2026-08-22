@@ -1,6 +1,3 @@
-/** Mocking rule: place jest.mock calls before any imports */
-/* eslint-disable import/first -- jest.mock must precede application imports */
-
 jest.mock('@myorganizer/web-ui', () => ({
   useToast: jest.fn(),
   Dialog: ({
@@ -41,37 +38,6 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
 }));
 
 jest.mock('../workflow');
-
-jest.mock('./task-form', () => ({
-  TaskForm: ({
-    onSubmit,
-    submitLabel = 'Submit',
-  }: {
-    onSubmit: (v: {
-      title: string;
-      priority: 'high' | 'medium' | 'low';
-      status: 'pending' | 'in_progress' | 'done' | 'cancelled' | 'blocked';
-      description?: string;
-      context?: 'personal' | 'work';
-      dueDate?: string;
-    }) => Promise<void> | void;
-    submitLabel?: string;
-  }) => (
-    <button
-      data-testid="add-task-btn"
-      onClick={() =>
-        onSubmit({
-          title: 'New Task',
-          priority: 'high',
-          status: 'pending',
-          dueDate: undefined,
-        })
-      }
-    >
-      {submitLabel}
-    </button>
-  ),
-}));
 
 jest.mock('./task-add-dialog', () => ({
   TaskAddDialog: ({
@@ -131,13 +97,13 @@ jest.mock('./task-item', () => ({
     onDeleteTask,
     onEditTask,
     onArchiveTask,
-    _onUnarchiveTask,
+    onUnarchiveTask,
   }: {
-    task: { id: string; title: string; priority: string };
+    task: { id: string; title: string; priority: string; archived?: boolean };
     onDeleteTask: (id: string) => void;
     onEditTask: (id: string) => void;
     onArchiveTask: (id: string) => void;
-    _onUnarchiveTask: (id: string) => void;
+    onUnarchiveTask: (id: string) => void;
   }) => (
     <div data-testid={`task-${task.id}`}>
       <h3>{task.title}</h3>
@@ -154,12 +120,21 @@ jest.mock('./task-item', () => ({
       >
         Edit
       </button>
-      <button
-        data-testid={`archive-${task.id}`}
-        onClick={() => onArchiveTask(task.id)}
-      >
-        Archive
-      </button>
+      {!task.archived ? (
+        <button
+          data-testid={`archive-${task.id}`}
+          onClick={() => onArchiveTask(task.id)}
+        >
+          Archive
+        </button>
+      ) : (
+        <button
+          data-testid={`unarchive-${task.id}`}
+          onClick={() => onUnarchiveTask(task.id)}
+        >
+          Unarchive
+        </button>
+      )}
     </div>
   ),
 }));
@@ -223,6 +198,7 @@ jest.mock('./task-delete-dialog', () => ({
     ) : null,
 }));
 
+/* eslint-disable import/first -- jest.mock() calls must precede module imports per Jest requirement */
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
@@ -230,6 +206,7 @@ import type { Task } from '@myorganizer/core';
 import { useToast } from '@myorganizer/web-ui';
 import { TasksPageClient } from './TasksPageClient';
 import { useTasksWorkflow } from '../workflow';
+/* eslint-enable import/first */
 
 const mockUseToast = useToast as jest.Mock;
 const mockUseTasksWorkflow = useTasksWorkflow as jest.Mock;
@@ -657,6 +634,47 @@ describe('TasksPageClient', () => {
     });
   });
 
+  it('calls unarchiveTask and shows success toast', async () => {
+    const task: Task = {
+      id: 't1',
+      title: 'Task to unarchive',
+      priority: 'medium',
+      status: 'done',
+      archived: true,
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    const mockUnarchiveTask = jest.fn().mockResolvedValue({
+      ok: true,
+      kind: 'unarchived',
+    });
+    mockUseTasksWorkflow.mockReturnValue(
+      makeWorkflowState({ tasks: [task], unarchiveTask: mockUnarchiveTask }),
+    );
+
+    // Show archived tasks to make the unarchive button visible
+    render(<TasksPageClient />);
+    fireEvent.click(screen.getByRole('button', { name: 'Show Archived' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('unarchive-t1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('unarchive-t1'));
+
+    await waitFor(() => {
+      expect(mockUnarchiveTask).toHaveBeenCalledWith('t1');
+    });
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Task restored',
+          description: 'Task moved back to active.',
+        }),
+      );
+    });
+  });
+
   it('hides archived tasks by default', () => {
     const tasks: Task[] = [
       {
@@ -883,6 +901,43 @@ describe('TasksPageClient', () => {
         expect.objectContaining({
           title: 'Failed to save',
           description: 'Save failed',
+          variant: 'destructive',
+        }),
+      );
+    });
+  });
+
+  it('shows save_failed toast when unarchiveTask mutation fails', async () => {
+    const task: Task = {
+      id: 't1',
+      title: 'Task to unarchive',
+      priority: 'medium',
+      status: 'done',
+      archived: true,
+      createdAt: '2024-01-01T00:00:00.000Z',
+    };
+    const mockUnarchiveTask = jest.fn().mockResolvedValue({
+      ok: false,
+      error: { code: 'save_failed' as const, message: 'Unarchive failed' },
+    });
+    mockUseTasksWorkflow.mockReturnValue(
+      makeWorkflowState({ tasks: [task], unarchiveTask: mockUnarchiveTask }),
+    );
+
+    render(<TasksPageClient />);
+    fireEvent.click(screen.getByRole('button', { name: 'Show Archived' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('unarchive-t1')).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId('unarchive-t1'));
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Failed to save',
+          description: 'Unarchive failed',
           variant: 'destructive',
         }),
       );

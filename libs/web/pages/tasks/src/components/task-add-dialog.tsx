@@ -44,6 +44,8 @@ export function TaskAddDialog({
       try {
         await onSubmit(values);
         onClose();
+      } catch {
+        // onSubmit rejection means save failed; dialog stays open for retry
       } finally {
         setIsSaving(false);
       }
