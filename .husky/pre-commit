@@ -65,15 +65,22 @@ then
 corepack yarn sandcastle:resume:test
 corepack yarn sandcastle:subagent-trace:test
 fi
-# The dispatch map states constants that live as module-local literals in the two
-# orchestrator files, as exports in sandcastle-resume.mjs, and as JSON in the model policy
-# and package.json. It rots the moment any of those move. Gated on every input it reads,
-# plus the page and the check script themselves, so an unrelated commit is not failed by
-# drift it did not introduce.
+# The five sandcastle atlas pages state constants that live as module-local literals in the
+# two orchestrator files, as exports in sandcastle-resume.mjs and sandcastle-subagent-trace.mjs,
+# and as JSON in the model policy and package.json. They rot the moment any of those move, and
+# the checker passed green through the whole of #467 precisely because it asserted constants
+# while the prose went false around them — so the guard must list every input it reads, plus
+# the pages and the check script themselves, or an unrelated commit is failed by drift it did
+# not introduce and a related one slips through untested.
 if ! git diff --cached --quiet --diff-filter=ACMRTD -- \
  docs/sandcastle/dispatch-map.html \
+ docs/sandcastle/waves.html \
+ docs/sandcastle/gates.html \
+ docs/sandcastle/logs.html \
+ docs/sandcastle/resume.html \
  tools/scripts/check-sandcastle-map.mjs \
  tools/scripts/lib/sandcastle-resume.mjs \
+ tools/scripts/lib/sandcastle-subagent-trace.mjs \
  tools/config/agent-model-policy.json \
  package.json \
  .sandcastle/main.mts \

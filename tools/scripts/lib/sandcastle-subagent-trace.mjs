@@ -5,7 +5,12 @@
  * host automatically, unconditionally, as part of ordinary session capture — see
  * `captureToHost` in `@ai-hero/sandcastle`, which enumerates
  * `<sessionId>/subagents/agent-*.jsonl` inside the sandbox and copies each file to
- * `<hostProjectsDir>/<encodedCwd>/<sessionId>/subagents/` on the host, verbatim.
+ * `<hostProjectsDir>/<encodedCwd>/<sessionId>/subagents/` on the host. The copy is not
+ * byte-for-byte: it goes through `copyClaudeSessionFile` → `transferClaudeSession` →
+ * `rewriteSessionCwd`, which rewrites `cwd` (and `session_meta.payload.cwd`) from the
+ * sandbox path to the host path on every record. Nothing else in the record changes, and
+ * a failed copy is logged to stderr and skipped rather than failing the run — so a missing
+ * transcript is possible and is not an error anyone is shown twice.
  * Nothing here reads a stream or infers a boundary the way ADR 0036 rejected: each
  * captured file already IS one sub-agent's isolated transcript, and every assistant
  * turn in it carries `attributionAgent` / `attributionSkill`, set by the harness
