@@ -5,12 +5,13 @@
 //   node tools/scripts/run-assertion-gates.mjs
 //
 // Six checkers — readme, OpenAPI artifacts, agent map, vault pages, auth
-// pages, and sub-agent sync — plus ADR numbering ran nowhere or ran as their
-// own `corepack yarn` line. Each `corepack yarn` invocation costs roughly
-// 1.3s of process overhead against roughly 350ms of actual checker work, so
-// wiring all seven as separate hook lines would add about ten seconds to
-// every commit to do about two seconds of checking. This is the one line
-// `.husky/pre-commit` calls instead.
+// pages, and sub-agent sync — ran nowhere, and ADR numbering ran as its own
+// `corepack yarn` line; the gate-coverage meta-gate joined them here rather
+// than adding a tenth. Each `corepack yarn` invocation costs roughly 1.3s of
+// process overhead against roughly 350ms of actual checker work, so wiring
+// each as its own hook line would add about ten seconds to every commit to do
+// about two seconds of checking. This is the one line `.husky/pre-commit`
+// calls instead.
 //
 // Each checker still runs as its own `node` subprocess rather than an
 // in-process import: several call `process.exit` directly on failure, which

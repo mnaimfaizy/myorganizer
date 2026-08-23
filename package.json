@@ -66,6 +66,8 @@
     "adr:numbering:check": "node tools/scripts/check-adr-numbering.mjs",
     "gates:run": "node tools/scripts/run-assertion-gates.mjs",
     "gates:run:test": "node --test tools/scripts/lib/gate-manifest.test.mjs tools/scripts/run-assertion-gates.test.mjs",
+    "gates:coverage:check": "node tools/scripts/check-gate-coverage.mjs",
+    "gates:coverage:test": "node --test tools/scripts/lib/gate-coverage.test.mjs tools/scripts/check-gate-coverage.test.mjs",
     "lint:coverage:check": "node tools/scripts/check-lint-coverage.mjs",
     "lint:coverage:test": "node --test tools/scripts/check-lint-coverage.test.mjs",
     "typecheck:check": "node tools/scripts/check-typecheck.mjs",

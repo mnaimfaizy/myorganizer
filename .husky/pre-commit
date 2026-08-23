@@ -12,7 +12,9 @@ corepack yarn libs:markdown:check
 corepack yarn docs:notes:check
 # One aggregate runner for every cheap, file-reading Assertion Gate checker
 # (readme, OpenAPI artifacts, agent map, vault pages, auth pages, sub-agent
-# sync, and ADR numbering) in a single Node process. Each `corepack yarn`
+# sync, ADR numbering, and gate coverage) in a single Node process. The
+# meta-gate rides here too, and resolves this indirection so the checkers
+# reached only through the aggregate still count as wired. Each `corepack yarn`
 # invocation costs roughly 1.3s of overhead against roughly 350ms of actual
 # checker work, so wiring these as separate hook lines would add about ten
 # seconds to every commit to do about two seconds of checking (ADR 0043).

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "comment": "Checks `gates:coverage:check` may find unwired without failing (ADR 0043). Every entry names a checker — by `check-*.mjs` filename or by the package.json script that runs it — and carries a written reason. An entry without a reason is rejected, and so is one naming something that no longer exists: an exemption is a decision somebody made, not a gap nobody saw.",
+  "optOut": [
+    {
+      "check": "format:check",
+      "reason": "Superseded by the pre-commit hook's `format:write --uncommitted`, which rewrites formatting and restages it instead of failing on it. Wiring the read-only twin would fail commits the hook has already fixed."
+    },
+    {
+      "check": "agents:models:audit",
+      "reason": "Not a gate. It reports sub-agent model assignments against the published model catalogs and opens a drift issue on a monthly schedule; it asserts nothing about the commit in front of it, and a catalog moving under us is not a reason to fail somebody's unrelated change."
+    },
+    {
+      "check": "graphify:project-edges",
+      "reason": "Not a gate. It benchmarks graphify project-edge extraction and reports timings, so it has no fact to fail on and no threshold a commit could cross. Run it by hand when tuning extraction."
+    }
+  ]
+}
