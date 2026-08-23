@@ -120,16 +120,6 @@ describe('getBreadcrumbItems (pure resolver)', () => {
   });
 
   describe('deep nesting with mixed known and dynamic segments', () => {
-    it('resolves /dashboard/addresses/42/add-location with cumulative hrefs', () => {
-      const result = getBreadcrumbItems('/dashboard/addresses/42/add-location');
-      expect(result).toEqual([
-        { label: 'Dashboard', href: '/dashboard' },
-        { label: 'Addresses', href: '/dashboard/addresses' },
-        { label: 'Details', href: '/dashboard/addresses/42' },
-        { label: 'Add Location', href: '/dashboard/addresses/42/add-location' },
-      ]);
-    });
-
     it('resolves /dashboard/mobile-numbers/9/add-location with cumulative hrefs', () => {
       const result = getBreadcrumbItems(
         '/dashboard/mobile-numbers/9/add-location',
@@ -360,28 +350,6 @@ describe('DynamicBreadcrumb (component)', () => {
         expect(detailsPage).toBeInTheDocument();
       },
     );
-
-    it('renders deep nesting: /dashboard/addresses/42/add-location', () => {
-      (usePathname as jest.Mock).mockReturnValue(
-        '/dashboard/addresses/42/add-location',
-      );
-      render(<DynamicBreadcrumb />);
-
-      const navElement = screen.getByRole('navigation', { name: 'breadcrumb' });
-      const links = navElement.querySelectorAll('a[href]');
-
-      expect(links).toHaveLength(3);
-      expect(links[0]).toHaveAttribute('href', '/dashboard');
-      expect(links[1]).toHaveAttribute('href', '/dashboard/addresses');
-      expect(links[2]).toHaveAttribute('href', '/dashboard/addresses/42');
-
-      const addLocationPage = screen.getByRole('link', {
-        name: 'Add Location',
-        current: 'page',
-      });
-      expect(addLocationPage).toBeInTheDocument();
-      expect(addLocationPage).not.toHaveAttribute('href');
-    });
 
     it('renders deep nesting: /dashboard/mobile-numbers/9/add-location', () => {
       (usePathname as jest.Mock).mockReturnValue(

@@ -14,7 +14,8 @@ import { AlertTriangle } from 'lucide-react';
 import { ChangeEvent, useCallback } from 'react';
 
 import { enumOptions, titleCase } from '../utils/enumUtils';
-import type { SelectOption } from './AddUsageLocationCard';
+
+export type SelectOption = { value: string; label: string };
 
 export interface UsageLocationFormFieldsProps {
   orgName: string;
@@ -138,10 +139,7 @@ export function UsageLocationFormFields(props: UsageLocationFormFieldsProps) {
         </div>
 
         <div className="space-y-2">
-          <Label
-            htmlFor="usage-update-method"
-            className="text-sm font-medium"
-          >
+          <Label htmlFor="usage-update-method" className="text-sm font-medium">
             Update method
           </Label>
           <Combobox

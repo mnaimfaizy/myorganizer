@@ -1,24 +1,38 @@
 'use client';
 
-import { AddressRecord, UsageLocationRecord } from '@myorganizer/core';
-import { Button, useToast } from '@myorganizer/web-ui';
+import {
+  AddressRecord,
+  OrganisationTypeEnum,
+  PriorityEnum,
+  UpdateMethodEnum,
+  UsageLocationRecord,
+} from '@myorganizer/core';
+import { Button, ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
   loadDecryptedData,
   normalizeAddresses,
   saveEncryptedData,
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
-import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useState } from 'react';
-
 import { Plus } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { type AddAddressFormValues } from '../schemas/address';
+import { addressFormValuesToRecordFields } from '../utils/addressForm';
+import {
+  type UsageLocationFormValues,
+  usageLocationFormValuesToRecordFields,
+} from '../schemas/usageLocation';
+import { parseEnumValue } from '../utils/enumUtils';
+import { randomId } from '../utils/randomId';
 import {
   AddressDetailLoading,
   AddressDetailNotFound,
   BackToAddressesLink,
 } from './AddressDetailScaffold';
 import { AddressDetailsCard } from './AddressDetailsCard';
+import { AddressEditDialog } from './AddressEditDialog';
+import { UsageLocationDialog } from './UsageLocationDialog';
 import { UsageLocationsTable } from './UsageLocationsTable';
 
 interface AddressDetailsInnerProps {
@@ -28,16 +42,54 @@ interface AddressDetailsInnerProps {
 
 function AddressDetailsInner(props: AddressDetailsInnerProps) {
   const { toast } = useToast();
-  const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [addresses, setAddresses] = useState<AddressRecord[]>([]);
+  const [editingAddress, setEditingAddress] = useState(false);
+  const [usageLocationDialog, setUsageLocationDialog] = useState<{
+    open: boolean;
+    location: UsageLocationRecord | null;
+  }>({ open: false, location: null });
+  const [deletingLocation, setDeletingLocation] =
+    useState<UsageLocationRecord | null>(null);
 
-  const [addressRecord, setAddressRecord] = useState<AddressRecord | null>(
-    null,
+  const addressRecord = addresses.find((x) => x.id === props.addressId) ?? null;
+  const usageLocations = useMemo(
+    () => addressRecord?.usageLocations ?? [],
+    [addressRecord],
   );
-  const [usageLocations, setUsageLocations] = useState<UsageLocationRecord[]>(
-    [],
+
+  const persist = useCallback(
+    async (next: AddressRecord[]) => {
+      try {
+        await saveEncryptedData({
+          masterKeyBytes: props.masterKeyBytes,
+          type: 'addresses',
+          value: next,
+        });
+        setAddresses(next);
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        toast({
+          title: 'Failed to save',
+          description: message,
+          variant: 'destructive',
+        });
+        throw e;
+      }
+    },
+    [props.masterKeyBytes, toast],
+  );
+
+  const persistUsageLocations = useCallback(
+    async (next: UsageLocationRecord[]) => {
+      const nextAddresses = addresses.map((x) =>
+        x.id === props.addressId ? { ...x, usageLocations: next } : x,
+      );
+      return persist(nextAddresses);
+    },
+    [addresses, props.addressId, persist],
   );
 
   useEffect(() => {
@@ -64,8 +116,7 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
         }
 
         if (isActive) {
-          setAddressRecord(found);
-          setUsageLocations(found.usageLocations);
+          setAddresses(normalized.value);
         }
 
         if (normalized.changed) {
@@ -93,57 +144,142 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
     };
   }, [props.addressId, props.masterKeyBytes, toast]);
 
-  const handleDeleteLocation = useCallback(
-    async (locationId: string) => {
-      try {
-        const updatedLocations = usageLocations.filter(
-          (l) => l.id !== locationId,
-        );
+  const handleEditAddress = useCallback(() => {
+    setEditingAddress(true);
+  }, []);
 
-        const raw = await loadDecryptedData<unknown>({
-          masterKeyBytes: props.masterKeyBytes,
-          type: 'addresses',
-          defaultValue: [],
-        });
-
-        const normalized = normalizeAddresses(raw);
-        const nextAddresses = normalized.value.map((x) =>
-          x.id === props.addressId
-            ? { ...x, usageLocations: updatedLocations }
-            : x,
-        );
-
-        await saveEncryptedData({
-          masterKeyBytes: props.masterKeyBytes,
-          type: 'addresses',
-          value: nextAddresses,
-        });
-
-        setUsageLocations(updatedLocations);
-        toast({
-          title: 'Deleted',
-          description: 'Usage location deleted successfully.',
-        });
-      } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : String(e);
-        toast({
-          title: 'Failed to delete',
-          description: message,
-          variant: 'destructive',
-        });
-      }
-    },
-    [props.addressId, props.masterKeyBytes, toast, usageLocations],
-  );
-
-  const handleEditLocation = useCallback(
-    (location: UsageLocationRecord) => {
-      router.push(
-        `/dashboard/addresses/${props.addressId}/add-location?edit=${location.id}`,
+  const handleSaveEditAddress = useCallback(
+    async (id: string, values: AddAddressFormValues) => {
+      const next = addresses.map((x) =>
+        x.id === id
+          ? {
+              ...x,
+              ...addressFormValuesToRecordFields(values),
+            }
+          : x,
       );
+
+      await persist(next);
+      toast({
+        title: 'Saved',
+        description: 'Address updated (encrypted).',
+      });
     },
-    [props.addressId, router],
+    [addresses, persist, toast],
   );
+
+  const handleAddLocation = useCallback(() => {
+    setUsageLocationDialog({ open: true, location: null });
+  }, []);
+
+  const handleEditLocation = useCallback((location: UsageLocationRecord) => {
+    setUsageLocationDialog({ open: true, location });
+  }, []);
+
+  const handleSubmitUsageLocation = useCallback(
+    async (values: UsageLocationFormValues, editingId: string | null) => {
+      const now = new Date().toISOString();
+      const baseFields = usageLocationFormValuesToRecordFields(values);
+
+      let updatedLocations: UsageLocationRecord[];
+
+      if (editingId) {
+        // Edit existing location
+        updatedLocations = usageLocations.map((loc) =>
+          loc.id === editingId
+            ? {
+                ...loc,
+                ...baseFields,
+                organisationType: parseEnumValue(
+                  OrganisationTypeEnum,
+                  baseFields.orgType,
+                  OrganisationTypeEnum.Other,
+                ),
+                updateMethod: parseEnumValue(
+                  UpdateMethodEnum,
+                  baseFields.updateMethod,
+                  UpdateMethodEnum.Online,
+                ),
+                priority: parseEnumValue(
+                  PriorityEnum,
+                  baseFields.priority,
+                  PriorityEnum.Normal,
+                ),
+                changedAt: values.changed && !loc.changed ? now : loc.changedAt,
+              }
+            : loc,
+        );
+      } else {
+        // Add new location
+        const next: UsageLocationRecord = {
+          id: randomId(),
+          ...baseFields,
+          organisationType: parseEnumValue(
+            OrganisationTypeEnum,
+            baseFields.orgType,
+            OrganisationTypeEnum.Other,
+          ),
+          updateMethod: parseEnumValue(
+            UpdateMethodEnum,
+            baseFields.updateMethod,
+            UpdateMethodEnum.Online,
+          ),
+          priority: parseEnumValue(
+            PriorityEnum,
+            baseFields.priority,
+            PriorityEnum.Normal,
+          ),
+          createdAt: now,
+          changedAt: values.changed ? now : undefined,
+        };
+        updatedLocations = [next, ...usageLocations];
+      }
+
+      await persistUsageLocations(updatedLocations);
+      toast({
+        title: editingId ? 'Updated' : 'Saved',
+        description: editingId
+          ? 'Usage location updated successfully (encrypted).'
+          : 'Usage location saved (encrypted).',
+      });
+    },
+    [usageLocations, persistUsageLocations, toast],
+  );
+
+  const handleRequestDeleteLocation = useCallback(
+    (location: UsageLocationRecord) => {
+      setDeletingLocation(location);
+    },
+    [],
+  );
+
+  const handleConfirmDeleteLocation = useCallback(async () => {
+    if (!deletingLocation) return;
+    try {
+      const updatedLocations = usageLocations.filter(
+        (l) => l.id !== deletingLocation.id,
+      );
+      await persistUsageLocations(updatedLocations);
+      toast({
+        title: 'Deleted',
+        description: 'Usage location deleted successfully.',
+      });
+      setDeletingLocation(null);
+    } catch {
+      // persist already toasted; leave dialog open for retry
+    }
+  }, [deletingLocation, usageLocations, persistUsageLocations, toast]);
+
+  const handleDeleteLocationDialogOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      setDeletingLocation(null);
+    }
+  }, []);
+
+  const handleUsageLocationDialogOpenChange = useCallback((_open: boolean) => {
+    // Always close when called (Radix Dialog calls this with false on dismiss)
+    setUsageLocationDialog({ open: false, location: null });
+  }, []);
 
   if (loading) {
     return <AddressDetailLoading />;
@@ -157,16 +293,14 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <BackToAddressesLink />
 
-      <AddressDetailsCard addressRecord={addressRecord} />
+      <AddressDetailsCard
+        addressRecord={addressRecord}
+        onEdit={handleEditAddress}
+      />
 
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Usage Locations</h2>
-        <Button
-          onClick={() =>
-            router.push(`/dashboard/addresses/${props.addressId}/add-location`)
-          }
-          className="gap-2"
-        >
+        <Button onClick={handleAddLocation} className="gap-2">
           <Plus className="h-4 w-4" />
           Add Location
         </Button>
@@ -175,7 +309,36 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
       <UsageLocationsTable
         usageLocations={usageLocations}
         onEdit={handleEditLocation}
-        onDelete={handleDeleteLocation}
+        onRequestDelete={handleRequestDeleteLocation}
+        onAddLocation={handleAddLocation}
+      />
+
+      <AddressEditDialog
+        open={editingAddress}
+        address={addressRecord}
+        items={addresses}
+        onOpenChange={setEditingAddress}
+        onSave={handleSaveEditAddress}
+      />
+
+      <UsageLocationDialog
+        open={usageLocationDialog.open}
+        location={usageLocationDialog.location}
+        existingLocations={usageLocations}
+        onOpenChange={handleUsageLocationDialogOpenChange}
+        onSubmit={handleSubmitUsageLocation}
+      />
+
+      <ConfirmDeleteDialog
+        open={deletingLocation !== null}
+        onOpenChange={handleDeleteLocationDialogOpenChange}
+        title={
+          deletingLocation
+            ? `Delete "${deletingLocation.organisationName}"?`
+            : ''
+        }
+        description="This action cannot be undone. This usage location will be permanently removed from this address."
+        onConfirm={handleConfirmDeleteLocation}
       />
     </div>
   );

@@ -11,10 +11,8 @@ import {
 } from '@myorganizer/web-ui';
 import { Control } from 'react-hook-form';
 
-import {
-  ADDRESS_COUNTRY_OPTIONS,
-  AddAddressFormValues,
-} from '../utils/addressForm';
+import { type AddAddressFormValues } from '../schemas/address';
+import { ADDRESS_COUNTRY_OPTIONS } from '../utils/addressForm';
 
 export interface AddAddressFormFieldsProps {
   control: Control<AddAddressFormValues>;
@@ -69,11 +67,7 @@ export function AddAddressFormFields(props: AddAddressFormFieldsProps) {
             <FormItem>
               <FormLabel>Property number</FormLabel>
               <FormControl>
-                <Input
-                  id="addr-property"
-                  placeholder="221B"
-                  {...field}
-                />
+                <Input id="addr-property" placeholder="221B" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -87,11 +81,7 @@ export function AddAddressFormFields(props: AddAddressFormFieldsProps) {
             <FormItem>
               <FormLabel>Street</FormLabel>
               <FormControl>
-                <Input
-                  id="addr-street"
-                  placeholder="Baker Street"
-                  {...field}
-                />
+                <Input id="addr-street" placeholder="Baker Street" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -107,11 +97,7 @@ export function AddAddressFormFields(props: AddAddressFormFieldsProps) {
             <FormItem>
               <FormLabel>Suburb or city</FormLabel>
               <FormControl>
-                <Input
-                  id="addr-suburb"
-                  placeholder="London"
-                  {...field}
-                />
+                <Input id="addr-suburb" placeholder="London" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -144,11 +130,7 @@ export function AddAddressFormFields(props: AddAddressFormFieldsProps) {
           <FormItem>
             <FormLabel>Zip or postal code</FormLabel>
             <FormControl>
-              <Input
-                id="addr-zipcode"
-                placeholder="NW1 6XE"
-                {...field}
-              />
+              <Input id="addr-zipcode" placeholder="NW1 6XE" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>

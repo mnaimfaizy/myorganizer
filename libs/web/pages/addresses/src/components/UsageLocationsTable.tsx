@@ -20,7 +20,7 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { Edit, ExternalLink, Trash2 } from 'lucide-react';
+import { Building2, Edit, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 
 import { titleCase } from '../utils/enumUtils';
@@ -28,10 +28,13 @@ import { titleCase } from '../utils/enumUtils';
 interface UsageLocationsTableProps {
   usageLocations: UsageLocationRecord[];
   onEdit: (location: UsageLocationRecord) => void;
-  onDelete: (locationId: string) => void;
+  onRequestDelete: (location: UsageLocationRecord) => void;
+  onAddLocation: () => void;
 }
 
 export function UsageLocationsTable(props: UsageLocationsTableProps) {
+  const { onEdit, onRequestDelete, onAddLocation } = props;
+
   const columns = useMemo<ColumnDef<UsageLocationRecord>[]>(
     () => [
       {
@@ -117,7 +120,7 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => props.onEdit(row.original)}
+              onClick={() => onEdit(row.original)}
               className="h-8 w-8 p-0"
             >
               <Edit className="h-4 w-4" />
@@ -126,7 +129,7 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => props.onDelete(row.original.id)}
+              onClick={() => onRequestDelete(row.original)}
               className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
             >
               <Trash2 className="h-4 w-4" />
@@ -136,7 +139,7 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
         ),
       },
     ],
-    [props],
+    [onEdit, onRequestDelete],
   );
 
   const table = useReactTable({
@@ -156,9 +159,19 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
       <Card className="p-4">
         <CardTitle className="text-lg">Used at</CardTitle>
         <CardContent className="mt-4">
-          <p className="text-sm text-muted-foreground">
-            No usage locations yet.
-          </p>
+          <div className="rounded-lg border border-dashed p-6 text-center">
+            <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <h3 className="font-semibold">No usage locations yet</h3>
+            <p className="mx-auto mt-1 text-sm text-muted-foreground">
+              Add every organisation that needs to be told about this address.
+            </p>
+            <Button onClick={onAddLocation} className="mt-4 gap-2">
+              <Plus className="h-4 w-4" />
+              Add location
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );

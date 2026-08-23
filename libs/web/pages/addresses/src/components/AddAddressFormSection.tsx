@@ -2,12 +2,14 @@
 
 import { AddressRecord } from '@myorganizer/core';
 import { Badge, Button, Form, SheetFooter } from '@myorganizer/web-ui';
-import { AlertTriangle, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { UseFormReturn } from 'react-hook-form';
 
-import { AddAddressFormValues, createAddressPreview } from '../utils/addressForm';
+import { type AddAddressFormValues } from '../schemas/address';
+import { createAddressPreview } from '../utils/addressForm';
 import { formatAddress } from '../utils/formatAddress';
 import { AddAddressFormFields } from './AddAddressFormFields';
+import { AddressDuplicateWarning } from './AddressDuplicateWarning';
 
 export interface AddAddressFormSectionProps {
   form: UseFormReturn<AddAddressFormValues>;
@@ -54,26 +56,10 @@ export function AddAddressFormSection(props: AddAddressFormSectionProps) {
           </p>
         </div>
 
-        {duplicateAddress && (
-          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-amber-950">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-5 w-5" />
-              <div className="space-y-2">
-                <p className="text-sm font-semibold">
-                  This looks like an existing address.
-                </p>
-                <p className="text-sm">
-                  {duplicateAddress.label}: {formatAddress(duplicateAddress)}
-                </p>
-                {allowDuplicate && (
-                  <p className="text-sm">
-                    Select save again to keep this as a separate address.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        <AddressDuplicateWarning
+          duplicateAddress={duplicateAddress}
+          acknowledged={allowDuplicate}
+        />
 
         <SheetFooter className="sticky bottom-0 mt-auto border-t bg-background pt-4">
           <Button type="button" variant="outline" onClick={onCancel}>
