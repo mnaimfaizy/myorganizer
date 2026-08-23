@@ -10,7 +10,14 @@ corepack yarn format:write --uncommitted
 git update-index --again
 corepack yarn libs:markdown:check
 corepack yarn docs:notes:check
-corepack yarn adr:numbering:check
+# One aggregate runner for every cheap, file-reading Assertion Gate checker
+# (readme, OpenAPI artifacts, agent map, vault pages, auth pages, sub-agent
+# sync, and ADR numbering) in a single Node process. Each `corepack yarn`
+# invocation costs roughly 1.3s of overhead against roughly 350ms of actual
+# checker work, so wiring these as separate hook lines would add about ten
+# seconds to every commit to do about two seconds of checking (ADR 0043).
+# The per-check npm scripts remain for isolated runs and readable CI steps.
+corepack yarn gates:run
 # The skill atlas asserts counts and verbatim descriptions about the skill system, so it rots
 # the moment a skill is added, renamed, or given a new description. Gated on the sources it
 # reads: an unrelated commit must not fail on drift it did not introduce. That list must include
@@ -29,20 +36,6 @@ if ! git diff --cached --quiet --diff-filter=ACMRTD -- \
  tools/scripts/check-skill-map.mjs
 then
 corepack yarn skills:map:check
-fi
-# The orchestration map and the journey rail both state a tier per agent, and the map's
-# manifest stamps the policy revision it was built against. Nothing invoked this check, so
-# the roster drifted and the stamp went stale on main with nobody watching (ADR 0043 names
-# it). Gated on every input it reads: the two pages, the policy, the canonical agent bodies
-# it takes display names from, and the script itself.
-if ! git diff --cached --quiet --diff-filter=ACMRTD -- \
- docs/agents/orchestration-map.html \
- docs/agents/agent-journey.html \
- tools/config/agent-model-policy.json \
- .github/agents \
- tools/scripts/check-agent-map.mjs
-then
-corepack yarn agents:map:check
 fi
 corepack yarn test:hygiene --staged
 if ! git diff --cached --quiet --diff-filter=ACMRT -- \

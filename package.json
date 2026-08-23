@@ -64,6 +64,8 @@
     "libs:markdown:check": "node tools/scripts/check-libs-markdown.mjs",
     "docs:notes:check": "node tools/scripts/check-docs-notes.mjs",
     "adr:numbering:check": "node tools/scripts/check-adr-numbering.mjs",
+    "gates:run": "node tools/scripts/run-assertion-gates.mjs",
+    "gates:run:test": "node --test tools/scripts/lib/gate-manifest.test.mjs tools/scripts/run-assertion-gates.test.mjs",
     "lint:coverage:check": "node tools/scripts/check-lint-coverage.mjs",
     "lint:coverage:test": "node --test tools/scripts/check-lint-coverage.test.mjs",
     "typecheck:check": "node tools/scripts/check-typecheck.mjs",

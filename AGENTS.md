@@ -51,7 +51,11 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Sandcastle loop usage summary: `yarn agents:usage:report`.
 - Root README check: `yarn readme:check`.
 - Skill atlas check: `yarn skills:map:check` (asserts `docs/agents/skill-atlas.html` against `.agents/skills`, `.github/agents`, and `AGENTS.md`).
+- Agent orchestration map check: `yarn agents:map:check` (asserts `docs/agents/orchestration-map.html` and `docs/agents/agent-journey.html` against `tools/config/agent-model-policy.json`).
+- Vault diagram pages check: `yarn vault:pages:check` (asserts `docs/vault/*.html` against the vault source constants).
+- Auth diagram pages check: `yarn auth:pages:check` (asserts `docs/authentication/session-lifecycle.html` against the auth source constants).
 - Libs markdown allowlist: `yarn libs:markdown:check` (Husky + CI; do not skip).
+- Assertion gates aggregate: `yarn gates:run` (runs the file-reading checkers above plus OpenAPI artifacts and ADR numbering in one Node process; Husky calls this single line instead of one `corepack yarn` line per checker — see ADR 0043).
 
 ## Architecture
 
