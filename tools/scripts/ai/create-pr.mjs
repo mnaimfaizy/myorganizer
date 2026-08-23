@@ -16,6 +16,12 @@ import {
   checkMergeBaseProof,
   isAgentDraftInvocation,
 } from '../lib/pr-merge-base.mjs';
+import {
+  FORCE_FLAG,
+  PUSH_ACTIONS,
+  decidePushPlan,
+  parseCherryOutput,
+} from '../lib/pr-push-plan.mjs';
 
 const usage = `Usage:
   corepack yarn ai:create-pr [options]
@@ -28,6 +34,7 @@ Options:
   --merge-base <sha>      Merge-base SHA the draft was written from. Required whenever --title or --body-file is passed; it is the PrAuthor draft's MERGE-BASE line and must match this branch.
   --reviewer <login>      Reviewer to request. Repeat the flag or pass a comma-separated list.
   --label <name>          Surface Label to apply (ADR 0025). Repeat the flag or pass a comma-separated list. Default: none.
+  --force-with-lease      Replace a diverged remote branch after a rebase. The lease is pinned to the upstream commit this run observed, and the push is still refused if the remote carries any commit with no equivalent here.
   --draft                 Create the pull request as a draft.
   --help                  Show this help text.
 `;
@@ -43,6 +50,7 @@ function parseArgs(argv) {
     body: null,
     bodyFile: null,
     draft: false,
+    forceWithLease: false,
     help: false,
     labels: [],
     mergeBase: null,
@@ -97,6 +105,11 @@ function parseArgs(argv) {
     if (arg === '--label') {
       options.labels.push(argv[index + 1] ?? '');
       index += 1;
+      continue;
+    }
+
+    if (arg === FORCE_FLAG) {
+      options.forceWithLease = true;
       continue;
     }
 
@@ -228,14 +241,20 @@ function ensureNotBaseBranch(branch, baseBranch) {
   }
 }
 
-function ensureUpstreamBranch() {
+function ensureUpstreamBranch(options) {
   const upstreamResult = run(
     'git',
     ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'],
     { allowFailure: true },
   );
+  const hasUpstream = upstreamResult.status === 0;
 
-  if (upstreamResult.status === 0) {
+  let ahead = 0;
+  let behind = 0;
+  let remoteSha;
+  let unmatchedRemoteCommits = [];
+
+  if (hasUpstream) {
     const aheadBehind = trimStdout('git', [
       'rev-list',
       '--left-right',
@@ -244,23 +263,50 @@ function ensureUpstreamBranch() {
     ]);
     const [behindCountText = '0', aheadCountText = '0'] =
       aheadBehind.split(/\s+/);
-    const behindCount = Number.parseInt(behindCountText, 10);
-    const aheadCount = Number.parseInt(aheadCountText, 10);
+    behind = Number.parseInt(behindCountText, 10);
+    ahead = Number.parseInt(aheadCountText, 10);
+    remoteSha = trimStdout('git', ['rev-parse', '@{u}'], {
+      allowFailure: true,
+    });
 
-    if (Number.isInteger(aheadCount) && aheadCount > 0) {
-      run('git', ['push', 'origin', 'HEAD']);
+    // Only ask git which upstream commits are orphaned when it can matter. `git cherry`
+    // diffs every commit on both sides, so it is not free on a long-lived branch.
+    if (ahead > 0 && behind > 0) {
+      unmatchedRemoteCommits = parseCherryOutput(
+        trimStdout('git', ['cherry', 'HEAD', '@{u}'], { allowFailure: true }),
+      ).unmatched;
     }
+  }
 
-    if (Number.isInteger(behindCount) && behindCount > 0 && aheadCount === 0) {
-      fail(
-        'The local branch is behind its upstream branch. Pull or rebase before creating the PR.',
-      );
-    }
+  const branch = trimStdout('git', ['rev-parse', '--abbrev-ref', 'HEAD']);
+  const plan = decidePushPlan({
+    hasUpstream,
+    ahead,
+    behind,
+    branch,
+    remoteSha,
+    forceWithLease: options.forceWithLease,
+    unmatchedRemoteCommits,
+  });
 
+  if (plan.error) {
+    fail(plan.error);
+  }
+
+  if (plan.action === PUSH_ACTIONS.upToDate) {
     return;
   }
 
-  run('git', ['push', '-u', 'origin', 'HEAD']);
+  if (plan.action === PUSH_ACTIONS.forceWithLease) {
+    process.stdout.write(
+      `Rewriting origin/${branch}: ${plan.reason}.
+` +
+        `  lease pinned to ${remoteSha}
+`,
+    );
+  }
+
+  run('git', plan.args);
 }
 
 function resolveBaseRef(baseBranch) {
@@ -572,7 +618,7 @@ const commits = getBranchCommits(mergeBase);
 
 validateReviewers(reviewers);
 validateLabels(labels, catalog);
-ensureUpstreamBranch();
+ensureUpstreamBranch(options);
 
 if (commits.length === 0) {
   fail(`No commits found between ${baseBranch} and ${branch}.`);
