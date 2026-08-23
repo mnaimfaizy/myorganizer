@@ -43,7 +43,7 @@ Flags:
   --model <model>        Forwarded to dispatch-agents
   --plan                 Preview wave ordering only
   (the build gate runs ONCE at the end, on the assembled feature branch, and
-   never blocks a wave — see ADR 0044)
+   never blocks a wave — see ADR 0045)
   (--fresh is refused here — discard one slice with dispatch-agents instead)
   --help                 Show this help text
 
@@ -260,7 +260,7 @@ for (let i = 0; i < waves.length; i++) {
       '.sandcastle/main.mts',
       '--prd',
       String(prdNumber),
-      // Gate once, after the LAST wave — not once per wave. See ADR 0044.
+      // Gate once, after the LAST wave — not once per wave. See ADR 0045.
       '--defer-gate',
       ...forwardedArgs,
     ],
@@ -287,7 +287,7 @@ for (let i = 0; i < waves.length; i++) {
     // wasted night: wave 1 stalls, waves 2 and 3 never run, and nothing at all is
     // integrated — twice, on gate faults unrelated to the code. Later waves may
     // depend on this one and may well fail too; a failed wave that reports is still
-    // strictly more useful than a PRD that stopped. See ADR 0044.
+    // strictly more useful than a PRD that stopped. See ADR 0045.
     incompleteByWave.push({ wave: i + 1, slices: failedSlices });
     console.error(
       `\n=== Wave ${i + 1} incomplete: ${failedSlices
@@ -306,7 +306,7 @@ for (let i = 0; i < waves.length; i++) {
 // assembled feature branch once, here — the only scope that can see two slices
 // breaking each other, and the same scope CI will run on the PR. It does not
 // block: the slices are already integrated and the point of this run is to leave
-// a verdict a maintainer can read in the morning. See ADR 0044.
+// a verdict a maintainer can read in the morning. See ADR 0045.
 console.log(`\n${'─'.repeat(55)}`);
 console.log(
   `All ${waves.length} wave(s) attempted for PRD #${prdNumber}. Gating once...\n`,

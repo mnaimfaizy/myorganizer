@@ -104,7 +104,7 @@ A red gate no longer strands the run: every slice stays integrated, every slice 
 intact, nothing is pushed, and the verdict is posted as a comment on the PRD issue so it reaches
 you while you are away from the terminal. `dispatch-waves` no longer aborts on an incomplete wave
 either — it records it and carries on. See
-[ADR 0044](../adr/0044-a-prd-is-gated-once-on-the-assembled-feature-branch.md).
+[ADR 0045](../adr/0045-a-prd-is-gated-once-on-the-assembled-feature-branch.md).
 
 Gating the whole branch is also a _stronger_ check than the old per-slice gate: two slices that
 break each other pass individually and only fail together, which is exactly what CI sees on the PR.
@@ -375,7 +375,7 @@ two are distinguished by the `wip/<n>-checkpoint` tag, which only the crash path
 
 Both briefs carry the previous run's `HANDOFF:` markers — one line per completed hop, printed as
 work lands and read back out of the slice log. Treat them as the previous run's own claim about
-itself, not as proof. See [ADR 0043](../adr/0043-a-resumed-slice-is-told-what-the-previous-run-did.md).
+itself, not as proof. See [ADR 0044](../adr/0044-a-resumed-slice-is-told-what-the-previous-run-did.md).
 
 ### The short version
 
@@ -474,7 +474,7 @@ Consequence: recovering with a plain `dispatch-agents --prd <n>` sees **only the
 rest are invisible. Re-run `dispatch-waves --prd <n>` instead — it recomputes the gating from
 scratch and skips completed waves via `status:done`.
 
-The driver no longer aborts on an incomplete wave ([ADR 0044](../adr/0044-a-prd-is-gated-once-on-the-assembled-feature-branch.md)),
+The driver no longer aborts on an incomplete wave ([ADR 0045](../adr/0045-a-prd-is-gated-once-on-the-assembled-feature-branch.md)),
 so this bites less often than it did — but the labels are still left mid-rewrite, so the rule
 stands: recover with the wave driver, not with a bare dispatch.
 

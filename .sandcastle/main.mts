@@ -932,7 +932,7 @@ const { baseRef, integrationBranch, allIssues } = plan;
 // The ref the PRD's feature branch was cut from, and therefore the ref its PR will
 // target. `baseRef` cannot serve: in PRD mode it is the feature branch itself,
 // which advances with every integrated slice, so diffing against it would show the
-// last slice only. See ADR 0044.
+// last slice only. See ADR 0045.
 const prdGateBase = gitRefExists('origin/main') ? 'origin/main' : 'main';
 
 const slices = plan.issues;
@@ -1458,7 +1458,7 @@ function readSliceLogTail(
  * existence, commits-ahead and merge-base — so #447 was told its cleanly committed,
  * fully reviewed work was an unchecked mid-kill checkpoint, and re-ran six pipelines
  * to find out otherwise. The tag is what separates them: only the crash path tags a
- * Slice Checkpoint. A normal commit carries no tag. See ADR 0043.
+ * Slice Checkpoint. A normal commit carries no tag. See ADR 0044.
  */
 function readPriorRun(
   issueNumber: number,
@@ -1610,7 +1610,7 @@ function preserveInterruptedSlice(
 
 // ─── Build gate ───────────────────────────────────────────────────────────────
 // Before a slice is fast-forwarded into the LOCAL feature branch, verify it in a
-// Docker container. WHERE it runs depends on the mode (ADR 0044):
+// Docker container. WHERE it runs depends on the mode (ADR 0045):
 //
 //   PRD        — once, at the end, on the assembled feature branch against
 //                origin/main. Slices integrate unconditionally; the gate reports
@@ -1782,7 +1782,7 @@ function runGate(
     // Mirror the verdict into the slice log as a handoff marker. A gate failure is
     // the one thing about the previous run that git cannot show the next agent, and
     // without it a resumed agent cannot tell "my code was rejected" from "I was
-    // killed mid-thought" — so it re-runs every pipeline. See ADR 0043.
+    // killed mid-thought" — so it re-runs every pipeline. See ADR 0044.
     if (handoffIssue !== undefined)
       appendHandoffToSliceLog(
         handoffIssue,
@@ -1814,7 +1814,7 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
  * This is the gate that matters. A per-slice gate can only see one slice against
  * the head it was cut from, so two slices that break EACH OTHER pass individually
  * and fail on the PR — while costing one container install per slice. Gating
- * `origin/main...feat/<slug>` runs exactly what CI will run, once. See ADR 0044.
+ * `origin/main...feat/<slug>` runs exactly what CI will run, once. See ADR 0045.
  */
 function runFeatureGate(featureBranch: string): boolean {
   console.log(
@@ -2030,7 +2030,7 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     ``,
     // Written as each hop LANDS, not summarised at the end: a quota kill stops the
     // agent mid-thought, so an end-of-run summary is missing from exactly the run a
-    // resume needs it from. See ADR 0043.
+    // resume needs it from. See ADR 0044.
     `Print ONE line the moment each step completes, starting with \`${HANDOFF_MARKER}\`:`,
     ``,
     `  ${HANDOFF_MARKER} ComponentBuilder -> ComponentReviewer PASS`,
@@ -2655,7 +2655,7 @@ while (pendingSlices.length > 0) {
     // assembled feature branch once at the end, which is also the only scope that
     // can see two slices breaking each other. Standalone keeps its per-slice gate:
     // its branch IS the deliverable, so there is no later gate to defer to.
-    // See ADR 0044.
+    // See ADR 0045.
     const gatePassed =
       integrationBranch !== null
         ? hasWork
@@ -2693,7 +2693,7 @@ while (pendingSlices.length > 0) {
         '--reason',
         'completed',
         '--comment',
-        // Do NOT claim the gate passed: under ADR 0044 a PRD slice is not gated
+        // Do NOT claim the gate passed: under ADR 0045 a PRD slice is not gated
         // individually at all. The PRD is gated once, on the assembled branch,
         // and that verdict is reported on the PRD issue.
         `Agent completed. ${result.commits.length} commit(s) on \`${sliceBranch}\`.\n` +
@@ -2886,7 +2886,7 @@ const merged = results.filter((r) => r.merged);
  * so the verdict also goes on the PRD issue — that is the notification that reaches
  * a phone. Slices stay closed either way: they integrated, and re-running must keep
  * skipping them. A red feature gate is a fact about the ASSEMBLY, not about any one
- * slice. See ADR 0044.
+ * slice. See ADR 0045.
  */
 function reportFeatureGate(featureBranch: string, ok: boolean): void {
   if (prdNumber === undefined) return;
@@ -2948,7 +2948,7 @@ if (blocked.length > 0 || crashed.length > 0) {
 // PRD mode defers every per-slice gate to here. `--defer-gate` suppresses even
 // this one: dispatch-waves invokes this file ONCE PER WAVE, so without the flag a
 // three-wave PRD would gate three times. The driver passes it and runs the gate
-// itself after the last wave. See ADR 0044.
+// itself after the last wave. See ADR 0045.
 let featureGateOk: boolean | undefined;
 if (integrationBranch !== null && merged.length > 0 && !deferGate) {
   featureGateOk = runFeatureGate(integrationBranch);

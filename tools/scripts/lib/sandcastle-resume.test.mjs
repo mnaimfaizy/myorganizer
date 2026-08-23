@@ -751,7 +751,7 @@ test('multiple notes are numbered so a prompt can reference one', () => {
   assert.match(prompt, /following instructions/);
 });
 
-// ─── Handoff carried between runs (ADR 0043) ──────────────────────────────────
+// ─── Handoff carried between runs (ADR 0044) ──────────────────────────────────
 
 const HANDOFF_LOG = [
   '--- Run started: 2026-08-22T07:43:49.210Z ---',

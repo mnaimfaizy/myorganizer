@@ -83,7 +83,7 @@ export const RESUME_GUARDRAILS_COMMON = Object.freeze([
  * Both are statements of fact about a Slice Checkpoint — a commit the ORCHESTRATOR
  * made with `--no-verify` around a dirty worktree after the agent was killed. They
  * are false about a run that finished and committed through the Commit sub-agent,
- * which is why they are no longer unconditional. See ADR 0043.
+ * which is why they are no longer unconditional. See ADR 0044.
  */
 export const INTERRUPTED_GUARDRAILS = Object.freeze([
   'Files present in the checkpoint do NOT satisfy a Gated Pipeline. A spec file already in the tree does not mean TestScaffold ran, was reviewed, or passed \u2014 route it through the pipelines named above regardless.',
@@ -148,7 +148,7 @@ export function resumeGuardrails(kind = PRIOR_RUN_KINDS.interrupted) {
 // The slice log is the carrier because it always exists — `--trace-subagents` is
 // opt-in, so `logs/subagents/<n>/index.md` may simply not be there. Only marker
 // lines travel: raw log tail would drag a dead agent's mid-thought reasoning into
-// the next brief as if it were instruction. See ADR 0043.
+// the next brief as if it were instruction. See ADR 0044.
 
 /** Prefix an agent (or the orchestrator) uses to record a completed step. */
 export const HANDOFF_MARKER = 'HANDOFF:';
