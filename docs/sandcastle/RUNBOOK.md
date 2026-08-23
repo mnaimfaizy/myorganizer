@@ -91,6 +91,36 @@ corepack yarn dispatch-agents --prd <issue-number> --agent cursor
 corepack yarn dispatch-agents --prd <issue-number> --agent copilot --model claude-sonnet-5
 ```
 
+### Where the build gate runs
+
+| Mode                           | Gate                                                                |
+| ------------------------------ | ------------------------------------------------------------------- |
+| **PRD** (`--prd`)              | **Once, at the end**, on `origin/main...feat/<slug>`. Never blocks. |
+| **Standalone** (`--issue`)     | Per slice, fail-closed, as before — the branch is the deliverable.  |
+| **Sweep** (`--all-standalone`) | Per issue, fail-closed.                                             |
+
+Under `--prd`, slices integrate **unconditionally** and the assembled feature branch is gated once.
+A red gate no longer strands the run: every slice stays integrated, every slice branch stays
+intact, nothing is pushed, and the verdict is posted as a comment on the PRD issue so it reaches
+you while you are away from the terminal. `dispatch-waves` no longer aborts on an incomplete wave
+either — it records it and carries on. See
+[ADR 0045](../adr/0045-a-prd-is-gated-once-on-the-assembled-feature-branch.md).
+
+Gating the whole branch is also a _stronger_ check than the old per-slice gate: two slices that
+break each other pass individually and only fail together, which is exactly what CI sees on the PR.
+
+Re-gate a feature branch at any time, without dispatching anything and without an agent credential:
+
+```bash
+npx tsx .sandcastle/main.mts --prd <n> --gate-only
+```
+
+When a gate is red, the slice commits are in order on the branch:
+
+```bash
+git log --oneline origin/main..feat/<slug>
+```
+
 ### Three dispatch modes
 
 | Mode           | Invocation                                 | Base for the work branch         | Where finished work lands                     |
@@ -113,7 +143,10 @@ corepack yarn dispatch-agents --all-standalone --dry-run
 
 `--dry-run` resolves the whole plan — selected issues, branch names, routed model per issue, base
 ref, integration target — then exits. It creates no worktree or container, writes nothing to
-GitHub, does not create the PRD feature branch, and does not build the sandbox image.
+GitHub, does not create the PRD feature branch, and does not build the sandbox image. It also does **not**
+require a Claude credential: it prints `auth: NONE FOUND` in the run header instead of exiting, so
+you can preview a plan on a machine where the 1Password injection is not set up. A real run still
+refuses to start without one.
 
 **One slice of a PRD:** add `--issue` to a PRD run. It still creates/reuses `feat/<slug>`,
 gates, and fast-forwards — just for that one slice.
@@ -326,6 +359,24 @@ branch, and re-running **resumes** from it.
 See [ADR 0035](../adr/0035-interrupted-slices-resume-from-git-and-destruction-is-deliberate.md)
 for why it works this way.
 
+### Two kinds of resume
+
+A branch with commits on it resumes either way, but the reason differs and so does what the next
+agent is told. The orchestrator names it:
+
+```
+resuming from interrupted run at <sha>                  # agent was killed mid-thought
+resuming from completed run whose gate failed at <sha>  # agent finished; the host gate rejected it
+```
+
+The second is **not** unchecked work: its pipelines ran and its commit passed husky. A resumed
+agent is told so, and told to fix what the gate reported rather than re-run those pipelines. The
+two are distinguished by the `wip/<n>-checkpoint` tag, which only the crash path writes.
+
+Both briefs carry the previous run's `HANDOFF:` markers — one line per completed hop, printed as
+work lands and read back out of the slice log. Treat them as the previous run's own claim about
+itself, not as proof. See [ADR 0044](../adr/0044-a-resumed-slice-is-told-what-the-previous-run-did.md).
+
 ### The short version
 
 ```bash
@@ -415,14 +466,37 @@ TestRunner`. A spec file existing in the tree is not evidence a pipeline ran —
 
 ### The `dispatch-waves` label trap
 
-`dispatch-waves` gates each wave by rewriting `ready-for-agent` across every slice in the PRD, and
-it aborts the whole driver the moment one slice does not reach `status:done` — **without restoring
-those labels**. After an abort, later waves' slices have had `ready-for-agent` stripped.
+`dispatch-waves` gates each wave by rewriting `ready-for-agent` across every slice in the PRD and
+**does not restore those labels when the run ends**. Whichever wave the run finished on, the other
+waves' slices have had `ready-for-agent` stripped.
 
-Consequence: recovering with a plain `dispatch-agents --prd <n>` sees **only the aborted wave**;
-the remaining waves are invisible. Re-run `dispatch-waves --prd <n>` instead — it recomputes the
-gating from scratch and skips completed waves via `status:done`. The driver's abort message now
-says so, but the trap is worth knowing before you meet it.
+Consequence: recovering with a plain `dispatch-agents --prd <n>` sees **only the last wave**; the
+rest are invisible. Re-run `dispatch-waves --prd <n>` instead — it recomputes the gating from
+scratch and skips completed waves via `status:done`.
+
+The driver no longer aborts on an incomplete wave ([ADR 0045](../adr/0045-a-prd-is-gated-once-on-the-assembled-feature-branch.md)),
+so this bites less often than it did — but the labels are still left mid-rewrite, so the rule
+stands: recover with the wave driver, not with a bare dispatch.
+
+### If you integrate a slice by hand, unblock its dependents
+
+`status:blocked` is cleared by `unblockDependents`, which runs **only** on the orchestrator's
+integration path. Integrating a slice yourself — fast-forwarding the feature branch, labelling
+`status:done`, closing the issue — skips it, and the next wave then finds nothing to dispatch:
+
+```
+Error: No open AFK slice issues found for PRD <n>.
+```
+
+The slices are there; they are excluded because `main.mts` filters out `status:blocked`. Clear it
+on every dependent whose `## Blocked by` entries are now done or closed, and only those:
+
+```bash
+gh issue view <dependent> --json body --jq '.body' | grep -A 5 -i '^## Blocked by'
+gh issue edit <dependent> --remove-label status:blocked
+```
+
+Leave the rest blocked — the orchestrator will clear them as their blockers integrate.
 
 ### Salvaging by hand
 
@@ -483,6 +557,15 @@ To reproduce the sandbox behavior locally: `MYORGANIZER_SANDBOX=1 yarn nx test t
   existing image silently keeps the old contents. Force a rebuild with
   `docker image rm sandcastle:myorganizer` before the next dispatch. See `docs/graphify.md` for
   why this matters for the mounted graphify graph.
+- **The sandbox image's Node is pinned to 22.16 — do not float it to `node:22`.** Node 22.17
+  reimplemented `fs.cpSync` in C++ and the new version returns `EACCES` for a recursive directory
+  copy whose destination is on a Docker Desktop bind mount. `@nx/next:build` copies `public/` into
+  `dist/` with exactly that call, so **every** slice's build gate fails with
+  `NX EACCES, Permission denied 'dist/apps/myorganizer/public'` — always after a clean compile and
+  typecheck, which makes it look like a code failure when it is not. It is not permissions: it
+  fails as root, `access()` reports RWX, and `cp -R` works on the same path. Bisected 22.16.0 OK /
+  22.17.1 EACCES / 22.23.2 EACCES / 24.19.0 EACCES. CI is unaffected (ext4, not VirtioFS). See the
+  comment on `FROM` in `.sandcastle/Dockerfile` before changing it.
 - **Never put the repo on `/mnt/d`** (or any drvfs/9P mount) for dispatch — that's the ~29 min
   trap.
 - **`Could not fetch from origin (reusing worktree at … as-is, …)` is expected — ignore it.** It

@@ -1,4 +1,24 @@
-FROM node:22-bookworm
+# Pinned to 22.16 deliberately — do NOT float to `node:22`.
+#
+# Node 22.17 reimplemented `fs.cpSync` in C++, and the new implementation returns
+# EACCES for a recursive directory copy whose DESTINATION is on a Docker Desktop
+# bind mount (VirtioFS/gRPC-FUSE). It is not a permission fault: it fails as root
+# too, `access()` reports RWX, and `cp -R`, `copyFileSync` and `mkdirSync` all
+# succeed on the same path. Bisected on one mount, one source, one uid:
+#
+#   22.16.0  OK      22.17.1  EACCES      22.23.2  EACCES      24.19.0  EACCES
+#
+# `@nx/next:build` copies `public/` into `dist/` with exactly that call
+# (node_modules/@nx/next/src/executors/build/build.impl.js), so every slice's build
+# gate failed on macOS once the image drifted ahead of the host's Node 22.13 —
+# always AFTER a clean compile and typecheck, which is what made it read as a code
+# failure. It hits the agent sandbox too, not just the gate: both run builds inside
+# a bind-mounted worktree.
+#
+# CI floats on `node-version: 22` and is unaffected (ext4, not VirtioFS), so this
+# pin makes the sandbox lag CI by design. Before unpinning, verify with a recursive
+# cpSync into a bind-mounted directory — a passing test suite will not catch it.
+FROM node:22.16-bookworm
 
 # Install system dependencies.
 # build-essential + python3: required to compile native modules (bcrypt).

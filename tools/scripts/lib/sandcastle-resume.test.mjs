@@ -18,6 +18,11 @@ import {
   parseResetTime,
   tailLines,
   RESUME_GUARDRAILS,
+  GATE_FAILURE_GUARDRAILS,
+  INTERRUPTED_GUARDRAILS,
+  PRIOR_RUN_KINDS,
+  extractHandoff,
+  resumeGuardrails,
   MAINTAINER_NOTE_MARKER,
   extractMaintainerNotes,
   withMaintainerNotes,
@@ -744,4 +749,116 @@ test('multiple notes are numbered so a prompt can reference one', () => {
   assert.match(prompt, /### Note 1/);
   assert.match(prompt, /### Note 2/);
   assert.match(prompt, /following instructions/);
+});
+
+// ─── Handoff carried between runs (ADR 0044) ──────────────────────────────────
+
+const HANDOFF_LOG = [
+  '--- Run started: 2026-08-22T07:43:49.210Z ---',
+  'Agent started',
+  'HANDOFF: ComponentBuilder -> ComponentReviewer PASS',
+  'some unrelated chatter',
+  'HANDOFF: /code-review PASS (2 findings addressed)',
+  '--- Run started: 2026-08-22T13:08:32.187Z ---',
+  'HANDOFF: TestRunner 47 passed',
+  '  HANDOFF: gate FAILED (lint test build)',
+].join('\n');
+
+test('extractHandoff reads only the last run segment', () => {
+  assert.deepEqual(extractHandoff(HANDOFF_LOG), [
+    'TestRunner 47 passed',
+    'gate FAILED (lint test build)',
+  ]);
+});
+
+test('extractHandoff dedupes a marker the agent and orchestrator both logged', () => {
+  const log = [
+    '--- Run started: x ---',
+    'HANDOFF: /code-review PASS',
+    'HANDOFF: /code-review PASS',
+  ].join('\n');
+  assert.deepEqual(extractHandoff(log), ['/code-review PASS']);
+});
+
+test('extractHandoff caps how many markers travel', () => {
+  const many = ['--- Run started: x ---']
+    .concat(Array.from({ length: 60 }, (_, i) => `HANDOFF: step ${i}`))
+    .join('\n');
+  const extracted = extractHandoff(many, 5);
+  assert.equal(extracted.length, 5);
+  assert.equal(extracted.at(-1), 'step 59');
+});
+
+test('extractHandoff returns nothing for a log with no markers', () => {
+  assert.deepEqual(extractHandoff('--- Run started: x ---\nplain output'), []);
+});
+
+test('a gate-failure resume does not claim the work is unchecked', () => {
+  const brief = buildResumeBrief({
+    basePrompt: 'BASE',
+    issueNumber: 447,
+    sliceBranch: 'slice/447-x',
+    checkpoint: { sha: 'b6a0e84', files: ['a.tsx'] },
+    kind: PRIOR_RUN_KINDS.gateFailure,
+  });
+  assert.match(brief, /BUILD GATE failure/);
+  assert.ok(!brief.includes('--no-verify'));
+  assert.ok(!brief.includes('never once seen it'));
+  for (const guardrail of GATE_FAILURE_GUARDRAILS) {
+    assert.ok(brief.includes(guardrail));
+  }
+});
+
+test('an interrupted resume keeps the original unchecked-work guardrails', () => {
+  const brief = buildResumeBrief({
+    basePrompt: 'BASE',
+    issueNumber: 396,
+    sliceBranch: 'slice/396-x',
+    checkpoint: { sha: 'deadbee', files: ['a.ts'] },
+  });
+  assert.match(brief, /RESUMING an interrupted attempt/);
+  for (const guardrail of INTERRUPTED_GUARDRAILS) {
+    assert.ok(brief.includes(guardrail));
+  }
+});
+
+test('handoff lines reach the brief as evidence, not authority', () => {
+  const brief = buildResumeBrief({
+    basePrompt: 'BASE',
+    issueNumber: 447,
+    sliceBranch: 'slice/447-x',
+    checkpoint: { sha: 'b6a0e84', files: ['a.tsx'] },
+    kind: PRIOR_RUN_KINDS.gateFailure,
+    handoff: ['/code-review PASS', 'gate FAILED (lint test build)'],
+  });
+  assert.match(brief, /What the previous run reported/);
+  assert.match(brief, /EVIDENCE, not proof/);
+  assert.ok(brief.includes('  - /code-review PASS'));
+});
+
+test('an absent handoff adds no section at all', () => {
+  const brief = buildResumeBrief({
+    basePrompt: 'BASE',
+    issueNumber: 447,
+    sliceBranch: 'slice/447-x',
+    checkpoint: { sha: 'b6a0e84', files: ['a.tsx'] },
+    handoff: [],
+  });
+  assert.ok(!brief.includes('What the previous run reported'));
+});
+
+test('resumeGuardrails swaps only the last two entries', () => {
+  const interrupted = resumeGuardrails(PRIOR_RUN_KINDS.interrupted);
+  const gate = resumeGuardrails(PRIOR_RUN_KINDS.gateFailure);
+  assert.equal(interrupted.length, 6);
+  assert.equal(gate.length, 6);
+  assert.deepEqual(interrupted.slice(0, 4), gate.slice(0, 4));
+  assert.notDeepEqual(interrupted.slice(4), gate.slice(4));
+});
+
+test('RESUME_GUARDRAILS stays the interrupted set for existing callers', () => {
+  assert.deepEqual(
+    RESUME_GUARDRAILS,
+    resumeGuardrails(PRIOR_RUN_KINDS.interrupted),
+  );
 });

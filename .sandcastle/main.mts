@@ -20,6 +20,9 @@ import {
   classifyRunFailure,
   decideWaitPolicy,
   tailLines,
+  extractHandoff,
+  HANDOFF_MARKER,
+  PRIOR_RUN_KINDS,
   buildResumeBrief,
   decideSliceDisposition,
   isDiscardRequested,
@@ -196,7 +199,8 @@ function changedProjects(base: string, head: string): string[] {
  * `--projects=` argument instead.
  *
  * Returns `null` when the project graph cannot be read, so the caller can fail
- * closed rather than silently gating a narrower set than intended.
+ * closed rather than silently gating a narrower set than intended. The reason is
+ * logged here — the caller only knows that resolution failed, not why.
  */
 function affectedProjects(base: string, head: string): string[] | null {
   const shown = spawnSync(
@@ -206,18 +210,42 @@ function affectedProjects(base: string, head: string): string[] | null {
       'show',
       'projects',
       '--affected',
+      // Explicit, never inferred. `nx show` auto-enables JSON only when its
+      // `isAiAgent()` probe fires (CLAUDECODE / CLAUDE_CODE and friends), so
+      // without this flag the identical command prints a newline-delimited list
+      // when run from a plain terminal, JSON.parse throws, and EVERY slice fails
+      // the gate on an unresolvable graph. CI passes it too — see
+      // .github/workflows/ci.yml.
+      '--json',
       `--base=${base}`,
       `--head=${head}`,
     ],
     { encoding: 'utf8', windowsHide: true, timeout: 300000 },
   );
-  if (shown.status !== 0) return null;
+
+  // Every path below returns `null`, and the caller reports only "could not
+  // resolve the affected project graph". Name the actual cause here or the next
+  // breakage costs a whole wave to diagnose.
+  const unresolved = (reason: string): null => {
+    const detail = (shown.stderr || shown.stdout || '')
+      .split('\n')
+      .map((line) => line.trim())
+      .find(Boolean);
+    console.error(
+      `  nx show projects --affected ${reason}${detail ? `: ${detail}` : ''}`,
+    );
+    return null;
+  };
+
+  if (shown.error) return unresolved(`could not run (${shown.error.message})`);
+  if (shown.status !== 0) return unresolved(`exited ${shown.status}`);
   try {
     const parsed = JSON.parse(shown.stdout) as unknown;
-    if (!Array.isArray(parsed)) return null;
+    if (!Array.isArray(parsed))
+      return unresolved('returned a non-array JSON payload');
     return parsed.filter((name): name is string => typeof name === 'string');
   } catch {
-    return null;
+    return unresolved('returned output that is not JSON');
   }
 }
 
@@ -298,6 +326,9 @@ Flags:
   --fresh                Discard a slice's preserved checkpoint and start it over.
                          Without it, an interrupted slice RESUMES. In PRD mode this
                          must name its slice: --prd <n> --issue <slice> --fresh.
+  --defer-gate           Skip the end-of-run feature-branch gate (dispatch-waves
+                         passes this; it gates once after the last wave).
+  --gate-only            Run only the feature-branch gate for --prd, then exit.
   --trace-subagents      Write per-sub-agent transcripts to
                          .sandcastle/logs/subagents/<issue>/, each with its tool
                          calls, peak context, and token usage. Without it, output is
@@ -395,6 +426,14 @@ let quotaWaitsTaken = 0;
 // whether main.mts relocates and summarizes what was already captured.
 const traceSubagents = process.argv.includes('--trace-subagents');
 
+// Suppress the end-of-run feature gate. Only dispatch-waves passes this: it calls
+// this file once per wave, and the PRD should be gated once, after the last one.
+const deferGate = process.argv.includes('--defer-gate');
+
+// Run ONLY the feature-branch gate and exit. dispatch-waves uses this after its
+// last wave so the PRD is gated exactly once, whichever waves actually ran.
+const gateOnly = process.argv.includes('--gate-only');
+
 const discardScope = validateDiscardScope({
   discardRequested,
   mode,
@@ -431,7 +470,23 @@ const modelFlag = getArgValue('model');
 
 type ClaudeAuthMode = 'subscription' | 'api';
 
-function resolveClaudeAuth(kind: AgentKind): ClaudeAuthMode | null {
+/** `null` = no credential needed (not a claude run). `'none'` = needed, absent. */
+type ClaudeAuthResolution = ClaudeAuthMode | 'none' | null;
+
+/**
+ * Which Claude credential this run will use.
+ *
+ * `preview` softens the MISSING-credential paths from a hard exit to `'none'`, so a
+ * `--dry-run` can still show the plan on a machine where the 1Password injection was
+ * never set up. It reports the gap rather than hiding it — a preview that cannot say
+ * "this run would not authenticate" is worse than one that dies. A malformed
+ * SANDCASTLE_CLAUDE_AUTH still fails outright either way: that is a typo, not an
+ * absent secret, and the run can never succeed with it.
+ */
+function resolveClaudeAuth(
+  kind: AgentKind,
+  { preview = false }: { preview?: boolean } = {},
+): ClaudeAuthResolution {
   if (kind !== 'claude') return null;
 
   const hasToken = Boolean(process.env.CLAUDE_CODE_OAUTH_TOKEN);
@@ -447,12 +502,14 @@ function resolveClaudeAuth(kind: AgentKind): ClaudeAuthMode | null {
   }
 
   if (forced === 'subscription' && !hasToken) {
+    if (preview) return 'none';
     fail(
       'SANDCASTLE_CLAUDE_AUTH=subscription but CLAUDE_CODE_OAUTH_TOKEN is not set.\n' +
         'Run `claude setup-token` on the host and store the result in your 1Password Environment.',
     );
   }
   if (forced === 'api' && !hasApiKey) {
+    if (preview) return 'none';
     fail('SANDCASTLE_CLAUDE_AUTH=api but ANTHROPIC_API_KEY is not set.');
   }
 
@@ -462,6 +519,7 @@ function resolveClaudeAuth(kind: AgentKind): ClaudeAuthMode | null {
   if (hasToken) return 'subscription';
   if (hasApiKey) return 'api';
 
+  if (preview) return 'none';
   fail(
     'No Claude credential found. Set one of:\n' +
       '  CLAUDE_CODE_OAUTH_TOKEN  — `claude setup-token` on the host (Pro/Max plan)\n' +
@@ -471,7 +529,15 @@ function resolveClaudeAuth(kind: AgentKind): ClaudeAuthMode | null {
 }
 
 const agentKind = resolveAgentKind();
-const claudeAuth = resolveClaudeAuth(agentKind);
+// --gate-only launches no agent, so it must not demand an agent credential. It is
+// the path a maintainer runs by hand to re-check a feature branch, often on a
+// machine where the 1Password injection was never set up.
+// Neither --gate-only nor --dry-run launches an agent, so neither may demand an
+// agent credential. --gate-only needs none at all; --dry-run previews the plan and
+// reports the missing credential instead of dying on it.
+const claudeAuth = gateOnly
+  ? null
+  : resolveClaudeAuth(agentKind, { preview: dryRun });
 
 // Only now — after --help, argument validation, and the credential preflight have
 // all had their say. Building this image can take minutes; there is no reason to
@@ -713,7 +779,10 @@ function planPrdRun(prd: number): RunPlan {
       !isCompleted(i),
   );
 
-  if (selected.length === 0) {
+  // --gate-only never dispatches, so an empty ready set is normal for it: by the
+  // time the PRD is gated its slices are closed, and the wave driver has stripped
+  // ready-for-agent from the rest. Only the feature branch matters here.
+  if (selected.length === 0 && !gateOnly) {
     fail(
       issueNumber === undefined
         ? `No open AFK slice issues found for PRD #${prd}.\n` +
@@ -859,15 +928,25 @@ const plan =
       : planStandaloneRun(issueNumber as number);
 
 const { baseRef, integrationBranch, allIssues } = plan;
+
+// The ref the PRD's feature branch was cut from, and therefore the ref its PR will
+// target. `baseRef` cannot serve: in PRD mode it is the feature branch itself,
+// which advances with every integrated slice, so diffing against it would show the
+// last slice only. See ADR 0045.
+const prdGateBase = gitRefExists('origin/main') ? 'origin/main' : 'main';
+
 const slices = plan.issues;
 
 console.log(
   `Agent:           ${agentKind}${
-    claudeAuth
-      ? claudeAuth === 'subscription'
-        ? ' (auth: subscription — shares your Pro/Max quota)'
-        : ' (auth: API key — metered)'
-      : ''
+    claudeAuth === 'subscription'
+      ? ' (auth: subscription — shares your Pro/Max quota)'
+      : claudeAuth === 'api'
+        ? ' (auth: API key — metered)'
+        : claudeAuth === 'none'
+          ? ' (auth: NONE FOUND — preview only; a real run needs ' +
+            'CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY)'
+          : ''
   }\n`,
 );
 
@@ -1018,6 +1097,23 @@ const HOST_UID = process.getuid?.() ?? 1000;
 const HOST_GID = process.getgid?.() ?? 1000;
 
 const worktreesDir = join(process.cwd(), '.sandcastle', 'worktrees');
+
+if (gateOnly) {
+  if (integrationBranch === null) {
+    fail(
+      '--gate-only needs --prd: there is no feature branch to gate without one.',
+    );
+  }
+  const ok = runFeatureGate(integrationBranch);
+  console.log(
+    ok
+      ? `\n  gate: PASS on ${integrationBranch} — the PRD is green against ${prdGateBase}.`
+      : `\n  gate: FAIL on ${integrationBranch}. Every slice is still integrated; ` +
+          `nothing was discarded and nothing is pushed.`,
+  );
+  reportFeatureGate(integrationBranch, ok);
+  process.exit(ok ? 0 : 1);
+}
 
 // The "dispatching" banner is deliberately NOT printed here: a --dry-run dispatches
 // nothing, and a sweep may still be declined at the confirmation prompt. It is
@@ -1355,6 +1451,67 @@ function readSliceLogTail(
   return { path: logPath, tail };
 }
 
+/**
+ * What the previous run for this slice was, and what it said it did.
+ *
+ * The two cases look IDENTICAL to `decideSliceDisposition`, which reads only branch
+ * existence, commits-ahead and merge-base — so #447 was told its cleanly committed,
+ * fully reviewed work was an unchecked mid-kill checkpoint, and re-ran six pipelines
+ * to find out otherwise. The tag is what separates them: only the crash path tags a
+ * Slice Checkpoint. A normal commit carries no tag. See ADR 0044.
+ */
+function readPriorRun(
+  issueNumber: number,
+  sliceBranch: string,
+): { kind: string; handoff: string[] } {
+  const tag = `wip/${issueNumber}-checkpoint`;
+  const tagged = (
+    spawnSync('git', ['rev-parse', '--quiet', '--verify', `${tag}^{commit}`], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+  const head = (
+    spawnSync('git', ['rev-parse', `${sliceBranch}^{commit}`], {
+      encoding: 'utf8',
+      windowsHide: true,
+    }).stdout || ''
+  ).trim();
+
+  const kind =
+    tagged !== '' && tagged === head
+      ? PRIOR_RUN_KINDS.interrupted
+      : PRIOR_RUN_KINDS.gateFailure;
+
+  let handoff: string[] = [];
+  const logPath = sliceLogPathFor(issueNumber);
+  if (logPath) {
+    try {
+      handoff = extractHandoff(readFileSync(logPath, 'utf8'));
+    } catch {
+      /* no log, no handoff — absent must read as "unknown", not "nothing ran" */
+    }
+  }
+  return { kind, handoff };
+}
+
+/**
+ * Append a handoff marker to this slice's log so the NEXT run can read it.
+ *
+ * The orchestrator's own observations (above all the gate verdict) belong in the
+ * same stream as the agent's, because `extractHandoff` reads one carrier. Silent on
+ * failure: a missing log must never take down a dispatch.
+ */
+function appendHandoffToSliceLog(issueNumber: number, entry: string): void {
+  const logPath = sliceLogPathFor(issueNumber);
+  if (!logPath) return;
+  try {
+    appendFileSync(logPath, `\n${HANDOFF_MARKER} ${entry}\n`);
+  } catch {
+    /* the log is a convenience, not a dependency */
+  }
+}
+
 function formatCrashLogTail(
   log: { path: string; tail: string[] } | undefined,
 ): string | undefined {
@@ -1453,19 +1610,31 @@ function preserveInterruptedSlice(
 
 // ─── Build gate ───────────────────────────────────────────────────────────────
 // Before a slice is fast-forwarded into the LOCAL feature branch, verify it in a
-// Docker container against the LOCAL slice branch. Fail closed: if the gate cannot
-// run or does not pass, the slice is NOT integrated and NOT marked status:done, so
-// we never stack later slices on broken code. Disable with SLICE_GATE=off.
+// Docker container. WHERE it runs depends on the mode (ADR 0045):
+//
+//   PRD        — once, at the end, on the assembled feature branch against
+//                origin/main. Slices integrate unconditionally; the gate reports
+//                rather than blocks, because an unattended PRD that stops on slice
+//                one delivers nothing at all.
+//   standalone — per slice, fail-closed as before. The work branch IS the
+//                deliverable, so there is no later gate to defer to.
+//
+// Disable entirely with SLICE_GATE=off.
 //
 // The default targets mirror what CI enforces on the eventual PR (`nx affected -t
 // lint`, `nx affected -t test`, `nx build myorganizer|backend`), so a gate-green
 // slice is not one that fails the moment it is pushed. `build` is what typechecks
 // this repo — there is no `typecheck` target — and it is the step that catches a
 // slice whose types do not compile against its consumers.
-function runSliceGate(issue: Issue, sliceBranch: string): boolean {
+function runGate(
+  label: string,
+  base: string,
+  head: string,
+  handoffIssue?: number,
+): boolean {
   if ((process.env.SLICE_GATE ?? '').toLowerCase() === 'off') {
     console.log(
-      `  [#${issue.number}] gate disabled (SLICE_GATE=off) — integrating without verification.`,
+      `  [${label}] gate disabled (SLICE_GATE=off) — integrating without verification.`,
     );
     return true;
   }
@@ -1484,18 +1653,18 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
   const perFileTargets = targetList.filter((t) => t === 'lint');
   const crossProjectTargets = targetList.filter((t) => t !== 'lint');
 
-  const changed = changedProjects(baseRef, sliceBranch);
+  const changed = changedProjects(base, head);
   if (changed.length === 0) {
-    console.log(`  [#${issue.number}] gate: no project files changed — pass.`);
+    console.log(`  [${label}] gate: no project files changed — pass.`);
     return true;
   }
 
   let affected: string[] = [];
   if (crossProjectTargets.length > 0) {
-    const resolved = affectedProjects(baseRef, sliceBranch);
+    const resolved = affectedProjects(base, head);
     if (resolved === null) {
       console.error(
-        `  [#${issue.number}] gate: could not resolve the affected project graph for ` +
+        `  [${label}] gate: could not resolve the affected project graph for ` +
           `'${crossProjectTargets.join(' ')}' — failing closed.`,
       );
       return false;
@@ -1511,7 +1680,7 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
 
   if (runs.length === 0) {
     console.log(
-      `  [#${issue.number}] gate: no targets resolved to any project — pass.`,
+      `  [${label}] gate: no targets resolved to any project — pass.`,
     );
     return true;
   }
@@ -1520,7 +1689,7 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
   // separate path means it never holds the slice branch checked out and it is
   // independent of sandcastle's own worktree lifecycle (which may already have
   // removed the agent's worktree).
-  const gateName = sliceBranch.replace(/\//g, '-');
+  const gateName = head.replace(/\//g, '-');
   const gateRoot = join(process.cwd(), '.sandcastle', 'gate');
   const gatePath = join(gateRoot, gateName);
   mkdirSync(gateRoot, { recursive: true });
@@ -1536,12 +1705,12 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
   }
   const add = spawnSync(
     'git',
-    ['worktree', 'add', '--detach', gatePath, sliceBranch],
+    ['worktree', 'add', '--detach', gatePath, head],
     { encoding: 'utf8', windowsHide: true },
   );
   if (add.status !== 0) {
     console.error(
-      `  [#${issue.number}] gate: could not create gate worktree — failing closed.\n${add.stderr}`,
+      `  [${label}] gate: could not create gate worktree — failing closed.\n${add.stderr}`,
     );
     return false;
   }
@@ -1554,10 +1723,10 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
     // install is incremental. Fail closed on any failure.
     for (const run of runs) {
       console.log(
-        `  [#${issue.number}] gate: will run '${run.targets.join(' ')}' on ${run.projects.join(', ')}`,
+        `  [${label}] gate: will run '${run.targets.join(' ')}' on ${run.projects.join(', ')}`,
       );
     }
-    console.log(`  [#${issue.number}] gate: installing + running ...`);
+    console.log(`  [${label}] gate: installing + running ...`);
     const gate = spawnSync(
       'docker',
       [
@@ -1609,7 +1778,18 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
     );
 
     const ok = gate.status === 0;
-    console.log(`  [#${issue.number}] gate: ${ok ? 'PASS' : 'FAIL'}.`);
+    console.log(`  [${label}] gate: ${ok ? 'PASS' : 'FAIL'}.`);
+    // Mirror the verdict into the slice log as a handoff marker. A gate failure is
+    // the one thing about the previous run that git cannot show the next agent, and
+    // without it a resumed agent cannot tell "my code was rejected" from "I was
+    // killed mid-thought" — so it re-runs every pipeline. See ADR 0044.
+    if (handoffIssue !== undefined)
+      appendHandoffToSliceLog(
+        handoffIssue,
+        ok
+          ? `gate PASS (${targets})`
+          : `gate FAILED (${targets}) — the agent's work was committed; the HOST GATE rejected it`,
+      );
     return ok;
   } finally {
     spawnSync('git', ['worktree', 'remove', '--force', gatePath], {
@@ -1617,6 +1797,31 @@ function runSliceGate(issue: Issue, sliceBranch: string): boolean {
       windowsHide: true,
     });
   }
+}
+
+/**
+ * Gate ONE slice against its base. Retained for standalone runs, where the work
+ * branch is the deliverable and there is no feature branch to gate later.
+ */
+function runSliceGate(issue: Issue, sliceBranch: string): boolean {
+  return runGate(`#${issue.number}`, baseRef, sliceBranch, issue.number);
+}
+
+/**
+ * Gate the whole PRD once, on the integrated feature branch, against the ref the
+ * eventual PR will target.
+ *
+ * This is the gate that matters. A per-slice gate can only see one slice against
+ * the head it was cut from, so two slices that break EACH OTHER pass individually
+ * and fail on the PR — while costing one container install per slice. Gating
+ * `origin/main...feat/<slug>` runs exactly what CI will run, once. See ADR 0045.
+ */
+function runFeatureGate(featureBranch: string): boolean {
+  console.log(
+    `\n  gate: running once on ${featureBranch} against ${prdGateBase} ` +
+      `(what CI will run on the PR) ...`,
+  );
+  return runGate(featureBranch, prdGateBase, featureBranch);
 }
 
 // ─── Integrate a slice into the local feature branch (fast-forward) ────────────
@@ -1820,6 +2025,22 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     `- Do NOT push and do NOT open a PR — this sandbox has no credentials. Just commit locally on your branch; leave nothing uncommitted. The orchestrator integrates your branch into the feature branch on the host.`,
     `- Do NOT output the completion promise until ALL of these hold: deterministic checks green; \`/code-review\` run once and its findings addressed; work committed through the \`Commit\` sub-agent + \`ai:commit\`; working tree clean.`,
     `- When all of the above hold, output <promise>COMPLETE</promise>.`,
+    ``,
+    `## Handoff markers (required)`,
+    ``,
+    // Written as each hop LANDS, not summarised at the end: a quota kill stops the
+    // agent mid-thought, so an end-of-run summary is missing from exactly the run a
+    // resume needs it from. See ADR 0044.
+    `Print ONE line the moment each step completes, starting with \`${HANDOFF_MARKER}\`:`,
+    ``,
+    `  ${HANDOFF_MARKER} ComponentBuilder -> ComponentReviewer PASS`,
+    `  ${HANDOFF_MARKER} TestScaffold -> TestReviewer APPROVED -> TestRunner 38 passed`,
+    `  ${HANDOFF_MARKER} /code-review PASS (2 findings addressed)`,
+    `  ${HANDOFF_MARKER} committed <sha> via Commit sub-agent`,
+    ``,
+    `Print each one AS IT HAPPENS — never batch them at the end. If this run is`,
+    `interrupted, these lines are the only record of what already ran, and the next`,
+    `agent re-does every step they do not cover.`,
     ``,
     `## Running tests in this sandbox`,
     ``,
@@ -2259,10 +2480,23 @@ while (pendingSlices.length > 0) {
 
     const worktreePath = join(worktreesDir, sliceBranch.replace(/\//g, '-'));
 
-    if (checkpoint) {
+    const priorRun = checkpoint
+      ? readPriorRun(issue.number, sliceBranch)
+      : undefined;
+
+    if (checkpoint && priorRun) {
+      // Say which of the two it is. "resuming from checkpoint" on a slice whose only
+      // problem was a red gate is the same misreport the agent used to receive.
+      const because =
+        priorRun.kind === PRIOR_RUN_KINDS.interrupted
+          ? 'interrupted run'
+          : 'completed run whose gate failed';
       console.log(
-        `  [#${issue.number}] resuming from checkpoint ${checkpoint.sha} ` +
-          `(${checkpoint.files.length} file(s)) — the branch is kept, not recreated.`,
+        `  [#${issue.number}] resuming from ${because} at ${checkpoint.sha} ` +
+          `(${checkpoint.files.length} file(s)) — the branch is kept, not recreated.` +
+          (priorRun.handoff.length > 0
+            ? `\n  [#${issue.number}] carrying ${priorRun.handoff.length} handoff marker(s) into the brief.`
+            : ''),
       );
       // The branch and its commits stay. Only the worktree is rebuilt, so the agent
       // gets a clean checkout of the checkpoint rather than whatever partial state
@@ -2400,6 +2634,7 @@ while (pendingSlices.length > 0) {
               issueNumber: issue.number,
               sliceBranch,
               checkpoint,
+              ...priorRun,
             })
           : basePrompt;
       })(),
@@ -2412,7 +2647,21 @@ while (pendingSlices.length > 0) {
     // Standalone runs stop after the gate: with no integration branch the work
     // branch is already the deliverable, so "succeeded" means gate-passed.
     const hasWork = finalizeSliceBranch(issue, sliceBranch);
-    const gatePassed = hasWork ? runSliceGate(issue, sliceBranch) : false;
+
+    // PRD mode does NOT gate per slice. One red gate used to strand the whole run:
+    // the slice did not integrate, the wave driver aborted, and an overnight PRD
+    // finished the night with nothing done — twice, on gate bugs that had nothing
+    // to do with the code. Integrate every slice that produced work and gate the
+    // assembled feature branch once at the end, which is also the only scope that
+    // can see two slices breaking each other. Standalone keeps its per-slice gate:
+    // its branch IS the deliverable, so there is no later gate to defer to.
+    // See ADR 0045.
+    const gatePassed =
+      integrationBranch !== null
+        ? hasWork
+        : hasWork
+          ? runSliceGate(issue, sliceBranch)
+          : false;
     const mergeOk = !gatePassed
       ? false
       : integrationBranch === null
@@ -2444,9 +2693,14 @@ while (pendingSlices.length > 0) {
         '--reason',
         'completed',
         '--comment',
-        `Agent completed and the build gate passed. ${result.commits.length} commit(s) on \`${sliceBranch}\`.\n` +
-          `Integrated into the local \`${integrationBranch}\` (fast-forward, not pushed) and closed as completed. ` +
-          `It will reach \`main\` via the manual PRD PR.`,
+        // Do NOT claim the gate passed: under ADR 0045 a PRD slice is not gated
+        // individually at all. The PRD is gated once, on the assembled branch,
+        // and that verdict is reported on the PRD issue.
+        `Agent completed. ${result.commits.length} commit(s) on \`${sliceBranch}\`.\n` +
+          `Integrated into the local \`${integrationBranch}\` (fast-forward, not pushed) and closed as completed.\n\n` +
+          `This slice was **not** gated on its own. The whole PRD is gated once on the ` +
+          `assembled feature branch and the verdict is posted on the PRD issue. ` +
+          `It reaches \`main\` via the manual PRD PR.`,
       ]);
       unblockDependents(issue);
     } else if (mergeOk) {
@@ -2625,6 +2879,42 @@ while (pendingSlices.length > 0) {
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
 const merged = results.filter((r) => r.merged);
+/**
+ * Put the PRD-level gate verdict where a sleeping maintainer will find it.
+ *
+ * The terminal scrollback is gone by morning and the run may have ended hours ago,
+ * so the verdict also goes on the PRD issue — that is the notification that reaches
+ * a phone. Slices stay closed either way: they integrated, and re-running must keep
+ * skipping them. A red feature gate is a fact about the ASSEMBLY, not about any one
+ * slice. See ADR 0045.
+ */
+function reportFeatureGate(featureBranch: string, ok: boolean): void {
+  if (prdNumber === undefined) return;
+  const body = ok
+    ? `Build gate **passed** on the integrated feature branch \`${featureBranch}\` ` +
+      `(\`${prdGateBase}...${featureBranch}\`, the same scope CI runs on the PR).\n\n` +
+      `Nothing is pushed. QA the local branch, then push it and open one PR.`
+    : `Build gate **failed** on the integrated feature branch \`${featureBranch}\` ` +
+      `(\`${prdGateBase}...${featureBranch}\`, the same scope CI runs on the PR).\n\n` +
+      `Every slice that produced work is still integrated and every slice branch is ` +
+      `intact — nothing was discarded and nothing is pushed. The failure is a fact ` +
+      `about the assembled branch, which is why the slices remain closed.\n\n` +
+      `Gate output is in the run log. To find the slice responsible, the slice ` +
+      `commits are in order on the branch:\n\n` +
+      '```bash\n' +
+      `git log --oneline ${prdGateBase}..${featureBranch}\n` +
+      '```';
+  ghSilent([
+    'issue',
+    'comment',
+    String(prdNumber),
+    '--repo',
+    REPO,
+    '--body',
+    body,
+  ]);
+}
+
 const blocked = results.filter((r) => !r.merged);
 const succeededVerb = integrationBranch === null ? 'ready' : 'integrated';
 
@@ -2654,6 +2944,27 @@ if (blocked.length > 0 || crashed.length > 0) {
       : `\nOne or more slices did not integrate. Fix them and re-run — done slices are skipped.`,
   );
 }
+// ─── One gate, on the assembled feature branch ────────────────────────────────
+// PRD mode defers every per-slice gate to here. `--defer-gate` suppresses even
+// this one: dispatch-waves invokes this file ONCE PER WAVE, so without the flag a
+// three-wave PRD would gate three times. The driver passes it and runs the gate
+// itself after the last wave. See ADR 0045.
+let featureGateOk: boolean | undefined;
+if (integrationBranch !== null && merged.length > 0 && !deferGate) {
+  featureGateOk = runFeatureGate(integrationBranch);
+  console.log(
+    featureGateOk
+      ? `\n  gate: PASS on ${integrationBranch} — the PRD is green against ${prdGateBase}.`
+      : `\n  gate: FAIL on ${integrationBranch}. Every slice is still integrated; ` +
+          `nothing was discarded and nothing is pushed.`,
+  );
+  reportFeatureGate(integrationBranch, featureGateOk);
+} else if (integrationBranch !== null && deferGate) {
+  console.log(
+    `\n  gate: deferred — the wave driver gates ${integrationBranch} once, after the last wave.`,
+  );
+}
+
 if (merged.length > 0) {
   const deliverable = integrationBranch ?? merged[0].sliceBranch;
   console.log(`\nNext step: QA the local \`${deliverable}\` branch`);

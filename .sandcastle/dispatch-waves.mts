@@ -42,6 +42,8 @@ Flags:
   --agent <name>         Forwarded to dispatch-agents
   --model <model>        Forwarded to dispatch-agents
   --plan                 Preview wave ordering only
+  (the build gate runs ONCE at the end, on the assembled feature branch, and
+   never blocks a wave — see ADR 0045)
   (--fresh is refused here — discard one slice with dispatch-agents instead)
   --help                 Show this help text
 
@@ -195,6 +197,8 @@ if (process.argv.includes('--plan')) {
 
 // ─── Run each wave ─────────────────────────────────────────────────────────────
 
+const incompleteByWave: Array<{ wave: number; slices: number[] }> = [];
+
 for (let i = 0; i < waves.length; i++) {
   const wave = waves[i];
   // Re-fetch to pick up status changes from prior waves / prior runs.
@@ -256,6 +260,8 @@ for (let i = 0; i < waves.length; i++) {
       '.sandcastle/main.mts',
       '--prd',
       String(prdNumber),
+      // Gate once, after the LAST wave — not once per wave. See ADR 0045.
+      '--defer-gate',
       ...forwardedArgs,
     ],
     { encoding: 'utf8', stdio: 'inherit', windowsHide: true, shell: true },
@@ -277,33 +283,81 @@ for (let i = 0; i < waves.length; i++) {
   });
 
   if (failedSlices.length > 0) {
-    const incomplete = failedSlices.map((n) => `#${n}`).join(', ');
-    fail(
-      `Wave ${i + 1} did not fully complete. Incomplete: ${incomplete}.\n` +
-        `These slices block later waves.\n\n` +
-        `An incomplete slice may have been INTERRUPTED rather than broken. If so its\n` +
-        `work was preserved as a Slice Checkpoint on its slice branch and re-running\n` +
-        `resumes from it — nothing is lost by trying again. Check with:\n` +
-        `  git log --oneline <base>..slice/<n>-<slug>\n\n` +
-        `Recovery:\n` +
-        `  • Re-run THIS driver — it recomputes the wave gating and skips completed\n` +
-        `    waves via status:done. This is the normal path.\n` +
-        `  • To throw one attempt away first:\n` +
-        `      npx tsx .sandcastle/main.mts --prd ${prdNumber} --issue <slice> --fresh\n\n` +
-        `Do NOT recover with a plain \`dispatch-agents --prd ${prdNumber}\`. This driver gates\n` +
-        `each wave by removing \`ready-for-agent\` from every other slice and does not\n` +
-        `restore it on exit, so a direct dispatch right now would see ONLY wave ${i + 1}\n` +
-        `and silently skip every later wave.\n\n` +
-        `See docs/sandcastle/RUNBOOK.md — "Recovering an interrupted run".`,
+    // Record and CARRY ON. Aborting here is what turned an unattended PRD into a
+    // wasted night: wave 1 stalls, waves 2 and 3 never run, and nothing at all is
+    // integrated — twice, on gate faults unrelated to the code. Later waves may
+    // depend on this one and may well fail too; a failed wave that reports is still
+    // strictly more useful than a PRD that stopped. See ADR 0045.
+    incompleteByWave.push({ wave: i + 1, slices: failedSlices });
+    console.error(
+      `\n=== Wave ${i + 1} incomplete: ${failedSlices
+        .map((n) => `#${n}`)
+        .join(', ')} — continuing to the next wave. ===\n` +
+        `    Later waves that depend on these may fail too; everything is reported at the end.`,
     );
+    continue;
   }
 
   console.log(`\n=== Wave ${i + 1} complete. ===`);
 }
 
+// ─── One gate for the whole PRD ───────────────────────────────────────────────
+// Every wave ran with --defer-gate, so nothing has been gated yet. Gate the
+// assembled feature branch once, here — the only scope that can see two slices
+// breaking each other, and the same scope CI will run on the PR. It does not
+// block: the slices are already integrated and the point of this run is to leave
+// a verdict a maintainer can read in the morning. See ADR 0045.
 console.log(`\n${'─'.repeat(55)}`);
-console.log(`All ${waves.length} waves complete for PRD #${prdNumber}.`);
 console.log(
-  `The local feature branch now contains every slice. QA it, then push it and\n` +
-    `open ONE PR to main by hand:  git push -u origin <feature-branch> && gh pr create --base main\n`,
+  `All ${waves.length} wave(s) attempted for PRD #${prdNumber}. Gating once...\n`,
 );
+
+const gate = spawnSync(
+  'npx',
+  [
+    'tsx',
+    '.sandcastle/main.mts',
+    '--prd',
+    String(prdNumber),
+    '--gate-only',
+    ...forwardedArgs,
+  ],
+  { encoding: 'utf8', stdio: 'inherit', windowsHide: true, shell: true },
+);
+const gateOk = gate.status === 0;
+
+console.log(`\n${'─'.repeat(55)}`);
+console.log(`PRD #${prdNumber} — run summary\n`);
+console.log(`  waves attempted   ${waves.length}`);
+console.log(
+  `  incomplete waves  ${
+    incompleteByWave.length === 0
+      ? 'none'
+      : incompleteByWave
+          .map(
+            (w) =>
+              `wave ${w.wave} (${w.slices.map((n) => `#${n}`).join(', ')})`,
+          )
+          .join('; ')
+  }`,
+);
+console.log(`  feature gate      ${gateOk ? 'PASS' : 'FAIL'}`);
+console.log(
+  `\nNothing is pushed and nothing was discarded. Every slice branch is intact.`,
+);
+
+if (!gateOk || incompleteByWave.length > 0) {
+  console.log(
+    `\nThis run needs attention, but it did NOT stop early — later waves still ran.\n` +
+      `The gate verdict is also on PRD #${prdNumber} as a comment, so it reaches you\n` +
+      `without the terminal. Re-running skips slices already marked status:done.`,
+  );
+} else {
+  console.log(
+    `\nThe local feature branch contains every slice and is green. QA it, then push it\n` +
+      `and open ONE PR to main by hand:\n` +
+      `  git push -u origin <feature-branch> && gh pr create --base main`,
+  );
+}
+
+process.exit(gateOk && incompleteByWave.length === 0 ? 0 : 1);
