@@ -91,6 +91,36 @@ corepack yarn dispatch-agents --prd <issue-number> --agent cursor
 corepack yarn dispatch-agents --prd <issue-number> --agent copilot --model claude-sonnet-5
 ```
 
+### Where the build gate runs
+
+| Mode                           | Gate                                                                |
+| ------------------------------ | ------------------------------------------------------------------- |
+| **PRD** (`--prd`)              | **Once, at the end**, on `origin/main...feat/<slug>`. Never blocks. |
+| **Standalone** (`--issue`)     | Per slice, fail-closed, as before — the branch is the deliverable.  |
+| **Sweep** (`--all-standalone`) | Per issue, fail-closed.                                             |
+
+Under `--prd`, slices integrate **unconditionally** and the assembled feature branch is gated once.
+A red gate no longer strands the run: every slice stays integrated, every slice branch stays
+intact, nothing is pushed, and the verdict is posted as a comment on the PRD issue so it reaches
+you while you are away from the terminal. `dispatch-waves` no longer aborts on an incomplete wave
+either — it records it and carries on. See
+[ADR 0044](../adr/0044-a-prd-is-gated-once-on-the-assembled-feature-branch.md).
+
+Gating the whole branch is also a _stronger_ check than the old per-slice gate: two slices that
+break each other pass individually and only fail together, which is exactly what CI sees on the PR.
+
+Re-gate a feature branch at any time, without dispatching anything and without an agent credential:
+
+```bash
+npx tsx .sandcastle/main.mts --prd <n> --gate-only
+```
+
+When a gate is red, the slice commits are in order on the branch:
+
+```bash
+git log --oneline origin/main..feat/<slug>
+```
+
 ### Three dispatch modes
 
 | Mode           | Invocation                                 | Base for the work branch         | Where finished work lands                     |
@@ -433,14 +463,17 @@ TestRunner`. A spec file existing in the tree is not evidence a pipeline ran —
 
 ### The `dispatch-waves` label trap
 
-`dispatch-waves` gates each wave by rewriting `ready-for-agent` across every slice in the PRD, and
-it aborts the whole driver the moment one slice does not reach `status:done` — **without restoring
-those labels**. After an abort, later waves' slices have had `ready-for-agent` stripped.
+`dispatch-waves` gates each wave by rewriting `ready-for-agent` across every slice in the PRD and
+**does not restore those labels when the run ends**. Whichever wave the run finished on, the other
+waves' slices have had `ready-for-agent` stripped.
 
-Consequence: recovering with a plain `dispatch-agents --prd <n>` sees **only the aborted wave**;
-the remaining waves are invisible. Re-run `dispatch-waves --prd <n>` instead — it recomputes the
-gating from scratch and skips completed waves via `status:done`. The driver's abort message now
-says so, but the trap is worth knowing before you meet it.
+Consequence: recovering with a plain `dispatch-agents --prd <n>` sees **only the last wave**; the
+rest are invisible. Re-run `dispatch-waves --prd <n>` instead — it recomputes the gating from
+scratch and skips completed waves via `status:done`.
+
+The driver no longer aborts on an incomplete wave ([ADR 0044](../adr/0044-a-prd-is-gated-once-on-the-assembled-feature-branch.md)),
+so this bites less often than it did — but the labels are still left mid-rewrite, so the rule
+stands: recover with the wave driver, not with a bare dispatch.
 
 ### Salvaging by hand
 

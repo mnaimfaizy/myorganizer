@@ -47,7 +47,7 @@ every property above and simply has **no integration step**:
 
 ## Status
 
-accepted.
+accepted. Amended by [0044](0044-a-prd-is-gated-once-on-the-assembled-feature-branch.md): in PRD mode the gate no longer runs per slice and no longer blocks integration. Slices integrate unconditionally and the assembled feature branch is gated once, against `origin/main`. Standalone runs keep the fail-closed per-slice gate described here.
 
 ## Why
 
