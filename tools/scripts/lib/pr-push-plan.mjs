@@ -14,10 +14,16 @@
  *
  * The second hazard is worse and a lease cannot see it: divergence does not prove a rebase.
  * Someone else — a teammate, another machine, a `claude/` or `copilot/` agent — may have
- * pushed real commits to the same branch, and forcing would destroy them. `git cherry`
- * answers this exactly, by patch-id: a remote commit with an equivalent change already in
- * the local branch is a rebase artifact and safe to drop; one without is somebody's work.
- * Unmatched remote commits therefore refuse the push regardless of the flag.
+ * pushed real commits to the same branch, and forcing would destroy them. Upstream commits
+ * that nothing here accounts for therefore refuse the push regardless of the flag.
+ *
+ * Deciding what "accounted for" means took two passes. Patch-id alone (`git cherry`) is the
+ * obvious answer and it is wrong: a rebase that resolves a conflict rewrites the patch, so
+ * the rebased commit no longer matches its own predecessor. This module's first version did
+ * exactly that and then refused to push its OWN pull request, because the rebase that
+ * prompted it had a conflict in `.husky/pre-commit`. Patch-id is therefore the fast path,
+ * and identity — same author, same subject — is the fallback that recognises a commit the
+ * rebase reshaped. A teammate's genuinely different commit matches neither.
  *
  * Run the tests with: yarn ai:create-pr:test
  */
@@ -50,9 +56,9 @@ export const FORCE_FLAG = '--force-with-lease';
  * @param {string}  input.branch               Short branch name, for the lease ref.
  * @param {string}  [input.remoteSha]          The observed upstream commit, for the lease.
  * @param {boolean} [input.forceWithLease]     Whether the caller passed the flag.
- * @param {string[]} [input.unmatchedRemoteCommits]
- *        Upstream commits with NO patch-equivalent in the local branch — i.e. the `+`
- *        lines of `git cherry HEAD @{u}`. Non-empty means forcing would destroy work.
+ * @param {(string|{sha: string, subject?: string})[]} [input.unmatchedRemoteCommits]
+ *        Upstream commits this branch does not account for, as returned by
+ *        `findOrphanedRemoteCommits`. Non-empty means forcing would destroy work.
  * @returns {{action: string, args?: string[], reason?: string} | {error: string}}
  */
 export function decidePushPlan({
@@ -103,7 +109,13 @@ export function decidePushPlan({
 
   // Diverged from here down.
   if (unmatchedRemoteCommits.length > 0) {
-    const listed = unmatchedRemoteCommits.map((sha) => `  ${sha}`).join('\n');
+    const listed = unmatchedRemoteCommits
+      .map((commit) =>
+        typeof commit === 'string'
+          ? `  ${commit}`
+          : `  ${commit.sha}${commit.subject ? `  ${commit.subject}` : ''}`,
+      )
+      .join('\n');
     return {
       error:
         `The upstream branch has ${unmatchedRemoteCommits.length} commit(s) with no equivalent in this branch:\n` +
@@ -162,4 +174,76 @@ export function parseCherryOutput(stdout) {
   }
 
   return { unmatched, equivalent };
+}
+
+/** Unit separator, matching the `%x1f` in the `git log` format the runner uses. */
+export const SEPARATOR = '\u001f';
+
+/**
+ * Parse `git log --format=%H%x1f%ae%x1f%s` into commit records.
+ *
+ * @param {string} stdout
+ * @returns {{sha: string, author: string, subject: string}[]}
+ */
+export function parseCommitRecords(stdout) {
+  const records = [];
+
+  for (const line of String(stdout ?? '').split('\n')) {
+    if (line.trim() === '') continue;
+    const [sha, author, ...rest] = line.split(SEPARATOR);
+    if (!sha) continue;
+    records.push({
+      sha: sha.trim(),
+      author: (author ?? '').trim(),
+      subject: rest.join(SEPARATOR).trim(),
+    });
+  }
+
+  return records;
+}
+
+const identityOf = (commit) =>
+  `${(commit.author ?? '').toLowerCase()}\u0000${(commit.subject ?? '').trim()}`;
+
+/**
+ * Upstream commits that this branch does not account for — the ones a force would destroy
+ * for good.
+ *
+ * An upstream commit is accounted for when it either has a patch-equivalent here (the
+ * clean-rebase case, already decided by `git cherry`) or shares an author and subject with
+ * a local commit that has not already claimed another (the conflict-resolved-rebase case,
+ * where the patch necessarily changed). Matching is one-to-one so that two upstream commits
+ * cannot both be excused by a single local one.
+ *
+ * A commit with no subject is never matched by identity: an empty subject would pair with
+ * every other empty subject and quietly excuse real work.
+ *
+ * @param {object} input
+ * @param {{sha: string, author?: string, subject?: string, patchEquivalent?: boolean}[]} [input.remoteOnly]
+ * @param {{sha: string, author?: string, subject?: string}[]} [input.localOnly]
+ * @returns {{sha: string, author?: string, subject?: string}[]}
+ */
+export function findOrphanedRemoteCommits({ remoteOnly = [], localOnly = [] }) {
+  const claimable = localOnly.map((commit) => ({ commit, claimed: false }));
+  const orphans = [];
+
+  for (const remote of remoteOnly) {
+    if (remote.patchEquivalent) continue;
+
+    const subject = (remote.subject ?? '').trim();
+    if (subject !== '') {
+      const match = claimable.find(
+        (entry) =>
+          !entry.claimed && identityOf(entry.commit) === identityOf(remote),
+      );
+      if (match) {
+        match.claimed = true;
+        continue;
+      }
+    }
+
+    orphans.push(remote);
+  }
+
+  return orphans;
 }

@@ -8,8 +8,11 @@ import test from 'node:test';
 import {
   FORCE_FLAG,
   PUSH_ACTIONS,
+  SEPARATOR,
   decidePushPlan,
+  findOrphanedRemoteCommits,
   parseCherryOutput,
+  parseCommitRecords,
 } from './pr-push-plan.mjs';
 
 const BRANCH = 'docs/some-branch';
@@ -162,4 +165,137 @@ test('a pure rebase — every remote commit superseded — is the forceable case
     unmatchedRemoteCommits: unmatched,
   });
   assert.equal(result.action, PUSH_ACTIONS.forceWithLease);
+});
+
+const record = (sha, author, subject) => [sha, author, subject].join(SEPARATOR);
+
+test('parses git log records, keeping a subject that contains the separator-free text', () => {
+  const parsed = parseCommitRecords(
+    [
+      record('aaaaaaa', 'me@example.com', 'feat: do a thing'),
+      '',
+      record('bbbbbbb', 'you@example.com', 'fix: undo it'),
+    ].join('\n'),
+  );
+  assert.deepEqual(parsed, [
+    { sha: 'aaaaaaa', author: 'me@example.com', subject: 'feat: do a thing' },
+    { sha: 'bbbbbbb', author: 'you@example.com', subject: 'fix: undo it' },
+  ]);
+});
+
+test('parses empty git log output as no commits', () => {
+  assert.deepEqual(parseCommitRecords(''), []);
+  assert.deepEqual(parseCommitRecords(undefined), []);
+});
+
+test('a patch-equivalent upstream commit is accounted for', () => {
+  const orphans = findOrphanedRemoteCommits({
+    remoteOnly: [
+      { sha: 'aaa', author: 'me@x', subject: 'feat: x', patchEquivalent: true },
+    ],
+    localOnly: [],
+  });
+  assert.deepEqual(orphans, []);
+});
+
+// The regression that made this function necessary: the first version of this module used
+// patch-id alone and refused to push its own PR, because the rebase had a conflict.
+test('a conflict-resolved rebase is recognised by author and subject', () => {
+  const orphans = findOrphanedRemoteCommits({
+    remoteOnly: [
+      {
+        sha: 'old',
+        author: 'me@x',
+        subject: 'feat(tooling): let ai:create-pr push a rebased branch safely',
+        patchEquivalent: false,
+      },
+    ],
+    localOnly: [
+      {
+        sha: 'new',
+        author: 'me@x',
+        subject: 'feat(tooling): let ai:create-pr push a rebased branch safely',
+      },
+    ],
+  });
+  assert.deepEqual(orphans, [], 'the rewritten commit is the same work');
+});
+
+test('a teammate’s commit matches neither patch-id nor identity', () => {
+  const orphans = findOrphanedRemoteCommits({
+    remoteOnly: [
+      {
+        sha: 'theirs',
+        author: 'them@y',
+        subject: 'fix: their bug',
+        patchEquivalent: false,
+      },
+    ],
+    localOnly: [{ sha: 'mine', author: 'me@x', subject: 'feat: my thing' }],
+  });
+  assert.equal(orphans.length, 1);
+  assert.equal(orphans[0].sha, 'theirs');
+});
+
+test('the same subject from a different author is not excused', () => {
+  const orphans = findOrphanedRemoteCommits({
+    remoteOnly: [
+      {
+        sha: 'theirs',
+        author: 'them@y',
+        subject: 'chore: bump',
+        patchEquivalent: false,
+      },
+    ],
+    localOnly: [{ sha: 'mine', author: 'me@x', subject: 'chore: bump' }],
+  });
+  assert.equal(orphans.length, 1, 'authorship is part of the identity');
+});
+
+test('one local commit cannot excuse two upstream commits', () => {
+  const orphans = findOrphanedRemoteCommits({
+    remoteOnly: [
+      {
+        sha: 'r1',
+        author: 'me@x',
+        subject: 'chore: bump',
+        patchEquivalent: false,
+      },
+      {
+        sha: 'r2',
+        author: 'me@x',
+        subject: 'chore: bump',
+        patchEquivalent: false,
+      },
+    ],
+    localOnly: [{ sha: 'l1', author: 'me@x', subject: 'chore: bump' }],
+  });
+  assert.equal(orphans.length, 1, 'matching is one-to-one');
+  assert.equal(orphans[0].sha, 'r2');
+});
+
+test('an empty subject is never matched by identity', () => {
+  const orphans = findOrphanedRemoteCommits({
+    remoteOnly: [
+      { sha: 'theirs', author: 'me@x', subject: '', patchEquivalent: false },
+    ],
+    localOnly: [{ sha: 'mine', author: 'me@x', subject: '' }],
+  });
+  assert.equal(
+    orphans.length,
+    1,
+    'an empty subject would otherwise excuse every other empty one',
+  );
+});
+
+test('the refusal names the orphaned commit and its subject', () => {
+  const result = plan({
+    ahead: 1,
+    behind: 1,
+    remoteSha: REMOTE_SHA,
+    forceWithLease: true,
+    unmatchedRemoteCommits: [{ sha: 'theirs', subject: 'fix: their bug' }],
+  });
+  assert.match(result.error, /theirs/);
+  assert.match(result.error, /fix: their bug/);
 });

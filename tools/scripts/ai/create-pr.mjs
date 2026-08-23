@@ -20,7 +20,9 @@ import {
   FORCE_FLAG,
   PUSH_ACTIONS,
   decidePushPlan,
+  findOrphanedRemoteCommits,
   parseCherryOutput,
+  parseCommitRecords,
 } from '../lib/pr-push-plan.mjs';
 
 const usage = `Usage:
@@ -269,12 +271,37 @@ function ensureUpstreamBranch(options) {
       allowFailure: true,
     });
 
-    // Only ask git which upstream commits are orphaned when it can matter. `git cherry`
+    // Only work out which upstream commits are orphaned when it can matter: `git cherry`
     // diffs every commit on both sides, so it is not free on a long-lived branch.
+    //
+    // Patch-id is the fast path and it is not sufficient on its own. A rebase that resolved
+    // a conflict rewrites the patch, so the rebased commit no longer matches the one it
+    // replaced and `git cherry` reports the author's own superseded commit as unmatched.
+    // Author and subject are carried through so identity can settle those cases.
     if (ahead > 0 && behind > 0) {
-      unmatchedRemoteCommits = parseCherryOutput(
-        trimStdout('git', ['cherry', 'HEAD', '@{u}'], { allowFailure: true }),
-      ).unmatched;
+      const equivalent = new Set(
+        parseCherryOutput(
+          trimStdout('git', ['cherry', 'HEAD', '@{u}'], { allowFailure: true }),
+        ).equivalent,
+      );
+      const format = '--format=%H%x1f%ae%x1f%s';
+      const remoteOnly = parseCommitRecords(
+        trimStdout('git', ['log', format, '@{u}', '^HEAD'], {
+          allowFailure: true,
+        }),
+      ).map((commit) => ({
+        ...commit,
+        patchEquivalent: equivalent.has(commit.sha),
+      }));
+      const localOnly = parseCommitRecords(
+        trimStdout('git', ['log', format, 'HEAD', '^@{u}'], {
+          allowFailure: true,
+        }),
+      );
+      unmatchedRemoteCommits = findOrphanedRemoteCommits({
+        remoteOnly,
+        localOnly,
+      });
     }
   }
 
