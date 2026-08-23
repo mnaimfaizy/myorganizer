@@ -88,13 +88,16 @@ if ! git diff --cached --quiet --diff-filter=ACMRTD -- \
 then
 corepack yarn sandcastle:map:check
 fi
-# The merge-base proof gate is a pure function with no Nx project of its own, so
-# `affected:lint` and `nx affected -t test` never reach it. It is the only thing
-# standing between a fabricated PrAuthor draft and GitHub (#456), so run its contracts
-# whenever the gate or the runner that calls it is staged.
+# The merge-base proof gate and the push planner are pure functions with no Nx project of
+# their own, so `affected:lint` and `nx affected -t test` never reach them. One is the only
+# thing standing between a fabricated PrAuthor draft and GitHub (#456); the other decides
+# whether the runner may rewrite a remote branch. Run their contracts whenever either
+# module, its tests, or the runner that calls them is staged.
 if ! git diff --cached --quiet --diff-filter=ACMRT -- \
  tools/scripts/lib/pr-merge-base.mjs \
  tools/scripts/lib/pr-merge-base.test.mjs \
+ tools/scripts/lib/pr-push-plan.mjs \
+ tools/scripts/lib/pr-push-plan.test.mjs \
  tools/scripts/ai/create-pr.mjs
 then
 corepack yarn ai:create-pr:test

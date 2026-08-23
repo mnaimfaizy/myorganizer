@@ -38,7 +38,7 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Lint: `yarn nx lint <project-name>` or `yarn lint`.
 - Format: `yarn format:write`.
 - AI commit: `corepack yarn ai:commit --message-file <path>`.
-- AI PR: draft with the `PrAuthor` sub-agent, then `corepack yarn ai:create-pr --title <text> --body-file <path> --merge-base <sha> [--label <name>] [--reviewer <login>]`. `--merge-base` is the draft's `MERGE-BASE:` SHA; the runner recomputes it and rejects drafts that cannot produce it.
+- AI PR: draft with the `PrAuthor` sub-agent, then `corepack yarn ai:create-pr --title <text> --body-file <path> --merge-base <sha> [--label <name>] [--reviewer <login>]`. `--merge-base` is the draft's `MERGE-BASE:` SHA; the runner recomputes it and rejects drafts that cannot produce it. Add `--force-with-lease` when the branch was rebased and the remote is no longer a fast-forward; the runner pins the lease itself and still refuses if the remote holds work your branch does not.
 - API sync after backend contract changes: `yarn openapi:sync`; check drift with `yarn openapi:check`.
 - Release (cut branch): `yarn release:cut --version vX.Y.Z --push --notes-file RELEASE_NOTES.md`.
 - Release (tag after production deploy): `yarn release:tag --version vX.Y.Z --push`.

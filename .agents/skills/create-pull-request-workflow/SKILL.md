@@ -33,6 +33,7 @@ Humans (or CI) may still run `yarn ai:create-pr` with no `--title` / `--body-fil
 - If the draft includes a `LABELS:` line, pass each Surface Label with `--label`. Omit `--label` when the line is absent (default: unlabeled).
 - Do not invent labels. The runner rejects names that are not Surface Labels in `tools/config/github-labels.json` (ADR 0025).
 - Push the branch upstream if it is not already tracked (the runner does this).
+- If the branch was rebased, the remote branch is no longer a fast-forward and the runner refuses the push. Re-run with `--force-with-lease`. The runner pins the lease to the upstream commit it just observed, and refuses regardless of the flag if the remote carries any commit with no patch-equivalent in your branch — that is somebody else's work, not a rebase artifact. Never reach for `git push --force` yourself.
 - Assign the PR to the authenticated GitHub user (the runner does this).
 - If the user does not specify reviewers, leave the reviewer list empty.
 - If the user specifies one or more reviewers, pass them explicitly with `--reviewer`.
