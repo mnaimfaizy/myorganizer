@@ -65,11 +65,10 @@ function ConfirmDeleteDialogPendingExample() {
       onOpenChange={setOpen}
       title="Delete this item?"
       description="This action will be processed and cannot be undone."
-      onConfirm={async () => {
-        // Simulate async deletion operation - resolves immediately for deterministic testing
-        await Promise.resolve();
-        setOpen(false);
-      }}
+      // Never settles, so the pending state is what this story renders and
+      // snapshots. A promise that resolves in a microtask would flip back
+      // before React commits the pending render, leaving nothing to observe.
+      onConfirm={() => new Promise<void>(() => undefined)}
     />
   );
 }
@@ -102,40 +101,23 @@ export const PendingState: Story = {
     return <ConfirmDeleteDialogPendingExample />;
   },
   play: async () => {
-    // Find the confirm button in the portalled dialog content
-    const confirmButton = within(document.body).getByRole('button', {
-      name: 'Delete',
-    });
-    expect(confirmButton).toBeEnabled();
+    const body = within(document.body);
 
-    // Find the cancel button to verify it is also initially enabled
-    const cancelButton = within(document.body).getByRole('button', {
-      name: 'Cancel',
-    });
-    expect(cancelButton).toBeEnabled();
+    const confirmButton = body.getByRole('button', { name: 'Delete' });
+    const cancelButton = body.getByRole('button', { name: 'Cancel' });
+    await expect(confirmButton).toBeEnabled();
+    await expect(cancelButton).toBeEnabled();
 
-    // Click the confirm button
     await userEvent.click(confirmButton);
 
-    // Wait for the button text to change and verify the pending state
-    await waitFor(() => {
-      const pendingButton = within(document.body).getByRole('button', {
-        name: 'Delete…',
-      });
-      expect(pendingButton).toBeDisabled();
+    // The confirm control is disabled for as long as the handler is in flight.
+    await waitFor(async () => {
+      await expect(
+        body.getByRole('button', { name: 'Delete\u2026' }),
+      ).toBeDisabled();
     });
 
-    // Assert that the cancel button remains enabled during the pending operation
-    expect(cancelButton).toBeEnabled();
-
-    // Wait for the async operation to complete and the dialog to close
-    await waitFor(
-      () => {
-        expect(
-          within(document.body).queryByRole('dialog'),
-        ).not.toBeInTheDocument();
-      },
-      { timeout: 1000 },
-    );
+    // Cancel stays available so a slow delete never traps the user.
+    await expect(body.getByRole('button', { name: 'Cancel' })).toBeEnabled();
   },
 };
