@@ -2666,9 +2666,14 @@ while (pendingSlices.length > 0) {
         '--reason',
         'completed',
         '--comment',
-        `Agent completed and the build gate passed. ${result.commits.length} commit(s) on \`${sliceBranch}\`.\n` +
-          `Integrated into the local \`${integrationBranch}\` (fast-forward, not pushed) and closed as completed. ` +
-          `It will reach \`main\` via the manual PRD PR.`,
+        // Do NOT claim the gate passed: under ADR 0044 a PRD slice is not gated
+        // individually at all. The PRD is gated once, on the assembled branch,
+        // and that verdict is reported on the PRD issue.
+        `Agent completed. ${result.commits.length} commit(s) on \`${sliceBranch}\`.\n` +
+          `Integrated into the local \`${integrationBranch}\` (fast-forward, not pushed) and closed as completed.\n\n` +
+          `This slice was **not** gated on its own. The whole PRD is gated once on the ` +
+          `assembled feature branch and the verdict is posted on the PRD issue. ` +
+          `It reaches \`main\` via the manual PRD PR.`,
       ]);
       unblockDependents(issue);
     } else if (mergeOk) {

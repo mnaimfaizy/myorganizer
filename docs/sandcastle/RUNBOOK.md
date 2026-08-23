@@ -475,6 +475,26 @@ The driver no longer aborts on an incomplete wave ([ADR 0044](../adr/0044-a-prd-
 so this bites less often than it did — but the labels are still left mid-rewrite, so the rule
 stands: recover with the wave driver, not with a bare dispatch.
 
+### If you integrate a slice by hand, unblock its dependents
+
+`status:blocked` is cleared by `unblockDependents`, which runs **only** on the orchestrator's
+integration path. Integrating a slice yourself — fast-forwarding the feature branch, labelling
+`status:done`, closing the issue — skips it, and the next wave then finds nothing to dispatch:
+
+```
+Error: No open AFK slice issues found for PRD <n>.
+```
+
+The slices are there; they are excluded because `main.mts` filters out `status:blocked`. Clear it
+on every dependent whose `## Blocked by` entries are now done or closed, and only those:
+
+```bash
+gh issue view <dependent> --json body --jq '.body' | grep -A 5 -i '^## Blocked by'
+gh issue edit <dependent> --remove-label status:blocked
+```
+
+Leave the rest blocked — the orchestrator will clear them as their blockers integrate.
+
 ### Salvaging by hand
 
 Only needed for a checkpoint created before this behaviour landed, or when the crash path itself
