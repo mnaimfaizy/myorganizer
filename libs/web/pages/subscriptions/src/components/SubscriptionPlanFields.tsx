@@ -18,15 +18,13 @@ import {
   getSubscriptionRenewalTypeLabel,
   getSubscriptionTierLabel,
 } from '../utils/presentation';
-import { type AddSubscriptionFormValues } from './AddSubscriptionCard';
+import type { SubscriptionFormValues } from '../schemas/subscription';
 
-export interface AddSubscriptionPlanFieldsProps {
-  form: UseFormReturn<AddSubscriptionFormValues>;
+export interface SubscriptionPlanFieldsProps {
+  form: UseFormReturn<SubscriptionFormValues>;
 }
 
-export function AddSubscriptionPlanFields({
-  form,
-}: AddSubscriptionPlanFieldsProps) {
+export function SubscriptionPlanFields({ form }: SubscriptionPlanFieldsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div className="space-y-2">
@@ -36,7 +34,7 @@ export function AddSubscriptionPlanFields({
           onValueChange={(v) =>
             form.setValue(
               'paymentMethod',
-              v as AddSubscriptionFormValues['paymentMethod'],
+              v as SubscriptionFormValues['paymentMethod'],
               { shouldValidate: true },
             )
           }
@@ -61,7 +59,7 @@ export function AddSubscriptionPlanFields({
           onValueChange={(v) =>
             form.setValue(
               'renewalType',
-              v as AddSubscriptionFormValues['renewalType'],
+              v as SubscriptionFormValues['renewalType'],
               { shouldValidate: true },
             )
           }
@@ -84,13 +82,9 @@ export function AddSubscriptionPlanFields({
         <Select
           value={form.watch('tier')}
           onValueChange={(v) =>
-            form.setValue(
-              'tier',
-              v as AddSubscriptionFormValues['tier'],
-              {
-                shouldValidate: true,
-              },
-            )
+            form.setValue('tier', v as SubscriptionFormValues['tier'], {
+              shouldValidate: true,
+            })
           }
         >
           <SelectTrigger id="sub-tier">

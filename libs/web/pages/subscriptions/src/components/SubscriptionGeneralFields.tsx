@@ -1,5 +1,3 @@
-'use client';
-
 import {
   SubscriptionBillingCycleEnum,
   SubscriptionStatusEnum,
@@ -19,35 +17,35 @@ import {
   getSubscriptionBillingCycleLabel,
   getSubscriptionStatusLabel,
 } from '../utils/presentation';
-import type { EditValues } from './SubscriptionDetailPageClient';
+import type { SubscriptionFormValues } from '../schemas/subscription';
 
-export interface EditSubscriptionGeneralSectionProps {
-  form: UseFormReturn<EditValues>;
+export interface SubscriptionGeneralFieldsProps {
+  form: UseFormReturn<SubscriptionFormValues>;
 }
 
-export function EditSubscriptionGeneralSection({
+export function SubscriptionGeneralFields({
   form,
-}: EditSubscriptionGeneralSectionProps) {
+}: SubscriptionGeneralFieldsProps) {
   return (
     <>
       <div className="space-y-2">
-        <Label htmlFor="edit-name">Name</Label>
-        <Input id="edit-name" {...form.register('name')} />
+        <Label htmlFor="sub-name">Name *</Label>
+        <Input id="sub-name" {...form.register('name')} placeholder="Netflix" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="edit-status">Status</Label>
+          <Label htmlFor="sub-status">Status</Label>
           <Select
             value={form.watch('status')}
             onValueChange={(v) =>
-              form.setValue('status', v as EditValues['status'], {
+              form.setValue('status', v as SubscriptionFormValues['status'], {
                 shouldValidate: true,
               })
             }
           >
-            <SelectTrigger id="edit-status">
-              <SelectValue />
+            <SelectTrigger id="sub-status">
+              <SelectValue placeholder="Select status" />
             </SelectTrigger>
             <SelectContent>
               {Object.values(SubscriptionStatusEnum).map((v) => (
@@ -60,21 +58,19 @@ export function EditSubscriptionGeneralSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="edit-billing">Billing cycle</Label>
+          <Label htmlFor="sub-billing">Billing cycle</Label>
           <Select
             value={form.watch('billingCycle')}
             onValueChange={(v) =>
               form.setValue(
                 'billingCycle',
-                v as EditValues['billingCycle'],
-                {
-                  shouldValidate: true,
-                },
+                v as SubscriptionFormValues['billingCycle'],
+                { shouldValidate: true },
               )
             }
           >
-            <SelectTrigger id="edit-billing">
-              <SelectValue />
+            <SelectTrigger id="sub-billing">
+              <SelectValue placeholder="Select cycle" />
             </SelectTrigger>
             <SelectContent>
               {Object.values(SubscriptionBillingCycleEnum).map((v) => (
