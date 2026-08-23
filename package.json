@@ -74,6 +74,7 @@
     "agents:usage:report": "node tools/scripts/report-agent-usage.mjs",
     "graphify:project-edges": "node tools/scripts/graphify-project-edge-benchmark.mjs",
     "graphify:project-edges:test": "node --test tools/scripts/graphify-project-edge-benchmark.test.mjs",
+    "sandcastle:map:check": "node tools/scripts/check-sandcastle-map.mjs",
     "sandcastle:resume:test": "node --test tools/scripts/lib/sandcastle-resume.test.mjs",
     "sandcastle:subagent-trace:test": "node --test tools/scripts/lib/sandcastle-subagent-trace.test.mjs",
     "dispatch-agents": "npx tsx .sandcastle/main.mts",

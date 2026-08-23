@@ -30,6 +30,20 @@ if ! git diff --cached --quiet --diff-filter=ACMRTD -- \
 then
 corepack yarn skills:map:check
 fi
+# The orchestration map and the journey rail both state a tier per agent, and the map's
+# manifest stamps the policy revision it was built against. Nothing invoked this check, so
+# the roster drifted and the stamp went stale on main with nobody watching (ADR 0043 names
+# it). Gated on every input it reads: the two pages, the policy, the canonical agent bodies
+# it takes display names from, and the script itself.
+if ! git diff --cached --quiet --diff-filter=ACMRTD -- \
+ docs/agents/orchestration-map.html \
+ docs/agents/agent-journey.html \
+ tools/config/agent-model-policy.json \
+ .github/agents \
+ tools/scripts/check-agent-map.mjs
+then
+corepack yarn agents:map:check
+fi
 corepack yarn test:hygiene --staged
 if ! git diff --cached --quiet --diff-filter=ACMRT -- \
  libs/web-ui/src/lib/components \
@@ -50,6 +64,29 @@ if ! git diff --cached --quiet --diff-filter=ACMRT -- \
 then
 corepack yarn sandcastle:resume:test
 corepack yarn sandcastle:subagent-trace:test
+fi
+# The five sandcastle atlas pages state constants that live as module-local literals in the
+# two orchestrator files, as exports in sandcastle-resume.mjs and sandcastle-subagent-trace.mjs,
+# and as JSON in the model policy and package.json. They rot the moment any of those move, and
+# the checker passed green through the whole of #467 precisely because it asserted constants
+# while the prose went false around them — so the guard must list every input it reads, plus
+# the pages and the check script themselves, or an unrelated commit is failed by drift it did
+# not introduce and a related one slips through untested.
+if ! git diff --cached --quiet --diff-filter=ACMRTD -- \
+ docs/sandcastle/dispatch-map.html \
+ docs/sandcastle/waves.html \
+ docs/sandcastle/gates.html \
+ docs/sandcastle/logs.html \
+ docs/sandcastle/resume.html \
+ tools/scripts/check-sandcastle-map.mjs \
+ tools/scripts/lib/sandcastle-resume.mjs \
+ tools/scripts/lib/sandcastle-subagent-trace.mjs \
+ tools/config/agent-model-policy.json \
+ package.json \
+ .sandcastle/main.mts \
+ .sandcastle/dispatch-waves.mts
+then
+corepack yarn sandcastle:map:check
 fi
 # The merge-base proof gate is a pure function with no Nx project of its own, so
 # `affected:lint` and `nx affected -t test` never reach it. It is the only thing
