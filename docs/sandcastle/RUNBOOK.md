@@ -143,7 +143,10 @@ corepack yarn dispatch-agents --all-standalone --dry-run
 
 `--dry-run` resolves the whole plan — selected issues, branch names, routed model per issue, base
 ref, integration target — then exits. It creates no worktree or container, writes nothing to
-GitHub, does not create the PRD feature branch, and does not build the sandbox image.
+GitHub, does not create the PRD feature branch, and does not build the sandbox image. It also does **not**
+require a Claude credential: it prints `auth: NONE FOUND` in the run header instead of exiting, so
+you can preview a plan on a machine where the 1Password injection is not set up. A real run still
+refuses to start without one.
 
 **One slice of a PRD:** add `--issue` to a PRD run. It still creates/reuses `feat/<slug>`,
 gates, and fast-forwards — just for that one slice.

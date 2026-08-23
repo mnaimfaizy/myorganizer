@@ -470,7 +470,23 @@ const modelFlag = getArgValue('model');
 
 type ClaudeAuthMode = 'subscription' | 'api';
 
-function resolveClaudeAuth(kind: AgentKind): ClaudeAuthMode | null {
+/** `null` = no credential needed (not a claude run). `'none'` = needed, absent. */
+type ClaudeAuthResolution = ClaudeAuthMode | 'none' | null;
+
+/**
+ * Which Claude credential this run will use.
+ *
+ * `preview` softens the MISSING-credential paths from a hard exit to `'none'`, so a
+ * `--dry-run` can still show the plan on a machine where the 1Password injection was
+ * never set up. It reports the gap rather than hiding it — a preview that cannot say
+ * "this run would not authenticate" is worse than one that dies. A malformed
+ * SANDCASTLE_CLAUDE_AUTH still fails outright either way: that is a typo, not an
+ * absent secret, and the run can never succeed with it.
+ */
+function resolveClaudeAuth(
+  kind: AgentKind,
+  { preview = false }: { preview?: boolean } = {},
+): ClaudeAuthResolution {
   if (kind !== 'claude') return null;
 
   const hasToken = Boolean(process.env.CLAUDE_CODE_OAUTH_TOKEN);
@@ -486,12 +502,14 @@ function resolveClaudeAuth(kind: AgentKind): ClaudeAuthMode | null {
   }
 
   if (forced === 'subscription' && !hasToken) {
+    if (preview) return 'none';
     fail(
       'SANDCASTLE_CLAUDE_AUTH=subscription but CLAUDE_CODE_OAUTH_TOKEN is not set.\n' +
         'Run `claude setup-token` on the host and store the result in your 1Password Environment.',
     );
   }
   if (forced === 'api' && !hasApiKey) {
+    if (preview) return 'none';
     fail('SANDCASTLE_CLAUDE_AUTH=api but ANTHROPIC_API_KEY is not set.');
   }
 
@@ -501,6 +519,7 @@ function resolveClaudeAuth(kind: AgentKind): ClaudeAuthMode | null {
   if (hasToken) return 'subscription';
   if (hasApiKey) return 'api';
 
+  if (preview) return 'none';
   fail(
     'No Claude credential found. Set one of:\n' +
       '  CLAUDE_CODE_OAUTH_TOKEN  — `claude setup-token` on the host (Pro/Max plan)\n' +
@@ -513,7 +532,12 @@ const agentKind = resolveAgentKind();
 // --gate-only launches no agent, so it must not demand an agent credential. It is
 // the path a maintainer runs by hand to re-check a feature branch, often on a
 // machine where the 1Password injection was never set up.
-const claudeAuth = gateOnly ? null : resolveClaudeAuth(agentKind);
+// Neither --gate-only nor --dry-run launches an agent, so neither may demand an
+// agent credential. --gate-only needs none at all; --dry-run previews the plan and
+// reports the missing credential instead of dying on it.
+const claudeAuth = gateOnly
+  ? null
+  : resolveClaudeAuth(agentKind, { preview: dryRun });
 
 // Only now — after --help, argument validation, and the credential preflight have
 // all had their say. Building this image can take minutes; there is no reason to
@@ -915,11 +939,14 @@ const slices = plan.issues;
 
 console.log(
   `Agent:           ${agentKind}${
-    claudeAuth
-      ? claudeAuth === 'subscription'
-        ? ' (auth: subscription — shares your Pro/Max quota)'
-        : ' (auth: API key — metered)'
-      : ''
+    claudeAuth === 'subscription'
+      ? ' (auth: subscription — shares your Pro/Max quota)'
+      : claudeAuth === 'api'
+        ? ' (auth: API key — metered)'
+        : claudeAuth === 'none'
+          ? ' (auth: NONE FOUND — preview only; a real run needs ' +
+            'CLAUDE_CODE_OAUTH_TOKEN or ANTHROPIC_API_KEY)'
+          : ''
   }\n`,
 );
 
