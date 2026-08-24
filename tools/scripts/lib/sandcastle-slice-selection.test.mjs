@@ -197,6 +197,34 @@ test('only restricts the run to the named slice', () => {
   );
 });
 
+test('a stale status:blocked does not strand a slice whose blocker is complete', () => {
+  // Before this rule, `--prd N --issue 465` against a slice still carrying a label
+  // its blocker had already earned it out of failed outright: "not found as an open
+  // AFK slice". The label lags the fact; the fact is what selection reads.
+  const issues = [
+    slice(464, { labels: [...READY, 'status:done'], state: 'CLOSED' }),
+    slice(465, {
+      labels: [...READY, 'status:blocked'],
+      body: blockedBySection(464),
+    }),
+  ];
+
+  const { selected, admitted, deferred } = selectPrdSlices(issues, {
+    prd: PRD,
+    only: 465,
+  });
+
+  assert.deepEqual(
+    selected.map((i) => i.number),
+    [465],
+  );
+  assert.deepEqual(
+    admitted.map((i) => i.number),
+    [465],
+  );
+  assert.deepEqual(deferred, []);
+});
+
 test('only does not override a deferral — naming a slice cannot widen the rule', () => {
   const issues = [
     slice(470, {
