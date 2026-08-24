@@ -13,13 +13,12 @@ import {
 } from '@myorganizer/web-ui';
 import {
   ClipboardList,
-  CloudUpload,
   CreditCard,
-  FileDown,
   Home,
   MapPin,
   Phone,
   ShoppingCart,
+  Vault,
   Youtube,
 } from 'lucide-react';
 import { NavMain } from './nav-main';
@@ -62,14 +61,9 @@ const navMain = [
     icon: Youtube,
   },
   {
-    title: 'Vault Export/Import',
-    url: '/dashboard/vault-export',
-    icon: FileDown,
-  },
-  {
-    title: 'Vault Settings',
-    url: '/dashboard/account/vault',
-    icon: CloudUpload,
+    title: 'Vault',
+    url: '/dashboard/vault',
+    icon: Vault,
   },
 ];
 

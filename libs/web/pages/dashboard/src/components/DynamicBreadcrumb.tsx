@@ -29,9 +29,8 @@ const SEGMENT_LABEL_REGISTRY: Record<string, string> = {
   youtube: 'YouTube',
   shorts: 'Shorts',
   callback: 'Connecting',
-  'vault-export': 'Vault Export/Import',
   account: 'Account',
-  vault: 'Vault Settings',
+  vault: 'Vault',
 };
 
 /**

@@ -3,7 +3,20 @@
 import { createVaultBackupsApi } from '@myorganizer/web-vault';
 import { useCallback, useEffect, useState } from 'react';
 
-import type { LatestBackupRecord } from './useLatestBackup';
+/**
+ * Minimal record shape consumed by cloud-backup surfaces. Kept here (not
+ * imported from the generated client) so a regeneration that adds optional
+ * fields does not require updating this hook.
+ */
+export interface LatestBackupRecord {
+  id: string;
+  event: string;
+  source: string;
+  status: string;
+  createdAt: string;
+  schemaVersion: number;
+  sizeBytes: number;
+}
 
 export type LatestCloudBackupState =
   | { status: 'loading'; record: null }
@@ -20,8 +33,10 @@ export type LatestCloudBackupApiFactory = () => {
 
 /**
  * Fetch the most recent successful Google Drive backup record on mount and
- * whenever `refreshKey` changes. Mirrors {@link useLatestBackup} but filters
- * by `source='google-drive'` so the returned record is provider-scoped.
+ * whenever `refreshKey` changes. Mirrors the cross-source `useLatestBackup`
+ * hook (`libs/web/pages/account/src/hooks/useLatestBackup.ts`, private to
+ * that route) but filters by `source='google-drive'` so the returned record
+ * is provider-scoped.
  */
 export function useLatestCloudBackup(
   refreshKey = 0,
