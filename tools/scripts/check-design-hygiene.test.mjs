@@ -44,8 +44,12 @@ function housePage(title) {
   ].join('\n');
 }
 
+// Mirrors ROSTER in check-design-hygiene.mjs. The fixture workspace writes a page
+// for each entry, so a roster addition that stops here fails these tests with
+// `page-missing` rather than anything to do with what the new page contains.
 const ROSTER_PAGES = [
   'docs/agents/orchestration-map.html',
+  'docs/deployment/release-pipeline.html',
   'docs/sandcastle/dispatch-map.html',
   'docs/sandcastle/gates.html',
   'docs/sandcastle/logs.html',
