@@ -4,12 +4,15 @@ End-to-end developer documentation for individual product features.
 
 ## Features Index
 
-| Feature       | Status | Vault-backed | Docs                           |
-| ------------- | ------ | ------------ | ------------------------------ |
-| Tasks         | ✅     | Yes          | —                              |
-| Subscriptions | ✅     | Yes          | —                              |
-| Addresses     | ✅     | Yes          | —                              |
-| Groceries     | ✅     | Yes          | [groceries.md](./groceries.md) |
+| Feature        | Status | Vault-backed | Docs                                               |
+| -------------- | ------ | ------------ | -------------------------------------------------- |
+| Tasks          | ✅     | Yes          | —                                                  |
+| Subscriptions  | ✅     | Yes          | —                                                  |
+| Addresses      | ✅     | Yes          | —                                                  |
+| Groceries      | ✅     | Yes          | [groceries.md](./groceries.md)                     |
+| Mobile Numbers | ✅     | Yes          | —                                                  |
+| Vault Export   | ✅     | Yes          | —                                                  |
+| YouTube        | ✅     | No           | [youtube-integration.md](./youtube-integration.md) |
 
 ## Google integrations
 

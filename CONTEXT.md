@@ -280,6 +280,10 @@ _Avoid_: drift gate, doc gate, coupling check
 A gate some pipeline actually invokes. A checker that exists, passes, and is referenced by neither Husky nor a workflow asserts nothing — a distinct failure from Gate Coverage, which is about a wired gate's reach across projects. Matched by exact script name, including through an aggregate runner that is itself wired.
 _Avoid_: enabled gate, active check, gate coverage (for this sense)
 
+**Meta-Gate**:
+The gate whose asserted artifacts are the other gates: `gates:coverage:check` compares the checkers on disk against the ones hooks and workflows invoke, and fails naming each checker that is not a Wired Gate. An ordinary Assertion Gate in shape — its subject is simply the gate set rather than a document. A checker it must not fail is not silently skipped; it carries an entry with a written reason in `tools/config/gate-coverage-optout.json`.
+_Avoid_: gate-of-gates, master gate, gate linter
+
 **One-shot Specialist**:
 A sub-agent that performs one assigned job, returns a report of what it did, and stops. The orchestrator does not send the work back for another round.
 _Avoid_: writer-reviewer loop, retry cycle, gated hop (when you mean this shape)

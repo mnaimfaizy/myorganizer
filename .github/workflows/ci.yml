@@ -532,6 +532,15 @@ jobs:
       - name: OpenAPI artifact checker contracts
         run: corepack yarn openapi:artifacts:test
 
+      - name: Env-declared checker contracts
+        run: corepack yarn env:declared:test
+
+      - name: Env-deployment checker contracts
+        run: corepack yarn env:deployment:test
+
+      - name: Feature index checker contracts
+        run: corepack yarn feature-index:test
+
       - name: Lint coverage checker contracts
         run: corepack yarn lint:coverage:test
 
@@ -569,6 +578,48 @@ jobs:
       # only vantage point where both files exist.
       - name: Check ADR numbering
         run: corepack yarn adr:numbering:check
+
+      - name: Gate manifest checker contracts
+        run: corepack yarn gates:run:test
+
+      - name: Gate coverage checker contracts
+        run: corepack yarn gates:coverage:test
+
+      # The meta-gate: asserts every check-*.mjs is invoked by some hook or
+      # workflow, resolving one level of indirection through the aggregate's
+      # manifest. Nine checkers ran nowhere when ADR 0043 was written.
+      - name: Check gate coverage
+        run: corepack yarn gates:coverage:check
+
+      # The checks below also run through `yarn gates:run` in the pre-commit
+      # hook (ADR 0043). CI runs each as its own named step instead of the
+      # aggregate so a failure is identifiable without opening a log.
+      - name: Check root README
+        run: corepack yarn readme:check
+
+      - name: Check OpenAPI generated artifacts
+        run: corepack yarn openapi:artifacts
+
+      - name: Check backend env vars are declared in .env.example
+        run: corepack yarn env:declared:check
+
+      - name: Check deployment doc env vars are declared in .env.example
+        run: corepack yarn env:deployment:check
+
+      - name: Check feature index against dashboard routes
+        run: corepack yarn feature-index:check
+
+      - name: Check agent orchestration map
+        run: corepack yarn agents:map:check
+
+      - name: Check vault diagram pages
+        run: corepack yarn vault:pages:check
+
+      - name: Check auth diagram pages
+        run: corepack yarn auth:pages:check
+
+      - name: Check sub-agent sync
+        run: corepack yarn agents:sync:check
 
       - name: Restore Nx computation cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
