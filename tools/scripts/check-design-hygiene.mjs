@@ -55,6 +55,7 @@ can splice it verbatim. Retyping or re-encoding it is what font-block-drift catc
 /** Pages authored to the house convention. Adding one here is how it gets gated. */
 const ROSTER = [
   'docs/agents/orchestration-map.html',
+  'docs/deployment/release-pipeline.html',
   'docs/sandcastle/dispatch-map.html',
   'docs/sandcastle/gates.html',
   'docs/sandcastle/logs.html',
