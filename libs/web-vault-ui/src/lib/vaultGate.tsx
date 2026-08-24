@@ -17,10 +17,7 @@ import { useOptionalVaultSession } from './session';
 
 type VaultGateProps = {
   title: string;
-  children: (ctx: {
-    masterKeyBytes: Uint8Array;
-    handle: VaultHandle | null;
-  }) => React.ReactNode;
+  children: (ctx: { handle: VaultHandle | null }) => React.ReactNode;
 };
 
 function downloadTextFile(filename: string, content: string) {
@@ -68,7 +65,6 @@ export function VaultGate(props: VaultGateProps) {
     return (
       <>
         {props.children({
-          masterKeyBytes,
           handle: vaultSession?.handle ?? null,
         })}
       </>

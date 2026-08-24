@@ -9,7 +9,6 @@ export * from './lib/vault/replayTracker';
 export * from './lib/vault/serverVaultSync';
 export * from './lib/vault/subscriptionRecordNormalization';
 export * from './lib/vault/taskNormalization';
-export * from './lib/vault/vault';
 // The Vault Handle, and the errors it throws, are the whole public surface of
 // per-User Local Vault storage. Storage keys and record shapes stay internal:
 // publishing them would hand a consumer a way to read a Vault without naming

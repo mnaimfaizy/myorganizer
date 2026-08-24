@@ -1,6 +1,6 @@
 import { AuditReporter, noopAuditReporter } from '../vault/auditReporter';
 import { ReplayTracker } from '../vault/replayTracker';
-import { VaultStorageV1 } from '../vault/vault';
+import { VaultStorageV1 } from '../vault/localVaultStorage';
 import type { VaultHandle } from '../vault/vaultHandle';
 import {
   exportVault,

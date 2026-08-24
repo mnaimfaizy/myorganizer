@@ -20,5 +20,4 @@ Browser vault implementation using WebCrypto and web storage/client sync helpers
 
 - Do not send decrypted vault data to backend APIs.
 - Do not persist master keys, passphrases, or recovery keys in plaintext.
-- Do not add to the module functions in `vault.ts`. They are a temporary shim over the handle, they resolve an owner internally, and they are deleted in #498.
-- Do not remove the unsuffixed `myorganizer_vault_v1` slot, and do not promote it to an owned record without a Master Key unwrap. It is an Unclaimed Local Vault: a failed unwrap must leave it byte-identical, and until a claim succeeds it is still where that Vault lives, so a write goes back to it. The one caller that writes it directly is the shim's no-signed-in-User path, which goes with the shim.
+- Do not remove the unsuffixed `myorganizer_vault_v1` slot, and do not promote it to an owned record without a Master Key unwrap. It is an Unclaimed Local Vault: a failed unwrap must leave it byte-identical, and until a claim succeeds it is still where that Vault lives, so a write goes back to it.

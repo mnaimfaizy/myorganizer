@@ -4,7 +4,7 @@ import {
   VaultMetaV1,
 } from '@myorganizer/app-api-client';
 
-import { EncryptedBlob, VaultStorageV1 } from './vault';
+import { EncryptedBlob, VaultStorageV1 } from './localVaultStorage';
 
 export function toEncryptedBlobV1(blob: EncryptedBlob): EncryptedBlobV1 {
   return {

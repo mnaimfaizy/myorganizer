@@ -7,7 +7,7 @@ import {
   test,
 } from '@jest/globals';
 
-import type { VaultStorageV1 } from '../vault/vault';
+import type { VaultStorageV1 } from '../vault/localVaultStorage';
 import type { VaultHandle } from '../vault/vaultHandle';
 import { CloudBackupCoordinator } from './coordinator';
 import {
