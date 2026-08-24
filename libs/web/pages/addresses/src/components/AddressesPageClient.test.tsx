@@ -265,6 +265,7 @@ describe('AddressesPageClient', () => {
     it('should not call saveEncryptedData when Delete button clicked (only on confirm)', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
       mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<AddressesPageClient />);
 
@@ -281,7 +282,7 @@ describe('AddressesPageClient', () => {
         expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
       });
 
-      expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+      expect(mockHandleSaveFn).not.toHaveBeenCalled();
     });
 
     it('should show no usage location wording for address with 0 locations', async () => {
@@ -419,11 +420,11 @@ describe('AddressesPageClient', () => {
       fireEvent.click(confirmButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Verify address is removed from payload
-      const calls = (mockSaveEncryptedData as jest.Mock).mock.calls;
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall[0].value).toHaveLength(0);
     });
@@ -461,6 +462,7 @@ describe('AddressesPageClient', () => {
     it('should not call saveEncryptedData when cancel delete clicked', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
       mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<AddressesPageClient />);
 
@@ -480,7 +482,7 @@ describe('AddressesPageClient', () => {
       const cancelButton = screen.getByTestId('delete-cancel-btn');
       fireEvent.click(cancelButton);
 
-      expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+      expect(mockHandleSaveFn).not.toHaveBeenCalled();
     });
 
     it('should close delete dialog when cancel clicked', async () => {
@@ -541,7 +543,7 @@ describe('AddressesPageClient', () => {
     it('should show destructive toast and keep dialog open if save fails', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
       mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
-      mockSaveEncryptedData.mockRejectedValue(new Error('Save failed'));
+      mockHandleSaveFn = jest.fn().mockRejectedValue(new Error('Save failed'));
 
       render(<AddressesPageClient />);
 

@@ -126,17 +126,36 @@ jest.mock('@myorganizer/web-ui', () => {
   };
 });
 
+let mockHandleLoadFn: jest.Mock | null = null;
+let mockHandleSaveFn: jest.Mock | null = null;
+
+const createMockHandle = (
+  loadDataMock?: jest.Mock,
+  saveDataMock?: jest.Mock,
+): any => {
+  const load = loadDataMock || jest.fn().mockResolvedValue([]);
+  const save = saveDataMock || jest.fn().mockResolvedValue(undefined);
+  return {
+    isUnlocked: true,
+    loadDecryptedData: load,
+    saveEncryptedData: save,
+  };
+};
+
 jest.mock('@myorganizer/web-vault-ui', () => ({
   VaultGate: ({
     children,
   }: {
-    children: (props: { masterKeyBytes: Uint8Array }) => unknown;
-  }) => children({ masterKeyBytes: new Uint8Array(32) }) as React.ReactElement,
+    children: (props: { handle: any }) => unknown;
+  }) => {
+    const loadFn = mockHandleLoadFn || jest.fn().mockResolvedValue([]);
+    const saveFn = mockHandleSaveFn || jest.fn().mockResolvedValue(undefined);
+    const handle = createMockHandle(loadFn, saveFn);
+    return children({ handle }) as React.ReactElement;
+  },
 }));
 
 jest.mock('@myorganizer/web-vault', () => ({
-  loadDecryptedData: jest.fn(),
-  saveEncryptedData: jest.fn(),
   normalizeAddresses: jest.fn((data) => ({
     value: data || [],
     changed: false,
@@ -163,14 +182,11 @@ import '@testing-library/jest-dom';
 import type { AddressRecord, UsageLocationRecord } from '@myorganizer/core';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@myorganizer/web-ui';
-import { loadDecryptedData, saveEncryptedData } from '@myorganizer/web-vault';
 import { AddressDetailPageClient } from './AddressDetailPageClient';
 /* eslint-enable import/first */
 
 const mockUseRouter = useRouter as jest.Mock;
 const mockUseToast = useToast as jest.Mock;
-const mockLoadDecryptedData = loadDecryptedData as jest.Mock;
-const mockSaveEncryptedData = saveEncryptedData as jest.Mock;
 
 const mockToast = jest.fn();
 const mockPush = jest.fn();
@@ -215,8 +231,8 @@ describe('AddressDetailPageClient', () => {
     jest.clearAllMocks();
     mockUseToast.mockReturnValue({ toast: mockToast });
     mockUseRouter.mockReturnValue({ push: mockPush });
-    mockLoadDecryptedData.mockResolvedValue([]);
-    mockSaveEncryptedData.mockResolvedValue(undefined);
+    mockHandleLoadFn = jest.fn().mockResolvedValue([]);
+    mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
   });
 
   describe('Address detail loading and resolution', () => {
@@ -229,7 +245,7 @@ describe('AddressDetailPageClient', () => {
         organisationName: 'Company HQ',
       });
       address.usageLocations = [location];
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -241,7 +257,7 @@ describe('AddressDetailPageClient', () => {
 
     it('should render not-found state when address id is absent from vault', async () => {
       const otherAddress = makeAddressRecord('addr2', { label: 'Other' });
-      mockLoadDecryptedData.mockResolvedValue([otherAddress]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([otherAddress]);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -259,7 +275,7 @@ describe('AddressDetailPageClient', () => {
   describe('Address edit dialog', () => {
     it('should not render edit dialog before Edit button is clicked', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -272,7 +288,7 @@ describe('AddressDetailPageClient', () => {
 
     it('should open edit dialog when Edit button clicked', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -293,8 +309,8 @@ describe('AddressDetailPageClient', () => {
         label: 'Home',
         street: 'Baker Street',
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -325,11 +341,11 @@ describe('AddressDetailPageClient', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Verify payload has updated label
-      const calls = (mockSaveEncryptedData as jest.Mock).mock.calls;
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall[0].value).toContainEqual(
         expect.objectContaining({ label: 'Updated Home' }),
@@ -343,8 +359,8 @@ describe('AddressDetailPageClient', () => {
 
     it('should never call router.push when saving address edit', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([address]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -371,7 +387,7 @@ describe('AddressDetailPageClient', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       expect(mockPush).not.toHaveBeenCalled();
@@ -384,7 +400,7 @@ describe('AddressDetailPageClient', () => {
         label: 'Home',
         usageLocations: [],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -401,7 +417,7 @@ describe('AddressDetailPageClient', () => {
         label: 'Home',
         usageLocations: [],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -425,8 +441,8 @@ describe('AddressDetailPageClient', () => {
         label: 'Home',
         usageLocations: [],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -465,11 +481,11 @@ describe('AddressDetailPageClient', () => {
       fireEvent.click(submitButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Verify the new location was persisted
-      const calls = (mockSaveEncryptedData as jest.Mock).mock.calls;
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       const savedAddress = lastCall[0].value[0];
       expect(savedAddress.usageLocations).toHaveLength(1);
@@ -499,7 +515,7 @@ describe('AddressDetailPageClient', () => {
       const address = makeAddressRecord('addr1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -526,7 +542,7 @@ describe('AddressDetailPageClient', () => {
       const address = makeAddressRecord('addr1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -554,8 +570,8 @@ describe('AddressDetailPageClient', () => {
       const address = makeAddressRecord('addr1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -587,11 +603,11 @@ describe('AddressDetailPageClient', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Verify the location was updated
-      const calls = (mockSaveEncryptedData as jest.Mock).mock.calls;
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       const savedAddress = lastCall[0].value[0];
       expect(savedAddress.usageLocations[0].organisationName).toBe('Medicare');
@@ -605,8 +621,8 @@ describe('AddressDetailPageClient', () => {
       const address = makeAddressRecord('addr1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -636,7 +652,7 @@ describe('AddressDetailPageClient', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       expect(mockPush).not.toHaveBeenCalled();
@@ -651,7 +667,7 @@ describe('AddressDetailPageClient', () => {
       const address = makeAddressRecord('addr1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -679,7 +695,7 @@ describe('AddressDetailPageClient', () => {
       const address = makeAddressRecord('addr1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -699,7 +715,7 @@ describe('AddressDetailPageClient', () => {
         expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
       });
 
-      expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+      expect(mockHandleSaveFn).not.toHaveBeenCalled();
     });
 
     it('should remove location and persist when confirm delete clicked', async () => {
@@ -709,8 +725,8 @@ describe('AddressDetailPageClient', () => {
       const address = makeAddressRecord('addr1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -734,11 +750,11 @@ describe('AddressDetailPageClient', () => {
       fireEvent.click(confirmButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Verify location is removed
-      const calls = (mockSaveEncryptedData as jest.Mock).mock.calls;
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       const savedAddress = lastCall[0].value[0];
       expect(savedAddress.usageLocations).toHaveLength(0);
@@ -751,7 +767,7 @@ describe('AddressDetailPageClient', () => {
       const address = makeAddressRecord('addr1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -774,7 +790,7 @@ describe('AddressDetailPageClient', () => {
       const cancelButton = screen.getByTestId('delete-cancel-btn');
       fireEvent.click(cancelButton);
 
-      expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+      expect(mockHandleSaveFn).not.toHaveBeenCalled();
     });
 
     it('should keep location visible after cancel delete', async () => {
@@ -784,7 +800,7 @@ describe('AddressDetailPageClient', () => {
       const address = makeAddressRecord('addr1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 
@@ -818,8 +834,8 @@ describe('AddressDetailPageClient', () => {
       const address = makeAddressRecord('addr1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
-      mockSaveEncryptedData.mockRejectedValue(new Error('Save failed'));
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+      mockHandleSaveFn = jest.fn().mockRejectedValue(new Error('Save failed'));
 
       render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
 

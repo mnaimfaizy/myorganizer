@@ -371,6 +371,7 @@ describe('MobileNumbersPageClient', () => {
         label: 'Home',
       });
       mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<MobileNumbersPageClient />);
 
@@ -387,7 +388,7 @@ describe('MobileNumbersPageClient', () => {
         expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
       });
 
-      expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+      expect(mockHandleSaveFn).not.toHaveBeenCalled();
     });
 
     it('should persist deletion when confirm delete clicked', async () => {
@@ -416,11 +417,11 @@ describe('MobileNumbersPageClient', () => {
       fireEvent.click(confirmButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Verify mobile number is removed from payload
-      const calls = (mockSaveEncryptedData as jest.Mock).mock.calls;
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall[0].value).toHaveLength(0);
     });
@@ -462,6 +463,7 @@ describe('MobileNumbersPageClient', () => {
         label: 'Home',
       });
       mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<MobileNumbersPageClient />);
 
@@ -481,7 +483,7 @@ describe('MobileNumbersPageClient', () => {
       const cancelButton = screen.getByTestId('delete-cancel-btn');
       fireEvent.click(cancelButton);
 
-      expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+      expect(mockHandleSaveFn).not.toHaveBeenCalled();
     });
 
     it('should close delete dialog when cancel clicked', async () => {
@@ -548,7 +550,7 @@ describe('MobileNumbersPageClient', () => {
         label: 'Home',
       });
       mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
-      mockSaveEncryptedData.mockRejectedValue(new Error('Save failed'));
+      mockHandleSaveFn = jest.fn().mockRejectedValue(new Error('Save failed'));
 
       render(<MobileNumbersPageClient />);
 
@@ -584,7 +586,7 @@ describe('MobileNumbersPageClient', () => {
 
   describe('Add mobile number dialog', () => {
     it('should not render add dialog before Add button is clicked', async () => {
-      mockLoadDecryptedData.mockResolvedValue([]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([]);
 
       render(<MobileNumbersPageClient />);
 
@@ -600,7 +602,7 @@ describe('MobileNumbersPageClient', () => {
     });
 
     it('should open add dialog when Add Mobile Number button clicked', async () => {
-      mockLoadDecryptedData.mockResolvedValue([]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([]);
 
       render(<MobileNumbersPageClient />);
 
@@ -623,7 +625,7 @@ describe('MobileNumbersPageClient', () => {
     });
 
     it('should persist new mobile number and close dialog when form is submitted', async () => {
-      mockLoadDecryptedData.mockResolvedValue([]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([]);
       mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<MobileNumbersPageClient />);
@@ -681,11 +683,11 @@ describe('MobileNumbersPageClient', () => {
       });
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Verify the new mobile number was persisted with correct values
-      const calls = (mockSaveEncryptedData as jest.Mock).mock.calls;
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall[0].value).toHaveLength(1);
       expect(lastCall[0].value[0]).toEqual(
