@@ -676,7 +676,13 @@ test('maskHtmlComments preserves offsets and line numbers', () => {
 });
 
 test('maskHtmlComments also blanks script and style block comments', () => {
-  const source = 'a\n/* hidden\nlines */\nb';
+  // The comment sits inside a <style>, which is what this test has always been
+  // named for. It previously passed a bare `/* … */` with no element around it,
+  // and passed only because masking ran document-wide — the defect that let a
+  // glob in prose blank the rest of a page. In prose those bytes are not a
+  // comment, and `a glob in prose does not hide…` in check-design-hygiene.test.mjs
+  // asserts that directly.
+  const source = 'a\n<style>/* hidden\nlines */</style>\nb';
   const masked = maskHtmlComments(source);
   assert.equal(masked.length, source.length);
   assert.ok(!masked.includes('hidden'));

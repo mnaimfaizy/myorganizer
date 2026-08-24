@@ -21,18 +21,21 @@ import { blockAfter, lineOf } from './source-scan.mjs';
 
 const blank = (match) => match.replace(/[^\n]/g, ' ');
 
+/** Rewrites the body of every `<script>` and `<style>`, leaving markup untouched. */
+function mapEmbeddedCode(source, transform) {
+  return source.replace(
+    /(<(script|style)\b[^>]*>)([\s\S]*?)(<\/\2\s*>)/gi,
+    (_, open, __, body, close) => `${open}${transform(body)}${close}`,
+  );
+}
+
 /**
- * Replaces every comment with spaces, keeping newlines so offsets and line numbers
- * survive. Both flavours matter: these pages explain their own rules in prose, in
- * HTML comments around the markup and in `/* … *\/` comments inside the inline
- * script. `gates.html` writes "a root-`<svg>` `<title>` is not a tooltip system"
- * in a script comment, and scanning raw source reports that warning as the very
- * violation it warns about.
+ * Masks `/* … *\/` and `//` comments. Scoped to code, because in prose those byte
+ * pairs are not comments at all.
  */
-export function maskHtmlComments(source) {
+function maskCodeComments(code) {
   return (
-    source
-      .replace(/<!--[\s\S]*?-->/g, blank)
+    code
       .replace(/\/\*[\s\S]*?\*\//g, blank)
       // `//` only where a colon does not precede it, so `https://` survives intact.
       // Without this pass a commented-out `localStorage.` reported as unguarded.
@@ -44,16 +47,42 @@ export function maskHtmlComments(source) {
 }
 
 /**
+ * Replaces every comment with spaces, keeping newlines so offsets and line numbers
+ * survive. Both flavours matter: these pages explain their own rules in prose, in
+ * HTML comments around the markup and in `/* … *\/` comments inside the inline
+ * script. `gates.html` writes "a root-`<svg>` `<title>` is not a tooltip system"
+ * in a script comment, and scanning raw source reports that warning as the very
+ * violation it warns about.
+ *
+ * The code flavours are masked only inside `<script>` and `<style>`, and that scope
+ * is the whole point. Applied document-wide, a glob in prose — `release/*`,
+ * `.github/workflows/*.yml`, `docs/**\/*.html` — opens a comment that never closes
+ * where the author meant it to, and everything up to the next `*\/` anywhere in the
+ * file is blanked. Every rule below runs on this output, so the blanked region is
+ * not merely unscanned by one check: it is invisible to all of them. It happened:
+ * a `release/**` in an SVG label on `release-pipeline.html` swallowed ~41 KB and
+ * the page's manifest block, and the gate reported PASS on a page it had stopped
+ * reading. A gate that fails open is worse than no gate, because ADR 0046 exists
+ * so nobody has to read these pages by eye.
+ *
+ * The hazard was already known when this was written document-wide — the `/* … *\/`
+ * above had to be escaped to keep this very comment from eating itself.
+ */
+export function maskHtmlComments(source) {
+  return mapEmbeddedCode(
+    source.replace(/<!--[\s\S]*?-->/g, blank),
+    maskCodeComments,
+  );
+}
+
+/**
  * Blanks the bodies of `<script>` and `<style>` while keeping their tags, for the
  * checks that are about markup rather than about code. Without it, a script that
  * mentions `<svg>` in a string or builds markup by concatenation moves the tag
  * scanner's depth counter and every later `<title>` looks nested.
  */
 function maskEmbeddedCode(source) {
-  return source.replace(
-    /(<(script|style)\b[^>]*>)([\s\S]*?)(<\/\2\s*>)/gi,
-    (_, open, __, body, close) => `${open}${blank(body)}${close}`,
-  );
+  return mapEmbeddedCode(source, blank);
 }
 
 /**

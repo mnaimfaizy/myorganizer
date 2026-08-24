@@ -219,3 +219,72 @@ test('a missing canonical font page is a bad-run exit, not a page finding', (t) 
   assert.equal(result.status, 2);
   assert.match(result.stderr, /canonical font page .* not found/);
 });
+
+// --- comment masking is scoped to code -----------------------------------------
+//
+// `/*` and `*/` are comment delimiters in a script and ordinary bytes in prose.
+// Masking them document-wide made a glob in prose — `release/*`, `*.yml`,
+// `docs/**/*.html` — open a comment that closed at the next real `*/` anywhere
+// in the file, blanking everything between. Every rule reads that output, so the
+// blanked region went unseen by all of them at once and the gate reported PASS.
+
+/** Prose containing a glob, plus a later script carrying a real comment to close on. */
+const withProseGlob = (page, markup = '') =>
+  page.replace(
+    '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+    [
+      '<p>Production deploys run from release/* branches.</p>',
+      markup ||
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+    ].join('\n'),
+  ) + '\n<script>/* the pre-paint theme block */</script>';
+
+test('a glob in prose does not hide a defect that follows it', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/gates.html',
+    withProseGlob(
+      housePage('gates'),
+      '<svg viewBox="0 0 10 10" role="img"><title>Gates</title></svg>',
+    ),
+  );
+
+  const result = run(workspace, '--all');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR svg-title-tooltip/);
+});
+
+test('a glob in prose does not hide the manifest that follows it', (t) => {
+  const workspace = createWorkspace(t);
+  // The real failure: the manifest sat between a `release/**` in an SVG label and
+  // the next real `*/`, so the scanner never saw it and the page passed anyway.
+  write(
+    workspace,
+    'docs/sandcastle/gates.html',
+    withProseGlob(housePage('gates')),
+  );
+
+  const result = run(workspace, '--all');
+
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /manifest-missing/);
+});
+
+test('a comment inside a script is still masked', (t) => {
+  const workspace = createWorkspace(t);
+  // The reason the masker exists: these pages explain their own rules in code
+  // comments, and scanning them raw reports the explanation as the violation.
+  write(
+    workspace,
+    'docs/sandcastle/gates.html',
+    housePage('gates') +
+      "\n<script>// localStorage.getItem('theme') runs guarded below\n/* localStorage.setItem too */</script>",
+  );
+
+  const result = run(workspace, '--all');
+
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /unguarded-storage/);
+});
