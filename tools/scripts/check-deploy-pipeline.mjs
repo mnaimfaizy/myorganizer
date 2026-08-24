@@ -100,14 +100,6 @@ const jobIds = (path) => {
   ].map((m) => m[1]);
 };
 
-/** Everything above `jobs:` — where a workflow's top-level concurrency block lives. */
-const preamble = (path) => {
-  const source = read(path);
-  const jobsAt = source.search(/^jobs:\s*$/m);
-  if (jobsAt === -1) fail(`${path} has no top-level jobs: key`);
-  return source.slice(0, jobsAt);
-};
-
 /**
  * Collapses repeated occurrences of a value that the page states once. A second
  * distinct value means the page cannot be right about both, so it fails here
