@@ -108,10 +108,10 @@ function setupBackend(page: Page) {
   const backupRecords: BackupRecord[] = [];
 
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
-  // The vault settings ROUTE is `/dashboard/account/vault` and would
-  // otherwise match `/\/vault\/?$/`. Anchor these regexes to the API host
-  // (anything other than the dev server on port 4200) to avoid intercepting
-  // the page navigation itself.
+  // The vault ROUTE is `/dashboard/vault` and would otherwise match
+  // `/\/vault\/?$/`. Anchor these regexes to the API host (anything other
+  // than the dev server on port 4200) to avoid intercepting the page
+  // navigation itself.
   const vaultMetaUrl = /:\/\/[^/]+\/(?:api\/v\d+\/)?vault\/?(\?.*)?$/;
   const vaultBlobUrl =
     /:\/\/[^/]+\/(?:api\/v\d+\/)?vault\/blob\/(addresses|mobileNumbers|subscriptions|todos)\/?(\?.*)?$/;
