@@ -128,21 +128,21 @@ let mockHandleSaveFn: jest.Mock | null = null;
 const createMockHandle = (
   loadDataMock?: jest.Mock,
   saveDataMock?: jest.Mock,
-): any => {
+): VaultHandle => {
   const load = loadDataMock || jest.fn().mockResolvedValue([]);
   const save = saveDataMock || jest.fn().mockResolvedValue(undefined);
   return {
     isUnlocked: true,
     loadDecryptedData: load,
     saveEncryptedData: save,
-  };
+  } as unknown as VaultHandle;
 };
 
 jest.mock('@myorganizer/web-vault-ui', () => ({
   VaultGate: ({
     children,
   }: {
-    children: (props: { handle: any }) => unknown;
+    children: (props: { handle: VaultHandle }) => unknown;
   }) => {
     const loadFn = mockHandleLoadFn || jest.fn().mockResolvedValue([]);
     const saveFn = mockHandleSaveFn || jest.fn().mockResolvedValue(undefined);
@@ -179,6 +179,7 @@ import type {
   MobileNumberRecord,
   UsageLocationRecord,
 } from '@myorganizer/core';
+import type { VaultHandle } from '@myorganizer/web-vault';
 import { useToast } from '@myorganizer/web-ui';
 import { MobileNumberDetailPageClient } from './MobileNumberDetailPageClient';
 /* eslint-enable import/first */
