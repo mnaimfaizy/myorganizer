@@ -230,6 +230,10 @@ _Avoid_: adopt vault, take over vault, assign vault, link vault
 The symmetric key derived from the passphrase (PBKDF2 → AES-GCM) that decrypts vault Ciphertext. Never sent to the server.
 _Avoid_: vault key, encryption key, secret key
 
+**Vault Handle**:
+The object a caller holds to reach a Vault, bound at construction to one owner and one Master Key. Vault access is obtained, not invoked: there is no unbound vault function to call, so a Vault cannot be resolved without saying whose it is ([ADR 0047](docs/adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md)). Page libraries receive a handle and never learn who the User is.
+_Avoid_: vault client, vault service, vault accessor, vault context
+
 ## Planning & Orchestration
 
 **PRD Issue**:

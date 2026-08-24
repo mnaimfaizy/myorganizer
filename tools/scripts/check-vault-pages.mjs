@@ -34,8 +34,8 @@ const SOURCES = {
   VAULT_IMPORT_ERROR_CODES: 'libs/vault-core/src/lib/vaultImportError.ts',
   VAULT_LEGACY_BUNDLE_MAX_BYTES:
     'libs/web-vault/src/lib/vault/vaultExportImport.ts',
-  PBKDF2_ITERATIONS: 'libs/web-vault/src/lib/vault/vault.ts',
-  VAULT_STORAGE_KEY: 'libs/web-vault/src/lib/vault/vault.ts',
+  PBKDF2_ITERATIONS: 'libs/web-vault/src/lib/vault/localVaultAccess.ts',
+  VAULT_STORAGE_KEY: 'libs/web-vault/src/lib/vault/localVaultStorage.ts',
   DEFAULT_CAPACITY: 'libs/web-vault/src/lib/vault/replayTracker.ts',
   SALT_LENGTH: 'libs/mobile/feat/vault/src/constants.ts',
   IV_LENGTH: 'libs/mobile/feat/vault/src/constants.ts',
