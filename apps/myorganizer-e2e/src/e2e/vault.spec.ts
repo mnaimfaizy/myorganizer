@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { gotoStable } from './helpers';
+import { gotoStable, E2E_USER_ID, waitForOwnedVault } from './helpers';
 
 async function unlockWithPassphrase(
   page: import('@playwright/test').Page,
@@ -324,11 +324,7 @@ test.describe('Vault (E2E)', () => {
 
     // PBKDF2 can take a while; treat vault creation as complete when
     // local storage contains the vault payload.
-    await page1.waitForFunction(
-      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-      undefined,
-      { timeout: 60000 },
-    );
+    await waitForOwnedVault(page1, E2E_USER_ID);
 
     // VaultGate does not auto-unlock after creation.
     await unlockWithPassphrase(page1, passphrase);
@@ -398,11 +394,7 @@ test.describe('Vault (E2E)', () => {
     });
 
     // Migration runner should download the server vault into local storage.
-    await page2.waitForFunction(
-      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-      undefined,
-      { timeout: 60000 },
-    );
+    await waitForOwnedVault(page2, E2E_USER_ID);
 
     await gotoStable(page2, '/dashboard/addresses');
     await unlockWithPassphrase(page2, passphrase);

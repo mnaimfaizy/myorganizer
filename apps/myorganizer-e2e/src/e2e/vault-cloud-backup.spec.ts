@@ -1,5 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
-import { gotoStable } from './helpers';
+import {
+  gotoStable,
+  E2E_USER_ID,
+  removeOwnedVault,
+  waitForOwnedVault,
+} from './helpers';
 
 /**
  * Section 4 — End-to-end tests for cloud-vault backup via Google Drive.
@@ -622,11 +627,7 @@ async function setupVaultWithSampleData(page: Page) {
   await page.fill('#setup-passphrase', passphrase);
   await page.fill('#setup-confirm', passphrase);
   await page.getByRole('button', { name: 'Create encrypted vault' }).click();
-  await page.waitForFunction(
-    () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-    undefined,
-    { timeout: 60000 },
-  );
+  await waitForOwnedVault(page, E2E_USER_ID);
   await unlockWithPassphrase(page, passphrase);
   await page.getByRole('button', { name: 'Add address' }).first().click();
   await expect(page.getByLabel('Label')).toBeVisible({ timeout: 60000 });
@@ -822,9 +823,7 @@ test.describe('Vault cloud backup via Google Drive (E2E)', () => {
     });
 
     // Simulate fresh local state by clearing the local vault.
-    await page.evaluate(() => {
-      window.localStorage.removeItem('myorganizer_vault_v1');
-    });
+    await removeOwnedVault(page, E2E_USER_ID);
 
     // Restore.
     page.once('dialog', (d) => d.accept());
@@ -833,11 +832,7 @@ test.describe('Vault cloud backup via Google Drive (E2E)', () => {
     await restore.click();
 
     // Local vault should be re-materialized from the restore.
-    await page.waitForFunction(
-      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-      undefined,
-      { timeout: 60000 },
-    );
+    await waitForOwnedVault(page, E2E_USER_ID);
 
     // Disconnect.
     await page.getByTestId('cloud-backup-disconnect-button').click();

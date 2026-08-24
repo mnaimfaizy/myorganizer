@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { gotoStable } from './helpers';
+import { gotoStable, E2E_USER_ID, waitForOwnedVault } from './helpers';
 
 /**
  * E2E tests for groceries items (create / edit / delete / filter / persistence)
@@ -398,11 +398,7 @@ test.describe('Groceries Items (E2E)', () => {
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);
     await page.getByRole('button', { name: 'Create encrypted vault' }).click();
-    await page.waitForFunction(
-      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-      undefined,
-      { timeout: 60000 },
-    );
+    await waitForOwnedVault(page, E2E_USER_ID);
     await gotoGroceriesAndUnlock(page, passphrase);
 
     // Create and open list
@@ -438,11 +434,7 @@ test.describe('Groceries Items (E2E)', () => {
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);
     await page.getByRole('button', { name: 'Create encrypted vault' }).click();
-    await page.waitForFunction(
-      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-      undefined,
-      { timeout: 60000 },
-    );
+    await waitForOwnedVault(page, E2E_USER_ID);
     await gotoGroceriesAndUnlock(page, passphrase);
 
     await createListViaUI(page, 'Multiple Items List');
@@ -473,11 +465,7 @@ test.describe('Groceries Items (E2E)', () => {
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);
     await page.getByRole('button', { name: 'Create encrypted vault' }).click();
-    await page.waitForFunction(
-      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-      undefined,
-      { timeout: 60000 },
-    );
+    await waitForOwnedVault(page, E2E_USER_ID);
     await gotoGroceriesAndUnlock(page, passphrase);
 
     await createListViaUI(page, 'Edit Flow List');
@@ -506,11 +494,7 @@ test.describe('Groceries Items (E2E)', () => {
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);
     await page.getByRole('button', { name: 'Create encrypted vault' }).click();
-    await page.waitForFunction(
-      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-      undefined,
-      { timeout: 60000 },
-    );
+    await waitForOwnedVault(page, E2E_USER_ID);
     await gotoGroceriesAndUnlock(page, passphrase);
 
     await createListViaUI(page, 'Done State List');
@@ -542,11 +526,7 @@ test.describe('Groceries Items (E2E)', () => {
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);
     await page.getByRole('button', { name: 'Create encrypted vault' }).click();
-    await page.waitForFunction(
-      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-      undefined,
-      { timeout: 60000 },
-    );
+    await waitForOwnedVault(page, E2E_USER_ID);
     await gotoGroceriesAndUnlock(page, passphrase);
 
     await createListViaUI(page, 'Delete Item List');
@@ -570,11 +550,7 @@ test.describe('Groceries Items (E2E)', () => {
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);
     await page.getByRole('button', { name: 'Create encrypted vault' }).click();
-    await page.waitForFunction(
-      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-      undefined,
-      { timeout: 60000 },
-    );
+    await waitForOwnedVault(page, E2E_USER_ID);
     await gotoGroceriesAndUnlock(page, passphrase);
 
     await createListViaUI(page, 'Full CRUD List');
@@ -610,11 +586,7 @@ test.describe('Groceries Items (E2E)', () => {
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);
     await page.getByRole('button', { name: 'Create encrypted vault' }).click();
-    await page.waitForFunction(
-      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-      undefined,
-      { timeout: 60000 },
-    );
+    await waitForOwnedVault(page, E2E_USER_ID);
     await gotoGroceriesAndUnlock(page, passphrase);
 
     await createListViaUI(page, 'Persistence List');
@@ -650,11 +622,7 @@ test.describe('Groceries Items (E2E)', () => {
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);
     await page.getByRole('button', { name: 'Create encrypted vault' }).click();
-    await page.waitForFunction(
-      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-      undefined,
-      { timeout: 60000 },
-    );
+    await waitForOwnedVault(page, E2E_USER_ID);
     await gotoGroceriesAndUnlock(page, passphrase);
 
     await createListViaUI(page, 'Validation List');

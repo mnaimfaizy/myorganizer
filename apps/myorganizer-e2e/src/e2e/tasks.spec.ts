@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { gotoStable } from './helpers';
+import { gotoStable, E2E_USER_ID, waitForOwnedVault } from './helpers';
 
 /**
  * E2E tests for tasks management (create / persistence across reload / delete)
@@ -345,8 +345,7 @@ test.describe('Tasks (E2E)', () => {
 
   test('should create a task, reload page, and verify task persists', async ({
     page,
-    testInfo,
-  }) => {
+  }, testInfo) => {
     // Setup mock routes for vault
     await setupRoutes(page);
 
@@ -380,17 +379,7 @@ test.describe('Tasks (E2E)', () => {
     await createVaultButton.click();
 
     // Step 4: Wait for vault to be created (localStorage should have vault data)
-    await page.waitForFunction(
-      () => {
-        try {
-          const vault = localStorage.getItem('myorganizer_vault_v1');
-          return Boolean(vault);
-        } catch {
-          return false;
-        }
-      },
-      { timeout: 30000 },
-    );
+    await waitForOwnedVault(page, E2E_USER_ID, 30000);
 
     // Step 5: Unlock vault with the passphrase
     await unlockWithPassphrase(page, 'test-passphrase-12345');

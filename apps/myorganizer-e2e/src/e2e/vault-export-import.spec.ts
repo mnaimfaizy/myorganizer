@@ -1,7 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
-import { gotoStable } from './helpers';
+import {
+  gotoStable,
+  E2E_USER_ID,
+  readOwnedVault,
+  removeOwnedVault,
+  waitForOwnedVault,
+} from './helpers';
 
 /**
  * Section 9 — End-to-end tests for hardened vault export/import.
@@ -352,11 +358,7 @@ async function setupVaultWithSampleData(page: Page) {
   await page.fill('#setup-confirm', passphrase);
   await page.getByRole('button', { name: 'Create encrypted vault' }).click();
 
-  await page.waitForFunction(
-    () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-    undefined,
-    { timeout: 60000 },
-  );
+  await waitForOwnedVault(page, E2E_USER_ID);
 
   await unlockWithPassphrase(page, passphrase);
 
@@ -389,11 +391,7 @@ async function setupVaultWithGroceryData(page: Page) {
   await page.fill('#setup-confirm', passphrase);
   await page.getByRole('button', { name: 'Create encrypted vault' }).click();
 
-  await page.waitForFunction(
-    () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-    undefined,
-    { timeout: 60000 },
-  );
+  await waitForOwnedVault(page, E2E_USER_ID);
 
   await unlockWithPassphrase(page, passphrase);
 
@@ -530,9 +528,7 @@ test.describe('Vault export/import (E2E)', () => {
     );
 
     // Reset local vault to simulate a fresh device.
-    await page.evaluate(() => {
-      window.localStorage.removeItem('myorganizer_vault_v1');
-    });
+    await removeOwnedVault(page, E2E_USER_ID);
 
     // Reload vault export page to simulate a fresh route transition.
     await gotoStable(page, '/dashboard/vault');
@@ -554,11 +550,7 @@ test.describe('Vault export/import (E2E)', () => {
     await importButton.click();
 
     // After import, local vault should be restored in browser storage.
-    await page.waitForFunction(
-      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-      undefined,
-      { timeout: 60000 },
-    );
+    await waitForOwnedVault(page, E2E_USER_ID);
 
     await ctx.close();
   });
@@ -577,9 +569,7 @@ test.describe('Vault export/import (E2E)', () => {
     });
     await setupVaultWithSampleData(page);
 
-    const beforeVault = await page.evaluate(() =>
-      window.localStorage.getItem('myorganizer_vault_v1'),
-    );
+    const beforeVault = await readOwnedVault(page, E2E_USER_ID);
     expect(beforeVault).toBeTruthy();
 
     await gotoStable(page, '/dashboard/vault');
@@ -611,9 +601,7 @@ test.describe('Vault export/import (E2E)', () => {
     });
 
     // Local vault must be unchanged.
-    const afterVault = await page.evaluate(() =>
-      window.localStorage.getItem('myorganizer_vault_v1'),
-    );
+    const afterVault = await readOwnedVault(page, E2E_USER_ID);
     expect(afterVault).toBe(beforeVault);
 
     await ctx.close();
@@ -719,9 +707,7 @@ test.describe('Vault export/import (E2E)', () => {
     const exportedText = await fs.readFile(downloadPath, 'utf8');
 
     // Reset local vault to simulate a fresh device
-    await page.evaluate(() => {
-      window.localStorage.removeItem('myorganizer_vault_v1');
-    });
+    await removeOwnedVault(page, E2E_USER_ID);
 
     // Reload and perform import
     await gotoStable(page, '/dashboard/vault');
@@ -741,11 +727,7 @@ test.describe('Vault export/import (E2E)', () => {
     await importButton.click();
 
     // Wait for import to complete and vault to be restored
-    await page.waitForFunction(
-      () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-      undefined,
-      { timeout: 60000 },
-    );
+    await waitForOwnedVault(page, E2E_USER_ID);
 
     await gotoStable(page, '/dashboard/groceries');
     await unlockWithPassphrase(page, 'correct horse battery staple');
