@@ -30,6 +30,28 @@ yarn build-storybook
 
 The static files will be generated in `libs/web-ui/storybook-static/`.
 
+### Running story play tests
+
+`play` functions are executed by [`@storybook/test-runner`](https://storybook.js.org/docs/writing-tests/test-runner) against a served static build:
+
+```bash
+yarn build-storybook
+```
+
+```bash
+corepack yarn dlx http-server libs/web-ui/storybook-static -p 6199 --silent
+```
+
+```bash
+yarn test-storybook --url http://127.0.0.1:6199
+```
+
+Append a pattern to narrow the run, e.g. `yarn test-storybook --url http://127.0.0.1:6199 Sidebar`.
+
+The runner reads `libs/web-ui/.storybook/test-runner.ts`, whose `preVisit` hook applies each story's `viewport` parameter to the Playwright page. Chromatic does **not** load that file — see [`docs/ui/STORYBOOK-PATTERNS.md`](../ui/STORYBOOK-PATTERNS.md) §11 for what a width-dependent story has to declare.
+
+Note that `nx lint web-ui` lints the generated `libs/web-ui/storybook-static/` directory if it is left on disk; remove the build output when you are done.
+
 ## Writing Stories
 
 > **Authoring patterns live in [`docs/ui/STORYBOOK-PATTERNS.md`](../ui/STORYBOOK-PATTERNS.md)** — compound-component wrappers, controlled primitives, Radix portals, `play` functions, required coverage, accessibility, and the anti-pattern table. This file covers setup and commands only.

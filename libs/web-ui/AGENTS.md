@@ -9,6 +9,7 @@ Shared React component library styled with Tailwind and developed with Storybook
 - Test: `yarn nx test web-ui`.
 - Storybook: `yarn storybook`.
 - Build Storybook: `yarn build-storybook`.
+- Story play tests: `yarn test-storybook --url <url>` against a served build — steps in `docs/storybook/README.md`.
 
 ## Do
 

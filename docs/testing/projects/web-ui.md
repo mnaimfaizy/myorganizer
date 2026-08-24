@@ -16,6 +16,14 @@ moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx']
 libs/web-ui/src/lib/<Component>.spec.tsx
 ```
 
+Storybook configuration under `libs/web-ui/.storybook/` is covered by colocated `*.test.ts` files:
+
+```
+libs/web-ui/.storybook/<module>.test.ts
+```
+
+These are plain Node-environment unit tests for the pure helpers the Storybook config depends on — they must not import React, a story, or `@storybook/test-runner` itself. They are picked up by the Nx preset `testMatch` and declared in `libs/web-ui/tsconfig.spec.json`.
+
 ## Patterns
 
 - Use **React Testing Library** (`@testing-library/react`).
