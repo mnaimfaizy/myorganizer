@@ -520,6 +520,15 @@ jobs:
       - name: Check Jest test hygiene
         run: corepack yarn test:hygiene --all
 
+      - name: Design hygiene checker contracts
+        run: corepack yarn design:hygiene:test
+
+      - name: Check House Explainer Page hygiene
+        # --all also fails on a page under docs/ that is in neither ROSTER nor
+        # LEGACY, which is the half Husky cannot see: a new page is unstaged
+        # against the roster exactly once, here.
+        run: corepack yarn design:hygiene --all
+
       - name: PR runner label and merge-base gate contracts
         run: corepack yarn ai:create-pr:test
 

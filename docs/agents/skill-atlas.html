@@ -332,12 +332,12 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
   <div>
     <div class="eyebrow">MyOrganizer &#xb7; .agents/skills &#xb7; .github/agents</div>
     <h1>Skill Atlas</h1>
-    <p class="lede">Thirty-five skills route a task to each other and delegate execution down to twenty-two one-shot sub-agents. Twenty-nine are written here; six are Upstream-Owned &#x2014; installed from a third party, committed, and never hand-edited.</p>
+    <p class="lede">Thirty-five skills route a task to each other and delegate execution down to twenty-three one-shot sub-agents. Twenty-nine are written here; six are Upstream-Owned &#x2014; installed from a third party, committed, and never hand-edited.</p>
   </div>
   <div class="counts">
     <div class="count"><b>29</b><span>repo-native skills</span></div>
     <div class="count"><b>6</b><span>upstream-owned</span></div>
-    <div class="count"><b>22</b><span>sub-agents</span></div>
+    <div class="count"><b>23</b><span>sub-agents</span></div>
     <div class="count"><b>5</b><span>warns-off edges</span></div>
   </div>
 </header>
@@ -358,7 +358,7 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
         <span class="mono" style="font-size:10.5px; color:var(--ink-3); align-self:center;">drag a node to move it &#183; drag the canvas to pan &#183; &#8984;/ctrl+scroll to zoom &#183; arrows nudge a focused node</span>
       </div>
     </div>
-    <svg id="graph" role="application" aria-label="Force-directed map of 35 skills (29 repo-native, 6 Upstream-Owned) and 22 sub-agents. Use Tab to move between nodes; Enter to select and run a traversal.">
+    <svg id="graph" role="application" aria-label="Force-directed map of 35 skills (29 repo-native, 6 Upstream-Owned) and 23 sub-agents. Use Tab to move between nodes; Enter to select and run a traversal.">
       <defs>
         <marker id="ar-A" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M0,1.5 L9,5 L0,8.5 Z" fill="var(--route)"/>
@@ -412,7 +412,7 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
           </label>
           <label><input type="checkbox" data-t="S" checked>
             <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H52" stroke="var(--tier2)" stroke-width="1" fill="none" marker-end="url(#ar-S)"/></svg>
-            <span class="ltext"><b>delegates-to sub-agent</b> &#x2014; Tier 2. <i>Dashed variant = conditional. 51 drawn.</i></span>
+            <span class="ltext"><b>delegates-to sub-agent</b> &#x2014; Tier 2. <i>Dashed variant = conditional. 52 drawn.</i></span>
           </label>
         </div>
 
@@ -526,13 +526,13 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
   "repoSkillDirCount": 35,
   "repoSkillsMissingFrontmatter": [],
   "repoSkillsHumanInvokeOnly": ["ask-matt", "handoff", "implement", "triage", "upstream-brief"],
-  "repoSkillsAbsentFromAgentsMdChooser": 15,
-  "subAgentCanonicalFileCount": 22,
-  "subAgentMirrorFileCount": 22,
+  "repoSkillsAbsentFromAgentsMdChooser": 14,
+  "subAgentCanonicalFileCount": 23,
+  "subAgentMirrorFileCount": 23,
   "subAgentsUnreferencedBySkills": ["Audit", "DepAudit", "Docs"],
   "skillToSkillEdgeCount": 63,
   "skillToSkillWarnsOffEdgeCount": 5,
-  "skillToSubAgentEdgeCount": 51,
+  "skillToSubAgentEdgeCount": 52,
   "upstreamOwnedSkillCount": 6,
   "danglingSkillReferences": []
 }
@@ -553,11 +553,11 @@ const HUMAN_ONLY = ["ask-matt","handoff","implement","triage","upstream-brief"];
 const UPSTREAM_OWNED = new Set(["codebase-design","diagnosing-bugs","domain-modeling","handoff","modern-web-guidance","prototype"]);
 const ALIASES = { "commit-change-workflow": "/commit", "create-pull-request-workflow": "/create-pr" };
 
-/* Skills present in the AGENTS.md `## Workflows` chooser (20 of 35). */
+/* Skills present in the AGENTS.md `## Workflows` chooser (21 of 35). */
 const IN_CHOOSER = new Set(["commit-change-workflow","create-pull-request-workflow","github-issue-creation-workflow",
   "to-prd","to-issues","triage","unit-test-delegation-workflow","playwright-e2e-workflow","storybook-delegation-workflow",
   "component-builder","backend-api-contract-change","implement","code-review","tdd","release-and-deploy-workflow",
-  "grill-with-docs","upstream-brief","domain-modeling","improve-codebase-architecture","sub-agent-sync-workflow"]);
+  "grill-with-docs","design-brief","upstream-brief","domain-modeling","improve-codebase-architecture","sub-agent-sync-workflow"]);
 
 /* Per-node routing notes that are facts, not description text. */
 const NOTES = {
@@ -626,7 +626,7 @@ const SS = [
  "prisma-migration-workflow","release-and-deploy-workflow","upstream-brief"]
   .forEach(t => SS.push(["ask-matt", t, "A", "ask-matt/SKILL.md:17-81 \u2014 router"]));
 
-/* \u2500\u2500 Skill \u2192 sub-agent edges (51 drawn; see the false-positive note below) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+/* \u2500\u2500 Skill \u2192 sub-agent edges (52 drawn; see the false-positive note below) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 const AGENTS = {
   "ApiSync": ["ask-matt","backend-api-contract-change","implement","to-issues"],
   "ApiWriter": ["ask-matt","backend-api-contract-change","implement","to-issues"],
@@ -637,6 +637,7 @@ const AGENTS = {
   "ComponentReviewer": ["component-builder","to-issues"],
   "DepAudit": [],
   "DepSync": ["dep-sync"],
+  "Designer": ["design-brief"],
   "Docs": [],
   "E2EPlanner": ["ask-matt","playwright-e2e-workflow"],
   "IssueCreator": ["github-issue-creation-workflow","grill-with-docs","implement","to-issues","to-prd"],

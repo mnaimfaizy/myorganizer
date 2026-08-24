@@ -46,6 +46,16 @@ if ! git diff --cached --quiet --diff-filter=ACMRT -- \
 then
 corepack yarn component:hygiene --staged --max-warnings=0
 fi
+# House Explainer Pages carry accessibility and self-containment rules that a
+# generalist ships wrong and a reader only discovers in a browser: a root-`<svg>`
+# `<title>` covering the whole canvas got as far as users before anyone reported
+# it. `--staged` filters to the roster itself, so a commit touching an unrelated
+# HTML page under docs/ costs nothing. The roster-coverage half runs in CI, where
+# the whole tree is visible (ADR 0046).
+if ! git diff --cached --quiet --diff-filter=ACMRT -- 'docs/**/*.html'
+then
+corepack yarn design:hygiene --staged
+fi
 # The sandcastle resume and sub-agent-trace decisions are pure functions with no Nx
 # project of their own, so `affected:lint` and `nx affected -t test` never reach them.
 # Run their contracts whenever a module or its consumer is staged.

@@ -7,8 +7,15 @@ description: 'Design brief for a Designer agent — turns a request for a visual
 
 Write the prompt. Do not write the design.
 
-The deliverable is a Markdown brief handed to a Designer agent, which produces the artifact. If
-you find yourself choosing colours or laying out a diagram, you have left this skill.
+The deliverable is a Markdown brief handed to the Designer sub-agent
+(`.github/agents/designer.agent.md`), which produces the artifact. If you find yourself choosing
+colours or laying out a diagram, you have left this skill.
+
+Dispatch to Designer, not to a general-purpose agent. Designer owns the house conventions — the
+canonical `@font-face` block, the three-state theme tokens, the accessible-name pattern that does
+not grow a tooltip — so the brief does not have to re-teach them, and `yarn design:hygiene` gates
+what comes back. Briefing a generalist re-derives all of it, and shipped a full-canvas tooltip
+that reached users before anyone reported it ([ADR 0046](../../../docs/adr/0046-house-explainer-pages-have-a-designer-and-a-gate.md)).
 
 ## Use This Skill When
 

@@ -241,7 +241,7 @@ eq('skillToSkillEdgeCount', ssPairs, manifest.skillToSkillEdgeCount);
 // agent names are ordinary English words and need the hand-verified exclusions below.
 // Upstream-Owned Skills are excluded wholesale before this runs, so entries here cover only
 // repo-native prose. The former `Audit: ['modern-web-guidance']` entry is gone with it: any of
-// the 22 agent names can collide with upstream English, and enumerating those collisions one
+// the 23 agent names can collide with upstream English, and enumerating those collisions one
 // red check at a time does not scale.
 const AGENT_FALSE_POSITIVES = {
   Docs: ['create-hooks', 'design-brief'], // a `## Docs` heading; the English word
