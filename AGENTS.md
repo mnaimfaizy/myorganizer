@@ -57,6 +57,7 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Libs markdown allowlist: `yarn libs:markdown:check` (Husky + CI; do not skip).
 - Assertion gates aggregate: `yarn gates:run` (runs the file-reading checkers above plus OpenAPI artifacts, ADR numbering, and the wired-gate check in one Node process; Husky calls this single line instead of one `corepack yarn` line per checker — see ADR 0043).
 - Wired-gate check: `yarn gates:coverage:check` (the Meta-Gate — asserts every `tools/scripts/check-*.mjs` is invoked by a hook or workflow, resolving one level of indirection through the aggregate's manifest). A checker that is deliberately not a gate needs an entry with a written reason in `tools/config/gate-coverage-optout.json` — there is no silent exemption.
+- House Explainer Page hygiene: `yarn design:hygiene <path>` (or `--all`, `--staged`). `yarn design:hygiene --print-font-block` emits the canonical `@font-face` block to splice into a new page ([ADR 0046](docs/adr/0046-house-explainer-pages-have-a-designer-and-a-gate.md)).
 
 ## Architecture
 
@@ -112,6 +113,7 @@ Named workflows live in `.agents/skills/`. Load the Skill; do not copy its steps
 - TDD: `.agents/skills/tdd/SKILL.md`
 - Release: `.agents/skills/release-and-deploy-workflow/SKILL.md`
 - Design / grilling session: `.agents/skills/grill-with-docs/SKILL.md` — filing that plan as tracked work is `to-prd`, not IssueCreator
+- Brief a diagram or explainer page: `.agents/skills/design-brief/SKILL.md` — the brief goes to `Designer`, never to a general-purpose agent
 - Upstream instruction audit: `.agents/skills/upstream-brief/SKILL.md`
 - Domain model writes: `.agents/skills/domain-modeling/SKILL.md`
 - Architecture review: `.agents/skills/improve-codebase-architecture/SKILL.md`
@@ -176,6 +178,7 @@ Do not treat every test/component touch as a full multi-agent pipeline. Classify
 | `*.stories.tsx`                                   | `.agents/skills/storybook-delegation-workflow/SKILL.md` |
 | Components in `libs/web-ui/` / `libs/web/pages/`  | `.agents/skills/component-builder/SKILL.md`             |
 | API Contract (controllers, DTOs, Prisma for HTTP) | `.agents/skills/backend-api-contract-change/SKILL.md`   |
+| House Explainer Page (`docs/**/*.html`)           | `.agents/skills/design-brief/SKILL.md` → `Designer`     |
 
 ### Key Anti-Patterns
 

@@ -64,13 +64,14 @@ Config/docs/type-only edits with no behavior change may stay mechanical or direc
 ## Step 3: Task Classification Matrix (by gate)
 
 | File Pattern                                                              | `gate:mechanical`                                                                   | `gate:standard`                                                                    | `gate:full`                                                                                     |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
-| Playwright `*.spec.ts`                                                    | Direct edit (selector/string only) + note; no E2EPlanner                             | TestScaffold + TestReviewer (structural); skip E2EPlanner if flow matrix unchanged   | E2EPlanner → TestScaffold → TestReviewer (structural); never execute E2E in AFK                  |
-| Jest `*.test.ts` / page `*.spec.tsx`                                      | Direct edit (fixture/type retarget) + focused jest                                   | TestScaffold → TestReviewer → TestRunner                                             | Same full pipeline (max 2 reject-cycles; ADR 0017)                                               |
-| `*.stories.tsx`                                                           | Direct edit only for rename/import path                                              | StorybookCurator                                                                       | StorybookCurator                                                                                    |
-| Components `libs/web-ui/` / `libs/web/pages/`                             | Direct edit only for rename/import/dead delete; run `yarn component:hygiene <path>` | ComponentBuilder → ComponentReviewer                                                 | ComponentBuilder → ComponentReviewer (max 2 FAIL cycles; ADR 0017) + Storybook/tests after PASS  |
-| API Contract (controllers, DTOs, Prisma schema for a public HTTP surface) | Direct edit only for rename/import/comment                                           | PrismaWriter (if schema) → ApiWriter → ApiSync (skip unused hops)                     | Same one-shot hops (ADR 0015). Then leave — Jest stays its Gated Pipeline                        |
-| Config / docs / types                                                     | Direct edit OK                                                                        | Direct edit OK                                                                         | Direct edit OK                                                                                      |
+| ------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Playwright `*.spec.ts`                                                    | Direct edit (selector/string only) + note; no E2EPlanner                            | TestScaffold + TestReviewer (structural); skip E2EPlanner if flow matrix unchanged | E2EPlanner → TestScaffold → TestReviewer (structural); never execute E2E in AFK                 |
+| Jest `*.test.ts` / page `*.spec.tsx`                                      | Direct edit (fixture/type retarget) + focused jest                                  | TestScaffold → TestReviewer → TestRunner                                           | Same full pipeline (max 2 reject-cycles; ADR 0017)                                              |
+| `*.stories.tsx`                                                           | Direct edit only for rename/import path                                             | StorybookCurator                                                                   | StorybookCurator                                                                                |
+| Components `libs/web-ui/` / `libs/web/pages/`                             | Direct edit only for rename/import/dead delete; run `yarn component:hygiene <path>` | ComponentBuilder → ComponentReviewer                                               | ComponentBuilder → ComponentReviewer (max 2 FAIL cycles; ADR 0017) + Storybook/tests after PASS |
+| API Contract (controllers, DTOs, Prisma schema for a public HTTP surface) | Direct edit only for rename/import/comment                                          | PrismaWriter (if schema) → ApiWriter → ApiSync (skip unused hops)                  | Same one-shot hops (ADR 0015). Then leave — Jest stays its Gated Pipeline                       |
+| House Explainer Page `docs/**/*.html`                                     | Direct edit only for a typo or a roster entry; run `yarn design:hygiene <path>`     | Designer (brief it with `design-brief` first)                                      | Designer, briefed by `design-brief` on its grounded branch (ADR 0046)                           |
+| Config / docs / types                                                     | Direct edit OK                                                                      | Direct edit OK                                                                     | Direct edit OK                                                                                  |
 
 Skills:
 
@@ -79,8 +80,11 @@ Skills:
 - Storybook: `.agents/skills/storybook-delegation-workflow/SKILL.md`
 - Components: `.agents/skills/component-builder/SKILL.md`
 - API Contract: `.agents/skills/backend-api-contract-change/SKILL.md` (ADR 0015)
+- House Explainer Pages: `.agents/skills/design-brief/SKILL.md` → `Designer` (ADR 0046)
 
 Deterministic component checks (any gate): `yarn component:hygiene <path>` — the shape rules from `docs/ui/GUIDELINES.md`. Targeted scans keep warnings advisory; CI and pre-commit enforce zero warnings with `--max-warnings=0` (ADR 0014).
+
+Deterministic House Explainer Page checks (any gate): `yarn design:hygiene <path>` — self-containment, the three-state theme block, the no-tooltip accessible-name pattern, and the `data-tip` ↔ `#note-*` bijection (ADR 0046).
 
 ---
 
