@@ -648,7 +648,7 @@ async function setupVaultWithSampleData(page: Page) {
 }
 
 async function gotoVaultSettings(page: Page) {
-  await gotoStable(page, '/dashboard/account/vault');
+  await gotoStable(page, '/dashboard/vault');
   if (
     await page
       .locator('#unlock-passphrase')
@@ -660,6 +660,41 @@ async function gotoVaultSettings(page: Page) {
 }
 
 test.describe('Vault cloud backup via Google Drive (E2E)', () => {
+  test('redirect: /dashboard/account/vault navigates to /dashboard/vault', async ({
+    browser,
+  }, testInfo) => {
+    test.setTimeout(60000);
+
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    setupBackend(page);
+    await installGoogleMocks(page);
+
+    await login(page, {
+      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
+    });
+
+    // Navigate to the old account vault URL; should redirect to /dashboard/vault.
+    await page.goto('/dashboard/account/vault');
+    await expect(page).toHaveURL(/.*\/dashboard\/vault$/);
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 10000 });
+    } catch {
+      try {
+        await page.waitForLoadState('domcontentloaded');
+      } catch {
+        // Page is ready enough to proceed
+      }
+    }
+
+    // Verify the vault page loaded.
+    await expect(page.getByTestId('cloud-backup-card')).toBeVisible({
+      timeout: 60000,
+    });
+
+    await ctx.close();
+  });
+
   test('connect + manual backup updates the cloud last-backup record', async ({
     browser,
   }, testInfo) => {
