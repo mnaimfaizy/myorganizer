@@ -1,7 +1,7 @@
 import { AddressRecord, AddressStatusEnum } from '@myorganizer/core';
 
+import { addAddressSchema } from '../schemas/address';
 import {
-  addAddressSchema,
   addressFormValuesToRecordFields,
   buildAddressFingerprint,
   countryCodeToName,

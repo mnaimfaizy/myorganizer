@@ -1,11 +1,7 @@
 'use client';
 
 import {
-  SubscriptionBillingCycleEnum,
-  SubscriptionPaymentMethodEnum,
-  SubscriptionRenewalTypeEnum,
   SubscriptionStatusEnum,
-  SubscriptionTierEnum,
   convertAmount,
   getAccountSettings,
   getFxRates,
@@ -14,30 +10,19 @@ import {
   type CurrencyCode,
   type SubscriptionRecord,
 } from '@myorganizer/core';
-import { useToast } from '@myorganizer/web-ui';
+import { Button, ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
   loadDecryptedData,
   normalizeSubscriptions,
   saveEncryptedData,
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-  type BaseSyntheticEvent,
-} from 'react';
-import { useForm } from 'react-hook-form';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-
-import { dateInputToIso, todayAsDateInput } from '../utils/date';
-import {
-  AddSubscriptionCard,
-  addSubscriptionSchema,
-  type AddSubscriptionFormValues,
-} from './AddSubscriptionCard';
+import { dateInputToIso } from '../utils/date';
+import { type SubscriptionFormValues } from '../schemas/subscription';
+import { SubscriptionAddDialog } from './SubscriptionAddDialog';
+import { SubscriptionEditDialog } from './SubscriptionEditDialog';
 import { SubscriptionsListCard } from './SubscriptionsListCard';
 import {
   SubscriptionsTotalsCard,
@@ -61,26 +46,11 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
     error?: string;
     totals: CycleConvertedSubtotal[];
   }>({ enabled: false, loading: false, totals: [] });
-
-  const addForm = useForm<AddSubscriptionFormValues>({
-    resolver: zodResolver(addSubscriptionSchema),
-    defaultValues: {
-      name: '',
-      status: SubscriptionStatusEnum.Active,
-      billingCycle: SubscriptionBillingCycleEnum.Monthly,
-      amount: 0,
-      currency: 'AUD',
-      paymentMethod: SubscriptionPaymentMethodEnum.CreditCard,
-      renewalType: SubscriptionRenewalTypeEnum.AutoRenew,
-      tier: SubscriptionTierEnum.Basic,
-      startDate: todayAsDateInput(),
-      nextBillingDate: '',
-      link: '',
-    },
-    mode: 'onChange',
-  });
-
-  const canAdd = addForm.formState.isValid;
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [editingSubscription, setEditingSubscription] =
+    useState<SubscriptionRecord | null>(null);
+  const [deletingSubscription, setDeletingSubscription] =
+    useState<SubscriptionRecord | null>(null);
 
   useEffect(() => {
     const apply = () => {
@@ -120,13 +90,13 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
 
   const persist = useCallback(
     async (next: SubscriptionRecord[]) => {
-      setItems(next);
       try {
         await saveEncryptedData({
           masterKeyBytes: props.masterKeyBytes,
           type: 'subscriptions',
           value: next,
         });
+        setItems(next);
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
         toast({
@@ -134,6 +104,7 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
           description: message,
           variant: 'destructive',
         });
+        throw e;
       }
     },
     [props.masterKeyBytes, toast],
@@ -248,65 +219,139 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
   }, []);
 
   const handleAddSubscription = useCallback(
-    async (e?: BaseSyntheticEvent) => {
-      return addForm.handleSubmit(async (values) => {
-        const startDateIso = dateInputToIso(values.startDate);
-        if (!startDateIso) {
-          toast({
-            title: 'Invalid start date',
-            description: 'Please enter a valid start date.',
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        const nextBillingIso = dateInputToIso(values.nextBillingDate);
-
-        const nextItem: SubscriptionRecord = {
-          id: randomId(),
-          name: values.name.trim(),
-          startDate: startDateIso,
-          endDate: undefined,
-          status: values.status,
-          billingCycle: values.billingCycle,
-          amount: values.amount,
-          currency: values.currency as CurrencyCode,
-          paymentMethod: values.paymentMethod,
-          nextBillingDate: nextBillingIso,
-          renewalType: values.renewalType,
-          cancellationDate: undefined,
-          cancellationReason: undefined,
-          tier: values.tier,
-          link: values.link?.trim() || undefined,
-        };
-
-        await persist([nextItem, ...items]);
-        addForm.reset({
-          ...values,
-          name: '',
-          amount: 0,
-          nextBillingDate: '',
-          link: '',
-        });
+    async (values: SubscriptionFormValues) => {
+      const startDateIso = dateInputToIso(values.startDate);
+      if (!startDateIso) {
         toast({
-          title: 'Saved',
-          description: 'Subscription saved (encrypted).',
+          title: 'Invalid start date',
+          description: 'Please enter a valid start date.',
+          variant: 'destructive',
         });
-      })(e);
-    },
-    [addForm, items, persist, toast],
-  );
+        throw new Error('Invalid start date');
+      }
 
-  const handleDeleteSubscription = useCallback(
-    async (id: string) => {
-      await persist(items.filter((x) => x.id !== id));
+      const endDateIso = dateInputToIso(values.endDate);
+      const nextBillingIso = dateInputToIso(values.nextBillingDate);
+
+      const nextItem: SubscriptionRecord = {
+        id: randomId(),
+        name: values.name.trim(),
+        startDate: startDateIso,
+        endDate: endDateIso,
+        status: values.status,
+        billingCycle: values.billingCycle,
+        amount: values.amount,
+        currency: values.currency as CurrencyCode,
+        paymentMethod: values.paymentMethod,
+        nextBillingDate: nextBillingIso,
+        renewalType: values.renewalType,
+        cancellationDate: undefined,
+        cancellationReason: undefined,
+        tier: values.tier,
+        link: values.link?.trim() || undefined,
+      };
+
+      await persist([nextItem, ...items]);
       toast({
-        title: 'Deleted',
-        description: 'Subscription removed.',
+        title: 'Saved',
+        description: 'Subscription saved (encrypted).',
       });
     },
     [items, persist, toast],
   );
+
+  const handleSaveEdit = useCallback(
+    async (id: string, values: SubscriptionFormValues) => {
+      const startDateIso = dateInputToIso(values.startDate);
+      if (!startDateIso) {
+        toast({
+          title: 'Invalid start date',
+          description: 'Please enter a valid start date.',
+          variant: 'destructive',
+        });
+        throw new Error('Invalid start date');
+      }
+
+      const endDateIso = dateInputToIso(values.endDate);
+      const nextBillingIso = dateInputToIso(values.nextBillingDate);
+
+      const next = items.map((s) =>
+        s.id === id
+          ? {
+              ...s,
+              name: values.name.trim(),
+              startDate: startDateIso,
+              endDate: endDateIso,
+              status: values.status,
+              billingCycle: values.billingCycle,
+              amount: values.amount,
+              currency: values.currency as CurrencyCode,
+              paymentMethod: values.paymentMethod,
+              nextBillingDate: nextBillingIso,
+              renewalType: values.renewalType,
+              tier: values.tier,
+              link: values.link?.trim() || undefined,
+            }
+          : s,
+      );
+
+      await persist(next);
+      toast({
+        title: 'Saved',
+        description: 'Subscription updated (encrypted).',
+      });
+    },
+    [items, persist, toast],
+  );
+
+  const handleRequestEdit = useCallback(
+    (id: string) => {
+      const record = items.find((s) => s.id === id);
+      if (record) {
+        setEditingSubscription(record);
+      }
+    },
+    [items],
+  );
+
+  const handleRequestDelete = useCallback(
+    (id: string) => {
+      const record = items.find((s) => s.id === id);
+      if (record) {
+        setDeletingSubscription(record);
+      }
+    },
+    [items],
+  );
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deletingSubscription) return;
+    try {
+      await persist(items.filter((s) => s.id !== deletingSubscription.id));
+      toast({ title: 'Deleted', description: 'Subscription removed.' });
+      setDeletingSubscription(null);
+    } catch {
+      // persist() already toasted the failure; leave the dialog open for retry
+    }
+  }, [deletingSubscription, items, persist, toast]);
+
+  const handleOpenAddDialog = useCallback(() => {
+    setShowAddDialog(true);
+  }, []);
+
+  const handleCloseAddDialog = useCallback(() => {
+    setShowAddDialog(false);
+  }, []);
+
+  const handleCloseEditDialog = useCallback(() => {
+    setEditingSubscription(null);
+  }, []);
+
+  const handleDeleteDialogOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      setDeletingSubscription(null);
+    }
+  }, []);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -318,14 +363,33 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
         onConvertTotals={convertTotalsOnDemand}
         onResetConversion={resetConversion}
       />
-      <AddSubscriptionCard
-        form={addForm}
-        canAdd={canAdd}
-        onSubmit={handleAddSubscription}
-      />
+      <div className="flex justify-end">
+        <Button onClick={handleOpenAddDialog}>Add Subscription</Button>
+      </div>
       <SubscriptionsListCard
         subscriptions={sorted}
-        onDeleteSubscription={handleDeleteSubscription}
+        onEditSubscription={handleRequestEdit}
+        onRequestDelete={handleRequestDelete}
+      />
+      <SubscriptionAddDialog
+        isOpen={showAddDialog}
+        onClose={handleCloseAddDialog}
+        onSubmit={handleAddSubscription}
+      />
+      <SubscriptionEditDialog
+        subscription={editingSubscription}
+        isOpen={editingSubscription !== null}
+        onClose={handleCloseEditDialog}
+        onSave={handleSaveEdit}
+      />
+      <ConfirmDeleteDialog
+        open={deletingSubscription !== null}
+        onOpenChange={handleDeleteDialogOpenChange}
+        title={
+          deletingSubscription ? `Delete "${deletingSubscription.name}"?` : ''
+        }
+        description="This action cannot be undone. The subscription will be permanently removed."
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );

@@ -6,7 +6,7 @@ import { formatMobileNumber } from '../utils/formatMobileNumber';
 
 interface MobileNumberListItemProps {
   item: MobileNumberRecord;
-  onDelete: (id: string) => void | Promise<void>;
+  onRequestDelete: (item: MobileNumberRecord) => void | Promise<void>;
 }
 
 export function MobileNumberListItem(props: MobileNumberListItemProps) {
@@ -49,10 +49,11 @@ export function MobileNumberListItem(props: MobileNumberListItemProps) {
         <Button
           variant="ghost"
           size="icon"
+          aria-label={`Delete ${props.item.label}`}
           className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
           onClick={(e) => {
             e.preventDefault();
-            props.onDelete(props.item.id);
+            props.onRequestDelete(props.item);
           }}
         >
           <Trash2 className="h-4 w-4" />

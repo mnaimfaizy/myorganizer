@@ -1,13 +1,15 @@
 import { MobileNumberRecord } from '@myorganizer/core';
-import { Card, CardContent, CardTitle } from '@myorganizer/web-ui';
+import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
+import { Pencil } from 'lucide-react';
 import { formatMobileNumber } from '../utils/formatMobileNumber';
 
 interface MobileNumberDetailsCardProps {
   mobileNumberRecord: MobileNumberRecord;
+  onEdit: () => void;
 }
 
 export function MobileNumberDetailsCard(props: MobileNumberDetailsCardProps) {
-  const { mobileNumberRecord } = props;
+  const { mobileNumberRecord, onEdit } = props;
   const hasStructuredNumber = !!(
     mobileNumberRecord.countryCode && mobileNumberRecord.phoneNumber
   );
@@ -18,6 +20,15 @@ export function MobileNumberDetailsCard(props: MobileNumberDetailsCardProps) {
         <CardTitle className="text-xl font-semibold">
           {mobileNumberRecord.label}
         </CardTitle>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onEdit}
+          aria-label={`Edit ${mobileNumberRecord.label}`}
+        >
+          <Pencil className="h-4 w-4" />
+          Edit
+        </Button>
       </div>
       <CardContent className="p-0 space-y-4">
         {hasStructuredNumber ? (

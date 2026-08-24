@@ -16,7 +16,7 @@ import { AddressListItem } from './AddressListItem';
 interface AddressListCardProps {
   items: AddressRecord[];
   onAddAddress: () => void;
-  onDelete: (id: string) => void | Promise<void>;
+  onRequestDelete: (item: AddressRecord) => void | Promise<void>;
 }
 
 export function AddressListCard(props: AddressListCardProps) {
@@ -100,7 +100,7 @@ export function AddressListCard(props: AddressListCardProps) {
             <AddressListItem
               key={item.id}
               item={item}
-              onDelete={props.onDelete}
+              onRequestDelete={props.onRequestDelete}
             />
           ))
         )}

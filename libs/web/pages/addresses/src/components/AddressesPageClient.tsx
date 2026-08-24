@@ -1,7 +1,7 @@
 'use client';
 
 import { AddressRecord, AddressStatusEnum } from '@myorganizer/core';
-import { useToast } from '@myorganizer/web-ui';
+import { ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
   loadDecryptedData,
   normalizeAddresses,
@@ -10,10 +10,8 @@ import {
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import { useCallback, useEffect, useState } from 'react';
 
-import {
-  AddAddressFormValues,
-  addressFormValuesToRecordFields,
-} from '../utils/addressForm';
+import { type AddAddressFormValues } from '../schemas/address';
+import { addressFormValuesToRecordFields } from '../utils/addressForm';
 import { randomId } from '../utils/randomId';
 import { AddAddressCard } from './AddAddressCard';
 import { AddressListCard } from './AddressListCard';
@@ -22,11 +20,26 @@ interface AddressesInnerProps {
   masterKeyBytes: Uint8Array;
 }
 
+function describeAddressDeletion(address: AddressRecord | null): string {
+  if (!address) return '';
+  const count = address.usageLocations.length;
+  if (count === 0) {
+    return 'This action cannot be undone. The address will be permanently removed.';
+  } else if (count === 1) {
+    return 'This action cannot be undone. The address and its 1 usage location will be permanently removed.';
+  } else {
+    return `This action cannot be undone. The address and its ${count} usage locations will be permanently removed.`;
+  }
+}
+
 function AddressesInner(props: AddressesInnerProps) {
   const { toast } = useToast();
 
   const [items, setItems] = useState<AddressRecord[]>([]);
   const [isAddAddressOpen, setIsAddAddressOpen] = useState(false);
+  const [deletingAddress, setDeletingAddress] = useState<AddressRecord | null>(
+    null,
+  );
 
   useEffect(() => {
     loadDecryptedData<unknown>({
@@ -97,6 +110,27 @@ function AddressesInner(props: AddressesInnerProps) {
     [items, persist, toast],
   );
 
+  const handleRequestDelete = useCallback((item: AddressRecord) => {
+    setDeletingAddress(item);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deletingAddress) return;
+    try {
+      await persist(items.filter((x) => x.id !== deletingAddress.id));
+      toast({ title: 'Deleted', description: 'Address removed.' });
+      setDeletingAddress(null);
+    } catch {
+      // persist() already toasted the failure; leave the dialog open for retry
+    }
+  }, [deletingAddress, items, persist, toast]);
+
+  const handleDeleteDialogOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      setDeletingAddress(null);
+    }
+  }, []);
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <AddAddressCard
@@ -109,14 +143,15 @@ function AddressesInner(props: AddressesInnerProps) {
       <AddressListCard
         items={items}
         onAddAddress={() => setIsAddAddressOpen(true)}
-        onDelete={async (id) => {
-          const next = items.filter((x) => x.id !== id);
-          await persist(next);
-          toast({
-            title: 'Deleted',
-            description: 'Address removed.',
-          });
-        }}
+        onRequestDelete={handleRequestDelete}
+      />
+
+      <ConfirmDeleteDialog
+        open={deletingAddress !== null}
+        onOpenChange={handleDeleteDialogOpenChange}
+        title={deletingAddress ? `Delete "${deletingAddress.label}"?` : ''}
+        description={describeAddressDeletion(deletingAddress)}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );
