@@ -11,7 +11,6 @@ import {
   SUPPORTED_CURRENCIES,
   type CurrencyCode,
 } from '@myorganizer/core';
-import { useLatestBackup } from '@myorganizer/web-pages/vault-settings';
 import {
   Button,
   Card,
@@ -28,6 +27,8 @@ import {
 import { LastBackupCard } from '@myorganizer/web-vault-ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+
+import { useLatestBackup } from '../hooks/useLatestBackup';
 
 export function AccountPageClient() {
   const { toast } = useToast();
@@ -160,10 +161,10 @@ export function AccountPageClient() {
           isLoading={latestBackup.status === 'loading'}
         />
         <Link
-          href="/dashboard/account/vault"
+          href="/dashboard/vault"
           className="text-sm text-primary underline"
         >
-          Manage vault settings &amp; cloud backup →
+          Go to Vault →
         </Link>
       </div>
       <Card className="p-4">

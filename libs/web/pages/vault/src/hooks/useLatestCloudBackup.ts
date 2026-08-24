@@ -34,8 +34,9 @@ export type LatestCloudBackupApiFactory = () => {
 /**
  * Fetch the most recent successful Google Drive backup record on mount and
  * whenever `refreshKey` changes. Mirrors the cross-source `useLatestBackup`
- * hook (`@myorganizer/web-pages/vault-settings`) but filters by
- * `source='google-drive'` so the returned record is provider-scoped.
+ * hook (`libs/web/pages/account/src/hooks/useLatestBackup.ts`, private to
+ * that route) but filters by `source='google-drive'` so the returned record
+ * is provider-scoped.
  */
 export function useLatestCloudBackup(
   refreshKey = 0,
