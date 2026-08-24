@@ -65,8 +65,12 @@ export type LocalVaultAccess = {
   readonly isUnlocked: boolean;
 
   hasVault(): boolean;
+  /** Whether this slot currently holds a claimed (owned), not Unclaimed, Local Vault. */
+  hasOwnedVault(): boolean;
   loadVault(): VaultStorageV1 | null;
   saveVault(vault: VaultStorageV1): void;
+  /** Explicit Local Vault removal (ADR 0033). Locks this access afterward. */
+  removeVault(): void;
 
   initialize(options: { passphrase: string }): Promise<{ recoveryKey: string }>;
   unlockWithPassphrase(options: {
@@ -208,12 +212,21 @@ export function createLocalVaultAccess(options: {
       return vaultOf(slot.read()) !== null;
     },
 
+    hasOwnedVault() {
+      return slot.read().status === 'owned';
+    },
+
     loadVault() {
       return vaultOf(slot.read());
     },
 
     saveVault(vault) {
       slot.write(vault);
+    },
+
+    removeVault() {
+      slot.remove();
+      boundMasterKeyBytes = null;
     },
 
     async initialize({ passphrase }) {

@@ -1,3 +1,4 @@
 export * from './useCloudBackup';
+export * from './useExportVault';
 export * from './useGoogleIdentityScript';
 export * from './useLatestCloudBackup';

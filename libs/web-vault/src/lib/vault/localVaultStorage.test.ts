@@ -40,6 +40,8 @@ import {
   resolveLocalVault,
   writeOwnedLocalVault,
   ownedLocalVaultSlot,
+  unclaimedLocalVaultSlot,
+  removeOwnedLocalVault,
   type VaultStorageV1,
 } from './localVaultStorage';
 import { createVaultHandle } from './vaultHandle';
@@ -687,6 +689,93 @@ describe('localVaultStorage — storage resolution and ownership', () => {
       if (result.status === 'owned') {
         expect(result.vault).toEqual(vault2);
       }
+    });
+  });
+
+  describe('removeOwnedLocalVault — explicit removal (ADR 0033)', () => {
+    test('20: removeOwnedLocalVault removes the entry for the given owner', () => {
+      const vault = createTestVault();
+      writeOwnedLocalVault({ owner: 'user-a', vault });
+
+      const result = resolveLocalVault('user-a');
+      expect(result.status).toBe('owned');
+
+      // Act: remove the vault
+      removeOwnedLocalVault('user-a');
+
+      // Assert: entry is gone
+      const resultAfter = resolveLocalVault('user-a');
+      expect(resultAfter.status).toBe('absent');
+    });
+
+    test("21: removeOwnedLocalVault leaves another owner's entry untouched", () => {
+      const vaultA = createTestVault();
+      const vaultB = createTestVault({
+        kdf: { ...createTestVault().kdf, iterations: 200_000 },
+      });
+      writeOwnedLocalVault({ owner: 'user-a', vault: vaultA });
+      writeOwnedLocalVault({ owner: 'user-b', vault: vaultB });
+
+      // Act: remove user-a's vault only
+      removeOwnedLocalVault('user-a');
+
+      // Assert: user-a is gone
+      expect(resolveLocalVault('user-a').status).toBe('absent');
+
+      // Assert: user-b's entry is unchanged
+      const resultB = resolveLocalVault('user-b');
+      expect(resultB.status).toBe('owned');
+      if (resultB.status === 'owned') {
+        expect(resultB.vault).toEqual(vaultB);
+      }
+    });
+
+    test('22: removeOwnedLocalVault is a no-op when owner has no entry at their own key (unclaimed only)', () => {
+      const unclaimed = createTestVault();
+      localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(unclaimed));
+      const beforeRaw = localStorage.getItem(VAULT_STORAGE_KEY);
+      expect(beforeRaw).not.toBeNull();
+
+      // Act: remove for an owner with no owned record, only unclaimed available
+      removeOwnedLocalVault('user-a');
+
+      // Assert: unsuffixed slot unchanged (byte-identical)
+      const afterRaw = localStorage.getItem(VAULT_STORAGE_KEY);
+      expect(afterRaw).toBe(beforeRaw);
+
+      // Assert: unclaimed still available to user-a
+      const result = resolveLocalVault('user-a');
+      expect(result.status).toBe('unclaimed');
+    });
+
+    test('23: removeOwnedLocalVault throws for empty owner', () => {
+      expect(() => removeOwnedLocalVault('')).toThrow(
+        'A Local Vault cannot be resolved without an owner',
+      );
+    });
+
+    test('24: removeOwnedLocalVault throws for whitespace-only owner', () => {
+      expect(() => removeOwnedLocalVault('   ')).toThrow(
+        'A Local Vault cannot be resolved without an owner',
+      );
+    });
+
+    test("25: ownedLocalVaultSlot(owner).remove() removes that owner's entry", () => {
+      const vault = createTestVault();
+      writeOwnedLocalVault({ owner: 'user-a', vault });
+
+      const slot = ownedLocalVaultSlot('user-a');
+      slot.remove();
+
+      const result = resolveLocalVault('user-a');
+      expect(result.status).toBe('absent');
+    });
+
+    test('26: unclaimedLocalVaultSlot().remove() throws', () => {
+      const slot = unclaimedLocalVaultSlot();
+      expect(() => slot.remove()).toThrow(
+        'An Unclaimed Local Vault cannot be removed',
+      );
     });
   });
 });

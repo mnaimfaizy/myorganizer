@@ -93,6 +93,11 @@ export type LocalVaultSlot = {
    * no owner to claim for.
    */
   claim(vault: VaultStorageV1): void;
+  /**
+   * Explicit Local Vault removal (ADR 0033) — never automatic, never offered
+   * for an Unclaimed Local Vault. A slot with no owner to remove for refuses.
+   */
+  remove(): void;
 };
 
 /**
@@ -270,6 +275,19 @@ export function writeOwnedLocalVault(options: {
 }
 
 /**
+ * Remove `owner`'s Local Vault entry — explicit Local Vault removal (ADR 0033).
+ *
+ * Touches only the key `owner` is stored under, so it can never remove another
+ * User's entry and can never remove the unsuffixed Unclaimed Local Vault slot:
+ * an owner who currently resolves to `unclaimed` has nothing at their own key
+ * yet, so this is a no-op for them by construction, not by a separate guard.
+ */
+export function removeOwnedLocalVault(owner: string): void {
+  assertVaultOwner(owner);
+  writableStorage().removeItem(localVaultStorageKey(owner));
+}
+
+/**
  * The slot holding one User's Local Vault.
  *
  * A write follows the read. While the only Vault this User can resolve is the
@@ -299,6 +317,8 @@ export function ownedLocalVaultSlot(owner: string): LocalVaultSlot {
     // record under the claiming User's key. The unsuffixed slot is left
     // byte-identical — a Local Vault is never removed on anyone's behalf.
     claim,
+
+    remove: () => removeOwnedLocalVault(owner),
   };
 }
 
@@ -315,6 +335,11 @@ export function unclaimedLocalVaultSlot(): LocalVaultSlot {
     write: writeUnclaimedLocalVault,
     claim: () => {
       /* Nothing to claim for: this slot has no owner. */
+    },
+    remove: () => {
+      // An Unclaimed Local Vault is never removed on anyone's behalf
+      // (ADR 0033) — there is no owner here to authorise it.
+      throw new Error('An Unclaimed Local Vault cannot be removed');
     },
   };
 }

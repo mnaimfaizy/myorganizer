@@ -750,7 +750,269 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
     });
   });
 
-  // Test 16: API shape validation
+  // Test 16: Vault removal — explicit removal (hasOwnedVault and removeVault)
+  describe('Vault removal — hasOwnedVault and removeVault (ADR 0033)', () => {
+    test('hasOwnedVault() is false for a fresh owner with no Local Vault at all', () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      expect(handle.hasOwnedVault()).toBe(false);
+    });
+
+    test('hasOwnedVault() is false when the only Local Vault visible is an Unclaimed Local Vault', () => {
+      // Populate only the unsuffixed slot (Unclaimed).
+      const unclaimed: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {},
+      };
+      localStorage.setItem('myorganizer_vault_v1', JSON.stringify(unclaimed));
+
+      const handle = createVaultHandle({ owner: 'user-a' });
+      expect(handle.hasOwnedVault()).toBe(false);
+    });
+
+    test('hasOwnedVault() is true when this owner has an owned (claimed) Local Vault', async () => {
+      // Initialize and own the vault.
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await handle.initialize({ passphrase: 'test-pass' });
+
+      expect(handle.hasOwnedVault()).toBe(true);
+    });
+
+    test('removeVault() removes the entry and handle.hasVault() reflects absence afterward', () => {
+      // Setup: write a vault for user-a.
+      const vault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {},
+      };
+      localStorage.setItem(
+        LS_KEY_USER_A,
+        JSON.stringify({
+          version: 2,
+          owner: 'user-a',
+          vault,
+        }),
+      );
+
+      const handle = createVaultHandle({ owner: 'user-a' });
+      expect(handle.hasVault()).toBe(true);
+
+      // Act: remove the vault.
+      handle.removeVault();
+
+      // Assert: vault is gone.
+      expect(handle.hasVault()).toBe(false);
+      expect(handle.loadVault()).toBeNull();
+
+      // Assert: a fresh handle for the same owner also sees absence.
+      const freshHandle = createVaultHandle({ owner: 'user-a' });
+      expect(freshHandle.hasVault()).toBe(false);
+    });
+
+    test('removeVault() locks the handle: isUnlocked becomes false', () => {
+      // Setup: create a handle that is unlocked (masterKeyBytes passed).
+      const masterKeyBytes = new Uint8Array([1, 2, 3, 4]);
+      const vault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {},
+      };
+      localStorage.setItem(
+        LS_KEY_USER_A,
+        JSON.stringify({
+          version: 2,
+          owner: 'user-a',
+          vault,
+        }),
+      );
+
+      const handle = createVaultHandle({
+        owner: 'user-a',
+        masterKeyBytes,
+      });
+      expect(handle.isUnlocked).toBe(true);
+
+      // Act: remove.
+      handle.removeVault();
+
+      // Assert: locked.
+      expect(handle.isUnlocked).toBe(false);
+    });
+
+    test("removeVault() does not affect a different owner's handle", () => {
+      // Setup: vaults for user-a and user-b.
+      const vaultA: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'aS1h',
+          ciphertext: 'Y3QtYQ==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'aS1h',
+          ciphertext: 'Y3QtYQ==',
+        },
+        data: { addresses: { iv: 'aXY=', ciphertext: 'Y3Q=' } },
+      };
+
+      const vaultB: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'aS1i',
+          ciphertext: 'Y3QtYg==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'aS1i',
+          ciphertext: 'Y3QtYg==',
+        },
+        data: { todos: { iv: 'aXY=', ciphertext: 'Y3Q=' } },
+      };
+
+      localStorage.setItem(
+        LS_KEY_USER_A,
+        JSON.stringify({
+          version: 2,
+          owner: 'user-a',
+          vault: vaultA,
+        }),
+      );
+      localStorage.setItem(
+        LS_KEY_USER_B,
+        JSON.stringify({
+          version: 2,
+          owner: 'user-b',
+          vault: vaultB,
+        }),
+      );
+
+      const handleA = createVaultHandle({ owner: 'user-a' });
+      const handleB = createVaultHandle({ owner: 'user-b' });
+
+      // Act: remove user-a's vault.
+      handleA.removeVault();
+
+      // Assert: user-a is gone.
+      expect(handleA.hasOwnedVault()).toBe(false);
+
+      // Assert: user-b is unaffected.
+      expect(handleB.hasOwnedVault()).toBe(true);
+      expect(handleB.loadVault()).toEqual(vaultB);
+    });
+
+    test('removeVault() when only Unclaimed Local Vault exists is a safe no-op', () => {
+      // Setup: only unsuffixed slot populated.
+      const unclaimed: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {},
+      };
+      localStorage.setItem('myorganizer_vault_v1', JSON.stringify(unclaimed));
+      const beforeRaw = localStorage.getItem('myorganizer_vault_v1');
+      expect(beforeRaw).not.toBeNull();
+
+      const handle = createVaultHandle({
+        owner: 'user-a',
+        masterKeyBytes: new Uint8Array([1, 2, 3, 4]),
+      });
+
+      // Act: remove (only touches the per-owner key, not the unsuffixed slot).
+      handle.removeVault();
+
+      // Assert: unsuffixed slot unchanged (byte-identical).
+      const afterRaw = localStorage.getItem('myorganizer_vault_v1');
+      expect(afterRaw).toBe(beforeRaw);
+
+      // Assert: handle still sees the unclaimed vault (via hasVault).
+      expect(handle.hasVault()).toBe(true);
+      expect(handle.hasOwnedVault()).toBe(false);
+    });
+
+    test('not calling removeVault() leaves the Vault present for a freshly-constructed handle (reload scenario)', async () => {
+      // Setup: Initialize a vault for user-a.
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await handle.initialize({ passphrase: 'test-pass' });
+
+      // Verify the vault exists initially.
+      expect(handle.hasVault()).toBe(true);
+      expect(handle.hasOwnedVault()).toBe(true);
+
+      // Simulate cancelling the removal: no removeVault() call happens.
+      // (The point of this test is the absence of a call.)
+
+      // Simulate a reload: construct a fresh handle for the same owner.
+      const reloadedHandle = createVaultHandle({ owner: 'user-a' });
+
+      // Assert: the vault is still present in the fresh handle.
+      expect(reloadedHandle.hasVault()).toBe(true);
+      expect(reloadedHandle.hasOwnedVault()).toBe(true);
+      expect(reloadedHandle.loadVault()).not.toBeNull();
+    });
+  });
+
+  // Test 17: API shape validation
   describe('API shape validation (ADR 0047)', () => {
     test('only createVaultHandle, VaultLockedError, and VaultSecretMismatchError are exported', () => {
       const exportedKeys = Object.keys(vaultHandleModule)

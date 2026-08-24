@@ -48,8 +48,10 @@ export function createVaultHandle(options: {
       return access.isUnlocked;
     },
     hasVault: access.hasVault,
+    hasOwnedVault: access.hasOwnedVault,
     loadVault: access.loadVault,
     saveVault: access.saveVault,
+    removeVault: access.removeVault,
     initialize: access.initialize,
     unlockWithPassphrase: access.unlockWithPassphrase,
     unlockWithRecoveryKey: access.unlockWithRecoveryKey,

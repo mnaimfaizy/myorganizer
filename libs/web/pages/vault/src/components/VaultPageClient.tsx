@@ -10,6 +10,7 @@ import { CloudBackupLiveCard } from './CloudBackupLiveCard';
 import { CloudBackupUnavailableCard } from './CloudBackupUnavailableCard';
 import { ExportVaultCard } from './ExportVaultCard';
 import { ImportVaultCard } from './ImportVaultCard';
+import { RemoveVaultCard } from './RemoveVaultCard';
 
 export function VaultPageClient() {
   const gisStatus = useGoogleIdentityScript();
@@ -46,6 +47,7 @@ export function VaultPageClient() {
         />
       )}
       <ExportVaultCard />
+      <RemoveVaultCard />
       <ImportVaultCard />
     </div>
   );
