@@ -1072,7 +1072,7 @@
             <g data-step="1" class="n auto">
               <rect class="box" x="60" y="44" width="760" height="42" rx="5" />
               <text class="nl mono" x="72" y="64">
-                push / PR &#8594; main or release/&#42;&#42;
+                push / PR &#8594; main or release/**
               </text>
               <text class="nc" x="72" y="79">
                 triggers CI &#183; ci.yml:3-12
@@ -1290,13 +1290,13 @@
               data-tip="validate"
               tabindex="0"
               role="button"
-              aria-label="validate &#8212; rejects any ref that is not release/&#42;, then resolves release_ref"
+              aria-label="validate &#8212; rejects any ref that is not release/*, then resolves release_ref"
               aria-describedby="note-validate"
             >
               <rect class="box" x="260" y="508" width="760" height="70" rx="5" />
               <circle class="tipdot" cx="267" cy="516" r="3" />
               <text class="nl mono" x="272" y="530">
-                validate &#8212; rejects any non-release/&#42; ref
+                validate &#8212; rejects any non-release/* ref
               </text>
               <text class="nc" x="272" y="545">
                 deploy-production.yml:36-43 &#183; timeout 5 min (:22)
@@ -1593,7 +1593,7 @@
         <dt>validate</dt>
         <dd id="note-validate">
           Rejects any <code>github.ref</code> that is not
-          <code>refs/heads/release/&#42;</code> (<code>deploy-production.yml:36-43</code>)
+          <code>refs/heads/release/*</code> (<code>deploy-production.yml:36-43</code>)
           &mdash; that guard accepts <code>release/anything</code>, not only
           semver. Timeout 5&nbsp;minutes (<code>:22</code>). Then resolves
           <code>release_ref</code>: the explicit <code>release_branch</code>
@@ -1685,7 +1685,7 @@
         <tbody>
           <tr>
             <td>1</td>
-            <td>push/PR to <code>main</code> or <code>release/&#42;&#42;</code></td>
+            <td>push/PR to <code>main</code> or <code>release/**</code></td>
             <td><code>CI</code></td>
             <td class="cite">ci.yml:3-12</td>
           </tr>
@@ -1816,7 +1816,7 @@
       <ol class="chain">
         <li>
           <code>validate</code> rejects any <code>github.ref</code> that is
-          not <code>refs/heads/release/&#42;</code> &mdash; note this guard
+          not <code>refs/heads/release/*</code> &mdash; note this guard
           accepts <code>release/anything</code>, not only semver.
           <span class="cite">:36-43</span>
         </li>
@@ -1932,7 +1932,7 @@
           <div class="fname">Four branch/tag patterns, one set</div>
           <p>
             Not the same strictness:
-            <code>refs/heads/release/&#42;</code>
+            <code>refs/heads/release/*</code>
             (<code>deploy-production.yml:36</code>);
             <code>^release/v[0-9]+\.[0-9]+\.[0-9]+$</code>, used twice
             (<code>dispatch-production-deploy.yml:38</code>, <code>:53</code>,
@@ -2014,7 +2014,7 @@
       Diff this page against the source with the embedded
       <code>release-pipeline-manifest</code> block below, which
       <code>tools/scripts/check-deploy-pipeline.mjs</code> reads
-      against <code>.github/workflows/&#42;.yml</code> directly, the way
+      against <code>.github/workflows/*.yml</code> directly, the way
       <code>check-env-deployment.mjs</code> reads the deployment docs and
       <code>check-agent-map.mjs</code> diffs an embedded manifest against its
       source of truth. That checker is wired as
@@ -2476,16 +2476,6 @@
   })();
 </script>
 
-<!-- The manifest is placed last, deliberately, and not for load order — no
-     element depends on it. Two of its values are literal source patterns
-     that end in a slash-asterisk (`release/*`, `workflows/*.yml`), and this
-     file's own mechanical hygiene checker masks `/* ... */` as if it were a
-     comment before scanning for the manifest. Comment-masking only consumes
-     a `/*` that finds a later `*/` to close against; placed last, with
-     nothing after it, these two have none, so they pass through unmasked
-     instead of swallowing every scripted behaviour above them. Do not move
-     this block earlier without re-verifying that the manifest is still
-     found by check-design-hygiene.mjs. -->
 <script type="application/json" id="release-pipeline-manifest">
   {
     "note": "Asserted by tools/scripts/check-deploy-pipeline.mjs against .github/workflows/*.yml.",
