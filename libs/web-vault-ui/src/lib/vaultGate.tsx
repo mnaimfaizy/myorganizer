@@ -11,14 +11,7 @@ import {
 } from '@myorganizer/web-ui';
 import { useMemo, useState } from 'react';
 
-import {
-  hasVault,
-  initializeVault,
-  setNewPassphrase,
-  unlockVaultWithPassphrase,
-  unlockVaultWithRecoveryKey,
-  type VaultHandle,
-} from '@myorganizer/web-vault';
+import { type VaultHandle } from '@myorganizer/web-vault';
 
 import { useOptionalVaultSession } from './session';
 
@@ -44,8 +37,11 @@ export function VaultGate(props: VaultGateProps) {
   const { toast } = useToast();
 
   const vaultSession = useOptionalVaultSession();
+  const handle = vaultSession?.handle ?? null;
 
-  const [vaultExists, setVaultExists] = useState<boolean>(() => hasVault());
+  const [vaultExists, setVaultExists] = useState<boolean>(
+    () => handle?.hasVault() ?? false,
+  );
   const [localMasterKeyBytes, setLocalMasterKeyBytes] =
     useState<Uint8Array | null>(null);
 
@@ -120,8 +116,16 @@ export function VaultGate(props: VaultGateProps) {
             <Button
               disabled={!canCreate}
               onClick={async () => {
+                if (!handle) {
+                  toast({
+                    title: 'Failed to create vault',
+                    description: 'Sign in to create a vault.',
+                    variant: 'destructive',
+                  });
+                  return;
+                }
                 try {
-                  const result = await initializeVault({
+                  const result = await handle.initialize({
                     passphrase: setupPassphrase,
                   });
                   setRecoveryKey(result.recoveryKey);
@@ -233,8 +237,16 @@ export function VaultGate(props: VaultGateProps) {
             <Button
               disabled={!canRecover}
               onClick={async () => {
+                if (!handle) {
+                  toast({
+                    title: 'Recovery failed',
+                    description: 'Sign in to recover a vault.',
+                    variant: 'destructive',
+                  });
+                  return;
+                }
                 try {
-                  const result = await unlockVaultWithRecoveryKey({
+                  const result = await handle.unlockWithRecoveryKey({
                     recoveryKey: recoveryInput.trim(),
                   });
 
@@ -281,11 +293,10 @@ export function VaultGate(props: VaultGateProps) {
                 newPassphrase !== newPassphraseConfirm
               }
               onClick={async () => {
-                if (!masterKeyBytes) return;
+                if (!masterKeyBytes || !handle) return;
 
                 try {
-                  await setNewPassphrase({
-                    masterKeyBytes,
+                  await handle.changePassphrase({
                     newPassphrase,
                   });
                   toast({
@@ -343,8 +354,16 @@ export function VaultGate(props: VaultGateProps) {
 
           <Button
             onClick={async () => {
+              if (!handle) {
+                toast({
+                  title: 'Unlock failed',
+                  description: 'Sign in to unlock a vault.',
+                  variant: 'destructive',
+                });
+                return;
+              }
               try {
-                const result = await unlockVaultWithPassphrase({
+                const result = await handle.unlockWithPassphrase({
                   passphrase,
                 });
                 setMasterKeyBytes(result.masterKeyBytes);
