@@ -218,8 +218,12 @@ _Avoid_: shim, wrapper, provider
 The client-side action of deriving the Master Key from the User's passphrase so vault Ciphertext can be decrypted for the session. No plaintext or key leaves the device.
 _Avoid_: vault login, decrypt vault, open vault
 
+**Unclaimed Local Vault**:
+A Local Vault on a device with no recorded owner. It predates per-User scoping, so ownership cannot be read from it and must be proven by Vault Claim. It is offered only to a signed-in User who holds no Local Vault of their own, is never removed on anyone's behalf, and remains unclaimed until a Master Key unwrap succeeds.
+_Avoid_: orphan vault, legacy vault, unowned vault, shared vault
+
 **Vault Claim**:
-The act of a User proving a Local Vault is theirs by unlocking it — a successful Master Key unwrap is the proof, since a failed unwrap means the Vault belongs to someone else. Used to assign an owner to a Local Vault that has none. Claiming never moves a Vault between Users; it only records an ownership that already held.
+The act of a User proving a Local Vault is theirs by unlocking it — a successful Master Key unwrap is the proof, since a failed unwrap means the Vault belongs to someone else. Used to assign an owner to an Unclaimed Local Vault. Claiming never moves a Vault between Users; it only records an ownership that already held.
 _Avoid_: adopt vault, take over vault, assign vault, link vault
 
 **Master Key**:
