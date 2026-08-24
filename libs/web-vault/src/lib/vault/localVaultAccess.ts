@@ -21,6 +21,7 @@ import type {
   EncryptedBlob,
   LocalVaultReadResult,
   LocalVaultSlot,
+  LocalVaultStatus,
   VaultRecordType,
   VaultStorageV1,
   VaultUnlockResult,
@@ -49,6 +50,20 @@ export class VaultSecretMismatchError extends Error {
   }
 }
 
+/**
+ * A Vault Claim was attempted on a device that holds no Unclaimed Local Vault.
+ * Distinct from a wrong secret: there is nothing here to prove ownership of.
+ */
+export class NoUnclaimedLocalVaultError extends Error {
+  public readonly code = 'no-unclaimed-local-vault';
+
+  constructor() {
+    super('There is no Unclaimed Local Vault on this device');
+    this.name = 'NoUnclaimedLocalVaultError';
+    Object.setPrototypeOf(this, NoUnclaimedLocalVaultError.prototype);
+  }
+}
+
 /** An operation needing the Master Key was called before one was bound. */
 export class VaultLockedError extends Error {
   public readonly code = 'vault-locked';
@@ -67,6 +82,19 @@ export type LocalVaultAccess = {
   hasVault(): boolean;
   /** Whether this slot currently holds a claimed (owned), not Unclaimed, Local Vault. */
   hasOwnedVault(): boolean;
+  /**
+   * What this owner's slot resolves right now: their own Vault, an Unclaimed
+   * Local Vault offered to them, an entry naming somebody else, or nothing.
+   * Reading the status claims nothing.
+   */
+  vaultStatus(): LocalVaultStatus;
+  /**
+   * Whether this device holds an Unclaimed Local Vault at all — true even when
+   * this owner already has a Vault of their own, which `vaultStatus` hides
+   * because their own entry wins. This is what keeps a claim reachable after a
+   * User has already created their own Vault.
+   */
+  hasUnclaimedLocalVault(): boolean;
   loadVault(): VaultStorageV1 | null;
   saveVault(vault: VaultStorageV1): void;
   /** Explicit Local Vault removal (ADR 0033). Locks this access afterward. */
@@ -74,6 +102,18 @@ export type LocalVaultAccess = {
 
   initialize(options: { passphrase: string }): Promise<{ recoveryKey: string }>;
   unlockWithPassphrase(options: {
+    passphrase: string;
+  }): Promise<VaultUnlockResult>;
+  /**
+   * Vault Claim: prove the Unclaimed Local Vault is this owner's by unwrapping
+   * its Master Key, and record the ownership that already held.
+   *
+   * Addressed at the Unclaimed Local Vault directly rather than at whatever
+   * the slot resolves, so it stays available to a User who already holds a
+   * Vault of their own — the mis-click this exists to make recoverable. A
+   * failed unwrap writes nothing.
+   */
+  claimUnclaimedLocalVault(options: {
     passphrase: string;
   }): Promise<VaultUnlockResult>;
   unlockWithRecoveryKey(options: {
@@ -175,6 +215,25 @@ export function createLocalVaultAccess(options: {
   };
 
   /**
+   * A failed unwrap means the secret is wrong. It is never evidence that the
+   * Vault is damaged, and it must never be reported as one.
+   */
+  const unwrapOrMismatch = async (options: {
+    wrappingKey: CryptoKey;
+    wrapped: EncryptedBlob;
+    secret: 'passphrase' | 'recovery-key';
+  }): Promise<Uint8Array> => {
+    try {
+      return await unwrapMasterKeyWithKey({
+        wrappingKey: options.wrappingKey,
+        wrapped: options.wrapped,
+      });
+    } catch {
+      throw new VaultSecretMismatchError(options.secret);
+    }
+  };
+
+  /**
    * Unwrap, then claim. A failed unwrap returns before anything is written, so
    * an Unclaimed Local Vault survives it byte-identical.
    */
@@ -185,15 +244,11 @@ export function createLocalVaultAccess(options: {
     wrapped: EncryptedBlob;
     secret: 'passphrase' | 'recovery-key';
   }): Promise<VaultUnlockResult> => {
-    let masterKeyBytes: Uint8Array;
-    try {
-      masterKeyBytes = await unwrapMasterKeyWithKey({
-        wrappingKey: options.wrappingKey,
-        wrapped: options.wrapped,
-      });
-    } catch {
-      throw new VaultSecretMismatchError(options.secret);
-    }
+    const masterKeyBytes = await unwrapOrMismatch({
+      wrappingKey: options.wrappingKey,
+      wrapped: options.wrapped,
+      secret: options.secret,
+    });
 
     if (options.read.status === 'unclaimed') {
       slot.claim(options.vault);
@@ -214,6 +269,14 @@ export function createLocalVaultAccess(options: {
 
     hasOwnedVault() {
       return slot.read().status === 'owned';
+    },
+
+    vaultStatus() {
+      return slot.read().status;
+    },
+
+    hasUnclaimedLocalVault() {
+      return slot.readUnclaimed() !== null;
     },
 
     loadVault() {
@@ -263,7 +326,7 @@ export function createLocalVaultAccess(options: {
         data: {},
       };
 
-      slot.write(vault);
+      slot.createNew(vault);
 
       return { recoveryKey };
     },
@@ -284,6 +347,30 @@ export function createLocalVaultAccess(options: {
         wrapped: vault.masterKeyWrappedWithPassphrase,
         secret: 'passphrase',
       });
+    },
+
+    async claimUnclaimedLocalVault({ passphrase }) {
+      const vault = slot.readUnclaimed();
+      if (!vault) throw new NoUnclaimedLocalVaultError();
+
+      const derivedKey = await deriveKeyFromPassphrase({
+        passphrase,
+        salt: base64ToBytes(vault.kdf.salt),
+        iterations: vault.kdf.iterations,
+      });
+
+      const masterKeyBytes = await unwrapOrMismatch({
+        wrappingKey: derivedKey,
+        wrapped: vault.masterKeyWrappedWithPassphrase,
+        secret: 'passphrase',
+      });
+
+      // The unwrap is the proof, so the claim only happens after it. The
+      // unsuffixed slot is left byte-identical either way.
+      slot.claim(vault);
+
+      boundMasterKeyBytes = masterKeyBytes;
+      return { masterKeyBytes };
     },
 
     async unlockWithRecoveryKey({ recoveryKey }) {

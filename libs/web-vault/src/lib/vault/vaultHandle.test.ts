@@ -1012,7 +1012,418 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
     });
   });
 
-  // Test 17: API shape validation
+  // Test 17: vaultStatus() method
+  describe('vaultStatus()', () => {
+    test('vaultStatus() returns "owned" when owner holds owned record', () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+
+      const vault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {},
+      };
+      localStorage.setItem(
+        LS_KEY_USER_A,
+        JSON.stringify({
+          version: 2,
+          owner: 'user-a',
+          vault,
+        }),
+      );
+
+      expect(handle.vaultStatus()).toBe('owned');
+    });
+
+    test('vaultStatus() returns "unclaimed" when only unsuffixed slot populated', () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+
+      const unclaimedVault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {},
+      };
+      localStorage.setItem(
+        'myorganizer_vault_v1',
+        JSON.stringify(unclaimedVault),
+      );
+
+      expect(handle.vaultStatus()).toBe('unclaimed');
+    });
+
+    test('vaultStatus() returns "owner-mismatch" when entry names different owner', () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+
+      const vault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {},
+      };
+      localStorage.setItem(
+        LS_KEY_USER_A,
+        JSON.stringify({
+          version: 2,
+          owner: 'user-b', // Different owner
+          vault,
+        }),
+      );
+
+      expect(handle.vaultStatus()).toBe('owner-mismatch');
+    });
+
+    test('vaultStatus() returns "absent" when no vault exists', () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+
+      expect(handle.vaultStatus()).toBe('absent');
+    });
+
+    test('vaultStatus() does not modify localStorage', () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+
+      const beforeState = JSON.stringify({
+        ownedKey: localStorage.getItem(LS_KEY_USER_A),
+        unclaimedKey: localStorage.getItem('myorganizer_vault_v1'),
+      });
+
+      // Call vaultStatus multiple times
+      handle.vaultStatus();
+      handle.vaultStatus();
+      handle.vaultStatus();
+
+      const afterState = JSON.stringify({
+        ownedKey: localStorage.getItem(LS_KEY_USER_A),
+        unclaimedKey: localStorage.getItem('myorganizer_vault_v1'),
+      });
+
+      expect(afterState).toBe(beforeState);
+    });
+  });
+
+  // Test 18: hasUnclaimedLocalVault() method
+  describe('hasUnclaimedLocalVault()', () => {
+    test('hasUnclaimedLocalVault() returns true when unsuffixed slot populated', () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+
+      const unclaimedVault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {},
+      };
+      localStorage.setItem(
+        'myorganizer_vault_v1',
+        JSON.stringify(unclaimedVault),
+      );
+
+      expect(handle.hasUnclaimedLocalVault()).toBe(true);
+    });
+
+    test('hasUnclaimedLocalVault() returns true even when owner also holds their own record', () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+
+      const vault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {},
+      };
+
+      // Owner has their own record
+      localStorage.setItem(
+        LS_KEY_USER_A,
+        JSON.stringify({
+          version: 2,
+          owner: 'user-a',
+          vault,
+        }),
+      );
+
+      // AND device has unclaimed vault
+      localStorage.setItem('myorganizer_vault_v1', JSON.stringify(vault));
+
+      // hasUnclaimedLocalVault should still return true
+      expect(handle.hasUnclaimedLocalVault()).toBe(true);
+      // But vaultStatus hides it
+      expect(handle.vaultStatus()).toBe('owned');
+    });
+
+    test('hasUnclaimedLocalVault() returns false when unsuffixed slot empty', () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+
+      expect(handle.hasUnclaimedLocalVault()).toBe(false);
+    });
+  });
+
+  // Test 19: Vault Claim
+  describe('claimUnclaimedLocalVault()', () => {
+    async function createUnclaimedVault() {
+      const unclaimedVault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {},
+      };
+      localStorage.setItem(
+        'myorganizer_vault_v1',
+        JSON.stringify(unclaimedVault),
+      );
+      return unclaimedVault;
+    }
+
+    test('claimUnclaimedLocalVault() with correct passphrase resolves with masterKeyBytes', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await createUnclaimedVault();
+
+      const result = await handle.claimUnclaimedLocalVault({
+        passphrase: 'test-pass',
+      });
+
+      expect(result.masterKeyBytes).toBeInstanceOf(Uint8Array);
+      expect(result.masterKeyBytes.length).toBeGreaterThan(0);
+    });
+
+    test('claimUnclaimedLocalVault() creates owner record and unlocks handle', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await createUnclaimedVault();
+
+      expect(handle.isUnlocked).toBe(false);
+      expect(handle.vaultStatus()).toBe('unclaimed');
+
+      await handle.claimUnclaimedLocalVault({ passphrase: 'test-pass' });
+
+      expect(handle.isUnlocked).toBe(true);
+      expect(handle.vaultStatus()).toBe('owned');
+    });
+
+    test('claimUnclaimedLocalVault() leaves unsuffixed slot byte-identical after success', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      const unclaimedVault = await createUnclaimedVault();
+      const unclaimedBefore = JSON.stringify(unclaimedVault);
+
+      await handle.claimUnclaimedLocalVault({ passphrase: 'test-pass' });
+
+      const unclaimedAfter = localStorage.getItem('myorganizer_vault_v1');
+      expect(unclaimedAfter).toBe(unclaimedBefore);
+    });
+
+    test('claimUnclaimedLocalVault() creates owned record under owner key', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await createUnclaimedVault();
+
+      await handle.claimUnclaimedLocalVault({ passphrase: 'test-pass' });
+
+      const ownedRecord = JSON.parse(
+        localStorage.getItem(LS_KEY_USER_A) || '{}',
+      );
+      expect(ownedRecord.version).toBe(2);
+      expect(ownedRecord.owner).toBe('user-a');
+      expect(ownedRecord.vault).toBeDefined();
+    });
+
+    test('claimUnclaimedLocalVault() with wrong passphrase rejects with VaultSecretMismatchError', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await createUnclaimedVault();
+
+      // Mock aesGcmDecrypt to fail
+      const { aesGcmDecrypt } = require('./crypto');
+      aesGcmDecrypt.mockRejectedValueOnce(new Error('Decryption failed'));
+
+      let caught: VaultSecretMismatchError | null = null;
+      try {
+        await handle.claimUnclaimedLocalVault({ passphrase: 'wrong-pass' });
+      } catch (e) {
+        caught = e as VaultSecretMismatchError;
+      }
+
+      expect(caught).toBeInstanceOf(VaultSecretMismatchError);
+      expect(caught?.secret).toBe('passphrase');
+    });
+
+    test('claimUnclaimedLocalVault() with wrong passphrase leaves unsuffixed slot unchanged and creates no owned record', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      const unclaimedVault = await createUnclaimedVault();
+      const unclaimedBefore = localStorage.getItem('myorganizer_vault_v1');
+
+      // Mock aesGcmDecrypt to fail
+      const { aesGcmDecrypt } = require('./crypto');
+      aesGcmDecrypt.mockRejectedValueOnce(new Error('Decryption failed'));
+
+      try {
+        await handle.claimUnclaimedLocalVault({ passphrase: 'wrong-pass' });
+      } catch {
+        // Expected to throw
+      }
+
+      // Unsuffixed slot should be byte-identical
+      expect(localStorage.getItem('myorganizer_vault_v1')).toBe(
+        unclaimedBefore,
+      );
+
+      // No owned record should be created
+      expect(localStorage.getItem(LS_KEY_USER_A)).toBeNull();
+
+      // Handle should still be locked
+      expect(handle.isUnlocked).toBe(false);
+    });
+
+    test('claimUnclaimedLocalVault() when no unclaimed vault exists rejects', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+
+      await expect(
+        handle.claimUnclaimedLocalVault({ passphrase: 'test-pass' }),
+      ).rejects.toThrow();
+    });
+
+    test('claimUnclaimedLocalVault() claim by user-a leaves unclaimed vault resolvable for user-c', async () => {
+      const handleA = createVaultHandle({ owner: 'user-a' });
+      const handleC = createVaultHandle({ owner: 'user-c' });
+
+      const unclaimedVault = await createUnclaimedVault();
+      const unclaimedBefore = localStorage.getItem('myorganizer_vault_v1');
+
+      // User A claims
+      await handleA.claimUnclaimedLocalVault({ passphrase: 'test-pass' });
+
+      // User C should still see it as unclaimed
+      expect(handleC.vaultStatus()).toBe('unclaimed');
+      expect(handleC.hasUnclaimedLocalVault()).toBe(true);
+
+      // Unsuffixed slot should be byte-identical
+      expect(localStorage.getItem('myorganizer_vault_v1')).toBe(
+        unclaimedBefore,
+      );
+    });
+  });
+
+  // Test 20: Escape path - initialize when unclaimed vault exists
+  describe('initialize() escape path with unclaimed vault present', () => {
+    async function createUnclaimedVault() {
+      const unclaimedVault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {},
+      };
+      localStorage.setItem(
+        'myorganizer_vault_v1',
+        JSON.stringify(unclaimedVault),
+      );
+      return unclaimedVault;
+    }
+
+    test('initialize() when unclaimed vault present creates owned record and leaves unsuffixed slot byte-identical', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      const unclaimedVault = await createUnclaimedVault();
+      const unclaimedBefore = localStorage.getItem('myorganizer_vault_v1');
+
+      // User creates their own vault (escape path)
+      await handle.initialize({ passphrase: 'new-pass' });
+
+      // Owner should have their own record
+      const ownedRecord = JSON.parse(
+        localStorage.getItem(LS_KEY_USER_A) || '{}',
+      );
+      expect(ownedRecord.version).toBe(2);
+      expect(ownedRecord.owner).toBe('user-a');
+      expect(ownedRecord.vault).toBeDefined();
+
+      // Unsuffixed slot should be byte-identical (regression guard for #495)
+      expect(localStorage.getItem('myorganizer_vault_v1')).toBe(
+        unclaimedBefore,
+      );
+
+      // User's own vault should differ from unclaimed (different masterKey)
+      expect(ownedRecord.vault).not.toEqual(unclaimedVault);
+    });
+  });
+
+  // Test 21: API shape validation
   describe('API shape validation (ADR 0047)', () => {
     test('only createVaultHandle, VaultLockedError, and VaultSecretMismatchError are exported', () => {
       const exportedKeys = Object.keys(vaultHandleModule)

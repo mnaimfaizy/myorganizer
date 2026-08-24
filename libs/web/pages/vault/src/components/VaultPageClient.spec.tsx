@@ -20,6 +20,7 @@ jest.mock('@myorganizer/web-vault-ui', () => {
         owner: 'test-owner',
         hasOwnedVault: () => true,
         hasVault: () => true,
+        hasUnclaimedLocalVault: () => false,
         loadVault: () => null,
         removeVault: jest.fn(),
       },

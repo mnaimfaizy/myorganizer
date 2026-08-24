@@ -16,6 +16,10 @@ import {
 import { assertVaultOwner, ownedLocalVaultSlot } from './localVaultStorage';
 
 export { VaultLockedError, VaultSecretMismatchError } from './localVaultAccess';
+// `NoUnclaimedLocalVaultError` stays internal: a caller reaches
+// `claimUnclaimedLocalVault` only after `hasUnclaimedLocalVault`, so it is a
+// programming error rather than a case the interface asks callers to handle.
+export type { LocalVaultStatus } from './localVaultStorage';
 
 export type VaultHandle = LocalVaultAccess & {
   /** The User this handle resolves a Local Vault for. Fixed at construction. */
@@ -49,10 +53,13 @@ export function createVaultHandle(options: {
     },
     hasVault: access.hasVault,
     hasOwnedVault: access.hasOwnedVault,
+    vaultStatus: access.vaultStatus,
+    hasUnclaimedLocalVault: access.hasUnclaimedLocalVault,
     loadVault: access.loadVault,
     saveVault: access.saveVault,
     removeVault: access.removeVault,
     initialize: access.initialize,
+    claimUnclaimedLocalVault: access.claimUnclaimedLocalVault,
     unlockWithPassphrase: access.unlockWithPassphrase,
     unlockWithRecoveryKey: access.unlockWithRecoveryKey,
     changePassphrase: access.changePassphrase,

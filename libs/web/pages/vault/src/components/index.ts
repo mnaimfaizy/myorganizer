@@ -1,3 +1,4 @@
+export * from './ClaimLocalVaultCard';
 export * from './CloudBackupLiveCard';
 export * from './CloudBackupUnavailableCard';
 export * from './ExportVaultCard';

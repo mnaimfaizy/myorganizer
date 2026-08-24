@@ -6,6 +6,7 @@ import { GoogleDriveCloudBackupProvider } from '@myorganizer/web-vault';
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 
 import { useGoogleIdentityScript } from '../hooks';
+import { ClaimLocalVaultCard } from './ClaimLocalVaultCard';
 import { CloudBackupLiveCard } from './CloudBackupLiveCard';
 import { CloudBackupUnavailableCard } from './CloudBackupUnavailableCard';
 import { ExportVaultCard } from './ExportVaultCard';
@@ -31,6 +32,7 @@ export function VaultPageClient() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+      <ClaimLocalVaultCard />
       {provider && handle ? (
         <CloudBackupLiveCard provider={provider} handle={handle} />
       ) : (

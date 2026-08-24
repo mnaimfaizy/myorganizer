@@ -11,8 +11,13 @@ import {
 } from '@myorganizer/web-ui';
 import { useMemo, useState } from 'react';
 
-import { type VaultHandle } from '@myorganizer/web-vault';
+import {
+  type LocalVaultStatus,
+  type VaultHandle,
+  VaultSecretMismatchError,
+} from '@myorganizer/web-vault';
 
+import { VaultClaimOffer } from './vaultClaimOffer';
 import { useOptionalVaultSession } from './session';
 
 type VaultGateProps = {
@@ -36,9 +41,10 @@ export function VaultGate(props: VaultGateProps) {
   const vaultSession = useOptionalVaultSession();
   const handle = vaultSession?.handle ?? null;
 
-  const [vaultExists, setVaultExists] = useState<boolean>(
-    () => handle?.hasVault() ?? false,
+  const [vaultStatus, setVaultStatus] = useState<LocalVaultStatus>(
+    () => handle?.vaultStatus() ?? 'absent',
   );
+  const [declinedClaim, setDeclinedClaim] = useState(false);
   const [localMasterKeyBytes, setLocalMasterKeyBytes] =
     useState<Uint8Array | null>(null);
 
@@ -71,7 +77,22 @@ export function VaultGate(props: VaultGateProps) {
     );
   }
 
-  if (!vaultExists) {
+  if (vaultStatus === 'unclaimed' && !declinedClaim) {
+    return (
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <VaultClaimOffer
+          handle={handle}
+          onClaimed={(result) => {
+            setMasterKeyBytes(result.masterKeyBytes);
+            setVaultStatus('owned');
+          }}
+          onDecline={() => setDeclinedClaim(true)}
+        />
+      </div>
+    );
+  }
+
+  if (vaultStatus !== 'owned') {
     const canCreate =
       setupPassphrase.length >= 10 &&
       setupPassphrase === setupConfirm &&
@@ -174,7 +195,7 @@ export function VaultGate(props: VaultGateProps) {
                     type="button"
                     variant="secondary"
                     onClick={() => {
-                      setVaultExists(true);
+                      setVaultStatus('owned');
                       toast({
                         title: 'Next step',
                         description: 'Unlock your vault with your passphrase.',
@@ -251,12 +272,22 @@ export function VaultGate(props: VaultGateProps) {
                     title: 'Recovered',
                     description: 'Vault unlocked with your recovery key.',
                   });
-                } catch {
-                  toast({
-                    title: 'Recovery failed',
-                    description: 'Invalid recovery key or corrupted vault.',
-                    variant: 'destructive',
-                  });
+                } catch (e: unknown) {
+                  if (e instanceof VaultSecretMismatchError) {
+                    toast({
+                      title: "That recovery key didn't unlock this vault",
+                      description:
+                        'The recovery key does not match this vault. Nothing was changed.',
+                      variant: 'destructive',
+                    });
+                  } else {
+                    toast({
+                      title: 'Recovery failed',
+                      description:
+                        'Something went wrong. Nothing on this device was changed.',
+                      variant: 'destructive',
+                    });
+                  }
                 }
               }}
             >
@@ -367,12 +398,22 @@ export function VaultGate(props: VaultGateProps) {
                   title: 'Unlocked',
                   description: 'Vault unlocked for this session.',
                 });
-              } catch {
-                toast({
-                  title: 'Unlock failed',
-                  description: 'Wrong passphrase or corrupted vault.',
-                  variant: 'destructive',
-                });
+              } catch (e: unknown) {
+                if (e instanceof VaultSecretMismatchError) {
+                  toast({
+                    title: "That passphrase didn't unlock this vault",
+                    description:
+                      'The passphrase does not match this vault. Nothing was changed.',
+                    variant: 'destructive',
+                  });
+                } else {
+                  toast({
+                    title: 'Unlock failed',
+                    description:
+                      'Something went wrong. Nothing on this device was changed.',
+                    variant: 'destructive',
+                  });
+                }
               }
             }}
           >

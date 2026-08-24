@@ -83,10 +83,27 @@ export type LocalVaultReadResult =
   | { status: 'owner-mismatch'; recordedOwner: string }
   | { status: 'absent' };
 
+/** What a slot holds for a given reader, without the Vault itself. */
+export type LocalVaultStatus = LocalVaultReadResult['status'];
+
 /** A single addressable place a Local Vault can be read from and written to. */
 export type LocalVaultSlot = {
   read(): LocalVaultReadResult;
   write(vault: VaultStorageV1): void;
+  /**
+   * Where a newly created Vault is written.
+   *
+   * The one write that does not follow the read. A User creating their own
+   * Vault on a device that holds an Unclaimed Local Vault must leave that
+   * Vault byte-identical (ADR 0033), so creation always lands in this slot's
+   * own entry rather than in whatever the slot currently resolves.
+   */
+  createNew(vault: VaultStorageV1): void;
+  /**
+   * The Unclaimed Local Vault this device holds, or `null`. Independent of
+   * what the slot resolves for its owner, and reading it is not claiming it.
+   */
+  readUnclaimed(): VaultStorageV1 | null;
   /**
    * Vault Claim, storage half: rewrite an Unclaimed Local Vault as a
    * current-version record owned by this slot's owner. A no-op for a slot with
@@ -313,6 +330,13 @@ export function ownedLocalVaultSlot(owner: string): LocalVaultSlot {
       claim(vault);
     },
 
+    // Creating a Vault is not editing the one this User can currently resolve.
+    // A User who declines an Unclaimed Local Vault and makes their own gets
+    // their own entry, and the declined Vault is left exactly where it was.
+    createNew: claim,
+
+    readUnclaimed: readUnclaimedLocalVault,
+
     // The claim rewrites the Unclaimed Local Vault into a current-version
     // record under the claiming User's key. The unsuffixed slot is left
     // byte-identical — a Local Vault is never removed on anyone's behalf.
@@ -333,6 +357,8 @@ export function unclaimedLocalVaultSlot(): LocalVaultSlot {
       return vault ? { status: 'unclaimed', vault } : { status: 'absent' };
     },
     write: writeUnclaimedLocalVault,
+    createNew: writeUnclaimedLocalVault,
+    readUnclaimed: readUnclaimedLocalVault,
     claim: () => {
       /* Nothing to claim for: this slot has no owner. */
     },
