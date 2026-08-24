@@ -1,10 +1,10 @@
 module.exports = {
-  displayName: 'web-pages-vault-settings',
+  displayName: 'web-pages-vault',
   preset: '../../../../jest.preset.js',
   transform: {
     '^(?!.*\\.(js|jsx|ts|tsx|css|json)$)': '@nx/react/plugins/jest',
-    '^.+\\.[tj]sx?$': ['babel-jest', { presets: ['@nx/react/babel'] }],
+    '^.+\\.[tj]sx?$': ['babel-jest', { presets: ['@nx/next/babel'] }],
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
-  coverageDirectory: '../../../../coverage/libs/web/pages/vault-settings',
+  coverageDirectory: '../../../../coverage/libs/web/pages/vault',
 };

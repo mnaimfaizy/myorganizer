@@ -4,11 +4,11 @@ End-to-end documentation for the **vault cloud backup** feature: how it works,
 how to configure Google OAuth credentials for it, the relevant code surface,
 and troubleshooting.
 
-> **Scope.** This document covers the feature exposed at
-> `/dashboard/account/vault` (the "Vault Settings" page). It is **separate**
-> from the [YouTube integration](./google-youtube-oauth-setup.md) — they share
-> Google Cloud as the OAuth provider but use different flows, scopes, and
-> credentials.
+> **Scope.** This document covers the cloud backup capability exposed on the
+> consolidated `/dashboard/vault` page, alongside Export and Import. It is
+> **separate** from the [YouTube integration](./google-youtube-oauth-setup.md)
+> — they share Google Cloud as the OAuth provider but use different flows,
+> scopes, and credentials.
 
 > **New to the vault?** Two visual pages cover the architecture this feature sits
 > on: [the lifecycle walkthrough](../vault/lifecycle.html) for what happens over
@@ -54,6 +54,10 @@ Key properties:
   devices via `GET /vault/backups/latest`.
 
 ### How is this different from "Vault Export / Import"?
+
+Cloud backup and Export/Import both live on the same `/dashboard/vault`
+page — this isn't a separate page or route, just a different backup
+mechanism offered alongside the manual file-based one:
 
 | Capability       | Vault Export / Import                             | Vault Cloud Backup                                          |
 | ---------------- | ------------------------------------------------- | ----------------------------------------------------------- |
@@ -225,7 +229,7 @@ the wrong client ID is wired up — check `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
 | `GOOGLE_REDIRECT_URI`          | Backend    |            No             | YouTube only                                 |
 
 `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is consumed in
-[libs/web/pages/vault-settings/src/page.tsx](../../libs/web/pages/vault-settings/src/page.tsx).
+[libs/web/pages/vault/src/components/VaultPageClient.tsx](../../libs/web/pages/vault/src/components/VaultPageClient.tsx).
 If it is empty (or the GIS script fails to load) the page renders a
 disabled card with the message _"Cloud backup is not configured…"_ instead
 of the connect controls.
@@ -253,29 +257,43 @@ libs/web-vault/src/lib/cloud/
 libs/web-vault/src/lib/vault/auditReporter.ts
                             # POST /vault/backups (used by coordinator)
 
-libs/web/pages/vault-settings/src/
+libs/web/pages/vault/src/
 ├── hooks/
 │   ├── useCloudBackup.ts          # connect / backupNow / restoreLatest / autoInterval
 │   ├── useGoogleIdentityScript.ts # loads https://accounts.google.com/gsi/client
-│   ├── useLatestBackup.ts         # latest backup of any source
 │   └── useLatestCloudBackup.ts    # latest backup with source='google-drive'
-└── page.tsx                       # VaultSettingsPage (renders CloudBackupCard etc.)
+├── components/
+│   ├── CloudBackupLiveCard.tsx    # renders CloudBackupCard once GIS is ready
+│   ├── CloudBackupUnavailableCard.tsx # disabled-state card
+│   ├── ExportVaultCard.tsx
+│   ├── ImportVaultCard.tsx
+│   └── VaultPageClient.tsx        # VaultPage — cloud backup, export, import
+└── page.tsx
+
+libs/web/pages/account/src/hooks/useLatestBackup.ts
+                            # cross-source latest backup — feeds the
+                            # last-backup summary card on the account page,
+                            # not the vault page
 
 libs/web-vault-ui/src/lib/cloud/CloudBackupCard.tsx
                             # The visible card with all the buttons
 ```
 
 The Next.js route wrapper at
-[apps/myorganizer/src/app/dashboard/account/vault/page.tsx](../../apps/myorganizer/src/app/dashboard/account/vault/page.tsx)
-is intentionally minimal — it just re-exports `VaultSettingsPage` from the
-`@myorganizer/web-pages/vault-settings` library.
+[apps/myorganizer/src/app/dashboard/vault/page.tsx](../../apps/myorganizer/src/app/dashboard/vault/page.tsx)
+is intentionally minimal — it just re-exports `VaultPage` from the
+`@myorganizer/web-pages/vault` library.
 
 The page is reachable from:
 
-- **Sidebar → "Vault Settings"** (added in
+- **Sidebar → "Vault"** (added in
   [libs/web/pages/dashboard/src/components/app-sidebar.tsx](../../libs/web/pages/dashboard/src/components/app-sidebar.tsx)).
-- **Avatar menu → Account → "Manage vault settings & cloud backup →"** link
+- **Account page → "Go to Vault →"** link
   in [AccountPageClient](../../libs/web/pages/account/src/components/AccountPageClient.tsx).
+
+Two old routes redirect here permanently:
+`/dashboard/vault-export` and `/dashboard/account/vault` (see
+[apps/myorganizer/next.config.js](../../apps/myorganizer/next.config.js)).
 
 ---
 

@@ -32,6 +32,22 @@ const nextConfig = {
         destination: '/dashboard/youtube?channel=:channelId',
         permanent: true,
       },
+      {
+        // The standalone export/import route and the account-nested vault
+        // settings route were consolidated into /dashboard/vault (PRD #478,
+        // issue #482). Unlike the YouTube redirect above, a repo-wide sweep
+        // found no email, notification, or backend reference to either old
+        // path — this pair is bookmark insurance, not a hard requirement,
+        // and is safe to drop once that risk feels stale.
+        source: '/dashboard/vault-export',
+        destination: '/dashboard/vault',
+        permanent: true,
+      },
+      {
+        source: '/dashboard/account/vault',
+        destination: '/dashboard/vault',
+        permanent: true,
+      },
     ];
   },
 };

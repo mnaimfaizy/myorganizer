@@ -33,11 +33,7 @@ describe('getBreadcrumbItems (pure resolver)', () => {
       ],
       ['/dashboard/subscriptions', 'Subscriptions', '/dashboard/subscriptions'],
       ['/dashboard/youtube', 'YouTube', '/dashboard/youtube'],
-      [
-        '/dashboard/vault-export',
-        'Vault Export/Import',
-        '/dashboard/vault-export',
-      ],
+      ['/dashboard/vault', 'Vault', '/dashboard/vault'],
       ['/dashboard/account', 'Account', '/dashboard/account'],
     ])(
       'resolves %s to Dashboard and %s with cumulative href',
@@ -67,16 +63,6 @@ describe('getBreadcrumbItems (pure resolver)', () => {
   });
 
   describe('nested known routes', () => {
-    it('resolves /dashboard/account/vault with cumulative hrefs', () => {
-      const result = getBreadcrumbItems('/dashboard/account/vault');
-      expect(result).toHaveLength(3);
-      expect(result).toEqual([
-        { label: 'Dashboard', href: '/dashboard' },
-        { label: 'Account', href: '/dashboard/account' },
-        { label: 'Vault Settings', href: '/dashboard/account/vault' },
-      ]);
-    });
-
     it('resolves /dashboard/youtube/shorts with cumulative hrefs', () => {
       const result = getBreadcrumbItems('/dashboard/youtube/shorts');
       expect(result).toHaveLength(3);
@@ -195,7 +181,7 @@ describe('DynamicBreadcrumb (component)', () => {
       ['/dashboard/mobile-numbers', 'Mobile Numbers'],
       ['/dashboard/subscriptions', 'Subscriptions'],
       ['/dashboard/youtube', 'YouTube'],
-      ['/dashboard/vault-export', 'Vault Export/Import'],
+      ['/dashboard/vault', 'Vault'],
       ['/dashboard/account', 'Account'],
     ])(
       'renders Dashboard > %s breadcrumb for %s',
@@ -238,8 +224,8 @@ describe('DynamicBreadcrumb (component)', () => {
   });
 
   describe('nested routes', () => {
-    it('renders Dashboard > Account > Vault Settings breadcrumb for /dashboard/account/vault', () => {
-      (usePathname as jest.Mock).mockReturnValue('/dashboard/account/vault');
+    it('renders Dashboard > YouTube > Shorts breadcrumb for /dashboard/youtube/shorts', () => {
+      (usePathname as jest.Mock).mockReturnValue('/dashboard/youtube/shorts');
       render(<DynamicBreadcrumb />);
 
       const navElement = screen.getByRole('navigation', { name: 'breadcrumb' });
@@ -249,18 +235,18 @@ describe('DynamicBreadcrumb (component)', () => {
       expect(dashboardLink).toBeInTheDocument();
       expect(dashboardLink).toHaveAttribute('href', '/dashboard');
 
-      // Account as link
-      const accountLink = screen.getByRole('link', { name: 'Account' });
-      expect(accountLink).toBeInTheDocument();
-      expect(accountLink).toHaveAttribute('href', '/dashboard/account');
+      // YouTube as link
+      const youtubeLink = screen.getByRole('link', { name: 'YouTube' });
+      expect(youtubeLink).toBeInTheDocument();
+      expect(youtubeLink).toHaveAttribute('href', '/dashboard/youtube');
 
-      // Vault Settings as current page
-      const vaultSettingsPage = screen.getByRole('link', {
-        name: 'Vault Settings',
+      // Shorts as current page
+      const shortsPage = screen.getByRole('link', {
+        name: 'Shorts',
         current: 'page',
       });
-      expect(vaultSettingsPage).toBeInTheDocument();
-      expect(vaultSettingsPage).not.toHaveAttribute('href');
+      expect(shortsPage).toBeInTheDocument();
+      expect(shortsPage).not.toHaveAttribute('href');
 
       // Two separators
       const separators = navElement.querySelectorAll('[role="presentation"]');
@@ -271,7 +257,7 @@ describe('DynamicBreadcrumb (component)', () => {
     });
 
     it('hides the first Dashboard item on mobile for three-item breadcrumbs', () => {
-      (usePathname as jest.Mock).mockReturnValue('/dashboard/account/vault');
+      (usePathname as jest.Mock).mockReturnValue('/dashboard/youtube/shorts');
       render(<DynamicBreadcrumb />);
 
       const navElement = screen.getByRole('navigation', { name: 'breadcrumb' });
@@ -427,7 +413,7 @@ describe('DynamicBreadcrumb (component)', () => {
     });
 
     it('hides multiple separators on mobile for nested routes', () => {
-      (usePathname as jest.Mock).mockReturnValue('/dashboard/account/vault');
+      (usePathname as jest.Mock).mockReturnValue('/dashboard/youtube/shorts');
       render(<DynamicBreadcrumb />);
 
       const navElement = screen.getByRole('navigation', { name: 'breadcrumb' });

@@ -445,6 +445,40 @@ async function setupVaultWithGroceryData(page: Page) {
 }
 
 test.describe('Vault export/import (E2E)', () => {
+  test('redirect: /dashboard/vault-export navigates to /dashboard/vault', async ({
+    browser,
+  }, testInfo) => {
+    test.setTimeout(60000);
+
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    setupBackend(page);
+
+    await login(page, {
+      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
+    });
+
+    // Navigate to the old export URL; should redirect to /dashboard/vault.
+    await page.goto('/dashboard/vault-export');
+    await expect(page).toHaveURL(/.*\/dashboard\/vault$/);
+    try {
+      await page.waitForLoadState('networkidle', { timeout: 10000 });
+    } catch {
+      try {
+        await page.waitForLoadState('domcontentloaded');
+      } catch {
+        // Page is ready enough to proceed
+      }
+    }
+
+    // Verify the vault page loaded.
+    await expect(page.getByTestId('export-vault-button')).toBeVisible({
+      timeout: 60000,
+    });
+
+    await ctx.close();
+  });
+
   test('happy path: export → reset → import succeeds via local-file', async ({
     browser,
   }, testInfo) => {
@@ -463,7 +497,7 @@ test.describe('Vault export/import (E2E)', () => {
     await setupVaultWithSampleData(page);
 
     // Trigger export and capture the downloaded JSON.
-    await gotoStable(page, '/dashboard/vault-export');
+    await gotoStable(page, '/dashboard/vault');
     // Unlock if prompted by route-level vault gating.
     if (
       await page
@@ -501,7 +535,7 @@ test.describe('Vault export/import (E2E)', () => {
     });
 
     // Reload vault export page to simulate a fresh route transition.
-    await gotoStable(page, '/dashboard/vault-export');
+    await gotoStable(page, '/dashboard/vault');
 
     // Now perform the import using the captured JSON text.
     const importInput = page.getByTestId('import-vault-file');
@@ -548,7 +582,7 @@ test.describe('Vault export/import (E2E)', () => {
     );
     expect(beforeVault).toBeTruthy();
 
-    await gotoStable(page, '/dashboard/vault-export');
+    await gotoStable(page, '/dashboard/vault');
     if (
       await page
         .locator('#unlock-passphrase')
@@ -603,7 +637,7 @@ test.describe('Vault export/import (E2E)', () => {
     await setupVaultWithGroceryData(page);
 
     // Trigger export and capture the downloaded JSON
-    await gotoStable(page, '/dashboard/vault-export');
+    await gotoStable(page, '/dashboard/vault');
     if (
       await page
         .locator('#unlock-passphrase')
@@ -659,7 +693,7 @@ test.describe('Vault export/import (E2E)', () => {
     await setupVaultWithGroceryData(page);
 
     // Export vault with groceries
-    await gotoStable(page, '/dashboard/vault-export');
+    await gotoStable(page, '/dashboard/vault');
     if (
       await page
         .locator('#unlock-passphrase')
@@ -690,7 +724,7 @@ test.describe('Vault export/import (E2E)', () => {
     });
 
     // Reload and perform import
-    await gotoStable(page, '/dashboard/vault-export');
+    await gotoStable(page, '/dashboard/vault');
 
     const importInput = page.getByTestId('import-vault-file');
     await expect(importInput).toBeVisible({ timeout: 60000 });

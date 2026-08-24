@@ -1,21 +1,21 @@
 {
-  "name": "web-pages-vault-export",
+  "name": "web-pages-vault",
   "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "libs/web/pages/vault-export/src",
+  "sourceRoot": "libs/web/pages/vault/src",
   "projectType": "library",
   "tags": [],
   "targets": {
     "lint": {
       "executor": "@nx/eslint:lint",
       "options": {
-        "lintFilePatterns": ["libs/web/pages/vault-export/src/**/*.{ts,tsx}"]
+        "lintFilePatterns": ["libs/web/pages/vault/src/**/*.{ts,tsx}"]
       }
     },
     "test": {
       "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/libs/web/pages/vault-export"],
+      "outputs": ["{workspaceRoot}/coverage/libs/web/pages/vault"],
       "options": {
-        "jestConfig": "libs/web/pages/vault-export/jest.config.ts",
+        "jestConfig": "libs/web/pages/vault/jest.config.ts",
         "passWithNoTests": true
       }
     }
