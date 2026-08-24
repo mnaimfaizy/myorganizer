@@ -19,6 +19,9 @@ test('the aggregate runs every gate against the real repo and exits 0', () => {
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.match(result.stdout, /✓ readme:check/);
   assert.match(result.stdout, /✓ openapi:artifacts/);
+  assert.match(result.stdout, /✓ env:declared:check/);
+  assert.match(result.stdout, /✓ env:deployment:check/);
+  assert.match(result.stdout, /✓ feature-index:check/);
   assert.match(result.stdout, /✓ agents:map:check/);
   assert.match(result.stdout, /✓ vault:pages:check/);
   assert.match(result.stdout, /✓ auth:pages:check/);
@@ -26,7 +29,7 @@ test('the aggregate runs every gate against the real repo and exits 0', () => {
   assert.match(result.stdout, /✓ agents:sync:check \(models\)/);
   assert.match(result.stdout, /✓ adr:numbering:check/);
   assert.match(result.stdout, /✓ gates:coverage:check/);
-  assert.match(result.stdout, /9\/9 checks passed/);
+  assert.match(result.stdout, /12\/12 checks passed/);
 });
 
 // Guards the aggregate decision itself: replacing it with one `corepack yarn`

@@ -34,6 +34,24 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'env:declared:check',
+    npmScript: 'env:declared:check',
+    script: 'tools/scripts/check-env-declared.mjs',
+    args: [],
+  },
+  {
+    id: 'env:deployment:check',
+    npmScript: 'env:deployment:check',
+    script: 'tools/scripts/check-env-deployment.mjs',
+    args: [],
+  },
+  {
+    id: 'feature-index:check',
+    npmScript: 'feature-index:check',
+    script: 'tools/scripts/check-feature-index.mjs',
+    args: [],
+  },
+  {
     id: 'agents:map:check',
     npmScript: 'agents:map:check',
     script: 'tools/scripts/check-agent-map.mjs',

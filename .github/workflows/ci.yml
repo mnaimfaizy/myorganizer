@@ -532,6 +532,15 @@ jobs:
       - name: OpenAPI artifact checker contracts
         run: corepack yarn openapi:artifacts:test
 
+      - name: Env-declared checker contracts
+        run: corepack yarn env:declared:test
+
+      - name: Env-deployment checker contracts
+        run: corepack yarn env:deployment:test
+
+      - name: Feature index checker contracts
+        run: corepack yarn feature-index:test
+
       - name: Lint coverage checker contracts
         run: corepack yarn lint:coverage:test
 
@@ -590,6 +599,15 @@ jobs:
 
       - name: Check OpenAPI generated artifacts
         run: corepack yarn openapi:artifacts
+
+      - name: Check backend env vars are declared in .env.example
+        run: corepack yarn env:declared:check
+
+      - name: Check deployment doc env vars are declared in .env.example
+        run: corepack yarn env:deployment:check
+
+      - name: Check feature index against dashboard routes
+        run: corepack yarn feature-index:check
 
       - name: Check agent orchestration map
         run: corepack yarn agents:map:check
