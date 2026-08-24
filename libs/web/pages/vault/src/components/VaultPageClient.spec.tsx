@@ -1,11 +1,25 @@
+/* eslint-disable import/first -- jest.mock must precede application imports */
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
-
-import { VaultPageClient } from './VaultPageClient';
 
 jest.mock('../hooks', () => ({
   useGoogleIdentityScript: () => 'loading',
 }));
+
+jest.mock('@myorganizer/web-vault-ui', () => {
+  const actual = jest.requireActual('@myorganizer/web-vault-ui');
+  return {
+    ...actual,
+    useOptionalVaultSession: () => ({
+      masterKeyBytes: null,
+      setMasterKeyBytes: jest.fn(),
+      lock: jest.fn(),
+      handle: { owner: 'test-owner' },
+    }),
+  };
+});
+
+import { VaultPageClient } from './VaultPageClient';
 
 describe('VaultPageClient', () => {
   const ORIGINAL_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;

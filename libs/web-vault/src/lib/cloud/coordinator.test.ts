@@ -8,6 +8,7 @@ import {
 } from '@jest/globals';
 
 import type { VaultStorageV1 } from '../vault/vault';
+import type { VaultHandle } from '../vault/vaultHandle';
 import { CloudBackupCoordinator } from './coordinator';
 import {
   CloudBackupConnectionState,
@@ -171,7 +172,8 @@ describe('CloudBackupCoordinator', () => {
   test('restoreLatest returns null when provider has no backup', async () => {
     const provider = new FakeProvider();
     const coordinator = new CloudBackupCoordinator({ provider });
-    const result = await coordinator.restoreLatest();
+    const handle = { owner: 'test-owner' } as unknown as VaultHandle;
+    const result = await coordinator.restoreLatest(handle);
     expect(result).toBeNull();
   });
 });

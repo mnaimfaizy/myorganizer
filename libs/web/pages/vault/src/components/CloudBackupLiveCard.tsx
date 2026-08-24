@@ -4,15 +4,22 @@ import { useCallback } from 'react';
 
 import { CloudBackupCard } from '@myorganizer/web-vault-ui';
 import { createVaultBackupsApi } from '@myorganizer/web-vault';
-import type { GoogleDriveCloudBackupProvider } from '@myorganizer/web-vault';
+import type {
+  GoogleDriveCloudBackupProvider,
+  VaultHandle,
+} from '@myorganizer/web-vault';
 
 import { useCloudBackup, useLatestCloudBackup } from '../hooks';
 
 interface CloudBackupLiveCardProps {
   provider: GoogleDriveCloudBackupProvider;
+  handle: VaultHandle;
 }
 
-export function CloudBackupLiveCard({ provider }: CloudBackupLiveCardProps) {
+export function CloudBackupLiveCard({
+  provider,
+  handle,
+}: CloudBackupLiveCardProps) {
   const getLastSuccessMs = useCallback(async () => {
     try {
       const api = createVaultBackupsApi();
@@ -32,6 +39,7 @@ export function CloudBackupLiveCard({ provider }: CloudBackupLiveCardProps) {
   const cloud = useCloudBackup({
     providerId: 'google-drive',
     provider,
+    handle,
     getLastSuccessMs,
   });
   const latestCloud = useLatestCloudBackup(cloud.backupCounter);

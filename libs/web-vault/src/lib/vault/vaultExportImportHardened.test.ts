@@ -221,7 +221,11 @@ describe('importVault', () => {
     const oversize = `"${'x'.repeat(10 * 1024 * 1024 + 10)}"`;
     const { reporter, calls } = makeRecordingReporter();
     await expect(
-      importVault({ text: oversize, handle: testHandle, auditReporter: reporter }),
+      importVault({
+        text: oversize,
+        handle: testHandle,
+        auditReporter: reporter,
+      }),
     ).rejects.toMatchObject({ code: 'oversize' });
     expect(calls[0]).toMatchObject({
       status: 'failed',
@@ -280,6 +284,7 @@ describe('importVault', () => {
     await expect(
       importVault({
         text: JSON.stringify(mutated),
+        handle: testHandle,
         auditReporter: reporter,
       }),
     ).rejects.toMatchObject({ code: 'schema-version-downgrade' });
@@ -298,6 +303,7 @@ describe('importVault', () => {
 
     const first = await importVault({
       text: exported.text,
+      handle: testHandle,
       replayTracker: tracker,
       auditReporter: r1,
     });
@@ -307,6 +313,7 @@ describe('importVault', () => {
     await expect(
       importVault({
         text: exported.text,
+        handle: testHandle,
         replayTracker: tracker,
         auditReporter: r2,
       }),
@@ -322,16 +329,20 @@ describe('importVault', () => {
       globalThis as unknown as { window: { localStorage: MemoryStorage } }
     ).window.localStorage;
     storage.setItem(
-      'myorganizer_vault_v1',
+      OWNED_VAULT_STORAGE_KEY,
       JSON.stringify({ version: 1, sentinel: 'before-import' }),
     );
 
     const { reporter } = makeRecordingReporter();
     await expect(
-      importVault({ text: '{"corrupt": true}', auditReporter: reporter }),
+      importVault({
+        text: '{"corrupt": true}',
+        handle: testHandle,
+        auditReporter: reporter,
+      }),
     ).rejects.toMatchObject({ code: 'corrupt-file' });
 
-    const after = storage.getItem('myorganizer_vault_v1');
+    const after = storage.getItem(OWNED_VAULT_STORAGE_KEY);
     expect(after).toBe(
       JSON.stringify({ version: 1, sentinel: 'before-import' }),
     );
@@ -355,7 +366,11 @@ describe('importVault', () => {
     };
 
     await expect(
-      importVault({ text: exported.text, auditReporter: safeReporter }),
+      importVault({
+        text: exported.text,
+        handle: testHandle,
+        auditReporter: safeReporter,
+      }),
     ).resolves.toMatchObject({ envelope: expect.any(Object) });
   });
 });

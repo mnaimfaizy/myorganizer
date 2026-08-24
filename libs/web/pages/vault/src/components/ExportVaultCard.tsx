@@ -15,22 +15,33 @@ import {
 import {
   createDefaultAuditReporter,
   exportVault,
-  loadVault,
 } from '@myorganizer/web-vault';
+import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 
 import { downloadJsonFile } from '../utils/downloadJsonFile';
 import { getErrorMessage } from '../utils/getErrorMessage';
 
 export function ExportVaultCard() {
   const { toast } = useToast();
+  const vaultSession = useOptionalVaultSession();
+  const handle = vaultSession?.handle ?? null;
 
   const [exporting, setExporting] = useState(false);
 
   const handleExport = useCallback(async () => {
+    if (!handle) {
+      toast({
+        title: 'Export failed',
+        description: 'Sign in to export your vault.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setExporting(true);
 
     try {
-      const localVault = loadVault();
+      const localVault = handle.loadVault();
       if (!localVault) {
         throw new Error(
           'No local vault found. Create or unlock your vault first.',
@@ -64,7 +75,7 @@ export function ExportVaultCard() {
     } finally {
       setExporting(false);
     }
-  }, [toast]);
+  }, [handle, toast]);
 
   return (
     <Card>

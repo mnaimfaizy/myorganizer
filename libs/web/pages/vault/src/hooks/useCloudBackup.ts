@@ -13,10 +13,10 @@ import {
   createDefaultAuditReporter,
   getProviderPrefs,
   loadCloudBackupPreferences,
-  loadVault,
   saveCloudBackupPreferences,
   setProviderPrefs,
   startScheduler,
+  type VaultHandle,
 } from '@myorganizer/web-vault';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -25,6 +25,8 @@ export interface UseCloudBackupOptions {
   providerId: CloudBackupProviderId;
   /** Provider instance (typically `GoogleDriveCloudBackupProvider`). */
   provider: CloudBackupProvider;
+  /** The signed-in User's Vault Handle. Backup/restore write/read through it. */
+  handle: VaultHandle;
   /**
    * Optional override for constructing a coordinator. Defaults to
    * `new CloudBackupCoordinator({ provider })`.
@@ -90,6 +92,7 @@ export function useCloudBackup(
   const {
     providerId,
     provider,
+    handle,
     coordinatorFactory,
     getLastSuccessMs,
     schedulerImpl,
@@ -172,7 +175,7 @@ export function useCloudBackup(
 
   const backupNow = useCallback(async () => {
     await runWithBusy(async () => {
-      const localVault = loadVault();
+      const localVault = handle.loadVault();
       if (!localVault) {
         throw new Error(
           'No local vault found. Create or unlock your vault first.',
@@ -189,16 +192,16 @@ export function useCloudBackup(
         await refreshConnection();
       }
     });
-  }, [coordinator, refreshConnection, runWithBusy]);
+  }, [coordinator, handle, refreshConnection, runWithBusy]);
 
   const restoreLatest = useCallback(async () => {
     return await runWithBusy(async () => {
-      const result = await coordinator.restoreLatest();
+      const result = await coordinator.restoreLatest(handle);
       await refreshConnection();
       if (!result) return null;
       return { sizeBytes: result.sizeBytes };
     });
-  }, [coordinator, refreshConnection, runWithBusy]);
+  }, [coordinator, handle, refreshConnection, runWithBusy]);
 
   const setAutoInterval = useCallback(
     (next: CloudBackupAutoInterval) => {
@@ -224,7 +227,7 @@ export function useCloudBackup(
     if (connection.status !== 'connected') return;
 
     const start = schedulerImpl ?? startScheduler;
-    const handle: SchedulerHandle = start({
+    const schedulerHandle: SchedulerHandle = start({
       getInterval: () => intervalRef.current,
       getLastSuccessMs,
       canRunNow: async () => {
@@ -240,7 +243,7 @@ export function useCloudBackup(
         return canRun;
       },
       runBackup: async () => {
-        const localVault = loadVault();
+        const localVault = handle.loadVault();
         if (!localVault) return;
         try {
           await coordinator.backup(localVault);
@@ -255,13 +258,14 @@ export function useCloudBackup(
     });
 
     return () => {
-      handle.stop();
+      schedulerHandle.stop();
     };
   }, [
     autoInterval,
     connection.status,
     coordinator,
     getLastSuccessMs,
+    handle,
     provider,
     refreshConnection,
     schedulerImpl,
