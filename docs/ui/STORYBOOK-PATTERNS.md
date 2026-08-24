@@ -233,6 +233,35 @@ Stories are rendered by Chromatic and the test-runner, so anything non-determini
 - No live Vault, no decryption. UI Primitives must not take domain records. Vault UI Components may take mock backup/restore props (GUIDELINES §1). If a `web-ui` primitive appears to need vault data, it does not belong there.
 - No `setTimeout`-driven visual states.
 
+## 11. Viewport-dependent stories
+
+A story whose behaviour depends on width declares it twice — once for the test-runner, once for Chromatic:
+
+```tsx
+export const OpensOnClick: Story = {
+  parameters: {
+    viewport: { defaultViewport: 'mobile1' },
+    chromatic: { viewports: [320] },
+  },
+  play: async ({ canvasElement }) => {
+    /* … */
+  },
+};
+```
+
+Neither parameter is decoration, and neither one covers the other:
+
+- **`viewport`** is read by the `preVisit` hook in `libs/web-ui/.storybook/test-runner.ts`, which resizes the Playwright page **before** the story renders. Without it the runner loads every story at its own page size, nothing reads `defaultViewport`, and a width-sensitive hook such as `useIsMobile` stays false while a `play` function waits for a mobile-only element. The hook also resets to a desktop size for every story that names no viewport, so a mobile story cannot leak its width into the next one on the same page.
+- **`chromatic.viewports`** is read by Chromatic, which builds the Storybook from `main.ts` and `preview.ts` and never loads `test-runner.ts`. A `play` function that needs a narrow width fails in Chromatic without it. Give it one width, not a list — each extra width is another snapshot against the plan cap (ADR 0027).
+
+Consequences for authors:
+
+- Named viewports must be one of `mobile1`, `mobile2`, `tablet`, or declared inline under `parameters.viewport.viewports` with `px` dimensions. Anything else fails the story loudly rather than silently rendering at desktop width.
+- Do not assert on width in a `play` function without declaring both parameters — the runner default is 1280×720 and the Chromatic default is wider still.
+- The resolver behind the hook is unit tested in `libs/web-ui/.storybook/viewport-page-size.test.ts`.
+
+Running the play tests locally: see [`docs/storybook/README.md`](../storybook/README.md).
+
 ## Anti-patterns
 
 | Anti-pattern                                                             | Why it fails                                              | Instead                                                          |
@@ -246,4 +275,5 @@ Stories are rendered by Chromatic and the test-runner, so anything non-determini
 | Emoji or bare icon as the whole button label                             | No accessible name                                        | Icon + `aria-label` (§9)                                         |
 | Skipping `Toaster` because it is a mount point                           | Never tests GUIDELINES §1 for that primitive              | `play` that calls `toast()` (§5)                                 |
 | Fetching or generating data in a story                                   | Non-deterministic Chromatic diffs                         | Fixed props (§10)                                                |
+| `play` asserting mobile behaviour with no `viewport` parameter           | Page renders at 1280×720; the assertion times out         | Declare `parameters.viewport` (§11)                              |
 | A story for a `libs/web/pages/` component                                | Not in any glob; depends on domain state                  | Test it, or promote it to a primitive or Vault UI Component (§1) |
