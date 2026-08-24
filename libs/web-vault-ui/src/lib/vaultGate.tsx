@@ -17,13 +17,17 @@ import {
   setNewPassphrase,
   unlockVaultWithPassphrase,
   unlockVaultWithRecoveryKey,
+  type VaultHandle,
 } from '@myorganizer/web-vault';
 
 import { useOptionalVaultSession } from './session';
 
 type VaultGateProps = {
   title: string;
-  children: (ctx: { masterKeyBytes: Uint8Array }) => React.ReactNode;
+  children: (ctx: {
+    masterKeyBytes: Uint8Array;
+    handle: VaultHandle | null;
+  }) => React.ReactNode;
 };
 
 function downloadTextFile(filename: string, content: string) {
@@ -65,7 +69,14 @@ export function VaultGate(props: VaultGateProps) {
   const title = useMemo(() => props.title, [props.title]);
 
   if (isUnlocked && masterKeyBytes) {
-    return <>{props.children({ masterKeyBytes })}</>;
+    return (
+      <>
+        {props.children({
+          masterKeyBytes,
+          handle: vaultSession?.handle ?? null,
+        })}
+      </>
+    );
   }
 
   if (!vaultExists) {
@@ -118,10 +129,10 @@ export function VaultGate(props: VaultGateProps) {
                     title: 'Vault created',
                     description: 'Save your recovery key now.',
                   });
-                } catch (e: any) {
+                } catch (e: unknown) {
                   toast({
                     title: 'Failed to create vault',
-                    description: e?.message ?? String(e),
+                    description: e instanceof Error ? e.message : String(e),
                     variant: 'destructive',
                   });
                 }
@@ -281,10 +292,10 @@ export function VaultGate(props: VaultGateProps) {
                     title: 'Updated',
                     description: 'Passphrase updated for this vault.',
                   });
-                } catch (e: any) {
+                } catch (e: unknown) {
                   toast({
                     title: 'Failed',
-                    description: e?.message ?? String(e),
+                    description: e instanceof Error ? e.message : String(e),
                     variant: 'destructive',
                   });
                 }
