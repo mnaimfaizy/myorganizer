@@ -2769,7 +2769,7 @@ button:focus-visible{outline:2px solid var(--a);outline-offset:2px}
 
       <div style="display:grid;gap:8px;align-content:start;padding:var(--space-4);background:var(--tint-b);color:var(--on-tint-b);border:2px dashed var(--b);border-radius:var(--radius-md)">
         <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap"><span style="font-family:var(--font-heading);font-size:17px">4</span><span style="font-size:14.5px;font-weight:800"><code style="font-family:ui-monospace,Menlo,monospace">status:blocked</code></span><span style="font-size:9.5px;font-weight:800;letter-spacing:.08em;padding:3px 8px;border-radius:999px;background:var(--b);color:var(--paper)">SELF-CLEARING</span></div>
-        <div style="font-size:12.5px;line-height:1.5;opacity:.92">The one gate that resolves without a person: it clears automatically when the blocking issues close.</div>
+        <div style="font-size:12.5px;line-height:1.5;opacity:.92">The one gate that resolves without a person: it clears automatically when the blocking issues close. In PRD mode the dispatcher does not treat it as an entry filter — it clears the label itself mid-run, so filtering on it would strand the slices it is about to unblock.</div>
         <div style="font-size:12px;opacity:.8;border-top:1.5px solid currentColor;padding-top:7px">Blockers never close → stays blocked.</div>
       </div>
 
@@ -2840,7 +2840,7 @@ class Component extends DCLogic {
   state = { sc: 'A', i: 0, playing: false, tokenY: 0, reduced: false, released: {} };
 
   STATIONS = [
-    { id:'dispatch', name:'Dispatcher pre-checks', note:'yarn dispatch-agents · status:blocked? · type:hitl?' },
+    { id:'dispatch', name:'Dispatcher pre-checks', note:'yarn dispatch-agents · type:hitl? · status:blocked (standalone only)' },
     { id:'branch', name:'feat/<slug> — local branch', note:'cut from origin/main · never pushed' },
     { id:'sandbox', name:'Docker sandbox', note:'branches from the current local feature head' },
     { id:'orch', name:'Orchestrator', note:'classifies, dispatches, re-dispatches — every hop returns here', spine:true },
@@ -2872,7 +2872,7 @@ class Component extends DCLogic {
       gate:'gate:full', gateNote:'complexity:medium',
       steps: [
         { s:'dispatch', dir:'start', t:'The dispatcher picks up the slice', d:'One issue, labelled gate:full · complexity:medium · type:afk. Nothing has run yet.', git:'origin/main — read only', o:'nothing has reached origin', warn:true },
-        { s:'dispatch', dir:'side', t:'Pre-checks run before any agent starts', d:'status:blocked? no. type:hitl? no. Either label halts the run here — a type:hitl slice is skipped and waits for a human, indefinitely.' },
+        { s:'dispatch', dir:'side', t:'Pre-checks run before any agent starts', d:'type:hitl? no — that label halts the run here and waits for a human, indefinitely. status:blocked halts a standalone run, but in PRD mode it does not: the run maintains that label itself, so a slice blocked by another slice of the same PRD is admitted and `## Blocked by` ordering decides when it runs. A status:blocked with no in-PRD blocker is still deferred.' },
         { s:'branch', dir:'fwd', t:'A local feature branch is cut', d:'feat/<slug> from origin/main. Local only. No agent in this run can push it.', git:'feat/<slug> (local) ← origin/main' },
         { s:'sandbox', dir:'fwd', t:'A Docker sandbox opens', d:'It branches from the CURRENT local feature head, not from main — so this slice can see the work earlier slices already landed.', git:'sandbox ← feat/<slug> (local head)' },
         { s:'sandbox', dir:'fwd', t:'The model is routed from complexity:*', d:'low = Haiku · medium = Sonnet · high = Opus. Routing happens once, at dispatch. Nothing later in the run changes it.' },

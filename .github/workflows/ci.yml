@@ -526,6 +526,9 @@ jobs:
       - name: Sandcastle resume decision contracts
         run: corepack yarn sandcastle:resume:test
 
+      - name: Sandcastle slice-selection contracts
+        run: corepack yarn sandcastle:slice-selection:test
+
       - name: Sandcastle sub-agent trace contracts
         run: corepack yarn sandcastle:subagent-trace:test
 
