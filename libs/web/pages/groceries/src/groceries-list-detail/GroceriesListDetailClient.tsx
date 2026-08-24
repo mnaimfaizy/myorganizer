@@ -1,6 +1,7 @@
 'use client';
 
 import type { ListLine } from '@myorganizer/core';
+import type { VaultHandle } from '@myorganizer/web-vault';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -14,15 +15,15 @@ import { GroceryListView } from './components';
 
 interface GroceriesListDetailClientProps {
   listId: string;
-  masterKeyBytes: Uint8Array;
+  handle: VaultHandle;
 }
 
 export function GroceriesListDetailClient({
   listId,
-  masterKeyBytes,
+  handle,
 }: GroceriesListDetailClientProps) {
   const router = useRouter();
-  const vault = useGroceriesVault({ masterKeyBytes });
+  const vault = useGroceriesVault({ handle });
 
   const handleClose = useCallback(() => {
     router.push('/dashboard/groceries');

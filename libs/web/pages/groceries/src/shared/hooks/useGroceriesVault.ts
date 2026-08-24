@@ -8,16 +8,12 @@ import type {
   ListLine,
 } from '@myorganizer/core';
 import { randomId } from '@myorganizer/core';
-import {
-  loadDecryptedData,
-  normalizeGroceries,
-  saveEncryptedData,
-} from '@myorganizer/web-vault';
+import { normalizeGroceries, type VaultHandle } from '@myorganizer/web-vault';
 import { useCallback, useEffect, useState } from 'react';
 import { validateAddCatalogItemAndLineInput } from '../utils';
 
 interface UseGroceriesVaultOptions {
-  masterKeyBytes: Uint8Array;
+  handle: VaultHandle;
 }
 
 /** Fields a caller may supply when adding an item to a Grocery List. */
@@ -125,17 +121,17 @@ interface UseGroceriesVaultResult {
  * - Normalizing data on load
  * - Error handling and reporting
  *
- * @param options Configuration with masterKeyBytes for encryption
+ * @param options Configuration with the owner-bound vault handle
  * @returns State and handlers for grocery list management
  *
  * @example
  * ```tsx
- * const vault = useGroceriesVault({ masterKeyBytes });
+ * const vault = useGroceriesVault({ handle });
  * // Use vault.lists, vault.createList, vault.renameList, vault.deleteList
  * ```
  */
 export function useGroceriesVault({
-  masterKeyBytes,
+  handle,
 }: UseGroceriesVaultOptions): UseGroceriesVaultResult {
   const [payload, setPayload] = useState<GroceriesVaultPayload>({
     catalog: [],
@@ -148,11 +144,11 @@ export function useGroceriesVault({
   // Load payload from vault on mount
   useEffect(() => {
     setError(null);
-    loadDecryptedData<unknown>({
-      masterKeyBytes,
-      type: 'groceries',
-      defaultValue: null,
-    })
+    handle
+      .loadDecryptedData<unknown>({
+        type: 'groceries',
+        defaultValue: null,
+      })
       .then(async (raw) => {
         const normalized = normalizeGroceries(raw);
         setPayload(normalized.value);
@@ -161,8 +157,7 @@ export function useGroceriesVault({
         }
         // Re-save if data was normalized (data migration or repair)
         if (normalized.changed) {
-          await saveEncryptedData({
-            masterKeyBytes,
+          await handle.saveEncryptedData({
             type: 'groceries',
             value: normalized.value,
           });
@@ -174,15 +169,14 @@ export function useGroceriesVault({
         setError('Failed to load your grocery lists. Please try again.');
         setLoading(false);
       });
-  }, [masterKeyBytes]);
+  }, [handle]);
 
   // Persist full payload to vault
   const persistPayload = useCallback(
     async (nextPayload: GroceriesVaultPayload) => {
       setError(null);
       try {
-        await saveEncryptedData({
-          masterKeyBytes,
+        await handle.saveEncryptedData({
           type: 'groceries',
           value: nextPayload,
         });
@@ -193,7 +187,7 @@ export function useGroceriesVault({
         throw err;
       }
     },
-    [masterKeyBytes],
+    [handle],
   );
 
   // Create a new grocery list

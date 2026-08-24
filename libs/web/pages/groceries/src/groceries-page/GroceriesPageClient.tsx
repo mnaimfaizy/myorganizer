@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Skeleton } from '@myorganizer/web-ui';
+import type { VaultHandle } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import { LayoutGrid, Plus } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
@@ -16,7 +17,7 @@ import type { AddCatalogItemAndLineInput } from '../shared/hooks';
 import type { CatalogItemEditChanges } from '../groceries-list-detail/components/CatalogItemEditDialog';
 
 interface GroceriesInnerProps {
-  masterKeyBytes: Uint8Array;
+  handle: VaultHandle;
 }
 
 interface DialogState {
@@ -26,9 +27,9 @@ interface DialogState {
   itemCount?: number;
 }
 
-function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
+function GroceriesInner({ handle }: GroceriesInnerProps) {
   const [dialog, setDialog] = useState<DialogState>({ type: null });
-  const vault = useGroceriesVault({ masterKeyBytes });
+  const vault = useGroceriesVault({ handle });
 
   const handleOpenCreateDialog = useCallback(() => {
     setDialog({ type: 'create' });
@@ -287,7 +288,7 @@ function GroceriesInner({ masterKeyBytes }: GroceriesInnerProps) {
 export function GroceriesPageClient() {
   return (
     <VaultGate title="Groceries">
-      {(ctx) => <GroceriesInner masterKeyBytes={ctx.masterKeyBytes} />}
+      {({ handle }) => <GroceriesInner handle={handle!} />}
     </VaultGate>
   );
 }

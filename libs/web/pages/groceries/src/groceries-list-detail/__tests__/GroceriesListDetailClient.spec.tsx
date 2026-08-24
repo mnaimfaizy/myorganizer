@@ -58,6 +58,7 @@ jest.mock('lucide-react', () => ({
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import type { GroceryList } from '@myorganizer/core';
+import type { VaultHandle } from '@myorganizer/web-vault';
 import { useGroceriesVault } from '../../shared/hooks';
 import { GroceriesListDetailClient } from '../GroceriesListDetailClient';
 
@@ -90,7 +91,7 @@ describe('GroceriesListDetailClient', () => {
     };
   }
 
-  const masterKeyBytes = new Uint8Array(32);
+  const handle = { isUnlocked: true } as unknown as VaultHandle;
 
   function makeVaultState(overrides: Record<string, unknown> = {}) {
     return {
@@ -127,12 +128,7 @@ describe('GroceriesListDetailClient', () => {
         persistLists: jest.fn(),
       });
 
-      render(
-        <GroceriesListDetailClient
-          listId="list-1"
-          masterKeyBytes={masterKeyBytes}
-        />,
-      );
+      render(<GroceriesListDetailClient listId="list-1" handle={handle} />);
 
       const loadingContainer = screen.getByLabelText('Loading grocery list');
       expect(loadingContainer).toBeInTheDocument();
@@ -146,12 +142,7 @@ describe('GroceriesListDetailClient', () => {
         persistLists: jest.fn(),
       });
 
-      render(
-        <GroceriesListDetailClient
-          listId="list-1"
-          masterKeyBytes={masterKeyBytes}
-        />,
-      );
+      render(<GroceriesListDetailClient listId="list-1" handle={handle} />);
 
       expect(screen.queryByTestId('grocery-list-view')).not.toBeInTheDocument();
     });
@@ -163,12 +154,7 @@ describe('GroceriesListDetailClient', () => {
         persistLists: jest.fn(),
       });
 
-      render(
-        <GroceriesListDetailClient
-          listId="list-1"
-          masterKeyBytes={masterKeyBytes}
-        />,
-      );
+      render(<GroceriesListDetailClient listId="list-1" handle={handle} />);
 
       expect(screen.queryByText('List not found')).not.toBeInTheDocument();
     });
@@ -187,10 +173,7 @@ describe('GroceriesListDetailClient', () => {
       });
 
       render(
-        <GroceriesListDetailClient
-          listId="nonexistent-list"
-          masterKeyBytes={masterKeyBytes}
-        />,
+        <GroceriesListDetailClient listId="nonexistent-list" handle={handle} />,
       );
 
       expect(screen.getByText('List not found')).toBeInTheDocument();
@@ -204,10 +187,7 @@ describe('GroceriesListDetailClient', () => {
       });
 
       render(
-        <GroceriesListDetailClient
-          listId="nonexistent-list"
-          masterKeyBytes={masterKeyBytes}
-        />,
+        <GroceriesListDetailClient listId="nonexistent-list" handle={handle} />,
       );
 
       expect(
@@ -219,10 +199,7 @@ describe('GroceriesListDetailClient', () => {
       mockUseGroceriesVault.mockReturnValue(makeVaultState());
 
       render(
-        <GroceriesListDetailClient
-          listId="nonexistent-list"
-          masterKeyBytes={masterKeyBytes}
-        />,
+        <GroceriesListDetailClient listId="nonexistent-list" handle={handle} />,
       );
 
       const backLink = screen.getByRole('link', {
@@ -241,10 +218,7 @@ describe('GroceriesListDetailClient', () => {
       });
 
       render(
-        <GroceriesListDetailClient
-          listId="nonexistent-list"
-          masterKeyBytes={masterKeyBytes}
-        />,
+        <GroceriesListDetailClient listId="nonexistent-list" handle={handle} />,
       );
 
       expect(screen.queryByTestId('grocery-list-view')).not.toBeInTheDocument();
@@ -264,12 +238,7 @@ describe('GroceriesListDetailClient', () => {
         persistLists: jest.fn(),
       });
 
-      render(
-        <GroceriesListDetailClient
-          listId="list-1"
-          masterKeyBytes={masterKeyBytes}
-        />,
-      );
+      render(<GroceriesListDetailClient listId="list-1" handle={handle} />);
 
       expect(screen.getByTestId('grocery-list-view')).toBeInTheDocument();
     });
@@ -282,12 +251,7 @@ describe('GroceriesListDetailClient', () => {
         persistLists: jest.fn(),
       });
 
-      render(
-        <GroceriesListDetailClient
-          listId="list-1"
-          masterKeyBytes={masterKeyBytes}
-        />,
-      );
+      render(<GroceriesListDetailClient listId="list-1" handle={handle} />);
 
       expect(screen.getByText('Vegetables')).toBeInTheDocument();
     });
@@ -300,12 +264,7 @@ describe('GroceriesListDetailClient', () => {
         persistLists: jest.fn(),
       });
 
-      render(
-        <GroceriesListDetailClient
-          listId="list-1"
-          masterKeyBytes={masterKeyBytes}
-        />,
-      );
+      render(<GroceriesListDetailClient listId="list-1" handle={handle} />);
 
       expect(screen.queryByText('List not found')).not.toBeInTheDocument();
     });
@@ -314,12 +273,7 @@ describe('GroceriesListDetailClient', () => {
       const list = makeGroceryList('list-1', 'Vegetables', 3);
       mockUseGroceriesVault.mockReturnValue(makeVaultState({ lists: [list] }));
 
-      render(
-        <GroceriesListDetailClient
-          listId="list-1"
-          masterKeyBytes={masterKeyBytes}
-        />,
-      );
+      render(<GroceriesListDetailClient listId="list-1" handle={handle} />);
 
       expect(screen.getByTestId('grocery-list-view')).toBeInTheDocument();
       expect(
@@ -341,12 +295,7 @@ describe('GroceriesListDetailClient', () => {
       const vault = makeVaultState({ lists: [list], catalog });
       mockUseGroceriesVault.mockReturnValue(vault);
 
-      render(
-        <GroceriesListDetailClient
-          listId="list-1"
-          masterKeyBytes={masterKeyBytes}
-        />,
-      );
+      render(<GroceriesListDetailClient listId="list-1" handle={handle} />);
 
       expect(mockGroceryListView).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -378,12 +327,7 @@ describe('GroceriesListDetailClient', () => {
         persistLists: jest.fn(),
       });
 
-      render(
-        <GroceriesListDetailClient
-          listId="list-2"
-          masterKeyBytes={masterKeyBytes}
-        />,
-      );
+      render(<GroceriesListDetailClient listId="list-2" handle={handle} />);
 
       expect(screen.getByText('Fruits')).toBeInTheDocument();
       expect(screen.queryByText('Vegetables')).not.toBeInTheDocument();
