@@ -10,6 +10,7 @@ module.exports = [
       '**/libs/app-api-client/src/**/*',
       '**/libs/api-specs/src/**/*',
       '**/dist',
+      '**/storybook-static',
       'apps/backend/src/prisma/',
       'apps/backend/prisma/prisma-client',
       'apps/backend/prisma/migrations',
