@@ -36,6 +36,15 @@ import {
   fontBlockHash,
   scanDesignPage,
 } from './lib/design-page-scan.mjs';
+// The roster is its own module so it has one definition. A CLI cannot export a
+// const without running its main body on import, so keeping it here forced the
+// contract suite to hand-copy the list, and the copy rotted the first time the
+// roster grew.
+import {
+  CANONICAL_FONT_PAGE,
+  LEGACY,
+  ROSTER,
+} from './lib/design-page-roster.mjs';
 import { reportFindings } from './lib/source-scan.mjs';
 
 const USAGE = `Usage:
@@ -51,42 +60,6 @@ Judgment — is the hero the right hero, is the prose true — stays with review
 --print-font-block writes the canonical @font-face block to stdout so a new page
 can splice it verbatim. Retyping or re-encoding it is what font-block-drift catches.
 `;
-
-/** Pages authored to the house convention. Adding one here is how it gets gated. */
-const ROSTER = [
-  'docs/agents/orchestration-map.html',
-  'docs/deployment/release-pipeline.html',
-  'docs/sandcastle/dispatch-map.html',
-  'docs/sandcastle/gates.html',
-  'docs/sandcastle/logs.html',
-  'docs/sandcastle/resume.html',
-  'docs/sandcastle/waves.html',
-];
-
-/**
- * Pages under docs/ that are deliberately not gated, each with the reason. An
- * entry here is a decision someone made rather than a gap nobody saw; retrofitting
- * one is its own change, not a prerequisite for gating the pages that already comply.
- */
-const LEGACY = {
-  'docs/agents/agent-journey.html':
-    'Claude Design canvas export. Its bundled dc-runtime carries CDN fallback URLs as strings, which the self-containment rule cannot distinguish from a real load.',
-  'docs/agents/skill-atlas.html':
-    'Carries no @font-face block; its typography falls back to system stacks. Predates the canonical block.',
-  'docs/authentication/session-lifecycle.html':
-    'Carries its own @font-face block rather than the canonical one, defines dark tokens under an unguarded @media, and is absent from .prettierignore.',
-  'docs/vault/lifecycle.html':
-    'Canvas export, and the source of the canonical @font-face block. Defines dark tokens only under [data-theme=dark], with no prefers-color-scheme state.',
-  'docs/vault/trust-boundary.html':
-    'Same theme shape as lifecycle.html — predates the three-state convention.',
-};
-
-/**
- * The page every sibling splices its @font-face block from. Named here rather than
- * pinned as a literal hash so the comparison stays a fact about two files, and so
- * the slicing convention has exactly one implementation (design-page-scan.mjs).
- */
-const CANONICAL_FONT_PAGE = 'docs/vault/lifecycle.html';
 
 const DOCS_DIR = 'docs';
 
