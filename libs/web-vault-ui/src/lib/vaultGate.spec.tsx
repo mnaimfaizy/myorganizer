@@ -152,7 +152,7 @@ describe('VaultGate', () => {
 
       render(
         <VaultGate title="Test">
-          {(ctx) => <div>unlocked-{ctx.masterKeyBytes ? 'yes' : 'no'}</div>}
+          {(ctx) => <div>unlocked-{ctx.handle ? 'yes' : 'no'}</div>}
         </VaultGate>,
       );
 
