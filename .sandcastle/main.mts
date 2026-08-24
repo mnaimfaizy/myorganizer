@@ -31,6 +31,13 @@ import {
   withMaintainerNotes,
 } from '../tools/scripts/lib/sandcastle-resume.mjs';
 import {
+  blockedBy,
+  blocks,
+  describeAssembly,
+  isCompleted,
+  selectPrdSlices,
+} from '../tools/scripts/lib/sandcastle-slice-selection.mjs';
+import {
   parseSubagentTranscript,
   formatSubagentIndex,
   formatTokens,
@@ -555,31 +562,6 @@ type Issue = {
   body: string;
 };
 
-function isCompleted(issue: Issue): boolean {
-  return (
-    issue.state === 'CLOSED' ||
-    issue.labels.some((label) => label.name === 'status:done')
-  );
-}
-
-function blockedBy(issue: Issue): number[] {
-  const section = issue.body.match(
-    /##\s+Blocked by\s*([\s\S]*?)(?=\n##\s|$)/i,
-  )?.[1];
-  if (!section || /^\s*-\s*None\s*$/im.test(section)) return [];
-
-  return [...section.matchAll(/#(\d+)/g)].map((match) => Number(match[1]));
-}
-
-function blocks(issue: Issue): number[] {
-  const section = issue.body.match(
-    /##\s+Blocks\s*([\s\S]*?)(?=\n##\s|$)/i,
-  )?.[1];
-  if (!section || /^\s*-\s*None\b/im.test(section)) return [];
-
-  return [...section.matchAll(/#(\d+)/g)].map((match) => Number(match[1]));
-}
-
 function isIssueSatisfied(issue: Issue | undefined): boolean {
   if (!issue) return false;
   return isCompleted(issue);
@@ -763,21 +745,30 @@ function planPrdRun(prd: number): RunPlan {
     '100',
   ]);
 
-  const isAfkSlice = (issue: Issue): boolean =>
-    issue.labels.some((label) => label.name === 'ready-for-agent') &&
-    issue.labels.some((label) => label.name === 'type:afk');
+  // `status:blocked` is NOT an entry filter. This run maintains that label itself:
+  // it strips it from a dependent the moment its blocker completes. Filtering on it
+  // up front made the run refuse to consider the very slices it was about to
+  // unblock — PRD #461 dispatched one of three slices and stopped. A slice whose
+  // `## Blocked by` names another slice of this PRD is admitted, and `## Blocked by`
+  // ordering in the dispatch loop decides when it may actually run. A slice whose
+  // label is NOT explained that way stays out: it means something this code cannot
+  // evaluate. See tools/scripts/lib/sandcastle-slice-selection.mjs.
+  const selection = selectPrdSlices(everyIssue, {
+    prd,
+    only: issueNumber,
+  });
+  const selected = selection.selected;
 
-  const selected = everyIssue.filter(
-    (i) =>
-      i.body?.includes(`PRD: #${prd}`) &&
-      isAfkSlice(i) &&
-      (issueNumber === undefined || i.number === issueNumber) &&
-      !i.labels.some((label) => label.name === 'status:blocked') &&
-      i.state === 'OPEN' &&
-      // Skip slices already merged into the feature branch so re-runs are
-      // idempotent — only undone work in the wave is re-dispatched.
-      !isCompleted(i),
-  );
+  if (selection.admitted.length > 0) {
+    console.log(
+      `Admitted ${selection.admitted
+        .map((i) => `#${i.number}`)
+        .join(', ')} despite status:blocked — blocked by a slice in this run.`,
+    );
+  }
+  for (const { issue, reason } of selection.deferred) {
+    console.log(`Deferred #${issue.number}: ${reason}.`);
+  }
 
   // --gate-only never dispatches, so an empty ready set is normal for it: by the
   // time the PRD is gated its slices are closed, and the wave driver has stripped
@@ -1107,7 +1098,7 @@ if (gateOnly) {
   const ok = runFeatureGate(integrationBranch);
   console.log(
     ok
-      ? `\n  gate: PASS on ${integrationBranch} — the PRD is green against ${prdGateBase}.`
+      ? `\n  gate: PASS on ${integrationBranch} against ${prdGateBase} — ${assemblySummary()}.`
       : `\n  gate: FAIL on ${integrationBranch}. Every slice is still integrated; ` +
           `nothing was discarded and nothing is pushed.`,
   );
@@ -2888,11 +2879,24 @@ const merged = results.filter((r) => r.merged);
  * skipping them. A red feature gate is a fact about the ASSEMBLY, not about any one
  * slice. See ADR 0045.
  */
+function assemblySummary(): string {
+  // A gate verdict has to carry its own scope. "The PRD is green" was printed by a
+  // run that dispatched one slice of three — true about the branch, and read by a
+  // maintainer as a statement about the PRD. Say how much was assembled.
+  if (prdNumber === undefined) return '';
+  const assembly = describeAssembly(allIssues, prdNumber);
+  return assembly.complete
+    ? `all ${assembly.total} slice(s) assembled`
+    : `${assembly.summary} — the PRD is NOT complete`;
+}
+
 function reportFeatureGate(featureBranch: string, ok: boolean): void {
   if (prdNumber === undefined) return;
   const body = ok
     ? `Build gate **passed** on the integrated feature branch \`${featureBranch}\` ` +
       `(\`${prdGateBase}...${featureBranch}\`, the same scope CI runs on the PR).\n\n` +
+      `Assembly: ${assemblySummary()}. The gate is a fact about the branch, not a ` +
+      `claim that every slice ran.\n\n` +
       `Nothing is pushed. QA the local branch, then push it and open one PR.`
     : `Build gate **failed** on the integrated feature branch \`${featureBranch}\` ` +
       `(\`${prdGateBase}...${featureBranch}\`, the same scope CI runs on the PR).\n\n` +
@@ -2954,7 +2958,7 @@ if (integrationBranch !== null && merged.length > 0 && !deferGate) {
   featureGateOk = runFeatureGate(integrationBranch);
   console.log(
     featureGateOk
-      ? `\n  gate: PASS on ${integrationBranch} — the PRD is green against ${prdGateBase}.`
+      ? `\n  gate: PASS on ${integrationBranch} against ${prdGateBase} — ${assemblySummary()}.`
       : `\n  gate: FAIL on ${integrationBranch}. Every slice is still integrated; ` +
           `nothing was discarded and nothing is pushed.`,
   );
