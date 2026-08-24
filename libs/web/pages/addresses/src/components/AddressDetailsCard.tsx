@@ -1,13 +1,21 @@
 import { AddressRecord } from '@myorganizer/core';
-import { Badge, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardTitle,
+} from '@myorganizer/web-ui';
+import { Pencil } from 'lucide-react';
 import { formatAddress } from '../utils/formatAddress';
 
 interface AddressDetailsCardProps {
   addressRecord: AddressRecord;
+  onEdit: () => void;
 }
 
 export function AddressDetailsCard(props: AddressDetailsCardProps) {
-  const { addressRecord } = props;
+  const { addressRecord, onEdit } = props;
   const fullAddress = formatAddress(addressRecord);
   const hasStructuredAddress = !!(
     addressRecord.street ||
@@ -21,11 +29,22 @@ export function AddressDetailsCard(props: AddressDetailsCardProps) {
         <CardTitle className="text-xl font-semibold">
           {addressRecord.label}
         </CardTitle>
-        <Badge
-          variant={addressRecord.status === 'current' ? 'default' : 'outline'}
-        >
-          {addressRecord.status}
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onEdit}
+            aria-label={`Edit ${addressRecord.label}`}
+          >
+            <Pencil className="h-4 w-4" />
+            Edit
+          </Button>
+          <Badge
+            variant={addressRecord.status === 'current' ? 'default' : 'outline'}
+          >
+            {addressRecord.status}
+          </Badge>
+        </div>
       </div>
       <CardContent className="p-0 space-y-4">
         {hasStructuredAddress ? (

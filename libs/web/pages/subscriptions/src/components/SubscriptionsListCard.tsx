@@ -1,6 +1,5 @@
-import { type SubscriptionRecord, formatMoney } from '@myorganizer/core';
+import { type SubscriptionRecord } from '@myorganizer/core';
 import {
-  Button,
   Card,
   CardContent,
   CardTitle,
@@ -11,22 +10,19 @@ import {
   TableHeader,
   TableRow,
 } from '@myorganizer/web-ui';
-import Link from 'next/link';
 
-import {
-  formatIsoDateForDisplay,
-  getSubscriptionBillingCycleLabel,
-  getSubscriptionStatusLabel,
-} from '../utils/presentation';
+import { SubscriptionRow } from './SubscriptionRow';
 
 export interface SubscriptionsListCardProps {
   subscriptions: SubscriptionRecord[];
-  onDeleteSubscription: (id: string) => void;
+  onEditSubscription: (id: string) => void;
+  onRequestDelete: (id: string) => void;
 }
 
 export function SubscriptionsListCard({
   subscriptions,
-  onDeleteSubscription,
+  onEditSubscription,
+  onRequestDelete,
 }: SubscriptionsListCardProps) {
   return (
     <Card className="p-4">
@@ -52,48 +48,12 @@ export function SubscriptionsListCard({
               </TableRow>
             ) : (
               subscriptions.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <Link
-                        href={`/dashboard/subscriptions/${s.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {s.name}
-                      </Link>
-                      {s.link ? (
-                        <a
-                          href={s.link}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-xs text-muted-foreground hover:underline"
-                        >
-                          {s.link}
-                        </a>
-                      ) : null}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {getSubscriptionStatusLabel(s.status)}
-                  </TableCell>
-                  <TableCell>
-                    {getSubscriptionBillingCycleLabel(s.billingCycle)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatMoney({ amount: s.amount, currency: s.currency })}
-                  </TableCell>
-                  <TableCell>
-                    {formatIsoDateForDisplay(s.nextBillingDate)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button
-                      variant="destructive"
-                      onClick={() => onDeleteSubscription(s.id)}
-                    >
-                      Delete
-                    </Button>
-                  </TableCell>
-                </TableRow>
+                <SubscriptionRow
+                  key={s.id}
+                  subscription={s}
+                  onEditSubscription={onEditSubscription}
+                  onRequestDelete={onRequestDelete}
+                />
               ))
             )}
           </TableBody>

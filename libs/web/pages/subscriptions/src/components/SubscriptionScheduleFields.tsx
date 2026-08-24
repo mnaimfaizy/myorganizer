@@ -13,22 +13,24 @@ import {
 } from '@myorganizer/web-ui';
 import { Controller, type UseFormReturn } from 'react-hook-form';
 
-import type { EditValues } from './SubscriptionDetailPageClient';
+import type { SubscriptionFormValues } from '../schemas/subscription';
 
-export interface EditSubscriptionScheduleSectionProps {
-  form: UseFormReturn<EditValues>;
+export interface SubscriptionScheduleFieldsProps {
+  form: UseFormReturn<SubscriptionFormValues>;
+  showEndDate?: boolean;
 }
 
-export function EditSubscriptionScheduleSection({
+export function SubscriptionScheduleFields({
   form,
-}: EditSubscriptionScheduleSectionProps) {
+  showEndDate = true,
+}: SubscriptionScheduleFieldsProps) {
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="edit-amount">Amount</Label>
+          <Label htmlFor="sub-amount">Amount</Label>
           <Input
-            id="edit-amount"
+            id="sub-amount"
             type="number"
             step="0.01"
             {...form.register('amount', { valueAsNumber: true })}
@@ -36,17 +38,21 @@ export function EditSubscriptionScheduleSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="edit-currency">Currency</Label>
+          <Label htmlFor="sub-currency">Currency</Label>
           <Select
             value={form.watch('currency')}
             onValueChange={(v) =>
-              form.setValue('currency', v as EditValues['currency'], {
-                shouldValidate: true,
-              })
+              form.setValue(
+                'currency',
+                v as SubscriptionFormValues['currency'],
+                {
+                  shouldValidate: true,
+                },
+              )
             }
           >
-            <SelectTrigger id="edit-currency">
-              <SelectValue />
+            <SelectTrigger id="sub-currency">
+              <SelectValue placeholder="Select currency" />
             </SelectTrigger>
             <SelectContent>
               {SUPPORTED_CURRENCIES.map((c) => (
@@ -59,13 +65,13 @@ export function EditSubscriptionScheduleSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="edit-start">Start date</Label>
+          <Label htmlFor="sub-start">Start date *</Label>
           <Controller
             control={form.control}
             name="startDate"
             render={({ field }) => (
               <DatePicker
-                id="edit-start"
+                id="sub-start"
                 value={field.value}
                 onChange={field.onChange}
                 placeholder="Pick a start date"
@@ -76,30 +82,32 @@ export function EditSubscriptionScheduleSection({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="edit-end">End date</Label>
-          <Controller
-            control={form.control}
-            name="endDate"
-            render={({ field }) => (
-              <DatePicker
-                id="edit-end"
-                value={field.value}
-                onChange={field.onChange}
-                placeholder="Pick an end date"
-              />
-            )}
-          />
-        </div>
+        {showEndDate && (
+          <div className="space-y-2">
+            <Label htmlFor="sub-end">End date</Label>
+            <Controller
+              control={form.control}
+              name="endDate"
+              render={({ field }) => (
+                <DatePicker
+                  id="sub-end"
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Pick an end date"
+                />
+              )}
+            />
+          </div>
+        )}
 
         <div className="space-y-2">
-          <Label htmlFor="edit-next">Next billing date</Label>
+          <Label htmlFor="sub-next">Next billing date</Label>
           <Controller
             control={form.control}
             name="nextBillingDate"
             render={({ field }) => (
               <DatePicker
-                id="edit-next"
+                id="sub-next"
                 value={field.value}
                 onChange={field.onChange}
                 placeholder="Pick a billing date"
@@ -109,8 +117,12 @@ export function EditSubscriptionScheduleSection({
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="edit-link">Link</Label>
-          <Input id="edit-link" {...form.register('link')} />
+          <Label htmlFor="sub-link">Link</Label>
+          <Input
+            id="sub-link"
+            {...form.register('link')}
+            placeholder="https://..."
+          />
         </div>
       </div>
     </>

@@ -6,7 +6,7 @@ import { formatAddress } from '../utils/formatAddress';
 
 interface AddressListItemProps {
   item: AddressRecord;
-  onDelete: (id: string) => void | Promise<void>;
+  onRequestDelete: (item: AddressRecord) => void | Promise<void>;
 }
 
 export function AddressListItem(props: AddressListItemProps) {
@@ -62,7 +62,7 @@ export function AddressListItem(props: AddressListItemProps) {
           className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
           onClick={(e) => {
             e.preventDefault();
-            props.onDelete(props.item.id);
+            props.onRequestDelete(props.item);
           }}
         >
           <Trash2 className="h-4 w-4" />

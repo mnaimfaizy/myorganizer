@@ -9,21 +9,16 @@ import { formatAddress } from '../utils/formatAddress';
 
 export interface AddAddressSuccessSectionProps {
   savedAddress: AddressRecord;
-  onViewAddress: (id: string) => void;
-  onAddLocation: (id: string) => void;
+  onSetUpUsageLocations: (id: string) => void;
   onAddAnother: () => void;
 }
 
 export function AddAddressSuccessSection(props: AddAddressSuccessSectionProps) {
-  const { savedAddress, onViewAddress, onAddLocation, onAddAnother } = props;
+  const { savedAddress, onSetUpUsageLocations, onAddAnother } = props;
 
-  const handleViewAddress = useCallback(() => {
-    onViewAddress(savedAddress.id);
-  }, [onViewAddress, savedAddress.id]);
-
-  const handleAddLocation = useCallback(() => {
-    onAddLocation(savedAddress.id);
-  }, [onAddLocation, savedAddress.id]);
+  const handleSetUpUsageLocations = useCallback(() => {
+    onSetUpUsageLocations(savedAddress.id);
+  }, [onSetUpUsageLocations, savedAddress.id]);
 
   return (
     <div className="mt-6 space-y-4 rounded-lg border bg-card p-4">
@@ -37,21 +32,13 @@ export function AddAddressSuccessSection(props: AddAddressSuccessSectionProps) {
         </div>
       </div>
       <div className="grid gap-2 sm:grid-cols-2">
-        <Button type="button" onClick={handleViewAddress}>
-          View address
+        <Button type="button" onClick={handleSetUpUsageLocations}>
+          Set up usage locations
         </Button>
-        <Button type="button" variant="outline" onClick={handleAddLocation}>
-          Add usage location
+        <Button type="button" variant="outline" onClick={onAddAnother}>
+          Add another address
         </Button>
       </div>
-      <Button
-        type="button"
-        variant="ghost"
-        className="w-full"
-        onClick={onAddAnother}
-      >
-        Add another address
-      </Button>
     </div>
   );
 }

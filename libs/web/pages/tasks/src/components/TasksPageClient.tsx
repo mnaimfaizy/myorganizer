@@ -6,9 +6,9 @@ import { VaultGate } from '@myorganizer/web-vault-ui';
 import { useCallback, useEffect, useState } from 'react';
 
 import { useTasksWorkflow } from '../workflow';
+import { TaskAddDialog } from './task-add-dialog';
 import { TaskDeleteDialog } from './task-delete-dialog';
 import { TaskEditDialog } from './task-edit-dialog';
-import { TaskForm } from './task-form';
 import TaskItem from './task-item';
 
 interface TasksInnerProps {
@@ -18,6 +18,7 @@ interface TasksInnerProps {
 function TasksInner({ masterKeyBytes }: TasksInnerProps) {
   const { toast } = useToast();
   const workflow = useTasksWorkflow({ masterKeyBytes });
+  const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -49,6 +50,7 @@ function TasksInner({ masterKeyBytes }: TasksInnerProps) {
           description: result.error.message,
           variant: 'destructive',
         });
+        throw new Error(result.error.message);
       }
     },
     [workflow, toast],
@@ -156,18 +158,17 @@ function TasksInner({ masterKeyBytes }: TasksInnerProps) {
   });
 
   return (
-    <div className="flex sm:flex-row flex-col sm:justify-between gap-2 flex-1 p-2 pt-0">
-      <div className="sm:w-1/2 w-full p-3 bg-slate-100 rounded-lg">
-        <h2 className="text-center text-lg pt-3 font-semibold">Create task</h2>
-        <div className="mt-8">
-          <TaskForm onSubmit={handleAddTask} />
-        </div>
-      </div>
-
-      <div className="sm:w-1/2 w-full rounded-lg border bg-white">
+    <div className="flex-1 p-2 pt-0">
+      <div className="rounded-lg border bg-white">
         <div className="flex items-center justify-between px-3 pt-3">
           <h2 className="text-lg font-semibold">Task List</h2>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowAddDialog(true)}
+              className="text-xs px-3 py-1 rounded border bg-slate-800 text-white border-slate-800 hover:bg-slate-700"
+            >
+              Add Task
+            </button>
             {(['all', 'personal', 'work'] as const).map((ctx) => (
               <button
                 key={ctx}
@@ -209,6 +210,11 @@ function TasksInner({ masterKeyBytes }: TasksInnerProps) {
         </div>
       </div>
 
+      <TaskAddDialog
+        isOpen={showAddDialog}
+        onClose={() => setShowAddDialog(false)}
+        onSubmit={handleAddTask}
+      />
       <TaskEditDialog
         task={editingTask}
         isOpen={editingTask !== null}

@@ -9,6 +9,7 @@ export * from './lib/components/Checkbox/Checkbox';
 export * from './lib/components/Collapsible/Collapsible';
 export * from './lib/components/Combobox/Combobox';
 export * from './lib/components/Command/Command';
+export * from './lib/components/ConfirmDeleteDialog/ConfirmDeleteDialog';
 export * from './lib/components/DatePicker/DatePicker';
 export * from './lib/components/Dialog/Dialog';
 export * from './lib/components/DropdownMenu/DropdownMenu';

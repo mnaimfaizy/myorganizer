@@ -32,7 +32,6 @@ const SEGMENT_LABEL_REGISTRY: Record<string, string> = {
   'vault-export': 'Vault Export/Import',
   account: 'Account',
   vault: 'Vault Settings',
-  'add-location': 'Add Location',
 };
 
 /**

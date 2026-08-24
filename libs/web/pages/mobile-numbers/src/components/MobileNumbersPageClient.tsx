@@ -1,72 +1,46 @@
 'use client';
 
 import { MobileNumberRecord } from '@myorganizer/core';
-import { useToast } from '@myorganizer/web-ui';
+import { ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
   loadDecryptedData,
   normalizeMobileNumbers,
   saveEncryptedData,
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
-import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import { useCallback, useEffect, useState } from 'react';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-
+import { type AddMobileNumberFormValues } from '../schemas/mobileNumber';
+import { mobileNumberFormValuesToRecordFields } from '../schemas/mobileNumber';
 import { randomId } from '../utils/randomId';
-import { AddMobileNumberCard } from './AddMobileNumberCard';
+import { AddMobileNumberDialog } from './AddMobileNumberDialog';
 import { MobileNumberListCard } from './MobileNumberListCard';
-
-const addMobileNumberSchema = z
-  .object({
-    label: z.string().trim().min(1, 'Label is required'),
-    countryCode: z.string().min(1, 'Country code is required'),
-    phoneNumber: z
-      .string()
-      .trim()
-      .min(1, 'Phone number is required')
-      .regex(
-        /^[0-9\s\-\(\)]+$/,
-        'Only numbers, spaces, hyphens, and parentheses allowed',
-      ),
-  })
-  .refine(
-    (data) => {
-      const digits = data.phoneNumber.replace(/\D/g, '');
-      return digits.length >= 7 && digits.length <= 15;
-    },
-    {
-      message: 'Phone number must be between 7 and 15 digits',
-      path: ['phoneNumber'],
-    },
-  );
-
-type AddMobileNumberFormValues = z.infer<typeof addMobileNumberSchema>;
 
 interface MobileNumbersInnerProps {
   masterKeyBytes: Uint8Array;
+}
+
+function describeMobileNumberDeletion(
+  mobileNumber: MobileNumberRecord | null,
+): string {
+  if (!mobileNumber) return '';
+  const count = mobileNumber.usageLocations.length;
+  if (count === 0) {
+    return 'This action cannot be undone. The mobile number will be permanently removed.';
+  } else if (count === 1) {
+    return 'This action cannot be undone. The mobile number and its 1 usage location will be permanently removed.';
+  } else {
+    return `This action cannot be undone. The mobile number and its ${count} usage locations will be permanently removed.`;
+  }
 }
 
 function MobileNumbersInner(props: MobileNumbersInnerProps) {
   const { toast } = useToast();
 
   const [items, setItems] = useState<MobileNumberRecord[]>([]);
-
-  const addForm = useForm<AddMobileNumberFormValues>({
-    resolver: zodResolver(addMobileNumberSchema),
-    defaultValues: {
-      label: 'Personal',
-      countryCode: '+1',
-      phoneNumber: '',
-    },
-    mode: 'onChange',
-  });
-
-  const label = addForm.watch('label');
-  const countryCode = addForm.watch('countryCode');
-  const phoneNumber = addForm.watch('phoneNumber');
-  const canAdd = addForm.formState.isValid;
+  const [isAddMobileNumberOpen, setIsAddMobileNumberOpen] = useState(false);
+  const [deletingMobileNumber, setDeletingMobileNumber] =
+    useState<MobileNumberRecord | null>(null);
 
   useEffect(() => {
     loadDecryptedData<unknown>({
@@ -94,73 +68,89 @@ function MobileNumbersInner(props: MobileNumbersInnerProps) {
       });
   }, [props.masterKeyBytes, toast]);
 
-  async function persist(next: MobileNumberRecord[]) {
-    setItems(next);
-    try {
-      await saveEncryptedData({
-        masterKeyBytes: props.masterKeyBytes,
-        type: 'mobileNumbers',
-        value: next,
-      });
-    } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : String(e);
+  const persist = useCallback(
+    async (next: MobileNumberRecord[]) => {
+      setItems(next);
+      try {
+        await saveEncryptedData({
+          masterKeyBytes: props.masterKeyBytes,
+          type: 'mobileNumbers',
+          value: next,
+        });
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        toast({
+          title: 'Failed to save',
+          description: message,
+          variant: 'destructive',
+        });
+        throw e;
+      }
+    },
+    [props.masterKeyBytes, toast],
+  );
+
+  const handleAddMobileNumber = useCallback(
+    async (values: AddMobileNumberFormValues): Promise<void> => {
+      const nextItem: MobileNumberRecord = {
+        id: randomId(),
+        ...mobileNumberFormValuesToRecordFields(values),
+        usageLocations: [],
+        createdAt: new Date().toISOString(),
+      };
+
+      await persist([nextItem, ...items]);
       toast({
-        title: 'Failed to save',
-        description: message,
-        variant: 'destructive',
+        title: 'Saved',
+        description: 'Mobile number saved (encrypted).',
       });
+    },
+    [items, persist, toast],
+  );
+
+  const handleRequestDelete = useCallback((item: MobileNumberRecord) => {
+    setDeletingMobileNumber(item);
+  }, []);
+
+  const handleConfirmDelete = useCallback(async () => {
+    if (!deletingMobileNumber) return;
+    try {
+      await persist(items.filter((x) => x.id !== deletingMobileNumber.id));
+      toast({ title: 'Deleted', description: 'Mobile number removed.' });
+      setDeletingMobileNumber(null);
+    } catch {
+      // persist() already toasted the failure; leave the dialog open for retry
     }
-  }
+  }, [deletingMobileNumber, items, persist, toast]);
+
+  const handleDeleteDialogOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      setDeletingMobileNumber(null);
+    }
+  }, []);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <AddMobileNumberCard
-        label={label}
-        countryCode={countryCode}
-        phoneNumber={phoneNumber}
-        canAdd={canAdd}
-        onLabelChange={(value) =>
-          addForm.setValue('label', value, { shouldValidate: true })
-        }
-        onCountryCodeChange={(value) =>
-          addForm.setValue('countryCode', value, { shouldValidate: true })
-        }
-        onPhoneNumberChange={(value) =>
-          addForm.setValue('phoneNumber', value, { shouldValidate: true })
-        }
-        onAdd={addForm.handleSubmit(async (values) => {
-          const nextItem: MobileNumberRecord = {
-            id: randomId(),
-            label: values.label.trim(),
-            countryCode: values.countryCode,
-            phoneNumber: values.phoneNumber.trim(),
-            usageLocations: [],
-            createdAt: new Date().toISOString(),
-          };
-
-          await persist([nextItem, ...items]);
-          addForm.reset({
-            label: values.label,
-            countryCode: values.countryCode,
-            phoneNumber: '',
-          });
-          toast({
-            title: 'Saved',
-            description: 'Mobile number saved (encrypted).',
-          });
-        })}
+      <AddMobileNumberDialog
+        open={isAddMobileNumberOpen}
+        onOpenChange={setIsAddMobileNumberOpen}
+        onAdd={handleAddMobileNumber}
       />
 
       <MobileNumberListCard
         items={items}
-        onDelete={async (id) => {
-          const next = items.filter((x) => x.id !== id);
-          await persist(next);
-          toast({
-            title: 'Deleted',
-            description: 'Mobile number removed.',
-          });
-        }}
+        onAddMobileNumber={() => setIsAddMobileNumberOpen(true)}
+        onRequestDelete={handleRequestDelete}
+      />
+
+      <ConfirmDeleteDialog
+        open={deletingMobileNumber !== null}
+        onOpenChange={handleDeleteDialogOpenChange}
+        title={
+          deletingMobileNumber ? `Delete "${deletingMobileNumber.label}"?` : ''
+        }
+        description={describeMobileNumberDeletion(deletingMobileNumber)}
+        onConfirm={handleConfirmDelete}
       />
     </div>
   );

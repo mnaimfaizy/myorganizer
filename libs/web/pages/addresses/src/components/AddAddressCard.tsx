@@ -13,8 +13,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 
 import {
-  AddAddressFormValues,
+  type AddAddressFormValues,
   addAddressSchema,
+} from '../schemas/address';
+import {
   buildAddressFingerprint,
   createAddressPreview,
   findDuplicateAddress,
@@ -111,16 +113,9 @@ export function AddAddressCard({
     onOpenChange(false);
   }, [onOpenChange]);
 
-  const handleViewAddress = useCallback(
+  const handleSetUpUsageLocations = useCallback(
     (id: string) => {
       router.push(`/dashboard/addresses/${id}`);
-    },
-    [router],
-  );
-
-  const handleAddLocation = useCallback(
-    (id: string) => {
-      router.push(`/dashboard/addresses/${id}/add-location`);
     },
     [router],
   );
@@ -151,8 +146,7 @@ export function AddAddressCard({
         {savedAddress ? (
           <AddAddressSuccessSection
             savedAddress={savedAddress}
-            onViewAddress={handleViewAddress}
-            onAddLocation={handleAddLocation}
+            onSetUpUsageLocations={handleSetUpUsageLocations}
             onAddAnother={resetForAnotherAddress}
           />
         ) : (

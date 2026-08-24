@@ -1,0 +1,562 @@
+import { expect, test } from '@playwright/test';
+import { gotoStable } from './helpers';
+
+/**
+ * E2E tests for addresses management (create / add usage location / delete / detail navigation).
+ * Uses the vault mocking patterns from `vault.spec.ts` and an in-memory blob store
+ * per-test to ensure isolation.
+ *
+ * Single continuous test covering:
+ * - Step A: Empty list, add an Address via the sheet
+ * - Step B: Follow the post-save step to the detail page
+ * - Step C: Add a Usage Location through its dialog
+ * - Step D: Delete it, refused until confirmed, cancel destroys nothing
+ * - Step E: Prove the detail route resolves from a direct navigation
+ */
+
+function corsHeaders(origin: string) {
+  return {
+    'access-control-allow-origin': origin,
+    'access-control-allow-credentials': 'true',
+    'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
+    'access-control-allow-headers': 'content-type,authorization,if-match',
+  } as const;
+}
+
+async function login(
+  page: import('@playwright/test').Page,
+  options: { webkitDelayMs: number },
+) {
+  // Mock the login API endpoint
+  const loginUrl = /\/auth\/login\/?(\?.*)?$/;
+  await page.route(loginUrl, async (route) => {
+    const request = route.request();
+    const origin = new URL(page.url() || 'http://localhost:3000').origin;
+
+    // Handle CORS preflight
+    if (request.method() === 'OPTIONS') {
+      await route.fulfill({
+        status: 204,
+        headers: corsHeaders(origin),
+      });
+      return;
+    }
+
+    // Return mock login response
+    await route.fulfill({
+      status: 200,
+      headers: corsHeaders(origin),
+      contentType: 'application/json',
+      body: JSON.stringify({
+        token: 'fake-jwt-token',
+        expires_in: 3600,
+        user: {
+          id: '1',
+          name: 'Test User',
+          email: 'testuser@example.com',
+          firstName: 'Test',
+          lastName: 'User',
+        },
+      }),
+    });
+  });
+
+  await page.goto('/login');
+  await expect(page).toHaveURL(/.*login/);
+  await expect(page.locator('h1')).toContainText('Login');
+
+  // Wait for page to load - use try/catch to handle parallel test execution
+  try {
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
+  } catch {
+    // If networkidle times out in parallel execution, use domcontentloaded instead
+    try {
+      await page.waitForLoadState('domcontentloaded');
+    } catch {
+      // Continue anyway - page might be ready enough
+    }
+  }
+
+  if (options.webkitDelayMs > 0) {
+    await page.waitForTimeout(options.webkitDelayMs);
+  }
+
+  await page.fill('input[type="email"]', 'testuser@example.com');
+  await page.fill('input[type="password"]', 'password123');
+
+  const submitButton = page.locator('button[type="submit"]');
+  await expect(submitButton).toBeVisible();
+  await expect(submitButton).toBeEnabled();
+  await submitButton.click();
+
+  await expect(page).toHaveURL(/.*dashboard/, { timeout: 60000 });
+
+  // Wait for dashboard to load
+  try {
+    await page.waitForLoadState('networkidle', { timeout: 10000 });
+  } catch {
+    try {
+      await page.waitForLoadState('domcontentloaded');
+    } catch {
+      // Continue anyway
+    }
+  }
+
+  if (options.webkitDelayMs > 0) {
+    await page.waitForTimeout(options.webkitDelayMs);
+  }
+}
+
+async function unlockWithPassphrase(
+  page: import('@playwright/test').Page,
+  passphrase: string,
+) {
+  const savedRecoveryKey = page.getByRole('button', { name: 'I saved it' });
+  if (await savedRecoveryKey.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await savedRecoveryKey.click();
+  }
+
+  const usePassphrase = page.getByRole('button', { name: 'Use passphrase' });
+  if (await usePassphrase.isVisible({ timeout: 1000 }).catch(() => false)) {
+    await usePassphrase.click();
+  }
+
+  const input = page.locator('#unlock-passphrase');
+  if ((await input.count()) === 0) {
+    // If no unlock form is present, this route is already unlocked.
+    return;
+  }
+
+  await expect(input).toBeVisible({ timeout: 60000 });
+  await input.fill(passphrase);
+  await page.waitForTimeout(50);
+  await page.getByRole('button', { name: 'Unlock' }).click();
+  await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
+    timeout: 120000,
+  });
+}
+
+/**
+ * Setup route handlers and an in-memory store for addresses and other blobs.
+ */
+async function setupRoutes(page: import('@playwright/test').Page) {
+  const loginUrl = /\/auth\/login\/?(\?.*)?$/;
+  const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
+  const vaultBlobUrl =
+    /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos|tasks)\/?(\?.*)?$/;
+
+  let serverMeta: any = { version: 1 };
+  let serverMetaEtag = 'W/"0"';
+  let serverMetaUpdatedAt = new Date(0).toISOString();
+
+  const serverBlobs: Record<string, any | null> = {
+    addresses: null,
+    mobileNumbers: null,
+    subscriptions: null,
+    todos: null,
+    tasks: null,
+  };
+  const serverBlobEtags: Record<string, string> = {
+    addresses: 'W/"0"',
+    mobileNumbers: 'W/"0"',
+    subscriptions: 'W/"0"',
+    todos: 'W/"0"',
+    tasks: 'W/"0"',
+  };
+  const serverBlobUpdatedAt: Record<string, string> = {
+    addresses: new Date(0).toISOString(),
+    mobileNumbers: new Date(0).toISOString(),
+    subscriptions: new Date(0).toISOString(),
+    todos: new Date(0).toISOString(),
+    tasks: new Date(0).toISOString(),
+  };
+
+  // Login route
+  await page.route(loginUrl, async (route) => {
+    const request = route.request();
+    const origin = new URL(page.url() || 'http://localhost:3000').origin;
+    const headers = corsHeaders(origin);
+
+    if (request.method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      headers,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        token: 'fake-jwt-token',
+        expires_in: 3600,
+        user: {
+          id: '1',
+          name: 'Test User',
+          email: 'testuser@example.com',
+          firstName: 'Test',
+          lastName: 'User',
+        },
+      }),
+    });
+  });
+
+  // Vault meta route
+  await page.route(vaultMetaUrl, async (route) => {
+    const request = route.request();
+    const origin = new URL(page.url() || 'http://localhost:3000').origin;
+    const headers = corsHeaders(origin);
+
+    if (request.method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers });
+      return;
+    }
+
+    if (request.method() === 'GET') {
+      if (!serverMeta) {
+        await route.fulfill({
+          status: 404,
+          headers,
+          contentType: 'application/json',
+          body: JSON.stringify({ message: 'Vault not found' }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        headers,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          meta: serverMeta,
+          etag: serverMetaEtag,
+          updatedAt: serverMetaUpdatedAt,
+        }),
+      });
+      return;
+    }
+
+    if (request.method() === 'PUT') {
+      const bodyStr = request.postData();
+      let body: any = undefined;
+      try {
+        body = bodyStr ? JSON.parse(bodyStr) : undefined;
+      } catch (e) {
+        body = undefined;
+      }
+
+      serverMeta = body?.meta ?? serverMeta;
+      serverMetaUpdatedAt = new Date().toISOString();
+      serverMetaEtag = `W/"${Date.now()}"`;
+
+      await route.fulfill({
+        status: 200,
+        headers,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          etag: serverMetaEtag,
+          updatedAt: serverMetaUpdatedAt,
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({ status: 405, headers });
+  });
+
+  // Vault blob route (handles addresses, mobileNumbers, subscriptions, todos, tasks)
+  await page.route(vaultBlobUrl, async (route) => {
+    const request = route.request();
+    const origin = new URL(page.url() || 'http://localhost:3000').origin;
+    const headers = corsHeaders(origin);
+
+    // Extract blob type from URL
+    const blobTypeMatch = request
+      .url()
+      .match(
+        /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos|tasks)/,
+      );
+    const blobType = blobTypeMatch ? blobTypeMatch[1] : 'addresses';
+
+    if (request.method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers });
+      return;
+    }
+
+    if (request.method() === 'GET') {
+      const blob = serverBlobs[blobType];
+      if (!blob) {
+        await route.fulfill({
+          status: 404,
+          headers,
+          contentType: 'application/json',
+          body: JSON.stringify({ message: 'Vault blob not found' }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        headers,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          type: blobType,
+          blob,
+          etag: serverBlobEtags[blobType],
+          updatedAt: serverBlobUpdatedAt[blobType],
+        }),
+      });
+      return;
+    }
+
+    if (request.method() === 'PUT') {
+      const bodyStr = request.postData();
+      let body: any = undefined;
+      try {
+        body = bodyStr ? JSON.parse(bodyStr) : undefined;
+      } catch (e) {
+        body = undefined;
+      }
+
+      const nextBlob = body?.blob;
+      const created = !serverBlobs[blobType];
+      serverBlobs[blobType] = nextBlob;
+      serverBlobUpdatedAt[blobType] = new Date().toISOString();
+      serverBlobEtags[blobType] = `W/"${Date.now()}"`;
+
+      await route.fulfill({
+        status: created ? 201 : 200,
+        headers,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          etag: serverBlobEtags[blobType],
+          updatedAt: serverBlobUpdatedAt[blobType],
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({ status: 405, headers });
+  });
+
+  // Give the client time to hydrate.
+  await page.waitForLoadState('networkidle');
+}
+
+/**
+ * Assert the ConfirmDeleteDialog for a usage location is open with the
+ * expected interpolated title, and return it scoped for further assertions.
+ */
+async function expectDeleteConfirmDialogVisible(
+  page: import('@playwright/test').Page,
+  organisationName: string,
+) {
+  const dialog = page.getByRole('dialog');
+  await expect(
+    dialog.getByText(new RegExp(`Delete "${organisationName}"\\?`)),
+  ).toBeVisible({ timeout: 10000 });
+  return dialog;
+}
+
+test.describe('Addresses (E2E)', () => {
+  test.setTimeout(120000);
+
+  test('should create an address, add and delete usage location, and verify detail route navigation', async ({
+    page,
+    testInfo,
+  }) => {
+    // Setup mock routes for vault
+    await setupRoutes(page);
+
+    // Determine WebKit-specific delay
+    const webkitDelayMs = testInfo.project.name === 'webkit' ? 1500 : 0;
+
+    // Step 0: Login
+    await login(page, { webkitDelayMs });
+
+    // Step A1: Navigate to addresses page
+    await gotoStable(page, '/dashboard/addresses');
+    await page.waitForLoadState('networkidle');
+
+    // Step A2: Create vault (fill passphrase and confirm)
+    const setupPassphrase = page.locator('#setup-passphrase');
+    const setupConfirm = page.locator('#setup-confirm');
+
+    // Wait for setup form to be visible
+    await expect(setupPassphrase).toBeVisible({ timeout: 30000 });
+
+    await setupPassphrase.fill('test-passphrase-12345');
+    await setupConfirm.fill('test-passphrase-12345');
+
+    // Click "Create encrypted vault" button
+    const createVaultButton = page.getByRole('button', {
+      name: /Create encrypted vault|Create Vault/i,
+    });
+    await expect(createVaultButton).toBeVisible();
+    await createVaultButton.click();
+
+    // Step A3: Wait for vault to be created (localStorage should have vault data)
+    await page.waitForFunction(
+      () => {
+        try {
+          const vault = localStorage.getItem('myorganizer_vault_v1');
+          return Boolean(vault);
+        } catch {
+          return false;
+        }
+      },
+      { timeout: 30000 },
+    );
+
+    // Step A4: Unlock vault with the passphrase
+    await unlockWithPassphrase(page, 'test-passphrase-12345');
+
+    // Step A5: Assert list page empty state
+    await expect(page.getByText('No addresses yet')).toBeVisible({
+      timeout: 30000,
+    });
+    const addAddressButton = page
+      .getByRole('button', { name: 'Add address' })
+      .first();
+    await expect(addAddressButton).toBeVisible();
+
+    // Step A6: Click "Add address" button to open sheet
+    await addAddressButton.click();
+
+    // Assert the Add address sheet is open
+    const sheet = page.getByRole('dialog');
+    await expect(sheet.getByText('Add address')).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Step A7: Fill required fields
+    await sheet.getByLabel('Label').fill('E2E Home Address');
+    await sheet.getByLabel('Street').fill('Baker Street');
+    await sheet.getByLabel('Suburb or city').fill('London');
+    await sheet.getByLabel('State or province').fill('Greater London');
+    await sheet.getByLabel('Zip or postal code').fill('NW1 6XE');
+
+    // Step A8: Submit the form
+    const saveButton = sheet.getByRole('button', { name: 'Save address' });
+    await expect(saveButton).toBeVisible();
+    await saveButton.click();
+
+    // Step A9: Assert success state
+    await expect(sheet.getByText('Address saved')).toBeVisible({
+      timeout: 10000,
+    });
+    const setUpUsageLocationsButton = sheet.getByRole('button', {
+      name: 'Set up usage locations',
+    });
+    await expect(setUpUsageLocationsButton).toBeVisible();
+
+    // Step B1: Click "Set up usage locations" to navigate to detail page
+    await setUpUsageLocationsButton.click();
+
+    // Step B2: Assert the detail page loaded and has the correct URL
+    await expect(page).toHaveURL(/\/dashboard\/addresses\/[^/]+$/);
+
+    // Extract the address ID from the URL for Step E
+    const urlMatch = page.url().match(/\/dashboard\/addresses\/([^/]+)$/);
+    const addressId = urlMatch ? urlMatch[1] : null;
+    expect(addressId).toBeTruthy();
+
+    // Step B3: Assert the Usage Locations table is empty on arrival, no dialog opened
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByText('No usage locations yet')).toBeVisible();
+    await expect(
+      page.getByRole('heading', { name: 'Usage Locations' }),
+    ).toBeVisible();
+
+    // Step C1: Click "Add Location" button to open the dialog (use .first() to avoid selector collision)
+    const addLocationButton = page
+      .getByRole('button', { name: 'Add Location' })
+      .first();
+    await expect(addLocationButton).toBeVisible();
+    await addLocationButton.click();
+
+    // Step C2: Assert the UsageLocationDialog opened
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText('Add usage location')).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Step C3: Fill Organisation Name field
+    await dialog.getByLabel('Organisation Name').fill('ATO');
+
+    // Step C4: Submit the dialog (click "Add location" button scoped to dialog)
+    const addLocationSubmitButton = dialog.getByRole('button', {
+      name: 'Add location',
+    });
+    await expect(addLocationSubmitButton).toBeEnabled({ timeout: 10000 });
+    await addLocationSubmitButton.click();
+
+    // Step C5: Assert the dialog closed
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+
+    // Step C6: Assert the table now shows the new usage location
+    const row = page.getByRole('row', { name: /ATO/ });
+    await expect(row).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('No usage locations yet')).not.toBeVisible();
+
+    // Step D1: Click the delete button on the row
+    const deleteButton = row.getByRole('button', { name: 'Delete' });
+    await deleteButton.click();
+
+    // Step D2: Assert the confirm dialog opened
+    const confirmDialog = await expectDeleteConfirmDialogVisible(page, 'ATO');
+    await expect(
+      confirmDialog.getByText(
+        /This action cannot be undone\. This usage location will be permanently removed from this address\./,
+      ),
+    ).toBeVisible();
+
+    // Step D3: Cancel the deletion - nothing should be deleted
+    const cancelButton = confirmDialog.getByRole('button', { name: 'Cancel' });
+    await cancelButton.click();
+
+    // Assert the dialog closed and the row is still present
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(row).toBeVisible();
+
+    // Step D4: Delete for real - click delete button again, then confirm
+    await deleteButton.click();
+
+    // Assert confirm dialog opened again (reopened after the cancelled attempt)
+    const reopenedConfirmDialog = await expectDeleteConfirmDialogVisible(
+      page,
+      'ATO',
+    );
+
+    // Click the destructive Delete button
+    const confirmDeleteButton = reopenedConfirmDialog.getByRole('button', {
+      name: /^Delete$/,
+    });
+    await confirmDeleteButton.click();
+
+    // Step D5: Assert the dialog closed and the row is gone
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(row).not.toBeVisible();
+    await expect(page.getByText('No usage locations yet')).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Step E1: Direct navigation to the detail page (full page navigation, requires re-unlock)
+    await gotoStable(page, `/dashboard/addresses/${addressId}`);
+
+    // Step E2: Re-unlock vault after the full page navigation
+    await unlockWithPassphrase(page, 'test-passphrase-12345');
+
+    // Step E3: Assert the page renders the same address
+    await expect(page.getByText('E2E Home Address')).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(
+      page.getByRole('heading', { name: 'Usage Locations' }),
+    ).toBeVisible();
+    await expect(page.getByText('No usage locations yet')).toBeVisible({
+      timeout: 10000,
+    });
+  });
+});

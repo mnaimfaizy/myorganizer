@@ -20,7 +20,7 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from '@tanstack/react-table';
-import { Edit, ExternalLink, Trash2 } from 'lucide-react';
+import { Building2, Edit, ExternalLink, Plus, Trash2 } from 'lucide-react';
 import { useMemo } from 'react';
 
 import { titleCase } from '../utils/enumUtils';
@@ -28,7 +28,8 @@ import { titleCase } from '../utils/enumUtils';
 interface UsageLocationsTableProps {
   usageLocations: UsageLocationRecord[];
   onEdit: (location: UsageLocationRecord) => void;
-  onDelete: (locationId: string) => void;
+  onRequestDelete: (location: UsageLocationRecord) => void;
+  onAddLocation: () => void;
 }
 
 export function UsageLocationsTable(props: UsageLocationsTableProps) {
@@ -126,7 +127,7 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => props.onDelete(row.original.id)}
+              onClick={() => props.onRequestDelete(row.original)}
               className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
             >
               <Trash2 className="h-4 w-4" />
@@ -154,11 +155,22 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
   if (props.usageLocations.length === 0) {
     return (
       <Card className="p-4">
-        <CardTitle className="text-lg">Used at</CardTitle>
-        <CardContent className="mt-4">
-          <p className="text-sm text-muted-foreground">
-            No usage locations yet.
-          </p>
+        <CardTitle className="text-lg mb-4">Used at</CardTitle>
+        <CardContent className="p-0">
+          <div className="rounded-lg border border-dashed p-8 text-center">
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-md bg-primary/10 text-primary">
+              <Building2 className="h-5 w-5" />
+            </div>
+            <h3 className="font-semibold">No usage locations yet</h3>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+              Add every organisation that needs to be told about this mobile
+              number.
+            </p>
+            <Button onClick={props.onAddLocation} className="mt-4 gap-2">
+              <Plus className="h-4 w-4" />
+              Add location
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
