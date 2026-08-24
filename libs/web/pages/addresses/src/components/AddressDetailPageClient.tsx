@@ -8,11 +8,7 @@ import {
   UsageLocationRecord,
 } from '@myorganizer/core';
 import { Button, ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
-import {
-  loadDecryptedData,
-  normalizeAddresses,
-  saveEncryptedData,
-} from '@myorganizer/web-vault';
+import { normalizeAddresses, type VaultHandle } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -36,7 +32,7 @@ import { UsageLocationDialog } from './UsageLocationDialog';
 import { UsageLocationsTable } from './UsageLocationsTable';
 
 interface AddressDetailsInnerProps {
-  masterKeyBytes: Uint8Array;
+  handle: VaultHandle;
   addressId: string;
 }
 
@@ -63,8 +59,7 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
   const persist = useCallback(
     async (next: AddressRecord[]) => {
       try {
-        await saveEncryptedData({
-          masterKeyBytes: props.masterKeyBytes,
+        await props.handle.saveEncryptedData({
           type: 'addresses',
           value: next,
         });
@@ -79,7 +74,7 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
         throw e;
       }
     },
-    [props.masterKeyBytes, toast],
+    [props.handle, toast],
   );
 
   const persistUsageLocations = useCallback(
@@ -101,11 +96,11 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
       setNotFound(false);
     });
 
-    loadDecryptedData<unknown>({
-      masterKeyBytes: props.masterKeyBytes,
-      type: 'addresses',
-      defaultValue: [],
-    })
+    props.handle
+      .loadDecryptedData<unknown>({
+        type: 'addresses',
+        defaultValue: [],
+      })
       .then(async (raw) => {
         if (!isActive) return;
         const normalized = normalizeAddresses(raw);
@@ -120,8 +115,7 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
         }
 
         if (normalized.changed) {
-          await saveEncryptedData({
-            masterKeyBytes: props.masterKeyBytes,
+          await props.handle.saveEncryptedData({
             type: 'addresses',
             value: normalized.value,
           });
@@ -142,7 +136,7 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
     return () => {
       isActive = false;
     };
-  }, [props.addressId, props.masterKeyBytes, toast]);
+  }, [props.addressId, props.handle, toast]);
 
   const handleEditAddress = useCallback(() => {
     setEditingAddress(true);
@@ -347,11 +341,8 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
 export function AddressDetailPageClient(props: { params: { id: string } }) {
   return (
     <VaultGate title="Address">
-      {({ masterKeyBytes }) => (
-        <AddressDetailsInner
-          masterKeyBytes={masterKeyBytes}
-          addressId={props.params.id}
-        />
+      {({ handle }) => (
+        <AddressDetailsInner handle={handle!} addressId={props.params.id} />
       )}
     </VaultGate>
   );

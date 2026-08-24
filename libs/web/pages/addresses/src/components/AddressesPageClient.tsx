@@ -2,11 +2,7 @@
 
 import { AddressRecord, AddressStatusEnum } from '@myorganizer/core';
 import { ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
-import {
-  loadDecryptedData,
-  normalizeAddresses,
-  saveEncryptedData,
-} from '@myorganizer/web-vault';
+import { normalizeAddresses, type VaultHandle } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -17,7 +13,7 @@ import { AddAddressCard } from './AddAddressCard';
 import { AddressListCard } from './AddressListCard';
 
 interface AddressesInnerProps {
-  masterKeyBytes: Uint8Array;
+  handle: VaultHandle;
 }
 
 function describeAddressDeletion(address: AddressRecord | null): string {
@@ -42,17 +38,16 @@ function AddressesInner(props: AddressesInnerProps) {
   );
 
   useEffect(() => {
-    loadDecryptedData<unknown>({
-      masterKeyBytes: props.masterKeyBytes,
-      type: 'addresses',
-      defaultValue: [],
-    })
+    props.handle
+      .loadDecryptedData<unknown>({
+        type: 'addresses',
+        defaultValue: [],
+      })
       .then(async (raw) => {
         const normalized = normalizeAddresses(raw);
         setItems(normalized.value);
         if (normalized.changed) {
-          await saveEncryptedData({
-            masterKeyBytes: props.masterKeyBytes,
+          await props.handle.saveEncryptedData({
             type: 'addresses',
             value: normalized.value,
           });
@@ -65,14 +60,13 @@ function AddressesInner(props: AddressesInnerProps) {
           variant: 'destructive',
         });
       });
-  }, [props.masterKeyBytes, toast]);
+  }, [props.handle, toast]);
 
   const persist = useCallback(
     async (next: AddressRecord[]) => {
       setItems(next);
       try {
-        await saveEncryptedData({
-          masterKeyBytes: props.masterKeyBytes,
+        await props.handle.saveEncryptedData({
           type: 'addresses',
           value: next,
         });
@@ -86,7 +80,7 @@ function AddressesInner(props: AddressesInnerProps) {
         throw e;
       }
     },
-    [props.masterKeyBytes, toast],
+    [props.handle, toast],
   );
 
   const handleAddAddress = useCallback(
@@ -160,9 +154,7 @@ function AddressesInner(props: AddressesInnerProps) {
 export function AddressesPageClient() {
   return (
     <VaultGate title="Addresses">
-      {({ masterKeyBytes }) => (
-        <AddressesInner masterKeyBytes={masterKeyBytes} />
-      )}
+      {({ handle }) => <AddressesInner handle={handle!} />}
     </VaultGate>
   );
 }

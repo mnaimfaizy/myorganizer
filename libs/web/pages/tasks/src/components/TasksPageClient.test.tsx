@@ -33,8 +33,8 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
   VaultGate: ({
     children,
   }: {
-    children: (props: { masterKeyBytes: Uint8Array }) => unknown;
-  }) => children({ masterKeyBytes: new Uint8Array(32) }) as React.ReactElement,
+    children: (props: { handle: any }) => unknown;
+  }) => children({ handle: { isUnlocked: true } }) as React.ReactElement,
 }));
 
 jest.mock('../workflow');
@@ -286,12 +286,12 @@ describe('TasksPageClient', () => {
     expect(screen.getByText('Task Two')).toBeInTheDocument();
   });
 
-  it('calls useTasksWorkflow with masterKeyBytes from VaultGate', () => {
+  it('calls useTasksWorkflow with handle from VaultGate', () => {
     render(<TasksPageClient />);
 
     expect(mockUseTasksWorkflow).toHaveBeenCalledWith(
       expect.objectContaining({
-        masterKeyBytes: expect.any(Uint8Array),
+        handle: expect.any(Object),
       }),
     );
   });

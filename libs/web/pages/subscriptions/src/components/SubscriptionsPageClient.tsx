@@ -12,9 +12,8 @@ import {
 } from '@myorganizer/core';
 import { Button, ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
-  loadDecryptedData,
   normalizeSubscriptions,
-  saveEncryptedData,
+  type VaultHandle,
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -31,7 +30,7 @@ import {
 } from './SubscriptionsTotalsCard';
 
 interface SubscriptionsInnerProps {
-  masterKeyBytes: Uint8Array;
+  handle: VaultHandle;
 }
 
 function SubscriptionsInner(props: SubscriptionsInnerProps) {
@@ -63,17 +62,16 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
   }, []);
 
   useEffect(() => {
-    loadDecryptedData<unknown>({
-      masterKeyBytes: props.masterKeyBytes,
-      type: 'subscriptions',
-      defaultValue: [],
-    })
+    props.handle
+      .loadDecryptedData<unknown>({
+        type: 'subscriptions',
+        defaultValue: [],
+      })
       .then(async (raw) => {
         const normalized = normalizeSubscriptions(raw);
         setItems(normalized.value);
         if (normalized.changed) {
-          await saveEncryptedData({
-            masterKeyBytes: props.masterKeyBytes,
+          await props.handle.saveEncryptedData({
             type: 'subscriptions',
             value: normalized.value,
           });
@@ -86,13 +84,12 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
           variant: 'destructive',
         });
       });
-  }, [props.masterKeyBytes, toast]);
+  }, [props.handle, toast]);
 
   const persist = useCallback(
     async (next: SubscriptionRecord[]) => {
       try {
-        await saveEncryptedData({
-          masterKeyBytes: props.masterKeyBytes,
+        await props.handle.saveEncryptedData({
           type: 'subscriptions',
           value: next,
         });
@@ -107,7 +104,7 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
         throw e;
       }
     },
-    [props.masterKeyBytes, toast],
+    [props.handle, toast],
   );
 
   const sorted = useMemo(() => {
@@ -397,9 +394,7 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
 export function SubscriptionsPageClient() {
   return (
     <VaultGate title="Subscriptions">
-      {({ masterKeyBytes }) => (
-        <SubscriptionsInner masterKeyBytes={masterKeyBytes} />
-      )}
+      {({ handle }) => <SubscriptionsInner handle={handle!} />}
     </VaultGate>
   );
 }

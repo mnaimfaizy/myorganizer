@@ -121,17 +121,36 @@ jest.mock('./AddAddressCard', () => ({
   ),
 }));
 
+let mockHandleLoadFn: jest.Mock | null = null;
+let mockHandleSaveFn: jest.Mock | null = null;
+
+const createMockHandle = (
+  loadDataMock?: jest.Mock,
+  saveDataMock?: jest.Mock,
+): any => {
+  const load = loadDataMock || jest.fn().mockResolvedValue([]);
+  const save = saveDataMock || jest.fn().mockResolvedValue(undefined);
+  return {
+    isUnlocked: true,
+    loadDecryptedData: load,
+    saveEncryptedData: save,
+  };
+};
+
 jest.mock('@myorganizer/web-vault-ui', () => ({
   VaultGate: ({
     children,
   }: {
-    children: (props: { masterKeyBytes: Uint8Array }) => unknown;
-  }) => children({ masterKeyBytes: new Uint8Array(32) }) as React.ReactElement,
+    children: (props: { handle: any }) => unknown;
+  }) => {
+    const loadFn = mockHandleLoadFn || jest.fn().mockResolvedValue([]);
+    const saveFn = mockHandleSaveFn || jest.fn().mockResolvedValue(undefined);
+    const handle = createMockHandle(loadFn, saveFn);
+    return children({ handle }) as React.ReactElement;
+  },
 }));
 
 jest.mock('@myorganizer/web-vault', () => ({
-  loadDecryptedData: jest.fn(),
-  saveEncryptedData: jest.fn(),
   normalizeAddresses: jest.fn((data) => ({
     value: data || [],
     changed: false,
@@ -151,13 +170,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import type { AddressRecord } from '@myorganizer/core';
 import { useToast } from '@myorganizer/web-ui';
-import { loadDecryptedData, saveEncryptedData } from '@myorganizer/web-vault';
 import { AddressesPageClient } from './AddressesPageClient';
 /* eslint-enable import/first */
 
 const mockUseToast = useToast as jest.Mock;
-const mockLoadDecryptedData = loadDecryptedData as jest.Mock;
-const mockSaveEncryptedData = saveEncryptedData as jest.Mock;
 
 const mockToast = jest.fn();
 
@@ -183,15 +199,15 @@ function makeAddressRecord(
 describe('AddressesPageClient', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockHandleLoadFn = null;
+    mockHandleSaveFn = null;
     mockUseToast.mockReturnValue({ toast: mockToast });
-    mockLoadDecryptedData.mockResolvedValue([]);
-    mockSaveEncryptedData.mockResolvedValue(undefined);
   });
 
   describe('Address list and deletion', () => {
     it('should not render delete dialog before Delete button is clicked', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressesPageClient />);
 
@@ -206,7 +222,7 @@ describe('AddressesPageClient', () => {
 
     it('should open confirm delete dialog when Delete button clicked', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressesPageClient />);
 
@@ -226,7 +242,7 @@ describe('AddressesPageClient', () => {
 
     it('should show address name in delete confirm dialog title', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressesPageClient />);
 
@@ -248,7 +264,7 @@ describe('AddressesPageClient', () => {
 
     it('should not call saveEncryptedData when Delete button clicked (only on confirm)', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressesPageClient />);
 
@@ -273,7 +289,7 @@ describe('AddressesPageClient', () => {
         label: 'Home',
         usageLocations: [],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressesPageClient />);
 
@@ -312,7 +328,7 @@ describe('AddressesPageClient', () => {
           },
         ],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressesPageClient />);
 
@@ -358,7 +374,7 @@ describe('AddressesPageClient', () => {
           },
         ],
       });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressesPageClient />);
 
@@ -381,8 +397,8 @@ describe('AddressesPageClient', () => {
 
     it('should persist deletion when confirm delete clicked', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([address]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<AddressesPageClient />);
 
@@ -414,8 +430,8 @@ describe('AddressesPageClient', () => {
 
     it('should close delete dialog after confirm', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([address]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<AddressesPageClient />);
 
@@ -444,7 +460,7 @@ describe('AddressesPageClient', () => {
 
     it('should not call saveEncryptedData when cancel delete clicked', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressesPageClient />);
 
@@ -469,7 +485,7 @@ describe('AddressesPageClient', () => {
 
     it('should close delete dialog when cancel clicked', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressesPageClient />);
 
@@ -498,7 +514,7 @@ describe('AddressesPageClient', () => {
 
     it('should keep address in list after cancel delete', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
 
       render(<AddressesPageClient />);
 
@@ -524,7 +540,7 @@ describe('AddressesPageClient', () => {
 
     it('should show destructive toast and keep dialog open if save fails', async () => {
       const address = makeAddressRecord('addr1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([address]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
       mockSaveEncryptedData.mockRejectedValue(new Error('Save failed'));
 
       render(<AddressesPageClient />);

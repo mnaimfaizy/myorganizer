@@ -1,5 +1,5 @@
 import type { Task } from '@myorganizer/core';
-import { loadDecryptedData, saveEncryptedData } from '@myorganizer/web-vault';
+import type { VaultHandle } from '@myorganizer/web-vault';
 
 export interface TasksVaultAdapter {
   loadTasks(): Promise<Task[] | null>;
@@ -8,26 +8,23 @@ export interface TasksVaultAdapter {
 }
 
 export function createProductionTasksVaultAdapter(
-  masterKeyBytes: Uint8Array,
+  handle: VaultHandle,
 ): TasksVaultAdapter {
   return {
     async loadTasks() {
-      return loadDecryptedData<Task[] | null>({
-        masterKeyBytes,
+      return handle.loadDecryptedData<Task[] | null>({
         type: 'tasks',
         defaultValue: null,
       });
     },
     async loadTodos() {
-      return loadDecryptedData<unknown>({
-        masterKeyBytes,
+      return handle.loadDecryptedData<unknown>({
         type: 'todos',
         defaultValue: [],
       });
     },
     async saveTasks(tasks) {
-      await saveEncryptedData({
-        masterKeyBytes,
+      await handle.saveEncryptedData({
         type: 'tasks',
         value: tasks,
       });

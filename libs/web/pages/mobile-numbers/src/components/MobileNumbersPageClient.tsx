@@ -3,9 +3,8 @@
 import { MobileNumberRecord } from '@myorganizer/core';
 import { ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
-  loadDecryptedData,
   normalizeMobileNumbers,
-  saveEncryptedData,
+  type VaultHandle,
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import { useCallback, useEffect, useState } from 'react';
@@ -17,7 +16,7 @@ import { AddMobileNumberDialog } from './AddMobileNumberDialog';
 import { MobileNumberListCard } from './MobileNumberListCard';
 
 interface MobileNumbersInnerProps {
-  masterKeyBytes: Uint8Array;
+  handle: VaultHandle;
 }
 
 function describeMobileNumberDeletion(
@@ -43,17 +42,16 @@ function MobileNumbersInner(props: MobileNumbersInnerProps) {
     useState<MobileNumberRecord | null>(null);
 
   useEffect(() => {
-    loadDecryptedData<unknown>({
-      masterKeyBytes: props.masterKeyBytes,
-      type: 'mobileNumbers',
-      defaultValue: [],
-    })
+    props.handle
+      .loadDecryptedData<unknown>({
+        type: 'mobileNumbers',
+        defaultValue: [],
+      })
       .then(async (raw) => {
         const normalized = normalizeMobileNumbers(raw);
         setItems(normalized.value);
         if (normalized.changed) {
-          await saveEncryptedData({
-            masterKeyBytes: props.masterKeyBytes,
+          await props.handle.saveEncryptedData({
             type: 'mobileNumbers',
             value: normalized.value,
           });
@@ -66,14 +64,13 @@ function MobileNumbersInner(props: MobileNumbersInnerProps) {
           variant: 'destructive',
         });
       });
-  }, [props.masterKeyBytes, toast]);
+  }, [props.handle, toast]);
 
   const persist = useCallback(
     async (next: MobileNumberRecord[]) => {
       setItems(next);
       try {
-        await saveEncryptedData({
-          masterKeyBytes: props.masterKeyBytes,
+        await props.handle.saveEncryptedData({
           type: 'mobileNumbers',
           value: next,
         });
@@ -87,7 +84,7 @@ function MobileNumbersInner(props: MobileNumbersInnerProps) {
         throw e;
       }
     },
-    [props.masterKeyBytes, toast],
+    [props.handle, toast],
   );
 
   const handleAddMobileNumber = useCallback(
@@ -159,9 +156,7 @@ function MobileNumbersInner(props: MobileNumbersInnerProps) {
 export function MobileNumbersPageClient() {
   return (
     <VaultGate title="Mobile Numbers">
-      {({ masterKeyBytes }) => (
-        <MobileNumbersInner masterKeyBytes={masterKeyBytes} />
-      )}
+      {({ handle }) => <MobileNumbersInner handle={handle!} />}
     </VaultGate>
   );
 }
