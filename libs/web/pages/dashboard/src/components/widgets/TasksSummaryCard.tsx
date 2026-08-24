@@ -1,43 +1,43 @@
 'use client';
 
-import { loadDecryptedData, normalizeTasks } from '@myorganizer/web-vault';
+import { normalizeTasks, type VaultHandle } from '@myorganizer/web-vault';
 import { CheckSquare } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { VaultStatCard } from './VaultStatCard';
 
 interface TasksSummaryCardProps {
-  masterKeyBytes: Uint8Array | null;
+  handle: VaultHandle | null;
 }
 
-export function TasksSummaryCard({ masterKeyBytes }: TasksSummaryCardProps) {
+export function TasksSummaryCard({ handle }: TasksSummaryCardProps) {
   return (
     <VaultStatCard
-      masterKeyBytes={masterKeyBytes}
+      handle={handle}
       icon={<CheckSquare className="h-4 w-4" />}
       title="Tasks"
     >
-      {(mk) => <TasksSummaryContent masterKeyBytes={mk} />}
+      {(h) => <TasksSummaryContent handle={h} />}
     </VaultStatCard>
   );
 }
 
 interface TasksSummaryContentProps {
-  masterKeyBytes: Uint8Array;
+  handle: VaultHandle;
 }
 
-function TasksSummaryContent({ masterKeyBytes }: TasksSummaryContentProps) {
+function TasksSummaryContent({ handle }: TasksSummaryContentProps) {
   const [summary, setSummary] = useState<{
     counts: Record<string, number>;
     total: number;
   } | null>(null);
 
   useEffect(() => {
-    loadDecryptedData<unknown>({
-      masterKeyBytes,
-      type: 'tasks',
-      defaultValue: [],
-    })
+    handle
+      .loadDecryptedData<unknown>({
+        type: 'tasks',
+        defaultValue: [],
+      })
       .then((raw) => {
         const { value } = normalizeTasks(raw);
         const nonArchivedTasks = value.filter((task) => !task.archived);
@@ -71,7 +71,7 @@ function TasksSummaryContent({ masterKeyBytes }: TasksSummaryContentProps) {
           total: 0,
         }),
       );
-  }, [masterKeyBytes]);
+  }, [handle]);
 
   if (summary === null) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;

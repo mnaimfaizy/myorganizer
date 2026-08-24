@@ -1,48 +1,46 @@
 'use client';
 
-import { loadDecryptedData, normalizeAddresses } from '@myorganizer/web-vault';
+import { normalizeAddresses, type VaultHandle } from '@myorganizer/web-vault';
 import { MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import { VaultStatCard } from './VaultStatCard';
 
 interface AddressesCountCardProps {
-  masterKeyBytes: Uint8Array | null;
+  handle: VaultHandle | null;
 }
 
-export function AddressesCountCard({
-  masterKeyBytes,
-}: AddressesCountCardProps) {
+export function AddressesCountCard({ handle }: AddressesCountCardProps) {
   return (
     <VaultStatCard
-      masterKeyBytes={masterKeyBytes}
+      handle={handle}
       icon={<MapPin className="h-4 w-4" />}
       title="Addresses"
     >
-      {(mk) => <AddressesContent masterKeyBytes={mk} />}
+      {(h) => <AddressesContent handle={h} />}
     </VaultStatCard>
   );
 }
 
 interface AddressesContentProps {
-  masterKeyBytes: Uint8Array;
+  handle: VaultHandle;
 }
 
-function AddressesContent({ masterKeyBytes }: AddressesContentProps) {
+function AddressesContent({ handle }: AddressesContentProps) {
   const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {
-    loadDecryptedData<unknown>({
-      masterKeyBytes,
-      type: 'addresses',
-      defaultValue: [],
-    })
+    handle
+      .loadDecryptedData<unknown>({
+        type: 'addresses',
+        defaultValue: [],
+      })
       .then((raw) => {
         const { value } = normalizeAddresses(raw);
         setCount(value.length);
       })
       .catch(() => setCount(0));
-  }, [masterKeyBytes]);
+  }, [handle]);
 
   if (count === null) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;

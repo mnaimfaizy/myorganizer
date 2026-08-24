@@ -1,8 +1,8 @@
 'use client';
 
 import {
-  loadDecryptedData,
   normalizeMobileNumbers,
+  type VaultHandle,
 } from '@myorganizer/web-vault';
 import { Phone } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -10,42 +10,42 @@ import { useEffect, useState } from 'react';
 import { VaultStatCard } from './VaultStatCard';
 
 interface MobileNumbersCountCardProps {
-  masterKeyBytes: Uint8Array | null;
+  handle: VaultHandle | null;
 }
 
 export function MobileNumbersCountCard({
-  masterKeyBytes,
+  handle,
 }: MobileNumbersCountCardProps) {
   return (
     <VaultStatCard
-      masterKeyBytes={masterKeyBytes}
+      handle={handle}
       icon={<Phone className="h-4 w-4" />}
       title="Mobile Numbers"
     >
-      {(mk) => <MobileNumbersContent masterKeyBytes={mk} />}
+      {(h) => <MobileNumbersContent handle={h} />}
     </VaultStatCard>
   );
 }
 
 interface MobileNumbersContentProps {
-  masterKeyBytes: Uint8Array;
+  handle: VaultHandle;
 }
 
-function MobileNumbersContent({ masterKeyBytes }: MobileNumbersContentProps) {
+function MobileNumbersContent({ handle }: MobileNumbersContentProps) {
   const [count, setCount] = useState<number | null>(null);
 
   useEffect(() => {
-    loadDecryptedData<unknown>({
-      masterKeyBytes,
-      type: 'mobileNumbers',
-      defaultValue: [],
-    })
+    handle
+      .loadDecryptedData<unknown>({
+        type: 'mobileNumbers',
+        defaultValue: [],
+      })
       .then((raw) => {
         const { value } = normalizeMobileNumbers(raw);
         setCount(value.length);
       })
       .catch(() => setCount(0));
-  }, [masterKeyBytes]);
+  }, [handle]);
 
   if (count === null) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
