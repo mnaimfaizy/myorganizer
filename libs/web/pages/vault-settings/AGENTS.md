@@ -2,7 +2,7 @@
 
 ## Scope
 
-Dashboard vault settings page for ciphertext export/import cards and Google Drive cloud backup (`/dashboard/account/vault`). Not a vault blob CRUD page.
+Dashboard vault settings page for ciphertext export/import cards and Google Drive cloud backup (`/dashboard/account/vault`). Not a vault blob CRUD page. The `useCloudBackup`, `useGoogleIdentityScript`, and `useLatestCloudBackup` hooks live in `@myorganizer/web-pages/vault`; this page imports them from there rather than holding a second copy. Only the cross-source `useLatestBackup` hook (for `LastBackupCard`) stays local.
 
 ## Do
 

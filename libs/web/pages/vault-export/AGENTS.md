@@ -2,7 +2,9 @@
 
 ## Scope
 
-Dashboard vault export/import page for ciphertext bundles.
+Dashboard vault export/import page for ciphertext bundles (`/dashboard/vault-export`). The
+export/import cards themselves live in `@myorganizer/web-pages/vault`; this library re-exports
+them rather than holding a second copy.
 
 ## Do
 

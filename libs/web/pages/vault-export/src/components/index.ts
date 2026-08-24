@@ -1,2 +1,1 @@
-export * from './ExportVaultCard';
-export * from './ImportVaultCard';
+export { ExportVaultCard, ImportVaultCard } from '@myorganizer/web-pages/vault';

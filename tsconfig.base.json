@@ -37,6 +37,7 @@
         "libs/web/pages/subscriptions/src/index.ts"
       ],
       "@myorganizer/web-pages/tasks": ["libs/web/pages/tasks/src/index.ts"],
+      "@myorganizer/web-pages/vault": ["libs/web/pages/vault/src/index.ts"],
       "@myorganizer/web-pages/vault-export": [
         "libs/web/pages/vault-export/src/index.ts"
       ],

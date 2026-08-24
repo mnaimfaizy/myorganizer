@@ -3,6 +3,11 @@
 import { useCallback, useMemo } from 'react';
 
 import {
+  useCloudBackup,
+  useGoogleIdentityScript,
+  useLatestCloudBackup,
+} from '@myorganizer/web-pages/vault';
+import {
   ExportVaultCard,
   ImportVaultCard,
 } from '@myorganizer/web-pages/vault-export';
@@ -12,10 +17,7 @@ import {
 } from '@myorganizer/web-vault';
 import { CloudBackupCard, LastBackupCard } from '@myorganizer/web-vault-ui';
 
-import { useCloudBackup } from './hooks/useCloudBackup';
-import { useGoogleIdentityScript } from './hooks/useGoogleIdentityScript';
 import { useLatestBackup } from './hooks/useLatestBackup';
-import { useLatestCloudBackup } from './hooks/useLatestCloudBackup';
 
 export default function VaultSettingsPage() {
   const latest = useLatestBackup();

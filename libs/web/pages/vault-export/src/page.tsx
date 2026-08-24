@@ -1,5 +1,4 @@
-import { ExportVaultCard } from './components/ExportVaultCard';
-import { ImportVaultCard } from './components/ImportVaultCard';
+import { ExportVaultCard, ImportVaultCard } from './components';
 
 export default function VaultExportPage() {
   return (
