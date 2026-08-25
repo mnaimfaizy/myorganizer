@@ -7,11 +7,14 @@ import type { Task } from '@myorganizer/core';
 import { normalizeTasks, type VaultHandle } from '@myorganizer/web-vault';
 import { TasksSummaryCard } from './TasksSummaryCard';
 
-const createMockHandle = (loadDecryptedDataMock?: jest.Mock): VaultHandle => {
+const createMockHandle = (
+  loadDecryptedDataMock?: jest.Mock,
+  isUnlocked = true,
+): VaultHandle => {
   const mock = loadDecryptedDataMock || jest.fn().mockResolvedValue([]);
   return {
     owner: 'test-user',
-    isUnlocked: true,
+    isUnlocked,
     hasVault: jest.fn(),
     loadVault: jest.fn(),
     saveVault: jest.fn(),
@@ -44,9 +47,9 @@ describe('TasksSummaryCard', () => {
     });
 
     it('should not attempt to load encrypted data when handle is locked', () => {
-      const mockHandle = createMockHandle();
-      // Mock with locked state
-      mockHandle.isUnlocked = false;
+      // `isUnlocked` is readonly on VaultHandle — build the locked handle
+      // rather than mutating one that claims to be unlocked.
+      const mockHandle = createMockHandle(undefined, false);
       render(<TasksSummaryCard handle={mockHandle} />);
       expect(mockHandle.loadDecryptedData).not.toHaveBeenCalled();
     });
