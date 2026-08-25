@@ -156,3 +156,33 @@ Aim for meaningful coverage, not high percentages. Priority order:
 - Tampered input (corrupted ciphertext, oversized payloads, invalid schema versions) → assert
   throws, not silent corruption.
 - Input sanitization → assert invalid characters/formats are rejected at the boundary.
+
+### Credentials in test fixtures
+
+A pre-tool-use hook (`tools/scripts/copilot-hooks/secret-scan.mjs`) blocks tool input that looks
+like a committed credential. Its rule is narrow and purely mechanical — a credential keyword,
+then `:` or `=`, then a quoted literal of **16 or more** characters:
+
+```
+/(?:client[_-]?secret|refresh[_-]?token|access[_-]?token|api[_-]?key|password|passphrase)\s*[:=]\s*['"`][^'"`\n]{16,}['"`]/i
+```
+
+Assigning a 28-character phrase to a variable named `passphrase` is therefore blocked, while
+`const passphrase = 'vault-pass-a'` passes. Specs written before the hook existed still contain
+the long form; they are not a precedent, because the hook only scans tool input and never
+re-scans what is already committed.
+
+**Keep test passphrases and passwords to 10–15 characters.** `VaultGate` requires at least 10
+(`setupPassphrase.length >= 10`), and the hook triggers at 16, so that window satisfies both.
+`apps/myorganizer-e2e/src/e2e/multi-user-vault.spec.ts` is the worked example.
+
+Do **not** encode a value, rename a variable to dodge the keyword, or move fixture credentials
+into env vars or a side-channel script to get past the hook. Those defeat a control rather than
+satisfy it, and a scanner that agents route around protects nothing. If a fixture genuinely
+cannot be written within the rule, stop and say so rather than improvising.
+
+> Two separate scaffold runs — one Jest, one Playwright — each burned well over 100k tokens
+> concluding this hook was unworkable and reaching for base64 and char-code encodings. The rule
+> was documented nowhere they read. That is why it is written here. This very section was itself
+> blocked on first write, for quoting a long literal as an example; the fix was to describe it
+> instead, not to work around the scanner.
