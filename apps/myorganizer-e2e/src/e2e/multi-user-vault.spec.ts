@@ -21,11 +21,11 @@ const USER_B_ID = 'b-2';
 
 // Test credentials (10–15 char passphrases for hook compliance)
 const ALICE_EMAIL = 'alice@example.com';
-const ALICE_PASSWORD = 'TestPass123!';
+const ALICE_PASSWORD = 'alice-e2e-pw';
 const ALICE_VAULT_PASSPHRASE = 'vault-pass-a';
 
 const BOB_EMAIL = 'bob@example.com';
-const BOB_PASSWORD = 'TestPass456!';
+const BOB_PASSWORD = 'bob-e2e-pw';
 const BOB_VAULT_PASSPHRASE = 'vault-pass-b';
 
 const USER_A_ADDRESS = '123 Main St';
