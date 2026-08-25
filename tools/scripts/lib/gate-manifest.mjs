@@ -70,6 +70,12 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'deploy:pages:check',
+    npmScript: 'deploy:pages:check',
+    script: 'tools/scripts/check-deploy-pipeline.mjs',
+    args: [],
+  },
+  {
     id: 'agents:sync:check (subagents)',
     npmScript: 'agents:sync:check',
     script: 'tools/scripts/sync-subagents.mjs',

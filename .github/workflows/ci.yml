@@ -553,6 +553,9 @@ jobs:
       - name: Feature index checker contracts
         run: corepack yarn feature-index:test
 
+      - name: Release pipeline page checker contracts
+        run: corepack yarn deploy:pages:test
+
       - name: Lint coverage checker contracts
         run: corepack yarn lint:coverage:test
 
@@ -629,6 +632,9 @@ jobs:
 
       - name: Check auth diagram pages
         run: corepack yarn auth:pages:check
+
+      - name: Check release pipeline page
+        run: corepack yarn deploy:pages:check
 
       - name: Check sub-agent sync
         run: corepack yarn agents:sync:check

@@ -12,10 +12,17 @@ import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import {
+  CANONICAL_FONT_PAGE,
+  LEGACY,
+  ROSTER,
+} from './lib/design-page-roster.mjs';
+
 const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const CHECKER_SOURCE = join(SCRIPT_DIR, 'check-design-hygiene.mjs');
 const SCAN_SOURCE = join(SCRIPT_DIR, 'lib', 'design-page-scan.mjs');
 const SHARED_SCAN_SOURCE = join(SCRIPT_DIR, 'lib', 'source-scan.mjs');
+const ROSTER_SOURCE = join(SCRIPT_DIR, 'lib', 'design-page-roster.mjs');
 
 const FONT_BLOCK =
   '@font-face { font-family: Caprasimo; src: url(data:font/woff2;base64,AAAA); }';
@@ -44,20 +51,16 @@ function housePage(title) {
   ].join('\n');
 }
 
-const ROSTER_PAGES = [
-  'docs/agents/orchestration-map.html',
-  'docs/sandcastle/dispatch-map.html',
-  'docs/sandcastle/gates.html',
-  'docs/sandcastle/logs.html',
-  'docs/sandcastle/resume.html',
-  'docs/sandcastle/waves.html',
-];
+// Derived from the checker's own roster, not copied from it. A hand-kept copy went
+// stale the first time the roster grew: the fixture came up one page short and two
+// tests failed with `page-missing`, a bookkeeping failure dressed as a page defect.
+const ROSTER_PAGES = ROSTER;
+const LEGACY_PAGES = Object.keys(LEGACY);
 
-const LEGACY_PAGES = [
-  'docs/agents/agent-journey.html',
-  'docs/agents/skill-atlas.html',
-  'docs/authentication/session-lifecycle.html',
-  'docs/vault/trust-boundary.html',
+// Every page the fixture must write. CANONICAL_FONT_PAGE is a LEGACY entry today
+// and is listed anyway, so the fixture does not depend on it staying one.
+const FIXTURE_PAGES = [
+  ...new Set([...ROSTER_PAGES, ...LEGACY_PAGES, CANONICAL_FONT_PAGE]),
 ];
 
 function createWorkspace(t) {
@@ -79,21 +82,20 @@ function createWorkspace(t) {
     'tools/scripts/lib/source-scan.mjs',
     readFileSync(SHARED_SCAN_SOURCE, 'utf8'),
   );
+  write(
+    workspace,
+    'tools/scripts/lib/design-page-roster.mjs',
+    readFileSync(ROSTER_SOURCE, 'utf8'),
+  );
 
-  // The canonical font page is also a LEGACY entry, so it must exist either way.
-  write(workspace, 'docs/vault/lifecycle.html', housePage('lifecycle'));
-  for (const page of [...ROSTER_PAGES, ...LEGACY_PAGES]) {
+  for (const page of FIXTURE_PAGES) {
     write(
       workspace,
       page,
       housePage(page.split('/').pop().replace('.html', '')),
     );
   }
-  write(
-    workspace,
-    '.prettierignore',
-    [...ROSTER_PAGES, ...LEGACY_PAGES, 'docs/vault/lifecycle.html'].join('\n'),
-  );
+  write(workspace, '.prettierignore', FIXTURE_PAGES.join('\n'));
 
   return workspace;
 }
