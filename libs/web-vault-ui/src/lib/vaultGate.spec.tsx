@@ -608,4 +608,44 @@ describe('VaultGate', () => {
       });
     });
   });
+
+  describe('handle identity change recovery', () => {
+    test('when handle changes from null to a handle with vaultStatus "owned", shows unlock panel not create panel', () => {
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'owned'),
+      });
+
+      // Initially render with no session (handle is null)
+      mockUseOptionalVaultSession.mockReturnValue(null);
+
+      const { rerender } = render(
+        <VaultGate title="MyVault">{() => <div>children</div>}</VaultGate>,
+      );
+
+      // Initially shows create panel because handle is null, so vaultStatus defaults to 'absent'
+      expect(
+        screen.getByText(/MyVault: Set encryption passphrase/),
+      ).toBeInTheDocument();
+
+      // Rerender with handle now available whose vaultStatus is 'owned'
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+
+      rerender(
+        <VaultGate title="MyVault">{() => <div>children</div>}</VaultGate>,
+      );
+
+      // Must show unlock panel after handle change
+      expect(screen.getByText(/MyVault: Unlock/)).toBeInTheDocument();
+
+      // Must NOT show create panel — this is the whole point of the fix
+      expect(
+        screen.queryByText(/MyVault: Set encryption passphrase/),
+      ).not.toBeInTheDocument();
+    });
+  });
 });

@@ -9,7 +9,7 @@ import {
   Label,
   useToast,
 } from '@myorganizer/web-ui';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import {
   type LocalVaultStatus,
@@ -45,6 +45,19 @@ export function VaultGate(props: VaultGateProps) {
     () => handle?.vaultStatus() ?? 'absent',
   );
   const [declinedClaim, setDeclinedClaim] = useState(false);
+
+  const handleRef = useRef(handle);
+
+  // Render-phase reset: if handle identity changes, re-read status from storage
+  let currentVaultStatus = vaultStatus;
+  let currentDeclinedClaim = declinedClaim;
+  if (handleRef.current !== handle) {
+    handleRef.current = handle;
+    currentVaultStatus = handle?.vaultStatus() ?? 'absent';
+    currentDeclinedClaim = false;
+    setVaultStatus(currentVaultStatus);
+    setDeclinedClaim(false);
+  }
   const [localMasterKeyBytes, setLocalMasterKeyBytes] =
     useState<Uint8Array | null>(null);
 
@@ -77,7 +90,7 @@ export function VaultGate(props: VaultGateProps) {
     );
   }
 
-  if (vaultStatus === 'unclaimed' && !declinedClaim) {
+  if (currentVaultStatus === 'unclaimed' && !currentDeclinedClaim) {
     return (
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
         <VaultClaimOffer
@@ -92,7 +105,7 @@ export function VaultGate(props: VaultGateProps) {
     );
   }
 
-  if (vaultStatus !== 'owned') {
+  if (currentVaultStatus !== 'owned') {
     const canCreate =
       setupPassphrase.length >= 10 &&
       setupPassphrase === setupConfirm &&
