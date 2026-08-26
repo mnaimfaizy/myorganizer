@@ -24,7 +24,9 @@ trusts it will skip everything it says is covered.
   `.agents/skills/unit-test-delegation-workflow/SKILL.md`. Those design automation. This skill
   documents what automation cannot reach.
 - Reviewing the diff for defects → `.agents/skills/code-review/SKILL.md`.
-- No Pull Request is open yet. The merge-base must be pinned before coverage is attributable.
+- **There is no open Pull Request, or no branch, for the subject.** A QA Plan verifies work that
+  exists. Without a branch there is no diff, and without a Pull Request there is no pinned
+  merge-base, so no coverage claim can be attributed. See the precondition in step 1.
 
 ## Modes
 
@@ -67,6 +69,9 @@ GitHub, and do not leave a PRD-mode plan in `tmp/`.
 - **Do not delegate the body.** Compose it here. In PRD mode publish directly with `gh` — an
   intermediary that re-words load-bearing exclusions is a liability, and the ad-hoc issue template
   does not fit this shape. Same reasoning as `to-prd`.
+- **Verify the work exists before planning to verify it.** An issue describing a defect that
+  nobody has fixed yet has nothing to QA. Halt rather than producing a plan for code that does not
+  exist — such a plan is speculation, and it is worse than none because it looks authoritative.
 - **One QA Plan Issue per PRD Issue.** Search before creating.
 - **This is invoked, never enforced.** Do not add a gate asserting that a Pull Request links a QA
   Plan — that is the "surface X changed, therefore doc Y must change" shape ADR 0043 deliberately
@@ -75,9 +80,22 @@ GitHub, and do not leave a PRD-mode plan in `tmp/`.
 
 ## Workflow
 
-### 1. Fix the anchors and resolve the mode
+### 1. Check the precondition, then fix the anchors
 
-Establish and state these. Do not proceed while any is unknown:
+**Before anything else, confirm the subject has work to verify.** Check for a branch and an open
+Pull Request:
+
+```sh
+gh pr list --state open --json number,title,headRefName
+git branch -a
+```
+
+**Halt immediately if either is missing.** Report which is absent, state that the subject has no
+implemented work, and recommend the actual next step (implement it, or open the Pull Request).
+Do not offer a partial plan, a provisional plan, or a plan "to use later" — a QA Plan asserts what
+automation proves about a specific diff, and there is no diff.
+
+Only once both exist, establish and state these. Do not proceed while any is unknown:
 
 - the subject issue number, and whether it is a PRD Issue (→ PRD mode) or not (→ Issue mode)
 - the Pull Request number
@@ -197,6 +215,7 @@ The short list of outcomes that block the merge outright, stated as observable r
 
 ## Completion Criteria
 
+- A branch and an open Pull Request were confirmed to exist before any planning began.
 - The mode was resolved from the subject issue and stated explicitly.
 - Every coverage claim is tagged `[observed]` or `[reconstructed]`.
 - No scenario re-tests something the coverage section says is covered.

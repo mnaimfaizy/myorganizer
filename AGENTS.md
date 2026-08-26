@@ -143,12 +143,13 @@ labels, map them — **first match wins, top to bottom**, because issues routine
 | `documentation`                          | `docs/`  |
 | `tooling`, `maintenance`, `dependencies` | `chore/` |
 | `research`                               | `docs/`  |
-| `qa`                                     | `chore/` |
 | CI/workflow changes only                 | `ci/`    |
 | _no label matches_                       | `chore/` |
 
-`qa` and `research` rank last on purpose: they say why work is tracked, not what it changes. An
-issue labelled `tooling` + `maintenance` + `qa` is a chore, not documentation.
+`research` ranks last on purpose: it says why work is tracked, not what it changes. An issue
+labelled `tooling` + `maintenance` + `research` is a chore, not documentation.
+
+`qa` and `grilling` are Issue Orchestration Labels, not Surface Labels ([ADR 0049](docs/adr/0049-qa-and-grilling-are-orchestration-labels.md)), so they never pick a branch type and never appear on a Pull Request. `qa` marks a **QA Plan Issue** and nothing else; `grilling` marks an issue whose design must be stress-tested before work starts.
 
 Slugs are lowercase, hyphen-separated, and short (~40 chars) — enough to recognise the branch in
 `git branch`, not a restatement of the title.

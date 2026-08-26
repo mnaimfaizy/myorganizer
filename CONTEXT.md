@@ -277,7 +277,7 @@ A QA Plan for a PRD Issue, published as a GitHub issue labelled `qa`. Scenarios 
 _Avoid_: QA ticket, test ticket, validation issue
 
 **Issue Orchestration Label**:
-A GitHub label from the ADR 0002 vocabulary that coordinates planning tools and dispatch-agents. Applies to Issues only — never to Pull Requests.
+A GitHub label in the `orchestration` set of `tools/config/github-labels.json` that coordinates planning tools and dispatch-agents. Applies to Issues only — never to Pull Requests. Includes the ADR 0002 machine contract plus the document-type markers `prd`, `qa`, and `grilling`.
 _Avoid_: agent label, workflow label, status label (as the general name)
 
 **Surface Label**:
