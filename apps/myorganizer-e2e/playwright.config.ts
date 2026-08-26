@@ -39,8 +39,8 @@ export default defineConfig({
    */
   webServer: {
     command: useDevServer
-      ? 'npx nx run myorganizer:serve:development'
-      : 'npx nx run myorganizer:serve:production',
+      ? 'corepack yarn nx run myorganizer:serve:development'
+      : 'corepack yarn nx run myorganizer:serve:production',
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     cwd: workspaceRoot,

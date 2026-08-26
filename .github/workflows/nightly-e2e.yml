@@ -39,6 +39,11 @@ jobs:
           - browser: webkit
             target: e2e-webkit
 
+    env:
+      # Playwright's webServer starts Nx as a nested child process, and the Nx
+      # daemon does not survive that cleanly on hosted runners.
+      NX_DAEMON: 'false'
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -60,6 +65,11 @@ jobs:
       # browser binaries: restoring the cache costs about what downloading does.
       - name: Install Playwright ${{ matrix.browser }}
         run: corepack yarn playwright install --with-deps ${{ matrix.browser }}
+
+      # Built here rather than inside Playwright's webServer timeout, so a build
+      # failure is attributable and starting the server is only that.
+      - name: Build frontend for E2E
+        run: corepack yarn nx run myorganizer:build:production
 
       # --fail-on-flaky-tests lives here and not on the blocking lane. A test
       # that passes on retry is not evidence that a pull request broke
