@@ -3,6 +3,7 @@ import {
   gotoStable,
   E2E_USER_ID,
   removeOwnedVault,
+  routeApi,
   waitForOwnedVault,
 } from './helpers';
 
@@ -127,7 +128,7 @@ function setupBackend(page: Page) {
 
   const headersFor = (origin: string) => corsHeaders(origin);
 
-  page.route(loginUrl, async (route) => {
+  routeApi(page, loginUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
@@ -153,7 +154,7 @@ function setupBackend(page: Page) {
     });
   });
 
-  page.route(backupsLatestUrl, async (route) => {
+  routeApi(page, backupsLatestUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
@@ -191,7 +192,7 @@ function setupBackend(page: Page) {
     });
   });
 
-  page.route(backupsRecordUrl, async (route) => {
+  routeApi(page, backupsRecordUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
@@ -225,7 +226,7 @@ function setupBackend(page: Page) {
     });
   });
 
-  page.route(vaultMetaUrl, async (route) => {
+  routeApi(page, vaultMetaUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
@@ -275,7 +276,7 @@ function setupBackend(page: Page) {
     await route.fulfill({ status: 405, headers });
   });
 
-  page.route(vaultBlobUrl, async (route) => {
+  routeApi(page, vaultBlobUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
@@ -355,6 +356,9 @@ async function installGoogleMocks(
   // Mock the GIS script load — the loader script itself is irrelevant because
   // we pre-populate `window.google.accounts.oauth2`. We just need the request
   // to resolve so the script tag's `load` event fires.
+  // Intercepts the Google Identity Services *script*, not an API, so it must
+  // not fall through to the network.
+  // eslint-disable-next-line no-restricted-syntax -- script stub, not an API stub
   await page.route(/accounts\.google\.com\/gsi\/client/, async (route) => {
     await route.fulfill({
       status: 200,
@@ -368,6 +372,9 @@ async function installGoogleMocks(
   // so we keep the appDataFolder state inside the browser instead and use
   // route handlers to dispatch into a small worker below. To keep things
   // self-contained, we route into the same in-page handler via window.
+  // Third-party Google Drive REST host, not this app's API — no app route can
+  // collide with it.
+  // eslint-disable-next-line no-restricted-syntax -- third-party host, not an API stub
   await page.route(
     /^https:\/\/(www\.)?googleapis\.com\/(upload\/)?drive\/v3\/.*/,
     async (route) => {

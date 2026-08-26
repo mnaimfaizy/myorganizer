@@ -1,3 +1,4 @@
+export { routeApi } from './apiStub';
 export { GroceriesPage } from './GroceriesPage';
 export { gotoStable } from './navigation';
 export {

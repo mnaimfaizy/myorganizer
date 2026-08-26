@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { gotoStable, E2E_USER_ID, waitForOwnedVault } from './helpers';
+import {
+  gotoStable,
+  E2E_USER_ID,
+  routeApi,
+  waitForOwnedVault,
+} from './helpers';
 
 /**
  * E2E tests for groceries list management (create / rename / delete / accessibility)
@@ -28,7 +33,7 @@ async function login(
 ) {
   // Mock the login API endpoint
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
-  await page.route(loginUrl, async (route) => {
+  await routeApi(page, loginUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
 
@@ -261,7 +266,7 @@ async function _setupRoutes(page: import('@playwright/test').Page) {
   const putRequests: PutRecord[] = [];
   let failNextPut = false;
 
-  await page.route(loginUrl, async (route) => {
+  await routeApi(page, loginUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = corsHeaders(origin);
@@ -289,7 +294,7 @@ async function _setupRoutes(page: import('@playwright/test').Page) {
     });
   });
 
-  await page.route(vaultMetaUrl, async (route) => {
+  await routeApi(page, vaultMetaUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = corsHeaders(origin);
@@ -352,7 +357,7 @@ async function _setupRoutes(page: import('@playwright/test').Page) {
     await route.fulfill({ status: 405, headers });
   });
 
-  await page.route(vaultBlobUrl, async (route) => {
+  await routeApi(page, vaultBlobUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = corsHeaders(origin);

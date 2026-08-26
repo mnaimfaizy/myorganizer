@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { gotoStable, E2E_USER_ID, waitForOwnedVault } from './helpers';
+import {
+  gotoStable,
+  E2E_USER_ID,
+  routeApi,
+  waitForOwnedVault,
+} from './helpers';
 
 /**
  * E2E tests for tasks management (create / persistence across reload / delete)
@@ -25,7 +30,7 @@ async function login(
 ) {
   // Mock the login API endpoint
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
-  await page.route(loginUrl, async (route) => {
+  await routeApi(page, loginUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
 
@@ -168,7 +173,7 @@ async function setupRoutes(page: import('@playwright/test').Page) {
   };
 
   // Login route
-  await page.route(loginUrl, async (route) => {
+  await routeApi(page, loginUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = corsHeaders(origin);
@@ -197,7 +202,7 @@ async function setupRoutes(page: import('@playwright/test').Page) {
   });
 
   // Vault meta route
-  await page.route(vaultMetaUrl, async (route) => {
+  await routeApi(page, vaultMetaUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = corsHeaders(origin);
@@ -261,7 +266,7 @@ async function setupRoutes(page: import('@playwright/test').Page) {
   });
 
   // Vault blob route (handles addresses, mobileNumbers, subscriptions, todos, tasks)
-  await page.route(vaultBlobUrl, async (route) => {
+  await routeApi(page, vaultBlobUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = corsHeaders(origin);
@@ -384,7 +389,11 @@ test.describe('Tasks (E2E)', () => {
     // Step 5: Unlock vault with the passphrase
     await unlockWithPassphrase(page, 'test-passphrase-12345');
 
-    // Step 6: Wait for task form to be visible
+    // Step 6: Open the add-task dialog, then wait for its form.
+    // The form used to render inline on the page; it now lives behind the
+    // "Add Task" button in TaskAddDialog (issue #506).
+    await page.getByRole('button', { name: 'Add Task' }).first().click();
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 30000 });
     await expect(page.getByLabel('Title')).toBeVisible({ timeout: 30000 });
 
     // Step 7: Fill task title
@@ -392,8 +401,11 @@ test.describe('Tasks (E2E)', () => {
 
     // Priority is already 'medium' by default (no need to change)
 
-    // Step 8: Submit the form
-    const submitButton = page.getByRole('button', { name: 'Add Task' });
+    // Step 8: Submit the form. Scoped to the dialog: the page's own
+    // "Add Task" trigger shares the submit button's accessible name.
+    const submitButton = page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Add Task' });
     await expect(submitButton).toBeVisible();
     await submitButton.click();
 
@@ -415,7 +427,9 @@ test.describe('Tasks (E2E)', () => {
     await expect(taskTitle).toBeVisible();
 
     // Verify priority 'medium' is displayed
-    const taskItem = taskTitle.locator('..');
+    // The badge sits in a sibling row of the title's own flex row, so the
+    // shared ancestor is two levels up from the heading.
+    const taskItem = taskTitle.locator('..').locator('..');
     const priorityBadge = taskItem.locator('span', { hasText: 'medium' });
     await expect(priorityBadge).toBeVisible();
 
@@ -443,7 +457,7 @@ test.describe('Tasks (E2E)', () => {
     await expect(reloadedTaskTitle).toBeVisible();
 
     // Step 15: Verify priority 'medium' is still displayed after reload
-    const reloadedTaskItem = reloadedTaskTitle.locator('..');
+    const reloadedTaskItem = reloadedTaskTitle.locator('..').locator('..');
     const reloadedPriorityBadge = reloadedTaskItem.locator('span', {
       hasText: 'medium',
     });

@@ -65,7 +65,7 @@ export function AddAddressFormFields(props: AddAddressFormFieldsProps) {
           name="propertyNumber"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Property number</FormLabel>
+              <FormLabel htmlFor="addr-property">Property number</FormLabel>
               <FormControl>
                 <Input id="addr-property" placeholder="221B" {...field} />
               </FormControl>
@@ -79,7 +79,7 @@ export function AddAddressFormFields(props: AddAddressFormFieldsProps) {
           name="street"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Street</FormLabel>
+              <FormLabel htmlFor="addr-street">Street</FormLabel>
               <FormControl>
                 <Input id="addr-street" placeholder="Baker Street" {...field} />
               </FormControl>
@@ -95,7 +95,7 @@ export function AddAddressFormFields(props: AddAddressFormFieldsProps) {
           name="suburb"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Suburb or city</FormLabel>
+              <FormLabel htmlFor="addr-suburb">Suburb or city</FormLabel>
               <FormControl>
                 <Input id="addr-suburb" placeholder="London" {...field} />
               </FormControl>
@@ -109,7 +109,7 @@ export function AddAddressFormFields(props: AddAddressFormFieldsProps) {
           name="state"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>State or province</FormLabel>
+              <FormLabel htmlFor="addr-state">State or province</FormLabel>
               <FormControl>
                 <Input
                   id="addr-state"
@@ -128,7 +128,7 @@ export function AddAddressFormFields(props: AddAddressFormFieldsProps) {
         name="zipCode"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Zip or postal code</FormLabel>
+            <FormLabel htmlFor="addr-zipcode">Zip or postal code</FormLabel>
             <FormControl>
               <Input id="addr-zipcode" placeholder="NW1 6XE" {...field} />
             </FormControl>
