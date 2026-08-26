@@ -613,7 +613,14 @@ yarn format:write
 
 # Format specific files
 yarn nx format:write --files=path/to/file.ts
+
+# Also sort the tsconfig.base.json path mappings
+yarn nx format:write --sort-root-tsconfig-paths
 ```
+
+Since Nx 22.0.0, `nx format` no longer sorts `tsconfig.base.json` path mappings by default, and neither
+do the generators. Aliases added by hand stay wherever they were typed unless you pass
+`--sort-root-tsconfig-paths`, so the block drifts out of order silently.
 
 #### Type Checking
 
@@ -1052,7 +1059,10 @@ yarn upgrade package-name@latest
 yarn nx graph
 
 # Show affected projects
-yarn nx affected:graph
+yarn nx show projects --affected
+
+# Open the graph scoped to the affected projects
+yarn nx graph --affected
 ```
 
 ## Troubleshooting
