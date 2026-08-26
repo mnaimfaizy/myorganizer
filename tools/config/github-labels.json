@@ -9,22 +9,22 @@
     {
       "name": "complexity:low",
       "color": "c5def5",
-      "description": "Route to Haiku — simple, well-scoped task"
+      "description": "Route to Haiku \u2014 simple, well-scoped task"
     },
     {
       "name": "complexity:medium",
       "color": "bfd4f2",
-      "description": "Route to Sonnet — moderate complexity task"
+      "description": "Route to Sonnet \u2014 moderate complexity task"
     },
     {
       "name": "complexity:high",
       "color": "84b6eb",
-      "description": "Route to Opus — complex task requiring deep reasoning"
+      "description": "Route to Opus \u2014 complex task requiring deep reasoning"
     },
     {
       "name": "gate:mechanical",
       "color": "d4c5f9",
-      "description": "Mechanical path — main agent edits; no specialist chains (ADR 0012)"
+      "description": "Mechanical path \u2014 main agent edits; no specialist chains (ADR 0012)"
     },
     {
       "name": "gate:standard",
@@ -44,7 +44,7 @@
     {
       "name": "type:hitl",
       "color": "f9d0c4",
-      "description": "Human decision required before an agent can proceed — skipped by dispatch-agents"
+      "description": "Human decision required before an agent can proceed \u2014 skipped by dispatch-agents"
     },
     {
       "name": "status:in-progress",
@@ -54,7 +54,7 @@
     {
       "name": "status:blocked",
       "color": "d93f0b",
-      "description": "Waiting on blocker issue(s) in ## Blocked by — skipped by dispatch-agents until unblocked"
+      "description": "Waiting on blocker issue(s) in ## Blocked by \u2014 skipped by dispatch-agents until unblocked"
     },
     {
       "name": "status:done",
@@ -64,7 +64,17 @@
     {
       "name": "prd",
       "color": "6f42c1",
-      "description": "Product Requirements Document — parent issue for a planned feature"
+      "description": "Product Requirements Document \u2014 parent issue for a planned feature"
+    },
+    {
+      "name": "qa",
+      "color": "0E8A16",
+      "description": "A QA Plan Issue \u2014 manual verification for work whose PR is open (ADR 0048)"
+    },
+    {
+      "name": "grilling",
+      "color": "E4A11B",
+      "description": "Design must be stress-tested in a grilling session before work starts \u2014 dispatch-agents skips it"
     }
   ],
   "surface": {
@@ -108,11 +118,6 @@
         "name": "research",
         "color": "ededed",
         "description": "Research or investigation"
-      },
-      {
-        "name": "qa",
-        "color": "0E8A16",
-        "description": "Quality assurance plans, test strategy, and validation tracking"
       }
     ],
     "area": [

@@ -268,8 +268,16 @@ _Avoid_: Failed slice, crashed slice, partial slice
 The commit capturing an Interrupted Slice's uncommitted work on its slice branch. Unreviewed and ungated — a resuming agent audits it before building on it, and never treats it as finished work.
 _Avoid_: WIP commit (as the general name), draft commit, savepoint
 
+**QA Plan**:
+The manual verification a human performs for completed work before its Pull Request merges, carrying only what the automated suites do not already prove. Every claim it makes about existing coverage is marked as observed or reconstructed, because a reader trusts it to say what may be skipped.
+_Avoid_: Test plan, test matrix, QA cycle, verification checklist, regression plan
+
+**QA Plan Issue**:
+A QA Plan for a PRD Issue, published as a GitHub issue labelled `qa`. Scenarios are checkboxes, closing it is the sign-off, and defects it finds become their own linked issues. A QA Plan for a single issue is not one of these — it stays an uncommitted working file.
+_Avoid_: QA ticket, test ticket, validation issue
+
 **Issue Orchestration Label**:
-A GitHub label from the ADR 0002 vocabulary that coordinates planning tools and dispatch-agents. Applies to Issues only — never to Pull Requests.
+A GitHub label in the `orchestration` set of `tools/config/github-labels.json` that coordinates planning tools and dispatch-agents. Applies to Issues only — never to Pull Requests. Includes the ADR 0002 machine contract plus the document-type markers `prd`, `qa`, and `grilling`.
 _Avoid_: agent label, workflow label, status label (as the general name)
 
 **Surface Label**:

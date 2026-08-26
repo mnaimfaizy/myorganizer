@@ -14,7 +14,9 @@ import {
   syncSurfaceLabelChanges,
 } from './github-labels.mjs';
 
-const ADR_0025_SURFACE_LABELS = [
+// ADR 0025 as amended by ADR 0049: `qa` moved to the Orchestration vocabulary, so it is no
+// longer a Surface Label and may not appear on a Pull Request. `grilling` was added there too.
+const SURFACE_LABELS = [
   'backend',
   'bug',
   'dependencies',
@@ -23,22 +25,36 @@ const ADR_0025_SURFACE_LABELS = [
   'github-actions',
   'maintenance',
   'mobile-app',
-  'qa',
   'research',
   'security',
   'tooling',
   'web-app',
 ];
 
-test('repo catalog surface names match ADR 0025', () => {
+test('repo catalog surface names match ADR 0025 as amended by ADR 0049', () => {
   const catalog = loadGithubLabelCatalog();
-  assert.deepEqual(
-    [...surfaceLabelNames(catalog)].sort(),
-    ADR_0025_SURFACE_LABELS,
-  );
+  assert.deepEqual([...surfaceLabelNames(catalog)].sort(), SURFACE_LABELS);
   assert.equal(surfaceLabelNames(catalog).has('ready-for-agent'), false);
   assert.equal(surfaceLabelNames(catalog).has('frontend'), false);
   assert.equal(surfaceLabelNames(catalog).has('database'), false);
+});
+
+test('qa and grilling are Orchestration Labels, not Surface Labels (ADR 0049)', () => {
+  const catalog = loadGithubLabelCatalog();
+  const orchestration = catalog.orchestration.map((label) => label.name);
+
+  // They must be provisioned...
+  assert.equal(orchestration.includes('qa'), true);
+  assert.equal(orchestration.includes('grilling'), true);
+
+  // ...but never wearable by a Pull Request. This is what stops `qa` — which now means
+  // "this issue IS a QA Plan Issue" — from being stamped on a PR, where it would be false.
+  assert.equal(surfaceLabelNames(catalog).has('qa'), false);
+  assert.equal(surfaceLabelNames(catalog).has('grilling'), false);
+  assert.deepEqual(rejectedPrLabels(['qa', 'grilling'], catalog), [
+    'qa',
+    'grilling',
+  ]);
 });
 
 test('provision list includes orchestration and surface labels', () => {
