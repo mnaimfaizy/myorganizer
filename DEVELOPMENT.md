@@ -463,10 +463,10 @@ Examples of existing page libraries:
    yarn format:write
 
    # Lint code
-   yarn nx lint
+   yarn nx run-many -t lint
 
    # Run tests
-   yarn nx test
+   yarn nx run-many -t test
    ```
 
 4. **Commit Your Changes**
@@ -592,15 +592,23 @@ This regenerates `libs/app-api-client` based on the OpenAPI spec.
 
 ```bash
 # Lint all code
-yarn nx lint
+yarn nx run-many -t lint
 
 # Lint specific project
 yarn nx lint backend
 yarn nx lint myorganizer
 
-# Auto-fix linting issues
-yarn nx lint --fix
+# Auto-fix linting issues in one project
+yarn nx lint backend --fix
+
+# Auto-fix across every ESLint project
+yarn nx run-many -t lint --fix --exclude=api-specs,app-api-client
 ```
+
+`api-specs` and `app-api-client` alias their `lint` target to
+`tools/scripts/check-openapi-artifacts.mjs`, an artifact checker that takes no `--fix` and treats the
+flag as a path. A bare `yarn nx run-many -t lint --fix` therefore fails on those two projects; exclude
+them, or fix per project. Plain `yarn lint` passes no flags and covers all of them.
 
 #### Formatting
 
@@ -721,7 +729,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
    ```bash
    # Run all tests
-   yarn nx test
+   yarn nx run-many -t test
 
    # Run specific tests
    yarn nx test backend
@@ -732,7 +740,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
    # Check code quality
    yarn format:write
-   yarn nx lint
+   yarn nx run-many -t lint
    ```
 
 5. **Commit Your Changes**
@@ -839,7 +847,7 @@ For Jest unit tests, Jest integration tests, React hook/component integration te
 
 ```bash
 # Run all tests
-yarn nx test
+yarn nx run-many -t test
 
 # Run tests for specific project
 yarn nx test backend
