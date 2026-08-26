@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { gotoStable, E2E_USER_ID, waitForOwnedVault } from './helpers';
+import {
+  gotoStable,
+  E2E_USER_ID,
+  routeApi,
+  waitForOwnedVault,
+} from './helpers';
 
 /**
  * E2E tests for groceries items (create / edit / delete / filter / persistence)
@@ -22,7 +27,7 @@ async function login(
   options: { webkitDelayMs: number },
 ) {
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
-  await page.route(loginUrl, async (route) => {
+  await routeApi(page, loginUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
 
@@ -362,6 +367,17 @@ async function removeLineViaMenu(
   await page.getByRole('menuitem', { name: 'Confirm remove line' }).click();
 }
 
+/**
+ * The list row for `itemName`. Item names and prices also appear in the catalog
+ * chips and the trip summary, so assertions about a line must be scoped here or
+ * they match several elements at once (issue #506).
+ */
+function listLine(page: import('@playwright/test').Page, itemName: string) {
+  return page
+    .locator('[data-testid^="list-line-"]')
+    .filter({ hasText: itemName });
+}
+
 async function assertItemRowVisible(
   page: import('@playwright/test').Page,
   itemName: string,
@@ -418,10 +434,10 @@ test.describe('Groceries Items (E2E)', () => {
       amount: '1 dozen',
     });
 
-    await expect(page.getByText('Organic Bananas - Ripe')).toBeVisible({
-      timeout: 30000,
-    });
-    await expect(page.getByText('$3.50')).toBeVisible({ timeout: 30000 });
+    await assertItemRowVisible(page, 'Organic Bananas - Ripe');
+    await expect(
+      listLine(page, 'Organic Bananas - Ripe').getByText('$3.50'),
+    ).toBeVisible({ timeout: 30000 });
   });
 
   test('2 — Add Multiple Items and persist', async ({ page }, testInfo) => {
@@ -478,10 +494,10 @@ test.describe('Groceries Items (E2E)', () => {
       price: '2.99',
     });
 
-    await expect(page.getByText('Cherry Tomatoes - Sweet')).toBeVisible({
-      timeout: 30000,
-    });
-    await expect(page.getByText('$2.99')).toBeVisible({ timeout: 30000 });
+    await assertItemRowVisible(page, 'Cherry Tomatoes - Sweet');
+    await expect(
+      listLine(page, 'Cherry Tomatoes - Sweet').getByText('$2.99'),
+    ).toBeVisible({ timeout: 30000 });
   });
 
   test('5 — Mark as Done visual change', async ({ page }, testInfo) => {
@@ -561,7 +577,7 @@ test.describe('Groceries Items (E2E)', () => {
     await editCatalogItemViaMenu(page, 'Alpha', {
       name: 'Alpha v2',
     });
-    await expect(page.getByText('Alpha v2')).toBeVisible({ timeout: 30000 });
+    await assertItemRowVisible(page, 'Alpha v2');
 
     const chk = page.getByRole('checkbox', { name: /Toggle Alpha v2/ });
     await expect(chk).toBeVisible({ timeout: 30000 });
@@ -571,9 +587,9 @@ test.describe('Groceries Items (E2E)', () => {
     await expect(chk).not.toBeChecked();
 
     await removeLineViaMenu(page, 'Alpha v2');
-    await expect(page.getByText('Alpha v2')).toHaveCount(0, {
-      timeout: 30000,
-    });
+    await expect(
+      page.getByRole('checkbox', { name: /Toggle Alpha v2/ }),
+    ).toHaveCount(0, { timeout: 30000 });
   });
 
   test('8 — Persistence & Reload', async ({ page }, testInfo) => {
@@ -602,12 +618,8 @@ test.describe('Groceries Items (E2E)', () => {
     });
     await openListByName(page, 'Persistence List', passphrase);
 
-    await expect(page.getByText('Persistent One')).toBeVisible({
-      timeout: 30000,
-    });
-    await expect(page.getByText('Persistent Two')).toBeVisible({
-      timeout: 30000,
-    });
+    await assertItemRowVisible(page, 'Persistent One');
+    await assertItemRowVisible(page, 'Persistent Two');
   });
 
   test('9 — Validation Error Handling blocks submit', async ({

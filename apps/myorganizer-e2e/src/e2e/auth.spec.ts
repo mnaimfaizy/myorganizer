@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { routeApi } from './helpers';
 
 test.describe('Authentication', () => {
   test('should allow a user to log in', async ({ page }, testInfo) => {
@@ -9,7 +10,7 @@ test.describe('Authentication', () => {
 
     let sawLoginRequest = false;
 
-    await page.route(loginUrl, async (route) => {
+    await routeApi(page, loginUrl, async (route) => {
       sawLoginRequest = true;
       const request = route.request();
 
@@ -108,7 +109,7 @@ test.describe('Authentication', () => {
 
     // Stub /auth/refresh in case the dashboard guard chooses to re-validate.
     const refreshUrl = /\/auth\/refresh\/?(\?.*)?$/;
-    await page.route(refreshUrl, async (route) => {
+    await routeApi(page, refreshUrl, async (route) => {
       const origin = new URL(page.url() || 'http://localhost:3000').origin;
       const corsHeaders = {
         'access-control-allow-origin': origin,

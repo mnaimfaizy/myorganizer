@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { gotoStable } from './helpers';
+import { gotoStable, routeApi } from './helpers';
 
 /**
  * Platform Admin console — access control + user directory smoke (issue #204).
@@ -52,7 +52,7 @@ async function seedSession(page: Page, user: PersonaUser) {
 async function stubAuthRefresh(page: Page, user: PersonaUser) {
   const refreshUrl = /\/auth\/refresh\/?(\?.*)?$/;
 
-  await page.route(refreshUrl, async (route) => {
+  await routeApi(page, refreshUrl, async (route) => {
     const origin = new URL(page.url() || 'http://localhost:4200').origin;
     const headers = corsHeaders(origin);
 
@@ -77,7 +77,7 @@ async function stubAuthRefresh(page: Page, user: PersonaUser) {
 async function stubAuthRefreshUnauthorized(page: Page) {
   const refreshUrl = /\/auth\/refresh\/?(\?.*)?$/;
 
-  await page.route(refreshUrl, async (route) => {
+  await routeApi(page, refreshUrl, async (route) => {
     const origin = new URL(page.url() || 'http://localhost:4200').origin;
     const headers = corsHeaders(origin);
 
@@ -122,7 +122,7 @@ function filterDirectoryUsers(
 async function stubAdminUsersList(page: Page, users: AdminUserIdentityRow[]) {
   const adminUsersUrl = /\/admin\/users\/?(\?.*)?$/;
 
-  await page.route(adminUsersUrl, async (route) => {
+  await routeApi(page, adminUsersUrl, async (route) => {
     const origin = new URL(page.url() || 'http://localhost:4200').origin;
     const headers = corsHeaders(origin);
     const request = route.request();
@@ -270,7 +270,7 @@ test.describe('Platform Admin console', () => {
       'Email verified',
     ]) {
       await expect(
-        table.getByRole('columnheader', { name: column }),
+        table.getByRole('columnheader', { name: column, exact: true }),
       ).toBeVisible();
     }
 
