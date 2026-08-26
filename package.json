@@ -46,7 +46,7 @@
     "build-storybook": "nx build-storybook web-ui --stats-json --skip-nx-cache",
     "test-storybook": "test-storybook --config-dir libs/web-ui/.storybook",
     "chromatic": "chromatic",
-    "lint": "nx lint",
+    "lint": "nx run-many -t lint",
     "graph": "nx graph",
     "format:check": "nx format:check",
     "format:write": "nx format:write",
