@@ -73,7 +73,15 @@ ADRs drew on purpose.
 - Nothing machine-reads `grilling` yet. It is a marker for humans and a hint to `dispatch-agents`;
   wiring it into the orchestrator's skip logic is deliberately left for when that is needed rather
   than built speculatively.
-- The Surface Label kind list shrinks to eight. Any tool that hardcoded nine will disagree with the
-  catalog — none does today, verified by search across skills, agent bodies, and `tools/scripts`.
+- The Surface Label kind list shrinks to eight. One place hardcoded the old list:
+  `tools/scripts/lib/github-labels.test.mjs` pinned the thirteen Surface Label names as an
+  `ADR_0025_SURFACE_LABELS` array, and CI caught the mismatch. It has been retargeted, and now also
+  asserts the property this decision turns on — that `qa` and `grilling` are provisioned, are not
+  Surface Labels, and are rejected by `rejectedPrLabels`. The behaviour is therefore covered by a
+  test rather than resting on the catalog's shape alone.
+- That test was initially missed because the search for consumers looked for the label in prose
+  form (backtick-quoted, in Markdown and scripts) and not as a bare string literal in an array.
+  Worth remembering when moving any other catalog entry: the catalog is data, so its consumers cite
+  it as data, not as prose.
 - ADR 0048 records that `qa` "continues to mean several things historically". That remains true of
   closed issues and is now false of open ones.
