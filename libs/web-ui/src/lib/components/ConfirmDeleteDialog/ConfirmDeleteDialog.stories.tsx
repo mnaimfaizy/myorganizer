@@ -73,6 +73,35 @@ function ConfirmDeleteDialogPendingExample() {
   );
 }
 
+function ConfirmDeleteDialogWithChildrenExample() {
+  const [open, setOpen] = useState(true);
+  const [exporting, setExporting] = useState(false);
+
+  return (
+    <ConfirmDeleteDialog
+      open={open}
+      onOpenChange={setOpen}
+      title="Delete this vault?"
+      description="This Vault has never been backed up. Deleting it is permanent and cannot be undone."
+      onConfirm={() => {
+        setOpen(false);
+      }}
+    >
+      <Button
+        type="button"
+        variant="secondary"
+        disabled={exporting}
+        onClick={() => {
+          setExporting(true);
+          setTimeout(() => setExporting(false), 1000);
+        }}
+      >
+        {exporting ? 'Exporting…' : 'Export vault first'}
+      </Button>
+    </ConfirmDeleteDialog>
+  );
+}
+
 const meta: Meta<typeof ConfirmDeleteDialogTriggerExample> = {
   component: ConfirmDeleteDialogTriggerExample,
   title: 'Components/ConfirmDeleteDialog',
@@ -119,5 +148,11 @@ export const PendingState: Story = {
 
     // Cancel stays available so a slow delete never traps the user.
     await expect(body.getByRole('button', { name: 'Cancel' })).toBeEnabled();
+  },
+};
+
+export const WithChildren: Story = {
+  render: function Render() {
+    return <ConfirmDeleteDialogWithChildrenExample />;
   },
 };

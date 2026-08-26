@@ -6,8 +6,8 @@ import {
   type CurrencyCode,
 } from '@myorganizer/core';
 import {
-  loadDecryptedData,
   normalizeSubscriptions,
+  type VaultHandle,
 } from '@myorganizer/web-vault';
 import { CreditCard } from 'lucide-react';
 import { useEffect, useState } from 'react';
@@ -15,19 +15,19 @@ import { useEffect, useState } from 'react';
 import { VaultStatCard } from './VaultStatCard';
 
 interface SubscriptionsOverviewCardProps {
-  masterKeyBytes: Uint8Array | null;
+  handle: VaultHandle | null;
 }
 
 export function SubscriptionsOverviewCard({
-  masterKeyBytes,
+  handle,
 }: SubscriptionsOverviewCardProps) {
   return (
     <VaultStatCard
-      masterKeyBytes={masterKeyBytes}
+      handle={handle}
       icon={<CreditCard className="h-4 w-4" />}
       title="Subscriptions"
     >
-      {(mk) => <SubscriptionsContent masterKeyBytes={mk} />}
+      {(h) => <SubscriptionsContent handle={h} />}
     </VaultStatCard>
   );
 }
@@ -49,18 +49,18 @@ const MONTHLY_MULTIPLIERS: Record<string, number> = {
 };
 
 interface SubscriptionsContentProps {
-  masterKeyBytes: Uint8Array;
+  handle: VaultHandle;
 }
 
-function SubscriptionsContent({ masterKeyBytes }: SubscriptionsContentProps) {
+function SubscriptionsContent({ handle }: SubscriptionsContentProps) {
   const [summary, setSummary] = useState<Summary | null>(null);
 
   useEffect(() => {
-    loadDecryptedData<unknown>({
-      masterKeyBytes,
-      type: 'subscriptions',
-      defaultValue: [],
-    })
+    handle
+      .loadDecryptedData<unknown>({
+        type: 'subscriptions',
+        defaultValue: [],
+      })
       .then((raw) => {
         const { value } = normalizeSubscriptions(raw);
         const active = value.filter(
@@ -83,7 +83,7 @@ function SubscriptionsContent({ masterKeyBytes }: SubscriptionsContentProps) {
         });
       })
       .catch(() => setSummary({ active: 0, total: 0, monthlyCosts: [] }));
-  }, [masterKeyBytes]);
+  }, [handle]);
 
   if (!summary) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;

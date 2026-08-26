@@ -19,22 +19,35 @@ import {
   createDefaultReplayTracker,
   importVault,
   isVaultImportError,
-  loadVault,
   VAULT_ENVELOPE_PARSE_MAX_BYTES,
 } from '@myorganizer/web-vault';
-import { getVaultImportErrorMessage } from '@myorganizer/web-vault-ui';
+import {
+  getVaultImportErrorMessage,
+  useOptionalVaultSession,
+} from '@myorganizer/web-vault-ui';
 
 import { formatBytes } from '../utils/formatBytes';
 import { getErrorMessage } from '../utils/getErrorMessage';
 
 export function ImportVaultCard() {
   const { toast } = useToast();
+  const vaultSession = useOptionalVaultSession();
+  const handle = vaultSession?.handle ?? null;
 
   const [importing, setImporting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [lastServerNote, setLastServerNote] = useState<string | null>(null);
 
   const handleImport = useCallback(async () => {
+    if (!handle) {
+      toast({
+        title: 'Import failed',
+        description: 'Sign in to import a vault.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!selectedFile) {
       toast({
         title: 'Choose a file',
@@ -60,7 +73,7 @@ export function ImportVaultCard() {
     try {
       const text = await selectedFile.text();
 
-      const existingLocalVault = loadVault();
+      const existingLocalVault = handle.loadVault();
       if (existingLocalVault) {
         const confirmed = window.confirm(
           'Importing will replace your current local vault data. Continue?',
@@ -84,6 +97,7 @@ export function ImportVaultCard() {
       // updated. The default reporter logs failures via console.warn.
       await importVault({
         text,
+        handle,
         source: 'local-file',
         replayTracker: createDefaultReplayTracker(),
         auditReporter: createDefaultAuditReporter(),
@@ -109,7 +123,7 @@ export function ImportVaultCard() {
     } finally {
       setImporting(false);
     }
-  }, [selectedFile, toast]);
+  }, [handle, selectedFile, toast]);
 
   return (
     <Card>

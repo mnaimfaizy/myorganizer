@@ -1,6 +1,7 @@
 import { AuditReporter, noopAuditReporter } from '../vault/auditReporter';
 import { ReplayTracker } from '../vault/replayTracker';
-import { VaultStorageV1 } from '../vault/vault';
+import { VaultStorageV1 } from '../vault/localVaultStorage';
+import type { VaultHandle } from '../vault/vaultHandle';
 import {
   exportVault,
   importVault,
@@ -135,12 +136,13 @@ export class CloudBackupCoordinator {
    * standard hardened import flow. Resolves to `null` when no completed
    * backup is available on the provider.
    */
-  async restoreLatest(): Promise<CloudRestoreResult | null> {
+  async restoreLatest(handle: VaultHandle): Promise<CloudRestoreResult | null> {
     const downloaded = await this.provider.downloadLatestBackup();
     if (!downloaded) return null;
 
     const imported = await importVault({
       text: downloaded.text,
+      handle,
       source: 'google-drive',
       auditReporter: this.reporter,
       replayTracker: this.replayTracker,

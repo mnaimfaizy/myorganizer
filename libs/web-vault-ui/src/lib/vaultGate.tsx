@@ -9,21 +9,20 @@ import {
   Label,
   useToast,
 } from '@myorganizer/web-ui';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import {
-  hasVault,
-  initializeVault,
-  setNewPassphrase,
-  unlockVaultWithPassphrase,
-  unlockVaultWithRecoveryKey,
+  type LocalVaultStatus,
+  type VaultHandle,
+  VaultSecretMismatchError,
 } from '@myorganizer/web-vault';
 
+import { VaultClaimOffer } from './vaultClaimOffer';
 import { useOptionalVaultSession } from './session';
 
 type VaultGateProps = {
   title: string;
-  children: (ctx: { masterKeyBytes: Uint8Array }) => React.ReactNode;
+  children: (ctx: { handle: VaultHandle | null }) => React.ReactNode;
 };
 
 function downloadTextFile(filename: string, content: string) {
@@ -40,8 +39,25 @@ export function VaultGate(props: VaultGateProps) {
   const { toast } = useToast();
 
   const vaultSession = useOptionalVaultSession();
+  const handle = vaultSession?.handle ?? null;
 
-  const [vaultExists, setVaultExists] = useState<boolean>(() => hasVault());
+  const [vaultStatus, setVaultStatus] = useState<LocalVaultStatus>(
+    () => handle?.vaultStatus() ?? 'absent',
+  );
+  const [declinedClaim, setDeclinedClaim] = useState(false);
+
+  const handleRef = useRef(handle);
+
+  // Render-phase reset: if handle identity changes, re-read status from storage
+  let currentVaultStatus = vaultStatus;
+  let currentDeclinedClaim = declinedClaim;
+  if (handleRef.current !== handle) {
+    handleRef.current = handle;
+    currentVaultStatus = handle?.vaultStatus() ?? 'absent';
+    currentDeclinedClaim = false;
+    setVaultStatus(currentVaultStatus);
+    setDeclinedClaim(false);
+  }
   const [localMasterKeyBytes, setLocalMasterKeyBytes] =
     useState<Uint8Array | null>(null);
 
@@ -65,10 +81,31 @@ export function VaultGate(props: VaultGateProps) {
   const title = useMemo(() => props.title, [props.title]);
 
   if (isUnlocked && masterKeyBytes) {
-    return <>{props.children({ masterKeyBytes })}</>;
+    return (
+      <>
+        {props.children({
+          handle: vaultSession?.handle ?? null,
+        })}
+      </>
+    );
   }
 
-  if (!vaultExists) {
+  if (currentVaultStatus === 'unclaimed' && !currentDeclinedClaim) {
+    return (
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <VaultClaimOffer
+          handle={handle}
+          onClaimed={(result) => {
+            setMasterKeyBytes(result.masterKeyBytes);
+            setVaultStatus('owned');
+          }}
+          onDecline={() => setDeclinedClaim(true)}
+        />
+      </div>
+    );
+  }
+
+  if (currentVaultStatus !== 'owned') {
     const canCreate =
       setupPassphrase.length >= 10 &&
       setupPassphrase === setupConfirm &&
@@ -109,8 +146,16 @@ export function VaultGate(props: VaultGateProps) {
             <Button
               disabled={!canCreate}
               onClick={async () => {
+                if (!handle) {
+                  toast({
+                    title: 'Failed to create vault',
+                    description: 'Sign in to create a vault.',
+                    variant: 'destructive',
+                  });
+                  return;
+                }
                 try {
-                  const result = await initializeVault({
+                  const result = await handle.initialize({
                     passphrase: setupPassphrase,
                   });
                   setRecoveryKey(result.recoveryKey);
@@ -118,10 +163,10 @@ export function VaultGate(props: VaultGateProps) {
                     title: 'Vault created',
                     description: 'Save your recovery key now.',
                   });
-                } catch (e: any) {
+                } catch (e: unknown) {
                   toast({
                     title: 'Failed to create vault',
-                    description: e?.message ?? String(e),
+                    description: e instanceof Error ? e.message : String(e),
                     variant: 'destructive',
                   });
                 }
@@ -163,7 +208,7 @@ export function VaultGate(props: VaultGateProps) {
                     type="button"
                     variant="secondary"
                     onClick={() => {
-                      setVaultExists(true);
+                      setVaultStatus('owned');
                       toast({
                         title: 'Next step',
                         description: 'Unlock your vault with your passphrase.',
@@ -222,8 +267,16 @@ export function VaultGate(props: VaultGateProps) {
             <Button
               disabled={!canRecover}
               onClick={async () => {
+                if (!handle) {
+                  toast({
+                    title: 'Recovery failed',
+                    description: 'Sign in to recover a vault.',
+                    variant: 'destructive',
+                  });
+                  return;
+                }
                 try {
-                  const result = await unlockVaultWithRecoveryKey({
+                  const result = await handle.unlockWithRecoveryKey({
                     recoveryKey: recoveryInput.trim(),
                   });
 
@@ -232,12 +285,22 @@ export function VaultGate(props: VaultGateProps) {
                     title: 'Recovered',
                     description: 'Vault unlocked with your recovery key.',
                   });
-                } catch {
-                  toast({
-                    title: 'Recovery failed',
-                    description: 'Invalid recovery key or corrupted vault.',
-                    variant: 'destructive',
-                  });
+                } catch (e: unknown) {
+                  if (e instanceof VaultSecretMismatchError) {
+                    toast({
+                      title: "That recovery key didn't unlock this vault",
+                      description:
+                        'The recovery key does not match this vault. Nothing was changed.',
+                      variant: 'destructive',
+                    });
+                  } else {
+                    toast({
+                      title: 'Recovery failed',
+                      description:
+                        'Something went wrong. Nothing on this device was changed.',
+                      variant: 'destructive',
+                    });
+                  }
                 }
               }}
             >
@@ -270,21 +333,20 @@ export function VaultGate(props: VaultGateProps) {
                 newPassphrase !== newPassphraseConfirm
               }
               onClick={async () => {
-                if (!masterKeyBytes) return;
+                if (!masterKeyBytes || !handle) return;
 
                 try {
-                  await setNewPassphrase({
-                    masterKeyBytes,
+                  await handle.changePassphrase({
                     newPassphrase,
                   });
                   toast({
                     title: 'Updated',
                     description: 'Passphrase updated for this vault.',
                   });
-                } catch (e: any) {
+                } catch (e: unknown) {
                   toast({
                     title: 'Failed',
-                    description: e?.message ?? String(e),
+                    description: e instanceof Error ? e.message : String(e),
                     variant: 'destructive',
                   });
                 }
@@ -332,8 +394,16 @@ export function VaultGate(props: VaultGateProps) {
 
           <Button
             onClick={async () => {
+              if (!handle) {
+                toast({
+                  title: 'Unlock failed',
+                  description: 'Sign in to unlock a vault.',
+                  variant: 'destructive',
+                });
+                return;
+              }
               try {
-                const result = await unlockVaultWithPassphrase({
+                const result = await handle.unlockWithPassphrase({
                   passphrase,
                 });
                 setMasterKeyBytes(result.masterKeyBytes);
@@ -341,12 +411,22 @@ export function VaultGate(props: VaultGateProps) {
                   title: 'Unlocked',
                   description: 'Vault unlocked for this session.',
                 });
-              } catch {
-                toast({
-                  title: 'Unlock failed',
-                  description: 'Wrong passphrase or corrupted vault.',
-                  variant: 'destructive',
-                });
+              } catch (e: unknown) {
+                if (e instanceof VaultSecretMismatchError) {
+                  toast({
+                    title: "That passphrase didn't unlock this vault",
+                    description:
+                      'The passphrase does not match this vault. Nothing was changed.',
+                    variant: 'destructive',
+                  });
+                } else {
+                  toast({
+                    title: 'Unlock failed',
+                    description:
+                      'Something went wrong. Nothing on this device was changed.',
+                    variant: 'destructive',
+                  });
+                }
               }
             }}
           >

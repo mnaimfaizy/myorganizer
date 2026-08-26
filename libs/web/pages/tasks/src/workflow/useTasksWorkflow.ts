@@ -1,6 +1,7 @@
 'use client';
 
 import type { Task } from '@myorganizer/core';
+import type { VaultHandle } from '@myorganizer/web-vault';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -23,7 +24,7 @@ import {
 } from './tasks-vault-adapter';
 
 export interface UseTasksWorkflowOptions {
-  masterKeyBytes: Uint8Array;
+  handle: VaultHandle;
   adapter?: TasksVaultAdapter;
 }
 
@@ -42,12 +43,12 @@ export interface UseTasksWorkflowResult {
 }
 
 export function useTasksWorkflow({
-  masterKeyBytes,
+  handle,
   adapter,
 }: UseTasksWorkflowOptions): UseTasksWorkflowResult {
   const vaultAdapter = useMemo(
-    () => adapter ?? createProductionTasksVaultAdapter(masterKeyBytes),
-    [adapter, masterKeyBytes],
+    () => adapter ?? createProductionTasksVaultAdapter(handle),
+    [adapter, handle],
   );
 
   const [tasks, setTasks] = useState<Task[]>([]);

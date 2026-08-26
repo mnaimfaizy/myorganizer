@@ -4,62 +4,84 @@ jest.mock('@myorganizer/web-vault');
 import { render, screen, waitFor } from '@testing-library/react';
 
 import type { Task } from '@myorganizer/core';
-import { loadDecryptedData, normalizeTasks } from '@myorganizer/web-vault';
+import { normalizeTasks, type VaultHandle } from '@myorganizer/web-vault';
 import { TasksSummaryCard } from './TasksSummaryCard';
+
+const createMockHandle = (
+  loadDecryptedDataMock?: jest.Mock,
+  isUnlocked = true,
+): VaultHandle => {
+  const mock = loadDecryptedDataMock || jest.fn().mockResolvedValue([]);
+  return {
+    owner: 'test-user',
+    isUnlocked,
+    hasVault: jest.fn(),
+    loadVault: jest.fn(),
+    saveVault: jest.fn(),
+    initialize: jest.fn(),
+    unlockWithPassphrase: jest.fn(),
+    unlockWithRecoveryKey: jest.fn(),
+    changePassphrase: jest.fn(),
+    loadDecryptedData: mock,
+    saveEncryptedData: jest.fn(),
+  } as unknown as VaultHandle;
+};
 
 describe('TasksSummaryCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Default mock setup
-    (loadDecryptedData as jest.Mock).mockResolvedValue([]);
     (normalizeTasks as jest.Mock).mockReturnValue({ value: [] });
   });
 
-  describe('when masterKeyBytes is null', () => {
-    it('should render unlock vault message', () => {
-      render(<TasksSummaryCard masterKeyBytes={null} />);
+  describe('when handle is null or locked', () => {
+    it('should render unlock vault message when handle is null', () => {
+      render(<TasksSummaryCard handle={null} />);
       expect(screen.getByText('Unlock vault to view')).toBeInTheDocument();
     });
 
-    it('should render lock icon with unlock message', () => {
-      render(<TasksSummaryCard masterKeyBytes={null} />);
+    it('should render lock icon with unlock message when handle is null', () => {
+      render(<TasksSummaryCard handle={null} />);
       // The Lock icon and message should both be present
       expect(screen.getByText('Unlock vault to view')).toBeInTheDocument();
     });
 
-    it('should not attempt to load encrypted data', () => {
-      render(<TasksSummaryCard masterKeyBytes={null} />);
-      expect(loadDecryptedData).not.toHaveBeenCalled();
+    it('should not attempt to load encrypted data when handle is locked', () => {
+      // `isUnlocked` is readonly on VaultHandle — build the locked handle
+      // rather than mutating one that claims to be unlocked.
+      const mockHandle = createMockHandle(undefined, false);
+      render(<TasksSummaryCard handle={mockHandle} />);
+      expect(mockHandle.loadDecryptedData).not.toHaveBeenCalled();
     });
   });
 
   describe('when loading encrypted data', () => {
     it('should display loading message while data is loading', () => {
       // Mock loadDecryptedData to never resolve
-      (loadDecryptedData as jest.Mock).mockImplementation(
+      const mockLoadDecryptedData = jest.fn(
         () =>
           new Promise(() => {
             // Intentionally empty - promise that never resolves
           }),
       );
+      const mockHandle = createMockHandle(mockLoadDecryptedData);
 
-      render(<TasksSummaryCard masterKeyBytes={new Uint8Array(32)} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
       expect(screen.getByText('Loading…')).toBeInTheDocument();
     });
 
     it('should call loadDecryptedData with correct parameters', () => {
-      const mockKeyBytes = new Uint8Array(32);
-      (loadDecryptedData as jest.Mock).mockImplementation(
+      const mockLoadDecryptedData = jest.fn(
         () =>
           new Promise(() => {
             // Intentionally empty - promise that never resolves
           }),
       );
+      const mockHandle = createMockHandle(mockLoadDecryptedData);
 
-      render(<TasksSummaryCard masterKeyBytes={mockKeyBytes} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
 
-      expect(loadDecryptedData).toHaveBeenCalledWith({
-        masterKeyBytes: mockKeyBytes,
+      expect(mockHandle.loadDecryptedData).toHaveBeenCalledWith({
         type: 'tasks',
         defaultValue: [],
       });
@@ -76,10 +98,12 @@ describe('TasksSummaryCard', () => {
         { id: '5', status: 'blocked', archived: false },
       ] as unknown as Task[];
 
-      (loadDecryptedData as jest.Mock).mockResolvedValue(mockTasks);
+      const mockHandle = createMockHandle(
+        jest.fn().mockResolvedValue(mockTasks),
+      );
       (normalizeTasks as jest.Mock).mockReturnValue({ value: mockTasks });
 
-      render(<TasksSummaryCard masterKeyBytes={new Uint8Array(32)} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
 
       await waitFor(() => {
         expect(screen.getByText('5')).toBeInTheDocument();
@@ -100,10 +124,12 @@ describe('TasksSummaryCard', () => {
         { id: '3', status: 'done', archived: false },
       ] as unknown as Task[];
 
-      (loadDecryptedData as jest.Mock).mockResolvedValue(mockTasks);
+      const mockHandle = createMockHandle(
+        jest.fn().mockResolvedValue(mockTasks),
+      );
       (normalizeTasks as jest.Mock).mockReturnValue({ value: mockTasks });
 
-      render(<TasksSummaryCard masterKeyBytes={new Uint8Array(32)} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
 
       await waitFor(() => {
         expect(screen.getByText('3')).toBeInTheDocument();
@@ -118,10 +144,12 @@ describe('TasksSummaryCard', () => {
         { id: '1', status: 'pending', archived: false },
       ] as unknown as Task[];
 
-      (loadDecryptedData as jest.Mock).mockResolvedValue(mockTasks);
+      const mockHandle = createMockHandle(
+        jest.fn().mockResolvedValue(mockTasks),
+      );
       (normalizeTasks as jest.Mock).mockReturnValue({ value: mockTasks });
 
-      render(<TasksSummaryCard masterKeyBytes={new Uint8Array(32)} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
 
       await waitFor(() => {
         expect(normalizeTasks).toHaveBeenCalledWith(mockTasks);
@@ -136,10 +164,12 @@ describe('TasksSummaryCard', () => {
         { id: '4', status: 'in_progress', archived: true },
       ] as unknown as Task[];
 
-      (loadDecryptedData as jest.Mock).mockResolvedValue(mockTasks);
+      const mockHandle = createMockHandle(
+        jest.fn().mockResolvedValue(mockTasks),
+      );
       (normalizeTasks as jest.Mock).mockReturnValue({ value: mockTasks });
 
-      render(<TasksSummaryCard masterKeyBytes={new Uint8Array(32)} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
 
       await waitFor(() => {
         // Should only count 2 non-archived tasks
@@ -159,10 +189,12 @@ describe('TasksSummaryCard', () => {
         { id: '6', status: 'done', archived: false },
       ] as unknown as Task[];
 
-      (loadDecryptedData as jest.Mock).mockResolvedValue(mockTasks);
+      const mockHandle = createMockHandle(
+        jest.fn().mockResolvedValue(mockTasks),
+      );
       (normalizeTasks as jest.Mock).mockReturnValue({ value: mockTasks });
 
-      render(<TasksSummaryCard masterKeyBytes={new Uint8Array(32)} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
 
       await waitFor(() => {
         expect(screen.getByText('6')).toBeInTheDocument();
@@ -179,10 +211,12 @@ describe('TasksSummaryCard', () => {
         { id: '2', status: 'in_progress', archived: true },
       ] as unknown as Task[];
 
-      (loadDecryptedData as jest.Mock).mockResolvedValue(mockTasks);
+      const mockHandle = createMockHandle(
+        jest.fn().mockResolvedValue(mockTasks),
+      );
       (normalizeTasks as jest.Mock).mockReturnValue({ value: mockTasks });
 
-      render(<TasksSummaryCard masterKeyBytes={new Uint8Array(32)} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
 
       await waitFor(() => {
         expect(screen.getByText('0')).toBeInTheDocument();
@@ -194,10 +228,10 @@ describe('TasksSummaryCard', () => {
 
   describe('when data is empty', () => {
     it('should display zero total and no tasks message', async () => {
-      (loadDecryptedData as jest.Mock).mockResolvedValue([]);
+      const mockHandle = createMockHandle(jest.fn().mockResolvedValue([]));
       (normalizeTasks as jest.Mock).mockReturnValue({ value: [] });
 
-      render(<TasksSummaryCard masterKeyBytes={new Uint8Array(32)} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
 
       await waitFor(() => {
         expect(screen.getByText('0')).toBeInTheDocument();
@@ -209,11 +243,11 @@ describe('TasksSummaryCard', () => {
 
   describe('when loadDecryptedData fails', () => {
     it('should handle error and display no tasks', async () => {
-      (loadDecryptedData as jest.Mock).mockRejectedValue(
-        new Error('Decryption failed'),
+      const mockHandle = createMockHandle(
+        jest.fn().mockRejectedValue(new Error('Decryption failed')),
       );
 
-      render(<TasksSummaryCard masterKeyBytes={new Uint8Array(32)} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
 
       await waitFor(() => {
         expect(screen.getByText('0')).toBeInTheDocument();
@@ -223,11 +257,11 @@ describe('TasksSummaryCard', () => {
     });
 
     it('should not crash when loadDecryptedData rejects', async () => {
-      (loadDecryptedData as jest.Mock).mockRejectedValue(
-        new Error('Network error'),
+      const mockHandle = createMockHandle(
+        jest.fn().mockRejectedValue(new Error('Network error')),
       );
 
-      render(<TasksSummaryCard masterKeyBytes={new Uint8Array(32)} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
 
       await waitFor(() => {
         expect(screen.getByText('no tasks')).toBeInTheDocument();
@@ -243,10 +277,12 @@ describe('TasksSummaryCard', () => {
         { id: '3', status: 'done', archived: false },
       ] as unknown as Task[];
 
-      (loadDecryptedData as jest.Mock).mockResolvedValue(mockTasks);
+      const mockHandle = createMockHandle(
+        jest.fn().mockResolvedValue(mockTasks),
+      );
       (normalizeTasks as jest.Mock).mockReturnValue({ value: mockTasks });
 
-      render(<TasksSummaryCard masterKeyBytes={new Uint8Array(32)} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
 
       await waitFor(() => {
         expect(screen.getByText('3')).toBeInTheDocument();
@@ -262,10 +298,12 @@ describe('TasksSummaryCard', () => {
         { id: '3', status: 'blocked', archived: false },
       ] as unknown as Task[];
 
-      (loadDecryptedData as jest.Mock).mockResolvedValue(mockTasks);
+      const mockHandle = createMockHandle(
+        jest.fn().mockResolvedValue(mockTasks),
+      );
       (normalizeTasks as jest.Mock).mockReturnValue({ value: mockTasks });
 
-      render(<TasksSummaryCard masterKeyBytes={new Uint8Array(32)} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
 
       await waitFor(() => {
         expect(
@@ -283,10 +321,12 @@ describe('TasksSummaryCard', () => {
         { id: '5', status: 'blocked', archived: false },
       ] as unknown as Task[];
 
-      (loadDecryptedData as jest.Mock).mockResolvedValue(mockTasks);
+      const mockHandle = createMockHandle(
+        jest.fn().mockResolvedValue(mockTasks),
+      );
       (normalizeTasks as jest.Mock).mockReturnValue({ value: mockTasks });
 
-      render(<TasksSummaryCard masterKeyBytes={new Uint8Array(32)} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
 
       await waitFor(() => {
         expect(screen.getByText('5')).toBeInTheDocument();
@@ -303,24 +343,25 @@ describe('TasksSummaryCard', () => {
 
   describe('integration with VaultStatCard wrapper', () => {
     it('should render the Tasks title within the card', () => {
-      render(<TasksSummaryCard masterKeyBytes={null} />);
+      render(<TasksSummaryCard handle={null} />);
       expect(screen.getByText('Tasks')).toBeInTheDocument();
     });
 
-    it('should pass masterKeyBytes through to content component', async () => {
+    it('should pass handle through to content component', async () => {
       const mockTasks = [
         { id: '1', status: 'pending', archived: false },
       ] as unknown as Task[];
 
-      (loadDecryptedData as jest.Mock).mockResolvedValue(mockTasks);
+      const mockHandle = createMockHandle(
+        jest.fn().mockResolvedValue(mockTasks),
+      );
       (normalizeTasks as jest.Mock).mockReturnValue({ value: mockTasks });
 
-      const mockKeyBytes = new Uint8Array(32);
-      render(<TasksSummaryCard masterKeyBytes={mockKeyBytes} />);
+      render(<TasksSummaryCard handle={mockHandle} />);
 
       await waitFor(() => {
-        expect(loadDecryptedData).toHaveBeenCalledWith(
-          expect.objectContaining({ masterKeyBytes: mockKeyBytes }),
+        expect(mockHandle.loadDecryptedData).toHaveBeenCalledWith(
+          expect.objectContaining({ type: 'tasks' }),
         );
       });
     });

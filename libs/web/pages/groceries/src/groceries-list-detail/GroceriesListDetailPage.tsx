@@ -13,11 +13,8 @@ export function GroceriesListDetailPage({
 }: GroceriesListDetailPageProps) {
   return (
     <VaultGate title="Grocery List">
-      {({ masterKeyBytes }) => (
-        <GroceriesListDetailClient
-          listId={listId}
-          masterKeyBytes={masterKeyBytes}
-        />
+      {({ handle }) => (
+        <GroceriesListDetailClient listId={listId} handle={handle!} />
       )}
     </VaultGate>
   );

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { gotoStable } from './helpers';
+import { gotoStable, E2E_USER_ID, waitForOwnedVault } from './helpers';
 
 /**
  * E2E tests for groceries list management (create / rename / delete / accessibility)
@@ -528,11 +528,7 @@ test.describe('Groceries (E2E)', () => {
         .getByRole('button', { name: 'Create encrypted vault' })
         .click();
 
-      await page.waitForFunction(
-        () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-        undefined,
-        { timeout: 60000 },
-      );
+      await waitForOwnedVault(page, E2E_USER_ID);
 
       await gotoGroceriesAndUnlock(page, passphrase);
 
@@ -581,11 +577,7 @@ test.describe('Groceries (E2E)', () => {
       await page
         .getByRole('button', { name: 'Create encrypted vault' })
         .click();
-      await page.waitForFunction(
-        () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-        undefined,
-        { timeout: 60000 },
-      );
+      await waitForOwnedVault(page, E2E_USER_ID);
       await gotoGroceriesAndUnlock(page, passphrase);
 
       // Seed with one list using the UI
@@ -626,11 +618,7 @@ test.describe('Groceries (E2E)', () => {
       await page
         .getByRole('button', { name: 'Create encrypted vault' })
         .click();
-      await page.waitForFunction(
-        () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-        undefined,
-        { timeout: 60000 },
-      );
+      await waitForOwnedVault(page, E2E_USER_ID);
       await gotoGroceriesAndUnlock(page, passphrase);
 
       // Seed with two lists
@@ -676,11 +664,7 @@ test.describe('Groceries (E2E)', () => {
       await page
         .getByRole('button', { name: 'Create encrypted vault' })
         .click();
-      await page.waitForFunction(
-        () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-        undefined,
-        { timeout: 60000 },
-      );
+      await waitForOwnedVault(page, E2E_USER_ID);
       await gotoGroceriesAndUnlock(page, passphrase);
 
       // Create three lists
@@ -731,11 +715,7 @@ test.describe('Groceries (E2E)', () => {
       await page
         .getByRole('button', { name: 'Create encrypted vault' })
         .click();
-      await page.waitForFunction(
-        () => Boolean(window.localStorage.getItem('myorganizer_vault_v1')),
-        undefined,
-        { timeout: 60000 },
-      );
+      await waitForOwnedVault(page, E2E_USER_ID);
       await gotoGroceriesAndUnlock(page, passphrase);
 
       await clickNewTrip(page);

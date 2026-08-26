@@ -9,9 +9,8 @@ import {
 } from '@myorganizer/core';
 import { Button, ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
-  loadDecryptedData,
   normalizeMobileNumbers,
-  saveEncryptedData,
+  type VaultHandle,
 } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import { Plus } from 'lucide-react';
@@ -36,7 +35,7 @@ import { UsageLocationDialog } from './UsageLocationDialog';
 import { UsageLocationsTable } from './UsageLocationsTable';
 
 interface MobileNumberDetailsInnerProps {
-  masterKeyBytes: Uint8Array;
+  handle: VaultHandle;
   mobileNumberId: string;
 }
 
@@ -64,8 +63,7 @@ function MobileNumberDetailsInner(props: MobileNumberDetailsInnerProps) {
   const persist = useCallback(
     async (next: MobileNumberRecord[]) => {
       try {
-        await saveEncryptedData({
-          masterKeyBytes: props.masterKeyBytes,
+        await props.handle.saveEncryptedData({
           type: 'mobileNumbers',
           value: next,
         });
@@ -80,7 +78,7 @@ function MobileNumberDetailsInner(props: MobileNumberDetailsInnerProps) {
         throw e;
       }
     },
-    [props.masterKeyBytes, toast],
+    [props.handle, toast],
   );
 
   const persistUsageLocations = useCallback(
@@ -102,11 +100,11 @@ function MobileNumberDetailsInner(props: MobileNumberDetailsInnerProps) {
       setNotFound(false);
     });
 
-    loadDecryptedData<unknown>({
-      masterKeyBytes: props.masterKeyBytes,
-      type: 'mobileNumbers',
-      defaultValue: [],
-    })
+    props.handle
+      .loadDecryptedData<unknown>({
+        type: 'mobileNumbers',
+        defaultValue: [],
+      })
       .then(async (raw) => {
         if (!isActive) return;
         const normalized = normalizeMobileNumbers(raw);
@@ -123,8 +121,7 @@ function MobileNumberDetailsInner(props: MobileNumberDetailsInnerProps) {
         }
 
         if (normalized.changed) {
-          await saveEncryptedData({
-            masterKeyBytes: props.masterKeyBytes,
+          await props.handle.saveEncryptedData({
             type: 'mobileNumbers',
             value: normalized.value,
           });
@@ -145,7 +142,7 @@ function MobileNumberDetailsInner(props: MobileNumberDetailsInnerProps) {
     return () => {
       isActive = false;
     };
-  }, [props.mobileNumberId, props.masterKeyBytes, toast]);
+  }, [props.mobileNumberId, props.handle, toast]);
 
   const handleEditMobileNumber = useCallback(() => {
     setEditingMobileNumber(true);
@@ -351,9 +348,9 @@ export function MobileNumberDetailPageClient(props: {
 }) {
   return (
     <VaultGate title="Mobile Number">
-      {({ masterKeyBytes }) => (
+      {({ handle }) => (
         <MobileNumberDetailsInner
-          masterKeyBytes={masterKeyBytes}
+          handle={handle!}
           mobileNumberId={props.params.id}
         />
       )}

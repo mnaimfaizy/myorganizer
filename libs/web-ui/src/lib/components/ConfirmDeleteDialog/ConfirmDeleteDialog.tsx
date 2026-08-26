@@ -24,12 +24,14 @@ interface ConfirmDeleteDialogProps {
   description: React.ReactNode;
   /** Invoked when the user activates the confirm control. May return a Promise; the dialog disables the confirm control and shows a pending state until it resolves/rejects, then re-enables it. */
   onConfirm: () => void | Promise<void>;
+  /** Optional content to render between the header (title + description) and the footer buttons. Useful for additional interactive controls or content blocks. */
+  children?: React.ReactNode;
 }
 
 const ConfirmDeleteDialog = React.forwardRef<
   HTMLDivElement,
   ConfirmDeleteDialogProps
->(({ open, onOpenChange, title, description, onConfirm }, ref) => {
+>(({ open, onOpenChange, title, description, onConfirm, children }, ref) => {
   const [isPending, setIsPending] = useState(false);
 
   const handleConfirm = useCallback(async () => {
@@ -63,6 +65,7 @@ const ConfirmDeleteDialog = React.forwardRef<
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        {children}
         <DialogFooter>
           <Button variant="outline" onClick={handleCancel}>
             Cancel

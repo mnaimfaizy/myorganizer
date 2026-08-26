@@ -1,6 +1,7 @@
 /*
   Tests for useGroceriesVault hook.
-  - Mocks @myorganizer/web-vault's loadDecryptedData/normalizeGroceries/saveEncryptedData
+  - Mocks @myorganizer/web-vault's normalizeGroceries and a VaultHandle
+    exposing loadDecryptedData/saveEncryptedData
   - Mocks @myorganizer/core's randomId with a predictable sequential generator
   - Covers the catalog-membership mutation seams: addItemToLists,
     addExistingCatalogItemToLists, deleteCatalogItem, plus a light regression
@@ -38,20 +39,19 @@ import type {
   GroceryList,
   ListLine,
 } from '@myorganizer/core';
-import {
-  loadDecryptedData,
-  normalizeGroceries,
-  saveEncryptedData,
-} from '@myorganizer/web-vault';
+import { normalizeGroceries, type VaultHandle } from '@myorganizer/web-vault';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useGroceriesVault } from '../useGroceriesVault';
 
-const mockLoadDecryptedData = loadDecryptedData as jest.Mock;
 const mockNormalizeGroceries = normalizeGroceries as jest.Mock;
-const mockSaveEncryptedData = saveEncryptedData as jest.Mock;
+const mockLoadDecryptedData = jest.fn();
+const mockSaveEncryptedData = jest.fn();
 
 describe('useGroceriesVault', () => {
-  const masterKeyBytes = new Uint8Array(32);
+  const handle = {
+    loadDecryptedData: mockLoadDecryptedData,
+    saveEncryptedData: mockSaveEncryptedData,
+  } as unknown as VaultHandle;
 
   function makeCatalogItem(
     overrides: Partial<CatalogItem> & Pick<CatalogItem, 'id' | 'name'>,
@@ -95,7 +95,7 @@ describe('useGroceriesVault', () => {
     }));
     mockSaveEncryptedData.mockResolvedValue(undefined);
 
-    const { result } = renderHook(() => useGroceriesVault({ masterKeyBytes }));
+    const { result } = renderHook(() => useGroceriesVault({ handle }));
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -109,7 +109,7 @@ describe('useGroceriesVault', () => {
   it('reports a load failure and stops loading without claiming success', async () => {
     mockLoadDecryptedData.mockRejectedValue(new Error('vault unavailable'));
 
-    const { result } = renderHook(() => useGroceriesVault({ masterKeyBytes }));
+    const { result } = renderHook(() => useGroceriesVault({ handle }));
 
     await waitFor(() => expect(result.current.loading).toBe(false));
 
@@ -595,7 +595,6 @@ describe('useGroceriesVault', () => {
 
         expect(mockSaveEncryptedData).toHaveBeenCalledTimes(1);
         expect(mockSaveEncryptedData).toHaveBeenLastCalledWith({
-          masterKeyBytes,
           type: 'groceries',
           value: {
             catalog: [
@@ -739,7 +738,6 @@ describe('useGroceriesVault', () => {
         expect(result.current.lists[1]).toEqual(listB);
         expect(mockSaveEncryptedData).toHaveBeenCalledTimes(1);
         expect(mockSaveEncryptedData).toHaveBeenLastCalledWith({
-          masterKeyBytes,
           type: 'groceries',
           value: {
             catalog: initialPayload.catalog,

@@ -8,6 +8,7 @@ import type {
   CloudBackupProvider,
   UploadBackupInput,
   UploadBackupResult,
+  VaultHandle,
 } from '@myorganizer/web-vault';
 
 // Minimal in-memory localStorage so the preferences module works under
@@ -105,6 +106,8 @@ function makeFakeProvider(
   return provider;
 }
 
+const fakeHandle = { owner: 'test-owner' } as unknown as VaultHandle;
+
 function HookProbe({
   provider,
   onState,
@@ -112,7 +115,11 @@ function HookProbe({
   provider: CloudBackupProvider;
   onState: (s: ReturnType<typeof useCloudBackup>) => void;
 }) {
-  const result = useCloudBackup({ providerId: 'google-drive', provider });
+  const result = useCloudBackup({
+    providerId: 'google-drive',
+    provider,
+    handle: fakeHandle,
+  });
   useEffect(() => {
     onState(result);
   });

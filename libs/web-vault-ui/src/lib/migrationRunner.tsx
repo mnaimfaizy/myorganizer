@@ -16,13 +16,22 @@ import type { MigrationDecision } from '@myorganizer/web-vault';
 import {
   createVaultApi,
   getHttpStatus,
-  loadVault,
   migrateVaultPhase1ToPhase2,
-  saveVault,
 } from '@myorganizer/web-vault';
 
+import { useOptionalVaultSession } from './session';
+
 const VAULT_MIGRATION_VERSION = 1;
-const SESSION_FLAG = `myorganizer_vault_migration_ran_v${VAULT_MIGRATION_VERSION}`;
+const SESSION_FLAG_PREFIX = `myorganizer_vault_migration_ran_v${VAULT_MIGRATION_VERSION}`;
+
+/**
+ * Scoped per User: a second User signing into the same tab Session must
+ * still reconcile their own Local Vault against their server Ciphertext,
+ * even after the first User's reconcile already ran in this Session.
+ */
+function sessionFlagFor(owner: string): string {
+  return `${SESSION_FLAG_PREFIX}:${owner}`;
+}
 
 type PendingVaultConflictPrompt = {
   message: string;
@@ -62,18 +71,36 @@ export function VaultMigrationRunner() {
   const [pendingPrompt, setPendingPrompt] =
     useState<PendingVaultConflictPrompt | null>(null);
 
+  const vaultSession = useOptionalVaultSession();
+  const handle = vaultSession?.handle ?? null;
+  const owner = handle?.owner ?? null;
+  // Mirrors toastRef: keeps the effect below keyed on `owner` alone so a
+  // lock/unlock (which changes `handle`'s identity but not its owner) never
+  // re-triggers a reconcile that's already in flight or already ran.
+  const handleRef = useRef(handle);
+
   useEffect(() => {
     toastRef.current = toast;
   }, [toast]);
 
   useEffect(() => {
+    handleRef.current = handle;
+  }, [handle]);
+
+  useEffect(() => {
     let cancelled = false;
 
     if (typeof window === 'undefined') return;
-    if (window.sessionStorage.getItem(SESSION_FLAG)) return;
+    if (!owner) return;
+
+    const currentHandle = handleRef.current;
+    if (!currentHandle) return;
+
+    const sessionFlag = sessionFlagFor(owner);
+    if (window.sessionStorage.getItem(sessionFlag)) return;
 
     const api = createVaultApi();
-    const localVault = loadVault();
+    const localVault = currentHandle.loadVault();
 
     migrateVaultPhase1ToPhase2({
       api,
@@ -92,11 +119,11 @@ export function VaultMigrationRunner() {
         if (cancelled) return;
 
         if (result.kind !== 'skipped-not-authenticated') {
-          window.sessionStorage.setItem(SESSION_FLAG, '1');
+          window.sessionStorage.setItem(sessionFlag, '1');
         }
 
         if (result.kind === 'downloaded-server-to-local') {
-          saveVault(result.nextLocalVault);
+          currentHandle.saveVault(result.nextLocalVault);
           toastRef.current({
             title: 'Vault synced',
             description: 'Downloaded your server vault to this device.',
@@ -108,7 +135,7 @@ export function VaultMigrationRunner() {
               'Your local encrypted vault was uploaded to the server.',
           });
         } else if (result.kind === 'kept-server-overwrote-local') {
-          saveVault(result.nextLocalVault);
+          currentHandle.saveVault(result.nextLocalVault);
           toastRef.current({
             title: 'Vault updated',
             description: 'Using the server vault on this device.',
@@ -124,7 +151,7 @@ export function VaultMigrationRunner() {
       .catch((e: unknown) => {
         if (cancelled) return;
 
-        window.sessionStorage.setItem(SESSION_FLAG, '1');
+        window.sessionStorage.setItem(sessionFlag, '1');
 
         toastRef.current({
           title: 'Vault sync failed',
@@ -140,7 +167,7 @@ export function VaultMigrationRunner() {
         pendingPromptRef.current = null;
       }
     };
-  }, []);
+  }, [owner]);
 
   function resolvePendingPrompt(decision: MigrationDecision) {
     const prompt = pendingPromptRef.current;

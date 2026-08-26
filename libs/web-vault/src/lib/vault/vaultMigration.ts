@@ -13,7 +13,7 @@ import {
   putServerVaultBlobEtagAware,
   putServerVaultMetaEtagAware,
 } from './serverVaultSync';
-import { EncryptedBlob, VaultStorageV1 } from './vault';
+import { EncryptedBlob, VaultStorageV1 } from './localVaultStorage';
 import {
   localToServerMeta,
   normalizeEncryptedBlobV1,

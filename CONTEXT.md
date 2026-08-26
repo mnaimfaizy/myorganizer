@@ -219,16 +219,24 @@ The client-side action of deriving the Master Key from the User's passphrase so 
 _Avoid_: vault login, decrypt vault, open vault
 
 **Unclaimed Local Vault**:
-A Local Vault on a device with no recorded owner. It predates per-User scoping, so ownership cannot be read from it and must be proven by Vault Claim. It is offered only to a signed-in User who holds no Local Vault of their own, is never removed on anyone's behalf, and remains unclaimed until a Master Key unwrap succeeds.
+A Local Vault on a device with no recorded owner. It predates per-User scoping, so ownership cannot be read from it and must be proven by Vault Claim. It is never removed on anyone's behalf, and remains unclaimed until a Master Key unwrap succeeds — a claim copies it into the claiming User's entry rather than moving it, so the slot survives a claim unchanged. It is _resolved_ automatically only for a signed-in User who holds no Local Vault of their own; it stays _claimable_ by any signed-in User for as long as it is present, which is what keeps a wrongly declined Vault reachable.
 _Avoid_: orphan vault, legacy vault, unowned vault, shared vault
 
 **Vault Claim**:
-The act of a User proving a Local Vault is theirs by unlocking it — a successful Master Key unwrap is the proof, since a failed unwrap means the Vault belongs to someone else. Used to assign an owner to an Unclaimed Local Vault. Claiming never moves a Vault between Users; it only records an ownership that already held.
+The act of a User proving a Local Vault is theirs by unlocking it — a successful Master Key unwrap is the proof, since a failed unwrap means the Vault belongs to someone else. Used to assign an owner to an Unclaimed Local Vault. Claiming never moves a Vault between Users; it only records an ownership that already held. A claim by a User who already holds a Local Vault of their own replaces that Vault, so it is an explicit, acknowledged act rather than a one-click one.
 _Avoid_: adopt vault, take over vault, assign vault, link vault
+
+**Claim Offer**:
+The interface a signed-in User is shown for an Unclaimed Local Vault: it leads with unlock, because unlocking is the claim, and carries an explicit escape for the User who recognises the Vault is not theirs. The escape is deliberately not an equal alternative — the person most likely to take it by mistake is the rightful owner.
+_Avoid_: claim prompt, vault chooser, ownership dialog, migration prompt
 
 **Master Key**:
 The symmetric key derived from the passphrase (PBKDF2 → AES-GCM) that decrypts vault Ciphertext. Never sent to the server.
 _Avoid_: vault key, encryption key, secret key
+
+**Vault Handle**:
+The object a caller holds to reach a Vault, bound at construction to one owner and one Master Key. Vault access is obtained, not invoked: there is no unbound vault function to call, so a Vault cannot be resolved without saying whose it is ([ADR 0047](docs/adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md)). Page libraries receive a handle and never learn who the User is.
+_Avoid_: vault client, vault service, vault accessor, vault context
 
 ## Planning & Orchestration
 

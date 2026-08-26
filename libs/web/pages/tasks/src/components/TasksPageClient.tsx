@@ -2,6 +2,7 @@
 
 import type { Task } from '@myorganizer/core';
 import { useToast } from '@myorganizer/web-ui';
+import type { VaultHandle } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -12,12 +13,12 @@ import { TaskEditDialog } from './task-edit-dialog';
 import TaskItem from './task-item';
 
 interface TasksInnerProps {
-  masterKeyBytes: Uint8Array;
+  handle: VaultHandle;
 }
 
-function TasksInner({ masterKeyBytes }: TasksInnerProps) {
+function TasksInner({ handle }: TasksInnerProps) {
   const { toast } = useToast();
-  const workflow = useTasksWorkflow({ masterKeyBytes });
+  const workflow = useTasksWorkflow({ handle });
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
@@ -234,7 +235,7 @@ function TasksInner({ masterKeyBytes }: TasksInnerProps) {
 export function TasksPageClient() {
   return (
     <VaultGate title="Tasks">
-      {({ masterKeyBytes }) => <TasksInner masterKeyBytes={masterKeyBytes} />}
+      {({ handle }) => <TasksInner handle={handle!} />}
     </VaultGate>
   );
 }

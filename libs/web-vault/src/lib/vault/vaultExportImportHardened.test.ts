@@ -7,14 +7,18 @@
 import { VaultBlobType } from '@myorganizer/app-api-client';
 
 import { AuditReporter, AuditReporterInput } from './auditReporter';
+import type { VaultStorageV1 } from './localVaultStorage';
 import { createInMemoryReplayTracker } from './replayTracker';
-import type { VaultStorageV1 } from './vault';
 import {
   CURRENT_VAULT_EXPORT_SCHEMA_VERSION,
   ImportVaultResult,
   exportVault,
   importVault,
 } from './vaultExportImport';
+import { createVaultHandle } from './vaultHandle';
+
+const TEST_OWNER = 'test-owner';
+const OWNED_VAULT_STORAGE_KEY = `myorganizer_vault_v1:${TEST_OWNER}`;
 
 // Minimal in-memory localStorage shim so `saveVault` works in node.
 class MemoryStorage {
@@ -83,6 +87,8 @@ const sampleVault: VaultStorageV1 = {
     },
   },
 };
+
+const testHandle = createVaultHandle({ owner: TEST_OWNER });
 
 function makeRecordingReporter(): {
   reporter: AuditReporter;
@@ -161,7 +167,11 @@ describe('importVault', () => {
       : exported.text;
 
     const { reporter, calls } = makeRecordingReporter();
-    const result = await importVault({ text, auditReporter: reporter });
+    const result = await importVault({
+      text,
+      handle: testHandle,
+      auditReporter: reporter,
+    });
     return { result, calls };
   }
 
@@ -189,7 +199,11 @@ describe('importVault', () => {
   test('rejects corrupt JSON with `corrupt-file` and does not mutate localStorage', async () => {
     const { reporter, calls } = makeRecordingReporter();
     await expect(
-      importVault({ text: '{not json', auditReporter: reporter }),
+      importVault({
+        text: '{not json',
+        handle: testHandle,
+        auditReporter: reporter,
+      }),
     ).rejects.toMatchObject({ code: 'corrupt-file' });
 
     expect(calls[0]).toMatchObject({
@@ -199,7 +213,7 @@ describe('importVault', () => {
 
     const stored = (
       globalThis as unknown as { window: { localStorage: MemoryStorage } }
-    ).window.localStorage.getItem('myorganizer_vault_v1');
+    ).window.localStorage.getItem(OWNED_VAULT_STORAGE_KEY);
     expect(stored).toBeNull();
   });
 
@@ -207,7 +221,11 @@ describe('importVault', () => {
     const oversize = `"${'x'.repeat(10 * 1024 * 1024 + 10)}"`;
     const { reporter, calls } = makeRecordingReporter();
     await expect(
-      importVault({ text: oversize, auditReporter: reporter }),
+      importVault({
+        text: oversize,
+        handle: testHandle,
+        auditReporter: reporter,
+      }),
     ).rejects.toMatchObject({ code: 'oversize' });
     expect(calls[0]).toMatchObject({
       status: 'failed',
@@ -228,6 +246,7 @@ describe('importVault', () => {
     await expect(
       importVault({
         text: JSON.stringify(mutated),
+        handle: testHandle,
         auditReporter: reporter,
       }),
     ).rejects.toMatchObject({ code: 'unknown-blob-type' });
@@ -246,6 +265,7 @@ describe('importVault', () => {
     await expect(
       importVault({
         text: JSON.stringify(mutated),
+        handle: testHandle,
         auditReporter: reporter,
       }),
     ).rejects.toMatchObject({ code: 'empty-envelope' });
@@ -264,6 +284,7 @@ describe('importVault', () => {
     await expect(
       importVault({
         text: JSON.stringify(mutated),
+        handle: testHandle,
         auditReporter: reporter,
       }),
     ).rejects.toMatchObject({ code: 'schema-version-downgrade' });
@@ -282,6 +303,7 @@ describe('importVault', () => {
 
     const first = await importVault({
       text: exported.text,
+      handle: testHandle,
       replayTracker: tracker,
       auditReporter: r1,
     });
@@ -291,6 +313,7 @@ describe('importVault', () => {
     await expect(
       importVault({
         text: exported.text,
+        handle: testHandle,
         replayTracker: tracker,
         auditReporter: r2,
       }),
@@ -306,16 +329,20 @@ describe('importVault', () => {
       globalThis as unknown as { window: { localStorage: MemoryStorage } }
     ).window.localStorage;
     storage.setItem(
-      'myorganizer_vault_v1',
+      OWNED_VAULT_STORAGE_KEY,
       JSON.stringify({ version: 1, sentinel: 'before-import' }),
     );
 
     const { reporter } = makeRecordingReporter();
     await expect(
-      importVault({ text: '{"corrupt": true}', auditReporter: reporter }),
+      importVault({
+        text: '{"corrupt": true}',
+        handle: testHandle,
+        auditReporter: reporter,
+      }),
     ).rejects.toMatchObject({ code: 'corrupt-file' });
 
-    const after = storage.getItem('myorganizer_vault_v1');
+    const after = storage.getItem(OWNED_VAULT_STORAGE_KEY);
     expect(after).toBe(
       JSON.stringify({ version: 1, sentinel: 'before-import' }),
     );
@@ -339,7 +366,11 @@ describe('importVault', () => {
     };
 
     await expect(
-      importVault({ text: exported.text, auditReporter: safeReporter }),
+      importVault({
+        text: exported.text,
+        handle: testHandle,
+        auditReporter: safeReporter,
+      }),
     ).resolves.toMatchObject({ envelope: expect.any(Object) });
   });
 });

@@ -1,6 +1,6 @@
 import { VaultBlobType, type VaultMetaV1 } from '@myorganizer/app-api-client';
 
-import type { VaultStorageV1 } from './vault';
+import type { VaultStorageV1 } from './localVaultStorage';
 import { migrateVaultPhase1ToPhase2 } from './vaultMigration';
 
 type ApiParam = Parameters<typeof migrateVaultPhase1ToPhase2>[0]['api'];

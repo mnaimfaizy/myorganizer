@@ -117,17 +117,23 @@ jest.mock('./SubscriptionsTotalsCard', () => ({
   ),
 }));
 
+let mockHandleLoadFn: jest.Mock | null = null;
+let mockHandleSaveFn: jest.Mock | null = null;
+
 jest.mock('@myorganizer/web-vault-ui', () => ({
   VaultGate: ({
     children,
   }: {
-    children: (props: { masterKeyBytes: Uint8Array }) => unknown;
-  }) => children({ masterKeyBytes: new Uint8Array(32) }) as React.ReactElement,
+    children: (props: { handle: VaultHandle }) => unknown;
+  }) => {
+    const loadFn = mockHandleLoadFn || jest.fn().mockResolvedValue([]);
+    const saveFn = mockHandleSaveFn || jest.fn().mockResolvedValue(undefined);
+    const handle = createMockHandle(loadFn, saveFn);
+    return children({ handle }) as React.ReactElement;
+  },
 }));
 
 jest.mock('@myorganizer/web-vault', () => ({
-  loadDecryptedData: jest.fn(),
-  saveEncryptedData: jest.fn(),
   normalizeSubscriptions: jest.fn((data) => ({
     value: data || [],
     changed: false,
@@ -159,19 +165,29 @@ import {
 } from '@myorganizer/core';
 import { useToast } from '@myorganizer/web-ui';
 import {
-  loadDecryptedData,
-  saveEncryptedData,
   normalizeSubscriptions,
+  type VaultHandle,
 } from '@myorganizer/web-vault';
 import { SubscriptionsPageClient } from './SubscriptionsPageClient';
 /* eslint-enable import/first */
 
 const mockUseToast = useToast as jest.Mock;
-const mockLoadDecryptedData = loadDecryptedData as jest.Mock;
-const mockSaveEncryptedData = saveEncryptedData as jest.Mock;
 const mockNormalizeSubscriptions = normalizeSubscriptions as jest.Mock;
 
 const mockToast = jest.fn();
+
+const createMockHandle = (
+  loadDataMock?: jest.Mock,
+  saveDataMock?: jest.Mock,
+): VaultHandle => {
+  const load = loadDataMock || jest.fn().mockResolvedValue([]);
+  const save = saveDataMock || jest.fn().mockResolvedValue(undefined);
+  return {
+    isUnlocked: true,
+    loadDecryptedData: load,
+    saveEncryptedData: save,
+  } as unknown as VaultHandle;
+};
 
 function makeSubscriptionRecord(
   id: string,
@@ -196,9 +212,9 @@ function makeSubscriptionRecord(
 describe('SubscriptionsPageClient', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockHandleLoadFn = null;
+    mockHandleSaveFn = null;
     mockUseToast.mockReturnValue({ toast: mockToast });
-    mockLoadDecryptedData.mockResolvedValue([]);
-    mockSaveEncryptedData.mockResolvedValue(undefined);
     mockNormalizeSubscriptions.mockImplementation((data) => ({
       value: data || [],
       changed: false,
@@ -207,7 +223,7 @@ describe('SubscriptionsPageClient', () => {
 
   describe('Initial render', () => {
     it('should not render add or edit dialog on first render before vault loads', () => {
-      mockLoadDecryptedData.mockImplementation(
+      mockHandleLoadFn = jest.fn(
         () =>
           new Promise(() => {
             // Never resolve
@@ -221,13 +237,13 @@ describe('SubscriptionsPageClient', () => {
     });
 
     it('should not render add or edit dialog after vault loads with empty data', async () => {
-      mockLoadDecryptedData.mockResolvedValue([]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([]);
 
       render(<SubscriptionsPageClient />);
 
       // Wait for vault load to complete
       await waitFor(() => {
-        expect(mockLoadDecryptedData).toHaveBeenCalled();
+        expect(mockHandleLoadFn).toHaveBeenCalled();
       });
 
       // Dialog should not be visible initially
@@ -237,12 +253,12 @@ describe('SubscriptionsPageClient', () => {
 
   describe('Add subscription', () => {
     it('should open add dialog when Add Subscription button clicked', async () => {
-      mockLoadDecryptedData.mockResolvedValue([]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([]);
 
       render(<SubscriptionsPageClient />);
 
       await waitFor(() => {
-        expect(mockLoadDecryptedData).toHaveBeenCalled();
+        expect(mockHandleLoadFn).toHaveBeenCalled();
       });
 
       // Dialog is closed initially
@@ -260,13 +276,13 @@ describe('SubscriptionsPageClient', () => {
     });
 
     it('should create new subscription when add form is filled and submitted', async () => {
-      mockLoadDecryptedData.mockResolvedValue([]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<SubscriptionsPageClient />);
 
       await waitFor(() => {
-        expect(mockLoadDecryptedData).toHaveBeenCalled();
+        expect(mockHandleLoadFn).toHaveBeenCalled();
       });
 
       // Open add dialog
@@ -301,11 +317,11 @@ describe('SubscriptionsPageClient', () => {
 
       // Wait for saveEncryptedData to be called
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Check that saveEncryptedData was called with a record containing the entered name
-      const calls = (mockSaveEncryptedData as jest.Mock).mock.calls;
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall[0].value).toContainEqual(
         expect.objectContaining({ name: 'Disney Plus' }),
@@ -323,13 +339,13 @@ describe('SubscriptionsPageClient', () => {
     });
 
     it('should keep add dialog open with values intact if save fails', async () => {
-      mockLoadDecryptedData.mockResolvedValue([]);
-      mockSaveEncryptedData.mockRejectedValue(new Error('Save failed'));
+      mockHandleLoadFn = jest.fn().mockResolvedValue([]);
+      mockHandleSaveFn = jest.fn().mockRejectedValue(new Error('Save failed'));
 
       render(<SubscriptionsPageClient />);
 
       await waitFor(() => {
-        expect(mockLoadDecryptedData).toHaveBeenCalled();
+        expect(mockHandleLoadFn).toHaveBeenCalled();
       });
 
       // Open add dialog
@@ -363,7 +379,7 @@ describe('SubscriptionsPageClient', () => {
 
       // Wait for saveEncryptedData to be called
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Dialog should still be open
@@ -388,7 +404,7 @@ describe('SubscriptionsPageClient', () => {
   describe('Edit subscription', () => {
     it('should open edit dialog when Edit button clicked on a subscription', async () => {
       const sub = makeSubscriptionRecord('sub1', { name: 'Netflix' });
-      mockLoadDecryptedData.mockResolvedValue([sub]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([sub]);
 
       render(<SubscriptionsPageClient />);
 
@@ -406,8 +422,8 @@ describe('SubscriptionsPageClient', () => {
 
     it('should update subscription when edit form is changed and saved', async () => {
       const sub = makeSubscriptionRecord('sub1', { name: 'Netflix' });
-      mockLoadDecryptedData.mockResolvedValue([sub]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([sub]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<SubscriptionsPageClient />);
 
@@ -444,11 +460,11 @@ describe('SubscriptionsPageClient', () => {
 
       // Wait for saveEncryptedData to be called
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Check that saveEncryptedData was called with the updated record
-      const calls = (mockSaveEncryptedData as jest.Mock).mock.calls;
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall[0].value).toContainEqual(
         expect.objectContaining({ id: 'sub1', name: 'Netflix Premium' }),
@@ -469,7 +485,7 @@ describe('SubscriptionsPageClient', () => {
   describe('Delete subscription', () => {
     it('should open confirm delete dialog when Delete button clicked', async () => {
       const sub = makeSubscriptionRecord('sub1', { name: 'Adobe' });
-      mockLoadDecryptedData.mockResolvedValue([sub]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([sub]);
 
       render(<SubscriptionsPageClient />);
 
@@ -487,7 +503,7 @@ describe('SubscriptionsPageClient', () => {
 
     it('should show subscription name in confirm delete dialog title', async () => {
       const sub = makeSubscriptionRecord('sub1', { name: 'Photoshop' });
-      mockLoadDecryptedData.mockResolvedValue([sub]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([sub]);
 
       render(<SubscriptionsPageClient />);
 
@@ -508,7 +524,8 @@ describe('SubscriptionsPageClient', () => {
 
     it('should not call saveEncryptedData when Delete button clicked (only when confirmed)', async () => {
       const sub = makeSubscriptionRecord('sub1', { name: 'Adobe CC' });
-      mockLoadDecryptedData.mockResolvedValue([sub]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([sub]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<SubscriptionsPageClient />);
 
@@ -524,13 +541,13 @@ describe('SubscriptionsPageClient', () => {
       });
 
       // saveEncryptedData should not have been called yet
-      expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+      expect(mockHandleSaveFn).not.toHaveBeenCalled();
     });
 
     it('should call saveEncryptedData when confirm delete clicked', async () => {
       const sub = makeSubscriptionRecord('sub1', { name: 'Figma' });
-      mockLoadDecryptedData.mockResolvedValue([sub]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([sub]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<SubscriptionsPageClient />);
 
@@ -549,19 +566,19 @@ describe('SubscriptionsPageClient', () => {
       fireEvent.click(confirmButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // The call should have empty array (subscription removed)
-      const calls = (mockSaveEncryptedData as jest.Mock).mock.calls;
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall[0].value).toHaveLength(0); // Subscription removed
     });
 
     it('should remove subscription from list after confirmed delete', async () => {
       const sub = makeSubscriptionRecord('sub1', { name: 'Slack' });
-      mockLoadDecryptedData.mockResolvedValue([sub]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([sub]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<SubscriptionsPageClient />);
 
@@ -580,7 +597,7 @@ describe('SubscriptionsPageClient', () => {
       fireEvent.click(confirmButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Subscription row should be gone
@@ -593,8 +610,8 @@ describe('SubscriptionsPageClient', () => {
 
     it('should close delete dialog after confirmed delete', async () => {
       const sub = makeSubscriptionRecord('sub1', { name: 'Zoom' });
-      mockLoadDecryptedData.mockResolvedValue([sub]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([sub]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<SubscriptionsPageClient />);
 
@@ -621,8 +638,8 @@ describe('SubscriptionsPageClient', () => {
 
     it('should show success toast after confirmed delete', async () => {
       const sub = makeSubscriptionRecord('sub1', { name: 'Notion' });
-      mockLoadDecryptedData.mockResolvedValue([sub]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([sub]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<SubscriptionsPageClient />);
 
@@ -652,7 +669,7 @@ describe('SubscriptionsPageClient', () => {
 
     it('should close delete dialog when Cancel button clicked', async () => {
       const sub = makeSubscriptionRecord('sub1', { name: 'Asana' });
-      mockLoadDecryptedData.mockResolvedValue([sub]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([sub]);
 
       render(<SubscriptionsPageClient />);
 
@@ -679,7 +696,8 @@ describe('SubscriptionsPageClient', () => {
 
     it('should not call saveEncryptedData when cancel delete', async () => {
       const sub = makeSubscriptionRecord('sub1', { name: 'Asana' });
-      mockLoadDecryptedData.mockResolvedValue([sub]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([sub]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<SubscriptionsPageClient />);
 
@@ -698,12 +716,12 @@ describe('SubscriptionsPageClient', () => {
       fireEvent.click(cancelButton);
 
       // saveEncryptedData should not have been called
-      expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+      expect(mockHandleSaveFn).not.toHaveBeenCalled();
     });
 
     it('should keep subscription in list after cancel delete', async () => {
       const sub = makeSubscriptionRecord('sub1', { name: 'Trello' });
-      mockLoadDecryptedData.mockResolvedValue([sub]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([sub]);
 
       render(<SubscriptionsPageClient />);
 
@@ -733,7 +751,7 @@ describe('SubscriptionsPageClient', () => {
         makeSubscriptionRecord('sub2', { name: 'Spotify' }),
         makeSubscriptionRecord('sub3', { name: 'Adobe' }),
       ];
-      mockLoadDecryptedData.mockResolvedValue(subs);
+      mockHandleLoadFn = jest.fn().mockResolvedValue(subs);
 
       render(<SubscriptionsPageClient />);
 
@@ -750,7 +768,7 @@ describe('SubscriptionsPageClient', () => {
         makeSubscriptionRecord('sub2', { name: 'Adobe' }),
         makeSubscriptionRecord('sub3', { name: 'Netflix' }),
       ];
-      mockLoadDecryptedData.mockResolvedValue(subs);
+      mockHandleLoadFn = jest.fn().mockResolvedValue(subs);
 
       render(<SubscriptionsPageClient />);
 

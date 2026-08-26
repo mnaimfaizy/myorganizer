@@ -390,7 +390,7 @@ When the `CatalogItem`, `GroceryList`, or `ListLine` shape needs to change:
 
 ### Lists not loading (vault locked)
 
-If the empty state appears but the user expects data: confirm the VaultGate unlock screen was completed. Verify `localStorage` contains `myorganizer_vault_v1`.
+If the empty state appears but the user expects data: confirm the VaultGate unlock screen was completed. Verify `localStorage` contains `myorganizer_vault_v1:<userId>` — Local Vaults are owner-bound ([ADR 0047](../adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md)), so a signed-in User's Vault lives under their own id. The unsuffixed `myorganizer_vault_v1` key is a different thing: an Unclaimed Local Vault, written before Vaults were owner-bound. Finding it empty says nothing about whether this User has a Vault.
 
 ### Form submission hangs
 

@@ -15,7 +15,7 @@ import { WelcomeCard } from './widgets/WelcomeCard';
 export function DashboardHomeClient() {
   const user = useMemo(() => getCurrentUser(), []);
   const session = useOptionalVaultSession();
-  const masterKeyBytes = session?.masterKeyBytes ?? null;
+  const handle = session?.handle ?? null;
 
   return (
     <div className="grid auto-rows-min gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
@@ -24,10 +24,10 @@ export function DashboardHomeClient() {
       <QuickActionsCard />
 
       {/* Row 2: Vault stat cards */}
-      <TasksSummaryCard masterKeyBytes={masterKeyBytes} />
-      <SubscriptionsOverviewCard masterKeyBytes={masterKeyBytes} />
-      <AddressesCountCard masterKeyBytes={masterKeyBytes} />
-      <MobileNumbersCountCard masterKeyBytes={masterKeyBytes} />
+      <TasksSummaryCard handle={handle} />
+      <SubscriptionsOverviewCard handle={handle} />
+      <AddressesCountCard handle={handle} />
+      <MobileNumbersCountCard handle={handle} />
 
       {/* Row 3: YouTube (full width) */}
       <RecentYouTubeCard />

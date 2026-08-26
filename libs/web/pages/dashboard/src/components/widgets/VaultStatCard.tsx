@@ -1,19 +1,20 @@
 'use client';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@myorganizer/web-ui';
+import type { VaultHandle } from '@myorganizer/web-vault';
 import { Lock } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 export type VaultStatCardProps = {
-  masterKeyBytes: Uint8Array | null;
+  handle: VaultHandle | null;
   icon: ReactNode;
   title: string;
-  children: (masterKeyBytes: Uint8Array) => ReactNode;
+  children: (handle: VaultHandle) => ReactNode;
   className?: string;
 };
 
 export function VaultStatCard({
-  masterKeyBytes,
+  handle,
   icon,
   title,
   children,
@@ -26,8 +27,8 @@ export function VaultStatCard({
         <span className="text-muted-foreground">{icon}</span>
       </CardHeader>
       <CardContent>
-        {masterKeyBytes ? (
-          children(masterKeyBytes)
+        {handle?.isUnlocked ? (
+          children(handle)
         ) : (
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
             <Lock className="h-4 w-4" />

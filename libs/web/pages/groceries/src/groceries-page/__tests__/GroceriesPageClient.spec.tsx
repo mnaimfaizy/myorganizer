@@ -15,7 +15,7 @@ jest.mock('../../shared/hooks', () => ({
 
 jest.mock('@myorganizer/web-vault-ui', () => ({
   VaultGate: ({ children, title }: any) => {
-    const ctx = { masterKeyBytes: new Uint8Array(32) };
+    const ctx = { handle: { isUnlocked: true } };
     return (
       <div data-testid="vault-gate" data-title={title}>
         {children(ctx)}
@@ -1191,7 +1191,7 @@ describe('GroceriesPageClient', () => {
       expect(vaultGate).toHaveAttribute('data-title', 'Groceries');
     });
 
-    it('should call useGroceriesVault with masterKeyBytes from VaultGate', async () => {
+    it('should call useGroceriesVault with the handle from VaultGate', async () => {
       mockUseGroceriesVault.mockReturnValue(
         makeVaultState({ lists: [], loading: false }),
       );
@@ -1201,7 +1201,7 @@ describe('GroceriesPageClient', () => {
       // Wait for component to initialize and call the hook
       await waitFor(() => {
         expect(mockUseGroceriesVault).toHaveBeenCalledWith({
-          masterKeyBytes: expect.any(Uint8Array),
+          handle: expect.objectContaining({ isUnlocked: true }),
         });
       });
     });

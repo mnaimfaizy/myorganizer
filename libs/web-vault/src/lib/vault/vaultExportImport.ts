@@ -16,8 +16,9 @@ import {
 } from '@myorganizer/vault-core';
 
 import { AuditReporter, noopAuditReporter } from './auditReporter';
+import type { VaultStorageV1 } from './localVaultStorage';
 import { ReplayTracker } from './replayTracker';
-import { saveVault, VaultStorageV1 } from './vault';
+import type { VaultHandle } from './vaultHandle';
 import {
   localToServerMeta,
   normalizeEncryptedBlobV1,
@@ -479,6 +480,12 @@ export async function exportVault(
 
 export interface ImportVaultOptions {
   text: string;
+  /**
+   * The signed-in User's Vault Handle. The atomic commit (phase 5) writes
+   * through this handle so an import always lands in that User's entry,
+   * never in the Unclaimed Local Vault slot.
+   */
+  handle: VaultHandle;
   source?: 'local-file' | 'google-drive';
   replayTracker?: ReplayTracker;
   auditReporter?: AuditReporter;
@@ -567,7 +574,7 @@ export async function importVault(
     const staged = envelopeToLocalVault(stagedEnvelope);
 
     // Phase 5: atomic commit.
-    saveVault(staged);
+    options.handle.saveVault(staged);
 
     // Phase 6: record exportId.
     if (options.replayTracker) {

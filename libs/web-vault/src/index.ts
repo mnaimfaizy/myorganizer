@@ -9,7 +9,16 @@ export * from './lib/vault/replayTracker';
 export * from './lib/vault/serverVaultSync';
 export * from './lib/vault/subscriptionRecordNormalization';
 export * from './lib/vault/taskNormalization';
-export * from './lib/vault/vault';
+// The Vault Handle, and the errors it throws, are the whole public surface of
+// per-User Local Vault storage. Storage keys and record shapes stay internal:
+// publishing them would hand a consumer a way to read a Vault without naming
+// an owner, which is the property ADR 0047 exists to keep.
+export {
+  VaultLockedError,
+  VaultSecretMismatchError,
+  createVaultHandle,
+} from './lib/vault/vaultHandle';
+export type { LocalVaultStatus, VaultHandle } from './lib/vault/vaultHandle';
 export * from './lib/vault/vaultExportImport';
 export * from './lib/vault/vaultMigration';
 export * from './lib/vault/vaultShapes';

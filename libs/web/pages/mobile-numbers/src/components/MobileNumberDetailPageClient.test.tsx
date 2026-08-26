@@ -122,17 +122,36 @@ jest.mock('@myorganizer/web-ui', () => {
   };
 });
 
+let mockHandleLoadFn: jest.Mock | null = null;
+let mockHandleSaveFn: jest.Mock | null = null;
+
+const createMockHandle = (
+  loadDataMock?: jest.Mock,
+  saveDataMock?: jest.Mock,
+): VaultHandle => {
+  const load = loadDataMock || jest.fn().mockResolvedValue([]);
+  const save = saveDataMock || jest.fn().mockResolvedValue(undefined);
+  return {
+    isUnlocked: true,
+    loadDecryptedData: load,
+    saveEncryptedData: save,
+  } as unknown as VaultHandle;
+};
+
 jest.mock('@myorganizer/web-vault-ui', () => ({
   VaultGate: ({
     children,
   }: {
-    children: (props: { masterKeyBytes: Uint8Array }) => unknown;
-  }) => children({ masterKeyBytes: new Uint8Array(32) }) as React.ReactElement,
+    children: (props: { handle: VaultHandle }) => unknown;
+  }) => {
+    const loadFn = mockHandleLoadFn || jest.fn().mockResolvedValue([]);
+    const saveFn = mockHandleSaveFn || jest.fn().mockResolvedValue(undefined);
+    const handle = createMockHandle(loadFn, saveFn);
+    return children({ handle }) as React.ReactElement;
+  },
 }));
 
 jest.mock('@myorganizer/web-vault', () => ({
-  loadDecryptedData: jest.fn(),
-  saveEncryptedData: jest.fn(),
   normalizeMobileNumbers: jest.fn((data) => ({
     value: data || [],
     changed: false,
@@ -160,14 +179,12 @@ import type {
   MobileNumberRecord,
   UsageLocationRecord,
 } from '@myorganizer/core';
+import type { VaultHandle } from '@myorganizer/web-vault';
 import { useToast } from '@myorganizer/web-ui';
-import { loadDecryptedData, saveEncryptedData } from '@myorganizer/web-vault';
 import { MobileNumberDetailPageClient } from './MobileNumberDetailPageClient';
 /* eslint-enable import/first */
 
 const mockUseToast = useToast as jest.Mock;
-const mockLoadDecryptedData = loadDecryptedData as jest.Mock;
-const mockSaveEncryptedData = saveEncryptedData as jest.Mock;
 
 const mockToast = jest.fn();
 
@@ -206,8 +223,8 @@ describe('MobileNumberDetailPageClient', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUseToast.mockReturnValue({ toast: mockToast });
-    mockLoadDecryptedData.mockResolvedValue([]);
-    mockSaveEncryptedData.mockResolvedValue(undefined);
+    mockHandleLoadFn = jest.fn().mockResolvedValue([]);
+    mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
   });
 
   describe('Mobile number detail loading and resolution', () => {
@@ -220,7 +237,7 @@ describe('MobileNumberDetailPageClient', () => {
         organisationName: 'Company',
       });
       mobileNumber.usageLocations = [location];
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -234,7 +251,7 @@ describe('MobileNumberDetailPageClient', () => {
       const otherMobileNumber = makeMobileNumberRecord('mob2', {
         label: 'Other',
       });
-      mockLoadDecryptedData.mockResolvedValue([otherMobileNumber]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([otherMobileNumber]);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -249,7 +266,7 @@ describe('MobileNumberDetailPageClient', () => {
   describe('Mobile number edit dialog', () => {
     it('should not render edit dialog before Edit button is clicked', async () => {
       const mobileNumber = makeMobileNumberRecord('mob1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -262,7 +279,7 @@ describe('MobileNumberDetailPageClient', () => {
 
     it('should open edit dialog when Edit button clicked', async () => {
       const mobileNumber = makeMobileNumberRecord('mob1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -283,8 +300,8 @@ describe('MobileNumberDetailPageClient', () => {
         label: 'Home',
         phoneNumber: '5551234567',
       });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -313,11 +330,11 @@ describe('MobileNumberDetailPageClient', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Verify payload has updated label
-      const calls = (mockSaveEncryptedData as jest.Mock).mock.calls;
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       expect(lastCall[0].value).toContainEqual(
         expect.objectContaining({ label: 'Updated Home' }),
@@ -333,8 +350,8 @@ describe('MobileNumberDetailPageClient', () => {
 
     it('should never call router.push when saving mobile number edit', async () => {
       const mobileNumber = makeMobileNumberRecord('mob1', { label: 'Home' });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -361,7 +378,7 @@ describe('MobileNumberDetailPageClient', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
     });
   });
@@ -372,7 +389,7 @@ describe('MobileNumberDetailPageClient', () => {
         label: 'Home',
         usageLocations: [],
       });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -388,7 +405,7 @@ describe('MobileNumberDetailPageClient', () => {
         label: 'Home',
         usageLocations: [],
       });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -411,8 +428,8 @@ describe('MobileNumberDetailPageClient', () => {
         label: 'Home',
         usageLocations: [],
       });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -449,11 +466,11 @@ describe('MobileNumberDetailPageClient', () => {
       fireEvent.click(submitButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Verify the new location was persisted
-      const calls = (mockSaveEncryptedData as jest.Mock).mock.calls;
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       const savedMobileNumber = lastCall[0].value[0];
       expect(savedMobileNumber.usageLocations).toHaveLength(1);
@@ -480,7 +497,7 @@ describe('MobileNumberDetailPageClient', () => {
       const mobileNumber = makeMobileNumberRecord('mob1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -507,7 +524,7 @@ describe('MobileNumberDetailPageClient', () => {
       const mobileNumber = makeMobileNumberRecord('mob1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -535,8 +552,8 @@ describe('MobileNumberDetailPageClient', () => {
       const mobileNumber = makeMobileNumberRecord('mob1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -567,11 +584,11 @@ describe('MobileNumberDetailPageClient', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Verify the location was updated
-      const calls = (mockSaveEncryptedData as jest.Mock).mock.calls;
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       const savedMobileNumber = lastCall[0].value[0];
       expect(savedMobileNumber.usageLocations[0].organisationName).toBe(
@@ -587,8 +604,8 @@ describe('MobileNumberDetailPageClient', () => {
       const mobileNumber = makeMobileNumberRecord('mob1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -618,7 +635,7 @@ describe('MobileNumberDetailPageClient', () => {
       fireEvent.click(saveButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
     });
   });
@@ -631,7 +648,7 @@ describe('MobileNumberDetailPageClient', () => {
       const mobileNumber = makeMobileNumberRecord('mob1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -659,7 +676,7 @@ describe('MobileNumberDetailPageClient', () => {
       const mobileNumber = makeMobileNumberRecord('mob1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -679,7 +696,7 @@ describe('MobileNumberDetailPageClient', () => {
         expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
       });
 
-      expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+      expect(mockHandleSaveFn).not.toHaveBeenCalled();
     });
 
     it('should remove location and persist when confirm delete clicked', async () => {
@@ -689,8 +706,8 @@ describe('MobileNumberDetailPageClient', () => {
       const mobileNumber = makeMobileNumberRecord('mob1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
-      mockSaveEncryptedData.mockResolvedValue(undefined);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -714,11 +731,11 @@ describe('MobileNumberDetailPageClient', () => {
       fireEvent.click(confirmButton);
 
       await waitFor(() => {
-        expect(mockSaveEncryptedData).toHaveBeenCalled();
+        expect(mockHandleSaveFn).toHaveBeenCalled();
       });
 
       // Verify location is removed
-      const calls = (mockSaveEncryptedData as jest.Mock).mock.calls;
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
       const savedMobileNumber = lastCall[0].value[0];
       expect(savedMobileNumber.usageLocations).toHaveLength(0);
@@ -731,7 +748,7 @@ describe('MobileNumberDetailPageClient', () => {
       const mobileNumber = makeMobileNumberRecord('mob1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -754,7 +771,7 @@ describe('MobileNumberDetailPageClient', () => {
       const cancelButton = screen.getByTestId('delete-cancel-btn');
       fireEvent.click(cancelButton);
 
-      expect(mockSaveEncryptedData).not.toHaveBeenCalled();
+      expect(mockHandleSaveFn).not.toHaveBeenCalled();
     });
 
     it('should keep location visible after cancel delete', async () => {
@@ -764,7 +781,7 @@ describe('MobileNumberDetailPageClient', () => {
       const mobileNumber = makeMobileNumberRecord('mob1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
@@ -798,8 +815,8 @@ describe('MobileNumberDetailPageClient', () => {
       const mobileNumber = makeMobileNumberRecord('mob1', {
         usageLocations: [location],
       });
-      mockLoadDecryptedData.mockResolvedValue([mobileNumber]);
-      mockSaveEncryptedData.mockRejectedValue(new Error('Save failed'));
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
+      mockHandleSaveFn = jest.fn().mockRejectedValue(new Error('Save failed'));
 
       render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
 
