@@ -169,12 +169,12 @@ yarn nx generate @nx/react:library \
 Run tasks only on projects affected by recent changes:
 
 ```sh
-yarn nx affected --target=build
-yarn nx affected --target=test
-yarn nx affected --target=lint
+yarn nx affected -t build
+yarn nx affected -t test
+yarn nx affected -t lint
 
 # With base/head refs (useful in CI):
-yarn nx affected --target=build --base=main --head=HEAD
+yarn nx affected -t build --base=main --head=HEAD
 ```
 
 ---
@@ -182,9 +182,11 @@ yarn nx affected --target=build --base=main --head=HEAD
 ## Viewing the Dependency Graph
 
 ```sh
-yarn nx dep-graph
-# or to open in the browser:
+# Opens the project graph in the browser:
 yarn nx graph
+
+# Scope it to projects affected by the current changes:
+yarn nx graph --affected
 ```
 
 ---
@@ -218,6 +220,14 @@ Every library intended to be imported by other projects must have a path alias r
 
 Ensure `libs/<path>/src/index.ts` exports all public API surface from the library.
 
+Since Nx 22.0.0, neither `nx format` nor the generators sort these path mappings any more. Sorting now
+requires an explicit flag, so hand-added aliases stay wherever they were typed and the block drifts out
+of order silently:
+
+```sh
+yarn nx format:write --sort-root-tsconfig-paths
+```
+
 ---
 
 ## Repo References
@@ -225,4 +235,4 @@ Ensure `libs/<path>/src/index.ts` exports all public API surface from the librar
 - `nx.json` — generator defaults and plugin declarations
 - `tsconfig.base.json` — all registered path aliases
 - `AGENTS.md` — monorepo architecture rules
-- `package.json` — installed `@nx/*` plugins (all at version 22)
+- `package.json` — installed `@nx/*` plugins; `TECH_STACK.md` records the pinned version
