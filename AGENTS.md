@@ -111,6 +111,7 @@ Named workflows live in `.agents/skills/`. Load the Skill; do not copy its steps
 - API contracts: `.agents/skills/backend-api-contract-change/SKILL.md`
 - Implement agreed work: `.agents/skills/implement/SKILL.md`
 - Code review: `.agents/skills/code-review/SKILL.md`
+- QA plan for finished work before its PR merges (PRD Issue, or a single issue): `.agents/skills/qa-plan/SKILL.md`
 - TDD: `.agents/skills/tdd/SKILL.md`
 - Release: `.agents/skills/release-and-deploy-workflow/SKILL.md`
 - Design / grilling session: `.agents/skills/grill-with-docs/SKILL.md` — filing that plan as tracked work is `to-prd`, not IssueCreator
