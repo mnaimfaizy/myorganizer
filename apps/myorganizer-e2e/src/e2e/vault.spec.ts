@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { gotoStable, E2E_USER_ID, waitForOwnedVault } from './helpers';
+import {
+  gotoStable,
+  E2E_USER_ID,
+  routeApi,
+  waitForOwnedVault,
+} from './helpers';
 
 async function unlockWithPassphrase(
   page: import('@playwright/test').Page,
@@ -81,7 +86,12 @@ test.describe('Vault (E2E)', () => {
   test('should create vault, sync to server, then load on a new session', async ({
     browser,
   }, testInfo) => {
-    test.setTimeout(120000);
+    // The heaviest test in the suite: two browser contexts, several PBKDF2
+    // derivations (slow by design, and slower still on WebKit), and a full
+    // upload/download sync round-trip. It fits 120s on WebKit when run alone
+    // but not when the sequential all-browser run puts the machine under
+    // load, so WebKit gets a realistic budget rather than a skip (issue #506).
+    test.setTimeout(testInfo.project.name === 'webkit' ? 240000 : 120000);
 
     // In-memory "server" backing store shared across both sessions.
     let serverMeta: any | null = null;
@@ -110,10 +120,13 @@ test.describe('Vault (E2E)', () => {
     async function setupRoutes(page: import('@playwright/test').Page) {
       const loginUrl = /\/auth\/login\/?(\?.*)?$/;
       const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
+      // Every VaultBlobType must be stubbed: the download path fetches all of
+      // them, and one unmatched type escapes to the real (absent) backend and
+      // rejects the whole migration. `tasks` was missing (issue #506).
       const vaultBlobUrl =
-        /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos)\/?(\?.*)?$/;
+        /\/vault\/blob\/(addresses|groceries|mobileNumbers|subscriptions|tasks|todos)\/?(\?.*)?$/;
 
-      await page.route(loginUrl, async (route) => {
+      await routeApi(page, loginUrl, async (route) => {
         const request = route.request();
         const origin = new URL(page.url() || 'http://localhost:3000').origin;
         const headers = corsHeaders(origin);
@@ -141,7 +154,7 @@ test.describe('Vault (E2E)', () => {
         });
       });
 
-      await page.route(vaultMetaUrl, async (route) => {
+      await routeApi(page, vaultMetaUrl, async (route) => {
         const request = route.request();
         const origin = new URL(page.url() || 'http://localhost:3000').origin;
         const headers = corsHeaders(origin);
@@ -213,7 +226,7 @@ test.describe('Vault (E2E)', () => {
         await route.fulfill({ status: 405, headers });
       });
 
-      await page.route(vaultBlobUrl, async (route) => {
+      await routeApi(page, vaultBlobUrl, async (route) => {
         const request = route.request();
         const origin = new URL(page.url() || 'http://localhost:3000').origin;
         const headers = corsHeaders(origin);
@@ -221,7 +234,7 @@ test.describe('Vault (E2E)', () => {
         const match = request
           .url()
           .match(
-            /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos)/,
+            /\/vault\/blob\/(addresses|groceries|mobileNumbers|subscriptions|tasks|todos)/,
           );
         const type = match?.[1];
 
@@ -347,7 +360,11 @@ test.describe('Vault (E2E)', () => {
     await expect(page1.getByText('221B Baker Street').first()).toBeVisible({
       timeout: 60000,
     });
-    await page1.getByRole('button', { name: 'View address' }).click();
+    // Saving leaves the sheet open on its success step. The "View address"
+    // button this spec used no longer exists; "Set up usage locations" is its
+    // successor and pushes the same /dashboard/addresses/{id} route
+    // (AddAddressCard.handleSetUpUsageLocations). Issue #506.
+    await page1.getByRole('button', { name: 'Set up usage locations' }).click();
     await expect(page1.getByText('Full Address')).toBeVisible({
       timeout: 60000,
     });
@@ -356,9 +373,21 @@ test.describe('Vault (E2E)', () => {
     await gotoStable(page1, '/dashboard/mobile-numbers');
     await unlockWithPassphrase(page1, passphrase);
 
-    await page1.fill('#mn-label', 'Personal');
-    await page1.fill('#mn-number', '555 123 4567');
-    const addMobile = page1.getByRole('button', { name: 'Add Mobile Number' });
+    // The mobile-number form moved into AddMobileNumberDialog and its fields
+    // were renamed (#mn-* -> #mobile-*). The page trigger and the dialog's
+    // submit share the accessible name, so the submit is scoped. Issue #506.
+    await page1
+      .getByRole('button', { name: 'Add mobile number' })
+      .first()
+      .click();
+    const mobileDialog = page1.getByRole('dialog');
+    await expect(mobileDialog).toBeVisible({ timeout: 60000 });
+
+    await page1.fill('#mobile-label', 'Personal');
+    await page1.fill('#mobile-phone-number', '555 123 4567');
+    const addMobile = mobileDialog.getByRole('button', {
+      name: 'Add mobile number',
+    });
     await expect(addMobile).toBeEnabled({ timeout: 60000 });
     await addMobile.click();
     await expect(page1.locator('text=Personal')).toBeVisible({
@@ -366,9 +395,14 @@ test.describe('Vault (E2E)', () => {
     });
 
     // Force the migration runner to re-run now that we have a local vault.
-    await page1.evaluate(() => {
-      window.sessionStorage.removeItem('myorganizer_vault_migration_ran_v1');
-    });
+    // The migration flag is scoped per owner since PRD #489
+    // (migrationRunner sessionFlagKey = `${prefix}:${owner}`), so clearing the
+    // old unscoped key left migration marked as already-run. Issue #506.
+    await page1.evaluate((userId) => {
+      window.sessionStorage.removeItem(
+        `myorganizer_vault_migration_ran_v1:${userId}`,
+      );
+    }, E2E_USER_ID);
     await gotoStable(page1, '/dashboard');
 
     // The runner should upload to server (our in-memory store should now be populated).

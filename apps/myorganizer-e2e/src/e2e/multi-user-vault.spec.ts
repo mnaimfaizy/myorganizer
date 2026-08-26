@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import {
   gotoStable,
   readOwnedVault,
+  routeApi,
   waitForOwnedVault,
   UNCLAIMED_VAULT_KEY,
 } from './helpers';
@@ -87,7 +88,7 @@ function setupBackend(page: Page) {
     /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos)\/?(\?.*)?$/;
   const vaultBackupsLatestUrl = /\/vault\/backups\/latest\/?(\?.*)?$/;
 
-  page.route(loginUrl, async (route) => {
+  routeApi(page, loginUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
@@ -124,7 +125,7 @@ function setupBackend(page: Page) {
     });
   });
 
-  page.route(registerUrl, async (route) => {
+  routeApi(page, registerUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
@@ -159,7 +160,7 @@ function setupBackend(page: Page) {
     });
   });
 
-  page.route(logoutUrl, async (route) => {
+  routeApi(page, logoutUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
@@ -176,7 +177,7 @@ function setupBackend(page: Page) {
     }
   });
 
-  page.route(vaultMetaUrl, async (route) => {
+  routeApi(page, vaultMetaUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
@@ -249,7 +250,7 @@ function setupBackend(page: Page) {
     }
   });
 
-  page.route(vaultBlobUrl, async (route) => {
+  routeApi(page, vaultBlobUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
@@ -339,7 +340,7 @@ function setupBackend(page: Page) {
     }
   });
 
-  page.route(vaultBackupsLatestUrl, async (route) => {
+  routeApi(page, vaultBackupsLatestUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);

@@ -6,6 +6,7 @@ import {
   E2E_USER_ID,
   readOwnedVault,
   removeOwnedVault,
+  routeApi,
   waitForOwnedVault,
 } from './helpers';
 
@@ -127,7 +128,7 @@ function setupBackend(page: Page) {
 
   const headersFor = (origin: string) => corsHeaders(origin);
 
-  page.route(loginUrl, async (route) => {
+  routeApi(page, loginUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
@@ -155,7 +156,7 @@ function setupBackend(page: Page) {
     });
   });
 
-  page.route(backupsLatestUrl, async (route) => {
+  routeApi(page, backupsLatestUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
@@ -191,7 +192,7 @@ function setupBackend(page: Page) {
     });
   });
 
-  page.route(backupsRecordUrl, async (route) => {
+  routeApi(page, backupsRecordUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
@@ -226,7 +227,7 @@ function setupBackend(page: Page) {
     });
   });
 
-  page.route(vaultMetaUrl, async (route) => {
+  routeApi(page, vaultMetaUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
@@ -280,7 +281,7 @@ function setupBackend(page: Page) {
     await route.fulfill({ status: 405, headers });
   });
 
-  page.route(vaultBlobUrl, async (route) => {
+  routeApi(page, vaultBlobUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);

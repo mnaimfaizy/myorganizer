@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test';
-import { gotoStable, E2E_USER_ID, waitForOwnedVault } from './helpers';
+import {
+  gotoStable,
+  E2E_USER_ID,
+  routeApi,
+  waitForOwnedVault,
+} from './helpers';
 
 /**
  * E2E tests for addresses management (create / add usage location / delete / detail navigation).
@@ -29,7 +34,7 @@ async function login(
 ) {
   // Mock the login API endpoint
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
-  await page.route(loginUrl, async (route) => {
+  await routeApi(page, loginUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
 
@@ -172,7 +177,7 @@ async function setupRoutes(page: import('@playwright/test').Page) {
   };
 
   // Login route
-  await page.route(loginUrl, async (route) => {
+  await routeApi(page, loginUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = corsHeaders(origin);
@@ -201,7 +206,7 @@ async function setupRoutes(page: import('@playwright/test').Page) {
   });
 
   // Vault meta route
-  await page.route(vaultMetaUrl, async (route) => {
+  await routeApi(page, vaultMetaUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = corsHeaders(origin);
@@ -265,7 +270,7 @@ async function setupRoutes(page: import('@playwright/test').Page) {
   });
 
   // Vault blob route (handles addresses, mobileNumbers, subscriptions, todos, tasks)
-  await page.route(vaultBlobUrl, async (route) => {
+  await routeApi(page, vaultBlobUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = corsHeaders(origin);
@@ -455,7 +460,7 @@ test.describe('Addresses (E2E)', () => {
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(page.getByText('No usage locations yet')).toBeVisible();
     await expect(
-      page.getByRole('heading', { name: 'Usage Locations' }),
+      page.getByRole('heading', { name: 'Usage Locations', exact: true }),
     ).toBeVisible();
 
     // Step C1: Click "Add Location" button to open the dialog (use .first() to avoid selector collision)
@@ -542,7 +547,7 @@ test.describe('Addresses (E2E)', () => {
       timeout: 30000,
     });
     await expect(
-      page.getByRole('heading', { name: 'Usage Locations' }),
+      page.getByRole('heading', { name: 'Usage Locations', exact: true }),
     ).toBeVisible();
     await expect(page.getByText('No usage locations yet')).toBeVisible({
       timeout: 10000,
