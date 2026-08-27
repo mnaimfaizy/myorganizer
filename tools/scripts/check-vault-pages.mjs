@@ -64,7 +64,32 @@ const evalNumeric = (expr, name) => {
   return Function(`"use strict";return (${cleaned})`)();
 };
 
+// The owner-scoped key is not a constant anywhere; it is composed. Reading the composition out of
+// `localVaultStorageKey`'s template — rather than pinning the assembled string — is what makes this
+// an assertion about how the key is built. A page claiming a shape the function no longer produces
+// fails, even when every literal involved is unchanged (ADR 0043, ADR 0051).
+function ownerScopedKeyShape() {
+  const source = read(SOURCES.VAULT_STORAGE_KEY);
+  const body = source.match(
+    /function localVaultStorageKey\([^)]*\)[^{]*\{[\s\S]*?\n\}/,
+  );
+  if (!body)
+    fail('could not find localVaultStorageKey in ' + SOURCES.VAULT_STORAGE_KEY);
+
+  const template = body[0].match(/return\s+`([^`]*)`/);
+  if (!template)
+    fail(
+      'localVaultStorageKey no longer returns a template literal — the key composition moved',
+    );
+
+  return template[1]
+    .replace(/\$\{VAULT_STORAGE_KEY\}/g, constant('VAULT_STORAGE_KEY'))
+    .replace(/\$\{owner\}/g, '<owner>');
+}
+
 function constant(name) {
+  if (name === 'LOCAL_VAULT_OWNER_SCOPED_KEY') return ownerScopedKeyShape();
+
   const source = read(SOURCES[name]);
 
   const array = source.match(
@@ -93,7 +118,8 @@ const EXPECTATIONS = [
   ['envelope.envelopeParseBytes', 'VAULT_ENVELOPE_PARSE_MAX_BYTES'],
   ['blobTypes', 'VAULT_EXPORT_BLOB_TYPES'],
   ['errorCodes', 'VAULT_IMPORT_ERROR_CODES'],
-  ['storageKey', 'VAULT_STORAGE_KEY'],
+  ['localVaultKeys.unclaimed', 'VAULT_STORAGE_KEY'],
+  ['localVaultKeys.ownerScoped', 'LOCAL_VAULT_OWNER_SCOPED_KEY'],
   ['import.replayHistoryLength', 'DEFAULT_CAPACITY'],
   ['limits.envelopeParseBytes', 'VAULT_ENVELOPE_PARSE_MAX_BYTES'],
   ['limits.legacyBundleParseBytes', 'VAULT_LEGACY_BUNDLE_MAX_BYTES'],
@@ -156,6 +182,29 @@ for (const [page, manifestId] of PAGES) {
         `${page} → ${path}: page says ${JSON.stringify(claimed)}, ` +
           `${name} is ${JSON.stringify(expected)}`,
       );
+    }
+  }
+
+  // A pinned value cannot notice that its meaning moved. `storageKey` was byte-identical before and
+  // after Local Vaults became owner-bound, and the page it described was wrong the whole time
+  // (issue #511). The pair is therefore required together: a page that names where a Vault lives
+  // must say whose, and must say what the unsuffixed slot is instead (ADR 0051).
+  if (manifest.storageKey !== undefined) {
+    findings.push(
+      `${page} → storageKey: retired since ADR 0047 — it named a prefix, an unsuffixed slot, ` +
+        `and a per-User key indistinguishably. Declare localVaultKeys.{ownerScoped,unclaimed}.`,
+    );
+  }
+
+  const keys = manifest.localVaultKeys;
+  if (keys !== undefined) {
+    for (const half of ['ownerScoped', 'unclaimed']) {
+      if (keys[half] === undefined) {
+        findings.push(
+          `${page} → localVaultKeys.${half}: missing. A page naming one Local Vault key must ` +
+            `name both, or a reader looks in the wrong slot and reads nothing into finding it empty.`,
+        );
+      }
     }
   }
 
