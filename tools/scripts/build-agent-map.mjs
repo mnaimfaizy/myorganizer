@@ -21,9 +21,15 @@
 //   Manifest. A page that declares its own `application/json` manifest keeps it. A page that
 //   declares none gets the agent-fleet manifest generated from agent-model-policy.json.
 //
+// This is a one-time importer, not a rebuild path. No `.dc.html` export has ever been committed
+// to this repository, and the pages built from them have been corrected in place since against
+// the source constants — so re-importing an old export would revert those corrections rather
+// than reproduce the page. An existing House Explainer Page is changed by editing it, briefed
+// through `design-brief` and executed by the Designer sub-agent (ADR 0046, ADR 0052, issue #534).
+//
 // Note: docs/agents/orchestration-map.html was produced by an earlier revision of this script
 // that carried a hand-written interaction script, and its source export no longer exists, so
-// that page is not reproducible from here. It remains covered by check-agent-map.mjs.
+// that page is not reproducible from here either. It remains covered by check-agent-map.mjs.
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 
