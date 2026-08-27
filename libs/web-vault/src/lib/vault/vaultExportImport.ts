@@ -11,11 +11,17 @@ import {
   parseVaultExportEnvelope,
   VAULT_ENVELOPE_PARSE_MAX_BYTES,
   VAULT_EXPORT_BLOB_TYPES,
+  VaultExportBlobType,
   VaultExportEnvelope,
   VaultImportError,
 } from '@myorganizer/vault-core';
 
 import { AuditReporter, noopAuditReporter } from './auditReporter';
+import {
+  isVaultBlobType,
+  VAULT_BLOB_FIELDS,
+  VAULT_BLOB_TYPES,
+} from './vaultBlobFields';
 import type { VaultStorageV1 } from './localVaultStorage';
 import { ReplayTracker } from './replayTracker';
 import type { VaultHandle } from './vaultHandle';
@@ -164,14 +170,7 @@ function requireBlobs(
   const blobs: Partial<Record<VaultBlobType, EncryptedBlobV1>> = {};
   const record = value as Record<string, unknown>;
   for (const [key, candidate] of Object.entries(record)) {
-    if (
-      key === VaultBlobType.Addresses ||
-      key === VaultBlobType.Groceries ||
-      key === VaultBlobType.MobileNumbers ||
-      key === VaultBlobType.Subscriptions ||
-      key === VaultBlobType.Tasks ||
-      key === VaultBlobType.Todos
-    ) {
+    if (isVaultBlobType(key)) {
       blobs[key] = requireEncryptedBlob(candidate, `blobs.${key}`);
     } else {
       console.warn(`Unknown blob type key in export bundle: ${key}`);
@@ -230,58 +229,32 @@ export function buildLocalExportBundle(options: {
     exportVersion: 1,
     exportedAt: exportedAt ?? new Date().toISOString(),
     meta: localToServerMeta(localVault),
-    blobs: {
-      ...(localVault.data.addresses
-        ? {
-            [VaultBlobType.Addresses]: toEncryptedBlobV1(
-              localVault.data.addresses,
-            ),
-          }
-        : {}),
-      ...(localVault.data.groceries
-        ? {
-            [VaultBlobType.Groceries]: toEncryptedBlobV1(
-              localVault.data.groceries,
-            ),
-          }
-        : {}),
-      ...(localVault.data.mobileNumbers
-        ? {
-            [VaultBlobType.MobileNumbers]: toEncryptedBlobV1(
-              localVault.data.mobileNumbers,
-            ),
-          }
-        : {}),
-      ...(localVault.data.subscriptions
-        ? {
-            [VaultBlobType.Subscriptions]: toEncryptedBlobV1(
-              localVault.data.subscriptions,
-            ),
-          }
-        : {}),
-      ...(localVault.data.tasks
-        ? {
-            [VaultBlobType.Tasks]: toEncryptedBlobV1(localVault.data.tasks),
-          }
-        : {}),
-      ...(localVault.data.todos
-        ? {
-            [VaultBlobType.Todos]: toEncryptedBlobV1(localVault.data.todos),
-          }
-        : {}),
-    },
+    blobs: presentBlobs(localVault),
   };
 }
 
+/**
+ * Every blob a Local Vault actually holds, keyed by Vault Blob Type. Both
+ * export shapes — the legacy bundle and the hardened envelope — are this same
+ * map, so they share one traversal of the pinned table rather than each
+ * keeping their own copy of the loop.
+ */
+function presentBlobs(
+  localVault: VaultStorageV1,
+): Partial<Record<VaultBlobType, EncryptedBlobV1>> {
+  const blobs: Partial<Record<VaultBlobType, EncryptedBlobV1>> = {};
+  for (const type of VAULT_BLOB_TYPES) {
+    const blob = localVault.data[VAULT_BLOB_FIELDS[type]];
+    if (blob) blobs[type] = toEncryptedBlobV1(blob);
+  }
+  return blobs;
+}
+
 export function bundleToLocalVault(bundle: VaultExportV1): VaultStorageV1 {
-  const blobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>> = {
-    [VaultBlobType.Addresses]: bundle.blobs.addresses ?? null,
-    [VaultBlobType.Groceries]: (bundle.blobs as any).groceries ?? null,
-    [VaultBlobType.MobileNumbers]: bundle.blobs.mobileNumbers ?? null,
-    [VaultBlobType.Subscriptions]: bundle.blobs.subscriptions ?? null,
-    [VaultBlobType.Tasks]: (bundle.blobs as any).tasks ?? null,
-    [VaultBlobType.Todos]: (bundle.blobs as any).todos ?? null,
-  };
+  const blobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>> = {};
+  for (const type of VAULT_BLOB_TYPES) {
+    blobs[type] = bundle.blobs[type] ?? null;
+  }
 
   return serverMetaToLocalVault({ meta: bundle.meta, blobs });
 }
@@ -316,36 +289,14 @@ function generateExportId(): string {
 }
 
 function envelopeBlobTypes(envelope: VaultExportEnvelope): VaultBlobType[] {
-  const out: VaultBlobType[] = [];
-  if (envelope.blobs.addresses) out.push(VaultBlobType.Addresses);
-  if (envelope.blobs.groceries) out.push(VaultBlobType.Groceries);
-  if (envelope.blobs.mobileNumbers) out.push(VaultBlobType.MobileNumbers);
-  if (envelope.blobs.subscriptions) out.push(VaultBlobType.Subscriptions);
-  if (envelope.blobs.tasks) out.push(VaultBlobType.Tasks);
-  if (envelope.blobs.todos) out.push(VaultBlobType.Todos);
-  return out;
+  return VAULT_BLOB_TYPES.filter((type) => envelope.blobs[type]);
 }
 
 function envelopeFromLocalVault(
   localVault: VaultStorageV1,
   options: { exportedAt?: string; exportId?: string } = {},
 ): VaultExportEnvelope {
-  const blobs: VaultExportEnvelope['blobs'] = {};
-  if (localVault.data.addresses) {
-    blobs.addresses = toEncryptedBlobV1(localVault.data.addresses);
-  }
-  if (localVault.data.groceries) {
-    blobs.groceries = toEncryptedBlobV1(localVault.data.groceries);
-  }
-  if (localVault.data.mobileNumbers) {
-    blobs.mobileNumbers = toEncryptedBlobV1(localVault.data.mobileNumbers);
-  }
-  if (localVault.data.subscriptions) {
-    blobs.subscriptions = toEncryptedBlobV1(localVault.data.subscriptions);
-  }
-  if (localVault.data.todos) {
-    blobs.todos = toEncryptedBlobV1(localVault.data.todos);
-  }
+  const blobs: VaultExportEnvelope['blobs'] = presentBlobs(localVault);
 
   return {
     schemaVersion: CURRENT_VAULT_EXPORT_SCHEMA_VERSION,
@@ -357,50 +308,15 @@ function envelopeFromLocalVault(
 }
 
 function envelopeToLocalVault(envelope: VaultExportEnvelope): VaultStorageV1 {
-  const blobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>> = {
-    [VaultBlobType.Addresses]: envelope.blobs.addresses
-      ? normalizeEncryptedBlobV1(envelope.blobs.addresses)
-      : null,
-    [VaultBlobType.Groceries]: envelope.blobs.groceries
-      ? normalizeEncryptedBlobV1(envelope.blobs.groceries)
-      : null,
-    [VaultBlobType.MobileNumbers]: envelope.blobs.mobileNumbers
-      ? normalizeEncryptedBlobV1(envelope.blobs.mobileNumbers)
-      : null,
-    [VaultBlobType.Subscriptions]: envelope.blobs.subscriptions
-      ? normalizeEncryptedBlobV1(envelope.blobs.subscriptions)
-      : null,
-    [VaultBlobType.Tasks]: envelope.blobs.tasks
-      ? normalizeEncryptedBlobV1(envelope.blobs.tasks)
-      : null,
-    [VaultBlobType.Todos]: envelope.blobs.todos
-      ? normalizeEncryptedBlobV1(envelope.blobs.todos)
-      : null,
-  };
+  const blobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>> = {};
+  for (const type of VAULT_BLOB_TYPES) {
+    const blob = envelope.blobs[type];
+    blobs[type] = blob ? normalizeEncryptedBlobV1(blob) : null;
+  }
   return serverMetaToLocalVault({
     meta: envelope.meta as VaultMetaV1,
     blobs,
   });
-}
-
-function envelopeBlobTypesAsBackup(
-  envelope: VaultExportEnvelope,
-): (
-  | 'addresses'
-  | 'groceries'
-  | 'mobileNumbers'
-  | 'subscriptions'
-  | 'tasks'
-  | 'todos'
-)[] {
-  return envelopeBlobTypes(envelope) as (
-    | 'addresses'
-    | 'groceries'
-    | 'mobileNumbers'
-    | 'subscriptions'
-    | 'tasks'
-    | 'todos'
-  )[];
 }
 
 export interface ExportVaultOptions {
@@ -471,7 +387,7 @@ export async function exportVault(
     status: 'success',
     errorCode: null,
     schemaVersion: envelope.schemaVersion,
-    blobTypes: envelopeBlobTypesAsBackup(envelope),
+    blobTypes: envelopeBlobTypes(envelope),
     sizeBytes,
   });
 
@@ -527,14 +443,7 @@ export async function importVault(
   const reportFailure = async (
     code: string,
     schemaVersion: number,
-    blobTypes: (
-      | 'addresses'
-      | 'groceries'
-      | 'mobileNumbers'
-      | 'subscriptions'
-      | 'tasks'
-      | 'todos'
-    )[],
+    blobTypes: VaultExportBlobType[],
   ): Promise<void> => {
     await reporter({
       event: 'import',
@@ -587,7 +496,7 @@ export async function importVault(
       status: 'success',
       errorCode: null,
       schemaVersion: stagedEnvelope.schemaVersion,
-      blobTypes: envelopeBlobTypesAsBackup(stagedEnvelope),
+      blobTypes: envelopeBlobTypes(stagedEnvelope),
       sizeBytes,
     });
 
@@ -596,7 +505,7 @@ export async function importVault(
     const code = isVaultImportError(error) ? error.code : 'corrupt-file';
     const schemaVersion =
       envelope?.schemaVersion ?? CURRENT_VAULT_EXPORT_SCHEMA_VERSION;
-    const blobTypes = envelope ? envelopeBlobTypesAsBackup(envelope) : [];
+    const blobTypes = envelope ? envelopeBlobTypes(envelope) : [];
     await reportFailure(code, schemaVersion, blobTypes);
     throw error;
   }

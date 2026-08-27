@@ -5,6 +5,7 @@ import {
 } from '@myorganizer/app-api-client';
 
 import { EncryptedBlob, VaultStorageV1 } from './localVaultStorage';
+import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
 
 export function toEncryptedBlobV1(blob: EncryptedBlob): EncryptedBlobV1 {
   return {
@@ -98,34 +99,11 @@ export function serverMetaToLocalVault(options: {
     data: {},
   };
 
-  const addresses = blobs[VaultBlobType.Addresses];
-  if (addresses) {
-    next.data.addresses = serverEncryptedBlobToLocal(addresses);
-  }
-
-  const mobileNumbers = blobs[VaultBlobType.MobileNumbers];
-  if (mobileNumbers) {
-    next.data.mobileNumbers = serverEncryptedBlobToLocal(mobileNumbers);
-  }
-
-  const subscriptions = blobs[VaultBlobType.Subscriptions];
-  if (subscriptions) {
-    next.data.subscriptions = serverEncryptedBlobToLocal(subscriptions);
-  }
-
-  const groceries = blobs[VaultBlobType.Groceries];
-  if (groceries) {
-    next.data.groceries = serverEncryptedBlobToLocal(groceries);
-  }
-
-  const tasks = blobs[VaultBlobType.Tasks];
-  if (tasks) {
-    next.data.tasks = serverEncryptedBlobToLocal(tasks);
-  }
-
-  const todos = blobs[VaultBlobType.Todos];
-  if (todos) {
-    next.data.todos = serverEncryptedBlobToLocal(todos);
+  for (const type of VAULT_BLOB_TYPES) {
+    const blob = blobs[type];
+    if (blob) {
+      next.data[VAULT_BLOB_FIELDS[type]] = serverEncryptedBlobToLocal(blob);
+    }
   }
 
   return next;
