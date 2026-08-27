@@ -239,7 +239,7 @@ type FeatureCard = {
 function Features() {
   const cards: FeatureCard[] = [
     {
-      title: 'Encrypted Todos',
+      title: 'Encrypted Tasks',
       description:
         'Keep your list private. Plan your day without leaving a digital footprint.',
       icon: <CheckSquare className="h-5 w-5" />,
