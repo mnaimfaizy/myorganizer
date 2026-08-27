@@ -447,12 +447,11 @@ async function signUp(
   await page.getByLabel('First name').fill(firstName);
   await page.getByLabel('Last name').fill(lastName);
   await page.getByLabel('Email').fill(email);
-  // The sign-up password inputs have no associated label — their accessible
-  // name falls back to the bullet placeholder — so target them by type.
-  const passwordInputs = page.locator('input[type="password"]');
-  await expect(passwordInputs).toHaveCount(2);
-  await passwordInputs.nth(0).fill(password);
-  await passwordInputs.nth(1).fill(password);
+  // `exact` is required on both: getByLabel also matches aria-label, and the
+  // show/hide eye buttons are labelled "Show password" / "Show confirm password",
+  // which contain these strings as substrings.
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByLabel('Confirm password', { exact: true }).fill(password);
 
   // Check terms checkbox
   const termsCheckbox = page.locator('form').getByRole('checkbox').first();
