@@ -15,5 +15,10 @@
     "../../libs/prisma-schema/prisma/index.ts",
     "src/prisma/**/*.prisma"
   ],
-  "exclude": ["jest.config.ts", "src/**/*.spec.ts", "src/**/*.test.ts"]
+  "exclude": [
+    "jest.config.ts",
+    "src/**/*.spec.ts",
+    "src/**/*.test.ts",
+    "src/testing/**"
+  ]
 }
