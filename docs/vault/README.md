@@ -50,19 +50,25 @@ Values the pages show that are **not** yet assertable are listed in each manifes
 bring them under the check, export them and add them to `SOURCES` in
 `tools/scripts/check-vault-pages.mjs`.
 
-## Rebuilding
+## Changing them
 
-The pages are generated from dc-runtime design exports:
+**These two files are the source.** There is nothing to regenerate them from.
 
-```bash
-node tools/scripts/build-agent-map.mjs "<export-dir>" "Vault Trust Boundary.dc.html" docs/vault/trust-boundary.html
-```
+Both pages began as dc-runtime design exports, which `tools/scripts/build-agent-map.mjs` imported
+once in August 2026 — inlining the design-system stylesheet, embedding both typefaces as woff2
+data URIs, and deciding how much runtime to carry from the page itself (`lifecycle.html` binds
+templates so it carries React; `trust-boundary.html` does not and ships as plain DOM at roughly a
+third the size). The `.dc.html` exports were never committed, and every correction since has been
+made to the built pages against the source constants. Re-importing an old export would silently
+revert them.
 
-The builder inlines the design-system stylesheet, embeds both typefaces as woff2 data URIs, and
-decides how much runtime to include from the page itself — `lifecycle.html` binds templates so it
-carries React, `trust-boundary.html` does not and ships as plain DOM at roughly a third the size.
+So a change here is an edit to the page, briefed through
+[`design-brief`](../../.agents/skills/design-brief/SKILL.md) and executed by the `Designer`
+sub-agent, exactly as [ADR 0046](../adr/0046-house-explainer-pages-have-a-designer-and-a-gate.md)
+describes for every House Explainer Page. `build-agent-map.mjs` remains the importer for a _new_
+canvas export; it is not a rebuild path for these two.
 
-Both are in `.prettierignore`, so rebuilds are byte-identical rather than fighting the pre-commit
+Both are in `.prettierignore`, so an edit is not reformatted out from under you by the pre-commit
 hook.
 
 ## Related

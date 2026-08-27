@@ -553,6 +553,9 @@ jobs:
       - name: Feature index checker contracts
         run: corepack yarn feature-index:test
 
+      - name: Documented-command checker contracts
+        run: corepack yarn docs:commands:test
+
       - name: Release pipeline page checker contracts
         run: corepack yarn deploy:pages:test
 
@@ -593,6 +596,9 @@ jobs:
       # only vantage point where both files exist.
       - name: Check ADR numbering
         run: corepack yarn adr:numbering:check
+
+      - name: Check documented commands resolve
+        run: corepack yarn docs:commands:check
 
       - name: Gate manifest checker contracts
         run: corepack yarn gates:run:test

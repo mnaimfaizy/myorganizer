@@ -4,6 +4,8 @@ import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { GATE_MANIFEST } from './lib/gate-manifest.mjs';
+
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const RUNNER = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -17,20 +19,18 @@ test('the aggregate runs every gate against the real repo and exits 0', () => {
   });
 
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-  assert.match(result.stdout, /✓ readme:check/);
-  assert.match(result.stdout, /✓ openapi:artifacts/);
-  assert.match(result.stdout, /✓ env:declared:check/);
-  assert.match(result.stdout, /✓ env:deployment:check/);
-  assert.match(result.stdout, /✓ feature-index:check/);
-  assert.match(result.stdout, /✓ agents:map:check/);
-  assert.match(result.stdout, /✓ vault:pages:check/);
-  assert.match(result.stdout, /✓ auth:pages:check/);
-  assert.match(result.stdout, /✓ deploy:pages:check/);
-  assert.match(result.stdout, /✓ agents:sync:check \(subagents\)/);
-  assert.match(result.stdout, /✓ agents:sync:check \(models\)/);
-  assert.match(result.stdout, /✓ adr:numbering:check/);
-  assert.match(result.stdout, /✓ gates:coverage:check/);
-  assert.match(result.stdout, /13\/13 checks passed/);
+
+  // Read from the manifest rather than listed here. A hand-copied mirror of the
+  // roster is what rotted in design-page-roster.mjs, and a literal count is what
+  // made adding the fourteenth checker fail a test about nothing.
+  for (const { id } of GATE_MANIFEST) {
+    assert.ok(
+      result.stdout.includes(`✓ ${id}`),
+      `${id} did not report a pass:\n${result.stdout}`,
+    );
+  }
+  const total = GATE_MANIFEST.length;
+  assert.match(result.stdout, new RegExp(`${total}/${total} checks passed`));
 });
 
 // Guards the aggregate decision itself: replacing it with one `corepack yarn`
