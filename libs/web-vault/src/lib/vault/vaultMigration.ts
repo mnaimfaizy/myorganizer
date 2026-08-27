@@ -13,7 +13,11 @@ import {
   putServerVaultBlobEtagAware,
   putServerVaultMetaEtagAware,
 } from './serverVaultSync';
-import { EncryptedBlob, VaultStorageV1 } from './localVaultStorage';
+import {
+  EncryptedBlob,
+  VaultRecordType,
+  VaultStorageV1,
+} from './localVaultStorage';
 import {
   localToServerMeta,
   normalizeEncryptedBlobV1,
@@ -25,6 +29,32 @@ type VaultApiLike = Pick<
   VaultApi,
   'getVaultMeta' | 'putVaultMeta' | 'getVaultBlob' | 'putVaultBlob'
 >;
+
+/**
+ * Every Vault Blob Type the reconcile carries, and the Local Vault field each
+ * one lands in.
+ *
+ * The `satisfies` clause is the guard, not decoration: a seventh member added
+ * to `VaultBlobType` fails to compile here until it is given a home. Every
+ * direction of the reconcile — upload, fetch, divergence comparison, and the
+ * keep-local write-back — iterates this one table, so a type cannot be present
+ * in some branches and missing from others. Groceries was missing from all four
+ * while the local vault carried it, and a keep-server decision destroyed it
+ * (issue #512).
+ */
+const RECONCILED_BLOB_FIELDS = {
+  [VaultBlobType.Addresses]: 'addresses',
+  [VaultBlobType.Groceries]: 'groceries',
+  [VaultBlobType.MobileNumbers]: 'mobileNumbers',
+  [VaultBlobType.Subscriptions]: 'subscriptions',
+  [VaultBlobType.Tasks]: 'tasks',
+  [VaultBlobType.Todos]: 'todos',
+} as const satisfies Record<VaultBlobType, VaultRecordType>;
+
+/** The blob types above, in a stable iteration order. */
+export const RECONCILED_BLOB_TYPES = Object.keys(
+  RECONCILED_BLOB_FIELDS,
+) as VaultBlobType[];
 
 export type MigrationDecision = 'keep-local' | 'keep-server';
 
@@ -117,6 +147,41 @@ function normalizeLocalBlobAsServerShape(
   return normalizeServerBlob(b);
 }
 
+/** The Local Vault blob for one Vault Blob Type, if the vault carries it. */
+function localBlobFor(
+  vault: VaultStorageV1,
+  type: VaultBlobType,
+): EncryptedBlob | undefined {
+  return vault.data[RECONCILED_BLOB_FIELDS[type]];
+}
+
+/** Reads every reconciled blob type from the server, absent ones as `null`. */
+async function fetchRemoteBlobs(
+  api: VaultApiLike,
+): Promise<Partial<Record<VaultBlobType, EncryptedBlobV1 | null>>> {
+  const remoteBlobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>> =
+    {};
+
+  for (const type of RECONCILED_BLOB_TYPES) {
+    remoteBlobs[type] = (await getServerVaultBlob(api, type))?.blob ?? null;
+  }
+
+  return remoteBlobs;
+}
+
+/** One normalized entry per reconciled blob type, for divergence comparison. */
+function comparableBlobs(
+  normalizeOne: (type: VaultBlobType) => object,
+): Record<string, object> {
+  const blobs: Record<string, object> = {};
+
+  for (const type of RECONCILED_BLOB_TYPES) {
+    blobs[type] = normalizeOne(type);
+  }
+
+  return blobs;
+}
+
 export async function migrateVaultPhase1ToPhase2(options: {
   api: VaultApiLike;
   localVault: VaultStorageV1 | null;
@@ -138,24 +203,7 @@ export async function migrateVaultPhase1ToPhase2(options: {
       return { kind: 'skipped-no-local-vault' };
     }
 
-    const remoteBlobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>> =
-      {
-        [VaultBlobType.Addresses]:
-          (await getServerVaultBlob(options.api, VaultBlobType.Addresses))
-            ?.blob ?? null,
-        [VaultBlobType.MobileNumbers]:
-          (await getServerVaultBlob(options.api, VaultBlobType.MobileNumbers))
-            ?.blob ?? null,
-        [VaultBlobType.Subscriptions]:
-          (await getServerVaultBlob(options.api, VaultBlobType.Subscriptions))
-            ?.blob ?? null,
-        [VaultBlobType.Tasks]:
-          (await getServerVaultBlob(options.api, VaultBlobType.Tasks))?.blob ??
-          null,
-        [VaultBlobType.Todos]:
-          (await getServerVaultBlob(options.api, VaultBlobType.Todos))?.blob ??
-          null,
-      };
+    const remoteBlobs = await fetchRemoteBlobs(options.api);
 
     const nextLocalVault = serverMetaToLocalVault({
       meta: serverMeta.meta,
@@ -183,107 +231,34 @@ export async function migrateVaultPhase1ToPhase2(options: {
   if (!serverMeta) {
     await putServerVaultMetaEtagAware({ api: options.api, meta: localMeta });
 
-    if (localVault.data.addresses) {
-      await putServerVaultBlobEtagAware({
-        api: options.api,
-        type: VaultBlobType.Addresses,
-        blob: toEncryptedBlobV1(localVault.data.addresses),
-      });
-    }
+    for (const type of RECONCILED_BLOB_TYPES) {
+      const blob = localBlobFor(localVault, type);
+      if (!blob) continue;
 
-    if (localVault.data.mobileNumbers) {
       await putServerVaultBlobEtagAware({
         api: options.api,
-        type: VaultBlobType.MobileNumbers,
-        blob: toEncryptedBlobV1(localVault.data.mobileNumbers),
-      });
-    }
-
-    if (localVault.data.subscriptions) {
-      await putServerVaultBlobEtagAware({
-        api: options.api,
-        type: VaultBlobType.Subscriptions,
-        blob: toEncryptedBlobV1(localVault.data.subscriptions),
-      });
-    }
-
-    if (localVault.data.tasks) {
-      await putServerVaultBlobEtagAware({
-        api: options.api,
-        type: VaultBlobType.Tasks,
-        blob: toEncryptedBlobV1(localVault.data.tasks),
-      });
-    }
-
-    if (localVault.data.todos) {
-      await putServerVaultBlobEtagAware({
-        api: options.api,
-        type: VaultBlobType.Todos,
-        blob: toEncryptedBlobV1(localVault.data.todos),
+        type,
+        blob: toEncryptedBlobV1(blob),
       });
     }
 
     return { kind: 'uploaded-local-to-server' };
   }
 
-  const remoteBlobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>> = {
-    [VaultBlobType.Addresses]:
-      (await getServerVaultBlob(options.api, VaultBlobType.Addresses))?.blob ??
-      null,
-    [VaultBlobType.MobileNumbers]:
-      (await getServerVaultBlob(options.api, VaultBlobType.MobileNumbers))
-        ?.blob ?? null,
-    [VaultBlobType.Subscriptions]:
-      (await getServerVaultBlob(options.api, VaultBlobType.Subscriptions))
-        ?.blob ?? null,
-    [VaultBlobType.Tasks]:
-      (await getServerVaultBlob(options.api, VaultBlobType.Tasks))?.blob ??
-      null,
-    [VaultBlobType.Todos]:
-      (await getServerVaultBlob(options.api, VaultBlobType.Todos))?.blob ??
-      null,
-  };
+  const remoteBlobs = await fetchRemoteBlobs(options.api);
 
   const localComparable = {
     meta: normalizeLocalVaultAsServerShape(localVault),
-    blobs: {
-      [VaultBlobType.Addresses]: normalizeLocalBlobAsServerShape(
-        localVault.data.addresses,
-      ),
-      [VaultBlobType.MobileNumbers]: normalizeLocalBlobAsServerShape(
-        localVault.data.mobileNumbers,
-      ),
-      [VaultBlobType.Subscriptions]: normalizeLocalBlobAsServerShape(
-        localVault.data.subscriptions,
-      ),
-      [VaultBlobType.Tasks]: normalizeLocalBlobAsServerShape(
-        localVault.data.tasks,
-      ),
-      [VaultBlobType.Todos]: normalizeLocalBlobAsServerShape(
-        localVault.data.todos,
-      ),
-    },
+    blobs: comparableBlobs((type) =>
+      normalizeLocalBlobAsServerShape(localBlobFor(localVault, type)),
+    ),
   };
 
   const remoteComparable = {
     meta: normalizeServerMeta(serverMeta.meta),
-    blobs: {
-      [VaultBlobType.Addresses]: normalizeServerBlob(
-        remoteBlobs[VaultBlobType.Addresses] ?? null,
-      ),
-      [VaultBlobType.MobileNumbers]: normalizeServerBlob(
-        remoteBlobs[VaultBlobType.MobileNumbers] ?? null,
-      ),
-      [VaultBlobType.Subscriptions]: normalizeServerBlob(
-        remoteBlobs[VaultBlobType.Subscriptions] ?? null,
-      ),
-      [VaultBlobType.Tasks]: normalizeServerBlob(
-        remoteBlobs[VaultBlobType.Tasks] ?? null,
-      ),
-      [VaultBlobType.Todos]: normalizeServerBlob(
-        remoteBlobs[VaultBlobType.Todos] ?? null,
-      ),
-    },
+    blobs: comparableBlobs((type) =>
+      normalizeServerBlob(remoteBlobs[type] ?? null),
+    ),
   };
 
   const differs =
@@ -316,77 +291,16 @@ export async function migrateVaultPhase1ToPhase2(options: {
     onConflict: () => 'keep-local',
   });
 
-  const remoteAddresses = await getServerVaultBlob(
-    options.api,
-    VaultBlobType.Addresses,
-  );
+  for (const type of RECONCILED_BLOB_TYPES) {
+    const remote = await getServerVaultBlob(options.api, type);
+    const blob = localBlobFor(localVault, type);
+    if (!blob) continue;
 
-  if (localVault.data.addresses) {
     await putServerVaultBlobEtagAware({
       api: options.api,
-      type: VaultBlobType.Addresses,
-      blob: toEncryptedBlobV1(localVault.data.addresses),
-      ifMatch: remoteAddresses?.etag,
-      onConflict: () => 'keep-local',
-    });
-  }
-
-  const remoteMobileNumbers = await getServerVaultBlob(
-    options.api,
-    VaultBlobType.MobileNumbers,
-  );
-
-  if (localVault.data.mobileNumbers) {
-    await putServerVaultBlobEtagAware({
-      api: options.api,
-      type: VaultBlobType.MobileNumbers,
-      blob: toEncryptedBlobV1(localVault.data.mobileNumbers),
-      ifMatch: remoteMobileNumbers?.etag,
-      onConflict: () => 'keep-local',
-    });
-  }
-
-  const remoteSubscriptions = await getServerVaultBlob(
-    options.api,
-    VaultBlobType.Subscriptions,
-  );
-
-  if (localVault.data.subscriptions) {
-    await putServerVaultBlobEtagAware({
-      api: options.api,
-      type: VaultBlobType.Subscriptions,
-      blob: toEncryptedBlobV1(localVault.data.subscriptions),
-      ifMatch: remoteSubscriptions?.etag,
-      onConflict: () => 'keep-local',
-    });
-  }
-
-  const remoteTasks = await getServerVaultBlob(
-    options.api,
-    VaultBlobType.Tasks,
-  );
-
-  if (localVault.data.tasks) {
-    await putServerVaultBlobEtagAware({
-      api: options.api,
-      type: VaultBlobType.Tasks,
-      blob: toEncryptedBlobV1(localVault.data.tasks),
-      ifMatch: remoteTasks?.etag,
-      onConflict: () => 'keep-local',
-    });
-  }
-
-  const remoteTodos = await getServerVaultBlob(
-    options.api,
-    VaultBlobType.Todos,
-  );
-
-  if (localVault.data.todos) {
-    await putServerVaultBlobEtagAware({
-      api: options.api,
-      type: VaultBlobType.Todos,
-      blob: toEncryptedBlobV1(localVault.data.todos),
-      ifMatch: remoteTodos?.etag,
+      type,
+      blob: toEncryptedBlobV1(blob),
+      ifMatch: remote?.etag,
       onConflict: () => 'keep-local',
     });
   }
