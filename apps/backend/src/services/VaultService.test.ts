@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
-import { VaultService } from './VaultService';
+import {
+  EncryptedBlobV1,
+  VAULT_BLOB_TYPES,
+  VaultService,
+} from './VaultService';
 
 function makePrismaMock() {
   return {
@@ -377,6 +381,9 @@ describe('VaultService', () => {
 
   test('importVault accepts groceries blob in bundle', async () => {
     prisma.encryptedVault.upsert.mockResolvedValue({ updatedAt: new Date() });
+    prisma.encryptedVaultBlob.upsert.mockResolvedValue({
+      updatedAt: new Date(),
+    });
 
     const wrapped = { version: 1, iv: IV_12B_BASE64, ciphertext: CT_BASE64 };
     const groceriesBlob = {
@@ -406,6 +413,68 @@ describe('VaultService', () => {
     if (result.ok === true) {
       expect(result.status).toBe(200);
       expect(result.body.ok).toBe(true);
+    }
+
+    // Assert that the groceries blob was actually persisted to the database
+    expect(prisma.encryptedVaultBlob.upsert).toHaveBeenCalledWith({
+      where: { userId_type: { userId: 'user-1', type: 'groceries' } },
+      create: {
+        userId: 'user-1',
+        type: 'groceries',
+        blob: groceriesBlob,
+      },
+      update: { blob: groceriesBlob },
+    });
+  });
+
+  test('importVault persists all registered blob types from bundle', async () => {
+    prisma.encryptedVault.upsert.mockResolvedValue({ updatedAt: new Date() });
+    prisma.encryptedVaultBlob.upsert.mockResolvedValue({
+      updatedAt: new Date(),
+    });
+
+    const wrapped = { version: 1, iv: IV_12B_BASE64, ciphertext: CT_BASE64 };
+
+    // Create blobs for all registered types
+    const blobs: Record<string, EncryptedBlobV1> = {};
+    for (const type of VAULT_BLOB_TYPES) {
+      blobs[type] = { version: 1, iv: IV_12B_BASE64, ciphertext: CT_BASE64 };
+    }
+
+    const bundle = {
+      exportVersion: 1,
+      exportedAt: new Date().toISOString(),
+      meta: {
+        version: 1,
+        kdf_name: 'PBKDF2',
+        kdf_salt: 'salt',
+        kdf_params: { iterations: 1 },
+        wrapped_mk_passphrase: wrapped,
+        wrapped_mk_recovery: wrapped,
+      },
+      blobs,
+    };
+
+    const result = await service.importVault('user-1', bundle);
+
+    expect(result.ok).toBe(true);
+    if (result.ok === true) {
+      expect(result.status).toBe(200);
+      expect(result.body.ok).toBe(true);
+    }
+
+    // Assert that all six registered blob types were persisted
+    expect(prisma.encryptedVaultBlob.upsert).toHaveBeenCalledTimes(
+      VAULT_BLOB_TYPES.length,
+    );
+
+    // Verify each registered type was persisted with correct where clause
+    for (const type of VAULT_BLOB_TYPES) {
+      expect(prisma.encryptedVaultBlob.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { userId_type: { userId: 'user-1', type } },
+        }),
+      );
     }
   });
 });
