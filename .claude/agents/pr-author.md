@@ -76,6 +76,7 @@ NO_BRANCH_COMMITS: No commits found between <base> and HEAD. Nothing to describe
 - Do this even if `gh` failed, the issue is already closed, or the commit only said `Refs #N` while the diff plainly resolves it. GitHub no-ops a close on an already-closed issue and still records the link.
 - An issue the branch merely touches, references, or was prompted by is **not** resolved by it. List those under a `Related:` line with **no** keyword and one clause saying how they relate. A one-line tooling fix that mentions a PRD in passing must not close that PRD.
 - When it is genuinely unclear whether the branch resolves an issue, use the non-closing form and say why. The costs are not symmetric: a missing link is a link someone adds later, while a wrongly auto-closed issue silently ends work that is not finished, and nobody is notified that it happened.
+- Write the keyword **bare**. Never wrap it in backticks or any code span: GitHub does not parse closing keywords inside code, so `` `Fixes #123` `` renders as a link, links the issue, and then never closes it. That failure is silent — the PR looks correct and the issue quietly stays open. Bare `Fixes #123` is the only form that closes.
 - Omit the Issues section when no numbers were found.
 
 ## Output Format
@@ -97,8 +98,9 @@ MERGE-BASE: <full SHA from step 3>
 - `libs/foo`, `apps/backend`: what changed, notable paths only
 
 ## Issues
-- `Fixes #123` — <issue title>
-- `Fixes #456` — <title>
+- Fixes #123 — <issue title>
+- Fixes #456 — <title>
+- Related: #789 — <one clause on how it relates, no keyword>
 
 ## Test plan
 - Verification already performed, as the exact command and its result
