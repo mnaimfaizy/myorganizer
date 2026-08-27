@@ -10,7 +10,10 @@
   "cipher": { "name": "AES-GCM", "keyBytes": 32, "vaultIvBytes": 12, "authTagBytes": 16 },
   "envelope": { "schemaVersion": 1 },
   "blobTypes": ["addresses", "groceries", "mobileNumbers", "subscriptions", "tasks", "todos"],
-  "storageKey": "myorganizer_vault_v1",
+  "localVaultKeys": {
+    "ownerScoped": "myorganizer_vault_v1:<owner>",
+    "unclaimed": "myorganizer_vault_v1"
+  },
   "limits": {
     "envelopeParseBytes": 10485760,
     "legacyBundleParseBytes": 1048576,
@@ -404,9 +407,10 @@ textarea.input { min-height: 90px; resize: vertical; }
     <span class="tag tag-outline" style="border-radius:999px;font-family:var(--mono);font-size:12.5px;white-space:nowrap;flex:none">16-byte GCM tag</span>
     <span class="tag tag-outline" style="border-radius:999px;font-family:var(--mono);font-size:12.5px;white-space:nowrap;flex:none">6 blob types</span>
     <span class="tag tag-outline" style="border-radius:999px;font-family:var(--mono);font-size:12.5px;white-space:nowrap;flex:none">envelope schema v1</span>
-    <span class="tag tag-outline" style="border-radius:999px;font-family:var(--mono);font-size:12.5px;white-space:nowrap;flex:none">on-device storage key: myorganizer_vault_v1</span>
+    <span class="tag tag-outline" style="border-radius:999px;font-family:var(--mono);font-size:12.5px;white-space:nowrap;flex:none">on-device storage key: myorganizer_vault_v1:<span style="font-style:italic">&lt;owner&gt;</span></span>
   </div>
-  <p style="max-width:100ch;margin:0 0 40px;font-size:13px;color:var(--ink-2);line-height:1.55">Every figure here is scoped to the vault. <span style="font-family:var(--mono);font-size:12.5px">IV_LENGTH</span> is 12 <span style="font-style:italic">in the vault</span>; the backend's YouTube token encryption declares a constant of the same name at 16. Same identifier, different subsystem — a value is only true inside its scope.</p>
+  <p style="max-width:100ch;margin:0 0 12px;font-size:13px;color:var(--ink-2);line-height:1.55">Every figure here is scoped to the vault. <span style="font-family:var(--mono);font-size:12.5px">IV_LENGTH</span> is 12 <span style="font-style:italic">in the vault</span>; the backend's YouTube token encryption declares a constant of the same name at 16. Same identifier, different subsystem — a value is only true inside its scope.</p>
+  <p style="max-width:100ch;margin:0 0 40px;font-size:13px;color:var(--ink-2);line-height:1.55">The unsuffixed <span style="font-family:var(--mono);font-size:12.5px">myorganizer_vault_v1</span> is an <span style="font-weight:700">Unclaimed Local Vault</span>: written before Vaults were owner-bound, so ownership cannot be read from it. It is resolved only for a signed-in User who holds no Local Vault of their own, and it becomes theirs only on a successful Master Key unwrap — a <span style="font-weight:700">Vault Claim</span>. A claim never deletes it; the unsuffixed slot is left byte-identical. So: finding it empty tells a reader nothing about whether their User has a Vault. If you are looking in <span style="font-family:var(--mono);font-size:12.5px">localStorage</span> for a signed-in User's Vault, look under <span style="font-family:var(--mono);font-size:12.5px">myorganizer_vault_v1:<span style="font-style:italic">&lt;their user id&gt;</span></span>.</p>
 
   <section style="max-width:1400px;margin:0 0 64px">
     <div style="display:flex;flex-wrap:wrap;gap:26px;align-items:center;margin-bottom:18px">

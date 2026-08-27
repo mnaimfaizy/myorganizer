@@ -31,12 +31,19 @@ those manifests against the constants in source and fails when they diverge:
 yarn vault:pages:check
 ```
 
-Treat a failure as "the diagram is stale", not "the check is broken". It covers 30 assertions —
+Treat a failure as "the diagram is stale", not "the check is broken". It covers 31 assertions —
 KDF parameters, cipher byte lengths, the envelope schema version, all seven size caps across the
-three layers that enforce them, the six blob types, and the nine import error codes.
+three layers that enforce them, the six blob types, the nine import error codes, and both Local
+Vault storage keys.
 
 Blob types and error codes are compared as sets rather than sequences, so a page may order them
 by the sequence a reader meets them.
+
+The two Local Vault keys are asserted as a pair, and `localVaultKeys.ownerScoped` is compared
+against the composition read out of `localVaultStorageKey()` rather than against a pinned string.
+A page may not name one key without the other. Both rules exist because the retired `storageKey`
+field stayed byte-identical while its meaning changed, and the check went on passing against a page
+that sent readers to the wrong slot — see [ADR 0051](../adr/0051-a-pinned-value-does-not-notice-that-its-meaning-moved.md).
 
 Values the pages show that are **not** yet assertable are listed in each manifest under
 `notYetExported` — currently the KDF and cipher figures, which are module-private constants. To
