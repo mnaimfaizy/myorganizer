@@ -27,19 +27,20 @@ type VaultApiLike = Pick<
   'getVaultMeta' | 'putVaultMeta' | 'getVaultBlob' | 'putVaultBlob'
 >;
 
-export type MigrationDecision = 'keep-local' | 'keep-server';
+export type ReconcileDecision = 'keep-local' | 'keep-server';
 
-export type MigrationPrompt = (params: {
+export type ReconcilePrompt = (params: {
   message: string;
   local: VaultStorageV1;
   remote: {
     meta: VaultMetaV1;
     blobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>>;
   };
-}) => Promise<MigrationDecision> | MigrationDecision;
+}) => Promise<ReconcileDecision> | ReconcileDecision;
 
-export type MigrationResult =
-  | { kind: 'skipped-no-local-vault' }
+export type ReconcileResult =
+  /** Neither this User's device nor the server holds a Vault yet. */
+  | { kind: 'noop-nothing-to-reconcile' }
   | { kind: 'skipped-not-authenticated' }
   | { kind: 'downloaded-server-to-local'; nextLocalVault: VaultStorageV1 }
   | { kind: 'uploaded-local-to-server' }
@@ -153,11 +154,19 @@ function comparableBlobs(
   return blobs;
 }
 
-export async function migrateVaultPhase1ToPhase2(options: {
+/**
+ * Reconciles one User's Local Vault with their server Ciphertext on sign-in.
+ *
+ * This is not a migration: a User whose server Vault does not exist yet is
+ * having an ordinary first sync, and a User with no Vault anywhere has
+ * nothing to reconcile. Genuine divergence is never resolved silently — it
+ * goes to `prompt`, and the caller's answer decides which side is kept.
+ */
+export async function reconcileVaultWithServer(options: {
   api: VaultApiLike;
   localVault: VaultStorageV1 | null;
-  prompt: MigrationPrompt;
-}): Promise<MigrationResult> {
+  prompt: ReconcilePrompt;
+}): Promise<ReconcileResult> {
   if (!options.localVault) {
     let serverMeta;
     try {
@@ -171,7 +180,7 @@ export async function migrateVaultPhase1ToPhase2(options: {
     }
 
     if (!serverMeta) {
-      return { kind: 'skipped-no-local-vault' };
+      return { kind: 'noop-nothing-to-reconcile' };
     }
 
     const remoteBlobs = await fetchRemoteBlobs(options.api);

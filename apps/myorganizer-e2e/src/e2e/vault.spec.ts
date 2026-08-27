@@ -122,7 +122,7 @@ test.describe('Vault (E2E)', () => {
       const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
       // Every VaultBlobType must be stubbed: the download path fetches all of
       // them, and one unmatched type escapes to the real (absent) backend and
-      // rejects the whole migration. `tasks` was missing (issue #506).
+      // rejects the whole reconcile. `tasks` was missing (issue #506).
       const vaultBlobUrl =
         /\/vault\/blob\/(addresses|groceries|mobileNumbers|subscriptions|tasks|todos)\/?(\?.*)?$/;
 
@@ -394,13 +394,13 @@ test.describe('Vault (E2E)', () => {
       timeout: 60000,
     });
 
-    // Force the migration runner to re-run now that we have a local vault.
-    // The migration flag is scoped per owner since PRD #489
-    // (migrationRunner sessionFlagKey = `${prefix}:${owner}`), so clearing the
-    // old unscoped key left migration marked as already-run. Issue #506.
+    // Force the reconcile runner to re-run now that we have a local vault.
+    // The reconcile flag is scoped per owner since PRD #489
+    // (reconcileRunner sessionFlagKey = `${prefix}:${owner}`), so clearing the
+    // old unscoped key left reconcile marked as already-run. Issue #506.
     await page1.evaluate((userId) => {
       window.sessionStorage.removeItem(
-        `myorganizer_vault_migration_ran_v1:${userId}`,
+        `myorganizer_vault_reconcile_ran_v1:${userId}`,
       );
     }, E2E_USER_ID);
     await gotoStable(page1, '/dashboard');
@@ -427,7 +427,7 @@ test.describe('Vault (E2E)', () => {
       webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
     });
 
-    // Migration runner should download the server vault into local storage.
+    // Reconcile runner should download the server vault into local storage.
     await waitForOwnedVault(page2, E2E_USER_ID);
 
     await gotoStable(page2, '/dashboard/addresses');

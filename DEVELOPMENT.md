@@ -297,7 +297,7 @@ myorganizer/
 │   ├── web/                # Web-specific libraries
 │   │   └── pages/          # Route/page implementations (one library per route)
 │   └── web-ui/             # Shared UI components
-│   ├── web-vault/           # Encrypted vault logic (crypto, storage, sync, migration)
+│   ├── web-vault/           # Encrypted vault logic (crypto, storage, sync, reconcile)
 │   └── web-vault-ui/        # Vault-related UX flows (gate/setup/unlock)
 ├── docs/                    # Documentation
 │   ├── authentication/     # Auth strategy docs
@@ -411,7 +411,7 @@ Examples of existing page libraries:
 
 #### web-vault
 
-- Encrypted vault logic (crypto, storage, sync, migration, export/import)
+- Encrypted vault logic (crypto, storage, sync, reconcile, export/import)
 
 #### web-vault-ui
 

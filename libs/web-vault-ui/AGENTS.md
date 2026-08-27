@@ -2,7 +2,7 @@
 
 ## Scope
 
-React UI, session provider, vault gate, and migration runner for the web vault.
+React UI, session provider, vault gate, and reconcile runner for the web vault.
 
 ## Commands
 
@@ -13,7 +13,7 @@ React UI, session provider, vault gate, and migration runner for the web vault.
 
 - Keep vault unlock/session state explicit and local to the client.
 - Reuse `@myorganizer/web-ui` primitives for UI.
-- Preserve migration flow safety and user recovery paths.
+- Preserve reconcile flow safety and user recovery paths.
 
 ## Do Not
 

@@ -13,7 +13,7 @@ import {
 } from '@myorganizer/web-pages/dashboard';
 
 import {
-  VaultMigrationRunner,
+  VaultReconcileRunner,
   VaultSessionProvider,
 } from '@myorganizer/web-vault-ui';
 
@@ -26,7 +26,7 @@ export default function DashboardLayout({
     <DashboardGuard>
       <SidebarProvider>
         <VaultSessionProvider>
-          <VaultMigrationRunner />
+          <VaultReconcileRunner />
           <DashboardSidebar />
           <SidebarInset>
             <header className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">

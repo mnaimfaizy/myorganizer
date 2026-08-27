@@ -8,7 +8,7 @@ description: 'Use when working on vault-backed features, encrypted blob types, v
 ## Use This Skill When
 
 - Adding or changing vault-backed features such as addresses, mobile numbers, subscriptions, todos, or vault export/import
-- Modifying encrypted blob shapes, vault migrations, or server sync behavior
+- Modifying encrypted blob shapes, vault reconcile, or server sync behavior
 - Updating vault initialization, unlock, recovery, export, or import flows
 
 ## Core Rules
@@ -27,7 +27,7 @@ description: 'Use when working on vault-backed features, encrypted blob types, v
    - `libs/vault-core`
    - backend vault allowlists, controllers, and validation
    - vault export/import
-   - vault migration logic and tests
+   - vault reconcile logic and tests
 4. If a form is involved, use React Hook Form and Zod.
 5. If server sync is involved, validate blob shape and size before storage and keep decrypted payloads out of backend requests.
 6. Update docs if blob types, recovery flows, or export/import behavior changed.
@@ -35,7 +35,7 @@ description: 'Use when working on vault-backed features, encrypted blob types, v
 ## Checkpoints
 
 - If any request body now contains plaintext vault data, stop and redesign.
-- If you changed a blob type without touching export/import or migration code, the change is incomplete.
+- If you changed a blob type without touching export/import or reconcile code, the change is incomplete.
 - If you added vault-backed UI logic outside `libs/web/pages/*` or `libs/web-vault`, move it to the owning library.
 
 ## Validation

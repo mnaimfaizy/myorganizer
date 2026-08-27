@@ -12,17 +12,16 @@ import {
 } from '@myorganizer/web-ui';
 import { useEffect, useRef, useState } from 'react';
 
-import type { MigrationDecision } from '@myorganizer/web-vault';
+import type { ReconcileDecision } from '@myorganizer/web-vault';
 import {
   createVaultApi,
   getHttpStatus,
-  migrateVaultPhase1ToPhase2,
+  reconcileVaultWithServer,
 } from '@myorganizer/web-vault';
 
 import { useOptionalVaultSession } from './session';
 
-const VAULT_MIGRATION_VERSION = 1;
-const SESSION_FLAG_PREFIX = `myorganizer_vault_migration_ran_v${VAULT_MIGRATION_VERSION}`;
+const SESSION_FLAG_PREFIX = 'myorganizer_vault_reconcile_ran_v1';
 
 /**
  * Scoped per User: a second User signing into the same tab Session must
@@ -35,7 +34,7 @@ function sessionFlagFor(owner: string): string {
 
 type PendingVaultConflictPrompt = {
   message: string;
-  resolve: (decision: MigrationDecision) => void;
+  resolve: (decision: ReconcileDecision) => void;
 };
 
 function getUserFacingErrorMessage(error: unknown): string {
@@ -61,10 +60,10 @@ function getUserFacingErrorMessage(error: unknown): string {
     return message;
   }
 
-  return 'Could not migrate/sync your vault. Your local data is unchanged.';
+  return 'Could not sync your vault. Your local data is unchanged.';
 }
 
-export function VaultMigrationRunner() {
+export function VaultReconcileRunner() {
   const { toast } = useToast();
   const toastRef = useRef(toast);
   const pendingPromptRef = useRef<PendingVaultConflictPrompt | null>(null);
@@ -102,13 +101,13 @@ export function VaultMigrationRunner() {
     const api = createVaultApi();
     const localVault = currentHandle.loadVault();
 
-    migrateVaultPhase1ToPhase2({
+    reconcileVaultWithServer({
       api,
       localVault,
       prompt: async ({ message }) => {
         if (cancelled) return 'keep-server';
 
-        return new Promise<MigrationDecision>((resolve) => {
+        return new Promise<ReconcileDecision>((resolve) => {
           const nextPrompt = { message, resolve };
           pendingPromptRef.current = nextPrompt;
           setPendingPrompt(nextPrompt);
@@ -130,9 +129,8 @@ export function VaultMigrationRunner() {
           });
         } else if (result.kind === 'uploaded-local-to-server') {
           toastRef.current({
-            title: 'Vault migrated',
-            description:
-              'Your local encrypted vault was uploaded to the server.',
+            title: 'Vault synced',
+            description: 'Your encrypted vault is now backed up to the server.',
           });
         } else if (result.kind === 'kept-server-overwrote-local') {
           currentHandle.saveVault(result.nextLocalVault);
@@ -169,7 +167,7 @@ export function VaultMigrationRunner() {
     };
   }, [owner]);
 
-  function resolvePendingPrompt(decision: MigrationDecision) {
+  function resolvePendingPrompt(decision: ReconcileDecision) {
     const prompt = pendingPromptRef.current;
     if (!prompt) return;
 

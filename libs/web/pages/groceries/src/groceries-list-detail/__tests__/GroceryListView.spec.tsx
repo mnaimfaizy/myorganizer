@@ -9,7 +9,7 @@
     TripBoardLineRow children for lifecycle wiring; dialog components remain
     stubbed so this suite focuses on GroceryListView orchestration.
   - Mocks @myorganizer/web-ui's useToast/ToastAction the same way sibling
-    vault-adjacent specs in this repo do (see migrationRunner.spec.tsx).
+    vault-adjacent specs in this repo do (see reconcileRunner.spec.tsx).
 */
 
 /** Mocking rule: place jest.mock calls before any imports */
