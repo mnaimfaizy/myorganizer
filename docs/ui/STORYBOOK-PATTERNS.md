@@ -5,7 +5,7 @@
 > Component rules live in [`GUIDELINES.md`](./GUIDELINES.md).
 > This file is the single home for story patterns — `StorybookCurator` reads it instead of carrying copies in its prompt.
 
-A colocated story is required for every UI Primitive and every Vault UI Component the glob is meant to show. Follow the patterns here rather than generalising from whichever story you happened to open. Feature Components stay out of Storybook. Non-UI `web-vault-ui` exports (`session`, `vaultGate`, `migrationRunner`) are not this rule.
+A colocated story is required for every UI Primitive and every Vault UI Component the glob is meant to show. Follow the patterns here rather than generalising from whichever story you happened to open. Feature Components stay out of Storybook. Non-UI `web-vault-ui` exports (`session`, `vaultGate`, `reconcileRunner`) are not this rule.
 
 ---
 
@@ -22,7 +22,7 @@ Both libraries are served by the **same** Storybook instance (`libs/web-ui/.stor
 
 - UI Primitives in `libs/web-ui` — required (GUIDELINES §1).
 - Vault UI Components in `libs/web-vault-ui` (`CloudBackupCard`, `LastBackupCard`) — required. They know vault domain, so they are not primitives; they still must be mock-props-expressible.
-- Non-UI modules in `web-vault-ui` (`session`, `vaultGate`, `migrationRunner`, error-message helpers) — no story.
+- Non-UI modules in `web-vault-ui` (`session`, `vaultGate`, `reconcileRunner`, error-message helpers) — no story.
 
 Feature Components in `libs/web/pages/` are **not** in any story glob. They depend on domain state, so they belong in tests, not Storybook. If a feature component seems worth a story, that is a signal it should have been a UI Primitive or a Vault UI Component — raise it rather than adding a glob.
 

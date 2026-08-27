@@ -230,6 +230,10 @@ _Avoid_: adopt vault, take over vault, assign vault, link vault
 The interface a signed-in User is shown for an Unclaimed Local Vault: it leads with unlock, because unlocking is the claim, and carries an explicit escape for the User who recognises the Vault is not theirs. The escape is deliberately not an equal alternative — the person most likely to take it by mistake is the rightful owner.
 _Avoid_: claim prompt, vault chooser, ownership dialog, migration prompt
 
+**Vault Reconcile**:
+The per-User comparison of a Local Vault against that User's server Ciphertext, run on sign-in. It is not a migration and has no one-time character: a User with no server Vault yet is having an ordinary first sync, and a User with no Vault on either side has nothing to reconcile. Divergence is never resolved silently — the User chooses which side is kept, and neither side is overwritten without that answer.
+_Avoid_: vault migration, phase-1 migration, vault upgrade, sync migration
+
 **Master Key**:
 The symmetric key derived from the passphrase (PBKDF2 → AES-GCM) that decrypts vault Ciphertext. Never sent to the server.
 _Avoid_: vault key, encryption key, secret key

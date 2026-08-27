@@ -2,9 +2,9 @@ import { VaultBlobType, type VaultMetaV1 } from '@myorganizer/app-api-client';
 
 import type { VaultStorageV1 } from './localVaultStorage';
 import { VAULT_BLOB_TYPES } from './vaultBlobFields';
-import { migrateVaultPhase1ToPhase2 } from './vaultMigration';
+import { reconcileVaultWithServer } from './vaultReconcile';
 
-type ApiParam = Parameters<typeof migrateVaultPhase1ToPhase2>[0]['api'];
+type ApiParam = Parameters<typeof reconcileVaultWithServer>[0]['api'];
 
 jest.mock('./serverVaultSync', () => ({
   getServerVaultMeta: jest.fn(),
@@ -65,7 +65,7 @@ function makeServerBlobResponse(
   };
 }
 
-describe('migrateVaultPhase1ToPhase2', () => {
+describe('reconcileVaultWithServer', () => {
   beforeEach(() => {
     jest.resetAllMocks();
   });
@@ -75,7 +75,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
 
     const localVault = makeLocalVault();
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault,
       prompt: () => 'keep-local',
@@ -112,7 +112,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     );
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: null,
       prompt: () => 'keep-server',
@@ -128,16 +128,16 @@ describe('migrateVaultPhase1ToPhase2', () => {
     }
   });
 
-  test('skips when both local and server vault are missing', async () => {
+  test('no-ops when this User has no Vault on this device or on the server', async () => {
     serverVaultSync.getServerVaultMeta.mockResolvedValue(null);
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: null,
       prompt: () => 'keep-server',
     });
 
-    expect(result).toEqual({ kind: 'skipped-no-local-vault' });
+    expect(result).toEqual({ kind: 'noop-nothing-to-reconcile' });
     expect(serverVaultSync.getServerVaultBlob).not.toHaveBeenCalled();
     expect(serverVaultSync.putServerVaultMetaEtagAware).not.toHaveBeenCalled();
     expect(serverVaultSync.putServerVaultBlobEtagAware).not.toHaveBeenCalled();
@@ -150,7 +150,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
     error.response = { status: 401 };
     serverVaultSync.getServerVaultMeta.mockRejectedValue(error);
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: makeLocalVault(),
       prompt: () => 'keep-local',
@@ -185,7 +185,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
 
     const prompt = jest.fn(() => 'keep-server' as const);
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: makeLocalVault(),
       prompt,
@@ -212,7 +212,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       blob: { version: 1, iv: 'remote', ciphertext: 'remote' },
     });
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: makeLocalVault(),
       prompt: () => 'keep-server',
@@ -220,6 +220,32 @@ describe('migrateVaultPhase1ToPhase2', () => {
 
     expect(result.kind).toBe('kept-server-overwrote-local');
     expect(serverVaultSync.putServerVaultMetaEtagAware).not.toHaveBeenCalled();
+  });
+
+  test('conflict: defer resolves noop-conflict-deferred without writing anywhere (ADR 0033)', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: makeServerMeta(),
+    });
+
+    // Make blobs differ to force prompt
+    serverVaultSync.getServerVaultBlob.mockResolvedValue({
+      etag: 'b1',
+      updatedAt: 'bt1',
+      type: VaultBlobType.Addresses,
+      blob: { version: 1, iv: 'remote', ciphertext: 'remote' },
+    });
+
+    const result = await reconcileVaultWithServer({
+      api: {} as unknown as ApiParam,
+      localVault: makeLocalVault(),
+      prompt: () => 'defer',
+    });
+
+    expect(result).toEqual({ kind: 'noop-conflict-deferred' });
+    expect(serverVaultSync.putServerVaultMetaEtagAware).not.toHaveBeenCalled();
+    expect(serverVaultSync.putServerVaultBlobEtagAware).not.toHaveBeenCalled();
   });
 
   test('conflict: keep-local overwrites server meta/blobs (etag-aware)', async () => {
@@ -243,7 +269,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     );
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: makeLocalVault(),
       prompt: () => 'keep-local',
@@ -287,7 +313,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     });
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault,
       prompt: () => 'keep-local',
@@ -333,7 +359,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     );
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: null,
       prompt: () => 'keep-server',
@@ -384,7 +410,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     });
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault,
       prompt: () => 'keep-local',
@@ -415,7 +441,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     });
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault,
       prompt: () => 'keep-local',
@@ -458,7 +484,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     );
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: null,
       prompt: () => 'keep-server',
@@ -502,7 +528,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     });
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault,
       prompt,
@@ -538,7 +564,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     });
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault,
       prompt: () => 'keep-server',
@@ -584,7 +610,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     });
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault,
       prompt: () => 'keep-local',
@@ -638,7 +664,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       data: allBlobsData as VaultStorageV1['data'],
     });
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault,
       prompt: () => 'keep-local',
