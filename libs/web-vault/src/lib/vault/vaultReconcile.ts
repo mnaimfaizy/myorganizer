@@ -27,7 +27,12 @@ type VaultApiLike = Pick<
   'getVaultMeta' | 'putVaultMeta' | 'getVaultBlob' | 'putVaultBlob'
 >;
 
-export type ReconcileDecision = 'keep-local' | 'keep-server';
+/**
+ * `defer` is the answer given by a User who gave no answer — a dismissed
+ * prompt. It is not a synonym for either side: deferring writes nothing
+ * anywhere, so the choice survives to be made again (ADR 0033).
+ */
+export type ReconcileDecision = 'keep-local' | 'keep-server' | 'defer';
 
 export type ReconcilePrompt = (params: {
   message: string;
@@ -46,6 +51,8 @@ export type ReconcileResult =
   | { kind: 'uploaded-local-to-server' }
   | { kind: 'kept-local-overwrote-server' }
   | { kind: 'kept-server-overwrote-local'; nextLocalVault: VaultStorageV1 }
+  /** Divergence was found and the User did not choose. Nothing was written. */
+  | { kind: 'noop-conflict-deferred' }
   | { kind: 'noop-already-in-sync' };
 
 function stableStringify(value: unknown): string {
@@ -160,7 +167,8 @@ function comparableBlobs(
  * This is not a migration: a User whose server Vault does not exist yet is
  * having an ordinary first sync, and a User with no Vault anywhere has
  * nothing to reconcile. Genuine divergence is never resolved silently — it
- * goes to `prompt`, and the caller's answer decides which side is kept.
+ * goes to `prompt`, and the caller's answer decides which side is kept. A
+ * caller that answers `defer` leaves both sides exactly as they were.
  */
 export async function reconcileVaultWithServer(options: {
   api: VaultApiLike;
@@ -254,6 +262,10 @@ export async function reconcileVaultWithServer(options: {
     local: localVault,
     remote: { meta: serverMeta.meta, blobs: remoteBlobs },
   });
+
+  if (decision === 'defer') {
+    return { kind: 'noop-conflict-deferred' };
+  }
 
   if (decision === 'keep-server') {
     const nextLocalVault = serverMetaToLocalVault({

@@ -222,6 +222,32 @@ describe('reconcileVaultWithServer', () => {
     expect(serverVaultSync.putServerVaultMetaEtagAware).not.toHaveBeenCalled();
   });
 
+  test('conflict: defer resolves noop-conflict-deferred without writing anywhere (ADR 0033)', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: makeServerMeta(),
+    });
+
+    // Make blobs differ to force prompt
+    serverVaultSync.getServerVaultBlob.mockResolvedValue({
+      etag: 'b1',
+      updatedAt: 'bt1',
+      type: VaultBlobType.Addresses,
+      blob: { version: 1, iv: 'remote', ciphertext: 'remote' },
+    });
+
+    const result = await reconcileVaultWithServer({
+      api: {} as unknown as ApiParam,
+      localVault: makeLocalVault(),
+      prompt: () => 'defer',
+    });
+
+    expect(result).toEqual({ kind: 'noop-conflict-deferred' });
+    expect(serverVaultSync.putServerVaultMetaEtagAware).not.toHaveBeenCalled();
+    expect(serverVaultSync.putServerVaultBlobEtagAware).not.toHaveBeenCalled();
+  });
+
   test('conflict: keep-local overwrites server meta/blobs (etag-aware)', async () => {
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'server-etag',

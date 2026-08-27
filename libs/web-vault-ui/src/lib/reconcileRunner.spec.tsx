@@ -70,7 +70,7 @@ describe('VaultReconcileRunner', () => {
     window.sessionStorage.clear();
   });
 
-  test('uses the app modal to keep local vault data when OK is selected', async () => {
+  test('uses the app modal to keep local vault data when "Keep this device\'s data" is selected', async () => {
     const decisionResult: { current?: ReconcileDecision } = {};
     const mockHandle = createMockHandle('user-a');
     const confirmSpy = jest.spyOn(window, 'confirm');
@@ -85,17 +85,23 @@ describe('VaultReconcileRunner', () => {
 
     expect(await screen.findByRole('dialog')).not.toBeNull();
     expect(screen.getByText('Choose vault data to keep')).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'OK' })).not.toBeNull();
-    expect(screen.getByRole('button', { name: 'Cancel' })).not.toBeNull();
+    expect(
+      screen.getByRole('button', { name: "Keep this device's data" }),
+    ).not.toBeNull();
+    expect(
+      screen.getByRole('button', { name: "Keep the server's data" }),
+    ).not.toBeNull();
 
-    fireEvent.click(screen.getByRole('button', { name: 'OK' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: "Keep this device's data" }),
+    );
 
     await waitFor(() => expect(decisionResult.current).toBe('keep-local'));
     expect(confirmSpy).not.toHaveBeenCalled();
     confirmSpy.mockRestore();
   });
 
-  test('uses the app modal to keep server vault data when Cancel is selected', async () => {
+  test('uses the app modal to keep server vault data when "Keep the server\'s data" is selected', async () => {
     const decisionResult: { current?: ReconcileDecision } = {};
     const mockHandle = createMockHandle('user-a');
 
@@ -108,7 +114,9 @@ describe('VaultReconcileRunner', () => {
     render(<VaultReconcileRunner />);
 
     expect(await screen.findByRole('dialog')).not.toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: "Keep the server's data" }),
+    );
 
     await waitFor(() => expect(decisionResult.current).toBe('keep-server'));
   });
@@ -215,13 +223,110 @@ describe('VaultReconcileRunner', () => {
 
     render(<VaultReconcileRunner />);
 
-    await waitFor(() => expect(mockToast).toHaveBeenCalled());
+    await waitFor(() => expect(mockToast).toHaveBeenCalledTimes(1));
 
-    const shown = mockToast.mock.calls
-      .map(([args]: [Record<string, unknown>]) => JSON.stringify(args))
-      .join(' ')
-      .toLowerCase();
-    expect(shown).not.toContain('migrat');
+    const [toastArgs] = mockToast.mock.calls[0] as [Record<string, unknown>];
+    expect(toastArgs.title).toBe('Vault synced');
+    expect(toastArgs.description).toBe(
+      'Your encrypted vault is now backed up to the server.',
+    );
+    expect(JSON.stringify(toastArgs).toLowerCase()).not.toContain('migrat');
     expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  test('dismissing conflict dialog resolves prompt with defer, not keep-server (ADR 0033)', async () => {
+    const decisionResult: { current?: ReconcileDecision } = {};
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    arrangePrompt(decisionResult);
+
+    render(<VaultReconcileRunner />);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).not.toBeNull();
+
+    // Simulate Escape key dismissal
+    fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
+
+    await waitFor(() => expect(decisionResult.current).toBe('defer'));
+  });
+
+  test('when reconcile defers conflict, session flag is not set', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    // Reconcile result is noop-conflict-deferred
+    mockReconcileVaultWithServer.mockResolvedValue({
+      kind: 'noop-conflict-deferred',
+    });
+
+    render(<VaultReconcileRunner />);
+
+    await waitFor(() => {
+      expect(mockReconcileVaultWithServer).toHaveBeenCalled();
+    });
+
+    // Session flag should NOT be set after deferred result
+    expect(
+      window.sessionStorage.getItem(
+        'myorganizer_vault_reconcile_ran_v1:user-a',
+      ),
+    ).toBeNull();
+  });
+
+  test('when reconcile defers conflict, saveVault is never called', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockReconcileVaultWithServer.mockResolvedValue({
+      kind: 'noop-conflict-deferred',
+    });
+
+    render(<VaultReconcileRunner />);
+
+    await waitFor(() => {
+      expect(mockReconcileVaultWithServer).toHaveBeenCalled();
+    });
+
+    expect(mockHandle.saveVault).not.toHaveBeenCalled();
+  });
+
+  test('unmounting while prompt is pending resolves with defer and writes nothing', async () => {
+    const decisionResult: { current?: ReconcileDecision } = {};
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    arrangePrompt(decisionResult);
+
+    const { unmount } = render(<VaultReconcileRunner />);
+
+    // Wait for dialog to appear
+    await screen.findByRole('dialog');
+
+    // Unmount while prompt is pending
+    unmount();
+
+    // The cleanup function should resolve with 'defer'
+    await waitFor(() => expect(decisionResult.current).toBe('defer'));
+
+    // Session flag should NOT be set since unmount resolves with defer
+    expect(
+      window.sessionStorage.getItem(
+        'myorganizer_vault_reconcile_ran_v1:user-a',
+      ),
+    ).toBeNull();
   });
 });

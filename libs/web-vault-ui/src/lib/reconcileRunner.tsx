@@ -105,7 +105,7 @@ export function VaultReconcileRunner() {
       api,
       localVault,
       prompt: async ({ message }) => {
-        if (cancelled) return 'keep-server';
+        if (cancelled) return 'defer';
 
         return new Promise<ReconcileDecision>((resolve) => {
           const nextPrompt = { message, resolve };
@@ -117,7 +117,13 @@ export function VaultReconcileRunner() {
       .then((result) => {
         if (cancelled) return;
 
-        if (result.kind !== 'skipped-not-authenticated') {
+        // A deferred conflict is unfinished business, not a completed
+        // reconcile: leaving the flag unset is what brings the choice back
+        // instead of stranding the User's divergence unresolved.
+        if (
+          result.kind !== 'skipped-not-authenticated' &&
+          result.kind !== 'noop-conflict-deferred'
+        ) {
           window.sessionStorage.setItem(sessionFlag, '1');
         }
 
@@ -161,7 +167,7 @@ export function VaultReconcileRunner() {
     return () => {
       cancelled = true;
       if (pendingPromptRef.current) {
-        pendingPromptRef.current.resolve('keep-server');
+        pendingPromptRef.current.resolve('defer');
         pendingPromptRef.current = null;
       }
     };
@@ -180,7 +186,10 @@ export function VaultReconcileRunner() {
     <Dialog
       open={Boolean(pendingPrompt)}
       onOpenChange={(open) => {
-        if (!open) resolvePendingPrompt('keep-server');
+        // Escape and overlay clicks land here. Dismissing is a deliberate
+        // no-op — neither copy is touched — so it must never be read as
+        // consent to overwrite one of them (ADR 0033).
+        if (!open) resolvePendingPrompt('defer');
       }}
     >
       <DialogContent showCloseButton={false}>
@@ -193,14 +202,20 @@ export function VaultReconcileRunner() {
           <p>Your data is different on this device and on the server.</p>
           <div className="rounded-md border bg-muted/30 p-3 text-foreground">
             <p>
-              <span className="font-medium">OK</span> keeps the encrypted data
-              on this device and replaces the copy on the server.
+              <span className="font-medium">Keep this device&apos;s data</span>{' '}
+              uploads the encrypted data on this device over the copy on the
+              server.
             </p>
             <p className="mt-2">
-              <span className="font-medium">Cancel</span> keeps the encrypted
-              data from the server and replaces the copy on this device.
+              <span className="font-medium">Keep the server&apos;s data</span>{' '}
+              replaces the encrypted data on this device with the copy from the
+              server.
             </p>
           </div>
+          <p>
+            Closing this dialog changes nothing on either side, and we will ask
+            again.
+          </p>
         </div>
 
         <DialogFooter>
@@ -209,13 +224,13 @@ export function VaultReconcileRunner() {
             variant="outline"
             onClick={() => resolvePendingPrompt('keep-server')}
           >
-            Cancel
+            Keep the server&apos;s data
           </Button>
           <Button
             type="button"
             onClick={() => resolvePendingPrompt('keep-local')}
           >
-            OK
+            Keep this device&apos;s data
           </Button>
         </DialogFooter>
       </DialogContent>
