@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
 import {
-  gotoStable,
   E2E_USER_ID,
+  gotoStable,
   routeApi,
+  submitLoginForm,
   waitForOwnedVault,
 } from './helpers';
 
@@ -28,10 +29,7 @@ function corsHeaders(origin: string) {
   } as const;
 }
 
-async function login(
-  page: import('@playwright/test').Page,
-  options: { webkitDelayMs: number },
-) {
+async function login(page: import('@playwright/test').Page) {
   // Mock the login API endpoint
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
   await routeApi(page, loginUrl, async (route) => {
@@ -70,46 +68,7 @@ async function login(
   await expect(page).toHaveURL(/.*login/);
   await expect(page.locator('h1')).toContainText('Login');
 
-  // Wait for page to load - use try/catch to handle parallel test execution
-  try {
-    await page.waitForLoadState('networkidle', { timeout: 10000 });
-  } catch {
-    // If networkidle times out in parallel execution, use domcontentloaded instead
-    try {
-      await page.waitForLoadState('domcontentloaded');
-    } catch {
-      // Continue anyway - page might be ready enough
-    }
-  }
-
-  if (options.webkitDelayMs > 0) {
-    await page.waitForTimeout(options.webkitDelayMs);
-  }
-
-  await page.fill('input[type="email"]', 'testuser@example.com');
-  await page.fill('input[type="password"]', 'password123');
-
-  const submitButton = page.locator('button[type="submit"]');
-  await expect(submitButton).toBeVisible();
-  await expect(submitButton).toBeEnabled();
-  await submitButton.click();
-
-  await expect(page).toHaveURL(/.*dashboard/, { timeout: 60000 });
-
-  // Wait for dashboard to load
-  try {
-    await page.waitForLoadState('networkidle', { timeout: 10000 });
-  } catch {
-    try {
-      await page.waitForLoadState('domcontentloaded');
-    } catch {
-      // Continue anyway
-    }
-  }
-
-  if (options.webkitDelayMs > 0) {
-    await page.waitForTimeout(options.webkitDelayMs);
-  }
+  await submitLoginForm(page);
 }
 
 async function unlockWithPassphrase(
@@ -134,7 +93,6 @@ async function unlockWithPassphrase(
 
   await expect(input).toBeVisible({ timeout: 60000 });
   await input.fill(passphrase);
-  await page.waitForTimeout(50);
   await page.getByRole('button', { name: 'Unlock' }).click();
   await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
     timeout: 120000,
@@ -344,9 +302,6 @@ async function setupRoutes(page: import('@playwright/test').Page) {
 
     await route.fulfill({ status: 405, headers });
   });
-
-  // Give the client time to hydrate.
-  await page.waitForLoadState('networkidle');
 }
 
 /**
@@ -369,19 +324,15 @@ test.describe('Addresses (E2E)', () => {
 
   test('should create an address, add and delete usage location, and verify detail route navigation', async ({
     page,
-  }, testInfo) => {
+  }) => {
     // Setup mock routes for vault
     await setupRoutes(page);
 
-    // Determine WebKit-specific delay
-    const webkitDelayMs = testInfo.project.name === 'webkit' ? 1500 : 0;
-
     // Step 0: Login
-    await login(page, { webkitDelayMs });
+    await login(page);
 
     // Step A1: Navigate to addresses page
     await gotoStable(page, '/dashboard/addresses');
-    await page.waitForLoadState('networkidle');
 
     // Step A2: Create vault (fill passphrase and confirm)
     const setupPassphrase = page.locator('#setup-passphrase');

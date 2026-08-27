@@ -22,8 +22,10 @@ export async function gotoStable(
         message.includes('is interrupted by another navigation') &&
         attempt < maxAttempts
       ) {
-        await page.waitForLoadState('networkidle');
-        await page.waitForTimeout(250);
+        // The interrupting navigation is the thing to wait on: once it has a
+        // document, the retry has a stable page to load into. `networkidle`
+        // plus a sleep waited on neither (issue #524).
+        await page.waitForLoadState('domcontentloaded');
         continue;
       }
       throw e;

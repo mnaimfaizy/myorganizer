@@ -13,12 +13,20 @@ export class GroceriesPage {
    */
   async gotoAndUnlock(passphrase: string): Promise<void> {
     await this.page.goto('/dashboard/groceries');
-    await this.page.waitForLoadState('networkidle');
-    await this.page.waitForTimeout(500);
 
     const unlockButton = this.page.getByRole('button', {
       name: 'Use passphrase',
     });
+
+    // The route is ready once it has settled into one of its two states —
+    // the vault gate, or the unlocked Trip Board. Waiting for network quiet
+    // said nothing about either (issue #524).
+    await expect(
+      unlockButton
+        .or(this.page.getByRole('heading', { name: 'Active trips' }))
+        .first(),
+    ).toBeVisible({ timeout: 30000 });
+
     const isLocked = await unlockButton
       .isVisible({ timeout: 10000 })
       .catch(() => false);
@@ -28,9 +36,6 @@ export class GroceriesPage {
     }
 
     await this.waitForGroceriesReady();
-
-    await this.page.waitForLoadState('networkidle');
-    await this.page.waitForTimeout(1000);
   }
 
   /**
@@ -39,6 +44,17 @@ export class GroceriesPage {
   async waitForGroceriesReady(): Promise<void> {
     await expect(
       this.page.getByRole('heading', { name: 'Active trips' }),
+    ).toBeVisible({ timeout: 30000 });
+
+    // The heading renders before the decrypted trips do. The board's primary
+    // action is the first thing that depends on that list having resolved —
+    // "New trip" when there are trips, the empty-state CTA when there are
+    // none — so it is the honest end of "the board is ready".
+    await expect(
+      this.page
+        .getByRole('button', { name: 'New trip' })
+        .or(this.page.getByRole('button', { name: 'Create Your First List' }))
+        .first(),
     ).toBeVisible({ timeout: 30000 });
   }
 
@@ -73,7 +89,6 @@ export class GroceriesPage {
 
     if (await unlockUI.isVisible({ timeout: 1000 }).catch(() => false)) {
       await unlockUI.click();
-      await this.page.waitForTimeout(1000);
     }
 
     let input = this.page.locator('#unlock-passphrase');
@@ -98,9 +113,7 @@ export class GroceriesPage {
 
     await input.scrollIntoViewIfNeeded();
     await input.click();
-    await this.page.waitForTimeout(500);
     await input.fill(passphrase);
-    await this.page.waitForTimeout(300);
 
     const unlockButton = this.page.getByRole('button', { name: /^Unlock$/i });
     const buttonExists = await unlockButton
@@ -112,24 +125,16 @@ export class GroceriesPage {
     }
 
     await unlockButton.click();
-    await this.page.waitForTimeout(500);
 
-    try {
-      await this.page
-        .locator(
-          '#unlock-passphrase, input[placeholder*="Security"], input[placeholder*="passphrase"]',
-        )
-        .first()
-        .isHidden({ timeout: 30000 });
-    } catch {
-      try {
-        await this.page.waitForLoadState('networkidle', { timeout: 10000 });
-      } catch {
-        // Continue anyway
-      }
-    }
-
-    await this.page.waitForTimeout(1000);
+    // Unlock is complete when the passphrase field goes away. The previous
+    // shape called `isHidden({ timeout })` — which does not wait at all, so
+    // it resolved immediately and the following sleep was the real wait —
+    // then fell back to `networkidle` (issue #524).
+    await expect(
+      this.page.locator(
+        '#unlock-passphrase, input[placeholder*="Security"], input[placeholder*="passphrase"]',
+      ),
+    ).toHaveCount(0, { timeout: 120000 });
   }
 
   /**
@@ -179,12 +184,22 @@ export class GroceriesPage {
     }
 
     await this.page.goto(href);
-    await this.page.waitForLoadState('networkidle');
 
+    // The detail route settles into one of two states: the vault gate, or the
+    // board itself. Wait for that before probing which one arrived — a fixed
+    // `isVisible` probe otherwise races the render, and the `networkidle` that
+    // used to sit here was hiding the race rather than removing it (#524).
     const passphraseInput = this.page
       .locator('#unlock-passphrase, [data-testid="unlock-passphrase"]')
       .first();
-    if (await passphraseInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+    const listHeading = this.page
+      .locator('h1, h2')
+      .filter({ hasText: listName });
+    await expect(passphraseInput.or(listHeading).first()).toBeVisible({
+      timeout: 30000,
+    });
+
+    if (await passphraseInput.isVisible().catch(() => false)) {
       if (!passphraseParam) {
         throw new Error(
           `Vault unlock required but passphrase not provided to openList`,
@@ -195,17 +210,15 @@ export class GroceriesPage {
         .getByRole('button', { name: /Unlock|Confirm/ })
         .first();
       await unlockBtn.click();
-      await this.page.waitForLoadState('networkidle');
+      // The gate closing is the unlock signal, not network quiet.
+      await expect(
+        this.page.locator(
+          '#unlock-passphrase, [data-testid="unlock-passphrase"]',
+        ),
+      ).toHaveCount(0, { timeout: 120000 });
     }
 
-    await this.page.waitForFunction(
-      (name) => {
-        const heading = document.querySelector('h1, h2');
-        return heading && heading.textContent?.includes(name);
-      },
-      listName,
-      { timeout: 30000 },
-    );
+    await expect(listHeading.first()).toBeVisible({ timeout: 30000 });
   }
 
   /**
@@ -462,6 +475,6 @@ export class GroceriesPage {
    */
   async goBack(): Promise<void> {
     await this.page.goBack();
-    await this.page.waitForLoadState('networkidle');
+    await this.waitForGroceriesReady();
   }
 }

@@ -3,6 +3,7 @@ import {
   gotoStable,
   E2E_USER_ID,
   routeApi,
+  submitLoginForm,
   waitForOwnedVault,
 } from './helpers';
 
@@ -30,10 +31,7 @@ async function unlockWithPassphrase(
 
   await expect(input).toBeVisible({ timeout: 60000 });
 
-  // VaultGate's Unlock handler reads React state; give React a beat to
-  // reconcile the controlled input value before clicking Unlock.
   await input.fill(passphrase);
-  await page.waitForTimeout(50);
 
   await page.getByRole('button', { name: 'Unlock' }).click();
   await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
@@ -41,36 +39,12 @@ async function unlockWithPassphrase(
   });
 }
 
-async function login(
-  page: import('@playwright/test').Page,
-  options: { webkitDelayMs: number },
-) {
+async function login(page: import('@playwright/test').Page) {
   await page.goto('/login');
   await expect(page).toHaveURL(/.*login/);
   await expect(page.locator('h1')).toContainText('Login');
 
-  // Give the app time to hydrate and attach event handlers.
-  await page.waitForLoadState('networkidle');
-  if (options.webkitDelayMs > 0) {
-    await page.waitForTimeout(options.webkitDelayMs);
-  }
-
-  await page.fill('input[type="email"]', 'testuser@example.com');
-  await page.fill('input[type="password"]', 'password123');
-
-  const submitButton = page.locator('button[type="submit"]');
-  await expect(submitButton).toBeVisible();
-  await expect(submitButton).toBeEnabled();
-  await submitButton.click();
-
-  await expect(page).toHaveURL(/.*dashboard/, { timeout: 60000 });
-
-  // Wait for any post-login client-side redirects/effects to settle before
-  // we navigate away (WebKit can be particularly sensitive here).
-  await page.waitForLoadState('networkidle');
-  if (options.webkitDelayMs > 0) {
-    await page.waitForTimeout(options.webkitDelayMs);
-  }
+  await submitLoginForm(page);
 }
 
 function corsHeaders(origin: string) {
@@ -88,9 +62,6 @@ test.describe('Vault (E2E)', () => {
   }, testInfo) => {
     // The heaviest test in the suite: two browser contexts, several PBKDF2
     // derivations (slow by design, and slower still on WebKit), and a full
-    // upload/download sync round-trip. It fits 120s on WebKit when run alone
-    // but not when the sequential all-browser run puts the machine under
-    // load, so WebKit gets a realistic budget rather than a skip (issue #506).
     test.setTimeout(testInfo.project.name === 'webkit' ? 240000 : 120000);
 
     // In-memory "server" backing store shared across both sessions.
@@ -311,12 +282,6 @@ test.describe('Vault (E2E)', () => {
 
         await route.fulfill({ status: 405, headers });
       });
-
-      // Give the client time to hydrate (mirrors existing auth test behavior).
-      await page.waitForLoadState('networkidle');
-      if (testInfo.project.name === 'webkit') {
-        await page.waitForTimeout(1500);
-      }
     }
 
     // Session 1: create local vault + data
@@ -324,9 +289,7 @@ test.describe('Vault (E2E)', () => {
     const page1 = await ctx1.newPage();
     await setupRoutes(page1);
 
-    await login(page1, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page1);
 
     const passphrase = 'correct horse battery staple';
 
@@ -423,9 +386,7 @@ test.describe('Vault (E2E)', () => {
     const page2 = await ctx2.newPage();
     await setupRoutes(page2);
 
-    await login(page2, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page2);
 
     // Migration runner should download the server vault into local storage.
     await waitForOwnedVault(page2, E2E_USER_ID);

@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
-  gotoStable,
   E2E_USER_ID,
+  gotoStable,
   removeOwnedVault,
   routeApi,
+  submitLoginForm,
   waitForOwnedVault,
 } from './helpers';
 
@@ -36,20 +37,11 @@ function corsHeaders(origin: string) {
   } as const;
 }
 
-async function login(page: Page, options: { webkitDelayMs: number }) {
+async function login(page: Page) {
   await page.goto('/login');
   await expect(page).toHaveURL(/.*login/);
-  await page.waitForLoadState('networkidle');
-  if (options.webkitDelayMs > 0) {
-    await page.waitForTimeout(options.webkitDelayMs);
-  }
-  await page.fill('input[type="email"]', 'testuser@example.com');
-  await page.fill('input[type="password"]', 'password123');
-  const submitButton = page.locator('button[type="submit"]');
-  await expect(submitButton).toBeEnabled();
-  await submitButton.click();
-  await expect(page).toHaveURL(/.*dashboard/, { timeout: 60000 });
-  await page.waitForLoadState('networkidle');
+
+  await submitLoginForm(page);
 }
 
 async function unlockWithPassphrase(page: Page, passphrase: string) {
@@ -65,7 +57,6 @@ async function unlockWithPassphrase(page: Page, passphrase: string) {
   if ((await input.count()) === 0) return;
   await expect(input).toBeVisible({ timeout: 60000 });
   await input.fill(passphrase);
-  await page.waitForTimeout(50);
   await page.getByRole('button', { name: 'Unlock' }).click();
   await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
     timeout: 120000,
@@ -670,7 +661,7 @@ async function gotoVaultSettings(page: Page) {
 test.describe('Vault cloud backup via Google Drive (E2E)', () => {
   test('redirect: /dashboard/account/vault navigates to /dashboard/vault', async ({
     browser,
-  }, testInfo) => {
+  }) => {
     test.setTimeout(60000);
 
     const ctx = await browser.newContext();
@@ -678,23 +669,11 @@ test.describe('Vault cloud backup via Google Drive (E2E)', () => {
     setupBackend(page);
     await installGoogleMocks(page);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
 
     // Navigate to the old account vault URL; should redirect to /dashboard/vault.
     await page.goto('/dashboard/account/vault');
     await expect(page).toHaveURL(/.*\/dashboard\/vault$/);
-    try {
-      await page.waitForLoadState('networkidle', { timeout: 10000 });
-    } catch {
-      try {
-        await page.waitForLoadState('domcontentloaded');
-      } catch {
-        // Page is ready enough to proceed
-      }
-    }
-
     // Verify the vault page loaded.
     await expect(page.getByTestId('cloud-backup-card')).toBeVisible({
       timeout: 60000,
@@ -705,16 +684,14 @@ test.describe('Vault cloud backup via Google Drive (E2E)', () => {
 
   test('connect + manual backup updates the cloud last-backup record', async ({
     browser,
-  }, testInfo) => {
+  }) => {
     test.setTimeout(180000);
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
     setupBackend(page);
     await installGoogleMocks(page);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
     await setupVaultWithSampleData(page);
 
     await gotoVaultSettings(page);
@@ -749,16 +726,14 @@ test.describe('Vault cloud backup via Google Drive (E2E)', () => {
 
   test('automatic backup runs when interval is due, then surfaces needs-reconnect on silent token failure', async ({
     browser,
-  }, testInfo) => {
+  }) => {
     test.setTimeout(180000);
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
     setupBackend(page);
     await installGoogleMocks(page);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
     await setupVaultWithSampleData(page);
     await gotoVaultSettings(page);
 
@@ -804,16 +779,14 @@ test.describe('Vault cloud backup via Google Drive (E2E)', () => {
 
   test('restore from cloud after fresh local state, then disconnect', async ({
     browser,
-  }, testInfo) => {
+  }) => {
     test.setTimeout(180000);
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
     setupBackend(page);
     await installGoogleMocks(page);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
     await setupVaultWithSampleData(page);
     await gotoVaultSettings(page);
 

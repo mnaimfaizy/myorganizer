@@ -2,11 +2,12 @@ import { expect, test, type Page } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
 import {
-  gotoStable,
   E2E_USER_ID,
+  gotoStable,
   readOwnedVault,
   removeOwnedVault,
   routeApi,
+  submitLoginForm,
   waitForOwnedVault,
 } from './helpers';
 
@@ -30,23 +31,11 @@ function corsHeaders(origin: string) {
   } as const;
 }
 
-async function login(page: Page, options: { webkitDelayMs: number }) {
+async function login(page: Page) {
   await page.goto('/login');
   await expect(page).toHaveURL(/.*login/);
-  await page.waitForLoadState('networkidle');
-  if (options.webkitDelayMs > 0) {
-    await page.waitForTimeout(options.webkitDelayMs);
-  }
 
-  await page.fill('input[type="email"]', 'testuser@example.com');
-  await page.fill('input[type="password"]', 'password123');
-
-  const submitButton = page.locator('button[type="submit"]');
-  await expect(submitButton).toBeEnabled();
-  await submitButton.click();
-
-  await expect(page).toHaveURL(/.*dashboard/, { timeout: 60000 });
-  await page.waitForLoadState('networkidle');
+  await submitLoginForm(page);
 }
 
 async function unlockWithPassphrase(page: Page, passphrase: string) {
@@ -69,7 +58,6 @@ async function unlockWithPassphrase(page: Page, passphrase: string) {
 
   await expect(input).toBeVisible({ timeout: 60000 });
   await input.fill(passphrase);
-  await page.waitForTimeout(50);
   await page.getByRole('button', { name: 'Unlock' }).click();
   await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
     timeout: 120000,
@@ -398,11 +386,16 @@ async function setupVaultWithGroceryData(page: Page) {
 
   // Navigate to groceries page and ensure vault is unlocked
   await gotoStable(page, '/dashboard/groceries');
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(500);
 
-  // Check if unlock screen is shown and unlock if needed
+  // The route is ready once it has settled into one of its two states — the
+  // vault gate, or the unlocked Trip Board (issue #524).
   const unlockButton = page.getByRole('button', { name: 'Use passphrase' });
+  await expect(
+    unlockButton
+      .or(page.getByRole('heading', { name: 'Active trips' }))
+      .first(),
+  ).toBeVisible({ timeout: 30000 });
+
   const isLocked = await unlockButton
     .isVisible({ timeout: 10000 })
     .catch(() => false);
@@ -415,13 +408,13 @@ async function setupVaultWithGroceryData(page: Page) {
     { timeout: 30000 },
   );
 
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(1000);
-
+  // The heading renders before the decrypted trips do; the board's primary
+  // action is what depends on that list having resolved.
   const newTrip = page.getByRole('button', { name: 'New trip' });
   const createFirst = page.getByRole('button', {
     name: 'Create Your First List',
   });
+  await expect(newTrip.or(createFirst).first()).toBeVisible({ timeout: 30000 });
   if (await newTrip.isVisible({ timeout: 2000 }).catch(() => false)) {
     await newTrip.click();
   } else {
@@ -446,30 +439,18 @@ async function setupVaultWithGroceryData(page: Page) {
 test.describe('Vault export/import (E2E)', () => {
   test('redirect: /dashboard/vault-export navigates to /dashboard/vault', async ({
     browser,
-  }, testInfo) => {
+  }) => {
     test.setTimeout(60000);
 
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
     setupBackend(page);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
 
     // Navigate to the old export URL; should redirect to /dashboard/vault.
     await page.goto('/dashboard/vault-export');
     await expect(page).toHaveURL(/.*\/dashboard\/vault$/);
-    try {
-      await page.waitForLoadState('networkidle', { timeout: 10000 });
-    } catch {
-      try {
-        await page.waitForLoadState('domcontentloaded');
-      } catch {
-        // Page is ready enough to proceed
-      }
-    }
-
     // Verify the vault page loaded.
     await expect(page.getByTestId('export-vault-button')).toBeVisible({
       timeout: 60000,
@@ -480,7 +461,7 @@ test.describe('Vault export/import (E2E)', () => {
 
   test('happy path: export → reset → import succeeds via local-file', async ({
     browser,
-  }, testInfo) => {
+  }) => {
     test.setTimeout(180000);
 
     const ctx = await browser.newContext({
@@ -489,9 +470,7 @@ test.describe('Vault export/import (E2E)', () => {
     const page = await ctx.newPage();
     setupBackend(page);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
 
     await setupVaultWithSampleData(page);
 
@@ -558,16 +537,14 @@ test.describe('Vault export/import (E2E)', () => {
 
   test('failure path: corrupt file shows error and leaves local vault untouched', async ({
     browser,
-  }, testInfo) => {
+  }) => {
     test.setTimeout(120000);
 
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
     setupBackend(page);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
     await setupVaultWithSampleData(page);
 
     const beforeVault = await readOwnedVault(page, E2E_USER_ID);
@@ -608,9 +585,7 @@ test.describe('Vault export/import (E2E)', () => {
     await ctx.close();
   });
 
-  test('groceries are included in vault export', async ({
-    browser,
-  }, testInfo) => {
+  test('groceries are included in vault export', async ({ browser }) => {
     test.setTimeout(120000);
 
     const ctx = await browser.newContext({
@@ -619,9 +594,7 @@ test.describe('Vault export/import (E2E)', () => {
     const page = await ctx.newPage();
     setupBackend(page);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
 
     await setupVaultWithGroceryData(page);
 
@@ -664,9 +637,7 @@ test.describe('Vault export/import (E2E)', () => {
     await ctx.close();
   });
 
-  test('groceries are restored from vault import', async ({
-    browser,
-  }, testInfo) => {
+  test('groceries are restored from vault import', async ({ browser }) => {
     test.setTimeout(180000);
 
     const ctx = await browser.newContext({
@@ -675,9 +646,7 @@ test.describe('Vault export/import (E2E)', () => {
     const page = await ctx.newPage();
     setupBackend(page);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
 
     await setupVaultWithGroceryData(page);
 
