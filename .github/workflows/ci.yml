@@ -658,10 +658,14 @@ jobs:
     # Pull requests only: the same commits ran this seconds earlier on the PR,
     # and the nightly workflow covers `main`. See ADR 0050.
     if: ${{ github.event_name == 'pull_request' && contains(fromJson(needs.setup.outputs.affected_projects), 'myorganizer-e2e') }}
+    # Deliberately NOT gated on `test`, unlike build-backend/build-frontend.
+    # Waiting for the unit tests serialised E2E behind them and put the critical
+    # path at 11 minutes; running alongside them brings it back to ~8. The cost
+    # is that E2E still burns a runner when the unit tests are already failing,
+    # which is free on a public repository. See ADR 0050.
     needs:
       - setup
       - lint
-      - test
 
     strategy:
       fail-fast: false
