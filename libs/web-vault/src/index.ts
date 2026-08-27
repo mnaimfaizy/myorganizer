@@ -21,4 +21,5 @@ export {
 export type { LocalVaultStatus, VaultHandle } from './lib/vault/vaultHandle';
 export * from './lib/vault/vaultExportImport';
 export * from './lib/vault/vaultMigration';
+export * from './lib/vault/vaultBlobFields';
 export * from './lib/vault/vaultShapes';

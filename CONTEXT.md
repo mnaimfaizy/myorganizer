@@ -304,6 +304,18 @@ _Avoid_: enabled gate, active check, gate coverage (for this sense)
 The gate whose asserted artifacts are the other gates: `gates:coverage:check` compares the checkers on disk against the ones hooks and workflows invoke, and fails naming each checker that is not a Wired Gate. An ordinary Assertion Gate in shape — its subject is simply the gate set rather than a document. A checker it must not fail is not silently skipped; it carries an entry with a written reason in `tools/config/gate-coverage-optout.json`.
 _Avoid_: gate-of-gates, master gate, gate linter
 
+**Enum Fan-Out**:
+A place in code that covers every member of a domain enum by hand — an object literal keyed by the members, an if-chain over them, a union of their values. Distinct from the parallel-work sense the word carries elsewhere: an Independent Hop is never called this. A fan-out is judged per scope, not per file, because one module routinely iterates the Pinned Table in one function and hand-enumerates in the next.
+_Avoid_: exhaustive switch, member sweep, enum iteration
+
+**Pinned Table**:
+The single `as const satisfies Record<EnumType, …>` declaration a Guarded Enum's fan-outs iterate instead of re-enumerating. The `satisfies` clause is the guard: a new member fails to compile until it has a home there, and every branch reading the table gets the member without being edited. Where several hand-maintained lists describe the same set, the table satisfies all of them, so none can be extended alone (ADR 0053).
+_Avoid_: lookup map, const map, enum registry
+
+**Guarded Enum**:
+A domain enum whose omissions are expensive enough to be gated — for `VaultBlobType`, an omitted member destroys User-owned ciphertext with no error and no recovery. Being an enum does not qualify one; the cost of the omission does. A module that _declares_ the member names rather than consuming them is exempt by written reason, and is tied back through the Pinned Table's own `satisfies` clause.
+_Avoid_: checked enum, critical enum, protected type
+
 **One-shot Specialist**:
 A sub-agent that performs one assigned job, returns a report of what it did, and stops. The orchestrator does not send the work back for another round.
 _Avoid_: writer-reviewer loop, retry cycle, gated hop (when you mean this shape)

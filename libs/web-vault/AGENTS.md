@@ -12,7 +12,8 @@ Browser vault implementation using WebCrypto and web storage/client sync helpers
 ## Do
 
 - Keep plaintext only in client memory while unlocked.
-- Store and sync encrypted blobs for `addresses`, `groceries`, `mobileNumbers`, `subscriptions`, and `tasks`.
+- Store and sync encrypted blobs for every Vault Blob Type in `VAULT_BLOB_FIELDS` (`src/lib/vault/vaultBlobFields.ts`). That table is the list; do not restate it here.
+- Fan out over the blob types by iterating `VAULT_BLOB_TYPES` and indexing `VAULT_BLOB_FIELDS`. Do not hand-enumerate members in an object literal, an if-chain, a union, or a run of `if` statements — `yarn enum:fanout:check` fails it ([ADR 0053](../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
 - Validate ciphertext bundle shape and size before import.
 - Reach a Local Vault through `createVaultHandle({ owner })` ([ADR 0047](../../docs/adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md)). Storage is one entry per User, keyed by user id, with the owner written into the record.
 

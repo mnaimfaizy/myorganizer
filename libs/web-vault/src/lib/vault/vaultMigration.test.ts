@@ -1,10 +1,8 @@
 import { VaultBlobType, type VaultMetaV1 } from '@myorganizer/app-api-client';
 
 import type { VaultStorageV1 } from './localVaultStorage';
-import {
-  migrateVaultPhase1ToPhase2,
-  RECONCILED_BLOB_TYPES,
-} from './vaultMigration';
+import { VAULT_BLOB_TYPES } from './vaultBlobFields';
+import { migrateVaultPhase1ToPhase2 } from './vaultMigration';
 
 type ApiParam = Parameters<typeof migrateVaultPhase1ToPhase2>[0]['api'];
 
@@ -608,9 +606,9 @@ describe('migrateVaultPhase1ToPhase2', () => {
   });
 
   test('#512: exhaustiveness regression — all VaultBlobType members are reconciled', async () => {
-    // Assert that RECONCILED_BLOB_TYPES contains exactly the members of VaultBlobType.
+    // Assert that VAULT_BLOB_TYPES contains exactly the members of VaultBlobType.
     const expectedTypes = Object.values(VaultBlobType).sort();
-    const reconciledTypes = RECONCILED_BLOB_TYPES.slice().sort();
+    const reconciledTypes = VAULT_BLOB_TYPES.slice().sort();
 
     expect(reconciledTypes).toEqual(expectedTypes);
   });

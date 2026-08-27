@@ -13,11 +13,8 @@ import {
   putServerVaultBlobEtagAware,
   putServerVaultMetaEtagAware,
 } from './serverVaultSync';
-import {
-  EncryptedBlob,
-  VaultRecordType,
-  VaultStorageV1,
-} from './localVaultStorage';
+import { EncryptedBlob, VaultStorageV1 } from './localVaultStorage';
+import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
 import {
   localToServerMeta,
   normalizeEncryptedBlobV1,
@@ -29,32 +26,6 @@ type VaultApiLike = Pick<
   VaultApi,
   'getVaultMeta' | 'putVaultMeta' | 'getVaultBlob' | 'putVaultBlob'
 >;
-
-/**
- * Every Vault Blob Type the reconcile carries, and the Local Vault field each
- * one lands in.
- *
- * The `satisfies` clause is the guard, not decoration: a seventh member added
- * to `VaultBlobType` fails to compile here until it is given a home. Every
- * direction of the reconcile — upload, fetch, divergence comparison, and the
- * keep-local write-back — iterates this one table, so a type cannot be present
- * in some branches and missing from others. Groceries was missing from all four
- * while the local vault carried it, and a keep-server decision destroyed it
- * (issue #512).
- */
-const RECONCILED_BLOB_FIELDS = {
-  [VaultBlobType.Addresses]: 'addresses',
-  [VaultBlobType.Groceries]: 'groceries',
-  [VaultBlobType.MobileNumbers]: 'mobileNumbers',
-  [VaultBlobType.Subscriptions]: 'subscriptions',
-  [VaultBlobType.Tasks]: 'tasks',
-  [VaultBlobType.Todos]: 'todos',
-} as const satisfies Record<VaultBlobType, VaultRecordType>;
-
-/** The blob types above, in a stable iteration order. */
-export const RECONCILED_BLOB_TYPES = Object.keys(
-  RECONCILED_BLOB_FIELDS,
-) as VaultBlobType[];
 
 export type MigrationDecision = 'keep-local' | 'keep-server';
 
@@ -152,7 +123,7 @@ function localBlobFor(
   vault: VaultStorageV1,
   type: VaultBlobType,
 ): EncryptedBlob | undefined {
-  return vault.data[RECONCILED_BLOB_FIELDS[type]];
+  return vault.data[VAULT_BLOB_FIELDS[type]];
 }
 
 /** Reads every reconciled blob type from the server, absent ones as `null`. */
@@ -162,7 +133,7 @@ async function fetchRemoteBlobs(
   const remoteBlobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>> =
     {};
 
-  for (const type of RECONCILED_BLOB_TYPES) {
+  for (const type of VAULT_BLOB_TYPES) {
     remoteBlobs[type] = (await getServerVaultBlob(api, type))?.blob ?? null;
   }
 
@@ -175,7 +146,7 @@ function comparableBlobs(
 ): Record<string, object> {
   const blobs: Record<string, object> = {};
 
-  for (const type of RECONCILED_BLOB_TYPES) {
+  for (const type of VAULT_BLOB_TYPES) {
     blobs[type] = normalizeOne(type);
   }
 
@@ -231,7 +202,7 @@ export async function migrateVaultPhase1ToPhase2(options: {
   if (!serverMeta) {
     await putServerVaultMetaEtagAware({ api: options.api, meta: localMeta });
 
-    for (const type of RECONCILED_BLOB_TYPES) {
+    for (const type of VAULT_BLOB_TYPES) {
       const blob = localBlobFor(localVault, type);
       if (!blob) continue;
 
@@ -291,7 +262,7 @@ export async function migrateVaultPhase1ToPhase2(options: {
     onConflict: () => 'keep-local',
   });
 
-  for (const type of RECONCILED_BLOB_TYPES) {
+  for (const type of VAULT_BLOB_TYPES) {
     const remote = await getServerVaultBlob(options.api, type);
     const blob = localBlobFor(localVault, type);
     if (!blob) continue;
