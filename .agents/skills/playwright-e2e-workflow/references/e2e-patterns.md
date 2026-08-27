@@ -51,9 +51,9 @@ Enter key does not reliably submit.
 ```typescript
 async function unlockWithPassphrase(page, passphrase) {
   await page.getByRole('button', { name: 'Use passphrase' }).click();
-  await page.waitForTimeout(1000); // Firefox animation delay
 
-  // Try multiple selectors for robustness
+  // Try multiple selectors for robustness. The field appearing is the end of
+  // the panel's transition — no sleep needed for Firefox's animation.
   let input = page.locator('#unlock-passphrase');
   if (!(await input.isVisible({ timeout: 5000 }).catch(() => false))) {
     input = page.locator('input[placeholder*="Security"]').first();
@@ -61,15 +61,21 @@ async function unlockWithPassphrase(page, passphrase) {
 
   await input.scrollIntoViewIfNeeded();
   await input.click();
-  await page.waitForTimeout(300);
   await input.fill(passphrase);
+
+  // No wait between fill and click. VaultGate renders inside DashboardGuard,
+  // which returns null until its client effect resolves, so this panel being
+  // on screen already proves React is driving it and onChange is bound.
+  // ❌ `expect(input).toHaveValue(passphrase)` would NOT prove that: `fill`
+  //    sets the DOM value itself, so the assertion passes either way.
 
   // ❌ Do NOT use input.press('Enter') — Firefox doesn't reliably submit
   // ✅ Click the button
   await page.getByRole('button', { name: /^Unlock$/i }).click();
 
-  // Unlock is complete when the input disappears — not when the click resolves
-  await page.locator('#unlock-passphrase, input[placeholder*="Security"]').first().isHidden({ timeout: 30000 });
+  // Unlock is complete when the input disappears — not when the click resolves.
+  // ❌ `isHidden({ timeout })` does not wait: it samples once and resolves.
+  await expect(page.locator('#unlock-passphrase, input[placeholder*="Security"]')).toHaveCount(0, { timeout: 30000 });
 }
 ```
 
@@ -83,19 +89,18 @@ Vault init and Next.js hydration are client-side async. The network can be idle 
 still initializing, so wait for **content**, not network state.
 
 ```typescript
-// ❌ Wrong — network idle does not mean the UI is ready
+// ❌ Wrong — network idle does not mean the UI is ready. Playwright marks
+// `networkidle` DISCOURAGED, and it hangs against a production build.
 await page.waitForLoadState('networkidle');
 
-// ✅ Correct — wait for actual content
-await page.waitForFunction(
-  () => {
-    const emptyState = document.querySelector('h2')?.textContent?.includes('No items yet');
-    const items = document.querySelectorAll('div[role="article"]').length > 0;
-    return emptyState || items;
-  },
-  { timeout: 30000 },
-);
+// ✅ Correct — assert the route has settled into one of the states it can
+// reach. `.or()` keeps both legs in one auto-retrying web assertion.
+await expect(page.getByRole('heading', { name: 'No items yet' }).or(page.getByRole('article').first()).first()).toBeVisible({ timeout: 30000 });
 ```
+
+Reach for `waitForFunction` only when the condition is not expressible as a locator — reading
+`localStorage`, say. It polls in browser context and reports failures far less usefully than
+`expect`.
 
 ---
 
@@ -134,19 +139,39 @@ await page.route(/\/auth\/login\/?(\?.*)?$/, async (route) => {
 
 ## Parallel execution resilience
 
-Concurrent tests saturate the network, so a strict `networkidle` wait blocks the whole suite.
+Concurrent tests saturate the network, which is one more reason never to wait on it. A
+`networkidle` ladder with a `domcontentloaded` fallback is not resilience — when the first leg
+times out the test has already burned its budget waiting for something it never needed.
 
 ```typescript
-// ✅ Timeout + fallback
+// ❌ Wrong — waits 10s for a condition that says nothing about the page,
+// then falls back to one that says almost nothing either.
 try {
   await page.waitForLoadState('networkidle', { timeout: 10000 });
 } catch {
-  try {
-    await page.waitForLoadState('domcontentloaded');
-  } catch {
-    // Continue — the page is ready enough
-  }
+  await page.waitForLoadState('domcontentloaded');
 }
+
+// ✅ Correct — name what the page must show. Under load this waits longer;
+// on a quiet machine it returns as soon as the element is there.
+await expect(page.getByTestId('export-vault-button')).toBeVisible({
+  timeout: 60000,
+});
+```
+
+### Hydration
+
+A controlled React form drops values typed before hydration: `fill()` writes to the DOM, but
+React state stays empty and the form submits blank. Neither `networkidle` nor a sleep observes
+hydration. Probe it with an interaction whose visible result is pure client state, and retry the
+click — a pre-hydration click is dropped. `waitForLoginFormInteractive` in
+`apps/myorganizer-e2e/src/e2e/helpers/auth.ts` is the worked example.
+
+```typescript
+await expect(async () => {
+  await toggle.click();
+  await expect(password).toHaveAttribute('type', 'text', { timeout: 1000 });
+}).toPass({ timeout: 30000 });
 ```
 
 Tests running in parallel must also use deterministic fixtures with no shared state, and document
@@ -283,12 +308,12 @@ When a button doesn't change state as expected:
 
 ## Cross-browser considerations
 
-| Browser  | What to account for                                                                                                                  |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Chromium | Baseline. Fastest; least forgiving of arbitrary timeouts hiding real races.                                                          |
-| Firefox  | Keyboard events may not submit forms — click buttons explicitly. Add delay after state changes before asserting button enable state. |
-| WebKit   | Timing differs; be generous with timeouts.                                                                                           |
-| All      | Use role-based selectors; never rely on incidental Tailwind/CSS classes.                                                             |
+| Browser  | What to account for                                                                                                         |
+| -------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Chromium | Baseline. Fastest; least forgiving of arbitrary timeouts hiding real races.                                                 |
+| Firefox  | Keyboard events may not submit forms — click buttons explicitly. Assert the state change; do not sleep before asserting it. |
+| WebKit   | Timing differs; be generous with assertion timeouts — never with sleeps.                                                    |
+| All      | Use role-based selectors; never rely on incidental Tailwind/CSS classes.                                                    |
 
 Run on all three browsers before marking an E2E change complete.
 
@@ -296,17 +321,20 @@ Run on all three browsers before marking an E2E change complete.
 
 ## Anti-pattern table
 
-| Anti-pattern                                              | Why it's wrong                                       | Correct approach                                   |
-| --------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------- |
-| Using `role="button"` for non-buttons                     | Semantic HTML violation; breaks accessibility        | Use `role="article"` / `role="listitem"` for cards |
-| `input.press('Enter')` for form submission                | Firefox doesn't reliably trigger it                  | Explicitly click the submit button                 |
-| `page.locator()` inside `waitForFunction()`               | Browser context has no Playwright APIs               | Use `document` APIs only in browser context        |
-| Assuming standard HTML context menus                      | Radix DropdownMenu is not native; buttons are hidden | Hover + click                                      |
-| `waitForLoadState('networkidle')` for async React         | Client-side async (vault, hydration) isn't captured  | Content-based `waitForFunction()`                  |
-| Strict `networkidle` in parallel suites                   | Network saturation blocks all tests                  | Timeout + fallback strategy                        |
-| Testing on one browser only                               | Firefox and WebKit have different patterns           | Test on all three                                  |
-| Not mocking CORS preflight                                | Tests fail with CORS errors                          | Handle `OPTIONS` in route mocks                    |
-| Arbitrary `page.waitForTimeout()` delays                  | Hides real races; flakes under load                  | Wait for explicit state changes                    |
-| Changing interaction method when a button won't enable    | Wrong layer — it's component architecture            | Investigate remount / reset / form mode            |
-| Assuming `defaultValues` are fresh after a dialog reopens | Stale form state carries over                        | Verify `key={itemId}` or reset `useEffect`         |
-| Asserting retry / concurrency / timeout behavior          | The UI usually doesn't implement it                  | Only test behavior the flow exposes                |
+| Anti-pattern                                              | Why it's wrong                                                                               | Correct approach                                                                   |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Using `role="button"` for non-buttons                     | Semantic HTML violation; breaks accessibility                                                | Use `role="article"` / `role="listitem"` for cards                                 |
+| `input.press('Enter')` for form submission                | Firefox doesn't reliably trigger it                                                          | Explicitly click the submit button                                                 |
+| `page.locator()` inside `waitForFunction()`               | Browser context has no Playwright APIs                                                       | Use `document` APIs only in browser context                                        |
+| Assuming standard HTML context menus                      | Radix DropdownMenu is not native; buttons are hidden                                         | Hover + click                                                                      |
+| `waitForLoadState('networkidle')` anywhere                | DISCOURAGED by Playwright; misses client-side async, and hangs against a production build    | Assert what the page must show                                                     |
+| A `networkidle` → `domcontentloaded` fallback ladder      | Burns the timeout budget on a condition nothing needs                                        | One `expect(locator)` with a generous timeout                                      |
+| `locator.isHidden({ timeout })` to wait for removal       | `isHidden` samples once and resolves; Playwright marks the timeout deprecated and ignores it | `await expect(locator).toHaveCount(0, { timeout })`                                |
+| `locator.isVisible({ timeout })` to wait for appearance   | Identical no-op — it never waits, so it races the render                                     | Assert the page has settled, then branch on it                                     |
+| `expect(input).toHaveValue(v)` after `fill(v)`            | `fill` sets the DOM value, so it is true either way — it does not prove React state took     | Under `/dashboard/*` no wait is needed; on a server-rendered form, probe hydration |
+| Testing on one browser only                               | Firefox and WebKit have different patterns                                                   | Test on all three                                                                  |
+| Not mocking CORS preflight                                | Tests fail with CORS errors                                                                  | Handle `OPTIONS` in route mocks                                                    |
+| Arbitrary `page.waitForTimeout()` delays                  | Hides real races; flakes under load                                                          | Wait for explicit state changes                                                    |
+| Changing interaction method when a button won't enable    | Wrong layer — it's component architecture                                                    | Investigate remount / reset / form mode                                            |
+| Assuming `defaultValues` are fresh after a dialog reopens | Stale form state carries over                                                                | Verify `key={itemId}` or reset `useEffect`                                         |
+| Asserting retry / concurrency / timeout behavior          | The UI usually doesn't implement it                                                          | Only test behavior the flow exposes                                                |
