@@ -600,6 +600,9 @@ jobs:
       - name: Check documented commands resolve
         run: corepack yarn docs:commands:check
 
+      - name: Enum fan-out checker contracts
+        run: corepack yarn enum:fanout:test
+
       - name: Gate manifest checker contracts
         run: corepack yarn gates:run:test
 
@@ -644,6 +647,13 @@ jobs:
 
       - name: Check sub-agent sync
         run: corepack yarn agents:sync:check
+
+      # A fan-out over a guarded domain enum must reach its pinned table
+      # rather than hand-enumerate the members (ADR 0053). TypeScript catches
+      # the omission only at call sites written to be caught; this catches the
+      # ones that were not.
+      - name: Check guarded enum fan-outs are pinned
+        run: corepack yarn enum:fanout:check
 
       - name: Restore Nx computation cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
