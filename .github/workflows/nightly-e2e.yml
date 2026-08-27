@@ -1,0 +1,150 @@
+name: Nightly E2E
+
+# The rot detector (ADR 0050). The blocking lane in ci.yml runs Chromium on
+# affected pull requests; this runs every browser against `main` where nobody
+# is waiting, so it can afford to be strict.
+#
+# 03:17 UTC: scheduled workflows on public repositories are delayed at peak
+# times, so an off-peak odd minute is the standard mitigation. Matches the
+# convention already used by monthly-agent-model-audit.yml.
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: nightly-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: E2E ${{ matrix.browser }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    strategy:
+      # Every browser reports independently: "webkit broke, the others are
+      # fine" is the single most useful fact in a rot report, and this puts it
+      # in the job list without anyone reading a log.
+      fail-fast: false
+      matrix:
+        include:
+          - browser: chromium
+            target: e2e
+          - browser: firefox
+            target: e2e-firefox
+          - browser: webkit
+            target: e2e-webkit
+
+    env:
+      # Playwright's webServer starts Nx as a nested child process, and the Nx
+      # daemon does not survive that cleanly on hosted runners.
+      NX_DAEMON: 'false'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: corepack yarn install --immutable
+
+      - name: Verify frozen lockfile
+        run: git diff --exit-code -- yarn.lock
+
+      # Only this matrix leg's browser. Playwright advises against caching
+      # browser binaries: restoring the cache costs about what downloading does.
+      - name: Install Playwright ${{ matrix.browser }}
+        run: corepack yarn playwright install --with-deps ${{ matrix.browser }}
+
+      # Built here rather than inside Playwright's webServer timeout, so a build
+      # failure is attributable and starting the server is only that.
+      - name: Build frontend for E2E
+        run: corepack yarn nx run myorganizer:build:production
+
+      # --fail-on-flaky-tests lives here and not on the blocking lane. A test
+      # that passes on retry is not evidence that a pull request broke
+      # something, but it is evidence about suite health — and nobody is
+      # blocked here. See ADR 0050.
+      - name: Run E2E (${{ matrix.browser }})
+        run: corepack yarn nx run myorganizer-e2e:${{ matrix.target }} --fail-on-flaky-tests --reporter=list
+
+      - name: Upload report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: nightly-e2e-report-${{ matrix.browser }}
+          path: dist/.playwright/apps/myorganizer-e2e/
+          retention-days: 14
+
+  report-failure:
+    name: Report Failure
+    runs-on: ubuntu-latest
+    needs: e2e
+    if: ${{ failure() && github.event_name == 'schedule' }}
+
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      # Same shape as monthly-agent-model-audit.yml: one open issue that gets
+      # commented on, rather than a new issue every night a failure persists.
+      - name: Open or update the rot report issue
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const title = '[automation] Nightly E2E suite is failing';
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              `The nightly Playwright run failed on ${new Date().toISOString().slice(0, 10)}.`,
+              '',
+              `Run: ${runUrl}`,
+              '',
+              'Check which browser legs failed — each browser is its own job.',
+              'Per-browser reports are attached to the run as artifacts.',
+              '',
+              'This lane runs with `--fail-on-flaky-tests`, so a test that passed',
+              'only on retry also fails the job. That is deliberate (ADR 0050):',
+              'it is how latent `networkidle` and timing debt stays visible',
+              'instead of being absorbed by `retries: 2`. See #524.',
+            ].join('\n');
+
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+
+            const match = existing.find(
+              (issue) => !issue.pull_request && issue.title === title,
+            );
+
+            if (match) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body,
+              });
+              core.info(`Commented on existing issue #${match.number}`);
+              return;
+            }
+
+            const created = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+            });
+            core.info(`Created issue #${created.data.number}`);

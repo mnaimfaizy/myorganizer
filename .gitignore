@@ -95,6 +95,11 @@ apps/backend/src/prisma/prisma-client/
 
 # Playwright MCP artifacts
 .playwright-mcp/
+
+# Playwright shard/report output (ADR 0050): the blob reporter writes to the
+# workspace root, and merge-reports writes the combined HTML report there too.
+blob-report/
+playwright-report/
 *.tsbuildinfo
 
 
