@@ -439,9 +439,11 @@ async function signUp(
   await gotoStable(page, '/signup');
   await expect(page).toHaveURL(/.*signup/);
 
-  await page.waitForLoadState('networkidle');
+  // Wait on the form itself, not on network quiet: `networkidle` is
+  // DISCOURAGED by Playwright and hangs here against a production build
+  // (ADR 0050, issue #524).
+  await expect(page.getByLabel('First name')).toBeVisible({ timeout: 30000 });
 
-  // Fill form fields using getByLabel
   await page.getByLabel('First name').fill(firstName);
   await page.getByLabel('Last name').fill(lastName);
   await page.getByLabel('Email').fill(email);

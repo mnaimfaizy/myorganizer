@@ -168,10 +168,17 @@ async function gotoGroceriesAndUnlock(
   passphrase: string,
 ) {
   await gotoStable(page, '/dashboard/groceries');
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(500);
 
+  // The page is ready once it has settled into one of its two states: the
+  // vault gate, or the unlocked list. `networkidle` was DISCOURAGED and hung
+  // here against a production build (ADR 0050, issue #524).
   const unlockButton = page.getByRole('button', { name: 'Use passphrase' });
+  await expect(
+    unlockButton
+      .or(page.getByRole('heading', { name: 'Active trips' }))
+      .first(),
+  ).toBeVisible({ timeout: 30000 });
+
   const isLocked = await unlockButton
     .isVisible({ timeout: 10000 })
     .catch(() => false);

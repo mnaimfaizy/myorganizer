@@ -651,6 +651,137 @@ jobs:
       - name: Test affected projects
         run: corepack yarn nx affected -t test --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
 
+  e2e:
+    name: E2E Chromium (shard ${{ matrix.shard }}/3)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # Pull requests only: the same commits ran this seconds earlier on the PR,
+    # and the nightly workflow covers `main`. See ADR 0050.
+    if: ${{ github.event_name == 'pull_request' && contains(fromJson(needs.setup.outputs.affected_projects), 'myorganizer-e2e') }}
+    # Deliberately NOT gated on `test`, unlike build-backend/build-frontend.
+    # Waiting for the unit tests serialised E2E behind them and put the critical
+    # path at 11 minutes; running alongside them brings it back to ~8. The cost
+    # is that E2E still burns a runner when the unit tests are already failing,
+    # which is free on a public repository. See ADR 0050.
+    needs:
+      - setup
+      - lint
+
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+
+    env:
+      # Playwright's webServer starts Nx as a nested child process, and the Nx
+      # daemon does not survive that cleanly on hosted runners.
+      NX_DAEMON: 'false'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
+
+      - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: corepack yarn install --immutable
+
+      - name: Verify frozen lockfile
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: git diff --exit-code -- yarn.lock
+
+      - name: Restore Nx computation cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .nx/cache
+          key: ${{ runner.os }}-nx-22-e2e-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-nx-22-e2e-
+            ${{ runner.os }}-nx-22-
+
+      # Only the browser this lane needs. Playwright advises against caching
+      # browser binaries: restoring the cache costs about what downloading does.
+      - name: Install Playwright Chromium
+        run: corepack yarn playwright install --with-deps chromium
+
+      # Built here rather than inside Playwright's webServer timeout, so a build
+      # failure is attributable and starting the server is only that.
+      - name: Build frontend for E2E
+        run: corepack yarn nx run myorganizer:build:production
+
+      - name: Run E2E shard
+        run: corepack yarn nx run myorganizer-e2e:e2e --shard=${{ matrix.shard }}/3 --reporter=blob
+
+      - name: Upload blob report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: e2e-blob-report-${{ matrix.shard }}
+          path: blob-report/
+          retention-days: 7
+
+  e2e-report:
+    name: E2E Report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ !cancelled() && needs.e2e.result != 'skipped' }}
+    needs:
+      - e2e
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
+
+      - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: corepack yarn install --immutable
+
+      - name: Download blob reports
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: e2e-blob-report-*
+          path: all-blob-reports
+          merge-multiple: true
+
+      - name: Merge into a single HTML report
+        run: corepack yarn playwright merge-reports --reporter html ./all-blob-reports
+
+      - name: Upload HTML report
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: e2e-html-report
+          path: playwright-report/
+          retention-days: 7
+
   build-backend:
     name: Build Backend
     runs-on: ubuntu-latest

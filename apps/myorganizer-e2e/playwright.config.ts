@@ -5,6 +5,9 @@ import { defineConfig, devices } from '@playwright/test';
 // For CI, you may want to set BASE_URL to the deployed application.
 const baseURL = process.env['BASE_URL'] || 'http://localhost:4200';
 
+/** Opt out of the production build for fast local iteration (ADR 0050). */
+const useDevServer = Boolean(process.env['E2E_DEV_SERVER']);
+
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
@@ -22,13 +25,27 @@ export default defineConfig({
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
   },
-  /* Run your local dev server before starting the tests */
+  /**
+   * Serve the production build by default — locally as well as in CI.
+   *
+   * A dev-server suite is structurally blind to anything that only appears in
+   * a shipped bundle, and switching only under CI would mean local green stops
+   * meaning CI green. That divergence is real: `waitForLoadState('networkidle')`
+   * hangs against a production build where it settles against dev. See
+   * ADR 0050.
+   *
+   * Set `E2E_DEV_SERVER=1` for the fast local edit-run loop, accepting that it
+   * no longer matches what CI runs.
+   */
   webServer: {
-    command: 'npx nx run myorganizer:serve:development',
+    command: useDevServer
+      ? 'corepack yarn nx run myorganizer:serve:development'
+      : 'corepack yarn nx run myorganizer:serve:production',
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     cwd: workspaceRoot,
-    timeout: 120 * 1000,
+    // A production build from cold costs far more than a dev boot.
+    timeout: (useDevServer ? 120 : 300) * 1000,
   },
   projects: [
     {
