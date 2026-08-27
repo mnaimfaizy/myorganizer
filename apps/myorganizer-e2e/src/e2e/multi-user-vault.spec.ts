@@ -3,8 +3,10 @@ import {
   gotoStable,
   readOwnedVault,
   routeApi,
-  waitForOwnedVault,
+  submitLoginForm,
   UNCLAIMED_VAULT_KEY,
+  waitForDashboardReady,
+  waitForOwnedVault,
 } from './helpers';
 
 /**
@@ -376,7 +378,9 @@ async function unlockWithPassphrase(page: Page, passphrase: string) {
 
   await expect(input).toBeVisible({ timeout: 60000 });
   await input.fill(passphrase);
-  await page.waitForTimeout(50);
+  // VaultGate's Unlock handler reads React state, so the click is only safe
+  // once the controlled value has round-tripped back into the field.
+  await expect(input).toHaveValue(passphrase);
   await page.getByRole('button', { name: /^Unlock$/i }).click();
   await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
     timeout: 120000,
@@ -400,33 +404,11 @@ async function signOut(page: Page) {
   await expect(page).toHaveURL(/.*login/, { timeout: 30000 });
 }
 
-async function login(
-  page: Page,
-  email: string,
-  password: string,
-  options?: { webkitDelayMs?: number },
-) {
+async function login(page: Page, email: string, password: string) {
   await gotoStable(page, '/login');
   await expect(page).toHaveURL(/.*login/);
 
-  await page.waitForLoadState('networkidle');
-  if (options?.webkitDelayMs) {
-    await page.waitForTimeout(options.webkitDelayMs);
-  }
-
-  await page.fill('input[type="email"]', email);
-  await page.fill('input[type="password"]', password);
-
-  const submitButton = page.locator('button[type="submit"]');
-  await expect(submitButton).toBeVisible();
-  await expect(submitButton).toBeEnabled();
-  await submitButton.click();
-
-  await expect(page).toHaveURL(/.*dashboard/, { timeout: 60000 });
-  await page.waitForLoadState('networkidle');
-  if (options?.webkitDelayMs) {
-    await page.waitForTimeout(options.webkitDelayMs);
-  }
+  await submitLoginForm(page, { email, password });
 }
 
 async function signUp(
@@ -909,10 +891,10 @@ test.describe('Multi-user vault isolation (E2E)', () => {
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
 
-    // RemoveVaultCard triggers window.location.reload() after removal
-    // Wait for the reload to complete
-    await page.waitForLoadState('networkidle', { timeout: 30000 });
-    await page.waitForTimeout(500);
+    // RemoveVaultCard triggers window.location.reload() after removal. The
+    // reload is complete when the dashboard shell has mounted again — a
+    // condition `networkidle` plus a sleep never actually checked (issue #524).
+    await waitForDashboardReady(page);
 
     // Verify User A's vault was removed
     const userAVaultAfterRemoval = await readOwnedVault(page, USER_A_ID);

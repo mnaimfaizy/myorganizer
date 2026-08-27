@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
 import {
-  gotoStable,
   E2E_USER_ID,
+  gotoStable,
   routeApi,
+  submitLoginForm,
   waitForOwnedVault,
 } from './helpers';
 
@@ -22,10 +23,7 @@ function corsHeaders(origin: string) {
   } as const;
 }
 
-async function login(
-  page: import('@playwright/test').Page,
-  options: { webkitDelayMs: number },
-) {
+async function login(page: import('@playwright/test').Page) {
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
   await routeApi(page, loginUrl, async (route) => {
     const request = route.request();
@@ -58,41 +56,7 @@ async function login(
   await expect(page).toHaveURL(/.*login/);
   await expect(page.locator('h1')).toContainText('Login');
 
-  try {
-    await page.waitForLoadState('networkidle', { timeout: 10000 });
-  } catch {
-    try {
-      await page.waitForLoadState('domcontentloaded');
-    } catch {
-      // proceed
-    }
-  }
-
-  if (options.webkitDelayMs > 0)
-    await page.waitForTimeout(options.webkitDelayMs);
-
-  await page.fill('input[type="email"]', 'testuser@example.com');
-  await page.fill('input[type="password"]', 'password123');
-
-  const submitButton = page.locator('button[type="submit"]');
-  await expect(submitButton).toBeVisible();
-  await expect(submitButton).toBeEnabled();
-  await submitButton.click();
-
-  await expect(page).toHaveURL(/.*dashboard/, { timeout: 60000 });
-
-  try {
-    await page.waitForLoadState('networkidle', { timeout: 10000 });
-  } catch {
-    try {
-      await page.waitForLoadState('domcontentloaded');
-    } catch {
-      // Both load states timed out; continue anyway — the assertions below decide the test.
-    }
-  }
-
-  if (options.webkitDelayMs > 0)
-    await page.waitForTimeout(options.webkitDelayMs);
+  await submitLoginForm(page);
 }
 
 async function unlockWithPassphrase(
@@ -106,9 +70,10 @@ async function unlockWithPassphrase(
 
   if (!isUnlockScreenVisible) return;
 
+  // The passphrase field appearing is the end of the panel's transition, so
+  // the visibility check below is the wait — not a sleep (issue #524).
   if (await unlockUI.isVisible({ timeout: 1000 }).catch(() => false)) {
     await unlockUI.click();
-    await page.waitForTimeout(1000);
   }
 
   let input = page.locator('#unlock-passphrase');
@@ -130,10 +95,11 @@ async function unlockWithPassphrase(
 
   await input.scrollIntoViewIfNeeded();
   await input.click();
-  await page.waitForTimeout(500);
 
+  // VaultGate's Unlock handler reads React state, so the click below is only
+  // safe once the controlled value has round-tripped back into the field.
   await input.fill(passphrase);
-  await page.waitForTimeout(300);
+  await expect(input).toHaveValue(passphrase);
 
   const unlockButton = page.getByRole('button', { name: /^Unlock$/i });
   const buttonExists = await unlockButton
@@ -143,24 +109,16 @@ async function unlockWithPassphrase(
     throw new Error('Unlock button not found after filling passphrase');
 
   await unlockButton.click();
-  await page.waitForTimeout(500);
 
-  try {
-    await page
-      .locator(
-        '#unlock-passphrase, input[placeholder*="Security"], input[placeholder*="passphrase"]',
-      )
-      .first()
-      .isHidden({ timeout: 30000 });
-  } catch {
-    try {
-      await page.waitForLoadState('networkidle', { timeout: 10000 });
-    } catch {
-      // Neither the row nor the network settled; continue anyway — the caller re-asserts.
-    }
-  }
-
-  await page.waitForTimeout(1000);
+  // Unlock is complete when the passphrase field goes away. The previous shape
+  // called `isHidden({ timeout })` — which does not wait at all, so it resolved
+  // immediately and the trailing sleep was the real wait — then fell back to
+  // `networkidle` (issue #524).
+  await expect(
+    page.locator(
+      '#unlock-passphrase, input[placeholder*="Security"], input[placeholder*="passphrase"]',
+    ),
+  ).toHaveCount(0, { timeout: 120000 });
 }
 
 async function gotoGroceriesAndUnlock(
@@ -189,8 +147,14 @@ async function gotoGroceriesAndUnlock(
     { timeout: 30000 },
   );
 
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(1000);
+  // The heading renders before the decrypted trips do; the board's primary
+  // action is what depends on that list having resolved.
+  await expect(
+    page
+      .getByRole('button', { name: 'New trip' })
+      .or(page.getByRole('button', { name: 'Create Your First List' }))
+      .first(),
+  ).toBeVisible({ timeout: 30000 });
 }
 
 async function clickNewTrip(page: import('@playwright/test').Page) {
@@ -248,14 +212,20 @@ async function openListByName(
 
   await page.goto(href);
 
-  // Wait for the list view to load
-  await page.waitForLoadState('networkidle');
-
-  // Check if vault unlock is required on this page
+  // The detail route settles into one of two states: the vault gate, or the
+  // board itself. Wait for that before probing which one arrived — a fixed
+  // `isVisible` probe otherwise races the render, and the `networkidle` that
+  // used to sit here was hiding the race rather than removing it (issue #524).
   const passphraseInput = page
     .locator('#unlock-passphrase, [data-testid="unlock-passphrase"]')
     .first();
-  if (await passphraseInput.isVisible({ timeout: 5000 }).catch(() => false)) {
+  const listHeading = page.locator('h1, h2').filter({ hasText: listName });
+  await expect(passphraseInput.or(listHeading).first()).toBeVisible({
+    timeout: 30000,
+  });
+
+  // Check if vault unlock is required on this page
+  if (await passphraseInput.isVisible().catch(() => false)) {
     // Vault unlock is required; fill and submit
     if (!passphraseParam) {
       throw new Error(
@@ -263,21 +233,18 @@ async function openListByName(
       );
     }
     await passphraseInput.fill(passphraseParam);
+    await expect(passphraseInput).toHaveValue(passphraseParam);
     const unlockBtn = page
       .getByRole('button', { name: /Unlock|Confirm/ })
       .first();
     await unlockBtn.click();
-    await page.waitForLoadState('networkidle');
+    // The gate closing is the unlock signal, not network quiet.
+    await expect(
+      page.locator('#unlock-passphrase, [data-testid="unlock-passphrase"]'),
+    ).toHaveCount(0, { timeout: 120000 });
   }
 
-  await page.waitForFunction(
-    (name) => {
-      const heading = document.querySelector('h1, h2');
-      return heading && heading.textContent?.includes(name);
-    },
-    listName,
-    { timeout: 30000 },
-  );
+  await expect(listHeading.first()).toBeVisible({ timeout: 30000 });
 }
 
 async function addItemViaDialog(
@@ -409,12 +376,10 @@ test.describe('Groceries Items (E2E)', () => {
     }
   });
 
-  test('1 — Add Single Item (full fields) ', async ({ page }, testInfo) => {
+  test('1 — Add Single Item (full fields) ', async ({ page }) => {
     test.setTimeout(120000);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
 
     // Create vault and unlock
     await gotoStable(page, '/dashboard/addresses');
@@ -447,12 +412,10 @@ test.describe('Groceries Items (E2E)', () => {
     ).toBeVisible({ timeout: 30000 });
   });
 
-  test('2 — Add Multiple Items and persist', async ({ page }, testInfo) => {
+  test('2 — Add Multiple Items and persist', async ({ page }) => {
     test.setTimeout(120000);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
     await gotoStable(page, '/dashboard/addresses');
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);
@@ -478,12 +441,10 @@ test.describe('Groceries Items (E2E)', () => {
     for (const it of items) await assertItemRowVisible(page, it);
   });
 
-  test('4 — Edit Item (name, category, price)', async ({ page }, testInfo) => {
+  test('4 — Edit Item (name, category, price)', async ({ page }) => {
     test.setTimeout(120000);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
     await gotoStable(page, '/dashboard/addresses');
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);
@@ -507,12 +468,10 @@ test.describe('Groceries Items (E2E)', () => {
     ).toBeVisible({ timeout: 30000 });
   });
 
-  test('5 — Mark as Done visual change', async ({ page }, testInfo) => {
+  test('5 — Mark as Done visual change', async ({ page }) => {
     test.setTimeout(120000);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
     await gotoStable(page, '/dashboard/addresses');
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);
@@ -531,20 +490,17 @@ test.describe('Groceries Items (E2E)', () => {
     await checkbox.check();
     await expect(checkbox).toBeChecked();
 
-    // Visual change: name should have line-through class
-    // The line-through is applied to the span containing the item name
+    // Visual change: name should have line-through class.
+    // The line-through is applied to the span containing the item name, and
+    // `toHaveClass` retries until React has re-rendered it (issue #524).
     const nameElement = page.getByText('Cucumber', { exact: true });
-    await page.waitForTimeout(500);
-    const updatedClass = await nameElement.getAttribute('class');
-    expect(updatedClass?.includes('line-through')).toBeTruthy();
+    await expect(nameElement).toHaveClass(/line-through/, { timeout: 30000 });
   });
 
-  test('6 — Delete Item via confirm click', async ({ page }, testInfo) => {
+  test('6 — Delete Item via confirm click', async ({ page }) => {
     test.setTimeout(120000);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
     await gotoStable(page, '/dashboard/addresses');
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);
@@ -563,12 +519,10 @@ test.describe('Groceries Items (E2E)', () => {
     });
   });
 
-  test('7 — Full CRUD Journey', async ({ page }, testInfo) => {
+  test('7 — Full CRUD Journey', async ({ page }) => {
     test.setTimeout(120000);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
     await gotoStable(page, '/dashboard/addresses');
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);
@@ -599,12 +553,10 @@ test.describe('Groceries Items (E2E)', () => {
     ).toHaveCount(0, { timeout: 30000 });
   });
 
-  test('8 — Persistence & Reload', async ({ page }, testInfo) => {
+  test('8 — Persistence & Reload', async ({ page }) => {
     test.setTimeout(120000);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
     await gotoStable(page, '/dashboard/addresses');
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);
@@ -629,14 +581,10 @@ test.describe('Groceries Items (E2E)', () => {
     await assertItemRowVisible(page, 'Persistent Two');
   });
 
-  test('9 — Validation Error Handling blocks submit', async ({
-    page,
-  }, testInfo) => {
+  test('9 — Validation Error Handling blocks submit', async ({ page }) => {
     test.setTimeout(120000);
 
-    await login(page, {
-      webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-    });
+    await login(page);
     await gotoStable(page, '/dashboard/addresses');
     await page.fill('#setup-passphrase', passphrase);
     await page.fill('#setup-confirm', passphrase);

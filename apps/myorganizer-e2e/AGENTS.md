@@ -36,8 +36,22 @@ production-only failures will not reproduce. Reach for it while iterating, not t
 
 Do not add `page.waitForLoadState('networkidle')` or `waitForTimeout`. Playwright marks
 `networkidle` DISCOURAGED — "rely on web assertions to assess readiness instead" — and two of
-the existing calls were found to hang against a production build. Wait on an assertion about
-what the page should show. Existing occurrences are tracked debt (issue #524); do not add more.
+the calls were found to hang against a production build. The suite has **none of either** as of
+issue #524; keep it that way.
+
+Wait on an assertion about what the page should show:
+
+- A route that can settle into more than one state: one `expect(a.or(b).first()).toBeVisible()`.
+- Something disappearing: `await expect(locator).toHaveCount(0, { timeout })` — **not**
+  `locator.isHidden({ timeout })`, which samples once and ignores the timeout it is given.
+- A controlled input, before the handler that reads its React state fires:
+  `await expect(input).toHaveValue(value)`.
+- Hydration of a controlled form: probe it with `waitForLoginFormInteractive` from
+  `src/e2e/helpers/auth.ts`. `networkidle` never observed hydration, and the WebKit sleeps that
+  papered over it are gone.
+
+`src/e2e/helpers/auth.ts` also carries `submitLoginForm` and `waitForDashboardReady`. Use them
+rather than growing a seventh copy of the login helper.
 
 ## Do
 

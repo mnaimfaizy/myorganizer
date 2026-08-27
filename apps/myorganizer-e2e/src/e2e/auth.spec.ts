@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
-import { routeApi } from './helpers';
+import { routeApi, waitForLoginFormInteractive } from './helpers';
 
 test.describe('Authentication', () => {
-  test('should allow a user to log in', async ({ page }, testInfo) => {
+  test('should allow a user to log in', async ({ page }) => {
     test.setTimeout(60000);
 
     // Mock the login API request (including CORS + preflight)
@@ -54,14 +54,8 @@ test.describe('Authentication', () => {
     await expect(page).toHaveURL(/.*login/);
     await expect(page.locator('h1')).toContainText('Login');
 
-    // Give the app time to hydrate and attach event handlers.
-    await page.waitForLoadState('networkidle');
-    if (testInfo.project.name === 'webkit') {
-      // WebKit sometimes finishes network requests before the client-side app has fully hydrated
-      // and wired up form event handlers, which can cause flaky failures when submitting the form.
-      // This small, WebKit-only delay stabilizes the test until the underlying issue is resolved.
-      await page.waitForTimeout(1500);
-    }
+    // Prove the form's event handlers are attached before typing into it.
+    await waitForLoginFormInteractive(page);
 
     // Fill in the login form
     await page.fill('input[type="email"]', 'testuser@example.com');
