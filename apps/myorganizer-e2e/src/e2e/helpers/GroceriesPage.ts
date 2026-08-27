@@ -114,9 +114,6 @@ export class GroceriesPage {
     await input.scrollIntoViewIfNeeded();
     await input.click();
     await input.fill(passphrase);
-    // VaultGate's Unlock handler reads React state, so the click is only safe
-    // once the controlled value has round-tripped back into the field.
-    await expect(input).toHaveValue(passphrase);
 
     const unlockButton = this.page.getByRole('button', { name: /^Unlock$/i });
     const buttonExists = await unlockButton
@@ -209,7 +206,6 @@ export class GroceriesPage {
         );
       }
       await passphraseInput.fill(passphraseParam);
-      await expect(passphraseInput).toHaveValue(passphraseParam);
       const unlockBtn = this.page
         .getByRole('button', { name: /Unlock|Confirm/ })
         .first();

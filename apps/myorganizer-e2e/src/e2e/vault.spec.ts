@@ -31,10 +31,7 @@ async function unlockWithPassphrase(
 
   await expect(input).toBeVisible({ timeout: 60000 });
 
-  // VaultGate's Unlock handler reads React state, so the click is only safe
-  // once the controlled value has round-tripped back into the field.
   await input.fill(passphrase);
-  await expect(input).toHaveValue(passphrase);
 
   await page.getByRole('button', { name: 'Unlock' }).click();
   await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
@@ -65,9 +62,6 @@ test.describe('Vault (E2E)', () => {
   }, testInfo) => {
     // The heaviest test in the suite: two browser contexts, several PBKDF2
     // derivations (slow by design, and slower still on WebKit), and a full
-    // upload/download sync round-trip. It fits 120s on WebKit when run alone
-    // but not when the sequential all-browser run puts the machine under
-    // load, so WebKit gets a realistic budget rather than a skip (issue #506).
     test.setTimeout(testInfo.project.name === 'webkit' ? 240000 : 120000);
 
     // In-memory "server" backing store shared across both sessions.

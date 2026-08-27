@@ -63,9 +63,11 @@ async function unlockWithPassphrase(page, passphrase) {
   await input.click();
   await input.fill(passphrase);
 
-  // VaultGate's Unlock handler reads React state, so the click below is only
-  // safe once the controlled value has round-tripped back into the field.
-  await expect(input).toHaveValue(passphrase);
+  // No wait between fill and click. VaultGate renders inside DashboardGuard,
+  // which returns null until its client effect resolves, so this panel being
+  // on screen already proves React is driving it and onChange is bound.
+  // ❌ `expect(input).toHaveValue(passphrase)` would NOT prove that: `fill`
+  //    sets the DOM value itself, so the assertion passes either way.
 
   // ❌ Do NOT use input.press('Enter') — Firefox doesn't reliably submit
   // ✅ Click the button
@@ -319,18 +321,20 @@ Run on all three browsers before marking an E2E change complete.
 
 ## Anti-pattern table
 
-| Anti-pattern                                              | Why it's wrong                                                                            | Correct approach                                    |
-| --------------------------------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| Using `role="button"` for non-buttons                     | Semantic HTML violation; breaks accessibility                                             | Use `role="article"` / `role="listitem"` for cards  |
-| `input.press('Enter')` for form submission                | Firefox doesn't reliably trigger it                                                       | Explicitly click the submit button                  |
-| `page.locator()` inside `waitForFunction()`               | Browser context has no Playwright APIs                                                    | Use `document` APIs only in browser context         |
-| Assuming standard HTML context menus                      | Radix DropdownMenu is not native; buttons are hidden                                      | Hover + click                                       |
-| `waitForLoadState('networkidle')` anywhere                | DISCOURAGED by Playwright; misses client-side async, and hangs against a production build | Assert what the page must show                      |
-| A `networkidle` → `domcontentloaded` fallback ladder      | Burns the timeout budget on a condition nothing needs                                     | One `expect(locator)` with a generous timeout       |
-| `locator.isHidden({ timeout })` to wait for removal       | `isHidden` samples once and resolves; the timeout is ignored                              | `await expect(locator).toHaveCount(0, { timeout })` |
-| Testing on one browser only                               | Firefox and WebKit have different patterns                                                | Test on all three                                   |
-| Not mocking CORS preflight                                | Tests fail with CORS errors                                                               | Handle `OPTIONS` in route mocks                     |
-| Arbitrary `page.waitForTimeout()` delays                  | Hides real races; flakes under load                                                       | Wait for explicit state changes                     |
-| Changing interaction method when a button won't enable    | Wrong layer — it's component architecture                                                 | Investigate remount / reset / form mode             |
-| Assuming `defaultValues` are fresh after a dialog reopens | Stale form state carries over                                                             | Verify `key={itemId}` or reset `useEffect`          |
-| Asserting retry / concurrency / timeout behavior          | The UI usually doesn't implement it                                                       | Only test behavior the flow exposes                 |
+| Anti-pattern                                              | Why it's wrong                                                                               | Correct approach                                                                   |
+| --------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Using `role="button"` for non-buttons                     | Semantic HTML violation; breaks accessibility                                                | Use `role="article"` / `role="listitem"` for cards                                 |
+| `input.press('Enter')` for form submission                | Firefox doesn't reliably trigger it                                                          | Explicitly click the submit button                                                 |
+| `page.locator()` inside `waitForFunction()`               | Browser context has no Playwright APIs                                                       | Use `document` APIs only in browser context                                        |
+| Assuming standard HTML context menus                      | Radix DropdownMenu is not native; buttons are hidden                                         | Hover + click                                                                      |
+| `waitForLoadState('networkidle')` anywhere                | DISCOURAGED by Playwright; misses client-side async, and hangs against a production build    | Assert what the page must show                                                     |
+| A `networkidle` → `domcontentloaded` fallback ladder      | Burns the timeout budget on a condition nothing needs                                        | One `expect(locator)` with a generous timeout                                      |
+| `locator.isHidden({ timeout })` to wait for removal       | `isHidden` samples once and resolves; Playwright marks the timeout deprecated and ignores it | `await expect(locator).toHaveCount(0, { timeout })`                                |
+| `locator.isVisible({ timeout })` to wait for appearance   | Identical no-op — it never waits, so it races the render                                     | Assert the page has settled, then branch on it                                     |
+| `expect(input).toHaveValue(v)` after `fill(v)`            | `fill` sets the DOM value, so it is true either way — it does not prove React state took     | Under `/dashboard/*` no wait is needed; on a server-rendered form, probe hydration |
+| Testing on one browser only                               | Firefox and WebKit have different patterns                                                   | Test on all three                                                                  |
+| Not mocking CORS preflight                                | Tests fail with CORS errors                                                                  | Handle `OPTIONS` in route mocks                                                    |
+| Arbitrary `page.waitForTimeout()` delays                  | Hides real races; flakes under load                                                          | Wait for explicit state changes                                                    |
+| Changing interaction method when a button won't enable    | Wrong layer — it's component architecture                                                    | Investigate remount / reset / form mode                                            |
+| Assuming `defaultValues` are fresh after a dialog reopens | Stale form state carries over                                                                | Verify `key={itemId}` or reset `useEffect`                                         |
+| Asserting retry / concurrency / timeout behavior          | The UI usually doesn't implement it                                                          | Only test behavior the flow exposes                                                |

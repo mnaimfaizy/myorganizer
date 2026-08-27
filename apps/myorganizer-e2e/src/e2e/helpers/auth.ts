@@ -24,9 +24,7 @@ const E2E_PASSWORD = 'password123';
  * sees — and so `input[type="password"]` still selects it.
  */
 export async function waitForLoginFormInteractive(page: Page): Promise<void> {
-  const toggle = page.locator(
-    'button[aria-label="Show password"], button[aria-label="Hide password"]',
-  );
+  const toggle = page.getByRole('button', { name: /^(Show|Hide) password$/ });
   const password = page.locator('#password');
 
   await expect(toggle).toBeVisible({ timeout: 30000 });
@@ -75,12 +73,13 @@ export async function submitLoginForm(
  * Resolve once the dashboard shell is live on the current page.
  *
  * `DashboardGuard` renders `null` until its client-side auth check resolves,
- * so the sidebar existing proves the shell mounted and the route's own content
- * is being rendered — which is what the callers were reaching for when they
- * waited for network quiet after landing on `/dashboard`.
+ * so any part of the dashboard shell being on screen proves the shell mounted
+ * and the route's own content is rendering — which is what the callers were
+ * reaching for when they waited for network quiet after landing on
+ * `/dashboard`. The layout renders two sidebar toggles, hence `.first()`.
  */
 export async function waitForDashboardReady(page: Page): Promise<void> {
-  await expect(page.locator('[data-sidebar="header"]')).toBeVisible({
-    timeout: 60000,
-  });
+  await expect(
+    page.getByRole('button', { name: 'Toggle Sidebar' }).first(),
+  ).toBeVisible({ timeout: 60000 });
 }

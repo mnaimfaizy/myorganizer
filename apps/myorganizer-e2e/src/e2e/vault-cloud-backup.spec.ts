@@ -57,9 +57,6 @@ async function unlockWithPassphrase(page: Page, passphrase: string) {
   if ((await input.count()) === 0) return;
   await expect(input).toBeVisible({ timeout: 60000 });
   await input.fill(passphrase);
-  // VaultGate's Unlock handler reads React state, so the click is only safe
-  // once the controlled value has round-tripped back into the field.
-  await expect(input).toHaveValue(passphrase);
   await page.getByRole('button', { name: 'Unlock' }).click();
   await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
     timeout: 120000,

@@ -96,10 +96,7 @@ async function unlockWithPassphrase(
   await input.scrollIntoViewIfNeeded();
   await input.click();
 
-  // VaultGate's Unlock handler reads React state, so the click below is only
-  // safe once the controlled value has round-tripped back into the field.
   await input.fill(passphrase);
-  await expect(input).toHaveValue(passphrase);
 
   const unlockButton = page.getByRole('button', { name: /^Unlock$/i });
   const buttonExists = await unlockButton
@@ -233,7 +230,6 @@ async function openListByName(
       );
     }
     await passphraseInput.fill(passphraseParam);
-    await expect(passphraseInput).toHaveValue(passphraseParam);
     const unlockBtn = page
       .getByRole('button', { name: /Unlock|Confirm/ })
       .first();

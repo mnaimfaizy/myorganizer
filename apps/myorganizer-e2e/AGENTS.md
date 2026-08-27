@@ -35,20 +35,32 @@ production-only failures will not reproduce. Reach for it while iterating, not t
 ## Waiting
 
 Do not add `page.waitForLoadState('networkidle')` or `waitForTimeout`. Playwright marks
-`networkidle` DISCOURAGED — "rely on web assertions to assess readiness instead" — and two of
-the calls were found to hang against a production build. The suite has **none of either** as of
-issue #524; keep it that way.
+`networkidle` DISCOURAGED — "rely on web assertions to assess readiness instead" — and one of
+the calls was found to hang against a production build ([ADR 0050](../../docs/adr/0050-e2e-runs-as-a-blocking-chromium-lane-and-a-nightly-rot-detector.md)).
+The suite has **none of either** as of issue #524; keep it that way.
 
 Wait on an assertion about what the page should show:
 
 - A route that can settle into more than one state: one `expect(a.or(b).first()).toBeVisible()`.
-- Something disappearing: `await expect(locator).toHaveCount(0, { timeout })` — **not**
-  `locator.isHidden({ timeout })`, which samples once and ignores the timeout it is given.
-- A controlled input, before the handler that reads its React state fires:
-  `await expect(input).toHaveValue(value)`.
-- Hydration of a controlled form: probe it with `waitForLoginFormInteractive` from
-  `src/e2e/helpers/auth.ts`. `networkidle` never observed hydration, and the WebKit sleeps that
-  papered over it are gone.
+  Do this **before** any state probe, or the probe races the render.
+- Something disappearing: `await expect(locator).toHaveCount(0, { timeout })`.
+
+`locator.isVisible()` and `locator.isHidden()` do **not** wait — Playwright marks their `timeout`
+option deprecated and ignores it, so `isVisible({ timeout: 10000 })` samples once and returns
+immediately. They are fine for branching on a state you have already asserted has settled, and
+useless as a wait. The suite still has such probes; each one needs a settled page above it.
+
+Filling a controlled input needs no wait before clicking the control that reads it. Everything
+under `/dashboard` renders inside `DashboardGuard`, which returns `null` until its client effect
+resolves, so a form being on screen there already proves React is driving it and `onChange` is
+bound. Note that `expect(input).toHaveValue(v)` proves nothing after a `fill(v)` — `fill` sets
+the DOM value itself, so the assertion passes whether or not React saw the change.
+
+The login form is the exception: it is server-rendered, so it can be on screen before hydration,
+and a value typed then never reaches React state. `waitForLoginFormInteractive` in
+`src/e2e/helpers/auth.ts` probes that; `networkidle` never observed hydration, and the WebKit
+sleeps that papered over it are gone. That helper is login-specific — another server-rendered
+controlled form needs its own probe.
 
 `src/e2e/helpers/auth.ts` also carries `submitLoginForm` and `waitForDashboardReady`. Use them
 rather than growing a seventh copy of the login helper.

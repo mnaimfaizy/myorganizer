@@ -89,9 +89,6 @@ async function unlockWithPassphrase(
 
   await expect(input).toBeVisible({ timeout: 60000 });
   await input.fill(passphrase);
-  // VaultGate's Unlock handler reads React state, so the click is only safe
-  // once the controlled value has round-tripped back into the field.
-  await expect(input).toHaveValue(passphrase);
   await page.getByRole('button', { name: 'Unlock' }).click();
   await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
     timeout: 120000,
@@ -327,10 +324,6 @@ test.describe('Tasks (E2E)', () => {
 
     await setupPassphrase.fill('test-passphrase-12345');
     await setupConfirm.fill('test-passphrase-12345');
-    // VaultGate's create handler reads React state, so wait for the controlled
-    // values to round-trip rather than sleeping (issue #524).
-    await expect(setupPassphrase).toHaveValue('test-passphrase-12345');
-    await expect(setupConfirm).toHaveValue('test-passphrase-12345');
 
     // Click "Create encrypted vault" button
     const createVaultButton = page.getByRole('button', {
