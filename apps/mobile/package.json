@@ -4,6 +4,8 @@
   "private": true,
   "dependencies": {
     "@react-native/metro-config": "*",
+    "@react-navigation/native": "*",
+    "@react-navigation/native-stack": "*",
     "react": "*",
     "react-native": "*",
     "react-native-keychain": "*",
@@ -13,6 +15,7 @@
     "react-native-safe-area-context": "*",
     "react-native-screens": "*",
     "react-native-svg": "*",
+    "react-native-url-polyfill": "*",
     "@testing-library/react-native": "*",
     "react-test-renderer": "*",
     "metro-config": "*"
