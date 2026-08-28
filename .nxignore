@@ -3,3 +3,4 @@ apps/backend/src/prisma/prisma-client
 .sandcastle/worktrees/
 .sandcastle/patches/
 .sandcastle/node_modules_linux_cache/
+.claude/worktrees/

@@ -1998,6 +1998,9 @@
 								}
 							}
 						}
+					},
+					"304": {
+						"description": ""
 					}
 				},
 				"tags": [
@@ -2015,6 +2018,14 @@
 						"required": true,
 						"schema": {
 							"$ref": "#/components/schemas/VaultBlobType"
+						}
+					},
+					{
+						"in": "header",
+						"name": "if-none-match",
+						"required": false,
+						"schema": {
+							"type": "string"
 						}
 					}
 				]

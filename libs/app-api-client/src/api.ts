@@ -4038,10 +4038,11 @@ export const VaultApiAxiosParamCreator = function (configuration?: Configuration
         /**
          * 
          * @param {VaultBlobType} type 
+         * @param {string} [ifNoneMatch] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        getVaultBlob: async (type: VaultBlobType, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        getVaultBlob: async (type: VaultBlobType, ifNoneMatch?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'type' is not null or undefined
             assertParamExists('getVaultBlob', 'type', type)
             const localVarPath = `/vault/blob/{type}`
@@ -4063,6 +4064,9 @@ export const VaultApiAxiosParamCreator = function (configuration?: Configuration
 
 
     
+            if (ifNoneMatch != null) {
+                localVarHeaderParameter['if-none-match'] = String(ifNoneMatch);
+            }
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -4258,11 +4262,12 @@ export const VaultApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @param {VaultBlobType} type 
+         * @param {string} [ifNoneMatch] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async getVaultBlob(type: VaultBlobType, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetVaultBlobResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getVaultBlob(type, options);
+        async getVaultBlob(type: VaultBlobType, ifNoneMatch?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetVaultBlobResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getVaultBlob(type, ifNoneMatch, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['VaultApi.getVaultBlob']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -4342,7 +4347,7 @@ export const VaultApiFactory = function (configuration?: Configuration, basePath
          * @throws {RequiredError}
          */
         getVaultBlob(requestParameters: VaultApiGetVaultBlobRequest, options?: RawAxiosRequestConfig): AxiosPromise<GetVaultBlobResponse> {
-            return localVarFp.getVaultBlob(requestParameters.type, options).then((request) => request(axios, basePath));
+            return localVarFp.getVaultBlob(requestParameters.type, requestParameters.ifNoneMatch, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -4394,6 +4399,13 @@ export interface VaultApiGetVaultBlobRequest {
      * @memberof VaultApiGetVaultBlob
      */
     readonly type: VaultBlobType
+
+    /**
+     * 
+     * @type {string}
+     * @memberof VaultApiGetVaultBlob
+     */
+    readonly ifNoneMatch?: string
 }
 
 /**
@@ -4484,7 +4496,7 @@ export class VaultApi extends BaseAPI {
      * @memberof VaultApi
      */
     public getVaultBlob(requestParameters: VaultApiGetVaultBlobRequest, options?: RawAxiosRequestConfig) {
-        return VaultApiFp(this.configuration).getVaultBlob(requestParameters.type, options).then((request) => request(this.axios, this.basePath));
+        return VaultApiFp(this.configuration).getVaultBlob(requestParameters.type, requestParameters.ifNoneMatch, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

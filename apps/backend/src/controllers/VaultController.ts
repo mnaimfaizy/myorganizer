@@ -8,9 +8,12 @@ import {
   Post,
   Put,
   Request,
+  Res,
+  Response,
   Route,
   Security,
   Tags,
+  TsoaResponse,
 } from 'tsoa';
 import { requireUserId } from '../guards/AuthGuard';
 import vaultService, {
@@ -78,14 +81,26 @@ export class VaultController extends Controller {
     return result.body as PutVaultMetaResponse;
   }
 
+  @Response(304, 'Not Modified')
   @Get('/blob/{type}')
   public async getVaultBlob(
     @Request() req: ExRequest,
     @Path() type: VaultBlobType,
+    @Res() notModified: TsoaResponse<304, void>,
+    @Header('if-none-match') ifNoneMatch?: string,
   ): Promise<GetVaultBlobResponse> {
     const userId = requireUserId(req);
 
     const result = await vaultService.getBlob(userId, type);
+
+    if (
+      result.ok &&
+      ifNoneMatch !== undefined &&
+      ifNoneMatch === result.body.etag
+    ) {
+      return notModified(304, undefined);
+    }
+
     this.setStatus(result.status);
     return result.body as GetVaultBlobResponse;
   }

@@ -1072,6 +1072,8 @@ export function RegisterRoutes(app: Router) {
         const argsVaultController_getVaultBlob: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 type: {"in":"path","name":"type","required":true,"ref":"VaultBlobType"},
+                notModified: {"in":"res","name":"304","required":true,"dataType":"void"},
+                ifNoneMatch: {"in":"header","name":"if-none-match","dataType":"string"},
         };
         app.get('/vault/blob/:type',
             authenticateMiddleware([{"jwt":[]}]),
