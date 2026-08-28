@@ -215,7 +215,7 @@ A thin implementation of a shared abstract interface (e.g. `VaultCrypto`, `Vault
 _Avoid_: shim, wrapper, provider
 
 **Vault Unlock**:
-The client-side action of deriving the Master Key from the User's passphrase so vault Ciphertext can be decrypted for the session. No plaintext or key leaves the device.
+The client-side action of deriving the Master Key from the User's passphrase so vault Ciphertext can be decrypted for the session. No plaintext or key leaves the device. Unlock is a plaintext-access boundary, not a network one: a locked Vault can still send and receive its own Ciphertext, because moving bytes that are already encrypted needs no Master Key. What a lock withholds is the ability to read them.
 _Avoid_: vault login, decrypt vault, open vault
 
 **Unclaimed Local Vault**:
@@ -229,6 +229,30 @@ _Avoid_: adopt vault, take over vault, assign vault, link vault
 **Claim Offer**:
 The interface a signed-in User is shown for an Unclaimed Local Vault: it leads with unlock, because unlocking is the claim, and carries an explicit escape for the User who recognises the Vault is not theirs. The escape is deliberately not an equal alternative — the person most likely to take it by mistake is the rightful owner.
 _Avoid_: claim prompt, vault chooser, ownership dialog, migration prompt
+
+**Vault Meta**:
+What a Vault needs to be opened rather than read: the key-derivation parameters and the Master Key as wrapped by the passphrase and by the recovery key. It travels with the Vault but is not part of its contents, and it changes for reasons the contents never see — changing a passphrase rewraps the same Master Key, leaving every Vault Blob readable exactly as before. Two Vault Metas differing therefore says nothing about whether their Vault Blobs can be merged.
+_Avoid_: vault header, key material, vault config, vault settings
+
+**Vault Blob**:
+The unit of Ciphertext the server stores and the client synchronises: one per Vault Blob Type per User, holding every record of that type together. It is the whole of `tasks`, not one Task. Two devices editing different records of the same type are still editing the same Vault Blob, which is why convergence cannot be decided by the Vault Blob alone.
+_Avoid_: vault record, encrypted blob, blob (unqualified), vault entry
+
+**Vault Push**:
+Sending one changed Vault Blob to the server. Distinct from Vault Reconcile: a push is the ordinary consequence of a single edit, carries no comparison, and asks the User nothing. Reconcile compares two whole Vaults on sign-in and is the backstop for what push did not carry.
+_Avoid_: vault sync (unqualified), upload, save to server, backup
+
+**Vault Pull**:
+Taking one Vault Blob from the server and converging it with the Local Vault. The complement of Vault Push, and never a replacement: an arriving Vault Blob is merged against what the device already holds, so a pull cannot discard a local edit the server has not seen.
+_Avoid_: fetch, download, refresh, sync down
+
+**Deletion Log**:
+The record a Vault Blob keeps of which of its records were deleted, and when. It exists because absence cannot be merged: a device that has not yet seen a deletion holds the record and would otherwise reintroduce it on the next merge. A deletion beats a record that was last changed before it. Entries are kept, not expired — an entry that is dropped while some device is still behind resurrects the record it was there to bury.
+_Avoid_: tombstone log, graveyard, trash, deleted items
+
+**Sync Bookmark**:
+What one device records, per User and per Vault Blob Type, about its last successful Vault Push: which Ciphertext it sent, and the identity the server gave that Ciphertext back. A Vault Blob has unpushed changes when it no longer matches its Sync Bookmark — the state is derived from the Vault rather than flagged alongside it, so no edit can be stranded by a flag nobody set.
+_Avoid_: dirty flag, sync state, pending queue, last-synced marker
 
 **Vault Reconcile**:
 The per-User comparison of a Local Vault against that User's server Ciphertext, run on sign-in. It is not a migration and has no one-time character: a User with no server Vault yet is having an ordinary first sync, and a User with no Vault on either side has nothing to reconcile. Divergence is never resolved silently — the User chooses which side is kept, and neither side is overwritten without that answer.
