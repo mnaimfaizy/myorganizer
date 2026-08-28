@@ -28,6 +28,15 @@ function subtle(): SubtleCrypto {
   return globalThis.crypto.subtle;
 }
 
+// WebCrypto takes `BufferSource`, which since TypeScript 5.7 means a view backed
+// by an `ArrayBuffer` specifically. A plain `Uint8Array` is `Uint8Array<ArrayBufferLike>`,
+// which also admits `SharedArrayBuffer` and so is not assignable. Copying into a
+// fresh view narrows the type honestly, without an `as` cast over the crypto
+// boundary. The copies are of key, IV, and blob-sized buffers.
+function bufferSource(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
+  return new Uint8Array(bytes);
+}
+
 export function bytesToBase64(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) {
@@ -65,7 +74,7 @@ export class MobileVaultCrypto implements VaultCrypto {
   }): Promise<AesGcmKey> {
     const baseKey = await subtle().importKey(
       'raw',
-      utf8ToBytes(params.passphrase),
+      bufferSource(utf8ToBytes(params.passphrase)),
       'PBKDF2',
       false,
       ['deriveKey'],
@@ -73,7 +82,7 @@ export class MobileVaultCrypto implements VaultCrypto {
     return subtle().deriveKey(
       {
         name: 'PBKDF2',
-        salt: params.salt,
+        salt: bufferSource(params.salt),
         iterations: params.iterations,
         hash: 'SHA-256',
       },
@@ -85,10 +94,13 @@ export class MobileVaultCrypto implements VaultCrypto {
   }
 
   async importAesGcmKey(rawKeyBytes: Uint8Array): Promise<AesGcmKey> {
-    return subtle().importKey('raw', rawKeyBytes, { name: 'AES-GCM' }, true, [
-      'encrypt',
-      'decrypt',
-    ]);
+    return subtle().importKey(
+      'raw',
+      bufferSource(rawKeyBytes),
+      { name: 'AES-GCM' },
+      true,
+      ['encrypt', 'decrypt'],
+    );
   }
 
   async aesGcmEncrypt(params: {
@@ -97,9 +109,13 @@ export class MobileVaultCrypto implements VaultCrypto {
     iv: Uint8Array;
   }): Promise<Uint8Array> {
     const encrypted = await subtle().encrypt(
-      { name: 'AES-GCM', iv: params.iv, tagLength: AUTH_TAG_BITS },
+      {
+        name: 'AES-GCM',
+        iv: bufferSource(params.iv),
+        tagLength: AUTH_TAG_BITS,
+      },
       params.key as AesGcmKey,
-      params.plaintext,
+      bufferSource(params.plaintext),
     );
     return new Uint8Array(encrypted);
   }
@@ -110,9 +126,13 @@ export class MobileVaultCrypto implements VaultCrypto {
     iv: Uint8Array;
   }): Promise<Uint8Array> {
     const decrypted = await subtle().decrypt(
-      { name: 'AES-GCM', iv: params.iv, tagLength: AUTH_TAG_BITS },
+      {
+        name: 'AES-GCM',
+        iv: bufferSource(params.iv),
+        tagLength: AUTH_TAG_BITS,
+      },
       params.key as AesGcmKey,
-      params.ciphertext,
+      bufferSource(params.ciphertext),
     );
     return new Uint8Array(decrypted);
   }
