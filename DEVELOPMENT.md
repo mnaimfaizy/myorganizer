@@ -267,10 +267,18 @@ brew install rbenv ruby-build
 rbenv install $(rbenv install -l | grep -E '^3\.[0-9]+\.[0-9]+$' | tail -1)
 ```
 
-Activate it in your shell, and add the `eval` line to your shell profile to make it stick:
+Activate rbenv and select the version it should use. Both halves matter: `rbenv init` alone falls back to the system Ruby unless a global or local version is set, so skipping the second command silently leaves you on 2.6:
 
 ```bash
-eval "$(rbenv init - "$(basename "$SHELL")")" && ruby -v
+eval "$(rbenv init - "$(basename "$SHELL")")" && rbenv global "$(rbenv versions --bare | tail -1)" && ruby -v
+```
+
+That must print a 3.x version. Add the `eval` line to your shell profile so it survives a new terminal — otherwise the next session drops back to the system Ruby and `bundle` fails again:
+
+```bash
+printf '
+eval "$(rbenv init - %s)"
+' "$(basename "$SHELL")" >> ~/."$(basename "$SHELL")rc"
 ```
 
 #### Installing pods
@@ -1146,11 +1154,13 @@ yarn nx graph --affected
 
 **Problem**: `Your Ruby version is 2.6.10, but your Gemfile specified >= 3.1.0`
 
-You are on the Ruby macOS ships, because no version manager is active in this shell. Install and activate one — see [One-time Ruby setup](#one-time-ruby-setup):
+You are on the Ruby macOS ships, because no version manager is active in this shell. This also appears as `Could not find 'bundler' (x.y.z) required by your Gemfile.lock`, which names bundler but means the same thing — the gems were installed under a Ruby you are no longer running. See [One-time Ruby setup](#one-time-ruby-setup):
 
 ```bash
-eval "$(rbenv init - "$(basename "$SHELL")")" && ruby -v
+eval "$(rbenv init - "$(basename "$SHELL")")" && rbenv global "$(rbenv versions --bare | tail -1)" && ruby -v
 ```
+
+If this keeps recurring in new terminals, the `eval` line is missing from your shell profile.
 
 **Problem**: `LoadError - cannot load such file -- kconv` (or another module that used to be in the standard library)
 
