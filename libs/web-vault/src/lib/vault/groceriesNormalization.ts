@@ -1,5 +1,6 @@
 import {
   randomId,
+  readVaultBlobRecords,
   type GroceriesVaultPayload,
   type CatalogItem,
   type ListLine,
@@ -268,7 +269,9 @@ function migrateLegacyToNewShape(legacyLists: any[]): {
   return { catalog, lists };
 }
 
-export function normalizeGroceries(raw: unknown): NormalizeGroceriesResult {
+export function normalizeGroceries(payload: unknown): NormalizeGroceriesResult {
+  const raw = readVaultBlobRecords(payload);
+
   // Handle null/undefined — return fresh empty payload
   if (raw == null) {
     return {

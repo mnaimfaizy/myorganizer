@@ -658,6 +658,49 @@ describe('normalizeGroceries', () => {
       expect(result.value).toEqual({ catalog: [], lists: [] });
       expect(result.changed).toBe(true);
     });
+
+    it('ADR 0054 envelope back-compat: returns same value and changed for bare legacy array as envelope', () => {
+      const legacyArray = [
+        {
+          id: 'list-1',
+          name: 'Weekly Shopping',
+          items: [
+            {
+              id: 'item-1',
+              name: 'Milk',
+              category: 'dairy',
+              price: 3.5,
+              checked: false,
+              createdAt: '2025-12-01T00:00:00.000Z',
+              updatedAt: '2025-12-01T00:00:00.000Z',
+            },
+          ],
+          createdAt: '2025-12-01T00:00:00.000Z',
+          updatedAt: '2025-12-01T00:00:00.000Z',
+        },
+      ];
+
+      const resultFromBare = normalizeGroceries(legacyArray);
+      const resultFromEnvelope = normalizeGroceries({
+        records: legacyArray,
+        deletions: {},
+      });
+
+      // Both should produce identical value and changed flag when processing the same legacy array
+      expect(resultFromEnvelope.value.catalog).toHaveLength(
+        resultFromBare.value.catalog.length,
+      );
+      expect(resultFromEnvelope.value.lists).toHaveLength(
+        resultFromBare.value.lists.length,
+      );
+      expect(resultFromEnvelope.value.lists[0].name).toBe(
+        resultFromBare.value.lists[0].name,
+      );
+      expect(resultFromEnvelope.value.lists[0].lines).toHaveLength(
+        resultFromBare.value.lists[0].lines.length,
+      );
+      expect(resultFromEnvelope.changed).toBe(resultFromBare.changed);
+    });
   });
 
   describe('changed flag accuracy', () => {
@@ -792,6 +835,67 @@ describe('normalizeGroceries', () => {
       expect(result.value.lists[0].lines).toHaveLength(1);
       expect(result.value.lists[0].lines[0].catalogItemId).toBe('cat-1');
       expect(result.changed).toBe(true);
+    });
+
+    it('ADR 0054 envelope back-compat: returns same value and changed for bare payload as envelope', () => {
+      const barePayload: GroceriesVaultPayload = {
+        catalog: [
+          {
+            id: 'cat-1',
+            name: 'Milk',
+            category: 'dairy',
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        lists: [
+          {
+            id: 'list-1',
+            name: 'Shopping',
+            lines: [
+              {
+                id: 'line-1',
+                catalogItemId: 'cat-1',
+                checked: false,
+                createdAt: '2026-01-01T00:00:00.000Z',
+                updatedAt: '2026-01-01T00:00:00.000Z',
+              },
+            ],
+            createdAt: '2026-01-01T00:00:00.000Z',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      };
+      const resultFromBare = normalizeGroceries(barePayload);
+      const resultFromEnvelope = normalizeGroceries({
+        records: barePayload,
+        deletions: {},
+      });
+      expect(resultFromEnvelope.value).toEqual(resultFromBare.value);
+      expect(resultFromEnvelope.changed).toBe(resultFromBare.changed);
+    });
+
+    it('ADR 0054 envelope back-compat: deletion log does not appear in results', () => {
+      const result = normalizeGroceries({
+        records: {
+          catalog: [{ name: 'Milk', category: 'dairy' }],
+          lists: [{ name: 'Shopping', lines: [] }],
+        },
+        deletions: { deletedItemId: '2026-01-01T00:00:00.000Z' },
+      });
+      expect(result.value.catalog).toHaveLength(1);
+      expect(result.value.catalog[0].name).toBe('Milk');
+      expect(result.value.lists).toHaveLength(1);
+    });
+
+    it('ADR 0054 envelope back-compat: handles null records like bare null', () => {
+      const resultFromNull = normalizeGroceries(null);
+      const resultFromNullEnvelope = normalizeGroceries({
+        records: null,
+        deletions: {},
+      });
+      expect(resultFromNullEnvelope.value).toEqual(resultFromNull.value);
+      expect(resultFromNullEnvelope.changed).toBe(resultFromNull.changed);
     });
   });
 });

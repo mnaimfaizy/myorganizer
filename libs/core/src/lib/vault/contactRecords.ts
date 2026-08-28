@@ -73,6 +73,15 @@ export type AddressRecord = {
   status: AddressStatus;
   usageLocations: UsageLocationRecord[];
   createdAt: IsoDateTimeString;
+  /**
+   * When this Address last changed — what merging resolves a collision by.
+   *
+   * Optional, and absent on every Address written before merging existed. A
+   * normalizer carries it through but never invents one: a fabricated instant
+   * claims an edit that never happened, and beats the copy that was really
+   * edited.
+   */
+  updatedAt?: IsoDateTimeString;
 };
 
 export type MobileNumberRecord = {
@@ -85,4 +94,6 @@ export type MobileNumberRecord = {
   phoneNumber?: string;
   usageLocations: UsageLocationRecord[];
   createdAt: IsoDateTimeString;
+  /** When this Mobile Number last changed. See `AddressRecord.updatedAt`. */
+  updatedAt?: IsoDateTimeString;
 };
