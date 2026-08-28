@@ -211,7 +211,7 @@ The React Native client in `apps/mobile`, sharing domain logic with the web app 
 _Avoid_: native app, RN app, the app
 
 **Platform Adapter**:
-A thin implementation of a shared abstract interface (e.g. `VaultCrypto`, `VaultStorage`, token storage) that supplies platform-specific behavior to otherwise platform-agnostic code.
+A thin implementation of a shared abstract interface (e.g. `VaultCrypto`, token storage) that supplies platform-specific behavior to otherwise platform-agnostic code. An interface earns the name once a platform implements it; a shape written ahead of its implementors is not a Platform Adapter, it is a guess.
 _Avoid_: shim, wrapper, provider
 
 **Vault Unlock**:
