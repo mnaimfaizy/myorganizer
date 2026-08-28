@@ -2967,7 +2967,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@craftzdog/react-native-buffer@npm:^6.1.2":
+"@craftzdog/react-native-buffer@npm:6.1.2, @craftzdog/react-native-buffer@npm:^6.1.2":
   version: 6.1.2
   resolution: "@craftzdog/react-native-buffer@npm:6.1.2"
   dependencies:
@@ -5816,6 +5816,7 @@ __metadata:
     "@ai-hero/sandcastle": "npm:0.12.0"
     "@babel/core": "npm:7.28.6"
     "@babel/preset-react": "npm:7.28.5"
+    "@craftzdog/react-native-buffer": "npm:6.1.2"
     "@driimus/nx-plugin-openapi": "npm:3.1.2"
     "@eslint/compat": "npm:2.0.1"
     "@eslint/js": "npm:9.39.2"

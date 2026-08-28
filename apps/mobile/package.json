@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
+    "@craftzdog/react-native-buffer": "*",
     "@react-native/metro-config": "*",
     "@react-navigation/native": "*",
     "@react-navigation/native-stack": "*",
