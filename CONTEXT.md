@@ -255,8 +255,12 @@ The record a Vault Blob keeps of which of its records were deleted, and when. It
 _Avoid_: tombstone log, graveyard, trash, deleted items
 
 **Sync Bookmark**:
-What one device records, per User and per Vault Blob Type, about its last successful Vault Push: which Ciphertext it sent, and the identity the server gave that Ciphertext back. A Vault Blob has unpushed changes when it no longer matches its Sync Bookmark — the state is derived from the Vault rather than flagged alongside it, so no edit can be stranded by a flag nobody set.
+What one device records, per User and per Vault Blob Type, about the Ciphertext it and the server last agreed on: which Ciphertext that was, and the identity the server gave it. A successful Vault Push sets it; so does taking the server's copy, since both leave the device holding exactly what the server holds. A Vault Blob has unpushed changes when it no longer matches its Sync Bookmark — the state is derived from the Vault rather than flagged alongside it, so no edit can be stranded by a flag nobody set. The recorded identity is also what makes the next push conditional, so a device cannot overwrite Ciphertext it has never seen.
 _Avoid_: dirty flag, sync state, pending queue, last-synced marker
+
+**Vault Converge**:
+Deciding what one Vault Blob Type's Ciphertext and the server's copy of it should become, and carrying that out: sending, taking, merging, asking, or doing nothing. Vault Push, Vault Pull and Vault Reconcile are three entries into the one convergence, not three convergences — a decision made in more than one place is a decision that disagrees with itself, which is how a keep-server reconcile destroyed grocery Ciphertext. How a given Vault Blob Type converges is pinned per type, and whether two sides may be merged at all is answered by decrypting the server's copy, never by comparing Vault Meta.
+_Avoid_: sync, resolve, merge (as the name of the whole act), two-way sync
 
 **Vault Reconcile**:
 The per-User comparison of a Local Vault against that User's server Ciphertext, run on sign-in. It is not a migration and has no one-time character: a User with no server Vault yet is having an ordinary first sync, and a User with no Vault on either side has nothing to reconcile. Divergence is never resolved silently — the User chooses which side is kept, and neither side is overwritten without that answer.

@@ -55,7 +55,7 @@ function defaultMetaConflictHandler(params: {
   }
 
   const overwrite = window.confirm(
-    'Your vault was updated in another session. Overwrite the server version with your local changes?'
+    'Your vault was updated in another session. Overwrite the server version with your local changes?',
   );
 
   return overwrite ? 'keep-local' : 'keep-remote';
@@ -71,7 +71,7 @@ function defaultBlobConflictHandler(params: {
   }
 
   const overwrite = window.confirm(
-    'Your vault data was updated in another session. Overwrite the server version with your local changes?'
+    'Your vault data was updated in another session. Overwrite the server version with your local changes?',
   );
 
   return overwrite ? 'keep-local' : 'keep-remote';
@@ -95,7 +95,7 @@ function toServerVaultBlob(data: GetVaultBlobResponse): ServerVaultBlob {
 }
 
 export async function getServerVaultMeta(
-  api: VaultApiLike
+  api: VaultApiLike,
 ): Promise<ServerVaultMeta | null> {
   try {
     const response = await api.getVaultMeta();
@@ -107,8 +107,11 @@ export async function getServerVaultMeta(
 }
 
 export async function getServerVaultBlob(
-  api: VaultApiLike,
-  type: VaultBlobType
+  // Narrower than `VaultApiLike` on purpose: reading one Vault Blob needs one
+  // method, and asking for the other three would make every caller hand over
+  // the ability to rewrite Vault Meta.
+  api: Pick<VaultApiLike, 'getVaultBlob'>,
+  type: VaultBlobType,
 ): Promise<ServerVaultBlob | null> {
   try {
     const response = await api.getVaultBlob({ type });

@@ -46,8 +46,23 @@ export type SyncBookmarkAccess = {
     blob: EncryptedBlob | undefined;
   }): Promise<boolean>;
   /**
-   * Advance the bookmark for `type` to `blob`. Call only after a confirmed
-   * successful Vault Push — there is no other way a bookmark moves.
+   * The ETag of the Ciphertext this owner's device and the server last agreed
+   * on for `type`, or `undefined` when they have never agreed on any.
+   *
+   * It is what a conditional push sends as `If-Match`, so the server can
+   * refuse a push that would overwrite Ciphertext this device has not seen.
+   * `undefined` is therefore not "no condition" — it says this device holds no
+   * evidence about the server's copy, and a caller has to go and look.
+   */
+  lastPushedEtag(options: { type: VaultRecordType }): string | undefined;
+  /**
+   * Advance the bookmark for `type` to `blob`, which the server now holds
+   * under `etag`.
+   *
+   * Call it only when that is a confirmed fact — after a successful Vault
+   * Push, or after adopting the server's Ciphertext wholesale. Both leave this
+   * device holding exactly what the server holds, which is what the bookmark
+   * records; nothing else moves it.
    */
   recordPushSuccess(options: {
     type: VaultRecordType;
@@ -67,6 +82,10 @@ export function createSyncBookmarkAccess(owner: string): SyncBookmarkAccess {
       const currentHash = await hashCiphertext(blob);
       const bookmark = readSyncBookmarks(owner)[type];
       return bookmark === undefined || bookmark.ciphertextHash !== currentHash;
+    },
+
+    lastPushedEtag({ type }) {
+      return readSyncBookmarks(owner)[type]?.etag;
     },
 
     async recordPushSuccess({ type, blob, etag }) {

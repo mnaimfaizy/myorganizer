@@ -19,6 +19,7 @@ export {
   createVaultHandle,
 } from './lib/vault/vaultHandle';
 export type { LocalVaultStatus, VaultHandle } from './lib/vault/vaultHandle';
+export * from './lib/vault/vaultConverge';
 export * from './lib/vault/vaultExportImport';
 export * from './lib/vault/vaultReconcile';
 export * from './lib/vault/vaultBlobFields';

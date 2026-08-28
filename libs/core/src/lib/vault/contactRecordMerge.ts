@@ -26,7 +26,10 @@ export function mergeAddresses(
   local: VaultBlobEnvelope<AddressRecord[]>,
   remote: VaultBlobEnvelope<AddressRecord[]>,
 ): VaultBlobEnvelope<AddressRecord[]> {
-  return mergeRecordsById(local, remote, contactChangedAt);
+  // Named explicitly: `contactChangedAt` reads either contact record, so left
+  // to infer, the record type widens to the union of both and the result stops
+  // being an Address blob.
+  return mergeRecordsById<AddressRecord>(local, remote, contactChangedAt);
 }
 
 /** Converges two copies of the `mobileNumbers` Vault Blob. See `mergeAddresses`. */
@@ -34,5 +37,5 @@ export function mergeMobileNumbers(
   local: VaultBlobEnvelope<MobileNumberRecord[]>,
   remote: VaultBlobEnvelope<MobileNumberRecord[]>,
 ): VaultBlobEnvelope<MobileNumberRecord[]> {
-  return mergeRecordsById(local, remote, contactChangedAt);
+  return mergeRecordsById<MobileNumberRecord>(local, remote, contactChangedAt);
 }

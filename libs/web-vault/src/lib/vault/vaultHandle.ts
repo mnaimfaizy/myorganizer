@@ -36,8 +36,17 @@ export type VaultHandle = LocalVaultAccess & {
    */
   hasUnsentChanges(type: VaultRecordType): Promise<boolean>;
   /**
-   * Advance this owner's Sync Bookmark for `type`. Call only after a
-   * confirmed successful Vault Push for the Ciphertext currently saved.
+   * The ETag of the Ciphertext this device and the server last agreed on for
+   * `type`, or `undefined` when they never have. A conditional push sends it
+   * as `If-Match`, so the server refuses a push over Ciphertext this device
+   * has not seen.
+   */
+  lastPushedEtag(type: VaultRecordType): string | undefined;
+  /**
+   * Advance this owner's Sync Bookmark for `type` to the Ciphertext currently
+   * saved, which the server now holds under `etag`. Call it only when that is
+   * a confirmed fact — after a successful Vault Push, or after adopting the
+   * server's copy.
    */
   recordPushSuccess(options: {
     type: VaultRecordType;
@@ -89,6 +98,9 @@ export function createVaultHandle(options: {
       const vault = access.loadVault();
       return bookmarks.hasUnsentChanges({ type, blob: vault?.data[type] });
     },
+    lastPushedEtag(type) {
+      return bookmarks.lastPushedEtag({ type });
+    },
     async recordPushSuccess({ type, etag }) {
       const vault = access.loadVault();
       const blob = vault?.data[type];
@@ -105,6 +117,7 @@ export function createVaultHandle(options: {
     unlockWithRecoveryKey: access.unlockWithRecoveryKey,
     changePassphrase: access.changePassphrase,
     loadDecryptedData: access.loadDecryptedData,
+    decryptCiphertext: access.decryptCiphertext,
     saveEncryptedData: access.saveEncryptedData,
   };
 }
