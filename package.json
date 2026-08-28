@@ -105,6 +105,7 @@
   },
   "private": true,
   "dependencies": {
+    "@craftzdog/react-native-buffer": "6.1.2",
     "@hookform/resolvers": "5.2.2",
     "@prisma/adapter-pg": "7.2.0",
     "@prisma/client": "7.2.0",
@@ -150,7 +151,6 @@
     "react-hook-form": "7.71.1",
     "react-native": "~0.79.3",
     "react-native-keychain": "10.0.0",
-    "react-native-mmkv": "4.3.1",
     "react-native-nitro-modules": "0.35.0",
     "react-native-quick-base64": "3.0.0",
     "react-native-quick-crypto": "1.1.5",
