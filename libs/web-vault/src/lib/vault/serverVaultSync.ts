@@ -95,7 +95,11 @@ function toServerVaultBlob(data: GetVaultBlobResponse): ServerVaultBlob {
 }
 
 export async function getServerVaultMeta(
-  api: VaultApiLike,
+  // Narrower than `VaultApiLike` for the same reason as `getServerVaultBlob`:
+  // reading Vault Meta needs one method, and asking for `putVaultMeta` would
+  // hand every caller the ability to push a local wrapping over the server's
+  // and undo a passphrase change made on another device.
+  api: Pick<VaultApiLike, 'getVaultMeta'>,
 ): Promise<ServerVaultMeta | null> {
   try {
     const response = await api.getVaultMeta();

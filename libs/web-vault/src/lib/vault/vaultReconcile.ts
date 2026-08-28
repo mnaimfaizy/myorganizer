@@ -14,11 +14,12 @@ import {
   putServerVaultMetaEtagAware,
 } from './serverVaultSync';
 import { EncryptedBlob, VaultStorageV1 } from './localVaultStorage';
+import { stableStringify } from './stableStringify';
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
 import {
   localToServerMeta,
-  normalizeEncryptedBlobV1,
   serverMetaToLocalVault,
+  takeServerBlobsUnderLocalWrapping,
   toEncryptedBlobV1,
 } from './vaultShapes';
 
@@ -54,53 +55,6 @@ export type ReconcileResult =
   /** Divergence was found and the User did not choose. Nothing was written. */
   | { kind: 'noop-conflict-deferred' }
   | { kind: 'noop-already-in-sync' };
-
-function stableStringify(value: unknown): string {
-  if (value === null) return 'null';
-  if (value === undefined) return 'null';
-
-  if (typeof value === 'number') {
-    if (Number.isNaN(value)) {
-      return '{"$number":"NaN"}';
-    }
-    if (value === Number.POSITIVE_INFINITY) {
-      return '{"$number":"Infinity"}';
-    }
-    if (value === Number.NEGATIVE_INFINITY) {
-      return '{"$number":"-Infinity"}';
-    }
-    return JSON.stringify(value);
-  }
-
-  if (typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) {
-    return `[${value.map((v) => stableStringify(v)).join(',')}]`;
-  }
-
-  const record = value as Record<string, unknown>;
-  const keys = Object.keys(record)
-    .filter((k) => record[k] !== undefined)
-    .sort();
-  return `{${keys
-    .map((k) => `${JSON.stringify(k)}:${stableStringify(record[k])}`)
-    .join(',')}}`;
-}
-
-function normalizeServerMeta(meta: VaultMetaV1): object {
-  return {
-    version: meta.version,
-    kdf_name: meta.kdf_name,
-    kdf_salt: meta.kdf_salt,
-    kdf_params: meta.kdf_params,
-    wrapped_mk_passphrase: normalizeEncryptedBlobV1(meta.wrapped_mk_passphrase),
-    wrapped_mk_recovery: normalizeEncryptedBlobV1(meta.wrapped_mk_recovery),
-  };
-}
-
-function normalizeLocalVaultAsServerShape(vault: VaultStorageV1): object {
-  const meta = localToServerMeta(vault);
-  return normalizeServerMeta(meta);
-}
 
 function normalizeServerBlob(value: EncryptedBlobV1 | null): object {
   if (!value) return { blob: null };
@@ -169,6 +123,12 @@ function comparableBlobs(
  * nothing to reconcile. Genuine divergence is never resolved silently — it
  * goes to `prompt`, and the caller's answer decides which side is kept. A
  * caller that answers `defer` leaves both sides exactly as they were.
+ *
+ * Reconcile decides Vault Blobs and only Vault Blobs. Vault Meta converges
+ * separately in `vaultMetaConverge.ts` ([ADR 0057](../../../../../docs/adr/0057-vault-meta-converges-separately-and-never-silently.md)),
+ * and no answer given here moves a wrapping on either side — the one
+ * exception being a server that holds no Vault Meta at all, where the first
+ * sync has nothing to override.
  */
 export async function reconcileVaultWithServer(options: {
   api: VaultApiLike;
@@ -214,10 +174,14 @@ export async function reconcileVaultWithServer(options: {
     throw error;
   }
 
-  const localMeta = localToServerMeta(localVault);
-
   if (!serverMeta) {
-    await putServerVaultMetaEtagAware({ api: options.api, meta: localMeta });
+    // The only Vault Meta write left in reconcile, and the only safe one:
+    // the server holds no wrapping at all, so there is nothing here to
+    // override and no other device whose passphrase change could be reverted.
+    await putServerVaultMetaEtagAware({
+      api: options.api,
+      meta: localToServerMeta(localVault),
+    });
 
     for (const type of VAULT_BLOB_TYPES) {
       const blob = localBlobFor(localVault, type);
@@ -235,15 +199,19 @@ export async function reconcileVaultWithServer(options: {
 
   const remoteBlobs = await fetchRemoteBlobs(options.api);
 
+  // Vault Blobs only. Vault Meta is deliberately absent from both sides of
+  // this comparison: it converges separately, on its own terms, in
+  // `vaultMetaConverge.ts` (ADR 0057). Comparing it here would make an
+  // ordinary passphrase change — which rewraps the same Master Key and leaves
+  // every Vault Blob byte-identical — read as whole-Vault divergence and fire
+  // the destructive prompt below.
   const localComparable = {
-    meta: normalizeLocalVaultAsServerShape(localVault),
     blobs: comparableBlobs((type) =>
       normalizeLocalBlobAsServerShape(localBlobFor(localVault, type)),
     ),
   };
 
   const remoteComparable = {
-    meta: normalizeServerMeta(serverMeta.meta),
     blobs: comparableBlobs((type) =>
       normalizeServerBlob(remoteBlobs[type] ?? null),
     ),
@@ -258,7 +226,7 @@ export async function reconcileVaultWithServer(options: {
 
   const decision = await options.prompt({
     message:
-      'We found encrypted vault data both locally and on the server, and they differ. Choose which version to keep.',
+      'Your encrypted vault data differs between this device and the server. Choose which version to keep. This does not change your passphrase on either side.',
     local: localVault,
     remote: { meta: serverMeta.meta, blobs: remoteBlobs },
   });
@@ -268,21 +236,19 @@ export async function reconcileVaultWithServer(options: {
   }
 
   if (decision === 'keep-server') {
-    const nextLocalVault = serverMetaToLocalVault({
-      meta: serverMeta.meta,
+    // This device's wrapping survives the answer. The User chose between two
+    // sets of Ciphertext, not between two passphrases.
+    const nextLocalVault = takeServerBlobsUnderLocalWrapping({
+      localVault,
       blobs: remoteBlobs,
     });
 
     return { kind: 'kept-server-overwrote-local', nextLocalVault };
   }
 
-  await putServerVaultMetaEtagAware({
-    api: options.api,
-    meta: localMeta,
-    ifMatch: serverMeta.etag,
-    onConflict: () => 'keep-local',
-  });
-
+  // Vault Blobs go up; Vault Meta does not. Pushing this device's wrapping
+  // here is how "keep this device's data" would silently revert a passphrase
+  // change made on another device — the destruction ADR 0057 exists to stop.
   for (const type of VAULT_BLOB_TYPES) {
     const remote = await getServerVaultBlob(options.api, type);
     const blob = localBlobFor(localVault, type);

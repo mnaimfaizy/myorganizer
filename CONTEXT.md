@@ -262,8 +262,16 @@ _Avoid_: dirty flag, sync state, pending queue, last-synced marker
 Deciding what one Vault Blob Type's Ciphertext and the server's copy of it should become, and carrying that out: sending, taking, merging, asking, or doing nothing. Vault Push, Vault Pull and Vault Reconcile are three entries into the one convergence, not three convergences — a decision made in more than one place is a decision that disagrees with itself, which is how a keep-server reconcile destroyed grocery Ciphertext. How a given Vault Blob Type converges is pinned per type, and whether two sides may be merged at all is answered by decrypting the server's copy, never by comparing Vault Meta.
 _Avoid_: sync, resolve, merge (as the name of the whole act), two-way sync
 
+**Vault Meta Converge**:
+Deciding whether this device starts using a wrapping set on another device, and carrying that out. Separate from Vault Converge and never an input to it: a Vault Meta that diverges leaves every Vault Blob exactly as mergeable as it was. It is the one convergence that cannot check its own answer — a wrapping cannot be verified without the passphrase it was derived from — so it never replaces a local wrapping without the User saying so, and adopting one is returned for the caller to save rather than written where it was decided.
+_Avoid_: meta sync, key sync, passphrase sync, vault meta reconcile
+
+**Vault Meta Change**:
+Which wrapping in a Vault Meta moved — the passphrase or the recovery key — and the thing a User is actually asked about when Vault Meta diverges. It is named rather than reduced to a boolean because "your vault differs" is not something a User can act on, while "your passphrase was changed on another device" is, and because a User whose passphrase changed elsewhere without their doing needs to hear which one to stop using.
+_Avoid_: meta conflict, key conflict, vault divergence, credential change
+
 **Vault Reconcile**:
-The per-User comparison of a Local Vault against that User's server Ciphertext, run on sign-in. It is not a migration and has no one-time character: a User with no server Vault yet is having an ordinary first sync, and a User with no Vault on either side has nothing to reconcile. Divergence is never resolved silently — the User chooses which side is kept, and neither side is overwritten without that answer.
+The per-User comparison of a Local Vault's Vault Blobs against that User's server Ciphertext, run on sign-in. It is not a migration and has no one-time character: a User with no server Vault yet is having an ordinary first sync, and a User with no Vault on either side has nothing to reconcile. Divergence is never resolved silently — the User chooses which side is kept, and neither side is overwritten without that answer. It decides Ciphertext only: no answer given here adopts a wrapping or reverts a passphrase change made elsewhere, and a Vault Meta is never an input to what it decides. It writes one, and only where there is none to overwrite — a server holding no Vault Meta at all is having a first sync.
 _Avoid_: vault migration, phase-1 migration, vault upgrade, sync migration
 
 **Master Key**:

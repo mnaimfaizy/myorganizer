@@ -13,6 +13,7 @@ import {
 } from '@myorganizer/web-pages/dashboard';
 
 import {
+  VaultMetaConvergeRunner,
   VaultPullRunner,
   VaultReconcileRunner,
   VaultSessionProvider,
@@ -28,6 +29,13 @@ export default function DashboardLayout({
       <SidebarProvider>
         <VaultSessionProvider>
           <VaultReconcileRunner />
+          {/*
+           * Mounted beside the reconcile runner, not inside it. Vault Meta
+           * converges on its own terms and cannot gate Vault Blob merging
+           * (ADR 0057), so a passphrase changed on another device raises its
+           * own prompt while every blob keeps merging normally.
+           */}
+          <VaultMetaConvergeRunner />
           <VaultPullRunner />
           <DashboardSidebar />
           <SidebarInset>

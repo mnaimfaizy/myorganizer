@@ -40,7 +40,7 @@ function makeLocalVault(
   };
 }
 
-function makeServerMeta(): VaultMetaV1 {
+function makeServerMeta(overrides: Partial<VaultMetaV1> = {}): VaultMetaV1 {
   return {
     version: 1,
     kdf_name: 'PBKDF2',
@@ -48,6 +48,7 @@ function makeServerMeta(): VaultMetaV1 {
     kdf_params: { hash: 'SHA-256', iterations: 310_000 },
     wrapped_mk_passphrase: { version: 1, iv: 'iv1', ciphertext: 'ct1' },
     wrapped_mk_recovery: { version: 1, iv: 'iv2', ciphertext: 'ct2' },
+    ...overrides,
   };
 }
 
@@ -248,7 +249,7 @@ describe('reconcileVaultWithServer', () => {
     expect(serverVaultSync.putServerVaultBlobEtagAware).not.toHaveBeenCalled();
   });
 
-  test('conflict: keep-local overwrites server meta/blobs (etag-aware)', async () => {
+  test('conflict: keep-local overwrites server blobs only, not meta (ADR 0057)', async () => {
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'server-etag',
       updatedAt: 't1',
@@ -275,19 +276,12 @@ describe('reconcileVaultWithServer', () => {
       prompt: () => 'keep-local',
     });
 
-    expect(serverVaultSync.putServerVaultMetaEtagAware).toHaveBeenCalledTimes(
-      1,
-    );
+    // Vault Meta is NOT written to avoid reverting a passphrase change made elsewhere
+    expect(serverVaultSync.putServerVaultMetaEtagAware).not.toHaveBeenCalled();
+    // Vault Blobs ARE written etag-aware as before
     expect(serverVaultSync.putServerVaultBlobEtagAware).toHaveBeenCalledTimes(
       1,
     );
-
-    const putMetaArgs =
-      serverVaultSync.putServerVaultMetaEtagAware.mock.calls[0][0];
-    expect(putMetaArgs.ifMatch).toBe('server-etag');
-    expect(putMetaArgs.meta.kdf_params.hash).toBe('SHA-256');
-    expect(putMetaArgs.meta.kdf_params.iterations).toBe(310_000);
-    expect(putMetaArgs.onConflict()).toBe('keep-local');
 
     const putBlobArgs =
       serverVaultSync.putServerVaultBlobEtagAware.mock.calls[0][0];
@@ -683,5 +677,114 @@ describe('reconcileVaultWithServer', () => {
     const expectedUploadedTypes = new Set(Object.values(VaultBlobType));
 
     expect(uploadedTypes).toEqual(expectedUploadedTypes);
+  });
+
+  // ===== Vault Meta independence tests (ADR 0057) =====
+
+  test('should not prompt when identical vault blobs with different passphrase wrapping (meta is separate concern)', async () => {
+    const localVault = makeLocalVault();
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      // Same blobs, different wrapped_mk_passphrase
+      meta: makeServerMeta({
+        wrapped_mk_passphrase: {
+          version: 1,
+          iv: 'different-iv',
+          ciphertext: 'different-ct',
+        },
+      }),
+    });
+
+    serverVaultSync.getServerVaultBlob.mockImplementation(
+      async (_api: unknown, type: VaultBlobType) => {
+        if (type === VaultBlobType.Addresses) {
+          return {
+            etag: 'b1',
+            updatedAt: 'bt1',
+            type,
+            blob: { version: 1, iv: 'aiv', ciphertext: 'act' },
+          };
+        }
+        return null;
+      },
+    );
+
+    const prompt = jest.fn(() => 'keep-server' as const);
+    const result = await reconcileVaultWithServer({
+      api: {} as unknown as ApiParam,
+      localVault,
+      prompt,
+    });
+
+    expect(result).toEqual({ kind: 'noop-already-in-sync' });
+    expect(prompt).not.toHaveBeenCalled();
+  });
+
+  test('should preserve local wrapping while taking server blobs when keep-server with both blobs and meta differing', async () => {
+    const localVault = makeLocalVault();
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      // Different meta
+      meta: makeServerMeta({
+        wrapped_mk_passphrase: {
+          version: 1,
+          iv: 'remote-iv',
+          ciphertext: 'remote-ct',
+        },
+        kdf_salt: 'remote-salt',
+      }),
+    });
+
+    // Different blobs
+    serverVaultSync.getServerVaultBlob.mockResolvedValue({
+      etag: 'b1',
+      updatedAt: 'bt1',
+      type: VaultBlobType.Addresses,
+      blob: { version: 1, iv: 'remote-addr-iv', ciphertext: 'remote-addr-ct' },
+    });
+
+    const result = await reconcileVaultWithServer({
+      api: {} as unknown as ApiParam,
+      localVault,
+      prompt: () => 'keep-server',
+    });
+
+    expect(result.kind).toBe('kept-server-overwrote-local');
+    if (result.kind === 'kept-server-overwrote-local') {
+      // Local wrapping is preserved (not adopted from server)
+      expect(result.nextLocalVault.kdf.salt).toBe('salt');
+      expect(result.nextLocalVault.masterKeyWrappedWithPassphrase).toEqual({
+        iv: 'iv1',
+        ciphertext: 'ct1',
+      });
+      // Server blobs are adopted
+      expect(result.nextLocalVault.data.addresses).toEqual({
+        iv: 'remote-addr-iv',
+        ciphertext: 'remote-addr-ct',
+      });
+    }
+  });
+
+  test('should upload both meta and blobs when server holds no vault meta on first sync', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue(null);
+
+    const localVault = makeLocalVault();
+
+    const result = await reconcileVaultWithServer({
+      api: {} as unknown as ApiParam,
+      localVault,
+      prompt: () => 'keep-local',
+    });
+
+    expect(result).toEqual({ kind: 'uploaded-local-to-server' });
+    // The one remaining safe meta write: server has nothing to override
+    expect(serverVaultSync.putServerVaultMetaEtagAware).toHaveBeenCalledTimes(
+      1,
+    );
+    expect(serverVaultSync.putServerVaultBlobEtagAware).toHaveBeenCalledTimes(
+      1,
+    );
   });
 });

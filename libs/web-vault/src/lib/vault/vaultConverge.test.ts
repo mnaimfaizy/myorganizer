@@ -33,7 +33,10 @@ if (!(globalThis as any).crypto?.subtle) {
 }
 
 import type { AxiosResponse } from 'axios';
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import {
+  VaultBlobType,
+  type GetVaultMetaResponse,
+} from '@myorganizer/app-api-client';
 import {
   type VaultBlobEnvelope,
   readDeletionLog,
@@ -47,6 +50,7 @@ import {
   type VaultBlobConvergePrompt,
 } from './vaultConverge';
 import type { ServerVaultBlob } from './serverVaultSync';
+import { convergeVaultMeta } from './vaultMetaConverge';
 import { serverEncryptedBlobToLocal, toEncryptedBlobV1 } from './vaultShapes';
 
 beforeEach(() => {
@@ -1858,6 +1862,128 @@ describe('convergeVaultBlob', () => {
     expect(records).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: 'task-3', title: 'Remote' }),
+      ]),
+    );
+  });
+
+  // ===== Independence test: blob convergence proceeds independently when meta diverges =====
+  test('blob convergence is never gated by meta divergence (ADR 0057)', async () => {
+    // Setup: create a vault handle with local Tasks data
+    const handle = await setupHandle('user-1', [
+      {
+        id: 'task-1',
+        title: 'Local task',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T10:00:00.000Z',
+      },
+    ]);
+
+    const localVault = handle.loadVault();
+    if (!localVault) throw new Error('Setup failed');
+
+    // Create a remote Tasks blob with different Ciphertext
+    const remoteBlob = await captureRemoteBlob(handle, [
+      {
+        id: 'task-2',
+        title: 'Remote task',
+        status: 'done',
+        priority: 'medium',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T09:00:00.000Z',
+      },
+    ]);
+
+    // Build api double with getVaultMeta, getVaultBlob, and putVaultBlob
+    // getVaultMeta will return a meta with diverged passphrase wrapping
+    const api = {
+      getVaultMeta: jest.fn(async () => {
+        return axiosResponse({
+          message: 'OK',
+          etag: 'etag-meta',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          meta: {
+            version: 1,
+            kdf_name: 'PBKDF2',
+            kdf_salt: localVault.kdf.salt,
+            kdf_params: {
+              hash: 'SHA-256',
+              iterations: localVault.kdf.iterations,
+            },
+            // Different wrapped_mk_passphrase (diverged meta)
+            wrapped_mk_passphrase: {
+              version: 1,
+              iv: 'remote-iv-passphrase',
+              ciphertext: 'remote-ct-passphrase',
+            },
+            wrapped_mk_recovery: {
+              version: 1,
+              iv: localVault.masterKeyWrappedWithRecoveryKey.iv,
+              ciphertext: localVault.masterKeyWrappedWithRecoveryKey.ciphertext,
+            },
+          },
+        } as unknown as GetVaultMetaResponse);
+      }),
+      getVaultBlob: jest.fn(async () => {
+        return formatGetVaultBlobResponse(remoteBlob);
+      }),
+      putVaultBlob: jest.fn(async () => {
+        return formatPutVaultBlobResponse('etag-merged');
+      }),
+    };
+
+    // 1. Call convergeVaultMeta with prompt returning 'defer'
+    const metaResult = await convergeVaultMeta({
+      api,
+      localVault,
+      prompt: async () => 'defer' as const,
+    });
+
+    // Assert meta converge saw the divergence and deferred it
+    expect(metaResult).toEqual({
+      kind: 'noop-deferred',
+      change: 'passphrase',
+    });
+
+    // Assert getVaultMeta was called exactly once
+    expect(api.getVaultMeta).toHaveBeenCalledTimes(1);
+
+    // 2. Then call convergeVaultBlob on the diverged blob
+    const blobOutcome = await convergeVaultBlob({
+      api: api as unknown as Parameters<typeof convergeVaultBlob>[0]['api'],
+      handle,
+      type: VaultBlobType.Tasks,
+      prompt: jest.fn() as VaultBlobConvergePrompt,
+    });
+
+    // 3. Assert getVaultMeta was still called exactly once (zero additional calls)
+    // This proves blob convergence never consults meta
+    expect(api.getVaultMeta).toHaveBeenCalledTimes(1);
+
+    // 4. Assert blob converges to 'merged' — the two records (local and remote)
+    // are by different ID, so mergeById keeps both
+    expect(blobOutcome).toEqual({
+      kind: 'merged',
+      etag: 'etag-merged',
+    });
+
+    // 5. Decrypt and verify both local and remote records survive
+    const decrypted = await handle.loadDecryptedData({
+      type: 'tasks',
+      defaultValue: null,
+    });
+    if (!decrypted) throw new Error('Failed to decrypt tasks after merge');
+    const records = readVaultBlobRecords(decrypted);
+
+    // Both task-1 and task-2 should be present
+    expect(records).toHaveLength(2);
+    expect(records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'task-1', title: 'Local task' }),
+        expect.objectContaining({ id: 'task-2', title: 'Remote task' }),
       ]),
     );
   });
