@@ -10,6 +10,15 @@ time and decrypts on device. There is no storage adapter and no write path. Addi
 decision to record, not an implementation detail to fill in — see
 [ADR 0047](../../../../docs/adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md).
 
+`crypto.ts` has a `crypto.web.ts` platform variant. Metro never selects it, so iOS and Android
+always get the native react-native-quick-crypto path; only the `mobile:build` Vite target picks it
+up, via the `.web.ts`-before-`.ts` ordering in `apps/mobile/vite.config.mts`. It exists because
+quick-crypto reaches react-native-nitro-modules and react-native-quick-base64, which deep-import
+`react-native/Libraries/*` and `TurboModuleRegistry` — neither of which react-native-web ships, so
+the web bundle cannot resolve them. The two paths are wire-compatible: WebCrypto's AES-GCM output
+is already `ciphertext || 16-byte authTag`, the same layout the native path assembles by hand.
+Change one and you must change the other.
+
 ## Commands
 
 - Test: `yarn nx test mobile-feat-vault`.
@@ -24,7 +33,9 @@ decision to record, not an implementation detail to fill in — see
 
 - Do not send decrypted vault data off the device.
 - Do not persist passphrases, recovery keys, or the Master Key in plaintext.
-- Do not import browser WebCrypto or `localStorage` helpers from `@myorganizer/web-vault`.
+- Do not import browser WebCrypto or `localStorage` helpers from `@myorganizer/web-vault`. The
+  WebCrypto in `crypto.web.ts` is a platform variant of this lib's own module, not a reach into the
+  web vault, and it is the only place in this lib where WebCrypto is allowed.
 - Do not add local vault persistence without a recorded decision. The web vault's owner-bound
   handle lives in `libs/web-vault` on purpose; do not revive a cross-platform storage interface to
   reach it.
