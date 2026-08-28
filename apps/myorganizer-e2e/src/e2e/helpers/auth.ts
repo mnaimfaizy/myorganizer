@@ -83,3 +83,35 @@ export async function waitForDashboardReady(page: Page): Promise<void> {
     page.getByRole('button', { name: 'Toggle Sidebar' }).first(),
   ).toBeVisible({ timeout: 60000 });
 }
+
+/**
+ * Wait for a full page reload triggered by a callback, then resolve once the
+ * dashboard shell is live.
+ *
+ * A same-document `waitFor()` cannot distinguish a pre-reload document from
+ * a post-reload one. This helper stamps a marker on the current `window`,
+ * runs the callback (which triggers the reload), then waits for the marker
+ * to vanish via `waitForFunction()`. `waitForFunction()` is resilient to
+ * navigation and re-evaluates in the new execution context, so the absence
+ * of the marker proves the reload committed. Then `waitForDashboardReady()`
+ * ensures the new document's shell has mounted (issue #557).
+ */
+export async function waitForReload(
+  page: Page,
+  callback: () => Promise<void>,
+): Promise<void> {
+  const marker = `__e2e_reload_marker_${Date.now()}`;
+  await page.evaluate((m) => {
+    (window as unknown as Record<string, boolean>)[m] = true;
+  }, marker);
+
+  await callback();
+
+  await page.waitForFunction(
+    (m) => !(window as unknown as Record<string, boolean>)[m],
+    marker,
+    { timeout: 60000 },
+  );
+
+  await waitForDashboardReady(page);
+}

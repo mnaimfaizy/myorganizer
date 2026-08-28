@@ -5,8 +5,8 @@ import {
   routeApi,
   submitLoginForm,
   UNCLAIMED_VAULT_KEY,
-  waitForDashboardReady,
   waitForOwnedVault,
+  waitForReload,
 } from './helpers';
 
 /**
@@ -886,12 +886,12 @@ test.describe('Multi-user vault isolation (E2E)', () => {
     // Click Delete button in the dialog
     const deleteButton = dialog.getByRole('button', { name: 'Delete' });
     await expect(deleteButton).toBeVisible();
-    await deleteButton.click();
 
-    // RemoveVaultCard triggers window.location.reload() after removal. The
-    // reload is complete when the dashboard shell has mounted again — a
-    // condition `networkidle` plus a sleep never actually checked (issue #524).
-    await waitForDashboardReady(page);
+    // RemoveVaultCard triggers window.location.reload() after removal. A
+    // same-document wait cannot distinguish the pre-reload document from the
+    // post-reload one; waitForReload() uses a marker and waitForFunction() to
+    // ensure the navigation commits before assertions resume (issue #557, see #524).
+    await waitForReload(page, () => deleteButton.click());
 
     // Verify User A's vault was removed
     const userAVaultAfterRemoval = await readOwnedVault(page, USER_A_ID);
