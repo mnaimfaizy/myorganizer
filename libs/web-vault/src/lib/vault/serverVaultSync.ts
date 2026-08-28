@@ -122,6 +122,44 @@ export async function getServerVaultBlob(
   }
 }
 
+/** What a conditional check of one Vault Blob Type found. */
+export type ServerVaultBlobCheck =
+  /** `ifNoneMatch` matched the server's ETag — nothing to do. */
+  | { kind: 'not-modified' }
+  /** The server holds no Ciphertext for this type. */
+  | { kind: 'absent' }
+  /** The server's Ciphertext moved (or `ifNoneMatch` was never given). */
+  | { kind: 'changed'; blob: ServerVaultBlob };
+
+/**
+ * Ask the server whether one Vault Blob Type's Ciphertext still matches
+ * `ifNoneMatch` — a Sync Bookmark's ETag, or `undefined` when this device
+ * holds none.
+ *
+ * This is Vault Pull's whole "did anything change" question, answered by a
+ * conditional GET rather than by fetching and comparing: a 304 costs no
+ * body and leaves nothing for the caller to do.
+ */
+export async function checkServerVaultBlob(
+  // Narrower than `VaultApiLike` for the same reason `getServerVaultBlob` is.
+  api: Pick<VaultApiLike, 'getVaultBlob'>,
+  type: VaultBlobType,
+  ifNoneMatch: string | undefined,
+): Promise<ServerVaultBlobCheck> {
+  try {
+    const response = await api.getVaultBlob({ type, ifNoneMatch });
+    return {
+      kind: 'changed',
+      blob: toServerVaultBlob(response.data as GetVaultBlobResponse),
+    };
+  } catch (error) {
+    const status = getHttpStatus(error);
+    if (status === 304) return { kind: 'not-modified' };
+    if (status === 404) return { kind: 'absent' };
+    throw error;
+  }
+}
+
 export type PutVaultMetaResult =
   | {
       kind: 'updated';

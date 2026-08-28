@@ -2,7 +2,7 @@
 
 ## Scope
 
-React UI, session provider, vault gate, and reconcile runner for the web vault.
+React UI, session provider, vault gate, reconcile runner, and pull runner for the web vault.
 
 ## Commands
 
