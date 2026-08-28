@@ -6,9 +6,7 @@ export {
   utf8ToBytes,
   bytesToUtf8,
 } from './crypto';
-export { MobileVaultStorage, mobileVaultStorage } from './storage';
 export {
-  VAULT_STORAGE_KEY,
   PBKDF2_ITERATIONS,
   PBKDF2_HASH,
   SALT_LENGTH,
