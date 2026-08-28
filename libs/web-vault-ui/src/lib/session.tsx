@@ -15,6 +15,7 @@ import {
   createVaultHandle,
   createVaultSyncQueue,
   type VaultHandle,
+  type VaultSyncQueue,
 } from '@myorganizer/web-vault';
 
 type VaultSessionContextValue = {
@@ -22,6 +23,8 @@ type VaultSessionContextValue = {
   setMasterKeyBytes: (value: Uint8Array | null) => void;
   lock: () => void;
   handle: VaultHandle | null;
+  /** The Vault Sync Queue `handle` reports to. Exposed for a sync status reading. */
+  syncQueue: VaultSyncQueue | null;
 };
 
 const VaultSessionContext = createContext<VaultSessionContextValue | null>(
@@ -91,8 +94,9 @@ export function VaultSessionProvider({
       setMasterKeyBytes,
       lock,
       handle,
+      syncQueue,
     }),
-    [currentMasterKeyBytes, setMasterKeyBytes, lock, handle],
+    [currentMasterKeyBytes, setMasterKeyBytes, lock, handle, syncQueue],
   );
 
   return (

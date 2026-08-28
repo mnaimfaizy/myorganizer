@@ -18,6 +18,16 @@
  * until a drain converges it, and a queue lost to a refresh costs a delay
  * rather than an edit, because the Sync Bookmark is what makes a Vault Blob
  * unsent and it is on disk.
+ *
+ * A failed send is not one thing — see `vaultSyncFailure.ts`. A transient
+ * failure (network, 5xx, or anything unclassified) re-marks its type and
+ * schedules an automatic retry with backoff. A session-ended failure
+ * (401/403) stops the whole drain in place: the remaining marked types are
+ * left marked, and nothing retries automatically until a caller drains again
+ * with a live Session. A rejected failure (422) is terminal — the server
+ * looked at this Ciphertext and refused it, and it will refuse the same bytes
+ * again, so the type is recorded as a terminal failure instead of being
+ * re-marked, and only a manual retry (`retryNow`) gives it another attempt.
  */
 import { VaultApi, VaultBlobType } from '@myorganizer/app-api-client';
 
@@ -29,6 +39,7 @@ import {
   type VaultBlobConvergePrompt,
 } from './vaultConverge';
 import type { VaultSyncSink } from './vaultHandle';
+import { classifyVaultSyncFailure } from './vaultSyncFailure';
 
 /**
  * When a drain triggered by a save should run.
@@ -55,6 +66,41 @@ export type VaultSyncDrainScheduler = (drain: () => void) => void;
 export const VAULT_SYNC_DRAIN_DELAY_MS = 1_000;
 
 /**
+ * When an automatic retry after a transient failure should run, given how
+ * many consecutive transient-only drains have happened for this queue.
+ *
+ * Separate from {@link VaultSyncDrainScheduler}: a save schedules the first
+ * attempt, this schedules the retries a failed attempt earns. Injected for
+ * the same reason — the backoff curve is a latency choice, never a
+ * correctness one, since a type stays marked (or terminal) regardless of how
+ * long the wait is.
+ */
+export type VaultSyncRetryScheduler = (
+  retry: () => void,
+  attempt: number,
+) => void;
+
+/** The first automatic retry's delay, in milliseconds. */
+export const VAULT_SYNC_RETRY_BASE_DELAY_MS = 2_000;
+
+/** The longest an automatic retry ever waits, however many attempts fail. */
+export const VAULT_SYNC_RETRY_MAX_DELAY_MS = 60_000;
+
+/** Exponential backoff, capped, so a device offline for an hour is not
+ * hammering the server every two seconds nor waiting an unbounded time to
+ * notice reconnection. */
+function retryDelayFor(attempt: number): number {
+  return Math.min(
+    VAULT_SYNC_RETRY_MAX_DELAY_MS,
+    VAULT_SYNC_RETRY_BASE_DELAY_MS * 2 ** attempt,
+  );
+}
+
+const retryAfterBackoff: VaultSyncRetryScheduler = (retry, attempt) => {
+  setTimeout(retry, retryDelayFor(attempt));
+};
+
+/**
  * What one drain did.
  *
  * `converged` is every type this drain put through the primitive, whatever it
@@ -71,6 +117,42 @@ export type VaultSyncDrainResult = {
   failed: { type: VaultBlobType; error: unknown }[];
 };
 
+/**
+ * A Vault Blob Type the server has refused outright (422) — see
+ * `vaultSyncFailure.ts`. Carries the HTTP status and nothing else: no error
+ * message, no response body. The queue decided *that* this type is stuck, not
+ * *what to tell the User about it* — that is a presentation concern, built
+ * from `type` alone by whoever renders the status, which is what keeps
+ * whatever the server chose to say in a 422 body out of anything a User
+ * reads.
+ */
+export type VaultSyncTerminalFailure = {
+  type: VaultBlobType;
+  status: number;
+};
+
+/**
+ * What the queue currently knows, read without draining anything.
+ *
+ * This is the "last drain outcome" half of sync status — the other half is
+ * the Sync Bookmark comparison a caller makes separately per type. Nothing
+ * here is persisted; it lives only as long as this queue instance does, which
+ * is exactly as long as one browser session's Vault Handle does.
+ */
+export type VaultSyncQueueStatus = {
+  /** Types marked unsent and eligible for another attempt — automatic or manual. */
+  unsentTypes: VaultBlobType[];
+  /** Types the server refused outright. Not included in `unsentTypes`. */
+  terminalFailures: VaultSyncTerminalFailure[];
+  /**
+   * Set once a drain met a 401/403. Draining does not resume on its own —
+   * see `retryNow`.
+   */
+  sessionEnded: boolean;
+  /** Whether an automatic retry is currently waiting on its backoff delay. */
+  retryScheduled: boolean;
+};
+
 export type VaultSyncQueue = VaultSyncSink & {
   /** The Vault Blob Types marked unsent and not yet converged. */
   unsentTypes(): VaultBlobType[];
@@ -83,6 +165,25 @@ export type VaultSyncQueue = VaultSyncSink & {
    * an explicit "sync now"; a save never awaits one.
    */
   drain(handle: ConvergingVaultHandle): Promise<VaultSyncDrainResult>;
+  /** Everything the queue currently knows, for a status reading. */
+  status(): VaultSyncQueueStatus;
+  /**
+   * A User-initiated retry: every terminal failure is given another attempt
+   * alongside whatever is already unsent, the backoff clock resets, and a
+   * Session-ended stop is lifted so the attempt actually reaches the network
+   * rather than being skipped as already-known-stopped.
+   *
+   * Not automatic and never scheduled by the queue itself — a terminal
+   * failure earns exactly the attempts a User asks for, never a retry loop
+   * dressed up as one.
+   */
+  retryNow(handle: ConvergingVaultHandle): Promise<VaultSyncDrainResult>;
+  /**
+   * Be told whenever `status()` might read differently — a mark, a drain
+   * finishing, or a retry being scheduled or firing. Returns a function that
+   * stops listening.
+   */
+  subscribe(listener: () => void): () => void;
 };
 
 const drainAfterDelay: VaultSyncDrainScheduler = (drain) => {
@@ -95,11 +196,19 @@ export function createVaultSyncQueue(options: {
   /** Asked only for the Vault Blob Types pinned `promptOnConflict`. */
   prompt: VaultBlobConvergePrompt;
   schedule?: VaultSyncDrainScheduler;
+  retrySchedule?: VaultSyncRetryScheduler;
 }): VaultSyncQueue {
   const schedule = options.schedule ?? drainAfterDelay;
+  const retrySchedule = options.retrySchedule ?? retryAfterBackoff;
 
   /** The whole of the queue's state: which types are unsent. No Ciphertext. */
   const unsent = new Set<VaultBlobType>();
+  /** Types the server refused outright. Disjoint from `unsent`. */
+  const terminal = new Map<VaultBlobType, VaultSyncTerminalFailure>();
+  let sessionEnded = false;
+  let retryScheduled = false;
+  /** How many consecutive drains ended with a transient failure left over. */
+  let retryAttempt = 0;
   let scheduled = false;
   /**
    * The handle that reported the most recent change, drained by the scheduled
@@ -114,6 +223,11 @@ export function createVaultSyncQueue(options: {
    * be a 409 that this device caused itself.
    */
   let tail: Promise<unknown> = Promise.resolve();
+
+  const listeners = new Set<() => void>();
+  function notify(): void {
+    for (const listener of listeners) listener();
+  }
 
   async function runDrain(
     handle: ConvergingVaultHandle,
@@ -164,16 +278,76 @@ export function createVaultSyncQueue(options: {
           stalled.add(type);
         }
       } catch (error) {
-        // Nothing local moved — convergence writes local before it sends, or
-        // not at all — so re-marking says only that a later drain should try
-        // again.
+        result.failed.push({ type, error });
+        const failureClass = classifyVaultSyncFailure(error);
+
+        if (failureClass === 'session-ended') {
+          // The Ciphertext still has not reached the server, so the type
+          // stays marked — but nothing else in `unsent` gets a turn this
+          // drain. Retrying against a Session that is already gone would
+          // only repeat the same 401/403 for every remaining type.
+          unsent.add(type);
+          sessionEnded = true;
+          break;
+        }
+
+        if (failureClass === 'rejected') {
+          // Terminal: the server looked at this Ciphertext specifically and
+          // refused it, and will refuse the same bytes again. Recording it
+          // here — never back into `unsent` — is what stops a naive backoff
+          // from retrying a 422 forever while the status reads "not synced
+          // yet" for a save that will never land.
+          terminal.set(type, { type, status: getStatus(error) });
+          continue;
+        }
+
+        // Transient: nothing about this Ciphertext was rejected, the attempt
+        // just did not land. Re-mark for a later drain, automatic or manual.
         unsent.add(type);
         stalled.add(type);
-        result.failed.push({ type, error });
       }
     }
 
     return result;
+  }
+
+  function getStatus(error: unknown): number {
+    // classifyVaultSyncFailure already confirmed this is a 'rejected'
+    // failure, which only happens for a numeric 422 status.
+    return (
+      (error as { response?: { status?: number } })?.response?.status ?? 422
+    );
+  }
+
+  function afterDrain(
+    handle: ConvergingVaultHandle,
+    result: VaultSyncDrainResult,
+  ): void {
+    notify();
+
+    if (sessionEnded) {
+      retryScheduled = false;
+      return;
+    }
+
+    const hasTransientFailure = result.failed.some(
+      (entry) => classifyVaultSyncFailure(entry.error) === 'transient',
+    );
+
+    if (!hasTransientFailure) {
+      retryAttempt = 0;
+      retryScheduled = false;
+      return;
+    }
+
+    retryScheduled = true;
+    const attempt = retryAttempt;
+    retryAttempt += 1;
+    notify();
+    retrySchedule(() => {
+      retryScheduled = false;
+      void drain(handle);
+    }, attempt);
   }
 
   function drain(handle: ConvergingVaultHandle): Promise<VaultSyncDrainResult> {
@@ -185,13 +359,24 @@ export function createVaultSyncQueue(options: {
       () => undefined,
       () => undefined,
     );
+    // Scheduling the follow-up (retry or none) never blocks the caller's
+    // await on this drain's own result.
+    void result.then(
+      (drained) => afterDrain(handle, drained),
+      () => undefined,
+    );
     return result;
   }
 
   return {
     vaultBlobChanged({ type, handle }) {
+      // A fresh edit deserves a fresh attempt: a type that was terminal
+      // because *that* Ciphertext was refused says nothing about whether the
+      // new Ciphertext will be too.
+      terminal.delete(type);
       unsent.add(type);
       lastReporter = handle;
+      notify();
 
       // One scheduled drain per turn, however many types were marked in it.
       // The drain converges every marked type, so a second would find nothing.
@@ -208,5 +393,32 @@ export function createVaultSyncQueue(options: {
     },
 
     drain,
+
+    status() {
+      return {
+        unsentTypes: [...unsent],
+        terminalFailures: [...terminal.values()],
+        sessionEnded,
+        retryScheduled,
+      };
+    },
+
+    retryNow(handle) {
+      for (const type of terminal.keys()) {
+        unsent.add(type);
+      }
+      terminal.clear();
+      sessionEnded = false;
+      retryAttempt = 0;
+      notify();
+      return drain(handle);
+    },
+
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
   };
 }

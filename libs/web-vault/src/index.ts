@@ -25,7 +25,9 @@ export type {
 } from './lib/vault/vaultHandle';
 export * from './lib/vault/vaultConverge';
 export * from './lib/vault/vaultMetaConverge';
+export * from './lib/vault/vaultSyncFailure';
 export * from './lib/vault/vaultSyncQueue';
+export * from './lib/vault/vaultSyncStatus';
 export * from './lib/vault/vaultPullCheck';
 export * from './lib/vault/vaultPullTrigger';
 export * from './lib/vault/vaultExportImport';
