@@ -483,8 +483,11 @@ test.describe('Groceries Items (E2E)', () => {
     // Find and check the checkbox by aria-label
     const checkbox = page.getByRole('checkbox', { name: /Toggle Cucumber/ });
     await expect(checkbox).toBeVisible({ timeout: 30000 });
-    await checkbox.check();
-    await expect(checkbox).toBeChecked();
+    // Use click + expect instead of check() because GroceryListView.handleToggleChecked
+    // is async and must persist through the vault before `checked` re-renders.
+    // Playwright's check() does not retry its state verification (issue #557).
+    await checkbox.click();
+    await expect(checkbox).toBeChecked({ timeout: 30000 });
 
     // Visual change: name should have line-through class.
     // The line-through is applied to the span containing the item name, and
@@ -538,10 +541,10 @@ test.describe('Groceries Items (E2E)', () => {
 
     const chk = page.getByRole('checkbox', { name: /Toggle Alpha v2/ });
     await expect(chk).toBeVisible({ timeout: 30000 });
-    await chk.check();
-    await expect(chk).toBeChecked();
-    await chk.uncheck();
-    await expect(chk).not.toBeChecked();
+    await chk.click();
+    await expect(chk).toBeChecked({ timeout: 30000 });
+    await chk.click();
+    await expect(chk).not.toBeChecked({ timeout: 30000 });
 
     await removeLineViaMenu(page, 'Alpha v2');
     await expect(
