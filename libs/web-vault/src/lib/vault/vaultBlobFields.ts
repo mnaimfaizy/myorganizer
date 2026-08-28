@@ -59,6 +59,36 @@ export const VAULT_BLOB_FIELDS = {
   Record<VaultBlobType, CoreVaultRecordType>;
 
 /**
+ * The Local Vault fields some Vault Blob Type actually maps onto — read off
+ * the pin rather than listed, so it shrinks the moment the pin does.
+ */
+type MappedVaultRecordType = (typeof VAULT_BLOB_FIELDS)[VaultBlobType];
+
+/**
+ * The Vault Blob Type each Local Vault field carries, derived by inverting the
+ * table above rather than written out a second time.
+ *
+ * A Local Vault write names a field; convergence names a Vault Blob Type. The
+ * Vault Handle's sync sink is handed the first and has to report the second,
+ * and inverting the pin is how it does that. A hand-written second table would
+ * be exactly the shape ADR 0053 forbids: a seventh member could be present in
+ * one direction and missing from the other, and the missing direction is the
+ * one that silently stops synchronising.
+ *
+ * Typed by the fields the pin covers, not by every `VaultRecordType`, and that
+ * is the guard. `Object.fromEntries` cannot promise totality, so claiming
+ * `Record<VaultRecordType, …>` here would be an assertion the compiler never
+ * checks — and an uncovered field would reach the sink as `type: undefined`,
+ * which is a Vault Blob Type that silently never synchronises. Declared this
+ * way, a field no Vault Blob Type maps onto — a seventh field, or two blob
+ * types collapsed onto one field — instead fails to compile at the call site
+ * that indexes this table with a `VaultRecordType`.
+ */
+export const VAULT_BLOB_TYPE_BY_FIELD = Object.fromEntries(
+  Object.entries(VAULT_BLOB_FIELDS).map(([type, field]) => [field, type]),
+) as Record<MappedVaultRecordType, VaultBlobType>;
+
+/**
  * A merge of two copies of one Vault Blob's decrypted payload.
  *
  * Both sides arrive as `VaultBlobEnvelope<unknown>` because that is what a

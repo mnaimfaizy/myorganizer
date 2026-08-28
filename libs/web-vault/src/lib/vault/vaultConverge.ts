@@ -6,9 +6,10 @@
  * decides between sending, taking, merging, asking, and doing nothing.
  *
  * Vault Push, Vault Pull and Vault Reconcile become three entries into this
- * function, never three implementations of it — #549, #552 and #554 wire them
- * to it, and until they do the old decision sites are still live. Triplicating
- * the decision is what
+ * function, never three implementations of it. Vault Push is wired: the Vault
+ * Handle's sync sink (`vaultSyncQueue.ts`) drains through here. #552 and #554
+ * bring the other two, and until they do the old decision sites are still
+ * live. Triplicating the decision is what
  * [#512](https://github.com/mnaimfaizy/myorganizer/issues/512) was: four
  * hand-written fan-outs that agreed about five Vault Blob Types and destroyed
  * the sixth. See [ADR 0054](../../../../../docs/adr/0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md).

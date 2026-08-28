@@ -10,7 +10,12 @@ import React, {
 } from 'react';
 
 import { getCurrentUser } from '@myorganizer/auth';
-import { createVaultHandle, type VaultHandle } from '@myorganizer/web-vault';
+import {
+  createVaultApi,
+  createVaultHandle,
+  createVaultSyncQueue,
+  type VaultHandle,
+} from '@myorganizer/web-vault';
 
 type VaultSessionContextValue = {
   masterKeyBytes: Uint8Array | null;
@@ -50,13 +55,35 @@ export function VaultSessionProvider({
     }
   }
 
+  // Keyed on `owner` alone, unlike the handle below: locking and unlocking
+  // build a new handle, and a queue rebuilt with it would drop the types an
+  // edit had marked but no drain had sent yet. Those types are still unsent —
+  // the Sync Bookmark says so — but nothing would come back for them until the
+  // next edit or the next reconcile.
+  const syncQueue = useMemo(() => {
+    if (owner === null) return null;
+
+    return createVaultSyncQueue({
+      api: createVaultApi(),
+      // A push does not prompt. The Vault Blob Types pinned `promptOnConflict`
+      // reach this on a genuine conflict, and deferring writes nothing on
+      // either side, so the divergence survives for the reconcile on the next
+      // sign-in to put to the User with the dialog built for it.
+      prompt: () => 'defer',
+    });
+  }, [owner]);
+
   // Construct the handle
   const handle = useMemo<VaultHandle | null>(() => {
     if (owner === null) {
       return null;
     }
-    return createVaultHandle({ owner, masterKeyBytes: currentMasterKeyBytes });
-  }, [owner, currentMasterKeyBytes]);
+    return createVaultHandle({
+      owner,
+      masterKeyBytes: currentMasterKeyBytes,
+      syncSink: syncQueue,
+    });
+  }, [owner, currentMasterKeyBytes, syncQueue]);
 
   const value = useMemo<VaultSessionContextValue>(
     () => ({

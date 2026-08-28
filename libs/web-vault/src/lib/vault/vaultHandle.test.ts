@@ -1933,4 +1933,287 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       expect(readSyncBookmarks('user-a')).toEqual({});
     });
   });
+
+  // Test 25: Vault Sync Sink — fire-and-forget sync notifications
+  describe('Vault Sync Sink (VaultSyncSink)', () => {
+    async function createInitializedUnlockedHandleWithSink(
+      owner: string,
+      syncSink: { vaultBlobChanged: jest.Mock },
+    ) {
+      const handle = createVaultHandle({ owner, syncSink });
+      await handle.initialize({ passphrase: 'test-pass' });
+      await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
+      return handle;
+    }
+
+    test('1: omitting syncSink leaves behavior exactly unchanged', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await handle.initialize({ passphrase: 'test-pass' });
+      await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
+
+      const taskValue = [{ id: '1', title: 'Task 1' }];
+      await handle.saveEncryptedData({
+        type: 'tasks',
+        value: taskValue,
+      });
+
+      // Should round-trip the value without any sink involvement
+      const loaded = await handle.loadDecryptedData({
+        type: 'tasks',
+        defaultValue: [],
+      });
+      expect(loaded).toEqual(taskValue);
+    });
+
+    test('2: saveEncryptedData calls sink once with correct Vault Blob Type', async () => {
+      const syncSink = {
+        vaultBlobChanged: jest.fn(),
+      };
+      const handleWithSink = await createInitializedUnlockedHandleWithSink(
+        'user-a',
+        syncSink,
+      );
+
+      const taskValue = [{ id: '1', title: 'Task 1' }];
+      await handleWithSink.saveEncryptedData({
+        type: 'tasks',
+        value: taskValue,
+      });
+
+      // Sink should be called exactly once with type 'tasks' (VaultBlobType.Tasks)
+      expect(syncSink.vaultBlobChanged).toHaveBeenCalledTimes(1);
+      expect(syncSink.vaultBlobChanged).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'tasks',
+        }),
+      );
+    });
+
+    test('3: field vocabulary is translated from Local Vault field to Vault Blob Type', async () => {
+      const syncSink = {
+        vaultBlobChanged: jest.fn(),
+      };
+      const handleWithSink = await createInitializedUnlockedHandleWithSink(
+        'user-a',
+        syncSink,
+      );
+
+      const mobileValue = [{ id: '1', number: '555-1234' }];
+      await handleWithSink.saveEncryptedData({
+        type: 'mobileNumbers',
+        value: mobileValue,
+      });
+
+      // Sink should receive VaultBlobType.MobileNumbers (which is 'mobileNumbers')
+      expect(syncSink.vaultBlobChanged).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'mobileNumbers',
+        }),
+      );
+    });
+
+    test('4: handle passed to sink is the exact same object reference', async () => {
+      let capturedHandle: unknown;
+      const syncSink = {
+        vaultBlobChanged: jest.fn((change) => {
+          capturedHandle = change.handle;
+        }),
+      };
+      const handleWithSink = await createInitializedUnlockedHandleWithSink(
+        'user-a',
+        syncSink,
+      );
+
+      await handleWithSink.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1' }],
+      });
+
+      // The handle passed to the sink must be the exact same object reference
+      expect(capturedHandle).toBe(handleWithSink);
+    });
+
+    test('5: Local Vault is already committed when sink is invoked (local-commit-first)', async () => {
+      let vaultAtSinkTime: VaultStorageV1 | null = null;
+      const syncSink = {
+        vaultBlobChanged: jest.fn((change) => {
+          // Capture the vault state at the moment the sink is called
+          vaultAtSinkTime = change.handle.loadVault();
+        }),
+      };
+      const handleWithSink = await createInitializedUnlockedHandleWithSink(
+        'user-a',
+        syncSink,
+      );
+
+      // Save initial data to establish a pre-save ciphertext
+      await handleWithSink.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1' }],
+      });
+      const preSaveCiphertext = handleWithSink.loadVault()?.data.tasks;
+
+      // Now save different data, which will trigger the sink
+      const newTaskValue = [{ id: '2', title: 'Task 2' }];
+      await handleWithSink.saveEncryptedData({
+        type: 'tasks',
+        value: newTaskValue,
+      });
+
+      // Verify that the vault captured inside the sink already holds the new ciphertext
+      expect(vaultAtSinkTime).not.toBeNull();
+      if (vaultAtSinkTime) {
+        const vault: VaultStorageV1 = vaultAtSinkTime;
+        // Assert the ciphertext is different from before the save (proves new data was written)
+        expect(vault.data.tasks).not.toEqual(preSaveCiphertext);
+        // And that it matches what we have after the save (proves sink saw the finished write)
+        expect(vault.data.tasks).toEqual(
+          handleWithSink.loadVault()?.data.tasks,
+        );
+      }
+    });
+
+    test('6: saveEncryptedData resolves even if sink returns non-settling promise', async () => {
+      const syncSink = {
+        vaultBlobChanged: jest.fn(() => {
+          // Return a promise that never settles
+          return new Promise(() => {
+            // Never resolves or rejects
+          });
+        }),
+      };
+      const handleWithSink = await createInitializedUnlockedHandleWithSink(
+        'user-a',
+        syncSink,
+      );
+
+      // This should resolve despite the sink returning a non-settling promise
+      await expect(
+        handleWithSink.saveEncryptedData({
+          type: 'tasks',
+          value: [{ id: '1', title: 'Task 1' }],
+        }),
+      ).resolves.toBeUndefined();
+    });
+
+    test('7: sink throwing an error does not fail the save', async () => {
+      const syncSink = {
+        vaultBlobChanged: jest.fn(() => {
+          throw new Error('sink exploded');
+        }),
+      };
+      const handleWithSink = await createInitializedUnlockedHandleWithSink(
+        'user-a',
+        syncSink,
+      );
+
+      // Save should resolve even if sink throws
+      await expect(
+        handleWithSink.saveEncryptedData({
+          type: 'tasks',
+          value: [{ id: '1', title: 'Task 1' }],
+        }),
+      ).resolves.toBeUndefined();
+
+      // But the data should still be saved and readable
+      const loaded = await handleWithSink.loadDecryptedData({
+        type: 'tasks',
+        defaultValue: [],
+      });
+      expect(loaded).toEqual([{ id: '1', title: 'Task 1' }]);
+    });
+
+    test('8: repeated saveEncryptedData calls report each time', async () => {
+      const syncSink = {
+        vaultBlobChanged: jest.fn(),
+      };
+      const handleWithSink = await createInitializedUnlockedHandleWithSink(
+        'user-a',
+        syncSink,
+      );
+
+      // Save the same type three times
+      await handleWithSink.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1' }],
+      });
+      await handleWithSink.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '2', title: 'Task 2' }],
+      });
+      await handleWithSink.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '3', title: 'Task 3' }],
+      });
+
+      // Sink should be called three times (no coalescing at handle level)
+      expect(syncSink.vaultBlobChanged).toHaveBeenCalledTimes(3);
+    });
+
+    test('9: saveVault does not report to sink', async () => {
+      const syncSink = {
+        vaultBlobChanged: jest.fn(),
+      };
+      const handleWithSink = createVaultHandle({
+        owner: 'user-a',
+        masterKeyBytes: new Uint8Array([1, 2, 3, 4]),
+        syncSink,
+      });
+
+      const vault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {
+          tasks: {
+            iv: 'dGFza3MtaXY=',
+            ciphertext: 'dGFza3MtY3Q=',
+          },
+        },
+      };
+
+      // Call saveVault (not saveEncryptedData)
+      handleWithSink.saveVault(vault);
+
+      // Sink should not be called
+      expect(syncSink.vaultBlobChanged).not.toHaveBeenCalled();
+
+      // But vault should still be written
+      expect(handleWithSink.loadVault()).toEqual(vault);
+    });
+
+    test('10: locked handle rejects saveEncryptedData without calling sink', async () => {
+      const syncSink = {
+        vaultBlobChanged: jest.fn(),
+      };
+      // Create a locked handle (no masterKeyBytes, no unlock)
+      const handleWithSink = createVaultHandle({
+        owner: 'user-a',
+        syncSink,
+      });
+
+      // Attempt to save while locked
+      await expect(
+        handleWithSink.saveEncryptedData({
+          type: 'tasks',
+          value: [{ id: '1', title: 'Task 1' }],
+        }),
+      ).rejects.toThrow(VaultLockedError);
+
+      // Sink should not have been called
+      expect(syncSink.vaultBlobChanged).not.toHaveBeenCalled();
+    });
+  });
 });

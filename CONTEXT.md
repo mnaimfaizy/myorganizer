@@ -274,6 +274,14 @@ _Avoid_: vault key, encryption key, secret key
 The object a caller holds to reach a Vault, bound at construction to one owner and one Master Key. Vault access is obtained, not invoked: there is no unbound vault function to call, so a Vault cannot be resolved without saying whose it is ([ADR 0047](docs/adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md)). Page libraries receive a handle and never learn who the User is.
 _Avoid_: vault client, vault service, vault accessor, vault context
 
+**Vault Sync Sink**:
+Where a Vault Handle reports that one Vault Blob Type changed. It belongs to the handle rather than to whoever writes through it: the handle is the only way to reach a Local Vault, so a sink held there cannot be gone around, and no write can forget to synchronise. It is told a Vault Blob Type and never Ciphertext, and nothing it does can fail the save that told it — the Local Vault is already written by then, and an edit reported as failed is a lie the User retypes.
+_Avoid_: save listener, push callback, change observer, write hook
+
+**Vault Sync Queue**:
+The Vault Blob Types a device has still to converge, held by a Vault Sync Sink. It is a wake-up list rather than the state it wakes for: whether a Vault Blob is unsent is derived from its Sync Bookmark, so a lost queue costs a delay and never an edit. It holds types and never Ciphertext, which is what makes ten saves to one type mark it once while the drain still carries the final state. Not a push queue — a drain converges, so it may equally take the server's copy or merge.
+_Avoid_: outbox, dirty queue, pending changes, write buffer, debounce buffer
+
 ## Planning & Orchestration
 
 **PRD Issue**:
