@@ -1,4 +1,11 @@
-import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+import {
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  jest,
+  test,
+} from '@jest/globals';
 import bodyParser from 'body-parser';
 import express from 'express';
 import request from 'supertest';
@@ -150,13 +157,18 @@ describe('VaultController (HTTP integration)', () => {
     ciphertext: Buffer.from('ciphertext').toString('base64'),
   };
 
+  let app: express.Application;
+
+  beforeAll(() => {
+    app = makeApp();
+  });
+
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   describe('auth requirements', () => {
     test('requires auth for GET /vault', async () => {
-      const app = makeApp();
       const vaultService = require('../services/VaultService').default;
 
       const res = await request(app).get('/vault');
@@ -167,7 +179,6 @@ describe('VaultController (HTTP integration)', () => {
     });
 
     test('requires auth for PUT /vault', async () => {
-      const app = makeApp();
       const vaultService = require('../services/VaultService').default;
 
       const res = await request(app).put('/vault').send({ meta });
@@ -178,7 +189,6 @@ describe('VaultController (HTTP integration)', () => {
     });
 
     test('requires auth for GET /vault/blob/:type', async () => {
-      const app = makeApp();
       const vaultService = require('../services/VaultService').default;
 
       const res = await request(app).get('/vault/blob/addresses');
@@ -189,7 +199,6 @@ describe('VaultController (HTTP integration)', () => {
     });
 
     test('requires auth for PUT /vault/blob/:type', async () => {
-      const app = makeApp();
       const vaultService = require('../services/VaultService').default;
 
       const res = await request(app)
@@ -202,7 +211,6 @@ describe('VaultController (HTTP integration)', () => {
     });
 
     test('requires auth for POST /vault/export', async () => {
-      const app = makeApp();
       const vaultService = require('../services/VaultService').default;
 
       const res = await request(app).post('/vault/export');
@@ -213,7 +221,6 @@ describe('VaultController (HTTP integration)', () => {
     });
 
     test('requires auth for POST /vault/import', async () => {
-      const app = makeApp();
       const vaultService = require('../services/VaultService').default;
 
       const res = await request(app)
@@ -226,7 +233,6 @@ describe('VaultController (HTTP integration)', () => {
     });
 
     test('returns 401 with Unauthorized when authenticated user has no id', async () => {
-      const app = makeApp();
       const vaultService = require('../services/VaultService').default;
 
       const res = await request(app)
@@ -240,8 +246,6 @@ describe('VaultController (HTTP integration)', () => {
   });
 
   test('returns 404 on missing vault meta', async () => {
-    const app = makeApp();
-
     const vaultService = require('../services/VaultService').default;
 
     vaultService.getVaultMeta.mockResolvedValueOnce({
@@ -259,8 +263,6 @@ describe('VaultController (HTTP integration)', () => {
   });
 
   test('passes If-Match to PUT /vault and returns 201 on create', async () => {
-    const app = makeApp();
-
     const vaultService = require('../services/VaultService').default;
 
     vaultService.putVaultMeta.mockResolvedValueOnce({
@@ -288,8 +290,6 @@ describe('VaultController (HTTP integration)', () => {
   });
 
   test('returns 422 when PUT /vault/blob/:type body type mismatches path type', async () => {
-    const app = makeApp();
-
     const vaultService = require('../services/VaultService').default;
 
     const res = await request(app)
@@ -303,8 +303,6 @@ describe('VaultController (HTTP integration)', () => {
   });
 
   test('returns 200 for GET /vault/blob/:type when service returns ok', async () => {
-    const app = makeApp();
-
     const vaultService = require('../services/VaultService').default;
 
     vaultService.getBlob.mockResolvedValueOnce({
