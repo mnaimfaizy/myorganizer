@@ -2,11 +2,26 @@ import { workspaceRoot } from '@nx/devkit';
 import { nxE2EPreset } from '@nx/playwright/preset';
 import { defineConfig, devices } from '@playwright/test';
 
-// For CI, you may want to set BASE_URL to the deployed application.
-const baseURL = process.env['BASE_URL'] || 'http://localhost:4200';
-
 /** Opt out of the production build for fast local iteration (ADR 0050). */
 const useDevServer = Boolean(process.env['E2E_DEV_SERVER']);
+
+/**
+ * The two modes listen on different ports, so that reusing a server can only
+ * ever reuse one started for the mode asking.
+ *
+ * Sharing 4200 meant the dev loop would happily adopt a leftover production
+ * server — or the one behind `yarn start:myorganizer` — and report a pass in
+ * seconds without ever compiling the working tree. Distinguishing them by
+ * inspecting the running server would be a heuristic against Next.js
+ * internals; a port is a fact.
+ *
+ * A side effect worth having: `E2E_DEV_SERVER=1` no longer collides with a dev
+ * server being used for manual work on 4200.
+ */
+const port = useDevServer ? 4201 : 4200;
+
+// For CI, you may want to set BASE_URL to the deployed application.
+const baseURL = process.env['BASE_URL'] || `http://localhost:${port}`;
 
 /**
  * Read environment variables from file.
@@ -48,8 +63,8 @@ export default defineConfig({
    */
   webServer: {
     command: useDevServer
-      ? 'corepack yarn nx run myorganizer:serve:development'
-      : 'corepack yarn nx run myorganizer:build:production && corepack yarn nx run myorganizer:serve:production',
+      ? `corepack yarn nx run myorganizer:serve:development --port=${port}`
+      : `corepack yarn nx run myorganizer:build:production && corepack yarn nx run myorganizer:serve:production --port=${port}`,
     url: baseURL,
     /**
      * Reuse is a dev-loop convenience, never a production-run one.
@@ -67,7 +82,9 @@ export default defineConfig({
      * running on the port" — stop that server and re-run. A refusal to start is
      * a worse afternoon than a stale pass only until the first stale pass.
      *
-     * The dev branch keeps reuse, because there the running server is the point.
+     * The dev branch keeps reuse, because there the running server is the
+     * point — and it is now safe, because the port above guarantees the only
+     * thing it can adopt is a dev server a previous dev run started.
      */
     reuseExistingServer: useDevServer && !process.env.CI,
     cwd: workspaceRoot,

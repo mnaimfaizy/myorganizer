@@ -18,7 +18,7 @@ Playwright E2E · `@playwright/test` · `yarn nx e2e myorganizer-e2e`
 ```ts
 // apps/myorganizer-e2e/playwright.config.ts
 nxE2EPreset(__filename, { testDir: './src/e2e' })
-baseURL: process.env.BASE_URL || 'http://localhost:4200'
+baseURL: process.env.BASE_URL || `http://localhost:${port}`  // 4200 production, 4201 dev
 webServer: { command: 'corepack yarn nx run myorganizer:build:production && corepack yarn nx run myorganizer:serve:production', ... }
 browsers: chromium, firefox, webkit
 ```
@@ -26,6 +26,11 @@ browsers: chromium, firefox, webkit
 The suite serves a **production build** by default, locally as well as in CI
 ([ADR 0050](../../adr/0050-e2e-runs-as-a-blocking-chromium-lane-and-a-nightly-rot-detector.md)).
 `E2E_DEV_SERVER=1` swaps in `serve:development` for the fast edit-run loop.
+
+The two modes use different ports — 4200 for production, 4201 for the dev loop
+— so that reusing a server can only ever reuse one started for the mode asking.
+The production path never reuses at all, and fails with `already used` if
+something holds 4200.
 
 The production command builds before it serves, and must keep doing so.
 `serve:production` is `next start` against whatever `dist/` already holds — it
