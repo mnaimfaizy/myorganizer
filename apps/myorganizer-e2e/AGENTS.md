@@ -25,6 +25,14 @@ That boots the dev server instead. It is quicker, but it no longer matches CI â€
 behaviour (unminified bundles, `NODE_ENV` branches, the Next.js dev overlay) is present, and
 production-only failures will not reproduce. Reach for it while iterating, not to confirm a fix.
 
+The production command builds before it serves, and must keep doing so. `serve:production` is
+`next start` against whatever `dist/` already holds and never rebuilds it, so a suite that only
+serves will test a stale bundle: a build predating the branch under test reports every new
+feature as a missing element, which reads as a broken spec rather than a stale build. Nx caches
+the build, so the guard costs nothing when nothing changed. If a spec fails as though the code
+it exercises does not exist, check that `dist/apps/myorganizer/.next/BUILD_ID` is newer than the
+work before believing the spec.
+
 ## CI lanes
 
 - **Blocking** â€” Chromium, on pull requests that `nx affected` says touch `myorganizer-e2e`,

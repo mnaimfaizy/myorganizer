@@ -36,11 +36,20 @@ export default defineConfig({
    *
    * Set `E2E_DEV_SERVER=1` for the fast local edit-run loop, accepting that it
    * no longer matches what CI runs.
+   *
+   * The production branch builds before it serves. `serve:production` runs
+   * `next start` against whatever `dist/` already holds and never rebuilds it,
+   * so without this the suite happily tests a stale bundle — a build three days
+   * older than the branch under test read as "the feature does not exist",
+   * costing an afternoon of misdiagnosis. Nx caches the build, so this is a
+   * no-op when nothing changed, and CI (which builds in its own step) hits that
+   * cache rather than paying twice. The dev branch is excluded deliberately: it
+   * compiles on demand, so building there would be pure waste.
    */
   webServer: {
     command: useDevServer
       ? 'corepack yarn nx run myorganizer:serve:development'
-      : 'corepack yarn nx run myorganizer:serve:production',
+      : 'corepack yarn nx run myorganizer:build:production && corepack yarn nx run myorganizer:serve:production',
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     cwd: workspaceRoot,
