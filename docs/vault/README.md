@@ -31,31 +31,44 @@ those manifests against the constants in source and fails when they diverge:
 yarn vault:pages:check
 ```
 
-Treat a failure as "the diagram is stale", not "the check is broken". It covers 30 assertions —
+Treat a failure as "the diagram is stale", not "the check is broken". It covers 31 assertions —
 KDF parameters, cipher byte lengths, the envelope schema version, all seven size caps across the
-three layers that enforce them, the six blob types, and the nine import error codes.
+three layers that enforce them, the six blob types, the nine import error codes, and both Local
+Vault storage keys.
 
 Blob types and error codes are compared as sets rather than sequences, so a page may order them
 by the sequence a reader meets them.
+
+The two Local Vault keys are asserted as a pair, and `localVaultKeys.ownerScoped` is compared
+against the composition read out of `localVaultStorageKey()` rather than against a pinned string.
+A page may not name one key without the other. Both rules exist because the retired `storageKey`
+field stayed byte-identical while its meaning changed, and the check went on passing against a page
+that sent readers to the wrong slot — see [ADR 0051](../adr/0051-a-pinned-value-does-not-notice-that-its-meaning-moved.md).
 
 Values the pages show that are **not** yet assertable are listed in each manifest under
 `notYetExported` — currently the KDF and cipher figures, which are module-private constants. To
 bring them under the check, export them and add them to `SOURCES` in
 `tools/scripts/check-vault-pages.mjs`.
 
-## Rebuilding
+## Changing them
 
-The pages are generated from dc-runtime design exports:
+**These two files are the source.** There is nothing to regenerate them from.
 
-```bash
-node tools/scripts/build-agent-map.mjs "<export-dir>" "Vault Trust Boundary.dc.html" docs/vault/trust-boundary.html
-```
+Both pages began as dc-runtime design exports, which `tools/scripts/build-agent-map.mjs` imported
+once in August 2026 — inlining the design-system stylesheet, embedding both typefaces as woff2
+data URIs, and deciding how much runtime to carry from the page itself (`lifecycle.html` binds
+templates so it carries React; `trust-boundary.html` does not and ships as plain DOM at roughly a
+third the size). The `.dc.html` exports were never committed, and every correction since has been
+made to the built pages against the source constants. Re-importing an old export would silently
+revert them.
 
-The builder inlines the design-system stylesheet, embeds both typefaces as woff2 data URIs, and
-decides how much runtime to include from the page itself — `lifecycle.html` binds templates so it
-carries React, `trust-boundary.html` does not and ships as plain DOM at roughly a third the size.
+So a change here is an edit to the page, briefed through
+[`design-brief`](../../.agents/skills/design-brief/SKILL.md) and executed by the `Designer`
+sub-agent, exactly as [ADR 0046](../adr/0046-house-explainer-pages-have-a-designer-and-a-gate.md)
+describes for every House Explainer Page. `build-agent-map.mjs` remains the importer for a _new_
+canvas export; it is not a rebuild path for these two.
 
-Both are in `.prettierignore`, so rebuilds are byte-identical rather than fighting the pre-commit
+Both are in `.prettierignore`, so an edit is not reformatted out from under you by the pre-commit
 hook.
 
 ## Related

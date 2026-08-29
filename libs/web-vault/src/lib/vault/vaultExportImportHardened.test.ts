@@ -7,6 +7,7 @@
 import { VaultBlobType } from '@myorganizer/app-api-client';
 
 import { AuditReporter, AuditReporterInput } from './auditReporter';
+import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
 import type { VaultStorageV1 } from './localVaultStorage';
 import { createInMemoryReplayTracker } from './replayTracker';
 import {
@@ -88,6 +89,25 @@ const sampleVault: VaultStorageV1 = {
   },
 };
 
+/**
+ * A vault carrying every Vault Blob Type, with per-type ciphertext so a
+ * round-trip can prove which one came back. Built from `VAULT_BLOB_TYPES`
+ * rather than by hand: a seventh type joins this fixture without anyone
+ * remembering to add it, which is the whole point of the table (ADR 0053).
+ */
+const fullVault: VaultStorageV1 = {
+  ...sampleVault,
+  data: Object.fromEntries(
+    VAULT_BLOB_TYPES.map((type) => [
+      VAULT_BLOB_FIELDS[type],
+      {
+        iv: Buffer.from(`iv-${type}`).toString('base64'),
+        ciphertext: Buffer.from(`ct-${type}`).toString('base64'),
+      },
+    ]),
+  ),
+};
+
 const testHandle = createVaultHandle({ owner: TEST_OWNER });
 
 function makeRecordingReporter(): {
@@ -134,6 +154,21 @@ describe('exportVault', () => {
       ]),
     });
     expect(calls[0].sizeBytes).toBe(result.sizeBytes);
+  });
+
+  // `envelopeFromLocalVault` was built by hand-enumerating five of the six
+  // blob types and omitted Tasks, so every hardened export silently dropped
+  // it and every restore came back with no tasks. Nothing failed; the file
+  // downloaded and parsed. Driven by the table so a seventh type is covered
+  // here the moment it exists (issue #537, ADR 0053).
+  test('carries every Vault Blob Type into the envelope', async () => {
+    const result = await exportVault({ localVault: fullVault });
+
+    for (const type of VAULT_BLOB_TYPES) {
+      expect(result.envelope.blobs[type]?.ciphertext).toBe(
+        fullVault.data[VAULT_BLOB_FIELDS[type]]?.ciphertext,
+      );
+    }
   });
 
   test('reports failed audit when local vault has no blobs', async () => {
@@ -194,6 +229,21 @@ describe('importVault', () => {
       status: 'success',
       schemaVersion: CURRENT_VAULT_EXPORT_SCHEMA_VERSION,
     });
+  });
+
+  test('restores every Vault Blob Type from a full round-trip', async () => {
+    const exported = await exportVault({ localVault: fullVault });
+    const result = await importVault({
+      text: exported.text,
+      handle: testHandle,
+    });
+
+    for (const type of VAULT_BLOB_TYPES) {
+      const field = VAULT_BLOB_FIELDS[type];
+      expect(result.nextLocalVault.data[field]?.ciphertext).toBe(
+        fullVault.data[field]?.ciphertext,
+      );
+    }
   });
 
   test('rejects corrupt JSON with `corrupt-file` and does not mutate localStorage', async () => {

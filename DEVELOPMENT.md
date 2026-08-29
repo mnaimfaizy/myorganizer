@@ -12,6 +12,7 @@ This guide provides comprehensive documentation for developing in the MyOrganize
   - [Starting Dependencies (Docker)](#starting-dependencies-docker)
   - [Starting the Backend](#starting-the-backend)
   - [Starting the Frontend](#starting-the-frontend)
+  - [Starting the Mobile App (iOS)](#starting-the-mobile-app-ios)
   - [Starting Storybook](#starting-storybook)
   - [Accessing Services](#accessing-services)
 - [Monorepo Structure](#monorepo-structure)
@@ -65,6 +66,7 @@ Before you begin, ensure you have the following installed on your system:
   - **Windows only**: tick the symlink option during install, or run `git config --global core.symlinks true` before cloning, and enable Developer Mode (**Settings → System → For developers**). The repo ships one committed symlink, `.claude/skills`; without symlink support it checks out as a plain text file and Claude Code loads none of the repo skills. See [Windows: Repo Skills Not Loading](#windows-repo-skills-not-loading).
 - **Docker & Docker Compose** - [Download](https://www.docker.com/get-started)
 - **Code Editor** - We recommend [VS Code](https://code.visualstudio.com/) with the Nx Console extension
+- **iOS development only (macOS)** - Xcode with its command line tools, and a Ruby newer than the one macOS ships. See [Starting the Mobile App (iOS)](#starting-the-mobile-app-ios); nothing here is needed for backend, web, or Android work.
 
 ### Initial Setup
 
@@ -249,6 +251,79 @@ yarn start:backend
 yarn start:myorganizer
 ```
 
+### Starting the Mobile App (iOS)
+
+iOS builds require macOS. The JavaScript half of the app is managed by Yarn, but the native half is managed by CocoaPods, which is a Ruby program: `apps/mobile/ios/Podfile` is Ruby source that `pod install` evaluates, and it shells out to Node to locate React Native's autolinking script. A working iOS setup therefore needs both toolchains. Android and web need none of this.
+
+#### One-time Ruby setup
+
+macOS ships a frozen Ruby 2.6, which is older than the Gemfile's `ruby ">= 3.1.0"`. Install a current Ruby with a version manager — `apps/mobile/Gemfile` points at rbenv:
+
+```bash
+brew install rbenv ruby-build
+```
+
+```bash
+rbenv install $(rbenv install -l | grep -E '^3\.[0-9]+\.[0-9]+$' | tail -1)
+```
+
+Activate rbenv and select the version it should use. Both halves matter: `rbenv init` alone falls back to the system Ruby unless a global or local version is set, so skipping the second command silently leaves you on 2.6:
+
+```bash
+eval "$(rbenv init - "$(basename "$SHELL")")" && rbenv global "$(rbenv versions --bare | tail -1)" && ruby -v
+```
+
+That must print a 3.x version. Add the `eval` line to your shell profile so it survives a new terminal — otherwise the next session drops back to the system Ruby and `bundle` fails again:
+
+```bash
+printf '
+eval "$(rbenv init - %s)"
+' "$(basename "$SHELL")" >> ~/."$(basename "$SHELL")rc"
+```
+
+#### Installing pods
+
+**Order matters.** `pod install` autolinks native modules by reading `node_modules`, so the JavaScript install must be current first. Running it against a stale tree links pods for packages the branch no longer has, or misses ones it added:
+
+```bash
+corepack yarn install --immutable
+```
+
+```bash
+cd apps/mobile/ios && bundle install && bundle exec pod install
+```
+
+Always go through `bundle exec`, never a bare `pod`. The Gemfile pins CocoaPods and several of its gems deliberately — some for build failures, `activesupport` for CVEs — and a Homebrew or system CocoaPods ignores all of it. Different CocoaPods versions also serialise `Podfile.lock` differently, so bypassing bundler produces lockfile churn that has nothing to do with your change.
+
+#### Running the app
+
+```bash
+yarn nx run-ios mobile
+```
+
+Metro can be started on its own when you only need the bundler:
+
+```bash
+yarn nx start mobile
+```
+
+Do not use `nx run mobile:bundle` as a verification step — see [ADR 0005](docs/adr/0005-react-native-bare-with-nx.md). The verification gate for mobile is lint, typecheck, and format, per [apps/mobile/AGENTS.md](apps/mobile/AGENTS.md).
+
+#### When to re-run `pod install`
+
+Re-run it whenever the set of native dependencies changes — adding or removing a package with a native module, or switching to a branch that does. Then commit the regenerated `apps/mobile/ios/Podfile.lock` alongside the manifest change that caused it, so the two never disagree.
+
+What to commit when the pod graph or the pod toolchain changes:
+
+| Path                           | Commit it? | Why                                                       |
+| ------------------------------ | ---------- | --------------------------------------------------------- |
+| `apps/mobile/ios/Podfile.lock` | yes        | The resolved native dependency graph                      |
+| `apps/mobile/Gemfile`          | yes        | Which CocoaPods, and its pinned gems                      |
+| `apps/mobile/Gemfile.lock`     | yes        | Stops the pod toolchain resolving differently per machine |
+| `apps/mobile/ios/Pods/`        | never      | Gitignored build output, regenerated by `pod install`     |
+
+If you change native dependencies from a machine without macOS, say so in the pull request: the `Podfile.lock` cannot be regenerated from Windows or Linux, and an iOS build against a stale one fails looking for a pod that is no longer installed.
+
 ### Starting Storybook
 
 Storybook allows you to develop and test UI components in isolation:
@@ -297,7 +372,7 @@ myorganizer/
 │   ├── web/                # Web-specific libraries
 │   │   └── pages/          # Route/page implementations (one library per route)
 │   └── web-ui/             # Shared UI components
-│   ├── web-vault/           # Encrypted vault logic (crypto, storage, sync, migration)
+│   ├── web-vault/           # Encrypted vault logic (crypto, storage, sync, reconcile)
 │   └── web-vault-ui/        # Vault-related UX flows (gate/setup/unlock)
 ├── docs/                    # Documentation
 │   ├── authentication/     # Auth strategy docs
@@ -411,7 +486,7 @@ Examples of existing page libraries:
 
 #### web-vault
 
-- Encrypted vault logic (crypto, storage, sync, migration, export/import)
+- Encrypted vault logic (crypto, storage, sync, reconcile, export/import)
 
 #### web-vault-ui
 
@@ -1074,6 +1149,42 @@ yarn nx graph --affected
 ```
 
 ## Troubleshooting
+
+### iOS / CocoaPods Issues
+
+**Problem**: `Your Ruby version is 2.6.10, but your Gemfile specified >= 3.1.0`
+
+You are on the Ruby macOS ships, because no version manager is active in this shell. This also appears as `Could not find 'bundler' (x.y.z) required by your Gemfile.lock`, which names bundler but means the same thing — the gems were installed under a Ruby you are no longer running. See [One-time Ruby setup](#one-time-ruby-setup):
+
+```bash
+eval "$(rbenv init - "$(basename "$SHELL")")" && rbenv global "$(rbenv versions --bare | tail -1)" && ruby -v
+```
+
+If this keeps recurring in new terminals, the `eval` line is missing from your shell profile.
+
+**Problem**: `LoadError - cannot load such file -- kconv` (or another module that used to be in the standard library)
+
+Ruby 3.4 moved several modules out of the default gems, and CocoaPods' dependencies still require them at load time. `apps/mobile/Gemfile` carries a block for exactly this, commented "Ruby 3.4.0 removed these from the standard library". If a `LoadError` names a module that block does not already list, add it there rather than downgrading Ruby.
+
+**Problem**: `The version of CocoaPods used to generate the lockfile (X) is higher than the version of the current executable (Y)`
+
+The committed `Podfile.lock` was produced by a CocoaPods that did not come from the Gemfile. Regenerate through bundler so the two agree:
+
+```bash
+cd apps/mobile/ios && bundle exec pod install
+```
+
+**Problem**: The build fails on a pod that was removed, or misses one that was added
+
+`node_modules` and the pod graph are out of step, usually after switching branches. Reinstall in order — JavaScript first, then pods:
+
+```bash
+corepack yarn install --immutable
+```
+
+```bash
+cd apps/mobile/ios && bundle exec pod install
+```
 
 ### Docker Issues
 

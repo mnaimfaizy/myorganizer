@@ -62,7 +62,7 @@ Every Vault UI Component must:
 - Be fully expressible with mock props — no live Vault, no decryption
 - Ship with a colocated `*.stories.tsx` (same Storybook instance as `web-ui`; see [`STORYBOOK-PATTERNS.md`](./STORYBOOK-PATTERNS.md) §1)
 
-`CloudBackupCard` and `LastBackupCard` are the current examples. Non-UI exports in that library (`session`, `vaultGate`, `migrationRunner`) are not Vault UI Components and do not get stories.
+`CloudBackupCard` and `LastBackupCard` are the current examples. Non-UI exports in that library (`session`, `vaultGate`, `reconcileRunner`) are not Vault UI Components and do not get stories.
 
 ---
 

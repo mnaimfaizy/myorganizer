@@ -1,9 +1,10 @@
 import { VaultBlobType, type VaultMetaV1 } from '@myorganizer/app-api-client';
 
 import type { VaultStorageV1 } from './localVaultStorage';
-import { migrateVaultPhase1ToPhase2 } from './vaultMigration';
+import { VAULT_BLOB_TYPES } from './vaultBlobFields';
+import { reconcileVaultWithServer } from './vaultReconcile';
 
-type ApiParam = Parameters<typeof migrateVaultPhase1ToPhase2>[0]['api'];
+type ApiParam = Parameters<typeof reconcileVaultWithServer>[0]['api'];
 
 jest.mock('./serverVaultSync', () => ({
   getServerVaultMeta: jest.fn(),
@@ -50,7 +51,21 @@ function makeServerMeta(): VaultMetaV1 {
   };
 }
 
-describe('migrateVaultPhase1ToPhase2', () => {
+function makeServerBlobResponse(
+  type: VaultBlobType,
+  etag: string,
+  iv: string,
+  ciphertext: string,
+) {
+  return {
+    etag,
+    updatedAt: 'bt1',
+    type,
+    blob: { version: 1, iv, ciphertext },
+  };
+}
+
+describe('reconcileVaultWithServer', () => {
   beforeEach(() => {
     jest.resetAllMocks();
   });
@@ -60,7 +75,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
 
     const localVault = makeLocalVault();
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault,
       prompt: () => 'keep-local',
@@ -97,7 +112,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     );
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: null,
       prompt: () => 'keep-server',
@@ -113,16 +128,16 @@ describe('migrateVaultPhase1ToPhase2', () => {
     }
   });
 
-  test('skips when both local and server vault are missing', async () => {
+  test('no-ops when this User has no Vault on this device or on the server', async () => {
     serverVaultSync.getServerVaultMeta.mockResolvedValue(null);
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: null,
       prompt: () => 'keep-server',
     });
 
-    expect(result).toEqual({ kind: 'skipped-no-local-vault' });
+    expect(result).toEqual({ kind: 'noop-nothing-to-reconcile' });
     expect(serverVaultSync.getServerVaultBlob).not.toHaveBeenCalled();
     expect(serverVaultSync.putServerVaultMetaEtagAware).not.toHaveBeenCalled();
     expect(serverVaultSync.putServerVaultBlobEtagAware).not.toHaveBeenCalled();
@@ -135,7 +150,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
     error.response = { status: 401 };
     serverVaultSync.getServerVaultMeta.mockRejectedValue(error);
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: makeLocalVault(),
       prompt: () => 'keep-local',
@@ -170,7 +185,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
 
     const prompt = jest.fn(() => 'keep-server' as const);
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: makeLocalVault(),
       prompt,
@@ -197,7 +212,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       blob: { version: 1, iv: 'remote', ciphertext: 'remote' },
     });
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: makeLocalVault(),
       prompt: () => 'keep-server',
@@ -205,6 +220,32 @@ describe('migrateVaultPhase1ToPhase2', () => {
 
     expect(result.kind).toBe('kept-server-overwrote-local');
     expect(serverVaultSync.putServerVaultMetaEtagAware).not.toHaveBeenCalled();
+  });
+
+  test('conflict: defer resolves noop-conflict-deferred without writing anywhere (ADR 0033)', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: makeServerMeta(),
+    });
+
+    // Make blobs differ to force prompt
+    serverVaultSync.getServerVaultBlob.mockResolvedValue({
+      etag: 'b1',
+      updatedAt: 'bt1',
+      type: VaultBlobType.Addresses,
+      blob: { version: 1, iv: 'remote', ciphertext: 'remote' },
+    });
+
+    const result = await reconcileVaultWithServer({
+      api: {} as unknown as ApiParam,
+      localVault: makeLocalVault(),
+      prompt: () => 'defer',
+    });
+
+    expect(result).toEqual({ kind: 'noop-conflict-deferred' });
+    expect(serverVaultSync.putServerVaultMetaEtagAware).not.toHaveBeenCalled();
+    expect(serverVaultSync.putServerVaultBlobEtagAware).not.toHaveBeenCalled();
   });
 
   test('conflict: keep-local overwrites server meta/blobs (etag-aware)', async () => {
@@ -228,7 +269,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     );
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: makeLocalVault(),
       prompt: () => 'keep-local',
@@ -272,7 +313,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     });
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault,
       prompt: () => 'keep-local',
@@ -318,7 +359,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     );
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault: null,
       prompt: () => 'keep-server',
@@ -369,7 +410,7 @@ describe('migrateVaultPhase1ToPhase2', () => {
       },
     });
 
-    const result = await migrateVaultPhase1ToPhase2({
+    const result = await reconcileVaultWithServer({
       api: {} as unknown as ApiParam,
       localVault,
       prompt: () => 'keep-local',
@@ -384,5 +425,263 @@ describe('migrateVaultPhase1ToPhase2', () => {
       ),
     ).toBe(true);
     expect(result).toEqual({ kind: 'kept-local-overwrote-server' });
+  });
+
+  // Issue #512: Regression tests for Groceries blob type handling
+  // Groceries was omitted from upload, fetch, and divergence comparison branches,
+  // causing keep-server to silently destroy user's grocery data.
+
+  test('#512: groceries uploads on first sync when server is empty', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue(null);
+
+    const localVault = makeLocalVault({
+      data: {
+        addresses: { iv: 'aiv', ciphertext: 'act' },
+        groceries: { iv: 'giv', ciphertext: 'gct' },
+      },
+    });
+
+    const result = await reconcileVaultWithServer({
+      api: {} as unknown as ApiParam,
+      localVault,
+      prompt: () => 'keep-local',
+    });
+
+    expect(serverVaultSync.putServerVaultBlobEtagAware).toHaveBeenCalledTimes(
+      2,
+    );
+
+    const groceriesCalls =
+      serverVaultSync.putServerVaultBlobEtagAware.mock.calls.filter(
+        (call) => call[0].type === VaultBlobType.Groceries,
+      );
+    expect(groceriesCalls).toHaveLength(1);
+    expect(groceriesCalls[0][0]).toEqual({
+      api: expect.anything(),
+      type: VaultBlobType.Groceries,
+      blob: { version: 1, iv: 'giv', ciphertext: 'gct' },
+    });
+
+    expect(result).toEqual({ kind: 'uploaded-local-to-server' });
+  });
+
+  test('#512: groceries is fetched into remote map when local vault is missing', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: makeServerMeta(),
+    });
+
+    serverVaultSync.getServerVaultBlob.mockImplementation(
+      async (_api: unknown, type: VaultBlobType) => {
+        if (type === VaultBlobType.Addresses) {
+          return makeServerBlobResponse(type, 'b1', 'aiv', 'act');
+        }
+        if (type === VaultBlobType.Groceries) {
+          return makeServerBlobResponse(type, 'g1', 'giv', 'gct');
+        }
+        return null;
+      },
+    );
+
+    const result = await reconcileVaultWithServer({
+      api: {} as unknown as ApiParam,
+      localVault: null,
+      prompt: () => 'keep-server',
+    });
+
+    expect(result.kind).toBe('downloaded-server-to-local');
+    if (result.kind === 'downloaded-server-to-local') {
+      expect(result.nextLocalVault.data.groceries).toEqual({
+        iv: 'giv',
+        ciphertext: 'gct',
+      });
+    }
+  });
+
+  test('#512: groceries-only divergence prompts instead of returning noop-already-in-sync', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: makeServerMeta(),
+    });
+
+    const prompt = jest.fn(() => 'keep-local' as const);
+
+    serverVaultSync.getServerVaultBlob.mockImplementation(
+      async (_api: unknown, type: VaultBlobType) => {
+        if (type === VaultBlobType.Addresses) {
+          return makeServerBlobResponse(type, 'b1', 'aiv', 'act');
+        }
+        if (type === VaultBlobType.Groceries) {
+          // Server has different groceries blob than local
+          return makeServerBlobResponse(type, 'g1', 'server-giv', 'server-gct');
+        }
+        return null;
+      },
+    );
+
+    const localVault = makeLocalVault({
+      data: {
+        addresses: { iv: 'aiv', ciphertext: 'act' },
+        groceries: { iv: 'local-giv', ciphertext: 'local-gct' },
+      },
+    });
+
+    const result = await reconcileVaultWithServer({
+      api: {} as unknown as ApiParam,
+      localVault,
+      prompt,
+    });
+
+    expect(prompt).toHaveBeenCalled();
+    expect(result.kind).not.toBe('noop-already-in-sync');
+  });
+
+  test('#512: keep-server preserves groceries from server copy', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: makeServerMeta(),
+    });
+
+    serverVaultSync.getServerVaultBlob.mockImplementation(
+      async (_api: unknown, type: VaultBlobType) => {
+        if (type === VaultBlobType.Addresses) {
+          return makeServerBlobResponse(type, 'b1', 'aiv', 'act');
+        }
+        if (type === VaultBlobType.Groceries) {
+          return makeServerBlobResponse(type, 'g1', 'server-giv', 'server-gct');
+        }
+        return null;
+      },
+    );
+
+    const localVault = makeLocalVault({
+      data: {
+        addresses: { iv: 'aiv', ciphertext: 'act' },
+        groceries: { iv: 'local-giv', ciphertext: 'local-gct' },
+      },
+    });
+
+    const result = await reconcileVaultWithServer({
+      api: {} as unknown as ApiParam,
+      localVault,
+      prompt: () => 'keep-server',
+    });
+
+    expect(result.kind).toBe('kept-server-overwrote-local');
+    if (result.kind === 'kept-server-overwrote-local') {
+      expect(result.nextLocalVault.data.groceries).toEqual({
+        iv: 'server-giv',
+        ciphertext: 'server-gct',
+      });
+    }
+  });
+
+  test('#512: keep-local writes groceries back to server with etag-aware call', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'server-etag',
+      updatedAt: 't1',
+      meta: makeServerMeta(),
+    });
+
+    serverVaultSync.getServerVaultBlob.mockImplementation(
+      async (_api: unknown, type: VaultBlobType) => {
+        if (type === VaultBlobType.Addresses) {
+          return makeServerBlobResponse(type, 'b1', 'aiv', 'act');
+        }
+        if (type === VaultBlobType.Groceries) {
+          return makeServerBlobResponse(
+            type,
+            'remote-gro-etag',
+            'server-giv',
+            'server-gct',
+          );
+        }
+        return null;
+      },
+    );
+
+    const localVault = makeLocalVault({
+      data: {
+        addresses: { iv: 'aiv', ciphertext: 'act' },
+        groceries: { iv: 'local-giv', ciphertext: 'local-gct' },
+      },
+    });
+
+    const result = await reconcileVaultWithServer({
+      api: {} as unknown as ApiParam,
+      localVault,
+      prompt: () => 'keep-local',
+    });
+
+    const groceriesCalls =
+      serverVaultSync.putServerVaultBlobEtagAware.mock.calls.filter(
+        (call) => call[0].type === VaultBlobType.Groceries,
+      );
+    expect(groceriesCalls).toHaveLength(1);
+    expect(groceriesCalls[0][0]).toMatchObject({
+      type: VaultBlobType.Groceries,
+      blob: { version: 1, iv: 'local-giv', ciphertext: 'local-gct' },
+      ifMatch: 'remote-gro-etag',
+    });
+    expect(groceriesCalls[0][0].onConflict()).toBe('keep-local');
+
+    expect(result).toEqual({ kind: 'kept-local-overwrote-server' });
+  });
+
+  test('#512: exhaustiveness regression — all VaultBlobType members are reconciled', async () => {
+    // Assert that VAULT_BLOB_TYPES contains exactly the members of VaultBlobType.
+    const expectedTypes = Object.values(VaultBlobType).sort();
+    const reconciledTypes = VAULT_BLOB_TYPES.slice().sort();
+
+    expect(reconciledTypes).toEqual(expectedTypes);
+  });
+
+  test('#512: exhaustiveness regression — end-to-end uploads all VaultBlobType members', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue(null);
+
+    // Build local vault with all blob types dynamically from VaultBlobType enum
+    const allBlobsData: Partial<
+      Record<
+        VaultBlobType,
+        {
+          iv: string;
+          ciphertext: string;
+        }
+      >
+    > = {};
+
+    for (const type of Object.values(VaultBlobType)) {
+      allBlobsData[type] = {
+        iv: `iv-${type}`,
+        ciphertext: `ct-${type}`,
+      };
+    }
+
+    const localVault = makeLocalVault({
+      data: allBlobsData as VaultStorageV1['data'],
+    });
+
+    const result = await reconcileVaultWithServer({
+      api: {} as unknown as ApiParam,
+      localVault,
+      prompt: () => 'keep-local',
+    });
+
+    expect(result.kind).toBe('uploaded-local-to-server');
+
+    // Extract all blob types that were uploaded
+    const uploadedTypes = new Set(
+      serverVaultSync.putServerVaultBlobEtagAware.mock.calls.map(
+        (call) => call[0].type,
+      ),
+    );
+
+    // Assert that all VaultBlobType members were uploaded
+    const expectedUploadedTypes = new Set(Object.values(VaultBlobType));
+
+    expect(uploadedTypes).toEqual(expectedUploadedTypes);
   });
 });

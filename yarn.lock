@@ -2967,7 +2967,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@craftzdog/react-native-buffer@npm:^6.1.2":
+"@craftzdog/react-native-buffer@npm:6.1.2, @craftzdog/react-native-buffer@npm:^6.1.2":
   version: 6.1.2
   resolution: "@craftzdog/react-native-buffer@npm:6.1.2"
   dependencies:
@@ -5816,6 +5816,7 @@ __metadata:
     "@ai-hero/sandcastle": "npm:0.12.0"
     "@babel/core": "npm:7.28.6"
     "@babel/preset-react": "npm:7.28.5"
+    "@craftzdog/react-native-buffer": "npm:6.1.2"
     "@driimus/nx-plugin-openapi": "npm:3.1.2"
     "@eslint/compat": "npm:2.0.1"
     "@eslint/js": "npm:9.39.2"
@@ -5947,7 +5948,6 @@ __metadata:
     react-hook-form: "npm:7.71.1"
     react-native: "npm:~0.79.3"
     react-native-keychain: "npm:10.0.0"
-    react-native-mmkv: "npm:4.3.1"
     react-native-nitro-modules: "npm:0.35.0"
     react-native-quick-base64: "npm:3.0.0"
     react-native-quick-crypto: "npm:1.1.5"
@@ -25532,17 +25532,6 @@ __metadata:
   version: 10.0.0
   resolution: "react-native-keychain@npm:10.0.0"
   checksum: 10c0/a632ad27e58264506d2b373d329a867f042fb014e8a78db3a63031e953d61b5c98066eed1be238ee6c186d3f213d0efaa2a26526fb3a1d36a624c4460e982230
-  languageName: node
-  linkType: hard
-
-"react-native-mmkv@npm:4.3.1":
-  version: 4.3.1
-  resolution: "react-native-mmkv@npm:4.3.1"
-  peerDependencies:
-    react: "*"
-    react-native: "*"
-    react-native-nitro-modules: "*"
-  checksum: 10c0/cfafff8e9837e9244c4544fcf26d8570f66539e97ade7ee9cfd2dc51328b6e793357a29a8336bf6f5a540f894780726ae404fef5059756b157ea3cee2fce6566
   languageName: node
   linkType: hard
 

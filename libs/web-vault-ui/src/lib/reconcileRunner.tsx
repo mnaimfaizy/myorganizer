@@ -12,17 +12,16 @@ import {
 } from '@myorganizer/web-ui';
 import { useEffect, useRef, useState } from 'react';
 
-import type { MigrationDecision } from '@myorganizer/web-vault';
+import type { ReconcileDecision } from '@myorganizer/web-vault';
 import {
   createVaultApi,
   getHttpStatus,
-  migrateVaultPhase1ToPhase2,
+  reconcileVaultWithServer,
 } from '@myorganizer/web-vault';
 
 import { useOptionalVaultSession } from './session';
 
-const VAULT_MIGRATION_VERSION = 1;
-const SESSION_FLAG_PREFIX = `myorganizer_vault_migration_ran_v${VAULT_MIGRATION_VERSION}`;
+const SESSION_FLAG_PREFIX = 'myorganizer_vault_reconcile_ran_v1';
 
 /**
  * Scoped per User: a second User signing into the same tab Session must
@@ -35,7 +34,7 @@ function sessionFlagFor(owner: string): string {
 
 type PendingVaultConflictPrompt = {
   message: string;
-  resolve: (decision: MigrationDecision) => void;
+  resolve: (decision: ReconcileDecision) => void;
 };
 
 function getUserFacingErrorMessage(error: unknown): string {
@@ -61,10 +60,10 @@ function getUserFacingErrorMessage(error: unknown): string {
     return message;
   }
 
-  return 'Could not migrate/sync your vault. Your local data is unchanged.';
+  return 'Could not sync your vault. Your local data is unchanged.';
 }
 
-export function VaultMigrationRunner() {
+export function VaultReconcileRunner() {
   const { toast } = useToast();
   const toastRef = useRef(toast);
   const pendingPromptRef = useRef<PendingVaultConflictPrompt | null>(null);
@@ -102,13 +101,13 @@ export function VaultMigrationRunner() {
     const api = createVaultApi();
     const localVault = currentHandle.loadVault();
 
-    migrateVaultPhase1ToPhase2({
+    reconcileVaultWithServer({
       api,
       localVault,
       prompt: async ({ message }) => {
-        if (cancelled) return 'keep-server';
+        if (cancelled) return 'defer';
 
-        return new Promise<MigrationDecision>((resolve) => {
+        return new Promise<ReconcileDecision>((resolve) => {
           const nextPrompt = { message, resolve };
           pendingPromptRef.current = nextPrompt;
           setPendingPrompt(nextPrompt);
@@ -118,7 +117,13 @@ export function VaultMigrationRunner() {
       .then((result) => {
         if (cancelled) return;
 
-        if (result.kind !== 'skipped-not-authenticated') {
+        // A deferred conflict is unfinished business, not a completed
+        // reconcile: leaving the flag unset is what brings the choice back
+        // instead of stranding the User's divergence unresolved.
+        if (
+          result.kind !== 'skipped-not-authenticated' &&
+          result.kind !== 'noop-conflict-deferred'
+        ) {
           window.sessionStorage.setItem(sessionFlag, '1');
         }
 
@@ -130,9 +135,8 @@ export function VaultMigrationRunner() {
           });
         } else if (result.kind === 'uploaded-local-to-server') {
           toastRef.current({
-            title: 'Vault migrated',
-            description:
-              'Your local encrypted vault was uploaded to the server.',
+            title: 'Vault synced',
+            description: 'Your encrypted vault is now backed up to the server.',
           });
         } else if (result.kind === 'kept-server-overwrote-local') {
           currentHandle.saveVault(result.nextLocalVault);
@@ -163,13 +167,13 @@ export function VaultMigrationRunner() {
     return () => {
       cancelled = true;
       if (pendingPromptRef.current) {
-        pendingPromptRef.current.resolve('keep-server');
+        pendingPromptRef.current.resolve('defer');
         pendingPromptRef.current = null;
       }
     };
   }, [owner]);
 
-  function resolvePendingPrompt(decision: MigrationDecision) {
+  function resolvePendingPrompt(decision: ReconcileDecision) {
     const prompt = pendingPromptRef.current;
     if (!prompt) return;
 
@@ -182,7 +186,10 @@ export function VaultMigrationRunner() {
     <Dialog
       open={Boolean(pendingPrompt)}
       onOpenChange={(open) => {
-        if (!open) resolvePendingPrompt('keep-server');
+        // Escape and overlay clicks land here. Dismissing is a deliberate
+        // no-op — neither copy is touched — so it must never be read as
+        // consent to overwrite one of them (ADR 0033).
+        if (!open) resolvePendingPrompt('defer');
       }}
     >
       <DialogContent showCloseButton={false}>
@@ -195,14 +202,20 @@ export function VaultMigrationRunner() {
           <p>Your data is different on this device and on the server.</p>
           <div className="rounded-md border bg-muted/30 p-3 text-foreground">
             <p>
-              <span className="font-medium">OK</span> keeps the encrypted data
-              on this device and replaces the copy on the server.
+              <span className="font-medium">Keep this device&apos;s data</span>{' '}
+              uploads the encrypted data on this device over the copy on the
+              server.
             </p>
             <p className="mt-2">
-              <span className="font-medium">Cancel</span> keeps the encrypted
-              data from the server and replaces the copy on this device.
+              <span className="font-medium">Keep the server&apos;s data</span>{' '}
+              replaces the encrypted data on this device with the copy from the
+              server.
             </p>
           </div>
+          <p>
+            Closing this dialog changes nothing on either side, and we will ask
+            again.
+          </p>
         </div>
 
         <DialogFooter>
@@ -211,13 +224,13 @@ export function VaultMigrationRunner() {
             variant="outline"
             onClick={() => resolvePendingPrompt('keep-server')}
           >
-            Cancel
+            Keep the server&apos;s data
           </Button>
           <Button
             type="button"
             onClick={() => resolvePendingPrompt('keep-local')}
           >
-            OK
+            Keep this device&apos;s data
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -93,6 +93,18 @@ export const GATE_MANIFEST = [
     script: 'tools/scripts/check-adr-numbering.mjs',
     args: [],
   },
+  {
+    id: 'docs:commands:check',
+    npmScript: 'docs:commands:check',
+    script: 'tools/scripts/check-doc-commands.mjs',
+    args: [],
+  },
+  {
+    id: 'enum:fanout:check',
+    npmScript: 'enum:fanout:check',
+    script: 'tools/scripts/check-enum-fanout.mjs',
+    args: [],
+  },
   // The meta-gate reads this manifest to resolve one level of indirection, so
   // a checker reached only through the aggregate still counts as wired. It is
   // a file-reading checker itself, which is why it runs here rather than only

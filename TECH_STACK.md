@@ -3,7 +3,7 @@
 > **Single source of truth** for installed package versions and canonical technology choices.
 > All agent instruction files and documentation must reference this file rather than declaring versions inline.
 > Owned and kept current by the **DepSync** agent/skill — do not edit versions manually.
-> Last synced from `package.json` on 2026-08-21.
+> Last synced from `package.json` on 2026-08-28.
 
 > **Reading this file as an agent:** it is a lookup table, not a briefing. Read
 > the one section you need. Component work needs
@@ -101,21 +101,21 @@
 > `StyleSheet` over a `@myorganizer/design-tokens`-derived theme (ADR-0008) — no
 > NativeWind/Tailwind on mobile (incompatible with the repo's Tailwind v4).
 
-| Package                          | Version  | Purpose                                         |
-| -------------------------------- | -------- | ----------------------------------------------- |
-| `react-native`                   | ~0.79.3  | Mobile app runtime                              |
-| `@nx/react-native`               | 22.7.7   | Nx plugin for React Native apps/libs            |
-| `@react-navigation/native`       | 7.2.5    | Navigation core                                 |
-| `@react-navigation/native-stack` | 7.16.0   | Native stack navigator                          |
-| `react-native-screens`           | 4.11.1   | Native screen primitives (pinned for RN 0.79)   |
-| `react-native-safe-area-context` | 5.8.0    | Safe-area insets                                |
-| `react-native-keychain`          | 10.0.0   | Secure token storage (mobile auth)              |
-| `react-native-quick-base64`      | 3.0.0    | Base64 helpers (peer dep of quick-crypto)       |
-| `react-native-quick-crypto`      | 1.1.5    | JSI WebCrypto-compatible crypto (vault adapter) |
-| `react-native-mmkv`              | 4.3.1    | Fast key-value storage (vault blobs)            |
-| `react-native-nitro-modules`     | 0.35.0   | Nitro modules runtime (required by MMKV v4)     |
-| `react-native-url-polyfill`      | 3.0.0    | URL polyfill for fetch/API client on RN         |
-| `react-native-svg`               | ~15.11.2 | SVG rendering                                   |
+| Package                          | Version  | Purpose                                                     |
+| -------------------------------- | -------- | ----------------------------------------------------------- |
+| `react-native`                   | ~0.79.3  | Mobile app runtime                                          |
+| `@nx/react-native`               | 22.7.7   | Nx plugin for React Native apps/libs                        |
+| `@react-navigation/native`       | 7.2.5    | Navigation core                                             |
+| `@react-navigation/native-stack` | 7.16.0   | Native stack navigator                                      |
+| `react-native-screens`           | 4.11.1   | Native screen primitives (pinned for RN 0.79)               |
+| `react-native-safe-area-context` | 5.8.0    | Safe-area insets                                            |
+| `react-native-keychain`          | 10.0.0   | Secure token storage (mobile auth)                          |
+| `react-native-quick-base64`      | 3.0.0    | Base64 helpers (peer dep of quick-crypto)                   |
+| `react-native-quick-crypto`      | 1.1.5    | JSI WebCrypto-compatible crypto (vault adapter)             |
+| `react-native-nitro-modules`     | 0.35.0   | Nitro modules runtime (peer dep of quick-crypto)            |
+| `@craftzdog/react-native-buffer` | 6.1.2    | Buffer used by the mobile vault crypto (quick-crypto's own) |
+| `react-native-url-polyfill`      | 3.0.0    | URL polyfill for fetch/API client on RN                     |
+| `react-native-svg`               | ~15.11.2 | SVG rendering                                               |
 
 ### Metro & React Native Tooling
 

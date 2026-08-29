@@ -17,4 +17,4 @@ accepted
 ## Consequences
 
 - Glossary: [CONTEXT.md](../../CONTEXT.md) — UI Primitive, Feature Component, Vault UI Component.
-- Story rule: [GUIDELINES.md](../ui/GUIDELINES.md) §1 and [STORYBOOK-PATTERNS.md](../ui/STORYBOOK-PATTERNS.md) §1. Non-UI `web-vault-ui` exports (`session`, `vaultGate`, `migrationRunner`) are not this scope and do not get stories.
+- Story rule: [GUIDELINES.md](../ui/GUIDELINES.md) §1 and [STORYBOOK-PATTERNS.md](../ui/STORYBOOK-PATTERNS.md) §1. Non-UI `web-vault-ui` exports (`session`, `vaultGate`, `reconcileRunner`) are not this scope and do not get stories.

@@ -1,4 +1,10 @@
 export { routeApi } from './apiStub';
+export {
+  submitLoginForm,
+  waitForDashboardReady,
+  waitForLoginFormInteractive,
+  waitForReload,
+} from './auth';
 export { GroceriesPage } from './GroceriesPage';
 export { gotoStable } from './navigation';
 export {

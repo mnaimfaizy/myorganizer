@@ -1,12 +1,22 @@
 import { Prisma, PrismaClient, createPrismaClient } from '../prisma';
 
-export type VaultBlobType =
-  | 'addresses'
-  | 'groceries'
-  | 'mobileNumbers'
-  | 'subscriptions'
-  | 'tasks'
-  | 'todos';
+export const VAULT_BLOB_TYPES = [
+  'addresses',
+  'groceries',
+  'mobileNumbers',
+  'subscriptions',
+  'tasks',
+  'todos',
+] as const;
+
+export type VaultBlobType = (typeof VAULT_BLOB_TYPES)[number];
+
+export function isVaultBlobType(value: unknown): value is VaultBlobType {
+  return (
+    typeof value === 'string' &&
+    (VAULT_BLOB_TYPES as readonly string[]).includes(value)
+  );
+}
 
 export interface VaultMetaV1 {
   version: number;
@@ -344,14 +354,7 @@ export class VaultService {
 
     const blobMap: Partial<Record<VaultBlobType, EncryptedBlobV1>> = {};
     for (const blobRow of blobs) {
-      if (
-        blobRow.type === 'addresses' ||
-        blobRow.type === 'groceries' ||
-        blobRow.type === 'mobileNumbers' ||
-        blobRow.type === 'subscriptions' ||
-        blobRow.type === 'tasks' ||
-        blobRow.type === 'todos'
-      ) {
+      if (isVaultBlobType(blobRow.type)) {
         blobMap[blobRow.type] = blobRow.blob as EncryptedBlobV1;
       }
     }
@@ -469,13 +472,7 @@ export class VaultService {
 
     if (blobs) {
       for (const [type, blob] of Object.entries(blobs)) {
-        if (
-          type !== 'addresses' &&
-          type !== 'mobileNumbers' &&
-          type !== 'subscriptions' &&
-          type !== 'tasks' &&
-          type !== 'todos'
-        ) {
+        if (!isVaultBlobType(type)) {
           continue;
         }
         if (!isEncryptedBlobV1(blob)) {

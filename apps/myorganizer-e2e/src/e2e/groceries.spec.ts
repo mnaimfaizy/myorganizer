@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test';
 import {
-  gotoStable,
   E2E_USER_ID,
+  gotoStable,
   routeApi,
+  submitLoginForm,
   waitForOwnedVault,
 } from './helpers';
 
@@ -27,10 +28,7 @@ function corsHeaders(origin: string) {
   } as const;
 }
 
-async function login(
-  page: import('@playwright/test').Page,
-  options: { webkitDelayMs: number },
-) {
+async function login(page: import('@playwright/test').Page) {
   // Mock the login API endpoint
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
   await routeApi(page, loginUrl, async (route) => {
@@ -69,47 +67,7 @@ async function login(
   await expect(page).toHaveURL(/.*login/);
   await expect(page.locator('h1')).toContainText('Login');
 
-  // Wait for page to load - use try/catch to handle parallel test execution
-  try {
-    await page.waitForLoadState('networkidle', { timeout: 10000 });
-  } catch {
-    // If networkidle times out in parallel execution, use domcontentloaded instead
-    try {
-      await page.waitForLoadState('domcontentloaded');
-    } catch {
-      // Continue anyway - page might be ready enough
-    }
-  }
-
-  if (options.webkitDelayMs > 0) {
-    await page.waitForTimeout(options.webkitDelayMs);
-  }
-
-  await page.fill('input[type="email"]', 'testuser@example.com');
-  await page.fill('input[type="password"]', 'password123');
-
-  const submitButton = page.locator('button[type="submit"]');
-  await expect(submitButton).toBeVisible();
-  await expect(submitButton).toBeEnabled();
-  await submitButton.click();
-
-  await expect(page).toHaveURL(/.*dashboard/, { timeout: 60000 });
-
-  // Wait for dashboard to load - use try/catch for parallel execution
-  try {
-    await page.waitForLoadState('networkidle', { timeout: 10000 });
-  } catch {
-    // If networkidle times out in parallel execution, use domcontentloaded instead
-    try {
-      await page.waitForLoadState('domcontentloaded');
-    } catch {
-      // Continue anyway - page might be ready enough
-    }
-  }
-
-  if (options.webkitDelayMs > 0) {
-    await page.waitForTimeout(options.webkitDelayMs);
-  }
+  await submitLoginForm(page);
 }
 
 async function unlockWithPassphrase(
@@ -127,11 +85,11 @@ async function unlockWithPassphrase(
     return;
   }
 
-  // Click "Use passphrase" button if visible
+  // Click "Use passphrase" button if visible. The passphrase field appearing
+  // is the end of the panel's transition, so the visibility check below is the
+  // wait — Firefox does not need a sleep on top of it (issue #524).
   if (await unlockUI.isVisible({ timeout: 1000 }).catch(() => false)) {
     await unlockUI.click();
-    // Firefox needs more time for animations
-    await page.waitForTimeout(1000);
   }
 
   // Fill passphrase input - try multiple selectors for robustness
@@ -157,11 +115,8 @@ async function unlockWithPassphrase(
   // Scroll input into view and click to focus
   await input.scrollIntoViewIfNeeded();
   await input.click();
-  await page.waitForTimeout(500);
 
-  // Fill the input
   await input.fill(passphrase);
-  await page.waitForTimeout(300);
 
   // Find and click the Unlock button
   const unlockButton = page.getByRole('button', { name: /^Unlock$/i });
@@ -175,36 +130,16 @@ async function unlockWithPassphrase(
 
   // Click the unlock button
   await unlockButton.click();
-  await page.waitForTimeout(500);
 
-  // Wait for the unlock to complete - check if input disappears or we navigate
-  let unlocked = false;
-  try {
-    // Wait for the input to disappear (indicates successful unlock)
-    await page
-      .locator(
-        '#unlock-passphrase, input[placeholder*="Security"], input[placeholder*="passphrase"]',
-      )
-      .first()
-      .isHidden({ timeout: 30000 });
-    unlocked = true;
-  } catch {
-    // Try waiting for page to load
-    try {
-      await page.waitForLoadState('networkidle', { timeout: 10000 });
-      unlocked = true;
-    } catch {
-      // Might have succeeded anyway
-      unlocked = true;
-    }
-  }
-
-  if (!unlocked) {
-    throw new Error('Vault unlock failed - passphrase input did not disappear');
-  }
-
-  // Additional wait to ensure vault is fully initialized
-  await page.waitForTimeout(1000);
+  // Unlock is complete when the passphrase field goes away. The previous shape
+  // called `isHidden({ timeout })` — which does not wait at all, so it resolved
+  // immediately and the trailing sleep was the real wait — then fell back to
+  // `networkidle` (issue #524).
+  await expect(
+    page.locator(
+      '#unlock-passphrase, input[placeholder*="Security"], input[placeholder*="passphrase"]',
+    ),
+  ).toHaveCount(0, { timeout: 120000 });
 }
 
 /**
@@ -216,11 +151,16 @@ async function gotoGroceriesAndUnlock(
   passphrase: string,
 ) {
   await gotoStable(page, '/dashboard/groceries');
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(500);
 
-  // Check if unlock screen is shown and unlock if needed
+  // The route is ready once it has settled into one of its two states — the
+  // vault gate, or the unlocked Trip Board (issue #524).
   const unlockButton = page.getByRole('button', { name: 'Use passphrase' });
+  await expect(
+    unlockButton
+      .or(page.getByRole('heading', { name: 'Active trips' }))
+      .first(),
+  ).toBeVisible({ timeout: 30000 });
+
   const isLocked = await unlockButton
     .isVisible({ timeout: 10000 })
     .catch(() => false);
@@ -235,9 +175,14 @@ async function gotoGroceriesAndUnlock(
     { timeout: 30000 },
   );
 
-  // Additional stabilization
-  await page.waitForLoadState('networkidle');
-  await page.waitForTimeout(1000);
+  // The heading renders before the decrypted trips do; the board's primary
+  // action is what depends on that list having resolved.
+  await expect(
+    page
+      .getByRole('button', { name: 'New trip' })
+      .or(page.getByRole('button', { name: 'Create Your First List' }))
+      .first(),
+  ).toBeVisible({ timeout: 30000 });
 }
 
 /**
@@ -441,9 +386,6 @@ async function _setupRoutes(page: import('@playwright/test').Page) {
     await route.fulfill({ status: 405, headers });
   });
 
-  // Give the client time to hydrate.
-  await page.waitForLoadState('networkidle');
-
   return {
     getPutRequests: () => putRequests,
     seedBlob: (blob: string | null) => {
@@ -518,12 +460,10 @@ test.describe('Groceries (E2E)', () => {
   test.describe('F1 — Create List Flow', () => {
     test('creates a list, persists to server, and survives reload', async ({
       page,
-    }, testInfo) => {
+    }) => {
       test.setTimeout(120000);
 
-      await login(page, {
-        webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-      });
+      await login(page);
 
       // Create a local vault (setup flow) so we can unlock and use the vault-backed lists.
       await gotoStable(page, '/dashboard/addresses');
@@ -540,7 +480,6 @@ test.describe('Groceries (E2E)', () => {
       await expect(
         page.getByRole('heading', { name: 'Active trips' }),
       ).toBeVisible({ timeout: 30000 });
-      await page.waitForTimeout(500);
 
       await clickNewTrip(page);
       await expect(page.getByRole('dialog')).toBeVisible();
@@ -568,12 +507,10 @@ test.describe('Groceries (E2E)', () => {
   });
 
   test.describe('F2 — Rename List Flow (with no-op guard)', () => {
-    test('renames a list successfully', async ({ page }, testInfo) => {
+    test('renames a list successfully', async ({ page }) => {
       test.setTimeout(120000);
 
-      await login(page, {
-        webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-      });
+      await login(page);
 
       // Create vault and unlock
       await gotoStable(page, '/dashboard/addresses');
@@ -609,12 +546,10 @@ test.describe('Groceries (E2E)', () => {
   test.describe('F3 — Delete List Flow with Confirmation', () => {
     test('deletes a list after confirmation and preserves others', async ({
       page,
-    }, testInfo) => {
+    }) => {
       test.setTimeout(120000);
 
-      await login(page, {
-        webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-      });
+      await login(page);
 
       // Create vault and unlock
       await gotoStable(page, '/dashboard/addresses');
@@ -655,12 +590,10 @@ test.describe('Groceries (E2E)', () => {
   test.describe('F4 — Multiple Lists Management', () => {
     test('creates multiple lists, renames and deletes while preserving others', async ({
       page,
-    }, testInfo) => {
+    }) => {
       test.setTimeout(120000);
 
-      await login(page, {
-        webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-      });
+      await login(page);
 
       // Create vault and unlock
       await gotoStable(page, '/dashboard/addresses');
@@ -706,12 +639,10 @@ test.describe('Groceries (E2E)', () => {
   });
 
   test.describe('F6 — Keyboard Navigation & Accessibility', () => {
-    test('Escape closes dialog', async ({ page }, testInfo) => {
+    test('Escape closes dialog', async ({ page }) => {
       test.setTimeout(120000);
 
-      await login(page, {
-        webkitDelayMs: testInfo.project.name === 'webkit' ? 1500 : 0,
-      });
+      await login(page);
 
       // Create vault and unlock
       await gotoStable(page, '/dashboard/addresses');

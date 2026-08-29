@@ -3,8 +3,10 @@ import {
   gotoStable,
   readOwnedVault,
   routeApi,
-  waitForOwnedVault,
+  submitLoginForm,
   UNCLAIMED_VAULT_KEY,
+  waitForOwnedVault,
+  waitForReload,
 } from './helpers';
 
 /**
@@ -376,7 +378,6 @@ async function unlockWithPassphrase(page: Page, passphrase: string) {
 
   await expect(input).toBeVisible({ timeout: 60000 });
   await input.fill(passphrase);
-  await page.waitForTimeout(50);
   await page.getByRole('button', { name: /^Unlock$/i }).click();
   await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
     timeout: 120000,
@@ -400,33 +401,11 @@ async function signOut(page: Page) {
   await expect(page).toHaveURL(/.*login/, { timeout: 30000 });
 }
 
-async function login(
-  page: Page,
-  email: string,
-  password: string,
-  options?: { webkitDelayMs?: number },
-) {
+async function login(page: Page, email: string, password: string) {
   await gotoStable(page, '/login');
   await expect(page).toHaveURL(/.*login/);
 
-  await page.waitForLoadState('networkidle');
-  if (options?.webkitDelayMs) {
-    await page.waitForTimeout(options.webkitDelayMs);
-  }
-
-  await page.fill('input[type="email"]', email);
-  await page.fill('input[type="password"]', password);
-
-  const submitButton = page.locator('button[type="submit"]');
-  await expect(submitButton).toBeVisible();
-  await expect(submitButton).toBeEnabled();
-  await submitButton.click();
-
-  await expect(page).toHaveURL(/.*dashboard/, { timeout: 60000 });
-  await page.waitForLoadState('networkidle');
-  if (options?.webkitDelayMs) {
-    await page.waitForTimeout(options.webkitDelayMs);
-  }
+  await submitLoginForm(page, { email, password });
 }
 
 async function signUp(
@@ -447,12 +426,11 @@ async function signUp(
   await page.getByLabel('First name').fill(firstName);
   await page.getByLabel('Last name').fill(lastName);
   await page.getByLabel('Email').fill(email);
-  // The sign-up password inputs have no associated label — their accessible
-  // name falls back to the bullet placeholder — so target them by type.
-  const passwordInputs = page.locator('input[type="password"]');
-  await expect(passwordInputs).toHaveCount(2);
-  await passwordInputs.nth(0).fill(password);
-  await passwordInputs.nth(1).fill(password);
+  // `exact` is required on both: getByLabel also matches aria-label, and the
+  // show/hide eye buttons are labelled "Show password" / "Show confirm password",
+  // which contain these strings as substrings.
+  await page.getByLabel('Password', { exact: true }).fill(password);
+  await page.getByLabel('Confirm password', { exact: true }).fill(password);
 
   // Check terms checkbox
   const termsCheckbox = page.locator('form').getByRole('checkbox').first();
@@ -908,12 +886,12 @@ test.describe('Multi-user vault isolation (E2E)', () => {
     // Click Delete button in the dialog
     const deleteButton = dialog.getByRole('button', { name: 'Delete' });
     await expect(deleteButton).toBeVisible();
-    await deleteButton.click();
 
-    // RemoveVaultCard triggers window.location.reload() after removal
-    // Wait for the reload to complete
-    await page.waitForLoadState('networkidle', { timeout: 30000 });
-    await page.waitForTimeout(500);
+    // RemoveVaultCard triggers window.location.reload() after removal. A
+    // same-document wait cannot distinguish the pre-reload document from the
+    // post-reload one; waitForReload() uses a marker and waitForFunction() to
+    // ensure the navigation commits before assertions resume (issue #557, see #524).
+    await waitForReload(page, () => deleteButton.click());
 
     // Verify User A's vault was removed
     const userAVaultAfterRemoval = await readOwnedVault(page, USER_A_ID);
