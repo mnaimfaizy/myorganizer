@@ -33,6 +33,14 @@ the build, so the guard costs nothing when nothing changed. If a spec fails as t
 it exercises does not exist, check that `dist/apps/myorganizer/.next/BUILD_ID` is newer than the
 work before believing the spec.
 
+For the same reason a production run never reuses a server already on the port. Playwright skips
+the whole `command` — the build included — when something answers on `url`, and a
+`yarn start:myorganizer` dev server answers exactly like the production build would, so the run
+would report itself as production while testing something else. If a production run stops with
+`http://localhost:4200 is already used`, that is this guard: stop the server holding the port and
+re-run, rather than setting `reuseExistingServer: true`. The `E2E_DEV_SERVER=1` loop still reuses,
+because there the already-running dev server is the point.
+
 ## CI lanes
 
 - **Blocking** — Chromium, on pull requests that `nx affected` says touch `myorganizer-e2e`,

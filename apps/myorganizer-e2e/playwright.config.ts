@@ -51,7 +51,25 @@ export default defineConfig({
       ? 'corepack yarn nx run myorganizer:serve:development'
       : 'corepack yarn nx run myorganizer:build:production && corepack yarn nx run myorganizer:serve:production',
     url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    /**
+     * Reuse is a dev-loop convenience, never a production-run one.
+     *
+     * Playwright skips `command` entirely when something already answers on
+     * `url` — including the build above. Whatever is on the port gets tested
+     * instead, and a `yarn start:myorganizer` dev server left running answers
+     * exactly like the production build would, so a run that reports itself as
+     * production silently is not one. That is the stale-bundle failure again,
+     * one layer up: the suite tests something other than what it claims, and
+     * says nothing.
+     *
+     * So the production path always starts its own server. If the port is
+     * taken, Playwright fails with "already used, make sure that nothing is
+     * running on the port" — stop that server and re-run. A refusal to start is
+     * a worse afternoon than a stale pass only until the first stale pass.
+     *
+     * The dev branch keeps reuse, because there the running server is the point.
+     */
+    reuseExistingServer: useDevServer && !process.env.CI,
     cwd: workspaceRoot,
     // A production build from cold costs far more than a dev boot.
     timeout: (useDevServer ? 120 : 300) * 1000,
