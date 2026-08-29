@@ -17,13 +17,18 @@ export interface SyncStatusIndicatorProps {
   className?: string;
 }
 
-const TONE_ICON = {
+/**
+ * The icon each tone carries, exported so a compact presentation of the same
+ * reading — the header chip in `syncStatusWidget.tsx` — shows the same icon
+ * rather than choosing a second one that can drift from this.
+ */
+export const SYNC_TONE_ICON = {
   ok: null,
   pending: Clock,
   error: CircleAlert,
 } as const;
 
-const TONE_TEXT_CLASS: Record<VaultSyncTone, string> = {
+export const SYNC_TONE_TEXT_CLASS: Record<VaultSyncTone, string> = {
   ok: 'text-gray-600 dark:text-gray-400',
   pending: 'text-gray-600 dark:text-gray-400',
   error: 'text-red-700 dark:text-red-300',
@@ -43,7 +48,7 @@ export function SyncStatusIndicator({
   className,
 }: SyncStatusIndicatorProps) {
   const reading = describeVaultSyncStatus(status);
-  const Icon = reading.label ? TONE_ICON[reading.tone] : null;
+  const Icon = reading.label ? SYNC_TONE_ICON[reading.tone] : null;
 
   // Build announcement for screen reader: only when there's something to say
   const announcement = reading.label
@@ -62,7 +67,7 @@ export function SyncStatusIndicator({
             <p
               className={cn(
                 'text-sm font-medium',
-                TONE_TEXT_CLASS[reading.tone],
+                SYNC_TONE_TEXT_CLASS[reading.tone],
               )}
               data-testid="sync-status-label"
             >
