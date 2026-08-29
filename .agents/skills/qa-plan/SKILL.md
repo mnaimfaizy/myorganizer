@@ -225,9 +225,11 @@ The short list of outcomes that block the merge outright, stated as observable r
 - `docs/adr/0048-a-qa-plan-carries-only-what-automation-does-not-prove.md` — the decision behind
   this skill: the residue rule, the two-point coverage run, the routing split, and why no gate
   enforces it.
+- `docs/adr/0059-a-qa-plan-is-composed-in-tmp-before-it-is-published.md` — why both modes compose
+  in `tmp/`, and why that does not contradict ADR 0048, which decides only where a plan is
+  **published**. Extends ADR 0048; supersedes nothing.
 - `docs/adr/0041-internal-notes-have-homes.md` — why the working copy is an uncommitted file in
-  `tmp/`, in both modes. ADR 0048 decides where a plan is **published**; it says nothing about where
-  it is composed, so a PRD-mode working copy in `tmp/` does not contradict it.
+  `tmp/`.
 - `docs/adr/0043-gates-assert-facts.md` — the gate shape this repo does not build.
 
 ## Completion Criteria
