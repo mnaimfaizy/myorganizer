@@ -33,22 +33,32 @@ trusts it will skip everything it says is covered.
 Resolve the mode from the issue the Pull Request closes. Everything in this skill applies to both
 except where a step says otherwise.
 
-|                   | **PRD mode**                                   | **Issue mode**                            |
-| ----------------- | ---------------------------------------------- | ----------------------------------------- |
-| Input             | A PRD Issue                                    | A single issue                            |
-| Work is read from | Slice Issues, then the commits on each         | The commits on the branch                 |
-| Output            | A **QA Plan Issue** on GitHub, labelled `qa`   | A file in `tmp/`, gitignored              |
-| Sign-off          | Closing the issue                              | None — the file is consumed and discarded |
-| Defects found     | Filed as issues, linked from the QA Plan Issue | Filed as issues                           |
+|                   | **PRD mode**                                   | **Issue mode**                                |
+| ----------------- | ---------------------------------------------- | --------------------------------------------- |
+| Input             | A PRD Issue                                    | A single issue                                |
+| Work is read from | Slice Issues, then the commits on each         | The commits on the branch                     |
+| Composed in       | `tmp/QA-PLAN-prd-<number>.md`, gitignored      | `tmp/QA-PLAN-issue-<number>.md`, gitignored   |
+| Published to      | A **QA Plan Issue** on GitHub, labelled `qa`   | Nowhere — the working copy is the deliverable |
+| Sign-off          | Closing the QA Plan Issue                      | None — the file is consumed and discarded     |
+| Defects found     | Filed as issues, linked from the QA Plan Issue | Filed as issues                               |
 
 If the Pull Request closes several issues, or closes none, ask which subject the plan is for rather
 than guessing. If the input is a PRD Issue with no Slice Issues, read its commits directly and say
 so in the plan.
 
-**Why the outputs differ.** A PRD is large, multi-slice work whose validation is worth a durable
-record others can find. A single issue is verified once by one person; under ADR 0041 that is a
-short-lived working file, and `tmp/` is where those live. Do not publish an Issue-mode plan to
-GitHub, and do not leave a PRD-mode plan in `tmp/`.
+**Both modes compose in `tmp/`.** The plan is a document before it is an issue, and it is revised
+against the source while you write it. Under ADR 0041 that draft is a short-lived working file, and
+`tmp/` is where those live. Write it there first in either mode. Never commit it.
+
+**Only PRD mode publishes.** A PRD is large, multi-slice work whose validation is worth a durable
+record others can find, so its plan becomes a QA Plan Issue whose closure is the sign-off. A single
+issue is verified once by one person, so its working copy is the whole deliverable. Do not publish
+an Issue-mode plan to GitHub.
+
+In PRD mode the working copy is scaffolding, not a second artifact. Once the QA Plan Issue exists,
+that issue is the plan: it is what you link, what the tester ticks, and what closes as the sign-off.
+The file can be discarded with the working tree. In Issue mode there is nothing to defer to, so the
+file is the plan.
 
 ## Core Rules
 
@@ -155,23 +165,29 @@ and file it, rather than silently converting a coverage gap into permanent manua
 If the residue is empty, say so and recommend merging without a QA Plan. An empty plan is a real
 and good outcome; padding it to look substantial is the failure this skill exists to prevent.
 
-### 6. Draft
+### 6. Draft into the working copy
 
-Use the anatomy below. Then show the user the draft and ask whether to proceed. Do not create an
-issue or write a file before they answer.
+Write the plan to its `tmp/` path using the anatomy below — `tmp/QA-PLAN-prd-<number>.md` in PRD
+mode, `tmp/QA-PLAN-issue-<number>.md` in Issue mode. Never commit it.
+
+Then show the user the draft and ask whether to proceed. **Nothing leaves `tmp/` before they
+answer** — in PRD mode no issue is created, and in Issue mode the plan is not final and is not
+handed over. Writing the working copy is not the decision point; delivering it is.
 
 ### 7. Deliver
 
-- **PRD mode** — `gh issue create`, labels `qa` plus the relevant area labels, title
-  `[QA Plan] <PRD title>`. Link the PRD Issue and the Pull Request. Do not apply `ready-for-agent`;
-  this is human work.
-- **Issue mode** — write `tmp/QA-PLAN-issue-<number>.md` and hand it to the user. Never commit it.
+- **PRD mode** — publish the working copy's body with `gh issue create`, labels `qa` plus the
+  relevant area labels, title `[QA Plan] <PRD title>`. Link the PRD Issue and the Pull Request. Do
+  not apply `ready-for-agent`; this is human work. Publish **once** — later revisions edit the
+  existing issue, they do not create a second one.
+- **Issue mode** — hand the working copy to the user. It is the deliverable; do not publish it.
 
 ### 8. Close the loop
 
-Tell the user how it ends. In PRD mode: tick the boxes while testing, file each defect as its own
-issue linked from the QA Plan Issue, and close the QA Plan Issue as the sign-off. In Issue mode:
-file defects as issues; the file needs no ceremony.
+Tell the user how it ends. In PRD mode: tick the boxes on the QA Plan Issue while testing, file each
+defect as its own issue linked from it, and close the QA Plan Issue as the sign-off — the `tmp/`
+file has served its purpose and needs no further attention. In Issue mode: file defects as issues;
+the file needs no ceremony.
 
 ## The Plan Anatomy
 
@@ -209,9 +225,10 @@ The short list of outcomes that block the merge outright, stated as observable r
 - `docs/adr/0048-a-qa-plan-carries-only-what-automation-does-not-prove.md` — the decision behind
   this skill: the residue rule, the two-point coverage run, the routing split, and why no gate
   enforces it.
-- `docs/adr/0041-internal-notes-have-homes.md` — why an Issue-mode plan is an uncommitted working
-  file.
-- `docs/adr/0043-assertion-gates.md` — the gate shape this repo does not build.
+- `docs/adr/0041-internal-notes-have-homes.md` — why the working copy is an uncommitted file in
+  `tmp/`, in both modes. ADR 0048 decides where a plan is **published**; it says nothing about where
+  it is composed, so a PRD-mode working copy in `tmp/` does not contradict it.
+- `docs/adr/0043-gates-assert-facts.md` — the gate shape this repo does not build.
 
 ## Completion Criteria
 
@@ -222,5 +239,6 @@ The short list of outcomes that block the merge outright, stated as observable r
 - Every scenario states why a human is required for it.
 - Steps quote UI copy read from source, not invented.
 - Pre-existing failures appear as red herrings, never as scenarios.
-- The user confirmed before anything was created.
-- The output went to the destination its mode requires, and nowhere else.
+- The user confirmed the draft before it was published (PRD mode) or handed over (Issue mode).
+- The plan was composed in `tmp/` and was not committed.
+- In PRD mode a QA Plan Issue exists and carries the plan; in Issue mode nothing was published.
