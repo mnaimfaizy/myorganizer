@@ -297,10 +297,12 @@ For a standalone run, substitute the `issue/<n>-<slug>` branch the summary print
 
 ### Tunables
 
-| Env var              | Default           | Purpose                                                                        |
-| -------------------- | ----------------- | ------------------------------------------------------------------------------ |
-| `SLICE_GATE`         | (on)              | `off` skips the gate entirely (integrates without verification).               |
-| `SLICE_GATE_TARGETS` | `lint test build` | Space/comma-separated Nx targets the gate runs (e.g. `lint` for a fast check). |
+| Env var                   | Default                                   | Purpose                                                                                      |
+| ------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `SLICE_GATE`              | (on)                                      | `off` skips the gate entirely (integrates without verification).                             |
+| `SLICE_GATE_TARGETS`      | `lint test build`                         | Space/comma-separated Nx targets the gate runs (e.g. `lint` for a fast check).               |
+| `SLICE_GATE_DATABASE_URL` | `postgresql://localhost:5432/myorganizer` | `DATABASE_URL` handed to the gate container. A placeholder, not a live database — see below. |
+| `SLICE_GATE_JEST_WORKERS` | `2`                                       | Jest worker cap for the gate's `test` invocation. Raise only with more Docker VM memory.     |
 
 #### What the gate verifies, and at what scope
 
@@ -308,6 +310,19 @@ The default targets mirror what CI enforces on the eventual PR, so a gate-green 
 that fails the moment it is pushed. There is no `typecheck` target in this repo — `build` is what
 typechecks it, and it is the step that catches a slice whose types do not compile against its
 consumers.
+
+The gate container is given a `DATABASE_URL`. Nothing connects to it: several backend modules
+construct a `PrismaClient` at module scope, so a suite importing one throws on import when the
+variable is absent, and the HTTP integration suites then sit until jest's 30s timeout. The CI test
+job sets the same placeholder for the same reason and provisions no Postgres service either. Left
+unset, the gate reports a `backend:test` failure that CI does not have.
+
+`test` runs as its own `nx run-many` invocation so it can carry `--maxWorkers`, which the build
+executors must not see. Jest sizes its pool from the CPU count visible inside the container — the
+host's, typically 12 on a dev Mac — while the Docker VM's memory is a fraction of the host's. The
+default pool exhausts it and workers return as `signal=SIGKILL`, which reads like a test failure
+and is not one. CI does not hit this because its runner has 4 CPUs. Capping costs nothing: the
+backend suite goes from 7 SIGKILLed suites in 312s to 30 passing suites in 27s.
 
 The gate runs each target at the scope its blast radius calls for:
 

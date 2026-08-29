@@ -424,7 +424,10 @@ const SOURCE_ASSERTIONS = {
   gateNxSkipCacheFlag: {
     file: MAIN,
     in: 'main',
-    re: /^\s*`node node_modules\/\.bin\/nx run-many -t \$\{run\.targets\.join\(' '\)\} --projects=\$\{run\.projects\.join\(','\)\} (--skip-nx-cache)`,$/gm,
+    // The template gained a trailing `${run.args…}` interpolation when the gate split
+    // `test` into its own invocation so it could carry `--maxWorkers`. Stay anchored on
+    // the run-many call and the flag; tolerate anything appended after it.
+    re: /^\s*`node node_modules\/\.bin\/nx run-many -t \$\{run\.targets\.join\(' '\)\} --projects=\$\{run\.projects\.join\(','\)\} (--skip-nx-cache).*`,$/gm,
   },
   gateAffectedJsonFlag: {
     file: MAIN,

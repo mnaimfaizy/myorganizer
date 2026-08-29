@@ -1663,11 +1663,32 @@ function runGate(
     affected = resolved;
   }
 
+  // `test` runs as its own invocation so it can carry a worker cap that the build
+  // executors must not see.
+  //
+  // Jest sizes its worker pool from the CPU count visible in the container, which is
+  // the host's — 12 on a typical dev Mac — while the Docker VM's memory is a fraction
+  // of the host's. The default pool exhausts it and workers come back as
+  // "terminated by another process: signal=SIGKILL", which reads like a test failure
+  // and is not one. CI never hits this: its runner has 4 CPUs, so jest picks 3.
+  //
+  // Capping is also faster, not a trade: on this repo the backend suite goes from 7
+  // SIGKILLed suites in 312s to 30 passing suites in 27s, because nothing thrashes.
+  const testTargets = crossProjectTargets.filter((t) => t === 'test');
+  const buildTargets = crossProjectTargets.filter((t) => t !== 'test');
+  const jestWorkers = process.env.SLICE_GATE_JEST_WORKERS || '2';
+
   // Each entry becomes one `nx run-many` invocation inside the container.
-  const runs: Array<{ targets: string[]; projects: string[] }> = [
-    { targets: perFileTargets, projects: changed },
-    { targets: crossProjectTargets, projects: affected },
-  ].filter((run) => run.targets.length > 0 && run.projects.length > 0);
+  const runs: Array<{ targets: string[]; projects: string[]; args: string[] }> =
+    [
+      { targets: perFileTargets, projects: changed, args: [] },
+      {
+        targets: testTargets,
+        projects: affected,
+        args: [`--maxWorkers=${jestWorkers}`],
+      },
+      { targets: buildTargets, projects: affected, args: [] },
+    ].filter((run) => run.targets.length > 0 && run.projects.length > 0);
 
   if (runs.length === 0) {
     console.log(
@@ -1718,6 +1739,12 @@ function runGate(
       );
     }
     console.log(`  [${label}] gate: installing + running ...`);
+    // Read here rather than at module scope: --gate-only reaches runGate during module
+    // evaluation, so a top-level const declared below this point is still in its
+    // temporal dead zone by the time it is used.
+    const gateDatabaseUrl =
+      process.env.SLICE_GATE_DATABASE_URL ||
+      'postgresql://localhost:5432/myorganizer';
     const gate = spawnSync(
       'docker',
       [
@@ -1727,6 +1754,14 @@ function runGate(
         `${HOST_UID}:${HOST_GID}`,
         '-e',
         'HOME=/home/agent',
+        '-e',
+        // Several backend modules construct a PrismaClient at module scope, so any
+        // suite importing them throws on import without this — and the integration
+        // suites then sit until jest's 30s timeout. Nothing here connects: the value
+        // is the same dummy URL the CI test job uses (.github/workflows/ci.yml), and
+        // CI provisions no database service either. Without it the gate reports a
+        // backend:test failure that CI does not have.
+        `DATABASE_URL=${gateDatabaseUrl}`,
         '-e',
         'NX_DAEMON=false',
         '-e',
@@ -1754,7 +1789,7 @@ function runGate(
           'corepack yarn install --immutable',
           ...runs.map(
             (run) =>
-              `node node_modules/.bin/nx run-many -t ${run.targets.join(' ')} --projects=${run.projects.join(',')} --skip-nx-cache`,
+              `node node_modules/.bin/nx run-many -t ${run.targets.join(' ')} --projects=${run.projects.join(',')} --skip-nx-cache${run.args.map((a) => ` ${a}`).join('')}`,
           ),
         ].join(' && '),
       ],
