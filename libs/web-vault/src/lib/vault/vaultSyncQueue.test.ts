@@ -2031,6 +2031,400 @@ describe('createVaultSyncQueue - retryNow', () => {
     status = queue.status();
     expect(status.sessionEnded).toBe(false);
   });
+
+  test('retryNow derives types from bookmarks when queue was never told about them', async () => {
+    // Regression test: before the fix, retryNow could not send types the queue
+    // was never told about via vaultBlobChanged. This test verifies that
+    // retryNow now derives from bookmarks so it sends those types too.
+    const handle = await setupHandle('user-1', []);
+
+    // Set up unsent state for a type the queue will never hear about
+    const tasksEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 't1' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({ type: 'tasks', value: tasksEnvelope });
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    // Make it dirty
+    const tasksDirtyEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 't2' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({
+      type: 'tasks',
+      value: tasksDirtyEnvelope,
+    });
+
+    const api = createApiDouble();
+    api.putVaultBlob.mockResolvedValue(formatPutVaultBlobResponse('etag-2'));
+
+    const queue = createVaultSyncQueue({
+      api,
+      prompt: jest.fn(),
+      schedule: (
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        _cb: () => void,
+      ) => {
+        return;
+      },
+    });
+
+    // Queue does not know about Tasks (never marked via vaultBlobChanged)
+    // But bookmarks say it's unsent
+    expect(queue.unsentTypes()).toEqual([]);
+
+    // retryNow should still push the type because it derives from bookmarks
+    const result = await queue.retryNow(handle);
+
+    // Should have converged the type even though the queue was never told about it
+    expect(result.converged).toHaveLength(1);
+    expect(result.converged[0]?.type).toBe(VaultBlobType.Tasks);
+    expect(api.putVaultBlob).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('createVaultSyncQueue - markUnsentFromBookmarks', () => {
+  const passphrase = 'test pass 2026';
+
+  function createApiDouble() {
+    return {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getVaultBlob: jest.fn<Promise<AxiosResponse<any>>, [any?]>(),
+      putVaultBlob: jest.fn<
+        Promise<
+          AxiosResponse<{
+            ok: boolean;
+            etag: string;
+            updatedAt: string;
+            message: string;
+          }>
+        >,
+        [
+          {
+            type: VaultBlobType;
+            putVaultBlobRequest: unknown;
+            ifMatch?: string;
+          },
+        ]
+      >(),
+    };
+  }
+
+  async function setupHandle(owner: string, payload?: unknown) {
+    const handle = createVaultHandle({ owner });
+    await handle.initialize({ passphrase });
+    await handle.unlockWithPassphrase({ passphrase });
+
+    if (payload) {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: payload,
+        deletions: {},
+      };
+      await handle.saveEncryptedData({ type: 'tasks', value: envelope });
+    }
+
+    return handle;
+  }
+
+  function formatPutVaultBlobResponse(etag: string): AxiosResponse<{
+    ok: boolean;
+    etag: string;
+    updatedAt: string;
+    message: string;
+  }> {
+    return {
+      data: {
+        ok: true,
+        etag,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        message: 'OK',
+      },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      config: { headers: {} as any },
+    } as unknown as AxiosResponse<{
+      ok: boolean;
+      etag: string;
+      updatedAt: string;
+      message: string;
+    }>;
+  }
+
+  test('markUnsentFromBookmarks marks types with unsent changes from bookmarks', async () => {
+    const handle = await setupHandle('user-1', []);
+
+    // Set up unsent state: save and mark success but then make it dirty again
+    const tasksEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 't1' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({ type: 'tasks', value: tasksEnvelope });
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-tasks-1' });
+
+    // Make tasks dirty (unsent)
+    const tasksDirtyEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 't2' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({
+      type: 'tasks',
+      value: tasksDirtyEnvelope,
+    });
+
+    // Similarly for addresses: save with success then make dirty
+    const addressesEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 'a1' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({
+      type: 'addresses',
+      value: addressesEnvelope,
+    });
+    await handle.recordPushSuccess({ type: 'addresses', etag: 'etag-addr-1' });
+
+    // Make addresses dirty (unsent)
+    const addressesDirtyEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 'a2' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({
+      type: 'addresses',
+      value: addressesDirtyEnvelope,
+    });
+
+    const api = createApiDouble();
+    api.putVaultBlob.mockResolvedValue(formatPutVaultBlobResponse('etag-new'));
+
+    const scheduledCallbacks: Array<() => void> = [];
+    const queue = createVaultSyncQueue({
+      api,
+      prompt: jest.fn(),
+      schedule: (cb) => scheduledCallbacks.push(cb),
+    });
+
+    // Mark through bookmarks only (queue has not been told about these types)
+    await queue.markUnsentFromBookmarks(handle);
+
+    // Both types should be marked via bookmarks
+    const unsentTypes = queue.unsentTypes();
+    expect(unsentTypes).toContain(VaultBlobType.Tasks);
+    expect(unsentTypes).toContain(VaultBlobType.Addresses);
+    expect(unsentTypes.length).toBe(2);
+  });
+
+  test('markUnsentFromBookmarks skips terminal types', async () => {
+    const handle = await setupHandle('user-1', []);
+
+    // Set up unsent state for tasks
+    const tasksEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 't1' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({ type: 'tasks', value: tasksEnvelope });
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    const tasksDirtyEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 't2' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({
+      type: 'tasks',
+      value: tasksDirtyEnvelope,
+    });
+
+    const api = createApiDouble();
+    let callCount = 0;
+    api.putVaultBlob.mockImplementation(async () => {
+      callCount++;
+      if (callCount === 1) {
+        throw Object.assign(new Error('Unprocessable Entity'), {
+          response: { status: 422 },
+        });
+      }
+      return formatPutVaultBlobResponse('etag-new');
+    });
+
+    const queue = createVaultSyncQueue({
+      api,
+      prompt: jest.fn(),
+      schedule: (cb) => cb(), // Run immediately
+    });
+
+    // Mark through vaultBlobChanged so it becomes terminal
+    queue.vaultBlobChanged({ type: VaultBlobType.Tasks, handle });
+    await queue.drain(handle);
+
+    // Tasks is now terminal
+    let status = queue.status();
+    expect(status.terminalFailures).toHaveLength(1);
+    expect(status.terminalFailures[0]?.type).toBe(VaultBlobType.Tasks);
+
+    // Reset the mock
+    api.putVaultBlob.mockClear();
+    api.putVaultBlob.mockResolvedValue(formatPutVaultBlobResponse('etag-2'));
+
+    // markUnsentFromBookmarks should NOT re-mark the terminal type
+    await queue.markUnsentFromBookmarks(handle);
+
+    // Tasks should still be terminal, not in unsent
+    status = queue.status();
+    expect(status.terminalFailures).toHaveLength(1);
+    expect(status.unsentTypes).not.toContain(VaultBlobType.Tasks);
+    expect(api.putVaultBlob).not.toHaveBeenCalled();
+  });
+
+  test('markUnsentFromBookmarks schedules exactly one drain when types are marked', async () => {
+    const handle = await setupHandle('user-1', []);
+
+    // Set up unsent state for multiple types
+    const tasksEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 't1' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({ type: 'tasks', value: tasksEnvelope });
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    const tasksDirtyEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 't2' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({
+      type: 'tasks',
+      value: tasksDirtyEnvelope,
+    });
+
+    const addressesEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 'a1' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({
+      type: 'addresses',
+      value: addressesEnvelope,
+    });
+    await handle.recordPushSuccess({ type: 'addresses', etag: 'etag-2' });
+
+    const addressesDirtyEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 'a2' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({
+      type: 'addresses',
+      value: addressesDirtyEnvelope,
+    });
+
+    const api = createApiDouble();
+    api.putVaultBlob.mockResolvedValue(formatPutVaultBlobResponse('etag-new'));
+
+    const scheduledCallbacks: Array<() => void> = [];
+    const queue = createVaultSyncQueue({
+      api,
+      prompt: jest.fn(),
+      schedule: (cb) => scheduledCallbacks.push(cb),
+    });
+
+    // markUnsentFromBookmarks should schedule exactly one drain for two marked types
+    await queue.markUnsentFromBookmarks(handle);
+
+    expect(scheduledCallbacks).toHaveLength(1);
+  });
+
+  test('markUnsentFromBookmarks does not schedule drain when nothing is marked', async () => {
+    const handle = await setupHandle('user-1', []);
+
+    // Save initial data and record success for all types so they are in sync
+    const tasksEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 't1' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({ type: 'tasks', value: tasksEnvelope });
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    const addressesEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 'a1' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({
+      type: 'addresses',
+      value: addressesEnvelope,
+    });
+    await handle.recordPushSuccess({ type: 'addresses', etag: 'etag-2' });
+
+    const api = createApiDouble();
+    const scheduledCallbacks: Array<() => void> = [];
+    const queue = createVaultSyncQueue({
+      api,
+      prompt: jest.fn(),
+      schedule: (cb) => scheduledCallbacks.push(cb),
+    });
+
+    // Handle has no unsent changes after recording success
+    await queue.markUnsentFromBookmarks(handle);
+
+    // No drain scheduled
+    expect(scheduledCallbacks).toHaveLength(0);
+    expect(queue.unsentTypes()).toEqual([]);
+  });
+
+  test('markUnsentFromBookmarks converges marked types on drain', async () => {
+    // Regression test: before the fix, a device with no bookmarks had unsent
+    // Ciphertext that nothing would ever send because the queue was never
+    // told about those types via saveEncryptedData. This test verifies that
+    // markUnsentFromBookmarks fixes that by draining bookmarks-derived types.
+    const handle = await setupHandle('user-1', []);
+
+    // Set up initial state
+    const tasksEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 't1' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({ type: 'tasks', value: tasksEnvelope });
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    // Make it dirty
+    const tasksDirtyEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 't2' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({
+      type: 'tasks',
+      value: tasksDirtyEnvelope,
+    });
+
+    const api = createApiDouble();
+    api.putVaultBlob.mockResolvedValue(formatPutVaultBlobResponse('etag-2'));
+
+    const scheduledCallbacks: Array<() => void> = [];
+    const queue = createVaultSyncQueue({
+      api,
+      prompt: jest.fn(),
+      schedule: (cb) => scheduledCallbacks.push(cb),
+    });
+
+    // Queue does not know about Tasks (never told via vaultBlobChanged)
+    // But the bookmarks say it's unsent
+    await queue.markUnsentFromBookmarks(handle);
+
+    // Drain the scheduled callback
+    expect(scheduledCallbacks).toHaveLength(1);
+    const drainCallback = scheduledCallbacks[0]!;
+    const result = await new Promise<Awaited<ReturnType<typeof queue.drain>>>(
+      (resolve) => {
+        void queue.drain(handle).then(resolve);
+        drainCallback();
+      },
+    );
+
+    // Should have converged the type
+    expect(result.converged).toHaveLength(1);
+    expect(result.converged[0]?.type).toBe(VaultBlobType.Tasks);
+    expect(api.putVaultBlob).toHaveBeenCalledTimes(1);
+
+    // After successful drain, type should be unmarked
+    expect(queue.unsentTypes()).toEqual([]);
+  });
 });
 
 describe('createVaultSyncQueue - subscribe listener', () => {

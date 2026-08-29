@@ -31,7 +31,7 @@
  */
 import { VaultApi, VaultBlobType } from '@myorganizer/app-api-client';
 
-import { VAULT_BLOB_FIELDS } from './vaultBlobFields';
+import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
 import {
   convergeVaultBlob,
   type ConvergingVaultHandle,
@@ -178,6 +178,28 @@ export type VaultSyncQueue = VaultSyncSink & {
    * dressed up as one.
    */
   retryNow(handle: ConvergingVaultHandle): Promise<VaultSyncDrainResult>;
+  /**
+   * Mark every Vault Blob Type this device holds unsent Ciphertext for,
+   * according to its Sync Bookmarks, and schedule a drain.
+   *
+   * The queue hears about a type when a save reports it, which covers every
+   * edit made while this queue existed and nothing else. A device that has
+   * never pushed — every existing User's first load after Vault Push ships,
+   * since Sync Bookmarks did not exist before it — holds unsent Ciphertext
+   * that no save is going to report, because the edits happened in an earlier
+   * browser session or an earlier version.
+   *
+   * Sync status reads those types as pending, because it asks the bookmarks
+   * rather than the queue. Without this, the two disagree permanently: the
+   * indicator names types that nothing will ever drain, and `retryNow` drains
+   * an empty set. Deriving the same answer from the same place is what keeps
+   * one from claiming what the other cannot deliver.
+   *
+   * A terminal type is left alone. Its Ciphertext is unchanged since the
+   * server refused it, so re-marking it here would be the retry loop
+   * `retryNow` exists to keep deliberate.
+   */
+  markUnsentFromBookmarks(handle: ConvergingVaultHandle): Promise<void>;
   /**
    * Be told whenever `status()` might read differently — a mark, a drain
    * finishing, or a retry being scheduled or firing. Returns a function that
@@ -368,6 +390,61 @@ export function createVaultSyncQueue(options: {
     return result;
   }
 
+  /**
+   * Mark `types` unsent without disturbing terminal state, and schedule one
+   * drain if anything was added. Shared by the sink and by bookmark-derived
+   * marking, which differ only in where the types came from.
+   */
+  function markUnsent(
+    types: VaultBlobType[],
+    handle: ConvergingVaultHandle,
+  ): boolean {
+    let marked = false;
+
+    for (const type of types) {
+      if (terminal.has(type)) continue;
+      if (unsent.has(type)) continue;
+      unsent.add(type);
+      marked = true;
+    }
+
+    if (!marked) return false;
+
+    lastReporter = handle;
+    notify();
+    return true;
+  }
+
+  function scheduleDrain(): void {
+    // One scheduled drain per turn, however many types were marked in it.
+    // The drain converges every marked type, so a second would find nothing.
+    if (scheduled) return;
+    scheduled = true;
+    schedule(() => {
+      scheduled = false;
+      if (lastReporter) void drain(lastReporter);
+    });
+  }
+
+  /**
+   * The Vault Blob Types whose Ciphertext no longer matches this owner's Sync
+   * Bookmark. Answerable while the Vault is locked — the check hashes
+   * Ciphertext rather than reading plaintext.
+   */
+  async function unsentByBookmark(
+    handle: ConvergingVaultHandle,
+  ): Promise<VaultBlobType[]> {
+    const found: VaultBlobType[] = [];
+
+    for (const type of VAULT_BLOB_TYPES) {
+      if (await handle.hasUnsentChanges(VAULT_BLOB_FIELDS[type])) {
+        found.push(type);
+      }
+    }
+
+    return found;
+  }
+
   return {
     vaultBlobChanged({ type, handle }) {
       // A fresh edit deserves a fresh attempt: a type that was terminal
@@ -377,15 +454,13 @@ export function createVaultSyncQueue(options: {
       unsent.add(type);
       lastReporter = handle;
       notify();
+      scheduleDrain();
+    },
 
-      // One scheduled drain per turn, however many types were marked in it.
-      // The drain converges every marked type, so a second would find nothing.
-      if (scheduled) return;
-      scheduled = true;
-      schedule(() => {
-        scheduled = false;
-        if (lastReporter) void drain(lastReporter);
-      });
+    async markUnsentFromBookmarks(handle) {
+      if (markUnsent(await unsentByBookmark(handle), handle)) {
+        scheduleDrain();
+      }
     },
 
     unsentTypes() {
@@ -403,7 +478,7 @@ export function createVaultSyncQueue(options: {
       };
     },
 
-    retryNow(handle) {
+    async retryNow(handle) {
       for (const type of terminal.keys()) {
         unsent.add(type);
       }
@@ -411,6 +486,13 @@ export function createVaultSyncQueue(options: {
       sessionEnded = false;
       retryAttempt = 0;
       notify();
+
+      // A User pressing retry means "send what has not been sent", which is
+      // what the Sync Bookmarks say — not merely what this queue happened to
+      // be told about. Deriving here is what stops the button being offered
+      // against a state it cannot change.
+      markUnsent(await unsentByBookmark(handle), handle);
+
       return drain(handle);
     },
 

@@ -50,7 +50,10 @@ describe('VaultSessionProvider', () => {
     mockApi = { getVaultBlob: jest.fn(), putVaultBlob: jest.fn() };
     mockCreateVaultApi.mockReturnValue(mockApi);
 
-    mockQueue = { vaultBlobChanged: jest.fn() };
+    mockQueue = {
+      vaultBlobChanged: jest.fn(),
+      markUnsentFromBookmarks: jest.fn().mockResolvedValue(undefined),
+    };
     mockCreateVaultSyncQueue.mockReturnValue(mockQueue);
 
     // Standard handle stub: just echoes back the input
@@ -100,8 +103,14 @@ describe('VaultSessionProvider', () => {
 
   test('clears masterKeyBytes and updates handle when owner changes', async () => {
     mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
-    const mockQueueA = { vaultBlobChanged: jest.fn() };
-    const mockQueueB = { vaultBlobChanged: jest.fn() };
+    const mockQueueA = {
+      vaultBlobChanged: jest.fn(),
+      markUnsentFromBookmarks: jest.fn().mockResolvedValue(undefined),
+    };
+    const mockQueueB = {
+      vaultBlobChanged: jest.fn(),
+      markUnsentFromBookmarks: jest.fn().mockResolvedValue(undefined),
+    };
     setupTwoQueueMock(mockQueueA, mockQueueB);
 
     const { result, rerender } = renderHook(() => useVaultSession(), {
@@ -282,6 +291,76 @@ describe('VaultSessionProvider', () => {
       expect(result.current.handle).toBeNull();
     });
 
+    test('markUnsentFromBookmarks is called with the handle on mount', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      renderHook(() => useVaultSession(), { wrapper });
+
+      await waitFor(() => {
+        expect(mockQueue.markUnsentFromBookmarks).toHaveBeenCalledTimes(1);
+      });
+
+      // Verify it was called with the handle
+      const callArg = (mockQueue.markUnsentFromBookmarks as jest.Mock).mock
+        .calls[0][0];
+      expect(callArg).toEqual({
+        owner: 'user-a',
+        masterKeyBytes: null,
+      });
+    });
+
+    test('markUnsentFromBookmarks is not called when there is no owner', () => {
+      mockGetCurrentUser.mockReturnValue(undefined);
+
+      renderHook(() => useVaultSession(), { wrapper });
+
+      expect(mockQueue.markUnsentFromBookmarks).not.toHaveBeenCalled();
+    });
+
+    test('markUnsentFromBookmarks is called again when handle changes on lock', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      await waitFor(() => {
+        expect(mockQueue.markUnsentFromBookmarks).toHaveBeenCalledTimes(1);
+      });
+
+      // Unlock by setting masterKeyBytes - this changes the handle identity
+      act(() => {
+        result.current.setMasterKeyBytes(new Uint8Array([1, 2, 3]));
+      });
+
+      await waitFor(() => {
+        expect(result.current.masterKeyBytes).toEqual(
+          new Uint8Array([1, 2, 3]),
+        );
+      });
+
+      // markUnsentFromBookmarks should be called again after handle changes for unlock
+      expect(mockQueue.markUnsentFromBookmarks).toHaveBeenCalledTimes(2);
+
+      // Lock - this changes the handle identity again
+      act(() => {
+        result.current.lock();
+      });
+
+      await waitFor(() => {
+        expect(result.current.masterKeyBytes).toBeNull();
+      });
+
+      // markUnsentFromBookmarks should be called again after lock (handle changed)
+      expect(mockQueue.markUnsentFromBookmarks).toHaveBeenCalledTimes(3);
+
+      // Verify the handle passed to the third call is the new locked one
+      const thirdCallArg = (mockQueue.markUnsentFromBookmarks as jest.Mock).mock
+        .calls[2][0];
+      expect(thirdCallArg).toEqual({
+        owner: 'user-a',
+        masterKeyBytes: null,
+      });
+    });
+
     test('queue survives lock/unlock', async () => {
       mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
 
@@ -318,8 +397,14 @@ describe('VaultSessionProvider', () => {
 
     test('owner change rebuilds the queue', async () => {
       mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
-      const mockQueueA = { vaultBlobChanged: jest.fn() };
-      const mockQueueB = { vaultBlobChanged: jest.fn() };
+      const mockQueueA = {
+        vaultBlobChanged: jest.fn(),
+        markUnsentFromBookmarks: jest.fn().mockResolvedValue(undefined),
+      };
+      const mockQueueB = {
+        vaultBlobChanged: jest.fn(),
+        markUnsentFromBookmarks: jest.fn().mockResolvedValue(undefined),
+      };
       setupTwoQueueMock(mockQueueA, mockQueueB);
 
       const { result, rerender } = renderHook(() => useVaultSession(), {
@@ -376,7 +461,10 @@ describe('useVaultSession', () => {
     mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
     const mockApi = { getVaultBlob: jest.fn(), putVaultBlob: jest.fn() };
     mockCreateVaultApi.mockReturnValue(mockApi);
-    const mockQueue = { vaultBlobChanged: jest.fn() };
+    const mockQueue = {
+      vaultBlobChanged: jest.fn(),
+      markUnsentFromBookmarks: jest.fn().mockResolvedValue(undefined),
+    };
     mockCreateVaultSyncQueue.mockReturnValue(mockQueue);
     mockCreateVaultHandle.mockImplementation((opts) => ({
       owner: opts.owner,
@@ -410,7 +498,10 @@ describe('useOptionalVaultSession', () => {
     mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
     const mockApi = { getVaultBlob: jest.fn(), putVaultBlob: jest.fn() };
     mockCreateVaultApi.mockReturnValue(mockApi);
-    const mockQueue = { vaultBlobChanged: jest.fn() };
+    const mockQueue = {
+      vaultBlobChanged: jest.fn(),
+      markUnsentFromBookmarks: jest.fn().mockResolvedValue(undefined),
+    };
     mockCreateVaultSyncQueue.mockReturnValue(mockQueue);
     mockCreateVaultHandle.mockImplementation((opts) => ({
       owner: opts.owner,

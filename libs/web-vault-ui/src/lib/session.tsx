@@ -4,6 +4,7 @@ import React, {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -87,6 +88,21 @@ export function VaultSessionProvider({
       syncSink: syncQueue,
     });
   }, [owner, currentMasterKeyBytes, syncQueue]);
+
+  // What a save reports covers edits made while this queue existed. Ciphertext
+  // left unsent by an earlier browser session — or by a version that had no
+  // Sync Bookmarks at all, which is every User's first load after Vault Push
+  // ships — is unsent all the same, and no save is coming to say so. Asking
+  // the bookmarks at session start is what gets those types drained instead of
+  // sitting in the sync indicator with nothing able to clear them.
+  //
+  // Runs again whenever the handle changes, which is what a lock or an unlock
+  // produces: a conflict met while locked writes nothing and leaves its type
+  // marked, so the unlock is exactly when it is worth another attempt.
+  useEffect(() => {
+    if (!syncQueue || !handle) return;
+    void syncQueue.markUnsentFromBookmarks(handle);
+  }, [syncQueue, handle]);
 
   const value = useMemo<VaultSessionContextValue>(
     () => ({
