@@ -1,4 +1,11 @@
-import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+import {
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  jest,
+  test,
+} from '@jest/globals';
 import bodyParser from 'body-parser';
 import express from 'express';
 import request from 'supertest';
@@ -137,13 +144,18 @@ describe('VaultBackupController (HTTP integration)', () => {
     sizeBytes: 2048,
   };
 
+  let app: express.Application;
+
+  beforeAll(() => {
+    app = makeApp();
+  });
+
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   describe('auth requirements', () => {
     test('requires auth for POST /vault/backups', async () => {
-      const app = makeApp();
       const svc = require('../services/VaultBackupService').default;
 
       const res = await request(app).post('/vault/backups').send(validBody);
@@ -154,7 +166,6 @@ describe('VaultBackupController (HTTP integration)', () => {
     });
 
     test('requires auth for GET /vault/backups/latest', async () => {
-      const app = makeApp();
       const svc = require('../services/VaultBackupService').default;
 
       const res = await request(app).get('/vault/backups/latest');
@@ -165,7 +176,6 @@ describe('VaultBackupController (HTTP integration)', () => {
     });
 
     test('requires auth for GET /vault/backups', async () => {
-      const app = makeApp();
       const svc = require('../services/VaultBackupService').default;
 
       const res = await request(app).get('/vault/backups');
@@ -176,7 +186,6 @@ describe('VaultBackupController (HTTP integration)', () => {
     });
 
     test('returns 401 with Unauthorized when authenticated user has no id', async () => {
-      const app = makeApp();
       const svc = require('../services/VaultBackupService').default;
 
       const res = await request(app)
@@ -191,7 +200,6 @@ describe('VaultBackupController (HTTP integration)', () => {
   });
 
   test('returns 201 when recording a successful backup', async () => {
-    const app = makeApp();
     const svc = require('../services/VaultBackupService').default;
     svc.recordEvent.mockResolvedValueOnce({
       ok: true,
@@ -219,7 +227,6 @@ describe('VaultBackupController (HTTP integration)', () => {
   });
 
   test('records failed import with errorCode', async () => {
-    const app = makeApp();
     const svc = require('../services/VaultBackupService').default;
     svc.recordEvent.mockResolvedValueOnce({
       ok: true,
@@ -256,7 +263,6 @@ describe('VaultBackupController (HTTP integration)', () => {
   });
 
   test('returns 400 for invalid source (TSOA enum validation)', async () => {
-    const app = makeApp();
     const svc = require('../services/VaultBackupService').default;
 
     const res = await request(app)
@@ -269,7 +275,6 @@ describe('VaultBackupController (HTTP integration)', () => {
   });
 
   test('returns 404 when no latest backup exists', async () => {
-    const app = makeApp();
     const svc = require('../services/VaultBackupService').default;
     svc.getLatest.mockResolvedValueOnce({
       ok: false,
@@ -285,7 +290,6 @@ describe('VaultBackupController (HTTP integration)', () => {
   });
 
   test('returns latest record filtered by status=success', async () => {
-    const app = makeApp();
     const svc = require('../services/VaultBackupService').default;
     svc.getLatest.mockResolvedValueOnce({
       ok: true,
@@ -313,7 +317,6 @@ describe('VaultBackupController (HTTP integration)', () => {
   });
 
   test('cross-user isolation: user-2 only sees user-2 records', async () => {
-    const app = makeApp();
     const svc = require('../services/VaultBackupService').default;
 
     svc.getLatest.mockImplementation(async (userId: string) => ({
@@ -345,7 +348,6 @@ describe('VaultBackupController (HTTP integration)', () => {
   });
 
   test('returns paginated history', async () => {
-    const app = makeApp();
     const svc = require('../services/VaultBackupService').default;
     svc.listHistory.mockResolvedValueOnce({
       ok: true,
@@ -362,7 +364,6 @@ describe('VaultBackupController (HTTP integration)', () => {
   });
 
   test('returns 422 when limit exceeds max', async () => {
-    const app = makeApp();
     const svc = require('../services/VaultBackupService').default;
     svc.listHistory.mockResolvedValueOnce({
       ok: false,
@@ -378,7 +379,6 @@ describe('VaultBackupController (HTTP integration)', () => {
   });
 
   test('records a successful Google Drive backup', async () => {
-    const app = makeApp();
     const svc = require('../services/VaultBackupService').default;
     const body = { ...validBody, source: 'google-drive' };
     svc.recordEvent.mockResolvedValueOnce({
@@ -407,7 +407,6 @@ describe('VaultBackupController (HTTP integration)', () => {
   });
 
   test('returns latest record filtered by source=google-drive', async () => {
-    const app = makeApp();
     const svc = require('../services/VaultBackupService').default;
     svc.getLatest.mockResolvedValueOnce({
       ok: true,
@@ -440,7 +439,6 @@ describe('VaultBackupController (HTTP integration)', () => {
   });
 
   test('filters history by source=google-drive', async () => {
-    const app = makeApp();
     const svc = require('../services/VaultBackupService').default;
     svc.listHistory.mockResolvedValueOnce({
       ok: true,
@@ -460,7 +458,6 @@ describe('VaultBackupController (HTTP integration)', () => {
   });
 
   test('rejects unknown source filter on /latest', async () => {
-    const app = makeApp();
     const svc = require('../services/VaultBackupService').default;
 
     const res = await request(app)

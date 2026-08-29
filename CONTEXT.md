@@ -374,8 +374,16 @@ _Avoid_: research base, research note, upgrade plan, dependency audit
 
 ## Release & Deploy
 
+**Staging**:
+The QA deployment target. Its backend is a distinct app root with its own database. Staging is never a second name for Production.
+_Avoid_: test production, preview, staging as the live Namecheap host
+
+**Production**:
+The live deployment target Users use. Its backend is a distinct app root with its own database, not Staging's.
+_Avoid_: live, prod (as the glossary name), staging (when you mean this)
+
 **Release**:
-A version of MyOrganizer that is live in production, identified by a `vX.Y.Z` tag. Not the act of preparing one, and not the GitHub Release page that documents it.
+A version of MyOrganizer that is live in Production, identified by a `vX.Y.Z` tag. Not the act of preparing one, and not the GitHub Release page that documents it.
 _Avoid_: version, deployment, ship, build
 
 **Cut**:
@@ -387,11 +395,15 @@ _Avoid_: release (as a verb), branch off, prepare, bump
 _Avoid_: version branch, deploy branch, hotfix branch
 
 **Deploy Approval**:
-The required-reviewer sign-off on the `production` GitHub Environment. This is the ship decision, and it is distinct from dispatching a deploy run, which automation may do freely.
+The required-reviewer sign-off on the `production` GitHub Environment. This is the ship decision, and it is distinct from dispatching a deploy run, which automation may do freely. It authorises Production Host Apply; it is not Host Apply itself.
 _Avoid_: deploy trigger, manual deploy, production run, workflow dispatch
 
+**Host Apply**:
+The on-host work that turns an uploaded backend bundle into that environment's running process. Distinct from the upload that only lands files, and from Deploy Approval, which only authorises this work for Production.
+_Avoid_: post-deploy sequence, go-live, activate, restart (as the whole thing)
+
 **Tag**:
-An annotated `vX.Y.Z` tag applied after production is confirmed live. A receipt that a version shipped — never a trigger that ships it.
+An annotated `vX.Y.Z` tag applied after Production Host Apply has succeeded. A receipt that a version shipped — never a trigger that ships it.
 _Avoid_: release tag (when you mean a trigger), version marker
 
 ## Documentation

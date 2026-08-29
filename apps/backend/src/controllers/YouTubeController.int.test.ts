@@ -1,5 +1,6 @@
 import {
   afterEach,
+  beforeAll,
   beforeEach,
   describe,
   expect,
@@ -141,10 +142,15 @@ function makeApp() {
 
 describe('YouTubeController (HTTP integration)', () => {
   const originalCronSecret = process.env.YOUTUBE_CRON_SECRET;
+  let app: express.Application;
+
+  beforeAll(() => {
+    app = makeApp();
+  });
 
   beforeEach(() => {
     process.env.YOUTUBE_CRON_SECRET = CRON_SECRET;
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   afterEach(() => {
@@ -156,7 +162,6 @@ describe('YouTubeController (HTTP integration)', () => {
   });
 
   test('requires auth for GET /youtube/auth-url', async () => {
-    const app = makeApp();
     const youtubeSyncService =
       require('../services/YouTubeSyncService').default;
 
@@ -168,7 +173,6 @@ describe('YouTubeController (HTTP integration)', () => {
   });
 
   test('returns auth URL for authenticated GET /youtube/auth-url', async () => {
-    const app = makeApp();
     const youtubeSyncService =
       require('../services/YouTubeSyncService').default;
 
@@ -188,7 +192,6 @@ describe('YouTubeController (HTTP integration)', () => {
   });
 
   test('requires X-Cron-Secret for POST /youtube/cron/sync', async () => {
-    const app = makeApp();
     const youTubeSyncWorkerService =
       require('../services/YouTubeSyncWorkerService').default;
 
@@ -200,7 +203,6 @@ describe('YouTubeController (HTTP integration)', () => {
   });
 
   test('rejects wrong X-Cron-Secret for POST /youtube/cron/sync', async () => {
-    const app = makeApp();
     const youTubeSyncWorkerService =
       require('../services/YouTubeSyncWorkerService').default;
 
@@ -214,7 +216,6 @@ describe('YouTubeController (HTTP integration)', () => {
   });
 
   test('runs cron sync with valid X-Cron-Secret', async () => {
-    const app = makeApp();
     const youTubeSyncWorkerService =
       require('../services/YouTubeSyncWorkerService').default;
 
@@ -242,7 +243,6 @@ describe('YouTubeController (HTTP integration)', () => {
   });
 
   test('requires X-Cron-Secret for POST /youtube/cron/digest', async () => {
-    const app = makeApp();
     const youTubeDigestService =
       require('../services/YouTubeDigestService').default;
 
@@ -254,7 +254,6 @@ describe('YouTubeController (HTTP integration)', () => {
   });
 
   test('rejects wrong X-Cron-Secret for POST /youtube/cron/digest', async () => {
-    const app = makeApp();
     const youTubeDigestService =
       require('../services/YouTubeDigestService').default;
 
@@ -268,7 +267,6 @@ describe('YouTubeController (HTTP integration)', () => {
   });
 
   test('runs cron digest with valid X-Cron-Secret', async () => {
-    const app = makeApp();
     const youTubeDigestService =
       require('../services/YouTubeDigestService').default;
 
@@ -302,7 +300,6 @@ describe('YouTubeController (HTTP integration)', () => {
   });
 
   test('unsubscribes from digest with valid token (no auth headers)', async () => {
-    const app = makeApp();
     const youTubeDigestService =
       require('../services/YouTubeDigestService').default;
 
@@ -320,7 +317,6 @@ describe('YouTubeController (HTTP integration)', () => {
   });
 
   test('returns 404 when unsubscribe token is invalid (no auth headers)', async () => {
-    const app = makeApp();
     const youTubeDigestService =
       require('../services/YouTubeDigestService').default;
 
@@ -338,8 +334,6 @@ describe('YouTubeController (HTTP integration)', () => {
   });
 
   test('returns identical 401 body shape for JWT and cron-secret auth failures', async () => {
-    const app = makeApp();
-
     const jwtRes = await request(app).get('/youtube/auth-url');
     const cronRes = await request(app).post('/youtube/cron/sync');
 

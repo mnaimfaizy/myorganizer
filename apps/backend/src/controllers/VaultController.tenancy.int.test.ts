@@ -1,4 +1,11 @@
-import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+import {
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  jest,
+  test,
+} from '@jest/globals';
 import bodyParser from 'body-parser';
 import express from 'express';
 import request from 'supertest';
@@ -161,12 +168,17 @@ describe('VaultController (HTTP tenancy integration)', () => {
     ciphertext: Buffer.from('ciphertext').toString('base64'),
   };
 
+  let app: express.Application;
+
+  beforeAll(() => {
+    app = makeApp();
+  });
+
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   test('GET /vault with token-a passes user-a; token-b passes user-b', async () => {
-    const app = makeApp();
     const vaultService = require('../services/VaultService').default;
 
     vaultService.getVaultMeta.mockImplementation((userId: string) => {
@@ -208,7 +220,6 @@ describe('VaultController (HTTP tenancy integration)', () => {
   });
 
   test('GET /vault/blob/:type with token-a passes user-a; token-b passes user-b', async () => {
-    const app = makeApp();
     const vaultService = require('../services/VaultService').default;
 
     vaultService.getBlob.mockImplementation((userId: string, type: string) => {
@@ -247,7 +258,6 @@ describe('VaultController (HTTP tenancy integration)', () => {
   });
 
   test('PUT /vault with body { meta, userId: "user-b" } returns 400 and never calls service', async () => {
-    const app = makeApp();
     const vaultService = require('../services/VaultService').default;
 
     // Send request as user-a, but include a spoofed userId in the body.
@@ -267,7 +277,6 @@ describe('VaultController (HTTP tenancy integration)', () => {
   });
 
   test('PUT /vault/blob/:type?userId=user-b with valid body returns 200, query param ignored, service called with token userId', async () => {
-    const app = makeApp();
     const vaultService = require('../services/VaultService').default;
 
     vaultService.putBlob.mockResolvedValueOnce({
@@ -304,7 +313,6 @@ describe('VaultController (HTTP tenancy integration)', () => {
   });
 
   test('PUT /vault/blob/:type with body { type, blob, userId: "user-b" } returns 400 and never calls service', async () => {
-    const app = makeApp();
     const vaultService = require('../services/VaultService').default;
 
     // Extra userId in body is rejected at the tsoa validation boundary.
@@ -323,7 +331,6 @@ describe('VaultController (HTTP tenancy integration)', () => {
   });
 
   test('POST /vault/export with spoofed headers X-User-Id and X-Forwarded-User, token-a still calls service with user-a', async () => {
-    const app = makeApp();
     const vaultService = require('../services/VaultService').default;
 
     vaultService.exportVault.mockImplementation((userId: string) => {
@@ -362,7 +369,6 @@ describe('VaultController (HTTP tenancy integration)', () => {
   });
 
   test('POST /vault/import with clean bundle returns 200 and calls service; same bundle plus userId field returns 400 and does not call service', async () => {
-    const app = makeApp();
     const vaultService = require('../services/VaultService').default;
 
     vaultService.importVault.mockImplementation(() =>
@@ -419,7 +425,6 @@ describe('VaultController (HTTP tenancy integration)', () => {
   });
 
   test('Interleaved requests A -> B -> A prove no module-scope caching, responses carry per-user data', async () => {
-    const app = makeApp();
     const vaultService = require('../services/VaultService').default;
 
     vaultService.getVaultMeta.mockImplementation((userId: string) => {
