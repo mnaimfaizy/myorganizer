@@ -1,27 +1,54 @@
-import {
-  EncryptedBlobV1,
-  VaultApi,
-  VaultBlobType,
-  VaultMetaV1,
-} from '@myorganizer/app-api-client';
+/**
+ * Vault Reconcile — the sign-in pass over one User's Vault.
+ *
+ * Reconcile decides nothing about a Vault Blob itself. Every Vault Blob Type
+ * goes through `convergeVaultBlob`, the one place a convergence decision is
+ * made ([ADR 0054](../../../../../docs/adr/0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md)),
+ * so this module is a loop and a pair of degenerate cases rather than a second
+ * implementation of convergence. It used to be four hand-written directions —
+ * download, upload, keep local, keep server — three of which carried their own
+ * fan-out across the Vault Blob Types. That triplication *is*
+ * [#512](https://github.com/mnaimfaizy/myorganizer/issues/512): Groceries was
+ * present in some directions and missing from others, and a keep-server answer
+ * destroyed a User's Ciphertext.
+ *
+ * The two directions that looked special are not. "No Local Vault" is every
+ * type converging from an absent local side, once this device has a wrapping
+ * to hold Ciphertext under; "no server Vault" is every type converging from an
+ * absent remote side, once the server has a wrapping to hold it under. Both
+ * reduce to the same loop, and the Vault Meta write is what makes them
+ * degenerate rather than separate.
+ *
+ * What survives as whole-Vault is the one question that was never per-record:
+ * the server's Ciphertext will not decrypt under this device's Master Key, so
+ * the two sides are not the same Vault at all and no per-type answer means
+ * anything. It is asked once and the answer is applied to every type that
+ * raises it.
+ *
+ * Reconcile decides Vault Blobs and only Vault Blobs. Vault Meta converges
+ * separately in `vaultMetaConverge.ts` ([ADR 0057](../../../../../docs/adr/0057-vault-meta-converges-separately-and-never-silently.md)),
+ * and no answer given here moves a wrapping on either side — the one exception
+ * being a server that holds no Vault Meta at all, where the first sync has
+ * nothing to override.
+ */
+import { VaultApi, VaultBlobType } from '@myorganizer/app-api-client';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 
 import {
   getServerVaultBlob,
   getServerVaultMeta,
-  putServerVaultBlobEtagAware,
   putServerVaultMetaEtagAware,
 } from './serverVaultSync';
-import { EncryptedBlob, VaultStorageV1 } from './localVaultStorage';
-import { stableStringify } from './stableStringify';
-import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
+import { VAULT_BLOB_TYPES } from './vaultBlobFields';
 import {
-  localToServerMeta,
-  serverMetaToLocalVault,
-  takeServerBlobsUnderLocalWrapping,
-  toEncryptedBlobV1,
-} from './vaultShapes';
+  convergeVaultBlob,
+  type ConvergingVaultHandle,
+  type VaultBlobConvergeDecision,
+  type VaultBlobConvergeOutcome,
+  type VaultBlobConvergePrompt,
+} from './vaultConverge';
+import { localToServerMeta, serverMetaToLocalVault } from './vaultShapes';
 
 type VaultApiLike = Pick<
   VaultApi,
@@ -29,239 +56,187 @@ type VaultApiLike = Pick<
 >;
 
 /**
- * `defer` is the answer given by a User who gave no answer — a dismissed
- * prompt. It is not a synonym for either side: deferring writes nothing
- * anywhere, so the choice survives to be made again (ADR 0033).
+ * What the User answered when reconcile had to ask. The converge primitive's
+ * vocabulary, unchanged: `defer` is the answer given by a User who gave no
+ * answer, and it writes nothing on either side, so the choice survives to be
+ * made again (ADR 0033).
  */
-export type ReconcileDecision = 'keep-local' | 'keep-server' | 'defer';
+export type VaultReconcileDecision = VaultBlobConvergeDecision;
 
-export type ReconcilePrompt = (params: {
-  message: string;
-  local: VaultStorageV1;
-  remote: {
-    meta: VaultMetaV1;
-    blobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>>;
-  };
-}) => Promise<ReconcileDecision> | ReconcileDecision;
+/**
+ * A question reconcile could not answer on the User's behalf.
+ *
+ * `vault` is the whole-Vault question and the only one: the server's
+ * Ciphertext did not decrypt under this device's Master Key, so this is not
+ * one Vault seen from two devices and no per-record merge exists. It is asked
+ * once per pass, however many types raise it.
+ *
+ * `blob` is one Vault Blob Type asking on its own terms — either its pinned
+ * strategy is `promptOnConflict`, or this device's own Ciphertext for it is
+ * unreadable. Neither says anything about the rest of the Vault.
+ */
+export type VaultReconcileAsk =
+  | { kind: 'vault' }
+  | {
+      kind: 'blob';
+      type: VaultBlobType;
+      reason: 'strategy' | 'undecryptable-local';
+    };
 
-export type ReconcileResult =
+/**
+ * Asks the User a question reconcile cannot answer.
+ *
+ * Deliberately carries no English: what a User is told is the caller's to
+ * name, the same split `vaultSyncMessages.ts` keeps for the sync indicator.
+ */
+export type VaultReconcilePrompt = (
+  ask: VaultReconcileAsk,
+) => Promise<VaultReconcileDecision> | VaultReconcileDecision;
+
+/** What this device and the server each held when the pass began. */
+export type VaultReconcileStart =
+  /** Both sides held a Vault. The ordinary case. */
+  | 'both'
+  /**
+   * Only the server held one. This device was given the server's wrapping and
+   * no Ciphertext, so every type converges from an absent local side.
+   */
+  | 'downloaded-server-wrapping'
+  /**
+   * Only this device held one. The server was given this device's wrapping and
+   * no Ciphertext, so every type converges from an absent remote side.
+   */
+  | 'uploaded-local-wrapping';
+
+/** One Vault Blob Type, and what converging it did. */
+export type VaultReconcileConverged = {
+  type: VaultBlobType;
+  outcome: VaultBlobConvergeOutcome;
+};
+
+export type VaultReconcileResult =
   /** Neither this User's device nor the server holds a Vault yet. */
   | { kind: 'noop-nothing-to-reconcile' }
+  /**
+   * The Session is gone. Types already converged in this pass stand; the rest
+   * were never reached, and there is no Session left to reach them with.
+   */
   | { kind: 'skipped-not-authenticated' }
-  | { kind: 'downloaded-server-to-local'; nextLocalVault: VaultStorageV1 }
-  | { kind: 'uploaded-local-to-server' }
-  | { kind: 'kept-local-overwrote-server' }
-  | { kind: 'kept-server-overwrote-local'; nextLocalVault: VaultStorageV1 }
-  /** Divergence was found and the User did not choose. Nothing was written. */
-  | { kind: 'noop-conflict-deferred' }
-  | { kind: 'noop-already-in-sync' };
+  | {
+      kind: 'reconciled';
+      start: VaultReconcileStart;
+      /** Every Vault Blob Type, in `VAULT_BLOB_TYPES` order. */
+      converged: VaultReconcileConverged[];
+      /**
+       * Whether any type was left unresolved by a dismissed prompt. A deferred
+       * pass is unfinished business: nothing was written for that type, and the
+       * caller is expected to let the question come back.
+       */
+      deferred: boolean;
+    };
 
-function normalizeServerBlob(value: EncryptedBlobV1 | null): object {
-  if (!value) return { blob: null };
-
-  if (value.version !== 1) {
-    throw new Error(`Unsupported vault blob version: ${value.version}`);
-  }
-
-  return {
-    blob: {
-      version: value.version,
-      iv: value.iv,
-      ciphertext: value.ciphertext,
-    },
-  };
+function isSessionGone(error: unknown): boolean {
+  const status = getHttpStatus(error);
+  return status === 401 || status === 403;
 }
 
-function normalizeLocalBlobAsServerShape(
-  value: EncryptedBlob | undefined,
-): object {
-  if (!value) return { blob: null };
-  const b = toEncryptedBlobV1(value);
-  return normalizeServerBlob(b);
-}
-
-/** The Local Vault blob for one Vault Blob Type, if the vault carries it. */
-function localBlobFor(
-  vault: VaultStorageV1,
-  type: VaultBlobType,
-): EncryptedBlob | undefined {
-  return vault.data[VAULT_BLOB_FIELDS[type]];
-}
-
-/** Reads every reconciled blob type from the server, absent ones as `null`. */
-async function fetchRemoteBlobs(
-  api: VaultApiLike,
-): Promise<Partial<Record<VaultBlobType, EncryptedBlobV1 | null>>> {
-  const remoteBlobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>> =
-    {};
-
-  for (const type of VAULT_BLOB_TYPES) {
-    remoteBlobs[type] = (await getServerVaultBlob(api, type))?.blob ?? null;
-  }
-
-  return remoteBlobs;
-}
-
-/** One normalized entry per reconciled blob type, for divergence comparison. */
-function comparableBlobs(
-  normalizeOne: (type: VaultBlobType) => object,
-): Record<string, object> {
-  const blobs: Record<string, object> = {};
-
-  for (const type of VAULT_BLOB_TYPES) {
-    blobs[type] = normalizeOne(type);
-  }
-
-  return blobs;
+function wasDeferred(outcome: VaultBlobConvergeOutcome): boolean {
+  return outcome.kind === 'asked' && outcome.decision === 'defer';
 }
 
 /**
- * Reconciles one User's Local Vault with their server Ciphertext on sign-in.
+ * Reconcile one User's Local Vault with their server Ciphertext on sign-in.
  *
  * This is not a migration: a User whose server Vault does not exist yet is
- * having an ordinary first sync, and a User with no Vault anywhere has
- * nothing to reconcile. Genuine divergence is never resolved silently — it
- * goes to `prompt`, and the caller's answer decides which side is kept. A
- * caller that answers `defer` leaves both sides exactly as they were.
+ * having an ordinary first sync, and a User with no Vault anywhere has nothing
+ * to reconcile. Non-conflicting divergence converges without asking anything —
+ * that is the whole point of going through the primitive. What still asks is
+ * what the pinned strategy table says asks, plus the two unreadable-Ciphertext
+ * cases, and no prompt is ever resolved on the User's behalf.
  *
- * Reconcile decides Vault Blobs and only Vault Blobs. Vault Meta converges
- * separately in `vaultMetaConverge.ts` ([ADR 0057](../../../../../docs/adr/0057-vault-meta-converges-separately-and-never-silently.md)),
- * and no answer given here moves a wrapping on either side — the one
- * exception being a server that holds no Vault Meta at all, where the first
- * sync has nothing to override.
+ * Throws on transport failures other than a lost Session, exactly as the
+ * primitive does. Types converged before the failure stand; the next pull or
+ * push picks up the rest.
  */
 export async function reconcileVaultWithServer(options: {
   api: VaultApiLike;
-  localVault: VaultStorageV1 | null;
-  prompt: ReconcilePrompt;
-}): Promise<ReconcileResult> {
-  if (!options.localVault) {
-    let serverMeta;
-    try {
-      serverMeta = await getServerVaultMeta(options.api);
-    } catch (error) {
-      const status = getHttpStatus(error);
-      if (status === 401 || status === 403) {
-        return { kind: 'skipped-not-authenticated' };
-      }
-      throw error;
-    }
+  handle: ConvergingVaultHandle;
+  prompt: VaultReconcilePrompt;
+}): Promise<VaultReconcileResult> {
+  const { api, handle } = options;
 
-    if (!serverMeta) {
-      return { kind: 'noop-nothing-to-reconcile' };
-    }
-
-    const remoteBlobs = await fetchRemoteBlobs(options.api);
-
-    const nextLocalVault = serverMetaToLocalVault({
-      meta: serverMeta.meta,
-      blobs: remoteBlobs,
-    });
-
-    return { kind: 'downloaded-server-to-local', nextLocalVault };
-  }
-
-  const localVault = options.localVault;
+  const localVault = handle.loadVault();
 
   let serverMeta;
   try {
-    serverMeta = await getServerVaultMeta(options.api);
+    serverMeta = await getServerVaultMeta(api);
   } catch (error) {
-    const status = getHttpStatus(error);
-    if (status === 401 || status === 403) {
-      return { kind: 'skipped-not-authenticated' };
-    }
+    if (isSessionGone(error)) return { kind: 'skipped-not-authenticated' };
     throw error;
   }
 
-  if (!serverMeta) {
-    // The only Vault Meta write left in reconcile, and the only safe one:
-    // the server holds no wrapping at all, so there is nothing here to
-    // override and no other device whose passphrase change could be reverted.
+  let start: VaultReconcileStart;
+
+  if (!localVault) {
+    if (!serverMeta) return { kind: 'noop-nothing-to-reconcile' };
+
+    // The server's wrapping, and no Ciphertext. Every Vault Blob Type then
+    // arrives through the primitive as an ordinary take — including its Sync
+    // Bookmark, which the old hand-written download never recorded.
+    handle.saveVault(
+      serverMetaToLocalVault({ meta: serverMeta.meta, blobs: {} }),
+    );
+    start = 'downloaded-server-wrapping';
+  } else if (!serverMeta) {
+    // The only Vault Meta write left in reconcile, and the only safe one: the
+    // server holds no wrapping at all, so there is nothing here to override
+    // and no other device whose passphrase change could be reverted.
     await putServerVaultMetaEtagAware({
-      api: options.api,
+      api,
       meta: localToServerMeta(localVault),
     });
+    start = 'uploaded-local-wrapping';
+  } else {
+    start = 'both';
+  }
 
-    for (const type of VAULT_BLOB_TYPES) {
-      const blob = localBlobFor(localVault, type);
-      if (!blob) continue;
+  // Asked at most once per pass. A second type finding the same unreadable
+  // remote is the same fact about the same Vault, not a second question.
+  let wholeVaultDecision: VaultReconcileDecision | null = null;
 
-      await putServerVaultBlobEtagAware({
-        api: options.api,
-        type,
-        blob: toEncryptedBlobV1(blob),
-      });
+  const prompt: VaultBlobConvergePrompt = async ({ type, reason }) => {
+    if (reason !== 'undecryptable-remote') {
+      return options.prompt({ kind: 'blob', type, reason });
     }
 
-    return { kind: 'uploaded-local-to-server' };
-  }
-
-  const remoteBlobs = await fetchRemoteBlobs(options.api);
-
-  // Vault Blobs only. Vault Meta is deliberately absent from both sides of
-  // this comparison: it converges separately, on its own terms, in
-  // `vaultMetaConverge.ts` (ADR 0057). Comparing it here would make an
-  // ordinary passphrase change — which rewraps the same Master Key and leaves
-  // every Vault Blob byte-identical — read as whole-Vault divergence and fire
-  // the destructive prompt below.
-  const localComparable = {
-    blobs: comparableBlobs((type) =>
-      normalizeLocalBlobAsServerShape(localBlobFor(localVault, type)),
-    ),
+    wholeVaultDecision ??= await options.prompt({ kind: 'vault' });
+    return wholeVaultDecision;
   };
 
-  const remoteComparable = {
-    blobs: comparableBlobs((type) =>
-      normalizeServerBlob(remoteBlobs[type] ?? null),
-    ),
-  };
+  const converged: VaultReconcileConverged[] = [];
 
-  const differs =
-    stableStringify(localComparable) !== stableStringify(remoteComparable);
-
-  if (!differs) {
-    return { kind: 'noop-already-in-sync' };
-  }
-
-  const decision = await options.prompt({
-    message:
-      'Your encrypted vault data differs between this device and the server. Choose which version to keep. This does not change your passphrase on either side.',
-    local: localVault,
-    remote: { meta: serverMeta.meta, blobs: remoteBlobs },
-  });
-
-  if (decision === 'defer') {
-    return { kind: 'noop-conflict-deferred' };
-  }
-
-  if (decision === 'keep-server') {
-    // This device's wrapping survives the answer. The User chose between two
-    // sets of Ciphertext, not between two passphrases.
-    const nextLocalVault = takeServerBlobsUnderLocalWrapping({
-      localVault,
-      blobs: remoteBlobs,
-    });
-
-    return { kind: 'kept-server-overwrote-local', nextLocalVault };
-  }
-
-  // Vault Blobs go up; Vault Meta does not. Pushing this device's wrapping
-  // here is how "keep this device's data" would silently revert a passphrase
-  // change made on another device — the destruction ADR 0057 exists to stop.
   for (const type of VAULT_BLOB_TYPES) {
-    const remote = await getServerVaultBlob(options.api, type);
-    const blob = localBlobFor(localVault, type);
-    if (!blob) continue;
+    let remote;
+    try {
+      // Reconcile always looks. The primitive skips the read when this
+      // device's Sync Bookmark already answers the question, and at sign-in
+      // there may be no bookmark to answer it with.
+      remote = await getServerVaultBlob(api, type);
 
-    await putServerVaultBlobEtagAware({
-      api: options.api,
-      type,
-      blob: toEncryptedBlobV1(blob),
-      ifMatch: remote?.etag,
-      onConflict: () => 'keep-local',
-    });
+      converged.push({
+        type,
+        outcome: await convergeVaultBlob({ api, handle, type, prompt, remote }),
+      });
+    } catch (error) {
+      if (isSessionGone(error)) return { kind: 'skipped-not-authenticated' };
+      throw error;
+    }
   }
 
-  return { kind: 'kept-local-overwrote-server' };
+  return {
+    kind: 'reconciled',
+    start,
+    converged,
+    deferred: converged.some((entry) => wasDeferred(entry.outcome)),
+  };
 }

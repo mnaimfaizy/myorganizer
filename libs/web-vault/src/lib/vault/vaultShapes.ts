@@ -126,25 +126,6 @@ function serverBlobsToLocalData(
 }
 
 /**
- * The Local Vault that taking the server's Ciphertext produces: the server's
- * Vault Blobs under the wrapping this device already has.
- *
- * The wrapping is carried across untouched, and that is the whole point. A
- * User choosing the server's *data* has said nothing about their passphrase,
- * and swapping the wrapping on the strength of that answer is the one move
- * that can brick a Local Vault — if the server's wrapping holds a different
- * Master Key, every blob just taken is left unreadable on this device. Whether
- * to adopt a remote wrapping is a separate question with its own answer
- * (`vaultMetaConverge.ts`, ADR 0057).
- */
-export function takeServerBlobsUnderLocalWrapping(options: {
-  localVault: VaultStorageV1;
-  blobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>>;
-}): VaultStorageV1 {
-  return { ...options.localVault, data: serverBlobsToLocalData(options.blobs) };
-}
-
-/**
  * The Local Vault that adopting a remote Vault Meta produces: the server's
  * wrapping over this device's Ciphertext.
  *

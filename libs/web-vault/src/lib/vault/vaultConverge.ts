@@ -5,13 +5,11 @@
  * Ciphertext's Sync Bookmark, and the strategy pinned for the type, this
  * decides between sending, taking, merging, asking, and doing nothing.
  *
- * Vault Push, Vault Pull and Vault Reconcile become three entries into this
- * function, never three implementations of it. Vault Push and Vault Pull are
- * wired: the Vault Handle's sync sink (`vaultSyncQueue.ts`) drains through
- * here, and so does the pull check (`vaultPullCheck.ts`, scheduled by
- * `vaultPullTrigger.ts`). #554 brings Vault Reconcile, and until it does the
- * old decision site in `vaultReconcile.ts` is still live. Triplicating the
- * decision is what
+ * Vault Push, Vault Pull and Vault Reconcile are three entries into this
+ * function, never three implementations of it: the Vault Handle's sync sink
+ * (`vaultSyncQueue.ts`) drains through here, so does the pull check
+ * (`vaultPullCheck.ts`, scheduled by `vaultPullTrigger.ts`), and so does the
+ * sign-in pass (`vaultReconcile.ts`). Triplicating the decision is what
  * [#512](https://github.com/mnaimfaizy/myorganizer/issues/512) was: four
  * hand-written fan-outs that agreed about five Vault Blob Types and destroyed
  * the sixth. See [ADR 0054](../../../../../docs/adr/0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md).
