@@ -204,7 +204,7 @@ describe('Admin lifecycle mutations and audit logs (HTTP integration)', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   describe('POST /admin/users/:userId/disable', () => {

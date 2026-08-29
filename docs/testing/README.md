@@ -117,14 +117,47 @@ unless explicitly reset. Signs of state leakage:
   run with others.
 - Tests pass on a fresh `--clearCache` run but fail on the second run.
 
+`clearAllMocks` and `resetAllMocks` are not interchangeable, and the gap between them is where the
+leakage above comes from:
+
+| Call                   | Zeroes recorded calls | Removes an implementation | Drains an unconsumed `…Once` queue |
+| ---------------------- | --------------------- | ------------------------- | ---------------------------------- |
+| `jest.clearAllMocks()` | yes                   | **no**                    | **no**                             |
+| `jest.resetAllMocks()` | yes                   | yes                       | yes                                |
+
+`clearAllMocks` is enough when every test supplies its own implementation before the code under test
+reads it — either a fresh default each time, or a `…Once` the test provably consumes:
+
 ```typescript
-// ✅ Reset all mocks before every test
+// ✅ clearAllMocks zeroes call counts; the default is re-applied every test
 beforeEach(() => {
   jest.clearAllMocks();
-  // Then apply test-specific return values
   (mockFn as jest.Mock).mockResolvedValue(defaultData);
 });
 ```
+
+Reach for `resetAllMocks` when a stale implementation could outlive the test that set it:
+
+```typescript
+// ✅ Nothing can carry over — implementations and …Once queues both go
+beforeEach(() => {
+  jest.resetAllMocks();
+});
+```
+
+**The `beforeAll` trap.** A suite that builds its app or module graph once in `beforeAll` holds one
+stable mock instance for the whole file, so `clearAllMocks` alone lets an implementation set in one
+test reach the next. A suite that rebuilds per test with `jest.resetModules()` gets brand-new
+`jest.fn()`s each time and cannot leak — which is why moving construction into `beforeAll` requires
+moving to `resetAllMocks` in the same change. The backend HTTP integration suites in
+`apps/backend/src/controllers/*.int.test.ts` are the worked example.
+
+A `…Once` value that is queued but never consumed — a test that stubs a service, then takes a 4xx
+path that never calls it — survives `clearAllMocks` and is spent by the _next_ test. Assert the call
+you queued for, so an unconsumed queue fails loudly instead of drifting.
+
+`resetAllMocks` only touches `jest.fn()`s. Plain functions returned from a `jest.mock` factory are
+untouched, so auth stubs written as plain functions keep working across a reset.
 
 Mock the external boundary first. Prefer mocking vault load/save behavior over asserting incidental
 ID-generation details, unless IDs are part of the behavior contract.
