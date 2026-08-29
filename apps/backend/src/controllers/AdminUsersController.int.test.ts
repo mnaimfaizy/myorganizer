@@ -182,7 +182,7 @@ describe('AdminUsersController (HTTP integration)', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
   });
 
   describe('GET /admin/users', () => {
