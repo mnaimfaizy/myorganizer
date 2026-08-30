@@ -60,3 +60,26 @@ A future Vault Blob Type only needs a home in the existing Pinned Table
 (`VAULT_BLOB_FIELDS`, [ADR 0053](0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md))
 to be covered here too — Sync Bookmark storage is keyed by the same `VaultRecordType` union, not a
 second hand-maintained list.
+
+## Amendment: the record also holds a Vault Meta Bookmark
+
+[ADR 0060](0060-a-device-may-push-a-wrapping-it-wrote-over-a-server-it-can-prove-has-not-moved.md)
+added a second kind of thing to this record: a Vault Meta Bookmark, recording the hash of the Vault
+Meta this device and the server last agreed on. This ADR's scope sentence — one entry per Vault Blob
+Type — is therefore narrower than what the record now holds. What it actually holds is _what this
+device owes the server, per User_.
+
+Three things carry across unchanged, which is why it lives here rather than in a third namespace.
+It is keyed by the same owner, so isolation is still the same one-key argument. It is removed by the
+same `VaultHandle.removeVault()`, and for the same reason — a pending wrapping push for a Vault this
+device no longer holds is stale by construction. And it is losable in the same direction: losing one
+costs a prompt that misattributes a wrapping change, never a User's data, so it is replaced rather
+than refused like everything else here.
+
+One thing does not carry across. The Vault Meta Bookmark sits _beside_ the bookmark map, not inside
+it. Vault Meta is not a Vault Blob Type, and a synthetic key would put a non-member into a table
+keyed by `VaultRecordType` — the shape
+[ADR 0053](0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md) exists to prevent. A
+consequence worth stating because it was nearly missed: a writer that rebuilt the record from the
+bookmark map alone would erase the Vault Meta Bookmark on the next Vault Push, so both writers read
+and preserve the whole record.

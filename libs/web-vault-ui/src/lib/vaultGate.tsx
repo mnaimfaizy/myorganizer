@@ -15,6 +15,8 @@ import {
   type LocalVaultStatus,
   type VaultHandle,
   VaultSecretMismatchError,
+  changePassphraseEverywhere,
+  createVaultApi,
 } from '@myorganizer/web-vault';
 
 import { VaultClaimOffer } from './vaultClaimOffer';
@@ -336,13 +338,31 @@ export function VaultGate(props: VaultGateProps) {
                 if (!masterKeyBytes || !handle) return;
 
                 try {
-                  await handle.changePassphrase({
+                  const result = await changePassphraseEverywhere({
+                    api: createVaultApi(),
+                    handle,
                     newPassphrase,
                   });
-                  toast({
-                    title: 'Updated',
-                    description: 'Passphrase updated for this vault.',
-                  });
+
+                  // The local change has landed either way, so the User is
+                  // let in either way. What differs is whether their other
+                  // devices know — and a User who has just recovered from a
+                  // passphrase they could not remember needs to hear that the
+                  // old one still unlocks those devices. That is the reason
+                  // they were rotating, not a sync detail.
+                  toast(
+                    result.push.kind === 'pushed'
+                      ? {
+                          title: 'Passphrase updated',
+                          description:
+                            'Your other devices will offer you the new passphrase next time you use them.',
+                        }
+                      : {
+                          title: 'Passphrase updated on this device',
+                          description:
+                            'Your other devices still unlock with the old passphrase. This device will keep trying to tell them.',
+                        },
+                  );
                 } catch (e: unknown) {
                   toast({
                     title: 'Failed',

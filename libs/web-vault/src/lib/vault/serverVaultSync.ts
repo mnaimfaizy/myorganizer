@@ -176,7 +176,10 @@ export type PutVaultMetaResult =
     };
 
 export async function putServerVaultMetaEtagAware(options: {
-  api: VaultApiLike;
+  // The two methods this actually uses, and not the two it does not. Handing
+  // a caller `putVaultBlob` to write a Vault Meta is the same overreach this
+  // file avoids on every read path.
+  api: Pick<VaultApiLike, 'getVaultMeta' | 'putVaultMeta'>;
   meta: VaultMetaV1;
   ifMatch?: string;
   onConflict?: VaultMetaConflictHandler;
