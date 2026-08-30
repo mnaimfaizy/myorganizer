@@ -297,11 +297,11 @@ The commit capturing an Interrupted Slice's uncommitted work on its slice branch
 _Avoid_: WIP commit (as the general name), draft commit, savepoint
 
 **QA Plan**:
-The manual verification a human performs for completed work before its Pull Request merges, carrying only what the automated suites do not already prove. Every claim it makes about existing coverage is marked as observed or reconstructed, because a reader trusts it to say what may be skipped.
+The manual verification a human performs for completed work before its Pull Request merges, carrying only what the automated suites do not already prove. Every claim it makes about existing coverage is marked as observed or reconstructed, because a reader trusts it to say what may be skipped. It is composed as an uncommitted working file in `tmp/`, whatever becomes of it afterwards.
 _Avoid_: Test plan, test matrix, QA cycle, verification checklist, regression plan
 
 **QA Plan Issue**:
-A QA Plan for a PRD Issue, published as a GitHub issue labelled `qa`. Scenarios are checkboxes, closing it is the sign-off, and defects it finds become their own linked issues. A QA Plan for a single issue is not one of these — it stays an uncommitted working file.
+A QA Plan for a PRD Issue, published as a GitHub issue labelled `qa`. Scenarios are checkboxes, closing it is the sign-off, and defects it finds become their own linked issues. A QA Plan for a single issue is not one of these — it stays the uncommitted working file it was composed as.
 _Avoid_: QA ticket, test ticket, validation issue
 
 **Issue Orchestration Label**:
