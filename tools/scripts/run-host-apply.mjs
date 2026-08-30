@@ -24,6 +24,12 @@ if (environment !== 'staging' && environment !== 'production') {
 }
 
 try {
+  // No counterpartAppRoot: the closed HOST_APPLY_SECRET_NAMES contract (#566)
+  // has one APP_ROOT per GitHub Environment, and a job scoped to `environment:
+  // staging` cannot read `production`'s environment secrets (or vice versa) to
+  // compare them live. The guard's collision check exists in host-apply.mjs for
+  // whichever caller can supply both pins; wiring that needs a secret-contract
+  // decision beyond #567's job wiring, not something to invent at this call site.
   const appRoot = assertAppRootGuard({
     environment,
     appRoot: process.env.APP_ROOT,

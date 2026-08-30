@@ -275,6 +275,122 @@ test('fails when production workflow_dispatch lacks apply_only input', (t) => {
   assert.match(result.stderr, /declares no apply_only input/);
 });
 
+// ===== Apply-Only Re-run Checks =====
+
+test('fails when staging deploy-backend no longer skips on apply_only', (t) => {
+  const workspace = createWorkspace(t);
+
+  edit(
+    workspace,
+    STAGING,
+    "  deploy-backend:\n    if: ${{ github.event.workflow_run.conclusion == 'success' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only) }}",
+    "  deploy-backend:\n    if: ${{ github.event.workflow_run.conclusion == 'success' || (github.event_name == 'workflow_dispatch') }}",
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /deploy-backend's if: does not skip on apply_only re-run/,
+  );
+});
+
+test('fails when staging deploy-frontend no longer skips on apply_only', (t) => {
+  const workspace = createWorkspace(t);
+
+  edit(
+    workspace,
+    STAGING,
+    "  deploy-frontend:\n    if: ${{ github.event.workflow_run.conclusion == 'success' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only) }}",
+    "  deploy-frontend:\n    if: ${{ github.event.workflow_run.conclusion == 'success' || (github.event_name == 'workflow_dispatch') }}",
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /deploy-frontend's if: does not skip on apply_only re-run/,
+  );
+});
+
+test('fails when staging host-apply loses its apply_only-only path', (t) => {
+  const workspace = createWorkspace(t);
+
+  edit(
+    workspace,
+    STAGING,
+    "    if: ${{ always() && (needs.deploy-backend.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.apply_only)) }}",
+    "    if: ${{ always() && (needs.deploy-backend.result == 'success') }}",
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /host-apply's if: has no path that runs on an apply_only-only dispatch/,
+  );
+});
+
+test('fails when production deploy-backend no longer skips on apply_only', (t) => {
+  const workspace = createWorkspace(t);
+
+  edit(
+    workspace,
+    PRODUCTION,
+    "  deploy-backend:\n    if: ${{ startsWith(github.ref, 'refs/heads/release/') && !inputs.apply_only }}",
+    "  deploy-backend:\n    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}",
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /deploy-backend's if: does not skip on apply_only re-run/,
+  );
+});
+
+test('fails when production deploy-frontend no longer skips on apply_only', (t) => {
+  const workspace = createWorkspace(t);
+
+  edit(
+    workspace,
+    PRODUCTION,
+    "  deploy-frontend:\n    if: ${{ startsWith(github.ref, 'refs/heads/release/') && !inputs.apply_only }}",
+    "  deploy-frontend:\n    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}",
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /deploy-frontend's if: does not skip on apply_only re-run/,
+  );
+});
+
+test('fails when production host-apply loses its apply_only-only path', (t) => {
+  const workspace = createWorkspace(t);
+
+  edit(
+    workspace,
+    PRODUCTION,
+    "    if: ${{ always() && needs.validate.result == 'success' && startsWith(github.ref, 'refs/heads/release/') && (needs.deploy-backend.result == 'success' || inputs.apply_only) }}",
+    "    if: ${{ always() && needs.validate.result == 'success' && startsWith(github.ref, 'refs/heads/release/') && (needs.deploy-backend.result == 'success') }}",
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /host-apply's if: has no path that runs on an apply_only-only dispatch/,
+  );
+});
+
 // ===== Concurrency Checks =====
 
 test('fails when staging host-apply cancel-in-progress is true', (t) => {

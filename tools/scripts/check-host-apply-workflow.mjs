@@ -3,10 +3,10 @@
 // its acceptance criteria promise, read straight from the two workflow files
 // rather than from a doc page: `host-apply` needs the backend upload job,
 // runs under the right GitHub Environment, is reachable by an apply-only
-// `workflow_dispatch`, staging's apply group never cancels in progress while
-// its upload group still can, and no `secrets.*` reference in the job falls
-// outside the documented allowlist (`DATABASE_URL` is never one of them,
-// anywhere in either file).
+// `workflow_dispatch` without re-running the upload jobs, staging's apply
+// group never cancels in progress while its upload group still can, and no
+// `secrets.*` reference in the job falls outside the documented allowlist
+// (`DATABASE_URL` is never one of them, anywhere in either file).
 //
 //   node tools/scripts/check-host-apply-workflow.mjs [repoRoot]
 //
@@ -97,6 +97,48 @@ function checkApplyOnlyDispatchInput(path) {
   }
 }
 
+/** The job's own `if:` line, or null when the job has none. */
+function ifLineOf(path, jobId) {
+  const block = jobBlock(path, jobId);
+  const match = block.match(/^\s*if:\s*(.+)$/m);
+  return match ? match[1].trim() : null;
+}
+
+/**
+ * #567's acceptance criteria: an apply-only `workflow_dispatch` "re-runs Host
+ * Apply without a second upload." The upload jobs must therefore skip
+ * themselves on that dispatch — asserted here as a negated `apply_only`
+ * reference in the job's own `if:`, since that's the only place the behavior
+ * lives (nothing else in the file pins it).
+ */
+function checkNoApplyOnlyReRun(path, jobId) {
+  const ifLine = ifLineOf(path, jobId);
+  if (ifLine === null) return;
+  if (!/!\s*inputs\.apply_only/.test(ifLine)) {
+    findings.push(`${path}: ${jobId}'s if: does not skip on apply_only re-run`);
+  }
+}
+
+/**
+ * The other half of the same acceptance criterion: `host-apply` must still
+ * be reachable on an apply-only dispatch even though the upload jobs it
+ * `needs:` are skipped. Strip every negated `apply_only` reference out of the
+ * `if:` line and confirm a positive one survives.
+ */
+function checkHostApplyRunsOnApplyOnly(path) {
+  const ifLine = ifLineOf(path, 'host-apply');
+  if (ifLine === null) {
+    findings.push(`${path}: host-apply declares no if: condition`);
+    return;
+  }
+  const withoutNegated = ifLine.replace(/!\s*inputs\.apply_only/g, '');
+  if (!/inputs\.apply_only/.test(withoutNegated)) {
+    findings.push(
+      `${path}: host-apply's if: has no path that runs on an apply_only-only dispatch`,
+    );
+  }
+}
+
 function cancelInProgressOf(path, jobId) {
   const block = jobBlock(path, jobId);
   const match = block.match(
@@ -173,6 +215,12 @@ checkNeedsBackendUpload(STAGING);
 checkNeedsBackendUpload(PRODUCTION);
 checkApplyOnlyDispatchInput(STAGING);
 checkApplyOnlyDispatchInput(PRODUCTION);
+checkNoApplyOnlyReRun(STAGING, 'deploy-backend');
+checkNoApplyOnlyReRun(STAGING, 'deploy-frontend');
+checkNoApplyOnlyReRun(PRODUCTION, 'deploy-backend');
+checkNoApplyOnlyReRun(PRODUCTION, 'deploy-frontend');
+checkHostApplyRunsOnApplyOnly(STAGING);
+checkHostApplyRunsOnApplyOnly(PRODUCTION);
 checkStagingConcurrencySplit();
 checkSecretAllowlist(STAGING);
 checkSecretAllowlist(PRODUCTION);
