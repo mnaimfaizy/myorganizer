@@ -219,15 +219,19 @@ The client-side action of deriving the Master Key from the User's passphrase so 
 _Avoid_: vault login, decrypt vault, open vault
 
 **Unclaimed Local Vault**:
-A Local Vault on a device with no recorded owner. It predates per-User scoping, so ownership cannot be read from it and must be proven by Vault Claim. It is never removed on anyone's behalf, and remains unclaimed until a Master Key unwrap succeeds — a claim copies it into the claiming User's entry rather than moving it, so the slot survives a claim unchanged. It is _resolved_ automatically only for a signed-in User who holds no Local Vault of their own; it stays _claimable_ by any signed-in User for as long as it is present, which is what keeps a wrongly declined Vault reachable.
+A Local Vault on a device with no recorded owner. It predates per-User scoping, so ownership cannot be read from it and must be established by Vault Claim Evidence. It is never removed on anyone's behalf, and a claim copies it into the claiming User's entry rather than moving it, so the slot survives a claim unchanged. It is never resolved implicitly: a User who cannot produce evidence for it sees a device that holds no Vault, and the Vault is not offered, not unlockable, and not guessable at. Offering it on a passphrase alone is what made a shared passphrase enough to open somebody else's Vault.
 _Avoid_: orphan vault, legacy vault, unowned vault, shared vault
 
 **Vault Claim**:
-The act of a User proving a Local Vault is theirs by unlocking it — a successful Master Key unwrap is the proof, since a failed unwrap means the Vault belongs to someone else. Used to assign an owner to an Unclaimed Local Vault. Claiming never moves a Vault between Users; it only records an ownership that already held. A claim by a User who already holds a Local Vault of their own replaces that Vault, so it is an explicit, acknowledged act rather than a one-click one.
+The act of recording an ownership that already held, assigning an owner to an Unclaimed Local Vault on evidence that the Vault is that User's. Claiming never moves a Vault between Users. It is separate from Vault Unlock: ownership says whose Vault it is, unlocking says whether it can be read, and a Vault can be claimed while still locked. A claim by a User who already holds a Local Vault of their own replaces that Vault, so it is an explicit, acknowledged act rather than a one-click one.
 _Avoid_: adopt vault, take over vault, assign vault, link vault
 
+**Vault Claim Evidence**:
+What proves an Unclaimed Local Vault belongs to the signed-in User. A matching server Vault Meta is the strongest and needs nothing from the User: only that authenticated User can have written it. Failing that, a recovery key is proof, because it is minted per Vault and cannot collide. A passphrase unwrap is deliberately not proof on its own — it establishes knowledge of a string, and two people who share a passphrase would each unwrap the other's Vault, which is a Vault handed to the wrong User rather than merely a failed unlock.
+_Avoid_: vault proof, ownership check, claim credential
+
 **Claim Offer**:
-The interface a signed-in User is shown for an Unclaimed Local Vault: it leads with unlock, because unlocking is the claim, and carries an explicit escape for the User who recognises the Vault is not theirs. The escape is deliberately not an equal alternative — the person most likely to take it by mistake is the rightful owner.
+The interface through which a User establishes Vault Claim Evidence for an Unclaimed Local Vault. It does not lead with unlock, because unlocking is not the claim: it is offered whether or not a Vault is present, so that it discloses nothing about what this device holds, and a credential matching nothing is indistinguishable from a device holding nothing. Where the User already holds a Local Vault, the offer also carries the acknowledgement and the export that make replacing one survivable.
 _Avoid_: claim prompt, vault chooser, ownership dialog, migration prompt
 
 **Vault Meta**:
