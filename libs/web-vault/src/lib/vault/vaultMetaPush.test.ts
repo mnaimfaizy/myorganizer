@@ -29,10 +29,11 @@ if (!(globalThis as any).crypto?.subtle) {
 import type { AxiosResponse } from 'axios';
 import type { VaultApi, VaultMetaV1 } from '@myorganizer/app-api-client';
 import type { VaultStorageV1 } from './localVaultStorage';
-import { createVaultHandle } from './vaultHandle';
+import { createVaultHandle, VaultSecretMismatchError } from './vaultHandle';
 import {
   pushLocalVaultMeta,
-  changePassphraseEverywhere,
+  resetPassphraseAfterRecovery,
+  changePassphraseWithCurrent,
   settleVaultMeta,
 } from './vaultMetaPush';
 import { hashVaultMeta } from './syncBookmarkAccess';
@@ -396,7 +397,149 @@ describe('pushLocalVaultMeta', () => {
   });
 });
 
-describe('changePassphraseEverywhere', () => {
+describe('changePassphraseWithCurrent', () => {
+  const owner = 'test-owner';
+  const passphrase = 'old-pass';
+  const currentPassphrase = 'old-pass';
+  const newPassphrase = 'new-pass';
+
+  // ===== Case A: Happy path =====
+
+  test('A: happy path mirrors resetPassphraseAfterRecovery: changes local wrapping, records base before push, pushes new meta, and records new agreement on success', async () => {
+    const handle = await setupHandle(owner, passphrase);
+    const api = createApiDouble();
+
+    // Capture base meta before change
+    const before = handle.loadVault();
+    expect(before).not.toBeNull();
+    const saltBefore = before!.kdf.salt;
+
+    // getVaultMeta rejects with 404, so getServerVaultMeta returns null
+    const notFoundError = new Error('Not Found') as Error & {
+      response?: { status: number };
+    };
+    notFoundError.response = { status: 404 };
+    api.getVaultMeta.mockRejectedValue(notFoundError);
+
+    api.putVaultMeta.mockResolvedValue({
+      data: { etag: 'etag-new', updatedAt: 't1' },
+    } as AxiosResponse);
+
+    const result = await changePassphraseWithCurrent({
+      api,
+      handle,
+      currentPassphrase,
+      newPassphrase,
+    });
+
+    expect(result).toEqual({
+      changedLocally: true,
+      push: { kind: 'pushed' },
+    });
+
+    // Verify new passphrase works
+    const newHandle = createVaultHandle({ owner });
+    await newHandle.unlockWithPassphrase({ passphrase: newPassphrase });
+    expect(newHandle.loadVault()).not.toBeNull();
+
+    // Verify bookmark is set to new meta
+    const newMeta = handle.loadVault();
+    const newMetaHash = await hashVaultMeta(localToServerMeta(newMeta!));
+    expect(handle.lastAgreedVaultMetaHash()).toBe(newMetaHash);
+
+    // Verify kdf.salt is byte-identical before and after
+    expect(newMeta!.kdf.salt).toBe(saltBefore);
+  });
+
+  // ===== Case B: Wrong current passphrase =====
+
+  test('B: wrong current passphrase throws VaultSecretMismatchError, does NOT call putVaultMeta, and Vault Meta Bookmark is unchanged', async () => {
+    const handle = await setupHandle(owner, passphrase);
+    const api = createApiDouble();
+
+    // Record bookmark before the failed call
+    const baseLocalMeta = localToServerMeta(handle.loadVault()!);
+    await handle.recordVaultMetaAgreement({ meta: baseLocalMeta });
+    const baseBookmarkHash = handle.lastAgreedVaultMetaHash();
+
+    // Capture Local Vault state before the failed call to verify byte-identical
+    const vaultBefore = handle.loadVault()!;
+    const stateBefore = {
+      masterKeyWrappedWithPassphrase:
+        vaultBefore.masterKeyWrappedWithPassphrase,
+      masterKeyWrappedWithRecoveryKey:
+        vaultBefore.masterKeyWrappedWithRecoveryKey,
+      kdf: vaultBefore.kdf,
+      data: vaultBefore.data,
+    };
+    // Deep-copied so the comparison below cannot be a live object compared
+    // against itself. JSON round-trip rather than structuredClone: jsdom does
+    // not expose the latter, and every field here is already a string or a
+    // number — an EncryptedBlob is base64 text, not bytes — so nothing is lost.
+    const stateBeforeSnapshot = JSON.parse(
+      JSON.stringify(stateBefore),
+    ) as typeof stateBefore;
+
+    // Attempt with wrong passphrase
+    await expect(
+      changePassphraseWithCurrent({
+        api,
+        handle,
+        currentPassphrase: 'wrong-pass',
+        newPassphrase,
+      }),
+    ).rejects.toThrow(VaultSecretMismatchError);
+
+    // Verify putVaultMeta was never called
+    expect(api.putVaultMeta).not.toHaveBeenCalled();
+
+    // Verify bookmark is still the base hash
+    expect(handle.lastAgreedVaultMetaHash()).toBe(baseBookmarkHash);
+
+    // Verify Local Vault is byte-identical (no rewrap happened)
+    const vaultAfter = handle.loadVault()!;
+    const stateAfter = {
+      masterKeyWrappedWithPassphrase: vaultAfter.masterKeyWrappedWithPassphrase,
+      masterKeyWrappedWithRecoveryKey:
+        vaultAfter.masterKeyWrappedWithRecoveryKey,
+      kdf: vaultAfter.kdf,
+      data: vaultAfter.data,
+    };
+    expect(stateAfter).toEqual(stateBeforeSnapshot);
+  });
+
+  // ===== Case C: Push fails but local change persists =====
+
+  test('C: push transport error returns {changedLocally: true, push: {kind: "unreachable"}}, local vault has new wrapping, and new passphrase works', async () => {
+    const handle = await setupHandle(owner, passphrase);
+    const api = createApiDouble();
+
+    const transportError = new Error('Network error') as Error & {
+      response?: { status: number };
+    };
+    transportError.response = { status: 500 };
+    api.getVaultMeta.mockRejectedValue(transportError);
+
+    const result = await changePassphraseWithCurrent({
+      api,
+      handle,
+      currentPassphrase,
+      newPassphrase,
+    });
+
+    expect(result).toEqual({
+      changedLocally: true,
+      push: { kind: 'unreachable' },
+    });
+
+    // Verify new passphrase works locally
+    const newHandle = createVaultHandle({ owner });
+    await newHandle.unlockWithPassphrase({ passphrase: newPassphrase });
+    expect(newHandle.loadVault()).not.toBeNull();
+  });
+});
+
+describe('resetPassphraseAfterRecovery', () => {
   const owner = 'test-owner';
   const passphrase = 'old-pass';
   const newPassphrase = 'new-pass';
@@ -423,7 +566,7 @@ describe('changePassphraseEverywhere', () => {
       data: { etag: 'etag-new', updatedAt: 't1' },
     } as AxiosResponse);
 
-    const result = await changePassphraseEverywhere({
+    const result = await resetPassphraseAfterRecovery({
       api,
       handle,
       newPassphrase,
@@ -463,7 +606,7 @@ describe('changePassphraseEverywhere', () => {
     transportError.response = { status: 500 };
     api.getVaultMeta.mockRejectedValue(transportError);
 
-    const result = await changePassphraseEverywhere({
+    const result = await resetPassphraseAfterRecovery({
       api,
       handle,
       newPassphrase,
@@ -511,7 +654,7 @@ describe('changePassphraseEverywhere', () => {
       data: { etag: 'etag-server', updatedAt: 't1', meta: serverMeta },
     } as AxiosResponse);
 
-    const result = await changePassphraseEverywhere({
+    const result = await resetPassphraseAfterRecovery({
       api,
       handle,
       newPassphrase,
@@ -535,7 +678,7 @@ describe('changePassphraseEverywhere', () => {
     const api = createApiDouble();
 
     await expect(
-      changePassphraseEverywhere({
+      resetPassphraseAfterRecovery({
         api,
         handle,
         newPassphrase,
@@ -603,7 +746,7 @@ describe('settleVaultMeta', () => {
     await handle.recordVaultMetaAgreement({ meta: baseLocalMeta });
 
     // Change passphrase locally
-    await handle.changePassphrase({ newPassphrase: 'new-pass' });
+    await handle.resetPassphrase({ newPassphrase: 'new-pass' });
 
     // Server still holds the base
     const serverMeta = baseLocalMeta;
@@ -667,7 +810,7 @@ describe('settleVaultMeta', () => {
     await handle.recordVaultMetaAgreement({ meta: baseLocalMeta });
 
     // Change passphrase locally
-    await handle.changePassphrase({ newPassphrase: 'new-pass' });
+    await handle.resetPassphrase({ newPassphrase: 'new-pass' });
 
     // Server holds a completely different meta (different salt = different vault)
     const differentServerMeta = makeServerMeta({ kdf_salt: 'different-salt' });

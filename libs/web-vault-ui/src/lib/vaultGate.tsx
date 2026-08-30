@@ -14,9 +14,11 @@ import { useMemo, useRef, useState } from 'react';
 import {
   type LocalVaultStatus,
   type VaultHandle,
+  MIN_PASSPHRASE_LENGTH,
   VaultSecretMismatchError,
-  changePassphraseEverywhere,
   createVaultApi,
+  newPassphraseSchema,
+  resetPassphraseAfterRecovery,
 } from '@myorganizer/web-vault';
 
 import { VaultClaimOffer } from './vaultClaimOffer';
@@ -109,9 +111,10 @@ export function VaultGate(props: VaultGateProps) {
 
   if (currentVaultStatus !== 'owned') {
     const canCreate =
-      setupPassphrase.length >= 10 &&
-      setupPassphrase === setupConfirm &&
-      recoveryKey === null;
+      newPassphraseSchema.safeParse({
+        newPassphrase: setupPassphrase,
+        newPassphraseConfirm: setupConfirm,
+      }).success && recoveryKey === null;
 
     return (
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -141,7 +144,8 @@ export function VaultGate(props: VaultGateProps) {
                 placeholder="Re-enter passphrase"
               />
               <p className="text-sm text-muted-foreground">
-                Minimum 10 characters. This passphrase never leaves your device.
+                Minimum {MIN_PASSPHRASE_LENGTH} characters. This passphrase
+                never leaves your device.
               </p>
             </div>
 
@@ -331,14 +335,16 @@ export function VaultGate(props: VaultGateProps) {
               type="button"
               disabled={
                 !masterKeyBytes ||
-                newPassphrase.length < 10 ||
-                newPassphrase !== newPassphraseConfirm
+                !newPassphraseSchema.safeParse({
+                  newPassphrase,
+                  newPassphraseConfirm,
+                }).success
               }
               onClick={async () => {
                 if (!masterKeyBytes || !handle) return;
 
                 try {
-                  const result = await changePassphraseEverywhere({
+                  const result = await resetPassphraseAfterRecovery({
                     api: createVaultApi(),
                     handle,
                     newPassphrase,

@@ -228,6 +228,7 @@ export function createVaultHandle(options: {
     unlockWithPassphrase: access.unlockWithPassphrase,
     unlockWithRecoveryKey: access.unlockWithRecoveryKey,
     changePassphrase: access.changePassphrase,
+    resetPassphrase: access.resetPassphrase,
     loadDecryptedData: access.loadDecryptedData,
     decryptCiphertext: access.decryptCiphertext,
     // The one write that names a Vault Blob Type, so the one the sink hears

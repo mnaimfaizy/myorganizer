@@ -14,6 +14,9 @@ jest.mock('./session', () => ({
 }));
 
 // Import real VaultSecretMismatchError so instanceof checks work
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { VaultSecretMismatchError } from '@myorganizer/web-vault';
 import type { VaultHandle } from '@myorganizer/web-vault';
 
@@ -43,6 +46,7 @@ describe('VaultGate', () => {
       unlockWithPassphrase: jest.fn(),
       unlockWithRecoveryKey: jest.fn(),
       changePassphrase: jest.fn(),
+      resetPassphrase: jest.fn(),
       loadDecryptedData: jest.fn(),
       saveEncryptedData: jest.fn(),
       ...overrides,
@@ -646,6 +650,28 @@ describe('VaultGate', () => {
       expect(
         screen.queryByText(/MyVault: Set encryption passphrase/),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Guard — the recovery branch uses the recovery-authorized entry point', () => {
+    /**
+     * Asserted against the source text rather than by driving the control,
+     * because the control cannot be driven: the recovery panel stops rendering
+     * at the moment its button would become enabled (#593). A test that faked
+     * a path to it would assert something the product cannot do.
+     *
+     * What it protects: `changePassphraseWithCurrent` verifies the current
+     * passphrase, and `resetPassphraseAfterRecovery` does not, because a User
+     * here has just proved they do not know it. Reaching for the first from
+     * this branch would demand a secret the flow exists to work without;
+     * reaching for the second from an unlocked-session surface would skip the
+     * authorization entirely. Each belongs to exactly one caller.
+     */
+    test('vaultGate.tsx does not reference changePassphraseWithCurrent', () => {
+      const source = readFileSync(join(__dirname, 'vaultGate.tsx'), 'utf8');
+
+      expect(source).toContain('resetPassphraseAfterRecovery');
+      expect(source).not.toContain('changePassphraseWithCurrent');
     });
   });
 });
