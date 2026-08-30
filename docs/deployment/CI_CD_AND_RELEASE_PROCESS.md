@@ -195,6 +195,31 @@ Production cPanel FTP/FTPS:
 - `FTP_PROD_FRONTEND_PASSWORD`
 - `FTP_PROD_FRONTEND_DIR` (remote directory for frontend app root)
 
+### Host Apply (Staging & Production)
+
+After the backend bundle is uploaded, CI SSHs in to install, migrate, regenerate
+the Prisma client, and restart — see [ADR 0056](../adr/0056-ci-owns-host-apply-without-describing-the-jail.md).
+This is a public repository, so this table lists secret **names** only. Values
+(host, port, user, home paths, the selector app identity) live only in the
+`staging` and `production` GitHub Environments — never in git, workflow YAML,
+or this document.
+
+Same names in both environments:
+
+| Secret              | What it is for                                                                                      |
+| ------------------- | --------------------------------------------------------------------------------------------------- |
+| `SSH_HOST`          | Host to connect to for that environment's Host Apply.                                               |
+| `SSH_PORT`          | SSH port for that connection.                                                                       |
+| `SSH_USER`          | SSH account to connect as.                                                                          |
+| `SSH_PRIVATE_KEY`   | Deploy key for that account (never the account password).                                           |
+| `APP_ROOT`          | This environment's backend application directory on the host.                                       |
+| `NODEVENV_ACTIVATE` | Path to that environment's Node virtualenv `activate` script.                                       |
+| `SELECTOR_APP_KEY`  | The one app identity Host Apply may load `DATABASE_URL` for from the host's Node.js selector store. |
+| `API_ORIGIN`        | Base URL Host Apply's HTTP verification probes call after restart.                                  |
+
+`DATABASE_URL` is never a GitHub secret in either environment. Host Apply loads
+it on the host, for `SELECTOR_APP_KEY` only, and never prints it.
+
 ## How to cut a release
 
 ### Versioning

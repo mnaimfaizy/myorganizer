@@ -559,6 +559,9 @@ jobs:
       - name: Release pipeline page checker contracts
         run: corepack yarn deploy:pages:test
 
+      - name: Host Apply engine contracts
+        run: corepack yarn host-apply:test
+
       - name: Lint coverage checker contracts
         run: corepack yarn lint:coverage:test
 
