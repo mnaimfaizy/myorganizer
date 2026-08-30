@@ -350,8 +350,14 @@ export function VaultGate(props: VaultGateProps) {
                   // passphrase they could not remember needs to hear that the
                   // old one still unlocks those devices. That is the reason
                   // they were rotating, not a sync detail.
+                  // `noop-already-in-sync` is a success too: the server holds
+                  // this wrapping, which is all the copy below claims.
+                  const reachedServer =
+                    result.push.kind === 'pushed' ||
+                    result.push.kind === 'noop-already-in-sync';
+
                   toast(
-                    result.push.kind === 'pushed'
+                    reachedServer
                       ? {
                           title: 'Passphrase updated',
                           description:

@@ -194,6 +194,12 @@ export async function reconcileVaultWithServer(options: {
     await putServerVaultMetaEtagAware({
       api,
       meta: localToServerMeta(localVault),
+      // Reachable only as a race: the server held no Vault Meta at the read
+      // above and holds one by the time of this write, so another device
+      // created the Vault in between. Keeping theirs is the safe answer —
+      // overwriting it would replace a wrapping this pass never saw, which is
+      // exactly what reconcile is not allowed to do (ADR 0057, ADR 0060).
+      onConflict: () => 'keep-remote',
     });
     start = 'uploaded-local-wrapping';
   } else {

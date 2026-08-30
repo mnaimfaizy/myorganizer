@@ -29,7 +29,6 @@ import { VaultApi, VaultMetaV1 } from '@myorganizer/app-api-client';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 
-import { VaultStorageV1 } from './localVaultStorage';
 import {
   getServerVaultMeta,
   putServerVaultMetaEtagAware,
@@ -54,21 +53,20 @@ type VaultMetaApi = Pick<VaultApi, 'getVaultMeta' | 'putVaultMeta'>;
  * Whether a local wrapping may be pushed over a server Vault Meta that
  * differs from it in this way.
  *
- * This is a tripwire, not a routine branch, and it is worth saying which. On
- * every path that reaches a push today the server has been proved equal to the
- * base, and the base shares its salt with what is being pushed — because
- * `changePassphrase` re-derives from the salt the Vault already has. So the
- * only difference that can survive to be checked here is `passphrase`, and
- * this table's `false` cannot fire.
- *
- * It fires the day somebody changes that. A `changePassphrase` that minted a
- * fresh salt would make this device's meta read as a *different vault* rather
- * than a rotation — which is the correct reading of a moved salt and the
- * wrong outcome for a rotation, and is exactly
+ * Checked before the base comparison, deliberately: a server holding a
+ * separately initialized Vault is not a stale base to be caught up, it is a
+ * different Vault, and no proof about the base makes pushing over it right.
+ * Pushing there would leave the server's Ciphertext guarded by a key it was
+ * not encrypted under — exactly
  * [#578](https://github.com/mnaimfaizy/myorganizer/issues/578) pointing the
- * other way. Pushing there would leave the server's Ciphertext guarded by a
- * key it was not encrypted under. The table turns that from a silent data
- * hazard into a refusal.
+ * other way.
+ *
+ * It guards a second case that does not exist yet. `changePassphrase`
+ * re-derives from the salt the Vault already has, which is what keeps a
+ * rotation legible as a rotation; a future change that minted a fresh salt
+ * would make this device's own rotation read as a different Vault, and this
+ * table is what stops that becoming a silent data hazard rather than a
+ * refusal.
  *
  * Pinned rather than inferred so a fourth Vault Meta Change fails to compile
  * until somebody says whether pushing over it is safe
@@ -261,8 +259,9 @@ export async function changePassphraseEverywhere(options: {
     await handle.recordVaultMetaAgreement({ meta: base });
   }
 
-  const meta = currentMeta(handle);
-  if (!meta) return { changedLocally: true, push: { kind: 'unreachable' } };
+  const after = handle.loadVault();
+  if (!after) return { changedLocally: true, push: { kind: 'unreachable' } };
+  const meta = localToServerMeta(after);
 
   let push: VaultMetaPushResult;
   try {
@@ -333,13 +332,10 @@ export async function settleVaultMeta(options: {
   // device that has never pushed behave exactly as it did before bookmarks
   // existed.
   if (baseHash) {
-    let push: VaultMetaPushResult;
-    try {
-      push = await pushLocalVaultMeta({ api, meta, baseHash });
-    } catch (error) {
-      if (isSessionGone(error)) return { kind: 'skipped-not-authenticated' };
-      throw error;
-    }
+    // Not wrapped in a `try`: `pushLocalVaultMeta` converts a lost Session
+    // into `skipped-not-authenticated` itself and rethrows everything else,
+    // so a catch here could only re-test a condition that never reaches it.
+    const push = await pushLocalVaultMeta({ api, meta, baseHash });
 
     if (push.kind === 'skipped-not-authenticated') {
       return { kind: 'skipped-not-authenticated' };
@@ -366,9 +362,4 @@ export async function settleVaultMeta(options: {
       prompt: options.prompt,
     }),
   };
-}
-
-function currentMeta(handle: VaultHandle): VaultMetaV1 | null {
-  const vault: VaultStorageV1 | null = handle.loadVault();
-  return vault ? localToServerMeta(vault) : null;
 }

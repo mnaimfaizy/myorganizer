@@ -24,10 +24,13 @@ import {
   SYNC_BOOKMARK_RECORD_VERSION,
   syncBookmarkStorageKey,
   readSyncBookmarks,
+  readVaultMetaBookmark,
   writeSyncBookmark,
+  writeVaultMetaBookmark,
   removeSyncBookmarks,
   type SyncBookmarkEntry,
   type SyncBookmarkRecord,
+  type VaultMetaBookmarkEntry,
 } from './syncBookmarkStorage';
 
 beforeEach(() => {
@@ -468,6 +471,165 @@ describe('syncBookmarkStorage — Sync Bookmark storage primitives', () => {
 
       expect(result.tasks).toEqual(entryTasks);
       expect(result.todos).toEqual(entryTodos);
+    });
+  });
+
+  describe('readVaultMetaBookmark and writeVaultMetaBookmark — Vault Meta Bookmark storage', () => {
+    test('26: readVaultMetaBookmark returns undefined for owner with no record at all', () => {
+      const result = readVaultMetaBookmark('user-a');
+      expect(result).toBeUndefined();
+    });
+
+    test('27: readVaultMetaBookmark returns undefined for owner whose record has bookmarks but no metaBookmark', () => {
+      // Pre-write a record with only sync bookmarks, no Vault Meta Bookmark
+      const record: SyncBookmarkRecord = {
+        version: SYNC_BOOKMARK_RECORD_VERSION,
+        owner: 'user-a',
+        bookmarks: { tasks: { ciphertextHash: 'hash1', etag: 'etag1' } },
+        // metaBookmark is deliberately absent
+      };
+      localStorage.setItem(
+        syncBookmarkStorageKey('user-a'),
+        JSON.stringify(record),
+      );
+
+      const result = readVaultMetaBookmark('user-a');
+      expect(result).toBeUndefined();
+    });
+
+    test('28: writeVaultMetaBookmark then readVaultMetaBookmark round-trips the entry', () => {
+      const entry: VaultMetaBookmarkEntry = {
+        metaHash: 'meta-hash-value-1',
+      };
+
+      writeVaultMetaBookmark({
+        owner: 'user-a',
+        entry,
+      });
+
+      const result = readVaultMetaBookmark('user-a');
+      expect(result).toEqual(entry);
+      expect(result?.metaHash).toBe('meta-hash-value-1');
+    });
+
+    test('29: ADR 0058 amendment - writeVaultMetaBookmark preserves existing sync bookmarks when writeSyncBookmark is called afterwards', () => {
+      // Write a Vault Meta Bookmark first
+      const metaEntry: VaultMetaBookmarkEntry = {
+        metaHash: 'meta-hash-1',
+      };
+      writeVaultMetaBookmark({
+        owner: 'user-a',
+        entry: metaEntry,
+      });
+
+      // Verify Vault Meta Bookmark is present
+      expect(readVaultMetaBookmark('user-a')).toEqual(metaEntry);
+
+      // Now write a Sync Bookmark for a Vault Blob Type
+      const syncEntry: SyncBookmarkEntry = {
+        ciphertextHash: 'hash-1',
+        etag: 'etag-1',
+      };
+      writeSyncBookmark({
+        owner: 'user-a',
+        type: 'tasks',
+        entry: syncEntry,
+      });
+
+      // Assert: Vault Meta Bookmark still exists and is unchanged
+      expect(readVaultMetaBookmark('user-a')).toEqual(metaEntry);
+      // Assert: Sync Bookmark also exists
+      expect(readSyncBookmarks('user-a').tasks).toEqual(syncEntry);
+    });
+
+    test('30: ADR 0058 amendment - writeSyncBookmark preserves existing Vault Meta Bookmark when writeVaultMetaBookmark is called afterwards', () => {
+      // Write a Sync Bookmark first
+      const syncEntry: SyncBookmarkEntry = {
+        ciphertextHash: 'hash-1',
+        etag: 'etag-1',
+      };
+      writeSyncBookmark({
+        owner: 'user-a',
+        type: 'tasks',
+        entry: syncEntry,
+      });
+
+      // Verify Sync Bookmark is present
+      expect(readSyncBookmarks('user-a').tasks).toEqual(syncEntry);
+
+      // Now write a Vault Meta Bookmark
+      const metaEntry: VaultMetaBookmarkEntry = {
+        metaHash: 'meta-hash-1',
+      };
+      writeVaultMetaBookmark({
+        owner: 'user-a',
+        entry: metaEntry,
+      });
+
+      // Assert: Sync Bookmark still exists and is unchanged
+      expect(readSyncBookmarks('user-a').tasks).toEqual(syncEntry);
+      // Assert: Vault Meta Bookmark now exists
+      expect(readVaultMetaBookmark('user-a')).toEqual(metaEntry);
+    });
+
+    test('31: owner isolation - Vault Meta Bookmark written for user-a is not visible to user-b', () => {
+      const entryA: VaultMetaBookmarkEntry = {
+        metaHash: 'meta-hash-a',
+      };
+      const entryB: VaultMetaBookmarkEntry = {
+        metaHash: 'meta-hash-b',
+      };
+
+      writeVaultMetaBookmark({
+        owner: 'user-a',
+        entry: entryA,
+      });
+      writeVaultMetaBookmark({
+        owner: 'user-b',
+        entry: entryB,
+      });
+
+      // Assert: user-a's Vault Meta Bookmark is not visible to user-b
+      expect(readVaultMetaBookmark('user-a')).toEqual(entryA);
+      expect(readVaultMetaBookmark('user-b')).toEqual(entryB);
+      expect(readVaultMetaBookmark('user-b')).not.toEqual(entryA);
+    });
+
+    test('32: removeSyncBookmarks removes the Vault Meta Bookmark while leaving other owners untouched', () => {
+      const entryA: VaultMetaBookmarkEntry = {
+        metaHash: 'meta-hash-a',
+      };
+      const entryB: VaultMetaBookmarkEntry = {
+        metaHash: 'meta-hash-b',
+      };
+
+      writeVaultMetaBookmark({
+        owner: 'user-a',
+        entry: entryA,
+      });
+      writeVaultMetaBookmark({
+        owner: 'user-b',
+        entry: entryB,
+      });
+
+      // Also add sync bookmarks to user-b to verify removal is complete
+      writeSyncBookmark({
+        owner: 'user-b',
+        type: 'tasks',
+        entry: { ciphertextHash: 'hash-b', etag: 'etag-b' },
+      });
+
+      // Act: remove user-a's bookmarks
+      removeSyncBookmarks('user-a');
+
+      // Assert: user-a's Vault Meta Bookmark is gone
+      expect(readVaultMetaBookmark('user-a')).toBeUndefined();
+      // Assert: user-a's sync bookmarks are gone
+      expect(readSyncBookmarks('user-a')).toEqual({});
+      // Assert: user-b's Vault Meta Bookmark is still present and unchanged
+      expect(readVaultMetaBookmark('user-b')).toEqual(entryB);
+      // Assert: user-b's sync bookmarks are still present
+      expect(readSyncBookmarks('user-b').tasks).toBeDefined();
     });
   });
 });

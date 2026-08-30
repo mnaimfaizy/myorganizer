@@ -73,18 +73,22 @@ ADR 0057 is unchanged and not weakened. Its claims — adoption never happens im
 `convergeVaultMeta` takes `getVaultMeta` and nothing else — remain literally true. What changes is
 that they are no longer the whole story about Vault Meta, and the module doc says so.
 
-`putServerVaultMetaEtagAware` is no longer reserved for a server holding no Vault Meta. Every new
-call site passes an explicit conflict handler that keeps the remote copy; its default, which raises a
-`window.confirm` from inside the library, is the shape ADR 0057 was written against and must not be
-reached from here.
+`putServerVaultMetaEtagAware` is no longer reserved for a server holding no Vault Meta, and its
+`onConflict` parameter is now required rather than defaulted. The old default raised a
+`window.confirm` from inside the library — the shape ADR 0057 was written against — and leaving it
+in place would have made the next call site's silence a trap rather than a choice. Vault Reconcile's
+pre-existing call now passes one too: on the race where a Vault Meta appears between its read and
+its write, it keeps the remote copy. The Vault Blob path keeps its default, because Ciphertext a
+handler chooses between can at least be decrypted and compared.
 
 The salt becomes load-bearing in a new way. `changePassphrase` re-derives from the salt the Vault
 already has, which is what keeps a rotation legible as a rotation. A future change that minted a
-fresh salt would make this device's meta read as a _different vault_ rather than a rotation
+fresh salt would make this device's own rotation read as a _different vault_
 ([#578](https://github.com/mnaimfaizy/myorganizer/issues/578) pointing the other way), and pushing
 there would leave the server's Ciphertext guarded by a key it was not encrypted under. The pinned
-`VAULT_META_CHANGE_PUSHABLE` table cannot fire today for exactly that reason, and is kept as the
-tripwire for the day it can.
+`VAULT_META_CHANGE_PUSHABLE` table refuses that, and is checked before the base comparison rather
+than after it: a server holding a separately initialized Vault is not a stale base to be caught up,
+and no proof about the base makes pushing over it right.
 
 Losing a Vault Meta Bookmark degrades to the previous behaviour — a prompt that may misattribute a
 change — never to lost data. That is the right failure direction and matches ADR 0058's

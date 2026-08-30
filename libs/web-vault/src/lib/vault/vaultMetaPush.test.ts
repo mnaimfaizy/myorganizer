@@ -410,6 +410,7 @@ describe('changePassphraseEverywhere', () => {
     // Capture base meta before change
     const before = handle.loadVault();
     expect(before).not.toBeNull();
+    const saltBefore = before!.kdf.salt;
 
     // getVaultMeta rejects with 404, so getServerVaultMeta returns null
     const notFoundError = new Error('Not Found') as Error & {
@@ -442,6 +443,9 @@ describe('changePassphraseEverywhere', () => {
     const newMeta = handle.loadVault();
     const newMetaHash = await hashVaultMeta(localToServerMeta(newMeta!));
     expect(handle.lastAgreedVaultMetaHash()).toBe(newMetaHash);
+
+    // Verify kdf.salt is byte-identical before and after (passphrase change does not mint a fresh salt)
+    expect(newMeta!.kdf.salt).toBe(saltBefore);
   });
 
   // ===== Case 11: Push throws transport error =====
