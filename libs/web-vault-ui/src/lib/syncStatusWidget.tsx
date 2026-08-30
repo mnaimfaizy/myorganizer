@@ -35,8 +35,10 @@ export function SyncStatusWidget({ className }: { className?: string }) {
   const { status, retry } = useVaultSyncStatus();
   const reading = describeVaultSyncStatus(status);
 
-  // A healthy sync adds no chrome to the page, so there is no chip to open —
-  // only the announcement the indicator makes for a screen reader.
+  // A healthy sync adds no chrome to the page, so there is no chip to open.
+  // The indicator is still rendered, and renders nothing: its live region is
+  // left empty rather than announcing success, so a screen reader is told no
+  // more than a sighted User is shown.
   if (!reading.label) {
     return <SyncStatusIndicator status={status} className={className} />;
   }

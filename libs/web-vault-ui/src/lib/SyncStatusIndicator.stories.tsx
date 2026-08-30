@@ -23,9 +23,35 @@ export default meta;
 type Story = StoryObj<typeof SyncStatusIndicator>;
 
 /**
- * Healthy synced state. The component renders minimally with no visible label or
- * action — screen-reader announcement only. This story confirms the component does
- * not add unnecessary chrome when all data is fully synced to the server.
+ * Annotates the two stories whose whole point is that nothing appears.
+ *
+ * `Synced` and `Loading` render byte-identical DOM — an empty flex container
+ * holding an empty screen-reader paragraph — so on the canvas they are
+ * indistinguishable both from each other and from a story that failed to
+ * load. The note says which state you are looking at and why it is blank.
+ *
+ * Deliberately plain text above the component rather than a frame or border
+ * around it: a box would read as chrome the component does not have, and this
+ * component's entire contract here is that it adds none.
+ *
+ * Applied only to these two. The other stories render visible content, and
+ * annotating those would put Storybook furniture next to output a reviewer is
+ * meant to be judging on its own.
+ */
+const EmptyStateAnnotation = (message: string): Story['decorators'] => [
+  (StoryComponent) => (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs text-gray-500 italic leading-relaxed">{message}</p>
+      <StoryComponent />
+    </div>
+  ),
+];
+
+/**
+ * Healthy synced state. Everything reached the server, so the indicator adds
+ * nothing to the page: no label, no icon, no detail — and no screen-reader
+ * announcement either, since the live region is left empty. Blank is the
+ * assertion here, not a missing story.
  */
 export const Synced: Story = {
   args: {
@@ -36,18 +62,24 @@ export const Synced: Story = {
       retrying: false,
     },
   },
+  decorators: EmptyStateAnnotation(
+    'Rendered, and deliberately empty. Everything reached the server, so the indicator adds no chrome — no label, no icon, and no screen-reader announcement: the live region is empty too. This state is final; nothing further appears.',
+  ),
 };
 
 /**
- * Loading state: before a Vault Session is established or the first sync status
- * computation resolves. The component renders silently (no visible label) to avoid
- * claiming success prematurely. This state is distinct from `Synced` in readiness
- * — it will show a reading once status becomes available.
+ * No status computed yet — no Vault Session, or the first read still in
+ * flight. Renders exactly what `Synced` renders, and for the opposite reason:
+ * not "there is nothing to report" but "we do not know yet, so do not claim
+ * success". The two are told apart by what happens next, never by their output.
  */
 export const Loading: Story = {
   args: {
     status: null,
   },
+  decorators: EmptyStateAnnotation(
+    'Rendered, and deliberately empty — identical output to Synced, opposite meaning. No status has been computed yet, so claiming success would be a lie. Unlike Synced, this state resolves: a reading appears once one exists.',
+  ),
 };
 
 /**
