@@ -24,6 +24,31 @@ function toSessionData(
   };
 }
 
+/**
+ * Put `token` on a request config that is about to be replayed.
+ *
+ * Written for both header shapes rather than one: axios hands an
+ * `AxiosHeaders` instance to a real interceptor, while a plain object is what
+ * a config built by hand carries. Assigning through `set` where it exists
+ * keeps the normalized casing AxiosHeaders maintains.
+ */
+function setAuthorizationHeader(
+  request: { headers?: unknown },
+  token: string,
+): void {
+  const value = `Bearer ${token}`;
+  const headers = request.headers as
+    | { set?: (name: string, value: string) => void }
+    | undefined;
+
+  if (typeof headers?.set === 'function') {
+    headers.set('Authorization', value);
+    return;
+  }
+
+  request.headers = { ...(headers ?? {}), Authorization: value };
+}
+
 export function createAuthSessionTransportAdapter(
   storage: AuthSessionStorageAdapter,
 ): AuthSessionTransportAdapter {
@@ -82,18 +107,41 @@ export function createAuthSessionTransportAdapter(
 
         originalRequest._retry = true;
 
+        // The replay sits outside the try so that only a failed *refresh* can
+        // clear the Session. It already behaved that way — `return promise`
+        // inside a try is not awaited there, so the replay's rejection never
+        // reached the catch — but that is a subtlety one `await` would undo.
+        // Writing `return await instance(...)` here would start signing Users
+        // out for any replayed request that did not return 2xx, and axios
+        // counts an ordinary 304 among those. The tests pin this.
+        let refreshed: AuthSessionData;
         try {
           if (!refreshInFlight) {
             refreshInFlight = refreshSession();
           }
-          await refreshInFlight;
+          refreshed = await refreshInFlight;
           refreshInFlight = null;
-          return instance(originalRequest);
         } catch (refreshErr) {
           refreshInFlight = null;
           storage.clearSession();
           return Promise.reject(refreshErr);
         }
+
+        // The replayed config still carries the Authorization header the
+        // generated client baked in when it built the request, and that is
+        // the token that just expired — `setBearerAuthToObject` resolves
+        // `accessToken()` once, at build time, not per attempt. Replaying it
+        // unchanged sends the expired token again, earns a second 401, and
+        // `_retry` then makes that one final.
+        //
+        // A caller that latches on a 401 never recovers from it. That is what
+        // the Vault Sync Queue does — a 401 sets `sessionEnded`, which only a
+        // User-initiated retry lifts — so a device coming back online after
+        // more than one access-token lifetime would report the Session as
+        // ended and stop syncing, with the refresh having quietly succeeded.
+        setAuthorizationHeader(originalRequest, refreshed.token);
+
+        return instance(originalRequest);
       },
     );
 

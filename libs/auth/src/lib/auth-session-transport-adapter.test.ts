@@ -329,6 +329,254 @@ describe('createAuthSessionTransportAdapter', () => {
       await expect(promise).rejects.toBe(error);
       expect(mockStorage.setAccessToken).not.toHaveBeenCalled();
     });
+
+    it('replayed request with 304 does not clear session', async () => {
+      const mockRefreshResponse = {
+        data: {
+          token: 'new-token',
+          expires_in: 3600,
+          user: mockUser,
+        },
+      };
+
+      (AuthenticationApi as jest.Mock).mockImplementationOnce(() => ({
+        refreshToken: jest.fn().mockResolvedValue(mockRefreshResponse),
+      }));
+
+      const originalRequest = {
+        url: '/vault-pull',
+        method: 'GET',
+        config: {},
+        _retry: false,
+      } as any;
+
+      const error = new Error('Unauthorized') as any;
+      error.response = { status: 401 };
+      error.config = originalRequest;
+
+      // Override the mock instance to reject with 304 on the replay
+      const replayError = new Error('Not Modified') as any;
+      replayError.response = { status: 304 };
+      (mockAxiosInstance as any).mockRejectedValueOnce(replayError);
+
+      // Rejects with the replay's own error object, not a substitute: the
+      // interceptor returns the replayed promise untouched.
+      await expect(onRejected(error)).rejects.toBe(replayError);
+      expect(mockStorage.setAccessToken).toHaveBeenCalledWith('new-token');
+      expect(mockStorage.clearSession).not.toHaveBeenCalled();
+    });
+
+    it('replayed request with 500 does not clear session', async () => {
+      const mockRefreshResponse = {
+        data: {
+          token: 'new-token',
+          expires_in: 3600,
+          user: mockUser,
+        },
+      };
+
+      (AuthenticationApi as jest.Mock).mockImplementationOnce(() => ({
+        refreshToken: jest.fn().mockResolvedValue(mockRefreshResponse),
+      }));
+
+      const originalRequest = {
+        url: '/todos',
+        method: 'GET',
+        config: {},
+        _retry: false,
+      } as any;
+
+      const error = new Error('Unauthorized') as any;
+      error.response = { status: 401 };
+      error.config = originalRequest;
+
+      // Override the mock instance to reject with 500 on the replay
+      const replayError = new Error('Internal Server Error') as any;
+      replayError.response = { status: 500 };
+      (mockAxiosInstance as any).mockRejectedValueOnce(replayError);
+
+      // Rejects with the replay's own error object, not a substitute: the
+      // interceptor returns the replayed promise untouched.
+      await expect(onRejected(error)).rejects.toBe(replayError);
+      // Refresh succeeded, so setAccessToken was called
+      expect(mockStorage.setAccessToken).toHaveBeenCalledWith('new-token');
+      // But session was not cleared despite replay rejection
+      expect(mockStorage.clearSession).not.toHaveBeenCalled();
+    });
+
+    it('successful replay resolves with the replayed response', async () => {
+      const mockRefreshResponse = {
+        data: {
+          token: 'new-token',
+          expires_in: 3600,
+          user: mockUser,
+        },
+      };
+
+      (AuthenticationApi as jest.Mock).mockImplementationOnce(() => ({
+        refreshToken: jest.fn().mockResolvedValue(mockRefreshResponse),
+      }));
+
+      const originalRequest = {
+        url: '/todos',
+        method: 'GET',
+        config: {},
+        _retry: false,
+      } as any;
+
+      const error = new Error('Unauthorized') as any;
+      error.response = { status: 401 };
+      error.config = originalRequest;
+
+      const replayResponse = { status: 200, data: { ok: true } };
+      (mockAxiosInstance as any).mockResolvedValueOnce(replayResponse);
+
+      const promise = onRejected(error);
+
+      const result = await promise;
+
+      expect(result).toBe(replayResponse);
+      expect(mockStorage.setAccessToken).toHaveBeenCalledWith('new-token');
+      expect(mockStorage.clearSession).not.toHaveBeenCalled();
+    });
+
+    it('setAuthorizationHeader: plain object headers updated to refreshed token', async () => {
+      const mockRefreshResponse = {
+        data: {
+          token: 'new-token',
+          expires_in: 3600,
+          user: mockUser,
+        },
+      };
+
+      (AuthenticationApi as jest.Mock).mockImplementationOnce(() => ({
+        refreshToken: jest.fn().mockResolvedValue(mockRefreshResponse),
+      }));
+
+      const originalRequest = {
+        url: '/todos',
+        method: 'GET',
+        headers: {
+          Authorization: 'Bearer expired-token',
+          'Content-Type': 'application/json',
+        },
+        _retry: false,
+      } as any;
+
+      const error = new Error('Unauthorized') as any;
+      error.response = { status: 401 };
+      error.config = originalRequest;
+
+      await onRejected(error);
+
+      const replayCall = (mockAxiosInstance as any).mock.calls[0][0];
+      expect(replayCall.headers.Authorization).toBe('Bearer new-token');
+      expect(replayCall.headers['Content-Type']).toBe('application/json');
+    });
+
+    it('setAuthorizationHeader: AxiosHeaders with set method called with refreshed token', async () => {
+      const mockRefreshResponse = {
+        data: {
+          token: 'new-token',
+          expires_in: 3600,
+          user: mockUser,
+        },
+      };
+
+      (AuthenticationApi as jest.Mock).mockImplementationOnce(() => ({
+        refreshToken: jest.fn().mockResolvedValue(mockRefreshResponse),
+      }));
+
+      const setMock = jest.fn();
+      const headersWithSet = {
+        Authorization: 'Bearer expired-token',
+        set: setMock,
+      };
+
+      const originalRequest = {
+        url: '/todos',
+        method: 'GET',
+        headers: headersWithSet,
+        _retry: false,
+      } as any;
+
+      const error = new Error('Unauthorized') as any;
+      error.response = { status: 401 };
+      error.config = originalRequest;
+
+      await onRejected(error);
+
+      expect(setMock).toHaveBeenCalledWith('Authorization', 'Bearer new-token');
+      // Headers object identity should be preserved when set method exists
+      const replayCall = (mockAxiosInstance as any).mock.calls[0][0];
+      expect(replayCall.headers).toBe(headersWithSet);
+    });
+
+    it('setAuthorizationHeader: request with no headers creates Authorization header', async () => {
+      const mockRefreshResponse = {
+        data: {
+          token: 'new-token',
+          expires_in: 3600,
+          user: mockUser,
+        },
+      };
+
+      (AuthenticationApi as jest.Mock).mockImplementationOnce(() => ({
+        refreshToken: jest.fn().mockResolvedValue(mockRefreshResponse),
+      }));
+
+      const originalRequest = {
+        url: '/todos',
+        method: 'GET',
+        _retry: false,
+      } as any;
+
+      const error = new Error('Unauthorized') as any;
+      error.response = { status: 401 };
+      error.config = originalRequest;
+
+      await onRejected(error);
+
+      const replayCall = (mockAxiosInstance as any).mock.calls[0][0];
+      expect(replayCall.headers).toBeDefined();
+      expect(replayCall.headers.Authorization).toBe('Bearer new-token');
+    });
+
+    it('setAuthorizationHeader: other headers survive replay with new Authorization', async () => {
+      const mockRefreshResponse = {
+        data: {
+          token: 'new-token',
+          expires_in: 3600,
+          user: mockUser,
+        },
+      };
+
+      (AuthenticationApi as jest.Mock).mockImplementationOnce(() => ({
+        refreshToken: jest.fn().mockResolvedValue(mockRefreshResponse),
+      }));
+
+      const originalRequest = {
+        url: '/vault-pull',
+        method: 'GET',
+        headers: {
+          Authorization: 'Bearer expired-token',
+          'If-None-Match': '"abc123"',
+          'Content-Type': 'application/json',
+        },
+        _retry: false,
+      } as any;
+
+      const error = new Error('Unauthorized') as any;
+      error.response = { status: 401 };
+      error.config = originalRequest;
+
+      await onRejected(error);
+
+      const replayCall = (mockAxiosInstance as any).mock.calls[0][0];
+      expect(replayCall.headers.Authorization).toBe('Bearer new-token');
+      expect(replayCall.headers['If-None-Match']).toBe('"abc123"');
+      expect(replayCall.headers['Content-Type']).toBe('application/json');
+    });
   });
 
   describe('getAuthApi', () => {
