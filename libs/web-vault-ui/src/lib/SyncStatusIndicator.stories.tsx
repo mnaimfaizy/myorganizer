@@ -13,6 +13,16 @@ import { SyncStatusIndicator } from './SyncStatusIndicator';
 // partial enumeration.
 void VAULT_BLOB_TYPES;
 
+/**
+ * There is deliberately no story for `synced` or for a null status.
+ *
+ * Both render an empty container holding an empty screen-reader paragraph, so
+ * a story of either is a blank canvas — indistinguishable from a story that
+ * failed to load, identical to the other, and a Chromatic snapshot that
+ * asserts nothing. That the component adds no chrome when sync is healthy is
+ * a real contract, and it is asserted in `SyncStatusIndicator.spec.tsx`,
+ * which is where an assertion belongs. See STORYBOOK-PATTERNS.md §8.
+ */
 const meta: Meta<typeof SyncStatusIndicator> = {
   component: SyncStatusIndicator,
   title: 'Vault/SyncStatusIndicator',
@@ -21,66 +31,6 @@ const meta: Meta<typeof SyncStatusIndicator> = {
 
 export default meta;
 type Story = StoryObj<typeof SyncStatusIndicator>;
-
-/**
- * Annotates the two stories whose whole point is that nothing appears.
- *
- * `Synced` and `Loading` render byte-identical DOM — an empty flex container
- * holding an empty screen-reader paragraph — so on the canvas they are
- * indistinguishable both from each other and from a story that failed to
- * load. The note says which state you are looking at and why it is blank.
- *
- * Deliberately plain text above the component rather than a frame or border
- * around it: a box would read as chrome the component does not have, and this
- * component's entire contract here is that it adds none.
- *
- * Applied only to these two. The other stories render visible content, and
- * annotating those would put Storybook furniture next to output a reviewer is
- * meant to be judging on its own.
- */
-const EmptyStateAnnotation = (message: string): Story['decorators'] => [
-  (StoryComponent) => (
-    <div className="flex flex-col gap-3">
-      <p className="text-xs text-gray-500 italic leading-relaxed">{message}</p>
-      <StoryComponent />
-    </div>
-  ),
-];
-
-/**
- * Healthy synced state. Everything reached the server, so the indicator adds
- * nothing to the page: no label, no icon, no detail — and no screen-reader
- * announcement either, since the live region is left empty. Blank is the
- * assertion here, not a missing story.
- */
-export const Synced: Story = {
-  args: {
-    status: {
-      kind: 'synced',
-      pendingTypes: [],
-      terminalFailures: [],
-      retrying: false,
-    },
-  },
-  decorators: EmptyStateAnnotation(
-    'Rendered, and deliberately empty. Everything reached the server, so the indicator adds no chrome — no label, no icon, and no screen-reader announcement: the live region is empty too. This state is final; nothing further appears.',
-  ),
-};
-
-/**
- * No status computed yet — no Vault Session, or the first read still in
- * flight. Renders exactly what `Synced` renders, and for the opposite reason:
- * not "there is nothing to report" but "we do not know yet, so do not claim
- * success". The two are told apart by what happens next, never by their output.
- */
-export const Loading: Story = {
-  args: {
-    status: null,
-  },
-  decorators: EmptyStateAnnotation(
-    'Rendered, and deliberately empty — identical output to Synced, opposite meaning. No status has been computed yet, so claiming success would be a lie. Unlike Synced, this state resolves: a reading appears once one exists.',
-  ),
-};
 
 /**
  * Changes are queued on the device but have not yet reached the server, and no
