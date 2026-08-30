@@ -283,11 +283,12 @@ Use a versioned release branch so production deploys are unambiguous:
   - `git checkout -b release/v1.2.3`
   - `git push -u origin release/v1.2.3`
 
-3. Approve the production deploy:
+3. Approve the production deploy (the ship decision):
 
 - A run is usually already queued and waiting — pushing the branch in step 2 dispatches one.
 - If you need to start one by hand: GitHub → **Actions** → `Deploy Production (manual)` → **Run workflow**, select the `release/v1.2.3` branch, run.
-- Confirm CI is green on `release/v1.2.3`, then approve the run. Nothing reaches production until you approve.
+- Confirm CI is green on `release/v1.2.3`, then approve the run. The approval authorises Host Apply; nothing reaches production until you approve.
+- Approval does not ship the version — Host Apply (the job that follows) must succeed. The tag receipt comes after Host Apply is green.
 
 4. After production deploy succeeds, create and push the version tag:
 
@@ -314,6 +315,7 @@ Replace `vX.Y.Z` with your version (example: `v0.1.1`).
 
 - CI is green
 - Staging deploy is successful
+- **Staging Host Apply is green** (backend bundle is uploaded, migrations applied, Prisma client regenerated, and service restarted)
 
 2. Cut the release branch (recommended):
 
@@ -331,12 +333,16 @@ What this does:
 - To start one by hand instead: GitHub → Actions → `Deploy Production (manual)` → Run workflow on `release/vX.Y.Z`
 - Check CI is green on `release/vX.Y.Z`, then approve. The approval is the ship decision.
 
-4. Tag the release after a successful production deploy:
+4. Tag the release after Production Host Apply has succeeded:
 
+- Confirm the `Deploy Production (manual)` workflow has completed, including the `host-apply` job.
+- Confirm migration status and service health probes (`/docs`, cron paths).
 - `yarn release:tag --version vX.Y.Z --push`
 
 This updates `CHANGELOG.md` with generated notes based on commits since the previous tag.
 Use `--no-notes` to disable.
+
+The tag is a receipt: `vX.Y.Z` existing means that version is live in production with Host Apply verified.
 
 Optional: write a rolling notes file
 
@@ -369,7 +375,7 @@ The script lives at `tools/scripts/release.mjs` and automates the git steps.
 - It requires a clean working tree.
 - `release:cut` requires you to be on `main` and up-to-date with `origin/main`.
 - It does **not** dispatch or approve any deploy. Pushing the release branch is what dispatches a production run (via `dispatch-production-deploy.yml`), and that run still waits for approval.
-- `release:cut` **cannot** create a tag. Tagging is a separate command, run only after production is live — the tag is a receipt, not a trigger. See [ADR 0028](../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md).
+- `release:cut` **cannot** create a tag. Tagging is a separate command, run only after Production Host Apply succeeds — the tag is a receipt, not a trigger. See [ADR 0028](../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md) and [ADR 0056](../adr/0056-ci-owns-host-apply-without-describing-the-jail.md).
 
 ## cPanel notes (after upload)
 
