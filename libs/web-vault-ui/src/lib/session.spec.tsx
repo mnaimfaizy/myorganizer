@@ -48,7 +48,10 @@ const setupTwoQueueMock = (queueA: object, queueB: object) => {
 
 describe('VaultSessionProvider', () => {
   let mockApi: { getVaultBlob: jest.Mock; putVaultBlob: jest.Mock };
-  let mockQueue: { vaultBlobChanged: jest.Mock };
+  let mockQueue: {
+    vaultBlobChanged: jest.Mock;
+    markUnsentFromBookmarks: jest.Mock;
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();

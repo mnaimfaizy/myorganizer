@@ -162,6 +162,8 @@ describe('useTasksWorkflow — Local Vault Revision integration', () => {
       await act(async () => {
         await result.current.updateTask('task-1', {
           title: 'Updated initial task',
+          priority: 'medium',
+          status: 'pending',
         });
       });
 
