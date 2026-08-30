@@ -286,6 +286,10 @@ _Avoid_: vault client, vault service, vault accessor, vault context
 Where a Vault Handle reports that one Vault Blob Type changed. It belongs to the handle rather than to whoever writes through it: the handle is the only way to reach a Local Vault, so a sink held there cannot be gone around, and no write can forget to synchronise. It is told a Vault Blob Type and never Ciphertext, and nothing it does can fail the save that told it — the Local Vault is already written by then, and an edit reported as failed is a lie the User retypes.
 _Avoid_: save listener, push callback, change observer, write hook
 
+**Local Vault Revision**:
+What a Vault Handle reports when the whole Local Vault has been replaced under whoever is reading it — convergence taking the server's Ciphertext, an import, a removal. It is the inbound counterpart to the Vault Sync Sink and deliberately not the same thing: the sink is told that one Vault Blob Type changed here so it can be sent, while this says that what a reader already holds is no longer what is stored. Feeding one from the other would be a loop, since convergence writes through the path the sink must not hear. It carries a number and never a Vault Blob Type or Ciphertext, so a reader re-reads what it already knows how to read rather than being told what changed. An edit made on this device does not move it — only a replacement does.
+_Avoid_: vault version, change event, invalidation signal, refresh token
+
 **Vault Sync Queue**:
 The Vault Blob Types a device has still to converge, held by a Vault Sync Sink. It is a wake-up list rather than the state it wakes for: whether a Vault Blob is unsent is derived from its Sync Bookmark, so a lost queue costs a delay and never an edit. It holds types and never Ciphertext, which is what makes ten saves to one type mark it once while the drain still carries the final state. Not a push queue — a drain converges, so it may equally take the server's copy or merge.
 _Avoid_: outbox, dirty queue, pending changes, write buffer, debounce buffer

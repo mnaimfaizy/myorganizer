@@ -15,6 +15,7 @@ import {
   createLocalVaultAccess,
   type LocalVaultAccess,
 } from './localVaultAccess';
+import { type LocalVaultRevision } from './localVaultRevision';
 import {
   assertVaultOwner,
   ownedLocalVaultSlot,
@@ -98,6 +99,13 @@ export function createVaultHandle(options: {
   owner: string;
   masterKeyBytes?: Uint8Array | null;
   syncSink?: VaultSyncSink | null;
+  /**
+   * Told whenever this handle replaces the whole Local Vault. Optional for the
+   * same reason `syncSink` is: a handle without one behaves exactly as it did
+   * before there was one to give, which is what keeps export, import and the
+   * tests untouched.
+   */
+  revision?: LocalVaultRevision | null;
 }): VaultHandle {
   assertVaultOwner(options.owner);
 
@@ -107,6 +115,7 @@ export function createVaultHandle(options: {
   });
   const bookmarks = createSyncBookmarkAccess(options.owner);
   const syncSink = options.syncSink ?? null;
+  const revision = options.revision ?? null;
 
   /**
    * Tell the sink which Vault Blob Type just changed, and let nothing it does
@@ -130,6 +139,22 @@ export function createVaultHandle(options: {
     }
   };
 
+  /**
+   * Tell readers the Local Vault they are holding has been replaced.
+   *
+   * Same fire-and-forget contract as `reportChange` and for the same reason:
+   * the write has landed by the time this runs, so nothing a reader does with
+   * the news may turn a completed write into a failed one.
+   */
+  const reportVaultReplaced = (): void => {
+    if (!revision) return;
+    try {
+      revision.bump();
+    } catch {
+      // Deliberately swallowed — see above.
+    }
+  };
+
   // Every method below is a closure over the access object's own state, so
   // handing the references out directly keeps them bound and keeps generics.
   const handle: VaultHandle = {
@@ -147,7 +172,16 @@ export function createVaultHandle(options: {
     // Blob Type, so there is nothing to report; and it is how convergence
     // itself writes Ciphertext back after taking the server's copy, so
     // reporting here would feed the sink its own output.
-    saveVault: access.saveVault,
+    //
+    // The Local Vault Revision is told, and that is not the same thing. The
+    // sink exists to send a change outward; the revision exists to tell
+    // whoever is already reading this Vault that what they hold is no longer
+    // what is stored. Convergence replacing Ciphertext is the case that needs
+    // saying loudest, which is exactly the case the sink must not hear.
+    saveVault: (vault) => {
+      access.saveVault(vault);
+      reportVaultReplaced();
+    },
     // Explicit Local Vault removal (ADR 0033) also removes this owner's Sync
     // Bookmarks (ADR 0056) — the two per-User namespaces are removed together
     // because a bookmark for a Vault this device no longer holds is stale by
@@ -155,6 +189,7 @@ export function createVaultHandle(options: {
     removeVault: () => {
       access.removeVault();
       bookmarks.removeBookmarks();
+      reportVaultReplaced();
     },
     async hasUnsentChanges(type) {
       const vault = access.loadVault();

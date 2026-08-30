@@ -2,6 +2,7 @@
 
 import type { Task } from '@myorganizer/core';
 import type { VaultHandle } from '@myorganizer/web-vault';
+import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -55,6 +56,14 @@ export function useTasksWorkflow({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<TaskWorkflowError | null>(null);
 
+  // Convergence replaces the Local Vault without passing through this hook, so
+  // the revision is the only thing that says the Ciphertext behind `tasks`
+  // moved. Reloading matters more for the write path than the read one: every
+  // mutation below saves the whole array, so a stale `tasks` does not just
+  // render out of date — it is what gets written back over the record that
+  // arrived (#587).
+  const revision = useLocalVaultRevision();
+
   useEffect(() => {
     let cancelled = false;
 
@@ -70,7 +79,7 @@ export function useTasksWorkflow({
     return () => {
       cancelled = true;
     };
-  }, [vaultAdapter]);
+  }, [vaultAdapter, revision]);
 
   const addTask = useCallback(
     async (formData: TaskFormInput) => {

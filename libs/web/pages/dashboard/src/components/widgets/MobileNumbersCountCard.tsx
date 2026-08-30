@@ -4,6 +4,7 @@ import {
   normalizeMobileNumbers,
   type VaultHandle,
 } from '@myorganizer/web-vault';
+import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
 import { Phone } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -34,7 +35,17 @@ interface MobileNumbersContentProps {
 function MobileNumbersContent({ handle }: MobileNumbersContentProps) {
   const [count, setCount] = useState<number | null>(null);
 
+  // Read-only, so there is no overwrite to prevent here — but a dashboard
+  // still showing the count from before convergence is the same staleness
+  // wearing a quieter face (#587).
+  const revision = useLocalVaultRevision();
+
   useEffect(() => {
+    // Cancellation matters now that this effect re-fires on every convergence:
+    // without it, an earlier read resolving late can put stale records back
+    // over the ones a later read just applied.
+    let isActive = true;
+
     handle
       .loadDecryptedData<unknown>({
         type: 'mobileNumbers',
@@ -42,10 +53,16 @@ function MobileNumbersContent({ handle }: MobileNumbersContentProps) {
       })
       .then((raw) => {
         const { value } = normalizeMobileNumbers(raw);
-        setCount(value.length);
+        if (isActive) setCount(value.length);
       })
-      .catch(() => setCount(0));
-  }, [handle]);
+      .catch(() => {
+        if (isActive) setCount(0);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [handle, revision]);
 
   if (count === null) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;

@@ -6,6 +6,7 @@ export * from './lib/reconcileRunner';
 export * from './lib/session';
 export * from './lib/SyncStatusIndicator';
 export * from './lib/syncStatusWidget';
+export * from './lib/useLocalVaultRevision';
 export * from './lib/useVaultSyncStatus';
 export * from './lib/vaultClaimOffer';
 export * from './lib/vaultGate';

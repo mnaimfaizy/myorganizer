@@ -6,6 +6,11 @@ const mockGetCurrentUser = jest.fn();
 const mockCreateVaultHandle = jest.fn();
 const mockCreateVaultApi = jest.fn();
 const mockCreateVaultSyncQueue = jest.fn();
+const mockCreateLocalVaultRevision = jest.fn(() => ({
+  current: () => 0,
+  bump: jest.fn(),
+  subscribe: () => () => undefined,
+}));
 
 jest.mock('@myorganizer/auth', () => ({
   getCurrentUser: () => mockGetCurrentUser(),
@@ -15,6 +20,7 @@ jest.mock('@myorganizer/web-vault', () => ({
   createVaultHandle: (opts: unknown) => mockCreateVaultHandle(opts),
   createVaultApi: () => mockCreateVaultApi(),
   createVaultSyncQueue: (opts: unknown) => mockCreateVaultSyncQueue(opts),
+  createLocalVaultRevision: () => mockCreateLocalVaultRevision(),
 }));
 
 import {
@@ -29,6 +35,7 @@ const optionsOf = (call: number) =>
     owner: string;
     masterKeyBytes: Uint8Array | null;
     syncSink: unknown;
+    revision: unknown;
   };
 
 // Helper to set up distinct queues keyed on call order (order-independent)
@@ -81,6 +88,7 @@ describe('VaultSessionProvider', () => {
       owner: 'user-a',
       masterKeyBytes: null,
       syncSink: mockQueue,
+      revision: expect.objectContaining({ subscribe: expect.any(Function) }),
     });
     expect(result.current.handle).toEqual({
       owner: 'user-a',

@@ -15,7 +15,7 @@ import {
   normalizeSubscriptions,
   type VaultHandle,
 } from '@myorganizer/web-vault';
-import { VaultGate } from '@myorganizer/web-vault-ui';
+import { useLocalVaultRevision, VaultGate } from '@myorganizer/web-vault-ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { dateInputToIso } from '../utils/date';
@@ -51,6 +51,13 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
   const [deletingSubscription, setDeletingSubscription] =
     useState<SubscriptionRecord | null>(null);
 
+  // Convergence replaces the Local Vault without passing through this
+  // component, so the revision is the only thing that says the Ciphertext
+  // behind `items` moved. Every mutation below saves the whole list, so a
+  // stale `items` is not merely out of date on screen — it is what gets
+  // written back over the record that arrived (#587).
+  const revision = useLocalVaultRevision();
+
   useEffect(() => {
     const apply = () => {
       const settings = getAccountSettings();
@@ -62,6 +69,11 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
   }, []);
 
   useEffect(() => {
+    // Cancellation matters now that this effect re-fires on every convergence:
+    // without it, an earlier read resolving late can put stale records back
+    // over the ones a later read just applied.
+    let isActive = true;
+
     props.handle
       .loadDecryptedData<unknown>({
         type: 'subscriptions',
@@ -69,7 +81,7 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
       })
       .then(async (raw) => {
         const normalized = normalizeSubscriptions(raw);
-        setItems(normalized.value);
+        if (isActive) setItems(normalized.value);
         if (normalized.changed) {
           await props.handle.saveEncryptedData({
             type: 'subscriptions',
@@ -78,13 +90,18 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
         }
       })
       .catch(() => {
+        if (!isActive) return;
         toast({
           title: 'Failed to load subscriptions',
           description: 'Could not decrypt saved data.',
           variant: 'destructive',
         });
       });
-  }, [props.handle, toast]);
+
+    return () => {
+      isActive = false;
+    };
+  }, [props.handle, toast, revision]);
 
   const persist = useCallback(
     async (next: SubscriptionRecord[]) => {

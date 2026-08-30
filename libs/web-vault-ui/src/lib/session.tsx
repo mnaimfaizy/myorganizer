@@ -12,9 +12,11 @@ import React, {
 
 import { getCurrentUser } from '@myorganizer/auth';
 import {
+  createLocalVaultRevision,
   createVaultApi,
   createVaultHandle,
   createVaultSyncQueue,
+  type LocalVaultRevision,
   type VaultHandle,
   type VaultSyncQueue,
 } from '@myorganizer/web-vault';
@@ -26,6 +28,12 @@ type VaultSessionContextValue = {
   handle: VaultHandle | null;
   /** The Vault Sync Queue `handle` reports to. Exposed for a sync status reading. */
   syncQueue: VaultSyncQueue | null;
+  /**
+   * Moves whenever the Local Vault is replaced under whoever is reading it —
+   * convergence taking the server's Ciphertext, an import, a removal. Exposed
+   * so a page holding decrypted records can read them again.
+   */
+  revision: LocalVaultRevision | null;
 };
 
 const VaultSessionContext = createContext<VaultSessionContextValue | null>(
@@ -77,6 +85,14 @@ export function VaultSessionProvider({
     });
   }, [owner]);
 
+  // Keyed on `owner` alone, like the queue and for the same reason: locking
+  // and unlocking build a new handle over the same Local Vault, and a revision
+  // rebuilt with it would drop every subscriber a page had registered.
+  const revision = useMemo(() => {
+    if (owner === null) return null;
+    return createLocalVaultRevision();
+  }, [owner]);
+
   // Construct the handle
   const handle = useMemo<VaultHandle | null>(() => {
     if (owner === null) {
@@ -86,8 +102,9 @@ export function VaultSessionProvider({
       owner,
       masterKeyBytes: currentMasterKeyBytes,
       syncSink: syncQueue,
+      revision,
     });
-  }, [owner, currentMasterKeyBytes, syncQueue]);
+  }, [owner, currentMasterKeyBytes, syncQueue, revision]);
 
   // What a save reports covers edits made while this queue existed. Ciphertext
   // left unsent by an earlier browser session — or by a version that had no
@@ -111,8 +128,16 @@ export function VaultSessionProvider({
       lock,
       handle,
       syncQueue,
+      revision,
     }),
-    [currentMasterKeyBytes, setMasterKeyBytes, lock, handle, syncQueue],
+    [
+      currentMasterKeyBytes,
+      setMasterKeyBytes,
+      lock,
+      handle,
+      syncQueue,
+      revision,
+    ],
   );
 
   return (

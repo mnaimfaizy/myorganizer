@@ -23,6 +23,7 @@ export type {
   VaultHandle,
   VaultSyncSink,
 } from './lib/vault/vaultHandle';
+export * from './lib/vault/localVaultRevision';
 export * from './lib/vault/vaultConverge';
 export * from './lib/vault/vaultMetaConverge';
 export * from './lib/vault/vaultSyncFailure';
