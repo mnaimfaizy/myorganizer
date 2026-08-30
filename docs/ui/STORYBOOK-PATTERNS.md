@@ -197,6 +197,18 @@ A story set is not done at "Default". Cover what a reviewer needs to make a judg
 
 Long-content and empty states are the two most often skipped and the two that most often expose layout bugs.
 
+### A state that renders nothing gets no story
+
+The table above says which states are worth showing. It does not say every state is. **If a state renders no visible output, it does not get a story** — delete it rather than explaining it.
+
+A story of such a state is a blank canvas. It is indistinguishable from a story that failed to load, it is identical to every other state that also renders nothing, and it spends a Chromatic snapshot asserting the absence of pixels. Two blank stories side by side are worse still: a reviewer cannot tell them apart, so the catalogue implies a difference it cannot show.
+
+Rendering nothing is often a real contract — a healthy status indicator that deliberately adds no chrome, a banner that stays absent until something is wrong. Assert it in the component's spec, where an assertion can name the DOM it expects. Storybook is a visual catalogue; a thing with no appearance has no entry in it.
+
+Where the absence is surprising enough that a reader would otherwise add the story back, say so once in a comment on `meta` and point at the spec that covers it.
+
+Do not reach for a decorator, a wrapper, or a caption to make the blankness legible. That makes the _story_ visible, not the component, and it puts Storybook furniture in a catalogue of production output.
+
 ## 9. Accessibility in stories
 
 Stories are where a11y defects become visible, so do not encode them into the examples.
@@ -264,16 +276,18 @@ Running the play tests locally: see [`docs/storybook/README.md`](../storybook/RE
 
 ## Anti-patterns
 
-| Anti-pattern                                                             | Why it fails                                              | Instead                                                          |
-| ------------------------------------------------------------------------ | --------------------------------------------------------- | ---------------------------------------------------------------- |
-| `args: { children: <CardHeader>…</CardHeader> }` on a compound component | Unreadable story, useless controls                        | Wrapper component (§4)                                           |
-| Static `checked`/`value` on a controlled primitive                       | Control appears broken                                    | `render` with local state (§5)                                   |
-| Story file outside `src/lib/`                                            | Silently never loaded                                     | Colocate with the component (§1)                                 |
-| `render: () => { const [x] = useState() … }`                             | Rules-of-hooks violation in an anonymous arrow            | `render: function Render() { … }` (§5)                           |
-| `within(canvasElement)` for portalled content                            | Radix renders to `document.body`; the query finds nothing | `within(document.body)` (§7)                                     |
-| Only a `Default` story                                                   | Reviewers cannot see the states that break                | Coverage table (§8)                                              |
-| Emoji or bare icon as the whole button label                             | No accessible name                                        | Icon + `aria-label` (§9)                                         |
-| Skipping `Toaster` because it is a mount point                           | Never tests GUIDELINES §1 for that primitive              | `play` that calls `toast()` (§5)                                 |
-| Fetching or generating data in a story                                   | Non-deterministic Chromatic diffs                         | Fixed props (§10)                                                |
-| `play` asserting mobile behaviour with no `viewport` parameter           | Page renders at 1280×720; the assertion times out         | Declare `parameters.viewport` (§11)                              |
-| A story for a `libs/web/pages/` component                                | Not in any glob; depends on domain state                  | Test it, or promote it to a primitive or Vault UI Component (§1) |
+| Anti-pattern                                                             | Why it fails                                                         | Instead                                                          |
+| ------------------------------------------------------------------------ | -------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| `args: { children: <CardHeader>…</CardHeader> }` on a compound component | Unreadable story, useless controls                                   | Wrapper component (§4)                                           |
+| Static `checked`/`value` on a controlled primitive                       | Control appears broken                                               | `render` with local state (§5)                                   |
+| Story file outside `src/lib/`                                            | Silently never loaded                                                | Colocate with the component (§1)                                 |
+| `render: () => { const [x] = useState() … }`                             | Rules-of-hooks violation in an anonymous arrow                       | `render: function Render() { … }` (§5)                           |
+| `within(canvasElement)` for portalled content                            | Radix renders to `document.body`; the query finds nothing            | `within(document.body)` (§7)                                     |
+| Only a `Default` story                                                   | Reviewers cannot see the states that break                           | Coverage table (§8)                                              |
+| Emoji or bare icon as the whole button label                             | No accessible name                                                   | Icon + `aria-label` (§9)                                         |
+| Skipping `Toaster` because it is a mount point                           | Never tests GUIDELINES §1 for that primitive                         | `play` that calls `toast()` (§5)                                 |
+| Fetching or generating data in a story                                   | Non-deterministic Chromatic diffs                                    | Fixed props (§10)                                                |
+| `play` asserting mobile behaviour with no `viewport` parameter           | Page renders at 1280×720; the assertion times out                    | Declare `parameters.viewport` (§11)                              |
+| A story for a `libs/web/pages/` component                                | Not in any glob; depends on domain state                             | Test it, or promote it to a primitive or Vault UI Component (§1) |
+| A story for a state that renders nothing                                 | Blank canvas; reads as broken, and two of them are indistinguishable | Delete it; assert the absence in the spec (§8)                   |
+| A decorator or caption added to make an empty story legible              | Makes the story visible, not the component                           | Delete the story (§8)                                            |

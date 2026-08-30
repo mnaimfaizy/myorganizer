@@ -4,6 +4,7 @@ import {
   OrganisationTypeEnum,
   PriorityEnum,
   randomId,
+  readVaultBlobRecords,
   UpdateMethodEnum,
   UsageLocationRecord,
 } from '@myorganizer/core';
@@ -26,6 +27,19 @@ function isoNow(): string {
 
 function toTrimmedString(value: unknown): string | null {
   return typeof value === 'string' ? value.trim() : null;
+}
+
+/**
+ * An `updatedAt` that merging can actually compare, or `undefined`.
+ *
+ * Merging resolves a collision by this field, and reads anything unparseable
+ * as older than everything — so `"banana"` stored here would silently lose
+ * every collision and every deletion. It is dropped instead.
+ */
+function parseUpdatedAt(value: unknown): string | undefined {
+  const trimmed = toTrimmedString(value);
+  if (!trimmed) return undefined;
+  return Number.isNaN(Date.parse(trimmed)) ? undefined : trimmed;
 }
 
 function parseOrganisationType(value: unknown): OrganisationType {
@@ -86,7 +100,7 @@ function parsePriority(value: unknown): Priority {
 }
 
 function normalizeUsageLocation(
-  value: unknown
+  value: unknown,
 ): NormalizeResult<UsageLocationRecord | null> {
   if (!value || typeof value !== 'object')
     return { value: null, changed: false };
@@ -127,8 +141,10 @@ function normalizeUsageLocation(
 }
 
 export function normalizeAddresses(
-  value: unknown
+  payload: unknown,
 ): NormalizeResult<AddressRecord[]> {
+  const value = readVaultBlobRecords(payload);
+
   if (!Array.isArray(value)) return { value: [], changed: value != null };
 
   let changed = false;
@@ -183,6 +199,8 @@ export function normalizeAddresses(
           : AddressStatusEnum.Current,
       usageLocations: nextUsage,
       createdAt: toTrimmedString(raw.createdAt) ?? isoNow(),
+      // Carried through, never invented — see AddressRecord.updatedAt.
+      updatedAt: parseUpdatedAt(raw.updatedAt),
     };
 
     if (next.id !== raw.id) changed = true;
@@ -197,6 +215,7 @@ export function normalizeAddresses(
     if (next.status !== raw.status) changed = true;
     if (!Array.isArray(raw.usageLocations)) changed = true;
     if (next.createdAt !== raw.createdAt) changed = true;
+    if (next.updatedAt !== raw.updatedAt) changed = true;
 
     normalized.push(next);
   }
@@ -205,8 +224,10 @@ export function normalizeAddresses(
 }
 
 export function normalizeMobileNumbers(
-  value: unknown
+  payload: unknown,
 ): NormalizeResult<_MobileNumberRecord[]> {
+  const value = readVaultBlobRecords(payload);
+
   if (!Array.isArray(value)) return { value: [], changed: value != null };
 
   let changed = false;
@@ -252,6 +273,8 @@ export function normalizeMobileNumbers(
       phoneNumber: toTrimmedString(raw.phoneNumber) ?? undefined,
       usageLocations: nextUsage,
       createdAt: toTrimmedString(raw.createdAt) ?? isoNow(),
+      // Carried through, never invented — see AddressRecord.updatedAt.
+      updatedAt: parseUpdatedAt(raw.updatedAt),
     };
 
     if (next.id !== raw.id) changed = true;
@@ -261,10 +284,7 @@ export function normalizeMobileNumbers(
     if (next.phoneNumber !== raw.phoneNumber) changed = true;
     if (!Array.isArray(raw.usageLocations)) changed = true;
     if (next.createdAt !== raw.createdAt) changed = true;
-    if (next.label !== raw.label) changed = true;
-    if (next.mobileNumber !== raw.mobileNumber) changed = true;
-    if (!Array.isArray(raw.usageLocations)) changed = true;
-    if (next.createdAt !== raw.createdAt) changed = true;
+    if (next.updatedAt !== raw.updatedAt) changed = true;
 
     normalized.push(next);
   }

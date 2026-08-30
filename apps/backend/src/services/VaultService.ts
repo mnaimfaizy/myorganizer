@@ -1,3 +1,4 @@
+import { createHash } from 'crypto';
 import { Prisma, PrismaClient, createPrismaClient } from '../prisma';
 
 export const VAULT_BLOB_TYPES = [
@@ -59,12 +60,54 @@ const VAULT_EXPORT_PAYLOAD_MAX_BYTES = 1024 * 1024;
 
 const BASE64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
 
-function etagFromDate(date: Date): string {
-  return `W/\"${date.getTime()}\"`;
-}
-
 function jsonByteLength(value: unknown): number {
   return Buffer.byteLength(JSON.stringify(value), 'utf8');
+}
+
+function canonicalizeForHash(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(canonicalizeForHash);
+  }
+  if (value !== null && typeof value === 'object') {
+    const sorted: Record<string, unknown> = {};
+    for (const key of Object.keys(value as Record<string, unknown>).sort()) {
+      sorted[key] = canonicalizeForHash(
+        (value as Record<string, unknown>)[key],
+      );
+    }
+    return sorted;
+  }
+  return value;
+}
+
+// putVaultMeta/putBlob hash the already-validated write input rather than
+// re-reading it back from Prisma: canonicalizeForHash sorts keys recursively,
+// so it doesn't matter that Postgres jsonb does not preserve key order on
+// round-trip — the hash is identical either way, and hashing the input avoids
+// a dependency on what the upsert() call happens to return.
+function etagFromContent(value: unknown): string {
+  const hash = createHash('sha256')
+    .update(JSON.stringify(canonicalizeForHash(value)))
+    .digest('hex');
+  return `W/"${hash}"`;
+}
+
+function vaultMetaContent(source: {
+  version: number;
+  kdf_name: string;
+  kdf_salt: string;
+  kdf_params: unknown;
+  wrapped_mk_passphrase: unknown;
+  wrapped_mk_recovery: unknown;
+}) {
+  return {
+    version: source.version,
+    kdf_name: source.kdf_name,
+    kdf_salt: source.kdf_salt,
+    kdf_params: source.kdf_params,
+    wrapped_mk_passphrase: source.wrapped_mk_passphrase,
+    wrapped_mk_recovery: source.wrapped_mk_recovery,
+  };
 }
 
 function decodeBase64Strict(value: string): Buffer | null {
@@ -136,14 +179,7 @@ export class VaultService {
       return { ok: false, status: 404, body: { message: 'Vault not found' } };
     }
 
-    const meta: VaultMetaV1 = {
-      version: vault.version,
-      kdf_name: vault.kdf_name,
-      kdf_salt: vault.kdf_salt,
-      kdf_params: vault.kdf_params as Record<string, unknown>,
-      wrapped_mk_passphrase: vault.wrapped_mk_passphrase,
-      wrapped_mk_recovery: vault.wrapped_mk_recovery,
-    };
+    const meta = vaultMetaContent(vault) as VaultMetaV1;
 
     return {
       ok: true,
@@ -151,7 +187,7 @@ export class VaultService {
       body: {
         meta,
         updatedAt: vault.updatedAt.toISOString(),
-        etag: etagFromDate(vault.updatedAt),
+        etag: etagFromContent(meta),
       },
     };
   };
@@ -189,7 +225,7 @@ export class VaultService {
         };
       }
 
-      const currentEtag = etagFromDate(existing.updatedAt);
+      const currentEtag = etagFromContent(vaultMetaContent(existing));
       if (ifMatch !== currentEtag) {
         return {
           ok: false,
@@ -231,7 +267,7 @@ export class VaultService {
       status,
       body: {
         ok: true,
-        etag: etagFromDate(saved.updatedAt),
+        etag: etagFromContent(vaultMetaContent(meta)),
         updatedAt: saved.updatedAt.toISOString(),
       },
     };
@@ -267,7 +303,7 @@ export class VaultService {
         type,
         blob: blobRow.blob as EncryptedBlobV1,
         updatedAt: blobRow.updatedAt.toISOString(),
-        etag: etagFromDate(blobRow.updatedAt),
+        etag: etagFromContent(blobRow.blob),
       },
     };
   };
@@ -309,7 +345,7 @@ export class VaultService {
       if (!existing) {
         return { ok: false, status: 409, body: { message: 'ETag mismatch' } };
       }
-      const currentEtag = etagFromDate(existing.updatedAt);
+      const currentEtag = etagFromContent(existing.blob);
       if (ifMatch !== currentEtag) {
         return { ok: false, status: 409, body: { message: 'ETag mismatch' } };
       }
@@ -332,7 +368,7 @@ export class VaultService {
       status: existing ? 200 : 201,
       body: {
         ok: true,
-        etag: etagFromDate(saved.updatedAt),
+        etag: etagFromContent(blob),
         updatedAt: saved.updatedAt.toISOString(),
       },
     };

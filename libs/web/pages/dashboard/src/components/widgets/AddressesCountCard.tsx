@@ -1,6 +1,7 @@
 'use client';
 
 import { normalizeAddresses, type VaultHandle } from '@myorganizer/web-vault';
+import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
 import { MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -29,7 +30,17 @@ interface AddressesContentProps {
 function AddressesContent({ handle }: AddressesContentProps) {
   const [count, setCount] = useState<number | null>(null);
 
+  // Read-only, so there is no overwrite to prevent here — but a dashboard
+  // still showing the count from before convergence is the same staleness
+  // wearing a quieter face (#587).
+  const revision = useLocalVaultRevision();
+
   useEffect(() => {
+    // Cancellation matters now that this effect re-fires on every convergence:
+    // without it, an earlier read resolving late can put stale records back
+    // over the ones a later read just applied.
+    let isActive = true;
+
     handle
       .loadDecryptedData<unknown>({
         type: 'addresses',
@@ -37,10 +48,16 @@ function AddressesContent({ handle }: AddressesContentProps) {
       })
       .then((raw) => {
         const { value } = normalizeAddresses(raw);
-        setCount(value.length);
+        if (isActive) setCount(value.length);
       })
-      .catch(() => setCount(0));
-  }, [handle]);
+      .catch(() => {
+        if (isActive) setCount(0);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [handle, revision]);
 
   if (count === null) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;

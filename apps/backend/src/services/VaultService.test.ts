@@ -5,6 +5,13 @@ import {
   VaultService,
 } from './VaultService';
 
+jest.mock('../prisma', () => ({
+  __esModule: true,
+  createPrismaClient: jest.fn(),
+  PrismaClient: jest.fn(),
+  Prisma: jest.fn(),
+}));
+
 function makePrismaMock() {
   return {
     encryptedVault: {
@@ -170,7 +177,13 @@ describe('VaultService', () => {
 
   test('putBlob returns 409 on ETag mismatch', async () => {
     prisma.encryptedVault.findUnique.mockResolvedValue({ userId: 'user-1' });
+    const existingBlob = {
+      version: 1,
+      iv: IV_12B_BASE64,
+      ciphertext: CT_BASE64,
+    };
     prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+      blob: existingBlob,
       updatedAt: new Date('2025-01-01T00:00:00.000Z'),
     });
 
@@ -476,5 +489,335 @@ describe('VaultService', () => {
         }),
       );
     }
+  });
+
+  describe('ADR 0055: ETag is content-based, not timestamp-based', () => {
+    test('blob ETag is stable when content is identical despite different updatedAt', async () => {
+      const blobContentA = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: CT_BASE64,
+      };
+
+      const date1 = new Date('2025-01-01T00:00:00.000Z');
+      const date2 = new Date('2025-06-15T12:00:00.000Z');
+
+      // First call: blob with date1
+      prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+        type: 'addresses',
+        blob: blobContentA,
+        updatedAt: date1,
+      });
+
+      const result1 = await service.getBlob('user-1', 'addresses');
+      expect(result1.ok).toBe(true);
+      if (!result1.ok) throw new Error('Expected ok result');
+      const etag1 = result1.body.etag;
+
+      // Second call: same blob with date2
+      prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+        type: 'addresses',
+        blob: blobContentA,
+        updatedAt: date2,
+      });
+
+      const result2 = await service.getBlob('user-1', 'addresses');
+      expect(result2.ok).toBe(true);
+      if (!result2.ok) throw new Error('Expected ok result');
+      const etag2 = result2.body.etag;
+
+      // Both ETags should be identical (content-based, not timestamp-based)
+      expect(etag1).toBe(etag2);
+    });
+
+    test('blob ETag changes when content differs even at identical timestamp', async () => {
+      const date = new Date('2025-01-01T00:00:00.000Z');
+      const blobContentA = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: CT_BASE64,
+      };
+      const blobContentB = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: Buffer.from('different-ciphertext').toString('base64'),
+      };
+
+      // First call: blob A with timestamp
+      prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+        type: 'addresses',
+        blob: blobContentA,
+        updatedAt: date,
+      });
+
+      const result1 = await service.getBlob('user-1', 'addresses');
+      expect(result1.ok).toBe(true);
+      if (!result1.ok) throw new Error('Expected ok result');
+      const etag1 = result1.body.etag;
+
+      // Second call: blob B with same timestamp
+      prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+        type: 'addresses',
+        blob: blobContentB,
+        updatedAt: date,
+      });
+
+      const result2 = await service.getBlob('user-1', 'addresses');
+      expect(result2.ok).toBe(true);
+      if (!result2.ok) throw new Error('Expected ok result');
+      const etag2 = result2.body.etag;
+
+      // ETags should differ because content differs
+      expect(etag1).not.toBe(etag2);
+    });
+
+    test('putBlob rejects stale If-Match with 409 when content has changed', async () => {
+      const blobContentA = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: CT_BASE64,
+      };
+      const blobContentB = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: Buffer.from('different-ciphertext').toString('base64'),
+      };
+      const blobContentC = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: Buffer.from('third-ciphertext').toString('base64'),
+      };
+
+      // Mock vault exists
+      prisma.encryptedVault.findUnique.mockResolvedValue({
+        userId: 'user-1',
+      });
+
+      // Get the real ETag for blobContentA (what the client has)
+      prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+        type: 'addresses',
+        blob: blobContentA,
+        updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+      });
+
+      const getResult = await service.getBlob('user-1', 'addresses');
+      expect(getResult.ok).toBe(true);
+      if (!getResult.ok) throw new Error('Expected ok result');
+      const realEtagForA = getResult.body.etag;
+
+      // Mock that the server NOW has blobContentB (server content changed)
+      prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+        type: 'addresses',
+        blob: blobContentB,
+        updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+      });
+
+      // Try putBlob with the old ETag (for A) but server now has B
+      const putResult = await service.putBlob(
+        'user-1',
+        'addresses',
+        blobContentC,
+        realEtagForA,
+      );
+
+      expect(putResult.ok).toBe(false);
+      if (putResult.ok === false) {
+        expect(putResult.status).toBe(409);
+        expect(putResult.body.message).toBe('ETag mismatch');
+      }
+    });
+
+    test('putBlob succeeds when If-Match matches current content ETag', async () => {
+      const blobContentA = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: CT_BASE64,
+      };
+      const blobContentB = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: Buffer.from('different-ciphertext').toString('base64'),
+      };
+
+      // Mock vault exists
+      prisma.encryptedVault.findUnique.mockResolvedValue({
+        userId: 'user-1',
+      });
+
+      // Get the real ETag for blobContentA (the existing content)
+      prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+        type: 'addresses',
+        blob: blobContentA,
+        updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+      });
+
+      const getResult = await service.getBlob('user-1', 'addresses');
+      expect(getResult.ok).toBe(true);
+      if (!getResult.ok) throw new Error('Expected ok result');
+      const realEtagForA = getResult.body.etag;
+
+      // Mock for the putBlob findUnique call
+      prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+        type: 'addresses',
+        blob: blobContentA,
+        updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+      });
+
+      // Mock the upsert that stores the new content
+      prisma.encryptedVaultBlob.upsert.mockResolvedValue({
+        type: 'addresses',
+        updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+      });
+
+      const putResult = await service.putBlob(
+        'user-1',
+        'addresses',
+        blobContentB,
+        realEtagForA,
+      );
+
+      expect(putResult.ok).toBe(true);
+      if (putResult.ok) {
+        expect(putResult.status).toBe(200);
+      }
+    });
+
+    test('blob ETag returns to previous value when content returns to that value', async () => {
+      const blobContentX = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: CT_BASE64,
+      };
+      const blobContentY = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: Buffer.from('different-ciphertext').toString('base64'),
+      };
+
+      // First call: content X
+      prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+        type: 'addresses',
+        blob: blobContentX,
+        updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+      });
+
+      const resultX1 = await service.getBlob('user-1', 'addresses');
+      expect(resultX1.ok).toBe(true);
+      if (!resultX1.ok) throw new Error('Expected ok result');
+      const etagX1 = resultX1.body.etag;
+
+      // Second call: content Y
+      prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+        type: 'addresses',
+        blob: blobContentY,
+        updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+      });
+
+      const resultY = await service.getBlob('user-1', 'addresses');
+      expect(resultY.ok).toBe(true);
+      if (!resultY.ok) throw new Error('Expected ok result');
+      const etagY = resultY.body.etag;
+
+      // Third call: content X again
+      prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+        type: 'addresses',
+        blob: blobContentX,
+        updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+      });
+
+      const resultX2 = await service.getBlob('user-1', 'addresses');
+      expect(resultX2.ok).toBe(true);
+      if (!resultX2.ok) throw new Error('Expected ok result');
+      const etagX2 = resultX2.body.etag;
+
+      // Both X ETags should be identical
+      expect(etagX1).toBe(etagX2);
+      // Y ETag should be different from X
+      expect(etagY).not.toBe(etagX1);
+    });
+
+    test('vault meta ETag is stable when content is identical despite different updatedAt', async () => {
+      const metaContent = {
+        version: 1,
+        kdf_name: 'PBKDF2',
+        kdf_salt: 'salt',
+        kdf_params: { iterations: 1 },
+        wrapped_mk_passphrase: { v: 1 },
+        wrapped_mk_recovery: { v: 1 },
+      };
+
+      const date1 = new Date('2025-01-01T00:00:00.000Z');
+      const date2 = new Date('2025-06-15T12:00:00.000Z');
+
+      // First call: meta with date1
+      prisma.encryptedVault.findUnique.mockResolvedValue({
+        ...metaContent,
+        updatedAt: date1,
+      });
+
+      const result1 = await service.getVaultMeta('user-1');
+      expect(result1.ok).toBe(true);
+      if (!result1.ok) throw new Error('Expected ok result');
+      const etag1 = result1.body.etag;
+
+      // Second call: same meta with date2
+      prisma.encryptedVault.findUnique.mockResolvedValue({
+        ...metaContent,
+        updatedAt: date2,
+      });
+
+      const result2 = await service.getVaultMeta('user-1');
+      expect(result2.ok).toBe(true);
+      if (!result2.ok) throw new Error('Expected ok result');
+      const etag2 = result2.body.etag;
+
+      // Both ETags should be identical (content-based, not timestamp-based)
+      expect(etag1).toBe(etag2);
+    });
+
+    test('vault meta ETag changes when content differs even at identical timestamp', async () => {
+      const date = new Date('2025-01-01T00:00:00.000Z');
+      const metaContentA = {
+        version: 1,
+        kdf_name: 'PBKDF2',
+        kdf_salt: 'salt',
+        kdf_params: { iterations: 1 },
+        wrapped_mk_passphrase: { v: 1 },
+        wrapped_mk_recovery: { v: 1 },
+      };
+      const metaContentB = {
+        version: 1,
+        kdf_name: 'PBKDF2',
+        kdf_salt: 'salt-different',
+        kdf_params: { iterations: 1 },
+        wrapped_mk_passphrase: { v: 1 },
+        wrapped_mk_recovery: { v: 1 },
+      };
+
+      // First call: meta A with timestamp
+      prisma.encryptedVault.findUnique.mockResolvedValue({
+        ...metaContentA,
+        updatedAt: date,
+      });
+
+      const result1 = await service.getVaultMeta('user-1');
+      expect(result1.ok).toBe(true);
+      if (!result1.ok) throw new Error('Expected ok result');
+      const etag1 = result1.body.etag;
+
+      // Second call: meta B with same timestamp
+      prisma.encryptedVault.findUnique.mockResolvedValue({
+        ...metaContentB,
+        updatedAt: date,
+      });
+
+      const result2 = await service.getVaultMeta('user-1');
+      expect(result2.ok).toBe(true);
+      if (!result2.ok) throw new Error('Expected ok result');
+      const etag2 = result2.body.etag;
+
+      // ETags should differ because content differs
+      expect(etag1).not.toBe(etag2);
+    });
   });
 });

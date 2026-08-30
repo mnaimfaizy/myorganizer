@@ -71,6 +71,14 @@ Before finishing, walk the required-coverage table in `STORYBOOK-PATTERNS.md` §
 and confirm each applicable row is either implemented or explicitly recommended.
 A story set that stops at `Default` is not finished work.
 
+The table says which states are worth showing, not that every state is. Render
+each story you are about to keep and ask what appears. **A state that renders no
+visible output does not get a story** — delete it, and assert the absence in the
+component's spec instead (`STORYBOOK-PATTERNS.md` §8). Never reach for a
+decorator, wrapper, or caption to make a blank story legible: that makes the
+story visible rather than the component. If asked to annotate an empty story,
+say that the story should go instead.
+
 Check the anti-pattern table before reporting. Those are the failures this repo
 has actually hit.
 

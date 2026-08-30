@@ -1,6 +1,7 @@
 'use client';
 
 import { normalizeTasks, type VaultHandle } from '@myorganizer/web-vault';
+import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
 import { CheckSquare } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -32,13 +33,24 @@ function TasksSummaryContent({ handle }: TasksSummaryContentProps) {
     total: number;
   } | null>(null);
 
+  // Read-only, so there is no overwrite to prevent here — but a dashboard
+  // still showing the count from before convergence is the same staleness
+  // wearing a quieter face (#587).
+  const revision = useLocalVaultRevision();
+
   useEffect(() => {
+    // Cancellation matters now that this effect re-fires on every convergence:
+    // without it, an earlier read resolving late can put a stale count back
+    // over the one a later read just applied.
+    let isActive = true;
+
     handle
       .loadDecryptedData<unknown>({
         type: 'tasks',
         defaultValue: [],
       })
       .then((raw) => {
+        if (!isActive) return;
         const { value } = normalizeTasks(raw);
         const nonArchivedTasks = value.filter((task) => !task.archived);
 
@@ -59,7 +71,8 @@ function TasksSummaryContent({ handle }: TasksSummaryContentProps) {
           total: nonArchivedTasks.length,
         });
       })
-      .catch(() =>
+      .catch(() => {
+        if (!isActive) return;
         setSummary({
           counts: {
             pending: 0,
@@ -69,9 +82,13 @@ function TasksSummaryContent({ handle }: TasksSummaryContentProps) {
             blocked: 0,
           },
           total: 0,
-        }),
-      );
-  }, [handle]);
+        });
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [handle, revision]);
 
   if (summary === null) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;

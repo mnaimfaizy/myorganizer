@@ -55,7 +55,7 @@ function defaultMetaConflictHandler(params: {
   }
 
   const overwrite = window.confirm(
-    'Your vault was updated in another session. Overwrite the server version with your local changes?'
+    'Your vault was updated in another session. Overwrite the server version with your local changes?',
   );
 
   return overwrite ? 'keep-local' : 'keep-remote';
@@ -71,7 +71,7 @@ function defaultBlobConflictHandler(params: {
   }
 
   const overwrite = window.confirm(
-    'Your vault data was updated in another session. Overwrite the server version with your local changes?'
+    'Your vault data was updated in another session. Overwrite the server version with your local changes?',
   );
 
   return overwrite ? 'keep-local' : 'keep-remote';
@@ -95,7 +95,11 @@ function toServerVaultBlob(data: GetVaultBlobResponse): ServerVaultBlob {
 }
 
 export async function getServerVaultMeta(
-  api: VaultApiLike
+  // Narrower than `VaultApiLike` for the same reason as `getServerVaultBlob`:
+  // reading Vault Meta needs one method, and asking for `putVaultMeta` would
+  // hand every caller the ability to push a local wrapping over the server's
+  // and undo a passphrase change made on another device.
+  api: Pick<VaultApiLike, 'getVaultMeta'>,
 ): Promise<ServerVaultMeta | null> {
   try {
     const response = await api.getVaultMeta();
@@ -107,14 +111,55 @@ export async function getServerVaultMeta(
 }
 
 export async function getServerVaultBlob(
-  api: VaultApiLike,
-  type: VaultBlobType
+  // Narrower than `VaultApiLike` on purpose: reading one Vault Blob needs one
+  // method, and asking for the other three would make every caller hand over
+  // the ability to rewrite Vault Meta.
+  api: Pick<VaultApiLike, 'getVaultBlob'>,
+  type: VaultBlobType,
 ): Promise<ServerVaultBlob | null> {
   try {
     const response = await api.getVaultBlob({ type });
     return toServerVaultBlob(response.data as GetVaultBlobResponse);
   } catch (error) {
     if (getHttpStatus(error) === 404) return null;
+    throw error;
+  }
+}
+
+/** What a conditional check of one Vault Blob Type found. */
+export type ServerVaultBlobCheck =
+  /** `ifNoneMatch` matched the server's ETag — nothing to do. */
+  | { kind: 'not-modified' }
+  /** The server holds no Ciphertext for this type. */
+  | { kind: 'absent' }
+  /** The server's Ciphertext moved (or `ifNoneMatch` was never given). */
+  | { kind: 'changed'; blob: ServerVaultBlob };
+
+/**
+ * Ask the server whether one Vault Blob Type's Ciphertext still matches
+ * `ifNoneMatch` — a Sync Bookmark's ETag, or `undefined` when this device
+ * holds none.
+ *
+ * This is Vault Pull's whole "did anything change" question, answered by a
+ * conditional GET rather than by fetching and comparing: a 304 costs no
+ * body and leaves nothing for the caller to do.
+ */
+export async function checkServerVaultBlob(
+  // Narrower than `VaultApiLike` for the same reason `getServerVaultBlob` is.
+  api: Pick<VaultApiLike, 'getVaultBlob'>,
+  type: VaultBlobType,
+  ifNoneMatch: string | undefined,
+): Promise<ServerVaultBlobCheck> {
+  try {
+    const response = await api.getVaultBlob({ type, ifNoneMatch });
+    return {
+      kind: 'changed',
+      blob: toServerVaultBlob(response.data as GetVaultBlobResponse),
+    };
+  } catch (error) {
+    const status = getHttpStatus(error);
+    if (status === 304) return { kind: 'not-modified' };
+    if (status === 404) return { kind: 'absent' };
     throw error;
   }
 }

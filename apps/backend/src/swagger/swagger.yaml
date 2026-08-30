@@ -1305,6 +1305,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GetVaultBlobResponse"
+        "304":
+          description: ""
       tags:
         - Vault
       security:
@@ -1315,6 +1317,11 @@ paths:
           required: true
           schema:
             $ref: "#/components/schemas/VaultBlobType"
+        - in: header
+          name: if-none-match
+          required: false
+          schema:
+            type: string
     put:
       operationId: PutVaultBlob
       responses:

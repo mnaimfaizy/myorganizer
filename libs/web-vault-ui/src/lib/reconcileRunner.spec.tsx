@@ -15,7 +15,7 @@ jest.mock('@myorganizer/web-ui', () => {
 jest.mock('@myorganizer/web-vault', () => ({
   createVaultApi: jest.fn(() => ({})),
   getHttpStatus: jest.fn(() => undefined),
-  reconcileVaultWithServer: (options: ReconcilePromptOptions) =>
+  reconcileVaultWithServer: (options: ReconcileOptions) =>
     mockReconcileVaultWithServer(options),
 }));
 
@@ -23,44 +23,60 @@ jest.mock('./session', () => ({
   useOptionalVaultSession: jest.fn(),
 }));
 
-import type { ReconcileDecision } from '@myorganizer/web-vault';
+import type {
+  VaultReconcileAsk,
+  VaultReconcileDecision,
+} from '@myorganizer/web-vault';
+import { VaultBlobType } from '@myorganizer/app-api-client';
 import { useOptionalVaultSession } from './session';
 import { VaultReconcileRunner } from './reconcileRunner';
+import { vaultBlobTypeLabel } from './vaultSyncMessages';
 
-type ReconcilePromptOptions = {
-  prompt: (params: { message: string }) => Promise<ReconcileDecision>;
+type ReconcileOptions = {
+  handle: MockHandle;
+  prompt: (ask: VaultReconcileAsk) => Promise<VaultReconcileDecision>;
 };
 
 type MockHandle = {
   owner: string;
   loadVault: jest.Mock;
-  saveVault: jest.Mock;
 };
 
 function createMockHandle(owner: string): MockHandle {
   return {
     owner,
     loadVault: jest.fn(() => ({ data: {} })),
-    saveVault: jest.fn(),
   };
 }
 
-function arrangePrompt(decisionResult: { current?: ReconcileDecision }) {
+function arrangePrompt(decisionResult: { current?: VaultReconcileDecision }) {
   mockReconcileVaultWithServer.mockImplementation(
-    async (options: ReconcilePromptOptions) => {
-      decisionResult.current = await options.prompt({
-        message:
-          'We found encrypted vault data both locally and on the server, and they differ. Choose which version to keep.',
-      });
+    async (options: ReconcileOptions) => {
+      const ask: VaultReconcileAsk = {
+        kind: 'blob',
+        type: VaultBlobType.Groceries,
+        reason: 'strategy',
+      };
+      decisionResult.current = await options.prompt(ask);
 
-      return { kind: 'noop-already-in-sync' };
+      return {
+        kind: 'reconciled',
+        start: 'both',
+        converged: [],
+        deferred: false,
+      };
     },
   );
 }
 
 function arrangeNoPromptReconcile() {
   mockReconcileVaultWithServer.mockImplementation(async () => {
-    return { kind: 'noop-already-in-sync' };
+    return {
+      kind: 'reconciled',
+      start: 'both',
+      converged: [],
+      deferred: false,
+    };
   });
 }
 
@@ -70,10 +86,40 @@ describe('VaultReconcileRunner', () => {
     window.sessionStorage.clear();
   });
 
-  test('uses the app modal to keep local vault data when "Keep this device\'s data" is selected', async () => {
-    const decisionResult: { current?: ReconcileDecision } = {};
+  test('renders dialog with proper copy for blob-type strategy ask', async () => {
+    const decisionResult: { current?: VaultReconcileDecision } = {};
     const mockHandle = createMockHandle('user-a');
-    const confirmSpy = jest.spyOn(window, 'confirm');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    arrangePrompt(decisionResult);
+
+    render(<VaultReconcileRunner />);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).not.toBeNull();
+
+    // The dialog names the Vault Blob Type, in the User-facing wording the
+    // pinned label table gives it — read off the table, not spelled again.
+    const label = vaultBlobTypeLabel(VaultBlobType.Groceries);
+    expect(screen.getAllByText(new RegExp(label, 'i')).length).toBeGreaterThan(
+      0,
+    );
+
+    // Should show buttons for both choices
+    expect(
+      screen.getByRole('button', { name: "Keep this device's data" }),
+    ).not.toBeNull();
+    expect(
+      screen.getByRole('button', { name: "Keep the server's data" }),
+    ).not.toBeNull();
+  });
+
+  test('clicking keep-local button sends keep-local decision', async () => {
+    const decisionResult: { current?: VaultReconcileDecision } = {};
+    const mockHandle = createMockHandle('user-a');
 
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: mockHandle,
@@ -84,25 +130,15 @@ describe('VaultReconcileRunner', () => {
     render(<VaultReconcileRunner />);
 
     expect(await screen.findByRole('dialog')).not.toBeNull();
-    expect(screen.getByText('Choose vault data to keep')).not.toBeNull();
-    expect(
-      screen.getByRole('button', { name: "Keep this device's data" }),
-    ).not.toBeNull();
-    expect(
-      screen.getByRole('button', { name: "Keep the server's data" }),
-    ).not.toBeNull();
-
     fireEvent.click(
       screen.getByRole('button', { name: "Keep this device's data" }),
     );
 
     await waitFor(() => expect(decisionResult.current).toBe('keep-local'));
-    expect(confirmSpy).not.toHaveBeenCalled();
-    confirmSpy.mockRestore();
   });
 
-  test('uses the app modal to keep server vault data when "Keep the server\'s data" is selected', async () => {
-    const decisionResult: { current?: ReconcileDecision } = {};
+  test('clicking keep-remote button sends keep-remote decision', async () => {
+    const decisionResult: { current?: VaultReconcileDecision } = {};
     const mockHandle = createMockHandle('user-a');
 
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
@@ -118,7 +154,39 @@ describe('VaultReconcileRunner', () => {
       screen.getByRole('button', { name: "Keep the server's data" }),
     );
 
-    await waitFor(() => expect(decisionResult.current).toBe('keep-server'));
+    await waitFor(() => expect(decisionResult.current).toBe('keep-remote'));
+  });
+
+  test('renders whole-vault ask when kind is vault', async () => {
+    const decisionResult: { current?: VaultReconcileDecision } = {};
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockReconcileVaultWithServer.mockImplementation(
+      async (options: ReconcileOptions) => {
+        const ask: VaultReconcileAsk = { kind: 'vault' };
+        decisionResult.current = await options.prompt(ask);
+        return {
+          kind: 'reconciled',
+          start: 'both',
+          converged: [],
+          deferred: false,
+        };
+      },
+    );
+
+    render(<VaultReconcileRunner />);
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).not.toBeNull();
+
+    // Should show whole-vault specific copy
+    expect(
+      screen.getByText(/this vault is not the one on the server/i),
+    ).not.toBeNull();
   });
 
   test('per-User scoping: different users in same session each trigger reconcile independently', async () => {
@@ -143,7 +211,11 @@ describe('VaultReconcileRunner', () => {
         'myorganizer_vault_reconcile_ran_v1:user-a',
       ),
     ).toBe('1');
-    expect(handleA.loadVault).toHaveBeenCalled();
+    // The runner hands convergence the handle itself; it no longer reads the
+    // Local Vault on its own.
+    expect(mockReconcileVaultWithServer).toHaveBeenCalledWith(
+      expect.objectContaining({ handle: handleA }),
+    );
 
     // Unmount and clear mock call count, but DO NOT clear sessionStorage
     unmount();
@@ -175,7 +247,9 @@ describe('VaultReconcileRunner', () => {
         'myorganizer_vault_reconcile_ran_v1:user-b',
       ),
     ).toBe('1');
-    expect(handleB.loadVault).toHaveBeenCalled();
+    expect(mockReconcileVaultWithServer).toHaveBeenCalledWith(
+      expect.objectContaining({ handle: handleB }),
+    );
   });
 
   test('skips reconcile when same owner re-renders with flag already set', async () => {
@@ -210,32 +284,8 @@ describe('VaultReconcileRunner', () => {
     });
   });
 
-  test('first sync of a newly registered User carries no migration wording', async () => {
-    const handle = createMockHandle('new-user');
-    (useOptionalVaultSession as jest.Mock).mockReturnValue({ handle });
-
-    // A User who has just registered: their Local Vault exists, the server
-    // holds nothing yet, so reconcile uploads it. That is a first sync, not a
-    // migration, and nothing the User sees may say otherwise (issue #391).
-    mockReconcileVaultWithServer.mockResolvedValue({
-      kind: 'uploaded-local-to-server',
-    });
-
-    render(<VaultReconcileRunner />);
-
-    await waitFor(() => expect(mockToast).toHaveBeenCalledTimes(1));
-
-    const [toastArgs] = mockToast.mock.calls[0] as [Record<string, unknown>];
-    expect(toastArgs.title).toBe('Vault synced');
-    expect(toastArgs.description).toBe(
-      'Your encrypted vault is now backed up to the server.',
-    );
-    expect(JSON.stringify(toastArgs).toLowerCase()).not.toContain('migrat');
-    expect(screen.queryByRole('dialog')).toBeNull();
-  });
-
   test('dismissing conflict dialog resolves prompt with defer, not keep-server (ADR 0033)', async () => {
-    const decisionResult: { current?: ReconcileDecision } = {};
+    const decisionResult: { current?: VaultReconcileDecision } = {};
     const mockHandle = createMockHandle('user-a');
 
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
@@ -262,9 +312,12 @@ describe('VaultReconcileRunner', () => {
       handle: mockHandle,
     });
 
-    // Reconcile result is noop-conflict-deferred
+    // Reconcile result has deferred: true
     mockReconcileVaultWithServer.mockResolvedValue({
-      kind: 'noop-conflict-deferred',
+      kind: 'reconciled',
+      start: 'both',
+      converged: [],
+      deferred: true,
     });
 
     render(<VaultReconcileRunner />);
@@ -281,28 +334,8 @@ describe('VaultReconcileRunner', () => {
     ).toBeNull();
   });
 
-  test('when reconcile defers conflict, saveVault is never called', async () => {
-    const mockHandle = createMockHandle('user-a');
-
-    (useOptionalVaultSession as jest.Mock).mockReturnValue({
-      handle: mockHandle,
-    });
-
-    mockReconcileVaultWithServer.mockResolvedValue({
-      kind: 'noop-conflict-deferred',
-    });
-
-    render(<VaultReconcileRunner />);
-
-    await waitFor(() => {
-      expect(mockReconcileVaultWithServer).toHaveBeenCalled();
-    });
-
-    expect(mockHandle.saveVault).not.toHaveBeenCalled();
-  });
-
   test('unmounting while prompt is pending resolves with defer and writes nothing', async () => {
-    const decisionResult: { current?: ReconcileDecision } = {};
+    const decisionResult: { current?: VaultReconcileDecision } = {};
     const mockHandle = createMockHandle('user-a');
 
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
@@ -328,5 +361,135 @@ describe('VaultReconcileRunner', () => {
         'myorganizer_vault_reconcile_ran_v1:user-a',
       ),
     ).toBeNull();
+  });
+
+  test('sets session flag when reconcile succeeds with changes', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockReconcileVaultWithServer.mockResolvedValue({
+      kind: 'reconciled',
+      start: 'both',
+      converged: [
+        {
+          type: VaultBlobType.Tasks,
+          outcome: { kind: 'sent', etag: 'e1' },
+        },
+      ],
+      deferred: false,
+    });
+
+    render(<VaultReconcileRunner />);
+
+    await waitFor(() => {
+      expect(mockReconcileVaultWithServer).toHaveBeenCalled();
+    });
+
+    // Session flag should be set
+    expect(
+      window.sessionStorage.getItem(
+        'myorganizer_vault_reconcile_ran_v1:user-a',
+      ),
+    ).toBe('1');
+  });
+
+  test('does not set session flag on skipped-not-authenticated', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockReconcileVaultWithServer.mockResolvedValue({
+      kind: 'skipped-not-authenticated',
+    });
+
+    render(<VaultReconcileRunner />);
+
+    await waitFor(() => {
+      expect(mockReconcileVaultWithServer).toHaveBeenCalled();
+    });
+
+    // Session flag should NOT be set for skipped result
+    expect(
+      window.sessionStorage.getItem(
+        'myorganizer_vault_reconcile_ran_v1:user-a',
+      ),
+    ).toBeNull();
+  });
+
+  test('shows toast for downloaded-server-wrapping', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockReconcileVaultWithServer.mockResolvedValue({
+      kind: 'reconciled',
+      start: 'downloaded-server-wrapping',
+      converged: [],
+      deferred: false,
+    });
+
+    render(<VaultReconcileRunner />);
+
+    await waitFor(() => expect(mockToast).toHaveBeenCalledTimes(1));
+
+    const [toastArgs] = mockToast.mock.calls[0] as [Record<string, unknown>];
+    expect(toastArgs.title).toBe('Vault synced');
+    expect(toastArgs.description).toBe(
+      'Downloaded your server vault to this device.',
+    );
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  test('shows toast for uploaded-local-wrapping', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockReconcileVaultWithServer.mockResolvedValue({
+      kind: 'reconciled',
+      start: 'uploaded-local-wrapping',
+      converged: [],
+      deferred: false,
+    });
+
+    render(<VaultReconcileRunner />);
+
+    await waitFor(() => expect(mockToast).toHaveBeenCalledTimes(1));
+
+    const [toastArgs] = mockToast.mock.calls[0] as [Record<string, unknown>];
+    expect(toastArgs.title).toBe('Vault synced');
+    expect(toastArgs.description).toBe(
+      'Your encrypted vault is now backed up to the server.',
+    );
+    // A newly registered User's first sync is an ordinary first sync, never a
+    // migration — CONTEXT.md lists "vault migration" under _Avoid_ for Vault
+    // Reconcile, and this User has nothing to migrate from.
+    expect(JSON.stringify(toastArgs).toLowerCase()).not.toContain('migrat');
+  });
+
+  test('shows error toast on reconcile failure', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockReconcileVaultWithServer.mockRejectedValue(new Error('Network error'));
+
+    render(<VaultReconcileRunner />);
+
+    await waitFor(() => expect(mockToast).toHaveBeenCalledTimes(1));
+
+    const [toastArgs] = mockToast.mock.calls[0] as [Record<string, unknown>];
+    expect(toastArgs.variant).toBe('destructive');
   });
 });

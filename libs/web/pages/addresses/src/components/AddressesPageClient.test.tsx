@@ -138,6 +138,9 @@ const createMockHandle = (
 };
 
 jest.mock('@myorganizer/web-vault-ui', () => ({
+  // Constant: these suites never converge, so the revision never moves.
+  // Reloading on a moved revision is covered where it is the subject.
+  useLocalVaultRevision: () => 0,
   VaultGate: ({
     children,
   }: {

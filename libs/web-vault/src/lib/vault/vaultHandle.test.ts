@@ -17,8 +17,21 @@ if (
   (globalThis as unknown as Record<string, unknown>).TextDecoder = TextDecoder;
 }
 
+// === Polyfill crypto.subtle for Node's jsdom environment ===
+// jsdom ~22.1 does not provide crypto.subtle, but Node's webcrypto is available.
+// This polyfill allows the real hashCiphertext implementation in syncBookmarkAccess to run unmodified.
+if (!(globalThis as any).crypto?.subtle) {
+  const { webcrypto } = require('crypto');
+  if (!(globalThis as any).crypto) {
+    (globalThis as any).crypto = {};
+  }
+  (globalThis as any).crypto.subtle = webcrypto.subtle;
+}
+
 // === Crypto mocking ===
 // Mock all WebCrypto operations; keep pure helpers real for JSON round-tripping.
+// Note: This only affects ./crypto module exports (PBKDF2, AES-GCM), not crypto.subtle.digest
+// which is called directly from syncBookmarkAccess.ts via globalThis.crypto.subtle (now polyfilled above).
 
 let mockRandomBytesCounter = 0;
 
@@ -1315,7 +1328,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
 
     test('claimUnclaimedLocalVault() with wrong passphrase leaves unsuffixed slot unchanged and creates no owned record', async () => {
       const handle = createVaultHandle({ owner: 'user-a' });
-      const unclaimedVault = await createUnclaimedVault();
+      await createUnclaimedVault();
       const unclaimedBefore = localStorage.getItem('myorganizer_vault_v1');
 
       // Mock aesGcmDecrypt to fail
@@ -1352,7 +1365,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       const handleA = createVaultHandle({ owner: 'user-a' });
       const handleC = createVaultHandle({ owner: 'user-c' });
 
-      const unclaimedVault = await createUnclaimedVault();
+      await createUnclaimedVault();
       const unclaimedBefore = localStorage.getItem('myorganizer_vault_v1');
 
       // User A claims
@@ -1463,6 +1476,744 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
     test('createVaultHandle requires an owner', () => {
       expect(() => createVaultHandle({ owner: '' })).toThrow();
       expect(() => createVaultHandle({ owner: '  ' })).toThrow();
+    });
+  });
+
+  // Test 22: Sync Bookmark integration — hasUnsentChanges
+  describe('hasUnsentChanges — Sync Bookmark dirtiness (works while locked)', () => {
+    test('1: hasUnsentChanges returns false when type has no saved blob', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await handle.initialize({ passphrase: 'test-pass' });
+
+      const isDirty = await handle.hasUnsentChanges('tasks');
+      expect(isDirty).toBe(false);
+    });
+
+    test('2: hasUnsentChanges returns true when type has blob but no bookmark yet', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await handle.initialize({ passphrase: 'test-pass' });
+      await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
+
+      // Save some data
+      await handle.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1' }],
+      });
+
+      // hasUnsentChanges should be true (never pushed)
+      const isDirty = await handle.hasUnsentChanges('tasks');
+      expect(isDirty).toBe(true);
+    });
+
+    test('3: hasUnsentChanges returns false when blob hash matches bookmark', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await handle.initialize({ passphrase: 'test-pass' });
+      await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
+
+      // Save data and record push success (simulates confirmed push)
+      const taskValue = [{ id: '1', title: 'Task 1' }];
+      await handle.saveEncryptedData({
+        type: 'tasks',
+        value: taskValue,
+      });
+      await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+      // Should not be dirty after confirmed push
+      const isDirty = await handle.hasUnsentChanges('tasks');
+      expect(isDirty).toBe(false);
+    });
+
+    test('4: hasUnsentChanges returns true when blob changed after bookmark recorded', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await handle.initialize({ passphrase: 'test-pass' });
+      await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
+
+      // Save initial data and record push
+      await handle.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1' }],
+      });
+      await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+      // Verify not dirty after push
+      let isDirty = await handle.hasUnsentChanges('tasks');
+      expect(isDirty).toBe(false);
+
+      // User edits and saves new data locally
+      await handle.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1 - Updated' }],
+      });
+
+      // Should be dirty again (new blob hash, old bookmark)
+      isDirty = await handle.hasUnsentChanges('tasks');
+      expect(isDirty).toBe(true);
+    });
+
+    test('5: hasUnsentChanges works while handle is locked (no Master Key needed)', async () => {
+      // Initialize and save data
+      const initHandle = createVaultHandle({ owner: 'user-a' });
+      await initHandle.initialize({ passphrase: 'test-pass' });
+      await initHandle.unlockWithPassphrase({ passphrase: 'test-pass' });
+      await initHandle.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1' }],
+      });
+
+      // Create a new handle WITHOUT masterKeyBytes (locked)
+      const lockedHandle = createVaultHandle({ owner: 'user-a' });
+      expect(lockedHandle.isUnlocked).toBe(false);
+
+      // hasUnsentChanges should still work (no unlock required)
+      const isDirty = await lockedHandle.hasUnsentChanges('tasks');
+      expect(isDirty).toBe(true);
+    });
+
+    test('6: hasUnsentChanges for different types operate independently', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await handle.initialize({ passphrase: 'test-pass' });
+      await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
+
+      // Save tasks and record push success
+      await handle.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1' }],
+      });
+      await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-tasks' });
+
+      // Save todos but do NOT record push success
+      await handle.saveEncryptedData({
+        type: 'todos',
+        value: [{ id: 'a', text: 'Todo A' }],
+      });
+
+      // Tasks should not be dirty (pushed)
+      expect(await handle.hasUnsentChanges('tasks')).toBe(false);
+
+      // Todos should be dirty (never pushed)
+      expect(await handle.hasUnsentChanges('todos')).toBe(true);
+    });
+  });
+
+  // Test 23: Sync Bookmark integration — recordPushSuccess
+  describe('recordPushSuccess — record confirmed successful push', () => {
+    test('1: recordPushSuccess advances bookmark for type', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await handle.initialize({ passphrase: 'test-pass' });
+      await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
+
+      await handle.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1' }],
+      });
+
+      // Before: dirty
+      let isDirty = await handle.hasUnsentChanges('tasks');
+      expect(isDirty).toBe(true);
+
+      // Act: record push success
+      await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+      // After: not dirty
+      isDirty = await handle.hasUnsentChanges('tasks');
+      expect(isDirty).toBe(false);
+    });
+
+    test('2: recordPushSuccess throws when no blob saved for type yet', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await handle.initialize({ passphrase: 'test-pass' });
+      await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
+
+      // Do NOT save any tasks; try to record push success
+      let caughtError: unknown;
+      try {
+        await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+      } catch (err) {
+        caughtError = err;
+      }
+
+      expect(caughtError).toBeInstanceOf(Error);
+      if (caughtError instanceof Error) {
+        expect(caughtError.message).toContain(
+          'No Ciphertext saved for "tasks"',
+        );
+      }
+    });
+
+    test('3: recordPushSuccess stores etag from server', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await handle.initialize({ passphrase: 'test-pass' });
+      await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
+
+      await handle.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1' }],
+      });
+
+      const serverEtag = 'server-etag-abc123xyz';
+      await handle.recordPushSuccess({ type: 'tasks', etag: serverEtag });
+
+      // Verify etag was stored by reading bookmarks directly
+      const { readSyncBookmarks } = require('./syncBookmarkStorage');
+      const bookmarks = readSyncBookmarks('user-a');
+      expect(bookmarks.tasks?.etag).toBe(serverEtag);
+    });
+
+    test('4: recordPushSuccess for one type does not affect others', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await handle.initialize({ passphrase: 'test-pass' });
+      await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
+
+      // Save two types
+      await handle.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1' }],
+      });
+      await handle.saveEncryptedData({
+        type: 'todos',
+        value: [{ id: 'a', text: 'Todo A' }],
+      });
+
+      // Record push success only for tasks
+      await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-tasks' });
+
+      // Tasks should not be dirty
+      expect(await handle.hasUnsentChanges('tasks')).toBe(false);
+
+      // Todos should still be dirty
+      expect(await handle.hasUnsentChanges('todos')).toBe(true);
+    });
+
+    test('5: recordPushSuccess can be called multiple times for same type (re-push)', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await handle.initialize({ passphrase: 'test-pass' });
+      await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
+
+      await handle.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1' }],
+      });
+
+      // First push
+      await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+      let isDirty = await handle.hasUnsentChanges('tasks');
+      expect(isDirty).toBe(false);
+
+      // User edits locally
+      await handle.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1 - Updated' }],
+      });
+      isDirty = await handle.hasUnsentChanges('tasks');
+      expect(isDirty).toBe(true);
+
+      // Second push
+      await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-2' });
+      isDirty = await handle.hasUnsentChanges('tasks');
+      expect(isDirty).toBe(false);
+
+      // Verify new etag was stored
+      const { readSyncBookmarks } = require('./syncBookmarkStorage');
+      const bookmarks = readSyncBookmarks('user-a');
+      expect(bookmarks.tasks?.etag).toBe('etag-2');
+    });
+  });
+
+  // Test 24: Vault removal — Sync Bookmarks cleanup
+  describe('removeVault — explicit removal includes Sync Bookmarks', () => {
+    test('1: removeVault removes both Local Vault and Sync Bookmarks for owner', () => {
+      const vault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {},
+      };
+      localStorage.setItem(
+        LS_KEY_USER_A,
+        JSON.stringify({
+          version: 2,
+          owner: 'user-a',
+          vault,
+        }),
+      );
+
+      // Pre-write a sync bookmark for user-a
+      const {
+        writeSyncBookmark,
+        syncBookmarkStorageKey,
+      } = require('./syncBookmarkStorage');
+      writeSyncBookmark({
+        owner: 'user-a',
+        type: 'tasks',
+        entry: { ciphertextHash: 'hash1', etag: 'etag1' },
+      });
+
+      const handle = createVaultHandle({ owner: 'user-a' });
+
+      // Verify both exist before removal
+      expect(localStorage.getItem(LS_KEY_USER_A)).not.toBeNull();
+      expect(
+        localStorage.getItem(syncBookmarkStorageKey('user-a')),
+      ).not.toBeNull();
+
+      // Act: remove vault
+      handle.removeVault();
+
+      // Assert: both are gone
+      expect(localStorage.getItem(LS_KEY_USER_A)).toBeNull();
+      expect(localStorage.getItem(syncBookmarkStorageKey('user-a'))).toBeNull();
+    });
+
+    test('2: removeVault for user-a leaves user-b bookmarks untouched', () => {
+      const vault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {},
+      };
+
+      // Setup: vaults and bookmarks for both users
+      localStorage.setItem(
+        LS_KEY_USER_A,
+        JSON.stringify({
+          version: 2,
+          owner: 'user-a',
+          vault,
+        }),
+      );
+      localStorage.setItem(
+        LS_KEY_USER_B,
+        JSON.stringify({
+          version: 2,
+          owner: 'user-b',
+          vault,
+        }),
+      );
+
+      const {
+        writeSyncBookmark,
+        syncBookmarkStorageKey,
+      } = require('./syncBookmarkStorage');
+      writeSyncBookmark({
+        owner: 'user-a',
+        type: 'tasks',
+        entry: { ciphertextHash: 'hash-a', etag: 'etag-a' },
+      });
+      writeSyncBookmark({
+        owner: 'user-b',
+        type: 'todos',
+        entry: { ciphertextHash: 'hash-b', etag: 'etag-b' },
+      });
+
+      const userBBookmarkBefore = localStorage.getItem(
+        syncBookmarkStorageKey('user-b'),
+      );
+
+      const handleA = createVaultHandle({ owner: 'user-a' });
+
+      // Act: remove user-a's vault
+      handleA.removeVault();
+
+      // Assert: user-a is gone
+      expect(localStorage.getItem(LS_KEY_USER_A)).toBeNull();
+      expect(localStorage.getItem(syncBookmarkStorageKey('user-a'))).toBeNull();
+
+      // Assert: user-b is unchanged
+      expect(localStorage.getItem(LS_KEY_USER_B)).not.toBeNull();
+      expect(localStorage.getItem(syncBookmarkStorageKey('user-b'))).toBe(
+        userBBookmarkBefore,
+      );
+    });
+
+    test('3: removeVault when only sync bookmarks exist (no Local Vault) is safe', () => {
+      // Setup: only sync bookmark, no local vault
+      const {
+        writeSyncBookmark,
+        syncBookmarkStorageKey,
+      } = require('./syncBookmarkStorage');
+      writeSyncBookmark({
+        owner: 'user-a',
+        type: 'tasks',
+        entry: { ciphertextHash: 'hash1', etag: 'etag1' },
+      });
+
+      expect(localStorage.getItem(LS_KEY_USER_A)).toBeNull();
+      expect(
+        localStorage.getItem(syncBookmarkStorageKey('user-a')),
+      ).not.toBeNull();
+
+      const handle = createVaultHandle({ owner: 'user-a' });
+
+      // Act: remove (should not throw even though no Local Vault)
+      expect(() => {
+        handle.removeVault();
+      }).not.toThrow();
+
+      // Assert: bookmark is gone
+      expect(localStorage.getItem(syncBookmarkStorageKey('user-a'))).toBeNull();
+    });
+
+    test('4: after removeVault(), fresh handle for same owner starts clean', async () => {
+      // Setup: vault with bookmark
+      const vault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {
+          tasks: {
+            iv: 'dGFza3MtaXY=',
+            ciphertext: 'dGFza3MtY3Q=',
+          },
+        },
+      };
+      localStorage.setItem(
+        LS_KEY_USER_A,
+        JSON.stringify({
+          version: 2,
+          owner: 'user-a',
+          vault,
+        }),
+      );
+
+      const { writeSyncBookmark } = require('./syncBookmarkStorage');
+      writeSyncBookmark({
+        owner: 'user-a',
+        type: 'tasks',
+        entry: { ciphertextHash: 'old-hash', etag: 'old-etag' },
+      });
+
+      const handleBefore = createVaultHandle({ owner: 'user-a' });
+      expect(handleBefore.hasOwnedVault()).toBe(true);
+
+      // Act: remove
+      handleBefore.removeVault();
+
+      // New handle should start clean
+      const handleAfter = createVaultHandle({ owner: 'user-a' });
+      expect(handleAfter.hasOwnedVault()).toBe(false);
+
+      // Bookmarks should be empty when read fresh
+      const { readSyncBookmarks } = require('./syncBookmarkStorage');
+      expect(readSyncBookmarks('user-a')).toEqual({});
+    });
+  });
+
+  // Test 25: Vault Sync Sink — fire-and-forget sync notifications
+  describe('Vault Sync Sink (VaultSyncSink)', () => {
+    async function createInitializedUnlockedHandleWithSink(
+      owner: string,
+      syncSink: { vaultBlobChanged: jest.Mock },
+    ) {
+      const handle = createVaultHandle({ owner, syncSink });
+      await handle.initialize({ passphrase: 'test-pass' });
+      await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
+      return handle;
+    }
+
+    test('1: omitting syncSink leaves behavior exactly unchanged', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      await handle.initialize({ passphrase: 'test-pass' });
+      await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
+
+      const taskValue = [{ id: '1', title: 'Task 1' }];
+      await handle.saveEncryptedData({
+        type: 'tasks',
+        value: taskValue,
+      });
+
+      // Should round-trip the value without any sink involvement
+      const loaded = await handle.loadDecryptedData({
+        type: 'tasks',
+        defaultValue: [],
+      });
+      expect(loaded).toEqual(taskValue);
+    });
+
+    test('2: saveEncryptedData calls sink once with correct Vault Blob Type', async () => {
+      const syncSink = {
+        vaultBlobChanged: jest.fn(),
+      };
+      const handleWithSink = await createInitializedUnlockedHandleWithSink(
+        'user-a',
+        syncSink,
+      );
+
+      const taskValue = [{ id: '1', title: 'Task 1' }];
+      await handleWithSink.saveEncryptedData({
+        type: 'tasks',
+        value: taskValue,
+      });
+
+      // Sink should be called exactly once with type 'tasks' (VaultBlobType.Tasks)
+      expect(syncSink.vaultBlobChanged).toHaveBeenCalledTimes(1);
+      expect(syncSink.vaultBlobChanged).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'tasks',
+        }),
+      );
+    });
+
+    test('3: field vocabulary is translated from Local Vault field to Vault Blob Type', async () => {
+      const syncSink = {
+        vaultBlobChanged: jest.fn(),
+      };
+      const handleWithSink = await createInitializedUnlockedHandleWithSink(
+        'user-a',
+        syncSink,
+      );
+
+      const mobileValue = [{ id: '1', number: '555-1234' }];
+      await handleWithSink.saveEncryptedData({
+        type: 'mobileNumbers',
+        value: mobileValue,
+      });
+
+      // Sink should receive VaultBlobType.MobileNumbers (which is 'mobileNumbers')
+      expect(syncSink.vaultBlobChanged).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'mobileNumbers',
+        }),
+      );
+    });
+
+    test('4: handle passed to sink is the exact same object reference', async () => {
+      let capturedHandle: unknown;
+      const syncSink = {
+        vaultBlobChanged: jest.fn((change) => {
+          capturedHandle = change.handle;
+        }),
+      };
+      const handleWithSink = await createInitializedUnlockedHandleWithSink(
+        'user-a',
+        syncSink,
+      );
+
+      await handleWithSink.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1' }],
+      });
+
+      // The handle passed to the sink must be the exact same object reference
+      expect(capturedHandle).toBe(handleWithSink);
+    });
+
+    test('5: Local Vault is already committed when sink is invoked (local-commit-first)', async () => {
+      let vaultAtSinkTime: VaultStorageV1 | null = null;
+      const syncSink = {
+        vaultBlobChanged: jest.fn((change) => {
+          // Capture the vault state at the moment the sink is called
+          vaultAtSinkTime = change.handle.loadVault();
+        }),
+      };
+      const handleWithSink = await createInitializedUnlockedHandleWithSink(
+        'user-a',
+        syncSink,
+      );
+
+      // Save initial data to establish a pre-save ciphertext
+      await handleWithSink.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1' }],
+      });
+      const preSaveCiphertext = handleWithSink.loadVault()?.data.tasks;
+
+      // Now save different data, which will trigger the sink
+      const newTaskValue = [{ id: '2', title: 'Task 2' }];
+      await handleWithSink.saveEncryptedData({
+        type: 'tasks',
+        value: newTaskValue,
+      });
+
+      // Verify that the vault captured inside the sink already holds the new ciphertext
+      expect(vaultAtSinkTime).not.toBeNull();
+      if (vaultAtSinkTime) {
+        const vault: VaultStorageV1 = vaultAtSinkTime;
+        // Assert the ciphertext is different from before the save (proves new data was written)
+        expect(vault.data.tasks).not.toEqual(preSaveCiphertext);
+        // And that it matches what we have after the save (proves sink saw the finished write)
+        expect(vault.data.tasks).toEqual(
+          handleWithSink.loadVault()?.data.tasks,
+        );
+      }
+    });
+
+    test('6: saveEncryptedData resolves even if sink returns non-settling promise', async () => {
+      const syncSink = {
+        vaultBlobChanged: jest.fn(() => {
+          // Return a promise that never settles
+          return new Promise(() => {
+            // Never resolves or rejects
+          });
+        }),
+      };
+      const handleWithSink = await createInitializedUnlockedHandleWithSink(
+        'user-a',
+        syncSink,
+      );
+
+      // This should resolve despite the sink returning a non-settling promise
+      await expect(
+        handleWithSink.saveEncryptedData({
+          type: 'tasks',
+          value: [{ id: '1', title: 'Task 1' }],
+        }),
+      ).resolves.toBeUndefined();
+    });
+
+    test('7: sink throwing an error does not fail the save', async () => {
+      const syncSink = {
+        vaultBlobChanged: jest.fn(() => {
+          throw new Error('sink exploded');
+        }),
+      };
+      const handleWithSink = await createInitializedUnlockedHandleWithSink(
+        'user-a',
+        syncSink,
+      );
+
+      // Save should resolve even if sink throws
+      await expect(
+        handleWithSink.saveEncryptedData({
+          type: 'tasks',
+          value: [{ id: '1', title: 'Task 1' }],
+        }),
+      ).resolves.toBeUndefined();
+
+      // But the data should still be saved and readable
+      const loaded = await handleWithSink.loadDecryptedData({
+        type: 'tasks',
+        defaultValue: [],
+      });
+      expect(loaded).toEqual([{ id: '1', title: 'Task 1' }]);
+    });
+
+    test('8: repeated saveEncryptedData calls report each time', async () => {
+      const syncSink = {
+        vaultBlobChanged: jest.fn(),
+      };
+      const handleWithSink = await createInitializedUnlockedHandleWithSink(
+        'user-a',
+        syncSink,
+      );
+
+      // Save the same type three times
+      await handleWithSink.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '1', title: 'Task 1' }],
+      });
+      await handleWithSink.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '2', title: 'Task 2' }],
+      });
+      await handleWithSink.saveEncryptedData({
+        type: 'tasks',
+        value: [{ id: '3', title: 'Task 3' }],
+      });
+
+      // Sink should be called three times (no coalescing at handle level)
+      expect(syncSink.vaultBlobChanged).toHaveBeenCalledTimes(3);
+    });
+
+    test('9: saveVault does not report to sink', async () => {
+      const syncSink = {
+        vaultBlobChanged: jest.fn(),
+      };
+      const handleWithSink = createVaultHandle({
+        owner: 'user-a',
+        masterKeyBytes: new Uint8Array([1, 2, 3, 4]),
+        syncSink,
+      });
+
+      const vault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {
+          tasks: {
+            iv: 'dGFza3MtaXY=',
+            ciphertext: 'dGFza3MtY3Q=',
+          },
+        },
+      };
+
+      // Call saveVault (not saveEncryptedData)
+      handleWithSink.saveVault(vault);
+
+      // Sink should not be called
+      expect(syncSink.vaultBlobChanged).not.toHaveBeenCalled();
+
+      // But vault should still be written
+      expect(handleWithSink.loadVault()).toEqual(vault);
+    });
+
+    test('10: locked handle rejects saveEncryptedData without calling sink', async () => {
+      const syncSink = {
+        vaultBlobChanged: jest.fn(),
+      };
+      // Create a locked handle (no masterKeyBytes, no unlock)
+      const handleWithSink = createVaultHandle({
+        owner: 'user-a',
+        syncSink,
+      });
+
+      // Attempt to save while locked
+      await expect(
+        handleWithSink.saveEncryptedData({
+          type: 'tasks',
+          value: [{ id: '1', title: 'Task 1' }],
+        }),
+      ).rejects.toThrow(VaultLockedError);
+
+      // Sink should not have been called
+      expect(syncSink.vaultBlobChanged).not.toHaveBeenCalled();
     });
   });
 });

@@ -255,11 +255,23 @@ The record a Vault Blob keeps of which of its records were deleted, and when. It
 _Avoid_: tombstone log, graveyard, trash, deleted items
 
 **Sync Bookmark**:
-What one device records, per User and per Vault Blob Type, about its last successful Vault Push: which Ciphertext it sent, and the identity the server gave that Ciphertext back. A Vault Blob has unpushed changes when it no longer matches its Sync Bookmark — the state is derived from the Vault rather than flagged alongside it, so no edit can be stranded by a flag nobody set.
+What one device records, per User and per Vault Blob Type, about the Ciphertext it and the server last agreed on: which Ciphertext that was, and the identity the server gave it. A successful Vault Push sets it; so does taking the server's copy, since both leave the device holding exactly what the server holds. A Vault Blob has unpushed changes when it no longer matches its Sync Bookmark — the state is derived from the Vault rather than flagged alongside it, so no edit can be stranded by a flag nobody set. The recorded identity is also what makes the next push conditional, so a device cannot overwrite Ciphertext it has never seen.
 _Avoid_: dirty flag, sync state, pending queue, last-synced marker
 
+**Vault Converge**:
+Deciding what one Vault Blob Type's Ciphertext and the server's copy of it should become, and carrying that out: sending, taking, merging, asking, or doing nothing. Vault Push, Vault Pull and Vault Reconcile are three entries into the one convergence, not three convergences — a decision made in more than one place is a decision that disagrees with itself, which is how a keep-server reconcile destroyed grocery Ciphertext. How a given Vault Blob Type converges is pinned per type, and whether two sides may be merged at all is answered by decrypting the server's copy, never by comparing Vault Meta.
+_Avoid_: sync, resolve, merge (as the name of the whole act), two-way sync
+
+**Vault Meta Converge**:
+Deciding whether this device starts using a wrapping set on another device, and carrying that out. Separate from Vault Converge and never an input to it: a Vault Meta that diverges leaves every Vault Blob exactly as mergeable as it was. It is the one convergence that cannot check its own answer — a wrapping cannot be verified without the passphrase it was derived from — so it never replaces a local wrapping without the User saying so, and adopting one is returned for the caller to save rather than written where it was decided.
+_Avoid_: meta sync, key sync, passphrase sync, vault meta reconcile
+
+**Vault Meta Change**:
+Which wrapping in a Vault Meta moved — the passphrase or the recovery key — and the thing a User is actually asked about when Vault Meta diverges. It is named rather than reduced to a boolean because "your vault differs" is not something a User can act on, while "your passphrase was changed on another device" is, and because a User whose passphrase changed elsewhere without their doing needs to hear which one to stop using.
+_Avoid_: meta conflict, key conflict, vault divergence, credential change
+
 **Vault Reconcile**:
-The per-User comparison of a Local Vault against that User's server Ciphertext, run on sign-in. It is not a migration and has no one-time character: a User with no server Vault yet is having an ordinary first sync, and a User with no Vault on either side has nothing to reconcile. Divergence is never resolved silently — the User chooses which side is kept, and neither side is overwritten without that answer.
+The sign-in pass that converges every Vault Blob Type of one User's Local Vault against that User's server Ciphertext. It is not a migration and has no one-time character: a User with no server Vault yet is having an ordinary first sync, and a User with no Vault on either side has nothing to reconcile. It carries no convergence of its own — each type goes through Vault Converge, so a Vault Blob Type cannot be reconciled on terms the rest of the product does not use. Non-conflicting divergence therefore converges without asking anything, and what asks is what the pinned strategy says asks. One question is still whole-Vault, because it was never per-record: the server's Ciphertext will not decrypt under this device's Master Key, so the two sides are not the same Vault at all. It decides Ciphertext only: no answer given here adopts a wrapping or reverts a passphrase change made elsewhere, and a Vault Meta is never an input to what it decides. It writes one, and only where there is none to overwrite — a server holding no Vault Meta at all is having a first sync.
 _Avoid_: vault migration, phase-1 migration, vault upgrade, sync migration
 
 **Master Key**:
@@ -269,6 +281,18 @@ _Avoid_: vault key, encryption key, secret key
 **Vault Handle**:
 The object a caller holds to reach a Vault, bound at construction to one owner and one Master Key. Vault access is obtained, not invoked: there is no unbound vault function to call, so a Vault cannot be resolved without saying whose it is ([ADR 0047](docs/adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md)). Page libraries receive a handle and never learn who the User is.
 _Avoid_: vault client, vault service, vault accessor, vault context
+
+**Vault Sync Sink**:
+Where a Vault Handle reports that one Vault Blob Type changed. It belongs to the handle rather than to whoever writes through it: the handle is the only way to reach a Local Vault, so a sink held there cannot be gone around, and no write can forget to synchronise. It is told a Vault Blob Type and never Ciphertext, and nothing it does can fail the save that told it — the Local Vault is already written by then, and an edit reported as failed is a lie the User retypes.
+_Avoid_: save listener, push callback, change observer, write hook
+
+**Local Vault Revision**:
+What a Vault Handle reports when the whole Local Vault has been replaced under whoever is reading it — convergence taking the server's Ciphertext, an import, a removal. It is the inbound counterpart to the Vault Sync Sink and deliberately not the same thing: the sink is told that one Vault Blob Type changed here so it can be sent, while this says that what a reader already holds is no longer what is stored. Feeding one from the other would be a loop, since convergence writes through the path the sink must not hear. It carries a number and never a Vault Blob Type or Ciphertext, so a reader re-reads what it already knows how to read rather than being told what changed. An edit made on this device does not move it — only a replacement does.
+_Avoid_: vault version, change event, invalidation signal, refresh token
+
+**Vault Sync Queue**:
+The Vault Blob Types a device has still to converge, held by a Vault Sync Sink. It is a wake-up list rather than the state it wakes for: whether a Vault Blob is unsent is derived from its Sync Bookmark, so a lost queue costs a delay and never an edit. It holds types and never Ciphertext, which is what makes ten saves to one type mark it once while the drain still carries the final state. Not a push queue — a drain converges, so it may equally take the server's copy or merge.
+_Avoid_: outbox, dirty queue, pending changes, write buffer, debounce buffer
 
 ## Planning & Orchestration
 

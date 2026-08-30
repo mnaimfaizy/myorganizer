@@ -12,9 +12,9 @@ import {
   normalizeMobileNumbers,
   type VaultHandle,
 } from '@myorganizer/web-vault';
-import { VaultGate } from '@myorganizer/web-vault-ui';
+import { useLocalVaultRevision, VaultGate } from '@myorganizer/web-vault-ui';
 import { Plus } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { type AddMobileNumberFormValues } from '../schemas/mobileNumber';
 import { mobileNumberFormValuesToRecordFields } from '../schemas/mobileNumber';
@@ -91,14 +91,35 @@ function MobileNumberDetailsInner(props: MobileNumberDetailsInnerProps) {
     [mobileNumbers, props.mobileNumberId, persist],
   );
 
+  // Which record the loading view has already been shown for. A reload is
+  // not a first load, and only a first load may blank the page.
+  const loadedKeyRef = useRef<string | null>(null);
+  const loadKey = props.mobileNumberId;
+
+  // Convergence replaces the Local Vault without passing through this
+  // component, so the revision is the only thing that says the Ciphertext
+  // behind this record moved. Saving here rewrites the whole list, so a stale
+  // read is what gets written back over the record that arrived (#587).
+  const revision = useLocalVaultRevision();
+
   useEffect(() => {
     let isActive = true;
 
-    queueMicrotask(() => {
-      if (!isActive) return;
-      setLoading(true);
-      setNotFound(false);
-    });
+    // A reload triggered by convergence must not put the page back into its
+    // loading state. The render returns the loading view while `loading` is
+    // true, which unmounts every open dialog — edit, usage location, confirm
+    // delete — and throws away whatever the User was typing in it. Only a
+    // first load, or a move to a different record, earns that.
+    const isFirstLoad = loadedKeyRef.current !== loadKey;
+    loadedKeyRef.current = loadKey;
+
+    if (isFirstLoad) {
+      queueMicrotask(() => {
+        if (!isActive) return;
+        setLoading(true);
+        setNotFound(false);
+      });
+    }
 
     props.handle
       .loadDecryptedData<unknown>({
@@ -115,6 +136,10 @@ function MobileNumberDetailsInner(props: MobileNumberDetailsInnerProps) {
           if (isActive) setNotFound(true);
           return;
         }
+        // Recomputed on every read rather than only cleared up front, because
+        // a reload no longer resets it — a record that convergence brought
+        // back must stop reading as not found.
+        if (isActive) setNotFound(false);
 
         if (isActive) {
           setMobileNumbers(normalized.value);
@@ -142,7 +167,7 @@ function MobileNumberDetailsInner(props: MobileNumberDetailsInnerProps) {
     return () => {
       isActive = false;
     };
-  }, [props.mobileNumberId, props.handle, toast]);
+  }, [props.mobileNumberId, props.handle, toast, revision]);
 
   const handleEditMobileNumber = useCallback(() => {
     setEditingMobileNumber(true);

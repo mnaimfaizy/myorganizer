@@ -909,4 +909,88 @@ describe('taskNormalization', () => {
       expect(result[0].id).toBe('id-with-spaces');
     });
   });
+
+  describe('ADR 0054 envelope back-compat', () => {
+    it('returns same value and changed flag for bare array as before', () => {
+      const bareArray = [
+        {
+          id: '1',
+          title: 'Task 1',
+          status: 'pending',
+          priority: 'medium',
+          archived: false,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-02T00:00:00.000Z',
+        },
+      ];
+      const resultFromBare = normalizeTasks(bareArray);
+      const resultFromEnvelope = normalizeTasks({
+        records: bareArray,
+        deletions: {},
+      });
+      expect(resultFromEnvelope.value).toEqual(resultFromBare.value);
+      expect(resultFromEnvelope.changed).toBe(resultFromBare.changed);
+    });
+
+    it('deletion log does not appear in normalized records', () => {
+      const result = normalizeTasks({
+        records: [
+          {
+            id: '1',
+            title: 'Task 1',
+            status: 'pending',
+            priority: 'medium',
+            archived: false,
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        deletions: { someOtherId: '2026-01-01T00:00:00.000Z' },
+      });
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0].id).toBe('1');
+      expect(result.value[0].title).toBe('Task 1');
+    });
+
+    it('carries updatedAt through from input', () => {
+      const updatedAt = '2026-01-02T12:34:56.789Z';
+      const result = normalizeTasks([
+        {
+          id: '1',
+          title: 'Task 1',
+          status: 'pending',
+          priority: 'medium',
+          archived: false,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt,
+        },
+      ]);
+      expect(result.value[0].updatedAt).toBe(updatedAt);
+      expect(result.changed).toBe(false);
+    });
+
+    it('omits updatedAt when absent in input without marking changed', () => {
+      const result = normalizeTasks([
+        {
+          id: '1',
+          title: 'Task 1',
+          status: 'pending',
+          priority: 'medium',
+          archived: false,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]);
+      expect(result.value[0].updatedAt).toBeUndefined();
+      expect(result.changed).toBe(false);
+    });
+
+    it('handles null records in envelope like bare null', () => {
+      const resultFromNull = normalizeTasks(null);
+      const resultFromNullEnvelope = normalizeTasks({
+        records: null,
+        deletions: {},
+      });
+      expect(resultFromNullEnvelope.value).toEqual(resultFromNull.value);
+      expect(resultFromNullEnvelope.changed).toBe(resultFromNull.changed);
+    });
+  });
 });

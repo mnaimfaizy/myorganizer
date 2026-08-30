@@ -18,7 +18,19 @@ export {
   VaultSecretMismatchError,
   createVaultHandle,
 } from './lib/vault/vaultHandle';
-export type { LocalVaultStatus, VaultHandle } from './lib/vault/vaultHandle';
+export type {
+  LocalVaultStatus,
+  VaultHandle,
+  VaultSyncSink,
+} from './lib/vault/vaultHandle';
+export * from './lib/vault/localVaultRevision';
+export * from './lib/vault/vaultConverge';
+export * from './lib/vault/vaultMetaConverge';
+export * from './lib/vault/vaultSyncFailure';
+export * from './lib/vault/vaultSyncQueue';
+export * from './lib/vault/vaultSyncStatus';
+export * from './lib/vault/vaultPullCheck';
+export * from './lib/vault/vaultPullTrigger';
 export * from './lib/vault/vaultExportImport';
 export * from './lib/vault/vaultReconcile';
 export * from './lib/vault/vaultBlobFields';

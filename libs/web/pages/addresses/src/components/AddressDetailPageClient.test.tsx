@@ -142,7 +142,10 @@ const createMockHandle = (
   } as unknown as VaultHandle;
 };
 
+let mockRevision = 0;
+
 jest.mock('@myorganizer/web-vault-ui', () => ({
+  useLocalVaultRevision: () => mockRevision,
   VaultGate: ({
     children,
   }: {
@@ -172,6 +175,7 @@ jest.mock('@myorganizer/core', () => {
 /* eslint-disable import/first -- jest.mock() calls must precede module imports per Jest requirement */
 import React from 'react';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -230,6 +234,7 @@ function makeUsageLocation(
 describe('AddressDetailPageClient', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockRevision = 0;
     mockUseToast.mockReturnValue({ toast: mockToast });
     mockUseRouter.mockReturnValue({ push: mockPush });
     mockHandleLoadFn = jest.fn().mockResolvedValue([]);
@@ -870,6 +875,193 @@ describe('AddressDetailPageClient', () => {
 
       // Dialog should still be open for retry
       expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+    });
+  });
+
+  /**
+   * These cover the `loadedKeyRef` guard: a re-read triggered by convergence
+   * must not put the page back into its loading state, because the render
+   * swaps the whole subtree — dialogs and half-typed input included — for the
+   * loading view while it is (#587).
+   *
+   * Only the in-flight test can fail without the guard. A re-read that
+   * resolves immediately lets React batch the two `setLoading` calls into one
+   * commit, so the loading view never renders and every assertion below it
+   * holds either way. That is why the first test holds the promise open.
+   */
+  describe('Convergence handling (loadedKeyRef guard)', () => {
+    it('keeps a half-typed edit while a convergence re-read is still in flight', async () => {
+      // The re-read is held open deliberately. Every other test here resolves
+      // the load immediately, which lets React batch `setLoading(true)` and
+      // `setLoading(false)` into one commit — the loading view never renders,
+      // the dialog never unmounts, and the assertion passes whether or not the
+      // guard exists. Holding the promise open is what makes the loading view
+      // actually render, which is the only state in which this can fail.
+      const address = makeAddressRecord('addr1', {
+        label: 'Home',
+        street: 'Baker Street',
+      });
+
+      let releaseReRead: (value: unknown) => void = () => undefined;
+      const heldOpenReRead = new Promise((resolve) => {
+        releaseReRead = resolve;
+      });
+
+      mockHandleLoadFn = jest
+        .fn()
+        .mockResolvedValueOnce([address])
+        .mockImplementationOnce(() => heldOpenReRead);
+
+      const { rerender } = render(
+        <AddressDetailPageClient params={{ id: 'addr1' }} />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Home')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /edit/i }));
+      await waitFor(() => {
+        expect(screen.getByText('Edit address')).toBeInTheDocument();
+      });
+
+      const labelInput = screen.getByDisplayValue('Home') as HTMLInputElement;
+      fireEvent.change(labelInput, { target: { value: 'Half typed' } });
+
+      // Convergence lands.
+      mockRevision = 1;
+      rerender(<AddressDetailPageClient params={{ id: 'addr1' }} />);
+
+      // Flush the effect's queued microtask deterministically rather than
+      // waiting on a call count — the flash is scheduled with
+      // `queueMicrotask`, so this is the point at which it would have landed.
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(mockHandleLoadFn).toHaveBeenCalledTimes(2);
+      expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+
+      // Still pending. Without the first-load guard the page is showing its
+      // loading view by now, the dialog subtree is gone, and what the User
+      // typed went with it.
+      expect(screen.getByText('Edit address')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Half typed')).toBeInTheDocument();
+
+      await act(async () => {
+        releaseReRead([address]);
+      });
+    });
+
+    it('should still show loading view on first mount', async () => {
+      const address = makeAddressRecord('addr1', { label: 'Home' });
+      // Delay the load to make loading state visible
+      mockHandleLoadFn = jest.fn(
+        () =>
+          new Promise((resolve) => setTimeout(() => resolve([address]), 50)),
+      );
+
+      render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
+
+      // Initially, loading view should be present (or at least, address not yet visible)
+      // Then after the load, address becomes visible
+      await waitFor(() => {
+        expect(screen.getByText('Home')).toBeInTheDocument();
+      });
+
+      // Verify the load was called
+      expect(mockHandleLoadFn).toHaveBeenCalledTimes(1);
+    });
+
+    it('should pick up converged data when vault is re-read', async () => {
+      const originalAddress = makeAddressRecord('addr1', {
+        label: 'Home',
+        street: 'Old Street',
+      });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([originalAddress]);
+
+      const { rerender } = render(
+        <AddressDetailPageClient params={{ id: 'addr1' }} />,
+      );
+
+      // Wait for initial load
+      await waitFor(() => {
+        expect(screen.getByText('Old Street')).toBeInTheDocument();
+      });
+
+      // Update vault to return new data (convergence brought new data)
+      const updatedAddress = makeAddressRecord('addr1', {
+        label: 'Home',
+        street: 'New Street',
+      });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([updatedAddress]);
+
+      // Bump revision
+      mockRevision = 1;
+      rerender(<AddressDetailPageClient params={{ id: 'addr1' }} />);
+
+      // New data should appear
+      await waitFor(() => {
+        expect(screen.getByText('New Street')).toBeInTheDocument();
+        expect(screen.queryByText('Old Street')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should mark record as not-found when convergence removes it', async () => {
+      const address = makeAddressRecord('addr1', { label: 'Home' });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+
+      const { rerender } = render(
+        <AddressDetailPageClient params={{ id: 'addr1' }} />,
+      );
+
+      // Wait for initial load
+      await waitFor(() => {
+        expect(screen.getByText('Home')).toBeInTheDocument();
+      });
+
+      // Convergence removes the record
+      mockHandleLoadFn = jest.fn().mockResolvedValue([]);
+
+      // Bump revision
+      mockRevision = 1;
+      rerender(<AddressDetailPageClient params={{ id: 'addr1' }} />);
+
+      // Should show not-found state
+      await waitFor(() => {
+        expect(screen.getByText('Address not found.')).toBeInTheDocument();
+        expect(screen.queryByText('Home')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should stop marking record as not-found when convergence restores it', async () => {
+      const otherAddress = makeAddressRecord('addr2', { label: 'Other' });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([otherAddress]);
+
+      const { rerender } = render(
+        <AddressDetailPageClient params={{ id: 'addr1' }} />,
+      );
+
+      // Wait for not-found state
+      await waitFor(() => {
+        expect(screen.getByText('Address not found.')).toBeInTheDocument();
+      });
+
+      // Convergence brings the record back
+      const address = makeAddressRecord('addr1', { label: 'Restored' });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([otherAddress, address]);
+
+      // Bump revision
+      mockRevision = 1;
+      rerender(<AddressDetailPageClient params={{ id: 'addr1' }} />);
+
+      // Should now show the address
+      await waitFor(() => {
+        expect(screen.getByText('Restored')).toBeInTheDocument();
+        expect(
+          screen.queryByText('Address not found.'),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 });

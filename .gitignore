@@ -54,6 +54,9 @@ testem.log
 .sandcastle/.yarn-cache/
 .sandcastle/node_modules_linux_cache/
 
+# Claude Code isolation worktrees
+.claude/worktrees/
+
 # System Files
 .DS_Store
 Thumbs.db

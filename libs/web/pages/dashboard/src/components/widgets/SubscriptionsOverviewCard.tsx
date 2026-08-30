@@ -9,6 +9,7 @@ import {
   normalizeSubscriptions,
   type VaultHandle,
 } from '@myorganizer/web-vault';
+import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
 import { CreditCard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -55,13 +56,24 @@ interface SubscriptionsContentProps {
 function SubscriptionsContent({ handle }: SubscriptionsContentProps) {
   const [summary, setSummary] = useState<Summary | null>(null);
 
+  // Read-only, so there is no overwrite to prevent here — but a dashboard
+  // still showing the count from before convergence is the same staleness
+  // wearing a quieter face (#587).
+  const revision = useLocalVaultRevision();
+
   useEffect(() => {
+    // Cancellation matters now that this effect re-fires on every convergence:
+    // without it, an earlier read resolving late can put a stale count back
+    // over the one a later read just applied.
+    let isActive = true;
+
     handle
       .loadDecryptedData<unknown>({
         type: 'subscriptions',
         defaultValue: [],
       })
       .then((raw) => {
+        if (!isActive) return;
         const { value } = normalizeSubscriptions(raw);
         const active = value.filter(
           (s) => s.status === SubscriptionStatusEnum.Active,
@@ -82,8 +94,14 @@ function SubscriptionsContent({ handle }: SubscriptionsContentProps) {
           ),
         });
       })
-      .catch(() => setSummary({ active: 0, total: 0, monthlyCosts: [] }));
-  }, [handle]);
+      .catch(() => {
+        if (isActive) setSummary({ active: 0, total: 0, monthlyCosts: [] });
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [handle, revision]);
 
   if (!summary) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;

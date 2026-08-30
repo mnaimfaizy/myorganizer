@@ -56,6 +56,186 @@ describe('normalizeSubscriptions', () => {
     expect(res.changed).toBe(true);
   });
 
+  describe('ADR 0054 envelope back-compat', () => {
+    it('returns same value and changed flag for bare array as before', () => {
+      const bareArray = [
+        {
+          id: '1',
+          name: 'Netflix',
+          startDate: '2026-01-01T00:00:00.000Z',
+          status: 'active',
+          billingCycle: 'monthly',
+          amount: 15.99,
+          currency: 'USD',
+          paymentMethod: 'creditCard',
+          renewalType: 'autoRenew',
+          tier: 'pro',
+          updatedAt: '2026-01-02T00:00:00.000Z',
+        },
+      ];
+      const resultFromBare = normalizeSubscriptions(bareArray);
+      const resultFromEnvelope = normalizeSubscriptions({
+        records: bareArray,
+        deletions: {},
+      });
+      expect(resultFromEnvelope.value).toEqual(resultFromBare.value);
+      expect(resultFromEnvelope.changed).toBe(resultFromBare.changed);
+    });
+
+    it('deletion log does not appear in normalized records', () => {
+      const result = normalizeSubscriptions({
+        records: [
+          {
+            id: '1',
+            name: 'Netflix',
+            startDate: '2026-01-01T00:00:00.000Z',
+            status: 'active',
+            billingCycle: 'monthly',
+            amount: 15.99,
+            currency: 'USD',
+            paymentMethod: 'creditCard',
+            renewalType: 'autoRenew',
+            tier: 'pro',
+          },
+        ],
+        deletions: { someOtherId: '2026-01-01T00:00:00.000Z' },
+      });
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0].id).toBe('1');
+      expect(result.value[0].name).toBe('Netflix');
+    });
+
+    it('carries updatedAt through from input', () => {
+      const updatedAt = '2026-01-02T12:34:56.789Z';
+      const result = normalizeSubscriptions([
+        {
+          id: '1',
+          name: 'Netflix',
+          startDate: '2026-01-01T00:00:00.000Z',
+          status: 'active',
+          billingCycle: 'monthly',
+          amount: 15.99,
+          currency: 'USD',
+          paymentMethod: 'creditCard',
+          renewalType: 'autoRenew',
+          tier: 'pro',
+          updatedAt,
+        },
+      ]);
+      expect(result.value[0].updatedAt).toBe(updatedAt);
+      expect(result.changed).toBe(false);
+    });
+
+    it('omits updatedAt when absent in input without marking changed', () => {
+      const result = normalizeSubscriptions([
+        {
+          id: '1',
+          name: 'Netflix',
+          startDate: '2026-01-01T00:00:00.000Z',
+          status: 'active',
+          billingCycle: 'monthly',
+          amount: 15.99,
+          currency: 'USD',
+          paymentMethod: 'creditCard',
+          renewalType: 'autoRenew',
+          tier: 'pro',
+        },
+      ]);
+      expect(result.value[0].updatedAt).toBeUndefined();
+      expect(result.changed).toBe(false);
+    });
+
+    it('handles null records in envelope like bare null', () => {
+      const resultFromNull = normalizeSubscriptions(null);
+      const resultFromNullEnvelope = normalizeSubscriptions({
+        records: null,
+        deletions: {},
+      });
+      expect(resultFromNullEnvelope.value).toEqual(resultFromNull.value);
+      expect(resultFromNullEnvelope.changed).toBe(resultFromNull.changed);
+    });
+
+    it('drops unparseable updatedAt', () => {
+      const result = normalizeSubscriptions([
+        {
+          id: '1',
+          name: 'Netflix',
+          startDate: '2026-01-01T00:00:00.000Z',
+          status: 'active',
+          billingCycle: 'monthly',
+          amount: 15.99,
+          currency: 'USD',
+          paymentMethod: 'creditCard',
+          renewalType: 'autoRenew',
+          tier: 'pro',
+          updatedAt: 'banana',
+        },
+      ]);
+      expect(result.value[0].updatedAt).toBeUndefined();
+      expect(result.changed).toBe(true);
+    });
+
+    it('drops whitespace-only updatedAt', () => {
+      const result = normalizeSubscriptions([
+        {
+          id: '1',
+          name: 'Netflix',
+          startDate: '2026-01-01T00:00:00.000Z',
+          status: 'active',
+          billingCycle: 'monthly',
+          amount: 15.99,
+          currency: 'USD',
+          paymentMethod: 'creditCard',
+          renewalType: 'autoRenew',
+          tier: 'pro',
+          updatedAt: '   ',
+        },
+      ]);
+      expect(result.value[0].updatedAt).toBeUndefined();
+      expect(result.changed).toBe(true);
+    });
+
+    it('drops empty updatedAt', () => {
+      const result = normalizeSubscriptions([
+        {
+          id: '1',
+          name: 'Netflix',
+          startDate: '2026-01-01T00:00:00.000Z',
+          status: 'active',
+          billingCycle: 'monthly',
+          amount: 15.99,
+          currency: 'USD',
+          paymentMethod: 'creditCard',
+          renewalType: 'autoRenew',
+          tier: 'pro',
+          updatedAt: '',
+        },
+      ]);
+      expect(result.value[0].updatedAt).toBeUndefined();
+      expect(result.changed).toBe(true);
+    });
+
+    it('drops numeric updatedAt', () => {
+      const result = normalizeSubscriptions([
+        {
+          id: '1',
+          name: 'Netflix',
+          startDate: '2026-01-01T00:00:00.000Z',
+          status: 'active',
+          billingCycle: 'monthly',
+          amount: 15.99,
+          currency: 'USD',
+          paymentMethod: 'creditCard',
+          renewalType: 'autoRenew',
+          tier: 'pro',
+          updatedAt: 42,
+        },
+      ]);
+      expect(result.value[0].updatedAt).toBeUndefined();
+      expect(result.changed).toBe(true);
+    });
+  });
+
   it('should coerce amount strings and clean whitespace in string fields', () => {
     const res = normalizeSubscriptions([
       {

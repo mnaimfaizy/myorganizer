@@ -125,6 +125,20 @@ export type LocalVaultAccess = {
     type: VaultRecordType;
     defaultValue: T;
   }): Promise<T>;
+  /**
+   * Decrypt Ciphertext this Local Vault does not hold — the server's copy of a
+   * Vault Blob — under the Master Key currently bound.
+   *
+   * Success is the proof that both sides are the same Vault, which is the only
+   * precondition a merge has (ADR 0054). It is established by trying it: Vault
+   * Meta equality answers a different question, since changing a passphrase
+   * rewraps the same Master Key and leaves every Vault Blob readable.
+   *
+   * Throws `VaultLockedError` when no Master Key is bound, and rethrows the
+   * decryption failure otherwise. A caller must not read either as "keep the
+   * local copy".
+   */
+  decryptCiphertext<T>(options: { blob: EncryptedBlob }): Promise<T>;
   saveEncryptedData(options: {
     type: VaultRecordType;
     value: unknown;
@@ -427,6 +441,12 @@ export function createLocalVaultAccess(options: {
       const blob = vault.data[type];
       if (!blob) return defaultValue;
 
+      const masterKey = await importAesGcmKey(masterKeyBytes);
+      return decryptJsonWithMasterKey<T>({ masterKey, blob });
+    },
+
+    async decryptCiphertext<T>({ blob }: { blob: EncryptedBlob }): Promise<T> {
+      const masterKeyBytes = requireMasterKey();
       const masterKey = await importAesGcmKey(masterKeyBytes);
       return decryptJsonWithMasterKey<T>({ masterKey, blob });
     },

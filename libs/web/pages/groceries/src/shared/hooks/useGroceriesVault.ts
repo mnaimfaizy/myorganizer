@@ -9,6 +9,7 @@ import type {
 } from '@myorganizer/core';
 import { randomId } from '@myorganizer/core';
 import { normalizeGroceries, type VaultHandle } from '@myorganizer/web-vault';
+import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
 import { useCallback, useEffect, useState } from 'react';
 import { validateAddCatalogItemAndLineInput } from '../utils';
 
@@ -141,7 +142,13 @@ export function useGroceriesVault({
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Load payload from vault on mount
+  // Convergence replaces the Local Vault without passing through this hook,
+  // so the revision is the only thing that says the Ciphertext behind
+  // `payload` moved. Without it this hook goes on saving the payload it loaded
+  // on mount, writing the converged lists back out (#587).
+  const revision = useLocalVaultRevision();
+
+  // Load payload from vault on mount, and again whenever it is replaced
   useEffect(() => {
     setError(null);
     handle
@@ -152,9 +159,17 @@ export function useGroceriesVault({
       .then(async (raw) => {
         const normalized = normalizeGroceries(raw);
         setPayload(normalized.value);
-        if (normalized.value.lists.length > 0) {
-          setSelectedListId(normalized.value.lists[0].id);
-        }
+        // Only ever moves the selection onto a list that exists. A reload
+        // triggered by convergence must not pull the User off the list they
+        // are working in and back to the first one — but a selected list the
+        // convergence removed cannot be left selected either.
+        setSelectedListId((current) => {
+          const stillPresent =
+            current !== null &&
+            normalized.value.lists.some((list) => list.id === current);
+          if (stillPresent) return current;
+          return normalized.value.lists[0]?.id ?? null;
+        });
         // Re-save if data was normalized (data migration or repair)
         if (normalized.changed) {
           await handle.saveEncryptedData({
@@ -169,7 +184,7 @@ export function useGroceriesVault({
         setError('Failed to load your grocery lists. Please try again.');
         setLoading(false);
       });
-  }, [handle]);
+  }, [handle, revision]);
 
   // Persist full payload to vault
   const persistPayload = useCallback(

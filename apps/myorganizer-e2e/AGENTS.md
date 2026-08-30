@@ -25,6 +25,28 @@ That boots the dev server instead. It is quicker, but it no longer matches CI �
 behaviour (unminified bundles, `NODE_ENV` branches, the Next.js dev overlay) is present, and
 production-only failures will not reproduce. Reach for it while iterating, not to confirm a fix.
 
+The production command builds before it serves, and must keep doing so. `serve:production` is
+`next start` against whatever `dist/` already holds and never rebuilds it, so a suite that only
+serves will test a stale bundle: a build predating the branch under test reports every new
+feature as a missing element, which reads as a broken spec rather than a stale build. Nx caches
+the build, so the guard costs nothing when nothing changed. If a spec fails as though the code
+it exercises does not exist, check that `dist/apps/myorganizer/.next/BUILD_ID` is newer than the
+work before believing the spec.
+
+For the same reason a production run never reuses a server already on the port. Playwright skips
+the whole `command` — the build included — when something answers on `url`, and a
+`yarn start:myorganizer` dev server answers exactly like the production build would, so the run
+would report itself as production while testing something else. If a production run stops with
+`http://localhost:4200 is already used`, that is this guard: stop the server holding the port and
+re-run, rather than setting `reuseExistingServer: true`.
+
+The `E2E_DEV_SERVER=1` loop still reuses, because there the already-running server is the point —
+but it listens on **4201**, not 4200, so the only thing it can adopt is a dev server a previous
+dev run started. Sharing the port meant a dev run would adopt a leftover _production_ server and
+pass in seconds without compiling the working tree, which looks like a fast green rather than a
+wrong one. It also means `E2E_DEV_SERVER=1` no longer collides with a dev server you are using
+for manual work on 4200.
+
 ## CI lanes
 
 - **Blocking** — Chromium, on pull requests that `nx affected` says touch `myorganizer-e2e`,

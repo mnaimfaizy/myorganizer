@@ -70,4 +70,13 @@ export type SubscriptionRecord = {
   cancellationReason?: string;
   tier: SubscriptionTier;
   link?: string;
+  /**
+   * When this Subscription record last changed — what merging resolves a
+   * collision by, and not a billing date. `startDate` is when the User's
+   * subscription began, so merging never reads it as a record timestamp.
+   *
+   * Optional, and absent on every Subscription written before merging
+   * existed. See `AddressRecord.updatedAt`.
+   */
+  updatedAt?: IsoDateTimeString;
 };

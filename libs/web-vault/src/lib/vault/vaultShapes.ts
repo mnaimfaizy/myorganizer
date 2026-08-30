@@ -96,17 +96,57 @@ export function serverMetaToLocalVault(options: {
       serverEncryptedBlobToLocal(wrappedPassphrase),
     masterKeyWrappedWithRecoveryKey:
       serverEncryptedBlobToLocal(wrappedRecovery),
-    data: {},
+    data: serverBlobsToLocalData(blobs),
   };
+
+  return next;
+}
+
+/**
+ * The Local Vault `data` a set of server Vault Blobs becomes.
+ *
+ * One fan-out over `VAULT_BLOB_TYPES` rather than one per caller: every place
+ * that turns the server's Ciphertext into a Local Vault reaches this, so a
+ * seventh Vault Blob Type cannot be carried by one path and dropped by
+ * another ([ADR 0053](../../../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
+ */
+function serverBlobsToLocalData(
+  blobs: Partial<Record<VaultBlobType, EncryptedBlobV1 | null>>,
+): VaultStorageV1['data'] {
+  const data: VaultStorageV1['data'] = {};
 
   for (const type of VAULT_BLOB_TYPES) {
     const blob = blobs[type];
     if (blob) {
-      next.data[VAULT_BLOB_FIELDS[type]] = serverEncryptedBlobToLocal(blob);
+      data[VAULT_BLOB_FIELDS[type]] = serverEncryptedBlobToLocal(blob);
     }
   }
 
-  return next;
+  return data;
+}
+
+/**
+ * The Local Vault that adopting a remote Vault Meta produces: the server's
+ * wrapping over this device's Ciphertext.
+ *
+ * The Ciphertext is carried across rather than re-read from the server on
+ * purpose. Adopting a wrapping is a statement about how the Vault is opened,
+ * never about what it contains — a passphrase change rewraps the same Master
+ * Key, so every Vault Blob here stays exactly as readable, exactly as unsent,
+ * and exactly as mergeable as it was. Passing `blobs: {}` is what makes that
+ * structural: there is no remote Ciphertext in scope to leak in.
+ *
+ * The wrapping still goes through `serverMetaToLocalVault`, so a meta missing
+ * a wrapped key or carrying an unsupported KDF hash is rejected here rather
+ * than saved and discovered at the next unlock.
+ */
+export function adoptServerMetaIntoLocalVault(options: {
+  localVault: VaultStorageV1;
+  meta: VaultMetaV1;
+}): VaultStorageV1 {
+  const wrapping = serverMetaToLocalVault({ meta: options.meta, blobs: {} });
+
+  return { ...wrapping, data: { ...options.localVault.data } };
 }
 
 function isEncryptedBlobV1(value: any): value is EncryptedBlobV1 {

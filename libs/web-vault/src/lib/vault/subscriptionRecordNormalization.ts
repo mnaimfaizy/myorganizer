@@ -8,6 +8,7 @@ import {
   SubscriptionTierEnum,
   isSupportedCurrencyCode,
   randomId,
+  readVaultBlobRecords,
   type CurrencyCode,
   type SubscriptionBillingCycle,
   type SubscriptionPaymentMethod,
@@ -32,7 +33,7 @@ function toTrimmedString(value: unknown): string | null {
 function parseEnumValue<T extends Record<string, string>>(
   enumObject: T,
   value: unknown,
-  fallback: T[keyof T]
+  fallback: T[keyof T],
 ): T[keyof T] {
   const input = toTrimmedString(value);
   if (!input) return fallback;
@@ -70,9 +71,26 @@ function parseIsoString(value: unknown): string | undefined {
   return v && v.length > 0 ? v : undefined;
 }
 
+/**
+ * An `updatedAt` that merging can actually compare, or `undefined`.
+ *
+ * Stricter than `parseIsoString`, which only trims: merging resolves a
+ * collision by this field and reads anything unparseable as older than
+ * everything, so `"banana"` stored here would silently lose every collision
+ * and every deletion. It is dropped instead. The other date fields stay on
+ * `parseIsoString` — nothing compares them.
+ */
+function parseUpdatedAt(value: unknown): string | undefined {
+  const trimmed = parseIsoString(value);
+  if (!trimmed) return undefined;
+  return Number.isNaN(Date.parse(trimmed)) ? undefined : trimmed;
+}
+
 export function normalizeSubscriptions(
-  value: unknown
+  payload: unknown,
 ): NormalizeResult<SubscriptionRecord[]> {
+  const value = readVaultBlobRecords(payload);
+
   if (!Array.isArray(value)) return { value: [], changed: value != null };
 
   let changed = false;
@@ -94,34 +112,36 @@ export function normalizeSubscriptions(
       status: parseEnumValue(
         SubscriptionStatusEnum,
         raw.status,
-        SubscriptionStatusEnum.Active
+        SubscriptionStatusEnum.Active,
       ) as SubscriptionStatus,
       billingCycle: parseEnumValue(
         SubscriptionBillingCycleEnum,
         raw.billingCycle,
-        SubscriptionBillingCycleEnum.Monthly
+        SubscriptionBillingCycleEnum.Monthly,
       ) as SubscriptionBillingCycle,
       amount: parseNumber(raw.amount, 0),
       currency: parseCurrencyCode(raw.currency),
       paymentMethod: parseEnumValue(
         SubscriptionPaymentMethodEnum,
         raw.paymentMethod,
-        SubscriptionPaymentMethodEnum.CreditCard
+        SubscriptionPaymentMethodEnum.CreditCard,
       ) as SubscriptionPaymentMethod,
       nextBillingDate: parseIsoString(raw.nextBillingDate),
       renewalType: parseEnumValue(
         SubscriptionRenewalTypeEnum,
         raw.renewalType,
-        SubscriptionRenewalTypeEnum.AutoRenew
+        SubscriptionRenewalTypeEnum.AutoRenew,
       ) as SubscriptionRenewalType,
       cancellationDate: parseIsoString(raw.cancellationDate),
       cancellationReason: toTrimmedString(raw.cancellationReason) ?? undefined,
       tier: parseEnumValue(
         SubscriptionTierEnum,
         raw.tier,
-        SubscriptionTierEnum.Basic
+        SubscriptionTierEnum.Basic,
       ) as SubscriptionTier,
       link: toTrimmedString(raw.link) ?? undefined,
+      // Carried through, never invented — see SubscriptionRecord.updatedAt.
+      updatedAt: parseUpdatedAt(raw.updatedAt),
     };
 
     if (next.id !== raw.id) changed = true;
@@ -139,6 +159,7 @@ export function normalizeSubscriptions(
     if (next.cancellationReason !== raw.cancellationReason) changed = true;
     if (next.tier !== raw.tier) changed = true;
     if (next.link !== raw.link) changed = true;
+    if (next.updatedAt !== raw.updatedAt) changed = true;
 
     normalized.push(next);
   }

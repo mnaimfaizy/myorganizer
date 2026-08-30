@@ -324,4 +324,79 @@ describe('VaultController (HTTP integration)', () => {
     expect(res.body.type).toBe('addresses');
     expect(vaultService.getBlob).toHaveBeenCalledWith('user-1', 'addresses');
   });
+
+  describe('ADR 0055: GET /vault/blob/:type If-None-Match handling', () => {
+    test('returns 304 with empty body when If-None-Match matches current ETag', async () => {
+      const app = makeApp();
+
+      const vaultService = require('../services/VaultService').default;
+      const currentEtag = 'W/"abcd1234"';
+
+      vaultService.getBlob.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        body: {
+          type: 'addresses',
+          blob,
+          updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+          etag: currentEtag,
+        },
+      });
+
+      const res = await request(app)
+        .get('/vault/blob/addresses')
+        .set('Authorization', 'Bearer test')
+        .set('If-None-Match', currentEtag);
+
+      expect(res.status).toBe(304);
+      expect(res.text).toBe('');
+    });
+
+    test('returns 200 with full body when If-None-Match does not match current ETag', async () => {
+      const app = makeApp();
+
+      const vaultService = require('../services/VaultService').default;
+      const currentEtag = 'W/"abcd1234"';
+
+      vaultService.getBlob.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        body: {
+          type: 'addresses',
+          blob,
+          updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+          etag: currentEtag,
+        },
+      });
+
+      const res = await request(app)
+        .get('/vault/blob/addresses')
+        .set('Authorization', 'Bearer test')
+        .set('If-None-Match', 'W/"different-etag"');
+
+      expect(res.status).toBe(200);
+      expect(res.body.type).toBe('addresses');
+      expect(res.body.etag).toBe(currentEtag);
+    });
+
+    test('returns 404 unchanged when If-None-Match is set but blob does not exist', async () => {
+      const app = makeApp();
+
+      const vaultService = require('../services/VaultService').default;
+
+      vaultService.getBlob.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        body: { message: 'Vault blob not found' },
+      });
+
+      const res = await request(app)
+        .get('/vault/blob/addresses')
+        .set('Authorization', 'Bearer test')
+        .set('If-None-Match', 'W/"anything"');
+
+      expect(res.status).toBe(404);
+      expect(res.body.message).toBe('Vault blob not found');
+    });
+  });
 });

@@ -138,7 +138,10 @@ const createMockHandle = (
   } as unknown as VaultHandle;
 };
 
+let mockRevision = 0;
+
 jest.mock('@myorganizer/web-vault-ui', () => ({
+  useLocalVaultRevision: () => mockRevision,
   VaultGate: ({
     children,
   }: {
@@ -168,6 +171,7 @@ jest.mock('@myorganizer/core', () => {
 /* eslint-disable import/first -- jest.mock() calls must precede module imports per Jest requirement */
 import React from 'react';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -222,6 +226,7 @@ function makeUsageLocation(
 describe('MobileNumberDetailPageClient', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockRevision = 0;
     mockUseToast.mockReturnValue({ toast: mockToast });
     mockHandleLoadFn = jest.fn().mockResolvedValue([]);
     mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
@@ -850,6 +855,191 @@ describe('MobileNumberDetailPageClient', () => {
 
       // Dialog should still be open for retry
       expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+    });
+  });
+
+  describe('Convergence handling (loadedKeyRef guard)', () => {
+    it('keeps a half-typed edit while a convergence re-read is still in flight', async () => {
+      // The re-read is held open deliberately. A load that resolves at once
+      // lets React batch `setLoading(true)` and `setLoading(false)` into one
+      // commit — the loading view never renders, the dialog never unmounts,
+      // and the assertion holds whether or not the guard exists. Holding the
+      // promise open is what makes the loading view actually render, which is
+      // the only state in which this can fail.
+      const mobileNumber = makeMobileNumberRecord('mob1', { label: 'Home' });
+
+      let releaseReRead: (value: unknown) => void = () => undefined;
+      const heldOpenReRead = new Promise((resolve) => {
+        releaseReRead = resolve;
+      });
+
+      mockHandleLoadFn = jest
+        .fn()
+        .mockResolvedValueOnce([mobileNumber])
+        .mockImplementationOnce(() => heldOpenReRead);
+
+      const { rerender } = render(
+        <MobileNumberDetailPageClient params={{ id: 'mob1' }} />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Home')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /edit/i }));
+      await waitFor(() => {
+        expect(screen.getByText('Edit mobile number')).toBeInTheDocument();
+      });
+
+      const labelInput = screen.getByDisplayValue('Home') as HTMLInputElement;
+      fireEvent.change(labelInput, { target: { value: 'Half typed' } });
+
+      // Convergence lands.
+      mockRevision = 1;
+      rerender(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
+
+      // Flush the effect's queued microtask deterministically rather than
+      // waiting on a call count — the flash is scheduled with
+      // `queueMicrotask`, so this is the point at which it would have landed.
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(mockHandleLoadFn).toHaveBeenCalledTimes(2);
+      expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+
+      // Still pending. Without the first-load guard the page is showing its
+      // loading view by now, the dialog subtree is gone, and what the User
+      // typed went with it.
+      expect(screen.getByText('Edit mobile number')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Half typed')).toBeInTheDocument();
+
+      await act(async () => {
+        releaseReRead([mobileNumber]);
+      });
+    });
+
+    it('should still show loading view on first mount', async () => {
+      const mobileNumber = makeMobileNumberRecord('mob1', { label: 'Home' });
+      // Delay the load to make loading state visible
+      mockHandleLoadFn = jest.fn(
+        () =>
+          new Promise((resolve) =>
+            setTimeout(() => resolve([mobileNumber]), 50),
+          ),
+      );
+
+      render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
+
+      // Initially, loading view should be present (or at least, mobile number not yet visible)
+      // Then after the load, mobile number becomes visible
+      await waitFor(() => {
+        expect(screen.getByText('Home')).toBeInTheDocument();
+      });
+
+      // Verify the load was called
+      expect(mockHandleLoadFn).toHaveBeenCalledTimes(1);
+    });
+
+    it('should pick up converged data when vault is re-read', async () => {
+      const originalMobileNumber = makeMobileNumberRecord('mob1', {
+        label: 'Home',
+        phoneNumber: '5551111111',
+      });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([originalMobileNumber]);
+
+      const { rerender } = render(
+        <MobileNumberDetailPageClient params={{ id: 'mob1' }} />,
+      );
+
+      // Wait for initial load
+      await waitFor(() => {
+        expect(screen.getByText('5551111111')).toBeInTheDocument();
+      });
+
+      // Update vault to return new data (convergence brought new data)
+      const updatedMobileNumber = makeMobileNumberRecord('mob1', {
+        label: 'Home',
+        phoneNumber: '5559999999',
+      });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([updatedMobileNumber]);
+
+      // Bump revision
+      mockRevision = 1;
+      rerender(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
+
+      // New data should appear
+      await waitFor(() => {
+        expect(screen.getByText('5559999999')).toBeInTheDocument();
+        expect(screen.queryByText('5551111111')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should mark record as not-found when convergence removes it', async () => {
+      const mobileNumber = makeMobileNumberRecord('mob1', { label: 'Home' });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
+
+      const { rerender } = render(
+        <MobileNumberDetailPageClient params={{ id: 'mob1' }} />,
+      );
+
+      // Wait for initial load
+      await waitFor(() => {
+        expect(screen.getByText('Home')).toBeInTheDocument();
+      });
+
+      // Convergence removes the record
+      mockHandleLoadFn = jest.fn().mockResolvedValue([]);
+
+      // Bump revision
+      mockRevision = 1;
+      rerender(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
+
+      // Should show not-found state
+      await waitFor(() => {
+        expect(
+          screen.getByText('Mobile number not found.'),
+        ).toBeInTheDocument();
+        expect(screen.queryByText('Home')).not.toBeInTheDocument();
+      });
+    });
+
+    it('should stop marking record as not-found when convergence restores it', async () => {
+      const otherMobileNumber = makeMobileNumberRecord('mob2', {
+        label: 'Other',
+      });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([otherMobileNumber]);
+
+      const { rerender } = render(
+        <MobileNumberDetailPageClient params={{ id: 'mob1' }} />,
+      );
+
+      // Wait for not-found state
+      await waitFor(() => {
+        expect(
+          screen.getByText('Mobile number not found.'),
+        ).toBeInTheDocument();
+      });
+
+      // Convergence brings the record back
+      const mobileNumber = makeMobileNumberRecord('mob1', {
+        label: 'Restored',
+      });
+      mockHandleLoadFn = jest
+        .fn()
+        .mockResolvedValue([otherMobileNumber, mobileNumber]);
+
+      // Bump revision
+      mockRevision = 1;
+      rerender(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
+
+      // Should now show the mobile number
+      await waitFor(() => {
+        expect(screen.getByText('Restored')).toBeInTheDocument();
+        expect(
+          screen.queryByText('Mobile number not found.'),
+        ).not.toBeInTheDocument();
+      });
     });
   });
 });

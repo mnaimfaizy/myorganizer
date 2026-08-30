@@ -1,5 +1,6 @@
 import {
   randomId,
+  readVaultBlobRecords,
   type Task,
   type TaskPriority,
   type TaskStatus,
@@ -31,7 +32,9 @@ function isIso8601(value: unknown): value is string {
   return !isNaN(new Date(value).getTime());
 }
 
-export function normalizeTasks(value: unknown): NormalizeResult<Task[]> {
+export function normalizeTasks(payload: unknown): NormalizeResult<Task[]> {
+  const value = readVaultBlobRecords(payload);
+
   if (value === null) return { value: [], changed: false };
   if (!Array.isArray(value)) return { value: [], changed: true };
 
