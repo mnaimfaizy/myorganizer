@@ -11,7 +11,7 @@
  * costs at most one redundant push next time a dirtiness check runs, never a
  * User's data. A mis-keyed or corrupted entry is therefore replaced rather
  * than refused — there is no write guard here to mirror
- * `writeOwnedLocalVault`'s. See ADR 0056.
+ * `writeOwnedLocalVault`'s. See ADR 0058.
  */
 
 import type { VaultRecordType } from './localVaultStorage';
@@ -158,7 +158,7 @@ export function writeSyncBookmark(options: {
 /**
  * Remove every Sync Bookmark `owner` holds — the bookmark half of Explicit
  * Local Vault removal (ADR 0033, restated over this second per-User
- * namespace in ADR 0056).
+ * namespace in ADR 0058).
  *
  * Touches only the key `owner` is stored under, so it can never remove
  * another User's bookmarks.

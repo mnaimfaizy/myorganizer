@@ -312,7 +312,7 @@ describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
     });
   });
 
-  describe('removeBookmarks — explicit removal (ADR 0056)', () => {
+  describe('removeBookmarks — explicit removal (ADR 0058)', () => {
     test('14: removes all bookmarks for owner', async () => {
       const blob: EncryptedBlob = {
         iv: bytesToBase64(new Uint8Array(12).fill(0xaa)),

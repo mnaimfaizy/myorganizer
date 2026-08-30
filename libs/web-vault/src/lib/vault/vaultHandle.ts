@@ -183,7 +183,7 @@ export function createVaultHandle(options: {
       reportVaultReplaced();
     },
     // Explicit Local Vault removal (ADR 0033) also removes this owner's Sync
-    // Bookmarks (ADR 0056) — the two per-User namespaces are removed together
+    // Bookmarks (ADR 0058) — the two per-User namespaces are removed together
     // because a bookmark for a Vault this device no longer holds is stale by
     // construction, and a stray one only ever costs a redundant push.
     removeVault: () => {

@@ -4,7 +4,7 @@
  * Covers storage resolution, per-owner isolation, removal semantics, owner
  * assertion, and corrupted-entry handling.
  *
- * See ADR 0056 for the distinction between Sync Bookmarks (replaceable
+ * See ADR 0058 for the distinction between Sync Bookmarks (replaceable
  * pointers, loose write guards) and Local Vault entries (irreplaceable data,
  * strict write guards).
  */
