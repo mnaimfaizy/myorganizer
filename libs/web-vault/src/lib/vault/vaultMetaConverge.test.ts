@@ -16,6 +16,7 @@ import {
   convergeVaultMeta,
   describeVaultMetaDivergence,
   VAULT_META_CHANGES,
+  VAULT_META_CHANGE_ADOPTABLE,
   type VaultMetaChange,
   type VaultMetaConvergePrompt,
   type VaultMetaDecision,
@@ -243,7 +244,7 @@ describe('convergeVaultMeta', () => {
     }
   });
 
-  test('names passphrase divergence when kdf_salt differs', async () => {
+  test('names different-vault when kdf_salt differs (salt wins first-match scan)', async () => {
     const localVault = makeLocalVault();
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
@@ -263,7 +264,7 @@ describe('convergeVaultMeta', () => {
 
     expect(result.kind).toBe('noop-deferred');
     if (result.kind === 'noop-deferred') {
-      expect(result.change).toBe('passphrase');
+      expect(result.change).toBe('different-vault');
     }
   });
 
@@ -531,13 +532,13 @@ describe('convergeVaultMeta', () => {
     const localVault = makeLocalVault();
     const localVaultClone = JSON.parse(JSON.stringify(localVault));
 
+    // A real passphrase change: same salt, different wrapped_mk_passphrase
     const remoteWrapping = makeServerMeta({
       wrapped_mk_passphrase: {
         version: 1,
         iv: 'remote-iv',
         ciphertext: 'remote-ct',
       },
-      kdf_salt: 'remote-salt',
     });
 
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
@@ -560,8 +561,8 @@ describe('convergeVaultMeta', () => {
     if (result.kind === 'adopted-remote') {
       expect(result.change).toBe('passphrase');
       expect(result.nextLocalVault).toBeDefined();
-      // Remote wrapping is adopted
-      expect(result.nextLocalVault.kdf.salt).toBe('remote-salt');
+      // Remote wrapping is adopted but salt stays the same
+      expect(result.nextLocalVault.kdf.salt).toBe('salt-local');
       expect(result.nextLocalVault.masterKeyWrappedWithPassphrase).toEqual({
         iv: 'remote-iv',
         ciphertext: 'remote-ct',
@@ -611,6 +612,119 @@ describe('convergeVaultMeta', () => {
     }
   });
 
+  // ===== different-vault: not adoptable =====
+
+  test('names different-vault when kdf_salt and wrapped_mk_passphrase both differ (salt wins)', async () => {
+    const localVault = makeLocalVault();
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: makeServerMeta({
+        kdf_salt: 'different-salt',
+        wrapped_mk_passphrase: {
+          version: 1,
+          iv: 'remote-iv',
+          ciphertext: 'remote-ct',
+        },
+      }),
+    });
+
+    const prompt = jest.fn<
+      Promise<VaultMetaDecision>,
+      [{ change: VaultMetaChange; remote: ServerVaultMeta }]
+    >(async () => 'defer' as const);
+    const result = await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault,
+      prompt,
+    });
+
+    expect(result.kind).toBe('noop-deferred');
+    if (result.kind === 'noop-deferred') {
+      // Salt difference wins the first-match scan, even though wrapping also differs
+      expect(result.change).toBe('different-vault');
+    }
+  });
+
+  test('returns refused-not-adoptable when prompt returns adopt-remote for different-vault', async () => {
+    const localVault = makeLocalVault();
+    const localVaultClone = JSON.parse(JSON.stringify(localVault));
+
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: makeServerMeta({ kdf_salt: 'different-salt' }),
+    });
+
+    const prompt = jest.fn<
+      Promise<VaultMetaDecision>,
+      [{ change: VaultMetaChange; remote: ServerVaultMeta }]
+    >(async () => 'adopt-remote' as const);
+    const result = await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault,
+      prompt,
+    });
+
+    expect(result.kind).toBe('refused-not-adoptable');
+    if (result.kind === 'refused-not-adoptable') {
+      expect(result.change).toBe('different-vault');
+      // No nextLocalVault is returned
+      expect(result).not.toHaveProperty('nextLocalVault');
+    }
+
+    // Input was not mutated
+    expect(localVault).toEqual(localVaultClone);
+  });
+
+  test('returns noop-deferred when prompt returns defer for different-vault', async () => {
+    const localVault = makeLocalVault();
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: makeServerMeta({ kdf_salt: 'different-salt' }),
+    });
+
+    const prompt = jest.fn<
+      Promise<VaultMetaDecision>,
+      [{ change: VaultMetaChange; remote: ServerVaultMeta }]
+    >(async () => 'defer' as const);
+    const result = await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault,
+      prompt,
+    });
+
+    expect(result).toEqual({
+      kind: 'noop-deferred',
+      change: 'different-vault',
+    });
+  });
+
+  test('returns noop-declined when prompt returns keep-local for different-vault', async () => {
+    const localVault = makeLocalVault();
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: makeServerMeta({ kdf_salt: 'different-salt' }),
+    });
+
+    const prompt = jest.fn<
+      Promise<VaultMetaDecision>,
+      [{ change: VaultMetaChange; remote: ServerVaultMeta }]
+    >(async () => 'keep-local' as const);
+    const result = await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault,
+      prompt,
+    });
+
+    expect(result).toEqual({
+      kind: 'noop-declined',
+      change: 'different-vault',
+    });
+  });
+
   // ===== Type-level API contract test =====
 
   test('compiles and works with API having only getVaultMeta (structural proof no write)', async () => {
@@ -637,6 +751,15 @@ describe('describeVaultMetaDivergence', () => {
     const result = describeVaultMetaDivergence({ local, remote });
 
     expect(result).toEqual({ kind: 'none' });
+  });
+
+  test('returns diverged with different-vault when kdf_salt differs', () => {
+    const local = makeServerMeta();
+    const remote = makeServerMeta({ kdf_salt: 'different-salt' });
+
+    const result = describeVaultMetaDivergence({ local, remote });
+
+    expect(result).toEqual({ kind: 'diverged', change: 'different-vault' });
   });
 
   test('returns diverged with passphrase when wrapped_mk_passphrase differs', () => {
@@ -668,10 +791,28 @@ describe('describeVaultMetaDivergence', () => {
 
     expect(result).toEqual({ kind: 'diverged', change: 'recovery-key' });
   });
+
+  // Pinned against VAULT_META_CHANGE_ADOPTABLE (ADR 0053)
+  test('every member of VAULT_META_CHANGES has an adoptability rule', () => {
+    for (const change of VAULT_META_CHANGES) {
+      expect(VAULT_META_CHANGE_ADOPTABLE).toHaveProperty(change);
+    }
+  });
+
+  test('VAULT_META_CHANGE_ADOPTABLE covers exactly VAULT_META_CHANGES members', () => {
+    const adoptableKeys = Object.keys(
+      VAULT_META_CHANGE_ADOPTABLE,
+    ) as VaultMetaChange[];
+    expect(adoptableKeys.sort()).toEqual([...VAULT_META_CHANGES].sort());
+  });
 });
 
 describe('VAULT_META_CHANGES constant', () => {
-  test('is exactly ["passphrase", "recovery-key"] in that order (pinned by ADR 0053)', () => {
-    expect(VAULT_META_CHANGES).toEqual(['passphrase', 'recovery-key']);
+  test('is exactly ["different-vault", "passphrase", "recovery-key"] in that order (pinned by ADR 0053)', () => {
+    expect(VAULT_META_CHANGES).toEqual([
+      'different-vault',
+      'passphrase',
+      'recovery-key',
+    ]);
   });
 });

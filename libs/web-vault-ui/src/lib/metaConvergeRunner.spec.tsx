@@ -340,6 +340,68 @@ describe('VaultMetaConvergeRunner', () => {
     expect(mockToast).not.toHaveBeenCalled();
   });
 
+  test('passphrase dialog still renders adopt button', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    arrangeMetaConvergeWithPrompt({});
+
+    render(<VaultMetaConvergeRunner />);
+
+    await screen.findByRole('dialog');
+
+    // Adopt button should be present for passphrase
+    expect(
+      screen.getByRole('button', { name: 'Use the new passphrase' }),
+    ).not.toBeNull();
+  });
+
+  test('recovery-key dialog still renders adopt button', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockConvergeVaultMeta.mockImplementation(
+      async (options: MetaConvergeOptions) => {
+        await options.prompt({
+          change: 'recovery-key',
+          remote: {
+            etag: 'e1',
+            updatedAt: 't1',
+            meta: {
+              version: 1,
+              kdf_name: 'PBKDF2',
+              kdf_salt: 'salt',
+              kdf_params: { hash: 'SHA-256', iterations: 310_000 },
+              wrapped_mk_passphrase: {
+                version: 1,
+                iv: 'iv1',
+                ciphertext: 'ct1',
+              },
+              wrapped_mk_recovery: { version: 1, iv: 'iv2', ciphertext: 'ct2' },
+            },
+          },
+        });
+
+        return { kind: 'noop-already-in-sync' };
+      },
+    );
+
+    render(<VaultMetaConvergeRunner />);
+
+    await screen.findByRole('dialog');
+
+    // Adopt button should be present for recovery-key
+    expect(
+      screen.getByRole('button', { name: 'Use the new recovery key' }),
+    ).not.toBeNull();
+  });
+
   test('should display recovery-key-specific copy when recovery-key diverged', async () => {
     const decisionResult: { current?: VaultMetaDecision } = {};
     const mockHandle = createMockHandle('user-a');
@@ -393,6 +455,108 @@ describe('VaultMetaConvergeRunner', () => {
     expect(
       screen.getByRole('button', { name: 'Keep my current recovery key' }),
     ).not.toBeNull();
+  });
+
+  test('should display different-vault dialog with correct copy and no adopt button', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockConvergeVaultMeta.mockImplementation(
+      async (options: MetaConvergeOptions) => {
+        await options.prompt({
+          change: 'different-vault',
+          remote: {
+            etag: 'e1',
+            updatedAt: 't1',
+            meta: {
+              version: 1,
+              kdf_name: 'PBKDF2',
+              kdf_salt: 'different-salt',
+              kdf_params: { hash: 'SHA-256', iterations: 310_000 },
+              wrapped_mk_passphrase: {
+                version: 1,
+                iv: 'iv1',
+                ciphertext: 'ct1',
+              },
+              wrapped_mk_recovery: { version: 1, iv: 'iv2', ciphertext: 'ct2' },
+            },
+          },
+        });
+
+        return { kind: 'noop-already-in-sync' };
+      },
+    );
+
+    render(<VaultMetaConvergeRunner />);
+
+    await screen.findByRole('dialog');
+
+    expect(
+      screen.getByText('This device holds a different vault'),
+    ).not.toBeNull();
+    expect(
+      screen.getByText(
+        'The vault on the server was created separately from the one on this device.',
+      ),
+    ).not.toBeNull();
+
+    // Crucially: no "use the new" button should be present (no adopt button for different-vault)
+    expect(screen.queryByRole('button', { name: /use the new/i })).toBeNull();
+  });
+
+  test('different-vault dialog resolves defer when dismissed', async () => {
+    const decisionResult: { current?: VaultMetaDecision } = {};
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockConvergeVaultMeta.mockImplementation(
+      async (options: MetaConvergeOptions) => {
+        const decision = await options.prompt({
+          change: 'different-vault',
+          remote: {
+            etag: 'e1',
+            updatedAt: 't1',
+            meta: {
+              version: 1,
+              kdf_name: 'PBKDF2',
+              kdf_salt: 'different-salt',
+              kdf_params: { hash: 'SHA-256', iterations: 310_000 },
+              wrapped_mk_passphrase: {
+                version: 1,
+                iv: 'iv1',
+                ciphertext: 'ct1',
+              },
+              wrapped_mk_recovery: { version: 1, iv: 'iv2', ciphertext: 'ct2' },
+            },
+          },
+        });
+
+        decisionResult.current = decision;
+        if (decision === 'defer') {
+          return { kind: 'noop-deferred', change: 'different-vault' as const };
+        }
+        return { kind: 'noop-already-in-sync' };
+      },
+    );
+
+    render(<VaultMetaConvergeRunner />);
+
+    await screen.findByRole('dialog');
+    const dialog = screen.getByRole('dialog');
+    fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
+
+    await waitFor(() => expect(decisionResult.current).toBe('defer'));
+
+    // No saveVault call
+    expect(mockHandle.saveVault).not.toHaveBeenCalled();
+    // No toast
+    expect(mockToast).not.toHaveBeenCalled();
   });
 
   test('should resolve defer when unmounted while prompt pending', async () => {

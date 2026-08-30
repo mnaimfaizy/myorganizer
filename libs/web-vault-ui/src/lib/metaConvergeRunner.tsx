@@ -38,46 +38,69 @@ function sessionFlagFor(owner: string): string {
 type VaultMetaChangeCopy = {
   title: string;
   lead: string;
-  adoptLabel: string;
   keepLabel: string;
-  adoptExplainer: string;
   keepExplainer: string;
   securityLine: string;
-  toastTitle: string;
-  toastDescription: string;
   toastErrorTitle: string;
+  /**
+   * Present only where adopting the server's wrapping is a safe thing to
+   * offer — which is where both sides hold the same Master Key. Null is not a
+   * missing string: it is the statement that this dialog has one answer, and
+   * it is why the primary button is absent rather than merely disabled.
+   */
+  adopt: {
+    label: string;
+    explainer: string;
+    toastTitle: string;
+    toastDescription: string;
+  } | null;
 };
 
 const VAULT_META_CHANGE_COPY = {
+  'different-vault': {
+    title: 'This device holds a different vault',
+    lead: 'The vault on the server was created separately from the one on this device.',
+    keepLabel: 'Keep this device’s vault',
+    keepExplainer:
+      'leaves this device exactly as it is. Your data here stays readable, and nothing on the server changes.',
+    securityLine:
+      'The two vaults have different keys, so neither one can open the other’s data. This device cannot start using the server’s vault without losing what is stored here — to move to it deliberately, remove this vault from the Vault page first, then sign in with the passphrase that vault was created with.',
+    toastErrorTitle: 'Vault check failed',
+    adopt: null,
+  },
   passphrase: {
     title: 'Your passphrase was changed on another device',
     lead: 'Start using the new passphrase on this device?',
-    adoptLabel: 'Use the new passphrase',
     keepLabel: 'Keep my current passphrase',
-    adoptExplainer:
-      'means you will unlock this device with the passphrase you set on your other device. Your data is unchanged either way.',
     keepExplainer: 'leaves this device unlocking the way it does now.',
     securityLine:
       'If you did not change your passphrase, someone else may have. Stop using the old one and review your account.',
-    toastTitle: 'Passphrase updated',
-    toastDescription:
-      'This device now uses the passphrase set on your other device.',
     toastErrorTitle: 'Passphrase check failed',
+    adopt: {
+      label: 'Use the new passphrase',
+      explainer:
+        'means you will unlock this device with the passphrase you set on your other device. Your data is unchanged either way.',
+      toastTitle: 'Passphrase updated',
+      toastDescription:
+        'This device now uses the passphrase set on your other device.',
+    },
   },
   'recovery-key': {
     title: 'Your recovery key was changed on another device',
     lead: 'Start using the new recovery key on this device?',
-    adoptLabel: 'Use the new recovery key',
     keepLabel: 'Keep my current recovery key',
-    adoptExplainer:
-      'means you will recover this device with the recovery key you set on your other device. Your data is unchanged either way.',
     keepExplainer: 'leaves this device recovering the way it does now.',
     securityLine:
       'If you did not change your recovery key, someone else may have. Review your account.',
-    toastTitle: 'Recovery key updated',
-    toastDescription:
-      'This device now uses the recovery key set on your other device.',
     toastErrorTitle: 'Recovery key check failed',
+    adopt: {
+      label: 'Use the new recovery key',
+      explainer:
+        'means you will recover this device with the recovery key you set on your other device. Your data is unchanged either way.',
+      toastTitle: 'Recovery key updated',
+      toastDescription:
+        'This device now uses the recovery key set on your other device.',
+    },
   },
 } as const satisfies Record<VaultMetaChange, VaultMetaChangeCopy>;
 
@@ -175,11 +198,16 @@ export function VaultMetaConvergeRunner() {
 
         if (result.kind === 'adopted-remote') {
           currentHandle.saveVault(result.nextLocalVault);
-          const copy = VAULT_META_CHANGE_COPY[result.change];
-          toastRef.current({
-            title: copy.toastTitle,
-            description: copy.toastDescription,
-          });
+          const adopted = VAULT_META_CHANGE_COPY[result.change].adopt;
+          // A change with no adopt copy is one the library refuses to adopt,
+          // so reaching here with none would mean the dialog offered an
+          // action the library would not carry out.
+          if (adopted) {
+            toastRef.current({
+              title: adopted.toastTitle,
+              description: adopted.toastDescription,
+            });
+          }
         }
       })
       .catch((e: unknown) => {
@@ -241,11 +269,13 @@ export function VaultMetaConvergeRunner() {
 
         <div className="space-y-3 text-sm text-muted-foreground">
           <div className="rounded-md border bg-muted/30 p-3 text-foreground">
-            <p>
-              <span className="font-medium">{copy.adoptLabel}</span>{' '}
-              {copy.adoptExplainer}
-            </p>
-            <p className="mt-2">
+            {copy.adopt && (
+              <p>
+                <span className="font-medium">{copy.adopt.label}</span>{' '}
+                {copy.adopt.explainer}
+              </p>
+            )}
+            <p className={copy.adopt ? 'mt-2' : undefined}>
               <span className="font-medium">{copy.keepLabel}</span>{' '}
               {copy.keepExplainer}
             </p>
@@ -260,17 +290,21 @@ export function VaultMetaConvergeRunner() {
         <DialogFooter>
           <Button
             type="button"
-            variant="outline"
+            // The only answer for a change that cannot be adopted, so it
+            // stops being the secondary one.
+            variant={copy.adopt ? 'outline' : 'default'}
             onClick={() => resolvePendingPrompt('keep-local')}
           >
             {copy.keepLabel}
           </Button>
-          <Button
-            type="button"
-            onClick={() => resolvePendingPrompt('adopt-remote')}
-          >
-            {copy.adoptLabel}
-          </Button>
+          {copy.adopt && (
+            <Button
+              type="button"
+              onClick={() => resolvePendingPrompt('adopt-remote')}
+            >
+              {copy.adopt.label}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

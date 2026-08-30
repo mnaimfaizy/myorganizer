@@ -37,15 +37,35 @@ import {
  * Which wrapping in a Vault Meta moved, in the order divergence is reported —
  * first match wins.
  *
- * The passphrase comes first because it is the wrapping that can lock a User
+ * `different-vault` comes first because it is the only one that is not a
+ * change at all. A differing `kdf_salt` cannot be a rotated passphrase:
+ * `changePassphrase` re-derives from the salt the vault already has and
+ * replaces only the wrapping, while `initialize` mints a fresh salt beside a
+ * fresh Master Key. So a salt that moved means the two sides were initialized
+ * separately and hold different Master Keys — and every other difference in
+ * the meta follows from that rather than standing on its own.
+ *
+ * Reading it as a passphrase change is what
+ * [#578](https://github.com/mnaimfaizy/myorganizer/issues/578) was: the User
+ * was told their passphrase had changed elsewhere and offered a button that
+ * would adopt the other vault's wrapping over this device's Ciphertext,
+ * leaving every Vault Blob here encrypted under a key nothing here can
+ * unwrap.
+ *
+ * The passphrase comes next because it is the wrapping that can lock a User
  * out of their own device: a User whose passphrase changed elsewhere needs to
  * hear about the passphrase, not about a recovery key that also moved.
  *
- * This array is the only enumeration of the members; the table below is
+ * This array is the only enumeration of the members; the tables below are
  * pinned against it ([ADR 0053](../../../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)),
- * so a third wrapping cannot be added without a facet to read it from.
+ * so a fourth member cannot be added without a facet to read it from and an
+ * answer to whether it may be adopted.
  */
-export const VAULT_META_CHANGES = ['passphrase', 'recovery-key'] as const;
+export const VAULT_META_CHANGES = [
+  'different-vault',
+  'passphrase',
+  'recovery-key',
+] as const;
 
 export type VaultMetaChange = (typeof VAULT_META_CHANGES)[number];
 
@@ -54,16 +74,25 @@ type VaultMetaFacet = (meta: VaultMetaV1) => object;
 
 const VAULT_META_CHANGE_FACETS = {
   /**
+   * The salt alone, and deliberately nothing else. It is the one field that
+   * answers "is this the same vault?" without needing the passphrase it was
+   * derived from — which ADR 0057 correctly says a wrapping cannot be
+   * verified without, and which is why this evidence is worth reading before
+   * anything else.
+   */
+  'different-vault': (meta) => ({ kdf_salt: meta.kdf_salt }),
+  /**
    * The KDF parameters belong here and nowhere else: the recovery key wraps
-   * the Master Key directly, without deriving anything, so a salt, hash or
+   * the Master Key directly, without deriving anything, so a hash or
    * iteration move can only change what a passphrase produces. `version` is
    * here for the conservative reason — it decides how a wrapping is read at
-   * all, and naming the passphrase is the safer answer when it moves.
+   * all, and naming the passphrase is the safer answer when it moves. The
+   * salt is not here; it is read above, where a difference in it means
+   * something else entirely.
    */
   passphrase: (meta) => ({
     version: meta.version,
     kdf_name: meta.kdf_name,
-    kdf_salt: meta.kdf_salt,
     kdf_params: meta.kdf_params,
     wrapped: normalizeEncryptedBlobV1(meta.wrapped_mk_passphrase),
   }),
@@ -71,6 +100,25 @@ const VAULT_META_CHANGE_FACETS = {
     wrapped: normalizeEncryptedBlobV1(meta.wrapped_mk_recovery),
   }),
 } as const satisfies Record<VaultMetaChange, VaultMetaFacet>;
+
+/**
+ * Whether this device may start using the server's wrapping for a given Vault
+ * Meta Change.
+ *
+ * Adoption carries the local Ciphertext across and replaces only the
+ * wrapping, which is right exactly when both sides hold the same Master Key.
+ * A rotated passphrase or recovery key does; two separately initialized
+ * vaults do not, and adopting there destroys the data on this device.
+ *
+ * Pinned rather than inferred so the answer is decided per member: a fourth
+ * Vault Meta Change fails to compile until somebody says whether adopting it
+ * is a safe thing to offer.
+ */
+export const VAULT_META_CHANGE_ADOPTABLE = {
+  'different-vault': false,
+  passphrase: true,
+  'recovery-key': true,
+} as const satisfies Record<VaultMetaChange, boolean>;
 
 export type VaultMetaDivergence =
   | { kind: 'none' }
@@ -127,6 +175,13 @@ export type VaultMetaConvergeResult =
   | { kind: 'noop-declined'; change: VaultMetaChange }
   /** The User gave no answer. Nothing was written; ask again later. */
   | { kind: 'noop-deferred'; change: VaultMetaChange }
+  /**
+   * The User answered `adopt-remote` for a change that cannot be adopted.
+   * Reported rather than silently treated as `keep-local`: an answer that
+   * cannot be carried out is something the caller has to know it gave, and a
+   * silent downgrade would hide a UI offering an action the library refuses.
+   */
+  | { kind: 'refused-not-adoptable'; change: VaultMetaChange }
   | {
       kind: 'adopted-remote';
       change: VaultMetaChange;
@@ -188,6 +243,14 @@ export async function convergeVaultMeta(options: {
 
   if (decision === 'keep-local') {
     return { kind: 'noop-declined', change: divergence.change };
+  }
+
+  if (!VAULT_META_CHANGE_ADOPTABLE[divergence.change]) {
+    // The wrapping on the server belongs to a different Master Key, so there
+    // is no Ciphertext here it can open. Abandoning this device's Vault for
+    // another is an explicit removal (ADR 0033), never a wrapping quietly
+    // swapped in underneath the data it cannot decrypt.
+    return { kind: 'refused-not-adoptable', change: divergence.change };
   }
 
   return {
