@@ -220,6 +220,23 @@ Same names in both environments:
 `DATABASE_URL` is never a GitHub secret in either environment. Host Apply loads
 it on the host, for `SELECTOR_APP_KEY` only, and never prints it.
 
+Job wiring (issue #567): `host-apply` is a separate job in both
+`deploy-staging.yml` and `deploy-production.yml` that `needs` the backend
+upload job (`deploy-backend`) and declares that environment's `environment:`
+name, so Production's Host Apply waits on the same required-reviewer approval
+as the rest of that Environment. Each workflow also accepts a
+`workflow_dispatch` input, `apply_only`, that re-runs `host-apply` alone
+without re-uploading the backend bundle. Staging's `host-apply` job carries
+its own concurrency group (`deploy-staging-host-apply`,
+`cancel-in-progress: false`) separate from the upload jobs' group
+(`deploy-staging`, `cancel-in-progress: true`): a newer push to `main` may
+still cancel an in-flight upload, but never an in-flight `prisma migrate
+deploy`. Production's whole workflow already queues instead of cancelling, so
+it needs no such split. A failed Host Apply fails the job with no automated
+rollback and no restart-anyway; `deploy-frontend` does not depend on
+`host-apply`, so the two may run side by side once the backend upload
+succeeds.
+
 ## How to cut a release
 
 ### Versioning

@@ -89,6 +89,8 @@
     "deploy:pages:check": "node tools/scripts/check-deploy-pipeline.mjs",
     "deploy:pages:test": "node --test tools/scripts/check-deploy-pipeline.test.mjs",
     "host-apply:test": "node --test tools/scripts/lib/host-apply.test.mjs",
+    "host-apply:workflow:check": "node tools/scripts/check-host-apply-workflow.mjs",
+    "host-apply:workflow:test": "node --test tools/scripts/check-host-apply-workflow.test.mjs",
     "agents:models:audit": "node tools/scripts/audit-agent-model-catalog.mjs",
     "agents:usage:report": "node tools/scripts/report-agent-usage.mjs",
     "graphify:project-edges": "node tools/scripts/graphify-project-edge-benchmark.mjs",

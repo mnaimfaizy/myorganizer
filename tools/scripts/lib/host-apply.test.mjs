@@ -28,6 +28,7 @@ import {
   assertAppRootGuard,
   findHostApplyLogLeaks,
   assertHostApplyLogClean,
+  assertHostApplyProbesHealthy,
   findMissingPackagerPrismaScripts,
 } from './host-apply.mjs';
 
@@ -551,4 +552,103 @@ test('buildHostApplyScript returns both steps and script', () => {
   assert.equal(result.steps.length, HOST_APPLY_STEP_ORDER.length);
   assert.equal(typeof result.script, 'string');
   assert.ok(result.script.startsWith('set -euo pipefail'));
+});
+
+// === Area 7: HTTP probe grading ===
+
+test('assertHostApplyProbesHealthy returns without throwing when both probes are healthy', () => {
+  assert.doesNotThrow(() =>
+    assertHostApplyProbesHealthy({
+      docsStatus: 200,
+      cronStatus: 401,
+    }),
+  );
+});
+
+test('assertHostApplyProbesHealthy accepts docsStatus at 200 boundary', () => {
+  assert.doesNotThrow(() =>
+    assertHostApplyProbesHealthy({
+      docsStatus: 200,
+      cronStatus: 401,
+    }),
+  );
+});
+
+test('assertHostApplyProbesHealthy accepts docsStatus at 299 boundary', () => {
+  assert.doesNotThrow(() =>
+    assertHostApplyProbesHealthy({
+      docsStatus: 299,
+      cronStatus: 401,
+    }),
+  );
+});
+
+test('assertHostApplyProbesHealthy throws when docsStatus is 500', () => {
+  assert.throws(
+    () =>
+      assertHostApplyProbesHealthy({
+        docsStatus: 500,
+        cronStatus: 401,
+      }),
+    (err) =>
+      err instanceof HostApplyRefusal &&
+      err.message.includes('500') &&
+      err.message.includes('2xx'),
+  );
+});
+
+test('assertHostApplyProbesHealthy throws when docsStatus is 403', () => {
+  assert.throws(
+    () =>
+      assertHostApplyProbesHealthy({
+        docsStatus: 403,
+        cronStatus: 401,
+      }),
+    (err) =>
+      err instanceof HostApplyRefusal &&
+      err.message.includes('403') &&
+      err.message.includes('2xx'),
+  );
+});
+
+test('assertHostApplyProbesHealthy throws when cronStatus is 500', () => {
+  assert.throws(
+    () =>
+      assertHostApplyProbesHealthy({
+        docsStatus: 200,
+        cronStatus: 500,
+      }),
+    (err) =>
+      err instanceof HostApplyRefusal &&
+      err.message.includes('500') &&
+      err.message.includes('401'),
+  );
+});
+
+test('assertHostApplyProbesHealthy throws when cronStatus is 403', () => {
+  assert.throws(
+    () =>
+      assertHostApplyProbesHealthy({
+        docsStatus: 200,
+        cronStatus: 403,
+      }),
+    (err) =>
+      err instanceof HostApplyRefusal &&
+      err.message.includes('403') &&
+      err.message.includes('401'),
+  );
+});
+
+test('assertHostApplyProbesHealthy throws when cronStatus is 200', () => {
+  assert.throws(
+    () =>
+      assertHostApplyProbesHealthy({
+        docsStatus: 200,
+        cronStatus: 200,
+      }),
+    (err) =>
+      err instanceof HostApplyRefusal &&
+      err.message.includes('200') &&
+      err.message.includes('401'),
+  );
 });

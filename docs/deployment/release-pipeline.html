@@ -942,7 +942,7 @@
       ></button>
       <div class="counts">
         <div><b>1</b><span>approval gate, not a box here</span></div>
-        <div><b>2</b><span>jobs behind it</span></div>
+        <div><b>3</b><span>jobs behind it</span></div>
         <div><b>0</b><span>CI checks before dispatch</span></div>
         <div><b>4</b><span>branch/tag patterns</span></div>
       </div>
@@ -967,7 +967,7 @@
   <section class="panel" aria-labelledby="hero-h">
     <div class="phead">
       <h2 id="hero-h">One gate, and it is not a box on this page</h2>
-      <span class="src">deploy-production.yml:121, :170</span>
+      <span class="src">deploy-production.yml:128, :181, :238</span>
     </div>
     <div class="pbody">
       <p class="small muted">
@@ -1015,7 +1015,7 @@
                are the `#tip` popover. -->
           <svg
             class="fig hero"
-            viewBox="0 0 1180 1170"
+            viewBox="0 0 1180 1246"
             role="img"
             aria-label="The release pipeline from a commit on main to a published GitHub Release, forking once when a release branch is pushed and halting once at environment: production"
             aria-describedby="pipelineDesc"
@@ -1039,9 +1039,11 @@
               rule that enforces the halt lives in GitHub repository
               settings, not in any file this diagram can show, and it can be
               removed without a pull request. Only after a human approves do
-              deploy-backend and deploy-frontend run, packaging and shipping
-              over FTP to cPanel. Afterwards a maintainer runs yarn release
-              colon tag, which asserts the branch is up to date and creates
+              deploy-backend, host-apply, and deploy-frontend run:
+              deploy-backend packages and ships over FTP to cPanel, host-apply
+              then applies that upload on the host over SSH and verifies it
+              with two HTTP probes, and deploy-frontend ships the same way
+              over FTP. Afterwards a maintainer runs yarn release colon tag, which asserts the branch is up to date and creates
               an annotated tag with no commit and no files, and pushing that
               tag triggers an idempotent Publish GitHub Release workflow.
             </desc>
@@ -1130,7 +1132,7 @@
                 CI green on main &#8594; Deploy Staging
               </text>
               <text class="nc" x="876" y="143">
-                deploy-staging.yml:4-7, :18
+                deploy-staging.yml:4-7, :23
               </text>
               <text class="nc" x="876" y="158">
                 a dead end here &#8212; see panel 2
@@ -1299,11 +1301,11 @@
                 validate &#8212; rejects any non-release/* ref
               </text>
               <text class="nc" x="272" y="545">
-                deploy-production.yml:36-43 &#183; timeout 5 min (:22)
+                deploy-production.yml:40-50 &#183; timeout 5 min (:29)
               </text>
               <text class="nc" x="272" y="560">
-                resolves release_ref: explicit input (:54-61) else newest
-                release/vX.Y.Z by sort -V (:66-70)
+                resolves release_ref: explicit input (:61-69) else newest
+                release/vX.Y.Z by sort -V (:71-85)
               </text>
             </g>
 
@@ -1316,7 +1318,7 @@
             <g data-step="7" class="n auto">
               <rect class="box" x="260" y="602" width="760" height="38" rx="5" />
               <text class="nl mono" x="272" y="626">
-                Prepare Dependency Cache &#183; deploy-production.yml:80-85
+                Prepare Dependency Cache &#183; deploy-production.yml:87-121
               </text>
             </g>
             <path
@@ -1391,8 +1393,7 @@
                 environment: production
               </text>
               <text class="nc" x="272" y="724">
-                deploy-backend (:121) and deploy-frontend (:170) both declare
-                it
+                deploy-backend, host-apply, and deploy-frontend all declare it
               </text>
               <text class="nc" x="272" y="738">
                 one named human must approve &#8212; not a formality
@@ -1425,7 +1426,7 @@
               </text>
               <text class="nc" x="272" y="810">
                 ./dist/deploy/backend-api/ &#183; 300000 ms timeout &#183;
-                deploy-production.yml:152-163
+                deploy-production.yml:162-170
               </text>
             </g>
 
@@ -1438,41 +1439,67 @@
             <g
               data-step="10"
               class="n auto"
-              data-tip="deployfrontend"
+              data-tip="hostapply"
               tabindex="0"
               role="button"
-              aria-label="deploy-frontend &#8212; package and FTP to cPanel, never Vercel"
-              aria-describedby="note-deployfrontend"
+              aria-label="host-apply &#8212; install, migrate, generate, restart over SSH, then verify with two HTTP probes"
+              aria-describedby="note-hostapply"
             >
               <rect class="box" x="260" y="848" width="760" height="52" rx="5" />
               <circle class="tipdot" cx="267" cy="856" r="3" />
               <text class="nl mono" x="272" y="870">
-                deploy-frontend &#8594; cPanel over FTP, not Vercel
+                host-apply &#8594; install, migrate, generate, restart over SSH
               </text>
               <text class="nc" x="272" y="886">
-                ./dist/deploy/myorganizer-web/ &#183; 300000 ms timeout &#183;
-                deploy-production.yml:221-232
+                fails closed, no rollback, no Tag &#183;
+                deploy-production.yml:176-231
               </text>
             </g>
 
             <path
               data-step="11"
               class="fl x"
-              d="M 640 900 L 640 924"
+              d="M 640 900 L 640 920"
+              marker-end="url(#arrow)"
+            />
+            <g
+              data-step="11"
+              class="n auto"
+              data-tip="deployfrontend"
+              tabindex="0"
+              role="button"
+              aria-label="deploy-frontend &#8212; package and FTP to cPanel, never Vercel"
+              aria-describedby="note-deployfrontend"
+            >
+              <rect class="box" x="260" y="924" width="760" height="52" rx="5" />
+              <circle class="tipdot" cx="267" cy="932" r="3" />
+              <text class="nl mono" x="272" y="946">
+                deploy-frontend &#8594; cPanel over FTP, not Vercel
+              </text>
+              <text class="nc" x="272" y="962">
+                ./dist/deploy/myorganizer-web/ &#183; 300000 ms timeout &#183;
+                deploy-production.yml:292-300
+              </text>
+            </g>
+
+            <path
+              data-step="12"
+              class="fl x"
+              d="M 640 976 L 640 1000"
               marker-end="url(#arrow)"
             />
 
             <!-- ── Section E: the receipt ─────────────────────────────────── -->
             <g class="sec">
-              <line x1="20" y1="938" x2="1160" y2="938" />
-              <rect x="20" y="928" width="470" height="20" />
-              <text x="26" y="942">
+              <line x1="20" y1="1014" x2="1160" y2="1014" />
+              <rect x="20" y="1004" width="470" height="20" />
+              <text x="26" y="1018">
                 A MAINTAINER CONFIRMS, THEN RECORDS
               </text>
             </g>
 
             <g
-              data-step="11"
+              data-step="12"
               class="n human"
               data-tip="tag"
               tabindex="0"
@@ -1480,28 +1507,28 @@
               aria-label="yarn release:tag --version vX.Y.Z --push &#8212; a receipt, not a build step"
               aria-describedby="note-tag"
             >
-              <rect class="box" x="260" y="956" width="760" height="66" rx="5" />
-              <circle class="tipdot" cx="267" cy="964" r="3" />
-              <text class="nl mono" x="272" y="978">
+              <rect class="box" x="260" y="1032" width="760" height="66" rx="5" />
+              <circle class="tipdot" cx="267" cy="1040" r="3" />
+              <text class="nl mono" x="272" y="1054">
                 yarn release:tag --version vX.Y.Z --push
               </text>
-              <text class="nc" x="272" y="994">
+              <text class="nc" x="272" y="1070">
                 no commit, no files &#8212; asserts branch state first &#183;
                 release.mjs:684-691
               </text>
-              <text class="nc" x="272" y="1008">
+              <text class="nc" x="272" y="1084">
                 package.json:28
               </text>
             </g>
 
             <path
-              data-step="12"
+              data-step="13"
               class="fl x"
-              d="M 640 1022 L 640 1042"
+              d="M 640 1098 L 640 1118"
               marker-end="url(#arrow)"
             />
             <g
-              data-step="12"
+              data-step="13"
               class="n auto"
               data-tip="publish"
               tabindex="0"
@@ -1509,12 +1536,12 @@
               aria-label="push of the tag publishes the GitHub Release, idempotently"
               aria-describedby="note-publish"
             >
-              <rect class="box" x="260" y="1046" width="760" height="52" rx="5" />
-              <circle class="tipdot" cx="267" cy="1054" r="3" />
-              <text class="nl mono" x="272" y="1068">
+              <rect class="box" x="260" y="1122" width="760" height="52" rx="5" />
+              <circle class="tipdot" cx="267" cy="1130" r="3" />
+              <text class="nl mono" x="272" y="1144">
                 push of v*.*.* &#8594; Publish GitHub Release
               </text>
-              <text class="nc" x="272" y="1084">
+              <text class="nc" x="272" y="1160">
                 idempotent &#183; publish-github-release.yml:4-6, :79-100
               </text>
             </g>
@@ -1544,7 +1571,7 @@
         <dd id="note-staging">
           <code>workflow_run</code> on <code>CI</code> completing with
           <code>conclusion == 'success'</code> on <code>main</code>
-          (<code>deploy-staging.yml:4-7</code>, <code>:18</code>). Fully
+          (<code>deploy-staging.yml:4-7</code>, <code>:23</code>). Fully
           automatic, and it never leads anywhere near production &mdash; the
           backend path is identical to production's, the frontend path is
           not. See panel&nbsp;2.
@@ -1593,13 +1620,13 @@
         <dt>validate</dt>
         <dd id="note-validate">
           Rejects any <code>github.ref</code> that is not
-          <code>refs/heads/release/*</code> (<code>deploy-production.yml:36-43</code>)
+          <code>refs/heads/release/*</code> (<code>deploy-production.yml:40-50</code>)
           &mdash; that guard accepts <code>release/anything</code>, not only
-          semver. Timeout 5&nbsp;minutes (<code>:22</code>). Then resolves
+          semver. Timeout 5&nbsp;minutes (<code>:29</code>). Then resolves
           <code>release_ref</code>: the explicit <code>release_branch</code>
-          input if that branch exists on origin (<code>:54-61</code>),
+          input if that branch exists on origin (<code>:61-69</code>),
           otherwise the newest <code>release/vX.Y.Z</code> by
-          <code>sort -V</code> (<code>:66-70</code>). Panel&nbsp;3 has the
+          <code>sort -V</code> (<code>:71-85</code>). Panel&nbsp;3 has the
           full asymmetry between this ref and the one each job actually
           checks out.
         </dd>
@@ -1618,30 +1645,66 @@
         </dd>
         <dt>halt</dt>
         <dd id="note-halt">
-          <code>deploy-backend</code> (<code>deploy-production.yml:121</code>)
-          and <code>deploy-frontend</code> (<code>:170</code>) both declare
-          <code>environment: production</code>. Everything upstream of this
-          box happened without anyone deciding anything; everything
-          downstream needs the sign-off this box represents. Choose an
-          outcome below to continue the walkthrough.
+          <code>deploy-backend</code> (<code>deploy-production.yml:128</code>),
+          <code>host-apply</code> (<code>:181</code>), and
+          <code>deploy-frontend</code> (<code>:238</code>) all declare
+          <code>environment: production</code> &mdash; three jobs, one
+          approval batch. Any job you add that declares
+          <code>environment: production</code> joins this same batch; nothing
+          else marks a job as gated. Everything upstream of this box happened
+          without anyone deciding anything; everything downstream needs the
+          sign-off this box represents. Choose an outcome below to continue
+          the walkthrough.
         </dd>
         <dt>deploybackend</dt>
         <dd id="note-deploybackend">
           Packages with <code>yarn package:backend:api</code> and ships
           <code>./dist/deploy/backend-api/</code> over FTP to cPanel, using a
           production backend FTP credential distinct from staging's
-          (<code>deploy-production.yml:152-163</code>). Timeout
-          45&nbsp;minutes (<code>:120</code>), FTP transfer timeout
+          (<code>deploy-production.yml:162-170</code>). Timeout
+          45&nbsp;minutes (<code>:127</code>), FTP transfer timeout
           300000&nbsp;ms &mdash; the same figure staging and the frontend job
           both use.
+        </dd>
+        <dt>hostapply</dt>
+        <dd id="note-hostapply">
+          Runs after <code>deploy-backend</code> succeeds, or on an
+          <code>apply_only</code> re-dispatch, and is itself gated on
+          <code>environment: production</code> &mdash; a third job behind the
+          same approval as <code>deploy-backend</code> and
+          <code>deploy-frontend</code>. Over SSH with a deploy key it
+          activates the environment's Node virtualenv, loads
+          <code>DATABASE_URL</code> from the host's Node.js selector store
+          &mdash; never a GitHub secret &mdash; then runs
+          <code>npm ci --omit=dev</code> &#8594;
+          <code>prisma migrate deploy</code> &#8594;
+          <code>prisma generate</code> &#8594;
+          <code>touch tmp/restart.txt</code> &#8594;
+          <code>prisma migrate status</code>, all under
+          <code>set -euo pipefail</code>
+          (<code>deploy-production.yml:176-231</code>): the first failing step
+          stops everything after it &mdash; no rollback, no migrate-down, no
+          &#8220;restart anyway,&#8221; no Tag
+          (<a href="../adr/0056-ci-owns-host-apply-without-describing-the-jail.md"
+            >ADR&nbsp;0056</a
+          >). Verified with two HTTP probes (<code>:222-231</code>):
+          <code>GET {API_ORIGIN}/docs</code> must be 2xx, and a cron POST
+          carrying a deliberately wrong secret must be exactly
+          <code>401</code>. This page names the algorithm and the secret
+          names only &mdash; never the host, port, user, or path values
+          themselves, per ADR&nbsp;0056.
         </dd>
         <dt>deployfrontend</dt>
         <dd id="note-deployfrontend">
           Packages with <code>yarn package:myorganizer:web</code> and ships
           <code>./dist/deploy/myorganizer-web/</code> over FTP to cPanel
-          (<code>deploy-production.yml:221-232</code>). Production never
+          (<code>deploy-production.yml:292-300</code>). Production never
           invokes Vercel; staging's frontend does. That is the one place the
-          two environments genuinely diverge &mdash; see panel&nbsp;2.
+          two environments genuinely diverge &mdash; see panel&nbsp;2. Runs
+          alongside <code>host-apply</code>, not after it &mdash; its
+          <code>needs:</code> lists <code>deploy-backend</code>, not
+          <code>host-apply</code> (<code>:235</code>), since neither job needs
+          the other.
         </dd>
         <dt>tag</dt>
         <dd id="note-tag">
@@ -1696,7 +1759,7 @@
               <code>conclusion == 'success'</code>
             </td>
             <td><code>Deploy Staging</code></td>
-            <td class="cite">deploy-staging.yml:4-7, :18</td>
+            <td class="cite">deploy-staging.yml:4-7, :23</td>
           </tr>
           <tr>
             <td>3</td>
@@ -1729,7 +1792,7 @@
               <code>Deploy Production (manual)</code> &mdash; halts at
               approval
             </td>
-            <td class="cite">deploy-production.yml:3-4, :121, :170</td>
+            <td class="cite">deploy-production.yml:3-4, :128, :181, :238</td>
           </tr>
           <tr>
             <td>6</td>
@@ -1774,24 +1837,24 @@
         <div class="ccard cpanel">
           <div class="ctop">cPanel over FTP</div>
           <p><code>./dist/deploy/backend-api/</code></p>
-          <span class="cite">deploy-staging.yml:93, :101</span>
+          <span class="cite">deploy-staging.yml:106, :112</span>
         </div>
         <div class="ccard vercel">
           <div class="ctop">Vercel</div>
           <p>CLI pinned to <code>50.1.1</code></p>
-          <span class="cite">deploy-staging.yml:143-177, :158</span>
+          <span class="cite">deploy-staging.yml:223-257, :238</span>
         </div>
 
         <div class="rlabel">Production</div>
         <div class="ccard cpanel">
           <div class="ctop">cPanel over FTP</div>
           <p><code>./dist/deploy/backend-api/</code></p>
-          <span class="cite">deploy-production.yml:153, :161</span>
+          <span class="cite">deploy-production.yml:162, :168</span>
         </div>
         <div class="ccard cpanel">
           <div class="ctop">cPanel over FTP</div>
           <p><code>./dist/deploy/myorganizer-web/</code></p>
-          <span class="cite">deploy-production.yml:222, :224-231</span>
+          <span class="cite">deploy-production.yml:292, :298</span>
         </div>
       </div>
       <p class="small muted">
@@ -1818,25 +1881,31 @@
           <code>validate</code> rejects any <code>github.ref</code> that is
           not <code>refs/heads/release/*</code> &mdash; note this guard
           accepts <code>release/anything</code>, not only semver.
-          <span class="cite">:36-43</span>
+          <span class="cite">:40-50</span>
         </li>
         <li>
           It resolves <code>release_ref</code>: the explicit
           <code>release_branch</code> input if that branch exists on origin
-          <span class="cite">:54-61</span>, otherwise the newest
+          <span class="cite">:61-69</span>, otherwise the newest
           <code>release/vX.Y.Z</code> by <code>sort -V</code>
-          <span class="cite">:66-70</span>.
+          <span class="cite">:71-85</span>.
         </li>
         <li>
-          The three job guards (<code>prepare-dependencies</code>,
-          <code>deploy-backend</code>, <code>deploy-frontend</code>) test
-          <code>github.ref</code>
-          <span class="cite">:81, :117, :166</span> &mdash; the ref the run
-          was launched against.
+          The four job guards (<code>prepare-dependencies</code>,
+          <code>deploy-backend</code>, <code>host-apply</code>,
+          <code>deploy-frontend</code>) test <code>github.ref</code>
+          <span class="cite">:88, :124, :178, :234</span> &mdash; the ref the
+          run was launched against. <code>host-apply</code>'s guard also
+          gates on <code>needs.deploy-backend.result == 'success'</code> or
+          <code>inputs.apply_only</code>, since it can run in apply-only mode
+          when <code>deploy-backend</code> was skipped.
         </li>
         <li>
-          The deploy jobs check out <code>release_ref</code>
-          <span class="cite">:92, :128, :177</span> &mdash; the resolved
+          The deploy jobs &mdash; <code>prepare-dependencies</code>,
+          <code>deploy-backend</code>, <code>host-apply</code>, and
+          <code>deploy-frontend</code> &mdash; check out
+          <code>release_ref</code>
+          <span class="cite">:99, :135, :188, :245</span> &mdash; the resolved
           branch from step 2, which is not always the same string.
         </li>
       </ol>
@@ -1891,7 +1960,7 @@
           <div class="fname">Vercel CLI</div>
           <p>
             <code>50.1.1</code>, staging frontend deploy only
-            (<code>deploy-staging.yml:158</code>). Production never invokes
+            (<code>deploy-staging.yml:238</code>). Production never invokes
             Vercel.
             <a href="VERCEL_FRONTEND_HOSTING.md">VERCEL_FRONTEND_HOSTING.md:56-66</a>
             says <code>vercel@latest</code> &mdash; that is human first-time
@@ -1902,30 +1971,49 @@
           <div class="fname">FTP transfer timeout</div>
           <p>
             <code>300000</code> ms, the same value at three sites: staging
-            backend (<code>deploy-staging.yml:103</code>), production backend
-            (<code>deploy-production.yml:163</code>), production frontend
-            (<code>:232</code>).
+            backend (<code>deploy-staging.yml:114</code>), production backend
+            (<code>deploy-production.yml:170</code>), production frontend
+            (<code>:300</code>). <code>host-apply</code> has no FTP step and
+            no site here &mdash; it applies over SSH, not FTP.
           </p>
         </div>
         <div class="fact">
           <div class="fname">Job timeouts</div>
           <p>
-            <code>validate</code> 5&nbsp;min (<code>:22</code>); staging jobs
-            30&nbsp;min (<code>deploy-staging.yml:21</code>, <code>:58</code>,
-            <code>:109</code>); production deploy jobs 45&nbsp;min
-            (<code>deploy-production.yml:120</code>, <code>:169</code>);
-            dispatcher, release-PR and publish 10&nbsp;min each.
+            <code>validate</code> 5&nbsp;min (<code>:29</code>); staging jobs
+            30&nbsp;min (<code>deploy-staging.yml:26</code>, <code>:66</code>,
+            <code>:126</code>, <code>:186</code>) &mdash; four now, including
+            <code>host-apply</code>; production's three approval-gated jobs
+            45&nbsp;min each (<code>deploy-production.yml:127</code>,
+            <code>:180</code>, <code>:237</code>) &mdash; three now, also
+            including <code>host-apply</code>; dispatcher, release-PR and
+            publish 10&nbsp;min each.
           </p>
         </div>
         <div class="fact">
           <div class="fname">Concurrency</div>
           <p>
-            <code>deploy-staging</code> sets
-            <code>cancel-in-progress: true</code> &mdash; a newer staging run
-            kills the one in flight (<code>:9-11</code>).
-            <code>deploy-production</code> sets <code>false</code> &mdash;
-            production runs queue and are never cancelled
-            (<code>deploy-production.yml:11-14</code>).
+            Staging has no workflow-level <code>concurrency:</code> block any
+            more &mdash; it moved to two job-level groups (issue&nbsp;#567).
+            <code>deploy-staging</code>
+            (<code>cancel-in-progress: true</code>) covers
+            <code>prepare-dependencies</code>, <code>deploy-backend</code>,
+            and <code>deploy-frontend</code>
+            (<code>deploy-staging.yml:27-29</code>, <code>:68-70</code>,
+            <code>:188-190</code>) &mdash; a newer staging run kills whichever
+            of those three is in flight.
+            <code>deploy-staging-host-apply</code>
+            (<code>cancel-in-progress: false</code>) covers only
+            <code>host-apply</code> (<code>:128-130</code>): a newer
+            <code>main</code> push must queue behind an in-flight
+            <code>prisma migrate deploy</code>, not cancel it &mdash; a single
+            workflow-level group would have cancelled Host Apply too, which is
+            the one behaviour ADR&nbsp;0056 rules out. Production is
+            unchanged: one workflow-level group, <code>deploy-production</code>,
+            <code>cancel-in-progress: false</code>
+            (<code>deploy-production.yml:18-21</code>) &mdash; runs queue and
+            are never cancelled, so <code>host-apply</code> already inherits
+            that queuing without needing a group of its own.
           </p>
         </div>
         <div class="fact">
@@ -1933,7 +2021,7 @@
           <p>
             Not the same strictness:
             <code>refs/heads/release/*</code>
-            (<code>deploy-production.yml:36</code>);
+            (<code>deploy-production.yml:43</code>);
             <code>^release/v[0-9]+\.[0-9]+\.[0-9]+$</code>, used twice
             (<code>dispatch-production-deploy.yml:38</code>, <code>:53</code>,
             <code>release-pr.yml:34</code>);
@@ -1994,7 +2082,7 @@
 
   <footer class="foot">
     <div>
-      <b>Read from source on 2026-08-24</b>, from
+      <b>Read from source on 2026-08-30</b>, from
       <code>.github/workflows/ci.yml</code>,
       <code>deploy-staging.yml</code>, <code>deploy-production.yml</code>,
       <code>dispatch-production-deploy.yml</code>,
@@ -2004,7 +2092,12 @@
       <a href="../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md"
         >ADR&nbsp;0028</a
       >
-      for the rationale. Docs and source agree throughout this subject
+      for the approval-gate rationale and
+      <a href="../adr/0056-ci-owns-host-apply-without-describing-the-jail.md"
+        >ADR&nbsp;0056</a
+      >
+      for why <code>host-apply</code> runs in this repository and what it is
+      not allowed to print. Docs and source agree throughout this subject
       &mdash;
       <a href="CI_CD_AND_RELEASE_PROCESS.md">CI_CD_AND_RELEASE_PROCESS.md</a>
       already states the auto-dispatch and the approval gate correctly, so
@@ -2256,9 +2349,10 @@
       7: 'Prepare Dependency Cache. Routine.',
       8: 'THE WALL. This is where a named human must act, and the walkthrough will not advance past it until you use a control — because neither will the run.',
       9: 'Only after approval: deploy-backend ships over FTP to cPanel.',
-      10: 'deploy-frontend ships over FTP to cPanel too — production never touches Vercel.',
-      11: 'A maintainer confirms production is live, then records it: no commit, no files, just a tag.',
-      12: 'The tag push publishes the GitHub Release. Re-running this step is safe.',
+      10: 'host-apply then installs, migrates, generates, and restarts over SSH, and verifies with two HTTP probes. It fails closed — one failing step stops everything after it, with no rollback and no Tag.',
+      11: 'deploy-frontend ships over FTP to cPanel too — production never touches Vercel. It runs beside host-apply, not after it.',
+      12: 'A maintainer confirms production is live, then records it: no commit, no files, just a tag.',
+      13: 'The tag push publishes the GitHub Release. Re-running this step is safe.',
     };
 
     /* The one halt. Modelled on the code: `environment: production` refuses
@@ -2268,19 +2362,19 @@
       8: {
         title: 'Approval gate — environment: production',
         body:
-          'The run has reached deploy-backend and deploy-frontend, both gated on the production GitHub Environment. The rule that enforces this wall is required reviewers, set in repository settings — not in any file you can grep. Before you approve: the run may have been queued when the branch was created, before CI finished on release/vX.Y.Z. Check CI on that branch yourself — nothing in this pipeline checks it for you.',
+          'The run has reached deploy-backend, host-apply, and deploy-frontend, all gated on the production GitHub Environment. The rule that enforces this wall is required reviewers, set in repository settings — not in any file you can grep. If you add a job that declares environment: production, it joins this same approval batch — nothing else marks a job as gated. Before you approve: the run may have been queued when the branch was created, before CI finished on release/vX.Y.Z. Check CI on that branch yourself — nothing in this pipeline checks it for you.',
         actions: [
           {
-            label: 'APPROVE — hand off to deploy-backend and deploy-frontend',
+            label: 'APPROVE — hand off to deploy-backend, host-apply, and deploy-frontend',
             cls: 'go',
             outcome:
-              'Approved. deploy-backend packages and ships over FTP to cPanel, then deploy-frontend does the same. Neither job re-checks CI — approving is the only gate either one has.',
+              'Approved. deploy-backend packages and ships over FTP to cPanel, then host-apply applies that upload on the host over SSH and verifies it with two HTTP probes, and deploy-frontend ships the frontend the same way over FTP. None of the three re-checks CI — approving is the only gate any of them has. If host-apply fails, the workflow fails closed: no rollback, no migrate-down, no "restart anyway," and no Tag.',
           },
           {
             label: 'REJECT — the run stops here',
             cls: 'danger',
             outcome:
-              'Rejected. Neither deploy-backend nor deploy-frontend runs. Nothing was packaged, nothing was shipped, and release:tag has nothing to record — production was never touched.',
+              'Rejected. None of deploy-backend, host-apply, or deploy-frontend runs. Nothing was packaged, nothing was shipped, nothing was applied on the host, and release:tag has nothing to record — production was never touched.',
           },
         ],
       },
@@ -2487,7 +2581,7 @@
     "productionFrontendTarget": "cpanel-ftp",
     "stagingEnvironmentName": "staging",
     "productionEnvironmentName": "production",
-    "productionApprovalGatedJobs": ["deploy-backend", "deploy-frontend"],
+    "productionApprovalGatedJobs": ["deploy-backend", "host-apply", "deploy-frontend"],
     "stagingConcurrencyCancelInProgress": true,
     "productionConcurrencyCancelInProgress": false,
     "productionValidateTimeoutMinutes": 5,

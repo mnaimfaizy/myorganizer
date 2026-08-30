@@ -226,6 +226,33 @@ export function assertHostApplyLogClean(logText) {
 }
 
 /**
+ * Grades the two HTTP probes issue #567 requires after a Host Apply run
+ * (ADR 0056 verify step): `GET {API_ORIGIN}/docs` must be 2xx (Passenger came
+ * back), and a cron POST carrying a deliberately wrong secret must be exactly
+ * `401` — never a `500` (a stale Prisma client, v0.4.0's second failure) and
+ * never an HTML `403` (a host-level challenge page standing in for the API's
+ * own auth rejection, which would prove nothing about the API itself).
+ * Pure grading only: the caller performs the actual requests and passes the
+ * two resulting status codes, which is what lets this run in a test without
+ * a live host.
+ */
+export function assertHostApplyProbesHealthy({ docsStatus, cronStatus }) {
+  if (
+    !(Number.isInteger(docsStatus) && docsStatus >= 200 && docsStatus < 300)
+  ) {
+    throw new HostApplyRefusal(
+      `GET {API_ORIGIN}/docs returned ${docsStatus}, expected 2xx`,
+    );
+  }
+
+  if (cronStatus !== 401) {
+    throw new HostApplyRefusal(
+      `wrong-secret cron POST returned ${cronStatus}, expected 401`,
+    );
+  }
+}
+
+/**
  * The `npm run` scripts the deploy bundle must keep exposing so this engine's
  * `prisma-migrate-deploy` / `prisma-generate` / `migrate-status` steps have
  * something to call (produced by `tools/scripts/package-backend-api.mjs`).
