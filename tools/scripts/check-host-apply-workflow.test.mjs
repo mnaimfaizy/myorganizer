@@ -535,6 +535,44 @@ test('fails when host-apply consults no known-hosts file', (t) => {
   assert.match(result.stderr, /sets no UserKnownHostsFile/);
 });
 
+test('fails when the key is used without checking that it parses', (t) => {
+  const workspace = createWorkspace(t);
+
+  edit(
+    workspace,
+    STAGING,
+    '          if ! ssh-keygen -y -f "$key_file" >/dev/null 2>&1; then',
+    '          if false; then',
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /does not check that SSH_PRIVATE_KEY parses before connecting/,
+  );
+});
+
+test('fails when an empty SSH_KNOWN_HOSTS is not caught', (t) => {
+  const workspace = createWorkspace(t);
+
+  edit(
+    workspace,
+    PRODUCTION,
+    '          if [ "$(wc -c < "$known_hosts")" -le 1 ]; then',
+    '          if false; then',
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /does not check that SSH_KNOWN_HOSTS is non-empty/,
+  );
+});
+
 test('fails when the ssh step streams its output instead of capturing it', (t) => {
   const workspace = createWorkspace(t);
 

@@ -921,3 +921,45 @@ test('selector probe reports every candidate when nothing exists', (t) => {
   assert.equal(report.length, SELECTOR_STORE_CANDIDATES.length);
   assert.ok(report.every((row) => row.exists === false));
 });
+
+// === Area 10: probe grading reports every failure at once (#569) ===
+
+test('assertHostApplyProbesHealthy reports both probes when both are wrong', () => {
+  // The first live apply failed on /docs, was fixed, and only then revealed the
+  // cron probe was wrong too. One apply per finding is too slow a loop.
+  assert.throws(
+    () => assertHostApplyProbesHealthy({ docsStatus: 301, cronStatus: 403 }),
+    (err) =>
+      err instanceof HostApplyRefusal &&
+      err.message.includes('301') &&
+      err.message.includes('403'),
+  );
+});
+
+test('a 3xx /docs says the probe did not follow a redirect', () => {
+  assert.throws(
+    () => assertHostApplyProbesHealthy({ docsStatus: 301, cronStatus: 401 }),
+    (err) =>
+      err instanceof HostApplyRefusal && /301 to \/docs\//.test(err.message),
+  );
+});
+
+test('a 403 cron says the host answered, not the API', () => {
+  assert.throws(
+    () => assertHostApplyProbesHealthy({ docsStatus: 200, cronStatus: 403 }),
+    (err) =>
+      err instanceof HostApplyRefusal &&
+      /host answering, not the API/.test(err.message),
+  );
+});
+
+test('a 500 cron carries no host-403 hint', () => {
+  // 500 is the stale-Prisma-client case, a different problem entirely.
+  assert.throws(
+    () => assertHostApplyProbesHealthy({ docsStatus: 200, cronStatus: 500 }),
+    (err) =>
+      err instanceof HostApplyRefusal &&
+      err.message.includes('500') &&
+      !err.message.includes('host answering'),
+  );
+});
