@@ -28,6 +28,8 @@ import { join } from 'node:path';
 import {
   HostApplyRefusal,
   REQUIRED_PACKAGER_PRISMA_SCRIPTS,
+  SELECTOR_ENV_FIELD,
+  SELECTOR_STORE_PATH,
   assertAppRootGuard,
   assertHostApplyProbesHealthy,
   buildSelectorProbeScript,
@@ -291,7 +293,7 @@ function checkSelectorStore() {
   }
 
   const expected =
-    hit.path === '.cpanel/nodejsapps.json' && hit.envField === 'envvars';
+    hit.path === SELECTOR_STORE_PATH && hit.envField === SELECTOR_ENV_FIELD;
   if (!expected) {
     fail(
       'selector store',

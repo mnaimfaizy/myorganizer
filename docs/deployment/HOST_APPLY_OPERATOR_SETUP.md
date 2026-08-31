@@ -170,12 +170,12 @@ echo "=== activate scripts (one per Node.js app) ==="
 find "$HOME/nodevenv" -maxdepth 4 -name activate -type f 2>/dev/null | sort
 echo
 echo "=== selector identities ==="
-store="$HOME/.cpanel/nodejsapps.json"
+store="$HOME/.cl.selector/node-selector.json"
 if [ ! -f "$store" ]; then echo "no $store"; exit 0; fi
 act=$(find "$HOME/nodevenv" -maxdepth 4 -name activate -type f 2>/dev/null | head -1)
 [ -n "$act" ] || { echo "store exists but no activate script to run node with"; exit 0; }
 . "$act"
-node -e 'const fs=require("fs");console.log(Object.keys(JSON.parse(fs.readFileSync(process.env.HOME+"/.cpanel/nodejsapps.json","utf8"))).join("\n"))'
+node -e 'const fs=require("fs");console.log(Object.keys(JSON.parse(fs.readFileSync(process.env.HOME+"/.cl.selector/node-selector.json","utf8"))).join("\n"))'
 REMOTE
 ```
 
@@ -287,17 +287,22 @@ it across your scrollback.
 
 ### If the selector store is somewhere else
 
-`buildSelectorLoadStep` pins `~/.cpanel/nodejsapps.json`, with the app's
-variables under `envvars`. That is an assumption about the cPanel Node.js
-Selector, not a verified fact — ADR 0056 deliberately does not describe the host
-layout in the public tree, so nobody has ever confirmed it against this account.
+`buildSelectorLoadStep` reads `SELECTOR_STORE_PATH` and `SELECTOR_ENV_FIELD` in
+`tools/scripts/lib/host-apply.mjs` — currently `~/.cl.selector/node-selector.json`,
+keyed by domain, with the app's variables under `env_vars`. That was confirmed
+against a real CloudLinux account during #569, replacing the engine's original
+guess of `~/.cpanel/nodejsapps.json` under `envvars`. Both halves of the guess
+were wrong, which is a fair warning that another host may differ again.
 
 The preflight probes several candidate paths and field names and tells you which
 one actually holds the value. If it reports a path or field other than the
-pinned pair, it fails on purpose and names both. Change the pinned path in
-`tools/scripts/lib/host-apply.mjs`, rerun `yarn host-apply:test`, and rerun the
-preflight. A wrong pin fails closed — the apply refuses rather than reading the
-wrong app — so this costs you a red preflight, never a bad migration.
+pinned pair, it fails on purpose and names both. Change those two constants,
+rerun `yarn host-apply:test`, and rerun the preflight. A wrong pin fails closed
+— the apply refuses rather than reading another app on the account — so being
+wrong here costs a red preflight, never a bad migration.
+
+`SELECTOR_APP_KEY` is that store's top-level key for your app, which on this
+host is the domain rather than the app root.
 
 ## Step 6 — First real Staging apply
 

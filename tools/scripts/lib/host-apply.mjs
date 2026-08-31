@@ -88,13 +88,14 @@ function shQuote(value) {
  * command substitution assigned straight to a shell variable; nothing in this
  * fragment echoes, prints, or logs it.
  *
- * `~/.cpanel/nodejsapps.json` is this engine's assumption about where the
- * cPanel Node.js Selector keeps an app's configured environment variables —
- * ADR 0056 deliberately does not pin the real path in the public tree. The
- * HITL operator checklist for the first live apply on each environment (#569)
- * must confirm this location and shape against the real host before trusting
- * it; a wrong assumption here fails closed (exit 4, refused) rather than
- * silently misparsing, but it would refuse a legitimate apply until fixed.
+ * The store location and shape (`SELECTOR_STORE_PATH`, `SELECTOR_ENV_FIELD`)
+ * were confirmed against the real host during #569, replacing this engine's
+ * original guess of `~/.cpanel/nodejsapps.json` with variables under
+ * `envvars`. Both were wrong: on this CloudLinux account `~/.cpanel` holds no
+ * Node config at all, the Selector keeps its store elsewhere, and the field is
+ * spelled with an underscore. A wrong pin fails closed (exit 4, refused)
+ * rather than misreading another app, so the cost was a red preflight rather
+ * than a bad migration — which is what the preflight is for.
  */
 export function buildSelectorLoadStep(selectorAppKey) {
   requireNonEmptyString(selectorAppKey, 'SELECTOR_APP_KEY');
@@ -103,12 +104,17 @@ export function buildSelectorLoadStep(selectorAppKey) {
     'const fs = require("fs");',
     'const path = require("path");',
     `const key = ${JSON.stringify(selectorAppKey)};`,
-    'const file = path.join(process.env.HOME || "", ".cpanel", "nodejsapps.json");',
+    `const file = path.join(process.env.HOME || "", ${SELECTOR_STORE_PATH.split(
+      '/',
+    )
+      .map((segment) => JSON.stringify(segment))
+      .join(', ')});`,
+    `const field = ${JSON.stringify(SELECTOR_ENV_FIELD)};`,
     'let data;',
     'try { data = JSON.parse(fs.readFileSync(file, "utf8")); } catch { process.exit(4); }',
     'const hasKey = data != null && Object.prototype.hasOwnProperty.call(data, key);',
     'const entry = hasKey ? data[key] : undefined;',
-    'const url = entry && entry.envvars ? entry.envvars.DATABASE_URL : undefined;',
+    'const url = entry && entry[field] ? entry[field].DATABASE_URL : undefined;',
     'if (!url) process.exit(4);',
     'process.stdout.write(url);',
   ].join(' ');
@@ -129,15 +135,24 @@ export function buildSelectorLoadStep(selectorAppKey) {
  * `buildSelectorProbeScript` — and a wrong pin fails closed rather than
  * silently reading the wrong app.
  */
+/**
+ * The pinned pair `buildSelectorLoadStep` reads at apply time, confirmed
+ * against the host in #569. `SELECTOR_STORE_CANDIDATES` leads with it and the
+ * preflight refuses if discovery finds the value anywhere else, so these two
+ * constants are the only place the location is written down.
+ */
+export const SELECTOR_STORE_PATH = '.cl.selector/node-selector.json';
+export const SELECTOR_ENV_FIELD = 'env_vars';
+
 export const SELECTOR_STORE_CANDIDATES = Object.freeze([
+  SELECTOR_STORE_PATH,
   '.cpanel/nodejsapps.json',
-  '.cl.selector/nodejsapps.json',
   '.cpanel/nodejs.json',
 ]);
 
 export const SELECTOR_ENV_FIELDS = Object.freeze([
+  SELECTOR_ENV_FIELD,
   'envvars',
-  'env_vars',
   'environment',
   'env',
 ]);

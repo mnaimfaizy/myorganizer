@@ -21,7 +21,9 @@ import { fileURLToPath } from 'node:url';
 import {
   HostApplyRefusal,
   HOST_APPLY_SECRET_NAMES,
+  SELECTOR_ENV_FIELD,
   SELECTOR_STORE_CANDIDATES,
+  SELECTOR_STORE_PATH,
   HOST_APPLY_STEP_ORDER,
   buildSelectorLoadStep,
   buildHostApplySteps,
@@ -214,15 +216,15 @@ test('selector fragment refuses when app identity is not in store', (t) => {
   const tmpHome = mkdtempSync(join(tmpdir(), 'selector-missing-identity-'));
   t.after(() => rmSync(tmpHome, { recursive: true, force: true }));
 
-  const cpanelDir = join(tmpHome, '.cpanel');
-  mkdirSync(cpanelDir, { recursive: true });
+  const storeFile = join(tmpHome, SELECTOR_STORE_PATH);
+  mkdirSync(dirname(storeFile), { recursive: true });
 
   // Create a store with some app but NOT the one we'll request
   writeFileSync(
-    join(cpanelDir, 'nodejsapps.json'),
+    storeFile,
     JSON.stringify({
       'other-app': {
-        envvars: { DATABASE_URL: 'postgres://other:pass@host/db' },
+        [SELECTOR_ENV_FIELD]: { DATABASE_URL: 'postgres://other:pass@host/db' },
       },
     }),
   );
@@ -248,15 +250,15 @@ test('selector fragment refuses when DATABASE_URL key is missing from envvars', 
   const tmpHome = mkdtempSync(join(tmpdir(), 'selector-missing-dburl-'));
   t.after(() => rmSync(tmpHome, { recursive: true, force: true }));
 
-  const cpanelDir = join(tmpHome, '.cpanel');
-  mkdirSync(cpanelDir, { recursive: true });
+  const storeFile = join(tmpHome, SELECTOR_STORE_PATH);
+  mkdirSync(dirname(storeFile), { recursive: true });
 
   // Create a store with the app but envvars lacks DATABASE_URL
   writeFileSync(
-    join(cpanelDir, 'nodejsapps.json'),
+    storeFile,
     JSON.stringify({
       'my-app': {
-        envvars: { SOME_OTHER_VAR: 'value' },
+        [SELECTOR_ENV_FIELD]: { SOME_OTHER_VAR: 'value' },
       },
     }),
   );
@@ -282,18 +284,18 @@ test('selector fragment succeeds and does not print the value to stdout', (t) =>
   const tmpHome = mkdtempSync(join(tmpdir(), 'selector-success-'));
   t.after(() => rmSync(tmpHome, { recursive: true, force: true }));
 
-  const cpanelDir = join(tmpHome, '.cpanel');
-  mkdirSync(cpanelDir, { recursive: true });
+  const storeFile = join(tmpHome, SELECTOR_STORE_PATH);
+  mkdirSync(dirname(storeFile), { recursive: true });
 
   const fixtureUrl =
     'postgres://fixture-user:fixture-pass@fixture-host:5432/fixture-db';
 
   // Create a store with the app and proper DATABASE_URL
   writeFileSync(
-    join(cpanelDir, 'nodejsapps.json'),
+    storeFile,
     JSON.stringify({
       'my-app': {
-        envvars: { DATABASE_URL: fixtureUrl },
+        [SELECTOR_ENV_FIELD]: { DATABASE_URL: fixtureUrl },
       },
     }),
   );
@@ -339,7 +341,7 @@ test('selector fragment refuses cleanly when store file is missing', (t) => {
   const tmpHome = mkdtempSync(join(tmpdir(), 'selector-no-file-'));
   t.after(() => rmSync(tmpHome, { recursive: true, force: true }));
 
-  // Do NOT create .cpanel/nodejsapps.json
+  // Do NOT create the selector store at all
 
   const fragment = buildSelectorLoadStep('my-app');
   const result = spawnSync('bash', ['-c', fragment], {
@@ -781,36 +783,40 @@ function runProbe(t, layout, key = 'my-app') {
 
 test('selector probe reports the pinned path and field when the store matches', (t) => {
   const { result, report } = runProbe(t, {
-    '.cpanel/nodejsapps.json': JSON.stringify({
-      'my-app': { envvars: { DATABASE_URL: 'postgres://u:p@h/db' } },
+    [SELECTOR_STORE_PATH]: JSON.stringify({
+      'my-app': {
+        [SELECTOR_ENV_FIELD]: { DATABASE_URL: 'postgres://u:p@h/db' },
+      },
     }),
   });
 
   assert.equal(result.status, 0);
   const hit = report.find((row) => row.hasDatabaseUrl);
-  assert.equal(hit.path, '.cpanel/nodejsapps.json');
-  assert.equal(hit.envField, 'envvars');
+  assert.equal(hit.path, SELECTOR_STORE_PATH);
+  assert.equal(hit.envField, SELECTOR_ENV_FIELD);
 });
 
 test('selector probe finds a store the loader does not pin', (t) => {
   // The point of the probe: say so out loud rather than let CI fail red.
   const { report } = runProbe(t, {
-    '.cl.selector/nodejsapps.json': JSON.stringify({
-      'my-app': { env_vars: { DATABASE_URL: 'postgres://u:p@h/db' } },
+    '.cpanel/nodejsapps.json': JSON.stringify({
+      'my-app': { envvars: { DATABASE_URL: 'postgres://u:p@h/db' } },
     }),
   });
 
   const hit = report.find((row) => row.hasDatabaseUrl);
-  assert.equal(hit.path, '.cl.selector/nodejsapps.json');
-  assert.equal(hit.envField, 'env_vars');
+  assert.equal(hit.path, '.cpanel/nodejsapps.json');
+  assert.equal(hit.envField, 'envvars');
 });
 
 test('selector probe never prints an environment value or a sibling app name', (t) => {
   const secret = 'postgres://someone:hunter2@db.internal/app';
   const { result } = runProbe(t, {
-    '.cpanel/nodejsapps.json': JSON.stringify({
-      'my-app': { envvars: { DATABASE_URL: secret, OTHER: 'also-secret' } },
-      'someone-elses-app': { envvars: { DATABASE_URL: secret } },
+    [SELECTOR_STORE_PATH]: JSON.stringify({
+      'my-app': {
+        [SELECTOR_ENV_FIELD]: { DATABASE_URL: secret, OTHER: 'also-secret' },
+      },
+      'someone-elses-app': { [SELECTOR_ENV_FIELD]: { DATABASE_URL: secret } },
     }),
   });
 
@@ -822,12 +828,14 @@ test('selector probe never prints an environment value or a sibling app name', (
 
 test('selector probe reports a present store that lacks the pinned identity', (t) => {
   const { report } = runProbe(t, {
-    '.cpanel/nodejsapps.json': JSON.stringify({
-      'other-app': { envvars: { DATABASE_URL: 'postgres://u:p@h/db' } },
+    [SELECTOR_STORE_PATH]: JSON.stringify({
+      'other-app': {
+        [SELECTOR_ENV_FIELD]: { DATABASE_URL: 'postgres://u:p@h/db' },
+      },
     }),
   });
 
-  const row = report.find((r) => r.path === '.cpanel/nodejsapps.json');
+  const row = report.find((r) => r.path === SELECTOR_STORE_PATH);
   assert.equal(row.exists, true);
   assert.equal(row.parsed, true);
   assert.equal(row.hasPinnedKey, false);
@@ -836,11 +844,11 @@ test('selector probe reports a present store that lacks the pinned identity', (t
 
 test('selector probe reports an unparseable store without throwing', (t) => {
   const { result, report } = runProbe(t, {
-    '.cpanel/nodejsapps.json': 'not json at all',
+    [SELECTOR_STORE_PATH]: 'not json at all',
   });
 
   assert.equal(result.status, 0);
-  const row = report.find((r) => r.path === '.cpanel/nodejsapps.json');
+  const row = report.find((r) => r.path === SELECTOR_STORE_PATH);
   assert.equal(row.exists, true);
   assert.equal(row.parsed, false);
 });
