@@ -120,6 +120,39 @@ is the condition a GitHub runner works under. Reaching this point and being
 asked for a password means the public key is not authorized; go back to Step 1.
 `echo ok` means CI can get in.
 
+## Step 2c — Find the four host-specific values
+
+`APP_ROOT`, `NODEVENV_ACTIVATE`, `SELECTOR_APP_KEY` and `API_ORIGIN` describe
+this host, so they have to be read off it rather than guessed.
+
+Three of them are on one cPanel page. **Setup Node.js App** → your backend app
+shows, near the top, the command to enter the app's environment. It reads like
+`source <activate script> && cd <app root>`. Those two paths, exactly as
+printed, are `NODEVENV_ACTIVATE` and `APP_ROOT`. `API_ORIGIN` is that app's
+Application URL, without a trailing slash.
+
+`SELECTOR_APP_KEY` is the identity the Node.js Selector files the app under,
+which is not always what the UI displays. List the identities — and only the
+identities — over SSH:
+
+```bash
+source <activate script>
+node -e 'const fs=require("fs");const f=process.env.HOME+"/.cpanel/nodejsapps.json";if(!fs.existsSync(f)){console.log("no store at "+f);process.exit(0)}console.log(Object.keys(JSON.parse(fs.readFileSync(f,"utf8"))).join("\n"))'
+```
+
+That prints top-level keys only, never a value. Do not `cat` the file: it holds
+every app's environment, `DATABASE_URL` included. If the file is not there, say
+so to the preflight in Step 5 — it probes the other candidate locations and
+reports which one is real.
+
+**You need both environments' app roots before either can run.**
+`COUNTERPART_APP_ROOT` is the other environment's `APP_ROOT`, so read the same
+cPanel page for the Production app too, even while you are setting up Staging.
+If Staging and Production are not yet two separate Node.js apps with two
+separate roots, stop and create the second one — the guard exists precisely
+because one account holds both, and there is nothing to guard if they are the
+same tree.
+
 ## Step 3 — Fill in the GitHub Environments
 
 `Settings → Environments → staging` (then repeat for `production`). Same ten
