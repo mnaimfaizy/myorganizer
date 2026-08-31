@@ -321,8 +321,8 @@ test('fails when staging host-apply loses its apply_only-only path', (t) => {
   edit(
     workspace,
     STAGING,
-    "    if: ${{ always() && (needs.deploy-backend.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.apply_only)) }}",
-    "    if: ${{ always() && (needs.deploy-backend.result == 'success') }}",
+    "    if: ${{ always() && github.event_name == 'workflow_dispatch' && (needs.deploy-backend.result == 'success' || inputs.apply_only) }}",
+    "    if: ${{ always() && github.event_name == 'workflow_dispatch' && (needs.deploy-backend.result == 'success') }}",
   );
 
   const result = runChecker(workspace);
@@ -477,6 +477,27 @@ test('fails when the staging upload leaves the apply group', (t) => {
   assert.match(
     result.stderr,
     /deploy-backend's cancel-in-progress is true, expected false/,
+  );
+});
+
+test('fails when staging host-apply can run without a dispatch', (t) => {
+  const workspace = createWorkspace(t);
+
+  // The regression: chaining apply back onto the green-main workflow_run, on a
+  // host whose SSH shell is a manual toggle that reverts.
+  edit(
+    workspace,
+    STAGING,
+    "    if: ${{ always() && github.event_name == 'workflow_dispatch' && (needs.deploy-backend.result == 'success' || inputs.apply_only) }}",
+    "    if: ${{ always() && (needs.deploy-backend.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.apply_only)) }}",
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /does not require github\.event_name == 'workflow_dispatch'/,
   );
 });
 

@@ -170,6 +170,48 @@ function concurrencyOf(path, jobId) {
  * `deploy-frontend` deliberately stays in the cancelling `deploy-staging`
  * group: it ships to a different target and never touches `APP_ROOT`.
  */
+/**
+ * Staging's apply is operator-triggered, never automatic.
+ *
+ * SSH shell access on the hosting account is a manual toggle that reverts, so
+ * an apply chained to the `workflow_run` that follows a green `main` would go
+ * red on every push where the shell happened to be off — and a red apply that
+ * nobody reads is how unapplied migrations shipped in the first place. Uploads
+ * still land automatically; applying them is a deliberate act. Amends PRD #565
+ * user story 3, recorded on that issue.
+ *
+ * The guard has to be a *required* conjunct, so a substring match will not do:
+ * the previous condition mentioned `workflow_dispatch` too, inside an `||`
+ * that let `workflow_run` through. Parenthesised groups are stripped first, so
+ * what remains is the top level, and the guard must survive there with no
+ * top-level `||` able to route around it.
+ */
+function checkStagingApplyIsDispatchOnly() {
+  const ifLine = ifLineOf(STAGING, 'host-apply');
+  if (ifLine === null) {
+    findings.push(`${STAGING}: host-apply declares no if: condition`);
+    return;
+  }
+
+  let topLevel = ifLine;
+  let previous;
+  do {
+    previous = topLevel;
+    topLevel = topLevel.replace(/\([^()]*\)/g, ' ');
+  } while (topLevel !== previous);
+
+  if (!/github\.event_name == 'workflow_dispatch'/.test(topLevel)) {
+    findings.push(
+      `${STAGING}: host-apply's if: does not require github.event_name == 'workflow_dispatch' at the top level - Staging must not apply automatically while shell access is a manual toggle`,
+    );
+  }
+  if (topLevel.includes('||')) {
+    findings.push(
+      `${STAGING}: host-apply's if: has a top-level || that can route around the workflow_dispatch guard`,
+    );
+  }
+}
+
 function checkStagingApplyGroup() {
   const upload = concurrencyOf(STAGING, 'deploy-backend');
   const apply = concurrencyOf(STAGING, 'host-apply');
@@ -287,6 +329,7 @@ checkNoApplyOnlyReRun(PRODUCTION, 'deploy-frontend');
 checkHostApplyRunsOnApplyOnly(STAGING);
 checkHostApplyRunsOnApplyOnly(PRODUCTION);
 checkStagingApplyGroup();
+checkStagingApplyIsDispatchOnly();
 checkSshHostKeyPinning(STAGING);
 checkSshHostKeyPinning(PRODUCTION);
 checkLogIsScrubbedBeforePrinting(STAGING);

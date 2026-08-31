@@ -249,6 +249,16 @@ as the rest of that Environment. Each workflow also accepts a
 `workflow_dispatch` input, `apply_only` (default `false` in both), that re-runs
 `host-apply` alone without re-uploading the backend bundle.
 
+**Staging Host Apply is operator-triggered, not automatic.** A green `main`
+still uploads a Staging bundle on its own, but nothing applies it until someone
+dispatches `Deploy Staging`. SSH shell access on the hosting account is a manual
+toggle that reverts, so an apply chained to the upload would go red on every
+push where the shell happened to be off — and a red apply nobody reads is how
+unapplied migrations shipped in the first place. This amends PRD #565 user
+story 3; it means an uploaded Staging bundle is not a migrated Staging backend
+until you say so, and it is why the Cut checklist's "Staging Host Apply green"
+below is load-bearing rather than a formality.
+
 Staging splits its concurrency by whether a job writes to `APP_ROOT`.
 `deploy-backend` and `host-apply` share `deploy-staging-apply` with
 `cancel-in-progress: false`: a newer push to `main` queues behind them rather

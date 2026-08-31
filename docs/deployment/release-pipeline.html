@@ -2346,7 +2346,7 @@
 
     const NOTE = {
       1: 'A push or PR lands on main or a release branch, and CI runs as one pass/fail box. Nobody decided anything yet.',
-      2: 'Green CI on main also deploys staging automatically, off to the side. It is not on the way to a Release — see panel 2.',
+      2: 'Green CI on main also uploads to staging automatically, off to the side. Applying that upload on the host is a separate, operator-triggered dispatch. It is not on the way to a Release — see panel 2.',
       3: 'The one human choice on this whole spine: a maintainer decides when to cut the release branch.',
       4: 'One push, two simultaneous consequences. The dispatcher only dispatches — it does not check whether CI is green on the branch it just found.',
       5: 'The workflow named "(manual)" started on workflow_dispatch — fired by the node one step back, not by a person.',

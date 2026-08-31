@@ -303,12 +303,26 @@ wrong app — so this costs you a red preflight, never a bad migration.
 
 Only once the preflight is green.
 
-1. Merge the Host Apply branch to `main`, or dispatch `Deploy Staging` by hand
-   with `apply_only` unchecked to run upload → apply in one go.
-2. Watch the `host-apply` job. The `Host Apply output (redaction-checked)` step
+**Staging Host Apply does not run on its own.** A green `main` uploads a bundle
+automatically, but nothing applies it until you dispatch the workflow. SSH shell
+access on this account is a manual toggle that reverts, so an automatic apply
+would go red on every push where the shell happened to be off. That is a
+deliberate amendment to PRD #565 user story 3, and it has a cost worth stating
+plainly: **an uploaded Staging bundle is not a migrated Staging backend.**
+Between an upload and your dispatch, Staging is running new code against an old
+schema — the exact shape of the incident this whole feature exists to prevent,
+now confined to Staging and to a window you control.
+
+1. Enable SSH shell access on the hosting account. Confirm it is actually on:
+   `ssh -i <key> -o BatchMode=yes -o IdentitiesOnly=yes -p <port> <user>@<host> 'echo ok'`.
+   A reverted toggle answers `Shell access is not enabled on your account!`
+   after authenticating, which is what a red `host-apply` will look like.
+2. _Actions → Deploy Staging → Run workflow._ Leave `apply_only` unticked for
+   upload → apply in one go, or tick it to apply a bundle already uploaded.
+3. Watch the `host-apply` job. The `Host Apply output (redaction-checked)` step
    is where the on-host log appears — it is withheld rather than printed if it
    carries a connection string.
-3. Green means: migrations applied, client regenerated, Passenger restarted,
+4. Green means: migrations applied, client regenerated, Passenger restarted,
    `/docs` 2xx, and a wrong-secret cron POST answered `401`.
 
 **If it goes red, do not fix it by hand on the host.** The sequence is
@@ -325,6 +339,10 @@ _Actions → Deploy Staging → Run workflow →_ tick **`apply_only`** → run.
 upload jobs skip; `host-apply` runs alone against the bundle already on the host.
 This should be green immediately after Step 6, and it is worth doing once while
 things are known-good rather than discovering it during an incident.
+
+On Staging this is also the normal path, not just a recovery one: `main` keeps
+uploading on its own, so most applies are an `apply_only` dispatch against a
+bundle that landed earlier.
 
 ## Step 8 — Production
 

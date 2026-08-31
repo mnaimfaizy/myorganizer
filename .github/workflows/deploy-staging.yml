@@ -119,15 +119,26 @@ jobs:
           timeout: 300000
 
   # Applies backend upload (install, migrate, generate, restart) over SSH and
-  # verifies with HTTP probes (ADR 0056). Shares the `deploy-staging-apply`
-  # group with deploy-backend, and never cancels in progress: a newer `main`
-  # push must queue behind an in-flight `prisma migrate deploy` rather than
-  # kill it (ADR 0056 "Cancel-in-progress through migrate — rejected") or
-  # upload over it. May run beside deploy-frontend, which holds the separate
-  # `deploy-staging` group and never touches APP_ROOT.
+  # verifies with HTTP probes (ADR 0056).
+  #
+  # Deliberately `workflow_dispatch` only, never the `workflow_run` that
+  # follows a green `main`: SSH shell access on this hosting account is a
+  # manual toggle that reverts, so an automatic apply would go red on every
+  # push where the shell happened to be off. Uploads still land automatically;
+  # applying them is an operator action taken with the shell switched on. That
+  # makes the Cut checklist's "Staging Host Apply green" load-bearing rather
+  # than a formality — nothing else applies a Staging migration now. Amends
+  # PRD #565 user story 3.
+  #
+  # Shares the `deploy-staging-apply` group with deploy-backend, and never
+  # cancels in progress: an automatic upload must queue behind an in-flight
+  # `prisma migrate deploy` rather than kill it (ADR 0056 "Cancel-in-progress
+  # through migrate — rejected") or land a new bundle on top of it. May run
+  # beside deploy-frontend, which holds the separate `deploy-staging` group
+  # and never touches APP_ROOT.
   host-apply:
     needs: deploy-backend
-    if: ${{ always() && (needs.deploy-backend.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.apply_only)) }}
+    if: ${{ always() && github.event_name == 'workflow_dispatch' && (needs.deploy-backend.result == 'success' || inputs.apply_only) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: staging
