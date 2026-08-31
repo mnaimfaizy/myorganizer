@@ -174,9 +174,61 @@ function checkSshReachable() {
   }
   fail(
     'non-interactive SSH',
-    result.stderr || `ssh exited ${result.status} with no output`,
+    [result.stderr || `ssh exited ${result.status} with no output`]
+      .concat(diagnoseKnownHosts(result.stderr ?? ''))
+      .join('\n'),
   );
   return false;
+}
+
+/**
+ * A `known_hosts` entry is keyed on the host string, so keys captured for an IP
+ * do nothing for a connection made by hostname. ssh reports that as a plain
+ * "No ... host key is known", which reads like the pin was never set rather
+ * than like it was set for a different name. Say which labels the supplied
+ * value actually covers.
+ */
+function diagnoseKnownHosts(stderr) {
+  if (
+    !knownHostsFile ||
+    !/host key is known|verification failed/i.test(stderr)
+  ) {
+    return [];
+  }
+
+  const port = env('SSH_PORT') || '22';
+  const host = env('SSH_HOST');
+  const expected = port === '22' ? host : `[${host}]:${port}`;
+
+  const labels = [
+    ...new Set(
+      (env('SSH_KNOWN_HOSTS') || '')
+        .split('\n')
+        .map((line) => line.trim().split(/\s+/)[0])
+        .filter(Boolean)
+        .flatMap((field) => field.split(',')),
+    ),
+  ];
+
+  if (labels.includes(expected)) {
+    return [
+      '',
+      `SSH_KNOWN_HOSTS does cover ${expected}, so this is not a name mismatch.`,
+      'The host may have changed its keys, which is worth understanding before re-pinning.',
+    ];
+  }
+
+  return [
+    '',
+    `SSH_KNOWN_HOSTS covers: ${labels.join(', ') || '(nothing parseable)'}`,
+    `but this connection is to: ${expected}`,
+    '',
+    'Entries are keyed on the host string, so keys scanned for an IP do not',
+    'apply to a connection made by hostname. Re-scan by the name in SSH_HOST:',
+    `  ssh-keyscan -p ${port} -t rsa,ecdsa,ed25519 ${host} > ~/myorg-hostkeys.txt`,
+    'The fingerprints should match the ones you already verified — same keys,',
+    'different label — so this does not need verifying from scratch.',
+  ];
 }
 
 /** Prints the value to paste into SSH_KNOWN_HOSTS, or confirms the pin works. */
