@@ -429,8 +429,15 @@ function checkProbes() {
     const proc = spawnSync('curl', args, { encoding: 'utf8' });
     return Number(proc.stdout);
   };
+  // Both request shapes must match the CI job's exactly, or the rehearsal
+  // grades a different question. `-L` because /docs answers 301 to /docs/, and
+  // a Content-Type because LiteSpeed rejects a bodyless, typeless POST with its
+  // own HTML 403 before Node sees it.
   const docsStatus = status([
     '-sS',
+    '-L',
+    '--max-redirs',
+    '3',
     '-o',
     '/dev/null',
     '-w',
@@ -446,7 +453,11 @@ function checkProbes() {
     '-X',
     'POST',
     '-H',
+    'Content-Type: application/json',
+    '-H',
     'X-Cron-Secret: host-apply-preflight-wrong-secret',
+    '-d',
+    '{}',
     `${origin}/api/v1/youtube/cron/sync`,
   ]);
   try {

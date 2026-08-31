@@ -286,6 +286,30 @@ function checkSecretsAreValidatedBeforeUse(path) {
   }
 }
 
+/**
+ * The two verify probes must ask the question they claim to ask.
+ *
+ * Both got this wrong on the first live run (#569). `/docs` answers 301 to
+ * `/docs/`, so without `-L` a healthy app reports a redirect. And LiteSpeed
+ * rejects a bodyless, typeless POST with its own HTML 403 on every path, so
+ * without a Content-Type the cron probe reports the host's opinion rather than
+ * the API's — the exact "HTML 403" the PRD said must not be mistaken for the
+ * API's own auth rejection.
+ */
+function checkProbeShapes(path) {
+  const block = jobBlock(path, 'host-apply');
+  if (!/curl [^\n]*-L\b/.test(block)) {
+    findings.push(
+      `${path}: the /docs probe does not follow redirects, so a healthy app reports 301`,
+    );
+  }
+  if (!/-H 'Content-Type: application\/json'/.test(block)) {
+    findings.push(
+      `${path}: the cron probe sends no Content-Type, so the host answers 403 before Node sees it`,
+    );
+  }
+}
+
 function checkLogIsScrubbedBeforePrinting(path) {
   const block = jobBlock(path, 'host-apply');
   // Both stdout and stderr must land in the file. Matching the redirect alone
@@ -360,6 +384,8 @@ checkSshHostKeyPinning(STAGING);
 checkSshHostKeyPinning(PRODUCTION);
 checkSecretsAreValidatedBeforeUse(STAGING);
 checkSecretsAreValidatedBeforeUse(PRODUCTION);
+checkProbeShapes(STAGING);
+checkProbeShapes(PRODUCTION);
 checkLogIsScrubbedBeforePrinting(STAGING);
 checkLogIsScrubbedBeforePrinting(PRODUCTION);
 checkSecretAllowlist(STAGING);

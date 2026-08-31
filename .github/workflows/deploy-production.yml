@@ -271,9 +271,17 @@ jobs:
           API_ORIGIN: ${{ secrets.API_ORIGIN }}
         run: |
           set -euo pipefail
-          docs_status="$(curl -sS -o /dev/null -w '%{http_code}' "$API_ORIGIN/docs")"
+          # -L: swagger-ui-express answers /docs with a 301 to /docs/, so the
+          # bare status is a redirect even when Passenger is perfectly healthy.
+          docs_status="$(curl -sS -L --max-redirs 3 -o /dev/null -w '%{http_code}' "$API_ORIGIN/docs")"
+          # Content-Type and a body are load-bearing, not decoration: LiteSpeed
+          # rejects a bodyless, typeless POST with its own HTML 403 before Node
+          # ever sees it, on every path. Without them this probe reports the
+          # host's opinion rather than the API's.
           cron_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+            -H 'Content-Type: application/json' \
             -H 'X-Cron-Secret: host-apply-verification-wrong-secret' \
+            -d '{}' \
             "$API_ORIGIN/api/v1/youtube/cron/sync")"
           node tools/scripts/verify-host-apply.mjs "$docs_status" "$cron_status"
 
