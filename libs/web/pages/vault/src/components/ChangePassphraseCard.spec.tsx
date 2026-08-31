@@ -152,7 +152,7 @@ function createMockHandle(overrides?: Partial<VaultHandle>): VaultHandle {
     saveEncryptedData: jest.fn(),
     vaultStatus: jest.fn().mockReturnValue('absent'),
     hasUnclaimedLocalVault: jest.fn().mockReturnValue(false),
-    claimUnclaimedLocalVault: jest.fn(),
+    claimUnclaimedLocalVaultLocked: jest.fn(),
     hasUnsentChanges: jest.fn().mockResolvedValue(false),
     lastPushedEtag: jest.fn().mockReturnValue(undefined),
     recordPushSuccess: jest.fn(),

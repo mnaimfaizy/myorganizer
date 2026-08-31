@@ -64,6 +64,23 @@ export class NoUnclaimedLocalVaultError extends Error {
   }
 }
 
+/**
+ * A Vault Claim would have replaced a Local Vault this owner already holds.
+ *
+ * Refused rather than performed. Replacing a User's own Vault is an explicit,
+ * acknowledged act (CONTEXT.md, "Vault Claim"), so a claim that asks the User
+ * for nothing must never be the thing that carries it out.
+ */
+export class LocalVaultAlreadyOwnedError extends Error {
+  public readonly code = 'local-vault-already-owned';
+
+  constructor() {
+    super('This User already holds a Local Vault on this device');
+    this.name = 'LocalVaultAlreadyOwnedError';
+    Object.setPrototypeOf(this, LocalVaultAlreadyOwnedError.prototype);
+  }
+}
+
 /** An operation needing the Master Key was called before one was bound. */
 export class VaultLockedError extends Error {
   public readonly code = 'vault-locked';
@@ -105,17 +122,28 @@ export type LocalVaultAccess = {
     passphrase: string;
   }): Promise<VaultUnlockResult>;
   /**
-   * Vault Claim: prove the Unclaimed Local Vault is this owner's by unwrapping
-   * its Master Key, and record the ownership that already held.
+   * Vault Claim, on evidence established elsewhere: record the Unclaimed Local
+   * Vault as this owner's, and leave it locked.
    *
-   * Addressed at the Unclaimed Local Vault directly rather than at whatever
-   * the slot resolves, so it stays available to a User who already holds a
-   * Vault of their own — the mis-click this exists to make recoverable. A
-   * failed unwrap writes nothing.
+   * It takes no secret because a secret is not proof. Key derivation uses the
+   * Vault's own salt, so two people sharing a passphrase string each derive
+   * the same Master Key and each unwrap the other's Vault — an unwrap
+   * establishes knowledge of a string, never ownership of a Vault
+   * ([ADR 0061](../../../../../docs/adr/0061-vault-claim-is-proven-by-evidence-not-by-unwrap.md)).
+   * There is deliberately no sibling method that claims on a passphrase: the
+   * one that used to be here is what made a shared passphrase enough to open
+   * somebody else's Vault.
+   *
+   * Nothing is unlocked either. Ownership and readability are different
+   * questions (CONTEXT.md, "Vault Claim"), so no Master Key is derived, none
+   * is bound, and one already bound is left exactly as it was. The caller
+   * establishes the evidence — see `vaultClaimEvidence.ts` — and this records
+   * the ownership that evidence proved already held.
+   *
+   * Refuses with `LocalVaultAlreadyOwnedError` when this owner already holds a
+   * Local Vault: evidence alone never replaces one.
    */
-  claimUnclaimedLocalVault(options: {
-    passphrase: string;
-  }): Promise<VaultUnlockResult>;
+  claimUnclaimedLocalVaultLocked(): void;
   unlockWithRecoveryKey(options: {
     recoveryKey: string;
   }): Promise<VaultUnlockResult>;
@@ -425,28 +453,20 @@ export function createLocalVaultAccess(options: {
       });
     },
 
-    async claimUnclaimedLocalVault({ passphrase }) {
+    claimUnclaimedLocalVaultLocked() {
+      // Read before anything is written, and refused before the Unclaimed
+      // Local Vault is even looked at: there is no evidence a caller could
+      // hold that makes overwriting this User's own Vault the right move here.
+      if (slot.read().status === 'owned') {
+        throw new LocalVaultAlreadyOwnedError();
+      }
+
       const vault = slot.readUnclaimed();
       if (!vault) throw new NoUnclaimedLocalVaultError();
 
-      const derivedKey = await deriveKeyFromPassphrase({
-        passphrase,
-        salt: base64ToBytes(vault.kdf.salt),
-        iterations: vault.kdf.iterations,
-      });
-
-      const masterKeyBytes = await unwrapOrMismatch({
-        wrappingKey: derivedKey,
-        wrapped: vault.masterKeyWrappedWithPassphrase,
-        secret: 'passphrase',
-      });
-
-      // The unwrap is the proof, so the claim only happens after it. The
-      // unsuffixed slot is left byte-identical either way.
       slot.claim(vault);
-
-      boundMasterKeyBytes = masterKeyBytes;
-      return { masterKeyBytes };
+      // `boundMasterKeyBytes` is deliberately untouched. The Vault is claimed
+      // and still locked, which is the whole point of this method existing.
     },
 
     async unlockWithRecoveryKey({ recoveryKey }) {

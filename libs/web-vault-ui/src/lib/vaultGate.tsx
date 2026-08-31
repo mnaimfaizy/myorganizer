@@ -21,8 +21,9 @@ import {
   resetPassphraseAfterRecovery,
 } from '@myorganizer/web-vault';
 
-import { VaultClaimOffer } from './vaultClaimOffer';
 import { useOptionalVaultSession } from './session';
+import { useVaultClaimEvidence } from './useVaultClaimEvidence';
+import { VAULT_CLAIM_EVIDENCE_GATE_VIEWS } from './vaultClaimEvidenceGateView';
 
 type VaultGateProps = {
   title: string;
@@ -48,19 +49,20 @@ export function VaultGate(props: VaultGateProps) {
   const [vaultStatus, setVaultStatus] = useState<LocalVaultStatus>(
     () => handle?.vaultStatus() ?? 'absent',
   );
-  const [declinedClaim, setDeclinedClaim] = useState(false);
+
+  // Vault Claim Evidence runs for every signed-in User and costs nothing for
+  // the ones it does not apply to — a User who already holds their own Local
+  // Vault is answered without the server being asked at all.
+  const claimEvidence = useVaultClaimEvidence(handle);
 
   const handleRef = useRef(handle);
 
   // Render-phase reset: if handle identity changes, re-read status from storage
   let currentVaultStatus = vaultStatus;
-  let currentDeclinedClaim = declinedClaim;
   if (handleRef.current !== handle) {
     handleRef.current = handle;
     currentVaultStatus = handle?.vaultStatus() ?? 'absent';
-    currentDeclinedClaim = false;
     setVaultStatus(currentVaultStatus);
-    setDeclinedClaim(false);
   }
   const [localMasterKeyBytes, setLocalMasterKeyBytes] =
     useState<Uint8Array | null>(null);
@@ -94,22 +96,50 @@ export function VaultGate(props: VaultGateProps) {
     );
   }
 
-  if (currentVaultStatus === 'unclaimed' && !currentDeclinedClaim) {
-    return (
-      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-        <VaultClaimOffer
-          handle={handle}
-          onClaimed={(result) => {
-            setMasterKeyBytes(result.masterKeyBytes);
-            setVaultStatus('owned');
-          }}
-          onDecline={() => setDeclinedClaim(true)}
-        />
-      </div>
-    );
+  // An Unclaimed Local Vault is never offered without proof it is the
+  // signed-in User's (ADR 0061). Nothing about it is rendered until Vault
+  // Claim Evidence has answered, and what the answer resolves to is pinned
+  // rather than decided here.
+  let effectiveVaultStatus = currentVaultStatus;
+  if (currentVaultStatus === 'unclaimed') {
+    if (claimEvidence.status === 'checking') {
+      return (
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <Card className="p-4">
+            <CardTitle className="text-lg">{title}</CardTitle>
+            <CardContent className="mt-4">
+              {/* Says nothing about what this device holds — see the copy
+                  note in `vaultClaimEvidenceGateView.ts`. */}
+              <p className="text-sm text-muted-foreground">
+                Setting up your vault on this device…
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    const view = VAULT_CLAIM_EVIDENCE_GATE_VIEWS[claimEvidence.result.kind];
+
+    if (view.kind === 'cannot-check') {
+      return (
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <Card className="p-4">
+            <CardTitle className="text-lg">{view.title}</CardTitle>
+            <CardContent className="mt-4">
+              <p className="text-sm text-muted-foreground">
+                {view.description}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    effectiveVaultStatus = view.status;
   }
 
-  if (currentVaultStatus !== 'owned') {
+  if (effectiveVaultStatus !== 'owned') {
     const canCreate =
       newPassphraseSchema.safeParse({
         newPassphrase: setupPassphrase,

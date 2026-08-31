@@ -25,9 +25,11 @@ import { createSyncBookmarkAccess } from './syncBookmarkAccess';
 import { VAULT_BLOB_TYPE_BY_FIELD } from './vaultBlobFields';
 
 export { VaultLockedError, VaultSecretMismatchError } from './localVaultAccess';
-// `NoUnclaimedLocalVaultError` stays internal: a caller reaches
-// `claimUnclaimedLocalVault` only after `hasUnclaimedLocalVault`, so it is a
-// programming error rather than a case the interface asks callers to handle.
+// `NoUnclaimedLocalVaultError` and `LocalVaultAlreadyOwnedError` stay
+// internal: `claimUnclaimedLocalVaultOnEvidence` reads `vaultStatus` before it
+// claims and reports `skipped-nothing-to-claim` / `skipped-already-owned`
+// rather than letting either throw, so reaching one is a programming error
+// rather than a case the interface asks callers to handle.
 export type { LocalVaultStatus } from './localVaultStorage';
 
 /**
@@ -224,7 +226,7 @@ export function createVaultHandle(options: {
       await bookmarks.recordPushSuccess({ type, blob, etag });
     },
     initialize: access.initialize,
-    claimUnclaimedLocalVault: access.claimUnclaimedLocalVault,
+    claimUnclaimedLocalVaultLocked: access.claimUnclaimedLocalVaultLocked,
     unlockWithPassphrase: access.unlockWithPassphrase,
     unlockWithRecoveryKey: access.unlockWithRecoveryKey,
     changePassphrase: access.changePassphrase,

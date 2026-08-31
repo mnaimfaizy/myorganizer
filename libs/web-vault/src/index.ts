@@ -25,6 +25,7 @@ export type {
 } from './lib/vault/vaultHandle';
 export * from './lib/vault/localVaultRevision';
 export * from './lib/vault/passphrasePolicy';
+export * from './lib/vault/vaultClaimEvidence';
 export * from './lib/vault/vaultConverge';
 export * from './lib/vault/vaultMetaConverge';
 export * from './lib/vault/vaultMetaPush';

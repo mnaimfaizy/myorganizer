@@ -9,11 +9,13 @@
  *
  * The pre-existing unsuffixed slot is left where it is as an Unclaimed Local
  * Vault. It predates per-User scoping, so ownership cannot be read from it and
- * must be proven by Vault Claim — a successful Master Key unwrap. It is
- * resolved only for a signed-in User who holds no Local Vault of their own,
- * and it is never removed on anyone's behalf.
+ * must be proven by Vault Claim Evidence — the server's own Vault Meta, or a
+ * recovery key; never a passphrase unwrap, which establishes knowledge of a
+ * string rather than ownership of a Vault. It is resolved only for a signed-in
+ * User who holds no Local Vault of their own, and it is never removed on
+ * anyone's behalf.
  *
- * See ADR 0047 and ADR 0033.
+ * See ADR 0047, ADR 0061 and ADR 0033.
  */
 
 export type EncryptedBlob = {
@@ -310,8 +312,9 @@ export function removeOwnedLocalVault(owner: string): void {
  * A write follows the read. While the only Vault this User can resolve is the
  * Unclaimed Local Vault, that slot is still where their Vault lives, so a write
  * goes back to it. Promoting it to an owned record is a Vault Claim, and a
- * claim is only ever the consequence of a Master Key unwrap — which is why
- * `claim` is a separate method and only the unlock path calls it.
+ * claim is only ever the consequence of Vault Claim Evidence (ADR 0061) —
+ * which is why `claim` is a separate method, and why the paths that establish
+ * that evidence are the only ones that call it.
  */
 export function ownedLocalVaultSlot(owner: string): LocalVaultSlot {
   assertVaultOwner(owner);
