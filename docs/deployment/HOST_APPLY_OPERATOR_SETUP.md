@@ -104,6 +104,14 @@ Once they match, trust them locally so your own SSH stops refusing:
 cat ~/myorg-hostkeys.txt >> ~/.ssh/known_hosts
 ```
 
+**Scan by the same name you will connect by.** A `known_hosts` entry is keyed on
+the host string, so an entry captured for an IP does nothing for a connection
+made to the hostname, and vice versa — you get `Host key verification failed.`
+again and it looks like the pinning never worked. Since `SSH_HOST` should be the
+hostname, scan the hostname. The key material is the same either way; only the
+label at the start of each line changes, so you can confirm it against the
+fingerprints you just verified rather than re-verifying from scratch.
+
 The contents of `~/myorg-hostkeys.txt` are also exactly the `SSH_KNOWN_HOSTS`
 value for Step 3 — all lines, unedited. Nothing here is wasted work.
 
@@ -112,13 +120,34 @@ value for Step 3 — all lines, unedited. Nothing here is wasted work.
 With the host key known, the `BatchMode` test finally means what it claims:
 
 ```bash
-ssh -i ~/.ssh/id_ed25519_myorg_deploy -o BatchMode=yes -p <port> <user>@<host> 'echo ok'
+ssh -i ~/.ssh/id_ed25519_myorg_deploy -o BatchMode=yes -o IdentitiesOnly=yes -p <port> <user>@<host> 'echo ok'
 ```
 
-`BatchMode=yes` is the whole test — it forbids every interactive prompt, which
-is the condition a GitHub runner works under. Reaching this point and being
-asked for a password means the public key is not authorized; go back to Step 1.
-`echo ok` means CI can get in.
+`BatchMode=yes` forbids every interactive prompt, which is the condition a
+GitHub runner works under. `IdentitiesOnly=yes` is the other half: without it
+your local agent offers its other keys too, so the test can pass on a key CI
+will not have. A runner starts with no agent and exactly one `-i`, and this
+makes your laptop behave the same way.
+
+`ok` means CI can get in. `Permission denied (publickey,...)` means the host
+never accepted this key — it got past host verification, so this is now purely
+about authorization:
+
+```bash
+ssh-keygen -lf ~/.ssh/id_ed25519_myorg_deploy.pub
+```
+
+Compare that fingerprint against what the account actually accepts, listed from
+cPanel's Terminal (public keys only, nothing secret):
+
+```bash
+ssh-keygen -lf ~/.ssh/authorized_keys
+```
+
+Absent from that list means the key was imported into _Manage SSH Keys_ but
+never **Authorized** — importing only stores it. Present but still refused is
+usually permissions: `~/.ssh` must be `700` and `~/.ssh/authorized_keys` `600`,
+and sshd silently ignores the file when either is looser.
 
 ## Step 2c — Find the four host-specific values
 
