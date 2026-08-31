@@ -214,6 +214,8 @@ _Avoid_: native app, RN app, the app
 A thin implementation of a shared abstract interface (e.g. `VaultCrypto`, token storage) that supplies platform-specific behavior to otherwise platform-agnostic code. An interface earns the name once a platform implements it; a shape written ahead of its implementors is not a Platform Adapter, it is a guess.
 _Avoid_: shim, wrapper, provider
 
+## Vault
+
 **Vault Unlock**:
 The client-side action of deriving the Master Key from the User's passphrase so vault Ciphertext can be decrypted for the session. No plaintext or key leaves the device. Unlock is a plaintext-access boundary, not a network one: a locked Vault can still send and receive its own Ciphertext, because moving bytes that are already encrypted needs no Master Key. What a lock withholds is the ability to read them.
 _Avoid_: vault login, decrypt vault, open vault
