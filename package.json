@@ -88,6 +88,7 @@
     "auth:pages:check": "node tools/scripts/check-auth-pages.mjs",
     "deploy:pages:check": "node tools/scripts/check-deploy-pipeline.mjs",
     "deploy:pages:test": "node --test tools/scripts/check-deploy-pipeline.test.mjs",
+    "host-apply:preflight": "node tools/scripts/host-apply-preflight.mjs",
     "host-apply:test": "node --test tools/scripts/lib/host-apply.test.mjs",
     "host-apply:workflow:check": "node tools/scripts/check-host-apply-workflow.mjs",
     "host-apply:workflow:test": "node --test tools/scripts/check-host-apply-workflow.test.mjs",

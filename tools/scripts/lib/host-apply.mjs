@@ -121,6 +121,74 @@ export function buildSelectorLoadStep(selectorAppKey) {
 }
 
 /**
+ * Where the cPanel Node.js Selector might keep an app's configured environment
+ * variables, and under which field. `buildSelectorLoadStep` deliberately pins
+ * the first of each rather than walking these at apply time: a walk would need
+ * iteration the no-enumeration rule bans, and buys nothing once the real
+ * location is known. Discovery happens once, before the first apply, through
+ * `buildSelectorProbeScript` — and a wrong pin fails closed rather than
+ * silently reading the wrong app.
+ */
+export const SELECTOR_STORE_CANDIDATES = Object.freeze([
+  '.cpanel/nodejsapps.json',
+  '.cl.selector/nodejsapps.json',
+  '.cpanel/nodejs.json',
+]);
+
+export const SELECTOR_ENV_FIELDS = Object.freeze([
+  'envvars',
+  'env_vars',
+  'environment',
+  'env',
+]);
+
+/**
+ * A read-only probe that reports where the selector store actually is and
+ * which field holds the pinned app's `DATABASE_URL`, so the operator checklist
+ * for the first live apply (#569) can confirm this engine's assumption instead
+ * of discovering it in a red CI run.
+ *
+ * Unlike `buildSelectorLoadStep` this may iterate — over candidate *file
+ * paths* and candidate *field names*, never over the store's app entries. It
+ * looks up the pinned key with `hasOwnProperty` exactly as the loader does, so
+ * it can neither see nor report a sibling app. It emits booleans and field
+ * names only: no environment value, and no `DATABASE_URL`, ever reaches the
+ * report.
+ *
+ * Never part of an apply — nothing in `HOST_APPLY_STEP_ORDER` calls it.
+ */
+export function buildSelectorProbeScript(selectorAppKey) {
+  requireNonEmptyString(selectorAppKey, 'SELECTOR_APP_KEY');
+
+  const probe = [
+    'const fs = require("fs");',
+    'const path = require("path");',
+    `const key = ${JSON.stringify(selectorAppKey)};`,
+    `const candidates = ${JSON.stringify(SELECTOR_STORE_CANDIDATES)};`,
+    `const fields = ${JSON.stringify(SELECTOR_ENV_FIELDS)};`,
+    'const home = process.env.HOME || "";',
+    'const report = candidates.map((rel) => {',
+    '  const file = path.join(home, rel);',
+    '  const row = { path: rel, exists: false, parsed: false, hasPinnedKey: false, envField: null, hasDatabaseUrl: false };',
+    '  if (!fs.existsSync(file)) return row;',
+    '  row.exists = true;',
+    '  let data;',
+    '  try { data = JSON.parse(fs.readFileSync(file, "utf8")); } catch { return row; }',
+    '  row.parsed = true;',
+    '  if (data == null || !Object.prototype.hasOwnProperty.call(data, key)) return row;',
+    '  row.hasPinnedKey = true;',
+    '  const entry = data[key];',
+    '  const match = fields.find((f) => entry && entry[f] && typeof entry[f].DATABASE_URL === "string" && entry[f].DATABASE_URL.length > 0);',
+    '  if (match) { row.envField = match; row.hasDatabaseUrl = true; }',
+    '  return row;',
+    '});',
+    'process.stdout.write(JSON.stringify({ selectorProbe: report }));',
+  ].join(' ');
+
+  return `node -e ${shQuote(probe)}`;
+}
+
+/**
  * Builds the ordered on-host steps from secret values the caller already
  * resolved (from GitHub Environment secrets — this module never fetches
  * them). Throws `HostApplyRefusal` if any required secret is missing.

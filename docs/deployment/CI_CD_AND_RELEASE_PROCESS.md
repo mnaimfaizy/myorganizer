@@ -222,6 +222,13 @@ Same names in both environments:
 `DATABASE_URL` is never a GitHub secret in either environment. Host Apply loads
 it on the host, for `SELECTOR_APP_KEY` only, and never prints it.
 
+Setting these up on a real host — deploy key, host-key pin, Environment
+values, and the first live apply on each environment — is
+[Host Apply: operator setup and first live apply](HOST_APPLY_OPERATOR_SETUP.md).
+Run `yarn host-apply:preflight <environment>` before trusting CI: it checks
+every one of those against the real host, read-only, using the same guards
+the CI job runs.
+
 Two of those names extend the eight the PRD originally listed, because eight
 left two holes. `COUNTERPART_APP_ROOT` is what makes the `APP_ROOT` guard mean
 anything: a job scoped to `environment: staging` cannot read `production`'s

@@ -21,12 +21,14 @@ import { fileURLToPath } from 'node:url';
 import {
   HostApplyRefusal,
   HOST_APPLY_SECRET_NAMES,
+  SELECTOR_STORE_CANDIDATES,
   HOST_APPLY_STEP_ORDER,
   buildSelectorLoadStep,
   buildHostApplySteps,
   renderHostApplyScript,
   buildHostApplyScript,
   assertAppRootGuard,
+  buildSelectorProbeScript,
   findHostApplyLogLeaks,
   assertHostApplyLogClean,
   assertHostApplyProbesHealthy,
@@ -752,4 +754,100 @@ test('scrub-host-apply-log refuses a missing log rather than passing silently', 
   );
 
   assert.equal(result.status, 2);
+});
+
+// === Area 9: the selector probe (read-only discovery, #569) ===
+//
+// The probe is what tells the operator whether buildSelectorLoadStep's pinned
+// path is right, before a red CI run does. It runs for real against a fake
+// HOME here, the same way the loader fragment is exercised above.
+
+function runProbe(t, layout, key = 'my-app') {
+  const tmpHome = mkdtempSync(join(tmpdir(), 'selector-probe-'));
+  t.after(() => rmSync(tmpHome, { recursive: true, force: true }));
+
+  for (const [rel, contents] of Object.entries(layout)) {
+    const file = join(tmpHome, rel);
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, contents);
+  }
+
+  const result = spawnSync('bash', ['-c', buildSelectorProbeScript(key)], {
+    env: { ...process.env, HOME: tmpHome },
+    encoding: 'utf8',
+  });
+  return { result, report: JSON.parse(result.stdout).selectorProbe };
+}
+
+test('selector probe reports the pinned path and field when the store matches', (t) => {
+  const { result, report } = runProbe(t, {
+    '.cpanel/nodejsapps.json': JSON.stringify({
+      'my-app': { envvars: { DATABASE_URL: 'postgres://u:p@h/db' } },
+    }),
+  });
+
+  assert.equal(result.status, 0);
+  const hit = report.find((row) => row.hasDatabaseUrl);
+  assert.equal(hit.path, '.cpanel/nodejsapps.json');
+  assert.equal(hit.envField, 'envvars');
+});
+
+test('selector probe finds a store the loader does not pin', (t) => {
+  // The point of the probe: say so out loud rather than let CI fail red.
+  const { report } = runProbe(t, {
+    '.cl.selector/nodejsapps.json': JSON.stringify({
+      'my-app': { env_vars: { DATABASE_URL: 'postgres://u:p@h/db' } },
+    }),
+  });
+
+  const hit = report.find((row) => row.hasDatabaseUrl);
+  assert.equal(hit.path, '.cl.selector/nodejsapps.json');
+  assert.equal(hit.envField, 'env_vars');
+});
+
+test('selector probe never prints an environment value or a sibling app name', (t) => {
+  const secret = 'postgres://someone:hunter2@db.internal/app';
+  const { result } = runProbe(t, {
+    '.cpanel/nodejsapps.json': JSON.stringify({
+      'my-app': { envvars: { DATABASE_URL: secret, OTHER: 'also-secret' } },
+      'someone-elses-app': { envvars: { DATABASE_URL: secret } },
+    }),
+  });
+
+  assert.ok(!result.stdout.includes(secret));
+  assert.ok(!result.stdout.includes('hunter2'));
+  assert.ok(!result.stdout.includes('also-secret'));
+  assert.ok(!result.stdout.includes('someone-elses-app'));
+});
+
+test('selector probe reports a present store that lacks the pinned identity', (t) => {
+  const { report } = runProbe(t, {
+    '.cpanel/nodejsapps.json': JSON.stringify({
+      'other-app': { envvars: { DATABASE_URL: 'postgres://u:p@h/db' } },
+    }),
+  });
+
+  const row = report.find((r) => r.path === '.cpanel/nodejsapps.json');
+  assert.equal(row.exists, true);
+  assert.equal(row.parsed, true);
+  assert.equal(row.hasPinnedKey, false);
+  assert.equal(row.hasDatabaseUrl, false);
+});
+
+test('selector probe reports an unparseable store without throwing', (t) => {
+  const { result, report } = runProbe(t, {
+    '.cpanel/nodejsapps.json': 'not json at all',
+  });
+
+  assert.equal(result.status, 0);
+  const row = report.find((r) => r.path === '.cpanel/nodejsapps.json');
+  assert.equal(row.exists, true);
+  assert.equal(row.parsed, false);
+});
+
+test('selector probe reports every candidate when nothing exists', (t) => {
+  const { report } = runProbe(t, {});
+
+  assert.equal(report.length, SELECTOR_STORE_CANDIDATES.length);
+  assert.ok(report.every((row) => row.exists === false));
 });
