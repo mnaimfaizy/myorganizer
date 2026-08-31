@@ -59,6 +59,8 @@ export const FORCE_FLAG = '--force-with-lease';
  * @param {(string|{sha: string, subject?: string})[]} [input.unmatchedRemoteCommits]
  *        Upstream commits this branch does not account for, as returned by
  *        `findOrphanedRemoteCommits`. Non-empty means forcing would destroy work.
+ * @param {string}  [input.upstreamBranch]     Branch name on the remote that `@{u}` points at.
+ * @param {string}  [input.baseBranch]         The PR's base branch, normally `main`.
  * @returns {{action: string, args?: string[], reason?: string} | {error: string}}
  */
 export function decidePushPlan({
@@ -69,7 +71,37 @@ export function decidePushPlan({
   remoteSha,
   forceWithLease = false,
   unmatchedRemoteCommits = [],
+  upstreamBranch,
+  baseBranch,
 }) {
+  // A feature branch tracking the base branch makes every measurement below
+  // meaningless: `ahead`/`behind` describe this branch against *main*, not
+  // against its own remote. That reads as a rebase-shaped divergence and
+  // produces either a spurious `--force-with-lease` instruction or a refusal
+  // naming main's commits as work a force would destroy. Neither is true, and
+  // the second is alarming enough to stop a legitimate PR.
+  //
+  // The push target itself is safe — `git push origin HEAD` goes to the branch
+  // of the same name, never to the upstream's — so this is a measurement bug,
+  // not a route to clobbering main. Sandcastle created every PRD branch this
+  // way until `--no-track`; git's `branch.autoSetupMerge` does it to anyone who
+  // runs `git branch <name> origin/main`.
+  if (
+    hasUpstream &&
+    typeof upstreamBranch === 'string' &&
+    typeof baseBranch === 'string' &&
+    upstreamBranch === baseBranch &&
+    branch !== baseBranch
+  ) {
+    return {
+      error:
+        `This branch's upstream is '${upstreamBranch}', which is the PR's base branch.\n` +
+        'Every ahead/behind count would be measured against the base rather than against\n' +
+        "this branch's own remote, so nothing below can be trusted.\n" +
+        `Fix the tracking, then re-run:\n  git branch --unset-upstream ${branch}`,
+    };
+  }
+
   if (!hasUpstream) {
     return {
       action: PUSH_ACTIONS.setUpstream,
