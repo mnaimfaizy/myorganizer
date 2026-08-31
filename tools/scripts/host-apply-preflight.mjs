@@ -301,7 +301,14 @@ node -e 'const p=require("./package.json");process.stdout.write(JSON.stringify(O
   if (missing.length > 0) {
     fail(
       'APP_ROOT on host',
-      `uploaded package.json is missing: ${missing.join(', ')} — re-upload a bundle built after this branch`,
+      [
+        `the uploaded package.json is missing: ${missing.join(', ')}`,
+        '',
+        'The bundle on the host predates those scripts, and the apply calls them.',
+        'This blocks an apply_only run, which applies whatever is already there.',
+        'A full run (apply_only unticked) uploads a fresh bundle first and clears',
+        'it — so this is a reason to choose that, not a separate task to do by hand.',
+      ].join('\n'),
     );
     return;
   }
