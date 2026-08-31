@@ -161,17 +161,31 @@ printed, are `NODEVENV_ACTIVATE` and `APP_ROOT`. `API_ORIGIN` is that app's
 Application URL, without a trailing slash.
 
 `SELECTOR_APP_KEY` is the identity the Node.js Selector files the app under,
-which is not always what the UI displays. List the identities — and only the
-identities — over SSH:
+which is not always what the UI displays. This reads all of it off the host in
+one go — every app environment, and the identities the store knows:
 
 ```bash
-source <activate script>
-node -e 'const fs=require("fs");const f=process.env.HOME+"/.cpanel/nodejsapps.json";if(!fs.existsSync(f)){console.log("no store at "+f);process.exit(0)}console.log(Object.keys(JSON.parse(fs.readFileSync(f,"utf8"))).join("\n"))'
+ssh -i ~/.ssh/id_ed25519_myorg_deploy -o BatchMode=yes -o IdentitiesOnly=yes -p <port> <user>@<host> 'bash -s' <<'REMOTE'
+echo "=== activate scripts (one per Node.js app) ==="
+find "$HOME/nodevenv" -maxdepth 4 -name activate -type f 2>/dev/null | sort
+echo
+echo "=== selector identities ==="
+store="$HOME/.cpanel/nodejsapps.json"
+if [ ! -f "$store" ]; then echo "no $store"; exit 0; fi
+act=$(find "$HOME/nodevenv" -maxdepth 4 -name activate -type f 2>/dev/null | head -1)
+[ -n "$act" ] || { echo "store exists but no activate script to run node with"; exit 0; }
+. "$act"
+node -e 'const fs=require("fs");console.log(Object.keys(JSON.parse(fs.readFileSync(process.env.HOME+"/.cpanel/nodejsapps.json","utf8"))).join("\n"))'
+REMOTE
 ```
 
-That prints top-level keys only, never a value. Do not `cat` the file: it holds
-every app's environment, `DATABASE_URL` included. If the file is not there, say
-so to the preflight in Step 5 — it probes the other candidate locations and
+Each activate path is one app's `NODEVENV_ACTIVATE`, and the path segment under
+`nodevenv/` is that app's root — so this also answers whether you have one
+Node.js app or two. The second block prints top-level keys only, never a value.
+
+Do not `cat` the store: it holds every app's environment, `DATABASE_URL`
+included. If it reports the file is absent, that is a useful result rather than
+a failure — the preflight in Step 5 probes the other candidate locations and
 reports which one is real.
 
 **You need both environments' app roots before either can run.**
