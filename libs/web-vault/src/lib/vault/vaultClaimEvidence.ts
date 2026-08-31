@@ -277,10 +277,10 @@ export async function claimUnclaimedLocalVaultOnEvidence(options: {
     return { kind: 'skipped-nothing-to-claim' };
   }
 
-  // `unclaimed` is exactly the state in which the Local Vault this owner
-  // resolves *is* the Unclaimed Local Vault: their own entry wins whenever
-  // they have one, and they do not.
-  const unclaimedVault = handle.loadVault();
+  // Read explicitly. `unclaimed` says the unsuffixed slot is occupied and
+  // nothing more — this owner resolves no Vault at all until evidence says
+  // otherwise, so there is no longer an implicit route to the one held here.
+  const unclaimedVault = handle.loadUnclaimedVault();
   if (!unclaimedVault) {
     return { kind: 'skipped-nothing-to-claim' };
   }
@@ -398,7 +398,9 @@ async function recoveryKeyMatchesVault(options: {
   recoveryKey: string;
 }): Promise<boolean> {
   try {
-    const wrappingKey = await importAesGcmKey(base64ToBytes(options.recoveryKey));
+    const wrappingKey = await importAesGcmKey(
+      base64ToBytes(options.recoveryKey),
+    );
     await aesGcmDecrypt({
       key: wrappingKey,
       iv: base64ToBytes(options.vault.masterKeyWrappedWithRecoveryKey.iv),
@@ -522,24 +524,27 @@ export async function claimUnclaimedLocalVaultWithRecoveryKey(options: {
 
   if (status !== 'unclaimed') {
     // Nothing here to claim — an empty slot, or an entry naming somebody else.
-    // Both halves of what the claim below would do still happen: the Local
-    // Vault is read, and the unwrap runs against nothing. The read is here
-    // rather than omitted because `unlockWithRecoveryKey` reads before it
-    // unwraps, and an answer that skipped it would come back sooner on a
-    // device holding nothing than on one holding a Vault.
+    // Both halves of what the claim below would do still happen: the same reads
+    // it makes, and an unwrap that runs against nothing. The reads are here
+    // rather than omitted because `claimUnclaimedLocalVaultByRecoveryKey` reads
+    // both slots before it unwraps, and an answer that skipped them would come
+    // back sooner on a device holding nothing than on one holding a Vault.
     handle.loadVault();
+    handle.loadUnclaimedVault();
     await decoyRecoveryUnwrap(recoveryKey);
     return { kind: 'no-match' };
   }
 
   try {
-    // `unlockWithRecoveryKey` is the claim: it unwraps first and writes only
-    // after that succeeds, so a wrong key leaves the Unclaimed Local Vault
-    // byte-identical. Routing through it rather than repeating it here is what
-    // keeps "claimed by recovery key" one behaviour with one implementation.
-    const { masterKeyBytes } = await handle.unlockWithRecoveryKey({
-      recoveryKey,
-    });
+    // `claimUnclaimedLocalVaultByRecoveryKey` is the claim: it reads the
+    // Unclaimed Local Vault explicitly, unwraps, and writes only after that
+    // succeeds, so a wrong key leaves it byte-identical. It replaces the old
+    // route through `unlockWithRecoveryKey`, which claimed as a side effect of
+    // unlocking whatever the storage read happened to resolve — the implicit
+    // resolution this design exists to delete. Unlocking can no longer reach an
+    // Unclaimed Local Vault at all.
+    const { masterKeyBytes } =
+      await handle.claimUnclaimedLocalVaultByRecoveryKey({ recoveryKey });
     return { kind: 'claimed', masterKeyBytes };
   } catch {
     return { kind: 'no-match' };

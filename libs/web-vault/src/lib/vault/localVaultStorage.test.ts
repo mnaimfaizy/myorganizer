@@ -258,15 +258,14 @@ describe('localVaultStorage — storage resolution and ownership', () => {
   });
 
   describe('Unclaimed Local Vault resolution', () => {
-    test('8: resolveLocalVault offers unclaimed vault from unsuffixed slot when user has none', () => {
+    test('8: resolveLocalVault returns unclaimed status without vault field when user has none', () => {
       const unclaimed = createTestVault();
       localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(unclaimed));
 
       const result = resolveLocalVault('user-a');
       expect(result.status).toBe('unclaimed');
-      if (result.status === 'unclaimed') {
-        expect(result.vault).toEqual(unclaimed);
-      }
+      // After source change: unclaimed status carries no vault field
+      expect(result).not.toHaveProperty('vault');
     });
 
     test('9: reading unclaimed does not write to unsuffixed slot', () => {
@@ -312,53 +311,38 @@ describe('localVaultStorage — storage resolution and ownership', () => {
       const result = readUnclaimedLocalVault();
       expect(result).toBeNull();
     });
-  });
 
-  describe('Vault Claim — unwrap and storage side effects', () => {
-    test('12: successful unlockWithPassphrase writes owned record under user key', async () => {
-      // Setup: unclaimed vault in unsuffixed slot
+    test('12 (AC #4): resolveLocalVault returns unclaimed status with NO vault field when only unsuffixed slot occupied', () => {
       const unclaimed = createTestVault();
       localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(unclaimed));
 
-      // Setup: mocks for successful unwrap
-      const sentinelKeyBytes = new Uint8Array(32).fill(0x11);
-      const sentinelWrappingKey = { type: 'secret' } as unknown as CryptoKey;
-      const sentinelMasterKey = { type: 'secret' } as unknown as CryptoKey;
+      // Test for the calling user with no owned entry
+      const result = resolveLocalVault('user-a');
+      expect(result.status).toBe('unclaimed');
+      // CRITICAL: The result should NOT have a vault property
+      expect(result).not.toHaveProperty('vault');
 
-      (deriveKeyFromPassphrase as jest.Mock).mockResolvedValue(
-        sentinelWrappingKey,
-      );
-      (aesGcmDecrypt as jest.Mock).mockResolvedValue(sentinelKeyBytes);
-      (importAesGcmKey as jest.Mock).mockResolvedValue(sentinelMasterKey);
+      // Verify the same holds for a different owner id
+      const resultB = resolveLocalVault('user-b');
+      expect(resultB.status).toBe('unclaimed');
+      expect(resultB).not.toHaveProperty('vault');
 
-      // Act: create handle and unlock
-      const handle = createVaultHandle({ owner: 'user-a' });
-      const result = await handle.unlockWithPassphrase({
-        passphrase: 'test-pass',
-      });
-
-      // Assert: master key bytes returned
-      expect(result.masterKeyBytes).toBe(sentinelKeyBytes);
-
-      // Assert: record written under user-a's key
-      const stored = localStorage.getItem(localVaultStorageKey('user-a'));
-      expect(stored).not.toBeNull();
-      if (stored !== null) {
-        const record = JSON.parse(stored);
-        expect(record.version).toBe(LOCAL_VAULT_RECORD_VERSION);
-        expect(record.owner).toBe('user-a');
-        expect(record.vault).toEqual(unclaimed);
-      }
+      // Verify the same holds for yet another owner id
+      const resultC = resolveLocalVault('user-c');
+      expect(resultC.status).toBe('unclaimed');
+      expect(resultC).not.toHaveProperty('vault');
     });
+  });
 
-    test('13: claim leaves unsuffixed slot byte-identical after successful unlock', async () => {
-      // Setup: unclaimed vault in unsuffixed slot
+  describe('Vault Claim — unwrap and storage side effects', () => {
+    test('12: unlockWithPassphrase on unclaimed-only device rejects and writes nothing', async () => {
+      // Setup: unclaimed vault in unsuffixed slot (only, no owned record)
       const unclaimed = createTestVault();
       localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(unclaimed));
       const beforeRaw = localStorage.getItem(VAULT_STORAGE_KEY);
       expect(beforeRaw).not.toBeNull();
 
-      // Setup: mocks for successful unwrap
+      // Setup: mocks for successful unwrap (hypothetically)
       const sentinelKeyBytes = new Uint8Array(32).fill(0x11);
       const sentinelWrappingKey = { type: 'secret' } as unknown as CryptoKey;
       const sentinelMasterKey = { type: 'secret' } as unknown as CryptoKey;
@@ -369,21 +353,81 @@ describe('localVaultStorage — storage resolution and ownership', () => {
       (aesGcmDecrypt as jest.Mock).mockResolvedValue(sentinelKeyBytes);
       (importAesGcmKey as jest.Mock).mockResolvedValue(sentinelMasterKey);
 
-      // Act: create handle and unlock
+      // Act: create handle and try to unlock
       const handle = createVaultHandle({ owner: 'user-a' });
-      await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
+
+      // Assert: unlockWithPassphrase rejects with "Vault is not initialized"
+      // Claim-by-passphrase is gone; passphrase unlock cannot reach unclaimed vault
+      await expect(
+        handle.unlockWithPassphrase({
+          passphrase: 'test-pass',
+        }),
+      ).rejects.toThrow('Vault is not initialized');
+
+      // Assert: no record written under user-a's key
+      const stored = localStorage.getItem(localVaultStorageKey('user-a'));
+      expect(stored).toBeNull();
 
       // Assert: unsuffixed slot byte-identical
       const afterRaw = localStorage.getItem(VAULT_STORAGE_KEY);
       expect(afterRaw).toBe(beforeRaw);
     });
 
-    test('14: failed unwrap with passphrase (decrypt rejection) leaves storage untouched and throws VaultSecretMismatchError', async () => {
-      // Setup: unclaimed vault in unsuffixed slot
+    test('13: initialize on unclaimed-only device leaves unsuffixed slot byte-identical', async () => {
+      // Setup: unclaimed vault in unsuffixed slot (only, no owned record)
       const unclaimed = createTestVault();
       localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(unclaimed));
       const beforeRaw = localStorage.getItem(VAULT_STORAGE_KEY);
       expect(beforeRaw).not.toBeNull();
+
+      // Act: owner on unclaimed-only device creates their own vault via initialize
+      // This is the escape path: when an owner resolves unclaimed and has nothing,
+      // initialize() creates an owned record in the per-User slot and never touches the unsuffixed slot
+      const handle = createVaultHandle({ owner: 'user-a' });
+      expect(handle.vaultStatus()).toBe('unclaimed');
+
+      // Mocks are set for initialize
+      (deriveKeyFromPassphrase as jest.Mock).mockResolvedValue({
+        type: 'secret',
+      } as unknown as CryptoKey);
+      (aesGcmEncrypt as jest.Mock).mockResolvedValue(new Uint8Array(48));
+      (importAesGcmKey as jest.Mock).mockResolvedValue({
+        type: 'secret',
+      } as unknown as CryptoKey);
+
+      await handle.initialize({ passphrase: 'test-pass' });
+
+      // Assert: owned record created under user-a's key
+      const ownedRaw = localStorage.getItem(localVaultStorageKey('user-a'));
+      expect(ownedRaw).not.toBeNull();
+
+      // Assert: unsuffixed slot byte-identical (ADR 0033)
+      const afterRaw = localStorage.getItem(VAULT_STORAGE_KEY);
+      expect(afterRaw).toBe(beforeRaw);
+    });
+
+    test('14: failed unwrap with passphrase on owned vault leaves storage untouched and throws VaultSecretMismatchError', async () => {
+      // Setup: owned vault under user-a's key (not unclaimed)
+      const ownedVault = createTestVault();
+      const ownedRecord = {
+        version: LOCAL_VAULT_RECORD_VERSION,
+        owner: 'user-a',
+        vault: ownedVault,
+      };
+      localStorage.setItem(
+        localVaultStorageKey('user-a'),
+        JSON.stringify(ownedRecord),
+      );
+
+      // Also populate unclaimed to verify it stays untouched
+      const unclaimed = createTestVault();
+      localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(unclaimed));
+      const beforeOwnedRaw = localStorage.getItem(
+        localVaultStorageKey('user-a'),
+      );
+      const beforeUnclaimedRaw = localStorage.getItem(VAULT_STORAGE_KEY);
+      expect(beforeOwnedRaw).not.toBeNull();
+      expect(beforeUnclaimedRaw).not.toBeNull();
 
       // Setup: mocks for failed unwrap — derive succeeds, but decrypt fails
       const sentinelWrappingKey = { type: 'secret' } as unknown as CryptoKey;
@@ -397,7 +441,7 @@ describe('localVaultStorage — storage resolution and ownership', () => {
         type: 'secret',
       } as unknown as CryptoKey);
 
-      // Act: unlock throws VaultSecretMismatchError (single invocation)
+      // Act: unlock throws VaultSecretMismatchError
       const handle = createVaultHandle({ owner: 'user-a' });
       let thrownError: unknown;
       try {
@@ -413,20 +457,39 @@ describe('localVaultStorage — storage resolution and ownership', () => {
         expect(thrownError.secret).toBe('passphrase');
       }
 
-      // Assert: unsuffixed slot unchanged
-      const afterRaw = localStorage.getItem(VAULT_STORAGE_KEY);
-      expect(afterRaw).toBe(beforeRaw);
+      // Assert: owned record byte-identical
+      const afterOwnedRaw = localStorage.getItem(
+        localVaultStorageKey('user-a'),
+      );
+      expect(afterOwnedRaw).toBe(beforeOwnedRaw);
 
-      // Assert: user key not written
-      expect(localStorage.getItem(localVaultStorageKey('user-a'))).toBeNull();
+      // Assert: unclaimed slot byte-identical
+      const afterUnclaimedRaw = localStorage.getItem(VAULT_STORAGE_KEY);
+      expect(afterUnclaimedRaw).toBe(beforeUnclaimedRaw);
     });
 
-    test('15: failed unwrap with recovery-key (decrypt rejection) leaves storage untouched and throws VaultSecretMismatchError', async () => {
-      // Setup: unclaimed vault in unsuffixed slot
+    test('15: failed unwrap with recovery-key on owned vault leaves storage untouched and throws VaultSecretMismatchError', async () => {
+      // Setup: owned vault under user-a's key
+      const ownedVault = createTestVault();
+      const ownedRecord = {
+        version: LOCAL_VAULT_RECORD_VERSION,
+        owner: 'user-a',
+        vault: ownedVault,
+      };
+      localStorage.setItem(
+        localVaultStorageKey('user-a'),
+        JSON.stringify(ownedRecord),
+      );
+
+      // Also populate unclaimed to verify it stays untouched
       const unclaimed = createTestVault();
       localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(unclaimed));
-      const beforeRaw = localStorage.getItem(VAULT_STORAGE_KEY);
-      expect(beforeRaw).not.toBeNull();
+      const beforeOwnedRaw = localStorage.getItem(
+        localVaultStorageKey('user-a'),
+      );
+      const beforeUnclaimedRaw = localStorage.getItem(VAULT_STORAGE_KEY);
+      expect(beforeOwnedRaw).not.toBeNull();
+      expect(beforeUnclaimedRaw).not.toBeNull();
 
       // Setup: mocks for failed unwrap — import succeeds, but decrypt fails
       const sentinelRecoveryKey = { type: 'secret' } as unknown as CryptoKey;
@@ -435,7 +498,7 @@ describe('localVaultStorage — storage resolution and ownership', () => {
         new Error('Decrypt failed'),
       );
 
-      // Act: unlock throws VaultSecretMismatchError (single invocation)
+      // Act: unlock throws VaultSecretMismatchError
       const handle = createVaultHandle({ owner: 'user-a' });
       let thrownError: unknown;
       try {
@@ -451,27 +514,46 @@ describe('localVaultStorage — storage resolution and ownership', () => {
         expect(thrownError.secret).toBe('recovery-key');
       }
 
-      // Assert: unsuffixed slot unchanged
-      const afterRaw = localStorage.getItem(VAULT_STORAGE_KEY);
-      expect(afterRaw).toBe(beforeRaw);
+      // Assert: owned record byte-identical
+      const afterOwnedRaw = localStorage.getItem(
+        localVaultStorageKey('user-a'),
+      );
+      expect(afterOwnedRaw).toBe(beforeOwnedRaw);
 
-      // Assert: user key not written
-      expect(localStorage.getItem(localVaultStorageKey('user-a'))).toBeNull();
+      // Assert: unclaimed slot byte-identical
+      const afterUnclaimedRaw = localStorage.getItem(VAULT_STORAGE_KEY);
+      expect(afterUnclaimedRaw).toBe(beforeUnclaimedRaw);
     });
 
-    test('15b: failed import guard for recovery-key leaves storage untouched and throws VaultSecretMismatchError', async () => {
-      // Setup: unclaimed vault in unsuffixed slot
+    test('15b: failed import guard for recovery-key on owned vault leaves storage untouched and throws VaultSecretMismatchError', async () => {
+      // Setup: owned vault under user-a's key
+      const ownedVault = createTestVault();
+      const ownedRecord = {
+        version: LOCAL_VAULT_RECORD_VERSION,
+        owner: 'user-a',
+        vault: ownedVault,
+      };
+      localStorage.setItem(
+        localVaultStorageKey('user-a'),
+        JSON.stringify(ownedRecord),
+      );
+
+      // Also populate unclaimed to verify it stays untouched
       const unclaimed = createTestVault();
       localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(unclaimed));
-      const beforeRaw = localStorage.getItem(VAULT_STORAGE_KEY);
-      expect(beforeRaw).not.toBeNull();
+      const beforeOwnedRaw = localStorage.getItem(
+        localVaultStorageKey('user-a'),
+      );
+      const beforeUnclaimedRaw = localStorage.getItem(VAULT_STORAGE_KEY);
+      expect(beforeOwnedRaw).not.toBeNull();
+      expect(beforeUnclaimedRaw).not.toBeNull();
 
       // Setup: mocks for failed import of malformed recovery key (pre-flight guard)
       (importAesGcmKey as jest.Mock).mockRejectedValue(
         new Error('Invalid recovery key format'),
       );
 
-      // Act: unlock throws VaultSecretMismatchError (single invocation)
+      // Act: unlock throws VaultSecretMismatchError
       const handle = createVaultHandle({ owner: 'user-a' });
       let thrownError: unknown;
       try {
@@ -489,73 +571,80 @@ describe('localVaultStorage — storage resolution and ownership', () => {
         expect(thrownError.secret).toBe('recovery-key');
       }
 
-      // Assert: unsuffixed slot unchanged
-      const afterRaw = localStorage.getItem(VAULT_STORAGE_KEY);
-      expect(afterRaw).toBe(beforeRaw);
+      // Assert: owned record byte-identical
+      const afterOwnedRaw = localStorage.getItem(
+        localVaultStorageKey('user-a'),
+      );
+      expect(afterOwnedRaw).toBe(beforeOwnedRaw);
 
-      // Assert: user key not written
-      expect(localStorage.getItem(localVaultStorageKey('user-a'))).toBeNull();
+      // Assert: unclaimed slot byte-identical
+      const afterUnclaimedRaw = localStorage.getItem(VAULT_STORAGE_KEY);
+      expect(afterUnclaimedRaw).toBe(beforeUnclaimedRaw);
     });
 
-    test('16: after claim by user-a, unclaimed still available to user-c, but user-a sees owned', async () => {
+    test('16: cross-user resolution — when user-a owns, user-c still sees unclaimed', () => {
       // Setup: unclaimed vault in unsuffixed slot
       const unclaimed = createTestVault();
       localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(unclaimed));
 
-      // Setup: mocks for successful unwrap
-      const sentinelKeyBytes = new Uint8Array(32).fill(0x11);
-      const sentinelWrappingKey = { type: 'secret' } as unknown as CryptoKey;
-      const sentinelMasterKey = { type: 'secret' } as unknown as CryptoKey;
-
-      (deriveKeyFromPassphrase as jest.Mock).mockResolvedValue(
-        sentinelWrappingKey,
+      // Setup: user-a owns a vault (directly write owned record to simulate after-claim state)
+      const ownedVault = createTestVault();
+      const ownedRecord = {
+        version: LOCAL_VAULT_RECORD_VERSION,
+        owner: 'user-a',
+        vault: ownedVault,
+      };
+      localStorage.setItem(
+        localVaultStorageKey('user-a'),
+        JSON.stringify(ownedRecord),
       );
-      (aesGcmDecrypt as jest.Mock).mockResolvedValue(sentinelKeyBytes);
-      (importAesGcmKey as jest.Mock).mockResolvedValue(sentinelMasterKey);
 
-      // Act: user-a claims
-      const handleA = createVaultHandle({ owner: 'user-a' });
-      await handleA.unlockWithPassphrase({ passphrase: 'test-pass' });
-
-      // Assert: user-c still sees unclaimed
-      const resultC = resolveLocalVault('user-c');
-      expect(resultC.status).toBe('unclaimed');
-
-      // Assert: user-a sees owned
+      // Assert: user-a sees owned (their own record takes precedence)
       const resultA = resolveLocalVault('user-a');
       expect(resultA.status).toBe('owned');
+
+      // Assert: user-c still sees unclaimed (no per-User record, falls back to unsuffixed)
+      const resultC = resolveLocalVault('user-c');
+      expect(resultC.status).toBe('unclaimed');
+      expect(resultC).not.toHaveProperty('vault');
     });
 
     describe('Claim invariant: write follows read; no claim without unwrap', () => {
-      test('17: ownedLocalVaultSlot.write to unclaimed vault updates unsuffixed slot, creates no per-User record', () => {
-        // Setup: only unsuffixed slot populated, no per-User record
+      test('17: ownedLocalVaultSlot.write by unclaimed-only owner lands in own record and leaves unsuffixed byte-identical', () => {
+        // Setup: only unsuffixed slot populated, no per-User record for user-a
         const unclaimed = createTestVault();
         localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(unclaimed));
         const unclaimedBefore = localStorage.getItem(VAULT_STORAGE_KEY);
         expect(localStorage.getItem(localVaultStorageKey('user-a'))).toBeNull();
 
-        // Act: write via slot
+        // Act: write via slot for unclaimed-only owner
         const slot = ownedLocalVaultSlot('user-a');
         const updated = createTestVault({
           kdf: { ...createTestVault().kdf, iterations: 200_000 },
         });
         slot.write(updated);
 
-        // Assert: unsuffixed slot was updated (changed)
-        const unclaimedAfter = localStorage.getItem(VAULT_STORAGE_KEY);
-        expect(unclaimedAfter).not.toBe(unclaimedBefore);
-        if (unclaimedAfter !== null) {
-          expect(JSON.parse(unclaimedAfter)).toEqual(updated);
+        // Assert: owned record was created under user-a's key (claim path)
+        const ownedRaw = localStorage.getItem(localVaultStorageKey('user-a'));
+        expect(ownedRaw).not.toBeNull();
+        if (ownedRaw !== null) {
+          const record = JSON.parse(ownedRaw);
+          expect(record.version).toBe(LOCAL_VAULT_RECORD_VERSION);
+          expect(record.owner).toBe('user-a');
+          expect(record.vault).toEqual(updated);
         }
 
-        // Assert: per-User record was NOT created
-        expect(localStorage.getItem(localVaultStorageKey('user-a'))).toBeNull();
+        // Assert: unsuffixed slot byte-identical (ADR 0033 — no more write redirect)
+        const unclaimedAfter = localStorage.getItem(VAULT_STORAGE_KEY);
+        expect(unclaimedAfter).toBe(unclaimedBefore);
       });
 
-      test('18: saveEncryptedData through handle on unclaimed vault writes to unsuffixed, creates no per-User record', async () => {
-        // Setup: initialize with unclaimed vault, get mocked crypto working
+      test('18: saveEncryptedData through handle on unclaimed-only device refuses and leaves storage untouched', async () => {
+        // Setup: unclaimed vault in unsuffixed slot, no owned record for user-a
         const unclaimed = createTestVault();
         localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(unclaimed));
+        const unclaimedBefore = localStorage.getItem(VAULT_STORAGE_KEY);
+        expect(localStorage.getItem(localVaultStorageKey('user-a'))).toBeNull();
 
         const sentinelKeyBytes = new Uint8Array(32).fill(0x11);
         const sentinelMasterKey = { type: 'secret' } as unknown as CryptoKey;
@@ -565,73 +654,74 @@ describe('localVaultStorage — storage resolution and ownership', () => {
           new Uint8Array([0x99, 0xaa, 0xbb]),
         );
 
-        // Act: call saveEncryptedData on a locked handle with masterKeyBytes
+        // Act: call saveEncryptedData on an unlocked handle with masterKeyBytes but no vault
         const handle = createVaultHandle({
           owner: 'user-a',
           masterKeyBytes: sentinelKeyBytes,
         });
-        await handle.saveEncryptedData({
-          type: 'tasks',
-          value: [{ id: '1', title: 'Task' }],
-        });
 
-        // Assert: unsuffixed slot was updated
-        const stored = localStorage.getItem(VAULT_STORAGE_KEY);
-        expect(stored).not.toBeNull();
-        if (stored !== null) {
-          const storedVault = JSON.parse(stored);
-          expect(storedVault.data?.tasks).toBeDefined();
+        let thrownError: unknown;
+        try {
+          await handle.saveEncryptedData({
+            type: 'tasks',
+            value: [{ id: '1', title: 'Task' }],
+          });
+        } catch (err) {
+          thrownError = err;
         }
+
+        // Assert: operation rejected with "Vault is not initialized"
+        expect(thrownError).toBeInstanceOf(Error);
+        if (thrownError instanceof Error) {
+          expect(thrownError.message).toBe('Vault is not initialized');
+        }
+
+        // Assert: unsuffixed slot byte-identical
+        const unclaimedAfter = localStorage.getItem(VAULT_STORAGE_KEY);
+        expect(unclaimedAfter).toBe(unclaimedBefore);
 
         // Assert: per-User record was NOT created
         expect(localStorage.getItem(localVaultStorageKey('user-a'))).toBeNull();
       });
 
-      test('19: after claim via unlockWithPassphrase, subsequent writes go to owned record and unsuffixed stops changing', async () => {
+      test('19: when owner has both owned and unclaimed records, writes go to owned and unsuffixed stays byte-identical', async () => {
         // Setup: unclaimed vault in unsuffixed slot
         const unclaimed = createTestVault();
         localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(unclaimed));
-        const unclaimedBeforeClaim = localStorage.getItem(VAULT_STORAGE_KEY);
+        const unclaimedBefore = localStorage.getItem(VAULT_STORAGE_KEY);
 
-        // Setup: mocks for successful unwrap
+        // Setup: user-a owns a vault (direct write to simulate after-claim state)
+        const ownedVault = createTestVault();
+        const ownedRecord = {
+          version: LOCAL_VAULT_RECORD_VERSION,
+          owner: 'user-a',
+          vault: ownedVault,
+        };
+        localStorage.setItem(
+          localVaultStorageKey('user-a'),
+          JSON.stringify(ownedRecord),
+        );
+
+        // Setup: mocks for encryption
         const sentinelKeyBytes = new Uint8Array(32).fill(0x11);
-        const sentinelWrappingKey = { type: 'secret' } as unknown as CryptoKey;
         const sentinelMasterKey = { type: 'secret' } as unknown as CryptoKey;
 
-        (deriveKeyFromPassphrase as jest.Mock).mockResolvedValue(
-          sentinelWrappingKey,
-        );
-        (aesGcmDecrypt as jest.Mock).mockResolvedValue(sentinelKeyBytes);
         (importAesGcmKey as jest.Mock).mockResolvedValue(sentinelMasterKey);
         (aesGcmEncrypt as jest.Mock).mockResolvedValue(
           new Uint8Array([0xcc, 0xdd]),
         );
 
-        // Act: claim via unlock
-        const handle = createVaultHandle({ owner: 'user-a' });
-        await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
-
-        // Assert: per-User record was created by claim
-        const userRecordAfterClaim = localStorage.getItem(
-          localVaultStorageKey('user-a'),
-        );
-        expect(userRecordAfterClaim).not.toBeNull();
-        if (userRecordAfterClaim !== null) {
-          const recordAfterClaim = JSON.parse(userRecordAfterClaim);
-          expect(recordAfterClaim.owner).toBe('user-a');
-        }
-
-        // Assert: unsuffixed slot unchanged at claim
-        const unclaimedAfterClaim = localStorage.getItem(VAULT_STORAGE_KEY);
-        expect(unclaimedAfterClaim).toBe(unclaimedBeforeClaim);
-
-        // Act: write new data to owned record
+        // Act: write data with unlocked handle to owned vault
+        const handle = createVaultHandle({
+          owner: 'user-a',
+          masterKeyBytes: sentinelKeyBytes,
+        });
         await handle.saveEncryptedData({
           type: 'todos',
           value: [{ id: 'a', text: 'Todo A' }],
         });
 
-        // Assert: per-User record was updated
+        // Assert: per-User record was updated with new data
         const userRecordStr = localStorage.getItem(
           localVaultStorageKey('user-a'),
         );
@@ -641,9 +731,9 @@ describe('localVaultStorage — storage resolution and ownership', () => {
           expect(userRecordAfterWrite.vault.data?.todos).toBeDefined();
         }
 
-        // Assert: unsuffixed slot unchanged since claim (no new writes there)
-        const unclaimedAfterWrite = localStorage.getItem(VAULT_STORAGE_KEY);
-        expect(unclaimedAfterWrite).toBe(unclaimedBeforeClaim);
+        // Assert: unsuffixed slot byte-identical (writes do NOT touch unclaimed vault)
+        const unclaimedAfter = localStorage.getItem(VAULT_STORAGE_KEY);
+        expect(unclaimedAfter).toBe(unclaimedBefore);
       });
     });
   });

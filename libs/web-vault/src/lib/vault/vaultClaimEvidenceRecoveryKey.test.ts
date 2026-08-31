@@ -45,7 +45,11 @@ import {
   localVaultStorageKey,
   type VaultStorageV1,
 } from './localVaultStorage';
-import { createVaultHandle } from './vaultHandle';
+import { createVaultHandle, VaultSecretMismatchError } from './vaultHandle';
+import {
+  LocalVaultAlreadyOwnedError,
+  NoUnclaimedLocalVaultError,
+} from './localVaultAccess';
 
 type UnclaimedVaultFixture = {
   vault: VaultStorageV1;
@@ -523,6 +527,258 @@ describe('claimUnclaimedLocalVaultWithRecoveryKey', () => {
 
     // Result is no-match
     expect(result).toEqual({ kind: 'no-match' });
+
+    // Storage byte-identical
+    const storageAfter = snapshotLocalStorage();
+    assertStorageByteIdentical(storageBefore, storageAfter);
+  });
+});
+
+/**
+ * Tests for the new claimUnclaimedLocalVaultByRecoveryKey method (AC #6).
+ *
+ * This method replaces the old route where unlockWithRecoveryKey implicitly
+ * claimed an unclaimed Vault. The new method:
+ * - Guards that the caller does NOT already own a Vault
+ * - Reads slot.readUnclaimed()
+ * - Unwraps the recovery-key-wrapped Master Key FIRST
+ * - Then slot.claim(vault) and binds the Master Key
+ * - On wrong key: throws VaultSecretMismatchError('recovery-key') and leaves storage byte-identical
+ */
+describe('claimUnclaimedLocalVaultByRecoveryKey (AC #6)', () => {
+  const testPassphrase = 'testpass123';
+  const testOwner = 'test-user-id';
+
+  test('6a: correct recovery key claims and binds the Master Key', async () => {
+    const fixture =
+      await seedUnclaimedLocalVaultWithRecoveryKey(testPassphrase);
+    const handle = createVaultHandle({ owner: testOwner });
+
+    // Before: status is unclaimed
+    expect(handle.vaultStatus()).toBe('unclaimed');
+
+    // Claim with correct recovery key using the new method
+    const result = await handle.claimUnclaimedLocalVaultByRecoveryKey({
+      recoveryKey: fixture.recoveryKey,
+    });
+
+    // Result includes locked success and masterKeyBytes
+    expect(result).toHaveProperty('masterKeyBytes');
+    expect(result.masterKeyBytes).toBeInstanceOf(Uint8Array);
+
+    // After: status is owned
+    expect(handle.vaultStatus()).toBe('owned');
+
+    // Verify ownership recorded in per-User key
+    const ownedKey = localVaultStorageKey(testOwner);
+    const ownedRaw = localStorage.getItem(ownedKey);
+    expect(ownedRaw).not.toBeNull();
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    const ownedRecord = JSON.parse(ownedRaw!);
+    expect(ownedRecord.version).toBe(LOCAL_VAULT_RECORD_VERSION);
+    expect(ownedRecord.owner).toBe(testOwner);
+    expect(ownedRecord.vault).toEqual(fixture.vault);
+
+    // Verify unsuffixed slot is byte-identical (Unclaimed Vault never removed)
+    const unclaimedRaw = localStorage.getItem(VAULT_STORAGE_KEY);
+    expect(unclaimedRaw).toBe(fixture.raw);
+  });
+
+  test('6a (extended): returned Master Key really opens the Vault', async () => {
+    // Initialize a vault with test data
+    const throwawayOwner = `throwaway-${Math.random().toString(36).slice(2)}`;
+    const setupHandle = createVaultHandle({ owner: throwawayOwner });
+    const { recoveryKey } = await setupHandle.initialize({
+      passphrase: testPassphrase,
+    });
+
+    // Unlock and write test data
+    await setupHandle.unlockWithPassphrase({ passphrase: testPassphrase });
+    const testTodos = { items: ['test-todo-1', 'test-todo-2'] };
+    await setupHandle.saveEncryptedData({
+      type: 'todos',
+      value: testTodos,
+    });
+
+    // Move to unclaimed slot
+    const vault = setupHandle.loadVault();
+    if (!vault) throw new Error('Failed to load vault');
+    const ownedKey = localVaultStorageKey(throwawayOwner);
+    localStorage.removeItem(ownedKey);
+    const raw = JSON.stringify(vault);
+    localStorage.setItem(VAULT_STORAGE_KEY, raw);
+
+    // Claim with recovery key using new method
+    const claimHandle = createVaultHandle({ owner: testOwner });
+    const result = await claimHandle.claimUnclaimedLocalVaultByRecoveryKey({
+      recoveryKey,
+    });
+
+    // The returned masterKeyBytes should allow decryption of the test data
+    const readbackHandle = createVaultHandle({
+      owner: testOwner,
+      masterKeyBytes: result.masterKeyBytes,
+    });
+
+    const decrypted = await readbackHandle.loadDecryptedData({
+      type: 'todos',
+      defaultValue: null,
+    });
+
+    // Proves the unwrap was real: we got back exactly what we stored
+    expect(decrypted).toEqual(testTodos);
+  });
+
+  test('6b: wrong recovery key throws VaultSecretMismatchError and leaves storage byte-identical', async () => {
+    const fixture =
+      await seedUnclaimedLocalVaultWithRecoveryKey(testPassphrase);
+
+    // Create a second vault and extract its recovery key to use as a "wrong" key
+    const wrongKeyFixture =
+      await seedUnclaimedLocalVaultWithRecoveryKey(testPassphrase);
+    // Clear storage and restore first fixture
+    localStorage.clear();
+    localStorage.setItem(VAULT_STORAGE_KEY, fixture.raw);
+
+    const handle = createVaultHandle({ owner: testOwner });
+    const storageBefore = snapshotLocalStorage();
+
+    expect(handle.vaultStatus()).toBe('unclaimed');
+
+    // Attempt to claim with wrong recovery key
+    let thrownError: unknown;
+    try {
+      await handle.claimUnclaimedLocalVaultByRecoveryKey({
+        recoveryKey: wrongKeyFixture.recoveryKey,
+      });
+    } catch (err) {
+      thrownError = err;
+    }
+
+    // Must throw VaultSecretMismatchError with 'recovery-key'
+    expect(thrownError).toBeInstanceOf(VaultSecretMismatchError);
+    if (thrownError instanceof VaultSecretMismatchError) {
+      expect(thrownError.secret).toBe('recovery-key');
+    }
+
+    // Status unchanged
+    expect(handle.vaultStatus()).toBe('unclaimed');
+    expect(handle.isUnlocked).toBe(false);
+
+    // Storage byte-identical
+    const storageAfter = snapshotLocalStorage();
+    assertStorageByteIdentical(storageBefore, storageAfter);
+  });
+
+  test('6c: caller that already owns a Vault is refused', async () => {
+    // User A creates and owns a vault
+    const ownHandle = createVaultHandle({ owner: testOwner });
+    await ownHandle.initialize({ passphrase: testPassphrase });
+
+    // Create an Unclaimed Vault with different passphrase
+    const unclaimedFixture =
+      await seedUnclaimedLocalVaultWithRecoveryKey('different-pass');
+
+    // Now testOwner's handle should see both their own vault and the unclaimed one
+    const claimHandle = createVaultHandle({ owner: testOwner });
+    expect(claimHandle.vaultStatus()).toBe('owned');
+    expect(claimHandle.hasUnclaimedLocalVault()).toBe(true);
+
+    const storageBefore = snapshotLocalStorage();
+
+    // Attempt to claim with the recovery key using new method
+    let thrownError: unknown;
+    try {
+      await claimHandle.claimUnclaimedLocalVaultByRecoveryKey({
+        recoveryKey: unclaimedFixture.recoveryKey,
+      });
+    } catch (err) {
+      thrownError = err;
+    }
+
+    // Must throw LocalVaultAlreadyOwnedError
+    expect(thrownError).toBeInstanceOf(LocalVaultAlreadyOwnedError);
+
+    // Status unchanged
+    expect(claimHandle.vaultStatus()).toBe('owned');
+    expect(claimHandle.isUnlocked).toBe(false);
+
+    // Storage byte-identical: the guard is load-bearing
+    const storageAfter = snapshotLocalStorage();
+    assertStorageByteIdentical(storageBefore, storageAfter);
+  });
+
+  test('6c (extended-owned): caller already owns vault is refused; owned guard fires before unclaimed check', async () => {
+    // User A creates and owns a vault
+    const ownHandle = createVaultHandle({ owner: testOwner });
+    await ownHandle.initialize({ passphrase: testPassphrase });
+
+    // Don't create an unclaimed vault — device is owned-only
+    const unclaimedFixture =
+      await seedUnclaimedLocalVaultWithRecoveryKey('different-pass');
+    // Remove the unclaimed vault to ensure this owner is owned-only
+    localStorage.removeItem(VAULT_STORAGE_KEY);
+
+    const claimHandle = createVaultHandle({ owner: testOwner });
+    expect(claimHandle.vaultStatus()).toBe('owned');
+    expect(claimHandle.hasUnclaimedLocalVault()).toBe(false);
+
+    const storageBefore = snapshotLocalStorage();
+
+    // Attempt to claim
+    let thrownError: unknown;
+    try {
+      await claimHandle.claimUnclaimedLocalVaultByRecoveryKey({
+        recoveryKey: unclaimedFixture.recoveryKey,
+      });
+    } catch (err) {
+      thrownError = err;
+    }
+
+    // Must throw LocalVaultAlreadyOwnedError (owned guard fires before unclaimed check)
+    expect(thrownError).toBeInstanceOf(LocalVaultAlreadyOwnedError);
+
+    // Status unchanged
+    expect(claimHandle.vaultStatus()).toBe('owned');
+    expect(claimHandle.isUnlocked).toBe(false);
+
+    // Storage byte-identical
+    const storageAfter = snapshotLocalStorage();
+    assertStorageByteIdentical(storageBefore, storageAfter);
+  });
+
+  test('6c (extended-empty): device with no owned and no unclaimed vault is refused with NoUnclaimedLocalVaultError', async () => {
+    // Setup: completely empty device — no owned record for any user, no unclaimed vault
+    localStorage.clear();
+
+    // Create a valid recovery key from a separate device for the attempt
+    const unclaimedFixture =
+      await seedUnclaimedLocalVaultWithRecoveryKey('different-pass');
+    // Remove the unclaimed vault fixture to leave device truly empty
+    localStorage.removeItem(VAULT_STORAGE_KEY);
+
+    const handle = createVaultHandle({ owner: testOwner });
+    expect(handle.vaultStatus()).toBe('absent');
+    expect(handle.hasUnclaimedLocalVault()).toBe(false);
+
+    const storageBefore = snapshotLocalStorage();
+
+    // Attempt to claim
+    let thrownError: unknown;
+    try {
+      await handle.claimUnclaimedLocalVaultByRecoveryKey({
+        recoveryKey: unclaimedFixture.recoveryKey,
+      });
+    } catch (err) {
+      thrownError = err;
+    }
+
+    // Must throw NoUnclaimedLocalVaultError (unclaimed check fires; nothing to claim)
+    expect(thrownError).toBeInstanceOf(NoUnclaimedLocalVaultError);
+
+    // Status unchanged
+    expect(handle.vaultStatus()).toBe('absent');
+    expect(handle.isUnlocked).toBe(false);
 
     // Storage byte-identical
     const storageAfter = snapshotLocalStorage();

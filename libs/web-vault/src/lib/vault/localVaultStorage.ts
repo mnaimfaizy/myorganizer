@@ -11,9 +11,9 @@
  * Vault. It predates per-User scoping, so ownership cannot be read from it and
  * must be proven by Vault Claim Evidence — the server's own Vault Meta, or a
  * recovery key; never a passphrase unwrap, which establishes knowledge of a
- * string rather than ownership of a Vault. It is resolved only for a signed-in
- * User who holds no Local Vault of their own, and it is never removed on
- * anyone's behalf.
+ * string rather than ownership of a Vault. It is never resolved implicitly for
+ * anybody: a read reports that it is here and hands back nothing, and it is
+ * never removed on anyone's behalf.
  *
  * See ADR 0047, ADR 0061 and ADR 0033.
  */
@@ -78,10 +78,19 @@ export type LocalVaultRecord = {
  * `owner-mismatch` is neither a Vault nor an absence: the entry exists and
  * names somebody else, so it is rejected rather than trusted, and rejected
  * rather than overwritten.
+ *
+ * `unclaimed` carries no Vault, and the omission is the point. This reader is
+ * synchronous and Vault Claim Evidence needs the network, so a Vault handed
+ * back here could only be guarded by discipline at every call site — and every
+ * caller then becomes a place the guard can be forgotten. Reporting the status
+ * without the Vault is what lets evidence-checked callers see that something
+ * is here while leaving them no way to read it: the Unclaimed Local Vault is
+ * reachable only through `readUnclaimed`, which the Vault Claim Evidence paths
+ * in `vaultClaimEvidence.ts` are the callers of (ADR 0061).
  */
 export type LocalVaultReadResult =
   | { status: 'owned'; vault: VaultStorageV1 }
-  | { status: 'unclaimed'; vault: VaultStorageV1 }
+  | { status: 'unclaimed' }
   | { status: 'owner-mismatch'; recordedOwner: string }
   | { status: 'absent' };
 
@@ -228,8 +237,16 @@ export function writeUnclaimedLocalVault(vault: VaultStorageV1): void {
 /**
  * Resolve the Local Vault belonging to `owner`.
  *
- * Their own entry wins. Only when they hold none is the Unclaimed Local Vault
- * offered, and only as `unclaimed` — reading it is not claiming it.
+ * Their own entry wins, and it is the only thing that ever yields a Vault. An
+ * owner who holds none resolves to no Vault at all — `unclaimed` when the
+ * unsuffixed slot is occupied, `absent` when it is not — because an unwrap
+ * proves knowledge of a passphrase string rather than ownership of a Vault,
+ * and two people who share a passphrase would otherwise each open the other's
+ * (ADR 0061). Reaching an Unclaimed Local Vault is an explicit, asynchronous,
+ * evidence-checked act; it is not something a storage read does.
+ *
+ * The two no-Vault answers stay distinct because the callers that establish
+ * evidence need to know whether there is anything here to establish it about.
  */
 export function resolveLocalVault(owner: string): LocalVaultReadResult {
   assertVaultOwner(owner);
@@ -253,9 +270,8 @@ export function resolveLocalVault(owner: string): LocalVaultReadResult {
       : { status: 'absent' };
   }
 
-  const unclaimed = readUnclaimedLocalVault();
-  return unclaimed
-    ? { status: 'unclaimed', vault: unclaimed }
+  return readUnclaimedLocalVault()
+    ? { status: 'unclaimed' }
     : { status: 'absent' };
 }
 
@@ -325,13 +341,14 @@ export function ownedLocalVaultSlot(owner: string): LocalVaultSlot {
   return {
     read: () => resolveLocalVault(owner),
 
-    write: (vault) => {
-      if (resolveLocalVault(owner).status === 'unclaimed') {
-        writeUnclaimedLocalVault(vault);
-        return;
-      }
-      claim(vault);
-    },
+    // Always this owner's own entry. The branch that used to send a write to
+    // the unsuffixed slot — when this owner resolved the Unclaimed Local Vault
+    // implicitly, so that editing it was not the same as claiming it — went
+    // with the resolution it existed for. Leaving it would be worse than dead
+    // code: an owner who resolves `unclaimed` now holds no Vault at all, so
+    // the branch's only remaining effect would be to write their data into
+    // somebody else's Unclaimed Local Vault.
+    write: claim,
 
     // Creating a Vault is not editing the one this User can currently resolve.
     // A User who declines an Unclaimed Local Vault and makes their own gets

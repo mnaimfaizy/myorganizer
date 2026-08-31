@@ -227,11 +227,25 @@ export function createVaultHandle(options: {
       await bookmarks.recordPushSuccess({ type, blob, etag });
     },
     initialize: access.initialize,
-    claimUnclaimedLocalVaultLocked: access.claimUnclaimedLocalVaultLocked,
-    // Unlike a claim, a replacement changes the Ciphertext a reader who
-    // already holds this owner's Local Vault would see — it is a different
-    // Vault under the same key, not the same Vault newly owned — so readers
-    // are told, the same as `saveVault` and `removeVault`.
+    // A claim now changes what a reader sees, so readers are told. It did not
+    // used to: an owner holding no Vault of their own resolved the Unclaimed
+    // Local Vault implicitly, so recording it as theirs handed back the same
+    // Ciphertext it already had. Removing that resolution is what changed it —
+    // such an owner now reads no Vault at all until the claim lands, and a
+    // reader not told would sit on that emptiness after it stopped being true.
+    claimUnclaimedLocalVaultLocked: () => {
+      access.claimUnclaimedLocalVaultLocked();
+      reportVaultReplaced();
+    },
+    async claimUnclaimedLocalVaultByRecoveryKey(claimOptions) {
+      const result =
+        await access.claimUnclaimedLocalVaultByRecoveryKey(claimOptions);
+      reportVaultReplaced();
+      return result;
+    },
+    // A replacement changes the Ciphertext a reader who already holds this
+    // owner's Local Vault would see — it is a different Vault under the same
+    // key, not the same Vault newly owned — so readers are told here too.
     replaceOwnedLocalVaultWithUnclaimedLocked: () => {
       access.replaceOwnedLocalVaultWithUnclaimedLocked();
       reportVaultReplaced();
