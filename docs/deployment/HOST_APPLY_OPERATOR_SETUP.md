@@ -17,8 +17,8 @@ Do Staging end to end first. Production repeats it with its own values.
 Six things, in order. Each one is a way the first CI run could go red for a
 reason CI cannot fix:
 
-1. A deploy key gets in without a password.
-2. The runner can verify it is talking to the right host.
+1. The runner can verify it is talking to the right host.
+2. A deploy key gets in without a password.
 3. A non-interactive shell can find `node` and `npm`.
 4. `APP_ROOT` is the right tree, and holds a bundle new enough to have the
    Prisma scripts.
@@ -46,36 +46,62 @@ _Manage SSH Keys_ → _Import_, then **Authorize** it. Paste the contents of
 `~/.ssh/id_ed25519_myorg_deploy.pub`. Never paste the private half anywhere but
 the GitHub secret in Step 3.
 
-Prove it works on its own, without falling back to your password:
+Do **not** try to prove the key works yet. Step 2 has to come first: on a
+machine that has never reached this host, an `ssh -o BatchMode=yes` attempt
+fails at `Host key verification failed.` before it ever tries your key, because
+`BatchMode` forbids the "continue connecting?" prompt and there is nothing on
+disk to check the host against. That error says nothing about whether the key
+was authorized.
+
+## Step 2 — Verify and pin the host keys
+
+`StrictHostKeyChecking=accept-new` is useless on a runner that is destroyed
+after every job: it would trust whatever answered, every single time. The keys
+are pinned as a secret instead — which means somebody has to establish, once,
+what the right keys actually are.
+
+Capture what the host presents:
+
+```bash
+ssh-keyscan -p <port> -t rsa,ecdsa,ed25519 <host> > ~/myorg-hostkeys.txt
+ssh-keygen -lf ~/myorg-hostkeys.txt
+```
+
+**Now verify those fingerprints over a different channel**, before trusting
+them. A `ssh-keyscan` you have not checked is trust-on-first-use with extra
+steps: it pins whatever answered, including a machine in the middle. The
+practical second channel is cPanel's browser _Terminal_, which you reached over
+an authenticated HTTPS session rather than over SSH. Run there:
+
+```bash
+for f in /etc/ssh/ssh_host_*_key.pub; do ssh-keygen -lf "$f"; done
+```
+
+Compare the `SHA256:` fingerprints against what `ssh-keyscan` gave you. Your
+host's knowledge base may also publish them. If they do not match, stop and work
+out why before going further.
+
+Once they match, trust them locally so your own SSH stops refusing:
+
+```bash
+cat ~/myorg-hostkeys.txt >> ~/.ssh/known_hosts
+```
+
+The contents of `~/myorg-hostkeys.txt` are also exactly the `SSH_KNOWN_HOSTS`
+value for Step 3 — all lines, unedited. Nothing here is wasted work.
+
+## Step 2b — Now prove the deploy key
+
+With the host key known, the `BatchMode` test finally means what it claims:
 
 ```bash
 ssh -i ~/.ssh/id_ed25519_myorg_deploy -o BatchMode=yes -p <port> <user>@<host> 'echo ok'
 ```
 
 `BatchMode=yes` is the whole test — it forbids every interactive prompt, which
-is the condition a GitHub runner works under. If this asks for anything, CI
-would have hung and then timed out.
-
-## Step 2 — Capture the host keys
-
-`StrictHostKeyChecking=accept-new` is useless on a runner that is destroyed
-after every job: it would trust whatever answered, every single time. The keys
-are pinned as a secret instead.
-
-```bash
-ssh-keyscan -p <port> -t rsa,ecdsa,ed25519 <host>
-```
-
-**Verify the fingerprints before you trust them.** cPanel shows the host's own
-fingerprints under _SSH Access_; compare them against:
-
-```bash
-ssh-keyscan -p <port> <host> | ssh-keygen -lf -
-```
-
-If they do not match, stop — capturing a key from a connection you have not
-verified pins whatever was in the middle. Once they match, the full
-`ssh-keyscan` output (all lines) is the `SSH_KNOWN_HOSTS` value.
+is the condition a GitHub runner works under. Reaching this point and being
+asked for a password means the public key is not authorized; go back to Step 1.
+`echo ok` means CI can get in.
 
 ## Step 3 — Fill in the GitHub Environments
 
@@ -211,7 +237,8 @@ things are known-good rather than discovering it during an incident.
 
 Repeat Steps 1–7 against Production's values.
 
-- Steps 1 and 2 may reuse the same key and host if it is the same account — but
+- Steps 1, 2 and 2b may reuse the same key and host keys if it is the same
+  account — but
   `APP_ROOT`, `COUNTERPART_APP_ROOT`, `SELECTOR_APP_KEY` and `API_ORIGIN` are all
   different, and `COUNTERPART_APP_ROOT` is crossed the other way.
 - Run `yarn host-apply:preflight production`.
