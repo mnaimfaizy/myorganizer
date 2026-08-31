@@ -559,6 +559,12 @@ jobs:
       - name: Release pipeline page checker contracts
         run: corepack yarn deploy:pages:test
 
+      - name: Host Apply engine contracts
+        run: corepack yarn host-apply:test
+
+      - name: Host Apply workflow checker contracts
+        run: corepack yarn host-apply:workflow:test
+
       - name: Lint coverage checker contracts
         run: corepack yarn lint:coverage:test
 
@@ -644,6 +650,9 @@ jobs:
 
       - name: Check release pipeline page
         run: corepack yarn deploy:pages:check
+
+      - name: Check Host Apply workflow wiring
+        run: corepack yarn host-apply:workflow:check
 
       - name: Check sub-agent sync
         run: corepack yarn agents:sync:check

@@ -7,6 +7,13 @@ on:
         description: 'Release branch to deploy (e.g. release/v0.1.0). Leave empty to auto-select the latest release/* branch.'
         required: false
         type: string
+      apply_only:
+        description:
+          'Re-run Host Apply only, without re-uploading the backend and
+          frontend bundles.'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-production
@@ -114,7 +121,7 @@ jobs:
         run: git diff --exit-code -- yarn.lock
 
   deploy-backend:
-    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') && !inputs.apply_only }}
     needs: [validate, prepare-dependencies]
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -162,8 +169,124 @@ jobs:
           server-dir: ${{ secrets.FTP_PROD_BACKEND_DIR }}
           timeout: 300000
 
+  # Applies backend upload (install, migrate, generate, restart) over SSH and
+  # verifies with HTTP probes (ADR 0056). Runs only after Deploy Approval on
+  # the `production` Environment has already gated `deploy-backend`; a failed
+  # Host Apply fails this workflow with no rollback and no Tag.
+  host-apply:
+    needs: [validate, deploy-backend]
+    if: ${{ always() && needs.validate.result == 'success' && startsWith(github.ref, 'refs/heads/release/') && (needs.deploy-backend.result == 'success' || inputs.apply_only) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.validate.outputs.release_ref }}
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Build Host Apply script
+        env:
+          APP_ROOT: ${{ secrets.APP_ROOT }}
+          COUNTERPART_APP_ROOT: ${{ secrets.COUNTERPART_APP_ROOT }}
+          NODEVENV_ACTIVATE: ${{ secrets.NODEVENV_ACTIVATE }}
+          SELECTOR_APP_KEY: ${{ secrets.SELECTOR_APP_KEY }}
+        run: node tools/scripts/run-host-apply.mjs production > "$RUNNER_TEMP/host-apply.sh"
+
+      - name: Apply on host over SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          key_file="$RUNNER_TEMP/host_apply_key"
+          known_hosts="$RUNNER_TEMP/host_apply_known_hosts"
+          printf '%s\n' "$SSH_PRIVATE_KEY" > "$key_file"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$known_hosts"
+          chmod 600 "$key_file" "$known_hosts"
+          # Say which secret is wrong, before ssh reports it as
+          # `error in libcrypto` followed by a bare `Permission denied`, which
+          # reads like the key was rejected rather than never parsed.
+          # `ssh-keygen -y` prints only the public half, and only to /dev/null.
+          if [ "$(wc -c < "$key_file")" -le 1 ]; then
+            echo "host-apply: SSH_PRIVATE_KEY is empty." >&2
+            echo "  Set it on this Environment specifically - a repository-level" >&2
+            echo "  secret of the same name is not visible here." >&2
+            exit 1
+          fi
+          if ! ssh-keygen -y -f "$key_file" >/dev/null 2>&1; then
+            echo "host-apply: SSH_PRIVATE_KEY did not parse as a private key." >&2
+            echo "  It is truncated, or lost its line breaks on paste. Copy the" >&2
+            echo "  file verbatim (macOS: pbcopy < ~/.ssh/<key>) and re-save it." >&2
+            exit 1
+          fi
+          if [ "$(wc -c < "$known_hosts")" -le 1 ]; then
+            echo "host-apply: SSH_KNOWN_HOSTS is empty." >&2
+            echo "  StrictHostKeyChecking=yes has nothing to verify against." >&2
+            exit 1
+          fi
+          : > "$RUNNER_TEMP/host-apply.log"
+          # The runner is ephemeral, so accept-new would trust whatever key
+          # answered, every run. The host keys are pinned as a secret instead.
+          # Output is captured rather than streamed: the next step decides
+          # whether it may reach this public Actions log.
+          status=0
+          ssh -i "$key_file" -p "$SSH_PORT" \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$known_hosts" \
+            -o BatchMode=yes \
+            "$SSH_USER@$SSH_HOST" 'bash -s' \
+            < "$RUNNER_TEMP/host-apply.sh" \
+            > "$RUNNER_TEMP/host-apply.log" 2>&1 || status=$?
+          echo "HOST_APPLY_SSH_STATUS=$status" >> "$GITHUB_ENV"
+
+      - name: Host Apply output (redaction-checked)
+        if: always()
+        run: node tools/scripts/scrub-host-apply-log.mjs "$RUNNER_TEMP/host-apply.log"
+
+      - name: Fail on a red Host Apply
+        if: always()
+        run: exit "${HOST_APPLY_SSH_STATUS:-1}"
+
+      - name: Remove SSH key and captured log
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/host_apply_key" \
+            "$RUNNER_TEMP/host_apply_known_hosts" \
+            "$RUNNER_TEMP/host-apply.sh" \
+            "$RUNNER_TEMP/host-apply.log"
+
+      - name: Verify Host Apply (HTTP probes)
+        env:
+          API_ORIGIN: ${{ secrets.API_ORIGIN }}
+        run: |
+          set -euo pipefail
+          # -L: swagger-ui-express answers /docs with a 301 to /docs/, so the
+          # bare status is a redirect even when Passenger is perfectly healthy.
+          docs_status="$(curl -sS -L --max-redirs 3 -o /dev/null -w '%{http_code}' "$API_ORIGIN/docs")"
+          # Content-Type and a body are load-bearing, not decoration: LiteSpeed
+          # rejects a bodyless, typeless POST with its own HTML 403 before Node
+          # ever sees it, on every path. Without them this probe reports the
+          # host's opinion rather than the API's.
+          cron_status="$(curl -sS -o /dev/null -w '%{http_code}' -X POST \
+            -H 'Content-Type: application/json' \
+            -H 'X-Cron-Secret: host-apply-verification-wrong-secret' \
+            -d '{}' \
+            "$API_ORIGIN/api/v1/youtube/cron/sync")"
+          node tools/scripts/verify-host-apply.mjs "$docs_status" "$cron_status"
+
   deploy-frontend:
-    if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
+    if: ${{ startsWith(github.ref, 'refs/heads/release/') && !inputs.apply_only }}
     needs: [validate, prepare-dependencies, deploy-backend]
     runs-on: ubuntu-latest
     timeout-minutes: 45

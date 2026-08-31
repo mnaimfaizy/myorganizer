@@ -299,3 +299,86 @@ test('the refusal names the orphaned commit and its subject', () => {
   assert.match(result.error, /theirs/);
   assert.match(result.error, /fix: their bug/);
 });
+
+// === The upstream is the base branch ===
+//
+// Sandcastle created every PRD integration branch with `git branch <name>
+// origin/main`, and git's branch.autoSetupMerge default made that branch track
+// main. Nothing measured against that upstream describes the branch's own
+// remote, so the plan below it cannot be trusted.
+
+test('refuses when the branch tracks the base branch', () => {
+  const plan = decidePushPlan({
+    hasUpstream: true,
+    ahead: 17,
+    behind: 7,
+    branch: 'feat/ci-owned-host-apply',
+    remoteSha: 'a'.repeat(40),
+    upstreamBranch: 'main',
+    baseBranch: 'main',
+  });
+
+  assert.ok(plan.error);
+  assert.match(plan.error, /upstream is 'main', which is the PR's base branch/);
+  assert.match(
+    plan.error,
+    /git branch --unset-upstream feat\/ci-owned-host-apply/,
+  );
+});
+
+test('the base-branch guard runs before the divergence report', () => {
+  // Without it, this input produces "forcing would destroy them" naming main's
+  // own commits — alarming, and false.
+  const plan = decidePushPlan({
+    hasUpstream: true,
+    ahead: 17,
+    behind: 7,
+    branch: 'feat/x',
+    remoteSha: 'a'.repeat(40),
+    unmatchedRemoteCommits: [{ sha: 'b'.repeat(40), subject: 'someone else' }],
+    upstreamBranch: 'main',
+    baseBranch: 'main',
+  });
+
+  assert.match(plan.error, /base branch/);
+  assert.ok(!plan.error.includes('Forcing would destroy them'));
+});
+
+test('does not fire when the base branch is itself being pushed', () => {
+  // Pushing main while on main is refused elsewhere, not here.
+  const plan = decidePushPlan({
+    hasUpstream: true,
+    ahead: 1,
+    behind: 0,
+    branch: 'main',
+    upstreamBranch: 'main',
+    baseBranch: 'main',
+  });
+
+  assert.equal(plan.action, PUSH_ACTIONS.fastForward);
+});
+
+test('does not fire for a branch tracking its own remote', () => {
+  const plan = decidePushPlan({
+    hasUpstream: true,
+    ahead: 3,
+    behind: 0,
+    branch: 'feat/x',
+    upstreamBranch: 'feat/x',
+    baseBranch: 'main',
+  });
+
+  assert.equal(plan.action, PUSH_ACTIONS.fastForward);
+});
+
+test('does not fire when the caller supplies no branch names', () => {
+  // Older callers pass neither; they must keep working unchanged.
+  const plan = decidePushPlan({
+    hasUpstream: true,
+    ahead: 3,
+    behind: 0,
+    branch: 'feat/x',
+  });
+
+  assert.equal(plan.action, PUSH_ACTIONS.fastForward);
+});

@@ -243,13 +243,20 @@ function ensureNotBaseBranch(branch, baseBranch) {
   }
 }
 
-function ensureUpstreamBranch(options) {
+function ensureUpstreamBranch(options, baseBranch) {
   const upstreamResult = run(
     'git',
     ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{u}'],
     { allowFailure: true },
   );
   const hasUpstream = upstreamResult.status === 0;
+  // `origin/main` -> `main`. The remote name is not part of the comparison:
+  // what matters is whether this branch tracks the base branch.
+  const upstreamBranch = hasUpstream
+    ? String(upstreamResult.stdout ?? '')
+        .trim()
+        .replace(/^[^/]+\//, '')
+    : undefined;
 
   let ahead = 0;
   let behind = 0;
@@ -314,6 +321,8 @@ function ensureUpstreamBranch(options) {
     remoteSha,
     forceWithLease: options.forceWithLease,
     unmatchedRemoteCommits,
+    upstreamBranch,
+    baseBranch,
   });
 
   if (plan.error) {
@@ -645,7 +654,7 @@ const commits = getBranchCommits(mergeBase);
 
 validateReviewers(reviewers);
 validateLabels(labels, catalog);
-ensureUpstreamBranch(options);
+ensureUpstreamBranch(options, baseBranch);
 
 if (commits.length === 0) {
   fail(`No commits found between ${baseBranch} and ${branch}.`);

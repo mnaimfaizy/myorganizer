@@ -195,6 +195,91 @@ Production cPanel FTP/FTPS:
 - `FTP_PROD_FRONTEND_PASSWORD`
 - `FTP_PROD_FRONTEND_DIR` (remote directory for frontend app root)
 
+### Host Apply (Staging & Production)
+
+After the backend bundle is uploaded, CI SSHs in to install, migrate, regenerate
+the Prisma client, and restart — see [ADR 0056](../adr/0056-ci-owns-host-apply-without-describing-the-jail.md).
+This is a public repository, so this table lists secret **names** only. Values
+(host, port, user, home paths, the selector app identity) live only in the
+`staging` and `production` GitHub Environments — never in git, workflow YAML,
+or this document.
+
+Same names in both environments:
+
+| Secret                 | What it is for                                                                                      |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
+| `SSH_HOST`             | Host to connect to for that environment's Host Apply.                                               |
+| `SSH_PORT`             | SSH port for that connection.                                                                       |
+| `SSH_USER`             | SSH account to connect as.                                                                          |
+| `SSH_PRIVATE_KEY`      | Deploy key for that account (never the account password).                                           |
+| `SSH_KNOWN_HOSTS`      | The host's public keys, in `known_hosts` format, that the runner must match.                        |
+| `APP_ROOT`             | This environment's backend application directory on the host.                                       |
+| `COUNTERPART_APP_ROOT` | The **other** environment's `APP_ROOT`, so this one can refuse to equal it.                         |
+| `NODEVENV_ACTIVATE`    | Path to that environment's Node virtualenv `activate` script.                                       |
+| `SELECTOR_APP_KEY`     | The one app identity Host Apply may load `DATABASE_URL` for from the host's Node.js selector store. |
+| `API_ORIGIN`           | Base URL Host Apply's HTTP verification probes call after restart.                                  |
+
+`DATABASE_URL` is never a GitHub secret in either environment. Host Apply loads
+it on the host, for `SELECTOR_APP_KEY` only, and never prints it.
+
+Setting these up on a real host — deploy key, host-key pin, Environment
+values, and the first live apply on each environment — is
+[Host Apply: operator setup and first live apply](HOST_APPLY_OPERATOR_SETUP.md).
+Run `yarn host-apply:preflight <environment>` before trusting CI: it checks
+every one of those against the real host, read-only, using the same guards
+the CI job runs.
+
+Two of those names extend the eight the PRD originally listed, because eight
+left two holes. `COUNTERPART_APP_ROOT` is what makes the `APP_ROOT` guard mean
+anything: a job scoped to `environment: staging` cannot read `production`'s
+secrets to compare the two roots, so each environment carries the other's pin
+and refuses to run when they match — without it the guard could only catch an
+`APP_ROOT` that was unset, and a shared hosting account would let a `main` push
+migrate Production. `SSH_KNOWN_HOSTS` replaces `StrictHostKeyChecking=accept-new`:
+the runner is ephemeral and remembers nothing, so trust-on-first-use would have
+meant trusting whatever answered, on every run. Both are host paths and public
+keys, not credentials, but they stay Environment secrets because this repository
+is public and they would describe the jail. A missing value fails the job closed.
+
+Job wiring (issue #567): `host-apply` is a separate job in both
+`deploy-staging.yml` and `deploy-production.yml` that `needs` the backend
+upload job (`deploy-backend`) and declares that environment's `environment:`
+name, so Production's Host Apply waits on the same required-reviewer approval
+as the rest of that Environment. Each workflow also accepts a
+`workflow_dispatch` input, `apply_only` (default `false` in both), that re-runs
+`host-apply` alone without re-uploading the backend bundle.
+
+**Staging Host Apply is operator-triggered, not automatic.** A green `main`
+still uploads a Staging bundle on its own, but nothing applies it until someone
+dispatches `Deploy Staging`. SSH shell access on the hosting account is a manual
+toggle that reverts, so an apply chained to the upload would go red on every
+push where the shell happened to be off — and a red apply nobody reads is how
+unapplied migrations shipped in the first place. This amends PRD #565 user
+story 3; it means an uploaded Staging bundle is not a migrated Staging backend
+until you say so, and it is why the Cut checklist's "Staging Host Apply green"
+below is load-bearing rather than a formality.
+
+Staging splits its concurrency by whether a job writes to `APP_ROOT`.
+`deploy-backend` and `host-apply` share `deploy-staging-apply` with
+`cancel-in-progress: false`: a newer push to `main` queues behind them rather
+than cancelling an in-flight `prisma migrate deploy` — and rather than FTPing a
+fresh bundle into a tree `npm ci` is still working in, which a group covering
+only `host-apply` would have allowed. `prepare-dependencies` and
+`deploy-frontend` keep `deploy-staging` with `cancel-in-progress: true`, since
+neither touches `APP_ROOT`. Production's whole workflow already queues instead
+of cancelling, so it needs no such split.
+
+The SSH step captures its output to a file instead of streaming it, and
+`tools/scripts/scrub-host-apply-log.mjs` decides whether that output may reach
+the Actions log: a log carrying a connection string or a bare `DATABASE_URL=`
+is withheld, and only the offending line numbers are printed. This repository
+is public, so a streamed log would publish a leak before anything could grade
+it.
+
+A failed Host Apply fails the job with no automated rollback and no
+restart-anyway; `deploy-frontend` does not depend on `host-apply`, so the two
+may run side by side once the backend upload succeeds.
+
 ## How to cut a release
 
 ### Versioning
@@ -241,11 +326,12 @@ Use a versioned release branch so production deploys are unambiguous:
   - `git checkout -b release/v1.2.3`
   - `git push -u origin release/v1.2.3`
 
-3. Approve the production deploy:
+3. Approve the production deploy (the ship decision):
 
 - A run is usually already queued and waiting — pushing the branch in step 2 dispatches one.
 - If you need to start one by hand: GitHub → **Actions** → `Deploy Production (manual)` → **Run workflow**, select the `release/v1.2.3` branch, run.
-- Confirm CI is green on `release/v1.2.3`, then approve the run. Nothing reaches production until you approve.
+- Confirm CI is green on `release/v1.2.3`, then approve the run. The approval authorises Host Apply; nothing reaches production until you approve.
+- Approval does not ship the version — Host Apply (the job that follows) must succeed. The tag receipt comes after Host Apply is green.
 
 4. After production deploy succeeds, create and push the version tag:
 
@@ -272,6 +358,7 @@ Replace `vX.Y.Z` with your version (example: `v0.1.1`).
 
 - CI is green
 - Staging deploy is successful
+- **Staging Host Apply is green** (backend bundle is uploaded, migrations applied, Prisma client regenerated, and service restarted)
 
 2. Cut the release branch (recommended):
 
@@ -289,12 +376,16 @@ What this does:
 - To start one by hand instead: GitHub → Actions → `Deploy Production (manual)` → Run workflow on `release/vX.Y.Z`
 - Check CI is green on `release/vX.Y.Z`, then approve. The approval is the ship decision.
 
-4. Tag the release after a successful production deploy:
+4. Tag the release after Production Host Apply has succeeded:
 
+- Confirm the `Deploy Production (manual)` workflow has completed, including the `host-apply` job.
+- Confirm migration status and service health probes (`/docs`, cron paths).
 - `yarn release:tag --version vX.Y.Z --push`
 
 This updates `CHANGELOG.md` with generated notes based on commits since the previous tag.
 Use `--no-notes` to disable.
+
+The tag is a receipt: `vX.Y.Z` existing means that version is live in production with Host Apply verified.
 
 Optional: write a rolling notes file
 
@@ -327,7 +418,7 @@ The script lives at `tools/scripts/release.mjs` and automates the git steps.
 - It requires a clean working tree.
 - `release:cut` requires you to be on `main` and up-to-date with `origin/main`.
 - It does **not** dispatch or approve any deploy. Pushing the release branch is what dispatches a production run (via `dispatch-production-deploy.yml`), and that run still waits for approval.
-- `release:cut` **cannot** create a tag. Tagging is a separate command, run only after production is live — the tag is a receipt, not a trigger. See [ADR 0028](../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md).
+- `release:cut` **cannot** create a tag. Tagging is a separate command, run only after Production Host Apply succeeds — the tag is a receipt, not a trigger. See [ADR 0028](../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md) and [ADR 0056](../adr/0056-ci-owns-host-apply-without-describing-the-jail.md).
 
 ## cPanel notes (after upload)
 
