@@ -2,6 +2,7 @@ export * from './lib/CloudBackupCard';
 export * from './lib/LastBackupCard';
 export * from './lib/metaConvergeRunner';
 export * from './lib/pullRunner';
+export * from './lib/RecoveryKeyClaimOffer';
 export * from './lib/reconcileRunner';
 export * from './lib/session';
 export * from './lib/SyncStatusIndicator';

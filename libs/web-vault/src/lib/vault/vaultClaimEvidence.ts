@@ -2,12 +2,21 @@
  * Vault Claim Evidence — what proves an Unclaimed Local Vault is the signed-in
  * User's, and the claim that follows when it does.
  *
- * The evidence in this module is the server's own Vault Meta. Only the
+ * Two kinds of evidence live here, and the order they appear in is the order
+ * they are reached in. The first is the server's own Vault Meta: only the
  * authenticated User can have written it, so a Vault Meta that points at the
  * Unclaimed Local Vault on this device says the Vault is theirs, and says it
  * without asking the User for anything. That is the strongest evidence there
  * is and the path most Users take
  * ([ADR 0061](../../../../../docs/adr/0061-vault-claim-is-proven-by-evidence-not-by-unwrap.md)).
+ *
+ * The second is a recovery key, and it is what a User falls back to when the
+ * server holds no Vault Meta to compare against. It is minted per Vault as
+ * random bytes rather than chosen, so it cannot collide across Users the way a
+ * passphrase can, and holding one is proof of ownership rather than proof of
+ * knowing a string. Unlike the Vault Meta check it needs the User to act, so
+ * it is a function they reach through a deliberate action rather than
+ * something that runs on their behalf.
  *
  * A passphrase unwrap is deliberately not consulted here. Key derivation uses
  * the Vault's own salt, so two people who share a passphrase string each
@@ -30,6 +39,12 @@ import { VaultApi } from '@myorganizer/app-api-client';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 
+import {
+  aesGcmDecrypt,
+  base64ToBytes,
+  importAesGcmKey,
+  randomBytes,
+} from './crypto';
 import type { VaultStorageV1 } from './localVaultStorage';
 import { getServerVaultMeta, type ServerVaultMeta } from './serverVaultSync';
 import type { VaultHandle } from './vaultHandle';
@@ -246,5 +261,146 @@ export async function claimUnclaimedLocalVaultOnEvidence(options: {
       return { kind: 'postponed' };
     case 'session-lost':
       return { kind: 'session-lost' };
+  }
+}
+
+/**
+ * The IV and wrapped-Master-Key sizes a recovery key unwrap works over.
+ *
+ * Read off `initialize`, which wraps 32 Master Key bytes under a 12-byte IV;
+ * AES-GCM appends its 16-byte authentication tag, so the wrapped blob is 48
+ * bytes. They are named here because the decoy below has to be the same shape
+ * as the real thing to cost the same as it.
+ */
+const RECOVERY_UNWRAP_IV_BYTES = 12;
+const RECOVERY_UNWRAP_CIPHERTEXT_BYTES = 48;
+
+/**
+ * Do a recovery key unwrap's work against bytes that belong to no Vault.
+ *
+ * Named for what it costs rather than what it achieves, because it achieves
+ * nothing on purpose and a reader who takes it for a no-op will delete it. It
+ * is what makes "your key matched nothing here" cost what "there is nothing
+ * here" costs: the import and the AES-GCM decrypt both happen, over an IV and
+ * a wrapped blob of the sizes a real one has, and the failure is discarded.
+ * Returning early instead would make a device holding an Unclaimed Local Vault
+ * answer measurably slower than a device holding nothing, which is the single
+ * bit this path exists to withhold.
+ *
+ * It equalises the crypto, which is the expensive half and the half a caller
+ * can time. It does not claim constant time in the strict sense, and the
+ * remaining difference is bounded by ADR 0061's scope boundary: anyone able to
+ * measure a `JSON.parse` inside this browser can already read the Local Vault
+ * out of storage directly, which that ADR puts out of scope for Vault Claim.
+ *
+ * Everything is swallowed, including a recovery key that is not decodable
+ * base64 at all — the real path throws `VaultSecretMismatchError` for exactly
+ * that input, so a caller that saw this one throw would have learnt something.
+ */
+async function decoyRecoveryUnwrap(recoveryKey: string): Promise<void> {
+  try {
+    const wrappingKey = await importAesGcmKey(base64ToBytes(recoveryKey));
+    await aesGcmDecrypt({
+      key: wrappingKey,
+      iv: randomBytes(RECOVERY_UNWRAP_IV_BYTES),
+      ciphertext: randomBytes(RECOVERY_UNWRAP_CIPHERTEXT_BYTES),
+    });
+  } catch {
+    // Always, and deliberately. There is no Master Key here to recover; the
+    // work is the point and the answer is discarded.
+  }
+}
+
+/**
+ * What claiming on a recovery key did.
+ *
+ * Three outcomes, and the missing fourth is the point. There is no outcome for
+ * "wrong key" separate from "nothing here to claim": those two are one answer,
+ * because a `no-match` a User can tell apart from an empty device is a "a
+ * Vault is here" disclosure with extra steps.
+ */
+export type VaultClaimByRecoveryKeyResult =
+  /**
+   * The Unclaimed Local Vault is now this User's owned record, and unlocked.
+   *
+   * Unlocked because the evidence *is* the key: the Master Key was unwrapped
+   * to establish the proof, so binding it asks the User for nothing further.
+   * The Vault Meta path claims locked for the opposite reason — it proves
+   * ownership without ever holding a secret, so there is nothing there to
+   * unlock with.
+   */
+  | { kind: 'claimed'; masterKeyBytes: Uint8Array }
+  /**
+   * The recovery key opened nothing on this device. Says nothing about whether
+   * there was anything here for it to open, and nothing was written either
+   * way.
+   */
+  | { kind: 'no-match' }
+  /**
+   * This User already holds a Local Vault of their own here, so a claim would
+   * replace it — an explicit, acknowledged act rather than one a pasted key
+   * carries out (CONTEXT.md, "Vault Claim"). Distinguishable from `no-match`,
+   * and allowed to be: it discloses a Vault the User signed in to and already
+   * knows about, never the Unclaimed Local Vault this path is blind about.
+   */
+  | { kind: 'skipped-already-owned' };
+
+/**
+ * Claim the Unclaimed Local Vault on this device for `handle`'s owner, on the
+ * strength of a recovery key.
+ *
+ * The deliberate half of Vault Claim Evidence.
+ * `claimUnclaimedLocalVaultOnEvidence` runs on the User's behalf and needs
+ * nothing from them, so it can be asked on every mount; this one takes a
+ * secret only the Vault's owner has, so it is reached when a User says they
+ * hold one. A caller offers it whether or not there is anything here to claim
+ * — asking first would answer the question this function refuses to.
+ *
+ * It takes a recovery key and no passphrase, and there is deliberately no
+ * variant that takes one. A passphrase unwrap establishes knowledge of a
+ * string rather than ownership of a Vault (ADR 0061); a recovery key is minted
+ * per Vault and cannot collide, which is the whole reason one is proof and the
+ * other is not.
+ *
+ * Every failure is one answer. A wrong key, an unreadable key, a device
+ * holding nothing, storage that would not answer — all `no-match`, all leaving
+ * this device byte-identical. Distinguishing them would hand back exactly the
+ * bit that must not be handed back, and there is nothing a caller could do
+ * with the difference that is worth that.
+ */
+export async function claimUnclaimedLocalVaultWithRecoveryKey(options: {
+  handle: VaultHandle;
+  recoveryKey: string;
+}): Promise<VaultClaimByRecoveryKeyResult> {
+  const { handle, recoveryKey } = options;
+
+  const status = handle.vaultStatus();
+  if (status === 'owned') {
+    return { kind: 'skipped-already-owned' };
+  }
+
+  if (status !== 'unclaimed') {
+    // Nothing here to claim — an empty slot, or an entry naming somebody else.
+    // Both halves of what the claim below would do still happen: the Local
+    // Vault is read, and the unwrap runs against nothing. The read is here
+    // rather than omitted because `unlockWithRecoveryKey` reads before it
+    // unwraps, and an answer that skipped it would come back sooner on a
+    // device holding nothing than on one holding a Vault.
+    handle.loadVault();
+    await decoyRecoveryUnwrap(recoveryKey);
+    return { kind: 'no-match' };
+  }
+
+  try {
+    // `unlockWithRecoveryKey` is the claim: it unwraps first and writes only
+    // after that succeeds, so a wrong key leaves the Unclaimed Local Vault
+    // byte-identical. Routing through it rather than repeating it here is what
+    // keeps "claimed by recovery key" one behaviour with one implementation.
+    const { masterKeyBytes } = await handle.unlockWithRecoveryKey({
+      recoveryKey,
+    });
+    return { kind: 'claimed', masterKeyBytes };
+  } catch {
+    return { kind: 'no-match' };
   }
 }

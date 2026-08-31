@@ -16,11 +16,16 @@ import {
   type VaultHandle,
   MIN_PASSPHRASE_LENGTH,
   VaultSecretMismatchError,
+  claimUnclaimedLocalVaultWithRecoveryKey,
   createVaultApi,
   newPassphraseSchema,
   resetPassphraseAfterRecovery,
 } from '@myorganizer/web-vault';
 
+import {
+  RecoveryKeyClaimOffer,
+  type RecoveryKeyClaimAnswer,
+} from './RecoveryKeyClaimOffer';
 import { useOptionalVaultSession } from './session';
 import { useVaultClaimEvidence } from './useVaultClaimEvidence';
 import { VAULT_CLAIM_EVIDENCE_GATE_VIEWS } from './vaultClaimEvidenceGateView';
@@ -84,6 +89,43 @@ export function VaultGate(props: VaultGateProps) {
 
   const isUnlocked = masterKeyBytes !== null;
 
+  /**
+   * The deliberate half of Vault Claim Evidence: the User says they hold a
+   * recovery key for a Vault here, and supplies one.
+   *
+   * Every answer other than a claim is folded into one, including there being
+   * no signed-in User to claim for. The offer is rendered whether or not this
+   * device holds an Unclaimed Local Vault, so an answer a User could tell
+   * apart from "nothing here" would disclose the one bit the offer exists to
+   * withhold (CONTEXT.md, "Claim Offer").
+   */
+  const claimWithRecoveryKey = async (
+    key: string,
+  ): Promise<RecoveryKeyClaimAnswer> => {
+    // Answered without the library, and so without the decoy unwrap it would
+    // have paid for. That asymmetry is timeable and deliberately left: the
+    // only thing it tells whoever measured it is that they are not signed in,
+    // which they knew before they typed. It says nothing about this device.
+    if (!handle) return 'no-match';
+
+    const result = await claimUnclaimedLocalVaultWithRecoveryKey({
+      handle,
+      recoveryKey: key,
+    });
+    if (result.kind !== 'claimed') return 'no-match';
+
+    // Claimed and unlocked in one step: the evidence was the key, so there is
+    // nothing further to ask for. The status is advanced too, so that locking
+    // later lands on this User's own unlock screen rather than back on setup.
+    setVaultStatus('owned');
+    setMasterKeyBytes(result.masterKeyBytes);
+    toast({
+      title: 'Vault claimed',
+      description: 'This vault is yours and is unlocked on this device.',
+    });
+    return 'claimed';
+  };
+
   const title = useMemo(() => props.title, [props.title]);
 
   if (isUnlocked && masterKeyBytes) {
@@ -107,12 +149,18 @@ export function VaultGate(props: VaultGateProps) {
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
           <Card className="p-4">
             <CardTitle className="text-lg">{title}</CardTitle>
-            <CardContent className="mt-4">
+            <CardContent className="mt-4 space-y-4">
               {/* Says nothing about what this device holds — see the copy
                   note in `vaultClaimEvidenceGateView.ts`. */}
               <p className="text-sm text-muted-foreground">
                 Setting up your vault on this device…
               </p>
+              {/* The check that is still out is the server one, and a recovery
+                  key needs no server — so the offer is available here for the
+                  same reason it is on every other screen, and withholding it
+                  until the check settles would time the offer's appearance to
+                  whether this device holds a Vault. */}
+              <RecoveryKeyClaimOffer onClaim={claimWithRecoveryKey} />
             </CardContent>
           </Card>
         </div>
@@ -126,10 +174,15 @@ export function VaultGate(props: VaultGateProps) {
         <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
           <Card className="p-4">
             <CardTitle className="text-lg">{view.title}</CardTitle>
-            <CardContent className="mt-4">
+            <CardContent className="mt-4 space-y-4">
               <p className="text-sm text-muted-foreground">
                 {view.description}
               </p>
+              {/* A recovery key claim needs nothing from the server, so it stays
+                  available on the one screen a User reaches because the server
+                  could not be reached. Leaving it off here would make the
+                  action's own availability a presence tell. */}
+              <RecoveryKeyClaimOffer onClaim={claimWithRecoveryKey} />
             </CardContent>
           </Card>
         </div>
@@ -263,6 +316,12 @@ export function VaultGate(props: VaultGateProps) {
                 can recover with the recovery key.
               </p>
             )}
+
+            {/* This screen is what a User sees both when this device holds
+                nothing and when it holds an Unclaimed Local Vault nothing has
+                proved theirs, so the offer sits here precisely because the two
+                are the same screen. */}
+            <RecoveryKeyClaimOffer onClaim={claimWithRecoveryKey} />
           </CardContent>
         </Card>
       </div>

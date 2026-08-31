@@ -17,6 +17,19 @@ jest.mock('./useVaultClaimEvidence', () => ({
     mockUseVaultClaimEvidence(handle),
 }));
 
+// === Polyfill crypto.subtle for Node's jsdom environment ===
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+if (!(globalThis as any).crypto?.subtle) {
+  const { webcrypto } = require('crypto');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (!(globalThis as any).crypto) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (globalThis as any).crypto = {};
+  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).crypto.subtle = webcrypto.subtle;
+}
+
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
@@ -62,7 +75,7 @@ describe('VaultGate', () => {
   }
 
   describe('three-state resolution', () => {
-    test('renders unlock panel when vaultStatus is "owned"', () => {
+    test('should render unlock panel when vaultStatus is "owned"', () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'owned'),
       });
@@ -84,7 +97,7 @@ describe('VaultGate', () => {
       ).not.toBeInTheDocument();
     });
 
-    test('renders create panel when vaultStatus is "absent"', () => {
+    test('should render create panel when vaultStatus is "absent"', () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'absent'),
       });
@@ -106,7 +119,7 @@ describe('VaultGate', () => {
       ).not.toBeInTheDocument();
     });
 
-    test('unclaimed + checking: renders checking message and no passphrase input', () => {
+    test('should render checking message and no passphrase input when unclaimed and evidence check is in flight', () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'unclaimed'),
       });
@@ -131,7 +144,7 @@ describe('VaultGate', () => {
       ).not.toBeInTheDocument();
     });
 
-    test('unclaimed + claimed: renders unlock panel', () => {
+    test('should render unlock panel when unclaimed and evidence settled with claimed result', () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'unclaimed'),
       });
@@ -154,7 +167,7 @@ describe('VaultGate', () => {
       ).not.toBeInTheDocument();
     });
 
-    test('unclaimed + postponed: renders could not check card, offers nothing', () => {
+    test('should render could not check card when unclaimed and evidence settled with postponed result', () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'unclaimed'),
       });
@@ -185,7 +198,7 @@ describe('VaultGate', () => {
       ).not.toBeInTheDocument();
     });
 
-    test('unclaimed + session-lost: renders sign in again card, offers nothing', () => {
+    test('should render sign in again card when unclaimed and evidence settled with session-lost result', () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'unclaimed'),
       });
@@ -211,7 +224,7 @@ describe('VaultGate', () => {
       ).not.toBeInTheDocument();
     });
 
-    test('unclaimed + refused-not-this-vault: renders setup panel without claim offer', () => {
+    test('should render setup panel when unclaimed and evidence settled with refused-not-this-vault result', () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'unclaimed'),
       });
@@ -236,7 +249,7 @@ describe('VaultGate', () => {
       ).not.toBeInTheDocument();
     });
 
-    test('unclaimed + no-evidence: renders setup panel without claim offer', () => {
+    test('should render setup panel when unclaimed and evidence settled with no-evidence result', () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'unclaimed'),
       });
@@ -261,7 +274,7 @@ describe('VaultGate', () => {
       ).not.toBeInTheDocument();
     });
 
-    test('renders create panel when vaultStatus is "owner-mismatch"', () => {
+    test('should render create panel when vaultStatus is "owner-mismatch"', () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'owner-mismatch'),
       });
@@ -283,7 +296,7 @@ describe('VaultGate', () => {
       ).not.toBeInTheDocument();
     });
 
-    test('renders children when masterKeyBytes is present', () => {
+    test('should render children when masterKeyBytes is present', () => {
       const masterKeyBytes = new Uint8Array([1, 2, 3, 4]);
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'absent'),
@@ -310,7 +323,7 @@ describe('VaultGate', () => {
   });
 
   describe('failure copy and error handling', () => {
-    test('unlock with wrong passphrase shows secret mismatch toast without corruption language', async () => {
+    test('should show secret mismatch toast without corruption language when unlock fails with wrong passphrase', async () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'owned'),
         unlockWithPassphrase: jest
@@ -361,7 +374,7 @@ describe('VaultGate', () => {
       }
     });
 
-    test('recovery with wrong recovery key shows secret mismatch toast without corruption language', async () => {
+    test('should show secret mismatch toast without corruption language when recovery fails with wrong recovery key', async () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'owned'),
         unlockWithRecoveryKey: jest
@@ -421,7 +434,7 @@ describe('VaultGate', () => {
       }
     });
 
-    test('non-mismatch unlock error shows fixed toast without error message', async () => {
+    test('should show fixed toast without error message when unlock fails with non-mismatch error', async () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'owned'),
         unlockWithPassphrase: jest.fn().mockRejectedValue(new Error('boom')),
@@ -465,7 +478,7 @@ describe('VaultGate', () => {
       }
     });
 
-    test('non-mismatch recovery error shows fixed toast without error message', async () => {
+    test('should show fixed toast without error message when recovery fails with non-mismatch error', async () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'owned'),
         unlockWithRecoveryKey: jest.fn().mockRejectedValue(new Error('boom')),
@@ -518,7 +531,7 @@ describe('VaultGate', () => {
   });
 
   describe('handle identity change recovery', () => {
-    test('when handle changes from null to a handle with vaultStatus "owned", shows unlock panel not create panel', () => {
+    test('should show unlock panel not create panel when handle changes from null to owned status', () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'owned'),
       });
@@ -576,6 +589,358 @@ describe('VaultGate', () => {
 
       expect(source).toContain('resetPassphraseAfterRecovery');
       expect(source).not.toContain('changePassphraseWithCurrent');
+    });
+  });
+
+  describe('recovery key claim offer', () => {
+    /**
+     * Tests for the recovery-key half of the Claim Offer: the deliberate path
+     * where a User says they hold a recovery key and supplies one, on a device
+     * that may or may not hold an Unclaimed Local Vault.
+     *
+     * The load-bearing property: a correct recovery key on a device holding an
+     * Unclaimed Local Vault produces the same observable state (same alert text,
+     * no toast, no claim) as a wrong key on a device holding nothing. This means
+     * the component offers the claim button whether or not an Unclaimed Local
+     * Vault is present, and the button's result is indistinguishable from one
+     * device to the next.
+     *
+     * Rows 17 and 18 explicitly test this: row 17 renders a wrong-key on an
+     * unclaimed vault; row 18 renders the same key on an absent vault and
+     * compares the rendered state to row 17 to assert they are identical.
+     */
+
+    test('should offer recovery key claim on device holding nothing (vaultStatus: absent)', () => {
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'absent'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'no-evidence' },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      expect(
+        screen.getByText(/Test: Set encryption passphrase/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    test('should offer recovery key claim on device holding unclaimed vault with no evidence', () => {
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'unclaimed'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'no-evidence' },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      expect(
+        screen.getByText(/Test: Set encryption passphrase/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    test('should offer recovery key claim when server could not be reached (vaultStatus: unclaimed + postponed)', () => {
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'unclaimed'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'postponed' },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      expect(
+        screen.getByText(/We could not reach the server/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    test('should offer recovery key claim when evidence check is in flight because the action needs no server', () => {
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'unclaimed'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({ status: 'checking' });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      expect(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    test('should not offer recovery key claim when server vault meta claims the vault', () => {
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'unclaimed'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'claimed' },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      expect(screen.getByText(/Test: Unlock/)).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    test('should send recovery key to onClaim handler when claim is submitted', async () => {
+      const setMasterKeyBytesFn = jest.fn();
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'unclaimed'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: setMasterKeyBytesFn,
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'no-evidence' },
+      });
+      const toastFn = jest.fn();
+      mockUseToast.mockReturnValue({ toast: toastFn });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      // Verify the claim offer button is present on the setup screen
+      expect(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      ).toBeInTheDocument();
+
+      // Expand and fill in recovery key
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      );
+
+      const input = screen.getByLabelText(/Recovery key/) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'test-recovery-key' } });
+
+      // Verify submit is enabled when input is non-empty
+      const submitButton = screen.getByRole('button', {
+        name: /Claim this vault/,
+      }) as HTMLButtonElement;
+      expect(submitButton.disabled).toBe(false);
+
+      fireEvent.click(submitButton);
+
+      // The claim offer handles the key submission and shows the result.
+      // An unclaimed vault with no server evidence receives the no-match response.
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+      });
+
+      expect(screen.getByRole('alert').textContent).toBe(
+        'That recovery key did not unlock a vault on this device. Nothing on this device was changed.',
+      );
+    });
+
+    test('should show alert and keep setup screen when recovery key is wrong', async () => {
+      const setMasterKeyBytesFn = jest.fn();
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'unclaimed'),
+        unlockWithRecoveryKey: jest
+          .fn()
+          .mockRejectedValue(new VaultSecretMismatchError('recovery-key')),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: setMasterKeyBytesFn,
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'no-evidence' },
+      });
+      const toastFn = jest.fn();
+      mockUseToast.mockReturnValue({ toast: toastFn });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      // Expand and fill in recovery key
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      );
+
+      const input = screen.getByLabelText(/Recovery key/) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'wrong-recovery-key' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /Claim this vault/ }));
+
+      // Wait for the error alert to appear
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+      });
+
+      const alert = screen.getByRole('alert');
+      expect(alert.textContent).toBe(
+        'That recovery key did not unlock a vault on this device. Nothing on this device was changed.',
+      );
+
+      expect(
+        screen.getByText(/Test: Set encryption passphrase/),
+      ).toBeInTheDocument();
+
+      expect(setMasterKeyBytesFn).not.toHaveBeenCalled();
+      expect(toastFn).not.toHaveBeenCalled();
+    });
+
+    test('should make device holding nothing indistinguishable from device holding unclaimed vault with wrong key', async () => {
+      const setMasterKeyBytesFn1 = jest.fn();
+      const setMasterKeyBytesFn2 = jest.fn();
+
+      // === Setup 1: device with unclaimed vault, wrong recovery key ===
+      const handle1 = createStubHandle({
+        vaultStatus: jest.fn(() => 'unclaimed'),
+        unlockWithRecoveryKey: jest
+          .fn()
+          .mockRejectedValue(new VaultSecretMismatchError('recovery-key')),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: setMasterKeyBytesFn1,
+        lock: jest.fn(),
+        handle: handle1,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'no-evidence' },
+      });
+      const toastFn1 = jest.fn();
+      mockUseToast.mockReturnValue({ toast: toastFn1 });
+
+      const { unmount: unmount1 } = render(
+        <VaultGate title="Test">{() => <div>children</div>}</VaultGate>,
+      );
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      );
+
+      const input1 = screen.getByLabelText(/Recovery key/) as HTMLInputElement;
+      fireEvent.change(input1, { target: { value: 'test-key' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /Claim this vault/ }));
+
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+      });
+
+      const alertText1 = screen.getByRole('alert').textContent || '';
+      const cardTitle1 =
+        screen.getByText(/Test: Set encryption passphrase/).textContent || '';
+
+      unmount1();
+
+      // === Setup 2: device with nothing, same recovery key ===
+      const handle2 = createStubHandle({
+        vaultStatus: jest.fn(() => 'absent'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: setMasterKeyBytesFn2,
+        lock: jest.fn(),
+        handle: handle2,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'no-evidence' },
+      });
+      const toastFn2 = jest.fn();
+      mockUseToast.mockReturnValue({ toast: toastFn2 });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      );
+
+      const input2 = screen.getByLabelText(/Recovery key/) as HTMLInputElement;
+      fireEvent.change(input2, { target: { value: 'test-key' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /Claim this vault/ }));
+
+      // For an empty device, the offer's onClaim returns 'no-match' because no handle
+      await waitFor(() => {
+        expect(screen.getByRole('alert')).toBeInTheDocument();
+      });
+
+      const alertText2 = screen.getByRole('alert').textContent || '';
+      const cardTitle2 =
+        screen.getByText(/Test: Set encryption passphrase/).textContent || '';
+
+      // === Assertion: both are indistinguishable ===
+      expect(alertText1).toBe(alertText2);
+      expect(cardTitle1).toBe(cardTitle2);
+      expect(setMasterKeyBytesFn1).not.toHaveBeenCalled();
+      expect(setMasterKeyBytesFn2).not.toHaveBeenCalled();
+      expect(toastFn1).not.toHaveBeenCalled();
+      expect(toastFn2).not.toHaveBeenCalled();
     });
   });
 });
