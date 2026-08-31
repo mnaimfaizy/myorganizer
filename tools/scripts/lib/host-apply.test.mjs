@@ -162,6 +162,68 @@ test('buildHostApplySteps throws when nodevenvActivate is missing', () => {
   );
 });
 
+test('activate step suspends set -u across the vendor script and restores it', () => {
+  // CloudLinux's nodevenv activate reads CL_VIRTUAL_ENV unguarded, so `set -u`
+  // aborted the apply on its line 78 — before node was on PATH. Found by
+  // running the preflight against a real host (#569).
+  const steps = buildHostApplySteps({
+    nodevenvActivate: '/home/user/nodevenv/app/22/bin/activate',
+    appRoot: '/var/app',
+    selectorAppKey: 'my-app',
+  });
+  const activate = steps.find((step) => step.id === 'activate-nodevenv');
+
+  const lines = activate.command.split('\n');
+  assert.equal(lines[0], 'set +u');
+  assert.match(lines[1], /^source /);
+  assert.equal(lines[2], 'set -u');
+});
+
+test('an unguarded variable in the activate script does not abort the script', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'activate-unbound-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+
+  // A stand-in for the vendor script: reads an unset variable, as CloudLinux does.
+  const activate = join(dir, 'activate');
+  writeFileSync(activate, 'echo "venv: $CL_VIRTUAL_ENV"\n');
+
+  const steps = buildHostApplySteps({
+    nodevenvActivate: activate,
+    appRoot: dir,
+    selectorAppKey: 'my-app',
+  });
+  const upToActivate = renderHostApplyScript(steps.slice(0, 1));
+
+  const result = spawnSync('bash', ['-c', `${upToActivate}\necho SURVIVED`], {
+    encoding: 'utf8',
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /SURVIVED/);
+});
+
+test('set -u is back on after the activate step', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'activate-restores-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+
+  const activate = join(dir, 'activate');
+  writeFileSync(activate, 'echo "venv: $CL_VIRTUAL_ENV"\n');
+
+  const steps = buildHostApplySteps({
+    nodevenvActivate: activate,
+    appRoot: dir,
+    selectorAppKey: 'my-app',
+  });
+
+  // Our own unset variable must still abort — suspending -u is scoped to the
+  // vendor script, not a blanket relaxation for the rest of the sequence.
+  const script = `${renderHostApplyScript(steps.slice(0, 1))}\necho "$OUR_OWN_TYPO"\necho SURVIVED`;
+  const result = spawnSync('bash', ['-c', script], { encoding: 'utf8' });
+
+  assert.notEqual(result.status, 0);
+  assert.ok(!result.stdout.includes('SURVIVED'));
+});
+
 // === Area 3: Selector isolation ===
 
 test('buildSelectorLoadStep embeds the key literally with JSON.stringify', () => {

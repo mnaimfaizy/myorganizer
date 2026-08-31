@@ -204,6 +204,26 @@ export function buildSelectorProbeScript(selectorAppKey) {
 }
 
 /**
+ * Puts `node` and `npm` on PATH by sourcing the environment's Node virtualenv.
+ *
+ * `set -u` is suspended across the vendor script and nothing else. CloudLinux's
+ * nodevenv activate reads `CL_VIRTUAL_ENV` unguarded, so `set -u` aborts on its
+ * line 78 — before `node` exists — and every apply would have died there. We do
+ * not own that script and cannot fix it; `-e` and `pipefail` stay on
+ * throughout, and `-u` is restored immediately after, so every command this
+ * module writes itself is still covered.
+ *
+ * Shared with the preflight so a rehearsal activates exactly the way an apply
+ * does. Found the hard way: the preflight originally ran its own remote `node`
+ * without activating at all, and reported `node: command not found` for checks
+ * that had nothing to do with node being absent.
+ */
+export function buildActivateCommand(nodevenvActivate) {
+  requireNonEmptyString(nodevenvActivate, 'NODEVENV_ACTIVATE');
+  return ['set +u', `source ${shQuote(nodevenvActivate)}`, 'set -u'].join('\n');
+}
+
+/**
  * Builds the ordered on-host steps from secret values the caller already
  * resolved (from GitHub Environment secrets — this module never fetches
  * them). Throws `HostApplyRefusal` if any required secret is missing.
@@ -218,7 +238,10 @@ export function buildHostApplySteps({
   requireNonEmptyString(selectorAppKey, 'SELECTOR_APP_KEY');
 
   return [
-    { id: 'activate-nodevenv', command: `source ${shQuote(nodevenvActivate)}` },
+    {
+      id: 'activate-nodevenv',
+      command: buildActivateCommand(nodevenvActivate),
+    },
     { id: 'enter-app-root', command: `cd ${shQuote(appRoot)}` },
     { id: 'load-database-url', command: buildSelectorLoadStep(selectorAppKey) },
     { id: 'npm-ci', command: 'npm ci --omit=dev' },

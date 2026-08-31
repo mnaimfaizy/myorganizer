@@ -32,6 +32,7 @@ import {
   SELECTOR_STORE_PATH,
   assertAppRootGuard,
   assertHostApplyProbesHealthy,
+  buildActivateCommand,
   buildSelectorProbeScript,
   findHostApplyLogLeaks,
 } from './lib/host-apply.mjs';
@@ -195,7 +196,7 @@ function checkVirtualenv() {
   const result = remote(
     `set -euo pipefail
 [ -f ${shq(activate)} ] || { echo "no activate script at the configured path" >&2; exit 1; }
-source ${shq(activate)}
+${buildActivateCommand(activate)}
 printf 'node=%s npm=%s\\n' "$(node -v)" "$(npm -v)"`,
   );
   if (result.status === 0 && result.stdout.includes('node=')) {
@@ -210,6 +211,7 @@ function checkAppRootOnHost() {
   const result = remote(
     `set -euo pipefail
 [ -d ${shq(appRoot)} ] || { echo "APP_ROOT is not a directory on the host" >&2; exit 1; }
+${buildActivateCommand(env('NODEVENV_ACTIVATE'))}
 cd ${shq(appRoot)}
 [ -f package.json ] || { echo "no package.json in APP_ROOT - was the bundle ever uploaded?" >&2; exit 1; }
 node -e 'const p=require("./package.json");process.stdout.write(JSON.stringify(Object.keys(p.scripts||{})))'`,
@@ -261,7 +263,11 @@ else [ -w . ] && echo 'tmp/ absent, APP_ROOT writable (apply will mkdir it)' || 
 
 /** The one assumption this engine cannot verify without a real host. */
 function checkSelectorStore() {
-  const result = remote(buildSelectorProbeScript(env('SELECTOR_APP_KEY')));
+  const result = remote(
+    `set -euo pipefail
+${buildActivateCommand(env('NODEVENV_ACTIVATE'))}
+${buildSelectorProbeScript(env('SELECTOR_APP_KEY'))}`,
+  );
   if (result.status !== 0) {
     fail('selector store', result.stderr || `probe exited ${result.status}`);
     return;
