@@ -361,18 +361,33 @@ export function assertHostApplyLogClean(logText) {
  * a live host.
  */
 export function assertHostApplyProbesHealthy({ docsStatus, cronStatus }) {
+  const failures = [];
+
   if (
     !(Number.isInteger(docsStatus) && docsStatus >= 200 && docsStatus < 300)
   ) {
-    throw new HostApplyRefusal(
-      `GET {API_ORIGIN}/docs returned ${docsStatus}, expected 2xx`,
+    failures.push(
+      `GET {API_ORIGIN}/docs returned ${docsStatus}, expected 2xx` +
+        (docsStatus >= 300 && docsStatus < 400
+          ? ' - a redirect, so the probe did not follow one: /docs answers 301 to /docs/'
+          : ''),
     );
   }
 
   if (cronStatus !== 401) {
-    throw new HostApplyRefusal(
-      `wrong-secret cron POST returned ${cronStatus}, expected 401`,
+    failures.push(
+      `wrong-secret cron POST returned ${cronStatus}, expected 401` +
+        (cronStatus === 403
+          ? ' - 403 is the host answering, not the API: a POST with no Content-Type never reaches Node'
+          : ''),
     );
+  }
+
+  // Both are reported together. Throwing on the first meant an operator fixed
+  // /docs, spent another apply, and only then learned the cron probe was wrong
+  // too - which is what the first live run cost (#569).
+  if (failures.length > 0) {
+    throw new HostApplyRefusal(failures.join('\n'));
   }
 }
 
