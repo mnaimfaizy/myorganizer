@@ -229,7 +229,7 @@ The act of recording an ownership that already held, assigning an owner to an Un
 _Avoid_: adopt vault, take over vault, assign vault, link vault
 
 **Vault Claim Evidence**:
-What proves an Unclaimed Local Vault belongs to the signed-in User. A matching server Vault Meta is the strongest and needs nothing from the User: only that authenticated User can have written it. Failing that, a recovery key is proof, because it is minted per Vault and cannot collide. A passphrase unwrap is deliberately not proof on its own — it establishes knowledge of a string, and two people who share a passphrase would each unwrap the other's Vault, which is a Vault handed to the wrong User rather than merely a failed unlock.
+What proves an Unclaimed Local Vault belongs to the signed-in User. Server Vault Meta matching is the strongest evidence: only the authenticated User can have written it. A recovery key is proof, because it is minted per Vault and cannot collide across Users. A passphrase unwrap is deliberately not proof on its own — it establishes knowledge of a string only, and two people who share a passphrase would each unwrap the other's Vault. However, a passphrase unwrap coupled with server Vault Meta divergence (meaning this device has rewrapped on this User before) becomes evidence, because the divergence proves prior ownership. When the Claim Offer cannot reach the server, the check postpones rather than falling back to passphrase-only — transport failure is a retry condition, not evidence (see [ADR 0061](docs/adr/0061-vault-claim-is-proven-by-evidence-not-by-unwrap.md)).
 _Avoid_: vault proof, ownership check, claim credential
 
 **Claim Offer**:
