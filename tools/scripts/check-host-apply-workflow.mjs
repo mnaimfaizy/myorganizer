@@ -6,7 +6,10 @@
 // `workflow_dispatch` without re-running the upload jobs, staging's apply
 // group never cancels in progress while its upload group still can, and no
 // `secrets.*` reference in the job falls outside the documented allowlist
-// (`DATABASE_URL` is never one of them, anywhere in either file).
+// (`DATABASE_URL` is never one of them, anywhere in either file). It also
+// pins the two hardening decisions the wiring depends on: ssh verifies the
+// host against pinned keys, and the captured output passes the redaction
+// scrubber before anything prints it.
 //
 //   node tools/scripts/check-host-apply-workflow.mjs [repoRoot]
 //
@@ -139,32 +142,94 @@ function checkHostApplyRunsOnApplyOnly(path) {
   }
 }
 
-function cancelInProgressOf(path, jobId) {
+/** A job's own `concurrency:` block as `{ group, cancel }`, or null. */
+function concurrencyOf(path, jobId) {
   const block = jobBlock(path, jobId);
   const match = block.match(
-    /concurrency:[\s\S]*?cancel-in-progress:\s*(true|false)/,
+    /concurrency:\s*\n\s*group:\s*(\S+)\s*\n\s*cancel-in-progress:\s*(true|false)/,
   );
   if (!match) {
     findings.push(
-      `${path}: ${jobId} declares no concurrency cancel-in-progress`,
+      `${path}: ${jobId} declares no concurrency group with a cancel-in-progress`,
     );
     return null;
   }
-  return match[1] === 'true';
+  return { group: match[1], cancel: match[2] === 'true' };
 }
 
-function checkStagingConcurrencySplit() {
-  const hostApplyCancels = cancelInProgressOf(STAGING, 'host-apply');
-  if (hostApplyCancels === true) {
+/**
+ * Staging's upload and apply must share one group that never cancels.
+ *
+ * ADR 0056 rules out cancelling an in-flight `prisma migrate deploy`, which a
+ * non-cancelling group for `host-apply` alone achieves — but leaves the other
+ * half open: with the upload in a separate group, a newer `main` run's
+ * `deploy-backend` starts immediately and FTPs a new bundle into the same
+ * `APP_ROOT` that the older run's `npm ci` and `prisma migrate deploy` are
+ * still working in. One shared, queueing group closes both.
+ *
+ * `deploy-frontend` deliberately stays in the cancelling `deploy-staging`
+ * group: it ships to a different target and never touches `APP_ROOT`.
+ */
+function checkStagingApplyGroup() {
+  const upload = concurrencyOf(STAGING, 'deploy-backend');
+  const apply = concurrencyOf(STAGING, 'host-apply');
+  if (!upload || !apply) return;
+
+  if (upload.group !== apply.group) {
     findings.push(
-      `${STAGING}: host-apply's concurrency cancel-in-progress is true, expected false`,
+      `${STAGING}: deploy-backend (${upload.group}) and host-apply (${apply.group}) hold different concurrency groups - an upload could land in APP_ROOT while an apply is still running there`,
     );
   }
 
-  const uploadCancels = cancelInProgressOf(STAGING, 'deploy-backend');
-  if (uploadCancels === false) {
+  for (const [jobId, concurrency] of [
+    ['deploy-backend', upload],
+    ['host-apply', apply],
+  ]) {
+    if (concurrency.cancel) {
+      findings.push(
+        `${STAGING}: ${jobId}'s cancel-in-progress is true, expected false - a newer run must queue behind an in-flight apply, never cancel it`,
+      );
+    }
+  }
+}
+
+/**
+ * The runner is ephemeral, so `StrictHostKeyChecking=accept-new` would trust
+ * whatever key answered on every single run — trust-on-first-use with no
+ * memory is not trust at all. The host keys are pinned as `SSH_KNOWN_HOSTS`.
+ */
+function checkSshHostKeyPinning(path) {
+  const block = jobBlock(path, 'host-apply');
+  if (/StrictHostKeyChecking=(?!yes\b)/.test(block)) {
     findings.push(
-      `${STAGING}: deploy-backend's concurrency cancel-in-progress is false, expected true`,
+      `${path}: host-apply's ssh does not set StrictHostKeyChecking=yes`,
+    );
+  }
+  if (!/UserKnownHostsFile=/.test(block)) {
+    findings.push(
+      `${path}: host-apply's ssh sets no UserKnownHostsFile, so SSH_KNOWN_HOSTS is never consulted`,
+    );
+  }
+}
+
+/**
+ * PRD #565 user story 30: a public Actions log is not a secret store. The SSH
+ * step must capture its output to a file rather than stream it, and the job
+ * must hand that file to the scrubber, which is what decides whether it prints.
+ * Streaming would put a leaked value in the log before anything could grade it.
+ */
+function checkLogIsScrubbedBeforePrinting(path) {
+  const block = jobBlock(path, 'host-apply');
+  // Both stdout and stderr must land in the file. Matching the redirect alone
+  // would also match the `: >` line that truncates it, which redirects nothing.
+  if (!/>\s*"\$RUNNER_TEMP\/host-apply\.log"\s*2>&1/.test(block)) {
+    findings.push(
+      `${path}: host-apply's ssh step streams its output instead of capturing it to host-apply.log`,
+    );
+  }
+  if (!/scrub-host-apply-log\.mjs/.test(block)) {
+    findings.push(
+      `${path}: host-apply never runs scrub-host-apply-log.mjs over the captured output`,
     );
   }
 }
@@ -221,7 +286,11 @@ checkNoApplyOnlyReRun(PRODUCTION, 'deploy-backend');
 checkNoApplyOnlyReRun(PRODUCTION, 'deploy-frontend');
 checkHostApplyRunsOnApplyOnly(STAGING);
 checkHostApplyRunsOnApplyOnly(PRODUCTION);
-checkStagingConcurrencySplit();
+checkStagingApplyGroup();
+checkSshHostKeyPinning(STAGING);
+checkSshHostKeyPinning(PRODUCTION);
+checkLogIsScrubbedBeforePrinting(STAGING);
+checkLogIsScrubbedBeforePrinting(PRODUCTION);
 checkSecretAllowlist(STAGING);
 checkSecretAllowlist(PRODUCTION);
 checkNoDatabaseUrlSecret(STAGING);

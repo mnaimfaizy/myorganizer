@@ -24,15 +24,15 @@ if (environment !== 'staging' && environment !== 'production') {
 }
 
 try {
-  // No counterpartAppRoot: the closed HOST_APPLY_SECRET_NAMES contract (#566)
-  // has one APP_ROOT per GitHub Environment, and a job scoped to `environment:
-  // staging` cannot read `production`'s environment secrets (or vice versa) to
-  // compare them live. The guard's collision check exists in host-apply.mjs for
-  // whichever caller can supply both pins; wiring that needs a secret-contract
-  // decision beyond #567's job wiring, not something to invent at this call site.
+  // A job scoped to `environment: staging` cannot read `production`'s
+  // environment secrets to compare the two roots live, so each environment
+  // carries the other's pin as its own `COUNTERPART_APP_ROOT` secret. Both
+  // values are host paths, not credentials, and neither is printed here — a
+  // refusal names the environment, never the path.
   const appRoot = assertAppRootGuard({
     environment,
     appRoot: process.env.APP_ROOT,
+    counterpartAppRoot: process.env.COUNTERPART_APP_ROOT,
   });
 
   const { script } = buildHostApplyScript({

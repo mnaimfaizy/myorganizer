@@ -20,6 +20,7 @@ import { fileURLToPath } from 'node:url';
 
 import {
   HostApplyRefusal,
+  HOST_APPLY_SECRET_NAMES,
   HOST_APPLY_STEP_ORDER,
   buildSelectorLoadStep,
   buildHostApplySteps,
@@ -73,7 +74,7 @@ test('buildHostApplySteps prisma commands use npm run (not npx)', () => {
   assert.equal(generate.command, 'npm run prisma:generate');
 });
 
-test('buildHostApplySteps restart command is exactly touch tmp/restart.txt', () => {
+test('buildHostApplySteps restart step creates tmp/ before touching restart.txt', () => {
   const result = buildHostApplySteps({
     nodevenvActivate: '/home/user/.nvm/nvm.sh',
     appRoot: '/var/app',
@@ -81,7 +82,7 @@ test('buildHostApplySteps restart command is exactly touch tmp/restart.txt', () 
   });
 
   const restart = result.find((step) => step.id === 'restart');
-  assert.equal(restart.command, 'touch tmp/restart.txt');
+  assert.equal(restart.command, 'mkdir -p tmp && touch tmp/restart.txt');
 });
 
 test('renderHostApplyScript starts with set -euo pipefail', () => {
@@ -114,7 +115,7 @@ test('renderHostApplyScript joins steps in order separated by newlines', () => {
   assert.ok(script.includes('npm ci --omit=dev'));
   assert.ok(script.includes('npm run prisma:migrate:deploy'));
   assert.ok(script.includes('npm run prisma:generate'));
-  assert.ok(script.includes('touch tmp/restart.txt'));
+  assert.ok(script.includes('mkdir -p tmp && touch tmp/restart.txt'));
 });
 
 // === Area 2: Builder refuses unsafe input ===
@@ -353,6 +354,19 @@ test('selector fragment refuses cleanly when store file is missing', (t) => {
   assert.ok(!result.stderr.includes('at '), 'should not contain stack trace');
 });
 
+// === Area 3b: the secret-name contract ===
+
+test('HOST_APPLY_SECRET_NAMES never contains DATABASE_URL', () => {
+  assert.ok(!HOST_APPLY_SECRET_NAMES.includes('DATABASE_URL'));
+});
+
+test('HOST_APPLY_SECRET_NAMES carries the two guard inputs', () => {
+  // Both were absent from the PRD's original list of eight, and their absence
+  // is what left the APP_ROOT collision check and host-key verification inert.
+  assert.ok(HOST_APPLY_SECRET_NAMES.includes('COUNTERPART_APP_ROOT'));
+  assert.ok(HOST_APPLY_SECRET_NAMES.includes('SSH_KNOWN_HOSTS'));
+});
+
 // === Area 4: APP_ROOT guard ===
 
 test('assertAppRootGuard throws when appRoot is empty', () => {
@@ -361,6 +375,7 @@ test('assertAppRootGuard throws when appRoot is empty', () => {
       assertAppRootGuard({
         environment: 'staging',
         appRoot: '',
+        counterpartAppRoot: '/var/prod-app',
       }),
     (err) =>
       err instanceof HostApplyRefusal && err.message.includes('APP_ROOT'),
@@ -373,6 +388,7 @@ test('assertAppRootGuard throws when appRoot is undefined', () => {
       assertAppRootGuard({
         environment: 'staging',
         appRoot: undefined,
+        counterpartAppRoot: '/var/prod-app',
       }),
     (err) =>
       err instanceof HostApplyRefusal && err.message.includes('APP_ROOT'),
@@ -430,12 +446,42 @@ test('assertAppRootGuard returns appRoot when production differs from staging', 
   assert.equal(result, prodRoot);
 });
 
+test('assertAppRootGuard throws when counterpartAppRoot is missing', () => {
+  // Without the other environment's pin the guard degrades to the unset check,
+  // which is what let a Staging apply reach Production's root unchallenged.
+  assert.throws(
+    () =>
+      assertAppRootGuard({
+        environment: 'staging',
+        appRoot: '/var/staging-app',
+      }),
+    (err) =>
+      err instanceof HostApplyRefusal &&
+      err.message.includes('COUNTERPART_APP_ROOT'),
+  );
+});
+
+test('assertAppRootGuard throws when counterpartAppRoot is empty', () => {
+  assert.throws(
+    () =>
+      assertAppRootGuard({
+        environment: 'production',
+        appRoot: '/var/prod-app',
+        counterpartAppRoot: '   ',
+      }),
+    (err) =>
+      err instanceof HostApplyRefusal &&
+      err.message.includes('COUNTERPART_APP_ROOT'),
+  );
+});
+
 test('assertAppRootGuard throws on unknown environment', () => {
   assert.throws(
     () =>
       assertAppRootGuard({
         environment: 'unknown',
         appRoot: '/var/app',
+        counterpartAppRoot: '/var/other-app',
       }),
     (err) =>
       err instanceof HostApplyRefusal &&
@@ -651,4 +697,59 @@ test('assertHostApplyProbesHealthy throws when cronStatus is 200', () => {
       err.message.includes('200') &&
       err.message.includes('401'),
   );
+});
+
+// === Area 8: the scrubber CLI ===
+//
+// findHostApplyLogLeaks is graded above; what matters here is the decision the
+// CLI wraps around it, because that is what stands between a leaked value and
+// a public Actions log. A grader nothing calls protects nothing.
+
+const SCRUBBER = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  'scrub-host-apply-log.mjs',
+);
+
+function runScrubber(t, contents) {
+  const dir = mkdtempSync(join(tmpdir(), 'host-apply-scrub-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const logFile = join(dir, 'host-apply.log');
+  writeFileSync(logFile, contents);
+  return spawnSync(process.execPath, [SCRUBBER, logFile], {
+    encoding: 'utf8',
+  });
+}
+
+test('scrub-host-apply-log prints a clean log verbatim', (t) => {
+  const log = 'added 41 packages\nAll migrations applied\n';
+  const result = runScrubber(t, log);
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout, log);
+});
+
+test('scrub-host-apply-log withholds a log carrying a connection string', (t) => {
+  const secret = 'postgresql://someone:hunter2@db.internal/app';
+  const result = runScrubber(t, `npm ci ok\nDATABASE_URL=${secret}\ndone\n`);
+
+  assert.equal(result.status, 1);
+  // Neither stream may repeat the value into the log we are protecting.
+  assert.ok(!result.stdout.includes(secret));
+  assert.ok(!result.stderr.includes(secret));
+  assert.ok(!result.stdout.includes('npm ci ok'));
+  assert.match(result.stderr, /line 2/);
+});
+
+test('scrub-host-apply-log refuses a missing log rather than passing silently', (t) => {
+  const dir = mkdtempSync(join(tmpdir(), 'host-apply-scrub-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+
+  const result = spawnSync(
+    process.execPath,
+    [SCRUBBER, join(dir, 'absent.log')],
+    { encoding: 'utf8' },
+  );
+
+  assert.equal(result.status, 2);
 });

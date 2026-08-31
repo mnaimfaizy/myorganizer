@@ -4,7 +4,7 @@
  * A failed migration and then a stale Prisma client both shipped to Production
  * because "go live" stayed on interactive SSH, run only when someone remembered.
  * This module is the part of that sequence CI can own without ever holding
- * `DATABASE_URL` itself: it takes the resolved values of the eight named
+ * `DATABASE_URL` itself: it takes the resolved values of the named
  * secrets (`HOST_APPLY_SECRET_NAMES`) from the caller — the GitHub Actions
  * workflow built in #567 — and produces the on-host command sequence, refuses
  * unsafe inputs, and can grade a captured log for a leaked credential.
@@ -29,14 +29,23 @@ export class HostApplyRefusal extends Error {
  * "Implementation Decisions"). `DATABASE_URL` is deliberately absent — it is
  * loaded on the host from the selector store, never a GitHub secret. The public
  * secret-name table in `docs/deployment/CI_CD_AND_RELEASE_PROCESS.md` lists the
- * same eight names; keep both in sync by hand, there is no shared source yet.
+ * same names; keep both in sync by hand, there is no shared source yet.
+ *
+ * `COUNTERPART_APP_ROOT` and `SSH_KNOWN_HOSTS` extend PRD #565's original list
+ * of eight. Both close a hole that list left open: without a counterpart pin
+ * `assertAppRootGuard` can only refuse an unset `APP_ROOT`, so PRD user stories
+ * 20 and 21 (Staging refusing Production's root, and the reverse) had no live
+ * path; without pinned host keys the SSH step trusted whatever key answered on
+ * a runner that has no memory of the last connection.
  */
 export const HOST_APPLY_SECRET_NAMES = Object.freeze([
   'SSH_HOST',
   'SSH_PORT',
   'SSH_USER',
   'SSH_PRIVATE_KEY',
+  'SSH_KNOWN_HOSTS',
   'APP_ROOT',
+  'COUNTERPART_APP_ROOT',
   'NODEVENV_ACTIVATE',
   'SELECTOR_APP_KEY',
   'API_ORIGIN',
@@ -132,7 +141,10 @@ export function buildHostApplySteps({
     { id: 'npm-ci', command: 'npm ci --omit=dev' },
     { id: 'prisma-migrate-deploy', command: 'npm run prisma:migrate:deploy' },
     { id: 'prisma-generate', command: 'npm run prisma:generate' },
-    { id: 'restart', command: 'touch tmp/restart.txt' },
+    // `mkdir -p` first: a missing `tmp/` would abort the script here, after
+    // migrate and generate have already run and before Passenger is told to
+    // reload — the stale-client state this whole sequence exists to prevent.
+    { id: 'restart', command: 'mkdir -p tmp && touch tmp/restart.txt' },
     { id: 'migrate-status', command: 'npm run prisma:migrate:status' },
   ];
 }
@@ -157,9 +169,14 @@ export function buildHostApplyScript(secrets) {
  * Refuses an `APP_ROOT` that is unset, or that collides with the other
  * environment's pinned root (ADR 0056: a shared hosting account means an SSH
  * principal that can Host Apply Staging can reach Production's tree).
- * `counterpartAppRoot` is whatever pin the caller has for the *other*
- * environment; passing `undefined` (single-environment context) skips only
- * the collision check, never the unset check.
+ *
+ * `counterpartAppRoot` is the *other* environment's pin, supplied as that
+ * environment's own `COUNTERPART_APP_ROOT` secret. It is required, not
+ * optional: an absent pin would silently reduce this guard to the unset check,
+ * which is exactly the failure PRD user stories 20 and 21 exist to prevent —
+ * a `main` push migrating Production because Staging's `APP_ROOT` was typed
+ * wrong. A missing counterpart therefore refuses the apply rather than running
+ * an unguarded one.
  */
 export function assertAppRootGuard({
   environment,
@@ -173,8 +190,9 @@ export function assertAppRootGuard({
   }
 
   requireNonEmptyString(appRoot, 'APP_ROOT');
+  requireNonEmptyString(counterpartAppRoot, 'COUNTERPART_APP_ROOT');
 
-  if (counterpartAppRoot && appRoot === counterpartAppRoot) {
+  if (appRoot === counterpartAppRoot) {
     const other = environment === 'staging' ? 'Production' : 'Staging';
     throw new HostApplyRefusal(
       `APP_ROOT for ${environment} equals the ${other} pin - refusing to avoid crossing app roots`,

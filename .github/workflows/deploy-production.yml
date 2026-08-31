@@ -195,6 +195,7 @@ jobs:
       - name: Build Host Apply script
         env:
           APP_ROOT: ${{ secrets.APP_ROOT }}
+          COUNTERPART_APP_ROOT: ${{ secrets.COUNTERPART_APP_ROOT }}
           NODEVENV_ACTIVATE: ${{ secrets.NODEVENV_ACTIVATE }}
           SELECTOR_APP_KEY: ${{ secrets.SELECTOR_APP_KEY }}
         run: node tools/scripts/run-host-apply.mjs production > "$RUNNER_TEMP/host-apply.sh"
@@ -205,19 +206,44 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
           key_file="$RUNNER_TEMP/host_apply_key"
+          known_hosts="$RUNNER_TEMP/host_apply_known_hosts"
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$key_file"
-          chmod 600 "$key_file"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$known_hosts"
+          chmod 600 "$key_file" "$known_hosts"
+          : > "$RUNNER_TEMP/host-apply.log"
+          # The runner is ephemeral, so accept-new would trust whatever key
+          # answered, every run. The host keys are pinned as a secret instead.
+          # Output is captured rather than streamed: the next step decides
+          # whether it may reach this public Actions log.
+          status=0
           ssh -i "$key_file" -p "$SSH_PORT" \
-            -o StrictHostKeyChecking=accept-new \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$known_hosts" \
             -o BatchMode=yes \
-            "$SSH_USER@$SSH_HOST" 'bash -s' < "$RUNNER_TEMP/host-apply.sh"
+            "$SSH_USER@$SSH_HOST" 'bash -s' \
+            < "$RUNNER_TEMP/host-apply.sh" \
+            > "$RUNNER_TEMP/host-apply.log" 2>&1 || status=$?
+          echo "HOST_APPLY_SSH_STATUS=$status" >> "$GITHUB_ENV"
 
-      - name: Remove SSH key
+      - name: Host Apply output (redaction-checked)
         if: always()
-        run: rm -f "$RUNNER_TEMP/host_apply_key" "$RUNNER_TEMP/host-apply.sh"
+        run: node tools/scripts/scrub-host-apply-log.mjs "$RUNNER_TEMP/host-apply.log"
+
+      - name: Fail on a red Host Apply
+        if: always()
+        run: exit "${HOST_APPLY_SSH_STATUS:-1}"
+
+      - name: Remove SSH key and captured log
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/host_apply_key" \
+            "$RUNNER_TEMP/host_apply_known_hosts" \
+            "$RUNNER_TEMP/host-apply.sh" \
+            "$RUNNER_TEMP/host-apply.log"
 
       - name: Verify Host Apply (HTTP probes)
         env:

@@ -206,36 +206,62 @@ or this document.
 
 Same names in both environments:
 
-| Secret              | What it is for                                                                                      |
-| ------------------- | --------------------------------------------------------------------------------------------------- |
-| `SSH_HOST`          | Host to connect to for that environment's Host Apply.                                               |
-| `SSH_PORT`          | SSH port for that connection.                                                                       |
-| `SSH_USER`          | SSH account to connect as.                                                                          |
-| `SSH_PRIVATE_KEY`   | Deploy key for that account (never the account password).                                           |
-| `APP_ROOT`          | This environment's backend application directory on the host.                                       |
-| `NODEVENV_ACTIVATE` | Path to that environment's Node virtualenv `activate` script.                                       |
-| `SELECTOR_APP_KEY`  | The one app identity Host Apply may load `DATABASE_URL` for from the host's Node.js selector store. |
-| `API_ORIGIN`        | Base URL Host Apply's HTTP verification probes call after restart.                                  |
+| Secret                 | What it is for                                                                                      |
+| ---------------------- | --------------------------------------------------------------------------------------------------- |
+| `SSH_HOST`             | Host to connect to for that environment's Host Apply.                                               |
+| `SSH_PORT`             | SSH port for that connection.                                                                       |
+| `SSH_USER`             | SSH account to connect as.                                                                          |
+| `SSH_PRIVATE_KEY`      | Deploy key for that account (never the account password).                                           |
+| `SSH_KNOWN_HOSTS`      | The host's public keys, in `known_hosts` format, that the runner must match.                        |
+| `APP_ROOT`             | This environment's backend application directory on the host.                                       |
+| `COUNTERPART_APP_ROOT` | The **other** environment's `APP_ROOT`, so this one can refuse to equal it.                         |
+| `NODEVENV_ACTIVATE`    | Path to that environment's Node virtualenv `activate` script.                                       |
+| `SELECTOR_APP_KEY`     | The one app identity Host Apply may load `DATABASE_URL` for from the host's Node.js selector store. |
+| `API_ORIGIN`           | Base URL Host Apply's HTTP verification probes call after restart.                                  |
 
 `DATABASE_URL` is never a GitHub secret in either environment. Host Apply loads
 it on the host, for `SELECTOR_APP_KEY` only, and never prints it.
+
+Two of those names extend the eight the PRD originally listed, because eight
+left two holes. `COUNTERPART_APP_ROOT` is what makes the `APP_ROOT` guard mean
+anything: a job scoped to `environment: staging` cannot read `production`'s
+secrets to compare the two roots, so each environment carries the other's pin
+and refuses to run when they match — without it the guard could only catch an
+`APP_ROOT` that was unset, and a shared hosting account would let a `main` push
+migrate Production. `SSH_KNOWN_HOSTS` replaces `StrictHostKeyChecking=accept-new`:
+the runner is ephemeral and remembers nothing, so trust-on-first-use would have
+meant trusting whatever answered, on every run. Both are host paths and public
+keys, not credentials, but they stay Environment secrets because this repository
+is public and they would describe the jail. A missing value fails the job closed.
 
 Job wiring (issue #567): `host-apply` is a separate job in both
 `deploy-staging.yml` and `deploy-production.yml` that `needs` the backend
 upload job (`deploy-backend`) and declares that environment's `environment:`
 name, so Production's Host Apply waits on the same required-reviewer approval
 as the rest of that Environment. Each workflow also accepts a
-`workflow_dispatch` input, `apply_only`, that re-runs `host-apply` alone
-without re-uploading the backend bundle. Staging's `host-apply` job carries
-its own concurrency group (`deploy-staging-host-apply`,
-`cancel-in-progress: false`) separate from the upload jobs' group
-(`deploy-staging`, `cancel-in-progress: true`): a newer push to `main` may
-still cancel an in-flight upload, but never an in-flight `prisma migrate
-deploy`. Production's whole workflow already queues instead of cancelling, so
-it needs no such split. A failed Host Apply fails the job with no automated
-rollback and no restart-anyway; `deploy-frontend` does not depend on
-`host-apply`, so the two may run side by side once the backend upload
-succeeds.
+`workflow_dispatch` input, `apply_only` (default `false` in both), that re-runs
+`host-apply` alone without re-uploading the backend bundle.
+
+Staging splits its concurrency by whether a job writes to `APP_ROOT`.
+`deploy-backend` and `host-apply` share `deploy-staging-apply` with
+`cancel-in-progress: false`: a newer push to `main` queues behind them rather
+than cancelling an in-flight `prisma migrate deploy` — and rather than FTPing a
+fresh bundle into a tree `npm ci` is still working in, which a group covering
+only `host-apply` would have allowed. `prepare-dependencies` and
+`deploy-frontend` keep `deploy-staging` with `cancel-in-progress: true`, since
+neither touches `APP_ROOT`. Production's whole workflow already queues instead
+of cancelling, so it needs no such split.
+
+The SSH step captures its output to a file instead of streaming it, and
+`tools/scripts/scrub-host-apply-log.mjs` decides whether that output may reach
+the Actions log: a log carrying a connection string or a bare `DATABASE_URL=`
+is withheld, and only the offending line numbers are printed. This repository
+is public, so a streamed log would publish a leak before anything could grade
+it.
+
+A failed Host Apply fails the job with no automated rollback and no
+restart-anyway; `deploy-frontend` does not depend on `host-apply`, so the two
+may run side by side once the backend upload succeeds.
 
 ## How to cut a release
 

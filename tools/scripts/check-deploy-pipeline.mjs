@@ -156,12 +156,15 @@ const cancelInProgress = (path) => {
 };
 
 /**
- * Staging moved its upload jobs' `cancel-in-progress` to a job-level
- * `concurrency:` block (issue #567): a workflow-level group would have
- * covered Host Apply too, and a newer `main` push cancelling an in-flight
- * `prisma migrate deploy` is the one behavior ADR 0056 rules out. Production
- * keeps its cancel-in-progress at the top level (`cancelInProgress` above),
- * so only staging needs this job-scoped variant.
+ * Staging moved `cancel-in-progress` to job-level `concurrency:` blocks (issue
+ * #567): a workflow-level group would have covered Host Apply too, and a newer
+ * `main` push cancelling an in-flight `prisma migrate deploy` is the one
+ * behavior ADR 0056 rules out. The two groups now say different things, so the
+ * page asserts both — `deploy-staging-apply` (deploy-backend and host-apply,
+ * the jobs that touch `APP_ROOT`) queues, while `deploy-staging`
+ * (deploy-frontend) still cancels. Production keeps its cancel-in-progress at
+ * the top level (`cancelInProgress` above), so only staging needs this
+ * job-scoped variant.
  */
 const jobCancelInProgress = (path, jobId) => {
   const block = jobBlock(path, jobId);
@@ -222,12 +225,13 @@ const EXTRACTORS = {
   productionApprovalGatedJobs: () =>
     jobsInEnvironment(PRODUCTION, 'production'),
 
-  // Staging cancels a run in flight; production queues. Reversing either is a
-  // behaviour change the page would otherwise keep describing the old way.
-  // Staging's upload jobs carry this at job level (issue #567); production's
-  // whole workflow still carries it at the top level.
-  stagingConcurrencyCancelInProgress: () =>
+  // Reversing any of these is a behaviour change the page would otherwise keep
+  // describing the old way. The staging jobs that write to `APP_ROOT` queue;
+  // the frontend job, which does not, still cancels; production queues wholesale.
+  stagingApplyCancelInProgress: () =>
     jobCancelInProgress(STAGING, 'deploy-backend'),
+  stagingFrontendCancelInProgress: () =>
+    jobCancelInProgress(STAGING, 'deploy-frontend'),
   productionConcurrencyCancelInProgress: () => cancelInProgress(PRODUCTION),
 
   productionValidateTimeoutMinutes: () =>

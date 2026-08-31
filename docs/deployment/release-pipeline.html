@@ -967,7 +967,7 @@
   <section class="panel" aria-labelledby="hero-h">
     <div class="phead">
       <h2 id="hero-h">One gate, and it is not a box on this page</h2>
-      <span class="src">deploy-production.yml:128, :181, :238</span>
+      <span class="src">deploy-production.yml:128, :181, :264</span>
     </div>
     <div class="pbody">
       <p class="small muted">
@@ -1040,10 +1040,11 @@
               settings, not in any file this diagram can show, and it can be
               removed without a pull request. Only after a human approves do
               deploy-backend, host-apply, and deploy-frontend run:
-              deploy-backend packages and ships over FTP to cPanel, host-apply
-              then applies that upload on the host over SSH and verifies it
-              with two HTTP probes, and deploy-frontend ships the same way
-              over FTP. Afterwards a maintainer runs yarn release colon tag, which asserts the branch is up to date and creates
+              deploy-backend packages and ships over FTP to cPanel, then
+              host-apply applies that upload on the host over SSH and verifies
+              it with two HTTP probes. Alongside host-apply, not after it,
+              deploy-frontend ships the same way over FTP; both wait only on
+              deploy-backend. Afterwards a maintainer runs yarn release colon tag, which asserts the branch is up to date and creates
               an annotated tag with no commit and no files, and pushing that
               tag triggers an idempotent Publish GitHub Release workflow.
             </desc>
@@ -1452,15 +1453,17 @@
               </text>
               <text class="nc" x="272" y="886">
                 fails closed, no rollback, no Tag &#183;
-                deploy-production.yml:176-231
+                deploy-production.yml:176-257
               </text>
             </g>
 
+            <!-- Dashed and unarrowed on purpose: deploy-frontend does not
+                 wait on host-apply. Both hang off deploy-backend and run side
+                 by side; this line is reading order, not a `needs:` edge. -->
             <path
               data-step="11"
-              class="fl x"
+              class="fl x dashed"
               d="M 640 900 L 640 920"
-              marker-end="url(#arrow)"
             />
             <g
               data-step="11"
@@ -1468,17 +1471,17 @@
               data-tip="deployfrontend"
               tabindex="0"
               role="button"
-              aria-label="deploy-frontend &#8212; package and FTP to cPanel, never Vercel"
+              aria-label="deploy-frontend &#8212; package and FTP to cPanel, never Vercel, running beside host-apply rather than after it"
               aria-describedby="note-deployfrontend"
             >
               <rect class="box" x="260" y="924" width="760" height="52" rx="5" />
               <circle class="tipdot" cx="267" cy="932" r="3" />
               <text class="nl mono" x="272" y="946">
-                deploy-frontend &#8594; cPanel over FTP, not Vercel
+                deploy-frontend &#8594; cPanel over FTP, beside host-apply
               </text>
               <text class="nc" x="272" y="962">
-                ./dist/deploy/myorganizer-web/ &#183; 300000 ms timeout &#183;
-                deploy-production.yml:292-300
+                not Vercel &#183; needs deploy-backend, not host-apply (:261)
+                &#183; deploy-production.yml:318-326
               </text>
             </g>
 
@@ -1647,7 +1650,7 @@
         <dd id="note-halt">
           <code>deploy-backend</code> (<code>deploy-production.yml:128</code>),
           <code>host-apply</code> (<code>:181</code>), and
-          <code>deploy-frontend</code> (<code>:238</code>) all declare
+          <code>deploy-frontend</code> (<code>:264</code>) all declare
           <code>environment: production</code> &mdash; three jobs, one
           approval batch. Any job you add that declares
           <code>environment: production</code> joins this same batch; nothing
@@ -1682,12 +1685,12 @@
           <code>touch tmp/restart.txt</code> &#8594;
           <code>prisma migrate status</code>, all under
           <code>set -euo pipefail</code>
-          (<code>deploy-production.yml:176-231</code>): the first failing step
+          (<code>deploy-production.yml:176-257</code>): the first failing step
           stops everything after it &mdash; no rollback, no migrate-down, no
           &#8220;restart anyway,&#8221; no Tag
           (<a href="../adr/0056-ci-owns-host-apply-without-describing-the-jail.md"
             >ADR&nbsp;0056</a
-          >). Verified with two HTTP probes (<code>:222-231</code>):
+          >). Verified with two HTTP probes (<code>:248-257</code>):
           <code>GET {API_ORIGIN}/docs</code> must be 2xx, and a cron POST
           carrying a deliberately wrong secret must be exactly
           <code>401</code>. This page names the algorithm and the secret
@@ -1698,12 +1701,12 @@
         <dd id="note-deployfrontend">
           Packages with <code>yarn package:myorganizer:web</code> and ships
           <code>./dist/deploy/myorganizer-web/</code> over FTP to cPanel
-          (<code>deploy-production.yml:292-300</code>). Production never
+          (<code>deploy-production.yml:318-326</code>). Production never
           invokes Vercel; staging's frontend does. That is the one place the
           two environments genuinely diverge &mdash; see panel&nbsp;2. Runs
           alongside <code>host-apply</code>, not after it &mdash; its
           <code>needs:</code> lists <code>deploy-backend</code>, not
-          <code>host-apply</code> (<code>:235</code>), since neither job needs
+          <code>host-apply</code> (<code>:261</code>), since neither job needs
           the other.
         </dd>
         <dt>tag</dt>
@@ -1792,7 +1795,7 @@
               <code>Deploy Production (manual)</code> &mdash; halts at
               approval
             </td>
-            <td class="cite">deploy-production.yml:3-4, :128, :181, :238</td>
+            <td class="cite">deploy-production.yml:3-4, :128, :181, :264</td>
           </tr>
           <tr>
             <td>6</td>
@@ -1837,12 +1840,12 @@
         <div class="ccard cpanel">
           <div class="ctop">cPanel over FTP</div>
           <p><code>./dist/deploy/backend-api/</code></p>
-          <span class="cite">deploy-staging.yml:106, :112</span>
+          <span class="cite">deploy-staging.yml:110, :116</span>
         </div>
         <div class="ccard vercel">
           <div class="ctop">Vercel</div>
           <p>CLI pinned to <code>50.1.1</code></p>
-          <span class="cite">deploy-staging.yml:223-257, :238</span>
+          <span class="cite">deploy-staging.yml:254-288, :269</span>
         </div>
 
         <div class="rlabel">Production</div>
@@ -1854,7 +1857,7 @@
         <div class="ccard cpanel">
           <div class="ctop">cPanel over FTP</div>
           <p><code>./dist/deploy/myorganizer-web/</code></p>
-          <span class="cite">deploy-production.yml:292, :298</span>
+          <span class="cite">deploy-production.yml:318, :324</span>
         </div>
       </div>
       <p class="small muted">
@@ -1960,7 +1963,7 @@
           <div class="fname">Vercel CLI</div>
           <p>
             <code>50.1.1</code>, staging frontend deploy only
-            (<code>deploy-staging.yml:238</code>). Production never invokes
+            (<code>deploy-staging.yml:269</code>). Production never invokes
             Vercel.
             <a href="VERCEL_FRONTEND_HOSTING.md">VERCEL_FRONTEND_HOSTING.md:56-66</a>
             says <code>vercel@latest</code> &mdash; that is human first-time
@@ -1971,9 +1974,9 @@
           <div class="fname">FTP transfer timeout</div>
           <p>
             <code>300000</code> ms, the same value at three sites: staging
-            backend (<code>deploy-staging.yml:114</code>), production backend
+            backend (<code>deploy-staging.yml:118</code>), production backend
             (<code>deploy-production.yml:170</code>), production frontend
-            (<code>:300</code>). <code>host-apply</code> has no FTP step and
+            (<code>:326</code>). <code>host-apply</code> has no FTP step and
             no site here &mdash; it applies over SSH, not FTP.
           </p>
         </div>
@@ -1982,10 +1985,10 @@
           <p>
             <code>validate</code> 5&nbsp;min (<code>:29</code>); staging jobs
             30&nbsp;min (<code>deploy-staging.yml:26</code>, <code>:66</code>,
-            <code>:126</code>, <code>:186</code>) &mdash; four now, including
+            <code>:131</code>, <code>:217</code>) &mdash; four now, including
             <code>host-apply</code>; production's three approval-gated jobs
             45&nbsp;min each (<code>deploy-production.yml:127</code>,
-            <code>:180</code>, <code>:237</code>) &mdash; three now, also
+            <code>:180</code>, <code>:263</code>) &mdash; three now, also
             including <code>host-apply</code>; dispatcher, release-PR and
             publish 10&nbsp;min each.
           </p>
@@ -1994,22 +1997,24 @@
           <div class="fname">Concurrency</div>
           <p>
             Staging has no workflow-level <code>concurrency:</code> block any
-            more &mdash; it moved to two job-level groups (issue&nbsp;#567).
+            more &mdash; it moved to two job-level groups (issue&nbsp;#567),
+            split by whether the job writes to <code>APP_ROOT</code>.
+            <code>deploy-staging-apply</code>
+            (<code>cancel-in-progress: false</code>) covers
+            <code>deploy-backend</code> and <code>host-apply</code>
+            (<code>deploy-staging.yml:73-75</code>, <code>:134-136</code>)
+            &mdash; the two jobs that land and then apply the bundle. A newer
+            <code>main</code> push queues behind them: it must not cancel an
+            in-flight <code>prisma migrate deploy</code> (the one behaviour
+            ADR&nbsp;0056 rules out), and it must not FTP a fresh bundle into a
+            tree that <code>npm ci</code> is still working in either.
             <code>deploy-staging</code>
             (<code>cancel-in-progress: true</code>) covers
-            <code>prepare-dependencies</code>, <code>deploy-backend</code>,
-            and <code>deploy-frontend</code>
-            (<code>deploy-staging.yml:27-29</code>, <code>:68-70</code>,
-            <code>:188-190</code>) &mdash; a newer staging run kills whichever
-            of those three is in flight.
-            <code>deploy-staging-host-apply</code>
-            (<code>cancel-in-progress: false</code>) covers only
-            <code>host-apply</code> (<code>:128-130</code>): a newer
-            <code>main</code> push must queue behind an in-flight
-            <code>prisma migrate deploy</code>, not cancel it &mdash; a single
-            workflow-level group would have cancelled Host Apply too, which is
-            the one behaviour ADR&nbsp;0056 rules out. Production is
-            unchanged: one workflow-level group, <code>deploy-production</code>,
+            <code>prepare-dependencies</code> and <code>deploy-frontend</code>
+            (<code>:28-30</code>, <code>:220-222</code>) &mdash; neither
+            touches <code>APP_ROOT</code>, so a newer run still kills whichever
+            is in flight. Production is unchanged: one workflow-level group,
+            <code>deploy-production</code>,
             <code>cancel-in-progress: false</code>
             (<code>deploy-production.yml:18-21</code>) &mdash; runs queue and
             are never cancelled, so <code>host-apply</code> already inherits
@@ -2582,7 +2587,8 @@
     "stagingEnvironmentName": "staging",
     "productionEnvironmentName": "production",
     "productionApprovalGatedJobs": ["deploy-backend", "host-apply", "deploy-frontend"],
-    "stagingConcurrencyCancelInProgress": true,
+    "stagingApplyCancelInProgress": false,
+    "stagingFrontendCancelInProgress": true,
     "productionConcurrencyCancelInProgress": false,
     "productionValidateTimeoutMinutes": 5,
     "productionDeployTimeoutMinutes": 45,

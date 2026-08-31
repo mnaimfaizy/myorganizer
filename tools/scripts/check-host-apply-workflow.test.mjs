@@ -399,50 +399,157 @@ test('fails when staging host-apply cancel-in-progress is true', (t) => {
   edit(
     workspace,
     STAGING,
-    'group: deploy-staging-host-apply\n      cancel-in-progress: false',
-    'group: deploy-staging-host-apply\n      cancel-in-progress: true',
+    `    concurrency:
+      group: deploy-staging-apply
+      cancel-in-progress: false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: \${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Build Host Apply script`,
+    `    concurrency:
+      group: deploy-staging-apply
+      cancel-in-progress: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: \${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Build Host Apply script`,
   );
 
   const result = runChecker(workspace);
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /cancel-in-progress is true, expected false/);
+  assert.match(
+    result.stderr,
+    /host-apply's cancel-in-progress is true, expected false/,
+  );
 });
 
-test('fails when staging deploy-backend cancel-in-progress is false', (t) => {
+test('fails when the staging upload leaves the apply group', (t) => {
   const workspace = createWorkspace(t);
 
-  // The staging deploy-backend has cancel-in-progress: true, change it to false
-  const stagingContent = readFixture(workspace, STAGING);
-  const lines = stagingContent.split('\n');
+  // The regression this guards: a group covering only host-apply keeps migrate
+  // from being cancelled, but lets a newer run FTP a bundle into APP_ROOT while
+  // that migrate is still running.
+  edit(
+    workspace,
+    STAGING,
+    `    concurrency:
+      group: deploy-staging-apply
+      cancel-in-progress: false
 
-  for (let i = 0; i < lines.length; i++) {
-    if (
-      lines[i].includes('deploy-backend:') ||
-      (i > 0 &&
-        lines[i - 1].includes('deploy-backend:') &&
-        lines[i].includes('concurrency:'))
-    ) {
-      // Found deploy-backend, look for its cancel-in-progress in the next few lines
-      for (let j = i; j < Math.min(i + 10, lines.length); j++) {
-        if (
-          lines[j].includes('cancel-in-progress:') &&
-          lines[j].includes('true')
-        ) {
-          lines[j] = lines[j].replace('true', 'false');
-          break;
-        }
-      }
-      break;
-    }
-  }
+    steps:
+      - name: Checkout`,
+    `    concurrency:
+      group: deploy-staging
+      cancel-in-progress: true
 
-  writeFixture(workspace, STAGING, lines.join('\n'));
+    steps:
+      - name: Checkout`,
+  );
 
   const result = runChecker(workspace);
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /cancel-in-progress is false, expected true/);
+  assert.match(
+    result.stderr,
+    /hold different concurrency groups - an upload could land in APP_ROOT while an apply is still running there/,
+  );
+  assert.match(
+    result.stderr,
+    /deploy-backend's cancel-in-progress is true, expected false/,
+  );
+});
+
+// ===== SSH and log-redaction hardening =====
+
+test('fails when host-apply stops pinning the host keys', (t) => {
+  const workspace = createWorkspace(t);
+
+  edit(
+    workspace,
+    STAGING,
+    '-o StrictHostKeyChecking=yes',
+    '-o StrictHostKeyChecking=accept-new',
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /does not set StrictHostKeyChecking=yes/);
+});
+
+test('fails when host-apply consults no known-hosts file', (t) => {
+  const workspace = createWorkspace(t);
+
+  edit(
+    workspace,
+    PRODUCTION,
+    '            -o UserKnownHostsFile="$known_hosts" \\\n',
+    '',
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /sets no UserKnownHostsFile/);
+});
+
+test('fails when the ssh step streams its output instead of capturing it', (t) => {
+  const workspace = createWorkspace(t);
+
+  edit(
+    workspace,
+    STAGING,
+    '            > "$RUNNER_TEMP/host-apply.log" 2>&1 || status=$?',
+    '            2>&1 || status=$?',
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /streams its output instead of capturing it to host-apply\.log/,
+  );
+});
+
+test('fails when the captured output never reaches the scrubber', (t) => {
+  const workspace = createWorkspace(t);
+
+  edit(
+    workspace,
+    PRODUCTION,
+    'run: node tools/scripts/scrub-host-apply-log.mjs "$RUNNER_TEMP/host-apply.log"',
+    'run: cat "$RUNNER_TEMP/host-apply.log"',
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /never runs scrub-host-apply-log\.mjs over the captured output/,
+  );
 });
 
 // ===== Secret Allowlist Checks =====

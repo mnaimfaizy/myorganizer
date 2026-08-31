@@ -9,12 +9,12 @@ on:
     inputs:
       apply_only:
         description:
-          'true (default): re-run Host Apply only, without re-uploading the
-          backend bundle. false: run the full pipeline by hand (upload, Host
+          'Re-run Host Apply only, without re-uploading the backend bundle.
+          Leave unchecked to run the full pipeline by hand (upload, Host
           Apply, frontend).'
         required: false
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: read
@@ -66,9 +66,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: staging
+    # Shares `deploy-staging-apply` with host-apply, and never cancels:
+    # the upload and the apply touch the same APP_ROOT, so a newer `main`
+    # run must queue behind an in-flight apply rather than FTP a new bundle
+    # over a tree `npm ci` and `prisma migrate deploy` are still working in.
     concurrency:
-      group: deploy-staging
-      cancel-in-progress: true
+      group: deploy-staging-apply
+      cancel-in-progress: false
 
     steps:
       - name: Checkout
@@ -115,11 +119,12 @@ jobs:
           timeout: 300000
 
   # Applies backend upload (install, migrate, generate, restart) over SSH and
-  # verifies with HTTP probes (ADR 0056). Its own concurrency group is
-  # separate from `deploy-staging` and never cancels in progress: a newer
-  # `main` push must queue behind an in-flight `prisma migrate deploy`, not
-  # kill it (ADR 0056 "Cancel-in-progress through migrate — rejected"). May
-  # run beside deploy-frontend: neither job needs the other.
+  # verifies with HTTP probes (ADR 0056). Shares the `deploy-staging-apply`
+  # group with deploy-backend, and never cancels in progress: a newer `main`
+  # push must queue behind an in-flight `prisma migrate deploy` rather than
+  # kill it (ADR 0056 "Cancel-in-progress through migrate — rejected") or
+  # upload over it. May run beside deploy-frontend, which holds the separate
+  # `deploy-staging` group and never touches APP_ROOT.
   host-apply:
     needs: deploy-backend
     if: ${{ always() && (needs.deploy-backend.result == 'success' || (github.event_name == 'workflow_dispatch' && inputs.apply_only)) }}
@@ -127,7 +132,7 @@ jobs:
     timeout-minutes: 30
     environment: staging
     concurrency:
-      group: deploy-staging-host-apply
+      group: deploy-staging-apply
       cancel-in-progress: false
 
     steps:
@@ -145,6 +150,7 @@ jobs:
       - name: Build Host Apply script
         env:
           APP_ROOT: ${{ secrets.APP_ROOT }}
+          COUNTERPART_APP_ROOT: ${{ secrets.COUNTERPART_APP_ROOT }}
           NODEVENV_ACTIVATE: ${{ secrets.NODEVENV_ACTIVATE }}
           SELECTOR_APP_KEY: ${{ secrets.SELECTOR_APP_KEY }}
         run: node tools/scripts/run-host-apply.mjs staging > "$RUNNER_TEMP/host-apply.sh"
@@ -155,19 +161,44 @@ jobs:
           SSH_PORT: ${{ secrets.SSH_PORT }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
           key_file="$RUNNER_TEMP/host_apply_key"
+          known_hosts="$RUNNER_TEMP/host_apply_known_hosts"
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$key_file"
-          chmod 600 "$key_file"
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > "$known_hosts"
+          chmod 600 "$key_file" "$known_hosts"
+          : > "$RUNNER_TEMP/host-apply.log"
+          # The runner is ephemeral, so accept-new would trust whatever key
+          # answered, every run. The host keys are pinned as a secret instead.
+          # Output is captured rather than streamed: the next step decides
+          # whether it may reach this public Actions log.
+          status=0
           ssh -i "$key_file" -p "$SSH_PORT" \
-            -o StrictHostKeyChecking=accept-new \
+            -o StrictHostKeyChecking=yes \
+            -o UserKnownHostsFile="$known_hosts" \
             -o BatchMode=yes \
-            "$SSH_USER@$SSH_HOST" 'bash -s' < "$RUNNER_TEMP/host-apply.sh"
+            "$SSH_USER@$SSH_HOST" 'bash -s' \
+            < "$RUNNER_TEMP/host-apply.sh" \
+            > "$RUNNER_TEMP/host-apply.log" 2>&1 || status=$?
+          echo "HOST_APPLY_SSH_STATUS=$status" >> "$GITHUB_ENV"
 
-      - name: Remove SSH key
+      - name: Host Apply output (redaction-checked)
         if: always()
-        run: rm -f "$RUNNER_TEMP/host_apply_key" "$RUNNER_TEMP/host-apply.sh"
+        run: node tools/scripts/scrub-host-apply-log.mjs "$RUNNER_TEMP/host-apply.log"
+
+      - name: Fail on a red Host Apply
+        if: always()
+        run: exit "${HOST_APPLY_SSH_STATUS:-1}"
+
+      - name: Remove SSH key and captured log
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/host_apply_key" \
+            "$RUNNER_TEMP/host_apply_known_hosts" \
+            "$RUNNER_TEMP/host-apply.sh" \
+            "$RUNNER_TEMP/host-apply.log"
 
       - name: Verify Host Apply (HTTP probes)
         env:
