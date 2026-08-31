@@ -76,6 +76,12 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'host-apply:workflow:check',
+    npmScript: 'host-apply:workflow:check',
+    script: 'tools/scripts/check-host-apply-workflow.mjs',
+    args: [],
+  },
+  {
     id: 'agents:sync:check (subagents)',
     npmScript: 'agents:sync:check',
     script: 'tools/scripts/sync-subagents.mjs',
