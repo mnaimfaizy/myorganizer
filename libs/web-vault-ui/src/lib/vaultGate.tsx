@@ -266,25 +266,23 @@ export function VaultGate(props: VaultGateProps) {
     );
   }
 
-  if (currentVaultStatus === 'owned') {
-    if (effectivePendingReplace) {
-      return (
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <Card className="p-4">
-            <CardTitle className="text-lg">
-              {title}: Replace this device's vault?
-            </CardTitle>
-            <CardContent className="mt-4 space-y-4">
-              <VaultReplaceOffer
-                onExport={exportVaultAboutToBeReplaced}
-                onConfirm={confirmReplace}
-                onDecline={declineReplace}
-              />
-            </CardContent>
-          </Card>
-        </div>
-      );
-    }
+  if (currentVaultStatus === 'owned' && effectivePendingReplace) {
+    return (
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <Card className="p-4">
+          <CardTitle className="text-lg">
+            {title}: Replace this device's vault?
+          </CardTitle>
+          <CardContent className="mt-4 space-y-4">
+            <VaultReplaceOffer
+              onExport={exportVaultAboutToBeReplaced}
+              onConfirm={confirmReplace}
+              onDecline={declineReplace}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   // An Unclaimed Local Vault is never offered without proof it is the

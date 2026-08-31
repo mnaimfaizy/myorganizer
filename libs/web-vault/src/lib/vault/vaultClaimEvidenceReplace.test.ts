@@ -192,8 +192,7 @@ describe('vaultClaimEvidenceReplace', () => {
       await ownHandle.initialize({ passphrase });
 
       // Coexisting unclaimed vault
-      const _unclaimedFixture =
-        await seedUnclaimedLocalVaultWithRecoveryKey(passphrase);
+      await seedUnclaimedLocalVaultWithRecoveryKey(passphrase);
 
       const claimHandle = createVaultHandle({ owner: testOwner });
       const storageBefore = snapshotLocalStorage();
@@ -235,8 +234,7 @@ describe('vaultClaimEvidenceReplace', () => {
       await ownHandle.initialize({ passphrase });
 
       // Coexisting unclaimed vault
-      const _unclaimedFixture =
-        await seedUnclaimedLocalVaultWithRecoveryKey(passphrase);
+      await seedUnclaimedLocalVaultWithRecoveryKey(passphrase);
 
       const claimHandle = createVaultHandle({ owner: testOwner });
       const storageBefore = snapshotLocalStorage();
@@ -262,8 +260,7 @@ describe('vaultClaimEvidenceReplace', () => {
       await ownHandle.initialize({ passphrase });
 
       // Coexisting unclaimed vault
-      const _unclaimedFixture =
-        await seedUnclaimedLocalVaultWithRecoveryKey(passphrase);
+      await seedUnclaimedLocalVaultWithRecoveryKey(passphrase);
 
       const claimHandle = createVaultHandle({ owner: testOwner });
       const storageBefore = snapshotLocalStorage();
@@ -287,8 +284,7 @@ describe('vaultClaimEvidenceReplace', () => {
       await ownHandle.initialize({ passphrase });
 
       // Coexisting unclaimed vault
-      const _unclaimedFixture =
-        await seedUnclaimedLocalVaultWithRecoveryKey(passphrase);
+      await seedUnclaimedLocalVaultWithRecoveryKey(passphrase);
 
       const claimHandle = createVaultHandle({ owner: testOwner });
       const storageBefore = snapshotLocalStorage();
@@ -356,8 +352,8 @@ describe('vaultClaimEvidenceReplace', () => {
 
     test('should return skipped-nothing-to-replace when owned but NO coexisting Unclaimed Local Vault', async () => {
       const ownHandle = createVaultHandle({ owner: testOwner });
-      const originalVault =
-        (await ownHandle.initialize({ passphrase }), ownHandle.loadVault());
+      await ownHandle.initialize({ passphrase });
+      const originalVault = ownHandle.loadVault();
 
       const claimHandle = createVaultHandle({ owner: testOwner });
       const storageBefore = snapshotLocalStorage();
@@ -418,8 +414,7 @@ describe('vaultClaimEvidenceReplace', () => {
       const ownHandle = createVaultHandle({ owner: testOwner });
       await ownHandle.initialize({ passphrase });
 
-      const _unclaimedFixture =
-        await seedUnclaimedLocalVaultWithRecoveryKey('different-pass');
+      await seedUnclaimedLocalVaultWithRecoveryKey('different-pass');
 
       const claimHandle = createVaultHandle({ owner: testOwner });
       const storageBefore = snapshotLocalStorage();
@@ -480,8 +475,7 @@ describe('vaultClaimEvidenceReplace', () => {
       const ownHandle = createVaultHandle({ owner: testOwner });
       await ownHandle.initialize({ passphrase });
 
-      const _unclaimedFixture =
-        await seedUnclaimedLocalVaultWithRecoveryKey('different-pass');
+      await seedUnclaimedLocalVaultWithRecoveryKey('different-pass');
 
       const claimHandle = createVaultHandle({ owner: testOwner });
       const storageBefore = snapshotLocalStorage();
