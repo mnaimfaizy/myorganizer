@@ -157,6 +157,7 @@ const deployPkg = {
     start: `node ${distPkg.main || 'main.js'}`,
     'prisma:generate': 'prisma generate --config prisma.config.cjs',
     'prisma:migrate:deploy': 'prisma migrate deploy --config prisma.config.cjs',
+    'prisma:migrate:status': 'prisma migrate status --config prisma.config.cjs',
   },
   dependencies: Object.fromEntries(
     Object.entries(filteredDeps).sort(([a], [b]) => a.localeCompare(b)),
@@ -313,6 +314,7 @@ fs.writeFileSync(
     '- `postinstall` is resilient to cPanel running npm scripts from `nodevenv/.../lib` by using `INIT_CWD`/prefix envs.',
     '- Do not replace `npm ci --omit=dev` with `npm install` for staging or production deployments.',
     '- To apply DB migrations on the server, run: `npm run prisma:migrate:deploy`.',
+    '- To verify nothing is pending after a migrate, run: `npm run prisma:migrate:status`.',
     '',
   ].join('\n'),
   'utf8',
