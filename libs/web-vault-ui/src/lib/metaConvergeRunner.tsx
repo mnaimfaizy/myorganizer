@@ -17,9 +17,9 @@ import type {
   VaultMetaDecision,
 } from '@myorganizer/web-vault';
 import {
-  convergeVaultMeta,
   createVaultApi,
   getHttpStatus,
+  settleVaultMeta,
 } from '@myorganizer/web-vault';
 
 import { useOptionalVaultSession } from './session';
@@ -168,11 +168,15 @@ export function VaultMetaConvergeRunner() {
     if (window.sessionStorage.getItem(sessionFlag)) return;
 
     const api = createVaultApi();
-    const localVault = currentHandle.loadVault();
 
-    convergeVaultMeta({
+    // Settle rather than converge: a wrapping this device changed and could
+    // not push looks exactly like one changed elsewhere, so asking before
+    // pushing would tell the User their own change came from another device
+    // and offer them a button that reverts it. `settleVaultMeta` pushes what
+    // this device owes first, and only then asks about what is left.
+    settleVaultMeta({
       api,
-      localVault,
+      handle: currentHandle,
       prompt: async ({ change }) => {
         if (cancelled) return 'defer';
 
@@ -186,19 +190,22 @@ export function VaultMetaConvergeRunner() {
       .then((result) => {
         if (cancelled) return;
 
-        // A deferred change is unfinished business, not a completed
-        // converge: leaving the flag unset is what brings the choice back
-        // instead of stranding the User's divergence unresolved.
+        const converged = result.kind === 'converged' ? result.result : null;
+
+        // A deferred change is unfinished business, not a completed pass:
+        // leaving the flag unset is what brings the choice back instead of
+        // stranding the User's divergence unresolved.
         if (
           result.kind !== 'skipped-not-authenticated' &&
-          result.kind !== 'noop-deferred'
+          converged?.kind !== 'skipped-not-authenticated' &&
+          converged?.kind !== 'noop-deferred'
         ) {
           window.sessionStorage.setItem(sessionFlag, '1');
         }
 
-        if (result.kind === 'adopted-remote') {
-          currentHandle.saveVault(result.nextLocalVault);
-          const adopted = VAULT_META_CHANGE_COPY[result.change].adopt;
+        if (converged?.kind === 'adopted-remote') {
+          currentHandle.saveVault(converged.nextLocalVault);
+          const adopted = VAULT_META_CHANGE_COPY[converged.change].adopt;
           // A change with no adopt copy is one the library refuses to adopt,
           // so reaching here with none would mean the dialog offered an
           // action the library would not carry out.

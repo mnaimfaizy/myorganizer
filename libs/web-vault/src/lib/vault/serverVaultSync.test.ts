@@ -73,6 +73,9 @@ describe('serverVaultSync', () => {
       api,
       meta: makeMeta(),
       ifMatch: 'e1',
+      // Required since the default was removed; never reached on this path,
+      // which resolves without a 409.
+      onConflict: () => 'keep-remote',
     });
 
     expect(api.putVaultMeta).toHaveBeenCalledWith({

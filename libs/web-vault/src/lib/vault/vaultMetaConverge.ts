@@ -149,6 +149,31 @@ export function describeVaultMetaDivergence(options: {
 }
 
 /**
+ * The whole of what a Vault Meta is, for the purpose of asking whether two of
+ * them are the same one.
+ *
+ * Built from the same facets divergence is read through, so "two Vault Metas
+ * have equal identity" and "`describeVaultMetaDivergence` reports none" are
+ * one statement rather than two that can drift apart. That matters because a
+ * Vault Meta Bookmark is a hash of this: a bookmark that considered a field
+ * divergence ignores would report a device as owing a push forever, and one
+ * that ignored a field divergence reads would call a moved wrapping unmoved.
+ *
+ * A fan-out over `VAULT_META_CHANGES` reaching the pinned facet table, not a
+ * hand-written object literal ([ADR 0053](../../../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
+ */
+export function vaultMetaIdentity(meta: VaultMetaV1): string {
+  return stableStringify(
+    Object.fromEntries(
+      VAULT_META_CHANGES.map((change) => [
+        change,
+        VAULT_META_CHANGE_FACETS[change](meta),
+      ]),
+    ),
+  );
+}
+
+/**
  * The three answers to "start using the new wrapping here?".
  *
  * `defer` is the answer given by a User who gave no answer — a dismissed
