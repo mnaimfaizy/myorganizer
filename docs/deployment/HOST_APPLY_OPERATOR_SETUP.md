@@ -265,8 +265,18 @@ Leave `SSH_KNOWN_HOSTS` out of the first run — the preflight will print the ke
 for you to verify and paste into the secret, then pass once you supply it.
 
 It changes nothing on the host: no `npm ci`, no migrate, no generate, no
-restart. Every remote command reads. It runs the _same_ `APP_ROOT` guard and the
-_same_ probe grading the CI job uses, so a value that fails here fails there.
+restart. Every remote command reads. It runs the _same_ `APP_ROOT` guard, the
+_same_ virtualenv activation and the _same_ probe grading the CI job uses, so a
+value that fails here fails there.
+
+Its output has two sections, and only the first is a gate. **Readiness** is what
+must hold before an apply can run — secrets, guard, connection, tree, store.
+**Post-apply health** is the state an apply is supposed to produce, and on a
+backend that has never been applied it cannot pass: with no `node_modules`,
+Passenger cannot boot the app, so `/docs` answers 503 and the cron probe answers
+from the host rather than from the API. Red health with green readiness is the
+normal state immediately before a first apply. After one, red health is a real
+defect.
 
 All remote output is passed through the same redaction scrubber CI uses before
 it reaches your terminal, so a host that echoes a connection string cannot paint

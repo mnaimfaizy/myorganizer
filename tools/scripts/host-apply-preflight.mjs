@@ -48,9 +48,22 @@ if (environment !== 'staging' && environment !== 'production') {
 
 const env = (name) => process.env[name];
 
+/**
+ * Two kinds of check, and only one of them is a gate.
+ *
+ * `readiness` is what must hold before an apply can safely run: the secrets,
+ * the guard, the connection, the tree, the store. `health` describes the state
+ * an apply is supposed to *produce* — a live API answering its probes. On a
+ * backend that has never been applied, health cannot pass: `npm ci` has not run
+ * there, so Passenger cannot boot the app, so `/docs` is a 503. Gating on that
+ * would tell the operator to fix the exact thing they are about to run Host
+ * Apply to fix.
+ */
 const results = [];
-const pass = (name, detail) => results.push({ name, ok: true, detail });
-const fail = (name, detail) => results.push({ name, ok: false, detail });
+const pass = (name, detail, kind = 'readiness') =>
+  results.push({ name, ok: true, detail, kind });
+const fail = (name, detail, kind = 'readiness') =>
+  results.push({ name, ok: false, detail, kind });
 
 // ---------------------------------------------------------------------------
 // SSH plumbing
@@ -342,12 +355,17 @@ function checkProbes() {
   ]);
   try {
     assertHostApplyProbesHealthy({ docsStatus, cronStatus });
-    pass('HTTP probes', `/docs ${docsStatus}, wrong-secret cron ${cronStatus}`);
+    pass(
+      'HTTP probes',
+      `/docs ${docsStatus}, wrong-secret cron ${cronStatus}`,
+      'health',
+    );
   } catch (err) {
     if (!(err instanceof HostApplyRefusal)) throw err;
     fail(
       'HTTP probes',
       `${err.message} (/docs ${docsStatus}, cron ${cronStatus})`,
+      'health',
     );
   }
 }
@@ -377,23 +395,58 @@ try {
   cleanup();
 }
 
+const show = (rows) => {
+  for (const { name, ok, detail } of rows) {
+    console.log(`${ok ? '  ✓' : '  ✗'} ${name}`);
+    if (detail) {
+      for (const line of String(detail).split('\n')) {
+        console.log(`      ${line}`);
+      }
+    }
+  }
+};
+
+const readiness = results.filter((r) => r.kind === 'readiness');
+const health = results.filter((r) => r.kind === 'health');
+const blocked = readiness.filter((r) => !r.ok);
+
 console.log(`\nHost Apply preflight — ${environment}\n`);
-for (const { name, ok, detail } of results) {
-  console.log(`${ok ? '  ✓' : '  ✗'} ${name}`);
-  if (detail) {
-    for (const line of String(detail).split('\n')) console.log(`      ${line}`);
+console.log('Readiness — must pass before an apply\n');
+show(readiness);
+
+if (health.length > 0) {
+  console.log('\nPost-apply health — what an apply should produce\n');
+  show(health);
+  if (health.some((r) => !r.ok)) {
+    console.log(
+      '\n      A backend that has never been applied cannot pass these: with no',
+    );
+    console.log(
+      '      node_modules, Passenger cannot boot the app, so /docs is a 503 and',
+    );
+    console.log(
+      '      the cron probe answers from the host rather than the API. Expected',
+    );
+    console.log(
+      '      before the first apply. After one, a failure here is a real defect.',
+    );
   }
 }
 
-const failed = results.filter((r) => !r.ok);
 console.log('');
-if (failed.length === 0) {
+if (blocked.length > 0) {
   console.log(
-    `preflight: ${results.length}/${results.length} checks passed — ${environment} is ready for a real Host Apply.`,
+    `preflight: ${blocked.length} of ${readiness.length} readiness checks failed — fix these before running Host Apply in CI.`,
   );
-  process.exit(0);
+  process.exit(1);
 }
+
 console.log(
-  `preflight: ${failed.length} of ${results.length} checks failed — fix these before running Host Apply in CI.`,
+  `preflight: all ${readiness.length} readiness checks passed — ${environment} is ready for a real Host Apply.`,
 );
-process.exit(1);
+if (health.some((r) => !r.ok)) {
+  console.log(
+    'The API is not healthy yet. If it has never been applied, that is what the apply is for.',
+  );
+}
+process.exit(0);
