@@ -210,7 +210,7 @@ function put(options: {
   });
 }
 
-export type ChangePassphraseEverywhereResult = {
+export type PassphraseChangeResult = {
   /**
    * Always true by the time this resolves. The local wrapping is written
    * before the server is touched and is never rolled back: a User who has
@@ -222,7 +222,7 @@ export type ChangePassphraseEverywhereResult = {
 };
 
 /**
- * Change this Vault's passphrase, and make that change the server's too.
+ * Rewrap and push, for whichever of the two passphrase changes called it.
  *
  * The two halves are one operation because the base cannot be recovered once
  * the first half has run: the Vault Meta the server was last known to hold is
@@ -241,19 +241,24 @@ export type ChangePassphraseEverywhereResult = {
  * and reporting it as a failure would tell a User their passphrase did not
  * change when it did.
  */
-export async function changePassphraseEverywhere(options: {
+async function rewrapAndPush(options: {
   api: VaultMetaApi;
   handle: VaultHandle;
-  newPassphrase: string;
-}): Promise<ChangePassphraseEverywhereResult> {
+  /**
+   * Writes the new wrapping to the Local Vault, and throws if it may not.
+   * Whatever authorization the change needs has already been decided by the
+   * caller that supplied this — a wrong current passphrase, a locked Vault, or
+   * an absent Vault throws from in here, before anything is written and before
+   * the server is told anything.
+   */
+  rewrap: () => Promise<void>;
+}): Promise<PassphraseChangeResult> {
   const { api, handle } = options;
 
   const before = handle.loadVault();
   const base = before ? localToServerMeta(before) : null;
 
-  // Throws on a locked handle or an absent Vault, before anything is written
-  // and before the server is told anything.
-  await handle.changePassphrase({ newPassphrase: options.newPassphrase });
+  await options.rewrap();
 
   if (base) {
     await handle.recordVaultMetaAgreement({ meta: base });
@@ -283,6 +288,63 @@ export async function changePassphraseEverywhere(options: {
   }
 
   return { changedLocally: true, push };
+}
+
+/**
+ * Change this Vault's passphrase from an unlocked session, and make that
+ * change the server's too.
+ *
+ * Authorized by the current passphrase, which is verified against the wrapping
+ * this device holds before anything is written. That check is not
+ * cryptographic — the Master Key is already unlocked — it is the only thing
+ * standing between an unattended unlocked session and a passphrase change that
+ * now reaches every device the owner has.
+ *
+ * Throws `VaultSecretMismatchError` for a wrong current passphrase, leaving the
+ * Local Vault byte-identical. Never throws for a failed push.
+ */
+export async function changePassphraseWithCurrent(options: {
+  api: VaultMetaApi;
+  handle: VaultHandle;
+  currentPassphrase: string;
+  newPassphrase: string;
+}): Promise<PassphraseChangeResult> {
+  const { handle } = options;
+  return rewrapAndPush({
+    api: options.api,
+    handle,
+    rewrap: () =>
+      handle.changePassphrase({
+        currentPassphrase: options.currentPassphrase,
+        newPassphrase: options.newPassphrase,
+      }),
+  });
+}
+
+/**
+ * Set a new passphrase after unlocking with a recovery key, and make that
+ * change the server's too.
+ *
+ * Named apart from {@link changePassphraseWithCurrent} rather than reached by
+ * omitting its current passphrase, because a User here has just proved they do
+ * not know the current one — asking for it is not a check that could be
+ * skipped, it is a check that cannot be met. The recovery key already
+ * presented is what authorizes this.
+ *
+ * Never throws for a failed push.
+ */
+export async function resetPassphraseAfterRecovery(options: {
+  api: VaultMetaApi;
+  handle: VaultHandle;
+  newPassphrase: string;
+}): Promise<PassphraseChangeResult> {
+  const { handle } = options;
+  return rewrapAndPush({
+    api: options.api,
+    handle,
+    rewrap: () =>
+      handle.resetPassphrase({ newPassphrase: options.newPassphrase }),
+  });
 }
 
 export type SettleVaultMetaResult =

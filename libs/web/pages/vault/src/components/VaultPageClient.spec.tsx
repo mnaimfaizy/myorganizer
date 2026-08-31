@@ -6,6 +6,7 @@ jest.mock('../hooks', () => ({
   useGoogleIdentityScript: () => 'loading',
   useLatestCloudBackup: () => ({ status: 'empty', record: null }),
   useExportVault: () => ({ exporting: false, exportVaultNow: jest.fn() }),
+  useChangePassphrase: () => ({ changing: false, changePassphrase: jest.fn() }),
 }));
 
 jest.mock('@myorganizer/web-vault-ui', () => {

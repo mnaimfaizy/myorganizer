@@ -119,7 +119,42 @@ export type LocalVaultAccess = {
   unlockWithRecoveryKey(options: {
     recoveryKey: string;
   }): Promise<VaultUnlockResult>;
-  changePassphrase(options: { newPassphrase: string }): Promise<void>;
+  /**
+   * Change the passphrase of an unlocked Vault, authorized by the current one.
+   *
+   * The Master Key is already bound, so the current passphrase is not needed
+   * to do the work. It is required because it is the only check on who is at
+   * the keyboard: an unlocked session left unattended would otherwise be a way
+   * to change the passphrase, and with Vault Meta Push that change reaches
+   * every device the owner has.
+   *
+   * It also proves the caller knows the passphrase wrapping *this* device's
+   * Master Key right now, which catches a device sitting on a stale wrapping
+   * before it pushes its opinion of the Vault Meta to the server.
+   *
+   * Verification happens before anything is written, so a wrong current
+   * passphrase leaves the Local Vault byte-identical and throws
+   * `VaultSecretMismatchError` — the secret is wrong, the Vault is not damaged,
+   * and it must never be offered as resettable.
+   */
+  changePassphrase(options: {
+    currentPassphrase: string;
+    newPassphrase: string;
+  }): Promise<void>;
+  /**
+   * Set a passphrase on an unlocked Vault without asking for the current one.
+   *
+   * Named apart from `changePassphrase` rather than reached by omitting a
+   * field, because the two differ in what authorizes them and only one of them
+   * is available to a User who has forgotten their passphrase. An optional
+   * `currentPassphrase` would make the check skippable by omission, which is
+   * the shape ADR 0053 exists to stop.
+   *
+   * Its authorization is the recovery key the caller has already presented:
+   * reaching an unlocked Vault through `unlockWithRecoveryKey` is the proof,
+   * and there is nothing further to verify here.
+   */
+  resetPassphrase(options: { newPassphrase: string }): Promise<void>;
 
   loadDecryptedData<T>(options: {
     type: VaultRecordType;
@@ -272,6 +307,33 @@ export function createLocalVaultAccess(options: {
     return { masterKeyBytes };
   };
 
+  /**
+   * Rewrap the Master Key under a new passphrase and write the result.
+   *
+   * The salt is deliberately reused rather than minted. A moved salt is how
+   * another device tells two separate Vaults apart from one Vault whose
+   * passphrase rotated, so minting one here would make every rotation look
+   * like a stranger's Vault (#578).
+   */
+  const rewrapWithPassphrase = async (options: {
+    vault: VaultStorageV1;
+    masterKeyBytes: Uint8Array;
+    newPassphrase: string;
+  }): Promise<void> => {
+    const derivedKey = await deriveKeyFromPassphrase({
+      passphrase: options.newPassphrase,
+      salt: base64ToBytes(options.vault.kdf.salt),
+      iterations: options.vault.kdf.iterations,
+    });
+
+    options.vault.masterKeyWrappedWithPassphrase = await wrapMasterKeyWithKey({
+      wrappingKey: derivedKey,
+      masterKeyBytes: options.masterKeyBytes,
+    });
+
+    slot.write(options.vault);
+  };
+
   return {
     get isUnlocked() {
       return boundMasterKeyBytes !== null;
@@ -408,22 +470,33 @@ export function createLocalVaultAccess(options: {
       });
     },
 
-    async changePassphrase({ newPassphrase }) {
+    async changePassphrase({ currentPassphrase, newPassphrase }) {
       const masterKeyBytes = requireMasterKey();
       const { vault } = requireVault();
 
-      const derivedKey = await deriveKeyFromPassphrase({
-        passphrase: newPassphrase,
+      // Authorization first, and nothing written until it passes. Derived from
+      // the Vault's own salt against the wrapping it currently holds, so this
+      // answers "does this unlock this device's Vault right now" rather than
+      // "does this match something remembered from an earlier unlock".
+      const currentKey = await deriveKeyFromPassphrase({
+        passphrase: currentPassphrase,
         salt: base64ToBytes(vault.kdf.salt),
         iterations: vault.kdf.iterations,
       });
-
-      vault.masterKeyWrappedWithPassphrase = await wrapMasterKeyWithKey({
-        wrappingKey: derivedKey,
-        masterKeyBytes,
+      await unwrapOrMismatch({
+        wrappingKey: currentKey,
+        wrapped: vault.masterKeyWrappedWithPassphrase,
+        secret: 'passphrase',
       });
 
-      slot.write(vault);
+      await rewrapWithPassphrase({ vault, masterKeyBytes, newPassphrase });
+    },
+
+    async resetPassphrase({ newPassphrase }) {
+      const masterKeyBytes = requireMasterKey();
+      const { vault } = requireVault();
+
+      await rewrapWithPassphrase({ vault, masterKeyBytes, newPassphrase });
     },
 
     async loadDecryptedData<T>({

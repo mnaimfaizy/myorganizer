@@ -11,4 +11,5 @@ export * from './lib/useVaultSyncStatus';
 export * from './lib/vaultClaimOffer';
 export * from './lib/vaultGate';
 export * from './lib/vaultImportErrorMessages';
+export * from './lib/vaultMetaPushMessages';
 export * from './lib/vaultSyncMessages';
