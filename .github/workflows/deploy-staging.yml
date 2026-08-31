@@ -180,6 +180,27 @@ jobs:
           printf '%s\n' "$SSH_PRIVATE_KEY" > "$key_file"
           printf '%s\n' "$SSH_KNOWN_HOSTS" > "$known_hosts"
           chmod 600 "$key_file" "$known_hosts"
+          # Say which secret is wrong, before ssh reports it as
+          # `error in libcrypto` followed by a bare `Permission denied`, which
+          # reads like the key was rejected rather than never parsed.
+          # `ssh-keygen -y` prints only the public half, and only to /dev/null.
+          if [ "$(wc -c < "$key_file")" -le 1 ]; then
+            echo "host-apply: SSH_PRIVATE_KEY is empty." >&2
+            echo "  Set it on this Environment specifically - a repository-level" >&2
+            echo "  secret of the same name is not visible here." >&2
+            exit 1
+          fi
+          if ! ssh-keygen -y -f "$key_file" >/dev/null 2>&1; then
+            echo "host-apply: SSH_PRIVATE_KEY did not parse as a private key." >&2
+            echo "  It is truncated, or lost its line breaks on paste. Copy the" >&2
+            echo "  file verbatim (macOS: pbcopy < ~/.ssh/<key>) and re-save it." >&2
+            exit 1
+          fi
+          if [ "$(wc -c < "$known_hosts")" -le 1 ]; then
+            echo "host-apply: SSH_KNOWN_HOSTS is empty." >&2
+            echo "  StrictHostKeyChecking=yes has nothing to verify against." >&2
+            exit 1
+          fi
           : > "$RUNNER_TEMP/host-apply.log"
           # The runner is ephemeral, so accept-new would trust whatever key
           # answered, every run. The host keys are pinned as a secret instead.

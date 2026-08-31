@@ -148,6 +148,43 @@ function checkRequiredVars() {
   return true;
 }
 
+/**
+ * The key CI will actually use must parse.
+ *
+ * A preflight run with `SSH_KEY_FILE` points at the real file on disk and so
+ * never exercises the path CI takes — writing the secret's *contents* to a file
+ * and reading them back. That gap let a malformed `SSH_PRIVATE_KEY` through to
+ * a live run during #569, where it surfaced as `error in libcrypto`. Passing
+ * `SSH_PRIVATE_KEY` instead of `SSH_KEY_FILE` rehearses the real path.
+ */
+function checkKeyParses() {
+  const source = env('SSH_KEY_FILE') ? 'SSH_KEY_FILE' : 'SSH_PRIVATE_KEY';
+  const result = spawnSync('ssh-keygen', ['-y', '-f', keyFile], {
+    encoding: 'utf8',
+  });
+
+  if (result.status === 0) {
+    pass('SSH key parses', `${source} is a usable private key`);
+    return true;
+  }
+
+  fail(
+    'SSH key parses',
+    [
+      `${source} did not parse as a private key.`,
+      '',
+      source === 'SSH_KEY_FILE'
+        ? 'Check the path points at the private half, not the .pub.'
+        : 'It is empty, truncated, or lost its line breaks. Copy the file\nverbatim (macOS: pbcopy < ~/.ssh/<key>) rather than selecting text.',
+      '',
+      'Note that a preflight run with SSH_KEY_FILE does not exercise what CI',
+      'does. To rehearse the real path, unset it and export SSH_PRIVATE_KEY',
+      'with the same value the GitHub secret holds.',
+    ].join('\n'),
+  );
+  return false;
+}
+
 /** The same guard the CI job runs, so a bad pin fails here rather than in CI. */
 function checkAppRootGuard() {
   try {
@@ -441,7 +478,8 @@ function shq(value) {
 try {
   if (checkRequiredVars()) {
     checkAppRootGuard();
-    if (checkSshReachable()) {
+    const keyUsable = checkKeyParses();
+    if (keyUsable && checkSshReachable()) {
       checkHostKeyPin();
       checkVirtualenv();
       checkAppRootOnHost();
