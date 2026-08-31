@@ -361,18 +361,88 @@ bundle that landed earlier.
 
 ## Step 8 — Production
 
-Repeat Steps 1–7 against Production's values.
+Staging is done and proven. Production has never run, and it happens at release
+time — possibly months later, possibly under pressure. This section is therefore
+written to stand on its own rather than as "repeat the above".
 
-- Steps 1, 2 and 2b may reuse the same key and host keys if it is the same
-  account — but
-  `APP_ROOT`, `COUNTERPART_APP_ROOT`, `SELECTOR_APP_KEY` and `API_ORIGIN` are all
-  different, and `COUNTERPART_APP_ROOT` is crossed the other way.
-- Run `yarn host-apply:preflight production`.
-- The real apply runs only after Deploy Approval on the `production`
-  Environment. The approval authorises Host Apply; it does not replace it.
-- **Tag only after `host-apply` is green.** The tag is a receipt that the version
-  is live, not that files arrived. See
-  [ADR 0028](../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md).
+### 8a. Secrets
+
+The `production` Environment needs the same ten names as `staging`, with these
+four **different**:
+
+| Secret                 | Production value                                              |
+| ---------------------- | ------------------------------------------------------------- |
+| `APP_ROOT`             | the Production app's root                                     |
+| `COUNTERPART_APP_ROOT` | **Staging's** `APP_ROOT` — crossed the other way from Staging |
+| `SELECTOR_APP_KEY`     | the Production app's identity in the selector store           |
+| `API_ORIGIN`           | the Production API base URL, no trailing slash                |
+
+`SSH_HOST`, `SSH_PORT`, `SSH_USER`, `SSH_PRIVATE_KEY` and `SSH_KNOWN_HOSTS` may
+be identical to Staging's when it is the same hosting account. Read the four
+different ones off **Setup Node.js App** for the Production app, exactly as
+Step 2c describes.
+
+Get `COUNTERPART_APP_ROOT` backwards and both environments refuse. That is the
+safe direction to be wrong in, and it is the only guard standing between a typo
+in `APP_ROOT` and Production being migrated by the wrong job.
+
+### 8b. Prove it before the release, not during it
+
+```bash
+yarn host-apply:preflight production
+```
+
+Nothing about Production has been verified — not its selector entry, not its
+virtualenv, not its app root. Run this **well before** you need the release, so
+a wrong value is a quiet afternoon rather than a blocked deploy. All readiness
+checks must pass; post-apply health may legitimately be red if Production is
+mid-deploy.
+
+Enable SSH shell access first — it is a manual toggle that reverts, and every
+SSH-based check fails with `Shell access is not enabled on your account!` when
+it is off.
+
+### 8c. The release itself
+
+1. Cut the release branch. The Cut checklist requires **Staging Host Apply
+   green** — not merely CI and a successful upload.
+2. The Production run waits on **Deploy Approval**. The approval authorises Host
+   Apply; it does not replace it. Approving is the ship decision, and `host-apply`
+   is what executes it.
+3. Watch `host-apply`. Green means: `npm ci --omit=dev`, migrations applied,
+   Prisma client regenerated, Passenger restarted, `Database schema is up to
+date!`, `/docs` 2xx and a wrong-secret cron POST answering `401`.
+4. **Tag only after `host-apply` is green.** The tag is a receipt that the
+   version is live, not that files arrived — see
+   [ADR 0028](../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md).
+
+If it goes red, do not hand-fix on the host. The sequence is fail-closed: the
+first failing step aborts everything after it, so the host is left as it was
+rather than half-applied. There is no rollback and no migrate-down. Read the
+failing step, fix the cause, re-run with `apply_only` — the bundle is already
+uploaded.
+
+### 8d. Re-running without a second upload
+
+`apply_only` re-runs `host-apply` alone against the bundle already on the host.
+On Production this is the recovery path after a red apply; it still passes
+through Deploy Approval.
+
+## Known behaviours of this host
+
+Five things cost real time to work out on Staging. They are recorded so
+Production does not re-learn them.
+
+| Behaviour                                                                                                     | Consequence                                                                                                                                                |
+| ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SSH shell access is a manual toggle that reverts                                                              | Staging Host Apply is `workflow_dispatch`-only; check the toggle before any apply. Amends PRD #565 user story 3.                                           |
+| The Node.js Selector stores app env at `~/.cl.selector/node-selector.json`, keyed by domain, under `env_vars` | Pinned as `SELECTOR_STORE_PATH` / `SELECTOR_ENV_FIELD`. The engine originally guessed `~/.cpanel/nodejsapps.json` under `envvars`; both halves were wrong. |
+| CloudLinux's `activate` reads `CL_VIRTUAL_ENV` unguarded                                                      | `set -u` is suspended across that one vendor script, or the apply dies before `node` is on `PATH`.                                                         |
+| `swagger-ui-express` answers a bare `/docs` with a 301 to `/docs/`                                            | The probe follows redirects; without `-L` a healthy app reports a 3xx.                                                                                     |
+| LiteSpeed rejects a POST with no `Content-Type` and no body, on **every** path, with HTML 403                 | The cron probe sends `Content-Type: application/json` and `{}`, or it reports the host's opinion, not the API's.                                           |
+
+`bin/` entries under `nodevenv/` are symlinks, so `find -type f` misses them
+while `[ -f … ]` follows them — worth knowing when writing ad-hoc diagnostics.
 
 ## Break-glass
 
