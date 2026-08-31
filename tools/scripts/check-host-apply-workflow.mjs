@@ -260,6 +260,32 @@ function checkSshHostKeyPinning(path) {
  * must hand that file to the scrubber, which is what decides whether it prints.
  * Streaming would put a leaked value in the log before anything could grade it.
  */
+/**
+ * A malformed `SSH_PRIVATE_KEY` reaches the operator as `error in libcrypto`
+ * and then `Permission denied (publickey,...)`, which reads as "the host
+ * rejected our key" when in fact ssh never parsed one. That cost a live CI run
+ * during #569 setup, on an environment where every other secret was correct.
+ * The job must say which secret is wrong before it tries to connect.
+ */
+function checkSecretsAreValidatedBeforeUse(path) {
+  const block = jobBlock(path, 'host-apply');
+  if (!/ssh-keygen -y -f "\$key_file"/.test(block)) {
+    findings.push(
+      `${path}: host-apply does not check that SSH_PRIVATE_KEY parses before connecting`,
+    );
+  }
+  if (!/wc -c < "\$key_file"/.test(block)) {
+    findings.push(
+      `${path}: host-apply does not check that SSH_PRIVATE_KEY is non-empty`,
+    );
+  }
+  if (!/wc -c < "\$known_hosts"/.test(block)) {
+    findings.push(
+      `${path}: host-apply does not check that SSH_KNOWN_HOSTS is non-empty`,
+    );
+  }
+}
+
 function checkLogIsScrubbedBeforePrinting(path) {
   const block = jobBlock(path, 'host-apply');
   // Both stdout and stderr must land in the file. Matching the redirect alone
@@ -332,6 +358,8 @@ checkStagingApplyGroup();
 checkStagingApplyIsDispatchOnly();
 checkSshHostKeyPinning(STAGING);
 checkSshHostKeyPinning(PRODUCTION);
+checkSecretsAreValidatedBeforeUse(STAGING);
+checkSecretsAreValidatedBeforeUse(PRODUCTION);
 checkLogIsScrubbedBeforePrinting(STAGING);
 checkLogIsScrubbedBeforePrinting(PRODUCTION);
 checkSecretAllowlist(STAGING);
