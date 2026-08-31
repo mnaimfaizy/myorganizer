@@ -358,7 +358,8 @@ Replace `vX.Y.Z` with your version (example: `v0.1.1`).
 
 - CI is green
 - Staging deploy is successful
-- **Staging Host Apply is green** (backend bundle is uploaded, migrations applied, Prisma client regenerated, and service restarted)
+- **Staging Host Apply is green** (backend bundle is uploaded, migrations applied, Prisma client regenerated, and service restarted). It does not run by itself — dispatch `Deploy Staging` with the SSH shell toggled on. An uploaded bundle is not a migrated backend.
+- **Production Host Apply has been rehearsed**: `yarn host-apply:preflight production` passes its readiness checks. Do this before cutting, not during the release — see [the operator runbook](HOST_APPLY_OPERATOR_SETUP.md#step-8--production). Production Host Apply has never run, so the first release after this feature is the first time it will.
 
 2. Cut the release branch (recommended):
 
@@ -379,7 +380,8 @@ What this does:
 4. Tag the release after Production Host Apply has succeeded:
 
 - Confirm the `Deploy Production (manual)` workflow has completed, including the `host-apply` job.
-- Confirm migration status and service health probes (`/docs`, cron paths).
+- A green `host-apply` already asserts migrate status and both probes; you are confirming the job passed, not re-running its checks by hand.
+- If it went red, do not hand-fix on the host — the sequence is fail-closed and left it as it was. Fix the cause and re-run with `apply_only`; the bundle is already uploaded. [Runbook](HOST_APPLY_OPERATOR_SETUP.md#step-8--production).
 - `yarn release:tag --version vX.Y.Z --push`
 
 This updates `CHANGELOG.md` with generated notes based on commits since the previous tag.
