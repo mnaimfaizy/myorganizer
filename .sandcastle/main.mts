@@ -728,7 +728,13 @@ function planPrdRun(prd: number): RunPlan {
     console.log(`Would create local branch ${branch} from origin/main.`);
   } else {
     const base = gitRefExists('origin/main') ? 'origin/main' : 'main';
-    gitCmd(['branch', branch, base]);
+    // `--no-track` is load-bearing. Git's `branch.autoSetupMerge` defaults to
+    // true, so branching from the remote-tracking ref `origin/main` would set
+    // this branch's upstream to `refs/heads/main` — and a later `git push` from
+    // it would land the PRD's commits directly on main, unreviewed. That is the
+    // opposite of the comment above: this branch is created so a human can open
+    // a PR from it.
+    gitCmd(['branch', '--no-track', branch, base]);
     console.log(`Created local branch ${branch} from ${base} (not pushed).`);
   }
 
@@ -2563,7 +2569,7 @@ while (pendingSlices.length > 0) {
           windowsHide: true,
         });
       }
-      gitCmd(['branch', sliceBranch, baseRef]);
+      gitCmd(['branch', '--no-track', sliceBranch, baseRef]);
     }
     const wt = spawnSync(
       'git',
