@@ -25,7 +25,12 @@ export type VaultClaimEvidenceGateView =
    * No answer about this device's Vault. Nothing is offered and nothing is
    * written — the Unclaimed Local Vault stays exactly where it is.
    */
-  | { kind: 'cannot-check'; title: string; description: string };
+  | { kind: 'cannot-check'; title: string; description: string }
+  /**
+   * Evidence proved a second Vault on this device is this User's, and the gate
+   * should render the explicit replace offer instead of an ordinary screen.
+   */
+  | { kind: 'replace-offer' };
 
 export const VAULT_CLAIM_EVIDENCE_GATE_VIEWS = {
   /**
@@ -82,6 +87,13 @@ export const VAULT_CLAIM_EVIDENCE_GATE_VIEWS = {
     description:
       'Your session ended before we could finish setting up your vault on this device. Nothing here was changed.',
   },
+  /**
+   * Unlike every other outcome, this one does not resolve to an ordinary vault
+   * status. Evidence proved a second Vault on this device is this User's, and
+   * the gate renders the explicit replace offer instead of falling through to
+   * an ordinary vault screen.
+   */
+  'replace-offer': { kind: 'replace-offer' },
 } as const satisfies Record<
   VaultClaimOnEvidenceResult['kind'],
   VaultClaimEvidenceGateView

@@ -199,13 +199,21 @@ export type VaultClaimOnEvidenceResult =
   | { kind: 'postponed' }
   | { kind: 'session-lost' }
   /**
-   * This User already holds a Local Vault of their own on this device.
-   * Claiming would replace it, and a replacement is an explicit, acknowledged
-   * act rather than something evidence alone carries out (CONTEXT.md, "Vault
-   * Claim"). The server is not even asked: there is no answer it could give
-   * that would make this the moment to overwrite a User's Vault.
+   * This User already holds a Local Vault of their own on this device, and
+   * this device holds no Unclaimed Local Vault at all. There is nothing to
+   * check and nothing to offer, so the server is not even asked.
    */
   | { kind: 'skipped-already-owned' }
+  /**
+   * This User already holds a Local Vault of their own, *and* the server's
+   * Vault Meta proves a separate Unclaimed Local Vault on this device is also
+   * theirs. Claiming it would replace the Vault they already have, so nothing
+   * is written here — replacing is an explicit, acknowledged act rather than
+   * something evidence alone carries out (CONTEXT.md, "Vault Claim"). What
+   * evidence established is offered to the User instead, through
+   * `replaceOwnedLocalVaultOnEvidence`.
+   */
+  | { kind: 'replace-offer' }
   /** This User has no Unclaimed Local Vault to claim on this device. */
   | { kind: 'skipped-nothing-to-claim' };
 
@@ -226,9 +234,42 @@ export async function claimUnclaimedLocalVaultOnEvidence(options: {
   const { handle } = options;
 
   const status = handle.vaultStatus();
+
+  // Already owned is not automatically nothing to do: this device may
+  // separately hold an Unclaimed Local Vault, and evidence can prove that one
+  // is this User's too. It is checked here rather than skipped so the offer
+  // to replace can be made — but only when there is something to check.
+  // Reading it first, rather than asking the server unconditionally, is what
+  // keeps this free for the ordinary owned User the hook's own docstring
+  // promises it is: no server round trip for a device holding nothing else.
   if (status === 'owned') {
-    return { kind: 'skipped-already-owned' };
+    const unclaimedVault = handle.loadUnclaimedVault();
+    if (!unclaimedVault) {
+      return { kind: 'skipped-already-owned' };
+    }
+
+    const evidence = await checkVaultClaimEvidence({
+      api: options.api,
+      unclaimedVault,
+    });
+
+    switch (evidence.kind) {
+      case 'server-meta-match':
+        // Evidence, not an instruction. Overwriting a Vault this User already
+        // owns is never carried out on the strength of a server answer alone
+        // — see `replaceOwnedLocalVaultOnEvidence`.
+        return { kind: 'replace-offer' };
+      case 'server-meta-mismatch':
+        return { kind: 'refused-not-this-vault' };
+      case 'no-evidence':
+        return { kind: 'no-evidence' };
+      case 'postponed':
+        return { kind: 'postponed' };
+      case 'session-lost':
+        return { kind: 'session-lost' };
+    }
   }
+
   // Anything else that is not `unclaimed` — no entry at all, or an entry under
   // this User's key naming somebody else — leaves this owner with nothing this
   // function could claim for them.
@@ -265,6 +306,51 @@ export async function claimUnclaimedLocalVaultOnEvidence(options: {
 }
 
 /**
+ * What replacing an owned Local Vault with the Unclaimed Local Vault did, or
+ * why it did nothing.
+ */
+export type VaultClaimReplaceResult =
+  /**
+   * This owner's Local Vault is now the (formerly) Unclaimed Local Vault's
+   * content, and locked — the server's Vault Meta proved ownership without
+   * ever holding a secret, so there is nothing here to unlock with. The
+   * Unclaimed Local Vault slot is left byte-identical (ADR 0033); the claim
+   * copies rather than moves it.
+   */
+  | { kind: 'replaced' }
+  /**
+   * There is nothing here for this call to have replaced — this owner holds
+   * no Local Vault, or this device holds no Unclaimed Local Vault to replace
+   * it with. Nothing was written.
+   */
+  | { kind: 'skipped-nothing-to-replace' };
+
+/**
+ * Carry out a Vault Claim that replaces a Local Vault this owner already
+ * holds, on the evidence `claimUnclaimedLocalVaultOnEvidence` already found.
+ *
+ * The explicit, acknowledged act CONTEXT.md's "Vault Claim" describes: this
+ * function performs no evidence check of its own and asks the User nothing —
+ * both already happened before a caller reaches it, the check by
+ * `claimUnclaimedLocalVaultOnEvidence` returning `replace-offer` and the
+ * acknowledgement by whatever the caller showed the User for it. Calling this
+ * without either is a caller bug, not a case this function guards against
+ * beyond refusing to write when there is nothing to replace.
+ */
+export function replaceOwnedLocalVaultOnEvidence(options: {
+  handle: VaultHandle;
+}): VaultClaimReplaceResult {
+  const { handle } = options;
+
+  if (handle.vaultStatus() !== 'owned' || !handle.loadUnclaimedVault()) {
+    return { kind: 'skipped-nothing-to-replace' };
+  }
+
+  handle.replaceOwnedLocalVaultWithUnclaimedLocked();
+  return { kind: 'replaced' };
+}
+
+/**
  * The IV and wrapped-Master-Key sizes a recovery key unwrap works over.
  *
  * Read off `initialize`, which wraps 32 Master Key bytes under a 12-byte IV;
@@ -297,6 +383,35 @@ const RECOVERY_UNWRAP_CIPHERTEXT_BYTES = 48;
  * base64 at all — the real path throws `VaultSecretMismatchError` for exactly
  * that input, so a caller that saw this one throw would have learnt something.
  */
+/**
+ * Whether `recoveryKey` unwraps `vault`'s recovery-wrapped Master Key.
+ *
+ * A pure check: it reads nothing beyond the `vault` it is given and writes
+ * nothing regardless of the answer. Kept apart from
+ * `handle.unlockWithRecoveryKey`, which unwraps-then-claims whatever the
+ * slot resolves — that is never the Unclaimed Local Vault once this owner is
+ * `owned`, so establishing evidence against it here needs its own unwrap
+ * rather than that one's.
+ */
+async function recoveryKeyMatchesVault(options: {
+  vault: VaultStorageV1;
+  recoveryKey: string;
+}): Promise<boolean> {
+  try {
+    const wrappingKey = await importAesGcmKey(base64ToBytes(options.recoveryKey));
+    await aesGcmDecrypt({
+      key: wrappingKey,
+      iv: base64ToBytes(options.vault.masterKeyWrappedWithRecoveryKey.iv),
+      ciphertext: base64ToBytes(
+        options.vault.masterKeyWrappedWithRecoveryKey.ciphertext,
+      ),
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function decoyRecoveryUnwrap(recoveryKey: string): Promise<void> {
   try {
     const wrappingKey = await importAesGcmKey(base64ToBytes(recoveryKey));
@@ -337,13 +452,24 @@ export type VaultClaimByRecoveryKeyResult =
    */
   | { kind: 'no-match' }
   /**
-   * This User already holds a Local Vault of their own here, so a claim would
-   * replace it — an explicit, acknowledged act rather than one a pasted key
-   * carries out (CONTEXT.md, "Vault Claim"). Distinguishable from `no-match`,
-   * and allowed to be: it discloses a Vault the User signed in to and already
-   * knows about, never the Unclaimed Local Vault this path is blind about.
+   * This User already holds a Local Vault of their own here, and this device
+   * holds no Unclaimed Local Vault at all — there is nothing the key could
+   * have opened. Distinguishable from `no-match`, and allowed to be: it
+   * discloses a Vault the User signed in to and already knows about, never
+   * the Unclaimed Local Vault this path is blind about.
    */
-  | { kind: 'skipped-already-owned' };
+  | { kind: 'skipped-already-owned' }
+  /**
+   * This User already holds a Local Vault of their own, *and* the key just
+   * supplied opens the Unclaimed Local Vault on this device — proof it is
+   * theirs too. Claiming it would replace the Vault they already have, so
+   * nothing is written here: what the key proved is offered to the User
+   * instead, through `replaceOwnedLocalVaultWithRecoveryKey`. Distinguishable
+   * from `no-match` for the same reason `skipped-already-owned` is: this only
+   * tells the signed-in User something about a Vault they already know they
+   * hold, never about the Unclaimed Local Vault to anyone who is not.
+   */
+  | { kind: 'replace-offer' };
 
 /**
  * Claim the Unclaimed Local Vault on this device for `handle`'s owner, on the
@@ -376,7 +502,22 @@ export async function claimUnclaimedLocalVaultWithRecoveryKey(options: {
 
   const status = handle.vaultStatus();
   if (status === 'owned') {
-    return { kind: 'skipped-already-owned' };
+    const unclaimedVault = handle.loadUnclaimedVault();
+    if (!unclaimedVault) {
+      // Nothing here for the key to open. Still pays the decoy's cost: the
+      // signed-in User's own owned/unclaimed status is allowed to leak (see
+      // the type's doc comment above), but whether this device separately
+      // holds an Unclaimed Local Vault for somebody else is not, and skipping
+      // the decoy here would make that device answer measurably faster.
+      await decoyRecoveryUnwrap(recoveryKey);
+      return { kind: 'skipped-already-owned' };
+    }
+
+    const matches = await recoveryKeyMatchesVault({
+      vault: unclaimedVault,
+      recoveryKey,
+    });
+    return matches ? { kind: 'replace-offer' } : { kind: 'no-match' };
   }
 
   if (status !== 'unclaimed') {
@@ -400,6 +541,61 @@ export async function claimUnclaimedLocalVaultWithRecoveryKey(options: {
       recoveryKey,
     });
     return { kind: 'claimed', masterKeyBytes };
+  } catch {
+    return { kind: 'no-match' };
+  }
+}
+
+/**
+ * What replacing an owned Local Vault with the Unclaimed Local Vault, by
+ * recovery key, did.
+ *
+ * The recovery-key counterpart to `VaultClaimReplaceResult`. Two outcomes
+ * rather than three for the same reason `VaultClaimByRecoveryKeyResult` has
+ * two: a wrong key and nothing to replace with are both `no-match`, because
+ * whether this device holds an Unclaimed Local Vault for somebody else is not
+ * this caller's to learn from the difference.
+ */
+export type VaultClaimReplaceByRecoveryKeyResult =
+  /**
+   * This owner's Local Vault is now the (formerly) Unclaimed Local Vault's
+   * content, and unlocked — the key that proved ownership unwrapped the
+   * Master Key to do it, so there is nothing further to ask the User for.
+   */
+  | { kind: 'replaced'; masterKeyBytes: Uint8Array }
+  /** Nothing was replaced. Nothing was written. */
+  | { kind: 'no-match' };
+
+/**
+ * Carry out a Vault Claim by recovery key that replaces a Local Vault this
+ * owner already holds, on the evidence `claimUnclaimedLocalVaultWithRecoveryKey`
+ * already found.
+ *
+ * The recovery-key counterpart to `replaceOwnedLocalVaultOnEvidence`: this
+ * function asks the User for nothing beyond the acknowledgement a caller
+ * already obtained for the `replace-offer` it is reached after, and it
+ * re-verifies the key rather than trusting a match established earlier —
+ * `handle.replaceOwnedLocalVaultWithUnclaimedByRecoveryKey` unwraps before it
+ * writes, so a key that stops matching between the offer and this call (or
+ * one this function is called with when it should not have been) still
+ * leaves both Vaults byte-identical.
+ */
+export async function replaceOwnedLocalVaultWithRecoveryKey(options: {
+  handle: VaultHandle;
+  recoveryKey: string;
+}): Promise<VaultClaimReplaceByRecoveryKeyResult> {
+  const { handle, recoveryKey } = options;
+
+  if (handle.vaultStatus() !== 'owned' || !handle.loadUnclaimedVault()) {
+    return { kind: 'no-match' };
+  }
+
+  try {
+    const { masterKeyBytes } =
+      await handle.replaceOwnedLocalVaultWithUnclaimedByRecoveryKey({
+        recoveryKey,
+      });
+    return { kind: 'replaced', masterKeyBytes };
   } catch {
     return { kind: 'no-match' };
   }

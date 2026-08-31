@@ -677,7 +677,11 @@ describe('vaultClaimEvidence', () => {
       assertStorageByteIdentical(storageBefore, storageAfter);
     });
 
-    test('skipped-already-owned when owner already holds owned local vault; api not called', async () => {
+    test('replace-offer when owner holds owned vault and coexisting unclaimed vault matches server meta', async () => {
+      // This test verifies the scenario where an owner has their own vault AND
+      // a separate unclaimed vault exists on the device. The server meta matches
+      // the unclaimed one, so evidence is found but nothing is written — this is
+      // an offer, not a claim. The API IS called because there IS something to check.
       const handle = createVaultHandle({ owner: testOwner });
       await handle.initialize({ passphrase });
 
@@ -689,7 +693,46 @@ describe('vaultClaimEvidence', () => {
 
       localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(otherVault));
 
+      const storageBefore = snapshotLocalStorage();
+
       // Now claim on the first handle which already has its own vault
+      const api = createApiDouble();
+      const serverMeta = {
+        etag: 'test-etag',
+        updatedAt: '2026-01-01T00:00:00Z',
+        meta: {
+          version: 1,
+          kdf_salt: otherVault.kdf.salt,
+          wrapped_mk_passphrase: otherVault.masterKeyWrappedWithPassphrase,
+          wrapped_mk_recovery: otherVault.masterKeyWrappedWithRecoveryKey,
+        } as VaultMetaV1,
+      };
+      api.getVaultMeta.mockResolvedValue({
+        data: serverMeta,
+      } as AxiosResponse);
+
+      const result = await claimUnclaimedLocalVaultOnEvidence({
+        api,
+        handle,
+      });
+
+      expect(result).toEqual({ kind: 'replace-offer' });
+      expect(api.getVaultMeta).toHaveBeenCalled();
+      const storageAfter = snapshotLocalStorage();
+      assertStorageByteIdentical(storageBefore, storageAfter);
+    });
+
+    test('skipped-already-owned when owner holds owned vault with no unclaimed vault at all; api not called', async () => {
+      // When an owner is already owned AND there is NO separate unclaimed vault
+      // on the device (unsuffixed slot is empty), the check is skipped entirely.
+      // No server round trip is made — this is the "costs nothing" property the
+      // hook's docstring promises.
+      const handle = createVaultHandle({ owner: testOwner });
+      await handle.initialize({ passphrase });
+
+      // Do NOT create an unclaimed vault — just leave the unsuffixed slot empty
+      const storageBefore = snapshotLocalStorage();
+
       const api = createApiDouble();
 
       const result = await claimUnclaimedLocalVaultOnEvidence({
@@ -699,6 +742,8 @@ describe('vaultClaimEvidence', () => {
 
       expect(result).toEqual({ kind: 'skipped-already-owned' });
       expect(api.getVaultMeta).not.toHaveBeenCalled();
+      const storageAfter = snapshotLocalStorage();
+      assertStorageByteIdentical(storageBefore, storageAfter);
     });
 
     test('skipped-nothing-to-claim when no unclaimed vault at all', async () => {

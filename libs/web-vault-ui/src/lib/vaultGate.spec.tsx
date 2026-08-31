@@ -17,6 +17,26 @@ jest.mock('./useVaultClaimEvidence', () => ({
     mockUseVaultClaimEvidence(handle),
 }));
 
+const mockClaimUnclaimedLocalVaultWithRecoveryKey = jest.fn();
+const mockReplaceOwnedLocalVaultOnEvidence = jest.fn();
+const mockReplaceOwnedLocalVaultWithRecoveryKey = jest.fn();
+const mockExportVault = jest.fn();
+const mockCreateDefaultAuditReporter = jest.fn();
+
+jest.mock('@myorganizer/web-vault', () => ({
+  ...jest.requireActual('@myorganizer/web-vault'),
+  claimUnclaimedLocalVaultWithRecoveryKey: (args: unknown) =>
+    mockClaimUnclaimedLocalVaultWithRecoveryKey(args),
+  replaceOwnedLocalVaultOnEvidence: (args: unknown) =>
+    mockReplaceOwnedLocalVaultOnEvidence(args),
+  replaceOwnedLocalVaultWithRecoveryKey: (args: unknown) =>
+    mockReplaceOwnedLocalVaultWithRecoveryKey(args),
+  exportVault: (args: unknown) =>
+    mockExportVault(args),
+  createDefaultAuditReporter: (...args: unknown[]) =>
+    mockCreateDefaultAuditReporter(...args),
+}));
+
 // === Polyfill crypto.subtle for Node's jsdom environment ===
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 if (!(globalThis as any).crypto?.subtle) {
@@ -38,7 +58,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { VaultSecretMismatchError } from '@myorganizer/web-vault';
-import type { VaultHandle } from '@myorganizer/web-vault';
+import type { VaultHandle, VaultStorageV1 } from '@myorganizer/web-vault';
 
 import { VaultGate } from './vaultGate';
 
@@ -712,7 +732,11 @@ describe('VaultGate', () => {
       ).toBeInTheDocument();
     });
 
-    test('should not offer recovery key claim when server vault meta claims the vault', () => {
+    test('should offer recovery key claim on unlock screen when server vault meta claims the vault, so user can claim a second unclaimed vault with recovery key', () => {
+      // This slice adds the recovery key offer to the Unlock screen so a User
+      // who already owns a Vault (either on this device initially, or via just-proved
+      // server evidence) can also offer a recovery key for a second, unclaimed Vault
+      // on the same device (ADR 0061, vaultGate.tsx line 710).
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'unclaimed'),
       });
@@ -731,10 +755,10 @@ describe('VaultGate', () => {
 
       expect(screen.getByText(/Test: Unlock/)).toBeInTheDocument();
       expect(
-        screen.queryByRole('button', {
+        screen.getByRole('button', {
           name: /I have a recovery key for a vault on this device/,
         }),
-      ).not.toBeInTheDocument();
+      ).toBeInTheDocument();
     });
 
     test('should send recovery key to onClaim handler when claim is submitted', async () => {
@@ -941,6 +965,369 @@ describe('VaultGate', () => {
       expect(setMasterKeyBytesFn2).not.toHaveBeenCalled();
       expect(toastFn1).not.toHaveBeenCalled();
       expect(toastFn2).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('vault replace offer integration', () => {
+    test('should render automatic server-meta replace offer when vaultStatus is owned and evidence settles to replace-offer', () => {
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'owned'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'replace-offer' },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      // VaultReplaceOffer should be rendered
+      expect(
+        screen.getByText(/This device holds two vaults that are both yours/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: /Export the vault I'm using now/,
+        }),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('checkbox')).toBeInTheDocument();
+    });
+
+    test('should not render replace offer when vaultStatus is owned but evidence is not replace-offer', () => {
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'owned'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'skipped-already-owned' },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      // Should show the ordinary Unlock screen instead
+      expect(screen.getByText(/Test: Unlock/)).toBeInTheDocument();
+      expect(
+        screen.queryByText(/This device holds two vaults that are both yours/),
+      ).not.toBeInTheDocument();
+    });
+
+    test('should decline automatic replace offer without calling vault write functions and show unlock screen', async () => {
+      const setMasterKeyBytesFn = jest.fn();
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'owned'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: setMasterKeyBytesFn,
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'replace-offer' },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      // Verify replace offer is shown
+      expect(
+        screen.getByText(/This device holds two vaults that are both yours/),
+      ).toBeInTheDocument();
+
+      // Click Decline
+      const declineButton = screen.getByRole('button', { name: /Decline/ });
+      fireEvent.click(declineButton);
+
+      // Should show Unlock screen
+      await waitFor(() => {
+        expect(screen.getByText(/Test: Unlock/)).toBeInTheDocument();
+      });
+
+      // Verify no vault write functions were called
+      expect(mockReplaceOwnedLocalVaultOnEvidence).not.toHaveBeenCalled();
+      expect(mockReplaceOwnedLocalVaultWithRecoveryKey).not.toHaveBeenCalled();
+      expect(setMasterKeyBytesFn).not.toHaveBeenCalled();
+    });
+
+    test('should confirm automatic replace offer, call replaceOwnedLocalVaultOnEvidence, and show success toast', async () => {
+      const setMasterKeyBytesFn = jest.fn();
+      mockReplaceOwnedLocalVaultOnEvidence.mockReturnValue({
+        kind: 'replaced',
+      });
+      const toastFn = jest.fn();
+      mockUseToast.mockReturnValue({ toast: toastFn });
+
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'owned'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: setMasterKeyBytesFn,
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'replace-offer' },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      // Check acknowledgement and confirm
+      const checkbox = screen.getByRole('checkbox');
+      fireEvent.click(checkbox);
+
+      const confirmButton = screen.getByRole('button', { name: /Confirm/ });
+      fireEvent.click(confirmButton);
+
+      // Wait for the operation to complete
+      await waitFor(() => {
+        expect(mockReplaceOwnedLocalVaultOnEvidence).toHaveBeenCalledWith({
+          handle,
+        });
+      });
+
+      // Verify success toast
+      expect(toastFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Vault replaced',
+          description: expect.stringContaining(
+            'This device now uses the other vault',
+          ),
+        }),
+      );
+
+      // Should show Unlock screen next
+      expect(screen.getByText(/Test: Unlock/)).toBeInTheDocument();
+    });
+
+    test('should allow recovery key offer on decline, and show replace offer again if recovery key matches', async () => {
+      const setMasterKeyBytesFn = jest.fn();
+      mockClaimUnclaimedLocalVaultWithRecoveryKey.mockResolvedValue({
+        kind: 'replace-offer',
+      });
+
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'owned'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: setMasterKeyBytesFn,
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'replace-offer' },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      // Decline the automatic offer
+      const declineButton = screen.getByRole('button', { name: /Decline/ });
+      fireEvent.click(declineButton);
+
+      // Should show Unlock screen with recovery key offer
+      await waitFor(() => {
+        expect(screen.getByText(/Test: Unlock/)).toBeInTheDocument();
+      });
+
+      expect(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      ).toBeInTheDocument();
+
+      // Expand and submit recovery key
+      fireEvent.click(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      );
+
+      const input = screen.getByLabelText(/Recovery key/) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'test-recovery-key' } });
+
+      fireEvent.click(screen.getByRole('button', { name: /Claim this vault/ }));
+
+      // Wait for recovery key to be processed and replace offer to appear
+      await waitFor(() => {
+        expect(
+          screen.getByText(/This device holds two vaults that are both yours/),
+        ).toBeInTheDocument();
+      });
+
+      // The recovery key offer should be collapsed again
+      expect(
+        screen.queryByLabelText(/Recovery key/),
+      ).not.toBeInTheDocument();
+    });
+
+    test('should confirm recovery-key-triggered replace offer with correct key and unlock vault', async () => {
+      const masterKeyBytes = new Uint8Array([1, 2, 3, 4]);
+      mockClaimUnclaimedLocalVaultWithRecoveryKey.mockResolvedValue({
+        kind: 'replace-offer',
+      });
+      mockReplaceOwnedLocalVaultWithRecoveryKey.mockResolvedValue({
+        kind: 'replaced',
+        masterKeyBytes,
+      });
+      const toastFn = jest.fn();
+      mockUseToast.mockReturnValue({ toast: toastFn });
+
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'owned'),
+      });
+
+      // Use a state that will be updated to reflect the new masterKeyBytes
+      let currentMasterKeyBytes: Uint8Array | null = null;
+      mockUseOptionalVaultSession.mockImplementation(() => {
+        // Return the current state of masterKeyBytes
+        return {
+          masterKeyBytes: currentMasterKeyBytes,
+          setMasterKeyBytes: (newBytes: Uint8Array | null) => {
+            currentMasterKeyBytes = newBytes;
+          },
+          lock: jest.fn(),
+          handle,
+        };
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'replace-offer' },
+      });
+
+      const { rerender } = render(
+        <VaultGate title="Test">{() => <div>children</div>}</VaultGate>,
+      );
+
+      // Decline the automatic offer
+      fireEvent.click(screen.getByRole('button', { name: /Decline/ }));
+
+      // Submit recovery key
+      await waitFor(() => {
+        fireEvent.click(
+          screen.getByRole('button', {
+            name: /I have a recovery key for a vault on this device/,
+          }),
+        );
+      });
+
+      const input = screen.getByLabelText(/Recovery key/) as HTMLInputElement;
+      fireEvent.change(input, { target: { value: 'recovery-key-xyz' } });
+      fireEvent.click(screen.getByRole('button', { name: /Claim this vault/ }));
+
+      // Wait for replace offer to appear
+      await waitFor(() => {
+        expect(
+          screen.getByText(/This device holds two vaults that are both yours/),
+        ).toBeInTheDocument();
+      });
+
+      // Check acknowledgement and confirm
+      const checkbox = screen.getByRole('checkbox');
+      fireEvent.click(checkbox);
+
+      const confirmButton = screen.getByRole('button', { name: /Confirm/ });
+      fireEvent.click(confirmButton);
+
+      // Wait for the operation to complete
+      await waitFor(() => {
+        expect(mockReplaceOwnedLocalVaultWithRecoveryKey).toHaveBeenCalledWith({
+          handle,
+          recoveryKey: 'recovery-key-xyz',
+        });
+      });
+
+      // Update state and rerender to reflect the new masterKeyBytes
+      currentMasterKeyBytes = masterKeyBytes;
+      rerender(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      // Should show children (unlocked state) after re-render
+      expect(screen.getByText(/children/)).toBeInTheDocument();
+    });
+
+    test('should export current owned vault when export button is clicked in replace offer', async () => {
+      const loadedVault: VaultStorageV1 = {
+        version: 1,
+        kdf: { name: 'PBKDF2', hash: 'SHA-256', iterations: 310000, salt: 'test-salt-export' },
+        masterKeyWrappedWithPassphrase: { iv: 'test-iv-passphrase', ciphertext: 'test-ciphertext-passphrase' },
+        masterKeyWrappedWithRecoveryKey: { iv: 'test-iv-recovery', ciphertext: 'test-ciphertext-recovery' },
+        data: {},
+      };
+      mockExportVault.mockResolvedValue({ text: '{"vault":"data"}' });
+      mockCreateDefaultAuditReporter.mockReturnValue({});
+
+      // Mock URL.createObjectURL and URL.revokeObjectURL for the download functionality
+      const mockClick = jest.fn();
+      const originalCreateElement = document.createElement;
+      jest.spyOn(document, 'createElement').mockImplementation((tagName) => {
+        const element = originalCreateElement.call(document, tagName);
+        if (tagName === 'a') {
+          element.click = mockClick;
+        }
+        return element;
+      });
+
+      // Mock global URL methods
+      Object.defineProperty(global.URL, 'createObjectURL', {
+        writable: true,
+        value: jest.fn(() => 'blob:mock-url'),
+      });
+      Object.defineProperty(global.URL, 'revokeObjectURL', {
+        writable: true,
+        value: jest.fn(),
+      });
+
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'owned'),
+        loadVault: jest.fn(() => loadedVault),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'replace-offer' },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      // Click export button
+      const exportButton = screen.getByRole('button', {
+        name: /Export the vault I'm using now/,
+      });
+      fireEvent.click(exportButton);
+
+      // Wait for export to complete
+      await waitFor(() => {
+        expect(mockExportVault).toHaveBeenCalledWith(
+          expect.objectContaining({
+            localVault: loadedVault,
+            source: 'local-file',
+          }),
+        );
+      });
+
+      // Verify handle.loadVault was called (current vault)
+      expect(handle.loadVault).toHaveBeenCalled();
+
+      // Should show success state
+      expect(screen.getByText(/Exported/)).toBeInTheDocument();
     });
   });
 });

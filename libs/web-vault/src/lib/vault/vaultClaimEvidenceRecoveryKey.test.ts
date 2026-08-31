@@ -414,8 +414,11 @@ describe('claimUnclaimedLocalVaultWithRecoveryKey', () => {
     assertStorageByteIdentical(storageBefore, storageAfter);
   });
 
-  test('should refuse claim when User already holds their own Local Vault', async () => {
-    // Create and claim a vault for testOwner
+  test('offers a replace rather than claiming when the recovery key matches while User already holds their own Local Vault', async () => {
+    // When an owner is already owned AND the recovery key matches the coexisting
+    // unclaimed vault, the function returns a replace-offer. The key proves
+    // evidence but MUST NOT write anything — a correct recovery key while owned
+    // is an offer to replace, never the replacement itself.
     const ownHandle = createVaultHandle({ owner: testOwner });
     await ownHandle.initialize({ passphrase: testPassphrase });
 
@@ -434,6 +437,49 @@ describe('claimUnclaimedLocalVaultWithRecoveryKey', () => {
     const result = await claimUnclaimedLocalVaultWithRecoveryKey({
       handle: claimHandle,
       recoveryKey: unclaimedFixture.recoveryKey,
+    });
+
+    // Result is replace-offer, not a claim
+    expect(result).toEqual({ kind: 'replace-offer' });
+
+    // Status unchanged
+    expect(claimHandle.vaultStatus()).toBe('owned');
+    expect(claimHandle.isUnlocked).toBe(false);
+
+    // Storage byte-identical: this is the load-bearing invariant — a correct
+    // recovery key while owned proves evidence but MUST NOT write.
+    const storageAfter = snapshotLocalStorage();
+    assertStorageByteIdentical(storageBefore, storageAfter);
+  });
+
+  test('returns skipped-already-owned when owner holds owned vault with no unclaimed vault and correct recovery key is provided', async () => {
+    // When an owner is already owned AND there is NO separate unclaimed vault
+    // on the device, the function pays the decoy recovery unwrap cost and
+    // returns skipped-already-owned. Nothing is written.
+    localStorage.clear();
+    jest.clearAllMocks();
+
+    const ownHandle = createVaultHandle({ owner: testOwner });
+    await ownHandle.initialize({ passphrase: testPassphrase });
+
+    // Do NOT create an unclaimed vault — just leave the unsuffixed slot empty.
+    // But we still need a valid-looking recovery key to try.
+    const { recoveryKey } =
+      await seedUnclaimedLocalVaultWithRecoveryKey('different-pass');
+
+    // Remove the unclaimed vault to ensure this owner is owned-only
+    localStorage.removeItem(VAULT_STORAGE_KEY);
+
+    const claimHandle = createVaultHandle({ owner: testOwner });
+    expect(claimHandle.vaultStatus()).toBe('owned');
+    expect(claimHandle.hasUnclaimedLocalVault()).toBe(false);
+
+    const storageBefore = snapshotLocalStorage();
+
+    // Attempt to claim with a recovery key (but there's nothing to claim)
+    const result = await claimUnclaimedLocalVaultWithRecoveryKey({
+      handle: claimHandle,
+      recoveryKey,
     });
 
     // Result is skipped-already-owned

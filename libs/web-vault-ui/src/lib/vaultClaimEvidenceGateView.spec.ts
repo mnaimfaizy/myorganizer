@@ -15,6 +15,7 @@ const RESULT_KINDS = [
   'refused-not-this-vault',
   'no-evidence',
   'postponed',
+  'replace-offer',
   'session-lost',
   'skipped-already-owned',
   'skipped-nothing-to-claim',
@@ -74,7 +75,12 @@ describe('VAULT_CLAIM_EVIDENCE_GATE_VIEWS', () => {
     }
   });
 
-  test('9: session-lost resolves to cannot-check with title and description', () => {
+  test('9: replace-offer resolves to replace-offer kind', () => {
+    const view = VAULT_CLAIM_EVIDENCE_GATE_VIEWS['replace-offer'];
+    expect(view).toEqual({ kind: 'replace-offer' });
+  });
+
+  test('10: session-lost resolves to cannot-check with title and description', () => {
     const view = VAULT_CLAIM_EVIDENCE_GATE_VIEWS['session-lost'];
     expect(view.kind).toBe('cannot-check');
     if (view.kind === 'cannot-check') {
@@ -85,7 +91,7 @@ describe('VAULT_CLAIM_EVIDENCE_GATE_VIEWS', () => {
     }
   });
 
-  test('10: postponed and session-lost have distinct messages', () => {
+  test('11: postponed and session-lost have distinct messages', () => {
     const postponedView = VAULT_CLAIM_EVIDENCE_GATE_VIEWS.postponed;
     const sessionLostView = VAULT_CLAIM_EVIDENCE_GATE_VIEWS['session-lost'];
 

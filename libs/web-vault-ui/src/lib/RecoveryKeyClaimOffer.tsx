@@ -12,11 +12,21 @@ const RECOVERY_KEY_NO_MATCH_MESSAGE =
   'That recovery key did not unlock a vault on this device. Nothing on this device was changed.';
 
 /**
- * What supplying a recovery key established. Two answers and not three: a
- * `no-match` a User can tell apart from an empty device is a "a Vault is here"
- * disclosure with extra steps.
+ * What supplying a recovery key established. Three answers: a `claimed` means
+ * the recovery key unlocked an Unclaimed Local Vault on this device; a
+ * `replace-offer` means the recovery key also unlocks an Unclaimed Local Vault
+ * but this User already holds an owned Vault here (so the gate offers the
+ * choice to replace it); and `no-match` covers both an empty device and a
+ * wrong key (a User can tell them apart from the key is a "a Vault is here"
+ * disclosure with extra steps, so both are hidden under one answer).
+ *
+ * The `replace-offer` branch discloses nothing new: it reaches only when the
+ * caller already knows this User holds a Local Vault here (status `owned`), so
+ * confirming the recovery key's discovery of a second Vault can only mean the
+ * User already knew about the Vault they own. The third answer, like the first,
+ * means the parent takes over from here.
  */
-export type RecoveryKeyClaimAnswer = 'claimed' | 'no-match';
+export type RecoveryKeyClaimAnswer = 'claimed' | 'no-match' | 'replace-offer';
 
 export type RecoveryKeyClaimOfferProps = {
   /** Attempt the claim with the recovery key the User supplied, trimmed. */
@@ -29,12 +39,13 @@ export type RecoveryKeyClaimOfferProps = {
  *
  * The component must never be able to tell, and must never be able to show,
  * whether an Unclaimed Local Vault is present on this device. It is rendered
- * unconditionally on screens a User who does not hold their own Vault sees.
- * Its only failure answer is a single fixed message, identical whether the key
- * was wrong or the device holds nothing — same words, same resulting state, no
- * extra hint. Making the component blind to the difference (it only ever
- * receives 'no-match') is how that is guaranteed structurally rather than by
- * discipline (ADR 0061).
+ * unconditionally on screens a User who does not hold their own Vault sees, and
+ * also on screens where a User already holds a Vault of their own (so a matched
+ * recovery key may offer to replace it). Its only failure answer is a single
+ * fixed message, identical whether the key was wrong or the device holds
+ * nothing — same words, same resulting state, no extra hint. Making the
+ * component blind to the difference (it only ever receives 'no-match') is how
+ * that is guaranteed structurally rather than by discipline (ADR 0061).
  *
  * Collapsed by default because supplying a recovery key is a deliberate User
  * action; an open form beneath something that reads as an offered Vault would
@@ -69,7 +80,7 @@ export function RecoveryKeyClaimOffer(
 
       setIsSubmitting(false);
 
-      if (answer === 'claimed') {
+      if (answer === 'claimed' || answer === 'replace-offer') {
         // The parent takes over from here. Reset so that a later render of
         // this offer — another User signing into the same tab — starts where a
         // fresh one would rather than mid-flow.

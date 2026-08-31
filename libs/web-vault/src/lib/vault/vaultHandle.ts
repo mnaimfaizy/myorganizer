@@ -182,6 +182,7 @@ export function createVaultHandle(options: {
     vaultStatus: access.vaultStatus,
     hasUnclaimedLocalVault: access.hasUnclaimedLocalVault,
     loadVault: access.loadVault,
+    loadUnclaimedVault: access.loadUnclaimedVault,
     // Not reported to the sink, and the asymmetry with `saveEncryptedData` is
     // deliberate. `saveVault` writes a whole Local Vault and names no Vault
     // Blob Type, so there is nothing to report; and it is how convergence
@@ -227,8 +228,24 @@ export function createVaultHandle(options: {
     },
     initialize: access.initialize,
     claimUnclaimedLocalVaultLocked: access.claimUnclaimedLocalVaultLocked,
+    // Unlike a claim, a replacement changes the Ciphertext a reader who
+    // already holds this owner's Local Vault would see — it is a different
+    // Vault under the same key, not the same Vault newly owned — so readers
+    // are told, the same as `saveVault` and `removeVault`.
+    replaceOwnedLocalVaultWithUnclaimedLocked: () => {
+      access.replaceOwnedLocalVaultWithUnclaimedLocked();
+      reportVaultReplaced();
+    },
     unlockWithPassphrase: access.unlockWithPassphrase,
     unlockWithRecoveryKey: access.unlockWithRecoveryKey,
+    async replaceOwnedLocalVaultWithUnclaimedByRecoveryKey(replaceOptions) {
+      const result =
+        await access.replaceOwnedLocalVaultWithUnclaimedByRecoveryKey(
+          replaceOptions,
+        );
+      reportVaultReplaced();
+      return result;
+    },
     changePassphrase: access.changePassphrase,
     resetPassphrase: access.resetPassphrase,
     loadDecryptedData: access.loadDecryptedData,

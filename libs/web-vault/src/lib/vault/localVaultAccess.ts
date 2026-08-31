@@ -81,6 +81,25 @@ export class LocalVaultAlreadyOwnedError extends Error {
   }
 }
 
+/**
+ * A Vault Claim that replaces an owned Vault was attempted with no owned
+ * Vault to replace.
+ *
+ * Distinct from `NoUnclaimedLocalVaultError`: evidence for the Unclaimed
+ * Local Vault may be perfectly good here, but there is nothing owned to
+ * replace it with — that is an ordinary claim, and
+ * `claimUnclaimedLocalVaultLocked` is where it belongs.
+ */
+export class NoOwnedLocalVaultToReplaceError extends Error {
+  public readonly code = 'no-owned-local-vault-to-replace';
+
+  constructor() {
+    super('This owner holds no Local Vault to replace');
+    this.name = 'NoOwnedLocalVaultToReplaceError';
+    Object.setPrototypeOf(this, NoOwnedLocalVaultToReplaceError.prototype);
+  }
+}
+
 /** An operation needing the Master Key was called before one was bound. */
 export class VaultLockedError extends Error {
   public readonly code = 'vault-locked';
@@ -113,6 +132,15 @@ export type LocalVaultAccess = {
    */
   hasUnclaimedLocalVault(): boolean;
   loadVault(): VaultStorageV1 | null;
+  /**
+   * The Unclaimed Local Vault this device holds, independent of what this
+   * owner's slot resolves — `null` when there is none. Reading it is not
+   * claiming it, the same as `hasUnclaimedLocalVault`; this is its sibling
+   * for a caller that needs the Vault itself, not just whether one exists —
+   * to offer it for export before a Vault Claim replaces what this owner
+   * already holds (CONTEXT.md, "Claim Offer").
+   */
+  loadUnclaimedVault(): VaultStorageV1 | null;
   saveVault(vault: VaultStorageV1): void;
   /** Explicit Local Vault removal (ADR 0033). Locks this access afterward. */
   removeVault(): void;
@@ -144,7 +172,43 @@ export type LocalVaultAccess = {
    * Local Vault: evidence alone never replaces one.
    */
   claimUnclaimedLocalVaultLocked(): void;
+  /**
+   * Vault Claim, replacing a Local Vault this owner already holds — the
+   * explicit, acknowledged act `claimUnclaimedLocalVaultLocked` refuses to be
+   * (CONTEXT.md, "Vault Claim").
+   *
+   * Performs no check of its own that the User meant it: the acknowledgement
+   * is obtained by the caller before this is reached — see
+   * `vaultClaimEvidence.ts`, the one place that decides whether a Vault Claim
+   * happens. Overwrites this owner's entry with the Unclaimed Local Vault and
+   * unbinds any Master Key that was bound, because that key unwraps a Vault
+   * this slot no longer holds — leaving it bound would leave `isUnlocked` true
+   * over the wrong Vault. The caller unlocks the replacement afterward in the
+   * ordinary way, exactly as a fresh claim does.
+   *
+   * Refuses with `NoOwnedLocalVaultToReplaceError` when this owner holds no
+   * Vault to replace — that is an ordinary claim, not a replacement.  Refuses
+   * with `NoUnclaimedLocalVaultError` when there is nothing here to replace it
+   * with. Neither refusal writes anything.
+   */
+  replaceOwnedLocalVaultWithUnclaimedLocked(): void;
   unlockWithRecoveryKey(options: {
+    recoveryKey: string;
+  }): Promise<VaultUnlockResult>;
+  /**
+   * Vault Claim by recovery key, replacing a Local Vault this owner already
+   * holds, and unlocking the result.
+   *
+   * The recovery-key counterpart to
+   * `replaceOwnedLocalVaultWithUnclaimedLocked`: same replacement, same
+   * refusals, but authorized by a secret rather than an acknowledgement
+   * obtained elsewhere, so it unwraps the Unclaimed Local Vault's Master Key
+   * before writing anything. A wrong key throws `VaultSecretMismatchError`
+   * and leaves both Vaults byte-identical — the same unwrap-then-write order
+   * `unlockWithRecoveryKey` uses. Unlocked on success because the evidence
+   * *is* the key: there is nothing further to ask the User for.
+   */
+  replaceOwnedLocalVaultWithUnclaimedByRecoveryKey(options: {
     recoveryKey: string;
   }): Promise<VaultUnlockResult>;
   /**
@@ -387,6 +451,10 @@ export function createLocalVaultAccess(options: {
       return vaultOf(slot.read());
     },
 
+    loadUnclaimedVault() {
+      return slot.readUnclaimed();
+    },
+
     saveVault(vault) {
       slot.write(vault);
     },
@@ -469,6 +537,25 @@ export function createLocalVaultAccess(options: {
       // and still locked, which is the whole point of this method existing.
     },
 
+    replaceOwnedLocalVaultWithUnclaimedLocked() {
+      // Read before anything is written. The opposite guard to
+      // `claimUnclaimedLocalVaultLocked`'s: that method exists to refuse this
+      // exact overwrite, so this one is reached only once a caller has
+      // obtained the acknowledgement that makes the overwrite deliberate.
+      if (slot.read().status !== 'owned') {
+        throw new NoOwnedLocalVaultToReplaceError();
+      }
+
+      const vault = slot.readUnclaimed();
+      if (!vault) throw new NoUnclaimedLocalVaultError();
+
+      slot.claim(vault);
+      // The Master Key just bound, if any, unwraps a Vault this slot no
+      // longer holds — leaving it bound would leave `isUnlocked` true over
+      // the wrong Vault.
+      boundMasterKeyBytes = null;
+    },
+
     async unlockWithRecoveryKey({ recoveryKey }) {
       const { read, vault } = requireVault();
 
@@ -488,6 +575,34 @@ export function createLocalVaultAccess(options: {
         wrapped: vault.masterKeyWrappedWithRecoveryKey,
         secret: 'recovery-key',
       });
+    },
+
+    async replaceOwnedLocalVaultWithUnclaimedByRecoveryKey({ recoveryKey }) {
+      if (slot.read().status !== 'owned') {
+        throw new NoOwnedLocalVaultToReplaceError();
+      }
+
+      const vault = slot.readUnclaimed();
+      if (!vault) throw new NoUnclaimedLocalVaultError();
+
+      let recoveryWrappingKey: CryptoKey;
+      try {
+        recoveryWrappingKey = await importAesGcmKey(base64ToBytes(recoveryKey));
+      } catch {
+        throw new VaultSecretMismatchError('recovery-key');
+      }
+
+      // Unwrap before writing anything, so a wrong key leaves both the
+      // Unclaimed Local Vault and this owner's current entry byte-identical.
+      const masterKeyBytes = await unwrapOrMismatch({
+        wrappingKey: recoveryWrappingKey,
+        wrapped: vault.masterKeyWrappedWithRecoveryKey,
+        secret: 'recovery-key',
+      });
+
+      slot.claim(vault);
+      boundMasterKeyBytes = masterKeyBytes;
+      return { masterKeyBytes };
     },
 
     async changePassphrase({ currentPassphrase, newPassphrase }) {

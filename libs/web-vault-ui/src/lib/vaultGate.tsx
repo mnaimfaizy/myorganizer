@@ -9,7 +9,7 @@ import {
   Label,
   useToast,
 } from '@myorganizer/web-ui';
-import { useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import {
   type LocalVaultStatus,
@@ -17,8 +17,12 @@ import {
   MIN_PASSPHRASE_LENGTH,
   VaultSecretMismatchError,
   claimUnclaimedLocalVaultWithRecoveryKey,
+  createDefaultAuditReporter,
   createVaultApi,
+  exportVault,
   newPassphraseSchema,
+  replaceOwnedLocalVaultOnEvidence,
+  replaceOwnedLocalVaultWithRecoveryKey,
   resetPassphraseAfterRecovery,
 } from '@myorganizer/web-vault';
 
@@ -29,6 +33,7 @@ import {
 import { useOptionalVaultSession } from './session';
 import { useVaultClaimEvidence } from './useVaultClaimEvidence';
 import { VAULT_CLAIM_EVIDENCE_GATE_VIEWS } from './vaultClaimEvidenceGateView';
+import { VaultReplaceOffer } from './VaultReplaceOffer';
 
 type VaultGateProps = {
   title: string;
@@ -42,6 +47,16 @@ function downloadTextFile(filename: string, content: string) {
   a.href = url;
   a.download = filename;
   a.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadJsonFile(filename: string, content: string) {
+  const blob = new Blob([content], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
   URL.revokeObjectURL(url);
 }
 
@@ -72,6 +87,17 @@ export function VaultGate(props: VaultGateProps) {
   const [localMasterKeyBytes, setLocalMasterKeyBytes] =
     useState<Uint8Array | null>(null);
 
+  type PendingReplace =
+    | { source: 'server-meta' }
+    | { source: 'recovery-key'; recoveryKey: string };
+
+  const [pendingReplace, setPendingReplace] = useState<PendingReplace | null>(
+    null,
+  );
+  const [dismissedServerMetaOffer, setDismissedServerMetaOffer] = useState(
+    false,
+  );
+
   const masterKeyBytes = vaultSession?.masterKeyBytes ?? localMasterKeyBytes;
   const setMasterKeyBytes =
     vaultSession?.setMasterKeyBytes ?? setLocalMasterKeyBytes;
@@ -88,6 +114,27 @@ export function VaultGate(props: VaultGateProps) {
   const [newPassphraseConfirm, setNewPassphraseConfirm] = useState('');
 
   const isUnlocked = masterKeyBytes !== null;
+
+  // The automatic (server-meta) replace offer has no explicit `pendingReplace`
+  // of its own — `useVaultClaimEvidence` settling to `replace-offer` *is* the
+  // offer, with nothing for the User to have supplied first. `pendingReplace`
+  // only ever holds the recovery-key source, whose secret has to be carried
+  // from the moment it was typed through to the confirm step. Deriving the
+  // automatic source here, rather than writing it into `pendingReplace` via an
+  // effect, keeps a `replace-offer` answer that arrives mid-render authoritative
+  // without a render where the callbacks and the screen briefly disagree about
+  // what is on offer.
+  const autoOfferActive =
+    currentVaultStatus === 'owned' &&
+    !pendingReplace &&
+    claimEvidence.status === 'settled' &&
+    claimEvidence.result.kind === 'replace-offer' &&
+    !dismissedServerMetaOffer;
+
+  const effectivePendingReplace: PendingReplace | null = useMemo(
+    () => pendingReplace ?? (autoOfferActive ? { source: 'server-meta' } : null),
+    [pendingReplace, autoOfferActive],
+  );
 
   /**
    * The deliberate half of Vault Claim Evidence: the User says they hold a
@@ -112,6 +159,14 @@ export function VaultGate(props: VaultGateProps) {
       handle,
       recoveryKey: key,
     });
+
+    if (result.kind === 'replace-offer') {
+      // Evidence proved this Unclaimed Local Vault is also the signed-in User's,
+      // but they already hold a Vault of their own here. Offer the explicit replace.
+      setPendingReplace({ source: 'recovery-key', recoveryKey: key });
+      return 'replace-offer';
+    }
+
     if (result.kind !== 'claimed') return 'no-match';
 
     // Claimed and unlocked in one step: the evidence was the key, so there is
@@ -126,6 +181,76 @@ export function VaultGate(props: VaultGateProps) {
     return 'claimed';
   };
 
+  const exportVaultAboutToBeReplaced = useCallback(async (): Promise<void> => {
+    if (!handle) return;
+    const localVault = handle.loadVault();
+    if (!localVault) return;
+    const { text } = await exportVault({
+      localVault,
+      source: 'local-file',
+      auditReporter: createDefaultAuditReporter(undefined, { strict: true }),
+    });
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    downloadJsonFile(`myorganizer-vault-about-to-be-replaced-${stamp}.json`, text);
+  }, [handle]);
+
+  const confirmReplace = useCallback(async (): Promise<void> => {
+    if (!handle || !effectivePendingReplace) return;
+
+    const isRecoveryKeySource = effectivePendingReplace.source === 'recovery-key';
+
+    if (isRecoveryKeySource) {
+      const result = await replaceOwnedLocalVaultWithRecoveryKey({
+        handle,
+        recoveryKey: effectivePendingReplace.recoveryKey,
+      });
+      if (result.kind !== 'replaced') {
+        toast({
+          title: 'Replace failed',
+          description: 'That recovery key no longer matches. Nothing was changed.',
+          variant: 'destructive',
+        });
+        setPendingReplace(null);
+        return;
+      }
+      setMasterKeyBytes(result.masterKeyBytes);
+    } else {
+      const result = replaceOwnedLocalVaultOnEvidence({ handle });
+      if (result.kind !== 'replaced') {
+        toast({
+          title: 'Replace failed',
+          description: 'Nothing was changed.',
+          variant: 'destructive',
+        });
+        setPendingReplace(null);
+        return;
+      }
+    }
+
+    setVaultStatus('owned');
+    setPendingReplace(null);
+
+    // Only mark the server-meta offer as dismissed if it was actually used
+    if (!isRecoveryKeySource) {
+      setDismissedServerMetaOffer(true);
+    }
+
+    toast({
+      title: 'Vault replaced',
+      description: 'This device now uses the other vault that was also yours.',
+    });
+  }, [handle, effectivePendingReplace, setMasterKeyBytes, toast]);
+
+  const declineReplace = useCallback((): void => {
+    if (pendingReplace) {
+      // Decline the recovery-key offer; don't touch the server-meta dismissal state
+      setPendingReplace(null);
+    } else {
+      // Decline the server-meta offer
+      setDismissedServerMetaOffer(true);
+    }
+  }, [pendingReplace]);
+
   const title = useMemo(() => props.title, [props.title]);
 
   if (isUnlocked && masterKeyBytes) {
@@ -136,6 +261,27 @@ export function VaultGate(props: VaultGateProps) {
         })}
       </>
     );
+  }
+
+  if (currentVaultStatus === 'owned') {
+    if (effectivePendingReplace) {
+      return (
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <Card className="p-4">
+            <CardTitle className="text-lg">
+              {title}: Replace this device's vault?
+            </CardTitle>
+            <CardContent className="mt-4 space-y-4">
+              <VaultReplaceOffer
+                onExport={exportVaultAboutToBeReplaced}
+                onConfirm={confirmReplace}
+                onDecline={declineReplace}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
   }
 
   // An Unclaimed Local Vault is never offered without proof it is the
@@ -189,7 +335,9 @@ export function VaultGate(props: VaultGateProps) {
       );
     }
 
-    effectiveVaultStatus = view.status;
+    if (view.kind === 'vault-status') {
+      effectiveVaultStatus = view.status;
+    }
   }
 
   if (effectiveVaultStatus !== 'owned') {
@@ -348,6 +496,11 @@ export function VaultGate(props: VaultGateProps) {
                 Forgot passphrase
               </Button>
             </div>
+
+            {/* A User who is already `owned` here may also hold a recovery key
+                for a second, unclaimed Vault on this device, and this is where
+                they say so. */}
+            <RecoveryKeyClaimOffer onClaim={claimWithRecoveryKey} />
 
             <div className="space-y-2">
               <Label htmlFor="recovery-key">Recovery key</Label>
@@ -553,6 +706,11 @@ export function VaultGate(props: VaultGateProps) {
           >
             Unlock
           </Button>
+
+          {/* A User who is already `owned` here may also hold a recovery key
+              for a second, unclaimed Vault on this device, and this is where
+              they say so. */}
+          <RecoveryKeyClaimOffer onClaim={claimWithRecoveryKey} />
         </CardContent>
       </Card>
     </div>
