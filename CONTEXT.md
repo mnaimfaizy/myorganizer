@@ -286,6 +286,14 @@ _Avoid_: vault migration, phase-1 migration, vault upgrade, sync migration
 The symmetric key derived from the passphrase (PBKDF2 → AES-GCM) that decrypts vault Ciphertext. Never sent to the server.
 _Avoid_: vault key, encryption key, secret key
 
+**Recovery Key**:
+The second secret that opens a Vault, and the only way back into one whose passphrase is forgotten. It is minted per Vault rather than chosen by the User, and it wraps the Master Key directly instead of deriving anything — so it carries no salt and no parameters of its own, and replacing one moves a single wrapping and never reads as a different Vault. Being minted per Vault is also what makes it unable to collide, which is why it is Vault Claim Evidence where a passphrase is not. Whoever holds it holds the Vault: it is shown once, kept by the User, and stored nowhere the product can reach.
+_Avoid_: backup key, recovery code, reset code, escrow key, second passphrase
+
+**Recovery Key Rotation**:
+Minting a new Recovery Key for a Vault and retiring the old one, from a session that is already unlocked. Authorized by the passphrase and never by the key being replaced: a User rotating because the old key is lost cannot produce it, and an unattended unlocked session must not be enough to mint a credential that opens the Vault. It is the one Vault change with a step the User can fail — the new key has to be recorded before the old one stops working — so it is minted and shown before anything is written, and abandoning it leaves the old key working. Retirement is not instant everywhere, and copy that claims otherwise is wrong: it holds on this device and on any device signing in afterwards, while a device already holding the old wrapping keeps honouring the old key until the User confirms the change there, and a Vault Export taken beforehand is opened by the retired key for as long as that file exists.
+_Avoid_: recovery key reset, regenerate recovery key, new recovery key, revoke recovery key
+
 **Vault Handle**:
 The object a caller holds to reach a Vault, bound at construction to one owner and one Master Key. Vault access is obtained, not invoked: there is no unbound vault function to call, so a Vault cannot be resolved without saying whose it is ([ADR 0047](docs/adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md)). Page libraries receive a handle and never learn who the User is.
 _Avoid_: vault client, vault service, vault accessor, vault context
