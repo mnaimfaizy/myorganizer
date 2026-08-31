@@ -69,17 +69,34 @@ ssh-keygen -lf ~/myorg-hostkeys.txt
 
 **Now verify those fingerprints over a different channel**, before trusting
 them. A `ssh-keyscan` you have not checked is trust-on-first-use with extra
-steps: it pins whatever answered, including a machine in the middle. The
-practical second channel is cPanel's browser _Terminal_, which you reached over
-an authenticated HTTPS session rather than over SSH. Run there:
+steps: it pins whatever answered, including a machine in the middle.
+
+The practical second channel is cPanel's browser _Terminal_, which you reached
+over an authenticated HTTPS session rather than over the SSH connection you are
+trying to verify. Ask the SSH daemon for its key from _inside_ the machine,
+where there is no network path to sit in the middle of:
 
 ```bash
-for f in /etc/ssh/ssh_host_*_key.pub; do ssh-keygen -lf "$f"; done
+ssh-keyscan -p <port> 127.0.0.1 | ssh-keygen -lf -
 ```
 
-Compare the `SHA256:` fingerprints against what `ssh-keyscan` gave you. Your
-host's knowledge base may also publish them. If they do not match, stop and work
-out why before going further.
+Compare the `SHA256:` fingerprints against what your laptop's `ssh-keyscan`
+returned. They must match exactly.
+
+Do not reach for `/etc/ssh/ssh_host_*_key.pub` on shared hosting. The Terminal
+is usually jailed (CageFS), so `/etc` there is a virtualised stub and the real
+host keys are not in it — the glob simply fails to match. If `ssh-keyscan` is
+also missing from the jail, ask `ssh` itself and read the key off the handshake:
+
+```bash
+ssh -v -o BatchMode=yes -p <port> 127.0.0.1 2>&1 | grep -i 'server host key'
+```
+
+If neither works, the remaining honest options are to scan from two or three
+unrelated networks and require them to agree, or to open a support ticket and
+have the host state the fingerprints. Both are weaker than the loopback check;
+neither is as weak as not checking. If the fingerprints do not match, stop and
+work out why before going further.
 
 Once they match, trust them locally so your own SSH stops refusing:
 
@@ -108,18 +125,18 @@ asked for a password means the public key is not authorized; go back to Step 1.
 `Settings → Environments → staging` (then repeat for `production`). Same ten
 names in both, different values.
 
-| Secret                 | Where its value comes from                                                  |
-| ---------------------- | --------------------------------------------------------------------------- |
-| `SSH_HOST`             | The hostname you SSH to.                                                    |
-| `SSH_PORT`             | The port you SSH to.                                                        |
-| `SSH_USER`             | The cPanel account you SSH as.                                              |
-| `SSH_PRIVATE_KEY`      | The **whole** `id_ed25519_myorg_deploy` file, including both `-----` lines. |
-| `SSH_KNOWN_HOSTS`      | The verified `ssh-keyscan` output from Step 2.                              |
-| `APP_ROOT`             | This environment's backend application directory, absolute.                 |
-| `COUNTERPART_APP_ROOT` | The **other** environment's `APP_ROOT`.                                     |
-| `NODEVENV_ACTIVATE`    | The Node virtualenv `activate` script, absolute.                            |
-| `SELECTOR_APP_KEY`     | The identity cPanel files this app under in the Node.js Selector.           |
-| `API_ORIGIN`           | This environment's API base URL, no trailing slash.                         |
+| Secret                 | Where its value comes from                                                                                                    |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `SSH_HOST`             | The hostname you SSH to. Prefer the name over a bare IP: shared-hosting addresses get renumbered, and a hostname survives it. |
+| `SSH_PORT`             | The port you SSH to.                                                                                                          |
+| `SSH_USER`             | The cPanel account you SSH as.                                                                                                |
+| `SSH_PRIVATE_KEY`      | The **whole** `id_ed25519_myorg_deploy` file, including both `-----` lines.                                                   |
+| `SSH_KNOWN_HOSTS`      | The verified `ssh-keyscan` output from Step 2.                                                                                |
+| `APP_ROOT`             | This environment's backend application directory, absolute.                                                                   |
+| `COUNTERPART_APP_ROOT` | The **other** environment's `APP_ROOT`.                                                                                       |
+| `NODEVENV_ACTIVATE`    | The Node virtualenv `activate` script, absolute.                                                                              |
+| `SELECTOR_APP_KEY`     | The identity cPanel files this app under in the Node.js Selector.                                                             |
+| `API_ORIGIN`           | This environment's API base URL, no trailing slash.                                                                           |
 
 Two of these are worth dwelling on.
 
