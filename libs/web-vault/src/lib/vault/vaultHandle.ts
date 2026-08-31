@@ -9,7 +9,7 @@
  * Handles are not reusable across Users. When the owner changes, the old
  * handle is discarded and a new one is created.
  */
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType, VaultMetaV1 } from '@myorganizer/app-api-client';
 
 import {
   createLocalVaultAccess,
@@ -81,6 +81,19 @@ export type VaultHandle = LocalVaultAccess & {
     type: VaultRecordType;
     etag: string;
   }): Promise<void>;
+  /**
+   * The hash of the Vault Meta this device and the server last agreed on, or
+   * `undefined` when they never have. It is what tells a wrapping changed here
+   * apart from one changed elsewhere — without it the two are the same
+   * observation. See CONTEXT.md's "Vault Meta Bookmark" entry.
+   */
+  lastAgreedVaultMetaHash(): string | undefined;
+  /**
+   * Advance this owner's Vault Meta Bookmark to `meta`. Call it only after a
+   * successful Vault Meta Push, or to record what this device and the server
+   * last agreed on before a push that has not landed.
+   */
+  recordVaultMetaAgreement(options: { meta: VaultMetaV1 }): Promise<void>;
 };
 
 /**
@@ -198,6 +211,8 @@ export function createVaultHandle(options: {
     lastPushedEtag(type) {
       return bookmarks.lastPushedEtag({ type });
     },
+    lastAgreedVaultMetaHash: bookmarks.lastAgreedVaultMetaHash,
+    recordVaultMetaAgreement: bookmarks.recordVaultMetaAgreement,
     async recordPushSuccess({ type, etag }) {
       const vault = access.loadVault();
       const blob = vault?.data[type];
@@ -213,6 +228,7 @@ export function createVaultHandle(options: {
     unlockWithPassphrase: access.unlockWithPassphrase,
     unlockWithRecoveryKey: access.unlockWithRecoveryKey,
     changePassphrase: access.changePassphrase,
+    resetPassphrase: access.resetPassphrase,
     loadDecryptedData: access.loadDecryptedData,
     decryptCiphertext: access.decryptCiphertext,
     // The one write that names a Vault Blob Type, so the one the sink hears

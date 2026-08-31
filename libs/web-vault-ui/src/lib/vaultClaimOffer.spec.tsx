@@ -43,6 +43,7 @@ describe('VaultClaimOffer', () => {
       unlockWithPassphrase: jest.fn(),
       unlockWithRecoveryKey: jest.fn(),
       changePassphrase: jest.fn(),
+      resetPassphrase: jest.fn(),
       loadDecryptedData: jest.fn(),
       saveEncryptedData: jest.fn(),
       ...overrides,

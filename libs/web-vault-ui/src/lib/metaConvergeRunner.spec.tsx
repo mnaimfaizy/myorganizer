@@ -2,7 +2,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const mockToast = jest.fn();
-const mockConvergeVaultMeta = jest.fn();
+const mockSettleVaultMeta = jest.fn();
 
 jest.mock('@myorganizer/web-ui', () => {
   const actual = jest.requireActual('@myorganizer/web-ui');
@@ -15,8 +15,8 @@ jest.mock('@myorganizer/web-ui', () => {
 jest.mock('@myorganizer/web-vault', () => ({
   createVaultApi: jest.fn(() => ({})),
   getHttpStatus: jest.fn(() => undefined),
-  convergeVaultMeta: (options: MetaConvergeOptions) =>
-    mockConvergeVaultMeta(options),
+  settleVaultMeta: (options: SettleVaultMetaOptions) =>
+    mockSettleVaultMeta(options),
 }));
 
 jest.mock('./session', () => ({
@@ -26,15 +26,16 @@ jest.mock('./session', () => ({
 import type {
   VaultMetaChange,
   VaultMetaDecision,
+  VaultHandle,
 } from '@myorganizer/web-vault';
-import type { ServerVaultMeta } from '@myorganizer/web-vault';
 import { useOptionalVaultSession } from './session';
 import { VaultMetaConvergeRunner } from './metaConvergeRunner';
 
-type MetaConvergeOptions = {
+type SettleVaultMetaOptions = {
+  api: unknown;
+  handle: VaultHandle;
   prompt: (params: {
     change: VaultMetaChange;
-    remote: ServerVaultMeta;
   }) => Promise<VaultMetaDecision> | VaultMetaDecision;
 };
 
@@ -55,32 +56,23 @@ function createMockHandle(owner: string): MockHandle {
 function arrangeMetaConvergeWithPrompt(decisionResult: {
   current?: VaultMetaDecision;
 }) {
-  mockConvergeVaultMeta.mockImplementation(
-    async (options: MetaConvergeOptions) => {
+  mockSettleVaultMeta.mockImplementation(
+    async (options: SettleVaultMetaOptions) => {
       decisionResult.current = await options.prompt({
         change: 'passphrase',
-        remote: {
-          etag: 'e1',
-          updatedAt: 't1',
-          meta: {
-            version: 1,
-            kdf_name: 'PBKDF2',
-            kdf_salt: 'salt',
-            kdf_params: { hash: 'SHA-256', iterations: 310_000 },
-            wrapped_mk_passphrase: { version: 1, iv: 'iv1', ciphertext: 'ct1' },
-            wrapped_mk_recovery: { version: 1, iv: 'iv2', ciphertext: 'ct2' },
-          },
-        },
       });
 
-      return { kind: 'noop-already-in-sync' };
+      return {
+        kind: 'converged' as const,
+        result: { kind: 'noop-already-in-sync' as const },
+      };
     },
   );
 }
 
 function arrangeNoPromptMetaConverge() {
-  mockConvergeVaultMeta.mockImplementation(async () => {
-    return { kind: 'skipped-no-local-vault' };
+  mockSettleVaultMeta.mockImplementation(async () => {
+    return { kind: 'skipped-no-local-vault' as const };
   });
 }
 
@@ -88,6 +80,7 @@ describe('VaultMetaConvergeRunner', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     window.sessionStorage.clear();
+    mockSettleVaultMeta.mockClear();
   });
 
   test('should display passphrase dialog with correct copy when passphrase diverged', async () => {
@@ -179,34 +172,27 @@ describe('VaultMetaConvergeRunner', () => {
       handle: mockHandle,
     });
 
-    // Mock convergeVaultMeta to return noop-deferred when prompt is called with defer
-    mockConvergeVaultMeta.mockImplementation(
-      async (options: MetaConvergeOptions) => {
+    // Mock settleVaultMeta to return noop-deferred when prompt is called with defer
+    mockSettleVaultMeta.mockImplementation(
+      async (options: SettleVaultMetaOptions) => {
         const decision = await options.prompt({
           change: 'passphrase',
-          remote: {
-            etag: 'e1',
-            updatedAt: 't1',
-            meta: {
-              version: 1,
-              kdf_name: 'PBKDF2',
-              kdf_salt: 'salt',
-              kdf_params: { hash: 'SHA-256', iterations: 310_000 },
-              wrapped_mk_passphrase: {
-                version: 1,
-                iv: 'iv1',
-                ciphertext: 'ct1',
-              },
-              wrapped_mk_recovery: { version: 1, iv: 'iv2', ciphertext: 'ct2' },
-            },
-          },
         });
 
         decisionResult.current = decision;
         if (decision === 'defer') {
-          return { kind: 'noop-deferred', change: 'passphrase' as const };
+          return {
+            kind: 'converged' as const,
+            result: {
+              kind: 'noop-deferred' as const,
+              change: 'passphrase' as const,
+            },
+          };
         }
-        return { kind: 'noop-already-in-sync' };
+        return {
+          kind: 'converged' as const,
+          result: { kind: 'noop-already-in-sync' as const },
+        };
       },
     );
 
@@ -253,10 +239,13 @@ describe('VaultMetaConvergeRunner', () => {
       data: {},
     };
 
-    mockConvergeVaultMeta.mockResolvedValue({
-      kind: 'adopted-remote',
-      change: 'passphrase' as const,
-      nextLocalVault: nextVault,
+    mockSettleVaultMeta.mockResolvedValue({
+      kind: 'converged' as const,
+      result: {
+        kind: 'adopted-remote' as const,
+        change: 'passphrase' as const,
+        nextLocalVault: nextVault,
+      },
     });
 
     render(<VaultMetaConvergeRunner />);
@@ -295,10 +284,13 @@ describe('VaultMetaConvergeRunner', () => {
       data: {},
     };
 
-    mockConvergeVaultMeta.mockResolvedValue({
-      kind: 'adopted-remote',
-      change: 'recovery-key' as const,
-      nextLocalVault: nextVault,
+    mockSettleVaultMeta.mockResolvedValue({
+      kind: 'converged' as const,
+      result: {
+        kind: 'adopted-remote' as const,
+        change: 'recovery-key' as const,
+        nextLocalVault: nextVault,
+      },
     });
 
     render(<VaultMetaConvergeRunner />);
@@ -321,9 +313,12 @@ describe('VaultMetaConvergeRunner', () => {
       handle: mockHandle,
     });
 
-    mockConvergeVaultMeta.mockResolvedValue({
-      kind: 'noop-declined',
-      change: 'passphrase' as const,
+    mockSettleVaultMeta.mockResolvedValue({
+      kind: 'converged' as const,
+      result: {
+        kind: 'noop-declined' as const,
+        change: 'passphrase' as const,
+      },
     });
 
     render(<VaultMetaConvergeRunner />);
@@ -366,29 +361,16 @@ describe('VaultMetaConvergeRunner', () => {
       handle: mockHandle,
     });
 
-    mockConvergeVaultMeta.mockImplementation(
-      async (options: MetaConvergeOptions) => {
+    mockSettleVaultMeta.mockImplementation(
+      async (options: SettleVaultMetaOptions) => {
         await options.prompt({
           change: 'recovery-key',
-          remote: {
-            etag: 'e1',
-            updatedAt: 't1',
-            meta: {
-              version: 1,
-              kdf_name: 'PBKDF2',
-              kdf_salt: 'salt',
-              kdf_params: { hash: 'SHA-256', iterations: 310_000 },
-              wrapped_mk_passphrase: {
-                version: 1,
-                iv: 'iv1',
-                ciphertext: 'ct1',
-              },
-              wrapped_mk_recovery: { version: 1, iv: 'iv2', ciphertext: 'ct2' },
-            },
-          },
         });
 
-        return { kind: 'noop-already-in-sync' };
+        return {
+          kind: 'converged' as const,
+          result: { kind: 'noop-already-in-sync' as const },
+        };
       },
     );
 
@@ -410,29 +392,16 @@ describe('VaultMetaConvergeRunner', () => {
       handle: mockHandle,
     });
 
-    mockConvergeVaultMeta.mockImplementation(
-      async (options: MetaConvergeOptions) => {
+    mockSettleVaultMeta.mockImplementation(
+      async (options: SettleVaultMetaOptions) => {
         decisionResult.current = await options.prompt({
           change: 'recovery-key',
-          remote: {
-            etag: 'e1',
-            updatedAt: 't1',
-            meta: {
-              version: 1,
-              kdf_name: 'PBKDF2',
-              kdf_salt: 'salt',
-              kdf_params: { hash: 'SHA-256', iterations: 310_000 },
-              wrapped_mk_passphrase: {
-                version: 1,
-                iv: 'iv1',
-                ciphertext: 'ct1',
-              },
-              wrapped_mk_recovery: { version: 1, iv: 'iv2', ciphertext: 'ct2' },
-            },
-          },
         });
 
-        return { kind: 'noop-already-in-sync' };
+        return {
+          kind: 'converged' as const,
+          result: { kind: 'noop-already-in-sync' as const },
+        };
       },
     );
 
@@ -464,29 +433,16 @@ describe('VaultMetaConvergeRunner', () => {
       handle: mockHandle,
     });
 
-    mockConvergeVaultMeta.mockImplementation(
-      async (options: MetaConvergeOptions) => {
+    mockSettleVaultMeta.mockImplementation(
+      async (options: SettleVaultMetaOptions) => {
         await options.prompt({
           change: 'different-vault',
-          remote: {
-            etag: 'e1',
-            updatedAt: 't1',
-            meta: {
-              version: 1,
-              kdf_name: 'PBKDF2',
-              kdf_salt: 'different-salt',
-              kdf_params: { hash: 'SHA-256', iterations: 310_000 },
-              wrapped_mk_passphrase: {
-                version: 1,
-                iv: 'iv1',
-                ciphertext: 'ct1',
-              },
-              wrapped_mk_recovery: { version: 1, iv: 'iv2', ciphertext: 'ct2' },
-            },
-          },
         });
 
-        return { kind: 'noop-already-in-sync' };
+        return {
+          kind: 'converged' as const,
+          result: { kind: 'noop-already-in-sync' as const },
+        };
       },
     );
 
@@ -515,33 +471,26 @@ describe('VaultMetaConvergeRunner', () => {
       handle: mockHandle,
     });
 
-    mockConvergeVaultMeta.mockImplementation(
-      async (options: MetaConvergeOptions) => {
+    mockSettleVaultMeta.mockImplementation(
+      async (options: SettleVaultMetaOptions) => {
         const decision = await options.prompt({
           change: 'different-vault',
-          remote: {
-            etag: 'e1',
-            updatedAt: 't1',
-            meta: {
-              version: 1,
-              kdf_name: 'PBKDF2',
-              kdf_salt: 'different-salt',
-              kdf_params: { hash: 'SHA-256', iterations: 310_000 },
-              wrapped_mk_passphrase: {
-                version: 1,
-                iv: 'iv1',
-                ciphertext: 'ct1',
-              },
-              wrapped_mk_recovery: { version: 1, iv: 'iv2', ciphertext: 'ct2' },
-            },
-          },
         });
 
         decisionResult.current = decision;
         if (decision === 'defer') {
-          return { kind: 'noop-deferred', change: 'different-vault' as const };
+          return {
+            kind: 'converged' as const,
+            result: {
+              kind: 'noop-deferred' as const,
+              change: 'different-vault' as const,
+            },
+          };
         }
-        return { kind: 'noop-already-in-sync' };
+        return {
+          kind: 'converged' as const,
+          result: { kind: 'noop-already-in-sync' as const },
+        };
       },
     );
 
@@ -591,7 +540,7 @@ describe('VaultMetaConvergeRunner', () => {
 
     // Wait for user-a's converge to complete
     await waitFor(() => {
-      expect(mockConvergeVaultMeta).toHaveBeenCalledTimes(1);
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
     });
 
     // Verify user-a's flag is set (skipped-no-local-vault DOES set the flag)
@@ -603,7 +552,7 @@ describe('VaultMetaConvergeRunner', () => {
 
     // Unmount and clear mock call count, but DO NOT clear sessionStorage
     unmount();
-    mockConvergeVaultMeta.mockClear();
+    mockSettleVaultMeta.mockClear();
 
     // User B: render with a different owner in the same session
     const handleB = createMockHandle('user-b');
@@ -615,12 +564,10 @@ describe('VaultMetaConvergeRunner', () => {
 
     render(<VaultMetaConvergeRunner />);
 
-    // Wait for user-b's converge to be called (should not be skipped)
+    // Wait for user-b's converge to be called (should not be skipped because they are a different user)
     await waitFor(() => {
-      expect(mockConvergeVaultMeta).toHaveBeenCalledTimes(1);
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
     });
-
-    expect(handleB.loadVault).toHaveBeenCalled();
   });
 
   test('skips meta converge when same owner re-renders with flag already set', async () => {
@@ -629,16 +576,19 @@ describe('VaultMetaConvergeRunner', () => {
       handle: handleA,
     });
 
-    mockConvergeVaultMeta.mockResolvedValue({
-      kind: 'noop-declined',
-      change: 'passphrase' as const,
+    mockSettleVaultMeta.mockResolvedValue({
+      kind: 'converged' as const,
+      result: {
+        kind: 'noop-declined' as const,
+        change: 'passphrase' as const,
+      },
     });
 
     const { rerender } = render(<VaultMetaConvergeRunner />);
 
     // Wait for first render to complete converge
     await waitFor(() => {
-      expect(mockConvergeVaultMeta).toHaveBeenCalledTimes(1);
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
     });
 
     expect(
@@ -648,13 +598,74 @@ describe('VaultMetaConvergeRunner', () => {
     ).toBe('1');
 
     // Clear mock call count and re-render with same owner
-    mockConvergeVaultMeta.mockClear();
+    mockSettleVaultMeta.mockClear();
     rerender(<VaultMetaConvergeRunner />);
 
     // Wait a bit, then verify converge was NOT called again
     await waitFor(
       () => {
-        expect(mockConvergeVaultMeta).not.toHaveBeenCalled();
+        expect(mockSettleVaultMeta).not.toHaveBeenCalled();
+      },
+      { timeout: 500 },
+    );
+  });
+
+  test('when settleVaultMeta resolves pushed-local-wrapping, no dialog is rendered and toast is not called', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockSettleVaultMeta.mockResolvedValue({
+      kind: 'pushed-local-wrapping' as const,
+    });
+
+    render(<VaultMetaConvergeRunner />);
+
+    // Verify no dialog is rendered
+    await waitFor(() => {
+      const dialog = screen.queryByRole('dialog');
+      expect(dialog).toBeNull();
+    });
+
+    // Verify toast was not called
+    expect(mockToast).not.toHaveBeenCalled();
+  });
+
+  test('when settleVaultMeta resolves pushed-local-wrapping, session flag is set and second render does not call settleVaultMeta again', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockSettleVaultMeta.mockResolvedValue({
+      kind: 'pushed-local-wrapping' as const,
+    });
+
+    const { rerender } = render(<VaultMetaConvergeRunner />);
+
+    // Wait for first render to complete
+    await waitFor(() => {
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
+    });
+
+    // Verify session flag is set
+    expect(
+      window.sessionStorage.getItem(
+        'myorganizer_vault_meta_converge_ran_v1:user-a',
+      ),
+    ).toBe('1');
+
+    // Clear mock call count and re-render with same owner
+    mockSettleVaultMeta.mockClear();
+    rerender(<VaultMetaConvergeRunner />);
+
+    // Wait a bit, then verify settleVaultMeta was NOT called again
+    await waitFor(
+      () => {
+        expect(mockSettleVaultMeta).not.toHaveBeenCalled();
       },
       { timeout: 500 },
     );

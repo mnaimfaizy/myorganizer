@@ -8,12 +8,17 @@
  * See CONTEXT.md's "Sync Bookmark" entry.
  */
 
+import type { VaultMetaV1 } from '@myorganizer/app-api-client';
+
 import type { EncryptedBlob, VaultRecordType } from './localVaultStorage';
 import {
   readSyncBookmarks,
+  readVaultMetaBookmark,
   removeSyncBookmarks,
   writeSyncBookmark,
+  writeVaultMetaBookmark,
 } from './syncBookmarkStorage';
+import { vaultMetaIdentity } from './vaultMetaConverge';
 
 async function sha256Hex(input: string): Promise<string> {
   const bytes = new TextEncoder().encode(input);
@@ -33,6 +38,18 @@ export async function hashCiphertext(blob: EncryptedBlob): Promise<string> {
   return sha256Hex(
     JSON.stringify({ ciphertext: blob.ciphertext, iv: blob.iv }),
   );
+}
+
+/**
+ * The hash a Vault Meta Bookmark compares a Vault Meta against.
+ *
+ * Hashes the Vault Meta's identity rather than the object, so two metas the
+ * server and this device would both call the same one hash the same however
+ * their JSON was ordered. Needs no Master Key and works while the Vault is
+ * locked, which is what lets a pending push be retried at session start.
+ */
+export async function hashVaultMeta(meta: VaultMetaV1): Promise<string> {
+  return sha256Hex(vaultMetaIdentity(meta));
 }
 
 export type SyncBookmarkAccess = {
@@ -69,7 +86,28 @@ export type SyncBookmarkAccess = {
     blob: EncryptedBlob;
     etag: string;
   }): Promise<void>;
-  /** Remove every bookmark this owner holds. */
+  /**
+   * The hash of the Vault Meta this owner's device and the server last agreed
+   * on, or `undefined` when they never have.
+   *
+   * `undefined` is not "in sync": it says this device holds no evidence about
+   * the server's Vault Meta, which is what makes a device that has never
+   * pushed one behave exactly as it did before there was a bookmark.
+   */
+  lastAgreedVaultMetaHash(): string | undefined;
+  /**
+   * Advance this owner's Vault Meta Bookmark to `meta`.
+   *
+   * Call it only when this device and the server holding that Vault Meta is a
+   * confirmed fact — after a successful Vault Meta Push — or when recording
+   * what they last agreed on before a push that has not landed yet. Nothing
+   * else moves it.
+   */
+  recordVaultMetaAgreement(options: { meta: VaultMetaV1 }): Promise<void>;
+  /**
+   * Remove every bookmark this owner holds, Sync Bookmarks and the Vault Meta
+   * Bookmark alike.
+   */
   removeBookmarks(): void;
 };
 
@@ -91,6 +129,17 @@ export function createSyncBookmarkAccess(owner: string): SyncBookmarkAccess {
     async recordPushSuccess({ type, blob, etag }) {
       const ciphertextHash = await hashCiphertext(blob);
       writeSyncBookmark({ owner, type, entry: { ciphertextHash, etag } });
+    },
+
+    lastAgreedVaultMetaHash() {
+      return readVaultMetaBookmark(owner)?.metaHash;
+    },
+
+    async recordVaultMetaAgreement({ meta }) {
+      writeVaultMetaBookmark({
+        owner,
+        entry: { metaHash: await hashVaultMeta(meta) },
+      });
     },
 
     removeBookmarks() {

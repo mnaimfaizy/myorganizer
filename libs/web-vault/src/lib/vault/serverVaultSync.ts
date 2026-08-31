@@ -45,22 +45,6 @@ function getHttpStatus(error: unknown): number | undefined {
   return typeof status === 'number' ? status : undefined;
 }
 
-function defaultMetaConflictHandler(params: {
-  local: VaultMetaV1;
-  remote: ServerVaultMeta;
-}): ConflictDecision {
-  void params;
-  if (typeof window === 'undefined' || typeof window.confirm !== 'function') {
-    return 'keep-remote';
-  }
-
-  const overwrite = window.confirm(
-    'Your vault was updated in another session. Overwrite the server version with your local changes?',
-  );
-
-  return overwrite ? 'keep-local' : 'keep-remote';
-}
-
 function defaultBlobConflictHandler(params: {
   local: EncryptedBlobV1;
   remote: ServerVaultBlob;
@@ -176,12 +160,24 @@ export type PutVaultMetaResult =
     };
 
 export async function putServerVaultMetaEtagAware(options: {
-  api: VaultApiLike;
+  // The two methods this actually uses, and not the two it does not. Handing
+  // a caller `putVaultBlob` to write a Vault Meta is the same overreach this
+  // file avoids on every read path.
+  api: Pick<VaultApiLike, 'getVaultMeta' | 'putVaultMeta'>;
   meta: VaultMetaV1;
   ifMatch?: string;
-  onConflict?: VaultMetaConflictHandler;
+  /**
+   * Required, and deliberately not defaulted. A Vault Meta conflict means two
+   * devices changed a wrapping independently, and a wrapping cannot be
+   * verified without the passphrase it was derived from (ADR 0057) — so there
+   * is no answer this function could pick that is safe in general, and a
+   * default would pick one anyway. The blob path below still defaults,
+   * because Ciphertext a conflict handler chooses between can at least be
+   * decrypted and compared.
+   */
+  onConflict: VaultMetaConflictHandler;
 }): Promise<PutVaultMetaResult> {
-  const onConflict = options.onConflict ?? defaultMetaConflictHandler;
+  const { onConflict } = options;
 
   try {
     const response = await options.api.putVaultMeta({

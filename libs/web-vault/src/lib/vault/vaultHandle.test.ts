@@ -603,11 +603,114 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       // Handle is locked.
 
       await expect(
-        handle.changePassphrase({ newPassphrase: 'new-pass' }),
+        handle.changePassphrase({
+          currentPassphrase: 'old-pass',
+          newPassphrase: 'new-pass',
+        }),
       ).rejects.toThrow(VaultLockedError);
     });
 
-    test('changePassphrase on unlocked handle rewraps passphrase, leaves recovery and data unchanged', async () => {
+    test('changePassphrase with wrong current passphrase throws VaultSecretMismatchError and leaves vault byte-identical', async () => {
+      const initialHandle =
+        await createInitializedVaultForPassphraseChange('user-a');
+      await initialHandle.unlockWithPassphrase({ passphrase: 'old-pass' });
+
+      // Record state before the failed call
+      const vaultBefore = initialHandle.loadVault()!;
+      const stateBefore = {
+        masterKeyWrappedWithPassphrase:
+          vaultBefore.masterKeyWrappedWithPassphrase,
+        masterKeyWrappedWithRecoveryKey:
+          vaultBefore.masterKeyWrappedWithRecoveryKey,
+        kdf: vaultBefore.kdf,
+        data: vaultBefore.data,
+      };
+
+      // Make aesGcmDecrypt reject to simulate wrong passphrase unwrap failure
+      const { aesGcmDecrypt } = require('./crypto');
+      aesGcmDecrypt.mockRejectedValueOnce(
+        new Error('Decryption failed - wrong passphrase'),
+      );
+
+      // Attempt to change with wrong current passphrase
+      let caught: VaultSecretMismatchError | null = null;
+      try {
+        await initialHandle.changePassphrase({
+          currentPassphrase: 'wrong-pass',
+          newPassphrase: 'new-pass',
+        });
+      } catch (e) {
+        caught = e as VaultSecretMismatchError;
+      }
+
+      expect(caught).toBeInstanceOf(VaultSecretMismatchError);
+      expect(caught?.secret).toBe('passphrase');
+
+      // Verify state is unchanged
+      const vaultAfter = initialHandle.loadVault()!;
+      const stateAfter = {
+        masterKeyWrappedWithPassphrase:
+          vaultAfter.masterKeyWrappedWithPassphrase,
+        masterKeyWrappedWithRecoveryKey:
+          vaultAfter.masterKeyWrappedWithRecoveryKey,
+        kdf: vaultAfter.kdf,
+        data: vaultAfter.data,
+      };
+
+      expect(stateAfter).toEqual(stateBefore);
+    });
+
+    test('changePassphrase with correct current passphrase rewraps and new passphrase unlocks', async () => {
+      const initialHandle =
+        await createInitializedVaultForPassphraseChange('user-a');
+      await initialHandle.unlockWithPassphrase({ passphrase: 'old-pass' });
+
+      const vaultBefore = initialHandle.loadVault();
+
+      // Change with correct passphrase
+      await initialHandle.changePassphrase({
+        currentPassphrase: 'old-pass',
+        newPassphrase: 'new-pass',
+      });
+
+      const vaultAfter = initialHandle.loadVault();
+
+      // Passphrase wrap should change
+      expect(vaultAfter?.masterKeyWrappedWithPassphrase).not.toEqual(
+        vaultBefore?.masterKeyWrappedWithPassphrase,
+      );
+
+      // Recovery wrap should remain unchanged
+      expect(vaultAfter?.masterKeyWrappedWithRecoveryKey).toEqual(
+        vaultBefore?.masterKeyWrappedWithRecoveryKey,
+      );
+
+      // Verify new passphrase works by unlocking a fresh handle
+      const newHandle = createVaultHandle({ owner: 'user-a' });
+      const unlockResult = await newHandle.unlockWithPassphrase({
+        passphrase: 'new-pass',
+      });
+      expect(unlockResult.masterKeyBytes).toBeInstanceOf(Uint8Array);
+      expect(newHandle.loadVault()).not.toBeNull();
+    });
+
+    test('changePassphrase preserves kdf.salt byte-identical', async () => {
+      const initialHandle =
+        await createInitializedVaultForPassphraseChange('user-a');
+      await initialHandle.unlockWithPassphrase({ passphrase: 'old-pass' });
+
+      const saltBefore = initialHandle.loadVault()!.kdf.salt;
+
+      await initialHandle.changePassphrase({
+        currentPassphrase: 'old-pass',
+        newPassphrase: 'new-pass',
+      });
+
+      const saltAfter = initialHandle.loadVault()!.kdf.salt;
+      expect(saltAfter).toBe(saltBefore);
+    });
+
+    test('resetPassphrase on unlocked handle rewraps passphrase, leaves recovery and data unchanged', async () => {
       const initialHandle =
         await createInitializedVaultForPassphraseChange('user-a');
       await initialHandle.unlockWithPassphrase({ passphrase: 'old-pass' });
@@ -616,7 +719,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       const recoveryWrapBefore = vaultBefore?.masterKeyWrappedWithRecoveryKey;
       const dataBefore = vaultBefore?.data;
 
-      await initialHandle.changePassphrase({ newPassphrase: 'new-pass' });
+      await initialHandle.resetPassphrase({ newPassphrase: 'new-pass' });
 
       const vaultAfter = initialHandle.loadVault();
       const recoveryWrapAfter = vaultAfter?.masterKeyWrappedWithRecoveryKey;
@@ -632,6 +735,19 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
 
       // Data should remain unchanged.
       expect(dataAfter).toEqual(dataBefore);
+    });
+
+    test('resetPassphrase preserves kdf.salt byte-identical', async () => {
+      const initialHandle =
+        await createInitializedVaultForPassphraseChange('user-a');
+      await initialHandle.unlockWithPassphrase({ passphrase: 'old-pass' });
+
+      const saltBefore = initialHandle.loadVault()!.kdf.salt;
+
+      await initialHandle.resetPassphrase({ newPassphrase: 'new-pass' });
+
+      const saltAfter = initialHandle.loadVault()!.kdf.salt;
+      expect(saltAfter).toBe(saltBefore);
     });
   });
 

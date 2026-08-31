@@ -30,14 +30,43 @@ if (!(globalThis as any).crypto?.subtle) {
   (globalThis as any).crypto.subtle = webcrypto.subtle;
 }
 
+import type { VaultMetaV1 } from '@myorganizer/app-api-client';
+
 import { bytesToBase64 } from './crypto';
-import { hashCiphertext, createSyncBookmarkAccess } from './syncBookmarkAccess';
+import {
+  hashCiphertext,
+  hashVaultMeta,
+  createSyncBookmarkAccess,
+} from './syncBookmarkAccess';
 import { writeSyncBookmark, readSyncBookmarks } from './syncBookmarkStorage';
 import type { EncryptedBlob } from './localVaultStorage';
 
 beforeEach(() => {
   localStorage.clear();
 });
+
+/**
+ * Helper to create a VaultMetaV1 for testing.
+ */
+function makeVaultMeta(overrides: Partial<VaultMetaV1> = {}): VaultMetaV1 {
+  return {
+    version: 1,
+    kdf_name: 'PBKDF2',
+    kdf_salt: 'default-salt',
+    kdf_params: { hash: 'SHA-256', iterations: 310_000 },
+    wrapped_mk_passphrase: {
+      version: 1,
+      iv: 'iv1-default',
+      ciphertext: 'ct1-default',
+    },
+    wrapped_mk_recovery: {
+      version: 1,
+      iv: 'iv2-default',
+      ciphertext: 'ct2-default',
+    },
+    ...overrides,
+  };
+}
 
 describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
   describe('hashCiphertext — deterministic hashing without Master Key', () => {
@@ -451,6 +480,124 @@ describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
         blob,
       });
       expect(isDirty).toBe(true);
+    });
+  });
+
+  describe('hashVaultMeta — deterministic hashing of Vault Meta', () => {
+    test('18: hashVaultMeta is stable across key ordering', async () => {
+      // Create two VaultMetaV1 objects with the same values but different key order
+      const meta1: VaultMetaV1 = {
+        version: 1,
+        kdf_name: 'PBKDF2',
+        kdf_salt: 'same-salt',
+        kdf_params: { hash: 'SHA-256', iterations: 310_000 },
+        wrapped_mk_passphrase: {
+          version: 1,
+          iv: 'iv1',
+          ciphertext: 'ct1',
+        },
+        wrapped_mk_recovery: {
+          version: 1,
+          iv: 'iv2',
+          ciphertext: 'ct2',
+        },
+      };
+
+      // Create with different property insertion order
+      const meta2: VaultMetaV1 = {
+        wrapped_mk_recovery: {
+          version: 1,
+          iv: 'iv2',
+          ciphertext: 'ct2',
+        },
+        kdf_params: { hash: 'SHA-256', iterations: 310_000 },
+        version: 1,
+        wrapped_mk_passphrase: {
+          version: 1,
+          iv: 'iv1',
+          ciphertext: 'ct1',
+        },
+        kdf_salt: 'same-salt',
+        kdf_name: 'PBKDF2',
+      };
+
+      const hash1 = await hashVaultMeta(meta1);
+      const hash2 = await hashVaultMeta(meta2);
+
+      // Should be identical despite different key ordering
+      expect(hash1).toBe(hash2);
+    });
+
+    test('19: hashVaultMeta differs when passphrase wrapping differs', async () => {
+      const meta1 = makeVaultMeta({
+        wrapped_mk_passphrase: {
+          version: 1,
+          iv: 'iv1-original',
+          ciphertext: 'ct1-original',
+        },
+      });
+
+      const meta2 = makeVaultMeta({
+        wrapped_mk_passphrase: {
+          version: 1,
+          iv: 'iv1-different',
+          ciphertext: 'ct1-different',
+        },
+      });
+
+      const hash1 = await hashVaultMeta(meta1);
+      const hash2 = await hashVaultMeta(meta2);
+
+      expect(hash1).not.toBe(hash2);
+    });
+
+    test('20: hashVaultMeta differs when kdf_salt differs', async () => {
+      const meta1 = makeVaultMeta({ kdf_salt: 'salt-1' });
+      const meta2 = makeVaultMeta({ kdf_salt: 'salt-2' });
+
+      const hash1 = await hashVaultMeta(meta1);
+      const hash2 = await hashVaultMeta(meta2);
+
+      expect(hash1).not.toBe(hash2);
+    });
+  });
+
+  describe('lastAgreedVaultMetaHash and recordVaultMetaAgreement', () => {
+    test('21: lastAgreedVaultMetaHash returns undefined before any agreement', async () => {
+      const access = createSyncBookmarkAccess('user-a');
+
+      const result = access.lastAgreedVaultMetaHash();
+
+      expect(result).toBeUndefined();
+    });
+
+    test('22: recordVaultMetaAgreement records hash and lastAgreedVaultMetaHash returns the recorded value', async () => {
+      const meta = makeVaultMeta();
+      const access = createSyncBookmarkAccess('user-a');
+
+      // Record the agreement
+      await access.recordVaultMetaAgreement({ meta });
+
+      // lastAgreedVaultMetaHash should return the hash the test computes itself
+      const expectedHash = await hashVaultMeta(meta);
+      const storedHash = access.lastAgreedVaultMetaHash();
+
+      expect(storedHash).toBe(expectedHash);
+    });
+
+    test('23: lastAgreedVaultMetaHash persists after recordVaultMetaAgreement and survives reload', async () => {
+      const meta = makeVaultMeta();
+      const expectedHash = await hashVaultMeta(meta);
+
+      // Create access instance and record agreement
+      const access1 = createSyncBookmarkAccess('user-a');
+      await access1.recordVaultMetaAgreement({ meta });
+
+      // Simulate reload by creating a new access instance for the same owner
+      const access2 = createSyncBookmarkAccess('user-a');
+
+      // Should still be available in the new instance
+      expect(access2.lastAgreedVaultMetaHash()).toBe(expectedHash);
     });
   });
 });

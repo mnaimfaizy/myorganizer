@@ -14,7 +14,11 @@ import { useMemo, useRef, useState } from 'react';
 import {
   type LocalVaultStatus,
   type VaultHandle,
+  MIN_PASSPHRASE_LENGTH,
   VaultSecretMismatchError,
+  createVaultApi,
+  newPassphraseSchema,
+  resetPassphraseAfterRecovery,
 } from '@myorganizer/web-vault';
 
 import { VaultClaimOffer } from './vaultClaimOffer';
@@ -107,9 +111,10 @@ export function VaultGate(props: VaultGateProps) {
 
   if (currentVaultStatus !== 'owned') {
     const canCreate =
-      setupPassphrase.length >= 10 &&
-      setupPassphrase === setupConfirm &&
-      recoveryKey === null;
+      newPassphraseSchema.safeParse({
+        newPassphrase: setupPassphrase,
+        newPassphraseConfirm: setupConfirm,
+      }).success && recoveryKey === null;
 
     return (
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -139,7 +144,8 @@ export function VaultGate(props: VaultGateProps) {
                 placeholder="Re-enter passphrase"
               />
               <p className="text-sm text-muted-foreground">
-                Minimum 10 characters. This passphrase never leaves your device.
+                Minimum {MIN_PASSPHRASE_LENGTH} characters. This passphrase
+                never leaves your device.
               </p>
             </div>
 
@@ -329,20 +335,46 @@ export function VaultGate(props: VaultGateProps) {
               type="button"
               disabled={
                 !masterKeyBytes ||
-                newPassphrase.length < 10 ||
-                newPassphrase !== newPassphraseConfirm
+                !newPassphraseSchema.safeParse({
+                  newPassphrase,
+                  newPassphraseConfirm,
+                }).success
               }
               onClick={async () => {
                 if (!masterKeyBytes || !handle) return;
 
                 try {
-                  await handle.changePassphrase({
+                  const result = await resetPassphraseAfterRecovery({
+                    api: createVaultApi(),
+                    handle,
                     newPassphrase,
                   });
-                  toast({
-                    title: 'Updated',
-                    description: 'Passphrase updated for this vault.',
-                  });
+
+                  // The local change has landed either way, so the User is
+                  // let in either way. What differs is whether their other
+                  // devices know — and a User who has just recovered from a
+                  // passphrase they could not remember needs to hear that the
+                  // old one still unlocks those devices. That is the reason
+                  // they were rotating, not a sync detail.
+                  // `noop-already-in-sync` is a success too: the server holds
+                  // this wrapping, which is all the copy below claims.
+                  const reachedServer =
+                    result.push.kind === 'pushed' ||
+                    result.push.kind === 'noop-already-in-sync';
+
+                  toast(
+                    reachedServer
+                      ? {
+                          title: 'Passphrase updated',
+                          description:
+                            'Your other devices will offer you the new passphrase next time you use them.',
+                        }
+                      : {
+                          title: 'Passphrase updated on this device',
+                          description:
+                            'Your other devices still unlock with the old passphrase. This device will keep trying to tell them.',
+                        },
+                  );
                 } catch (e: unknown) {
                   toast({
                     title: 'Failed',

@@ -7,11 +7,19 @@
  * Local Vault (`localVaultStorage.ts`), keyed the same way — by owner — so
  * removing one User's bookmarks can never touch another's.
  *
- * Unlike a Local Vault, a Sync Bookmark is not irreplaceable: losing one
- * costs at most one redundant push next time a dirtiness check runs, never a
- * User's data. A mis-keyed or corrupted entry is therefore replaced rather
- * than refused — there is no write guard here to mirror
- * `writeOwnedLocalVault`'s. See ADR 0058.
+ * The record also carries one Vault Meta Bookmark for the User: what this
+ * device and the server last agreed on for Vault Meta. It is not a Vault Blob
+ * Type and so is not an entry in `bookmarks` — it sits beside the map rather
+ * than inside it, because a synthetic key would put a non-member into a table
+ * keyed by `VaultRecordType`. What it shares with the map is the per-User key
+ * and, with it, removal: both go when a User's Local Vault does.
+ *
+ * Unlike a Local Vault, neither is irreplaceable: losing a Sync Bookmark costs
+ * at most one redundant push next time a dirtiness check runs, and losing the
+ * Vault Meta Bookmark costs at most a prompt that misattributes a wrapping
+ * change. Neither costs a User's data. A mis-keyed or corrupted entry is
+ * therefore replaced rather than refused — there is no write guard here to
+ * mirror `writeOwnedLocalVault`'s. See ADR 0058.
  */
 
 import type { VaultRecordType } from './localVaultStorage';
@@ -22,6 +30,22 @@ export type SyncBookmarkEntry = {
   ciphertextHash: string;
   /** The ETag the server returned for that push. */
   etag: string;
+};
+
+/**
+ * What a Vault Meta Bookmark records: the hash of the Vault Meta this device
+ * and the server last agreed on.
+ *
+ * A hash rather than the meta itself, and rather than its ETag. The meta
+ * itself would put a second copy of wrapping material beside the Local Vault
+ * and invite the question of which one is authoritative; an ETag is never
+ * obtained at all when the change was made offline, which is the case the
+ * bookmark exists for. A hash proves the server has not moved and can
+ * reconstruct nothing.
+ */
+export type VaultMetaBookmarkEntry = {
+  /** SHA-256 hex digest of the Vault Meta last agreed on. */
+  metaHash: string;
 };
 
 /** The storage key prefix every per-User Sync Bookmark key is composed from. */
@@ -35,6 +59,13 @@ export type SyncBookmarkRecord = {
   version: 1;
   owner: string;
   bookmarks: Partial<Record<VaultRecordType, SyncBookmarkEntry>>;
+  /**
+   * Absent until this device and the server have agreed on a Vault Meta.
+   * Absent is not "in sync": it says this device holds no evidence either
+   * way, which is what makes an unbookmarked device behave exactly as it did
+   * before there was a bookmark to hold.
+   */
+  metaBookmark?: VaultMetaBookmarkEntry;
 };
 
 function assertOwner(owner: string): void {
@@ -80,6 +111,16 @@ function isSyncBookmarkEntry(value: unknown): value is SyncBookmarkEntry {
   );
 }
 
+function isVaultMetaBookmarkEntry(
+  value: unknown,
+): value is VaultMetaBookmarkEntry {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { metaHash?: unknown }).metaHash === 'string'
+  );
+}
+
 /**
  * A validated record for `owner`, or `null` when the stored JSON does not
  * parse as a current-version record naming this owner. An entry naming
@@ -103,7 +144,39 @@ function asSyncBookmarkRecord(
       bookmarks[type as VaultRecordType] = entry;
     }
   }
-  return { version: SYNC_BOOKMARK_RECORD_VERSION, owner, bookmarks };
+
+  const record: SyncBookmarkRecord = {
+    version: SYNC_BOOKMARK_RECORD_VERSION,
+    owner,
+    bookmarks,
+  };
+
+  if (isVaultMetaBookmarkEntry(candidate.metaBookmark)) {
+    record.metaBookmark = candidate.metaBookmark;
+  }
+
+  return record;
+}
+
+/**
+ * `owner`'s whole record, or `null` when there is none that validates.
+ *
+ * Both writers below go through this rather than through `readSyncBookmarks`,
+ * so that writing one half of the record cannot drop the other. A writer that
+ * rebuilt the record from the bookmark map alone would erase the Vault Meta
+ * Bookmark on the next Vault Push, which is the kind of loss that shows up as
+ * a prompt misattributing a wrapping change days later.
+ */
+function readSyncBookmarkRecord(owner: string): SyncBookmarkRecord | null {
+  assertOwner(owner);
+
+  const storage = readableStorage();
+  if (!storage) return null;
+
+  const raw = storage.getItem(syncBookmarkStorageKey(owner));
+  if (raw === null) return null;
+
+  return asSyncBookmarkRecord(parseJson(raw), owner);
 }
 
 /**
@@ -114,16 +187,18 @@ function asSyncBookmarkRecord(
 export function readSyncBookmarks(
   owner: string,
 ): Partial<Record<VaultRecordType, SyncBookmarkEntry>> {
-  assertOwner(owner);
+  return readSyncBookmarkRecord(owner)?.bookmarks ?? {};
+}
 
-  const storage = readableStorage();
-  if (!storage) return {};
-
-  const raw = storage.getItem(syncBookmarkStorageKey(owner));
-  if (raw === null) return {};
-
-  const record = asSyncBookmarkRecord(parseJson(raw), owner);
-  return record ? record.bookmarks : {};
+/**
+ * Read `owner`'s Vault Meta Bookmark, or `undefined` when this device and the
+ * server have never agreed on a Vault Meta — or when storage is unavailable
+ * or the entry does not validate.
+ */
+export function readVaultMetaBookmark(
+  owner: string,
+): VaultMetaBookmarkEntry | undefined {
+  return readSyncBookmarkRecord(owner)?.metaBookmark;
 }
 
 /**
@@ -141,22 +216,53 @@ export function writeSyncBookmark(options: {
 }): void {
   assertOwner(options.owner);
 
+  const existing = readSyncBookmarkRecord(options.owner);
   const record: SyncBookmarkRecord = {
     version: SYNC_BOOKMARK_RECORD_VERSION,
     owner: options.owner,
     bookmarks: {
-      ...readSyncBookmarks(options.owner),
+      ...(existing?.bookmarks ?? {}),
       [options.type]: options.entry,
     },
   };
+  if (existing?.metaBookmark) {
+    record.metaBookmark = existing.metaBookmark;
+  }
+
+  writeRecord(record);
+}
+
+/**
+ * Advance `owner`'s Vault Meta Bookmark — the storage half of recording that
+ * this device and the server now hold the same Vault Meta. Merges into
+ * whatever Sync Bookmarks this owner already holds, for the same reason
+ * `writeSyncBookmark` merges the other way.
+ */
+export function writeVaultMetaBookmark(options: {
+  owner: string;
+  entry: VaultMetaBookmarkEntry;
+}): void {
+  assertOwner(options.owner);
+
+  const existing = readSyncBookmarkRecord(options.owner);
+  writeRecord({
+    version: SYNC_BOOKMARK_RECORD_VERSION,
+    owner: options.owner,
+    bookmarks: existing?.bookmarks ?? {},
+    metaBookmark: options.entry,
+  });
+}
+
+function writeRecord(record: SyncBookmarkRecord): void {
   writableStorage().setItem(
-    syncBookmarkStorageKey(options.owner),
+    syncBookmarkStorageKey(record.owner),
     JSON.stringify(record),
   );
 }
 
 /**
- * Remove every Sync Bookmark `owner` holds — the bookmark half of Explicit
+ * Remove every Sync Bookmark `owner` holds, and their Vault Meta Bookmark
+ * with them — the bookmark half of Explicit
  * Local Vault removal (ADR 0033, restated over this second per-User
  * namespace in ADR 0058).
  *

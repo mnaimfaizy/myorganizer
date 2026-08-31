@@ -1398,7 +1398,7 @@ describe('convergeVaultBlob', () => {
     ]);
 
     // Change passphrase — Master Key unchanged, wrapping changed
-    await handle.changePassphrase({ newPassphrase: 'new key 2026' });
+    await handle.resetPassphrase({ newPassphrase: 'new key 2026' });
 
     const wrappingAfter = handle.loadVault()?.masterKeyWrappedWithPassphrase;
 
