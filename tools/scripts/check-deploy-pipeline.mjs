@@ -155,6 +155,28 @@ const cancelInProgress = (path) => {
   return raw === 'true';
 };
 
+/**
+ * Staging moved `cancel-in-progress` to job-level `concurrency:` blocks (issue
+ * #567): a workflow-level group would have covered Host Apply too, and a newer
+ * `main` push cancelling an in-flight `prisma migrate deploy` is the one
+ * behavior ADR 0056 rules out. The two groups now say different things, so the
+ * page asserts both — `deploy-staging-apply` (deploy-backend and host-apply,
+ * the jobs that touch `APP_ROOT`) queues, while `deploy-staging`
+ * (deploy-frontend) still cancels. Production keeps its cancel-in-progress at
+ * the top level (`cancelInProgress` above), so only staging needs this
+ * job-scoped variant.
+ */
+const jobCancelInProgress = (path, jobId) => {
+  const block = jobBlock(path, jobId);
+  const match = block.match(
+    /concurrency:[\s\S]*?cancel-in-progress:\s*(true|false)/,
+  );
+  if (!match) {
+    fail(`${path} job ${jobId} declares no concurrency cancel-in-progress`);
+  }
+  return match[1] === 'true';
+};
+
 // One extractor per manifest key. A key with no entry here is a finding, so this
 // map is also the list of claims the page is allowed to make.
 const EXTRACTORS = {
@@ -203,9 +225,13 @@ const EXTRACTORS = {
   productionApprovalGatedJobs: () =>
     jobsInEnvironment(PRODUCTION, 'production'),
 
-  // Staging cancels a run in flight; production queues. Reversing either is a
-  // behaviour change the page would otherwise keep describing the old way.
-  stagingConcurrencyCancelInProgress: () => cancelInProgress(STAGING),
+  // Reversing any of these is a behaviour change the page would otherwise keep
+  // describing the old way. The staging jobs that write to `APP_ROOT` queue;
+  // the frontend job, which does not, still cancels; production queues wholesale.
+  stagingApplyCancelInProgress: () =>
+    jobCancelInProgress(STAGING, 'deploy-backend'),
+  stagingFrontendCancelInProgress: () =>
+    jobCancelInProgress(STAGING, 'deploy-frontend'),
   productionConcurrencyCancelInProgress: () => cancelInProgress(PRODUCTION),
 
   productionValidateTimeoutMinutes: () =>
