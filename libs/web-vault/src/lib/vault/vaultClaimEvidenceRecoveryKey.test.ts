@@ -414,7 +414,7 @@ describe('claimUnclaimedLocalVaultWithRecoveryKey', () => {
     assertStorageByteIdentical(storageBefore, storageAfter);
   });
 
-  test('offers a replace rather than claiming when the recovery key matches while User already holds their own Local Vault', async () => {
+  test('should offer a replace rather than claim when the recovery key matches while User already holds their own Local Vault', async () => {
     // When an owner is already owned AND the recovery key matches the coexisting
     // unclaimed vault, the function returns a replace-offer. The key proves
     // evidence but MUST NOT write anything — a correct recovery key while owned
@@ -452,7 +452,7 @@ describe('claimUnclaimedLocalVaultWithRecoveryKey', () => {
     assertStorageByteIdentical(storageBefore, storageAfter);
   });
 
-  test('returns skipped-already-owned when owner holds owned vault with no unclaimed vault and correct recovery key is provided', async () => {
+  test('should return skipped-already-owned when owner holds owned vault with no unclaimed vault and correct recovery key is provided', async () => {
     // When an owner is already owned AND there is NO separate unclaimed vault
     // on the device, the function pays the decoy recovery unwrap cost and
     // returns skipped-already-owned. Nothing is written.

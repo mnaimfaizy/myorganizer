@@ -147,7 +147,7 @@ describe('vaultClaimEvidenceReplace', () => {
   const testOwner = 'test-user-id';
 
   describe('claimUnclaimedLocalVaultOnEvidence — owned + coexisting Unclaimed Local Vault', () => {
-    test('1. returns replace-offer when server Vault Meta matches the Unclaimed Local Vault', async () => {
+    test('should return replace-offer when server Vault Meta matches the Unclaimed Local Vault', async () => {
       // Owned user has their own vault
       const ownHandle = createVaultHandle({ owner: testOwner });
       await ownHandle.initialize({ passphrase });
@@ -168,7 +168,8 @@ describe('vaultClaimEvidenceReplace', () => {
           kdf_salt: unclaimedFixture.vault.kdf.salt,
           wrapped_mk_passphrase:
             unclaimedFixture.vault.masterKeyWrappedWithPassphrase,
-          wrapped_mk_recovery: unclaimedFixture.vault.masterKeyWrappedWithRecoveryKey,
+          wrapped_mk_recovery:
+            unclaimedFixture.vault.masterKeyWrappedWithRecoveryKey,
         } as VaultMetaV1,
       };
       api.getVaultMeta.mockResolvedValue({
@@ -185,13 +186,13 @@ describe('vaultClaimEvidenceReplace', () => {
       assertStorageByteIdentical(storageBefore, storageAfter);
     });
 
-    test('2. returns refused-not-this-vault when server Vault Meta names a different Vault', async () => {
+    test('should return refused-not-this-vault when server Vault Meta names a different Vault', async () => {
       // Owned user has their own vault
       const ownHandle = createVaultHandle({ owner: testOwner });
       await ownHandle.initialize({ passphrase });
 
       // Coexisting unclaimed vault
-      const unclaimedFixture =
+      const _unclaimedFixture =
         await seedUnclaimedLocalVaultWithRecoveryKey(passphrase);
 
       const claimHandle = createVaultHandle({ owner: testOwner });
@@ -228,7 +229,7 @@ describe('vaultClaimEvidenceReplace', () => {
       assertStorageByteIdentical(storageBefore, storageAfter);
     });
 
-    test('3. returns no-evidence when server holds no Vault Meta', async () => {
+    test('should return no-evidence when server holds no Vault Meta', async () => {
       // Owned user has their own vault
       const ownHandle = createVaultHandle({ owner: testOwner });
       await ownHandle.initialize({ passphrase });
@@ -255,7 +256,7 @@ describe('vaultClaimEvidenceReplace', () => {
       assertStorageByteIdentical(storageBefore, storageAfter);
     });
 
-    test('4. returns postponed when server is unreachable', async () => {
+    test('should return postponed when server is unreachable', async () => {
       // Owned user has their own vault
       const ownHandle = createVaultHandle({ owner: testOwner });
       await ownHandle.initialize({ passphrase });
@@ -280,7 +281,7 @@ describe('vaultClaimEvidenceReplace', () => {
       assertStorageByteIdentical(storageBefore, storageAfter);
     });
 
-    test('5. returns session-lost when session expired (401/403)', async () => {
+    test('should return session-lost when session expired (401/403)', async () => {
       // Owned user has their own vault
       const ownHandle = createVaultHandle({ owner: testOwner });
       await ownHandle.initialize({ passphrase });
@@ -311,12 +312,10 @@ describe('vaultClaimEvidenceReplace', () => {
   });
 
   describe('replaceOwnedLocalVaultOnEvidence — the confirm step', () => {
-    test('6. replaces and locked when owned + coexisting Unclaimed Local Vault present', async () => {
+    test('should replace and lock the vault when owned + coexisting Unclaimed Local Vault present', async () => {
       // Owned user has their own vault
       const ownHandle = createVaultHandle({ owner: testOwner });
-      const { recoveryKey: ownRecoveryKey } = await ownHandle.initialize({
-        passphrase,
-      });
+      await ownHandle.initialize({ passphrase });
 
       // Unlock the owned vault first (to test that replace locks it)
       await ownHandle.unlockWithPassphrase({ passphrase });
@@ -355,9 +354,10 @@ describe('vaultClaimEvidenceReplace', () => {
       expect(unclaimedSlotAfter).toBe(unclaimedSlotBefore);
     });
 
-    test('7. skipped-nothing-to-replace when owned but NO coexisting Unclaimed Local Vault', async () => {
+    test('should return skipped-nothing-to-replace when owned but NO coexisting Unclaimed Local Vault', async () => {
       const ownHandle = createVaultHandle({ owner: testOwner });
-      const originalVault = (await ownHandle.initialize({ passphrase }), ownHandle.loadVault());
+      const originalVault =
+        (await ownHandle.initialize({ passphrase }), ownHandle.loadVault());
 
       const claimHandle = createVaultHandle({ owner: testOwner });
       const storageBefore = snapshotLocalStorage();
@@ -373,7 +373,7 @@ describe('vaultClaimEvidenceReplace', () => {
       assertStorageByteIdentical(storageBefore, storageAfter);
     });
 
-    test('8. skipped-nothing-to-replace when not owned at all (absent vault)', async () => {
+    test('should return skipped-nothing-to-replace when not owned at all (absent vault)', async () => {
       const handle = createVaultHandle({ owner: testOwner });
       expect(handle.vaultStatus()).toBe('absent');
 
@@ -390,7 +390,7 @@ describe('vaultClaimEvidenceReplace', () => {
   });
 
   describe('claimUnclaimedLocalVaultWithRecoveryKey — owned + coexisting Unclaimed Local Vault', () => {
-    test('9. returns replace-offer and storage unchanged when correct recovery key matches', async () => {
+    test('should return replace-offer and leave storage unchanged when correct recovery key matches', async () => {
       // This is the load-bearing invariant: a correct recovery key while owned
       // proves evidence but MUST NOT write anything.
       const ownHandle = createVaultHandle({ owner: testOwner });
@@ -414,7 +414,7 @@ describe('vaultClaimEvidenceReplace', () => {
       assertStorageByteIdentical(storageBefore, storageAfter);
     });
 
-    test('10. returns no-match and storage unchanged when recovery key does not match', async () => {
+    test('should return no-match and leave storage unchanged when recovery key does not match', async () => {
       const ownHandle = createVaultHandle({ owner: testOwner });
       await ownHandle.initialize({ passphrase });
 
@@ -436,7 +436,7 @@ describe('vaultClaimEvidenceReplace', () => {
   });
 
   describe('replaceOwnedLocalVaultWithRecoveryKey — the confirm step', () => {
-    test('11. returns replaced + masterKeyBytes when correct recovery key unwraps the Unclaimed Vault', async () => {
+    test('should return replaced + masterKeyBytes when correct recovery key unwraps the Unclaimed Vault', async () => {
       const ownHandle = createVaultHandle({ owner: testOwner });
       await ownHandle.initialize({ passphrase });
 
@@ -476,7 +476,7 @@ describe('vaultClaimEvidenceReplace', () => {
       expect(unclaimedSlotAfter).toBe(unclaimedSlotBefore);
     });
 
-    test('12. returns no-match when wrong recovery key provided', async () => {
+    test('should return no-match when wrong recovery key provided', async () => {
       const ownHandle = createVaultHandle({ owner: testOwner });
       await ownHandle.initialize({ passphrase });
 
@@ -501,7 +501,7 @@ describe('vaultClaimEvidenceReplace', () => {
       assertStorageByteIdentical(storageBefore, storageAfter);
     });
 
-    test('13. returns no-match when no coexisting Unclaimed Local Vault (owned only)', async () => {
+    test('should return no-match when no coexisting Unclaimed Local Vault (owned only)', async () => {
       const ownHandle = createVaultHandle({ owner: testOwner });
       await ownHandle.initialize({ passphrase });
 
@@ -520,7 +520,7 @@ describe('vaultClaimEvidenceReplace', () => {
   });
 
   describe('export escape — exporting a locked vault before replacement', () => {
-    test('14. exports a locked owned vault with wrapped master keys intact before replacement', async () => {
+    test('should export a locked owned vault with wrapped master keys intact before replacement', async () => {
       // An owned user has their own vault, locked (no master key bound).
       // They can export it before replacement so they have a backup.
       // This tests that exportVault works on a locked handle and preserves
@@ -528,7 +528,7 @@ describe('vaultClaimEvidenceReplace', () => {
 
       // Create and initialize an owned vault with unlocked access
       const ownHandle = createVaultHandle({ owner: testOwner });
-      const { recoveryKey } = await ownHandle.initialize({ passphrase });
+      await ownHandle.initialize({ passphrase });
 
       // Unlock it so we can save data
       await ownHandle.unlockWithPassphrase({ passphrase });
@@ -579,7 +579,9 @@ describe('vaultClaimEvidenceReplace', () => {
 
       // Verify blobs are present
       expect(exportResult.envelope.blobs).toBeDefined();
-      expect(Object.keys(exportResult.envelope.blobs).length).toBeGreaterThan(0);
+      expect(Object.keys(exportResult.envelope.blobs).length).toBeGreaterThan(
+        0,
+      );
     });
   });
 });

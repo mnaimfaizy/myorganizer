@@ -31,8 +31,7 @@ jest.mock('@myorganizer/web-vault', () => ({
     mockReplaceOwnedLocalVaultOnEvidence(args),
   replaceOwnedLocalVaultWithRecoveryKey: (args: unknown) =>
     mockReplaceOwnedLocalVaultWithRecoveryKey(args),
-  exportVault: (args: unknown) =>
-    mockExportVault(args),
+  exportVault: (args: unknown) => mockExportVault(args),
   createDefaultAuditReporter: (...args: unknown[]) =>
     mockCreateDefaultAuditReporter(...args),
 }));
@@ -58,7 +57,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { VaultSecretMismatchError } from '@myorganizer/web-vault';
-import type { VaultHandle, VaultStorageV1 } from '@myorganizer/web-vault';
+import type { VaultHandle } from '@myorganizer/web-vault';
 
 import { VaultGate } from './vaultGate';
 
@@ -1169,9 +1168,7 @@ describe('VaultGate', () => {
       });
 
       // The recovery key offer should be collapsed again
-      expect(
-        screen.queryByLabelText(/Recovery key/),
-      ).not.toBeInTheDocument();
+      expect(screen.queryByLabelText(/Recovery key/)).not.toBeInTheDocument();
     });
 
     test('should confirm recovery-key-triggered replace offer with correct key and unlock vault', async () => {
@@ -1259,13 +1256,24 @@ describe('VaultGate', () => {
     });
 
     test('should export current owned vault when export button is clicked in replace offer', async () => {
-      const loadedVault: VaultStorageV1 = {
+      const loadedVault = {
         version: 1,
-        kdf: { name: 'PBKDF2', hash: 'SHA-256', iterations: 310000, salt: 'test-salt-export' },
-        masterKeyWrappedWithPassphrase: { iv: 'test-iv-passphrase', ciphertext: 'test-ciphertext-passphrase' },
-        masterKeyWrappedWithRecoveryKey: { iv: 'test-iv-recovery', ciphertext: 'test-ciphertext-recovery' },
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'test-salt-export',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'test-iv-passphrase',
+          ciphertext: 'test-ciphertext-passphrase',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'test-iv-recovery',
+          ciphertext: 'test-ciphertext-recovery',
+        },
         data: {},
-      };
+      } as const;
       mockExportVault.mockResolvedValue({ text: '{"vault":"data"}' });
       mockCreateDefaultAuditReporter.mockReturnValue({});
 

@@ -677,7 +677,7 @@ describe('vaultClaimEvidence', () => {
       assertStorageByteIdentical(storageBefore, storageAfter);
     });
 
-    test('replace-offer when owner holds owned vault and coexisting unclaimed vault matches server meta', async () => {
+    test('should return replace-offer when owner holds owned vault and coexisting unclaimed vault matches server meta', async () => {
       // This test verifies the scenario where an owner has their own vault AND
       // a separate unclaimed vault exists on the device. The server meta matches
       // the unclaimed one, so evidence is found but nothing is written — this is
@@ -722,7 +722,7 @@ describe('vaultClaimEvidence', () => {
       assertStorageByteIdentical(storageBefore, storageAfter);
     });
 
-    test('skipped-already-owned when owner holds owned vault with no unclaimed vault at all; api not called', async () => {
+    test('should return skipped-already-owned when owner holds owned vault with no unclaimed vault at all; api not called', async () => {
       // When an owner is already owned AND there is NO separate unclaimed vault
       // on the device (unsuffixed slot is empty), the check is skipped entirely.
       // No server round trip is made — this is the "costs nothing" property the

@@ -40,24 +40,22 @@ type VaultGateProps = {
   children: (ctx: { handle: VaultHandle | null }) => React.ReactNode;
 };
 
-function downloadTextFile(filename: string, content: string) {
-  const blob = new Blob([content], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function downloadJsonFile(filename: string, content: string) {
-  const blob = new Blob([content], { type: 'application/json' });
+function downloadFile(filename: string, content: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');
   anchor.href = url;
   anchor.download = filename;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function downloadTextFile(filename: string, content: string) {
+  downloadFile(filename, content, 'text/plain');
+}
+
+function downloadJsonFile(filename: string, content: string) {
+  downloadFile(filename, content, 'application/json');
 }
 
 export function VaultGate(props: VaultGateProps) {
@@ -94,9 +92,8 @@ export function VaultGate(props: VaultGateProps) {
   const [pendingReplace, setPendingReplace] = useState<PendingReplace | null>(
     null,
   );
-  const [dismissedServerMetaOffer, setDismissedServerMetaOffer] = useState(
-    false,
-  );
+  const [dismissedServerMetaOffer, setDismissedServerMetaOffer] =
+    useState(false);
 
   const masterKeyBytes = vaultSession?.masterKeyBytes ?? localMasterKeyBytes;
   const setMasterKeyBytes =
@@ -132,7 +129,8 @@ export function VaultGate(props: VaultGateProps) {
     !dismissedServerMetaOffer;
 
   const effectivePendingReplace: PendingReplace | null = useMemo(
-    () => pendingReplace ?? (autoOfferActive ? { source: 'server-meta' } : null),
+    () =>
+      pendingReplace ?? (autoOfferActive ? { source: 'server-meta' } : null),
     [pendingReplace, autoOfferActive],
   );
 
@@ -191,13 +189,17 @@ export function VaultGate(props: VaultGateProps) {
       auditReporter: createDefaultAuditReporter(undefined, { strict: true }),
     });
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-    downloadJsonFile(`myorganizer-vault-about-to-be-replaced-${stamp}.json`, text);
+    downloadJsonFile(
+      `myorganizer-vault-about-to-be-replaced-${stamp}.json`,
+      text,
+    );
   }, [handle]);
 
   const confirmReplace = useCallback(async (): Promise<void> => {
     if (!handle || !effectivePendingReplace) return;
 
-    const isRecoveryKeySource = effectivePendingReplace.source === 'recovery-key';
+    const isRecoveryKeySource =
+      effectivePendingReplace.source === 'recovery-key';
 
     if (isRecoveryKeySource) {
       const result = await replaceOwnedLocalVaultWithRecoveryKey({
@@ -207,7 +209,8 @@ export function VaultGate(props: VaultGateProps) {
       if (result.kind !== 'replaced') {
         toast({
           title: 'Replace failed',
-          description: 'That recovery key no longer matches. Nothing was changed.',
+          description:
+            'That recovery key no longer matches. Nothing was changed.',
           variant: 'destructive',
         });
         setPendingReplace(null);
