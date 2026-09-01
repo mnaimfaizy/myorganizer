@@ -10,9 +10,9 @@
  * twice — two places that must agree about what `refused-server-moved` means,
  * with nothing making them agree.
  */
-import type { PassphraseChangeResult } from '@myorganizer/web-vault';
+import type { VaultMetaPushOutcome } from '@myorganizer/web-vault';
 
-type PushOutcome = PassphraseChangeResult['push'];
+type PushOutcome = VaultMetaPushOutcome;
 
 /**
  * How loudly a passphrase change's outcome should be presented.

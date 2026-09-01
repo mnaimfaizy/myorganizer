@@ -210,15 +210,24 @@ function put(options: {
   });
 }
 
-export type PassphraseChangeResult = {
+/**
+ * Every Vault Meta Push outcome that a wrapping change reports.
+ * Includes both successful push results and the unreachable case when the
+ * Local Vault is unreadable after a wrapping change.
+ */
+export type VaultMetaPushOutcome =
+  | VaultMetaPushResult
+  | { kind: 'unreachable' };
+
+export type WrappingChangeResult = {
   /**
    * Always true by the time this resolves. The local wrapping is written
    * before the server is touched and is never rolled back: a User who has
-   * just set a passphrase must be able to use it, whatever the network did.
+   * just set a wrapping must be able to use it, whatever the network did.
    */
   changedLocally: true;
   /** What became of the attempt to make it the server's wrapping too. */
-  push: VaultMetaPushResult | { kind: 'unreachable' };
+  push: VaultMetaPushOutcome;
 };
 
 /**
@@ -252,7 +261,7 @@ async function rewrapAndPush(options: {
    * the server is told anything.
    */
   rewrap: () => Promise<void>;
-}): Promise<PassphraseChangeResult> {
+}): Promise<WrappingChangeResult> {
   const { api, handle } = options;
 
   const before = handle.loadVault();
@@ -308,7 +317,7 @@ export async function changePassphraseWithCurrent(options: {
   handle: VaultHandle;
   currentPassphrase: string;
   newPassphrase: string;
-}): Promise<PassphraseChangeResult> {
+}): Promise<WrappingChangeResult> {
   const { handle } = options;
   return rewrapAndPush({
     api: options.api,
@@ -337,7 +346,7 @@ export async function resetPassphraseAfterRecovery(options: {
   api: VaultMetaApi;
   handle: VaultHandle;
   newPassphrase: string;
-}): Promise<PassphraseChangeResult> {
+}): Promise<WrappingChangeResult> {
   const { handle } = options;
   return rewrapAndPush({
     api: options.api,
