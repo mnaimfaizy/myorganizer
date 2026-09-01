@@ -28,17 +28,6 @@ export const Default: Story = {
   },
 };
 
-export const AcknowledgementUnchecked: Story = {
-  parameters: {
-    docs: {
-      description: {
-        story:
-          'The acknowledgement checkbox is intentionally shown unchecked. The confirm button is disabled to prevent accidental replacement without acknowledgement.',
-      },
-    },
-  },
-};
-
 export const AcknowledgementChecked: Story = {
   parameters: {
     docs: {
