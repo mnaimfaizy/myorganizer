@@ -96,6 +96,34 @@ export type VaultHandle = LocalVaultAccess & {
    * last agreed on before a push that has not landed.
    */
   recordVaultMetaAgreement(options: { meta: VaultMetaV1 }): Promise<void>;
+  /**
+   * Forget everything this device recorded about what it and the server last
+   * agreed on — every Vault Blob Type's Sync Bookmark and the Vault Meta
+   * Bookmark alike.
+   *
+   * A Sync Bookmark is evidence about the *server's* copy, and it stays true
+   * for as long as this device's own Ciphertext only ever moves forward. A
+   * caller that replaces the whole Local Vault with an older copy breaks that
+   * assumption without touching the server, so the evidence survives while the
+   * thing it was evidence about is gone: dirtiness reads true, the recorded
+   * ETag still matches the unmoved server, and the conditional push that was
+   * meant to refuse an unseen overwrite waves the older Ciphertext straight
+   * through ([ADR 0063](../../../../../docs/adr/0063-a-restore-discards-the-evidence-it-holds-about-the-server.md),
+   * [#617](https://github.com/mnaimfaizy/myorganizer/issues/617)).
+   *
+   * Dropping the evidence is what makes that safe, and it adds no new
+   * behaviour to rely on: a device holding no bookmark is the case
+   * `convergeVaultBlob` already handles by going and looking before it pushes,
+   * and the case `pushVaultMeta` already refuses outright. Losing a bookmark
+   * has always cost a look or a prompt and never a User's edit, which is why
+   * this is the direction it is safe to be wrong in.
+   *
+   * Deliberately not folded into `saveVault`. That is also how convergence
+   * writes the server's Ciphertext back after taking it, and clearing the
+   * bookmark there would erase the agreement the take is in the middle of
+   * recording.
+   */
+  forgetSyncBookmarks(): void;
 };
 
 /**
@@ -216,6 +244,9 @@ export function createVaultHandle(options: {
     },
     lastAgreedVaultMetaHash: bookmarks.lastAgreedVaultMetaHash,
     recordVaultMetaAgreement: bookmarks.recordVaultMetaAgreement,
+    forgetSyncBookmarks: () => {
+      bookmarks.removeBookmarks();
+    },
     async recordPushSuccess({ type, etag }) {
       const vault = access.loadVault();
       const blob = vault?.data[type];

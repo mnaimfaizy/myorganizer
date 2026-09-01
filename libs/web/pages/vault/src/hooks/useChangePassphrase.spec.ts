@@ -75,6 +75,7 @@ function createMockHandle(overrides?: Partial<VaultHandle>): VaultHandle {
     recordPushSuccess: jest.fn(),
     lastAgreedVaultMetaHash: jest.fn().mockReturnValue(undefined),
     recordVaultMetaAgreement: jest.fn(),
+    forgetSyncBookmarks: jest.fn(),
     decryptCiphertext: jest.fn(),
   };
   return { ...base, ...overrides };

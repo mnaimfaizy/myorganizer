@@ -312,6 +312,14 @@ _Avoid_: vault version, change event, invalidation signal, refresh token
 The Vault Blob Types a device has still to converge, held by a Vault Sync Sink. It is a wake-up list rather than the state it wakes for: whether a Vault Blob is unsent is derived from its Sync Bookmark, so a lost queue costs a delay and never an edit. It holds types and never Ciphertext, which is what makes ten saves to one type mark it once while the drain still carries the final state. Not a push queue — a drain converges, so it may equally take the server's copy or merge.
 _Avoid_: outbox, dirty queue, pending changes, write buffer, debounce buffer
 
+**Escape Copy**:
+A whole-Vault snapshot the User keeps in storage they control, so their Ciphertext outlives MyOrganizer itself. It is not the durability mechanism for a Vault — the server already holds every Vault Blob and converges it per record — and it is not a replica: it does not converge, it has no freshness obligation, and being months old does not make it broken. What it must be is openable without us, which is why it carries the KDF parameters and both Master Key wrappings and nothing about it depends on a token we hold ([ADR 0062](docs/adr/0062-the-drive-escape-hatch-holds-no-token-we-could-lose.md), [ADR 0064](docs/adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md)).
+_Avoid_: cloud backup (as the concept), snapshot, sync copy, remote vault, archive
+
+**Linked Provider**:
+An off-device storage service the User has connected an Escape Copy destination to. Linked says the User completed the connection and nothing more: whether a token can be obtained right now is only ever discovered by trying, so it is never inferred and never reported as though it had been tested. A Linked Provider becomes Reconnect Needed only from an attempt that actually ran and failed, and that observation is recorded, because it cost something to learn.
+_Avoid_: connected provider, connected account, active connection, authorized provider
+
 ## Planning & Orchestration
 
 **PRD Issue**:
