@@ -149,9 +149,14 @@ test.describe('Recovery Key Rotation (E2E)', () => {
     });
     await unlockWithRecoveryButton.click();
 
-    // Assert the "wrong secret" toast (not the "corruption" toast)
+    // Assert the "wrong secret" toast (not the "corruption" toast).
+    // `exact` is required: the toaster also renders an `aria-live` announcer
+    // whose text embeds this string, so a substring match resolves to two
+    // elements and trips strict mode.
     await expect(
-      page.getByText("That recovery key didn't unlock this vault"),
+      page.getByText("That recovery key didn't unlock this vault", {
+        exact: true,
+      }),
     ).toBeVisible({ timeout: 30000 });
 
     // Assert the generic/corruption toast is NOT shown
@@ -170,8 +175,10 @@ test.describe('Recovery Key Rotation (E2E)', () => {
     // Click unlock again
     await unlockWithRecoveryButton.click();
 
-    // Assert success toast
-    await expect(page.getByText('Recovered')).toBeVisible({ timeout: 30000 });
+    // Assert success toast. `exact` for the same announcer reason as above.
+    await expect(page.getByText('Recovered', { exact: true })).toBeVisible({
+      timeout: 30000,
+    });
 
     // Assert address is visible (vault contents are still readable)
     await expect(page.getByText(ADDRESS).first()).toBeVisible({
