@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
   createAndUnlockVault,
-  ensureUnlocked,
   gotoStable,
   login,
   readOwnedVault,
@@ -10,6 +9,7 @@ import {
   signOut,
   UNCLAIMED_VAULT_KEY,
   waitForOwnedVault,
+  unlockWithPassphrase,
   writeAddressToVault,
   type IdentityEntry,
 } from './helpers';
@@ -246,7 +246,7 @@ test.describe('Vault Claim Evidence (E2E)', () => {
     await expect(setupPassphrase).toHaveCount(0);
 
     // Step 5: Unlock with owner's passphrase
-    await ensureUnlocked(page, OWNER_VAULT_PASSPHRASE);
+    await unlockWithPassphrase(page, OWNER_VAULT_PASSPHRASE);
 
     // Assert address reappears (proves real unlock, not just status flip)
     await expect(page.getByText(OWNER_ADDRESS).first()).toBeVisible({

@@ -1,8 +1,8 @@
 import { expect, Page } from '@playwright/test';
 import { routeApi } from './apiStub';
-import { submitLoginForm } from './auth';
+import { submitLoginForm, waitForSignupFormInteractive } from './auth';
 import { gotoStable } from './navigation';
-import { waitForOwnedVault } from './vaultStorage';
+import { createOwnedVault, unlockWithPassphrase } from './vaultGate';
 
 /**
  * Identity entry for email-to-userId mapping in specs.
@@ -371,28 +371,6 @@ export function setupBackend(
   return serverState;
 }
 
-export async function unlockWithPassphrase(page: Page, passphrase: string) {
-  const savedRecoveryKey = page.getByRole('button', { name: 'I saved it' });
-  if (await savedRecoveryKey.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await savedRecoveryKey.click();
-  }
-
-  const usePassphrase = page.getByRole('button', { name: 'Use passphrase' });
-  if (await usePassphrase.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await usePassphrase.click();
-  }
-
-  const input = page.locator('#unlock-passphrase');
-  if ((await input.count()) === 0) return;
-
-  await expect(input).toBeVisible({ timeout: 60000 });
-  await input.fill(passphrase);
-  await page.getByRole('button', { name: /^Unlock$/i }).click();
-  await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
-    timeout: 120000,
-  });
-}
-
 export async function signOut(page: Page) {
   // NavUser is the only sidebar menu-button in the header — NavMain's live in
   // SidebarContent — so this scopes to the account trigger without depending on
@@ -432,6 +410,12 @@ export async function signUp(
   // (ADR 0050, issue #524).
   await expect(page.getByLabel('First name')).toBeVisible({ timeout: 30000 });
 
+  // Visible is not the same as interactive. Every field here is controlled and
+  // the terms checkbox gates the submit, so filling before hydration leaves
+  // React Hook Form empty and the submit below goes nowhere — the spec then
+  // sits on /signup until `toHaveURL` times out (issue #597).
+  await waitForSignupFormInteractive(page);
+
   await page.getByLabel('First name').fill(firstName);
   await page.getByLabel('Last name').fill(lastName);
   await page.getByLabel('Email').fill(email);
@@ -460,60 +444,8 @@ export async function createAndUnlockVault(
   owner: string,
   passphrase: string,
 ) {
-  const setupPass = page.locator('#setup-passphrase');
-  await expect(setupPass).toBeVisible({ timeout: 60000 });
-  await setupPass.fill(passphrase);
-
-  const confirmPass = page.locator('#setup-confirm');
-  await expect(confirmPass).toBeVisible();
-  await confirmPass.fill(passphrase);
-
-  const createButton = page.getByRole('button', {
-    name: 'Create encrypted vault',
-  });
-  await expect(createButton).toBeEnabled();
-  await createButton.click();
-
-  const savedButton = page.getByRole('button', { name: 'I saved it' });
-  await expect(savedButton).toBeVisible({ timeout: 60000 });
-  await savedButton.click();
-
-  // The stored owned record is the real completion signal for PBKDF2 —
-  // not the auth user, which was already present from sign-in.
-  await waitForOwnedVault(page, owner);
-
-  // VaultGate deliberately does not auto-unlock after creation; "I saved it"
-  // advances to 'owned', which renders the unlock panel. Require that panel to
-  // appear rather than letting a tolerant unlock helper skip silently.
-  await expect(page.locator('#unlock-passphrase')).toBeVisible({
-    timeout: 60000,
-  });
+  await createOwnedVault(page, { passphrase, owner });
   await unlockWithPassphrase(page, passphrase);
-  await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
-    timeout: 120000,
-  });
-}
-
-/**
- * Bring the gate to its unlocked state on the current page.
- *
- * `masterKeyBytes` lives only in `VaultSessionProvider`'s React state, so every
- * full page load re-locks the Vault. Any navigation that lands on a
- * VaultGate-wrapped route therefore has to unlock again before the route's own
- * content exists.
- */
-export async function ensureUnlocked(page: Page, passphrase: string) {
-  const usePassphrase = page.getByRole('button', { name: 'Use passphrase' });
-  if (await usePassphrase.isVisible({ timeout: 2000 }).catch(() => false)) {
-    await usePassphrase.click();
-  }
-
-  const input = page.locator('#unlock-passphrase');
-  if (await input.isVisible({ timeout: 5000 }).catch(() => false)) {
-    await input.fill(passphrase);
-    await page.getByRole('button', { name: /^Unlock$/i }).click();
-    await expect(input).toHaveCount(0, { timeout: 120000 });
-  }
 }
 
 /**
@@ -536,7 +468,10 @@ export async function writeAddressToVault(
 
   await gotoStable(page, '/dashboard/addresses');
   await expect(page).toHaveURL(/.*addresses/, { timeout: 30000 });
-  await ensureUnlocked(page, passphrase);
+
+  // A full navigation drops `masterKeyBytes` from React state, so this route
+  // is always locked on arrival. There is nothing to branch on.
+  await unlockWithPassphrase(page, passphrase);
 
   await page.getByRole('button', { name: 'Add address' }).first().click();
   await expect(page.getByLabel('Label')).toBeVisible({ timeout: 60000 });

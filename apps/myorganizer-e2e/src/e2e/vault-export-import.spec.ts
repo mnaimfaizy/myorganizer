@@ -2,12 +2,14 @@ import { expect, test, type Page } from '@playwright/test';
 import os from 'node:os';
 import path from 'node:path';
 import {
+  createOwnedVault,
   E2E_USER_ID,
   gotoStable,
   readOwnedVault,
   removeOwnedVault,
   routeApi,
   submitLoginForm,
+  unlockWithPassphrase,
   waitForOwnedVault,
 } from './helpers';
 
@@ -36,32 +38,6 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/.*login/);
 
   await submitLoginForm(page);
-}
-
-async function unlockWithPassphrase(page: Page, passphrase: string) {
-  // New vault setup now shows a recovery-key confirmation step.
-  const savedRecoveryKey = page.getByRole('button', { name: 'I saved it' });
-  if (await savedRecoveryKey.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await savedRecoveryKey.click();
-  }
-
-  const usePassphrase = page.getByRole('button', { name: 'Use passphrase' });
-  if (await usePassphrase.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await usePassphrase.click();
-  }
-
-  const input = page.locator('#unlock-passphrase');
-  if ((await input.count()) === 0) {
-    // If no unlock form is present, this route is already unlocked.
-    return;
-  }
-
-  await expect(input).toBeVisible({ timeout: 60000 });
-  await input.fill(passphrase);
-  await page.getByRole('button', { name: 'Unlock' }).click();
-  await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
-    timeout: 120000,
-  });
 }
 
 interface BackupRecord {
@@ -343,12 +319,7 @@ async function setupVaultWithSampleData(page: Page) {
   const passphrase = 'correct horse battery staple';
 
   await gotoStable(page, '/dashboard/addresses');
-  await page.fill('#setup-passphrase', passphrase);
-  await page.fill('#setup-confirm', passphrase);
-  await page.getByRole('button', { name: 'Create encrypted vault' }).click();
-
-  await waitForOwnedVault(page, E2E_USER_ID);
-
+  await createOwnedVault(page, { passphrase });
   await unlockWithPassphrase(page, passphrase);
 
   await page.getByRole('button', { name: 'Add address' }).first().click();
@@ -376,12 +347,7 @@ async function setupVaultWithGroceryData(page: Page) {
   const passphrase = 'correct horse battery staple';
 
   await gotoStable(page, '/dashboard/addresses');
-  await page.fill('#setup-passphrase', passphrase);
-  await page.fill('#setup-confirm', passphrase);
-  await page.getByRole('button', { name: 'Create encrypted vault' }).click();
-
-  await waitForOwnedVault(page, E2E_USER_ID);
-
+  await createOwnedVault(page, { passphrase });
   await unlockWithPassphrase(page, passphrase);
 
   // Navigate to groceries page and ensure vault is unlocked
@@ -476,16 +442,6 @@ test.describe('Vault export/import (E2E)', () => {
 
     // Trigger export and capture the downloaded JSON.
     await gotoStable(page, '/dashboard/vault');
-    // Unlock if prompted by route-level vault gating.
-    if (
-      await page
-        .locator('#unlock-passphrase')
-        .isVisible({ timeout: 1000 })
-        .catch(() => false)
-    ) {
-      await unlockWithPassphrase(page, 'correct horse battery staple');
-    }
-
     const exportButton = page.getByTestId('export-vault-button');
     await expect(exportButton).toBeVisible({ timeout: 60000 });
 
@@ -551,15 +507,6 @@ test.describe('Vault export/import (E2E)', () => {
     expect(beforeVault).toBeTruthy();
 
     await gotoStable(page, '/dashboard/vault');
-    if (
-      await page
-        .locator('#unlock-passphrase')
-        .isVisible({ timeout: 1000 })
-        .catch(() => false)
-    ) {
-      await unlockWithPassphrase(page, 'correct horse battery staple');
-    }
-
     const importInput = page.getByTestId('import-vault-file');
     await expect(importInput).toBeVisible({ timeout: 60000 });
     await importInput.setInputFiles({
@@ -600,15 +547,6 @@ test.describe('Vault export/import (E2E)', () => {
 
     // Trigger export and capture the downloaded JSON
     await gotoStable(page, '/dashboard/vault');
-    if (
-      await page
-        .locator('#unlock-passphrase')
-        .isVisible({ timeout: 1000 })
-        .catch(() => false)
-    ) {
-      await unlockWithPassphrase(page, 'correct horse battery staple');
-    }
-
     const exportButton = page.getByTestId('export-vault-button');
     await expect(exportButton).toBeVisible({ timeout: 60000 });
 
@@ -652,15 +590,6 @@ test.describe('Vault export/import (E2E)', () => {
 
     // Export vault with groceries
     await gotoStable(page, '/dashboard/vault');
-    if (
-      await page
-        .locator('#unlock-passphrase')
-        .isVisible({ timeout: 1000 })
-        .catch(() => false)
-    ) {
-      await unlockWithPassphrase(page, 'correct horse battery staple');
-    }
-
     const exportButton = page.getByTestId('export-vault-button');
     await expect(exportButton).toBeVisible({ timeout: 60000 });
 

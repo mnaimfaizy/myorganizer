@@ -43,41 +43,35 @@ async function openContextMenu(page, cardText) {
 
 ---
 
-## Vault unlock (Firefox-compatible)
+## Vault unlock
 
-Vault decryption is asynchronous. Firefox requires explicit button clicks and extra delays; the
-Enter key does not reliably submit.
+Do not hand-roll this. `helpers/vaultGate.ts` exports `createOwnedVault` and
+`unlockWithPassphrase`; import them from `./helpers` rather than copying a local variant into a
+spec. Eleven call sites each carried their own copy and every copy was wrong in the same way; it
+broke the nightly WebKit leg from `tasks.spec.ts` (issue #597). Do not write a twelfth.
 
-```typescript
-async function unlockWithPassphrase(page, passphrase) {
-  await page.getByRole('button', { name: 'Use passphrase' }).click();
+What the shared helpers encode, and why:
 
-  // Try multiple selectors for robustness. The field appearing is the end of
-  // the panel's transition — no sleep needed for Firefox's animation.
-  let input = page.locator('#unlock-passphrase');
-  if (!(await input.isVisible({ timeout: 5000 }).catch(() => false))) {
-    input = page.locator('input[placeholder*="Security"]').first();
-  }
-
-  await input.scrollIntoViewIfNeeded();
-  await input.click();
-  await input.fill(passphrase);
-
-  // No wait between fill and click. VaultGate renders inside DashboardGuard,
-  // which returns null until its client effect resolves, so this panel being
-  // on screen already proves React is driving it and onChange is bound.
-  // ❌ `expect(input).toHaveValue(passphrase)` would NOT prove that: `fill`
-  //    sets the DOM value itself, so the assertion passes either way.
-
-  // ❌ Do NOT use input.press('Enter') — Firefox doesn't reliably submit
-  // ✅ Click the button
-  await page.getByRole('button', { name: /^Unlock$/i }).click();
-
-  // Unlock is complete when the input disappears — not when the click resolves.
-  // ❌ `isHidden({ timeout })` does not wait: it samples once and resolves.
-  await expect(page.locator('#unlock-passphrase, input[placeholder*="Security"]')).toHaveCount(0, { timeout: 30000 });
-}
-```
+- **The gate's panel must be required, never probed.** Both modes of the unlock panel render a
+  "Use passphrase" toggle, so that button appearing is the panel's readiness signal, and clicking it
+  is idempotent. The old copies probed each state with `isVisible({ timeout })` — which samples once
+  and never waits — then returned early on the miss: eight keyed that early return on
+  `if ((await input.count()) === 0) return;`, and the groceries three on the toggle's own
+  visibility. Count is also 0 before React has rendered the panel, and the toggle is equally
+  absent, so on slow hardware both read _not mounted yet_ as _the vault is open_, and handed the
+  rest of the spec a gate that never opens. A `throw` further down does not save it — the early
+  return has already decided.
+- **The failure surfaces nowhere near its cause.** The nightly WebKit leg reported a two-minute
+  timeout clicking "Add Task"; the page snapshot showed the unlock panel still on screen. A spec
+  that genuinely needs an "already unlocked" path should branch at its own call site, where the
+  reader can see the assumption.
+- **`waitForOwnedVault` is not a signal about the screen.** `handle.initialize()` writes the stored
+  record and _then_ resolves, so React commits the recovery-key step strictly afterwards. Wait for
+  the "I saved it" button — which is what `createOwnedVault` does.
+- **Click "Unlock", never `press('Enter')`** — Firefox does not reliably submit it.
+- **The input disappearing is the unlock landing**, not the click resolving. PBKDF2 is slow by
+  design and slower again on WebKit, so the assertion timeout is generous. A generous timeout is not
+  a sleep; the sleep is what is forbidden.
 
 For vault flows, the full unlock/lock cycle belongs in the preconditions of the flow matrix.
 
@@ -367,22 +361,23 @@ Run on all three browsers before marking an E2E change complete.
 
 ## Anti-pattern table
 
-| Anti-pattern                                               | Why it's wrong                                                                                | Correct approach                                                                   |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Using `role="button"` for non-buttons                      | Semantic HTML violation; breaks accessibility                                                 | Use `role="article"` / `role="listitem"` for cards                                 |
-| `input.press('Enter')` for form submission                 | Firefox doesn't reliably trigger it                                                           | Explicitly click the submit button                                                 |
-| `page.locator()` inside `waitForFunction()`                | Browser context has no Playwright APIs                                                        | Use `document` APIs only in browser context                                        |
-| Assuming standard HTML context menus                       | Radix DropdownMenu is not native; buttons are hidden                                          | Hover + click                                                                      |
-| `waitForLoadState('networkidle')` anywhere                 | DISCOURAGED by Playwright; misses client-side async, and hangs against a production build     | Assert what the page must show                                                     |
-| A `networkidle` → `domcontentloaded` fallback ladder       | Burns the timeout budget on a condition nothing needs                                         | One `expect(locator)` with a generous timeout                                      |
-| `locator.isHidden({ timeout })` to wait for removal        | `isHidden` samples once and resolves; Playwright marks the timeout deprecated and ignores it  | `await expect(locator).toHaveCount(0, { timeout })`                                |
-| `locator.isVisible({ timeout })` to wait for appearance    | Identical no-op — it never waits, so it races the render                                      | Assert the page has settled, then branch on it                                     |
-| `expect(input).toHaveValue(v)` after `fill(v)`             | `fill` sets the DOM value, so it is true either way — it does not prove React state took      | Under `/dashboard/*` no wait is needed; on a server-rendered form, probe hydration |
-| Testing on one browser only                                | Firefox and WebKit have different patterns                                                    | Test on all three                                                                  |
-| Not mocking CORS preflight                                 | Tests fail with CORS errors                                                                   | Handle `OPTIONS` in route mocks                                                    |
-| Arbitrary `page.waitForTimeout()` delays                   | Hides real races; flakes under load                                                           | Wait for explicit state changes                                                    |
-| Changing interaction method when a button won't enable     | Wrong layer — it's component architecture                                                     | Investigate remount / reset / form mode                                            |
-| Assuming `defaultValues` are fresh after a dialog reopens  | Stale form state carries over                                                                 | Verify `key={itemId}` or reset `useEffect`                                         |
-| Asserting retry / concurrency / timeout behavior           | The UI usually doesn't implement it                                                           | Only test behavior the flow exposes                                                |
-| `locator.check()` on a checkbox persisted through an await | Its state verification does not retry, so it races the round-trip that flips `checked`        | `click()`, then `expect(...).toBeChecked({ timeout })`                             |
-| Waiting for persistent chrome after `location.reload()`    | The pre-reload document already satisfies it; the next `evaluate` loses its execution context | `waitForReload(page, () => trigger())`                                             |
+| Anti-pattern                                               | Why it's wrong                                                                                 | Correct approach                                                                   |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Using `role="button"` for non-buttons                      | Semantic HTML violation; breaks accessibility                                                  | Use `role="article"` / `role="listitem"` for cards                                 |
+| `input.press('Enter')` for form submission                 | Firefox doesn't reliably trigger it                                                            | Explicitly click the submit button                                                 |
+| `page.locator()` inside `waitForFunction()`                | Browser context has no Playwright APIs                                                         | Use `document` APIs only in browser context                                        |
+| Assuming standard HTML context menus                       | Radix DropdownMenu is not native; buttons are hidden                                           | Hover + click                                                                      |
+| `waitForLoadState('networkidle')` anywhere                 | DISCOURAGED by Playwright; misses client-side async, and hangs against a production build      | Assert what the page must show                                                     |
+| A `networkidle` → `domcontentloaded` fallback ladder       | Burns the timeout budget on a condition nothing needs                                          | One `expect(locator)` with a generous timeout                                      |
+| `locator.isHidden({ timeout })` to wait for removal        | `isHidden` samples once and resolves; Playwright marks the timeout deprecated and ignores it   | `await expect(locator).toHaveCount(0, { timeout })`                                |
+| `locator.isVisible({ timeout })` to wait for appearance    | Identical no-op — it never waits, so it races the render                                       | Assert the page has settled, then branch on it                                     |
+| An "already unlocked" branch keyed on `count() === 0`      | Count is 0 before React renders the panel too, so it reads _not mounted yet_ as _already open_ | Require the gate's panel, then unlock; branch on "maybe unlocked" at the call site |
+| `expect(input).toHaveValue(v)` after `fill(v)`             | `fill` sets the DOM value, so it is true either way — it does not prove React state took       | Under `/dashboard/*` no wait is needed; on a server-rendered form, probe hydration |
+| Testing on one browser only                                | Firefox and WebKit have different patterns                                                     | Test on all three                                                                  |
+| Not mocking CORS preflight                                 | Tests fail with CORS errors                                                                    | Handle `OPTIONS` in route mocks                                                    |
+| Arbitrary `page.waitForTimeout()` delays                   | Hides real races; flakes under load                                                            | Wait for explicit state changes                                                    |
+| Changing interaction method when a button won't enable     | Wrong layer — it's component architecture                                                      | Investigate remount / reset / form mode                                            |
+| Assuming `defaultValues` are fresh after a dialog reopens  | Stale form state carries over                                                                  | Verify `key={itemId}` or reset `useEffect`                                         |
+| Asserting retry / concurrency / timeout behavior           | The UI usually doesn't implement it                                                            | Only test behavior the flow exposes                                                |
+| `locator.check()` on a checkbox persisted through an await | Its state verification does not retry, so it races the round-trip that flips `checked`         | `click()`, then `expect(...).toBeChecked({ timeout })`                             |
+| Waiting for persistent chrome after `location.reload()`    | The pre-reload document already satisfies it; the next `evaluate` loses its execution context  | `waitForReload(page, () => trigger())`                                             |

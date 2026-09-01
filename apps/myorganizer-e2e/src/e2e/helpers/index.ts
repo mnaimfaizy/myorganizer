@@ -4,9 +4,15 @@ export {
   waitForDashboardReady,
   waitForLoginFormInteractive,
   waitForReload,
+  waitForSignupFormInteractive,
 } from './auth';
 export { GroceriesPage } from './GroceriesPage';
 export { gotoStable } from './navigation';
+export {
+  createOwnedVault,
+  E2E_VAULT_PHRASE,
+  unlockWithPassphrase,
+} from './vaultGate';
 export {
   UNCLAIMED_VAULT_KEY,
   E2E_USER_ID,
@@ -17,13 +23,11 @@ export {
 } from './vaultStorage';
 export {
   createAndUnlockVault,
-  ensureUnlocked,
   identityForEmail,
   login,
   setupBackend,
   signOut,
   signUp,
-  unlockWithPassphrase,
   writeAddressToVault,
   type IdentityEntry,
 } from './multiUserVault';
