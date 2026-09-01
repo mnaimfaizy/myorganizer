@@ -3,6 +3,7 @@ export * from './lib/LastBackupCard';
 export * from './lib/metaConvergeRunner';
 export * from './lib/pullRunner';
 export * from './lib/RecoveryKeyClaimOffer';
+export * from './lib/RecoverySetNewPassphraseForm';
 export * from './lib/reconcileRunner';
 export * from './lib/ServerReachabilityNotice';
 export * from './lib/serverReachabilityMessages';

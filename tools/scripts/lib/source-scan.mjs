@@ -22,6 +22,10 @@ export function maskNonCode(source) {
   const n = source.length;
   let state = 'code';
   let quote = '';
+  let quoteStart = -1;
+  /** Quote positions already proven not to open a string, so re-scanning the
+   * line from one does not loop on it forever. */
+  const abandoned = new Set();
 
   const blank = (idx) => {
     if (out[idx] !== '\n') out[idx] = ' ';
@@ -47,8 +51,13 @@ export function maskNonCode(source) {
         continue;
       }
       if (ch === "'" || ch === '"' || ch === '`') {
+        if (abandoned.has(i)) {
+          i += 1;
+          continue;
+        }
         state = 'string';
         quote = ch;
+        quoteStart = i;
         i += 1;
         continue;
       }
@@ -77,6 +86,23 @@ export function maskNonCode(source) {
     }
 
     // state === 'string'
+    //
+    // A `'` or `"` that reaches end of line without closing was never a string
+    // — it is an apostrophe in JSX text, as in `this device's vault`. Treating
+    // it as one masks every character up to the next apostrophe further down
+    // the file, which silently deletes real code from the masked copy and
+    // leaves brace and paren scanning unbalanced. That made the component
+    // checker measure one 15-line JSX block as 451 lines.
+    //
+    // Backticks are exempt: a template literal spans lines legitimately.
+    if (ch === '\n' && quote !== '`') {
+      for (let j = quoteStart; j < i; j += 1) out[j] = source[j];
+      abandoned.add(quoteStart);
+      state = 'code';
+      quote = '';
+      i = quoteStart + 1;
+      continue;
+    }
     if (ch === '\\') {
       blank(i);
       blank(i + 1);
@@ -203,14 +229,29 @@ export function normalize(source) {
 }
 
 /** Renders findings as text; returns the error/warning tally. */
+/**
+ * The summary counts skipped files as well as findings, and says so whenever
+ * any were skipped.
+ *
+ * Without it, a run where every file fell out of scope prints the same
+ * "0 error(s), 0 warning(s)" as a run that inspected everything and found
+ * nothing. That is how a whole library sat unchecked behind a checker that
+ * looked green: the skip was reported per file, but the line people read was
+ * the last one. A checker that inspected nothing should not be able to look
+ * like a checker that passed.
+ */
 export function reportFindings(results, label) {
   let errors = 0;
   let warnings = 0;
+  let skipped = 0;
+  let inspected = 0;
   for (const result of results) {
     if (result.skipped) {
+      skipped += 1;
       console.log(`\n${result.file}\n  SKIPPED (${result.skipped})`);
       continue;
     }
+    inspected += 1;
     console.log(`\n${result.file}`);
     if (!result.findings.length) {
       console.log('  PASS — no mechanical issues');
@@ -223,6 +264,11 @@ export function reportFindings(results, label) {
       console.log(`  ${tag} ${f.rule} (line ${f.line})\n        ${f.message}`);
     }
   }
-  console.log(`\n${label}: ${errors} error(s), ${warnings} warning(s)`);
-  return { errors, warnings };
+  const summary = `${label}: ${errors} error(s), ${warnings} warning(s)`;
+  console.log(
+    skipped
+      ? `\n${summary} — ${inspected} file(s) inspected, ${skipped} skipped as out of scope`
+      : `\n${summary}`,
+  );
+  return { errors, warnings, skipped, inspected };
 }
