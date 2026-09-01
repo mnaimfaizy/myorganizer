@@ -1,10 +1,12 @@
 import { expect, test, type Page } from '@playwright/test';
 import {
+  createOwnedVault,
   E2E_USER_ID,
   gotoStable,
   removeOwnedVault,
   routeApi,
   submitLoginForm,
+  unlockWithPassphrase,
   waitForOwnedVault,
 } from './helpers';
 
@@ -42,25 +44,6 @@ async function login(page: Page) {
   await expect(page).toHaveURL(/.*login/);
 
   await submitLoginForm(page);
-}
-
-async function unlockWithPassphrase(page: Page, passphrase: string) {
-  const savedRecoveryKey = page.getByRole('button', { name: 'I saved it' });
-  if (await savedRecoveryKey.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await savedRecoveryKey.click();
-  }
-  const usePassphrase = page.getByRole('button', { name: 'Use passphrase' });
-  if (await usePassphrase.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await usePassphrase.click();
-  }
-  const input = page.locator('#unlock-passphrase');
-  if ((await input.count()) === 0) return;
-  await expect(input).toBeVisible({ timeout: 60000 });
-  await input.fill(passphrase);
-  await page.getByRole('button', { name: 'Unlock' }).click();
-  await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
-    timeout: 120000,
-  });
 }
 
 interface BackupRecord {
@@ -622,10 +605,7 @@ async function installGoogleMocks(
 async function setupVaultWithSampleData(page: Page) {
   const passphrase = 'correct horse battery staple';
   await gotoStable(page, '/dashboard/addresses');
-  await page.fill('#setup-passphrase', passphrase);
-  await page.fill('#setup-confirm', passphrase);
-  await page.getByRole('button', { name: 'Create encrypted vault' }).click();
-  await waitForOwnedVault(page, E2E_USER_ID);
+  await createOwnedVault(page, { passphrase });
   await unlockWithPassphrase(page, passphrase);
   await page.getByRole('button', { name: 'Add address' }).first().click();
   await expect(page.getByLabel('Label')).toBeVisible({ timeout: 60000 });
@@ -646,16 +626,14 @@ async function setupVaultWithSampleData(page: Page) {
   return passphrase;
 }
 
+/**
+ * `/dashboard/vault` renders `VaultPageClient` directly — there is no
+ * `VaultGate` on this route, and `#unlock-passphrase` exists only inside one.
+ * The unlock probe that used to live here could therefore never fire; it only
+ * made the route look gated (issue #597).
+ */
 async function gotoVaultSettings(page: Page) {
   await gotoStable(page, '/dashboard/vault');
-  if (
-    await page
-      .locator('#unlock-passphrase')
-      .isVisible({ timeout: 1000 })
-      .catch(() => false)
-  ) {
-    await unlockWithPassphrase(page, 'correct horse battery staple');
-  }
 }
 
 test.describe('Vault cloud backup via Google Drive (E2E)', () => {

@@ -1,43 +1,13 @@
 import { expect, test } from '@playwright/test';
 import {
+  createOwnedVault,
   gotoStable,
   E2E_USER_ID,
   routeApi,
   submitLoginForm,
+  unlockWithPassphrase,
   waitForOwnedVault,
 } from './helpers';
-
-async function unlockWithPassphrase(
-  page: import('@playwright/test').Page,
-  passphrase: string,
-) {
-  // New vault setup now shows a recovery-key confirmation step.
-  const savedRecoveryKey = page.getByRole('button', { name: 'I saved it' });
-  if (await savedRecoveryKey.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await savedRecoveryKey.click();
-  }
-
-  // Ensure we are in passphrase mode (VaultGate has a toggle).
-  const usePassphrase = page.getByRole('button', { name: 'Use passphrase' });
-  if (await usePassphrase.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await usePassphrase.click();
-  }
-
-  const input = page.locator('#unlock-passphrase');
-  if ((await input.count()) === 0) {
-    // If no unlock form is present, this route is already unlocked.
-    return;
-  }
-
-  await expect(input).toBeVisible({ timeout: 60000 });
-
-  await input.fill(passphrase);
-
-  await page.getByRole('button', { name: 'Unlock' }).click();
-  await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
-    timeout: 120000,
-  });
-}
 
 async function login(page: import('@playwright/test').Page) {
   await page.goto('/login');
@@ -294,13 +264,7 @@ test.describe('Vault (E2E)', () => {
     const passphrase = 'correct horse battery staple';
 
     await gotoStable(page1, '/dashboard/addresses');
-    await page1.fill('#setup-passphrase', passphrase);
-    await page1.fill('#setup-confirm', passphrase);
-    await page1.getByRole('button', { name: 'Create encrypted vault' }).click();
-
-    // PBKDF2 can take a while; treat vault creation as complete when
-    // local storage contains the vault payload.
-    await waitForOwnedVault(page1, E2E_USER_ID);
+    await createOwnedVault(page1, { passphrase });
 
     // VaultGate does not auto-unlock after creation.
     await unlockWithPassphrase(page1, passphrase);
