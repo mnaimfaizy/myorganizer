@@ -3,6 +3,13 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 /**
+ * Mock the utils before importing RecoveryKeyRotationCard.
+ */
+jest.mock('../utils', () => ({
+  downloadTextFile: jest.fn(),
+}));
+
+/**
  * Mock the hooks from ../hooks before importing RecoveryKeyRotationCard.
  */
 jest.mock('../hooks', () => ({
@@ -78,8 +85,15 @@ jest.mock('@myorganizer/web-ui', () => {
     return <FormProvider {...props}>{children}</FormProvider>;
   }
 
+  // Create a context to track which field a FormMessage belongs to
+  const FormFieldContext = React.createContext<{ fieldName?: string }>({});
+
   function FormField({ name, render, ...props }: any) {
-    return <Controller name={name} render={render} {...props} />;
+    return (
+      <FormFieldContext.Provider value={{ fieldName: name }}>
+        <Controller name={name} render={render} {...props} />
+      </FormFieldContext.Provider>
+    );
   }
 
   function FormItem({ children, ...props }: any) {
@@ -99,7 +113,20 @@ jest.mock('@myorganizer/web-ui', () => {
   }
 
   function FormMessage({ children }: any) {
-    return <div data-testid="form-message">{children}</div>;
+    const formContext = useFormContext();
+    const fieldContext = React.useContext(FormFieldContext);
+
+    // Get the error for this specific field if we know which field we're in
+    const fieldError = fieldContext?.fieldName
+      ? (formContext?.formState.errors as any)?.[fieldContext.fieldName]
+      : null;
+
+    return (
+      <div data-testid="form-message">
+        {children}
+        {fieldError?.message ? <div>{fieldError.message}</div> : null}
+      </div>
+    );
   }
 
   function Input({ type, disabled, id, ...props }: any) {
@@ -139,6 +166,7 @@ import {
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 import { useToast } from '@myorganizer/web-ui';
 import { useRecoveryKeyRotation } from '../hooks';
+import { downloadTextFile } from '../utils';
 
 // === Mock helpers ===
 
@@ -591,6 +619,13 @@ describe('RecoveryKeyRotationCard', () => {
       expect(
         screen.getByTestId('recovery-key-rotation-confirm'),
       ).toBeInTheDocument();
+
+      // Assert the error message is visible
+      await waitFor(() => {
+        expect(
+          screen.getByText('That is not your current passphrase.'),
+        ).toBeInTheDocument();
+      });
     });
   });
 
@@ -659,6 +694,42 @@ describe('RecoveryKeyRotationCard', () => {
           'MOCKED-RECOVERY-KEY-VALUE',
         );
       });
+    });
+  });
+
+  describe('Download button', () => {
+    test('15: after minting, click download → downloadTextFile called with minted key content', async () => {
+      render(<RecoveryKeyRotationCard />);
+
+      // Fill and mint
+      const allInputs = screen.getAllByDisplayValue('');
+      const passphraseInput = allInputs.find(
+        (input): input is HTMLInputElement =>
+          input instanceof HTMLInputElement && input.type === 'password',
+      );
+
+      fireEvent.change(passphraseInput!, { target: { value: 'testpass1234' } });
+      const mintButton = screen.getByTestId('recovery-key-rotation-mint');
+      fireEvent.click(mintButton);
+
+      // Wait for download button
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('recovery-key-rotation-download'),
+        ).toBeInTheDocument();
+      });
+
+      // Click download button
+      const downloadButton = screen.getByTestId(
+        'recovery-key-rotation-download',
+      );
+      fireEvent.click(downloadButton);
+
+      // Assert downloadTextFile was called with the correct filename and content
+      expect(downloadTextFile).toHaveBeenCalledWith(
+        'myorganiser-recovery-key.txt',
+        expect.stringContaining('MOCKED-RECOVERY-KEY-VALUE'),
+      );
     });
   });
 });
