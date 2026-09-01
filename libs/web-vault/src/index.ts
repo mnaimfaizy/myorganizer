@@ -25,6 +25,10 @@ export type {
 } from './lib/vault/vaultHandle';
 export * from './lib/vault/localVaultRevision';
 export * from './lib/vault/passphrasePolicy';
+// The mint only. `rotateRecoveryKeyWithPassphrase` is exported with the other
+// wrapping changes from `vaultMetaPush`, and the Local Vault write it reaches
+// stays behind the Vault Handle (ADR 0047).
+export * from './lib/vault/recoveryKeyMint';
 export * from './lib/vault/vaultClaimEvidence';
 export * from './lib/vault/vaultConverge';
 export * from './lib/vault/vaultMetaConverge';

@@ -17,6 +17,7 @@ import {
   randomBytes,
   utf8ToBytes,
 } from './crypto';
+import { mintRecoveryKey, type MintedRecoveryKey } from './recoveryKeyMint';
 import type {
   EncryptedBlob,
   LocalVaultReadResult,
@@ -145,7 +146,18 @@ export type LocalVaultAccess = {
   /** Explicit Local Vault removal (ADR 0033). Locks this access afterward. */
   removeVault(): void;
 
-  initialize(options: { passphrase: string }): Promise<{ recoveryKey: string }>;
+  /**
+   * Create this owner's Local Vault and mint its first Recovery Key.
+   *
+   * The key comes back branded because it is minted here exactly as a
+   * rotation's is — `mintRecoveryKey` is the only place either comes from.
+   * Typing it `string` would have made the Recovery Key a Vault has at
+   * creation the one key that could not be handed to `rotateRecoveryKey`
+   * without a cast, which says something false about where it came from.
+   */
+  initialize(options: {
+    passphrase: string;
+  }): Promise<{ recoveryKey: MintedRecoveryKey }>;
   unlockWithPassphrase(options: {
     passphrase: string;
   }): Promise<VaultUnlockResult>;
@@ -275,6 +287,31 @@ export type LocalVaultAccess = {
    * and there is nothing further to verify here.
    */
   resetPassphrase(options: { newPassphrase: string }): Promise<void>;
+  /**
+   * Retire this Vault's Recovery Key and start using `recoveryKey` instead,
+   * from an unlocked session, authorized by the current passphrase.
+   *
+   * Authorized by the passphrase and never by the key being replaced: a User
+   * rotating because the old key is lost cannot produce it, and an unattended
+   * unlocked session must not be enough to mint a credential that opens the
+   * Vault (CONTEXT.md, "Recovery Key Rotation"). The check is the same one
+   * `changePassphrase` makes, for the same reason and against the same
+   * wrapping, so a wrong current passphrase throws `VaultSecretMismatchError`
+   * before anything is written and leaves the Local Vault byte-identical.
+   *
+   * The key is supplied rather than minted here, because the User has to have
+   * recorded it before the old one stops working — see `recoveryKeyMint.ts`.
+   * `MintedRecoveryKey` is what keeps that the only thing a caller can pass.
+   *
+   * The Master Key does not move. Only its recovery wrapping is replaced, so
+   * every Vault Blob stays readable and no salt and no KDF parameter changes —
+   * which is why another device reads this as a rotation rather than as a
+   * different Vault.
+   */
+  rotateRecoveryKey(options: {
+    currentPassphrase: string;
+    recoveryKey: MintedRecoveryKey;
+  }): Promise<void>;
 
   loadDecryptedData<T>(options: {
     type: VaultRecordType;
@@ -299,10 +336,6 @@ export type LocalVaultAccess = {
     value: unknown;
   }): Promise<void>;
 };
-
-export function generateRecoveryKey(): string {
-  return bytesToBase64(randomBytes(32));
-}
 
 async function wrapMasterKeyWithKey(options: {
   wrappingKey: CryptoKey;
@@ -505,7 +538,7 @@ export function createLocalVaultAccess(options: {
 
       const masterKeyBytes = randomBytes(32);
 
-      const recoveryKey = generateRecoveryKey();
+      const recoveryKey = mintRecoveryKey();
       const recoveryWrappingKey = await importAesGcmKey(
         base64ToBytes(recoveryKey),
       );
@@ -703,6 +736,50 @@ export function createLocalVaultAccess(options: {
       const vault = requireVault();
 
       await rewrapWithPassphrase({ vault, masterKeyBytes, newPassphrase });
+    },
+
+    async rotateRecoveryKey({ currentPassphrase, recoveryKey }) {
+      const masterKeyBytes = requireMasterKey();
+      const vault = requireVault();
+
+      // Authorization first, and nothing written until it passes — the same
+      // check `changePassphrase` makes, against the same wrapping. The Master
+      // Key is already bound, so this is not needed to do the work; it is the
+      // only thing standing between an unattended unlocked session and a
+      // freshly minted credential that opens this Vault everywhere.
+      const currentKey = await deriveKeyFromPassphrase({
+        passphrase: currentPassphrase,
+        salt: base64ToBytes(vault.kdf.salt),
+        iterations: vault.kdf.iterations,
+      });
+      await unwrapOrMismatch({
+        wrappingKey: currentKey,
+        wrapped: vault.masterKeyWrappedWithPassphrase,
+        secret: 'passphrase',
+      });
+
+      // Not wrapped in the `VaultSecretMismatchError` translation the unlock
+      // paths use, and `initialize` does not wrap its import either — the four
+      // sites that do translate are the four taking a *User-supplied* key.
+      // There is no secret being checked here: the key is one this library
+      // minted, so a key that will not import is a caller who cast past
+      // `MintedRecoveryKey`. That surfaces as WebCrypto's own error, which is
+      // the right report for a programming error and the wrong one for a
+      // User's mistake.
+      const recoveryWrappingKey = await importAesGcmKey(
+        base64ToBytes(recoveryKey),
+      );
+
+      // The Master Key does not move; only the wrapping that opens it does.
+      // The salt and the KDF parameters are untouched because the Recovery Key
+      // derives nothing — which is what keeps another device reading this as a
+      // rotation rather than as a different Vault.
+      vault.masterKeyWrappedWithRecoveryKey = await wrapMasterKeyWithKey({
+        wrappingKey: recoveryWrappingKey,
+        masterKeyBytes,
+      });
+
+      slot.write(vault);
     },
 
     async loadDecryptedData<T>({

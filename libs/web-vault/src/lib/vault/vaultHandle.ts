@@ -262,6 +262,13 @@ export function createVaultHandle(options: {
     },
     changePassphrase: access.changePassphrase,
     resetPassphrase: access.resetPassphrase,
+    // Not reported to the sink and not a revision bump, the same as the two
+    // passphrase changes above it. A rotation replaces a wrapping and no
+    // Ciphertext: every Vault Blob a reader holds is exactly as readable as it
+    // was, because the Master Key did not move. What the server needs to hear
+    // about it is a Vault Meta Push, which `rotateRecoveryKeyWithPassphrase`
+    // does above this layer.
+    rotateRecoveryKey: access.rotateRecoveryKey,
     loadDecryptedData: access.loadDecryptedData,
     decryptCiphertext: access.decryptCiphertext,
     // The one write that names a Vault Blob Type, so the one the sink hears
