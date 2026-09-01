@@ -5,6 +5,23 @@ import { fn } from '@storybook/test';
 
 import { ServerReachabilityNotice } from './ServerReachabilityNotice';
 
+/**
+ * There is deliberately no story for `reachability: 'reachable'` or for
+ * `null`, and the absence is worth one note because a reader would otherwise
+ * add them back.
+ *
+ * Both render no visible output, so under STORYBOOK-PATTERNS §8 they get no
+ * story: a blank canvas is indistinguishable from one that failed to load, and
+ * two of them are indistinguishable from each other. The absence is asserted
+ * in `ServerReachabilityNotice.spec.tsx`, where an assertion can name the DOM
+ * it expects.
+ *
+ * The silence is the component's contract, not an oversight. An affirmative
+ * "server reachable" would promise the next write will land, which no reading
+ * can — a third device can write between the check and the push. `null` reads
+ * the same as `reachable` on purpose: a "checking" spinner above a confirm
+ * button tells a User to wait, and waiting is what this must never ask for.
+ */
 const meta: Meta<typeof ServerReachabilityNotice> = {
   component: ServerReachabilityNotice,
   title: 'Vault/ServerReachabilityNotice',
@@ -13,19 +30,6 @@ const meta: Meta<typeof ServerReachabilityNotice> = {
 
 export default meta;
 type Story = StoryObj<typeof ServerReachabilityNotice>;
-
-/**
- * Server is reachable and there is nothing to warn about. Renders an empty
- * container with an empty screen-reader status region — an affirmative "server
- * reachable" would promise the next write will land, which no reading can
- * promise. A third device can write between the read and the push. The absence
- * of chrome is the correct design.
- */
-export const Reachable: Story = {
-  args: {
-    reachability: 'reachable',
-  },
-};
 
 /**
  * The server cannot be reached right now. The warning tells the user they can
@@ -52,19 +56,6 @@ export const SignedOut: Story = {
   args: {
     reachability: 'signed-out',
     onRecheck: fn(),
-  },
-};
-
-/**
- * No probe has resolved yet — loading state. Renders an empty container with
- * an empty screen-reader status region. No spinner, no "checking" message:
- * a spinner above a confirm button tells a user to wait, and waiting is
- * precisely what this component must never ask for. The absence of any chrome
- * is the correct design.
- */
-export const Loading: Story = {
-  args: {
-    reachability: null,
   },
 };
 
