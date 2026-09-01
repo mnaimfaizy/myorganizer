@@ -9,6 +9,7 @@ module.exports = {
         "tertiary": "var(--color-tertiary)",
         "cyan": "var(--color-cyan)",
         "destructive": "var(--color-destructive)",
+        "warning": "var(--color-warning)",
         "surface": "var(--color-surface)",
         "surface-container": "var(--color-surface-container)",
         "card": "var(--color-card)",

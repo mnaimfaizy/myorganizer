@@ -21,6 +21,9 @@ The color palette is architected to balance trust with interactive energy.
 - **Named Accents:**
   - **Action Cyan (#06B6D4)** is used for successful connections and active navigation nodes.
   - **Destructive (#EF4444)** is strictly used for irreversible actions like vault deletion or cache purging.
+  - **Caution Amber (#B45309)** marks a state the User should notice where nothing has failed and nothing is irreversible — a change that has not reached the server yet, or a condition worth seeing before an action rather than after it. It is the deliberate middle ground the palette previously lacked: Destructive overstates these, claiming a failure or a point of no return, and the muted neutral understates them into invisibility. Reach for Caution before an action, and Destructive only for one that cannot be undone.
+
+**A caution colour is read against a surface, so it is a pair rather than a value.** #B45309 is the light-surface value, chosen at 5.0:1 on white so it passes AA as body text; the lighter amber it replaced did not. The dark-surface pairing is a _lighter_ amber, not this hue darkened, and lives with the other themed roles in the app stylesheet because this token layer has no dark variant to hold it.
 
 ## Typography
 

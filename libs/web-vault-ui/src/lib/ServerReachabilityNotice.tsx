@@ -27,12 +27,18 @@ export const SERVER_REACHABILITY_TONE_ICON = {
   attention: TriangleAlert,
 } as const;
 
+/**
+ * `attention` reaches the semantic `warning` role rather than a raw palette
+ * amber. The role carries its own light/dark pair, so there is no `dark:`
+ * variant here — and it is a caution, deliberately not `destructive`: nothing
+ * has failed when this renders, and nothing here is irreversible.
+ */
 export const SERVER_REACHABILITY_TONE_TEXT_CLASS: Record<
   ServerReachabilityTone,
   string
 > = {
-  ok: 'text-gray-600 dark:text-gray-400',
-  attention: 'text-amber-600 dark:text-amber-400',
+  ok: 'text-muted-foreground',
+  attention: 'text-warning',
 } as const;
 
 /**
@@ -81,7 +87,7 @@ export function ServerReachabilityNotice({
           </div>
           {reading.detail && (
             <p
-              className="text-xs text-gray-600 dark:text-gray-400"
+              className="text-xs text-muted-foreground"
               data-testid="server-reachability-detail"
             >
               {reading.detail}
