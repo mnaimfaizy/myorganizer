@@ -86,13 +86,18 @@ test.describe('Recovery Key Rotation (E2E)', () => {
     // 3. Seed vault with address content (to prove it's still readable after rotation)
     await writeAddressToVault(page, ADDRESS, VAULT_PASSPHRASE);
 
-    // 4. Navigate to /dashboard/vault and rotate the recovery key
-    await gotoStable(page, '/dashboard/vault');
+    // 4. Navigate to /dashboard/vault (via sidebar link, soft navigation) and rotate the recovery key
+    // Click the "Vault" sidebar link to preserve the in-memory vault session
+    await page.getByRole('link', { name: 'Vault', exact: true }).click();
+
+    // Wait for the passphrase field to be editable (card is unlocked)
+    const passphraseInput = page.getByLabel(
+      'Passphrase to authorize this rotation',
+    );
+    await expect(passphraseInput).toBeEditable({ timeout: 60000 });
 
     // Fill current passphrase
-    await page
-      .getByLabel('Passphrase to authorize this rotation')
-      .fill(VAULT_PASSPHRASE);
+    await passphraseInput.fill(VAULT_PASSPHRASE);
 
     // Click "Generate recovery key"
     const mintButton = page.getByTestId('recovery-key-rotation-mint');
