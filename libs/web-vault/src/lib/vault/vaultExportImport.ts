@@ -483,6 +483,18 @@ export async function importVault(
     const staged = envelopeToLocalVault(stagedEnvelope);
 
     // Phase 5: atomic commit.
+    //
+    // The Sync Bookmarks go first, and the order is the whole point. They
+    // describe Ciphertext that is about to stop existing on this device, and
+    // between the two writes one of the pair is wrong whichever way round they
+    // run. Clearing first means a `saveVault` that throws leaves this device
+    // holding its current Ciphertext with no evidence about the server, which
+    // costs a look and at worst a prompt. Saving first would mean a failed
+    // clear leaves an older Vault carrying an unmoved server's ETag — the
+    // state that pushes a User's newer data away
+    // ([ADR 0063](../../../../../docs/adr/0063-a-restore-discards-the-evidence-it-holds-about-the-server.md),
+    // [#617](https://github.com/mnaimfaizy/myorganizer/issues/617)).
+    options.handle.forgetSyncBookmarks();
     options.handle.saveVault(staged);
 
     // Phase 6: record exportId.
