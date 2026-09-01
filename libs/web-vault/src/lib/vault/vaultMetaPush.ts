@@ -79,6 +79,52 @@ export const VAULT_META_CHANGE_PUSHABLE = {
   'recovery-key': true,
 } as const satisfies Record<VaultMetaChange, boolean>;
 
+/**
+ * What one attempt to reach this User's Vault Meta found — a Server
+ * Reachability reading.
+ *
+ * Three states rather than two because the repairs differ. `unreachable` is
+ * waited out; `signed-out` never is, and telling a User to wait for a
+ * connection they already have is worse than telling them nothing.
+ */
+export type ServerReachability = 'reachable' | 'unreachable' | 'signed-out';
+
+/**
+ * Ask, right now, whether this device can reach this User's Vault Meta.
+ *
+ * Deliberately the same read `pushLocalVaultMeta` opens with, classified by
+ * the same `isSessionGone`. A second definition of "the session is gone",
+ * living in whichever library drew the indicator, would drift from this one
+ * and produce the exact lie the reading exists to prevent: "reachable" for a
+ * push that comes back `skipped-not-authenticated`.
+ *
+ * A reading is an observation and never a precondition. It says what one
+ * request found at the moment it ran, and nothing about whether the next
+ * write will land — a third device can move the server in between. No caller
+ * may gate a write on it.
+ *
+ * The Vault Meta this returns with is discarded. Comparing it against the
+ * Vault Meta Bookmark here would predict `refused-server-moved`, and that is
+ * declined on purpose: it re-implements this module's base comparison
+ * somewhere it can disagree with it, and a refusal predicted before the fact
+ * reads to a User as a reason not to act, when acting is still correct.
+ */
+export async function probeVaultMetaReachability(options: {
+  /**
+   * Narrowed to the one method the read needs, carrying
+   * `getServerVaultMeta`'s own narrowing outward: a probe that could reach
+   * `putVaultMeta` would be a probe that could push.
+   */
+  api: Pick<VaultMetaApi, 'getVaultMeta'>;
+}): Promise<ServerReachability> {
+  try {
+    await getServerVaultMeta(options.api);
+    return 'reachable';
+  } catch (error) {
+    return isSessionGone(error) ? 'signed-out' : 'unreachable';
+  }
+}
+
 export type VaultMetaPushResult =
   /** The server now holds this device's Vault Meta. */
   | { kind: 'pushed' }

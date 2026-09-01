@@ -28,9 +28,20 @@ export const SYNC_TONE_ICON = {
   error: CircleAlert,
 } as const;
 
+/**
+ * `ok` and `pending` reach the semantic `muted-foreground` role, which carries
+ * its own light/dark pair — hence no `dark:` variant on them.
+ *
+ * `error` deliberately does not reach `destructive`. That role resolves to
+ * `0 63% 31%` in dark mode, a dark red intended as a *background* behind
+ * `destructive-foreground`. As text on the dark surface it lands at roughly
+ * 2:1 contrast and fails WCAG AA outright, where the palette red below is
+ * about 9:1. Retargeting it needs a foreground-safe error role that does not
+ * exist yet, not a swap to the one that happens to be named for errors.
+ */
 export const SYNC_TONE_TEXT_CLASS: Record<VaultSyncTone, string> = {
-  ok: 'text-gray-600 dark:text-gray-400',
-  pending: 'text-gray-600 dark:text-gray-400',
+  ok: 'text-muted-foreground',
+  pending: 'text-muted-foreground',
   error: 'text-red-700 dark:text-red-300',
 } as const;
 

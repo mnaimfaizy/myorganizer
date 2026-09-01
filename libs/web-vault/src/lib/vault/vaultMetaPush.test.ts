@@ -31,6 +31,7 @@ import type { VaultApi, VaultMetaV1 } from '@myorganizer/app-api-client';
 import type { VaultStorageV1 } from './localVaultStorage';
 import { createVaultHandle, VaultSecretMismatchError } from './vaultHandle';
 import {
+  probeVaultMetaReachability,
   pushLocalVaultMeta,
   resetPassphraseAfterRecovery,
   changePassphraseWithCurrent,
@@ -684,6 +685,119 @@ describe('resetPassphraseAfterRecovery', () => {
         newPassphrase,
       }),
     ).rejects.toThrow();
+
+    expect(api.putVaultMeta).not.toHaveBeenCalled();
+  });
+});
+
+describe('probeVaultMetaReachability', () => {
+  // ===== Probe Case 1: getVaultMeta resolves with meta =====
+
+  test('probes once on mount and returns "reachable" when server holds Vault Meta', async () => {
+    const api = createApiDouble();
+    const meta = makeServerMeta();
+    api.getVaultMeta.mockResolvedValue({
+      data: { etag: 'etag-server', updatedAt: 't1', meta },
+    } as AxiosResponse);
+
+    const result = await probeVaultMetaReachability({ api });
+
+    expect(result).toBe('reachable');
+    expect(api.getVaultMeta).toHaveBeenCalledTimes(1);
+    expect(api.putVaultMeta).not.toHaveBeenCalled();
+  });
+
+  // ===== Probe Case 2: getVaultMeta returns 404 (null) =====
+
+  test('returns "reachable" when server holds no Vault Meta (404)', async () => {
+    const api = createApiDouble();
+    const notFoundError = new Error('Not Found') as Error & {
+      response?: { status: number };
+    };
+    notFoundError.response = { status: 404 };
+    api.getVaultMeta.mockRejectedValue(notFoundError);
+
+    const result = await probeVaultMetaReachability({ api });
+
+    expect(result).toBe('reachable');
+    // Reaching the server is what matters; empty server is still reached
+    expect(api.putVaultMeta).not.toHaveBeenCalled();
+  });
+
+  // ===== Probe Case 3: getVaultMeta rejects with 401 =====
+
+  test('returns "signed-out" when getVaultMeta rejects with 401', async () => {
+    const api = createApiDouble();
+    const error = new Error('Unauthorized') as Error & {
+      response?: { status: number };
+    };
+    error.response = { status: 401 };
+    api.getVaultMeta.mockRejectedValue(error);
+
+    const result = await probeVaultMetaReachability({ api });
+
+    expect(result).toBe('signed-out');
+    expect(api.putVaultMeta).not.toHaveBeenCalled();
+  });
+
+  // ===== Probe Case 4: getVaultMeta rejects with 403 =====
+
+  test('returns "signed-out" when getVaultMeta rejects with 403', async () => {
+    const api = createApiDouble();
+    const error = new Error('Forbidden') as Error & {
+      response?: { status: number };
+    };
+    error.response = { status: 403 };
+    api.getVaultMeta.mockRejectedValue(error);
+
+    const result = await probeVaultMetaReachability({ api });
+
+    expect(result).toBe('signed-out');
+    expect(api.putVaultMeta).not.toHaveBeenCalled();
+  });
+
+  // ===== Probe Case 5: getVaultMeta rejects with network error (no status) =====
+
+  test('returns "unreachable" when getVaultMeta rejects with network error (no status)', async () => {
+    const api = createApiDouble();
+    const networkError = new Error('Network error');
+    api.getVaultMeta.mockRejectedValue(networkError);
+
+    const result = await probeVaultMetaReachability({ api });
+
+    expect(result).toBe('unreachable');
+    expect(api.putVaultMeta).not.toHaveBeenCalled();
+  });
+
+  // ===== Probe Case 6: getVaultMeta rejects with 500 returns unreachable =====
+
+  test('returns "unreachable" when getVaultMeta rejects with 500 (server fault)', async () => {
+    const api = createApiDouble();
+    const serverError = new Error('Server error') as Error & {
+      response?: { status: number };
+    };
+    serverError.response = { status: 500 };
+    api.getVaultMeta.mockRejectedValue(serverError);
+
+    const result = await probeVaultMetaReachability({ api });
+
+    // This is the guard against silently turning a server fault into a sign-in
+    // prompt: a 500 is unreachable, not a session-gone condition. If someone
+    // later widens isSessionGone to catch other error types, this test will
+    // catch them re-categorizing server faults as sign-outs.
+    expect(result).toBe('unreachable');
+    expect(api.putVaultMeta).not.toHaveBeenCalled();
+  });
+
+  // ===== Probe Case 7: Proves read-only via API narrowing =====
+
+  test('never calls putVaultMeta (API narrowed to getVaultMeta only)', async () => {
+    const api = createApiDouble();
+    api.getVaultMeta.mockResolvedValue({
+      data: { etag: 'etag-server', updatedAt: 't1', meta: makeServerMeta() },
+    } as AxiosResponse);
+
+    await probeVaultMetaReachability({ api });
 
     expect(api.putVaultMeta).not.toHaveBeenCalled();
   });

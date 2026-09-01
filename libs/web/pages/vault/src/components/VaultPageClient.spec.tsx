@@ -31,6 +31,14 @@ jest.mock('@myorganizer/web-vault-ui', () => {
         removeVault: jest.fn(),
       },
     }),
+    // Stub useServerReachability to avoid real network probes. Even though
+    // no current test mounts RecoveryKeyMintedSection (which uses it), the stub
+    // prevents a future author from accidentally triggering real jsdom probes
+    // when they add a test that drives a successful key rotation.
+    useServerReachability: () => ({
+      reachability: 'reachable',
+      recheck: jest.fn(),
+    }),
   };
 });
 
