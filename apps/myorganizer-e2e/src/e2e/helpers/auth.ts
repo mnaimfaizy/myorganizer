@@ -1,4 +1,4 @@
-import { Page, expect } from '@playwright/test';
+import { Locator, Page, expect } from '@playwright/test';
 
 /**
  * The credentials every stubbed `/auth/login` route in this suite accepts.
@@ -9,23 +9,34 @@ const E2E_EMAIL = 'testuser@example.com';
 const E2E_PASSWORD = 'password123';
 
 /**
- * Resolve once the login form's React handlers are attached.
+ * Resolve once a controlled auth form's React handlers are attached.
  *
- * The form is fully controlled — `value={email}` plus `onChange` — so a value
+ * These forms are fully controlled — `value={...}` plus `onChange` — so a value
  * typed before hydration lands in the DOM but never reaches React state, and
- * submitting posts empty credentials. The suite used to cover that with
+ * submitting posts an empty form. The suite used to cover that with
  * `waitForLoadState('networkidle')` plus a 1.5s WebKit sleep. Neither observes
  * hydration: `networkidle` is DISCOURAGED by Playwright and hangs against a
  * production build, and a sleep is a guess (ADR 0050, issue #524).
  *
  * Password visibility is pure client state, so the field only unmasks once
- * `onClick` is bound. The click is retried because a pre-hydration click is
- * dropped, then reversed so the caller starts from the masked field a user
- * sees — and so `input[type="password"]` still selects it.
+ * `onClick` is bound — which makes it the one tell that hydration has landed.
+ * The click is retried because a pre-hydration click is dropped, then reversed
+ * so the caller starts from the masked field a user sees, and so
+ * `input[type="password"]` still selects it.
+ *
+ * The alternation matters: the button relabels itself between "Show password"
+ * and "Hide password", so a fixed name matches only half the time. Anchoring
+ * then keeps it off signup's confirm-password eye, labelled "Show confirm
+ * password".
+ *
+ * `password` is passed in because the two forms identify the field differently
+ * — login has an `id`, signup does not.
  */
-export async function waitForLoginFormInteractive(page: Page): Promise<void> {
+async function waitForPasswordFieldInteractive(
+  page: Page,
+  password: Locator,
+): Promise<void> {
   const toggle = page.getByRole('button', { name: /^(Show|Hide) password$/ });
-  const password = page.locator('#password');
 
   await expect(toggle).toBeVisible({ timeout: 30000 });
 
@@ -40,6 +51,27 @@ export async function waitForLoginFormInteractive(page: Page): Promise<void> {
       timeout: 1000,
     });
   }).toPass({ timeout: 10000 });
+}
+
+/** Resolve once the login form's React handlers are attached. */
+export function waitForLoginFormInteractive(page: Page): Promise<void> {
+  return waitForPasswordFieldInteractive(page, page.locator('#password'));
+}
+
+/**
+ * Resolve once the signup form's React handlers are attached.
+ *
+ * It matters more here than on login: every field is controlled and the terms
+ * checkbox gates the submit, so a pre-hydration `fill`/`check` leaves React
+ * Hook Form holding an empty, invalid form. Submitting then does nothing at
+ * all — the spec sits on `/signup` until `toHaveURL` times out, with no clue
+ * that the click was dropped (issue #597).
+ */
+export function waitForSignupFormInteractive(page: Page): Promise<void> {
+  return waitForPasswordFieldInteractive(
+    page,
+    page.getByLabel('Password', { exact: true }),
+  );
 }
 
 /**
