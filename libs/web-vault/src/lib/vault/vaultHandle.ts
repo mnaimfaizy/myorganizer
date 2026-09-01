@@ -25,9 +25,11 @@ import { createSyncBookmarkAccess } from './syncBookmarkAccess';
 import { VAULT_BLOB_TYPE_BY_FIELD } from './vaultBlobFields';
 
 export { VaultLockedError, VaultSecretMismatchError } from './localVaultAccess';
-// `NoUnclaimedLocalVaultError` stays internal: a caller reaches
-// `claimUnclaimedLocalVault` only after `hasUnclaimedLocalVault`, so it is a
-// programming error rather than a case the interface asks callers to handle.
+// `NoUnclaimedLocalVaultError` and `LocalVaultAlreadyOwnedError` stay
+// internal: `claimUnclaimedLocalVaultOnEvidence` reads `vaultStatus` before it
+// claims and reports `skipped-nothing-to-claim` / `skipped-already-owned`
+// rather than letting either throw, so reaching one is a programming error
+// rather than a case the interface asks callers to handle.
 export type { LocalVaultStatus } from './localVaultStorage';
 
 /**
@@ -180,6 +182,7 @@ export function createVaultHandle(options: {
     vaultStatus: access.vaultStatus,
     hasUnclaimedLocalVault: access.hasUnclaimedLocalVault,
     loadVault: access.loadVault,
+    loadUnclaimedVault: access.loadUnclaimedVault,
     // Not reported to the sink, and the asymmetry with `saveEncryptedData` is
     // deliberate. `saveVault` writes a whole Local Vault and names no Vault
     // Blob Type, so there is nothing to report; and it is how convergence
@@ -224,9 +227,39 @@ export function createVaultHandle(options: {
       await bookmarks.recordPushSuccess({ type, blob, etag });
     },
     initialize: access.initialize,
-    claimUnclaimedLocalVault: access.claimUnclaimedLocalVault,
+    // A claim now changes what a reader sees, so readers are told. It did not
+    // used to: an owner holding no Vault of their own resolved the Unclaimed
+    // Local Vault implicitly, so recording it as theirs handed back the same
+    // Ciphertext it already had. Removing that resolution is what changed it —
+    // such an owner now reads no Vault at all until the claim lands, and a
+    // reader not told would sit on that emptiness after it stopped being true.
+    claimUnclaimedLocalVaultLocked: () => {
+      access.claimUnclaimedLocalVaultLocked();
+      reportVaultReplaced();
+    },
+    async claimUnclaimedLocalVaultByRecoveryKey(claimOptions) {
+      const result =
+        await access.claimUnclaimedLocalVaultByRecoveryKey(claimOptions);
+      reportVaultReplaced();
+      return result;
+    },
+    // A replacement changes the Ciphertext a reader who already holds this
+    // owner's Local Vault would see — it is a different Vault under the same
+    // key, not the same Vault newly owned — so readers are told here too.
+    replaceOwnedLocalVaultWithUnclaimedLocked: () => {
+      access.replaceOwnedLocalVaultWithUnclaimedLocked();
+      reportVaultReplaced();
+    },
     unlockWithPassphrase: access.unlockWithPassphrase,
     unlockWithRecoveryKey: access.unlockWithRecoveryKey,
+    async replaceOwnedLocalVaultWithUnclaimedByRecoveryKey(replaceOptions) {
+      const result =
+        await access.replaceOwnedLocalVaultWithUnclaimedByRecoveryKey(
+          replaceOptions,
+        );
+      reportVaultReplaced();
+      return result;
+    },
     changePassphrase: access.changePassphrase,
     resetPassphrase: access.resetPassphrase,
     loadDecryptedData: access.loadDecryptedData,

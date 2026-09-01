@@ -41,3 +41,7 @@ Vault access no longer looks like the rest of the repository, where modules expo
 Reaching this shape requires a migration window in which the old module functions survive as a thin shim delegating to the handle. During that window a callerless load remains possible, so the invariant this ADR asserts is true only once the shim is deleted. The deletion is therefore not optional or deferrable — a half-migrated codebase reads as fixed and is not.
 
 Mobile is unaffected. It never persists a Local Vault: it fetches vault meta from the server, derives the Master Key, and unwraps in memory. Its `VAULT_STORAGE_KEY` constant has no consumers, tracked separately in #485.
+
+## Narrow Supersession
+
+[ADR 0061](0061-vault-claim-is-proven-by-evidence-not-by-unwrap.md) narrows section 2 of this ADR's Decision, which stated "a claim is proven by unlocking." The rest of this ADR (sections 1, 3, and 4 of Decision, and all Consequences) remains in force.
