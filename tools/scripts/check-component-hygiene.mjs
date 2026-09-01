@@ -63,12 +63,28 @@ const USAGE = `Usage:
 --max-warnings=0 composes with any mode above, including explicit files.
 
 Runs the mechanical (non-judgment) ComponentReviewer checklist items against
-React components in libs/web-ui/ (UI Primitives) and libs/web/pages/ (Feature
-Components). Stories and test files are skipped. Judgment items — composition
-pattern, concern mixing, abstraction quality — stay with ComponentReviewer.
+React components in libs/web-ui/ (UI Primitives), libs/web/pages/ (Feature
+Components), and libs/web-vault-ui/ (Vault UI Components). Stories and test
+files are skipped. Judgment items — composition pattern, concern mixing,
+abstraction quality — stay with ComponentReviewer.
 `;
 
-const BARREL = 'libs/web-ui/src/index.ts';
+/**
+ * The barrel each scope publishes through, and the path shape whose export it
+ * is checked against. A scope with no entry simply has no barrel rule — the
+ * absence is stated here rather than inferred from a regex that fails to match.
+ */
+const SCOPE_BARRELS = {
+  primitive: {
+    barrel: 'libs/web-ui/src/index.ts',
+    re: /libs\/web-ui\/src\/(lib\/components\/[^/]+\/[^/]+)\.tsx$/,
+  },
+  'vault-ui': {
+    barrel: 'libs/web-vault-ui/src/index.ts',
+    re: /libs\/web-vault-ui\/src\/(lib\/[^/]+)\.tsx$/,
+  },
+};
+
 const MAX_JSX_LINES = 150;
 
 // --- scope -------------------------------------------------------------------
@@ -77,11 +93,32 @@ function posix(file) {
   return path.normalize(file).replace(/\\/g, '/');
 }
 
-/** Returns 'primitive', 'feature', or null when the file is out of scope. */
+/**
+ * Returns a scope name, or null when the file is out of scope.
+ *
+ * A Vault UI Component is its own scope rather than a Feature Component,
+ * because it is both: reusable across routes and published through a barrel
+ * like a primitive, while consuming primitives like a feature. Filing it under
+ * either existing scope would silently drop half the rules that apply to it —
+ * which is how this library went unchecked in the first place (#621 follow-up).
+ * GUIDELINES §1 already described the category; only this checker did not.
+ *
+ * The scope is every `.tsx` in the library, which is deliberately wider than
+ * the category GUIDELINES names. That section carves out `session`,
+ * `vaultGate` and the runners as "not Vault UI Components" — but it does so to
+ * say they do not need stories, which is a question about presentational
+ * purity. Whether an effect cleans up after itself and whether an import goes
+ * through the barrel are not questions about purity, and a 719-line gate is
+ * the last file where they should go unasked.
+ */
 function scopeOf(file) {
   const p = posix(file);
   if (/\.(stories|test|spec)\.tsx?$/.test(p)) return null;
   if (p.includes('libs/web-ui/src/lib/components/')) return 'primitive';
+  // `.tsx` only: this library keeps hooks and copy modules beside its
+  // components in one flat directory, and a `.ts` hook reporting PASS as a
+  // component is the same kind of false clean this scope was added to remove.
+  if (/libs\/web-vault-ui\/src\/lib\/[^/]+\.tsx$/.test(p)) return 'vault-ui';
   if (/libs\/web\/pages\/[^/]+\/src\//.test(p)) return 'feature';
   return null;
 }
@@ -138,12 +175,12 @@ function checkClassNameMerge(_code, raw, findings) {
  * component through @myorganizer/web-ui, which is the only import path
  * GUIDELINES §1 permits.
  */
-function checkBarrelExport(file, barrelSource, findings) {
-  if (barrelSource === null) return;
-  const p = posix(file);
-  const match = p.match(
-    /libs\/web-ui\/src\/(lib\/components\/[^/]+\/[^/]+)\.tsx$/,
-  );
+function checkBarrelExport(file, scope, barrels, findings) {
+  const spec = SCOPE_BARRELS[scope];
+  if (!spec) return;
+  const barrelSource = barrels.get(spec.barrel);
+  if (barrelSource == null) return;
+  const match = posix(file).match(spec.re);
   if (!match) return;
   const specifier = `./${match[1]}`;
   if (!barrelSource.includes(specifier)) {
@@ -151,7 +188,7 @@ function checkBarrelExport(file, barrelSource, findings) {
       level: 'error',
       rule: 'missing-barrel-export',
       line: 1,
-      message: `Not exported from ${BARREL}. GUIDELINES §4.6 — add "export * from '${specifier}';" in alphabetical order.`,
+      message: `Not exported from ${spec.barrel}. GUIDELINES §4.6 — add "export * from '${specifier}';" in alphabetical order.`,
     });
   }
 }
@@ -326,24 +363,90 @@ function checkJsxSize(code, raw, findings) {
 
 // --- driver ------------------------------------------------------------------
 
-async function inspect(file, scope, barrelSource) {
+/**
+ * Which rules each scope is checked against, stated per scope rather than
+ * derived from an if/else.
+ *
+ * The previous shape was `if (primitive) … else …`, which meant a scope added
+ * later inherited the feature rules by falling through — a default that reads
+ * as a decision nobody made. Listing every scope means adding one is a
+ * question somebody has to answer, and `assertScopesCovered` below makes an
+ * unanswered one a hard failure instead of a quiet pass.
+ *
+ * Vault UI Components take both sets. They accept a `className` and merge it
+ * like a primitive, they publish through a barrel like a primitive, and they
+ * consume primitives through `@myorganizer/web-ui` like a feature.
+ */
+const SCOPE_RULES = {
+  primitive: ['displayName', 'classNameMerge', 'barrelExport'],
+  feature: ['deepImport', 'handlerCallbacks', 'inlinePropsType'],
+  'vault-ui': [
+    'displayName',
+    'classNameMerge',
+    'barrelExport',
+    'deepImport',
+    'handlerCallbacks',
+    'inlinePropsType',
+  ],
+};
+
+/** Rules every scope is checked against, whatever else applies. */
+const SHARED_RULES = ['effectCleanup', 'genericName', 'jsxSize'];
+
+const RULES = {
+  effectCleanup: ({ code, raw, findings }) =>
+    checkEffectCleanup(code, raw, findings),
+  genericName: ({ file, code, raw, findings }) =>
+    checkGenericName(file, code, raw, findings),
+  jsxSize: ({ code, raw, findings }) => checkJsxSize(code, raw, findings),
+  displayName: ({ code, raw, findings }) =>
+    checkDisplayName(code, raw, findings),
+  classNameMerge: ({ code, raw, findings }) =>
+    checkClassNameMerge(code, raw, findings),
+  barrelExport: ({ file, scope, barrels, findings }) =>
+    checkBarrelExport(file, scope, barrels, findings),
+  deepImport: ({ code, raw, findings }) => checkDeepImport(code, raw, findings),
+  handlerCallbacks: ({ code, raw, findings }) =>
+    checkHandlerCallbacks(code, raw, findings),
+  inlinePropsType: ({ code, raw, findings }) =>
+    checkInlinePropsType(code, raw, findings),
+};
+
+/**
+ * Every scope `scopeOf` can return must have a rule list, and every rule named
+ * in one must exist. Checked at startup because the failure it prevents is a
+ * file that reports PASS having been checked against nothing.
+ */
+function assertScopesCovered() {
+  const scopes = ['primitive', 'feature', 'vault-ui'];
+  for (const scope of scopes) {
+    if (!SCOPE_RULES[scope]) {
+      throw new Error(
+        `scopeOf can return '${scope}' but SCOPE_RULES has no entry for it. ` +
+          'Add one saying which rules apply — a scope with no rules passes everything.',
+      );
+    }
+  }
+  for (const [scope, names] of Object.entries(SCOPE_RULES)) {
+    for (const name of [...names, ...SHARED_RULES]) {
+      if (!RULES[name]) {
+        throw new Error(
+          `SCOPE_RULES['${scope}'] names unknown rule '${name}'.`,
+        );
+      }
+    }
+  }
+}
+
+async function inspect(file, scope, barrels) {
   const rawFile = await fs.readFile(file, 'utf8');
   const raw = normalize(rawFile);
   const code = maskNonCode(raw);
   const findings = [];
+  const context = { file, scope, barrels, code, raw, findings };
 
-  checkEffectCleanup(code, raw, findings);
-  checkGenericName(file, code, raw, findings);
-  checkJsxSize(code, raw, findings);
-
-  if (scope === 'primitive') {
-    checkDisplayName(code, raw, findings);
-    checkClassNameMerge(code, raw, findings);
-    checkBarrelExport(file, barrelSource, findings);
-  } else {
-    checkDeepImport(code, raw, findings);
-    checkHandlerCallbacks(code, raw, findings);
-    checkInlinePropsType(code, raw, findings);
+  for (const name of [...SHARED_RULES, ...SCOPE_RULES[scope]]) {
+    RULES[name](context);
   }
 
   findings.sort((a, b) => a.line - b.line);
@@ -351,7 +454,11 @@ async function inspect(file, scope, barrelSource) {
 }
 
 async function collectAll() {
-  const roots = ['libs/web-ui/src/lib/components', 'libs/web/pages'];
+  const roots = [
+    'libs/web-ui/src/lib/components',
+    'libs/web-vault-ui/src/lib',
+    'libs/web/pages',
+  ];
   const out = [];
   const walk = async (dir) => {
     let entries;
@@ -437,6 +544,8 @@ async function main() {
   let files = explicitFiles;
 
   if (all) files = await collectAll();
+  assertScopesCovered();
+
   if (staged) files = collectStaged();
   if (!files.length) {
     if (staged) {
@@ -454,13 +563,16 @@ async function main() {
     return;
   }
 
-  let barrelSource = null;
-  try {
-    barrelSource = await fs.readFile(BARREL, 'utf8');
-  } catch {
-    // Barrel unreadable (wrong cwd, partial checkout) — skip that rule rather
-    // than accuse every primitive of being unexported.
-    barrelSource = null;
+  // Barrel unreadable (wrong cwd, partial checkout) — skip that rule rather
+  // than accuse every component of being unexported.
+  const barrels = new Map();
+  for (const { barrel } of Object.values(SCOPE_BARRELS)) {
+    if (barrels.has(barrel)) continue;
+    try {
+      barrels.set(barrel, await fs.readFile(barrel, 'utf8'));
+    } catch {
+      barrels.set(barrel, null);
+    }
   }
 
   const results = [];
@@ -472,14 +584,14 @@ async function main() {
     if (!scope) {
       results.push({
         file,
-        skipped: 'not a UI Primitive or Feature Component',
+        skipped: 'not a UI Primitive, Vault UI Component, or Feature Component',
         findings: [],
       });
       continue;
     }
     let findings;
     try {
-      findings = await inspect(file, scope, barrelSource);
+      findings = await inspect(file, scope, barrels);
     } catch (error) {
       findings = [
         {

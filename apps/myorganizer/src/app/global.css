@@ -28,6 +28,15 @@
     --accent-foreground: 222.2 47.4% 11.2%;
     --destructive: 0 100% 50%;
     --destructive-foreground: 210 40% 98%;
+    /*
+     * Caution amber. Semantics live with the `warning` role in
+     * libs/design-tokens/src/tokens.json; the light/dark pair lives here
+     * because the token layer has no dark variant and this one does.
+     * 26 90% 37% is #B45309 — 5.0:1 on white, so it passes AA as body text.
+     * The lighter amber it replaced did not.
+     */
+    --warning: 26 90% 37%;
+    --warning-foreground: 210 40% 98%;
     --ring: 215 20.2% 65.1%;
     --radius: 0.5rem;
   }
@@ -51,6 +60,13 @@
     --secondary-foreground: 210 40% 98%;
     --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
+    /*
+     * 43 96% 56% is #FBBF24 — 11.8:1 on the dark background. Deliberately
+     * lighter than the light-mode value rather than the same hue darkened:
+     * a caution colour has to sit on the surface it is read against.
+     */
+    --warning: 43 96% 56%;
+    --warning-foreground: 222.2 47.4% 11.2%;
     --ring: 216 34% 17%;
   }
 }

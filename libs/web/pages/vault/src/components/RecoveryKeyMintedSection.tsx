@@ -12,6 +12,10 @@ import {
   Input,
   Label,
 } from '@myorganizer/web-ui';
+import {
+  ServerReachabilityNotice,
+  useServerReachability,
+} from '@myorganizer/web-vault-ui';
 import type { MintedRecoveryKey } from '@myorganizer/web-vault';
 
 import type { RotationFormInput } from './RecoveryKeyRotationCard';
@@ -39,6 +43,13 @@ export function RecoveryKeyMintedSection({
 }: RecoveryKeyMintedSectionProps) {
   const confirmRecoveryKey = form.watch('confirmRecoveryKey');
   const isConfirmMatched = confirmRecoveryKey === mintedKey;
+
+  // useServerReachability lives here because this component mounts only when
+  // a recovery key is minted. That mount/unmount lifetime is the probe's
+  // lifetime — it probes on mount and refreshes on window focus. Hoisting to
+  // RecoveryKeyRotationCard would fire a network request for every User who
+  // visits vault settings, the vast majority of whom never rotate.
+  const { reachability, recheck } = useServerReachability();
 
   return (
     <div className="space-y-3">
@@ -89,6 +100,14 @@ export function RecoveryKeyMintedSection({
             <FormMessage />
           </FormItem>
         )}
+      />
+
+      {/* ServerReachabilityNotice is shown, never gated on. The "Rotate recovery
+      key" button remains enabled even if the server is unreachable, because
+      the local rotation is correct to perform regardless of network state. */}
+      <ServerReachabilityNotice
+        reachability={reachability}
+        onRecheck={recheck}
       />
 
       <div className="flex gap-2">

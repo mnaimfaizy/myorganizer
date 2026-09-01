@@ -30,6 +30,7 @@ import {
   RecoveryKeyClaimOffer,
   type RecoveryKeyClaimAnswer,
 } from './RecoveryKeyClaimOffer';
+import { RecoverySetNewPassphraseForm } from './RecoverySetNewPassphraseForm';
 import { useOptionalVaultSession } from './session';
 import { useVaultClaimEvidence } from './useVaultClaimEvidence';
 import { VAULT_CLAIM_EVIDENCE_GATE_VIEWS } from './vaultClaimEvidenceGateView';
@@ -107,9 +108,6 @@ export function VaultGate(props: VaultGateProps) {
   const [useRecovery, setUseRecovery] = useState(false);
   const [recoveryInput, setRecoveryInput] = useState('');
 
-  const [newPassphrase, setNewPassphraseState] = useState('');
-  const [newPassphraseConfirm, setNewPassphraseConfirm] = useState('');
-
   const isUnlocked = masterKeyBytes !== null;
 
   // The automatic (server-meta) replace offer has no explicit `pendingReplace`
@@ -144,40 +142,41 @@ export function VaultGate(props: VaultGateProps) {
    * apart from "nothing here" would disclose the one bit the offer exists to
    * withhold (CONTEXT.md, "Claim Offer").
    */
-  const claimWithRecoveryKey = async (
-    key: string,
-  ): Promise<RecoveryKeyClaimAnswer> => {
-    // Answered without the library, and so without the decoy unwrap it would
-    // have paid for. That asymmetry is timeable and deliberately left: the
-    // only thing it tells whoever measured it is that they are not signed in,
-    // which they knew before they typed. It says nothing about this device.
-    if (!handle) return 'no-match';
+  const claimWithRecoveryKey = useCallback(
+    async (key: string): Promise<RecoveryKeyClaimAnswer> => {
+      // Answered without the library, and so without the decoy unwrap it would
+      // have paid for. That asymmetry is timeable and deliberately left: the
+      // only thing it tells whoever measured it is that they are not signed in,
+      // which they knew before they typed. It says nothing about this device.
+      if (!handle) return 'no-match';
 
-    const result = await claimUnclaimedLocalVaultWithRecoveryKey({
-      handle,
-      recoveryKey: key,
-    });
+      const result = await claimUnclaimedLocalVaultWithRecoveryKey({
+        handle,
+        recoveryKey: key,
+      });
 
-    if (result.kind === 'replace-offer') {
-      // Evidence proved this Unclaimed Local Vault is also the signed-in User's,
-      // but they already hold a Vault of their own here. Offer the explicit replace.
-      setPendingReplace({ source: 'recovery-key', recoveryKey: key });
-      return 'replace-offer';
-    }
+      if (result.kind === 'replace-offer') {
+        // Evidence proved this Unclaimed Local Vault is also the signed-in User's,
+        // but they already hold a Vault of their own here. Offer the explicit replace.
+        setPendingReplace({ source: 'recovery-key', recoveryKey: key });
+        return 'replace-offer';
+      }
 
-    if (result.kind !== 'claimed') return 'no-match';
+      if (result.kind !== 'claimed') return 'no-match';
 
-    // Claimed and unlocked in one step: the evidence was the key, so there is
-    // nothing further to ask for. The status is advanced too, so that locking
-    // later lands on this User's own unlock screen rather than back on setup.
-    setVaultStatus('owned');
-    setMasterKeyBytes(result.masterKeyBytes);
-    toast({
-      title: 'Vault claimed',
-      description: 'This vault is yours and is unlocked on this device.',
-    });
-    return 'claimed';
-  };
+      // Claimed and unlocked in one step: the evidence was the key, so there is
+      // nothing further to ask for. The status is advanced too, so that locking
+      // later lands on this User's own unlock screen rather than back on setup.
+      setVaultStatus('owned');
+      setMasterKeyBytes(result.masterKeyBytes);
+      toast({
+        title: 'Vault claimed',
+        description: 'This vault is yours and is unlocked on this device.',
+      });
+      return 'claimed';
+    },
+    [handle, setPendingReplace, setVaultStatus, setMasterKeyBytes, toast],
+  );
 
   const exportVaultAboutToBeReplaced = useCallback(async (): Promise<void> => {
     if (!handle) return;
@@ -253,6 +252,53 @@ export function VaultGate(props: VaultGateProps) {
       setDismissedServerMetaOffer(true);
     }
   }, [pendingReplace]);
+
+  const handleSetNewPassphrase = useCallback(
+    async (passphrase: string): Promise<void> => {
+      if (!masterKeyBytes || !handle) return;
+
+      try {
+        const result = await resetPassphraseAfterRecovery({
+          api: createVaultApi(),
+          handle,
+          newPassphrase: passphrase,
+        });
+
+        // The local change has landed either way, so the User is
+        // let in either way. What differs is whether their other
+        // devices know — and a User who has just recovered from a
+        // passphrase they could not remember needs to hear that the
+        // old one still unlocks those devices. That is the reason
+        // they were rotating, not a sync detail.
+        // `noop-already-in-sync` is a success too: the server holds
+        // this wrapping, which is all the copy below claims.
+        const reachedServer =
+          result.push.kind === 'pushed' ||
+          result.push.kind === 'noop-already-in-sync';
+
+        toast(
+          reachedServer
+            ? {
+                title: 'Passphrase updated',
+                description:
+                  'Your other devices will offer you the new passphrase next time you use them.',
+              }
+            : {
+                title: 'Passphrase updated on this device',
+                description:
+                  'Your other devices still unlock with the old passphrase. This device will keep trying to tell them.',
+              },
+        );
+      } catch (e: unknown) {
+        toast({
+          title: 'Failed',
+          description: e instanceof Error ? e.message : String(e),
+          variant: 'destructive',
+        });
+      }
+    },
+    [masterKeyBytes, handle, toast],
+  );
 
   const title = useMemo(() => props.title, [props.title]);
 
@@ -556,79 +602,10 @@ export function VaultGate(props: VaultGateProps) {
               Unlock with recovery key
             </Button>
 
-            <div className="space-y-2">
-              <Label htmlFor="new-passphrase">Set a new passphrase</Label>
-              <Input
-                id="new-passphrase"
-                type="password"
-                value={newPassphrase}
-                onChange={(e) => setNewPassphraseState(e.target.value)}
-                placeholder="New passphrase"
-              />
-              <Input
-                id="new-passphrase-confirm"
-                type="password"
-                value={newPassphraseConfirm}
-                onChange={(e) => setNewPassphraseConfirm(e.target.value)}
-                placeholder="Confirm new passphrase"
-              />
-            </div>
-
-            <Button
-              type="button"
-              disabled={
-                !masterKeyBytes ||
-                !newPassphraseSchema.safeParse({
-                  newPassphrase,
-                  newPassphraseConfirm,
-                }).success
-              }
-              onClick={async () => {
-                if (!masterKeyBytes || !handle) return;
-
-                try {
-                  const result = await resetPassphraseAfterRecovery({
-                    api: createVaultApi(),
-                    handle,
-                    newPassphrase,
-                  });
-
-                  // The local change has landed either way, so the User is
-                  // let in either way. What differs is whether their other
-                  // devices know — and a User who has just recovered from a
-                  // passphrase they could not remember needs to hear that the
-                  // old one still unlocks those devices. That is the reason
-                  // they were rotating, not a sync detail.
-                  // `noop-already-in-sync` is a success too: the server holds
-                  // this wrapping, which is all the copy below claims.
-                  const reachedServer =
-                    result.push.kind === 'pushed' ||
-                    result.push.kind === 'noop-already-in-sync';
-
-                  toast(
-                    reachedServer
-                      ? {
-                          title: 'Passphrase updated',
-                          description:
-                            'Your other devices will offer you the new passphrase next time you use them.',
-                        }
-                      : {
-                          title: 'Passphrase updated on this device',
-                          description:
-                            'Your other devices still unlock with the old passphrase. This device will keep trying to tell them.',
-                        },
-                  );
-                } catch (e: unknown) {
-                  toast({
-                    title: 'Failed',
-                    description: e instanceof Error ? e.message : String(e),
-                    variant: 'destructive',
-                  });
-                }
-              }}
-            >
-              Set new passphrase
-            </Button>
+            <RecoverySetNewPassphraseForm
+              masterKeyBytes={masterKeyBytes}
+              onSubmit={handleSetNewPassphrase}
+            />
           </CardContent>
         </Card>
       </div>

@@ -31,7 +31,12 @@ import {
 import { useVaultSyncStatus } from './useVaultSyncStatus';
 import { describeVaultSyncStatus } from './vaultSyncMessages';
 
-export function SyncStatusWidget({ className }: { className?: string }) {
+export interface SyncStatusWidgetProps {
+  /** Additional CSS classes merged onto the root element. */
+  className?: string;
+}
+
+export function SyncStatusWidget({ className }: SyncStatusWidgetProps) {
   const { status, retry } = useVaultSyncStatus();
   const reading = describeVaultSyncStatus(status);
 

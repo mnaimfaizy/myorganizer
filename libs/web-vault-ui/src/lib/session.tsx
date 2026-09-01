@@ -40,11 +40,11 @@ const VaultSessionContext = createContext<VaultSessionContextValue | null>(
   null,
 );
 
-export function VaultSessionProvider({
-  children,
-}: {
+export interface VaultSessionProviderProps {
   children: React.ReactNode;
-}) {
+}
+
+export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
   const [masterKeyBytes, setMasterKeyBytesState] = useState<Uint8Array | null>(
     null,
   );

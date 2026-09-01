@@ -9,6 +9,7 @@ module.exports = {
         "tertiary": "#0f766e",
         "cyan": "#06b6d4",
         "destructive": "#ef4444",
+        "warning": "#b45309",
         "surface": "#f8fafc",
         "surface-container": "#eceef0",
         "card": "#ffffff",

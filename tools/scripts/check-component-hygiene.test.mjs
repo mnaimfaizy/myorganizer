@@ -337,3 +337,156 @@ test('--staged outside a Git repository fails with nonzero exit code', (t) => {
   assert.notEqual(result.status, 0);
   assert.doesNotMatch(result.stdout, /No staged component files to check/);
 });
+
+test('vault UI component is inspected rather than skipped', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web-vault-ui/src/lib/ExampleNotice.tsx',
+    [
+      "import * as React from 'react';",
+      '',
+      'export function ExampleNotice() {',
+      '  const handleClick = () => {};',
+      '  return <button onClick={handleClick}>Click</button>;',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const result = runChecker(workspace, file);
+
+  // The regression this guards: the whole library used to fall out of
+  // scopeOf() and report SKIPPED, so nothing in it was ever inspected.
+  assert.doesNotMatch(result.stdout, /SKIPPED/);
+  assert.match(result.stdout, /handler-not-memoized/);
+});
+
+test('vault UI component is checked against primitive rules too, not only feature rules', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web-vault-ui/src/lib/TemplateClassNotice.tsx',
+    [
+      "import * as React from 'react';",
+      '',
+      'export interface TemplateClassNoticeProps {',
+      '  className?: string;',
+      '}',
+      '',
+      'export function TemplateClassNotice({ className }: TemplateClassNoticeProps) {',
+      '  return <div className={`flex ${className}`}>hi</div>;',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  // classname-not-cn is a primitive rule. A Vault UI Component filed under the
+  // feature scope would not be checked for it, which is what the declarative
+  // SCOPE_RULES table exists to prevent.
+  const result = runChecker(workspace, file);
+
+  assert.match(result.stdout, /classname-not-cn/);
+});
+
+test('vault UI component missing from its own barrel is reported', (t) => {
+  const workspace = createWorkspace(t);
+  writeFixture(
+    workspace,
+    'libs/web-vault-ui/src/index.ts',
+    "export * from './lib/SomethingElse';\n",
+  );
+  const file = writeFixture(
+    workspace,
+    'libs/web-vault-ui/src/lib/UnexportedNotice.tsx',
+    [
+      "import * as React from 'react';",
+      '',
+      'export function UnexportedNotice() {',
+      '  return <div>hi</div>;',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const result = runChecker(workspace, file);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /missing-barrel-export/);
+  assert.match(result.stdout, /libs\/web-vault-ui\/src\/index\.ts/);
+});
+
+test('a hook beside the components is not inspected as a component', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web-vault-ui/src/lib/useSomething.ts',
+    ['export function useSomething() {', '  return 1;', '}', ''].join('\n'),
+  );
+
+  const result = runChecker(workspace, file);
+
+  // This library keeps hooks and copy modules beside its components. A .ts
+  // hook reporting PASS as a component would be a false clean.
+  assert.match(result.stdout, /SKIPPED/);
+});
+
+test('an apostrophe in JSX text does not mask the rest of the file', (t) => {
+  const workspace = createWorkspace(t);
+  const body = Array.from(
+    { length: 40 },
+    (_, index) => `        <span>row ${index}</span>`,
+  ).join('\n');
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/ApostropheComponent.tsx',
+    [
+      "import * as React from 'react';",
+      '',
+      'export function ApostropheComponent() {',
+      '  return (',
+      '    <div>',
+      "      <p>Replace this device's vault?</p>",
+      body,
+      '    </div>',
+      '  );',
+      '}',
+      '',
+      'export function SecondComponent() {',
+      '  const handleClick = () => {};',
+      '  return <button onClick={handleClick}>Click</button>;',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const result = runChecker(workspace, file);
+
+  // The apostrophe in "device's" used to open a string that ran to the next
+  // apostrophe far below, blanking real code from the masked copy. That left
+  // brace and paren scanning unbalanced and made one 15-line JSX block measure
+  // as 451 lines. Code after the apostrophe must still be seen.
+  assert.doesNotMatch(result.stdout, /oversized-jsx/);
+  assert.match(result.stdout, /handler-not-memoized/);
+});
+
+test('summary distinguishes a run that skipped everything from a clean run', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/some-other-lib/src/Thing.tsx',
+    ['export function Thing() {', '  return <div>hi</div>;', '}', ''].join(
+      '\n',
+    ),
+  );
+
+  const result = runChecker(workspace, file);
+
+  assert.equal(result.status, 0);
+  // "0 error(s), 0 warning(s)" alone is what let a whole unchecked library
+  // look green. The summary has to say nothing was inspected.
+  assert.match(
+    result.stdout,
+    /0 file\(s\) inspected, 1 skipped as out of scope/,
+  );
+});
