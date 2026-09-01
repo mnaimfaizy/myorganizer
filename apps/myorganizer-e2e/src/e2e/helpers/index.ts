@@ -15,3 +15,15 @@ export {
   readOwnedVault,
   removeOwnedVault,
 } from './vaultStorage';
+export {
+  createAndUnlockVault,
+  ensureUnlocked,
+  identityForEmail,
+  login,
+  setupBackend,
+  signOut,
+  signUp,
+  unlockWithPassphrase,
+  writeAddressToVault,
+  type IdentityEntry,
+} from './multiUserVault';
