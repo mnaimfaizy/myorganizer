@@ -14,6 +14,9 @@ export const colorCyanVar = 'var(--color-cyan)';
 /** Irreversible actions only (delete, purge). */
 export const colorDestructive = "#ef4444";
 export const colorDestructiveVar = 'var(--color-destructive)';
+/** Caution amber. The User should notice this, but nothing failed and nothing is irreversible — an unsent change, a state that needs attention before an action. Never for errors (use destructive) and never for an action that cannot be undone. This is the light-surface value; the dark-surface pairing lives with the other themed roles in the app stylesheet, because this token layer has no dark variant. */
+export const colorWarning = "#b45309";
+export const colorWarningVar = 'var(--color-warning)';
 /** Page background (lowest tonal tier). */
 export const colorSurface = "#f8fafc";
 export const colorSurfaceVar = 'var(--color-surface)';
@@ -79,6 +82,7 @@ export const tokens = {
   'color-tertiary': { value: "#0f766e", cssVar: 'var(--color-tertiary)' },
   'color-cyan': { value: "#06b6d4", cssVar: 'var(--color-cyan)' },
   'color-destructive': { value: "#ef4444", cssVar: 'var(--color-destructive)' },
+  'color-warning': { value: "#b45309", cssVar: 'var(--color-warning)' },
   'color-surface': { value: "#f8fafc", cssVar: 'var(--color-surface)' },
   'color-surface-container': { value: "#eceef0", cssVar: 'var(--color-surface-container)' },
   'color-card': { value: "#ffffff", cssVar: 'var(--color-card)' },
