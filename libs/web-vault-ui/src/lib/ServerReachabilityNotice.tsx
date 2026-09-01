@@ -105,6 +105,19 @@ export function ServerReachabilityNotice({
           )}
         </>
       )}
+      {/*
+        The announcement repeats the label and detail rendered above, because
+        visible text alone is not announced at the moment it appears — which is
+        the whole job of a live region here.
+
+        The duplication has a consequence for tests: every string shown is in
+        the DOM twice, so a Playwright `getByText` substring match resolves to
+        two elements and fails strict mode. Assert against the `data-testid`
+        attributes on this component, not its copy. The same duplication in the
+        toaster's announcer is what
+        `apps/myorganizer-e2e/src/e2e/vault-recovery-key-rotation.spec.ts` had
+        to add `{ exact: true }` for.
+      */}
       <p className="sr-only" role="status" aria-live="polite">
         {announcement}
       </p>
