@@ -7,6 +7,11 @@ jest.mock('../hooks', () => ({
   useLatestCloudBackup: () => ({ status: 'empty', record: null }),
   useExportVault: () => ({ exporting: false, exportVaultNow: jest.fn() }),
   useChangePassphrase: () => ({ changing: false, changePassphrase: jest.fn() }),
+  useRecoveryKeyRotation: () => ({
+    rotating: false,
+    rotateRecoveryKey: jest.fn(),
+  }),
+  useVaultDisabledState: () => 'locked',
 }));
 
 jest.mock('@myorganizer/web-vault-ui', () => {
@@ -48,6 +53,9 @@ describe('VaultPageClient', () => {
 
   test('renders cloud backup unavailable, removal, export, and import cards when no client ID is configured', () => {
     render(<VaultPageClient />);
+
+    // Recovery key rotation card
+    expect(screen.getByText('Rotate recovery key')).toBeInTheDocument();
 
     // Cloud backup card (unavailable because clientId is empty)
     expect(screen.getByText('Encrypted cloud backup')).toBeInTheDocument();

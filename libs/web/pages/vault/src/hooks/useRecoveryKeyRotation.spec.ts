@@ -6,13 +6,13 @@
  */
 jest.mock('@myorganizer/web-vault', () => ({
   ...jest.requireActual('@myorganizer/web-vault'),
-  changePassphraseWithCurrent: jest.fn(),
+  rotateRecoveryKeyWithPassphrase: jest.fn(),
   createVaultApi: jest.fn(),
 }));
 
 /**
  * Mock web-vault-ui functions.
- * Keep the real passphraseChangeReading to test actual copy.
+ * Keep the real recoveryKeyRotationReading to test actual copy.
  */
 jest.mock('@myorganizer/web-vault-ui', () => ({
   ...jest.requireActual('@myorganizer/web-vault-ui'),
@@ -35,13 +35,14 @@ jest.mock('../utils/getErrorMessage', () => ({
 
 import { renderHook, act } from '@testing-library/react';
 import {
-  changePassphraseWithCurrent,
+  rotateRecoveryKeyWithPassphrase,
   createVaultApi,
   VaultSecretMismatchError,
+  type MintedRecoveryKey,
 } from '@myorganizer/web-vault';
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 import { useToast } from '@myorganizer/web-ui';
-import { useChangePassphrase } from './useChangePassphrase';
+import { useRecoveryKeyRotation } from './useRecoveryKeyRotation';
 import type { VaultHandle } from '@myorganizer/web-vault';
 
 // === Mock helpers ===
@@ -81,7 +82,7 @@ function createMockHandle(overrides?: Partial<VaultHandle>): VaultHandle {
   return { ...base, ...overrides };
 }
 
-describe('useChangePassphrase', () => {
+describe('useRecoveryKeyRotation', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
@@ -99,33 +100,33 @@ describe('useChangePassphrase', () => {
   });
 
   describe('Guarded preconditions', () => {
-    test('1: no handle → returns "error" with destructive toast, never calls changePassphraseWithCurrent', async () => {
+    test('1: no handle → returns "error" with destructive toast, never calls rotateRecoveryKeyWithPassphrase', async () => {
       const mockToast = jest.fn();
       (useOptionalVaultSession as jest.Mock).mockReturnValue(null);
       (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
 
-      const { result } = renderHook(() => useChangePassphrase());
+      const { result } = renderHook(() => useRecoveryKeyRotation());
 
       let callResult: 'ok' | 'wrong-passphrase' | 'error' | undefined;
       await act(async () => {
-        callResult = await result.current.changePassphrase({
-          currentPassphrase: 'old',
-          newPassphrase: 'new1234567',
+        callResult = await result.current.rotateRecoveryKey({
+          currentPassphrase: 'oldpass1234',
+          recoveryKey: 'mock-minted-key-value' as unknown as MintedRecoveryKey,
         });
       });
 
       expect(callResult).toBe('error');
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Cannot change passphrase',
+          title: 'Cannot rotate recovery key',
           description: 'Unlock your vault first.',
           variant: 'destructive',
         }),
       );
-      expect(changePassphraseWithCurrent).not.toHaveBeenCalled();
+      expect(rotateRecoveryKeyWithPassphrase).not.toHaveBeenCalled();
     });
 
-    test('2: masterKeyBytes === null → returns "error" with destructive toast, never calls changePassphraseWithCurrent', async () => {
+    test('2: masterKeyBytes === null → returns "error" with destructive toast, never calls rotateRecoveryKeyWithPassphrase', async () => {
       const mockToast = jest.fn();
       (useOptionalVaultSession as jest.Mock).mockReturnValue({
         handle: createMockHandle(),
@@ -133,50 +134,51 @@ describe('useChangePassphrase', () => {
       });
       (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
 
-      const { result } = renderHook(() => useChangePassphrase());
+      const { result } = renderHook(() => useRecoveryKeyRotation());
 
       let callResult: 'ok' | 'wrong-passphrase' | 'error' | undefined;
       await act(async () => {
-        callResult = await result.current.changePassphrase({
-          currentPassphrase: 'old',
-          newPassphrase: 'new1234567',
+        callResult = await result.current.rotateRecoveryKey({
+          currentPassphrase: 'oldpass1234',
+          recoveryKey: 'mock-minted-key-value' as unknown as MintedRecoveryKey,
         });
       });
 
       expect(callResult).toBe('error');
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Cannot change passphrase',
+          title: 'Cannot rotate recovery key',
+          description: 'Unlock your vault first.',
           variant: 'destructive',
         }),
       );
-      expect(changePassphraseWithCurrent).not.toHaveBeenCalled();
+      expect(rotateRecoveryKeyWithPassphrase).not.toHaveBeenCalled();
     });
   });
 
   describe('Push outcomes — all non-destructive despite reaching server', () => {
-    test('3: push kind "pushed" → returns "ok" and calls toast with non-destructive variant', async () => {
+    test('3: push kind "pushed" → returns "ok" and calls toast with non-destructive variant and real reading copy', async () => {
       const mockToast = jest.fn();
       (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
-      (changePassphraseWithCurrent as jest.Mock).mockResolvedValue({
+      (rotateRecoveryKeyWithPassphrase as jest.Mock).mockResolvedValue({
         push: { kind: 'pushed' },
       });
 
-      const { result } = renderHook(() => useChangePassphrase());
+      const { result } = renderHook(() => useRecoveryKeyRotation());
 
       let callResult: 'ok' | 'wrong-passphrase' | 'error' | undefined;
       await act(async () => {
-        callResult = await result.current.changePassphrase({
+        callResult = await result.current.rotateRecoveryKey({
           currentPassphrase: 'oldpass1234',
-          newPassphrase: 'newpass12345',
+          recoveryKey: 'mock-minted-key-value' as unknown as MintedRecoveryKey,
         });
       });
 
       expect(callResult).toBe('ok');
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Passphrase changed',
-          description: expect.stringContaining('other devices'),
+          title: 'Recovery key updated',
+          description: expect.stringContaining('old recovery key'),
         }),
       );
 
@@ -186,20 +188,20 @@ describe('useChangePassphrase', () => {
       expect(toastCall.variant).toBeUndefined();
     });
 
-    test('4: push kind "unreachable" → returns "ok" and calls toast non-destructive, copy says changed on device but not synced yet', async () => {
+    test('4: push kind "unreachable" → returns "ok" and calls toast non-destructive, title says "Recovery key waiting to sync"', async () => {
       const mockToast = jest.fn();
       (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
-      (changePassphraseWithCurrent as jest.Mock).mockResolvedValue({
+      (rotateRecoveryKeyWithPassphrase as jest.Mock).mockResolvedValue({
         push: { kind: 'unreachable' },
       });
 
-      const { result } = renderHook(() => useChangePassphrase());
+      const { result } = renderHook(() => useRecoveryKeyRotation());
 
       let callResult: 'ok' | 'wrong-passphrase' | 'error' | undefined;
       await act(async () => {
-        callResult = await result.current.changePassphrase({
+        callResult = await result.current.rotateRecoveryKey({
           currentPassphrase: 'oldpass1234',
-          newPassphrase: 'newpass12345',
+          recoveryKey: 'mock-minted-key-value' as unknown as MintedRecoveryKey,
         });
       });
 
@@ -207,27 +209,29 @@ describe('useChangePassphrase', () => {
       expect(mockToast).toHaveBeenCalled();
 
       const toastCall = mockToast.mock.calls[0][0];
-      // Assert the real copy from passphraseChangeReading
-      expect(toastCall.title).toContain('changed on this device');
-      expect(toastCall.description).toContain('has not reached');
+      // Assert the real copy from recoveryKeyRotationReading
+      expect(toastCall.title).toBe('Recovery key waiting to sync');
+      expect(toastCall.description).toContain(
+        'new recovery key works on this device only',
+      );
       expect(toastCall.variant).not.toBe('destructive');
       expect(toastCall.variant).toBeUndefined();
     });
 
-    test('5: push kind "refused-server-moved" → returns "ok" and calls toast non-destructive, copy mentions next sign-in', async () => {
+    test('5: push kind "refused-server-moved" → returns "ok" and calls toast non-destructive with attention tone', async () => {
       const mockToast = jest.fn();
       (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
-      (changePassphraseWithCurrent as jest.Mock).mockResolvedValue({
-        push: { kind: 'refused-server-moved', change: 'passphrase' },
+      (rotateRecoveryKeyWithPassphrase as jest.Mock).mockResolvedValue({
+        push: { kind: 'refused-server-moved', change: 'recovery-key' },
       });
 
-      const { result } = renderHook(() => useChangePassphrase());
+      const { result } = renderHook(() => useRecoveryKeyRotation());
 
       let callResult: 'ok' | 'wrong-passphrase' | 'error' | undefined;
       await act(async () => {
-        callResult = await result.current.changePassphrase({
+        callResult = await result.current.rotateRecoveryKey({
           currentPassphrase: 'oldpass1234',
-          newPassphrase: 'newpass12345',
+          recoveryKey: 'mock-minted-key-value' as unknown as MintedRecoveryKey,
         });
       });
 
@@ -235,9 +239,8 @@ describe('useChangePassphrase', () => {
       expect(mockToast).toHaveBeenCalled();
 
       const toastCall = mockToast.mock.calls[0][0];
-      // Assert the real copy from passphraseChangeReading
-      expect(toastCall.title).toContain('changed on this device');
-      expect(toastCall.description).toContain('next time you sign in');
+      // Assert the real copy from recoveryKeyRotationReading (attention tone)
+      expect(toastCall.title).toBe('Recovery key waiting to sync');
       expect(toastCall.variant).not.toBe('destructive');
       expect(toastCall.variant).toBeUndefined();
     });
@@ -247,17 +250,17 @@ describe('useChangePassphrase', () => {
     test('6: VaultSecretMismatchError on passphrase → returns "wrong-passphrase", NO toast called', async () => {
       const mockToast = jest.fn();
       (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
-      (changePassphraseWithCurrent as jest.Mock).mockRejectedValue(
+      (rotateRecoveryKeyWithPassphrase as jest.Mock).mockRejectedValue(
         new VaultSecretMismatchError('passphrase'),
       );
 
-      const { result } = renderHook(() => useChangePassphrase());
+      const { result } = renderHook(() => useRecoveryKeyRotation());
 
       let callResult: 'ok' | 'wrong-passphrase' | 'error' | undefined;
       await act(async () => {
-        callResult = await result.current.changePassphrase({
+        callResult = await result.current.rotateRecoveryKey({
           currentPassphrase: 'wrongpass1234',
-          newPassphrase: 'newpass12345',
+          recoveryKey: 'mock-minted-key-value' as unknown as MintedRecoveryKey,
         });
       });
 
@@ -268,24 +271,24 @@ describe('useChangePassphrase', () => {
     test('7: unexpected error (not VaultSecretMismatchError) → returns "error" with destructive toast', async () => {
       const mockToast = jest.fn();
       (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
-      (changePassphraseWithCurrent as jest.Mock).mockRejectedValue(
+      (rotateRecoveryKeyWithPassphrase as jest.Mock).mockRejectedValue(
         new Error('Network failed'),
       );
 
-      const { result } = renderHook(() => useChangePassphrase());
+      const { result } = renderHook(() => useRecoveryKeyRotation());
 
       let callResult: 'ok' | 'wrong-passphrase' | 'error' | undefined;
       await act(async () => {
-        callResult = await result.current.changePassphrase({
+        callResult = await result.current.rotateRecoveryKey({
           currentPassphrase: 'oldpass1234',
-          newPassphrase: 'newpass12345',
+          recoveryKey: 'mock-minted-key-value' as unknown as MintedRecoveryKey,
         });
       });
 
       expect(callResult).toBe('error');
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: 'Passphrase change failed',
+          title: 'Recovery key rotation failed',
           variant: 'destructive',
         }),
       );
@@ -293,8 +296,8 @@ describe('useChangePassphrase', () => {
   });
 
   describe('Loading state', () => {
-    test('8: changing boolean is true during async operation, false after', async () => {
-      (changePassphraseWithCurrent as jest.Mock).mockImplementation(
+    test('8: rotating boolean is false before the call, false after it resolves', async () => {
+      (rotateRecoveryKeyWithPassphrase as jest.Mock).mockImplementation(
         () =>
           new Promise((resolve) => {
             setTimeout(() => {
@@ -303,47 +306,46 @@ describe('useChangePassphrase', () => {
           }),
       );
 
-      const { result } = renderHook(() => useChangePassphrase());
+      const { result } = renderHook(() => useRecoveryKeyRotation());
 
-      expect(result.current.changing).toBe(false);
+      expect(result.current.rotating).toBe(false);
 
       let callPromise: Promise<any>;
       act(() => {
-        callPromise = result.current.changePassphrase({
+        callPromise = result.current.rotateRecoveryKey({
           currentPassphrase: 'oldpass1234',
-          newPassphrase: 'newpass12345',
+          recoveryKey: 'mock-minted-key-value' as unknown as MintedRecoveryKey,
         });
       });
 
-      // After the async call starts, changing might be true briefly
-      // After it completes, it should be false
+      // After the async call completes, rotating should be false
       await act(async () => {
         await callPromise!;
       });
 
-      expect(result.current.changing).toBe(false);
+      expect(result.current.rotating).toBe(false);
     });
   });
 
   describe('Hook contract — reading usage', () => {
-    test('9: calls passphraseChangeReading with the push outcome and toasts the reading', async () => {
+    test('9: calls recoveryKeyRotationReading with the push outcome and toasts the reading', async () => {
       const mockToast = jest.fn();
 
       (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
-      (changePassphraseWithCurrent as jest.Mock).mockResolvedValue({
+      (rotateRecoveryKeyWithPassphrase as jest.Mock).mockResolvedValue({
         push: { kind: 'pushed' },
       });
 
-      const { result } = renderHook(() => useChangePassphrase());
+      const { result } = renderHook(() => useRecoveryKeyRotation());
 
       await act(async () => {
-        await result.current.changePassphrase({
+        await result.current.rotateRecoveryKey({
           currentPassphrase: 'oldpass1234',
-          newPassphrase: 'newpass12345',
+          recoveryKey: 'mock-minted-key-value' as unknown as MintedRecoveryKey,
         });
       });
 
-      // Assert toast was called with a reading (title and description from real passphraseChangeReading)
+      // Assert toast was called with a reading (title and description from real recoveryKeyRotationReading)
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
           title: expect.any(String),

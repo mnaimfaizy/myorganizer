@@ -10,9 +10,9 @@
  * twice — two places that must agree about what `refused-server-moved` means,
  * with nothing making them agree.
  */
-import type { PassphraseChangeResult } from '@myorganizer/web-vault';
+import type { VaultMetaPushOutcome } from '@myorganizer/web-vault';
 
-type PushOutcome = PassphraseChangeResult['push'];
+type PushOutcome = VaultMetaPushOutcome;
 
 /**
  * How loudly a passphrase change's outcome should be presented.
@@ -75,4 +75,66 @@ export function passphraseChangeReading(
 ): PassphraseChangeReading {
   const tone = PASSPHRASE_CHANGE_TONES[push.kind];
   return { tone, ...READINGS[tone] };
+}
+
+/**
+ * How loudly a recovery key rotation's outcome should be presented.
+ *
+ * No `error` tone: the local wrapping is written before the server is touched,
+ * so every outcome reports what actually happened, not a failure. Reporting
+ * one as an error would tell a User the rotation failed when the new key is
+ * already their only way in on this device.
+ *
+ * Every non-pushed outcome reads as `attention`, not `pending`. For a
+ * passphrase change, an unsent push is an inconvenience — the User knows both
+ * strings and can wait. For a rotation it means the old key the User was trying
+ * to retire is still live everywhere, and losing this device before the push
+ * retries means the new key goes with it. That warrants attention.
+ */
+export type RecoveryKeyRotationTone = 'success' | 'attention';
+
+/**
+ * Every Vault Meta Push outcome for recovery key rotation, and how loudly it
+ * reads. Guarded by `satisfies` so an eighth outcome fails to compile here
+ * until somebody has decided what a User is told about it — see ADR 0053.
+ */
+export const RECOVERY_KEY_ROTATION_TONES = {
+  pushed: 'success',
+  'noop-already-in-sync': 'success',
+  unreachable: 'attention',
+  'skipped-not-authenticated': 'attention',
+  'refused-no-base': 'attention',
+  'refused-server-moved': 'attention',
+  'refused-not-pushable': 'attention',
+} as const satisfies Record<PushOutcome['kind'], RecoveryKeyRotationTone>;
+
+export type RecoveryKeyRotationReading = {
+  tone: RecoveryKeyRotationTone;
+  /** Short state label. Always present — a rotation always resolved. */
+  title: string;
+  /** What the state means for this device and others. */
+  detail: string;
+};
+
+const RECOVERY_KEY_ROTATION_READINGS = {
+  success: {
+    title: 'Recovery key updated',
+    detail:
+      'Your old recovery key no longer works on this device, and it can no longer open your vault on a new one. Your other devices keep accepting it until you open the app on each of them and confirm the change.',
+  },
+  attention: {
+    title: 'Recovery key waiting to sync',
+    detail:
+      'Your new recovery key works on this device only. Your old one still opens your vault everywhere else, including on a device you sign in on next. This device will keep trying to send the change.',
+  },
+} as const satisfies Record<
+  RecoveryKeyRotationTone,
+  Omit<RecoveryKeyRotationReading, 'tone'>
+>;
+
+export function recoveryKeyRotationReading(
+  push: PushOutcome,
+): RecoveryKeyRotationReading {
+  const tone = RECOVERY_KEY_ROTATION_TONES[push.kind];
+  return { tone, ...RECOVERY_KEY_ROTATION_READINGS[tone] };
 }

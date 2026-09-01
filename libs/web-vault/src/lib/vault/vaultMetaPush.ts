@@ -29,6 +29,7 @@ import { VaultApi, VaultMetaV1 } from '@myorganizer/app-api-client';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 
+import type { MintedRecoveryKey } from './recoveryKeyMint';
 import {
   getServerVaultMeta,
   putServerVaultMetaEtagAware,
@@ -210,15 +211,24 @@ function put(options: {
   });
 }
 
-export type PassphraseChangeResult = {
+/**
+ * Every Vault Meta Push outcome that a wrapping change reports.
+ * Includes both successful push results and the unreachable case when the
+ * Local Vault is unreadable after a wrapping change.
+ */
+export type VaultMetaPushOutcome =
+  | VaultMetaPushResult
+  | { kind: 'unreachable' };
+
+export type WrappingChangeResult = {
   /**
    * Always true by the time this resolves. The local wrapping is written
    * before the server is touched and is never rolled back: a User who has
-   * just set a passphrase must be able to use it, whatever the network did.
+   * just set a wrapping must be able to use it, whatever the network did.
    */
   changedLocally: true;
   /** What became of the attempt to make it the server's wrapping too. */
-  push: VaultMetaPushResult | { kind: 'unreachable' };
+  push: VaultMetaPushOutcome;
 };
 
 /**
@@ -252,7 +262,7 @@ async function rewrapAndPush(options: {
    * the server is told anything.
    */
   rewrap: () => Promise<void>;
-}): Promise<PassphraseChangeResult> {
+}): Promise<WrappingChangeResult> {
   const { api, handle } = options;
 
   const before = handle.loadVault();
@@ -308,7 +318,7 @@ export async function changePassphraseWithCurrent(options: {
   handle: VaultHandle;
   currentPassphrase: string;
   newPassphrase: string;
-}): Promise<PassphraseChangeResult> {
+}): Promise<WrappingChangeResult> {
   const { handle } = options;
   return rewrapAndPush({
     api: options.api,
@@ -337,13 +347,59 @@ export async function resetPassphraseAfterRecovery(options: {
   api: VaultMetaApi;
   handle: VaultHandle;
   newPassphrase: string;
-}): Promise<PassphraseChangeResult> {
+}): Promise<WrappingChangeResult> {
   const { handle } = options;
   return rewrapAndPush({
     api: options.api,
     handle,
     rewrap: () =>
       handle.resetPassphrase({ newPassphrase: options.newPassphrase }),
+  });
+}
+
+/**
+ * Retire this Vault's Recovery Key in favour of a freshly minted one, and make
+ * that the server's wrapping too.
+ *
+ * The commit half of Recovery Key Rotation. `mintRecoveryKey` is the other
+ * half and it is a separate call on purpose: the User has to record the new
+ * key before the old one stops working, so nothing is written between the mint
+ * and this, and abandoning the flow after seeing the key leaves the old
+ * Recovery Key working. The two are two functions rather than one taking a
+ * confirmation callback — a library that raises the User-facing confirmation
+ * from underneath its caller is the shape ADR 0057 was written against.
+ *
+ * Authorized by the current passphrase, verified against the wrapping this
+ * device holds before anything is written, and never by the key being
+ * replaced: a User rotating because the old key is lost cannot produce it.
+ * Throws `VaultSecretMismatchError` for a wrong current passphrase, leaving
+ * the Local Vault byte-identical.
+ *
+ * Retirement is not instant everywhere, and this function does not make it so.
+ * It holds here and on any device signing in afterwards; a device already
+ * holding the old wrapping keeps honouring the old key until the User confirms
+ * the change there, and a Vault Export taken beforehand stays openable by the
+ * retired key for as long as that file exists (CONTEXT.md, "Recovery Key
+ * Rotation").
+ *
+ * Never throws for a failed push.
+ */
+export async function rotateRecoveryKeyWithPassphrase(options: {
+  api: VaultMetaApi;
+  handle: VaultHandle;
+  currentPassphrase: string;
+  /** A key from `mintRecoveryKey`, already shown to the User. */
+  recoveryKey: MintedRecoveryKey;
+}): Promise<WrappingChangeResult> {
+  const { handle } = options;
+  return rewrapAndPush({
+    api: options.api,
+    handle,
+    rewrap: () =>
+      handle.rotateRecoveryKey({
+        currentPassphrase: options.currentPassphrase,
+        recoveryKey: options.recoveryKey,
+      }),
   });
 }
 

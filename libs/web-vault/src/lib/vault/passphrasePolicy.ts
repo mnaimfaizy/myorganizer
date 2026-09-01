@@ -2,10 +2,10 @@
  * What makes a passphrase acceptable, in one place.
  *
  * The rule is not new — it was restated inline at every site that collected a
- * passphrase, which is three sites once the Vault page can change one. Three
- * places that must agree about what a valid passphrase is, with nothing making
- * them agree, is the shape [ADR 0053] exists to stop; this module is what they
- * agree through.
+ * passphrase, which is four sites once the Vault page can change one and
+ * rotate a Recovery Key. Four places that must agree about what a valid
+ * passphrase is, with nothing making them agree, is the shape [ADR 0053]
+ * exists to stop; this module is what they agree through.
  *
  * Length is the only requirement. Composition rules are deliberately absent: a
  * passphrase's strength is its length, and a rule stricter here than the one a
@@ -28,6 +28,27 @@ export const passphraseSchema = z
     MIN_PASSPHRASE_LENGTH,
     `Use at least ${MIN_PASSPHRASE_LENGTH} characters.`,
   );
+
+/**
+ * The current passphrase, as a User is asked to re-enter it to authorize a
+ * change to the wrapping this device holds.
+ *
+ * Presence is the only rule, and deliberately so. This field is not choosing a
+ * passphrase, it is producing one that already exists — so `passphraseSchema`
+ * would be the wrong check here: a Vault created before the threshold moved
+ * has a passphrase shorter than the current minimum, and holding this field to
+ * that minimum would lock its owner out of the very screen that could fix it.
+ * What decides the answer is the unwrap in `rotateRecoveryKey` /
+ * `changePassphrase`, not this schema; the check exists only so the User is
+ * told about an empty field before a round trip.
+ *
+ * A named export rather than a line repeated per form: the passphrase change
+ * and the Recovery Key Rotation both collect it, and this file is where the
+ * two agree about it.
+ */
+export const currentPassphraseSchema = z
+  .string()
+  .min(1, 'Enter your current passphrase.');
 
 /**
  * A new passphrase and its confirmation, for a Vault being created or
@@ -55,7 +76,7 @@ export const newPassphraseSchema = z
  */
 export const changePassphraseSchema = z
   .object({
-    currentPassphrase: z.string().min(1, 'Enter your current passphrase.'),
+    currentPassphrase: currentPassphraseSchema,
     newPassphrase: passphraseSchema,
     newPassphraseConfirm: z.string(),
   })

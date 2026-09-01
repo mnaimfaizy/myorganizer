@@ -7,6 +7,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
  */
 jest.mock('../hooks', () => ({
   useChangePassphrase: jest.fn(),
+  useVaultDisabledState: jest.fn(),
 }));
 
 /**
@@ -130,7 +131,7 @@ import type { VaultHandle } from '@myorganizer/web-vault';
 import { resetPassphraseAfterRecovery } from '@myorganizer/web-vault';
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 import { useToast } from '@myorganizer/web-ui';
-import { useChangePassphrase } from '../hooks';
+import { useChangePassphrase, useVaultDisabledState } from '../hooks';
 
 // === Mock helpers ===
 
@@ -148,6 +149,7 @@ function createMockHandle(overrides?: Partial<VaultHandle>): VaultHandle {
     unlockWithRecoveryKey: jest.fn(),
     changePassphrase: jest.fn(),
     resetPassphrase: jest.fn(),
+    rotateRecoveryKey: jest.fn(),
     loadDecryptedData: jest.fn(),
     saveEncryptedData: jest.fn(),
     vaultStatus: jest.fn().mockReturnValue('absent'),
@@ -177,6 +179,7 @@ describe('ChangePassphraseCard', () => {
     jest.clearAllMocks();
 
     // Default mocks
+    (useVaultDisabledState as jest.Mock).mockReturnValue('enabled');
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: createMockHandle({ loadVault: jest.fn().mockReturnValue({}) }),
       masterKeyBytes: new Uint8Array(32),
@@ -194,7 +197,7 @@ describe('ChangePassphraseCard', () => {
 
   describe('Visibility — card is always rendered', () => {
     test('1: no session/handle → card renders, submit disabled, and states the vault is unavailable without telling the User to sign in', () => {
-      (useOptionalVaultSession as jest.Mock).mockReturnValue(null);
+      (useVaultDisabledState as jest.Mock).mockReturnValue('signed-out');
 
       render(<ChangePassphraseCard />);
 
@@ -208,12 +211,7 @@ describe('ChangePassphraseCard', () => {
     });
 
     test('2: handle present, loadVault() returns null → card renders, submit disabled, "Set up a local vault…"', () => {
-      (useOptionalVaultSession as jest.Mock).mockReturnValue({
-        handle: createMockHandle({
-          loadVault: jest.fn().mockReturnValue(null),
-        }),
-        masterKeyBytes: new Uint8Array(32),
-      });
+      (useVaultDisabledState as jest.Mock).mockReturnValue('no-local-vault');
 
       render(<ChangePassphraseCard />);
 
@@ -227,10 +225,7 @@ describe('ChangePassphraseCard', () => {
     });
 
     test('3: handle present, masterKeyBytes === null, vault exists → card renders, submit disabled, "Unlock your vault…"', () => {
-      (useOptionalVaultSession as jest.Mock).mockReturnValue({
-        handle: createMockHandle({ loadVault: jest.fn().mockReturnValue({}) }),
-        masterKeyBytes: null,
-      });
+      (useVaultDisabledState as jest.Mock).mockReturnValue('locked');
 
       render(<ChangePassphraseCard />);
 
@@ -242,10 +237,7 @@ describe('ChangePassphraseCard', () => {
     });
 
     test('4: handle present and masterKeyBytes non-null → form enabled, submit button enabled', () => {
-      (useOptionalVaultSession as jest.Mock).mockReturnValue({
-        handle: createMockHandle({ loadVault: jest.fn().mockReturnValue({}) }),
-        masterKeyBytes: new Uint8Array(32),
-      });
+      (useVaultDisabledState as jest.Mock).mockReturnValue('enabled');
 
       render(<ChangePassphraseCard />);
 
@@ -304,10 +296,7 @@ describe('ChangePassphraseCard', () => {
     });
 
     test('7: form fields are disabled when vault is locked', () => {
-      (useOptionalVaultSession as jest.Mock).mockReturnValue({
-        handle: createMockHandle({ loadVault: jest.fn().mockReturnValue({}) }),
-        masterKeyBytes: null,
-      });
+      (useVaultDisabledState as jest.Mock).mockReturnValue('locked');
 
       render(<ChangePassphraseCard />);
 
@@ -319,12 +308,7 @@ describe('ChangePassphraseCard', () => {
     });
 
     test('8: form fields are disabled when no local vault', () => {
-      (useOptionalVaultSession as jest.Mock).mockReturnValue({
-        handle: createMockHandle({
-          loadVault: jest.fn().mockReturnValue(null),
-        }),
-        masterKeyBytes: new Uint8Array(32),
-      });
+      (useVaultDisabledState as jest.Mock).mockReturnValue('no-local-vault');
 
       render(<ChangePassphraseCard />);
 

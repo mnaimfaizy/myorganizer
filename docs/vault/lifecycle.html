@@ -2656,7 +2656,7 @@ textarea.input { min-height: 90px; resize: vertical; }
       </div>
 
       <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:16px">
-        <sc-for list="{{ scenes }}" as="s" hint-placeholder-count="7">
+        <sc-for list="{{ scenes }}" as="s" hint-placeholder-count="8">
           <button style="{{ s.style }}" onClick="{{ s.go }}">{{ s.label }}</button>
         </sc-for>
       </div>
@@ -2865,7 +2865,8 @@ class Component extends DCLogic {
     return ['app', 'jwt', 'pp', 'pp2', 'salt', 'kdf', 'kek', 'mk', 'rk', 'w1', 'w2',
       'rec', 'json', 'iv', 'enc', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6',
       'bb', 'nomerge', 'env', 'aud', 'tok', 'gd', 'dev', 'cand',
-      'g1', 'g2', 'g3', 'g4', 'mig', 'stage', 'vault', 'replay', 'recs'];
+      'g1', 'g2', 'g3', 'g4', 'mig', 'stage', 'vault', 'replay', 'recs',
+      'rk2', 'devA', 'devB', 'exp'];
   }
 
   // ---- geometry ------------------------------------------------------------
@@ -2982,7 +2983,7 @@ class Component extends DCLogic {
       add: { device: [{ t: 'Master key', k: 'real', d: '32 bytes — the key to everything' }] } });
 
     push({ scene: 1, title: 'The master key is wrapped. Twice.',
-      body: 'Two locked boxes with the same key inside each. One opens with the passphrase-derived key. The other opens with a brand-new 32-byte recovery key, drawn right now.',
+      body: 'Two locked boxes with the same key inside each. One opens with the passphrase-derived key. The other opens with a brand-new 32-byte recovery key, drawn right now — the same mint that runs again, later, if this key is ever rotated.',
       nodes: [n('kek', 'key', CA, R2, WD, 58, 'Key-encryption key', 'from the passphrase'),
         n('rk', 'key', CB, R2, WD, 58, 'Recovery key', '32 bytes · CSPRNG'),
         n('mk', 'key', CC, R2, WD, 58, 'Master key', '32 bytes'),
@@ -2993,9 +2994,9 @@ class Component extends DCLogic {
         { t: 'Recovery key', k: 'real', d: 'shown once, then forgotten by the app' },
         { t: 'Two wrapped copies of the master key', k: 'opaque', d: 'same key, two different locks' }] } });
 
-    push({ scene: 1, title: 'Your recovery key, shown to you exactly once.',
-      body: 'The app keeps no copy it could ever show you again. Write it down somewhere that is not this laptop. Scene 7 is entirely about what happens if you do not.',
-      nodes: [n('rk', 'key', CB, 66, HALF, 84, 'Recovery key · 32 bytes, base64', 'displayed now — and never again'),
+    push({ scene: 1, title: 'This recovery key is shown to you once.',
+      body: 'The app keeps no copy of this key it could ever show you again — write it down somewhere that is not this laptop. That does not mean you get exactly one recovery key for the life of this vault: Scene 8 covers minting a fresh one, later, whenever you want. Scene 7 is entirely about what happens if you do not write this one down.',
+      nodes: [n('rk', 'key', CB, 66, HALF, 84, 'Recovery key · 32 bytes, base64', 'shown now, then forgotten by the app'),
         n('w1', 'cipher', CA, R4, 232, 66, 'masterKeyWrappedWithPassphrase', 'AES-256-GCM · 12-byte vault IV'),
         n('w2', 'cipher', 254, R4, 232, 66, 'masterKeyWrappedWithRecoveryKey', 'AES-256-GCM · 12-byte vault IV')] });
 
@@ -3218,6 +3219,40 @@ class Component extends DCLogic {
         n('w2', 'dead', 254, R2, 232, 76, 'masterKeyWrappedWithRecoveryKey', 'sealed')].concat(sixBlobs('none')),
       ledgerNote: 'Look at the remote columns one last time. They are full, and none of it was ever readable — which is exactly why none of it can be recovered for you now.' });
 
+    // ---------------- SCENE 8 ----------------
+    push({ scene: 8, title: 'Later, unlocked again — you mint a second recovery key.',
+      body: 'Rotation is authorized by your current passphrase, checked against the wrapping this device already holds — never by the key it is about to replace. A User rotating because the old key is lost can still do it.',
+      nodes: [n('pp', 'plain', CA, R1, WD, 58, 'Passphrase', 'authorizes the rotation, not the old key'),
+        n('mk', 'key', CC, R1, WD, 58, 'Master key', 'already unlocked, same as any session')],
+      add: { device: [{ t: 'Master key', k: 'real', d: 'unlocked for this session, same as any other' }] } });
+
+    push({ scene: 8, title: 'Same primitive. Same 32 bytes.',
+      body: 'mintRecoveryKey() is the only place a Recovery Key comes from — Vault creation calls through it, and so does this. The two can never drift apart in length, encoding or entropy. Nothing is written yet: close this dialog now, and the key from Scene 1 keeps working.',
+      nodes: [n('rk2', 'key', CB, 66, HALF, 84, 'New recovery key · 32 bytes, base64', 'shown now — nothing written until you confirm')],
+      add: { device: [{ t: 'New recovery key', k: 'real', d: 'minted, not yet the one that opens anything' }] } });
+
+    push({ scene: 8, title: 'Only one wrapping changes. The master key does not move.',
+      body: 'Confirm, and exactly one thing is rewritten: masterKeyWrappedWithRecoveryKey. masterKeyWrappedWithPassphrase, the salt, the KDF parameters, the master key itself, and all six Vault Blob types are byte-for-byte what they were — the passphrase-change story\'s twin, for the same reason: a key wraps a key, so re-keying one lock never has to touch the data underneath.',
+      nodes: [n('rk2', 'key', CA, R1, WD, 58, 'New recovery key', ''),
+        n('mk', 'key', CC, R2, WD, 58, 'Master key', 'unchanged'),
+        n('w1', 'cipher', CA, R3, 232, 58, 'masterKeyWrappedWithPassphrase', 'untouched'),
+        n('w2', 'cipher', 254, R3, 232, 58, 'masterKeyWrappedWithRecoveryKey', 'rewritten')].concat(sixBlobs('none')),
+      edges: [e('rk2', 'w2'), e('mk', 'w2')],
+      ledgerNote: 'One wrapped key was rewritten. The master key, the passphrase wrapping, and all six Vault Blob types are byte-for-byte what they were.' });
+
+    push({ scene: 8, title: 'Retirement is not instant everywhere.',
+      body: 'It holds here, and on any device signing in fresh: both unwrap with the new key from now on. A device that is already signed in and has not synced since the rotation keeps honouring the retired key — until it syncs and you confirm the change there. There is no timer counting down: it happens whenever that device next reaches the server, not before.',
+      nodes: [n('rk2', 'key', CA, R1, 232, 58, 'New recovery key', ''),
+        n('rk', 'key', 254, R1, 232, 58, 'Retired recovery key', 'still exists, still opens the old wrapping'),
+        n('devA', 'plain', CA, R3, 232, 90, 'This device — or any fresh sign-in', 'unwraps with the new key from here on', 'NEW KEY ONLY'),
+        n('devB', 'plain', 254, R3, 232, 90, 'A device already signed in, not yet synced', 'still unwraps with the retired key', 'OLD KEY STILL WORKS')],
+      edges: [e('rk2', 'devA'), e('rk', 'devB')],
+      ledgerNote: 'The backend only ever holds the latest wrapping — whichever this device just pushed. It keeps no memory of the one it replaced: there is no server-side grace period, only whether that device has synced yet.' });
+
+    push({ scene: 8, terminal: true, title: 'A Vault Export taken earlier is frozen there.',
+      body: 'An export is a full snapshot of Vault Meta at the moment you took it — both wrappings, exactly as they stood then. Nothing about a later rotation reaches back into a file that already exists to rewrite it, so that export still opens with the retired key for as long as the file does.',
+      nodes: [n('exp', 'cipher', CA, R2, WIDE, 90, 'Vault Export.json · saved before you rotated', 'meta: masterKeyWrappedWithRecoveryKey, frozen at export time — still opens with the retired key')] });
+
     this._steps = S;
     return S;
   }
@@ -3281,7 +3316,7 @@ class Component extends DCLogic {
     const found = path.indexOf(s);
     const posInPath = found >= 0 ? found + 1 : all.slice(0, i + 1).filter((x) => this.visible(x)).length || 1;
 
-    const sceneNames = ['Create', 'Save', 'Sync', 'Backup', 'Lock', 'New device', 'Endings'];
+    const sceneNames = ['Create', 'Save', 'Sync', 'Backup', 'Lock', 'New device', 'Endings', 'Rotate key'];
     const scenes = sceneNames.map((nm, k) => {
       const num = k + 1, on = s.scene === num;
       return { label: num + ' · ' + nm, go: () => this.jumpScene(num),
