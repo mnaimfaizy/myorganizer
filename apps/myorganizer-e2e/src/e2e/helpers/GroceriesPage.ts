@@ -1,5 +1,7 @@
 import { Page, expect } from '@playwright/test';
 
+import { unlockWithPassphrase } from './vaultGate';
+
 /**
  * Page Object Model for Groceries Trip Board.
  * Provides a higher-level API for interacting with the groceries feature
@@ -76,65 +78,17 @@ export class GroceriesPage {
 
   /**
    * Unlock the vault using passphrase.
+   *
+   * Delegates to the shared gate helper. The variant that used to live here
+   * opened with `isVisible({ timeout }).catch(() => false)` and returned early
+   * when that came back false — the same silent skip that broke the nightly
+   * WebKit leg, because `isVisible` samples once and never waits. The `throw`s
+   * further down never fired: the early return had already decided (#597).
+   * `gotoAndUnlock` settles the route before calling this, so there is nothing
+   * left to guess at.
    */
   async unlockWithPassphrase(passphrase: string): Promise<void> {
-    const unlockUI = this.page.getByRole('button', { name: 'Use passphrase' });
-    const isUnlockScreenVisible = await unlockUI
-      .isVisible({ timeout: 10000 })
-      .catch(() => false);
-
-    if (!isUnlockScreenVisible) {
-      return;
-    }
-
-    if (await unlockUI.isVisible({ timeout: 1000 }).catch(() => false)) {
-      await unlockUI.click();
-    }
-
-    let input = this.page.locator('#unlock-passphrase');
-    let inputExists = await input
-      .isVisible({ timeout: 5000 })
-      .catch(() => false);
-
-    if (!inputExists) {
-      input = this.page
-        .locator(
-          'input[placeholder*="Security"], input[placeholder*="passphrase"]',
-        )
-        .first();
-      inputExists = await input.isVisible({ timeout: 5000 }).catch(() => false);
-    }
-
-    if (!inputExists) {
-      throw new Error(
-        'Passphrase input not found after clicking "Use passphrase"',
-      );
-    }
-
-    await input.scrollIntoViewIfNeeded();
-    await input.click();
-    await input.fill(passphrase);
-
-    const unlockButton = this.page.getByRole('button', { name: /^Unlock$/i });
-    const buttonExists = await unlockButton
-      .isVisible({ timeout: 5000 })
-      .catch(() => false);
-
-    if (!buttonExists) {
-      throw new Error('Unlock button not found after filling passphrase');
-    }
-
-    await unlockButton.click();
-
-    // Unlock is complete when the passphrase field goes away. The previous
-    // shape called `isHidden({ timeout })` — which does not wait at all, so
-    // it resolved immediately and the following sleep was the real wait —
-    // then fell back to `networkidle` (issue #524).
-    await expect(
-      this.page.locator(
-        '#unlock-passphrase, input[placeholder*="Security"], input[placeholder*="passphrase"]',
-      ),
-    ).toHaveCount(0, { timeout: 120000 });
+    await unlockWithPassphrase(this.page, passphrase);
   }
 
   /**

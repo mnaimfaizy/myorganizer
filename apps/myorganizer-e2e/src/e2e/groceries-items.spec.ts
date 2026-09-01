@@ -4,6 +4,7 @@ import {
   gotoStable,
   routeApi,
   submitLoginForm,
+  unlockWithPassphrase,
   waitForOwnedVault,
 } from './helpers';
 
@@ -57,65 +58,6 @@ async function login(page: import('@playwright/test').Page) {
   await expect(page.locator('h1')).toContainText('Login');
 
   await submitLoginForm(page);
-}
-
-async function unlockWithPassphrase(
-  page: import('@playwright/test').Page,
-  passphrase: string,
-) {
-  const unlockUI = page.getByRole('button', { name: 'Use passphrase' });
-  const isUnlockScreenVisible = await unlockUI
-    .isVisible({ timeout: 10000 })
-    .catch(() => false);
-
-  if (!isUnlockScreenVisible) return;
-
-  // The passphrase field appearing is the end of the panel's transition, so
-  // the visibility check below is the wait — not a sleep (issue #524).
-  if (await unlockUI.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await unlockUI.click();
-  }
-
-  let input = page.locator('#unlock-passphrase');
-  let inputExists = await input.isVisible({ timeout: 5000 }).catch(() => false);
-
-  if (!inputExists) {
-    input = page
-      .locator(
-        'input[placeholder*="Security"], input[placeholder*="passphrase"]',
-      )
-      .first();
-    inputExists = await input.isVisible({ timeout: 5000 }).catch(() => false);
-  }
-
-  if (!inputExists)
-    throw new Error(
-      'Passphrase input not found after clicking "Use passphrase"',
-    );
-
-  await input.scrollIntoViewIfNeeded();
-  await input.click();
-
-  await input.fill(passphrase);
-
-  const unlockButton = page.getByRole('button', { name: /^Unlock$/i });
-  const buttonExists = await unlockButton
-    .isVisible({ timeout: 5000 })
-    .catch(() => false);
-  if (!buttonExists)
-    throw new Error('Unlock button not found after filling passphrase');
-
-  await unlockButton.click();
-
-  // Unlock is complete when the passphrase field goes away. The previous shape
-  // called `isHidden({ timeout })` — which does not wait at all, so it resolved
-  // immediately and the trailing sleep was the real wait — then fell back to
-  // `networkidle` (issue #524).
-  await expect(
-    page.locator(
-      '#unlock-passphrase, input[placeholder*="Security"], input[placeholder*="passphrase"]',
-    ),
-  ).toHaveCount(0, { timeout: 120000 });
 }
 
 async function gotoGroceriesAndUnlock(
