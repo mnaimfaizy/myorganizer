@@ -90,7 +90,9 @@ test.describe('Recovery Key Rotation (E2E)', () => {
     await gotoStable(page, '/dashboard/vault');
 
     // Fill current passphrase
-    await page.getByLabel('Current passphrase').fill(VAULT_PASSPHRASE);
+    await page
+      .getByLabel('Passphrase to authorize this rotation')
+      .fill(VAULT_PASSPHRASE);
 
     // Click "Generate recovery key"
     const mintButton = page.getByTestId('recovery-key-rotation-mint');

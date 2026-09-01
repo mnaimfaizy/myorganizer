@@ -200,6 +200,7 @@ function createMockHandle(overrides?: Partial<VaultHandle>): VaultHandle {
     recordPushSuccess: jest.fn(),
     lastAgreedVaultMetaHash: jest.fn().mockReturnValue(undefined),
     recordVaultMetaAgreement: jest.fn(),
+    forgetSyncBookmarks: jest.fn(),
     decryptCiphertext: jest.fn(),
   };
   return { ...base, ...overrides };
@@ -319,6 +320,30 @@ describe('RecoveryKeyRotationCard', () => {
           /A Vault Export you saved before rotating still opens with your old recovery key — see "Export encrypted vault" below\./,
         ),
       ).toBeInTheDocument();
+    });
+
+    test("5a: the passphrase field label is distinct from the passphrase card's", () => {
+      (useOptionalVaultSession as jest.Mock).mockReturnValue({
+        handle: createMockHandle({ loadVault: jest.fn().mockReturnValue({}) }),
+        masterKeyBytes: new Uint8Array(32),
+      });
+
+      render(<RecoveryKeyRotationCard />);
+
+      // ChangePassphraseCard renders "Current passphrase" and sits on the same
+      // Vault page. Two identically-labelled password fields give a screen
+      // reader user no way to tell which authorizes a passphrase change and
+      // which authorizes a rotation — and it broke the Playwright spec with a
+      // strict-mode violation. Pinned here so a revert fails in Jest rather
+      // than only in the browser.
+      // Queried as text, not by label association: this spec mocks
+      // `@myorganizer/web-ui`, and the mocked FormLabel/Input do not wire
+      // `htmlFor`/`id` the way the real primitives do. The association itself
+      // is real in the browser and is what the Playwright spec relies on.
+      expect(
+        screen.getByText('Passphrase to authorize this rotation'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Current passphrase')).toBeNull();
     });
   });
 

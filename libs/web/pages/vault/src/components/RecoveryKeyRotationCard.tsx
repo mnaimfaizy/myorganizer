@@ -195,7 +195,7 @@ export function RecoveryKeyRotationCard() {
               name="currentPassphrase"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Current passphrase</FormLabel>
+                  <FormLabel>Passphrase to authorize this rotation</FormLabel>
                   <FormControl>
                     <Input
                       {...field}
