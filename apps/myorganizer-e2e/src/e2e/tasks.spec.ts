@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
 import {
-  E2E_USER_ID,
+  createOwnedVault,
+  E2E_VAULT_PHRASE,
   gotoStable,
   routeApi,
   submitLoginForm,
-  waitForOwnedVault,
+  unlockWithPassphrase,
 } from './helpers';
 
 /**
@@ -65,34 +66,6 @@ async function login(page: import('@playwright/test').Page) {
   await expect(page.locator('h1')).toContainText('Login');
 
   await submitLoginForm(page);
-}
-
-async function unlockWithPassphrase(
-  page: import('@playwright/test').Page,
-  passphrase: string,
-) {
-  const savedRecoveryKey = page.getByRole('button', { name: 'I saved it' });
-  if (await savedRecoveryKey.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await savedRecoveryKey.click();
-  }
-
-  const usePassphrase = page.getByRole('button', { name: 'Use passphrase' });
-  if (await usePassphrase.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await usePassphrase.click();
-  }
-
-  const input = page.locator('#unlock-passphrase');
-  if ((await input.count()) === 0) {
-    // If no unlock form is present, this route is already unlocked.
-    return;
-  }
-
-  await expect(input).toBeVisible({ timeout: 60000 });
-  await input.fill(passphrase);
-  await page.getByRole('button', { name: 'Unlock' }).click();
-  await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
-    timeout: 120000,
-  });
 }
 
 /**
@@ -315,42 +288,26 @@ test.describe('Tasks (E2E)', () => {
     // Step 2: Navigate to tasks page
     await gotoStable(page, '/dashboard/tasks');
 
-    // Step 3: Create vault (fill passphrase and confirm)
-    const setupPassphrase = page.locator('#setup-passphrase');
-    const setupConfirm = page.locator('#setup-confirm');
+    // Step 3: Create the vault and acknowledge the recovery key, which leaves
+    // the gate on its unlock panel.
+    await createOwnedVault(page, { passphrase: E2E_VAULT_PHRASE });
 
-    // Wait for setup form to be visible
-    await expect(setupPassphrase).toBeVisible({ timeout: 30000 });
+    // Step 4: Unlock vault with the passphrase
+    await unlockWithPassphrase(page, E2E_VAULT_PHRASE);
 
-    await setupPassphrase.fill('test-passphrase-12345');
-    await setupConfirm.fill('test-passphrase-12345');
-
-    // Click "Create encrypted vault" button
-    const createVaultButton = page.getByRole('button', {
-      name: /Create encrypted vault|Create Vault/i,
-    });
-    await expect(createVaultButton).toBeVisible();
-    await createVaultButton.click();
-
-    // Step 4: Wait for vault to be created (localStorage should have vault data)
-    await waitForOwnedVault(page, E2E_USER_ID, 30000);
-
-    // Step 5: Unlock vault with the passphrase
-    await unlockWithPassphrase(page, 'test-passphrase-12345');
-
-    // Step 6: Open the add-task dialog, then wait for its form.
+    // Step 5: Open the add-task dialog, then wait for its form.
     // The form used to render inline on the page; it now lives behind the
     // "Add Task" button in TaskAddDialog (issue #506).
     await page.getByRole('button', { name: 'Add Task' }).first().click();
     await expect(page.getByRole('dialog')).toBeVisible({ timeout: 30000 });
     await expect(page.getByLabel('Title')).toBeVisible({ timeout: 30000 });
 
-    // Step 7: Fill task title
+    // Step 6: Fill task title
     await page.getByLabel('Title').fill('Buy groceries for E2E test');
 
     // Priority is already 'medium' by default (no need to change)
 
-    // Step 8: Submit the form. Scoped to the dialog: the page's own
+    // Step 7: Submit the form. Scoped to the dialog: the page's own
     // "Add Task" trigger shares the submit button's accessible name.
     const submitButton = page
       .getByRole('dialog')
@@ -358,7 +315,7 @@ test.describe('Tasks (E2E)', () => {
     await expect(submitButton).toBeVisible();
     await submitButton.click();
 
-    // Step 9: Wait for task to appear in the task list
+    // Step 8: Wait for task to appear in the task list
     await page.waitForFunction(
       () => {
         const h3Elements = Array.from(document.querySelectorAll('h3'));
@@ -369,7 +326,7 @@ test.describe('Tasks (E2E)', () => {
       { timeout: 30000 },
     );
 
-    // Step 10: Verify task is visible with priority
+    // Step 9: Verify task is visible with priority
     const taskTitle = page.locator('h3', {
       hasText: 'Buy groceries for E2E test',
     });
@@ -382,13 +339,13 @@ test.describe('Tasks (E2E)', () => {
     const priorityBadge = taskItem.locator('span', { hasText: 'medium' });
     await expect(priorityBadge).toBeVisible();
 
-    // Step 11: Reload the page
+    // Step 10: Reload the page
     await page.reload();
 
-    // Step 12: After reload, vault is locked again - unlock it
-    await unlockWithPassphrase(page, 'test-passphrase-12345');
+    // Step 11: After reload, vault is locked again - unlock it
+    await unlockWithPassphrase(page, E2E_VAULT_PHRASE);
 
-    // Step 13: Wait for task list to appear after unlock
+    // Step 12: Wait for task list to appear after unlock
     await page.waitForFunction(
       () => {
         const h3Elements = Array.from(document.querySelectorAll('h3'));
@@ -399,13 +356,13 @@ test.describe('Tasks (E2E)', () => {
       { timeout: 30000 },
     );
 
-    // Step 14: Assert task title is visible after reload
+    // Step 13: Assert task title is visible after reload
     const reloadedTaskTitle = page.locator('h3', {
       hasText: 'Buy groceries for E2E test',
     });
     await expect(reloadedTaskTitle).toBeVisible();
 
-    // Step 15: Verify priority 'medium' is still displayed after reload
+    // Step 14: Verify priority 'medium' is still displayed after reload
     const reloadedTaskItem = reloadedTaskTitle.locator('..').locator('..');
     const reloadedPriorityBadge = reloadedTaskItem.locator('span', {
       hasText: 'medium',

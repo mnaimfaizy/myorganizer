@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
 import {
-  E2E_USER_ID,
+  createOwnedVault,
+  E2E_VAULT_PHRASE,
   gotoStable,
   routeApi,
   submitLoginForm,
-  waitForOwnedVault,
+  unlockWithPassphrase,
 } from './helpers';
 
 /**
@@ -69,34 +70,6 @@ async function login(page: import('@playwright/test').Page) {
   await expect(page.locator('h1')).toContainText('Login');
 
   await submitLoginForm(page);
-}
-
-async function unlockWithPassphrase(
-  page: import('@playwright/test').Page,
-  passphrase: string,
-) {
-  const savedRecoveryKey = page.getByRole('button', { name: 'I saved it' });
-  if (await savedRecoveryKey.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await savedRecoveryKey.click();
-  }
-
-  const usePassphrase = page.getByRole('button', { name: 'Use passphrase' });
-  if (await usePassphrase.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await usePassphrase.click();
-  }
-
-  const input = page.locator('#unlock-passphrase');
-  if ((await input.count()) === 0) {
-    // If no unlock form is present, this route is already unlocked.
-    return;
-  }
-
-  await expect(input).toBeVisible({ timeout: 60000 });
-  await input.fill(passphrase);
-  await page.getByRole('button', { name: 'Unlock' }).click();
-  await expect(page.locator('#unlock-passphrase')).toHaveCount(0, {
-    timeout: 120000,
-  });
 }
 
 /**
@@ -334,30 +307,14 @@ test.describe('Addresses (E2E)', () => {
     // Step A1: Navigate to addresses page
     await gotoStable(page, '/dashboard/addresses');
 
-    // Step A2: Create vault (fill passphrase and confirm)
-    const setupPassphrase = page.locator('#setup-passphrase');
-    const setupConfirm = page.locator('#setup-confirm');
+    // Step A2: Create the vault and acknowledge the recovery key, which leaves
+    // the gate on its unlock panel.
+    await createOwnedVault(page, { passphrase: E2E_VAULT_PHRASE });
 
-    // Wait for setup form to be visible
-    await expect(setupPassphrase).toBeVisible({ timeout: 30000 });
+    // Step A3: Unlock vault with the passphrase
+    await unlockWithPassphrase(page, E2E_VAULT_PHRASE);
 
-    await setupPassphrase.fill('test-passphrase-12345');
-    await setupConfirm.fill('test-passphrase-12345');
-
-    // Click "Create encrypted vault" button
-    const createVaultButton = page.getByRole('button', {
-      name: /Create encrypted vault|Create Vault/i,
-    });
-    await expect(createVaultButton).toBeVisible();
-    await createVaultButton.click();
-
-    // Step A3: Wait for vault to be created (localStorage should have vault data)
-    await waitForOwnedVault(page, E2E_USER_ID, 30000);
-
-    // Step A4: Unlock vault with the passphrase
-    await unlockWithPassphrase(page, 'test-passphrase-12345');
-
-    // Step A5: Assert list page empty state
+    // Step A4: Assert list page empty state
     await expect(page.getByText('No addresses yet')).toBeVisible({
       timeout: 30000,
     });
@@ -366,7 +323,7 @@ test.describe('Addresses (E2E)', () => {
       .first();
     await expect(addAddressButton).toBeVisible();
 
-    // Step A6: Click "Add address" button to open sheet
+    // Step A5: Click "Add address" button to open sheet
     await addAddressButton.click();
 
     // Assert the Add address sheet is open
@@ -491,7 +448,7 @@ test.describe('Addresses (E2E)', () => {
     await gotoStable(page, `/dashboard/addresses/${addressId}`);
 
     // Step E2: Re-unlock vault after the full page navigation
-    await unlockWithPassphrase(page, 'test-passphrase-12345');
+    await unlockWithPassphrase(page, E2E_VAULT_PHRASE);
 
     // Step E3: Assert the page renders the same address
     await expect(page.getByText('E2E Home Address')).toBeVisible({
