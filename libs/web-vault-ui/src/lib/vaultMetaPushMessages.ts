@@ -85,6 +85,16 @@ export function passphraseChangeReading(
  * one as an error would tell a User the rotation failed when the new key is
  * already their only way in on this device.
  *
+ * The `tone` a reading carries is not consumed by any surface today, and
+ * that is a decision rather than an oversight (#621). The only louder toast
+ * variant `@myorganizer/web-ui` offers is `destructive`, which says the
+ * action failed — and a rotation reported here has already succeeded on this
+ * device, where the new key is now the User's only way in. Presenting one in
+ * red would be the single claim this whole module is arranged never to make.
+ * The field stays because it is the guarded surface a future non-destructive
+ * warning variant reads; deriving loudness from `push.kind` again at that
+ * point is the hand-enumeration ADR 0053 exists to prevent.
+ *
  * Every non-pushed outcome reads as `attention`, not `pending`. For a
  * passphrase change, an unsent push is an inconvenience — the User knows both
  * strings and can wait. For a rotation it means the old key the User was trying

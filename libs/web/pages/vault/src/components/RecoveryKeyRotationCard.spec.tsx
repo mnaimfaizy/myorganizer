@@ -18,10 +18,14 @@ jest.mock('../hooks', () => ({
 }));
 
 /**
- * Mock web-vault-ui hooks.
+ * Mock web-vault-ui hooks and components.
+ * Use requireActual to get the real ServerReachabilityNotice component
+ * and only override the hooks we need to control.
  */
 jest.mock('@myorganizer/web-vault-ui', () => ({
+  ...jest.requireActual('@myorganizer/web-vault-ui'),
   useOptionalVaultSession: jest.fn(),
+  useServerReachability: jest.fn(),
 }));
 
 /**
@@ -34,8 +38,10 @@ jest.mock('@myorganizer/web-vault', () => ({
 
 /**
  * Mock web-ui components and useToast.
+ * Spread actual to get cn and other utilities, then override components.
  */
 jest.mock('@myorganizer/web-ui', () => {
+  const actual = jest.requireActual('@myorganizer/web-ui');
   const React = require('react') as typeof import('react');
   const {
     Controller,
@@ -139,6 +145,7 @@ jest.mock('@myorganizer/web-ui', () => {
   }
 
   return {
+    ...actual,
     Button,
     Card,
     CardHeader,
@@ -164,7 +171,11 @@ import {
   mintRecoveryKey,
   type MintedRecoveryKey,
 } from '@myorganizer/web-vault';
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
+import {
+  useOptionalVaultSession,
+  useServerReachability,
+  SERVER_REACHABILITY_READINGS,
+} from '@myorganizer/web-vault-ui';
 import { useToast } from '@myorganizer/web-ui';
 import { useRecoveryKeyRotation, useVaultDisabledState } from '../hooks';
 import { downloadTextFile } from '../utils';
@@ -215,6 +226,10 @@ describe('RecoveryKeyRotationCard', () => {
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: createMockHandle({ loadVault: jest.fn().mockReturnValue({}) }),
       masterKeyBytes: new Uint8Array(32),
+    });
+    (useServerReachability as jest.Mock).mockReturnValue({
+      reachability: 'reachable',
+      recheck: jest.fn(),
     });
     (useToast as jest.Mock).mockReturnValue({ toast: jest.fn() });
     (useRecoveryKeyRotation as jest.Mock).mockReturnValue({
@@ -948,6 +963,86 @@ describe('RecoveryKeyRotationCard', () => {
         'myorganiser-recovery-key.txt',
         expect.stringContaining('MOCKED-RECOVERY-KEY-VALUE'),
       );
+    });
+  });
+
+  describe('Server reachability notice integration', () => {
+    test('server unreachable: warning shown, submit button enabled after confirm filled, rotation proceeds', async () => {
+      const mockRotateRecoveryKey = jest.fn().mockResolvedValue('ok');
+      (useRecoveryKeyRotation as jest.Mock).mockReturnValue({
+        rotating: false,
+        rotateRecoveryKey: mockRotateRecoveryKey,
+      });
+
+      // Mock server reachability as unreachable
+      (useServerReachability as jest.Mock).mockReturnValue({
+        reachability: 'unreachable',
+        recheck: jest.fn(),
+      });
+
+      render(<RecoveryKeyRotationCard />);
+
+      // Step 1: Fill passphrase and mint
+      const allInputs = screen.getAllByDisplayValue('');
+      const passphraseInput = allInputs.find(
+        (input): input is HTMLInputElement =>
+          input instanceof HTMLInputElement && input.type === 'password',
+      );
+      fireEvent.change(passphraseInput!, { target: { value: 'testpass1234' } });
+
+      const mintButton = screen.getByTestId('recovery-key-rotation-mint');
+      fireEvent.click(mintButton);
+
+      // Step 2: Wait for the key display and confirm field (proves minting succeeded)
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('recovery-key-rotation-key'),
+        ).toBeInTheDocument();
+      });
+
+      // Step 3: Assert the unreachability warning is visible
+      // This regression test guards the entire premise of #621: the warning
+      // must be shown so Users know their other devices won't get the change yet.
+      const labelElement = screen.getByTestId('server-reachability-label');
+      expect(labelElement).toHaveTextContent(
+        SERVER_REACHABILITY_READINGS.unreachable.label,
+      );
+
+      const detailElement = screen.getByTestId('server-reachability-detail');
+      expect(detailElement).toHaveTextContent(
+        SERVER_REACHABILITY_READINGS.unreachable.detail,
+      );
+
+      // Step 4: Fill confirm field
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('recovery-key-rotation-confirm'),
+        ).toBeInTheDocument();
+      });
+
+      const confirmInput = screen.getByTestId(
+        'recovery-key-rotation-confirm',
+      ) as HTMLInputElement;
+      fireEvent.change(confirmInput, {
+        target: { value: 'MOCKED-RECOVERY-KEY-VALUE' },
+      });
+
+      // Step 5: CRITICAL REGRESSION TEST FOR #621 — submit button must be ENABLED
+      // even when server is unreachable. Reachability is shown informationally
+      // but never gated on, because the local rotation is correct to perform
+      // regardless of whether a third device can write between check and push.
+      const submitButton = screen.getByTestId('recovery-key-rotation-submit');
+      expect(submitButton).not.toBeDisabled();
+
+      // Step 6: Verify rotation can proceed
+      fireEvent.click(submitButton);
+
+      await waitFor(() => {
+        expect(mockRotateRecoveryKey).toHaveBeenCalledWith({
+          currentPassphrase: 'testpass1234',
+          recoveryKey: 'MOCKED-RECOVERY-KEY-VALUE',
+        });
+      });
     });
   });
 });

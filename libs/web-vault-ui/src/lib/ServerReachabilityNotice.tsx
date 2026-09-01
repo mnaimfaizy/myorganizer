@@ -1,0 +1,107 @@
+'use client';
+
+import { Button, cn } from '@myorganizer/web-ui';
+import { TriangleAlert } from 'lucide-react';
+import type { ServerReachability } from '@myorganizer/web-vault';
+import {
+  serverReachabilityReading,
+  type ServerReachabilityTone,
+} from './serverReachabilityMessages';
+
+export interface ServerReachabilityNoticeProps {
+  /** The reading, or null while no probe has resolved yet. */
+  reachability: ServerReachability | null;
+  /** Called when the User asks for a fresh reading. Omit to hide the action entirely even when the reading says canRecheck. */
+  onRecheck?: () => void;
+  /** Additional CSS classes merged onto the root element. */
+  className?: string;
+}
+
+/**
+ * The icon each tone carries, exported so a compact presentation of the same
+ * reading can show the same icon rather than choosing a second one that can
+ * drift from this.
+ */
+export const SERVER_REACHABILITY_TONE_ICON = {
+  ok: null,
+  attention: TriangleAlert,
+} as const;
+
+export const SERVER_REACHABILITY_TONE_TEXT_CLASS: Record<
+  ServerReachabilityTone,
+  string
+> = {
+  ok: 'text-gray-600 dark:text-gray-400',
+  attention: 'text-amber-600 dark:text-amber-400',
+} as const;
+
+/**
+ * Server reachability notice. Warns a User before they commit a Recovery Key
+ * Rotation that the change will not reach their other devices yet. Shows when
+ * there is a reachability issue (unreachable, signed-out) and renders nothing
+ * when the server is reachable — an affirmative "server reachable" would promise
+ * a write will land, which no reading can promise.
+ *
+ * No live Vault access, no decryption, no network calls — fully expressible
+ * with mock props.
+ */
+export function ServerReachabilityNotice({
+  reachability,
+  onRecheck,
+  className,
+}: ServerReachabilityNoticeProps) {
+  const reading = serverReachabilityReading(reachability);
+  const Icon = reading.label
+    ? SERVER_REACHABILITY_TONE_ICON[reading.tone]
+    : null;
+
+  // Build announcement for screen reader: only when there's something to say
+  const announcement = reading.label
+    ? [reading.label, reading.detail].filter(Boolean).join('. ')
+    : '';
+
+  return (
+    <div
+      className={cn('flex flex-col gap-2', className)}
+      data-testid="server-reachability-notice"
+    >
+      {reading.label && (
+        <>
+          <div className="flex items-center gap-1.5">
+            {Icon && <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />}
+            <p
+              className={cn(
+                'text-sm font-medium',
+                SERVER_REACHABILITY_TONE_TEXT_CLASS[reading.tone],
+              )}
+              data-testid="server-reachability-label"
+            >
+              {reading.label}
+            </p>
+          </div>
+          {reading.detail && (
+            <p
+              className="text-xs text-gray-600 dark:text-gray-400"
+              data-testid="server-reachability-detail"
+            >
+              {reading.detail}
+            </p>
+          )}
+          {reading.canRecheck && onRecheck && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRecheck}
+              data-testid="server-reachability-recheck-button"
+            >
+              Check again
+            </Button>
+          )}
+        </>
+      )}
+      <p className="sr-only" role="status" aria-live="polite">
+        {announcement}
+      </p>
+    </div>
+  );
+}
