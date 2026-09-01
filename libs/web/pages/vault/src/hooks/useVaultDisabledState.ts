@@ -1,3 +1,5 @@
+'use client';
+
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 
 type DisabledState = 'signed-out' | 'no-local-vault' | 'locked' | 'enabled';

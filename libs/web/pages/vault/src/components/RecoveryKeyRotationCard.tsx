@@ -23,6 +23,7 @@ import {
   useToast,
 } from '@myorganizer/web-ui';
 import {
+  currentPassphraseSchema,
   mintRecoveryKey,
   type MintedRecoveryKey,
 } from '@myorganizer/web-vault';
@@ -31,12 +32,12 @@ import { downloadTextFile } from '../utils';
 import { useRecoveryKeyRotation, useVaultDisabledState } from '../hooks';
 import { RecoveryKeyMintedSection } from './RecoveryKeyMintedSection';
 
-const currentPassphraseSchema = z.object({
-  currentPassphrase: z.string().min(1, 'Enter your current passphrase.'),
+const rotationFormSchema = z.object({
+  currentPassphrase: currentPassphraseSchema,
   confirmRecoveryKey: z.string(),
 });
 
-export type CurrentPassphraseInput = z.infer<typeof currentPassphraseSchema>;
+export type RotationFormInput = z.infer<typeof rotationFormSchema>;
 
 export function RecoveryKeyRotationCard() {
   const { toast } = useToast();
@@ -45,8 +46,8 @@ export function RecoveryKeyRotationCard() {
 
   const [mintedKey, setMintedKey] = useState<MintedRecoveryKey | null>(null);
 
-  const form = useForm<CurrentPassphraseInput>({
-    resolver: zodResolver(currentPassphraseSchema),
+  const form = useForm<RotationFormInput>({
+    resolver: zodResolver(rotationFormSchema),
     defaultValues: {
       currentPassphrase: '',
       confirmRecoveryKey: '',
@@ -68,13 +69,33 @@ export function RecoveryKeyRotationCard() {
     );
   }, [mintedKey]);
 
-  const handleCopy = useCallback(() => {
+  const handleCopy = useCallback(async () => {
     if (!mintedKey) return;
-    navigator.clipboard.writeText(mintedKey);
-    toast({
-      title: 'Copied',
-      description: 'Recovery key copied',
-    });
+
+    if (!navigator.clipboard) {
+      toast({
+        title: 'Copy not available',
+        description:
+          'Your browser does not support copy to clipboard. Use the Download button or select the key manually.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(mintedKey);
+      toast({
+        title: 'Copied',
+        description: 'Recovery key copied to clipboard.',
+      });
+    } catch {
+      toast({
+        title: 'Copy failed',
+        description:
+          'Could not copy recovery key to clipboard. Use the Download button or select it manually.',
+        variant: 'destructive',
+      });
+    }
   }, [mintedKey, toast]);
 
   const handleCancel = useCallback(() => {

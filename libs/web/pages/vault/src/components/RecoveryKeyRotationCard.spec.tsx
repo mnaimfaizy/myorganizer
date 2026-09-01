@@ -226,7 +226,7 @@ describe('RecoveryKeyRotationCard', () => {
 
     // Stub navigator.clipboard for copy tests
     Object.assign(navigator, {
-      clipboard: { writeText: jest.fn() },
+      clipboard: { writeText: jest.fn().mockResolvedValue(undefined) },
     });
   });
 
@@ -792,7 +792,10 @@ describe('RecoveryKeyRotationCard', () => {
   });
 
   describe('Copy button', () => {
-    test('14: after minting, click copy → navigator.clipboard.writeText called with minted key', async () => {
+    test('14: after minting, click copy → navigator.clipboard.writeText called with minted key, success toast shown', async () => {
+      const mockToast = jest.fn();
+      (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
+
       render(<RecoveryKeyRotationCard />);
 
       // Fill and mint
@@ -823,6 +826,67 @@ describe('RecoveryKeyRotationCard', () => {
           'MOCKED-RECOVERY-KEY-VALUE',
         );
       });
+
+      // Assert success toast was called
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith({
+          title: 'Copied',
+          description: 'Recovery key copied to clipboard.',
+        });
+      });
+    });
+
+    test('14a: after minting, copy button click when clipboard write fails → failure toast shown, key still visible', async () => {
+      const mockToast = jest.fn();
+      (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
+
+      // Mock clipboard.writeText to reject
+      Object.assign(navigator, {
+        clipboard: {
+          writeText: jest
+            .fn()
+            .mockRejectedValue(new Error('Permission denied')),
+        },
+      });
+
+      render(<RecoveryKeyRotationCard />);
+
+      // Fill and mint
+      const allInputs = screen.getAllByDisplayValue('');
+      const passphraseInput = allInputs.find(
+        (input): input is HTMLInputElement =>
+          input instanceof HTMLInputElement && input.type === 'password',
+      );
+
+      fireEvent.change(passphraseInput!, { target: { value: 'testpass1234' } });
+      const mintButton = screen.getByTestId('recovery-key-rotation-mint');
+      fireEvent.click(mintButton);
+
+      // Wait for copy button
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('recovery-key-rotation-copy'),
+        ).toBeInTheDocument();
+      });
+
+      // Click copy button
+      const copyButton = screen.getByTestId('recovery-key-rotation-copy');
+      fireEvent.click(copyButton);
+
+      // Assert failure toast was called
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith({
+          title: 'Copy failed',
+          description:
+            'Could not copy recovery key to clipboard. Use the Download button or select it manually.',
+          variant: 'destructive',
+        });
+      });
+
+      // Assert key is still visible
+      expect(
+        screen.getByTestId('recovery-key-rotation-key'),
+      ).toBeInTheDocument();
     });
   });
 

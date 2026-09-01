@@ -14,15 +14,15 @@ import {
 } from '@myorganizer/web-ui';
 import type { MintedRecoveryKey } from '@myorganizer/web-vault';
 
-import type { CurrentPassphraseInput } from './RecoveryKeyRotationCard';
+import type { RotationFormInput } from './RecoveryKeyRotationCard';
 
 interface RecoveryKeyMintedSectionProps {
   mintedKey: MintedRecoveryKey;
-  form: UseFormReturn<CurrentPassphraseInput>;
+  form: UseFormReturn<RotationFormInput>;
   disabledState: 'signed-out' | 'no-local-vault' | 'locked' | 'enabled';
   rotating: boolean;
   onDownload: () => void;
-  onCopy: () => void;
+  onCopy: () => Promise<void>;
   onCancel: () => void;
   onRotate: () => Promise<void>;
 }
