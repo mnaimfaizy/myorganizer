@@ -26,19 +26,12 @@ import {
   ChangePassphraseInput,
   MIN_PASSPHRASE_LENGTH,
 } from '@myorganizer/web-vault';
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 
-import { useChangePassphrase } from '../hooks';
+import { useChangePassphrase, useVaultDisabledState } from '../hooks';
 
 export function ChangePassphraseCard() {
   const { changing, changePassphrase } = useChangePassphrase();
-  const vaultSession = useOptionalVaultSession();
-  const handle = vaultSession?.handle ?? null;
-  const masterKeyBytes = vaultSession?.masterKeyBytes ?? null;
-
-  const isUnlocked = handle !== null && masterKeyBytes !== null;
-  const isSignedOut = handle === null;
-  const hasLocalVault = handle !== null && handle.loadVault() !== null;
+  const disabledState = useVaultDisabledState();
 
   const form = useForm<ChangePassphraseInput>({
     resolver: zodResolver(changePassphraseSchema),
@@ -67,14 +60,6 @@ export function ChangePassphraseCard() {
     },
     [changePassphrase, form],
   );
-
-  const disabledState = isSignedOut
-    ? 'signed-out'
-    : !hasLocalVault
-      ? 'no-local-vault'
-      : !isUnlocked
-        ? 'locked'
-        : 'enabled';
 
   return (
     <Card>

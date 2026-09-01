@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -20,31 +20,28 @@ import {
   FormLabel,
   FormMessage,
   Input,
-  Label,
   useToast,
 } from '@myorganizer/web-ui';
 import {
   mintRecoveryKey,
   type MintedRecoveryKey,
 } from '@myorganizer/web-vault';
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 
 import { downloadTextFile } from '../utils';
-import { useRecoveryKeyRotation } from '../hooks';
+import { useRecoveryKeyRotation, useVaultDisabledState } from '../hooks';
+import { RecoveryKeyMintedSection } from './RecoveryKeyMintedSection';
 
 const currentPassphraseSchema = z.object({
   currentPassphrase: z.string().min(1, 'Enter your current passphrase.'),
   confirmRecoveryKey: z.string(),
 });
 
-type CurrentPassphraseInput = z.infer<typeof currentPassphraseSchema>;
+export type CurrentPassphraseInput = z.infer<typeof currentPassphraseSchema>;
 
 export function RecoveryKeyRotationCard() {
   const { toast } = useToast();
   const { rotating, rotateRecoveryKey } = useRecoveryKeyRotation();
-  const vaultSession = useOptionalVaultSession();
-  const handle = vaultSession?.handle ?? null;
-  const masterKeyBytes = vaultSession?.masterKeyBytes ?? null;
+  const disabledState = useVaultDisabledState();
 
   const [mintedKey, setMintedKey] = useState<MintedRecoveryKey | null>(null);
 
@@ -55,18 +52,6 @@ export function RecoveryKeyRotationCard() {
       confirmRecoveryKey: '',
     },
   });
-
-  const isUnlocked = handle !== null && masterKeyBytes !== null;
-  const isSignedOut = handle === null;
-  const hasLocalVault = handle !== null && handle.loadVault() !== null;
-
-  const disabledState = isSignedOut
-    ? 'signed-out'
-    : !hasLocalVault
-      ? 'no-local-vault'
-      : !isUnlocked
-        ? 'locked'
-        : 'enabled';
 
   const handleGenerateKey = useCallback(async () => {
     const valid = await form.trigger('currentPassphrase');
@@ -122,7 +107,25 @@ export function RecoveryKeyRotationCard() {
   const currentPassphrase = form.watch('currentPassphrase');
   const confirmRecoveryKey = form.watch('confirmRecoveryKey');
   const isPassphraseEmpty = !currentPassphrase?.trim();
-  const isConfirmMatched = confirmRecoveryKey === mintedKey;
+
+  // Only flag a mismatch once the User has entered at least as much as the
+  // minted key — otherwise every keystroke of a correct paste-in-progress
+  // would flash as an error before it's had a chance to match.
+  useEffect(() => {
+    if (
+      mintedKey &&
+      confirmRecoveryKey &&
+      confirmRecoveryKey.length >= mintedKey.length &&
+      confirmRecoveryKey !== mintedKey
+    ) {
+      form.setError('confirmRecoveryKey', {
+        message:
+          'Recovery key does not match. Check that you pasted it correctly.',
+      });
+    } else {
+      form.clearErrors('confirmRecoveryKey');
+    }
+  }, [confirmRecoveryKey, mintedKey, form]);
 
   return (
     <Card>
@@ -162,7 +165,10 @@ export function RecoveryKeyRotationCard() {
         )}
 
         <Form {...form}>
-          <form className="flex flex-col gap-3">
+          <form
+            onSubmit={(e) => e.preventDefault()}
+            className="flex flex-col gap-3"
+          >
             <FormField
               control={form.control}
               name="currentPassphrase"
@@ -195,79 +201,16 @@ export function RecoveryKeyRotationCard() {
             </Button>
 
             {mintedKey !== null && (
-              <div className="space-y-3">
-                <div className="space-y-2">
-                  <Label htmlFor="recovery-key-rotation-key-display">
-                    Recovery key (save this)
-                  </Label>
-                  <Input
-                    id="recovery-key-rotation-key-display"
-                    readOnly
-                    value={mintedKey}
-                    data-testid="recovery-key-rotation-key"
-                  />
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      data-testid="recovery-key-rotation-download"
-                      onClick={handleDownload}
-                    >
-                      Download
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      data-testid="recovery-key-rotation-copy"
-                      onClick={handleCopy}
-                    >
-                      Copy
-                    </Button>
-                  </div>
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="confirmRecoveryKey"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Confirm you have the recovery key</FormLabel>
-                      <FormControl>
-                        <Input
-                          {...field}
-                          type="text"
-                          data-testid="recovery-key-rotation-confirm"
-                          placeholder="Paste the recovery key shown above"
-                          disabled={disabledState !== 'enabled'}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    data-testid="recovery-key-rotation-cancel"
-                    onClick={handleCancel}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    data-testid="recovery-key-rotation-submit"
-                    disabled={
-                      disabledState !== 'enabled' ||
-                      !isConfirmMatched ||
-                      rotating
-                    }
-                    onClick={handleRotate}
-                  >
-                    {rotating ? 'Rotating…' : 'Rotate recovery key'}
-                  </Button>
-                </div>
-              </div>
+              <RecoveryKeyMintedSection
+                mintedKey={mintedKey}
+                form={form}
+                disabledState={disabledState}
+                rotating={rotating}
+                onDownload={handleDownload}
+                onCopy={handleCopy}
+                onCancel={handleCancel}
+                onRotate={handleRotate}
+              />
             )}
           </form>
         </Form>

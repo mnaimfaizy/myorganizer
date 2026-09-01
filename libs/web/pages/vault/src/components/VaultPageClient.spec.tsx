@@ -11,6 +11,7 @@ jest.mock('../hooks', () => ({
     rotating: false,
     rotateRecoveryKey: jest.fn(),
   }),
+  useVaultDisabledState: () => 'locked',
 }));
 
 jest.mock('@myorganizer/web-vault-ui', () => {

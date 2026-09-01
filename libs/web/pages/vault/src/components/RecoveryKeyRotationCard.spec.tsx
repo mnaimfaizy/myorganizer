@@ -14,6 +14,7 @@ jest.mock('../utils', () => ({
  */
 jest.mock('../hooks', () => ({
   useRecoveryKeyRotation: jest.fn(),
+  useVaultDisabledState: jest.fn(),
 }));
 
 /**
@@ -165,7 +166,7 @@ import {
 } from '@myorganizer/web-vault';
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 import { useToast } from '@myorganizer/web-ui';
-import { useRecoveryKeyRotation } from '../hooks';
+import { useRecoveryKeyRotation, useVaultDisabledState } from '../hooks';
 import { downloadTextFile } from '../utils';
 
 // === Mock helpers ===
@@ -209,6 +210,7 @@ describe('RecoveryKeyRotationCard', () => {
     jest.clearAllMocks();
 
     // Default mocks
+    (useVaultDisabledState as jest.Mock).mockReturnValue('enabled');
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: createMockHandle({ loadVault: jest.fn().mockReturnValue({}) }),
       masterKeyBytes: new Uint8Array(32),
@@ -234,7 +236,7 @@ describe('RecoveryKeyRotationCard', () => {
 
   describe('Visibility — disabled-state ladder', () => {
     test('1: no session/handle → card renders, mint button disabled, shows "Your vault is not available on this device right now."', () => {
-      (useOptionalVaultSession as jest.Mock).mockReturnValue(null);
+      (useVaultDisabledState as jest.Mock).mockReturnValue('signed-out');
 
       render(<RecoveryKeyRotationCard />);
 
@@ -248,12 +250,7 @@ describe('RecoveryKeyRotationCard', () => {
     });
 
     test('2: handle present, loadVault() returns null → mint button disabled, shows "Set up a local vault…"', () => {
-      (useOptionalVaultSession as jest.Mock).mockReturnValue({
-        handle: createMockHandle({
-          loadVault: jest.fn().mockReturnValue(null),
-        }),
-        masterKeyBytes: new Uint8Array(32),
-      });
+      (useVaultDisabledState as jest.Mock).mockReturnValue('no-local-vault');
 
       render(<RecoveryKeyRotationCard />);
 
@@ -267,10 +264,7 @@ describe('RecoveryKeyRotationCard', () => {
     });
 
     test('3: handle present, masterKeyBytes === null (locked), vault exists → mint button disabled, shows "Unlock your vault…"', () => {
-      (useOptionalVaultSession as jest.Mock).mockReturnValue({
-        handle: createMockHandle({ loadVault: jest.fn().mockReturnValue({}) }),
-        masterKeyBytes: null,
-      });
+      (useVaultDisabledState as jest.Mock).mockReturnValue('locked');
 
       render(<RecoveryKeyRotationCard />);
 
@@ -458,6 +452,141 @@ describe('RecoveryKeyRotationCard', () => {
       });
 
       // Assert submit is now enabled
+      const submitButton = screen.getByTestId('recovery-key-rotation-submit');
+      expect(submitButton).not.toBeDisabled();
+    });
+  });
+
+  describe('Confirm-key validation', () => {
+    test('9a: after minting, typing fewer characters than minted key should NOT show mismatch error', async () => {
+      render(<RecoveryKeyRotationCard />);
+
+      // Fill and mint
+      const allInputs = screen.getAllByDisplayValue('');
+      const passphraseInput = allInputs.find(
+        (input): input is HTMLInputElement =>
+          input instanceof HTMLInputElement && input.type === 'password',
+      );
+
+      fireEvent.change(passphraseInput!, { target: { value: 'testpass1234' } });
+      const mintButton = screen.getByTestId('recovery-key-rotation-mint');
+      fireEvent.click(mintButton);
+
+      // Wait for confirm field
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('recovery-key-rotation-confirm'),
+        ).toBeInTheDocument();
+      });
+
+      // Type a partial value that doesn't match (e.g., first 15 chars of a 26-char key)
+      const confirmInput = screen.getByTestId(
+        'recovery-key-rotation-confirm',
+      ) as HTMLInputElement;
+      fireEvent.change(confirmInput, { target: { value: 'WRONG-VALUE-TOO' } }); // 15 chars, less than 26
+
+      // Assert that no error message is shown
+      // The FormMessage should not contain the mismatch error
+      const formMessages = screen.getAllByTestId('form-message');
+      const hasError = formMessages.some((msg) =>
+        msg.textContent?.includes('Recovery key does not match'),
+      );
+      expect(hasError).toBe(false);
+    });
+
+    test('9b: after minting, typing at least as many characters as minted key that do NOT match SHOULD show mismatch error', async () => {
+      render(<RecoveryKeyRotationCard />);
+
+      // Fill and mint
+      const allInputs = screen.getAllByDisplayValue('');
+      const passphraseInput = allInputs.find(
+        (input): input is HTMLInputElement =>
+          input instanceof HTMLInputElement && input.type === 'password',
+      );
+
+      fireEvent.change(passphraseInput!, { target: { value: 'testpass1234' } });
+      const mintButton = screen.getByTestId('recovery-key-rotation-mint');
+      fireEvent.click(mintButton);
+
+      // Wait for confirm field
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('recovery-key-rotation-confirm'),
+        ).toBeInTheDocument();
+      });
+
+      // Type a value that is at least as long as the minted key but doesn't match
+      // Minted key is 26 chars ('MOCKED-RECOVERY-KEY-VALUE')
+      const confirmInput = screen.getByTestId(
+        'recovery-key-rotation-confirm',
+      ) as HTMLInputElement;
+      fireEvent.change(confirmInput, {
+        target: { value: 'WRONG-VALUE-THAT-IS-LONG-ENOUGH' }, // 31 chars
+      });
+
+      // Assert that the mismatch error IS shown
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            'Recovery key does not match. Check that you pasted it correctly.',
+          ),
+        ).toBeInTheDocument();
+      });
+    });
+
+    test('9c: after minting with mismatch error shown, correcting to exact match clears the error', async () => {
+      render(<RecoveryKeyRotationCard />);
+
+      // Fill and mint
+      const allInputs = screen.getAllByDisplayValue('');
+      const passphraseInput = allInputs.find(
+        (input): input is HTMLInputElement =>
+          input instanceof HTMLInputElement && input.type === 'password',
+      );
+
+      fireEvent.change(passphraseInput!, { target: { value: 'testpass1234' } });
+      const mintButton = screen.getByTestId('recovery-key-rotation-mint');
+      fireEvent.click(mintButton);
+
+      // Wait for confirm field
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('recovery-key-rotation-confirm'),
+        ).toBeInTheDocument();
+      });
+
+      // Type a wrong value first (long enough to trigger error)
+      const confirmInput = screen.getByTestId(
+        'recovery-key-rotation-confirm',
+      ) as HTMLInputElement;
+      fireEvent.change(confirmInput, {
+        target: { value: 'WRONG-VALUE-THAT-IS-LONG-ENOUGH' },
+      });
+
+      // Assert the error is shown
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            'Recovery key does not match. Check that you pasted it correctly.',
+          ),
+        ).toBeInTheDocument();
+      });
+
+      // Now correct to the exact match
+      fireEvent.change(confirmInput, {
+        target: { value: 'MOCKED-RECOVERY-KEY-VALUE' },
+      });
+
+      // Assert that the error is cleared
+      await waitFor(() => {
+        expect(
+          screen.queryByText(
+            'Recovery key does not match. Check that you pasted it correctly.',
+          ),
+        ).not.toBeInTheDocument();
+      });
+
+      // Also assert that submit is now enabled with the correct value
       const submitButton = screen.getByTestId('recovery-key-rotation-submit');
       expect(submitButton).not.toBeDisabled();
     });
