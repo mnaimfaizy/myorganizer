@@ -11,6 +11,7 @@ import { CloudBackupLiveCard } from './CloudBackupLiveCard';
 import { CloudBackupUnavailableCard } from './CloudBackupUnavailableCard';
 import { ExportVaultCard } from './ExportVaultCard';
 import { ImportVaultCard } from './ImportVaultCard';
+import { RecoveryKeyRotationCard } from './RecoveryKeyRotationCard';
 import { RemoveVaultCard } from './RemoveVaultCard';
 
 export function VaultPageClient() {
@@ -33,6 +34,7 @@ export function VaultPageClient() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <ChangePassphraseCard />
+      <RecoveryKeyRotationCard />
       {provider && handle ? (
         <CloudBackupLiveCard provider={provider} handle={handle} />
       ) : (

@@ -148,6 +148,7 @@ function createMockHandle(overrides?: Partial<VaultHandle>): VaultHandle {
     unlockWithRecoveryKey: jest.fn(),
     changePassphrase: jest.fn(),
     resetPassphrase: jest.fn(),
+    rotateRecoveryKey: jest.fn(),
     loadDecryptedData: jest.fn(),
     saveEncryptedData: jest.fn(),
     vaultStatus: jest.fn().mockReturnValue('absent'),

@@ -7,6 +7,10 @@ jest.mock('../hooks', () => ({
   useLatestCloudBackup: () => ({ status: 'empty', record: null }),
   useExportVault: () => ({ exporting: false, exportVaultNow: jest.fn() }),
   useChangePassphrase: () => ({ changing: false, changePassphrase: jest.fn() }),
+  useRecoveryKeyRotation: () => ({
+    rotating: false,
+    rotateRecoveryKey: jest.fn(),
+  }),
 }));
 
 jest.mock('@myorganizer/web-vault-ui', () => {
