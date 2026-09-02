@@ -237,7 +237,7 @@ async function editCatalogItemViaMenu(
     await page.getByLabel('Catalog Item Name').fill(updates.name);
   }
   if (updates.category) {
-    await dialog.getByRole('button', { name: updates.category }).click();
+    await dialog.getByRole('radio', { name: updates.category }).click();
   }
   if (updates.price) {
     await page.getByLabel('Default Price').fill(updates.price);

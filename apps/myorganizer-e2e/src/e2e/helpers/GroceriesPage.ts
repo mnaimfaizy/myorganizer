@@ -275,7 +275,7 @@ export class GroceriesPage {
     }
 
     if (updates.category) {
-      await dialog.getByRole('button', { name: updates.category }).click();
+      await dialog.getByRole('radio', { name: updates.category }).click();
     }
 
     if (updates.price) {

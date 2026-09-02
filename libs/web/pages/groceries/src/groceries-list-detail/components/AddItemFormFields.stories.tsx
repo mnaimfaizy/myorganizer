@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { Form } from '@myorganizer/web-ui';
 import {
   AddItemMetadataFields,
   addItemSchema,
@@ -39,18 +40,20 @@ export const Default: Story = {
     const selectedCategory = form.watch('category');
 
     return (
-      <div className="w-full max-w-md p-4">
-        <AddItemMetadataFields
-          control={form.control}
-          matchingCatalogItems={[]}
-          activeSuggestion={0}
-          selectedCategory={selectedCategory}
-          onNameChange={() => undefined}
-          onNameKeyDown={() => undefined}
-          onSelectCatalogItem={() => undefined}
-          isLoading={false}
-        />
-      </div>
+      <Form {...form}>
+        <div className="w-full max-w-md p-4">
+          <AddItemMetadataFields
+            control={form.control}
+            matchingCatalogItems={[]}
+            activeSuggestion={0}
+            selectedCategory={selectedCategory}
+            onNameChange={() => undefined}
+            onNameKeyDown={() => undefined}
+            onSelectCatalogItem={() => undefined}
+            isLoading={false}
+          />
+        </div>
+      </Form>
     );
   },
 };
@@ -77,18 +80,20 @@ export const DifferentCategorySelected: Story = {
     const selectedCategory = form.watch('category');
 
     return (
-      <div className="w-full max-w-md p-4">
-        <AddItemMetadataFields
-          control={form.control}
-          matchingCatalogItems={[]}
-          activeSuggestion={0}
-          selectedCategory={selectedCategory}
-          onNameChange={() => undefined}
-          onNameKeyDown={() => undefined}
-          onSelectCatalogItem={() => undefined}
-          isLoading={false}
-        />
-      </div>
+      <Form {...form}>
+        <div className="w-full max-w-md p-4">
+          <AddItemMetadataFields
+            control={form.control}
+            matchingCatalogItems={[]}
+            activeSuggestion={0}
+            selectedCategory={selectedCategory}
+            onNameChange={() => undefined}
+            onNameKeyDown={() => undefined}
+            onSelectCatalogItem={() => undefined}
+            isLoading={false}
+          />
+        </div>
+      </Form>
     );
   },
 };
@@ -115,18 +120,20 @@ export const FirstCategorySelected: Story = {
     const selectedCategory = form.watch('category');
 
     return (
-      <div className="w-full max-w-md p-4">
-        <AddItemMetadataFields
-          control={form.control}
-          matchingCatalogItems={[]}
-          activeSuggestion={0}
-          selectedCategory={selectedCategory}
-          onNameChange={() => undefined}
-          onNameKeyDown={() => undefined}
-          onSelectCatalogItem={() => undefined}
-          isLoading={false}
-        />
-      </div>
+      <Form {...form}>
+        <div className="w-full max-w-md p-4">
+          <AddItemMetadataFields
+            control={form.control}
+            matchingCatalogItems={[]}
+            activeSuggestion={0}
+            selectedCategory={selectedCategory}
+            onNameChange={() => undefined}
+            onNameKeyDown={() => undefined}
+            onSelectCatalogItem={() => undefined}
+            isLoading={false}
+          />
+        </div>
+      </Form>
     );
   },
 };
@@ -154,18 +161,20 @@ export const LastCategorySelected: Story = {
     const selectedCategory = form.watch('category');
 
     return (
-      <div className="w-full max-w-md p-4">
-        <AddItemMetadataFields
-          control={form.control}
-          matchingCatalogItems={[]}
-          activeSuggestion={0}
-          selectedCategory={selectedCategory}
-          onNameChange={() => undefined}
-          onNameKeyDown={() => undefined}
-          onSelectCatalogItem={() => undefined}
-          isLoading={false}
-        />
-      </div>
+      <Form {...form}>
+        <div className="w-full max-w-md p-4">
+          <AddItemMetadataFields
+            control={form.control}
+            matchingCatalogItems={[]}
+            activeSuggestion={0}
+            selectedCategory={selectedCategory}
+            onNameChange={() => undefined}
+            onNameKeyDown={() => undefined}
+            onSelectCatalogItem={() => undefined}
+            isLoading={false}
+          />
+        </div>
+      </Form>
     );
   },
 };
@@ -192,18 +201,20 @@ export const Disabled: Story = {
     const selectedCategory = form.watch('category');
 
     return (
-      <div className="w-full max-w-md p-4">
-        <AddItemMetadataFields
-          control={form.control}
-          matchingCatalogItems={[]}
-          activeSuggestion={0}
-          selectedCategory={selectedCategory}
-          onNameChange={() => undefined}
-          onNameKeyDown={() => undefined}
-          onSelectCatalogItem={() => undefined}
-          isLoading={true}
-        />
-      </div>
+      <Form {...form}>
+        <div className="w-full max-w-md p-4">
+          <AddItemMetadataFields
+            control={form.control}
+            matchingCatalogItems={[]}
+            activeSuggestion={0}
+            selectedCategory={selectedCategory}
+            onNameChange={() => undefined}
+            onNameKeyDown={() => undefined}
+            onSelectCatalogItem={() => undefined}
+            isLoading={true}
+          />
+        </div>
+      </Form>
     );
   },
 };
