@@ -25,6 +25,8 @@
     --destructive-foreground: 0 0% 100%;
     --warning: 26 90.5% 37.1%;
     --warning-foreground: 0 0% 100%;
+    --success: 142.4 71.8% 29.2%;
+    --success-foreground: 0 0% 100%;
     --ring: 215 20.2% 65.1%;
     --brand: 262.1 83.3% 57.8%;
     --brand-foreground: 0 0% 100%;
@@ -62,6 +64,8 @@
     --destructive-foreground: 210 40% 98%;
     --warning: 42.8 96.4% 56.1%;
     --warning-foreground: 222.2 47.4% 11.2%;
+    --success: 141.9 69.2% 58%;
+    --success-foreground: 222.2 47.4% 11.2%;
     --ring: 217.2 33.3% 17.1%;
     --brand: 255.1 91.7% 76.3%;
     --brand-foreground: 222.2 47.4% 11.2%;

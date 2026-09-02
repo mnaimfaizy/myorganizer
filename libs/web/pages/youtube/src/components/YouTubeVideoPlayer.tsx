@@ -382,15 +382,15 @@ export function YouTubeVideoPlayer({
     return (
       <div
         className={cn(
-          'relative flex aspect-video w-full flex-col items-center justify-center rounded-t-lg bg-gray-100 p-4 text-center dark:bg-gray-800',
+          'relative flex aspect-video w-full flex-col items-center justify-center rounded-t-lg bg-muted p-4 text-center',
           className,
         )}
       >
-        <AlertCircle className="mb-2 h-8 w-8 text-amber-500" />
-        <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">
+        <AlertCircle className="mb-2 h-8 w-8 text-warning" />
+        <p className="text-xs font-semibold text-foreground">
           Playback unavailable in app
         </p>
-        <p className="mt-1 text-[11px] text-gray-500 dark:text-gray-400">
+        <p className="mt-1 text-[11px] text-muted-foreground">
           {errorMessage ||
             'This video cannot be played in the embedded player.'}
         </p>
@@ -398,7 +398,7 @@ export function YouTubeVideoPlayer({
           href={youtubeWatchUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white shadow transition-colors hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+          className="mt-3 inline-flex items-center gap-1.5 rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground shadow transition-colors hover:bg-destructive focus:outline-none focus:ring-2 focus:ring-destructive focus:ring-offset-2"
         >
           <ExternalLink className="h-3.5 w-3.5" />
           Open on YouTube
@@ -442,7 +442,7 @@ export function YouTubeVideoPlayer({
   return (
     <div
       className={cn(
-        'group/player relative aspect-video w-full overflow-hidden bg-gray-100 dark:bg-gray-800',
+        'group/player relative aspect-video w-full overflow-hidden bg-muted',
         className,
       )}
     >
@@ -454,7 +454,7 @@ export function YouTubeVideoPlayer({
           loading="lazy"
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-gray-100 text-gray-400 dark:bg-gray-800">
+        <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
           <span className="text-3xl" aria-hidden="true">
             ▶
           </span>
@@ -466,7 +466,7 @@ export function YouTubeVideoPlayer({
           type="button"
           size="icon"
           onClick={handleStartPlay}
-          className="h-12 w-12 rounded-full bg-red-600 text-white shadow-lg transition-transform hover:scale-110 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+          className="h-12 w-12 rounded-full bg-destructive text-destructive-foreground shadow-lg transition-transform hover:scale-110 hover:bg-destructive"
           aria-label={`Play ${video.title}`}
         >
           <Play className="ml-0.5 h-6 w-6 fill-current" />
@@ -478,8 +478,8 @@ export function YouTubeVideoPlayer({
           variant={watched ? 'secondary' : 'default'}
           className={
             watched
-              ? 'bg-gray-800/80 text-gray-200 backdrop-blur-sm dark:bg-gray-900/80 dark:text-gray-300'
-              : 'bg-blue-600/90 text-white backdrop-blur-sm'
+              ? 'bg-muted/80 text-muted-foreground backdrop-blur-sm'
+              : 'bg-brand/90 text-brand-foreground backdrop-blur-sm'
           }
         >
           {watched ? 'Watched' : 'New'}

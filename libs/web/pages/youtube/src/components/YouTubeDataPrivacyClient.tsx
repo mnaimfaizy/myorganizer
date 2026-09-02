@@ -10,33 +10,33 @@ export default function YouTubeDataPrivacyClient() {
             How we store your YouTube data
           </h1>
           <ul className="mt-4 space-y-3">
-            <li className="text-sm text-gray-700 dark:text-gray-300">
+            <li className="text-sm text-muted-foreground">
               We store <strong>metadata only</strong> — titles, thumbnails,
               video IDs, publish times, duration, and channel info. We never
               store the video files themselves.
             </li>
-            <li className="text-sm text-gray-700 dark:text-gray-300">
+            <li className="text-sm text-muted-foreground">
               <strong>Watched</strong> is a simple yes/no marker for what you've
               already seen. It is not a viewing history or analytics feature —
               no progress percentages, watch counts, or archives.
             </li>
-            <li className="text-sm text-gray-700 dark:text-gray-300">
+            <li className="text-sm text-muted-foreground">
               We keep the <strong>latest 100</strong> Cached Uploads per Enabled
               Channel.
             </li>
-            <li className="text-sm text-gray-700 dark:text-gray-300">
+            <li className="text-sm text-muted-foreground">
               If you disable a channel, its Cached Uploads and Watched status
               are kept for <strong>30 days</strong>, then permanently deleted.
             </li>
-            <li className="text-sm text-gray-700 dark:text-gray-300">
+            <li className="text-sm text-muted-foreground">
               <strong>Disconnecting</strong> your YouTube account deletes all
               YouTube metadata for your account.
             </li>
-            <li className="text-sm text-gray-700 dark:text-gray-300">
+            <li className="text-sm text-muted-foreground">
               Your <strong>Shorts Daily Budget</strong> is tracked locally in
               your browser, not on our servers.
             </li>
-            <li className="text-sm text-gray-700 dark:text-gray-300">
+            <li className="text-sm text-muted-foreground">
               This YouTube metadata is <strong>not</strong> covered by
               MyOrganizer's Vault or end-to-end encryption — those apply
               elsewhere in the app. (Your YouTube sign-in tokens are still

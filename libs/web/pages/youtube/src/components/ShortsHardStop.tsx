@@ -22,14 +22,14 @@ interface ShortsHardStopProps {
 export function ShortsHardStop({ limitMs }: ShortsHardStopProps) {
   return (
     <div
-      className="flex flex-col items-center justify-center gap-4 rounded-lg border border-amber-200 bg-amber-50 p-8 dark:border-amber-900 dark:bg-amber-900/20"
+      className="flex flex-col items-center justify-center gap-4 rounded-lg border border-warning bg-warning/10 p-8"
       role="status"
       aria-live="polite"
       aria-label="Shorts budget exhausted"
     >
-      <div className="rounded-full bg-amber-100 p-4 dark:bg-amber-900/40">
+      <div className="rounded-full bg-warning/10 p-4">
         <svg
-          className="h-12 w-12 text-amber-600 dark:text-amber-400"
+          className="h-12 w-12 text-warning"
           fill="currentColor"
           viewBox="0 0 24 24"
         >
@@ -38,16 +38,16 @@ export function ShortsHardStop({ limitMs }: ShortsHardStopProps) {
       </div>
 
       <div className="max-w-sm text-center">
-        <h2 className="text-lg font-semibold text-amber-900 dark:text-amber-100">
+        <h2 className="text-lg font-semibold text-warning">
           Today's Shorts Budget Is Exhausted
         </h2>
-        <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">
+        <p className="mt-2 text-sm text-warning">
           You've watched {formatShortsDuration(limitMs)} of Shorts today.
         </p>
-        <p className="mt-2 text-sm text-amber-800 dark:text-amber-200">
+        <p className="mt-2 text-sm text-warning">
           Shorts will be available again at midnight local time.
         </p>
-        <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">
+        <p className="mt-3 text-xs text-warning">
           Raising your daily time limit gives you time back today immediately.
         </p>
       </div>

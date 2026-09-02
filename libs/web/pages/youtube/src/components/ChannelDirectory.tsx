@@ -249,13 +249,13 @@ export function ChannelDirectory({
       <div
         role="alert"
         aria-live="assertive"
-        className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-900/20"
+        className="rounded-lg border border-destructive bg-destructive/10 p-4"
       >
-        <p className="text-sm text-red-700 dark:text-red-200">{error}</p>
+        <p className="text-sm text-destructive">{error}</p>
         {onRetry && (
           <button
             onClick={handleRetryClick}
-            className="mt-3 inline-flex items-center rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700 active:bg-red-800 dark:bg-red-700 dark:hover:bg-red-600"
+            className="mt-3 inline-flex items-center rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground hover:bg-destructive active:bg-destructive"
             type="button"
           >
             Retry
@@ -298,8 +298,8 @@ export function ChannelDirectory({
 
   if (channels.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-8 text-center dark:border-gray-700 dark:bg-gray-900/50">
-        <p className="text-sm text-gray-600 dark:text-gray-400">
+      <div className="rounded-lg border border-border bg-muted p-8 text-center">
+        <p className="text-sm text-muted-foreground">
           No Enabled Channels yet. Enable a channel from the list above to get
           started.
         </p>
@@ -332,7 +332,7 @@ export function ChannelDirectory({
         >
           {/* Channel title */}
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+            <h2 className="text-lg font-semibold text-foreground">
               {selectedChannel.channelTitle}
             </h2>
           </div>
@@ -351,15 +351,15 @@ export function ChannelDirectory({
 
           {/* Uploads list */}
           {selectedChannel.videos.length === 0 ? (
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900/50">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="rounded-lg border border-border bg-muted p-4">
+              <p className="text-sm text-muted-foreground">
                 No uploads for this channel.
               </p>
               <a
                 href={`https://www.youtube.com/channel/${encodeURIComponent(selectedChannel.channelId)}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand hover:text-brand"
               >
                 <ExternalLink className="h-3.5 w-3.5" />
                 Open channel on YouTube
@@ -367,7 +367,7 @@ export function ChannelDirectory({
             </div>
           ) : (
             <div className="space-y-2">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+              <h3 className="text-sm font-semibold text-foreground">
                 Cached Uploads
               </h3>
               {selectedChannel.videos.map((video, index) => (
@@ -394,7 +394,7 @@ export function ChannelDirectory({
               ))}
 
               {/* End-of-list disclosure */}
-              <div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+              <div className="rounded-lg border border-border bg-card p-4">
                 {canLoadMoreUploads && (
                   <Button
                     type="button"
@@ -409,7 +409,7 @@ export function ChannelDirectory({
                       : 'Show older uploads'}
                   </Button>
                 )}
-                <p className="text-xs text-gray-600 dark:text-gray-400">
+                <p className="text-xs text-muted-foreground">
                   MyOrganizer stores only recent uploads from each channel.
                   Older uploads are not cached here.
                 </p>
@@ -417,7 +417,7 @@ export function ChannelDirectory({
                   href={`https://www.youtube.com/channel/${encodeURIComponent(selectedChannel.channelId)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                  className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-brand hover:text-brand"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
                   Open channel on YouTube
@@ -459,12 +459,10 @@ function ActivePlayerPanel({
   return (
     <div
       onKeyDown={handleKeyDown}
-      className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 lg:sticky lg:top-2 lg:z-10"
+      className="rounded-lg border border-border bg-card p-4 lg:sticky lg:top-2 lg:z-10"
     >
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-          {video.title}
-        </h3>
+        <h3 className="text-sm font-semibold text-foreground">{video.title}</h3>
         <Button
           type="button"
           variant="ghost"
@@ -579,14 +577,14 @@ const UploadListItem = React.forwardRef<HTMLDivElement, UploadListItemProps>(
         tabIndex={tabIndex}
         onKeyDown={onKeyDown}
         className={cn(
-          'group flex gap-3 rounded-lg border bg-white p-3 transition-colors dark:bg-gray-900',
+          'group flex gap-3 rounded-lg border bg-card p-3 transition-colors',
           isFocused
-            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500/50 dark:border-blue-600 dark:bg-blue-900/20'
-            : 'border-gray-200 hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800',
+            ? 'border-brand bg-brand/10 ring-2 ring-brand/50'
+            : 'border-border hover:bg-muted',
         )}
       >
         {/* Thumbnail */}
-        <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+        <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
           {video.thumbnail ? (
             <img
               src={video.thumbnail}
@@ -595,13 +593,13 @@ const UploadListItem = React.forwardRef<HTMLDivElement, UploadListItemProps>(
               loading="lazy"
             />
           ) : (
-            <span className="text-2xl text-gray-400">▶</span>
+            <span className="text-2xl text-muted-foreground">▶</span>
           )}
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <h4 className="line-clamp-2 text-sm font-medium text-gray-900 dark:text-gray-100">
+          <h4 className="line-clamp-2 text-sm font-medium text-foreground">
             <a
               href={youtubeWatchUrl}
               target="_blank"
@@ -612,7 +610,7 @@ const UploadListItem = React.forwardRef<HTMLDivElement, UploadListItemProps>(
             </a>
           </h4>
 
-          <div className="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+          <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
             {video.channelTitle && (
               <>
                 <span className="truncate">{video.channelTitle}</span>
@@ -631,7 +629,7 @@ const UploadListItem = React.forwardRef<HTMLDivElement, UploadListItemProps>(
               variant="ghost"
               size="sm"
               onClick={handlePlayClick}
-              className="h-6 px-2 text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
               aria-label={`Play ${video.title} in app`}
             >
               Play in app
@@ -643,7 +641,7 @@ const UploadListItem = React.forwardRef<HTMLDivElement, UploadListItemProps>(
               size="sm"
               onClick={handleToggleWatched}
               disabled={updating}
-              className="h-6 px-2 text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
               aria-label={
                 watched
                   ? `Mark ${video.title} as new`
@@ -652,12 +650,12 @@ const UploadListItem = React.forwardRef<HTMLDivElement, UploadListItemProps>(
             >
               {watched ? (
                 <>
-                  <CheckCircle className="mr-1 h-3.5 w-3.5 text-green-600 dark:text-green-500" />
+                  <CheckCircle className="mr-1 h-3.5 w-3.5 text-success" />
                   Mark as new
                 </>
               ) : (
                 <>
-                  <Circle className="mr-1 h-3.5 w-3.5 text-gray-400" />
+                  <Circle className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
                   Mark as watched
                 </>
               )}
@@ -670,7 +668,7 @@ const UploadListItem = React.forwardRef<HTMLDivElement, UploadListItemProps>(
                 size="sm"
                 onClick={handleAddToQueue}
                 disabled={isQueued || queueFull}
-                className="h-6 px-2 text-xs text-gray-600 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-400 dark:hover:text-gray-100"
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                 aria-label={
                   isQueued
                     ? `${video.title} is already queued`
@@ -679,7 +677,7 @@ const UploadListItem = React.forwardRef<HTMLDivElement, UploadListItemProps>(
                       : `Add ${video.title} to queue`
                 }
               >
-                <ListPlus className="mr-1 h-3.5 w-3.5 text-gray-400" />
+                <ListPlus className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
                 {isQueued
                   ? 'Queued'
                   : queueFull
@@ -691,7 +689,7 @@ const UploadListItem = React.forwardRef<HTMLDivElement, UploadListItemProps>(
             {error && (
               <span
                 role="alert"
-                className="text-[10px] font-medium text-red-600 dark:text-red-400"
+                className="text-[10px] font-medium text-destructive"
               >
                 {error}
               </span>
