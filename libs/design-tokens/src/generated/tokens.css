@@ -28,6 +28,8 @@
   --color-cyan-on-dark: #22d3ee;
   --color-destructive-on-dark: #811d1d;
   --color-warning-on-dark: #fbbd23;
+  --color-success: #15803d;
+  --color-success-on-dark: #4ade80;
   --font-display: 'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-body: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --radius-sm: 0.25rem;

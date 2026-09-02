@@ -93,7 +93,7 @@ export function VideoCard({
   return (
     <div
       className={cn(
-        'group block overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-gray-700 dark:bg-gray-900',
+        'group block overflow-hidden rounded-lg border border-border bg-card shadow-sm transition-shadow hover:shadow-md',
         className,
       )}
     >
@@ -105,7 +105,7 @@ export function VideoCard({
       />
 
       <div className="p-3">
-        <h3 className="line-clamp-2 text-sm font-medium leading-snug text-gray-900 dark:text-gray-100">
+        <h3 className="line-clamp-2 text-sm font-medium leading-snug text-foreground">
           <a
             href={youtubeWatchUrl}
             target="_blank"
@@ -116,7 +116,7 @@ export function VideoCard({
           </a>
         </h3>
 
-        <div className="mt-1 flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400">
+        <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
           {video.channelTitle && (
             <>
               <span className="truncate">{video.channelTitle}</span>
@@ -126,7 +126,7 @@ export function VideoCard({
           <span>{formattedDate}</span>
         </div>
 
-        <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-2 dark:border-gray-800">
+        <div className="mt-3 flex items-center justify-between border-t border-border pt-2">
           <div className="flex items-center gap-1">
             <Button
               type="button"
@@ -134,7 +134,7 @@ export function VideoCard({
               size="sm"
               onClick={handleToggleWatched}
               disabled={updating}
-              className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
               aria-label={
                 watched
                   ? `Mark ${video.title} as new`
@@ -143,12 +143,12 @@ export function VideoCard({
             >
               {watched ? (
                 <>
-                  <CheckCircle className="mr-1.5 h-3.5 w-3.5 text-green-600 dark:text-green-500" />
+                  <CheckCircle className="mr-1.5 h-3.5 w-3.5 text-success" />
                   Mark as new
                 </>
               ) : (
                 <>
-                  <Circle className="mr-1.5 h-3.5 w-3.5 text-gray-400" />
+                  <Circle className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
                   Mark as watched
                 </>
               )}
@@ -161,7 +161,7 @@ export function VideoCard({
                 size="sm"
                 onClick={handleAddToQueue}
                 disabled={isQueued || queueFull}
-                className="h-7 px-2 text-xs text-gray-600 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-60 dark:text-gray-400 dark:hover:text-gray-100"
+                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
                 aria-label={
                   isQueued
                     ? `${video.title} is already queued`
@@ -170,7 +170,7 @@ export function VideoCard({
                       : `Add ${video.title} to queue`
                 }
               >
-                <ListPlus className="mr-1.5 h-3.5 w-3.5 text-gray-400" />
+                <ListPlus className="mr-1.5 h-3.5 w-3.5 text-muted-foreground" />
                 {isQueued
                   ? 'Queued'
                   : queueFull
@@ -183,7 +183,7 @@ export function VideoCard({
           {error && (
             <span
               role="alert"
-              className="text-[10px] font-medium text-red-600 dark:text-red-400"
+              className="text-[10px] font-medium text-destructive"
             >
               {error}
             </span>

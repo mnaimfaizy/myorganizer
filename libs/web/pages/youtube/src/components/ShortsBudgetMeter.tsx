@@ -79,14 +79,14 @@ export function ShortsBudgetMeter({
   );
 
   return (
-    <div className="space-y-4 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+    <div className="space-y-4 rounded-lg border border-border bg-card p-4">
       {/* Header: time used and remaining */}
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <p className="text-sm font-semibold text-foreground">
             Shorts Daily Budget
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-muted-foreground">
             {formatShortsDuration(spentMs)} used today
           </p>
         </div>
@@ -97,13 +97,11 @@ export function ShortsBudgetMeter({
             The announcement below carries the same state at whole-minute
             granularity, so its text only changes on a coarse step.
           */}
-          <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <p className="text-sm font-semibold text-foreground">
             {formatShortsDuration(remainingMs)} remaining
           </p>
           {metering && (
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              (metering…)
-            </p>
+            <p className="text-xs text-muted-foreground">(metering…)</p>
           )}
         </div>
       </div>
@@ -114,12 +112,12 @@ export function ShortsBudgetMeter({
 
       {/* Progress bar: shows usage with text label, not color alone */}
       <div className="space-y-2">
-        <div className="flex h-6 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+        <div className="flex h-6 overflow-hidden rounded-full bg-muted">
           <div
             // Reduced motion is honoured in CSS rather than sniffed in JS —
             // the variant tracks the OS preference live, with no effect,
             // no state, and nothing to go stale.
-            className="bg-blue-500 transition-all duration-300 motion-reduce:transition-none"
+            className="bg-brand transition-all duration-300 motion-reduce:transition-none"
             style={{ width: `${Math.min(usedPercent, 100)}%` }}
             role="progressbar"
             aria-valuenow={usedPercent}
@@ -128,9 +126,7 @@ export function ShortsBudgetMeter({
             aria-label={`${usedPercent}% of daily Shorts budget used`}
           />
         </div>
-        <p className="text-xs text-gray-600 dark:text-gray-400">
-          {usedPercent}% used
-        </p>
+        <p className="text-xs text-muted-foreground">{usedPercent}% used</p>
       </div>
 
       {/* Limit control: numeric input */}
@@ -153,7 +149,7 @@ export function ShortsBudgetMeter({
           // unactionable. It is not a Hard Stop bypass — the escape the Hard
           // Stop blocks is leaving for YouTube, not the User's own daily cap.
         />
-        <p className="text-xs text-gray-500 dark:text-gray-400">
+        <p className="text-xs text-muted-foreground">
           Min: {MIN_SHORTS_LIMIT_MINUTES} min • Max: {MAX_SHORTS_LIMIT_MINUTES}{' '}
           min
         </p>
@@ -162,7 +158,7 @@ export function ShortsBudgetMeter({
       {/* Locked state banner with live announcement */}
       {locked && (
         <div
-          className="rounded bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-200"
+          className="rounded bg-warning/10 p-2 text-xs text-warning"
           role="status"
           aria-live="polite"
         >

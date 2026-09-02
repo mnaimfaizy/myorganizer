@@ -70,6 +70,12 @@ export const colorDestructiveOnDarkVar = 'var(--color-destructive-on-dark)';
 /** Dark-surface pairing for warning. 11.8:1 on the dark background. */
 export const colorWarningOnDark = "#fbbd23";
 export const colorWarningOnDarkVar = 'var(--color-warning-on-dark)';
+/** Confirmation green. Something the User did completed, or a connection is healthy. Never for an action prompt — that is primary or brand. 4.5:1 on white, so it passes AA as body text. */
+export const colorSuccess = "#15803d";
+export const colorSuccessVar = 'var(--color-success)';
+/** Dark-surface pairing for success. Lighter than the light-mode green rather than the same hue darkened; a status colour has to sit on the surface it is read against. */
+export const colorSuccessOnDark = "#4ade80";
+export const colorSuccessOnDarkVar = 'var(--color-success-on-dark)';
 /** Headlines and display titles. */
 export const fontDisplay = "'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
 export const fontDisplayVar = 'var(--font-display)';
@@ -139,6 +145,8 @@ export const tokens = {
   'color-cyan-on-dark': { value: "#22d3ee", cssVar: 'var(--color-cyan-on-dark)' },
   'color-destructive-on-dark': { value: "#811d1d", cssVar: 'var(--color-destructive-on-dark)' },
   'color-warning-on-dark': { value: "#fbbd23", cssVar: 'var(--color-warning-on-dark)' },
+  'color-success': { value: "#15803d", cssVar: 'var(--color-success)' },
+  'color-success-on-dark': { value: "#4ade80", cssVar: 'var(--color-success-on-dark)' },
   'font-display': { value: "'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif", cssVar: 'var(--font-display)' },
   'font-body': { value: "'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif", cssVar: 'var(--font-body)' },
   'radius-sm': { value: "0.25rem", cssVar: 'var(--radius-sm)' },

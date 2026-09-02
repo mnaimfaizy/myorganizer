@@ -32,7 +32,7 @@ export function YouTubePageClient() {
   if (status === 'loading') {
     return (
       <div className="flex flex-1 items-center justify-center p-8">
-        <p className="text-sm text-gray-500">Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       </div>
     );
   }
@@ -214,7 +214,7 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
             <div
               role="alert"
               aria-live="assertive"
-              className="mb-2 text-sm text-red-600 dark:text-red-400"
+              className="mb-2 text-sm text-destructive"
             >
               {syncError}
             </div>

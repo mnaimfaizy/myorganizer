@@ -12,10 +12,10 @@ interface SyncFreshnessIndicatorProps {
 }
 
 const TONE_TEXT_CLASS = {
-  ok: 'text-gray-600 dark:text-gray-400',
-  pending: 'text-gray-600 dark:text-gray-400',
-  warning: 'text-amber-700 dark:text-amber-300',
-  error: 'text-red-700 dark:text-red-300',
+  ok: 'text-muted-foreground',
+  pending: 'text-muted-foreground',
+  warning: 'text-warning',
+  error: 'text-destructive',
 } as const;
 
 const TONE_ICON = {
@@ -56,9 +56,7 @@ export function SyncFreshnessIndicator({
 
   return (
     <div className={cn('flex max-w-xs flex-col items-end gap-1', className)}>
-      <p className="text-sm text-gray-600 dark:text-gray-400">
-        {reading.lastSyncedLabel}
-      </p>
+      <p className="text-sm text-muted-foreground">{reading.lastSyncedLabel}</p>
 
       {reading.label && (
         <p
@@ -73,7 +71,7 @@ export function SyncFreshnessIndicator({
       )}
 
       {reading.detail && (
-        <p className="text-right text-xs text-gray-600 dark:text-gray-400">
+        <p className="text-right text-xs text-muted-foreground">
           {reading.detail}
         </p>
       )}

@@ -71,8 +71,8 @@ export function QueueRailItem({
       className={cn(
         'flex items-center gap-2 rounded-lg border p-2 transition-colors motion-reduce:transition-none',
         isCurrentlyPlaying
-          ? 'border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-950/30'
-          : 'border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800/50',
+          ? 'border-brand bg-brand/10'
+          : 'border-border bg-card hover:bg-muted',
       )}
       aria-current={isCurrentlyPlaying ? 'true' : undefined}
     >
@@ -84,7 +84,7 @@ export function QueueRailItem({
             className="h-10 w-10 rounded object-cover"
           />
         ) : (
-          <div className="flex h-10 w-10 items-center justify-center rounded bg-gray-200 text-gray-400 dark:bg-gray-700">
+          <div className="flex h-10 w-10 items-center justify-center rounded bg-muted text-muted-foreground">
             <span aria-hidden="true">▶</span>
           </div>
         )}
@@ -101,24 +101,20 @@ export function QueueRailItem({
       <div className="flex-1 min-w-0">
         <div className="flex items-start gap-1">
           <div className="flex-1 min-w-0">
-            <p className="line-clamp-1 text-xs font-medium text-gray-900 dark:text-gray-100">
+            <p className="line-clamp-1 text-xs font-medium text-foreground">
               {video.title}
             </p>
             {video.channelTitle && (
-              <p className="line-clamp-1 text-xs text-gray-500 dark:text-gray-400">
+              <p className="line-clamp-1 text-xs text-muted-foreground">
                 {video.channelTitle}
               </p>
             )}
           </div>
           <div className="flex items-center gap-1 shrink-0 text-xs">
             {isCurrentlyPlaying && (
-              <span className="font-semibold text-blue-600 dark:text-blue-400">
-                Now playing
-              </span>
+              <span className="font-semibold text-brand">Now playing</span>
             )}
-            <span className="text-gray-500 dark:text-gray-400">
-              {watchedState}
-            </span>
+            <span className="text-muted-foreground">{watchedState}</span>
           </div>
         </div>
       </div>
@@ -130,7 +126,7 @@ export function QueueRailItem({
           size="sm"
           onClick={handleMoveUpClick}
           disabled={!canMoveUp}
-          className="min-h-10 min-w-10 p-0 text-gray-600 hover:text-gray-900 disabled:opacity-40 dark:text-gray-400 dark:hover:text-gray-100"
+          className="min-h-10 min-w-10 p-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
           aria-label={`Move ${video.title} up`}
           title={canMoveUp ? `Move ${video.title} up` : 'Cannot move up'}
         >
@@ -143,7 +139,7 @@ export function QueueRailItem({
           size="sm"
           onClick={handleMoveDownClick}
           disabled={!canMoveDown}
-          className="min-h-10 min-w-10 p-0 text-gray-600 hover:text-gray-900 disabled:opacity-40 dark:text-gray-400 dark:hover:text-gray-100"
+          className="min-h-10 min-w-10 p-0 text-muted-foreground hover:text-foreground disabled:opacity-40"
           aria-label={`Move ${video.title} down`}
           title={canMoveDown ? `Move ${video.title} down` : 'Cannot move down'}
         >
@@ -158,7 +154,7 @@ export function QueueRailItem({
           onClick={handlePlayClick}
           onKeyDown={handleRowKeyDown}
           tabIndex={focusedRowIndex === index ? 0 : -1}
-          className="min-h-10 min-w-10 p-0 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          className="min-h-10 min-w-10 p-0 text-muted-foreground hover:text-foreground"
           aria-label={`Play ${video.title}`}
         >
           <Play className="h-4 w-4" />
@@ -169,7 +165,7 @@ export function QueueRailItem({
           variant="ghost"
           size="sm"
           onClick={handleRemoveClick}
-          className="min-h-10 min-w-10 p-0 text-gray-600 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
+          className="min-h-10 min-w-10 p-0 text-muted-foreground hover:text-destructive"
           aria-label={`Remove ${video.title} from queue`}
         >
           <Trash2 className="h-4 w-4" />
