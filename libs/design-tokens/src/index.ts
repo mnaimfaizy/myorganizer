@@ -1,9 +1,11 @@
 export * from './generated/tokens';
 
-// `generated/tailwind-preset.native.js` is deliberately NOT re-exported. It is a
-// CommonJS Tailwind/NativeWind config consumed by build tooling, not runtime
-// token values, and nothing in the repository imports the symbol. Re-exporting
-// it dragged `module.exports = {...}` into every browser bundle that reaches
-// this index — which is what broke the Email Shell Storybook chunk in Chromatic
-// with `Cannot set properties of undefined (setting 'exports')`. Import the
-// generated file by path from a build config if one ever needs it.
+// Only the primitive tier is exported. `generated/roles.css` is a stylesheet, not a
+// module — the web application imports it from its own stylesheet, and nothing should
+// reach it through this index.
+//
+// Nothing CommonJS belongs here either. This index is reachable from browser bundles,
+// and a `module.exports = {...}` re-export dragged into one of them is what broke the
+// Email Shell Storybook chunk in Chromatic with `Cannot set properties of undefined
+// (setting 'exports')`. If a build config ever needs a CommonJS artifact from this
+// library, import the generated file by path.
