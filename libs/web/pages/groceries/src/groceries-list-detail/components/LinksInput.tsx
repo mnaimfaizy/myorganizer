@@ -115,7 +115,9 @@ export function LinksInput<TFieldValues extends LinksFormValues>({
       )}
 
       {fields.length >= 10 && (
-        <p className="text-xs text-text-muted">Maximum 10 links reached</p>
+        <p className="text-xs text-muted-foreground">
+          Maximum 10 links reached
+        </p>
       )}
     </div>
   );

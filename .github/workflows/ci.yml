@@ -609,6 +609,9 @@ jobs:
       - name: Enum fan-out checker contracts
         run: corepack yarn enum:fanout:test
 
+      - name: Tailwind class checker contracts
+        run: corepack yarn tailwind:classes:test
+
       - name: Gate manifest checker contracts
         run: corepack yarn gates:run:test
 
@@ -663,6 +666,11 @@ jobs:
       # ones that were not.
       - name: Check guarded enum fan-outs are pinned
         run: corepack yarn enum:fanout:check
+
+      # Tailwind silently drops a class name it cannot resolve, so a colour
+      # utility that paints nothing ships without a build error (issue #632).
+      - name: Check Tailwind colour utilities resolve
+        run: corepack yarn tailwind:classes:check
 
       - name: Restore Nx computation cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

@@ -526,15 +526,15 @@ describe('AddItemDialog integration', () => {
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
 
-  it('category button selection updates selected class', async () => {
+  it('category button selection updates aria-checked state', async () => {
     const onAdd = jest.fn().mockResolvedValue(undefined);
     render(<AddItemDialog isOpen={true} onClose={jest.fn()} onAdd={onAdd} />);
 
     const produceBtn = await screen.findByText(/Produce/);
     fireEvent.click(produceBtn);
-    // selected button should include border-secondary class
+    // selected button should have aria-checked="true"
     const btn = produceBtn.closest('button') as HTMLButtonElement;
-    expect(btn.className).toContain('border-secondary');
+    expect(btn).toHaveAttribute('aria-checked', 'true');
   });
 
   it('isLoading disables inputs and buttons', async () => {

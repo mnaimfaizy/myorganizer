@@ -58,7 +58,7 @@ export function AddItemInlineForm({
 
   return (
     <div className="space-y-2">
-      <form onSubmit={handleSubmit} className="flex gap-sm">
+      <form onSubmit={handleSubmit} className="flex gap-2">
         <Input
           ref={inputRef}
           type="text"
@@ -85,7 +85,7 @@ export function AddItemInlineForm({
       </form>
 
       {error && (
-        <p className="text-xs text-error" role="alert">
+        <p className="text-xs text-destructive" role="alert">
           {error}
         </p>
       )}

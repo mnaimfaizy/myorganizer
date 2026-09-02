@@ -34,18 +34,18 @@ export class GroceriesErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       return (
         this.props.fallback || (
-          <div className="flex min-h-screen items-center justify-center bg-surface p-4">
-            <div className="max-w-md rounded-lg bg-surface-container p-6 shadow-lg">
-              <h2 className="text-lg font-semibold text-on-surface">
+          <div className="flex min-h-screen items-center justify-center bg-background p-4">
+            <div className="max-w-md rounded-lg bg-muted p-6 shadow-lg">
+              <h2 className="text-lg font-semibold text-foreground">
                 Something went wrong
               </h2>
-              <p className="mt-2 text-sm text-on-surface-variant">
+              <p className="mt-2 text-sm text-muted-foreground">
                 We encountered an error loading your grocery lists. Please try
                 refreshing the page.
               </p>
               <button
                 onClick={() => window.location.reload()}
-                className="mt-4 rounded-lg bg-primary px-4 py-2 font-medium text-on-primary hover:bg-primary/90"
+                className="mt-4 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90"
               >
                 Refresh Page
               </button>

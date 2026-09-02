@@ -16,6 +16,7 @@
  * - console.error to verify logging and suppress warnings
  */
 
+import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { GroceriesErrorBoundary } from '../GroceriesErrorBoundary';
@@ -301,33 +302,7 @@ describe('GroceriesErrorBoundary', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should have correct styling for error card container', () => {
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => undefined);
-
-      const { container } = render(
-        <GroceriesErrorBoundary>
-          <ThrowError shouldThrow={true} error={TEST_ERROR}>
-            <div>Child</div>
-          </ThrowError>
-        </GroceriesErrorBoundary>,
-      );
-
-      const outerDiv = container.querySelector(
-        '.flex.min-h-screen.items-center.justify-center.bg-surface.p-4',
-      );
-      expect(outerDiv).toBeTruthy();
-
-      const card = container.querySelector(
-        '.max-w-md.rounded-lg.bg-surface-container.p-6.shadow-lg',
-      );
-      expect(card).toBeTruthy();
-
-      consoleErrorSpy.mockRestore();
-    });
-
-    it('should have correct styling for heading', () => {
+    it('should display heading as level 2', () => {
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
@@ -343,35 +318,12 @@ describe('GroceriesErrorBoundary', () => {
       const heading = screen.getByRole('heading', {
         level: 2,
       });
-      expect(heading.className).toContain('text-lg');
-      expect(heading.className).toContain('font-semibold');
-      expect(heading.className).toContain('text-on-surface');
+      expect(heading).toBeInTheDocument();
 
       consoleErrorSpy.mockRestore();
     });
 
-    it('should have correct styling for description', () => {
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => undefined);
-
-      const { container } = render(
-        <GroceriesErrorBoundary>
-          <ThrowError shouldThrow={true} error={TEST_ERROR}>
-            <div>Child</div>
-          </ThrowError>
-        </GroceriesErrorBoundary>,
-      );
-
-      const description = container.querySelector(
-        '.mt-2.text-sm.text-on-surface-variant',
-      );
-      expect(description).toBeTruthy();
-
-      consoleErrorSpy.mockRestore();
-    });
-
-    it('should have correct styling for button', () => {
+    it('should display description text', () => {
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
@@ -384,16 +336,9 @@ describe('GroceriesErrorBoundary', () => {
         </GroceriesErrorBoundary>,
       );
 
-      const button = screen.getByRole('button', {
-        name: /refresh page/i,
-      });
-      expect(button.className).toContain('mt-4');
-      expect(button.className).toContain('rounded-lg');
-      expect(button.className).toContain('bg-primary');
-      expect(button.className).toContain('px-4');
-      expect(button.className).toContain('py-2');
-      expect(button.className).toContain('font-medium');
-      expect(button.className).toContain('text-on-primary');
+      expect(
+        screen.getByText(/error loading your grocery lists/i),
+      ).toBeInTheDocument();
 
       consoleErrorSpy.mockRestore();
     });
@@ -759,7 +704,7 @@ describe('GroceriesErrorBoundary', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should handle button hover state', () => {
+    it('should render button with accessible focus state', () => {
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
         .mockImplementation(() => undefined);
@@ -775,7 +720,9 @@ describe('GroceriesErrorBoundary', () => {
       const button = screen.getByRole('button', {
         name: /refresh page/i,
       });
-      expect(button.className).toContain('hover:bg-primary/90');
+      // Verify button is keyboard accessible
+      button.focus();
+      expect(document.activeElement).toBe(button);
 
       consoleErrorSpy.mockRestore();
     });

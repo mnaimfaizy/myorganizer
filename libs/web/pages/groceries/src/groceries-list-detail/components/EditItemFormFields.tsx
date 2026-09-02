@@ -34,9 +34,9 @@ export function EditItemCoreFields({
       <div className="space-y-1.5">
         <Label
           htmlFor="item-name"
-          className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
+          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
         >
-          Item Name <span className="text-error">*</span>
+          Item Name <span className="text-destructive">*</span>
         </Label>
         <Input
           id="item-name"
@@ -48,30 +48,40 @@ export function EditItemCoreFields({
           className="text-base md:text-sm"
         />
         {errors.name && (
-          <p className="text-xs text-error">{errors.name.message}</p>
+          <p className="text-xs text-destructive">{errors.name.message}</p>
         )}
       </div>
 
       {/* Category icon grid */}
       <div className="space-y-1.5">
-        <Label className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+        <Label
+          id="edit-item-category-label"
+          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        >
           Category
         </Label>
         <Controller
           control={control}
           name="category"
           render={({ field }) => (
-            <div className="grid grid-cols-4 gap-2">
+            <div
+              className="grid grid-cols-4 gap-2"
+              role="radiogroup"
+              aria-labelledby="edit-item-category-label"
+            >
               {CATEGORY_ORDER.map((cat) => (
                 <button
                   key={cat}
                   type="button"
+                  role="radio"
+                  aria-checked={selectedCategory === cat}
+                  data-category={cat}
                   onClick={() => field.onChange(cat)}
                   className={cn(
                     'flex flex-col items-center justify-center rounded-lg p-2 text-center transition-all',
                     selectedCategory === cat
-                      ? 'border-2 border-secondary bg-secondary-fixed/20'
-                      : 'border border-outline-variant bg-surface-bright hover:border-secondary',
+                      ? 'border-2 border-brand bg-brand/10'
+                      : 'border border-border bg-card hover:border-brand',
                   )}
                 >
                   <span className="mb-0.5 text-lg" aria-hidden="true">
@@ -81,8 +91,8 @@ export function EditItemCoreFields({
                     className={cn(
                       'text-[10px] font-medium leading-tight',
                       selectedCategory === cat
-                        ? 'font-bold text-secondary'
-                        : 'text-on-surface-variant',
+                        ? 'font-bold text-brand'
+                        : 'text-muted-foreground',
                     )}
                   >
                     {CATEGORY_LABELS[cat]}
@@ -130,7 +140,7 @@ export function EditItemDetailsFields({
         <div className="space-y-1.5">
           <Label
             htmlFor="item-amount"
-            className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
+            className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
           >
             Quantity / Amount
           </Label>
@@ -142,19 +152,19 @@ export function EditItemDetailsFields({
             className="text-base md:text-sm"
           />
           {errors.amount && (
-            <p className="text-xs text-error">{errors.amount.message}</p>
+            <p className="text-xs text-destructive">{errors.amount.message}</p>
           )}
         </div>
 
         <div className="space-y-1.5">
           <Label
             htmlFor="item-price"
-            className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
+            className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
           >
             Estimated Price
           </Label>
           <div className="relative">
-            <span className="absolute left-3 top-2.5 text-sm font-bold text-on-surface-variant">
+            <span className="absolute left-3 top-2.5 text-sm font-bold text-muted-foreground">
               $
             </span>
             <Input
@@ -169,7 +179,7 @@ export function EditItemDetailsFields({
             />
           </div>
           {errors.price && (
-            <p className="text-xs text-error">{errors.price.message}</p>
+            <p className="text-xs text-destructive">{errors.price.message}</p>
           )}
         </div>
       </div>
@@ -178,7 +188,7 @@ export function EditItemDetailsFields({
       <div className="space-y-1.5">
         <Label
           htmlFor="item-notes"
-          className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
+          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
         >
           Notes
         </Label>
@@ -189,10 +199,10 @@ export function EditItemDetailsFields({
           disabled={isLoading}
           rows={3}
           maxLength={1000}
-          className="w-full resize-none rounded-lg border border-outline-variant bg-surface-bright px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-secondary md:text-sm"
+          className="w-full resize-none rounded-lg border border-border bg-card px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-brand md:text-sm"
         />
         {errors.notes && (
-          <p className="text-xs text-error">{errors.notes.message}</p>
+          <p className="text-xs text-destructive">{errors.notes.message}</p>
         )}
       </div>
 
@@ -200,10 +210,10 @@ export function EditItemDetailsFields({
       <div className="space-y-1.5">
         <Label
           htmlFor="item-imageUrl"
-          className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
+          className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
         >
           Image URL{' '}
-          <span className="text-xs font-normal normal-case text-text-muted">
+          <span className="text-xs font-normal normal-case text-muted-foreground">
             (optional)
           </span>
         </Label>
@@ -216,11 +226,11 @@ export function EditItemDetailsFields({
           className="text-base md:text-sm"
         />
         {errors.imageUrl && (
-          <p className="text-xs text-error">{errors.imageUrl.message}</p>
+          <p className="text-xs text-destructive">{errors.imageUrl.message}</p>
         )}
         {/* Image preview */}
         {isValidImageUrl && (
-          <div className="mt-2 overflow-hidden rounded-lg border border-outline-variant">
+          <div className="mt-2 overflow-hidden rounded-lg border border-border">
             <img
               src={watchImageUrl}
               alt="Item preview"
@@ -233,20 +243,20 @@ export function EditItemDetailsFields({
 
       {/* Links */}
       <div className="space-y-1.5">
-        <Label className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+        <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Links{' '}
-          <span className="text-xs font-normal normal-case text-text-muted">
+          <span className="text-xs font-normal normal-case text-muted-foreground">
             (optional, max 10)
           </span>
         </Label>
         <LinksInput control={control} />
         {errors.links && (
-          <p className="text-xs text-error">{errors.links.message}</p>
+          <p className="text-xs text-destructive">{errors.links.message}</p>
         )}
       </div>
 
       {/* Mark as done (edit-only) */}
-      <div className="flex items-center gap-3 rounded-lg border border-outline-variant bg-surface-container-low p-3">
+      <div className="flex items-center gap-3 rounded-lg border border-border bg-muted p-3">
         <Checkbox
           id="item-checked"
           {...register('checked')}
@@ -254,7 +264,7 @@ export function EditItemDetailsFields({
         />
         <Label
           htmlFor="item-checked"
-          className="grow cursor-pointer text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
+          className="grow cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground"
         >
           Mark as done
         </Label>

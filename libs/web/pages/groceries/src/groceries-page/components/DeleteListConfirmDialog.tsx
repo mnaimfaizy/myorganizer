@@ -45,22 +45,22 @@ export function DeleteListConfirmDialog({
       <DialogContent className="w-[calc(100%-2rem)] md:max-w-md">
         <DialogHeader>
           <div className="mb-4 flex items-center justify-center">
-            <div className="rounded-full bg-error/10 p-3">
-              <AlertTriangle className="h-6 w-6 text-error" />
+            <div className="rounded-full bg-destructive/10 p-3">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
             </div>
           </div>
           <DialogTitle>Delete "{listName}"?</DialogTitle>
           <DialogDescription>
             This action cannot be undone. Deleting this list will permanently
             remove{' '}
-            <span className="font-semibold text-on-surface">{itemCount}</span>{' '}
+            <span className="font-semibold text-foreground">{itemCount}</span>{' '}
             {itemCount === 1 ? 'item' : 'items'}.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-2 rounded-lg bg-error/5 p-3">
-          <p className="text-sm font-medium text-error">Warning</p>
-          <p className="text-xs text-on-surface-variant">
+        <div className="space-y-2 rounded-lg bg-destructive/5 p-3">
+          <p className="text-sm font-medium text-destructive">Warning</p>
+          <p className="text-xs text-muted-foreground">
             All items in this list, including their notes, images, and links,
             will be deleted permanently.
           </p>
