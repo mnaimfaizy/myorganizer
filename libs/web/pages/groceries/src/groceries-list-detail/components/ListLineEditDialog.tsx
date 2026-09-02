@@ -80,7 +80,7 @@ export function ListLineEditDialog({
               This does not change the Catalog Item.
             </DialogDescription>
             <div className="space-y-4 py-5">
-              <p className="text-sm font-medium text-on-surface">
+              <p className="text-sm font-medium text-foreground">
                 {catalogItem?.name ?? 'Unknown Catalog Item'}
               </p>
               <FormField
@@ -103,14 +103,14 @@ export function ListLineEditDialog({
               />
               <FormItem>
                 <FormLabel>Checked state</FormLabel>
-                <p className="text-sm text-on-surface-variant">
+                <p className="text-sm text-muted-foreground">
                   {line?.checked ? 'Checked Item' : 'Active List Line'} —
                   controlled by the row checkbox.
                 </p>
               </FormItem>
             </div>
-            <div className="flex items-center justify-between border-t border-border-muted pt-4">
-              <span className="inline-flex items-center gap-1 text-xs text-on-surface-variant">
+            <div className="flex items-center justify-between border-t border-border pt-4">
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                 <Lock className="h-3 w-3" /> Stored securely in your private
                 vault.
               </span>

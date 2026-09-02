@@ -126,7 +126,7 @@ function GroceriesInner({ handle }: GroceriesInnerProps) {
   if (vault.loading) {
     return (
       <div
-        className="min-h-screen bg-surface"
+        className="min-h-screen bg-background"
         aria-busy="true"
         aria-label="Loading groceries list"
       >
@@ -147,11 +147,11 @@ function GroceriesInner({ handle }: GroceriesInnerProps) {
   }
 
   return (
-    <div className="min-h-screen bg-surface">
+    <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-6xl p-4 md:p-6">
         {vault.error && (
           <div
-            className="mb-4 flex items-start gap-3 rounded-lg border border-error bg-error-container p-4 text-error md:mb-6"
+            className="mb-4 flex items-start gap-3 rounded-lg border border-destructive bg-destructive/10 p-4 text-destructive md:mb-6"
             role="alert"
             aria-live="polite"
           >
@@ -169,12 +169,10 @@ function GroceriesInner({ handle }: GroceriesInnerProps) {
               />
             </svg>
             <div className="flex-1">
-              <p className="font-medium text-on-error-container">
-                {vault.error}
-              </p>
+              <p className="font-medium text-destructive">{vault.error}</p>
               <button
                 onClick={() => vault.setError(null)}
-                className="mt-2 text-sm font-medium text-on-error-container underline hover:no-underline"
+                className="mt-2 text-sm font-medium text-destructive underline hover:no-underline"
               >
                 Dismiss
               </button>
@@ -211,13 +209,13 @@ function GroceriesInner({ handle }: GroceriesInnerProps) {
 
         {vault.lists.length === 0 ? (
           <div
-            className="rounded-lg border-2 border-dashed border-outline-variant bg-surface-container-low p-8 text-center md:p-12"
+            className="rounded-lg border-2 border-dashed border-border bg-muted p-8 text-center md:p-12"
             role="status"
             aria-live="polite"
           >
-            <div className="mb-4 inline-block rounded-full bg-secondary-container p-3">
+            <div className="mb-4 inline-block rounded-full bg-muted p-3">
               <svg
-                className="h-8 w-8 text-on-secondary"
+                className="h-8 w-8 text-brand-foreground"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -230,10 +228,10 @@ function GroceriesInner({ handle }: GroceriesInnerProps) {
                 />
               </svg>
             </div>
-            <h2 className="text-xl font-semibold text-on-surface md:text-2xl">
+            <h2 className="text-xl font-semibold text-foreground md:text-2xl">
               No grocery lists yet
             </h2>
-            <p className="mt-2 text-on-surface-variant">
+            <p className="mt-2 text-muted-foreground">
               Create your first list to get started organizing your shopping.
             </p>
             <Button className="mt-6" onClick={handleOpenCreateDialog}>

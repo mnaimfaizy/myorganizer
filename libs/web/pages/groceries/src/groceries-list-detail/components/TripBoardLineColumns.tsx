@@ -26,8 +26,8 @@ export function TripBoardLineColumns({
 }: TripBoardLineColumnsProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <section className="overflow-hidden rounded-2xl border border-outline-variant bg-surface-container-lowest">
-        <h2 className="border-b border-outline-variant px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+      <section className="overflow-hidden rounded-2xl border border-border bg-card">
+        <h2 className="border-b border-border px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Active ({active.length})
         </h2>
         {active.length === 0 ? (
@@ -53,8 +53,8 @@ export function TripBoardLineColumns({
         )}
       </section>
 
-      <section className="overflow-hidden rounded-2xl border border-dashed border-outline-variant bg-surface-container-low/40">
-        <h2 className="border-b border-outline-variant px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+      <section className="overflow-hidden rounded-2xl border border-dashed border-border bg-muted/40">
+        <h2 className="border-b border-border px-4 py-3 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Checked ({checked.length}) — visible until removed
         </h2>
         {checked.length === 0 ? (

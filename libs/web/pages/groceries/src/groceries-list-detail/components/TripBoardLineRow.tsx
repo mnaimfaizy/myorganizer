@@ -97,8 +97,8 @@ export function TripBoardLineRow({
     <div
       data-testid={`list-line-${line.id}`}
       className={cn(
-        'group flex items-center gap-3 border-b border-outline-variant/60 px-3 py-3 transition-colors last:border-b-0 hover:bg-surface-container-low/60',
-        line.checked && 'bg-surface-container-low/40',
+        'group flex items-center gap-3 border-b border-border/60 px-3 py-3 transition-colors last:border-b-0 hover:bg-muted/60',
+        line.checked && 'bg-muted/40',
       )}
     >
       <Checkbox
@@ -123,7 +123,7 @@ export function TripBoardLineRow({
           >
             {itemName}
           </span>
-          <span className="rounded-full bg-surface-container-highest px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
             {getCategoryLabel(category)}
           </span>
         </div>
@@ -168,7 +168,7 @@ export function TripBoardLineRow({
           type="button"
           onClick={handleEditLine}
           disabled={isLoading}
-          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-container-highest hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+          className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
           aria-label={`Edit List Line for ${itemName}`}
           title="Edit List Line"
         >
@@ -178,7 +178,7 @@ export function TripBoardLineRow({
         <DropdownMenu>
           <DropdownMenuTrigger
             disabled={isLoading}
-            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-container-highest hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             aria-label={`More actions for ${itemName}`}
           >
             <MoreVertical className="h-4 w-4" />
@@ -191,7 +191,7 @@ export function TripBoardLineRow({
               </DropdownMenuItem>
             )}
             <DropdownMenuItem
-              className="text-error focus:bg-error/10 focus:text-error"
+              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
               aria-label={removeLineLabel}
               onSelect={handleRemoveSelect}
             >
@@ -202,7 +202,7 @@ export function TripBoardLineRow({
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  className="text-error focus:bg-error/10 focus:text-error"
+                  className="text-destructive focus:bg-destructive/10 focus:text-destructive"
                   onClick={handleDeleteFromCatalogClick}
                 >
                   <AlertTriangle className="mr-2 h-4 w-4" />

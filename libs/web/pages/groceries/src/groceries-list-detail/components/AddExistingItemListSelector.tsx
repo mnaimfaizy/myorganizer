@@ -18,19 +18,19 @@ export function AddExistingItemListSelector({
 }: AddExistingItemListSelectorProps) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">
+      <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
         Add to Lists
       </Label>
-      <div className="space-y-2 rounded-lg border border-outline-variant p-3">
+      <div className="space-y-2 rounded-lg border border-border p-3">
         {lists.length === 0 ? (
-          <p className="text-sm text-on-surface-variant">
+          <p className="text-sm text-muted-foreground">
             There are no Grocery Lists yet.
           </p>
         ) : (
           lists.map((list) => (
             <label
               key={list.id}
-              className="flex items-center gap-2 text-sm text-on-surface"
+              className="flex items-center gap-2 text-sm text-foreground"
             >
               <Checkbox
                 checked={selectedListIds.has(list.id)}

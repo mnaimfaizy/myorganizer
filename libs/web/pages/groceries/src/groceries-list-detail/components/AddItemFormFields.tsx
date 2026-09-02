@@ -118,8 +118,8 @@ function CategoryButtons({
           className={cn(
             'flex flex-col items-center justify-center rounded-lg p-2 text-center transition-all',
             selectedCategory === cat
-              ? 'border-2 border-secondary bg-secondary-fixed/20'
-              : 'border border-outline-variant bg-surface-bright hover:border-secondary',
+              ? 'border-2 border-brand bg-brand/10'
+              : 'border border-border bg-card hover:border-brand',
           )}
         >
           <span className="mb-0.5 text-lg" aria-hidden="true">
@@ -129,8 +129,8 @@ function CategoryButtons({
             className={cn(
               'text-[10px] font-medium leading-tight',
               selectedCategory === cat
-                ? 'font-bold text-secondary'
-                : 'text-on-surface-variant',
+                ? 'font-bold text-brand'
+                : 'text-muted-foreground',
             )}
           >
             {CATEGORY_LABELS[cat]}
@@ -178,8 +178,8 @@ export function AddItemMetadataFields({
         name="name"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
-              Item Name <span className="text-error">*</span>
+            <FormLabel className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Item Name <span className="text-destructive">*</span>
             </FormLabel>
             <FormControl>
               <Input
@@ -208,7 +208,7 @@ export function AddItemMetadataFields({
                 id="add-item-name-suggestions"
                 role="listbox"
                 aria-label="Existing catalog items"
-                className="rounded-lg border border-outline-variant bg-surface-bright"
+                className="rounded-lg border border-border bg-card"
               >
                 {matchingCatalogItems.map((item, index) => (
                   <button
@@ -222,12 +222,12 @@ export function AddItemMetadataFields({
                     onClick={handleSuggestionClick}
                     disabled={isLoading}
                     className={cn(
-                      'block w-full px-3 py-2 text-left text-sm text-on-surface hover:bg-surface-container-low',
-                      index === activeSuggestion && 'bg-surface-container-low',
+                      'block w-full px-3 py-2 text-left text-sm text-foreground hover:bg-muted',
+                      index === activeSuggestion && 'bg-muted',
                     )}
                   >
                     <span className="font-medium">{item.name}</span>
-                    <span className="ml-2 text-xs text-on-surface-variant">
+                    <span className="ml-2 text-xs text-muted-foreground">
                       {CATEGORY_LABELS[item.category]}
                     </span>
                   </button>
@@ -246,7 +246,7 @@ export function AddItemMetadataFields({
           <FormItem>
             <FormLabel
               id="add-item-category-label"
-              className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant"
+              className="text-xs font-semibold uppercase tracking-wide text-muted-foreground"
             >
               Category
             </FormLabel>
@@ -294,7 +294,7 @@ export function AddItemDetailsFields({
             name="amount"
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+                <FormLabel className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   Quantity / Amount
                 </FormLabel>
                 <FormControl>
@@ -315,11 +315,11 @@ export function AddItemDetailsFields({
           name="price"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+              <FormLabel className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Estimated Price
               </FormLabel>
               <div className="relative">
-                <span className="pointer-events-none absolute left-3 top-2.5 text-sm font-bold text-on-surface-variant">
+                <span className="pointer-events-none absolute left-3 top-2.5 text-sm font-bold text-muted-foreground">
                   $
                 </span>
                 <FormControl>
@@ -345,7 +345,7 @@ export function AddItemDetailsFields({
         name="notes"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+            <FormLabel className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Notes
             </FormLabel>
             <FormControl>
@@ -355,7 +355,7 @@ export function AddItemDetailsFields({
                 disabled={isLoading}
                 rows={3}
                 maxLength={1000}
-                className="w-full resize-none rounded-lg border border-outline-variant bg-surface-bright px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-secondary md:text-sm"
+                className="w-full resize-none rounded-lg border border-border bg-card px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-brand md:text-sm"
               />
             </FormControl>
             <FormMessage />
@@ -368,9 +368,9 @@ export function AddItemDetailsFields({
         name="imageUrl"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+            <FormLabel className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Image URL{' '}
-              <span className="text-xs font-normal normal-case text-text-muted">
+              <span className="text-xs font-normal normal-case text-muted-foreground">
                 (optional)
               </span>
             </FormLabel>
@@ -385,7 +385,7 @@ export function AddItemDetailsFields({
             </FormControl>
             <FormMessage />
             {imageUrl.startsWith('http') && (
-              <div className="mt-2 overflow-hidden rounded-lg border border-outline-variant">
+              <div className="mt-2 overflow-hidden rounded-lg border border-border">
                 <img
                   src={imageUrl}
                   alt="Item preview"
@@ -399,9 +399,9 @@ export function AddItemDetailsFields({
       />
 
       <FormItem>
-        <FormLabel className="text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+        <FormLabel className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Links{' '}
-          <span className="text-xs font-normal normal-case text-text-muted">
+          <span className="text-xs font-normal normal-case text-muted-foreground">
             (optional, max 10)
           </span>
         </FormLabel>

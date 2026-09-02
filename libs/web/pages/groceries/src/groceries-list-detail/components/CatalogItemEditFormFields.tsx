@@ -55,31 +55,29 @@ export function CatalogItemEditFormFields({
         name="category"
         render={({ field }) => (
           <FormItem>
-            <FormLabel id="catalog-item-category-label">
-              Category
-            </FormLabel>
+            <FormLabel id="catalog-item-category-label">Category</FormLabel>
             <div
               className="grid grid-cols-4 gap-2"
-              role="group"
+              role="radiogroup"
               aria-labelledby="catalog-item-category-label"
             >
               {CATEGORY_ORDER.map((category) => (
                 <button
                   key={category}
                   type="button"
+                  role="radio"
+                  aria-checked={selectedCategory === category}
+                  data-category={category}
                   disabled={isLoading}
-                  aria-pressed={selectedCategory === category}
                   onClick={() => field.onChange(category)}
                   className={cn(
                     'rounded-lg p-2 text-center',
                     selectedCategory === category
-                      ? 'border-2 border-secondary bg-secondary-fixed/20'
-                      : 'border border-outline-variant bg-surface-bright',
+                      ? 'border-2 border-brand bg-brand/10'
+                      : 'border border-border bg-card',
                   )}
                 >
-                  <span aria-hidden="true">
-                    {CATEGORY_EMOJIS[category]}
-                  </span>
+                  <span aria-hidden="true">{CATEGORY_EMOJIS[category]}</span>
                   <span className="ml-1 text-xs">
                     {CATEGORY_LABELS[category]}
                   </span>
@@ -123,7 +121,7 @@ export function CatalogItemEditFormFields({
                 rows={3}
                 maxLength={1000}
                 disabled={isLoading}
-                className="w-full resize-none rounded-lg border border-outline-variant bg-surface-bright px-3 py-2"
+                className="w-full resize-none rounded-lg border border-border bg-card px-3 py-2"
               />
             </FormControl>
             <FormMessage />

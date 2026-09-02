@@ -89,8 +89,8 @@ export function TripBoardCatalogAddStrip({
               className={cn(
                 'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors',
                 onCurrentList
-                  ? 'border-outline-variant/50 bg-surface-container-low text-muted-foreground'
-                  : 'border-outline-variant bg-surface-container-lowest hover:border-secondary',
+                  ? 'border-border/50 bg-muted text-muted-foreground'
+                  : 'border-border bg-card hover:border-brand',
               )}
               aria-label={
                 onCurrentList
@@ -106,7 +106,7 @@ export function TripBoardCatalogAddStrip({
                 </span>
               ) : null}
               {listCount > 1 && (
-                <span className="rounded bg-secondary-container px-1 text-[10px] font-bold text-on-secondary-container">
+                <span className="rounded bg-muted px-1 text-[10px] font-bold text-accent-foreground">
                   {listCount}
                 </span>
               )}

@@ -41,12 +41,12 @@ export function AddExistingItemCatalogSelector({
     <div className="space-y-1.5">
       <Label
         htmlFor="add-existing-item-search"
-        className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide"
+        className="text-xs font-semibold text-muted-foreground uppercase tracking-wide"
       >
         Catalog Item
       </Label>
       <div className="relative">
-        <Search className="absolute left-3 top-2.5 h-4 w-4 text-on-surface-variant" />
+        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           id="add-existing-item-search"
           placeholder="Search catalog by name..."
@@ -60,10 +60,10 @@ export function AddExistingItemCatalogSelector({
       <div
         role="radiogroup"
         aria-label="Select a Catalog Item"
-        className="mt-2 max-h-60 overflow-y-auto rounded-lg border border-outline-variant divide-y divide-outline-variant"
+        className="mt-2 max-h-60 overflow-y-auto rounded-lg border border-border divide-y divide-border"
       >
         {filteredCatalog.length === 0 ? (
-          <p className="px-3 py-4 text-sm text-on-surface-variant">
+          <p className="px-3 py-4 text-sm text-muted-foreground">
             No Catalog Items match "{query}".
           </p>
         ) : (
@@ -79,9 +79,7 @@ export function AddExistingItemCatalogSelector({
                 disabled={isLoading}
                 className={cn(
                   'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors disabled:pointer-events-none disabled:opacity-50',
-                  isSelected
-                    ? 'bg-secondary-fixed/20'
-                    : 'hover:bg-surface-container-low',
+                  isSelected ? 'bg-brand/10' : 'hover:bg-muted',
                 )}
               >
                 <span
@@ -90,11 +88,11 @@ export function AddExistingItemCatalogSelector({
                 >
                   {getCategoryEmoji(item.category)}
                 </span>
-                <span className="grow min-w-0 truncate text-sm font-medium text-on-surface">
+                <span className="grow min-w-0 truncate text-sm font-medium text-foreground">
                   {item.name}
                 </span>
                 {typeof item.price === 'number' && (
-                  <span className="shrink-0 text-xs font-medium text-on-surface-variant">
+                  <span className="shrink-0 text-xs font-medium text-muted-foreground">
                     {formatMoney(item.price)}
                   </span>
                 )}

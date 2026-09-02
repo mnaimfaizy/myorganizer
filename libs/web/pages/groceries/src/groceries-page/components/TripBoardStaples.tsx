@@ -74,7 +74,7 @@ export function TripBoardStaples({
   return (
     <section
       aria-labelledby="staples-catalog-heading"
-      className="rounded-2xl border border-outline-variant bg-surface-container-lowest p-4"
+      className="rounded-2xl border border-border bg-card p-4"
     >
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2
@@ -87,7 +87,7 @@ export function TripBoardStaples({
           type="button"
           onClick={onNewStaple}
           disabled={isLoading}
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg px-1 py-0.5 text-xs font-semibold text-foreground transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg px-1 py-0.5 text-xs font-semibold text-foreground transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
           aria-label="New staple"
         >
           <Plus className="h-3.5 w-3.5" aria-hidden="true" />
@@ -105,10 +105,10 @@ export function TripBoardStaples({
           aria-label="Show all staples"
           aria-pressed={selectedCategory === 'all'}
           onClick={createCategoryChangeHandler('all')}
-          className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${
+          className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
             selectedCategory === 'all'
-              ? 'bg-secondary text-on-secondary'
-              : 'bg-secondary-container text-on-secondary-container'
+              ? 'bg-brand text-brand-foreground'
+              : 'bg-muted text-accent-foreground'
           }`}
         >
           All
@@ -120,10 +120,10 @@ export function TripBoardStaples({
             aria-label={`Filter staples by ${getCategoryLabel(category)}`}
             aria-pressed={selectedCategory === category}
             onClick={createCategoryChangeHandler(category)}
-            className={`flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-secondary ${
+            className={`flex items-center gap-2 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
               selectedCategory === category
-                ? 'bg-secondary text-on-secondary'
-                : 'bg-secondary-container text-on-secondary-container'
+                ? 'bg-brand text-brand-foreground'
+                : 'bg-muted text-accent-foreground'
             }`}
           >
             <span aria-hidden="true">{getCategoryEmoji(category)}</span>
@@ -135,7 +135,7 @@ export function TripBoardStaples({
       <ul className="max-h-80 space-y-2 overflow-y-auto">
         {catalog.length === 0 ? (
           <li
-            className="rounded-lg border border-dashed border-outline-variant p-4 text-center text-sm text-muted-foreground"
+            className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground"
             role="status"
           >
             {allCatalog.length === 0
@@ -155,7 +155,7 @@ export function TripBoardStaples({
             return (
               <li
                 key={item.id}
-                className="flex items-center gap-3 rounded-xl border border-outline-variant/80 bg-surface px-3 py-2.5"
+                className="flex items-center gap-3 rounded-xl border border-border/80 bg-background px-3 py-2.5"
               >
                 <span className="text-lg" aria-hidden="true">
                   {getCategoryEmoji(item.category)}
@@ -173,7 +173,7 @@ export function TripBoardStaples({
                     type="button"
                     onClick={() => onEditCatalogItem(item.id)}
                     disabled={isLoading}
-                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-surface-container-highest hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-secondary disabled:pointer-events-none disabled:opacity-50"
+                    className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:pointer-events-none disabled:opacity-50"
                     aria-label={`Edit catalog item ${item.name}`}
                   >
                     <Edit2 className="h-4 w-4" aria-hidden="true" />

@@ -386,10 +386,13 @@ describe('EditItemDialog integration', () => {
 
       // Category: click the Dairy icon grid button
       fireEvent.click(screen.getByText('Dairy'));
-      // Verify category changed by checking the selected state (border-secondary class applied)
+      // Also a synchronisation point: wait for the selection to register before
+      // filling the rest of the form.
       await waitFor(() => {
-        const dairyBtn = screen.getByText('Dairy').closest('button');
-        expect(dairyBtn?.className).toContain('border-secondary');
+        expect(screen.getByText('Dairy').closest('button')).toHaveAttribute(
+          'aria-checked',
+          'true',
+        );
       });
 
       const amount = screen.getByPlaceholderText('e.g., 2L, 1 dozen');

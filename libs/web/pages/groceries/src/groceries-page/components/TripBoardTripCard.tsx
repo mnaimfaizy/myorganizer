@@ -98,11 +98,11 @@ export const TripBoardTripCard = memo(function TripBoardTripCard({
   return (
     <article
       data-testid={`trip-card-${list.id}`}
-      className={`flex w-80 shrink-0 flex-col rounded-2xl border border-outline-variant bg-surface-container-lowest shadow-sm ${
+      className={`flex w-80 shrink-0 flex-col rounded-2xl border border-border bg-card shadow-sm ${
         isLoading ? 'pointer-events-none opacity-60' : ''
       }`}
     >
-      <div className="border-b border-outline-variant p-4">
+      <div className="border-b border-border p-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <span className="text-2xl" aria-hidden="true">
@@ -119,7 +119,7 @@ export const TripBoardTripCard = memo(function TripBoardTripCard({
           </div>
           <DropdownMenu open={openMenu} onOpenChange={handleMenuOpenChange}>
             <DropdownMenuTrigger
-              className="rounded p-1 hover:bg-surface-container-highest"
+              className="rounded p-1 hover:bg-muted"
               aria-label={`Trip actions for ${list.name}`}
             >
               <MoreVertical className="h-4 w-4" />
@@ -128,7 +128,10 @@ export const TripBoardTripCard = memo(function TripBoardTripCard({
               <DropdownMenuItem onClick={handleRename}>
                 Rename trip
               </DropdownMenuItem>
-              <DropdownMenuItem className="text-error" onClick={handleDelete}>
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={handleDelete}
+              >
                 <Trash2 className="mr-2 h-4 w-4" />
                 Delete trip
               </DropdownMenuItem>
@@ -148,9 +151,9 @@ export const TripBoardTripCard = memo(function TripBoardTripCard({
         </div>
 
         <div className="mt-3">
-          <div className="h-2 overflow-hidden rounded-full bg-surface-container-highest">
+          <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div
-              className="h-full rounded-full bg-secondary transition-all"
+              className="h-full rounded-full bg-brand transition-all"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
@@ -172,7 +175,7 @@ export const TripBoardTripCard = memo(function TripBoardTripCard({
             return (
               <div
                 key={line.id}
-                className="flex items-center gap-2 rounded-lg bg-surface px-2 py-1.5 text-sm"
+                className="flex items-center gap-2 rounded-lg bg-background px-2 py-1.5 text-sm"
               >
                 <span aria-hidden="true">
                   {getCategoryEmoji(catalogItem?.category ?? 'other')}
@@ -212,7 +215,7 @@ export const TripBoardTripCard = memo(function TripBoardTripCard({
 
       <Link
         href={`/dashboard/groceries/${list.id}`}
-        className="border-t border-outline-variant p-3 text-center text-sm font-semibold text-foreground hover:bg-surface-container-low focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-secondary"
+        className="border-t border-border p-3 text-center text-sm font-semibold text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand"
       >
         Open trip board →
       </Link>
