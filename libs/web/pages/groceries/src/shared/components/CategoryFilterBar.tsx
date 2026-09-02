@@ -51,7 +51,7 @@ function CategoryFilterBarComponent({
 
   return (
     <div
-      className="flex gap-2 overflow-x-auto py-md px-1"
+      className="flex gap-2 overflow-x-auto py-2 px-1"
       role="tablist"
       aria-label="Filter items by category"
     >
