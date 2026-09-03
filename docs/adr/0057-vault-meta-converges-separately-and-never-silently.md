@@ -140,3 +140,29 @@ this device" revert a passphrase change.
   change-passphrase flow. That flow is the follow-up this ADR implies and does not itself deliver;
   it is the piece that makes the prompt reachable, and it must write meta without reusing any of
   the paths removed here.
+
+## Amendment: what "the question returns" means once the pass repeats
+
+Decision point 6 says dismissal "sets no flag, and the question returns." That was written when
+`VaultMetaConvergeRunner` ran its pass once per tab session, so "returns" meant _at the next tab
+session_ — the only next pass there was. Setting no flag and returning were the same act, because
+the flag was the only thing standing between a dismissal and the next opportunity to ask.
+
+[ADR 0066](0066-a-convergence-pass-runs-freely-and-only-the-question-is-suppressed.md) separates the
+pass from the question and puts the pass on window focus, which is what lets a passphrase changed
+elsewhere reach an open tab at all ([#596](https://github.com/mnaimfaizy/myorganizer/issues/596)).
+Under that trigger the two acts come apart: a dismissal that sets nothing returns at the next focus
+event, which can be seconds later. That is nagging, and it is not what this ADR meant.
+
+The intent stands and the mechanics move. Dismissal still writes nothing to the Vault, still adopts
+nothing, and still leaves both sides exactly as they were — the guarantee this point exists to make.
+What it now also does is record a session-scoped Vault Meta Refusal, so the question returns at the
+next tab session rather than at the next focus. A refusal is not a Vault write and lives outside it;
+"sets no flag" should be read as the promise it was making — that nothing about the Vault is
+changed by declining to answer — rather than as a claim about the runner's own bookkeeping.
+
+`keep-local` is unchanged in what it writes to the Vault, which is still nothing, but it now records
+a durable Vault Meta Refusal rather than relying on a boolean that could not tell one wrapping from
+another. This ADR's consequence that "a device can sit indefinitely on an old wrapping while merging
+data normally, if the User keeps declining" survives intact, and gains the property it was assumed
+to have: a _second_, genuinely different wrapping change still asks.
