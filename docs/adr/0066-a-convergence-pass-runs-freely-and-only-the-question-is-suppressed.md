@@ -67,6 +67,17 @@ the fact that asking happened.**
    changed on the server for blobs" is `VaultPullRunner`'s job, and duplicating it with a runner
    that _can_ ask is how a background pass starts interrupting people.
 
+   **A reconcile triggered by the revision must not trigger itself.** `VaultHandle.saveVault` bumps
+   the revision, and reconcile's own convergence writes through `saveVault` — so a runner that
+   re-runs on every bump re-runs on the bump it just caused, forever. CONTEXT.md warns about this
+   shape for the Vault Sync Sink ("feeding one from the other would be a loop, since convergence
+   writes through the path the sink must not hear"), and the warning generalises to any consumer of
+   the revision that also writes. Reconcile therefore records the revision it last settled at and
+   re-runs only above that watermark. A watermark rather than a suppression window because the
+   distinction being drawn is "has anything changed since I finished" — which is what the revision
+   already answers — and not "was I the one who changed it", which would need reconcile to track its
+   own writes and would go wrong the moment something else wrote during a pass.
+
 3. **A refusal is recorded as a Vault Meta Refusal, keyed by the wrapping refused.** The question is
    raised only when the divergence found is one this device has neither agreed to (a Vault Meta
    Bookmark, [ADR 0060](0060-a-device-may-push-a-wrapping-it-wrote-over-a-server-it-can-prove-has-not-moved.md))
@@ -134,6 +145,10 @@ back together should read point 2 first.
 reaches every Vault-backed page. The `absent` branch in particular currently flashes the create
 offer during any first sign-in on a clean device, before the download completes — a pre-existing
 defect this makes visible rather than introduces.
+
+Reconcile gains a settled-at watermark it did not have, because a once-per-session pass never needed
+one. It is the cost of the revision trigger and not an incidental detail: without it the trigger is
+an infinite loop, and it is the first thing to check if reconcile ever appears to run away.
 
 A refusal is a fourth thing held per User on a device, beside the Local Vault, the Sync Bookmarks,
 and the Vault Meta Bookmark. It is removed with the Vault by the same `removeVault`, for the reason
