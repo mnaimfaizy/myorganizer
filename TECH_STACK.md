@@ -315,16 +315,16 @@
 
 These transitive dependencies are explicitly resolved to patched versions via Yarn resolutions, npm overrides, and pnpm overrides.
 
-| Package                     | Resolved Version | Reason                                                                                                                                     | Vulnerability ID                   |
-| --------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
-| `shell-quote`               | 1.8.4            | Patches critical shell injection vulnerability (GHSA-w7jw-789q-3m8p)                                                                       | CVE-2024-XXXXX                     |
-| `browserslist`              | 4.28.8           | Patches unbounded cache growth and untrusted custom-stats crash (GHSA-c83g-rgw3-j3cx, GHSA-73wf-gq98-2v4g)                                 | 1153171, 1153172                   |
-| `fast-uri`                  | 3.1.6            | Patches host confusion and SSRF via URI normalization (GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp) | 1158521, 1158524, 1158527, 1158530 |
-| `mysql2`                    | 3.22.0           | Patches auth plugin downgrade that can leak plaintext credentials (GHSA-3f6p-5ww8-9rcr); Prisma 7.2.0 still pins 3.15.3                    | 1153173                            |
-| `fast-xml-parser`           | 5.7.3            | Patches XMLBuilder comment/CDATA injection (GHSA-gh4j-gqv2-49f6)                                                                           | CVE-2026-41650                     |
-| `deepmerge-ts`              | 8.0.1            | Patches stack exhaustion in schema merging (pulled by @prisma/config@7.2.0)                                                                | GHSA-ggr8-5vv4-36mx                |
-| `react-native-quick-base64` | 3.0.0            | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto)                                                          | —                                  |
-| `nanoid`                    | 3.3.17           | Patches infinite loops on negative and zero `size` (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8)                                              | 1138811, 1138813                   |
+| Package                     | Resolved Version | Reason                                                                                                                                                         | Vulnerability ID                   |
+| --------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| `shell-quote`               | 1.8.4            | Patches critical shell injection vulnerability (GHSA-w7jw-789q-3m8p)                                                                                           | CVE-2024-XXXXX                     |
+| `browserslist`              | 4.28.8           | Patches unbounded cache growth and untrusted custom-stats crash (GHSA-c83g-rgw3-j3cx, GHSA-73wf-gq98-2v4g)                                                     | 1153171, 1153172                   |
+| `fast-uri`                  | 3.1.6            | Patches host confusion and SSRF via URI normalization (GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp)                     | 1158521, 1158524, 1158527, 1158530 |
+| `mysql2`                    | 3.23.1           | Patches auth downgrade credential leakage and compressed-protocol decompression DoS (GHSA-3f6p-5ww8-9rcr, GHSA-rgwj-5xj2-c3m3); Prisma 7.2.0 still pins 3.15.3 | 1153173                            |
+| `fast-xml-parser`           | 5.7.3            | Patches XMLBuilder comment/CDATA injection (GHSA-gh4j-gqv2-49f6)                                                                                               | CVE-2026-41650                     |
+| `deepmerge-ts`              | 8.0.1            | Patches stack exhaustion in schema merging (pulled by @prisma/config@7.2.0)                                                                                    | GHSA-ggr8-5vv4-36mx                |
+| `react-native-quick-base64` | 3.0.0            | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto)                                                                              | —                                  |
+| `nanoid`                    | 3.3.17           | Patches infinite loops on negative and zero `size` (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8)                                                                  | 1138811, 1138813                   |
 
 > **Note**: `shell-quote` is a transitive dependency of `concurrently@9.2.1` (pulled in by `@openapitools/openapi-generator-cli@2.27.0`) and `launch-editor@2.9.1` (pulled in by `webpack-dev-server@5.2.3`). Upstream packages are pinned to versions that contain vulnerable `shell-quote`, so we use resolutions to force the patched version globally.
 
