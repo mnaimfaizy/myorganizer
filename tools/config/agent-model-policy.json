@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-08-09",
+  "reviewedAt": "2026-09-03",
   "decision": {
     "defaultRule": "Pin models by agent role and harness; after repeated failures, escalate the decision to the main agent or a human instead of allowing an automatic model change.",
     "tiers": {
@@ -40,7 +40,7 @@
     "commit": {
       "tier": "T0",
       "models": {
-        "copilot": ["GPT-5.6 Luna (copilot)", "MAI-Code-1-Flash (copilot)"],
+        "copilot": ["GPT-5.6 Luna (copilot)", "MAI-Code-1.1-Flash (copilot)"],
         "claude": "haiku",
         "cursor": "composer-2.5",
         "gemini": "gemini-3.5-flash-lite"
@@ -58,9 +58,9 @@
     "component-reviewer": {
       "tier": "T2",
       "models": {
-        "copilot": ["Grok 4.5 (copilot)", "GPT-5.6 Terra (copilot)"],
+        "copilot": ["Grok 4.6 (copilot)", "GPT-5.6 Terra (copilot)"],
         "claude": "sonnet",
-        "cursor": "grok-4.5",
+        "cursor": "grok-4.6",
         "gemini": "gemini-3.6-flash"
       }
     },
@@ -88,7 +88,7 @@
       "models": {
         "copilot": ["Claude Sonnet 5 (copilot)", "GPT-5.6 Terra (copilot)"],
         "claude": "sonnet",
-        "cursor": "grok-4.5",
+        "cursor": "grok-4.6",
         "gemini": "gemini-3.6-flash"
       }
     },
@@ -107,10 +107,10 @@
         "copilot": [
           "Claude Sonnet 5 (copilot)",
           "GPT-5.6 Terra (copilot)",
-          "Grok 4.5 (copilot)"
+          "Grok 4.6 (copilot)"
         ],
         "claude": "sonnet",
-        "cursor": "grok-4.5",
+        "cursor": "grok-4.6",
         "gemini": "gemini-3.6-flash"
       }
     },
@@ -243,33 +243,33 @@
         "GPT-5.6 Luna",
         "Gemini 3.6 Flash",
         "Claude Sonnet 5",
-        "Grok 4.5",
+        "Grok 4.6",
         "Kimi K2.7 Code",
-        "MAI-Code-1-Flash"
+        "MAI-Code-1.1-Flash"
       ],
       "linePrefixes": ["GPT-", "Claude ", "Gemini ", "Grok ", "Kimi ", "MAI-"],
-      "snapshotSha256": "df20dd42784ed683d76ce1254e9b364e5f663d9b12bb948ca3bf85b2d72a17a4"
+      "snapshotSha256": "70c00b17de329502a4cb70e4d4626dce3182551e90e7a218c5755f84f9ce2e3a"
     },
     {
       "harness": "claude",
       "url": "https://docs.anthropic.com/en/docs/claude-code/sub-agents",
       "requiredTerms": ["haiku", "sonnet", "inherit"],
       "linePrefixes": ["haiku", "sonnet", "opus", "fable", "inherit"],
-      "snapshotSha256": "fbe2454f0a354bc886c7ca5a6d4b4f15ee37f56ac823bac184d84a8edc19cad4"
+      "snapshotSha256": "1ac093eb5507bbfe74dff70f0cf1ba278303055b13f53580ead678b32d2566c6"
     },
     {
       "harness": "cursor",
       "url": "https://cursor.com/docs/models-and-pricing",
-      "requiredTerms": ["Composer 2.5", "Grok 4.5"],
+      "requiredTerms": ["Composer 2.5", "Grok 4.6"],
       "linePrefixes": ["Composer ", "Grok "],
-      "snapshotSha256": "c5999df8fcf6f79f40bad870b1d4df540347465f6fb11d0a7339b363c07a7434"
+      "snapshotSha256": "e35d74500603956e394580d80d1ce417269f69b90c3c6c95dd000abf603cd96f"
     },
     {
       "harness": "gemini",
-      "url": "https://ai.google.dev/gemini-api/docs/latest-model?hl=en",
+      "url": "https://ai.google.dev/gemini-api/docs/pricing?hl=en",
       "requiredTerms": ["gemini-3.6-flash", "gemini-3.5-flash-lite"],
       "linePrefixes": ["Gemini "],
-      "snapshotSha256": "b5427d9527665c93f3361346cfb027c0d412ecd8b3db4c54fd82fb5263102157"
+      "snapshotSha256": "815a451b2a50b3b0ee911a045120493c2c82ca0aa49880f6204084a4e95786f3"
     }
   ],
   "costSources": {
@@ -281,7 +281,7 @@
         "Claude Sonnet 5",
         "Gemini 3.6"
       ],
-      "snapshotSha256": "743e3bfe77edbb5a07ff5b2b5414d1dcec4aacc091924f747bbb15948f893bea"
+      "snapshotSha256": "1985c2aaa3aebacc9ea436818eec122c5affbc5ed2d4fef878d8ab34615bc813"
     },
     "claude": {
       "url": "https://docs.anthropic.com/en/docs/about-claude/pricing",
@@ -291,17 +291,17 @@
         "Claude Opus 5",
         "cache"
       ],
-      "snapshotSha256": "89bc31e3641ebe3daeeb05b42f80fa7f89914e38c8d7a953e58c9d53861affea"
+      "snapshotSha256": "9b408d16a72972f45273cb11871f11cf084e8a9f661c683032eb0732ab47e0a7"
     },
     "cursor": {
       "url": "https://cursor.com/docs/models-and-pricing",
       "lineKeywords": [
         "Composer 2.5",
-        "Grok 4.5",
+        "Grok 4.6",
         "Cursor Models",
         "Other Models"
       ],
-      "snapshotSha256": "e216b281801d96620d43749f4f1e7c83a96fb175fbda934c79f4ead08bcdff89"
+      "snapshotSha256": "9bffff1860aff31af82630f873de341cb9c8625b404f0d615c5508f732399d1d"
     },
     "gemini": {
       "url": "https://ai.google.dev/gemini-api/docs/pricing?hl=en",

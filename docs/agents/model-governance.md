@@ -104,7 +104,7 @@ The workflow does not open a PR or rewrite model pins. Catalog presence does not
 | No baseline              | Policy source is incomplete                         | Capture and review a new snapshot                                     |
 | Source warning           | Network failure or source structure changed         | Workflow fails without filing a drift issue; retry and verify the URL |
 
-Catalog snapshots are change detectors, not benchmarks.
+Catalog snapshots are change detectors, not benchmarks. Gemini’s `latest-model` page is a launch splash (currently Gemini 3.8 Flash) and omits still-GA IDs from visible HTML, so the Gemini catalog check uses the [pricing page](https://ai.google.dev/gemini-api/docs/pricing?hl=en), which still lists `gemini-3.6-flash` and `gemini-3.5-flash-lite`.
 
 ## Safe update procedure
 
