@@ -82,8 +82,8 @@ export function DeleteCatalogItemDialog({
       <DialogContent className="w-[calc(100%-2rem)] md:max-w-md">
         <DialogHeader>
           <div className="mb-4 flex items-center justify-center">
-            <div className="rounded-full bg-error/10 p-3">
-              <AlertTriangle className="h-6 w-6 text-error" />
+            <div className="rounded-full bg-destructive/10 p-3">
+              <AlertTriangle className="h-6 w-6 text-destructive" />
             </div>
           </div>
           <DialogTitle>Delete "{itemName}" from Catalog?</DialogTitle>
@@ -97,7 +97,7 @@ export function DeleteCatalogItemDialog({
         <div className="space-y-1.5">
           <Label
             htmlFor="delete-catalog-item-confirm"
-            className="text-xs font-semibold text-on-surface-variant uppercase tracking-wide"
+            className="text-xs font-semibold text-muted-foreground uppercase tracking-wide"
           >
             Type "{itemName}" to confirm
           </Label>

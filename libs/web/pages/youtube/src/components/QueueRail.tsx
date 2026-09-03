@@ -168,7 +168,7 @@ export function QueueRail({
   const playerContent = queue.current ? (
     <div
       onKeyDown={handlePlayerKeyDown}
-      className="space-y-3 rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900 motion-reduce:transition-none"
+      className="space-y-3 rounded-lg border border-border bg-card p-4 motion-reduce:transition-none"
     >
       <YouTubeVideoPlayer
         key={queue.current.videoId}
@@ -182,7 +182,7 @@ export function QueueRail({
         <h3
           ref={nowPlayingTitleRef}
           tabIndex={-1}
-          className="text-sm font-semibold text-gray-900 dark:text-gray-100"
+          className="text-sm font-semibold text-foreground"
         >
           {queue.current.title}
         </h3>
@@ -212,18 +212,18 @@ export function QueueRail({
           <h2 id={headingId} className="text-sm font-semibold">
             Queue
           </h2>
-          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-gray-200 text-xs font-bold text-gray-700 dark:bg-gray-700 dark:text-gray-300">
+          <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted text-xs font-bold text-muted-foreground">
             {queue.items.length}
           </span>
         </div>
-        <span className="text-xs text-gray-500 dark:text-gray-400">
+        <span className="text-xs text-muted-foreground">
           {queue.items.length} of 4
           {remainingMinutes !== null && <> · ~{remainingMinutes} min left</>}
         </span>
       </div>
 
       {queue.isFull && (
-        <div className="rounded-md bg-yellow-50 p-2 text-xs text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-200">
+        <div className="rounded-md bg-warning/10 p-2 text-xs text-warning">
           Queue is full — 4 is the point.
         </div>
       )}
@@ -263,11 +263,9 @@ export function QueueRail({
           })}
         </ol>
       ) : (
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs dark:border-gray-700 dark:bg-gray-900/50">
-          <p className="text-gray-900 dark:text-gray-100">
-            Your queue is empty.
-          </p>
-          <p className="mt-1 text-gray-600 dark:text-gray-400">
+        <div className="rounded-lg border border-border bg-muted p-3 text-xs">
+          <p className="text-foreground">Your queue is empty.</p>
+          <p className="mt-1 text-muted-foreground">
             Add a Cached Upload from a channel row to line up what you want to
             watch.
           </p>
@@ -304,7 +302,7 @@ export function QueueRail({
 
       {/* Mobile queue disclosure */}
       <details className="lg:hidden">
-        <summary className="cursor-pointer select-none rounded-md px-3 py-2 text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-800">
+        <summary className="cursor-pointer select-none rounded-md px-3 py-2 text-sm font-semibold hover:bg-muted">
           Queue ({queue.items.length})
         </summary>
         <div className="mt-2">{renderRail('queue-rail-heading-mobile')}</div>

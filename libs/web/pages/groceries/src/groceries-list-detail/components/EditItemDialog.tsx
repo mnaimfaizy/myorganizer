@@ -2,12 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { GroceryItem } from '@myorganizer/core';
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  Form,
-} from '@myorganizer/web-ui';
+import { Button, Dialog, DialogContent, Form } from '@myorganizer/web-ui';
 import { Info, Lock } from 'lucide-react';
 import { useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
@@ -145,17 +140,17 @@ export function EditItemDialog({
         <Form {...form}>
           <form onSubmit={handleSubmit}>
             {/* Header */}
-            <div className="px-6 py-5 border-b border-border-muted">
+            <div className="px-6 py-5 border-b border-border">
               <div className="flex items-start gap-3 mb-1">
                 <h2 className="text-xl font-semibold text-primary">
                   Edit Item
                 </h2>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary-container text-action-cyan rounded-full border border-action-cyan/20 text-[10px] font-bold tracking-wider uppercase shrink-0 mt-0.5">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan/10 text-foreground rounded-full border border-cyan/30 text-[10px] font-bold tracking-wider uppercase shrink-0 mt-0.5">
                   <Lock className="w-3 h-3" />
                   Encrypted Data
                 </span>
               </div>
-              <p className="text-sm text-on-surface-variant">
+              <p className="text-sm text-muted-foreground">
                 Stored securely in your private vault.
               </p>
             </div>
@@ -179,8 +174,8 @@ export function EditItemDialog({
             </div>
 
             {/* Footer */}
-            <div className="px-6 py-4 bg-surface-container-low border-t border-border-muted flex items-center justify-between">
-              <div className="flex items-center gap-1.5 text-on-surface-variant opacity-60">
+            <div className="px-6 py-4 bg-muted border-t border-border flex items-center justify-between">
+              <div className="flex items-center gap-1.5 text-muted-foreground opacity-60">
                 <Info className="h-3.5 w-3.5" />
                 <span className="text-[11px] font-medium">
                   Auto-syncs across shared devices

@@ -79,14 +79,14 @@ export function GroceriesListDetailClient({
   if (vault.loading) {
     return (
       <div
-        className="min-h-screen bg-surface"
+        className="min-h-screen bg-background"
         aria-busy="true"
         aria-label="Loading grocery list"
       >
         <div className="mx-auto max-w-6xl p-4 md:p-6">
           <div className="mb-6 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-surface-container-highest animate-pulse" />
-            <div className="h-8 w-48 rounded bg-surface-container-highest animate-pulse" />
+            <div className="h-10 w-10 rounded-lg bg-muted animate-pulse" />
+            <div className="h-8 w-48 rounded bg-muted animate-pulse" />
           </div>
         </div>
       </div>
@@ -100,13 +100,13 @@ export function GroceriesListDetailClient({
       <div className="mx-auto max-w-6xl p-4 md:p-6">
         <Link
           href="/dashboard/groceries"
-          className="mb-6 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary-container/20 focus-visible:underline"
+          className="mb-6 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/20 focus-visible:underline"
           aria-label="Back to groceries"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Groceries
         </Link>
-        <div className="rounded-lg border border-outline-variant bg-surface-container-low p-8 text-center">
+        <div className="rounded-lg border border-border bg-muted p-8 text-center">
           <h2 className="text-xl font-semibold text-foreground">
             List not found
           </h2>

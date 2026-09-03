@@ -57,6 +57,10 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Release pipeline page check: `yarn deploy:pages:check` (asserts `docs/deployment/release-pipeline.html` against `.github/workflows/*.yml`, `package.json`, and `tools/scripts/release.mjs`; `--print` shows what each extractor resolved).
 - Libs markdown allowlist: `yarn libs:markdown:check` (Husky + CI; do not skip).
 - Guarded enum fan-out check: `yarn enum:fanout:check` (parses the TypeScript corpus and asserts that every scope covering a Guarded Enum reaches that enum's Pinned `satisfies Record<…>` table instead of hand-enumerating the members; `--print` shows the members, the pin, and the exempt declaration sites — see [ADR 0053](docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
+- Tailwind themed-utility check: `yarn tailwind:classes:check` (compiles the real app stylesheet and fails any
+  colour, spacing, or radius class that resolves to no CSS; `--print` lists what was scanned. Tailwind drops
+  unresolvable class names silently, which is how the groceries pages shipped unstyled — see
+  [ADR 0065](docs/adr/0065-tokens-json-is-the-single-source-of-web-colour.md)).
 - Documented-command check: `yarn docs:commands:check` (asserts that a path named inside a fenced shell block in any tracked Markdown file exists; placeholders and git-ignored build outputs are skipped — see [ADR 0052](docs/adr/0052-a-built-explainer-page-is-its-own-source.md)).
 - Assertion gates aggregate: `yarn gates:run` (runs the file-reading checkers above plus OpenAPI artifacts, ADR numbering, and the wired-gate check in one Node process; Husky calls this single line instead of one `corepack yarn` line per checker — see ADR 0043).
 - Wired-gate check: `yarn gates:coverage:check` (the Meta-Gate — asserts every `tools/scripts/check-*.mjs` is invoked by a hook or workflow, resolving one level of indirection through the aggregate's manifest). A checker that is deliberately not a gate needs an entry with a written reason in `tools/config/gate-coverage-optout.json` — there is no silent exemption.

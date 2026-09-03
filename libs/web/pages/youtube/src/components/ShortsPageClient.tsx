@@ -201,7 +201,7 @@ export function ShortsPageClient() {
   if (status === 'loading') {
     return (
       <div className="flex flex-1 items-center justify-center p-8">
-        <p className="text-sm text-gray-500">Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       </div>
     );
   }
@@ -212,13 +212,11 @@ export function ShortsPageClient() {
 
   // Page header
   const header = (
-    <div className="border-b border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+    <div className="border-b border-border bg-card p-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Shorts
-          </h1>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <h1 className="text-2xl font-bold text-foreground">Shorts</h1>
+          <p className="text-xs text-muted-foreground">
             Time-capped daily budget. Long-form videos have no limit.
           </p>
         </div>
@@ -247,7 +245,7 @@ export function ShortsPageClient() {
 
   // Render budget meter in both active and locked states
   const meterSection = (
-    <div className="border-b border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-900">
+    <div className="border-b border-border bg-card p-4">
       <ShortsBudgetMeter
         spentMs={budget.spentMs}
         limitMs={budget.limitMs}
@@ -287,23 +285,21 @@ export function ShortsPageClient() {
             <Skeleton className="h-10 w-full" />
           </div>
         ) : error && !shorts.length ? (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-center dark:border-red-900 dark:bg-red-900/20">
-            <p className="text-sm font-semibold text-red-900 dark:text-red-100">
+          <div className="rounded-lg border border-destructive bg-destructive/10 p-4 text-center">
+            <p className="text-sm font-semibold text-destructive">
               Failed to load Shorts
             </p>
-            <p className="mt-1 text-xs text-red-800 dark:text-red-200">
-              {error}
-            </p>
+            <p className="mt-1 text-xs text-destructive">{error}</p>
             <Button onClick={handleRetry} variant="outline" className="mt-3">
               Retry
             </Button>
           </div>
         ) : shorts.length === 0 ? (
-          <div className="rounded-lg border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-900">
-            <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          <div className="rounded-lg border border-border bg-card p-8 text-center">
+            <p className="text-sm font-semibold text-foreground">
               No Shorts to Watch
             </p>
-            <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            <p className="mt-2 text-xs text-muted-foreground">
               None of your Enabled Channels have recent Shorts. Visit your
               long-form videos or check back later.
             </p>

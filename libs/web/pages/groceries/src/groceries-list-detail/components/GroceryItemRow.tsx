@@ -50,7 +50,7 @@ export function GroceryItemRow({
           type="checkbox"
           checked={item.checked}
           onChange={() => onToggleChecked(item.id)}
-          className="h-5 w-5 shrink-0 rounded border-2 border-border accent-secondary cursor-pointer"
+          className="h-5 w-5 shrink-0 rounded border-2 border-border accent-brand cursor-pointer"
           aria-label={`Toggle ${item.name}`}
         />
 

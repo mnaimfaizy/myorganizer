@@ -64,8 +64,7 @@ describe('CategoryFilterBar', () => {
 
       const allBtn = screen.getByRole('tab', { name: /Show all items/i });
       expect(allBtn).toBeInTheDocument();
-      expect(allBtn).toHaveClass('bg-secondary');
-      expect(allBtn).toHaveClass('text-on-secondary');
+      expect(allBtn).toHaveAttribute('aria-selected', 'true');
 
       const label = CATEGORY_LABELS.produce;
       const emoji = getCategoryEmoji('produce');
@@ -75,7 +74,7 @@ describe('CategoryFilterBar', () => {
       const categoryBtn = labelEl.closest('button');
       expect(categoryBtn).toBeInTheDocument();
       expect(categoryBtn).toHaveTextContent(emoji);
-      expect(categoryBtn).toHaveClass('bg-secondary-container');
+      expect(categoryBtn).toHaveAttribute('aria-selected', 'false');
     });
   });
 
@@ -128,7 +127,7 @@ describe('CategoryFilterBar', () => {
   });
 
   describe('Active Category Styling and Accessibility', () => {
-    it('highlights the active category button and sets aria-pressed appropriately', () => {
+    it('highlights the active category button and sets aria-selected appropriately', () => {
       const items = [
         mkItem({ category: 'produce' }),
         mkItem({ category: 'dairy' }),
@@ -145,14 +144,12 @@ describe('CategoryFilterBar', () => {
 
       const allBtn = screen.getByRole('tab', { name: /Show all items/i });
       // All should not be highlighted when a category is active
-      expect(allBtn).toHaveClass('bg-secondary-container');
-      expect(allBtn).not.toHaveClass('bg-secondary');
+      expect(allBtn).toHaveAttribute('aria-selected', 'false');
 
       const dairyLabel = CATEGORY_LABELS.dairy;
       const dairyLabelEl = screen.getByText(dairyLabel);
       const dairyBtn = dairyLabelEl.closest('button') as HTMLElement;
       expect(dairyBtn).toBeTruthy();
-      expect(dairyBtn).toHaveClass('bg-secondary');
       expect(dairyBtn).toHaveAttribute('aria-selected', 'true');
 
       // Other category buttons should not be selected
@@ -165,12 +162,12 @@ describe('CategoryFilterBar', () => {
       expect(produceBtn).toHaveAttribute('aria-selected', 'false');
       expect(bakeryBtn).toHaveAttribute('aria-selected', 'false');
 
-      // Only one highlighted tab
+      // Only one selected tab
       const allButtons = screen.getAllByRole('tab');
-      const highlighted = allButtons.filter((b) =>
-        (b as HTMLElement).classList.contains('bg-secondary'),
+      const selected = allButtons.filter(
+        (b) => (b as HTMLElement).getAttribute('aria-selected') === 'true',
       );
-      expect(highlighted).toHaveLength(1);
+      expect(selected).toHaveLength(1);
     });
   });
 

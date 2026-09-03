@@ -200,6 +200,30 @@ _Avoid_: Page component, route component, smart component
 A presentational component in `libs/web-vault-ui` that shows vault-adjacent state from mockable props. It knows the vault domain, so it is not a UI Primitive; it is reused across routes, so it is not a Feature Component.
 _Avoid_: UI Primitive (wrong scope), Feature Component, vault widget, vault card (as the scope name)
 
+**Brand Primitive**:
+A named colour in the primitive tier of `tokens.json` — the value itself, mode-independent. The
+landing page, the email shell, and the Mobile App theme consume these directly. Never resolvable
+as a Tailwind class on its own.
+_Avoid_: token, palette entry, brand colour
+
+**Semantic Role**:
+A named slot a Brand Primitive is aliased to for one colour mode — `background`, `card`, `brand`,
+`muted-foreground`. Web Tailwind class names resolve against Semantic Roles and nothing else. A
+role has a value per mode; a primitive does not. Adding one is the only way to add a web colour
+utility.
+_Avoid_: token (when a role is meant), colour variable, theme colour
+
+**Neutral Ramp**:
+The ordered greyscale in the primitive tier that both colour modes index into — light mode reads it
+one way, dark mode inverted. Token data only; never exposed as Tailwind utility classes.
+_Avoid_: elevation scale, surface tiers, tonal palette
+
+**Material Design 3 role names** (`surface-container-low`, `on-surface-variant`, `outline-variant`,
+`surface-bright`, `secondary-fixed`, `primary-container`, `error-container`, `action-cyan`):
+Not vocabulary in this codebase. They appeared in the groceries page library written against a
+system that was never implemented, compiled to no CSS, and were removed. Use Semantic Roles.
+_Avoid_: all of them
+
 **Structured Spec**:
 The handoff document the main agent passes to ComponentBuilder. Contains: component name, target path, scope (UI Primitive or Feature Component), props interface, state ownership, Zod schema if applicable, and relevant guideline references.
 _Avoid_: Component brief, component plan, design spec

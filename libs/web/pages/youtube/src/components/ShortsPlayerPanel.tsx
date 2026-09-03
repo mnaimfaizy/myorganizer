@@ -79,24 +79,20 @@ export function ShortsPlayerPanel({
       </div>
 
       {/* Runtime display */}
-      {runtime && (
-        <p className="text-xs text-gray-500 dark:text-gray-400">{runtime}</p>
-      )}
+      {runtime && <p className="text-xs text-muted-foreground">{runtime}</p>}
 
       {/* Short info + navigation */}
       <div className="w-full max-w-sm space-y-3">
         <div>
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100">
-            {activeShort.title}
-          </h2>
-          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+          <h2 className="font-semibold text-foreground">{activeShort.title}</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
             {activeShort.channelTitle}
           </p>
         </div>
 
         {/* Budget warning */}
         {budgetWarning && (
-          <div className="rounded-md bg-amber-50 p-2 text-xs text-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+          <div className="rounded-md bg-warning/10 p-2 text-xs text-warning">
             {budgetWarning}
           </div>
         )}
@@ -120,7 +116,7 @@ export function ShortsPlayerPanel({
 
           {/* Position indicator */}
           <p
-            className="min-w-12 text-center text-xs text-gray-500 dark:text-gray-400"
+            className="min-w-12 text-center text-xs text-muted-foreground"
             aria-live="polite"
             aria-atomic="true"
           >

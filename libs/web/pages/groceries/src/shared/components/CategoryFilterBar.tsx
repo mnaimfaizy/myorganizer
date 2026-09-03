@@ -51,7 +51,7 @@ function CategoryFilterBarComponent({
 
   return (
     <div
-      className="flex gap-2 overflow-x-auto py-md px-1"
+      className="flex gap-2 overflow-x-auto py-2 px-1"
       role="tablist"
       aria-label="Filter items by category"
     >
@@ -60,10 +60,10 @@ function CategoryFilterBarComponent({
         onClick={() => onCategoryChange('all')}
         onKeyDown={(e) => handleKeyDown(e, 'all')}
         className={cn(
-          'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-secondary',
+          'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand',
           activeCategory === 'all'
-            ? 'bg-secondary text-on-secondary'
-            : 'bg-secondary-container text-on-secondary-container hover:bg-secondary-container/80',
+            ? 'bg-brand text-brand-foreground'
+            : 'bg-muted text-accent-foreground hover:bg-muted/80',
         )}
         role="tab"
         aria-selected={activeCategory === 'all'}
@@ -83,10 +83,10 @@ function CategoryFilterBarComponent({
             onClick={() => onCategoryChange(category)}
             onKeyDown={(e) => handleKeyDown(e, category)}
             className={cn(
-              'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-secondary',
+              'px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-brand',
               activeCategory === category
-                ? 'bg-secondary text-on-secondary'
-                : 'bg-secondary-container text-on-secondary-container hover:bg-secondary-container/80',
+                ? 'bg-brand text-brand-foreground'
+                : 'bg-muted text-accent-foreground hover:bg-muted/80',
             )}
             role="tab"
             aria-selected={activeCategory === category}

@@ -174,17 +174,17 @@ export function AddItemDialog({
       <DialogContent className="w-[calc(100%-2rem)] max-w-xl gap-0 overflow-hidden p-0">
         <Form {...form}>
           <form onSubmit={handleSubmit}>
-            <div className="border-b border-border-muted px-6 py-5">
+            <div className="border-b border-border px-6 py-5">
               <div className="mb-1 flex items-start gap-3">
                 <DialogTitle className="text-xl font-semibold text-primary">
                   {mode === 'catalog' ? 'New staple' : 'Add New Item'}
                 </DialogTitle>
-                <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border border-action-cyan/20 bg-primary-container px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-action-cyan">
+                <span className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border border-cyan/30 bg-cyan/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-foreground">
                   <Lock className="h-3 w-3" />
                   Encrypted Data
                 </span>
               </div>
-              <DialogDescription className="text-sm text-on-surface-variant">
+              <DialogDescription className="text-sm text-muted-foreground">
                 Stored securely in your private vault.
               </DialogDescription>
             </div>
@@ -208,8 +208,8 @@ export function AddItemDialog({
               />
             </div>
 
-            <div className="flex items-center justify-between border-t border-border-muted bg-surface-container-low px-6 py-4">
-              <div className="flex items-center gap-1.5 text-on-surface-variant opacity-60">
+            <div className="flex items-center justify-between border-t border-border bg-muted px-6 py-4">
+              <div className="flex items-center gap-1.5 text-muted-foreground opacity-60">
                 <Info className="h-3.5 w-3.5" />
                 <span className="text-[11px] font-medium">
                   Auto-syncs across shared devices

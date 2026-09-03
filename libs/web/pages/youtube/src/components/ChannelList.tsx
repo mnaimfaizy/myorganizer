@@ -46,9 +46,7 @@ export function ChannelList({
     <>
       {/* Desktop: Aside channel list */}
       <aside className="hidden lg:flex w-48 shrink-0 flex-col gap-2">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-          Channels
-        </h2>
+        <h2 className="text-sm font-semibold text-foreground">Channels</h2>
         <div
           role="tablist"
           aria-label="Enabled channels"
@@ -75,8 +73,8 @@ export function ChannelList({
                 className={cn(
                   'w-full flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors',
                   isSelected
-                    ? 'bg-blue-50 text-blue-900 dark:bg-blue-900/30 dark:text-blue-100'
-                    : 'text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800',
+                    ? 'bg-brand/10 text-brand'
+                    : 'text-muted-foreground hover:bg-muted',
                 )}
               >
                 {channel.channelThumbnail ? (
@@ -86,7 +84,7 @@ export function ChannelList({
                     className="h-6 w-6 rounded-full shrink-0"
                   />
                 ) : (
-                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-200 text-xs font-bold shrink-0 dark:bg-gray-700">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-xs font-bold shrink-0">
                     {channel.channelTitle.charAt(0)}
                   </div>
                 )}
@@ -133,8 +131,8 @@ export function ChannelList({
                 className={cn(
                   'px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap shrink-0 transition-colors',
                   isSelected
-                    ? 'bg-blue-600 text-white dark:bg-blue-700'
-                    : 'bg-gray-200 text-gray-900 dark:bg-gray-700 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600',
+                    ? 'bg-brand text-brand-foreground'
+                    : 'bg-muted text-foreground hover:bg-muted',
                 )}
               >
                 {channel.channelTitle}

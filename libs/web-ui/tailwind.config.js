@@ -27,9 +27,21 @@ module.exports = {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
         },
+        brand: {
+          DEFAULT: 'hsl(var(--brand))',
+          foreground: 'hsl(var(--brand-foreground))',
+        },
+        cyan: {
+          DEFAULT: 'hsl(var(--cyan))',
+          foreground: 'hsl(var(--cyan-foreground))',
+        },
         warning: {
           DEFAULT: 'hsl(var(--warning))',
           foreground: 'hsl(var(--warning-foreground))',
+        },
+        success: {
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))',
         },
         muted: {
           DEFAULT: 'hsl(var(--muted))',

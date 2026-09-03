@@ -48,7 +48,7 @@ export default function ChannelVideosClient({
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back
         </Button>
-        <h1 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <h1 className="text-lg font-semibold text-foreground">
           {loading && videos.length === 0 ? (
             <Skeleton className="h-6 w-48" />
           ) : (

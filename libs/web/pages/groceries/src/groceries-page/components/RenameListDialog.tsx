@@ -114,9 +114,9 @@ export function RenameListDialog({
               className="text-base md:text-sm"
               autoFocus
             />
-            {error && <p className="text-xs text-error">{error}</p>}
+            {error && <p className="text-xs text-destructive">{error}</p>}
             <p
-              className="text-xs text-text-muted"
+              className="text-xs text-muted-foreground"
               aria-live="polite"
               aria-label={`${name.length} out of 100 characters entered`}
             >

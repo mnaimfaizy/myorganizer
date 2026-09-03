@@ -65,13 +65,13 @@ export function SubscriptionManager({
             variant="outline"
             size="sm"
             onClick={onDisconnect}
-            className="text-red-600 hover:text-red-700"
+            className="text-destructive hover:text-destructive"
           >
             Disconnect
           </Button>
         </div>
       </div>
-      <div className="text-xs text-gray-500 dark:text-gray-400">
+      <div className="text-xs text-muted-foreground">
         <ul className="list-disc list-inside space-y-0.5 mb-2">
           <li>Metadata only — never video files</li>
           <li>Watched is yes/no, not analytics</li>
@@ -92,17 +92,17 @@ export function SubscriptionManager({
             ))}
           </div>
         ) : subscriptions.length === 0 ? (
-          <p className="py-4 text-center text-sm text-gray-500">
+          <p className="py-4 text-center text-sm text-muted-foreground">
             No subscriptions found. Click &quot;Sync from YouTube&quot; to
             import your channels.
           </p>
         ) : (
-          <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+          <ul className="divide-y divide-border">
             {subscriptions.map((sub) => (
               <li key={sub.id} className="flex items-center gap-3 py-3">
                 <button
                   type="button"
-                  className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
+                  className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted"
                   onClick={() =>
                     router.push(
                       `/dashboard/youtube?channel=${encodeURIComponent(sub.channelId)}`,
@@ -116,7 +116,7 @@ export function SubscriptionManager({
                       className="h-8 w-8 rounded-full"
                     />
                   ) : (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-200 text-xs font-bold dark:bg-gray-700">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-bold">
                       {sub.channelTitle.charAt(0)}
                     </div>
                   )}
@@ -132,7 +132,7 @@ export function SubscriptionManager({
                     className="peer sr-only"
                     aria-label={`Toggle subscription for ${sub.channelTitle}`}
                   />
-                  <div className="peer h-5 w-9 rounded-full bg-gray-200 after:absolute after:start-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-blue-600 peer-checked:after:translate-x-full peer-checked:after:border-white dark:bg-gray-700" />
+                  <div className="peer h-5 w-9 rounded-full bg-muted after:absolute after:start-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:border after:border-border after:bg-card after:transition-all after:content-[''] peer-checked:bg-brand peer-checked:after:translate-x-full peer-checked:after:border-card" />
                 </label>
               </li>
             ))}

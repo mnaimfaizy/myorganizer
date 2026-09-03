@@ -10,7 +10,6 @@
       "outputs": ["{projectRoot}/src/generated"],
       "inputs": [
         "{projectRoot}/src/tokens.json",
-        "{projectRoot}/style-dictionary.config.cjs",
         "{projectRoot}/scripts/build-tokens.cjs"
       ],
       "options": {

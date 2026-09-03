@@ -42,7 +42,7 @@ export const SYNC_TONE_ICON = {
 export const SYNC_TONE_TEXT_CLASS: Record<VaultSyncTone, string> = {
   ok: 'text-muted-foreground',
   pending: 'text-muted-foreground',
-  error: 'text-red-700 dark:text-red-300',
+  error: 'text-destructive',
 } as const;
 
 /**
@@ -87,7 +87,7 @@ export function SyncStatusIndicator({
           </div>
           {reading.detail && (
             <p
-              className="text-xs text-gray-600 dark:text-gray-400"
+              className="text-xs text-muted-foreground"
               data-testid="sync-status-detail"
             >
               {reading.detail}
