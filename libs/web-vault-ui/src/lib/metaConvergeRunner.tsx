@@ -13,6 +13,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import type {
+  SettleVaultMetaResult,
   VaultMetaChange,
   VaultMetaDecision,
   VaultMetaRefusalLifetime,
@@ -140,6 +141,37 @@ function getUserFacingErrorMessage(error: unknown): string {
   return 'Could not check your vault keys. Your local data is unchanged.';
 }
 
+/**
+ * Whether a settled pass found the Session gone.
+ *
+ * `settleVaultMeta` never throws for a 401/403 — both its push half and its
+ * converge half catch it themselves and resolve with this `kind` instead, so
+ * checking the result (never the rejection) is the only way to see it.
+ */
+function isSessionGoneResult(result: SettleVaultMetaResult): boolean {
+  if (result.kind === 'skipped-not-authenticated') return true;
+  return (
+    result.kind === 'converged' &&
+    result.result.kind === 'skipped-not-authenticated'
+  );
+}
+
+/**
+ * Runs Vault Meta Converge: on mount, and again on every window focus.
+ *
+ * A wrapping changed on another device is a remote event with no local
+ * signal, so this takes the trigger `VaultPullRunner` already uses — the
+ * house answer for polling one (ADR 0066, decision point 2). It takes no
+ * Local Vault Revision trigger: that is `VaultReconcileRunner`'s signal for a
+ * local event the server knows nothing about, and this runner's question is
+ * the opposite one.
+ *
+ * Nothing about reaching the server is suppressed here. What is rationed is
+ * the dialog: a wrapping this device has already refused — durably for a
+ * given answer, for the tab session for a dismissal — raises nothing, and
+ * that is decided by `isVaultMetaRefused`, never by whether this runner has
+ * asked before.
+ */
 export function VaultMetaConvergeRunner() {
   const { toast } = useToast();
   const toastRef = useRef(toast);
@@ -169,96 +201,171 @@ export function VaultMetaConvergeRunner() {
     if (typeof window === 'undefined') return;
     if (!owner) return;
 
-    const currentHandle = handleRef.current;
-    if (!currentHandle) return;
-
     const api = createVaultApi();
 
-    // Settle rather than converge: a wrapping this device changed and could
-    // not push looks exactly like one changed elsewhere, so asking before
-    // pushing would tell the User their own change came from another device
-    // and offer them a button that reverts it. `settleVaultMeta` pushes what
-    // this device owes first, and only then asks about what is left.
-    settleVaultMeta({
-      api,
-      handle: currentHandle,
-      prompt: async ({ change, remote }) => {
-        if (cancelled) return 'defer';
+    // Mount+focus, coalesced, stop-for-good: the same shape
+    // `createVaultPullTrigger` (`vaultPullTrigger.ts`) already gives
+    // `VaultPullRunner`. It is not reused as-is here because its `check()`
+    // never rejects — `checkVaultBlobsForUpdates` catches every per-type
+    // failure itself — while `settleVaultMeta` can reject for a transient
+    // network failure, and this runner has to tell that apart from a failure
+    // that struck after the User answered a dialog `createVaultPullTrigger`
+    // has no dialog to know about. Generalising the primitive to carry both
+    // would move UI-shaped state (which wrapping was just answered) into a
+    // library that structurally cannot write and is not supposed to know
+    // about a prompt either.
 
-        // What is rationed is interrupting the User, and it is rationed by the
-        // wrapping asked about rather than by the fact that asking happened
-        // (ADR 0066). A wrapping this device has already declined raises
-        // nothing; a genuinely different one still asks, which a flag recording
-        // that a question was once put could not tell apart.
-        //
-        // A refused wrapping settles as `defer` because that is the truthful
-        // one of the three: nothing was written, on either side, and the
-        // question is still open — it is only not being put again yet.
-        if (
-          await currentHandle.isVaultMetaRefused({ meta: remote.meta, change })
-        ) {
-          return 'defer';
-        }
+    /**
+     * Once a pass finds the Session gone, there is no Session left to check
+     * against — the rule `vaultPullTrigger` already applies for the same
+     * reason. A later focus event would only repeat the same answer at the
+     * User's expense, so this runner, too, stops for good.
+     */
+    let stopped = false;
+    /** Passes are serialised: a second one would race the first over the same prompt. */
+    let inFlight = false;
+    /**
+     * Whether a trigger arrived while a pass was already running. Collapsed
+     * to a single follow-up pass once the current one settles, rather than
+     * one pass per trigger — mount immediately followed by a focus event, or
+     * several focus events in one burst, cost one pass each way (ADR 0066).
+     */
+    let pendingRecheck = false;
 
-        const decision = await new Promise<VaultMetaDecision>((resolve) => {
-          const nextPrompt = { change, resolve };
-          pendingPromptRef.current = nextPrompt;
-          setPendingPrompt(nextPrompt);
-        });
+    const runPass = () => {
+      const currentHandle = handleRef.current;
+      if (!currentHandle) return;
 
-        // Unmounting resolves a pending prompt with `defer` so the pass can
-        // settle. That is this component going away, not a User declining, and
-        // recording it would silence a question nobody was ever answered.
-        if (cancelled) return 'defer';
+      inFlight = true;
+      // Which wrapping the User actually answered about during this pass, as
+      // opposed to one merely offered. `defer` — a dismissal or an unmount —
+      // is "the answer given by a User who gave no answer" (ADR 0057's
+      // amendment), so it never sets this. Only `keep-local` and
+      // `adopt-remote` do, and only those unlock the toast below: a failure
+      // that struck before the User answered is a background failure, silent
+      // and retried on the next trigger; a failure that struck resolving an
+      // answer they just gave is the one thing this runner still says out
+      // loud (ADR 0066, decision point 5).
+      let answeredChange: VaultMetaChange | null = null;
 
-        const lifetime = VAULT_META_REFUSAL_LIFETIME_BY_DECISION[decision];
-        if (lifetime) {
-          await currentHandle.recordVaultMetaRefusal({
-            meta: remote.meta,
-            change,
-            lifetime,
+      // Settle rather than converge: a wrapping this device changed and could
+      // not push looks exactly like one changed elsewhere, so asking before
+      // pushing would tell the User their own change came from another device
+      // and offer them a button that reverts it. `settleVaultMeta` pushes what
+      // this device owes first, and only then asks about what is left.
+      settleVaultMeta({
+        api,
+        handle: currentHandle,
+        prompt: async ({ change, remote }) => {
+          if (cancelled) return 'defer';
+
+          // What is rationed is interrupting the User, and it is rationed by the
+          // wrapping asked about rather than by the fact that asking happened
+          // (ADR 0066). A wrapping this device has already declined raises
+          // nothing; a genuinely different one still asks, which a flag recording
+          // that a question was once put could not tell apart.
+          //
+          // A refused wrapping settles as `defer` because that is the truthful
+          // one of the three: nothing was written, on either side, and the
+          // question is still open — it is only not being put again yet.
+          if (
+            await currentHandle.isVaultMetaRefused({
+              meta: remote.meta,
+              change,
+            })
+          ) {
+            return 'defer';
+          }
+
+          const decision = await new Promise<VaultMetaDecision>((resolve) => {
+            const nextPrompt = { change, resolve };
+            pendingPromptRef.current = nextPrompt;
+            setPendingPrompt(nextPrompt);
           });
-        }
 
-        return decision;
-      },
-    })
-      .then((result) => {
-        if (cancelled) return;
+          // Unmounting resolves a pending prompt with `defer` so the pass can
+          // settle. That is this component going away, not a User declining, and
+          // recording it would silence a question nobody was ever answered.
+          if (cancelled) return 'defer';
 
-        const converged = result.kind === 'converged' ? result.result : null;
+          if (decision !== 'defer') answeredChange = change;
 
-        if (converged?.kind === 'adopted-remote') {
-          currentHandle.saveVault(converged.nextLocalVault);
-          const adopted = VAULT_META_CHANGE_COPY[converged.change].adopt;
-          // A change with no adopt copy is one the library refuses to adopt,
-          // so reaching here with none would mean the dialog offered an
-          // action the library would not carry out.
-          if (adopted) {
-            toastRef.current({
-              title: adopted.toastTitle,
-              description: adopted.toastDescription,
+          const lifetime = VAULT_META_REFUSAL_LIFETIME_BY_DECISION[decision];
+          if (lifetime) {
+            await currentHandle.recordVaultMetaRefusal({
+              meta: remote.meta,
+              change,
+              lifetime,
             });
           }
-        }
+
+          return decision;
+        },
       })
-      .catch((e: unknown) => {
-        if (cancelled) return;
+        .then((result) => {
+          if (cancelled) return;
 
-        const errorTitle = pendingPromptRef.current
-          ? VAULT_META_CHANGE_COPY[pendingPromptRef.current.change]
-              .toastErrorTitle
-          : 'Vault key check failed';
+          if (isSessionGoneResult(result)) {
+            stopped = true;
+            return;
+          }
 
-        toastRef.current({
-          title: errorTitle,
-          description: getUserFacingErrorMessage(e),
-          variant: 'destructive',
+          const converged = result.kind === 'converged' ? result.result : null;
+
+          if (converged?.kind === 'adopted-remote') {
+            currentHandle.saveVault(converged.nextLocalVault);
+            const adopted = VAULT_META_CHANGE_COPY[converged.change].adopt;
+            // A change with no adopt copy is one the library refuses to adopt,
+            // so reaching here with none would mean the dialog offered an
+            // action the library would not carry out.
+            if (adopted) {
+              toastRef.current({
+                title: adopted.toastTitle,
+                description: adopted.toastDescription,
+              });
+            }
+          }
+        })
+        .catch((e: unknown) => {
+          if (cancelled) return;
+          // A background failure says nothing — a server down for a minute
+          // would otherwise toast on every focus about a failure that is
+          // about to be retried (ADR 0066). The one exception is a failure
+          // that struck after the User had already answered: silence there
+          // would leave them believing their answer landed when it did not.
+          if (!answeredChange) return;
+
+          toastRef.current({
+            title: VAULT_META_CHANGE_COPY[answeredChange].toastErrorTitle,
+            description: getUserFacingErrorMessage(e),
+            variant: 'destructive',
+          });
+        })
+        .finally(() => {
+          inFlight = false;
+          if (cancelled || stopped) return;
+          if (pendingRecheck) {
+            pendingRecheck = false;
+            runPass();
+          }
         });
-      });
+    };
+
+    const requestPass = () => {
+      if (cancelled || stopped) return;
+      if (inFlight) {
+        pendingRecheck = true;
+        return;
+      }
+      runPass();
+    };
+
+    requestPass();
+    window.addEventListener('focus', requestPass);
 
     return () => {
       cancelled = true;
+      window.removeEventListener('focus', requestPass);
       if (pendingPromptRef.current) {
         pendingPromptRef.current.resolve('defer');
         pendingPromptRef.current = null;

@@ -818,4 +818,497 @@ describe('VaultMetaConvergeRunner', () => {
       { timeout: 500 },
     );
   });
+
+  test('focus event triggers a second pass after first pass settles', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    // First pass: noop, no dialog
+    arrangeNoPromptMetaConverge();
+
+    render(<VaultMetaConvergeRunner />);
+
+    // Wait for first pass to complete
+    await waitFor(() => {
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
+    });
+
+    // Fire focus event
+    fireEvent.focus(window);
+
+    // Should call settleVaultMeta again
+    await waitFor(() => {
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  test('coalesce concurrent triggers: mount + immediate focus = one call initially, one after first resolves', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    // Mock settleVaultMeta to return a promise we control resolution of,
+    // so we can fire a focus event while the first pass is still in flight.
+    let resolveFirstPass: (() => void) | undefined;
+    const firstPassPromise = new Promise<void>((resolve) => {
+      resolveFirstPass = resolve;
+    });
+
+    mockSettleVaultMeta.mockImplementation(async () => {
+      await firstPassPromise;
+      return { kind: 'skipped-no-local-vault' as const };
+    });
+
+    render(<VaultMetaConvergeRunner />);
+
+    // Mount calls settleVaultMeta once synchronously
+    expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
+
+    // Fire focus event immediately while first pass is still pending
+    fireEvent.focus(window);
+
+    // Should still be only 1 call (coalesced into pendingRecheck)
+    expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
+
+    // Resolve the first pass
+    resolveFirstPass?.();
+
+    // Now the coalesced follow-up pass should run, making it 2 total
+    await waitFor(() => {
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  test('terminal stop: settleVaultMeta resolves skipped-not-authenticated (bare) stops further passes', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockSettleVaultMeta.mockResolvedValue({
+      kind: 'skipped-not-authenticated' as const,
+    });
+
+    render(<VaultMetaConvergeRunner />);
+
+    // Wait for first pass
+    await waitFor(() => {
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
+    });
+
+    // Fire focus event
+    fireEvent.focus(window);
+
+    // Should NOT call settleVaultMeta again (session is gone, stopped = true)
+    await waitFor(
+      () => {
+        expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 500 },
+    );
+
+    // No toast should be shown (skipped-not-authenticated is a resolved result, not an error)
+    expect(mockToast).not.toHaveBeenCalled();
+  });
+
+  test('terminal stop: settleVaultMeta resolves converged/skipped-not-authenticated (nested) stops further passes', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockSettleVaultMeta.mockResolvedValue({
+      kind: 'converged' as const,
+      result: { kind: 'skipped-not-authenticated' as const },
+    });
+
+    render(<VaultMetaConvergeRunner />);
+
+    // Wait for first pass
+    await waitFor(() => {
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
+    });
+
+    // Fire focus event
+    fireEvent.focus(window);
+
+    // Should NOT call settleVaultMeta again
+    await waitFor(
+      () => {
+        expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
+      },
+      { timeout: 500 },
+    );
+
+    // No toast should be shown
+    expect(mockToast).not.toHaveBeenCalled();
+  });
+
+  test('refusal on same mount: focus with same wrapping does not show dialog, but different wrapping does', async () => {
+    const mockHandle = createMockHandle('user-a');
+    const decisionResult: { current?: VaultMetaDecision } = {};
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    let passCount = 0;
+    mockSettleVaultMeta.mockImplementation(
+      async (options: SettleVaultMetaOptions) => {
+        passCount++;
+
+        if (passCount === 1) {
+          // First pass: offer WRAPPING_A, let user decline
+          decisionResult.current = await options.prompt({
+            change: 'passphrase',
+            remote: { meta: WRAPPING_A, etag: 'etag-1' },
+          });
+          return {
+            kind: 'converged' as const,
+            result: { kind: 'noop-already-in-sync' as const },
+          };
+        } else if (passCount === 2) {
+          // Second pass (via focus): same WRAPPING_A, should be suppressed
+          decisionResult.current = await options.prompt({
+            change: 'passphrase',
+            remote: { meta: WRAPPING_A, etag: 'etag-1' },
+          });
+          return {
+            kind: 'converged' as const,
+            result: { kind: 'noop-already-in-sync' as const },
+          };
+        } else {
+          // Third pass (via focus): WRAPPING_B, should ask again
+          decisionResult.current = await options.prompt({
+            change: 'passphrase',
+            remote: { meta: WRAPPING_B, etag: 'etag-2' },
+          });
+          return {
+            kind: 'converged' as const,
+            result: { kind: 'noop-already-in-sync' as const },
+          };
+        }
+      },
+    );
+
+    render(<VaultMetaConvergeRunner />);
+
+    // First pass: dialog shown for WRAPPING_A
+    let dialog = await screen.findByRole('dialog');
+    expect(dialog).not.toBeNull();
+
+    // User declines (keep-local)
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Keep my current passphrase' }),
+    );
+
+    await waitFor(() => expect(decisionResult.current).toBe('keep-local'));
+    expect(mockHandle.recordVaultMetaRefusal).toHaveBeenCalledWith({
+      meta: WRAPPING_A,
+      change: 'passphrase',
+      lifetime: 'durable',
+    });
+
+    // Clear toast spy to verify no new toasts on subsequent passes
+    mockToast.mockClear();
+
+    // Second pass via focus: same WRAPPING_A should NOT show dialog
+    fireEvent.focus(window);
+
+    await waitFor(() => {
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(2);
+    });
+
+    // No dialog should be shown
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    // Third pass via focus: WRAPPING_B should show dialog
+    fireEvent.focus(window);
+
+    dialog = await screen.findByRole('dialog');
+    expect(dialog).not.toBeNull();
+
+    // Verify it's asking about the new wrapping
+    expect(mockHandle.isVaultMetaRefused).toHaveBeenLastCalledWith({
+      meta: WRAPPING_B,
+      change: 'passphrase',
+    });
+  });
+
+  test('dismissal + focus on same mount: session refusal suppresses dialog for same wrapping', async () => {
+    const mockHandle = createMockHandle('user-a');
+    const decisionResult: { current?: VaultMetaDecision } = {};
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    mockSettleVaultMeta.mockImplementation(
+      async (options: SettleVaultMetaOptions) => {
+        decisionResult.current = await options.prompt({
+          change: 'passphrase',
+          remote: { meta: WRAPPING_A, etag: 'etag-1' },
+        });
+
+        return {
+          kind: 'converged' as const,
+          result: { kind: 'noop-already-in-sync' as const },
+        };
+      },
+    );
+
+    render(<VaultMetaConvergeRunner />);
+
+    // First pass: dialog shown
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).not.toBeNull();
+
+    // User dismisses (Escape)
+    fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
+
+    await waitFor(() => expect(decisionResult.current).toBe('defer'));
+
+    // Session refusal was recorded
+    expect(mockHandle.recordVaultMetaRefusal).toHaveBeenCalledWith({
+      meta: WRAPPING_A,
+      change: 'passphrase',
+      lifetime: 'session',
+    });
+
+    // Clear for next phase
+    mockToast.mockClear();
+    mockSettleVaultMeta.mockClear();
+
+    // Focus: same wrapping should NOT show dialog (session refusal is in effect)
+    fireEvent.focus(window);
+
+    await waitFor(() => {
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
+    });
+
+    // No dialog should render
+    expect(screen.queryByRole('dialog')).toBeNull();
+
+    // No new toast
+    expect(mockToast).not.toHaveBeenCalled();
+  });
+
+  test('transient error with no dialog: rejection is silent, next focus retries successfully', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    let passCount = 0;
+    mockSettleVaultMeta.mockImplementation(async () => {
+      passCount++;
+
+      if (passCount === 1) {
+        // First pass: reject before prompt is even called (transient network error)
+        throw new Error('Network error');
+      } else {
+        // Second pass: resolve normally
+        return { kind: 'skipped-no-local-vault' as const };
+      }
+    });
+
+    render(<VaultMetaConvergeRunner />);
+
+    // First pass rejects
+    await waitFor(() => {
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
+    });
+
+    // No toast should be shown (error happened before any prompt, so answeredChange is null)
+    expect(mockToast).not.toHaveBeenCalled();
+
+    // Retry via focus
+    fireEvent.focus(window);
+
+    // Second pass runs and succeeds
+    await waitFor(() => {
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(2);
+    });
+
+    // Still stopped = false, so component is still retryable
+    // Verify by firing another focus and seeing it attempt a third call
+    fireEvent.focus(window);
+
+    await waitFor(() => {
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(3);
+    });
+  });
+
+  test('failure after keep-local answer: rejection toasts with change-specific error', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    const error = new Error('Failed to record refusal');
+    mockSettleVaultMeta.mockImplementation(
+      async (options: SettleVaultMetaOptions) => {
+        const decision = await options.prompt({
+          change: 'passphrase',
+          remote: {
+            meta: makeRemoteMeta('error-test'),
+            etag: 'etag-1',
+          },
+        });
+
+        if (decision === 'keep-local') {
+          // User answered, but now fail
+          throw error;
+        }
+
+        return {
+          kind: 'converged' as const,
+          result: { kind: 'noop-already-in-sync' as const },
+        };
+      },
+    );
+
+    render(<VaultMetaConvergeRunner />);
+
+    await screen.findByRole('dialog');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Keep my current passphrase' }),
+    );
+
+    // Wait for the rejection to be handled. `getHttpStatus` is mocked to
+    // return `undefined`, so `getUserFacingErrorMessage` falls through to the
+    // thrown Error's own `message` — asserted exactly, not just truthiness.
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Passphrase check failed',
+          description: 'Failed to record refusal',
+          variant: 'destructive',
+        }),
+      );
+    });
+  });
+
+  test('failure after adopt-remote answer: rejection toasts with change-specific error', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    const error = new Error('Failed to save vault');
+    mockSettleVaultMeta.mockImplementation(
+      async (options: SettleVaultMetaOptions) => {
+        const decision = await options.prompt({
+          change: 'passphrase',
+          remote: {
+            meta: makeRemoteMeta('error-test'),
+            etag: 'etag-1',
+          },
+        });
+
+        if (decision === 'adopt-remote') {
+          // User answered, but now fail
+          throw error;
+        }
+
+        return {
+          kind: 'converged' as const,
+          result: { kind: 'noop-already-in-sync' as const },
+        };
+      },
+    );
+
+    render(<VaultMetaConvergeRunner />);
+
+    await screen.findByRole('dialog');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Use the new passphrase' }),
+    );
+
+    // Wait for the rejection to be handled.
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Passphrase check failed',
+          description: 'Failed to save vault',
+          variant: 'destructive',
+        }),
+      );
+    });
+  });
+
+  test('dismissal + rejection: no toast (answered change remains null)', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    const error = new Error('Unexpected failure');
+    mockSettleVaultMeta.mockImplementation(
+      async (options: SettleVaultMetaOptions) => {
+        const decision = await options.prompt({
+          change: 'passphrase',
+          remote: {
+            meta: makeRemoteMeta('dismiss-error-test'),
+            etag: 'etag-1',
+          },
+        });
+
+        if (decision === 'defer') {
+          // User dismissed, but now fail (this models an edge case)
+          throw error;
+        }
+
+        return {
+          kind: 'converged' as const,
+          result: { kind: 'noop-already-in-sync' as const },
+        };
+      },
+    );
+
+    render(<VaultMetaConvergeRunner />);
+
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
+
+    // Wait for the rejection to be handled
+    await waitFor(() => {
+      // Even though rejection occurred, no toast because user dismissed (defer) not answered
+      expect(mockToast).not.toHaveBeenCalled();
+    });
+  });
+
+  test('pass runs with vault (owner present, no lock state)', async () => {
+    const mockHandle = createMockHandle('user-a');
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    arrangeNoPromptMetaConverge();
+
+    render(<VaultMetaConvergeRunner />);
+
+    // The effect runs because owner is present; lock state is not checked.
+    // Mock handle has no lock concept, and settleVaultMeta is called regardless.
+    await waitFor(() => {
+      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
+      expect(mockSettleVaultMeta).toHaveBeenCalledWith(
+        expect.objectContaining({
+          handle: mockHandle,
+        }),
+      );
+    });
+  });
 });
