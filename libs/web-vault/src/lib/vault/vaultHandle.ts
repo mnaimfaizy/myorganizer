@@ -23,6 +23,11 @@ import {
 } from './localVaultStorage';
 import { createSyncBookmarkAccess } from './syncBookmarkAccess';
 import { VAULT_BLOB_TYPE_BY_FIELD } from './vaultBlobFields';
+import {
+  createVaultMetaRefusalAccess,
+  type VaultMetaQuestion,
+  type VaultMetaRefusalLifetime,
+} from './vaultMetaRefusal';
 
 export { VaultLockedError, VaultSecretMismatchError } from './localVaultAccess';
 // `NoUnclaimedLocalVaultError` and `LocalVaultAlreadyOwnedError` stay
@@ -97,6 +102,28 @@ export type VaultHandle = LocalVaultAccess & {
    */
   recordVaultMetaAgreement(options: { meta: VaultMetaV1 }): Promise<void>;
   /**
+   * Whether this device has already been asked this question — `change` about
+   * `meta` — and declined it. Derived by comparing the Vault Meta and the Vault
+   * Meta Change against this owner's Vault Meta Refusal, never read from a flag
+   * saying a question was asked.
+   *
+   * It is what lets a second and genuinely different wrapping change ask again
+   * where a record of having asked stays silent. See CONTEXT.md's "Vault Meta
+   * Refusal" entry and ADR 0066.
+   */
+  isVaultMetaRefused(question: VaultMetaQuestion): Promise<boolean>;
+  /**
+   * Record that this device declined this question: `durable` for an answer,
+   * which holds until the question changes, `session` for a dismissal, which
+   * holds until the tab closes.
+   *
+   * Records nothing about the Vault itself — no wrapping is adopted and no
+   * Ciphertext is touched, on either side.
+   */
+  recordVaultMetaRefusal(
+    options: VaultMetaQuestion & { lifetime: VaultMetaRefusalLifetime },
+  ): Promise<void>;
+  /**
    * Forget everything this device recorded about what it and the server last
    * agreed on — every Vault Blob Type's Sync Bookmark and the Vault Meta
    * Bookmark alike.
@@ -157,6 +184,7 @@ export function createVaultHandle(options: {
     masterKeyBytes: options.masterKeyBytes,
   });
   const bookmarks = createSyncBookmarkAccess(options.owner);
+  const refusals = createVaultMetaRefusalAccess(options.owner);
   const syncSink = options.syncSink ?? null;
   const revision = options.revision ?? null;
 
@@ -227,12 +255,14 @@ export function createVaultHandle(options: {
       reportVaultReplaced();
     },
     // Explicit Local Vault removal (ADR 0033) also removes this owner's Sync
-    // Bookmarks (ADR 0058) — the two per-User namespaces are removed together
-    // because a bookmark for a Vault this device no longer holds is stale by
-    // construction, and a stray one only ever costs a redundant push.
+    // Bookmarks (ADR 0058) and their Vault Meta Refusals (ADR 0066) — the
+    // per-User namespaces are removed together because a bookmark or a refusal
+    // about a Vault this device no longer holds is stale by construction, and a
+    // stray one only ever costs a redundant push or a repeated question.
     removeVault: () => {
       access.removeVault();
       bookmarks.removeBookmarks();
+      refusals.removeRefusals();
       reportVaultReplaced();
     },
     async hasUnsentChanges(type) {
@@ -244,6 +274,12 @@ export function createVaultHandle(options: {
     },
     lastAgreedVaultMetaHash: bookmarks.lastAgreedVaultMetaHash,
     recordVaultMetaAgreement: bookmarks.recordVaultMetaAgreement,
+    isVaultMetaRefused: refusals.isRefused,
+    recordVaultMetaRefusal: refusals.record,
+    // Deliberately not clearing refusals. This drops evidence about the
+    // *server's* copy, which a restore invalidates (ADR 0063); a refusal is
+    // evidence about neither copy — it is what a User answered when asked — and
+    // replacing this device's Ciphertext does not un-answer it.
     forgetSyncBookmarks: () => {
       bookmarks.removeBookmarks();
     },

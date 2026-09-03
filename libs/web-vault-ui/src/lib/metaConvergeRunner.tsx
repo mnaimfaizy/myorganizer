@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from 'react';
 import type {
   VaultMetaChange,
   VaultMetaDecision,
+  VaultMetaRefusalLifetime,
 } from '@myorganizer/web-vault';
 import {
   createVaultApi,
@@ -24,16 +25,23 @@ import {
 
 import { useOptionalVaultSession } from './session';
 
-const SESSION_FLAG_PREFIX = 'myorganizer_vault_meta_converge_ran_v1';
-
 /**
- * Scoped per User: a second User signing into the same tab Session must
- * still converge their own Local Vault metadata against their server metadata,
- * even after the first User's converge already ran in this Session.
+ * What answering the dialog records, per answer.
+ *
+ * `keep-local` is an answer, so it holds until the wrapping changes again;
+ * `defer` is "not now", so it holds until the tab closes; `adopt-remote`
+ * refuses nothing and records nothing. Pinned rather than branched on, so a
+ * fourth answer cannot be added without somebody saying what declining under it
+ * would mean ([ADR 0053](../../../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
+ *
+ * All three write nothing to the Vault: no wrapping is adopted and no
+ * Ciphertext is touched by any of them (ADR 0057 and its amendment).
  */
-function sessionFlagFor(owner: string): string {
-  return `${SESSION_FLAG_PREFIX}:${owner}`;
-}
+const VAULT_META_REFUSAL_LIFETIME_BY_DECISION = {
+  'adopt-remote': null,
+  'keep-local': 'durable',
+  defer: 'session',
+} as const satisfies Record<VaultMetaDecision, VaultMetaRefusalLifetime | null>;
 
 type VaultMetaChangeCopy = {
   title: string;
@@ -144,7 +152,7 @@ export function VaultMetaConvergeRunner() {
   const owner = handle?.owner ?? null;
   // Mirrors toastRef: keeps the effect below keyed on `owner` alone so a
   // lock/unlock (which changes `handle`'s identity but not its owner) never
-  // re-triggers a converge that's already in flight or already ran.
+  // re-triggers a converge that's already in flight.
   const handleRef = useRef(handle);
 
   useEffect(() => {
@@ -164,9 +172,6 @@ export function VaultMetaConvergeRunner() {
     const currentHandle = handleRef.current;
     if (!currentHandle) return;
 
-    const sessionFlag = sessionFlagFor(owner);
-    if (window.sessionStorage.getItem(sessionFlag)) return;
-
     const api = createVaultApi();
 
     // Settle rather than converge: a wrapping this device changed and could
@@ -177,31 +182,51 @@ export function VaultMetaConvergeRunner() {
     settleVaultMeta({
       api,
       handle: currentHandle,
-      prompt: async ({ change }) => {
+      prompt: async ({ change, remote }) => {
         if (cancelled) return 'defer';
 
-        return new Promise<VaultMetaDecision>((resolve) => {
+        // What is rationed is interrupting the User, and it is rationed by the
+        // wrapping asked about rather than by the fact that asking happened
+        // (ADR 0066). A wrapping this device has already declined raises
+        // nothing; a genuinely different one still asks, which a flag recording
+        // that a question was once put could not tell apart.
+        //
+        // A refused wrapping settles as `defer` because that is the truthful
+        // one of the three: nothing was written, on either side, and the
+        // question is still open — it is only not being put again yet.
+        if (
+          await currentHandle.isVaultMetaRefused({ meta: remote.meta, change })
+        ) {
+          return 'defer';
+        }
+
+        const decision = await new Promise<VaultMetaDecision>((resolve) => {
           const nextPrompt = { change, resolve };
           pendingPromptRef.current = nextPrompt;
           setPendingPrompt(nextPrompt);
         });
+
+        // Unmounting resolves a pending prompt with `defer` so the pass can
+        // settle. That is this component going away, not a User declining, and
+        // recording it would silence a question nobody was ever answered.
+        if (cancelled) return 'defer';
+
+        const lifetime = VAULT_META_REFUSAL_LIFETIME_BY_DECISION[decision];
+        if (lifetime) {
+          await currentHandle.recordVaultMetaRefusal({
+            meta: remote.meta,
+            change,
+            lifetime,
+          });
+        }
+
+        return decision;
       },
     })
       .then((result) => {
         if (cancelled) return;
 
         const converged = result.kind === 'converged' ? result.result : null;
-
-        // A deferred change is unfinished business, not a completed pass:
-        // leaving the flag unset is what brings the choice back instead of
-        // stranding the User's divergence unresolved.
-        if (
-          result.kind !== 'skipped-not-authenticated' &&
-          converged?.kind !== 'skipped-not-authenticated' &&
-          converged?.kind !== 'noop-deferred'
-        ) {
-          window.sessionStorage.setItem(sessionFlag, '1');
-        }
 
         if (converged?.kind === 'adopted-remote') {
           currentHandle.saveVault(converged.nextLocalVault);
@@ -219,8 +244,6 @@ export function VaultMetaConvergeRunner() {
       })
       .catch((e: unknown) => {
         if (cancelled) return;
-
-        window.sessionStorage.setItem(sessionFlag, '1');
 
         const errorTitle = pendingPromptRef.current
           ? VAULT_META_CHANGE_COPY[pendingPromptRef.current.change]
@@ -264,7 +287,9 @@ export function VaultMetaConvergeRunner() {
       onOpenChange={(open) => {
         // Escape and overlay clicks land here. Dismissing is a deliberate
         // no-op — neither copy is touched — so it must never be read as
-        // consent to overwrite the wrapping (ADR 0033).
+        // consent to overwrite the wrapping (ADR 0033). It records a
+        // session-scoped Vault Meta Refusal above, which is bookkeeping about
+        // the question and not a write to either side.
         if (!open) resolvePendingPrompt('defer');
       }}
     >

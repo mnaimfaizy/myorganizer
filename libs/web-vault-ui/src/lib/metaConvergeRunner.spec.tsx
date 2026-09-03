@@ -27,7 +27,10 @@ import type {
   VaultMetaChange,
   VaultMetaDecision,
   VaultHandle,
+  VaultMetaQuestion,
+  VaultMetaRefusalLifetime,
 } from '@myorganizer/web-vault';
+import type { VaultMetaV1 } from '@myorganizer/app-api-client';
 import { useOptionalVaultSession } from './session';
 import { VaultMetaConvergeRunner } from './metaConvergeRunner';
 
@@ -36,6 +39,7 @@ type SettleVaultMetaOptions = {
   handle: VaultHandle;
   prompt: (params: {
     change: VaultMetaChange;
+    remote: { meta: VaultMetaV1; etag: string };
   }) => Promise<VaultMetaDecision> | VaultMetaDecision;
 };
 
@@ -43,15 +47,74 @@ type MockHandle = {
   owner: string;
   loadVault: jest.Mock;
   saveVault: jest.Mock;
+  isVaultMetaRefused: jest.Mock;
+  recordVaultMetaRefusal: jest.Mock;
 };
 
+/**
+ * A handle whose refusal methods are a real round trip rather than a fixed
+ * answer, so a test can record a refusal through the runner and then see the
+ * runner consult it. Keyed the way the library keys it — on the question, both
+ * the wrapping offered and the change asked about.
+ */
 function createMockHandle(owner: string): MockHandle {
+  const refused = new Set<string>();
+  const questionKey = ({ meta, change }: VaultMetaQuestion) =>
+    `${change}:${JSON.stringify(meta)}`;
+
   return {
     owner,
     loadVault: jest.fn(() => ({ data: {} })),
     saveVault: jest.fn(),
+    isVaultMetaRefused: jest.fn(async (question: VaultMetaQuestion) =>
+      refused.has(questionKey(question)),
+    ),
+    recordVaultMetaRefusal: jest.fn(
+      async (
+        options: VaultMetaQuestion & { lifetime: VaultMetaRefusalLifetime },
+      ) => {
+        refused.add(questionKey(options));
+      },
+    ),
   };
 }
+
+/**
+ * One Vault Meta, named. Every wrapping field is derived from `slug`, so two
+ * metas built from different slugs are genuinely different wrappings that no
+ * comparison can call the same one — and a test that needs to recognise the
+ * meta it offered can match on `${slug}-salt`.
+ */
+function makeRemoteMeta(slug: string): VaultMetaV1 {
+  return {
+    version: 1,
+    kdf_name: 'PBKDF2',
+    kdf_salt: `${slug}-salt`,
+    kdf_params: { hash: 'SHA-256', iterations: 310_000 },
+    wrapped_mk_passphrase: {
+      version: 1,
+      iv: `${slug}-iv1`,
+      ciphertext: `${slug}-ct1`,
+    },
+    wrapped_mk_recovery: {
+      version: 1,
+      iv: `${slug}-iv2`,
+      ciphertext: `${slug}-ct2`,
+    },
+  };
+}
+
+const WRAPPING_A: VaultMetaV1 = makeRemoteMeta('wrapping-a');
+
+/** Same Vault, one wrapping moved — the second, genuinely different question. */
+const WRAPPING_B: VaultMetaV1 = {
+  ...WRAPPING_A,
+  wrapped_mk_passphrase: {
+    version: 1,
+    iv: 'wrapping-b-iv1',
+    ciphertext: 'wrapping-b-ct1',
+  },
+};
 
 function arrangeMetaConvergeWithPrompt(decisionResult: {
   current?: VaultMetaDecision;
@@ -60,6 +123,10 @@ function arrangeMetaConvergeWithPrompt(decisionResult: {
     async (options: SettleVaultMetaOptions) => {
       decisionResult.current = await options.prompt({
         change: 'passphrase',
+        remote: {
+          meta: makeRemoteMeta('remote'),
+          etag: 'etag-1',
+        },
       });
 
       return {
@@ -142,6 +209,10 @@ describe('VaultMetaConvergeRunner', () => {
     );
 
     await waitFor(() => expect(decisionResult.current).toBe('adopt-remote'));
+
+    // Adopting refuses nothing, so there is nothing to record — a refusal here
+    // would silence the question about a wrapping this device just took.
+    expect(mockHandle.recordVaultMetaRefusal).not.toHaveBeenCalled();
   });
 
   test('should resolve keep-local when "Keep my current passphrase" button is clicked', async () => {
@@ -177,6 +248,10 @@ describe('VaultMetaConvergeRunner', () => {
       async (options: SettleVaultMetaOptions) => {
         const decision = await options.prompt({
           change: 'passphrase',
+          remote: {
+            meta: makeRemoteMeta('escape'),
+            etag: 'etag-escape',
+          },
         });
 
         decisionResult.current = decision;
@@ -208,12 +283,14 @@ describe('VaultMetaConvergeRunner', () => {
     expect(mockHandle.saveVault).not.toHaveBeenCalled();
     // No toast
     expect(mockToast).not.toHaveBeenCalled();
-    // Flag not set (will be asked again) because noop-deferred excludes the flag
-    expect(
-      window.sessionStorage.getItem(
-        'myorganizer_vault_meta_converge_ran_v1:user-a',
-      ),
-    ).toBeNull();
+    // Session refusal IS recorded (dismissing counts as "not now")
+    expect(mockHandle.recordVaultMetaRefusal).toHaveBeenCalledWith({
+      meta: expect.objectContaining({
+        kdf_salt: 'escape-salt',
+      }),
+      change: 'passphrase',
+      lifetime: 'session',
+    });
   });
 
   test('should call saveVault and show success toast when adopted-remote with passphrase change', async () => {
@@ -306,29 +383,54 @@ describe('VaultMetaConvergeRunner', () => {
     );
   });
 
-  test('should set flag when noop-declined without saving or toasting', async () => {
+  test('should record durable refusal when keep-local is chosen and save nothing or toast nothing', async () => {
     const mockHandle = createMockHandle('user-a');
 
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: mockHandle,
     });
 
-    mockSettleVaultMeta.mockResolvedValue({
-      kind: 'converged' as const,
-      result: {
-        kind: 'noop-declined' as const,
-        change: 'passphrase' as const,
+    mockSettleVaultMeta.mockImplementation(
+      async (options: SettleVaultMetaOptions) => {
+        const decision = await options.prompt({
+          change: 'passphrase',
+          remote: {
+            meta: makeRemoteMeta('keep-local'),
+            etag: 'etag-keep-local',
+          },
+        });
+
+        if (decision === 'keep-local') {
+          return {
+            kind: 'converged' as const,
+            result: {
+              kind: 'noop-declined' as const,
+              change: 'passphrase' as const,
+            },
+          };
+        }
+        return {
+          kind: 'converged' as const,
+          result: { kind: 'noop-already-in-sync' as const },
+        };
       },
-    });
+    );
 
     render(<VaultMetaConvergeRunner />);
 
+    await screen.findByRole('dialog');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Keep my current passphrase' }),
+    );
+
     await waitFor(() => {
-      expect(
-        window.sessionStorage.getItem(
-          'myorganizer_vault_meta_converge_ran_v1:user-a',
-        ),
-      ).toBe('1');
+      expect(mockHandle.recordVaultMetaRefusal).toHaveBeenCalledWith({
+        meta: expect.objectContaining({
+          kdf_salt: 'keep-local-salt',
+        }),
+        change: 'passphrase',
+        lifetime: 'durable',
+      });
     });
 
     expect(mockHandle.saveVault).not.toHaveBeenCalled();
@@ -365,6 +467,10 @@ describe('VaultMetaConvergeRunner', () => {
       async (options: SettleVaultMetaOptions) => {
         await options.prompt({
           change: 'recovery-key',
+          remote: {
+            meta: makeRemoteMeta('recovery-key'),
+            etag: 'etag-recovery-key',
+          },
         });
 
         return {
@@ -396,6 +502,10 @@ describe('VaultMetaConvergeRunner', () => {
       async (options: SettleVaultMetaOptions) => {
         decisionResult.current = await options.prompt({
           change: 'recovery-key',
+          remote: {
+            meta: makeRemoteMeta('recovery-key-display'),
+            etag: 'etag-recovery-key-display',
+          },
         });
 
         return {
@@ -437,6 +547,10 @@ describe('VaultMetaConvergeRunner', () => {
       async (options: SettleVaultMetaOptions) => {
         await options.prompt({
           change: 'different-vault',
+          remote: {
+            meta: makeRemoteMeta('different-vault'),
+            etag: 'etag-different-vault',
+          },
         });
 
         return {
@@ -475,6 +589,10 @@ describe('VaultMetaConvergeRunner', () => {
       async (options: SettleVaultMetaOptions) => {
         const decision = await options.prompt({
           change: 'different-vault',
+          remote: {
+            meta: makeRemoteMeta('different-vault-defer'),
+            etag: 'etag-different-vault-defer',
+          },
         });
 
         decisionResult.current = decision;
@@ -525,6 +643,10 @@ describe('VaultMetaConvergeRunner', () => {
     unmount();
 
     await waitFor(() => expect(decisionResult.current).toBe('defer'));
+
+    // Unmounting is this component going away, not a User declining. Recording
+    // a refusal here would silence a question nobody was ever answered.
+    expect(mockHandle.recordVaultMetaRefusal).not.toHaveBeenCalled();
   });
 
   test('per-User scoping: different users in same session each trigger meta converge independently', async () => {
@@ -543,14 +665,7 @@ describe('VaultMetaConvergeRunner', () => {
       expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
     });
 
-    // Verify user-a's flag is set (skipped-no-local-vault DOES set the flag)
-    expect(
-      window.sessionStorage.getItem(
-        'myorganizer_vault_meta_converge_ran_v1:user-a',
-      ),
-    ).toBe('1');
-
-    // Unmount and clear mock call count, but DO NOT clear sessionStorage
+    // Unmount and clear mock call count
     unmount();
     mockSettleVaultMeta.mockClear();
 
@@ -564,50 +679,86 @@ describe('VaultMetaConvergeRunner', () => {
 
     render(<VaultMetaConvergeRunner />);
 
-    // Wait for user-b's converge to be called (should not be skipped because they are a different user)
+    // Wait for user-b's converge to be called (should run because they are a different owner)
     await waitFor(() => {
       expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
     });
   });
 
-  test('skips meta converge when same owner re-renders with flag already set', async () => {
-    const handleA = createMockHandle('user-a');
+  test('does not re-ask the same wrapping after keep-local, and still asks about a genuinely different one', async () => {
+    const mockHandle = createMockHandle('user-a');
+    const decisionResult: { current?: VaultMetaDecision } = {};
+
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
-      handle: handleA,
+      handle: mockHandle,
     });
 
-    mockSettleVaultMeta.mockResolvedValue({
-      kind: 'converged' as const,
-      result: {
-        kind: 'noop-declined' as const,
-        change: 'passphrase' as const,
-      },
-    });
+    // The pass always offers what it found and always asks. Whether that
+    // question reaches the User is the runner's own decision, so the mock must
+    // never make it here — a mock that skipped the prompt itself would assert
+    // its own arrangement instead of the guard under test.
+    const arrangePassOffering = (meta: VaultMetaV1) => {
+      mockSettleVaultMeta.mockImplementation(
+        async (options: SettleVaultMetaOptions) => {
+          decisionResult.current = await options.prompt({
+            change: 'passphrase',
+            remote: { meta, etag: 'etag-1' },
+          });
 
-    const { rerender } = render(<VaultMetaConvergeRunner />);
+          return {
+            kind: 'converged' as const,
+            result: { kind: 'noop-already-in-sync' as const },
+          };
+        },
+      );
+    };
 
-    // Wait for first render to complete converge
-    await waitFor(() => {
-      expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
-    });
+    const startPass = (meta: VaultMetaV1) => {
+      mockSettleVaultMeta.mockClear();
+      decisionResult.current = undefined;
+      arrangePassOffering(meta);
+      return render(<VaultMetaConvergeRunner />);
+    };
 
-    expect(
-      window.sessionStorage.getItem(
-        'myorganizer_vault_meta_converge_ran_v1:user-a',
-      ),
-    ).toBe('1');
+    // First pass: the wrapping is unrefused, so it is asked about and declined.
+    const firstPass = startPass(WRAPPING_A);
 
-    // Clear mock call count and re-render with same owner
-    mockSettleVaultMeta.mockClear();
-    rerender(<VaultMetaConvergeRunner />);
-
-    // Wait a bit, then verify converge was NOT called again
-    await waitFor(
-      () => {
-        expect(mockSettleVaultMeta).not.toHaveBeenCalled();
-      },
-      { timeout: 500 },
+    await screen.findByRole('dialog');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Keep my current passphrase' }),
     );
+
+    await waitFor(() => expect(decisionResult.current).toBe('keep-local'));
+    expect(mockHandle.recordVaultMetaRefusal).toHaveBeenCalledWith({
+      meta: WRAPPING_A,
+      change: 'passphrase',
+      lifetime: 'durable',
+    });
+
+    // Second pass, same wrapping: the pass itself is never suppressed — it runs
+    // again and reaches the server — and the question it would have raised is
+    // the one thing that does not happen.
+    firstPass.unmount();
+    const secondPass = startPass(WRAPPING_A);
+
+    await waitFor(() => expect(decisionResult.current).toBe('defer'));
+    expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole('dialog')).toBeNull();
+    // The refusal already recorded is not re-recorded, and nothing about the
+    // Vault is touched by declining to ask.
+    expect(mockHandle.recordVaultMetaRefusal).toHaveBeenCalledTimes(1);
+    expect(mockHandle.saveVault).not.toHaveBeenCalled();
+
+    // Third pass, a genuinely different wrapping: the defect this replaces is a
+    // boolean swallowing exactly this question for the rest of the session.
+    secondPass.unmount();
+    startPass(WRAPPING_B);
+
+    expect(await screen.findByRole('dialog')).not.toBeNull();
+    expect(mockHandle.isVaultMetaRefused).toHaveBeenLastCalledWith({
+      meta: WRAPPING_B,
+      change: 'passphrase',
+    });
   });
 
   test('when settleVaultMeta resolves pushed-local-wrapping, no dialog is rendered and toast is not called', async () => {
@@ -633,7 +784,7 @@ describe('VaultMetaConvergeRunner', () => {
     expect(mockToast).not.toHaveBeenCalled();
   });
 
-  test('when settleVaultMeta resolves pushed-local-wrapping, session flag is set and second render does not call settleVaultMeta again', async () => {
+  test('when settleVaultMeta resolves pushed-local-wrapping, no dialog is rendered and second render does not call settleVaultMeta again', async () => {
     const mockHandle = createMockHandle('user-a');
 
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
@@ -651,18 +802,15 @@ describe('VaultMetaConvergeRunner', () => {
       expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
     });
 
-    // Verify session flag is set
-    expect(
-      window.sessionStorage.getItem(
-        'myorganizer_vault_meta_converge_ran_v1:user-a',
-      ),
-    ).toBe('1');
+    // Verify no dialog is rendered
+    expect(screen.queryByRole('dialog')).toBeNull();
 
     // Clear mock call count and re-render with same owner
     mockSettleVaultMeta.mockClear();
     rerender(<VaultMetaConvergeRunner />);
 
     // Wait a bit, then verify settleVaultMeta was NOT called again
+    // (because the effect is keyed on owner, not on some flag)
     await waitFor(
       () => {
         expect(mockSettleVaultMeta).not.toHaveBeenCalled();
