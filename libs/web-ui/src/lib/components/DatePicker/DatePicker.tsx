@@ -40,7 +40,7 @@ export function DatePicker({
           variant="outline"
           className={cn(
             'w-full justify-start text-left font-normal',
-            !selected && 'text-muted-foreground'
+            !selected && 'text-muted-foreground',
           )}
           disabled={disabled}
           type="button"
@@ -53,6 +53,11 @@ export function DatePicker({
         <Calendar
           mode="single"
           selected={selected}
+          // Without this the popover always opens on the current month, even
+          // when a date is already chosen — so picking a 2024 date and
+          // reopening lands the User in this month with nothing selected in
+          // view. It also made the Storybook snapshot move every month.
+          defaultMonth={selected}
           onSelect={(date) => {
             if (!date) {
               onChange('');
