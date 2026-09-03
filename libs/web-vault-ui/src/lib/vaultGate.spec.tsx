@@ -17,6 +17,17 @@ jest.mock('./useVaultClaimEvidence', () => ({
     mockUseVaultClaimEvidence(handle),
 }));
 
+const mockUseVaultAbsentEvidence = jest.fn();
+jest.mock('./useVaultAbsentEvidence', () => ({
+  useVaultAbsentEvidence: (handle: VaultHandle | null) =>
+    mockUseVaultAbsentEvidence(handle),
+}));
+
+const mockUseLocalVaultRevision = jest.fn();
+jest.mock('./useLocalVaultRevision', () => ({
+  useLocalVaultRevision: () => mockUseLocalVaultRevision(),
+}));
+
 const mockClaimUnclaimedLocalVaultWithRecoveryKey = jest.fn();
 const mockReplaceOwnedLocalVaultOnEvidence = jest.fn();
 const mockReplaceOwnedLocalVaultWithRecoveryKey = jest.fn();
@@ -70,6 +81,11 @@ describe('VaultGate', () => {
     mockUseToast.mockReturnValue({ toast: toastFn });
     mockUseOptionalVaultSession.mockReturnValue(null);
     mockUseVaultClaimEvidence.mockReturnValue({ status: 'checking' });
+    mockUseVaultAbsentEvidence.mockReturnValue({
+      status: 'settled',
+      result: { kind: 'no-server-vault' },
+    });
+    mockUseLocalVaultRevision.mockReturnValue(0);
   });
 
   function createStubHandle(overrides?: Partial<VaultHandle>): VaultHandle {
@@ -583,6 +599,57 @@ describe('VaultGate', () => {
       expect(screen.getByText(/MyVault: Unlock/)).toBeInTheDocument();
 
       // Must NOT show create panel — this is the whole point of the fix
+      expect(
+        screen.queryByText(/MyVault: Set encryption passphrase/),
+      ).not.toBeInTheDocument();
+    });
+
+    test('should show unlock panel when local vault revision changes without handle identity change (reconcile scenario)', () => {
+      const handle = createStubHandle({
+        vaultStatus: jest
+          .fn()
+          .mockReturnValueOnce('absent')
+          .mockReturnValue('owned'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultAbsentEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'no-server-vault' },
+      });
+      mockUseLocalVaultRevision.mockReturnValue(0);
+
+      const { rerender } = render(
+        <VaultGate title="MyVault">{() => <div>children</div>}</VaultGate>,
+      );
+
+      // Initially shows create panel because vaultStatus is 'absent' and absent
+      // evidence is settled to no-server-vault
+      expect(
+        screen.getByText(/MyVault: Set encryption passphrase/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/MyVault: Unlock/)).not.toBeInTheDocument();
+
+      // Simulate Local Vault Revision bump (from VaultReconcileRunner's saveVault call).
+      // The handle object identity stays the same; only the revision changes.
+      // This triggers the render-phase reset that re-reads vaultStatus().
+      mockUseLocalVaultRevision.mockReturnValue(1);
+
+      rerender(
+        <VaultGate title="MyVault">{() => <div>children</div>}</VaultGate>,
+      );
+
+      // Must show unlock panel after revision change alone.
+      // This proves the revision bump (without handle identity change) is sufficient
+      // to trigger re-read of vaultStatus() and update the UI — the whole point of
+      // Slice #647's render-phase reset.
+      expect(screen.getByText(/MyVault: Unlock/)).toBeInTheDocument();
+
+      // Must NOT show create panel anymore
       expect(
         screen.queryByText(/MyVault: Set encryption passphrase/),
       ).not.toBeInTheDocument();
@@ -1336,6 +1403,210 @@ describe('VaultGate', () => {
 
       // Should show success state
       expect(screen.getByText(/Exported/)).toBeInTheDocument();
+    });
+  });
+
+  describe('vault absent evidence gate discipline', () => {
+    test('should render checking message when absent and evidence is checking', () => {
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'absent'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultAbsentEvidence.mockReturnValue({ status: 'checking' });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      expect(
+        screen.getByText(
+          /Checking whether your vault is already on the server/,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(/Encryption passphrase/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    test('should render awaiting-download message when absent and server holds vault', () => {
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'absent'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultAbsentEvidence.mockReturnValue({
+        status: 'settled',
+        result: {
+          kind: 'server-holds-vault',
+          serverMeta: { etag: 'e1', updatedAt: 't1', meta: {} as any },
+        },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      expect(screen.getByText(/Getting your vault back/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/The server already holds a vault for your account/),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(/Encryption passphrase/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /Create encrypted vault/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    test('should render cannot-check message when absent and server cannot be reached', () => {
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'absent'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultAbsentEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'postponed' },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      expect(
+        screen.getByText(/We could not reach the server/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Checking for your vault needs the server, and we could not reach it/,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(/Encryption passphrase/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /Create encrypted vault/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    test('should render session-lost message when absent and session expired', () => {
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'absent'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultAbsentEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'session-lost' },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      expect(screen.getByText(/Please sign in again/)).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          /Your session ended before we could check for your vault/,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText(/Encryption passphrase/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /Create encrypted vault/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    test('should render create passphrase screen when absent and no server vault', () => {
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'absent'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultAbsentEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'no-server-vault' },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      expect(
+        screen.getByText(/Test: Set encryption passphrase/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByLabelText(/Encryption passphrase/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /Create encrypted vault/ }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    test('should allow recovery key claim from awaiting-download screen', async () => {
+      const setMasterKeyBytesFn = jest.fn();
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'absent'),
+      });
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: setMasterKeyBytesFn,
+        lock: jest.fn(),
+        handle,
+      });
+      mockUseVaultAbsentEvidence.mockReturnValue({
+        status: 'settled',
+        result: {
+          kind: 'server-holds-vault',
+          serverMeta: { etag: 'e1', updatedAt: 't1', meta: {} as any },
+        },
+      });
+
+      render(<VaultGate title="Test">{() => <div>children</div>}</VaultGate>);
+
+      // Verify recovery key offer button is present on the awaiting-download screen
+      expect(
+        screen.getByRole('button', {
+          name: /I have a recovery key for a vault on this device/,
+        }),
+      ).toBeInTheDocument();
     });
   });
 });

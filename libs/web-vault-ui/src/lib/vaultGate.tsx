@@ -9,7 +9,7 @@ import {
   Label,
   useToast,
 } from '@myorganizer/web-ui';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import {
   type LocalVaultStatus,
@@ -32,7 +32,10 @@ import {
 } from './RecoveryKeyClaimOffer';
 import { RecoverySetNewPassphraseForm } from './RecoverySetNewPassphraseForm';
 import { useOptionalVaultSession } from './session';
+import { useLocalVaultRevision } from './useLocalVaultRevision';
+import { useVaultAbsentEvidence } from './useVaultAbsentEvidence';
 import { useVaultClaimEvidence } from './useVaultClaimEvidence';
+import { VAULT_ABSENT_EVIDENCE_GATE_VIEWS } from './vaultAbsentEvidenceGateView';
 import { VAULT_CLAIM_EVIDENCE_GATE_VIEWS } from './vaultClaimEvidenceGateView';
 import { VaultReplaceOffer } from './VaultReplaceOffer';
 
@@ -74,12 +77,34 @@ export function VaultGate(props: VaultGateProps) {
   // Vault is answered without the server being asked at all.
   const claimEvidence = useVaultClaimEvidence(handle);
 
-  const handleRef = useRef(handle);
+  // Mirrors Vault Claim Evidence's placement: costs nothing for a User this
+  // device already holds a Vault or an Unclaimed Local Vault for — the hook
+  // gates its own network check on `absent` internally.
+  const absentEvidence = useVaultAbsentEvidence(handle);
 
-  // Render-phase reset: if handle identity changes, re-read status from storage
+  // Vault Reconcile downloads the server's wrapping onto an absent device by
+  // writing through `saveVault`, which bumps the Local Vault Revision. Without
+  // subscribing to it, `currentVaultStatus` below would never notice that write
+  // and the User would stay on the withheld screen after their real Vault had
+  // already arrived.
+  const revision = useLocalVaultRevision();
+
+  // React's documented "store info from previous renders" pattern
+  // (https://react.dev/reference/react/useState#storing-information-from-previous-renders)
+  // rather than a ref read and written during render: a ref mutated while
+  // rendering can be left stale by a render React discards (Strict Mode's
+  // double-invoke, concurrent rendering), where a `useState` update made
+  // during render is safe to discard along with the render that made it.
+  const [prevHandle, setPrevHandle] = useState(handle);
+  const [prevRevision, setPrevRevision] = useState(revision);
+
+  // Render-phase reset: if handle identity changes, or the Local Vault
+  // Revision moved (Vault Reconcile replaced what is stored), re-read status
+  // from storage.
   let currentVaultStatus = vaultStatus;
-  if (handleRef.current !== handle) {
-    handleRef.current = handle;
+  if (prevHandle !== handle || prevRevision !== revision) {
+    setPrevHandle(handle);
+    setPrevRevision(revision);
     currentVaultStatus = handle?.vaultStatus() ?? 'absent';
     setVaultStatus(currentVaultStatus);
   }
@@ -385,6 +410,56 @@ export function VaultGate(props: VaultGateProps) {
     if (view.kind === 'vault-status') {
       effectiveVaultStatus = view.status;
     }
+  }
+
+  // An absent device is never offered the create control without proof the
+  // server holds nothing for this User, exactly as an Unclaimed Local Vault
+  // is never offered without proof it is theirs (ADR 0066, decision point 4).
+  if (currentVaultStatus === 'absent') {
+    if (absentEvidence.status === 'checking') {
+      return (
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <Card className="p-4">
+            <CardTitle className="text-lg">{title}</CardTitle>
+            <CardContent className="mt-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Checking whether your vault is already on the server…
+              </p>
+              {/* The check that is still out is the server one, and a
+                  recovery key needs no server — available here for the same
+                  reason it is on every other withheld screen. */}
+              <RecoveryKeyClaimOffer onClaim={claimWithRecoveryKey} />
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    const absentView =
+      VAULT_ABSENT_EVIDENCE_GATE_VIEWS[absentEvidence.result.kind];
+
+    if (
+      absentView.kind === 'cannot-check' ||
+      absentView.kind === 'awaiting-download'
+    ) {
+      return (
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <Card className="p-4">
+            <CardTitle className="text-lg">{absentView.title}</CardTitle>
+            <CardContent className="mt-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {absentView.description}
+              </p>
+              <RecoveryKeyClaimOffer onClaim={claimWithRecoveryKey} />
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    // absentView.kind === 'vault-status': the server holds nothing either,
+    // so `effectiveVaultStatus` stays 'absent' and the ordinary create offer
+    // below is reached — no assignment needed.
   }
 
   if (effectiveVaultStatus !== 'owned') {

@@ -29,6 +29,7 @@ export * from './lib/vault/passphrasePolicy';
 // wrapping changes from `vaultMetaPush`, and the Local Vault write it reaches
 // stays behind the Vault Handle (ADR 0047).
 export * from './lib/vault/recoveryKeyMint';
+export * from './lib/vault/vaultAbsentEvidence';
 export * from './lib/vault/vaultClaimEvidence';
 export * from './lib/vault/vaultConverge';
 export * from './lib/vault/vaultMetaConverge';
