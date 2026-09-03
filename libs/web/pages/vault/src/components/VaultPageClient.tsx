@@ -13,6 +13,7 @@ import { ExportVaultCard } from './ExportVaultCard';
 import { ImportVaultCard } from './ImportVaultCard';
 import { RecoveryKeyRotationCard } from './RecoveryKeyRotationCard';
 import { RemoveVaultCard } from './RemoveVaultCard';
+import { VaultUnlockCard } from './VaultUnlockCard';
 
 export function VaultPageClient() {
   const gisStatus = useGoogleIdentityScript();
@@ -33,6 +34,7 @@ export function VaultPageClient() {
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+      <VaultUnlockCard />
       <ChangePassphraseCard />
       <RecoveryKeyRotationCard />
       {provider && handle ? (

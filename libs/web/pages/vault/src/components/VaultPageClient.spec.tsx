@@ -11,7 +11,8 @@ jest.mock('../hooks', () => ({
     rotating: false,
     rotateRecoveryKey: jest.fn(),
   }),
-  useVaultDisabledState: () => 'locked',
+  useVaultDisabledState: jest.fn(() => 'locked'),
+  useVaultUnlock: () => ({ unlocking: false, unlock: jest.fn() }),
 }));
 
 jest.mock('@myorganizer/web-vault-ui', () => {
@@ -102,6 +103,45 @@ describe('VaultPageClient', () => {
     ).toBeTruthy();
     expect(
       removeButton.compareDocumentPosition(importHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  test('renders VaultUnlockCard when vault is locked', () => {
+    render(<VaultPageClient />);
+
+    // Assert unlock card is present when vault is in locked state
+    expect(screen.getByText('Unlock your vault')).toBeInTheDocument();
+    expect(screen.getByTestId('vault-unlock-submit')).toBeInTheDocument();
+  });
+
+  test('hides VaultUnlockCard when vault is unlocked', () => {
+    // Override the default mock for this test to return 'enabled'
+    const mockUseVaultDisabledState = require('../hooks')
+      .useVaultDisabledState as jest.Mock;
+    mockUseVaultDisabledState.mockReturnValue('enabled');
+
+    render(<VaultPageClient />);
+
+    // Assert unlock card is not present when vault is enabled
+    expect(screen.queryByText('Unlock your vault')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('vault-unlock-submit')).not.toBeInTheDocument();
+
+    // Reset the mock for other tests
+    mockUseVaultDisabledState.mockReturnValue('locked');
+  });
+
+  test('positions VaultUnlockCard before ChangePassphraseCard', () => {
+    render(<VaultPageClient />);
+
+    const unlockTitle = screen.getByText('Unlock your vault');
+    // "Change passphrase" appears twice (heading and button), so get the first one
+    const changePassphraseTitles = screen.getAllByText('Change passphrase');
+    const changePassphraseTitle = changePassphraseTitles[0];
+
+    // Assert VaultUnlockCard comes before ChangePassphraseCard in the DOM
+    expect(
+      unlockTitle.compareDocumentPosition(changePassphraseTitle) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });

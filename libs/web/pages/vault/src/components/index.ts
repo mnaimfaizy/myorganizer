@@ -5,3 +5,4 @@ export * from './ExportVaultCard';
 export * from './ImportVaultCard';
 export * from './RecoveryKeyRotationCard';
 export * from './RemoveVaultCard';
+export * from './VaultUnlockCard';
