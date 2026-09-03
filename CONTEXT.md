@@ -264,6 +264,10 @@ _Avoid_: claim prompt, vault chooser, ownership dialog, migration prompt
 What a Vault needs to be opened rather than read: the key-derivation parameters and the Master Key as wrapped by the passphrase and by the recovery key. It travels with the Vault but is not part of its contents, and it changes for reasons the contents never see — changing a passphrase rewraps the same Master Key, leaving every Vault Blob readable exactly as before. Two Vault Metas differing therefore says nothing about whether their Vault Blobs can be merged.
 _Avoid_: vault header, key material, vault config, vault settings
 
+**Vault Identity**:
+Which Vault a Vault Meta belongs to, carried by the key-derivation salt and nothing else. It is minted once beside a Master Key and never moves again: rewrapping — a changed passphrase, a replaced Recovery Key — reuses it. So two Vault Metas that differ may still be one Vault, while two Vault Identities that differ are always two Vaults under two Master Keys. It is the one thing about a Vault Meta a Vault Blob decision may rest on, and unlike everything else about opening a Vault it is answerable without unlocking anything.
+_Avoid_: vault id, vault fingerprint, meta hash, salt check, vault version
+
 **Vault Blob**:
 The unit of Ciphertext the server stores and the client synchronises: one per Vault Blob Type per User, holding every record of that type together. It is the whole of `tasks`, not one Task. Two devices editing different records of the same type are still editing the same Vault Blob, which is why convergence cannot be decided by the Vault Blob alone.
 _Avoid_: vault record, encrypted blob, blob (unqualified), vault entry
@@ -293,7 +297,7 @@ Deciding whether this device starts using a wrapping set on another device, and 
 _Avoid_: meta sync, key sync, passphrase sync, vault meta reconcile
 
 **Vault Meta Change**:
-Which wrapping in a Vault Meta moved — the passphrase or the recovery key — and the thing a User is actually asked about when Vault Meta diverges. It is named rather than reduced to a boolean because "your vault differs" is not something a User can act on, while "your passphrase was changed on another device" is, and because a User whose passphrase changed elsewhere without their doing needs to hear which one to stop using.
+What moved between two Vault Metas, and the thing a User is actually asked about when they diverge. It is named rather than reduced to a boolean because "your vault differs" is not something a User can act on, while "your passphrase was changed on another device" is, and because a User whose passphrase changed elsewhere without their doing needs to hear which one to stop using. Two of them are wrappings that moved — the passphrase and the recovery key. The third is not a change at all: a moved Vault Identity means the two sides were never the same Vault, which is why it is read first and why it is the one nothing may adopt.
 _Avoid_: meta conflict, key conflict, vault divergence, credential change
 
 **Vault Meta Push**:
