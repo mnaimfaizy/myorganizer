@@ -80,6 +80,25 @@ button that would have bricked the device. The Vault Blob path never got it.
    forever with nothing on screen saying why. The sync status carries it, persistent while true. Under
    this decision that indicator is load-bearing rather than decorative.
 
+7. **The observation is recorded; the status stays derived.** `computeVaultSyncStatus` answers from
+   local state alone — unsent changes and the queue's own reading — and "the server holds a different
+   Vault" is not among the things local state knows. So the last Vault Identity a pass observed on the
+   server is recorded per User, beside the bookmarks already kept there, and the status derives the
+   standoff by comparing it against this device's own. Recorded rather than flagged, for the reason
+   [ADR 0058](0058-a-sync-bookmark-is-a-second-per-user-namespace-not-a-second-vault.md) gives about
+   dirtiness: a flag has to be cleared by whoever makes it false, and nothing reliably does, while a
+   comparison stops being true on its own at the first pass that observes a matching identity. It is
+   losable in the same direction as everything else in that record — losing one costs a status that
+   under-reports until the next pass, never a User's data — and it is removed with the Local Vault by
+   the same removal, since an observation about a Vault this device no longer holds is meaningless.
+
+   This makes a fifth thing held per User on a device, after the Local Vault, the Sync Bookmarks, the
+   Vault Meta Bookmark, and the Vault Meta Refusal of
+   [ADR 0066](0066-a-convergence-pass-runs-freely-and-only-the-question-is-suppressed.md). That is
+   worth reading as a trend rather than a line item: the record those last three share has already
+   drifted from the scope sentence its own ADR gave it, and the next addition should rename it rather
+   than widen it a third time.
+
 ## Considered Options
 
 **Decrypting the remote blob on the clean path** is what #571 assumes, and it is the intuitive fix:
