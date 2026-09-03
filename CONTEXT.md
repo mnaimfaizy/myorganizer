@@ -269,7 +269,7 @@ The unit of Ciphertext the server stores and the client synchronises: one per Va
 _Avoid_: vault record, encrypted blob, blob (unqualified), vault entry
 
 **Vault Push**:
-Sending one changed Vault Blob to the server. Distinct from Vault Reconcile: a push is the ordinary consequence of a single edit, carries no comparison, and asks the User nothing. Reconcile compares two whole Vaults on sign-in and is the backstop for what push did not carry.
+Sending one changed Vault Blob to the server. Distinct from Vault Reconcile: a push is the ordinary consequence of a single edit, carries no comparison, and asks the User nothing. Reconcile compares two whole Vaults and is the backstop for what push did not carry.
 _Avoid_: vault sync (unqualified), upload, save to server, backup
 
 **Vault Pull**:
@@ -313,7 +313,7 @@ What one attempt to reach a User's own Vault Meta found, at the moment it ran. I
 _Avoid_: online, connected, server status, connectivity check, health check
 
 **Vault Reconcile**:
-The sign-in pass that converges every Vault Blob Type of one User's Local Vault against that User's server Ciphertext. It is not a migration and has no one-time character: a User with no server Vault yet is having an ordinary first sync, and a User with no Vault on either side has nothing to reconcile. It carries no convergence of its own — each type goes through Vault Converge, so a Vault Blob Type cannot be reconciled on terms the rest of the product does not use. Non-conflicting divergence therefore converges without asking anything, and what asks is what the pinned strategy says asks. One question is still whole-Vault, because it was never per-record: the server's Ciphertext will not decrypt under this device's Master Key, so the two sides are not the same Vault at all. It decides Ciphertext only: no answer given here adopts a wrapping or reverts a passphrase change made elsewhere, and a Vault Meta is never an input to what it decides. It writes one, and only where there is none to overwrite — a server holding no Vault Meta at all is having a first sync.
+The pass that converges every Vault Blob Type of one User's Local Vault against that User's server Ciphertext. It runs when a device arrives at the product and again whenever the Local Vault is replaced under it — a removal, an import, a convergence taking the server's Ciphertext — because each of those leaves this device owing the server something different, and none of them is a sign-in. It is not a migration and has no one-time character: a User with no server Vault yet is having an ordinary first sync, and a User with no Vault on either side has nothing to reconcile. It carries no convergence of its own — each type goes through Vault Converge, so a Vault Blob Type cannot be reconciled on terms the rest of the product does not use. Non-conflicting divergence therefore converges without asking anything, and what asks is what the pinned strategy says asks. One question is still whole-Vault, because it was never per-record: the server's Ciphertext will not decrypt under this device's Master Key, so the two sides are not the same Vault at all. It decides Ciphertext only: no answer given here adopts a wrapping or reverts a passphrase change made elsewhere, and a Vault Meta is never an input to what it decides. It writes one, and only where there is none to overwrite — a server holding no Vault Meta at all is having a first sync.
 _Avoid_: vault migration, phase-1 migration, vault upgrade, sync migration
 
 **Master Key**:

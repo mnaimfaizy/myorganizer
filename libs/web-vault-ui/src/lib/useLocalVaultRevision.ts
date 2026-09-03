@@ -21,8 +21,12 @@ import { useOptionalVaultSession } from './session';
 /**
  * The revision a caller sees when there is no Vault Session to read one from.
  * Constant, so it never triggers a reload.
+ *
+ * Exported because `reconcileRunner.tsx` answers the same question — what a
+ * reader holding no Local Vault Revision should read — and two constants
+ * spelling one concept drift apart.
  */
-const NO_REVISION = 0;
+export const NO_REVISION = 0;
 
 export function useLocalVaultRevision(): number {
   const revision = useOptionalVaultSession()?.revision ?? null;

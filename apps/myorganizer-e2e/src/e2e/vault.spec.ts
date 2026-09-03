@@ -322,14 +322,8 @@ test.describe('Vault (E2E)', () => {
     });
 
     // Force the reconcile runner to re-run now that we have a local vault.
-    // The reconcile flag is scoped per owner since PRD #489
-    // (reconcileRunner sessionFlagKey = `${prefix}:${owner}`), so clearing the
-    // old unscoped key left reconcile marked as already-run. Issue #506.
-    await page1.evaluate((userId) => {
-      window.sessionStorage.removeItem(
-        `myorganizer_vault_reconcile_ran_v1:${userId}`,
-      );
-    }, E2E_USER_ID);
+    // Navigating is enough since ADR 0066: the runner passes on every mount,
+    // and there is no session flag left to clear first. Issue #645.
     await gotoStable(page1, '/dashboard');
 
     // The runner should upload to server (our in-memory store should now be populated).
