@@ -304,6 +304,10 @@ _Avoid_: meta upload, key push, passphrase sync, push meta
 What one device records, per User, about the Vault Meta it and the server last agreed on. It exists to tell a wrapping this device changed apart from one changed elsewhere — without it the two are the same observation, since either way the local and server wrappings differ. Both questions are derived from it rather than flagged beside it: this device owes a Vault Meta Push when its Vault Meta no longer matches the bookmark, and the server has moved when the server's no longer does. Losing one costs a prompt that misattributes a change, never a User's data.
 _Avoid_: pending push flag, meta dirty flag, wrapping marker, meta etag
 
+**Vault Meta Refusal**:
+What one device records, per User, about a Vault Meta it was offered and declined — the wrapping that was refused, not the fact that a question was once asked. It is what lets a second, genuinely different change ask again where a record of having asked stays silent, and it is losable in the same direction as a Vault Meta Bookmark: losing one costs a repeated question, never a User's data. A refusal given as an answer outlives the tab; one given by dismissal does not.
+_Avoid_: dismissed flag, prompt flag, snooze, seen, asked-already, suppression flag
+
 **Server Reachability**:
 What one attempt to reach a User's own Vault Meta found, at the moment it ran. It is an observation and never a state: it is discovered by trying, in the same way a Linked Provider's token is, and it says nothing about whether the next write will land — a third device can move the server between the reading and the push. It is therefore shown and never gated on, and a reading that found the server is shown as nothing at all, because a User told the server is reachable has been told something the product cannot keep. What it can honestly carry is the negative: a User about to retire a Recovery Key can be told, before the point of no return, that the retirement will not reach their other devices yet.
 _Avoid_: online, connected, server status, connectivity check, health check
