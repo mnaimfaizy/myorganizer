@@ -293,7 +293,23 @@ export function createVaultHandle(options: {
       }
       await bookmarks.recordPushSuccess({ type, blob, etag });
     },
-    initialize: access.initialize,
+    // Creating a Vault replaces what a reader holds just as squarely as a
+    // claim or an import does: a device that read `absent` a moment ago now
+    // holds this owner's own Local Vault. It was the one door that stayed
+    // silent, and the silence was load-bearing in the wrong direction — the
+    // gate kept a newly minted Recovery Key on screen only because its status
+    // had gone stale, so the first reader to consult storage live withheld the
+    // very screen the key is shown on ([#667](https://github.com/mnaimfaizy/myorganizer/issues/667)).
+    //
+    // Reported after `initialize` resolves, so the write has landed before any
+    // reader is told to look again — the same ordering every other door here
+    // keeps. What holds the Recovery Key on screen afterwards is a Recovery Key
+    // Acknowledgment (CONTEXT.md) and no longer a status nobody refreshed.
+    async initialize(initializeOptions) {
+      const result = await access.initialize(initializeOptions);
+      reportVaultReplaced();
+      return result;
+    },
     // A claim now changes what a reader sees, so readers are told. It did not
     // used to: an owner holding no Vault of their own resolved the Unclaimed
     // Local Vault implicitly, so recording it as theirs handed back the same
