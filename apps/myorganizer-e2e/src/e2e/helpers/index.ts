@@ -31,3 +31,8 @@ export {
   writeAddressToVault,
   type IdentityEntry,
 } from './multiUserVault';
+export {
+  vaultBlobRouteRelative,
+  vaultBlobRouteAbsolute,
+  vaultBlobTypeExtractor,
+} from './vaultBlobRoutes';

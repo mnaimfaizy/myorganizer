@@ -6,6 +6,8 @@ import {
   routeApi,
   submitLoginForm,
   unlockWithPassphrase,
+  vaultBlobRouteRelative,
+  vaultBlobTypeExtractor,
   waitForOwnedVault,
 } from './helpers';
 
@@ -79,8 +81,7 @@ test.describe('Vault Passphrase Change Reaches Open Tab (E2E)', () => {
     async function setupRoutes(page: import('@playwright/test').Page) {
       const loginUrl = /\/auth\/login\/?(\?.*)?$/;
       const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
-      const vaultBlobUrl =
-        /\/vault\/blob\/(addresses|groceries|mobileNumbers|subscriptions|tasks|todos)\/?(\?.*)?$/;
+      const vaultBlobUrl = vaultBlobRouteRelative();
 
       await routeApi(page, loginUrl, async (route) => {
         const request = route.request();
@@ -186,11 +187,7 @@ test.describe('Vault Passphrase Change Reaches Open Tab (E2E)', () => {
         const origin = new URL(page.url() || 'http://localhost:3000').origin;
         const headers = corsHeaders(origin);
 
-        const match = request
-          .url()
-          .match(
-            /\/vault\/blob\/(addresses|groceries|mobileNumbers|subscriptions|tasks|todos)/,
-          );
+        const match = request.url().match(vaultBlobTypeExtractor());
         const type = match?.[1];
 
         if (!type) {

@@ -7,6 +7,8 @@ import {
   routeApi,
   submitLoginForm,
   unlockWithPassphrase,
+  vaultBlobRouteAbsolute,
+  vaultBlobTypeExtractor,
   waitForOwnedVault,
 } from './helpers';
 
@@ -93,8 +95,7 @@ function setupBackend(page: Page) {
   // than the dev server on port 4200) to avoid intercepting the page
   // navigation itself.
   const vaultMetaUrl = /:\/\/[^/]+\/(?:api\/v\d+\/)?vault\/?(\?.*)?$/;
-  const vaultBlobUrl =
-    /:\/\/[^/]+\/(?:api\/v\d+\/)?vault\/blob\/(addresses|mobileNumbers|subscriptions|todos)\/?(\?.*)?$/;
+  const vaultBlobUrl = vaultBlobRouteAbsolute();
   const backupsRecordUrl =
     /:\/\/[^/]+\/(?:api\/v\d+\/)?vault\/backups\/?(\?.*)?$/;
   const backupsLatestUrl =
@@ -254,9 +255,7 @@ function setupBackend(page: Page) {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
-    const match = request
-      .url()
-      .match(/\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos)/);
+    const match = request.url().match(vaultBlobTypeExtractor());
     const type = match?.[1];
     if (!type) {
       await route.fulfill({ status: 400, headers });

@@ -10,6 +10,8 @@ import {
   routeApi,
   submitLoginForm,
   unlockWithPassphrase,
+  vaultBlobRouteRelative,
+  vaultBlobTypeExtractor,
   waitForOwnedVault,
 } from './helpers';
 
@@ -85,8 +87,7 @@ function setupBackend(page: Page) {
 
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
   const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
-  const vaultBlobUrl =
-    /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos|groceries)\/?(\?.*)?$/;
+  const vaultBlobUrl = vaultBlobRouteRelative();
   const backupsRecordUrl = /\/vault\/backups\/?(\?.*)?$/;
   const backupsLatestUrl = /\/vault\/backups\/latest\/?(\?.*)?$/;
 
@@ -250,11 +251,7 @@ function setupBackend(page: Page) {
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
 
-    const match = request
-      .url()
-      .match(
-        /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos|groceries)/,
-      );
+    const match = request.url().match(vaultBlobTypeExtractor());
     const type = match?.[1];
     if (!type) {
       await route.fulfill({ status: 400, headers });

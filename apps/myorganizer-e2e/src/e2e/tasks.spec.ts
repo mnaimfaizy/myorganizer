@@ -6,6 +6,8 @@ import {
   routeApi,
   submitLoginForm,
   unlockWithPassphrase,
+  vaultBlobRouteRelative,
+  vaultBlobTypeExtractor,
 } from './helpers';
 
 /**
@@ -74,8 +76,7 @@ async function login(page: import('@playwright/test').Page) {
 async function setupRoutes(page: import('@playwright/test').Page) {
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
   const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
-  const vaultBlobUrl =
-    /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos|tasks)\/?(\?.*)?$/;
+  const vaultBlobUrl = vaultBlobRouteRelative();
 
   let serverMeta: any = { version: 1 };
   let serverMetaEtag = 'W/"0"';
@@ -203,11 +204,7 @@ async function setupRoutes(page: import('@playwright/test').Page) {
     const headers = corsHeaders(origin);
 
     // Extract blob type from URL
-    const blobTypeMatch = request
-      .url()
-      .match(
-        /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos|tasks)/,
-      );
+    const blobTypeMatch = request.url().match(vaultBlobTypeExtractor());
     const blobType = blobTypeMatch ? blobTypeMatch[1] : 'tasks';
 
     if (request.method() === 'OPTIONS') {

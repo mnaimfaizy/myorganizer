@@ -6,6 +6,8 @@ import {
   routeApi,
   submitLoginForm,
   unlockWithPassphrase,
+  vaultBlobRouteRelative,
+  vaultBlobTypeExtractor,
   waitForOwnedVault,
   readOwnedVault,
 } from './helpers';
@@ -78,8 +80,7 @@ test.describe('Tasks Vault Sync Convergence (E2E)', () => {
       // Every VaultBlobType must be stubbed: the download path fetches all of
       // them, and one unmatched type escapes to the real (absent) backend and
       // rejects the whole reconcile (issue #506).
-      const vaultBlobUrl =
-        /\/vault\/blob\/(addresses|groceries|mobileNumbers|subscriptions|tasks|todos)\/?(\?.*)?$/;
+      const vaultBlobUrl = vaultBlobRouteRelative();
 
       await routeApi(page, loginUrl, async (route) => {
         const request = route.request();
@@ -185,11 +186,7 @@ test.describe('Tasks Vault Sync Convergence (E2E)', () => {
         const origin = new URL(page.url() || 'http://localhost:3000').origin;
         const headers = corsHeaders(origin);
 
-        const match = request
-          .url()
-          .match(
-            /\/vault\/blob\/(addresses|groceries|mobileNumbers|subscriptions|tasks|todos)/,
-          );
+        const match = request.url().match(vaultBlobTypeExtractor());
         const type = match?.[1];
 
         if (!type) {
