@@ -9,10 +9,9 @@ import {
   Label,
   useToast,
 } from '@myorganizer/web-ui';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
 import {
-  type LocalVaultStatus,
   type VaultHandle,
   MIN_PASSPHRASE_LENGTH,
   VaultSecretMismatchError,
@@ -26,13 +25,18 @@ import {
   resetPassphraseAfterRecovery,
 } from '@myorganizer/web-vault';
 
+import { downloadJsonFile } from './downloadFile';
 import {
   RecoveryKeyClaimOffer,
   type RecoveryKeyClaimAnswer,
 } from './RecoveryKeyClaimOffer';
+import { RecoveryKeyAcknowledgment } from './RecoveryKeyAcknowledgment';
 import { RecoverySetNewPassphraseForm } from './RecoverySetNewPassphraseForm';
 import { useOptionalVaultSession } from './session';
+import { useLocalVaultRevision } from './useLocalVaultRevision';
+import { useVaultAbsentEvidence } from './useVaultAbsentEvidence';
 import { useVaultClaimEvidence } from './useVaultClaimEvidence';
+import { VAULT_ABSENT_EVIDENCE_GATE_VIEWS } from './vaultAbsentEvidenceGateView';
 import { VAULT_CLAIM_EVIDENCE_GATE_VIEWS } from './vaultClaimEvidenceGateView';
 import { VaultReplaceOffer } from './VaultReplaceOffer';
 
@@ -41,48 +45,38 @@ type VaultGateProps = {
   children: (ctx: { handle: VaultHandle | null }) => React.ReactNode;
 };
 
-function downloadFile(filename: string, content: string, mimeType: string) {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
-
-function downloadTextFile(filename: string, content: string) {
-  downloadFile(filename, content, 'text/plain');
-}
-
-function downloadJsonFile(filename: string, content: string) {
-  downloadFile(filename, content, 'application/json');
-}
-
 export function VaultGate(props: VaultGateProps) {
   const { toast } = useToast();
 
   const vaultSession = useOptionalVaultSession();
   const handle = vaultSession?.handle ?? null;
 
-  const [vaultStatus, setVaultStatus] = useState<LocalVaultStatus>(
-    () => handle?.vaultStatus() ?? 'absent',
-  );
-
   // Vault Claim Evidence runs for every signed-in User and costs nothing for
   // the ones it does not apply to — a User who already holds their own Local
   // Vault is answered without the server being asked at all.
   const claimEvidence = useVaultClaimEvidence(handle);
 
-  const handleRef = useRef(handle);
+  // Mirrors Vault Claim Evidence's placement: costs nothing for a User this
+  // device already holds a Vault or an Unclaimed Local Vault for — the hook
+  // gates its own network check on `absent` internally.
+  const absentEvidence = useVaultAbsentEvidence(handle);
 
-  // Render-phase reset: if handle identity changes, re-read status from storage
-  let currentVaultStatus = vaultStatus;
-  if (handleRef.current !== handle) {
-    handleRef.current = handle;
-    currentVaultStatus = handle?.vaultStatus() ?? 'absent';
-    setVaultStatus(currentVaultStatus);
-  }
+  // Vault Reconcile downloads the server's wrapping onto an absent device by
+  // writing through `saveVault`, which bumps the Local Vault Revision. Without
+  // subscribing to it below, a status change that replaces storage would be
+  // invisible. Subscribe to the revision for that effect alone — do not read it;
+  // a status change that does not bump the revision (e.g., a write from another
+  // tab) was already invisible and is out of scope.
+  useLocalVaultRevision();
+
+  // Live read of vault status from storage. No seeded state, no render-phase
+  // reset — status is authoritative at every render because it is read from
+  // the handle when the gate is invoked, and the handle is stable across
+  // the read. Vault Reconcile replaces storage and bumps the Local Vault
+  // Revision, which re-renders this component; a status change from another
+  // tab stays invisible (not subscribed, and not in scope for this issue).
+  const currentVaultStatus = handle?.vaultStatus() ?? 'absent';
+
   const [localMasterKeyBytes, setLocalMasterKeyBytes] =
     useState<Uint8Array | null>(null);
 
@@ -102,7 +96,9 @@ export function VaultGate(props: VaultGateProps) {
 
   const [setupPassphrase, setSetupPassphrase] = useState('');
   const [setupConfirm, setSetupConfirm] = useState('');
-  const [recoveryKey, setRecoveryKey] = useState<string | null>(null);
+  const [unacknowledgedRecoveryKey, setUnacknowledgedRecoveryKey] = useState<
+    string | null
+  >(null);
 
   const [passphrase, setPassphrase] = useState('');
   const [useRecovery, setUseRecovery] = useState(false);
@@ -165,9 +161,8 @@ export function VaultGate(props: VaultGateProps) {
       if (result.kind !== 'claimed') return 'no-match';
 
       // Claimed and unlocked in one step: the evidence was the key, so there is
-      // nothing further to ask for. The status is advanced too, so that locking
-      // later lands on this User's own unlock screen rather than back on setup.
-      setVaultStatus('owned');
+      // nothing further to ask for. The vault status is already 'owned' and will
+      // be read live on the next render.
       setMasterKeyBytes(result.masterKeyBytes);
       toast({
         title: 'Vault claimed',
@@ -175,7 +170,7 @@ export function VaultGate(props: VaultGateProps) {
       });
       return 'claimed';
     },
-    [handle, setPendingReplace, setVaultStatus, setMasterKeyBytes, toast],
+    [handle, setMasterKeyBytes, toast],
   );
 
   const exportVaultAboutToBeReplaced = useCallback(async (): Promise<void> => {
@@ -229,7 +224,6 @@ export function VaultGate(props: VaultGateProps) {
       }
     }
 
-    setVaultStatus('owned');
     setPendingReplace(null);
 
     // Only mark the server-meta offer as dismissed if it was actually used
@@ -300,7 +294,34 @@ export function VaultGate(props: VaultGateProps) {
     [masterKeyBytes, handle, toast],
   );
 
+  const handleAcknowledgeRecoveryKey = useCallback((): void => {
+    setUnacknowledgedRecoveryKey(null);
+  }, []);
+
   const title = useMemo(() => props.title, [props.title]);
+
+  // Recovery Key Acknowledgment: the User just created a Vault and needs to
+  // record their key. This branch sits above the children branch so it is shown
+  // before they have unlocked — they are still locked (masterKeyBytes is null
+  // from create, never set). It must be above children and above any already-
+  // unlocked branches so an already-unlocked session cannot sidestep the Acknowledgment.
+  if (unacknowledgedRecoveryKey !== null) {
+    return (
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        <Card className="p-4">
+          <CardTitle className="text-lg">
+            {title}: Save your recovery key
+          </CardTitle>
+          <CardContent className="mt-4 space-y-4">
+            <RecoveryKeyAcknowledgment
+              recoveryKey={unacknowledgedRecoveryKey}
+              onAcknowledge={handleAcknowledgeRecoveryKey}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isUnlocked && masterKeyBytes) {
     return (
@@ -387,12 +408,61 @@ export function VaultGate(props: VaultGateProps) {
     }
   }
 
+  // An absent device is never offered the create control without proof the
+  // server holds nothing for this User, exactly as an Unclaimed Local Vault
+  // is never offered without proof it is theirs (ADR 0066, decision point 4).
+  if (currentVaultStatus === 'absent') {
+    if (absentEvidence.status === 'checking') {
+      return (
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <Card className="p-4">
+            <CardTitle className="text-lg">{title}</CardTitle>
+            <CardContent className="mt-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Checking whether your vault is already on the server…
+              </p>
+              {/* The check that is still out is the server one, and a
+                  recovery key needs no server — available here for the same
+                  reason it is on every other withheld screen. */}
+              <RecoveryKeyClaimOffer onClaim={claimWithRecoveryKey} />
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    const absentView =
+      VAULT_ABSENT_EVIDENCE_GATE_VIEWS[absentEvidence.result.kind];
+
+    if (
+      absentView.kind === 'cannot-check' ||
+      absentView.kind === 'awaiting-download'
+    ) {
+      return (
+        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+          <Card className="p-4">
+            <CardTitle className="text-lg">{absentView.title}</CardTitle>
+            <CardContent className="mt-4 space-y-4">
+              <p className="text-sm text-muted-foreground">
+                {absentView.description}
+              </p>
+              <RecoveryKeyClaimOffer onClaim={claimWithRecoveryKey} />
+            </CardContent>
+          </Card>
+        </div>
+      );
+    }
+
+    // absentView.kind === 'vault-status': the server holds nothing either,
+    // so `effectiveVaultStatus` stays 'absent' and the ordinary create offer
+    // below is reached — no assignment needed.
+  }
+
   if (effectiveVaultStatus !== 'owned') {
-    const canCreate =
-      newPassphraseSchema.safeParse({
-        newPassphrase: setupPassphrase,
-        newPassphraseConfirm: setupConfirm,
-      }).success && recoveryKey === null;
+    const canCreate = newPassphraseSchema.safeParse({
+      newPassphrase: setupPassphrase,
+      newPassphraseConfirm: setupConfirm,
+    }).success;
 
     return (
       <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -442,7 +512,7 @@ export function VaultGate(props: VaultGateProps) {
                   const result = await handle.initialize({
                     passphrase: setupPassphrase,
                   });
-                  setRecoveryKey(result.recoveryKey);
+                  setUnacknowledgedRecoveryKey(result.recoveryKey);
                   toast({
                     title: 'Vault created',
                     description: 'Save your recovery key now.',
@@ -458,59 +528,6 @@ export function VaultGate(props: VaultGateProps) {
             >
               Create encrypted vault
             </Button>
-
-            {recoveryKey && (
-              <div className="space-y-2">
-                <Label>Recovery key (save this)</Label>
-                <Input readOnly value={recoveryKey} />
-                <div className="flex gap-2">
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      downloadTextFile(
-                        'myorganiser-recovery-key.txt',
-                        `MyOrganiser Recovery Key\n\n${recoveryKey}\n\nKeep this safe. Anyone with it can decrypt your vault.`,
-                      );
-                    }}
-                  >
-                    Download recovery key
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      navigator.clipboard.writeText(recoveryKey);
-                      toast({
-                        title: 'Copied',
-                        description: 'Recovery key copied',
-                      });
-                    }}
-                  >
-                    Copy
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      setVaultStatus('owned');
-                      toast({
-                        title: 'Next step',
-                        description: 'Unlock your vault with your passphrase.',
-                      });
-                    }}
-                  >
-                    I saved it
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {recoveryKey && (
-              <p className="text-sm text-muted-foreground">
-                Next time, unlock with your passphrase. If you forget it, you
-                can recover with the recovery key.
-              </p>
-            )}
 
             {/* This screen is what a User sees both when this device holds
                 nothing and when it holds an Unclaimed Local Vault nothing has

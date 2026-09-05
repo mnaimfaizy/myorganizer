@@ -29,10 +29,20 @@ export * from './lib/vault/passphrasePolicy';
 // wrapping changes from `vaultMetaPush`, and the Local Vault write it reaches
 // stays behind the Vault Handle (ADR 0047).
 export * from './lib/vault/recoveryKeyMint';
+export * from './lib/vault/vaultAbsentEvidence';
 export * from './lib/vault/vaultClaimEvidence';
 export * from './lib/vault/vaultConverge';
 export * from './lib/vault/vaultMetaConverge';
 export * from './lib/vault/vaultMetaPush';
+// The question and the lifetime only. Vault Meta Refusal storage keys and
+// record shapes stay internal for the same reason Local Vault ones do: what a
+// caller needs is the Vault Handle's `isVaultMetaRefused` /
+// `recordVaultMetaRefusal`, and these two are what it cannot ask for without a
+// word for them.
+export type {
+  VaultMetaQuestion,
+  VaultMetaRefusalLifetime,
+} from './lib/vault/vaultMetaRefusal';
 export * from './lib/vault/vaultSyncFailure';
 export * from './lib/vault/vaultSyncQueue';
 export * from './lib/vault/vaultSyncStatus';

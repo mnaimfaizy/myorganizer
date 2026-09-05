@@ -145,7 +145,10 @@ function wasDeferred(outcome: VaultBlobConvergeOutcome): boolean {
 }
 
 /**
- * Reconcile one User's Local Vault with their server Ciphertext on sign-in.
+ * Reconcile one User's Local Vault with their server Ciphertext.
+ *
+ * When a pass runs is the caller's question and never this function's, which is
+ * why nothing here is written as a sign-in step (ADR 0066).
  *
  * This is not a migration: a User whose server Vault does not exist yet is
  * having an ordinary first sync, and a User with no Vault anywhere has nothing

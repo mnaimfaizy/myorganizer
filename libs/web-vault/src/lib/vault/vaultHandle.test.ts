@@ -109,6 +109,8 @@ jest.mock('./crypto', () => {
   };
 });
 
+import type { VaultMetaV1 } from '@myorganizer/app-api-client';
+
 import type { VaultStorageV1 } from './localVaultStorage';
 import { localVaultStorageKey } from './localVaultStorage';
 import * as vaultHandleModule from './vaultHandle';
@@ -125,9 +127,35 @@ const LS_KEY_USER_B = localVaultStorageKey('user-b');
 
 beforeEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   jest.clearAllMocks();
   mockRandomBytesCounter = 0;
 });
+
+// === Helpers ===
+
+/**
+ * Helper to create a VaultMetaV1 for testing.
+ */
+function makeVaultMeta(overrides: Partial<VaultMetaV1> = {}): VaultMetaV1 {
+  return {
+    version: 1,
+    kdf_name: 'PBKDF2',
+    kdf_salt: 'default-salt',
+    kdf_params: { hash: 'SHA-256', iterations: 310_000 },
+    wrapped_mk_passphrase: {
+      version: 1,
+      iv: 'iv1-default',
+      ciphertext: 'ct1-default',
+    },
+    wrapped_mk_recovery: {
+      version: 1,
+      iv: 'iv2-default',
+      ciphertext: 'ct2-default',
+    },
+    ...overrides,
+  };
+}
 
 // === Tests ===
 
@@ -2315,6 +2343,245 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
 
       // Sink should not have been called
       expect(syncSink.vaultBlobChanged).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Vault Meta Refusal — isVaultMetaRefused and recordVaultMetaRefusal', () => {
+    test('1: recordVaultMetaRefusal then isVaultMetaRefused returns true for same meta, false for different meta', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+      const metaA = makeVaultMeta({
+        wrapped_mk_passphrase: {
+          version: 1,
+          iv: 'iv-a',
+          ciphertext: 'ct-a',
+        },
+      });
+      const metaB = makeVaultMeta({
+        wrapped_mk_passphrase: {
+          version: 1,
+          iv: 'iv-b',
+          ciphertext: 'ct-b',
+        },
+      });
+
+      // Record meta A as refused
+      await handle.recordVaultMetaRefusal({
+        meta: metaA,
+        change: 'passphrase',
+        lifetime: 'durable',
+      });
+
+      // Assert meta A is refused
+      expect(
+        await handle.isVaultMetaRefused({ meta: metaA, change: 'passphrase' }),
+      ).toBe(true);
+
+      // Assert meta B is not refused
+      expect(
+        await handle.isVaultMetaRefused({ meta: metaB, change: 'passphrase' }),
+      ).toBe(false);
+    });
+
+    test('2: removeVault clears ALL refusals for that owner — both lifetimes gone', async () => {
+      const handle = createVaultHandle({
+        owner: 'user-a',
+        masterKeyBytes: new Uint8Array([1, 2, 3, 4]),
+      });
+      const meta = makeVaultMeta({
+        wrapped_mk_passphrase: {
+          version: 1,
+          iv: 'remove-vault-iv',
+          ciphertext: 'remove-vault-ct',
+        },
+      });
+
+      // Create and save a vault
+      const vault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {
+          tasks: {
+            iv: 'dGFza3MtaXY=',
+            ciphertext: 'dGFza3MtY3Q=',
+          },
+        },
+      };
+      handle.saveVault(vault);
+
+      // Record both durable and session refusals
+      await handle.recordVaultMetaRefusal({
+        meta,
+        change: 'passphrase',
+        lifetime: 'durable',
+      });
+      await handle.recordVaultMetaRefusal({
+        meta,
+        change: 'passphrase',
+        lifetime: 'session',
+      });
+
+      expect(
+        await handle.isVaultMetaRefused({ meta, change: 'passphrase' }),
+      ).toBe(true);
+
+      // Act: remove vault
+      handle.removeVault();
+
+      // Assert: no refusal remains
+      expect(
+        await handle.isVaultMetaRefused({ meta, change: 'passphrase' }),
+      ).toBe(false);
+
+      // Assert: vault is gone
+      expect(handle.loadVault()).toBeNull();
+
+      // Assert: sync bookmarks are gone (verify a storage key is absent)
+      expect(localStorage.getItem(LS_KEY_USER_A)).toBeNull();
+    });
+
+    test('3: removeVault for owner A leaves owner B refusal intact', async () => {
+      const handleA = createVaultHandle({
+        owner: 'user-a',
+        masterKeyBytes: new Uint8Array([1, 2, 3, 4]),
+      });
+      const handleB = createVaultHandle({
+        owner: 'user-b',
+        masterKeyBytes: new Uint8Array([5, 6, 7, 8]),
+      });
+      const meta = makeVaultMeta({
+        wrapped_mk_passphrase: {
+          version: 1,
+          iv: 'per-owner-iv',
+          ciphertext: 'per-owner-ct',
+        },
+      });
+
+      // Create and save vaults for both
+      const vault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {},
+      };
+      handleA.saveVault(vault);
+      handleB.saveVault(vault);
+
+      // Both record the same meta as refused
+      await handleA.recordVaultMetaRefusal({
+        meta,
+        change: 'passphrase',
+        lifetime: 'durable',
+      });
+      await handleB.recordVaultMetaRefusal({
+        meta,
+        change: 'passphrase',
+        lifetime: 'durable',
+      });
+
+      // Both see it as refused
+      expect(
+        await handleA.isVaultMetaRefused({ meta, change: 'passphrase' }),
+      ).toBe(true);
+      expect(
+        await handleB.isVaultMetaRefused({ meta, change: 'passphrase' }),
+      ).toBe(true);
+
+      // Act: remove only A
+      handleA.removeVault();
+
+      // Assert: A is no longer refused
+      expect(
+        await handleA.isVaultMetaRefused({ meta, change: 'passphrase' }),
+      ).toBe(false);
+
+      // Assert: B still sees it as refused
+      expect(
+        await handleB.isVaultMetaRefused({ meta, change: 'passphrase' }),
+      ).toBe(true);
+    });
+
+    test('4: forgetSyncBookmarks does NOT clear refusals', async () => {
+      const handle = createVaultHandle({
+        owner: 'user-a',
+        masterKeyBytes: new Uint8Array([1, 2, 3, 4]),
+      });
+      const meta = makeVaultMeta({
+        wrapped_mk_passphrase: {
+          version: 1,
+          iv: 'forget-bookmarks-iv',
+          ciphertext: 'forget-bookmarks-ct',
+        },
+      });
+
+      // Create and save a vault
+      const vault: VaultStorageV1 = {
+        version: 1,
+        kdf: {
+          name: 'PBKDF2',
+          hash: 'SHA-256',
+          iterations: 310000,
+          salt: 'c2FsdA==',
+        },
+        masterKeyWrappedWithPassphrase: {
+          iv: 'cGFzc3BocmFzZS1pdg==',
+          ciphertext: 'cGFzc3BocmFzZS1jdA==',
+        },
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'cmVjb3ZlcnktaXY=',
+          ciphertext: 'cmVjb3ZlcnktY3Q=',
+        },
+        data: {
+          tasks: {
+            iv: 'dGFza3MtaXY=',
+            ciphertext: 'dGFza3MtY3Q=',
+          },
+        },
+      };
+      handle.saveVault(vault);
+
+      // Record a refusal
+      await handle.recordVaultMetaRefusal({
+        meta,
+        change: 'passphrase',
+        lifetime: 'durable',
+      });
+
+      expect(
+        await handle.isVaultMetaRefused({ meta, change: 'passphrase' }),
+      ).toBe(true);
+
+      // Act: forget sync bookmarks (this should NOT clear refusals)
+      handle.forgetSyncBookmarks();
+
+      // Assert: refusal still exists
+      expect(
+        await handle.isVaultMetaRefused({ meta, change: 'passphrase' }),
+      ).toBe(true);
     });
   });
 });

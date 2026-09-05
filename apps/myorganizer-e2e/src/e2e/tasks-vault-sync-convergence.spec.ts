@@ -286,14 +286,9 @@ test.describe('Tasks Vault Sync Convergence (E2E)', () => {
     // Step 3: Unlock — VaultGate does not auto-unlock after creation
     await unlockWithPassphrase(page1, passphrase);
 
-    // Step 4: Clear reconcile session flag and re-navigate to force reconcile upload.
-    // The reconcile runner is keyed on the owner-scoped session flag (PRD #489),
-    // so clearing it allows re-run to upload Meta to server (issue #506).
-    await page1.evaluate((userId) => {
-      window.sessionStorage.removeItem(
-        `myorganizer_vault_reconcile_ran_v1:${userId}`,
-      );
-    }, E2E_USER_ID);
+    // Step 4: Re-navigate to force a reconcile upload. The runner passes on
+    // every mount since ADR 0066 — there is no session flag left to clear
+    // first (issue #645).
     await gotoStable(page1, '/dashboard/tasks');
 
     // Re-navigating dropped the in-memory Master Key, so ctx1 is locked

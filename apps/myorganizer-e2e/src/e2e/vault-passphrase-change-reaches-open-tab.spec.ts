@@ -9,11 +9,24 @@ import {
   waitForOwnedVault,
 } from './helpers';
 
+/**
+ * E2E test for vault passphrase change convergence (Issue #596).
+ *
+ * Reproduces the fix: a User who keeps a tab open now learns their passphrase
+ * was changed on another device via `VaultMetaConvergeRunner` listening to
+ * window focus events (ADR 0066, decision point 2).
+ *
+ * Two browser contexts, same stubbed backend. page1 changes the passphrase via
+ * the Vault Settings page. page2 (never reloaded) receives a window focus event
+ * and should show the convergence dialog offering to adopt the new passphrase.
+ * The fix is that the focus listener (added in commit 8302356) triggers the
+ * convergence runner to ask the server again instead of staying silent.
+ */
+
 async function login(page: import('@playwright/test').Page) {
   await page.goto('/login');
   await expect(page).toHaveURL(/.*login/);
   await expect(page.locator('h1')).toContainText('Login');
-
   await submitLoginForm(page);
 }
 
@@ -26,44 +39,46 @@ function corsHeaders(origin: string) {
   } as const;
 }
 
-test.describe('Vault (E2E)', () => {
-  test('should create vault, sync to server, then load on a new session', async ({
+test.describe('Vault Passphrase Change Reaches Open Tab (E2E)', () => {
+  test('page2 receives passphrase change dialog via window focus when page1 changes passphrase', async ({
     browser,
   }, testInfo) => {
-    // The heaviest test in the suite: two browser contexts, several PBKDF2
-    // derivations (slow by design, and slower still on WebKit), and a full
-    test.setTimeout(testInfo.project.name === 'webkit' ? 240000 : 120000);
+    // Multiple PBKDF2-bound unlocks across two contexts: allow extra time on WebKit
+    test.setTimeout(testInfo.project.name === 'webkit' ? 240000 : 150000);
 
-    // In-memory "server" backing store shared across both sessions.
+    // In-memory "server" backing store shared across both contexts
     let serverMeta: any | null = null;
     let serverMetaEtag = 'W/"0"';
     let serverMetaUpdatedAt = new Date(0).toISOString();
 
     const serverBlobs: Record<string, any | null> = {
       addresses: null,
+      groceries: null,
       mobileNumbers: null,
       subscriptions: null,
+      tasks: null,
       todos: null,
     };
     const serverBlobEtags: Record<string, string> = {
       addresses: 'W/"0"',
+      groceries: 'W/"0"',
       mobileNumbers: 'W/"0"',
       subscriptions: 'W/"0"',
+      tasks: 'W/"0"',
       todos: 'W/"0"',
     };
     const serverBlobUpdatedAt: Record<string, string> = {
       addresses: new Date(0).toISOString(),
+      groceries: new Date(0).toISOString(),
       mobileNumbers: new Date(0).toISOString(),
       subscriptions: new Date(0).toISOString(),
+      tasks: new Date(0).toISOString(),
       todos: new Date(0).toISOString(),
     };
 
     async function setupRoutes(page: import('@playwright/test').Page) {
       const loginUrl = /\/auth\/login\/?(\?.*)?$/;
       const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
-      // Every VaultBlobType must be stubbed: the download path fetches all of
-      // them, and one unmatched type escapes to the real (absent) backend and
-      // rejects the whole reconcile. `tasks` was missing (issue #506).
       const vaultBlobUrl =
         /\/vault\/blob\/(addresses|groceries|mobileNumbers|subscriptions|tasks|todos)\/?(\?.*)?$/;
 
@@ -145,14 +160,13 @@ test.describe('Vault (E2E)', () => {
 
           const body = request.postDataJSON?.() as any;
           const nextMeta = body?.meta;
-          const created = !serverMeta;
 
           serverMeta = nextMeta;
           serverMetaUpdatedAt = new Date().toISOString();
           serverMetaEtag = `W/"${Date.now()}"`;
 
           await route.fulfill({
-            status: created ? 201 : 200,
+            status: 200,
             headers,
             contentType: 'application/json',
             body: JSON.stringify({
@@ -232,13 +246,12 @@ test.describe('Vault (E2E)', () => {
           const body = request.postDataJSON?.() as any;
           const nextBlob = body?.blob;
 
-          const created = !serverBlobs[type];
           serverBlobs[type] = nextBlob;
           serverBlobUpdatedAt[type] = new Date().toISOString();
           serverBlobEtags[type] = `W/"${Date.now()}"`;
 
           await route.fulfill({
-            status: created ? 201 : 200,
+            status: 200,
             headers,
             contentType: 'application/json',
             body: JSON.stringify({
@@ -254,113 +267,113 @@ test.describe('Vault (E2E)', () => {
       });
     }
 
-    // Session 1: create local vault + data
+    const ORIGINAL_PASSPHRASE = 'PasswdOrig1';
+    const NEW_PASSPHRASE = 'PasswdNew12';
+
+    // Step 1-2: Context 1 (page1) login and vault setup
     const ctx1 = await browser.newContext();
     const page1 = await ctx1.newPage();
     await setupRoutes(page1);
 
     await login(page1);
 
-    const passphrase = 'correct horse battery staple';
+    // Step 3: Create vault on page1
+    await gotoStable(page1, '/dashboard/tasks');
+    await createOwnedVault(page1, { passphrase: ORIGINAL_PASSPHRASE });
 
-    await gotoStable(page1, '/dashboard/addresses');
-    await createOwnedVault(page1, { passphrase });
+    // Step 4: Unlock page1
+    await unlockWithPassphrase(page1, ORIGINAL_PASSPHRASE);
 
-    // VaultGate does not auto-unlock after creation.
-    await unlockWithPassphrase(page1, passphrase);
+    // Step 5: Re-navigate page1 to force a Vault Meta Push
+    // A full navigation drops the in-memory Master Key, and re-navigating is
+    // what forces this device to push its own Vault Meta to the server
+    // (ADR 0060) — not the reconcile pass ADR 0066 covers, which is a
+    // separate runner with a different trigger (decision point 2).
+    await gotoStable(page1, '/dashboard/tasks');
+    await unlockWithPassphrase(page1, ORIGINAL_PASSPHRASE);
 
-    await page1.getByRole('button', { name: 'Add address' }).first().click();
-    await expect(page1.getByLabel('Label')).toBeVisible({ timeout: 60000 });
-
-    await page1.getByLabel('Label').fill('Home');
-    await page1.fill('#addr-property', '221B');
-    await page1.fill('#addr-street', 'Baker Street');
-    await page1.fill('#addr-suburb', 'London');
-    await page1.fill('#addr-state', 'Greater London');
-    await page1.fill('#addr-zipcode', 'NW1');
-    await page1.locator('#addr-country').click();
-    await page1.getByText('United Kingdom (GB)').click();
-
-    const addAddress = page1.getByRole('button', { name: 'Save address' });
-    await expect(addAddress).toBeEnabled({ timeout: 60000 });
-    await addAddress.click();
-    await expect(page1.getByText('221B Baker Street').first()).toBeVisible({
-      timeout: 60000,
-    });
-    // Saving leaves the sheet open on its success step. The "View address"
-    // button this spec used no longer exists; "Set up usage locations" is its
-    // successor and pushes the same /dashboard/addresses/{id} route
-    // (AddAddressCard.handleSetUpUsageLocations). Issue #506.
-    await page1.getByRole('button', { name: 'Set up usage locations' }).click();
-    await expect(page1.getByText('Full Address')).toBeVisible({
-      timeout: 60000,
-    });
-    await expect(page1.getByText('Address not found.')).toHaveCount(0);
-
-    await gotoStable(page1, '/dashboard/mobile-numbers');
-    await unlockWithPassphrase(page1, passphrase);
-
-    // The mobile-number form moved into AddMobileNumberDialog and its fields
-    // were renamed (#mn-* -> #mobile-*). The page trigger and the dialog's
-    // submit share the accessible name, so the submit is scoped. Issue #506.
-    await page1
-      .getByRole('button', { name: 'Add mobile number' })
-      .first()
-      .click();
-    const mobileDialog = page1.getByRole('dialog');
-    await expect(mobileDialog).toBeVisible({ timeout: 60000 });
-
-    await page1.fill('#mobile-label', 'Personal');
-    await page1.fill('#mobile-phone-number', '555 123 4567');
-    const addMobile = mobileDialog.getByRole('button', {
-      name: 'Add mobile number',
-    });
-    await expect(addMobile).toBeEnabled({ timeout: 60000 });
-    await addMobile.click();
-    await expect(page1.locator('text=Personal')).toBeVisible({
-      timeout: 60000,
-    });
-
-    // Force the reconcile runner to re-run now that we have a local vault.
-    // Navigating is enough since ADR 0066: the runner passes on every mount,
-    // and there is no session flag left to clear first. Issue #645.
-    await gotoStable(page1, '/dashboard');
-
-    // The runner should upload to server (our in-memory store should now be populated).
+    // Step 6: Confirm server now holds Vault Meta
     await expect
       .poll(() => Boolean(serverMeta), { timeout: 60000 })
       .toBeTruthy();
-    await expect
-      .poll(() => Boolean(serverBlobs.addresses), { timeout: 60000 })
-      .toBeTruthy();
-    await expect
-      .poll(() => Boolean(serverBlobs.mobileNumbers), { timeout: 60000 })
-      .toBeTruthy();
 
-    await ctx1.close();
-
-    // Session 2: new device/session should download from server and show data after unlock.
+    // Step 7-9: Context 2 (page2) login and baseline
     const ctx2 = await browser.newContext();
     const page2 = await ctx2.newPage();
     await setupRoutes(page2);
 
     await login(page2);
-
-    // Reconcile runner should download the server vault into local storage.
+    await gotoStable(page2, '/dashboard/tasks');
     await waitForOwnedVault(page2, E2E_USER_ID);
+    await unlockWithPassphrase(page2, ORIGINAL_PASSPHRASE);
 
-    await gotoStable(page2, '/dashboard/addresses');
-    await unlockWithPassphrase(page2, passphrase);
-    await expect(page2.locator('text=221B Baker Street, London')).toBeVisible({
-      timeout: 60000,
+    // Step 10: Baseline assertion - no dialog on page2 yet
+    await expect(page2.getByRole('dialog')).toHaveCount(0);
+
+    // Step 11-12: page1 navigates to /dashboard/vault (not wrapped by VaultGate,
+    // uses VaultUnlockCard with different selectors than VaultGate's unlock flow)
+    await gotoStable(page1, '/dashboard/vault');
+
+    // Step 13: Unlock page1 via VaultUnlockCard (vault settings page route)
+    // This uses different selectors than VaultGate's unlock panel.
+    const vaultUnlockPassphrase = page1.getByLabel('Passphrase', {
+      exact: true,
     });
+    await expect(vaultUnlockPassphrase).toBeVisible({ timeout: 30000 });
+    await vaultUnlockPassphrase.fill(ORIGINAL_PASSPHRASE);
+    const vaultUnlockSubmit = page1.getByTestId('vault-unlock-submit');
+    await expect(vaultUnlockSubmit).toBeVisible();
+    await vaultUnlockSubmit.click();
 
-    await gotoStable(page2, '/dashboard/mobile-numbers');
-    await unlockWithPassphrase(page2, passphrase);
-    await expect(page2.locator('text=Personal')).toBeVisible({
-      timeout: 60000,
-    });
+    // Step 14: VaultUnlockCard's passphrase input disappearing is the unlock
+    // landing signal — not the click resolving.
+    await expect(vaultUnlockPassphrase).toHaveCount(0, { timeout: 30000 });
 
+    // Step 15: Capture etag before passphrase change
+    const priorMetaEtag = serverMetaEtag;
+
+    // Step 16: Fill and submit ChangePassphraseCard
+    // The ChangePassphraseCard renders when vault is unlocked on the vault settings page
+    const currentPassphrase = page1.getByLabel('Current passphrase');
+    const newPassphrase = page1.getByLabel('New passphrase');
+    const confirmPassphrase = page1.getByLabel('Confirm new passphrase');
+    const changeSubmit = page1.getByTestId('change-passphrase-submit');
+
+    await expect(currentPassphrase).toBeVisible({ timeout: 30000 });
+    await expect(newPassphrase).toBeVisible({ timeout: 30000 });
+    await expect(confirmPassphrase).toBeVisible({ timeout: 30000 });
+    await expect(changeSubmit).toBeVisible({ timeout: 30000 });
+
+    await currentPassphrase.fill(ORIGINAL_PASSPHRASE);
+    await newPassphrase.fill(NEW_PASSPHRASE);
+    await confirmPassphrase.fill(NEW_PASSPHRASE);
+    await changeSubmit.click();
+
+    // Step 17: Poll for Meta etag change - proves passphrase change pushed to server
+    await expect
+      .poll(() => serverMetaEtag !== priorMetaEtag, { timeout: 30000 })
+      .toBeTruthy();
+
+    // Step 18: Dispatch focus event on page2 to trigger convergence
+    // page2 was never reloaded — only a simulated window focus event per hard constraint
+    await page2.evaluate(() => window.dispatchEvent(new Event('focus')));
+
+    // Step 19: Assert dialog appears on page2
+    // The dialog is rendered by VaultMetaConvergeRunner when it detects passphrase change.
+    // We assert the dialog is visible without asserting on copy text (which comes from
+    // VAULT_META_CHANGE_COPY table and may move).
+    await expect(page2.getByRole('dialog')).toBeVisible({ timeout: 30000 });
+    await expect(page2.getByRole('dialog')).toHaveCount(1);
+
+    // Step 20: Dismiss dialog via Escape
+    // Dismissal records a session-scoped refusal, not a real answer.
+    await page2.keyboard.press('Escape');
+
+    // Verify dialog closed
+    await expect(page2.getByRole('dialog')).toHaveCount(0);
+
+    // Step 21: Cleanup
+    await ctx1.close();
     await ctx2.close();
   });
 });

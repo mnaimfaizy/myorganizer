@@ -2,18 +2,38 @@ import { expect, test } from '@playwright/test';
 import {
   createOwnedVault,
   gotoStable,
-  E2E_USER_ID,
   routeApi,
   submitLoginForm,
   unlockWithPassphrase,
-  waitForOwnedVault,
+  waitForReload,
 } from './helpers';
+
+/**
+ * E2E test for vault removal + recovery convergence (Issue #628).
+ *
+ * Reproduces the fix: after an explicit Local Vault removal, the reconcile
+ * runner re-runs (triggered by Local Vault Revision bump per ADR 0066, decision
+ * point 2) instead of being suppressed by a session flag. The reconcile
+ * discovers the server holds the User's Vault and downloads it instead of
+ * offering to create a fresh one.
+ *
+ * Single context, one in-memory stubbed backend. Creates a vault, syncs a task
+ * to the server, removes the vault (which triggers a reload), then navigates
+ * to /dashboard/tasks. VaultGate should render the unlock panel for the
+ * downloaded real Vault, not the create-vault form for a fresh one. The task
+ * should reappear after unlock, proving sync was persisted.
+ *
+ * The fix is two-part:
+ * 1. Commit 1963142: prevent vault create when server holds vault (gate the create
+ *    offer while reconcile is downloading).
+ * 2. Commit 83f5495: run reconcile on mount and on Local Vault Revision bump
+ *    (trigger reconcile by revision, not by suppression flag).
+ */
 
 async function login(page: import('@playwright/test').Page) {
   await page.goto('/login');
   await expect(page).toHaveURL(/.*login/);
   await expect(page.locator('h1')).toContainText('Login');
-
   await submitLoginForm(page);
 }
 
@@ -26,44 +46,46 @@ function corsHeaders(origin: string) {
   } as const;
 }
 
-test.describe('Vault (E2E)', () => {
-  test('should create vault, sync to server, then load on a new session', async ({
-    browser,
+test.describe('Vault Removal Offers Real Vault Back (E2E)', () => {
+  test('after vault removal and reload, reconcile downloads real vault instead of offering create', async ({
+    page,
   }, testInfo) => {
-    // The heaviest test in the suite: two browser contexts, several PBKDF2
-    // derivations (slow by design, and slower still on WebKit), and a full
-    test.setTimeout(testInfo.project.name === 'webkit' ? 240000 : 120000);
+    // Multiple PBKDF2-bound unlocks: allow extra time on WebKit
+    test.setTimeout(testInfo.project.name === 'webkit' ? 240000 : 150000);
 
-    // In-memory "server" backing store shared across both sessions.
+    // In-memory "server" backing store
     let serverMeta: any | null = null;
     let serverMetaEtag = 'W/"0"';
     let serverMetaUpdatedAt = new Date(0).toISOString();
 
     const serverBlobs: Record<string, any | null> = {
       addresses: null,
+      groceries: null,
       mobileNumbers: null,
       subscriptions: null,
+      tasks: null,
       todos: null,
     };
     const serverBlobEtags: Record<string, string> = {
       addresses: 'W/"0"',
+      groceries: 'W/"0"',
       mobileNumbers: 'W/"0"',
       subscriptions: 'W/"0"',
+      tasks: 'W/"0"',
       todos: 'W/"0"',
     };
     const serverBlobUpdatedAt: Record<string, string> = {
       addresses: new Date(0).toISOString(),
+      groceries: new Date(0).toISOString(),
       mobileNumbers: new Date(0).toISOString(),
       subscriptions: new Date(0).toISOString(),
+      tasks: new Date(0).toISOString(),
       todos: new Date(0).toISOString(),
     };
 
     async function setupRoutes(page: import('@playwright/test').Page) {
       const loginUrl = /\/auth\/login\/?(\?.*)?$/;
       const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
-      // Every VaultBlobType must be stubbed: the download path fetches all of
-      // them, and one unmatched type escapes to the real (absent) backend and
-      // rejects the whole reconcile. `tasks` was missing (issue #506).
       const vaultBlobUrl =
         /\/vault\/blob\/(addresses|groceries|mobileNumbers|subscriptions|tasks|todos)\/?(\?.*)?$/;
 
@@ -145,14 +167,13 @@ test.describe('Vault (E2E)', () => {
 
           const body = request.postDataJSON?.() as any;
           const nextMeta = body?.meta;
-          const created = !serverMeta;
 
           serverMeta = nextMeta;
           serverMetaUpdatedAt = new Date().toISOString();
           serverMetaEtag = `W/"${Date.now()}"`;
 
           await route.fulfill({
-            status: created ? 201 : 200,
+            status: 200,
             headers,
             contentType: 'application/json',
             body: JSON.stringify({
@@ -232,13 +253,12 @@ test.describe('Vault (E2E)', () => {
           const body = request.postDataJSON?.() as any;
           const nextBlob = body?.blob;
 
-          const created = !serverBlobs[type];
           serverBlobs[type] = nextBlob;
           serverBlobUpdatedAt[type] = new Date().toISOString();
           serverBlobEtags[type] = `W/"${Date.now()}"`;
 
           await route.fulfill({
-            status: created ? 201 : 200,
+            status: 200,
             headers,
             contentType: 'application/json',
             body: JSON.stringify({
@@ -254,113 +274,113 @@ test.describe('Vault (E2E)', () => {
       });
     }
 
-    // Session 1: create local vault + data
-    const ctx1 = await browser.newContext();
-    const page1 = await ctx1.newPage();
-    await setupRoutes(page1);
+    const PASSPHRASE = 'VaultRemov12';
 
-    await login(page1);
+    // Step 1: Setup routes for this single page
+    await setupRoutes(page);
 
-    const passphrase = 'correct horse battery staple';
+    // Step 2: Login
+    await login(page);
 
-    await gotoStable(page1, '/dashboard/addresses');
-    await createOwnedVault(page1, { passphrase });
+    // Step 3: Create vault and unlock
+    await gotoStable(page, '/dashboard/tasks');
+    await createOwnedVault(page, { passphrase: PASSPHRASE });
+    await unlockWithPassphrase(page, PASSPHRASE);
 
-    // VaultGate does not auto-unlock after creation.
-    await unlockWithPassphrase(page1, passphrase);
+    // Step 4: Re-navigate to force a Vault Meta Push (ADR 0060) — not the
+    // reconcile pass ADR 0066 covers, which is a separate runner with a
+    // different trigger (decision point 2).
+    await gotoStable(page, '/dashboard/tasks');
+    await unlockWithPassphrase(page, PASSPHRASE);
 
-    await page1.getByRole('button', { name: 'Add address' }).first().click();
-    await expect(page1.getByLabel('Label')).toBeVisible({ timeout: 60000 });
-
-    await page1.getByLabel('Label').fill('Home');
-    await page1.fill('#addr-property', '221B');
-    await page1.fill('#addr-street', 'Baker Street');
-    await page1.fill('#addr-suburb', 'London');
-    await page1.fill('#addr-state', 'Greater London');
-    await page1.fill('#addr-zipcode', 'NW1');
-    await page1.locator('#addr-country').click();
-    await page1.getByText('United Kingdom (GB)').click();
-
-    const addAddress = page1.getByRole('button', { name: 'Save address' });
-    await expect(addAddress).toBeEnabled({ timeout: 60000 });
-    await addAddress.click();
-    await expect(page1.getByText('221B Baker Street').first()).toBeVisible({
-      timeout: 60000,
-    });
-    // Saving leaves the sheet open on its success step. The "View address"
-    // button this spec used no longer exists; "Set up usage locations" is its
-    // successor and pushes the same /dashboard/addresses/{id} route
-    // (AddAddressCard.handleSetUpUsageLocations). Issue #506.
-    await page1.getByRole('button', { name: 'Set up usage locations' }).click();
-    await expect(page1.getByText('Full Address')).toBeVisible({
-      timeout: 60000,
-    });
-    await expect(page1.getByText('Address not found.')).toHaveCount(0);
-
-    await gotoStable(page1, '/dashboard/mobile-numbers');
-    await unlockWithPassphrase(page1, passphrase);
-
-    // The mobile-number form moved into AddMobileNumberDialog and its fields
-    // were renamed (#mn-* -> #mobile-*). The page trigger and the dialog's
-    // submit share the accessible name, so the submit is scoped. Issue #506.
-    await page1
-      .getByRole('button', { name: 'Add mobile number' })
-      .first()
-      .click();
-    const mobileDialog = page1.getByRole('dialog');
-    await expect(mobileDialog).toBeVisible({ timeout: 60000 });
-
-    await page1.fill('#mobile-label', 'Personal');
-    await page1.fill('#mobile-phone-number', '555 123 4567');
-    const addMobile = mobileDialog.getByRole('button', {
-      name: 'Add mobile number',
-    });
-    await expect(addMobile).toBeEnabled({ timeout: 60000 });
-    await addMobile.click();
-    await expect(page1.locator('text=Personal')).toBeVisible({
-      timeout: 60000,
-    });
-
-    // Force the reconcile runner to re-run now that we have a local vault.
-    // Navigating is enough since ADR 0066: the runner passes on every mount,
-    // and there is no session flag left to clear first. Issue #645.
-    await gotoStable(page1, '/dashboard');
-
-    // The runner should upload to server (our in-memory store should now be populated).
+    // Step 5: Confirm server now holds Vault Meta
     await expect
       .poll(() => Boolean(serverMeta), { timeout: 60000 })
       .toBeTruthy();
-    await expect
-      .poll(() => Boolean(serverBlobs.addresses), { timeout: 60000 })
-      .toBeTruthy();
-    await expect
-      .poll(() => Boolean(serverBlobs.mobileNumbers), { timeout: 60000 })
-      .toBeTruthy();
 
-    await ctx1.close();
+    // Step 6: Create a task to prove sync persistence
+    const uniqueTitle = `RemovalTest ${Date.now()}`;
+    const initialTasksEtag = serverBlobEtags.tasks;
 
-    // Session 2: new device/session should download from server and show data after unlock.
-    const ctx2 = await browser.newContext();
-    const page2 = await ctx2.newPage();
-    await setupRoutes(page2);
+    // Open task creation dialog
+    await page.getByRole('button', { name: 'Add Task' }).first().click();
+    await expect(page.getByRole('dialog')).toBeVisible({ timeout: 30000 });
+    await expect(page.getByLabel('Title')).toBeVisible({ timeout: 30000 });
 
-    await login(page2);
+    // Fill and submit task creation (scoped to dialog to avoid collision)
+    await page.getByLabel('Title').fill(uniqueTitle);
+    const submitButton = page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'Add Task' });
+    await expect(submitButton).toBeVisible();
+    await submitButton.click();
 
-    // Reconcile runner should download the server vault into local storage.
-    await waitForOwnedVault(page2, E2E_USER_ID);
-
-    await gotoStable(page2, '/dashboard/addresses');
-    await unlockWithPassphrase(page2, passphrase);
-    await expect(page2.locator('text=221B Baker Street, London')).toBeVisible({
-      timeout: 60000,
+    // Wait for task to appear in DOM (local save)
+    await expect(page.locator('h3', { hasText: uniqueTitle })).toBeVisible({
+      timeout: 30000,
     });
 
-    await gotoStable(page2, '/dashboard/mobile-numbers');
-    await unlockWithPassphrase(page2, passphrase);
-    await expect(page2.locator('text=Personal')).toBeVisible({
-      timeout: 60000,
+    // Step 7: Poll for task push to server
+    await expect
+      .poll(() => serverBlobEtags.tasks !== initialTasksEtag, {
+        timeout: 15000,
+      })
+      .toBeTruthy();
+
+    // Step 8: Navigate to vault settings and remove vault
+    // Vault settings page (/dashboard/vault) is not wrapped by VaultGate,
+    // so we navigate and remove directly.
+    await gotoStable(page, '/dashboard/vault');
+
+    // RemoveVaultCard is visible and clickable when vault is owned
+    await expect(page.getByTestId('remove-vault-button')).toBeVisible({
+      timeout: 30000,
     });
 
-    await ctx2.close();
+    // Step 9: Click remove button and confirm, wrapping with waitForReload
+    // RemoveVaultCard's handleConfirmRemove calls window.location.reload()
+    await waitForReload(page, async () => {
+      // Click remove button
+      await page.getByTestId('remove-vault-button').click();
+
+      // Confirm in ConfirmDeleteDialog
+      // The dialog contains "Cancel" button (outline) and "Delete" button (destructive)
+      const dialog = page.getByRole('dialog');
+      await expect(dialog).toBeVisible({ timeout: 30000 });
+
+      // Find and click the Delete button inside the dialog
+      const deleteButton = dialog.getByRole('button', { name: /Delete/ });
+      await expect(deleteButton).toBeVisible({ timeout: 30000 });
+      await deleteButton.click();
+    });
+
+    // After waitForReload returns, we are on /dashboard/vault with vault removed.
+    // Step 10: Navigate to /dashboard/tasks to trigger VaultGate's reconcile path
+    // This is required because only VaultGate subscribes to useLocalVaultRevision
+    // and displays the reconcile-driven unlock panel. The vault settings page
+    // components do not re-run on revision changes.
+    await gotoStable(page, '/dashboard/tasks');
+
+    // Step 11: Assert unlock panel appears (not create form)
+    // This proves reconcile ran and downloaded the server vault instead of
+    // falling back to the create offer.
+    // VaultGate's unlock panel shows "Use passphrase" button when owned
+    await expect(
+      page.getByRole('button', { name: 'Use passphrase' }),
+    ).toBeVisible({ timeout: 60000 });
+
+    // Step 12: Assert create form is NOT present
+    // The create form's passphrase input has id="setup-passphrase" (vaultGate.tsx:482)
+    await expect(page.locator('#setup-passphrase')).toHaveCount(0);
+
+    // Step 13: Unlock with the original passphrase
+    // This proves the real vault came back, not a freshly created one
+    await unlockWithPassphrase(page, PASSPHRASE);
+
+    // Step 14: Assert task reappears after unlock and (if needed) re-navigation
+    // The task should be visible in the list, proving the synced vault was recovered
+    await expect(page.locator('h3', { hasText: uniqueTitle })).toBeVisible({
+      timeout: 60000,
+    });
   });
 });
