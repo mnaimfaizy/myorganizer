@@ -27,7 +27,6 @@ permissions:
   contents: read
   pull-requests: write
   actions: read
-  id-token: write
 
 concurrency:
   group: code-review-${{ github.event.pull_request.number }}
@@ -138,7 +137,9 @@ jobs:
       # JSON only. The allowed tools are read, search, sub-agents, git
       # reads, existing Nx targets, and the validator; no gh, no network, no
       # push. The action's own GitHub tools are not in the list, so the
-      # reviewer cannot post.
+      # reviewer cannot post. `github_token` is the job token: the action
+      # uses it for its own plumbing instead of minting a GitHub App token,
+      # so the Claude GitHub App does not need to be installed.
       - name: Run the reviewer
         if: steps.preflight.outputs.skip != 'true'
         id: reviewer
@@ -147,6 +148,7 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
           prompt: |
             /code-review
 
@@ -171,7 +173,7 @@ jobs:
         continue-on-error: true
         run: |
           if [ ! -f tmp/code-review/report.json ]; then
-            echo 'the reviewer wrote no tmp/code-review/report.json' | tee "$RUNNER_TEMP/rejected.txt"
+            echo "the reviewer wrote no tmp/code-review/report.json (reviewer step outcome: ${{ steps.reviewer.outcome }}; see the run log)" | tee "$RUNNER_TEMP/rejected.txt"
             exit 1
           fi
           corepack yarn review:validate tmp/code-review/report.json \
