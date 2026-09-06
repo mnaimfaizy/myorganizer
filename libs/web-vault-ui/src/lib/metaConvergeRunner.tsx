@@ -10,7 +10,7 @@ import {
   DialogTitle,
   useToast,
 } from '@myorganizer/web-ui';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type {
   SettleVaultMetaResult,
@@ -373,14 +373,26 @@ export function VaultMetaConvergeRunner() {
     };
   }, [owner]);
 
-  function resolvePendingPrompt(decision: VaultMetaDecision) {
+  const resolvePendingPrompt = useCallback((decision: VaultMetaDecision) => {
     const prompt = pendingPromptRef.current;
     if (!prompt) return;
 
     pendingPromptRef.current = null;
     setPendingPrompt(null);
     prompt.resolve(decision);
-  }
+  }, []);
+
+  const handleDialogOpenChange = useCallback(
+    (open: boolean) => {
+      // Escape and overlay clicks land here. Dismissing is a deliberate
+      // no-op — neither copy is touched — so it must never be read as
+      // consent to overwrite the wrapping (ADR 0033). It records a
+      // session-scoped Vault Meta Refusal above, which is bookkeeping about
+      // the question and not a write to either side.
+      if (!open) resolvePendingPrompt('defer');
+    },
+    [resolvePendingPrompt],
+  );
 
   if (!pendingPrompt) {
     return null;
@@ -389,17 +401,7 @@ export function VaultMetaConvergeRunner() {
   const copy = VAULT_META_CHANGE_COPY[pendingPrompt.change];
 
   return (
-    <Dialog
-      open={Boolean(pendingPrompt)}
-      onOpenChange={(open) => {
-        // Escape and overlay clicks land here. Dismissing is a deliberate
-        // no-op — neither copy is touched — so it must never be read as
-        // consent to overwrite the wrapping (ADR 0033). It records a
-        // session-scoped Vault Meta Refusal above, which is bookkeeping about
-        // the question and not a write to either side.
-        if (!open) resolvePendingPrompt('defer');
-      }}
-    >
+    <Dialog open={Boolean(pendingPrompt)} onOpenChange={handleDialogOpenChange}>
       <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{copy.title}</DialogTitle>

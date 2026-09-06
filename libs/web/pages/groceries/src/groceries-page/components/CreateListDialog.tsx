@@ -74,6 +74,14 @@ export function CreateListDialog({
     [onClose],
   );
 
+  const handleNameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setName(e.target.value);
+      if (error) setError(null);
+    },
+    [error],
+  );
+
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] md:max-w-md">
@@ -89,10 +97,7 @@ export function CreateListDialog({
             <Input
               placeholder="e.g., Weekly Shopping"
               value={name}
-              onChange={(e) => {
-                setName(e.target.value);
-                if (error) setError(null);
-              }}
+              onChange={handleNameChange}
               disabled={submitting || isLoading}
               maxLength={100}
               className="text-base md:text-sm"

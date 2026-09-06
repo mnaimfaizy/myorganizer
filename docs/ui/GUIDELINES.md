@@ -355,9 +355,7 @@ Choose the lowest level that satisfies the requirement:
 
 ### 5.6 Handlers and callbacks
 
-**Every handler passed as a prop to a child component must be wrapped in `useCallback`. No exceptions.**
-
-Before finishing a component, grep the file for every prop passed to a child (`<Child onX={...} />`), confirm each handler is wrapped in `useCallback`, and verify the function signature (parameter names, types, return type) matches the child component's props interface exactly.
+**Every handler passed as a prop to a child component must be wrapped in `useCallback`.** Passing the binding by name is the default:
 
 ```typescript
 const handleDelete = useCallback((id: string) => {
@@ -366,6 +364,18 @@ const handleDelete = useCallback((id: string) => {
 
 return <TodoItem onDelete={handleDelete} />;
 ```
+
+Inline arrows and function expressions (`onX={() => { … }}`, `onX={function () { … }}`) are the same violation. `check-component-hygiene.mjs` reports them: a PASS is a claim that §5.6 holds, including this form.
+
+**Thin-wrapper exception.** An expression-bodied arrow whose body is a single call to a `useCallback` already in this file, or to a name not declared as a local function (a prop or a `useState` setter), may bind extra arguments:
+
+```typescript
+return <button onClick={() => handleDelete(id)}>Delete</button>;
+```
+
+The wrapper still allocates each render. It exists because hooks cannot run inside `.map()`, and because the child's event signature does not carry the id. A block body, an `if`, a `try`, a member call (`e.preventDefault()`, `cloud.connect()`), or a call to a local function that is _not_ wrapped in `useCallback` is not this exception — extract a `useCallback`.
+
+Before finishing a component, grep the file for every prop passed to a child (`<Child onX={...} />`), confirm each handler is a `useCallback` binding or a thin wrapper of one, and verify the function signature (parameter names, types, return type) matches the child component's props interface exactly.
 
 ---
 

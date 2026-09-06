@@ -63,7 +63,7 @@ export function EditItemCoreFields({
         <Controller
           control={control}
           name="category"
-          render={({ field }) => (
+          render={({ field: { onChange } }) => (
             <div
               className="grid grid-cols-4 gap-2"
               role="radiogroup"
@@ -76,7 +76,7 @@ export function EditItemCoreFields({
                   role="radio"
                   aria-checked={selectedCategory === cat}
                   data-category={cat}
-                  onClick={() => field.onChange(cat)}
+                  onClick={() => onChange(cat)}
                   className={cn(
                     'flex flex-col items-center justify-center rounded-lg p-2 text-center transition-all',
                     selectedCategory === cat

@@ -10,7 +10,7 @@ import {
   DialogTitle,
   useToast,
 } from '@myorganizer/web-ui';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type {
   VaultClaimOnEvidenceResult,
@@ -442,29 +442,34 @@ export function VaultReconcileRunner() {
     };
   }, [owner, revision]);
 
-  function resolvePendingPrompt(decision: VaultReconcileDecision) {
-    const prompt = pendingPromptRef.current;
-    if (!prompt) return;
+  const resolvePendingPrompt = useCallback(
+    (decision: VaultReconcileDecision) => {
+      const prompt = pendingPromptRef.current;
+      if (!prompt) return;
 
-    pendingPromptRef.current = null;
-    setPendingPrompt(null);
-    prompt.resolve(decision);
-  }
+      pendingPromptRef.current = null;
+      setPendingPrompt(null);
+      prompt.resolve(decision);
+    },
+    [],
+  );
+
+  const handleDialogOpenChange = useCallback(
+    (open: boolean) => {
+      // Escape and overlay clicks land here. Dismissing is a deliberate
+      // no-op — neither copy is touched — so it must never be read as
+      // consent to overwrite one of them (ADR 0033).
+      if (!open) resolvePendingPrompt('defer');
+    },
+    [resolvePendingPrompt],
+  );
 
   if (!pendingPrompt) return null;
 
   const copy = describeAsk(pendingPrompt.ask);
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        // Escape and overlay clicks land here. Dismissing is a deliberate
-        // no-op — neither copy is touched — so it must never be read as
-        // consent to overwrite one of them (ADR 0033).
-        if (!open) resolvePendingPrompt('defer');
-      }}
-    >
+    <Dialog open onOpenChange={handleDialogOpenChange}>
       <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{copy.title}</DialogTitle>

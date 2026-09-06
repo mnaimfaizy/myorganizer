@@ -39,6 +39,10 @@ function GroceriesInner({ handle }: GroceriesInnerProps) {
     setDialog({ type: null });
   }, []);
 
+  const handleDismissError = useCallback(() => {
+    vault.setError(null);
+  }, [vault]);
+
   const handleRenameList = useCallback(
     (listId: string) => {
       const list = vault.lists.find((candidate) => candidate.id === listId);
@@ -171,7 +175,7 @@ function GroceriesInner({ handle }: GroceriesInnerProps) {
             <div className="flex-1">
               <p className="font-medium text-destructive">{vault.error}</p>
               <button
-                onClick={() => vault.setError(null)}
+                onClick={handleDismissError}
                 className="mt-2 text-sm font-medium text-destructive underline hover:no-underline"
               >
                 Dismiss

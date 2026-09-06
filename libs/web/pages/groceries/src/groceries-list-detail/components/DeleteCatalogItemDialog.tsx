@@ -52,6 +52,13 @@ export function DeleteCatalogItemDialog({
     onClose();
   }, [onClose]);
 
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) handleClose();
+    },
+    [handleClose],
+  );
+
   const handleConfirm = useCallback(async () => {
     if (!catalogItem) return;
     setConfirming(true);
@@ -75,10 +82,7 @@ export function DeleteCatalogItemDialog({
   const isConfirmMatch = catalogItem !== null && typedName.trim() === itemName;
 
   return (
-    <Dialog
-      open={isOpenWithItem}
-      onOpenChange={(open) => !open && handleClose()}
-    >
+    <Dialog open={isOpenWithItem} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] md:max-w-md">
         <DialogHeader>
           <div className="mb-4 flex items-center justify-center">

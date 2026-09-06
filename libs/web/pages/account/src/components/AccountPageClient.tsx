@@ -142,16 +142,16 @@ export function AccountPageClient() {
         ? null
         : undefined;
 
-  function persist(next: {
-    countryCode: string;
-    preferredCurrency: CurrencyCode;
-  }) {
-    setAccountSettings(next);
-    toast({
-      title: 'Saved',
-      description: 'Account settings updated.',
-    });
-  }
+  const persist = useCallback(
+    (next: { countryCode: string; preferredCurrency: CurrencyCode }) => {
+      setAccountSettings(next);
+      toast({
+        title: 'Saved',
+        description: 'Account settings updated.',
+      });
+    },
+    [toast],
+  );
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">

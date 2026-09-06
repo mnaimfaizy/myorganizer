@@ -47,6 +47,7 @@ import process from 'node:process';
 import { execFileSync } from 'node:child_process';
 
 import {
+  blockAfter,
   lineOf,
   maskNonCode,
   normalize,
@@ -217,10 +218,105 @@ function checkDeepImport(code, raw, findings) {
 }
 
 /**
+ * True when `inner` (the contents of a JSX `{…}` handler prop) is an arrow
+ * or function expression rather than a binding name.
+ *
+ * Depth-0 `=>` is what `#670` was about: the previous regex only captured
+ * `onX={identifier}`, so `onX={() => { … }}` never became a finding.
+ */
+function isInlineFunctionExpr(inner) {
+  const source = inner.trim();
+  if (/^(?:async\s+)?function\b/.test(source)) return true;
+  let depth = 0;
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i];
+    if (ch === '(' || ch === '{' || ch === '[') depth += 1;
+    else if (ch === ')' || ch === '}' || ch === ']') {
+      depth = Math.max(0, depth - 1);
+    } else if (depth === 0 && ch === '=' && source[i + 1] === '>') {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Expression body of an arrow, or null when the arrow has a block body or
+ * the expression is a `function` keyword form. GUIDELINES §5.6's thin-wrapper
+ * carve-out is only the expression-bodied form (`() => handleDelete(id)`).
+ */
+function arrowExpressionBody(inner) {
+  const source = inner.trim().replace(/^async\s+/, '');
+  if (/^function\b/.test(source)) return null;
+  let depth = 0;
+  let arrow = -1;
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i];
+    if (ch === '(' || ch === '{' || ch === '[') depth += 1;
+    else if (ch === ')' || ch === '}' || ch === ']') {
+      depth = Math.max(0, depth - 1);
+    } else if (depth === 0 && ch === '=' && source[i + 1] === '>') {
+      arrow = i;
+      break;
+    }
+  }
+  if (arrow === -1) return null;
+  const body = source.slice(arrow + 2).trim();
+  if (body.startsWith('{')) return null;
+  return body;
+}
+
+const CALL_PREFIX = /^(?:void|await|return)\s+/;
+
+/**
+ * Root identifier of a single *identifier* call (`handleDelete(id)`,
+ * `setOpen(true)`, `void onClose()`), or null when the body is anything
+ * else — a member call (`e.preventDefault()`, `cloud.connect()`), `if`,
+ * `&&`, a sequence. GUIDELINES §5.6's thin wrapper is a named callee, not
+ * a method lookup.
+ */
+function singleCallRoot(expr) {
+  const body = expr.trim().replace(CALL_PREFIX, '');
+  const match = body.match(/^([A-Za-z_$][\w$]*)\s*\(/);
+  if (!match) return null;
+  const open = body.indexOf('(');
+  const call = parenAfter(body, open);
+  if (!call) return null;
+  const rest = body
+    .slice(open + call.length)
+    .trim()
+    .replace(/;$/, '');
+  if (rest !== '') return null;
+  return match[1];
+}
+
+/**
+ * `onClick={() => handleDelete(id)}` where `handleDelete` is already a
+ * useCallback (or is not a local function at all — a prop or a useState
+ * setter). The wrapper still allocates each render; the carve-out exists
+ * because hooks cannot be called inside `.map()` and because binding one
+ * extra argument is the shape GUIDELINES §5.6 names as allowed.
+ *
+ * A local function that is *not* memoized is not a stable callee: wrapping
+ * it in an arrow does not satisfy the rule.
+ */
+function isThinStableWrapper(inner, memoized, declared) {
+  const expr = arrowExpressionBody(inner);
+  if (expr == null) return false;
+  const root = singleCallRoot(expr);
+  if (root == null) return false;
+  if (memoized.has(root)) return true;
+  return !declared.has(root);
+}
+
+/**
  * A handler recreated every render defeats memoization in the child and, for
  * children in a list, re-renders the whole list. GUIDELINES §5.6 makes this
- * unconditional, so the check only has to find handlers that are passed down
- * and not wrapped.
+ * unconditional for real handler bodies; a documented thin wrapper that only
+ * calls a stable callee with extra arguments is the one carve-out.
+ *
+ * The previous matcher only saw `onX={identifierName}`, so inline arrows
+ * passed the check with no finding at all (#670).
  */
 function checkHandlerCallbacks(code, raw, findings) {
   const memoized = new Set();
@@ -231,7 +327,7 @@ function checkHandlerCallbacks(code, raw, findings) {
 
   const declared = new Map();
   const declRe =
-    /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\([^)]*\)\s*(?::[^=;]*)?=>/g;
+    /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*(?::[^=;]*)?=>/g;
   while ((m = declRe.exec(code)) !== null) {
     if (!declared.has(m[1])) declared.set(m[1], lineOf(raw, m.index));
   }
@@ -240,14 +336,36 @@ function checkHandlerCallbacks(code, raw, findings) {
     if (!declared.has(m[1])) declared.set(m[1], lineOf(raw, m.index));
   }
 
-  const reported = new Set();
-  const propRe = /\bon[A-Z]\w*\s*=\s*\{\s*([A-Za-z_$][\w$]*)\s*\}/g;
+  const reportedNames = new Set();
+  const propRe = /\bon[A-Z]\w*\s*=\s*/g;
   while ((m = propRe.exec(code)) !== null) {
-    const name = m[1];
+    let cursor = m.index + m[0].length;
+    while (cursor < code.length && /\s/.test(code[cursor])) cursor += 1;
+    if (code[cursor] !== '{') continue;
+    const exprBlock = blockAfter(code, cursor);
+    if (!exprBlock || exprBlock.length < 2) continue;
+    const inner = exprBlock.slice(1, -1).trim();
+    if (!inner) continue;
+
+    if (isInlineFunctionExpr(inner)) {
+      if (isThinStableWrapper(inner, memoized, declared)) continue;
+      findings.push({
+        level: 'warn',
+        rule: 'handler-not-memoized',
+        line: lineOf(raw, m.index),
+        message:
+          'Inline function passed as a handler prop. GUIDELINES §5.6 — wrap the handler in useCallback. An expression-bodied call to a useCallback (or to a name not declared as a local function) is the documented thin-wrapper exception.',
+      });
+      continue;
+    }
+
+    const ident = inner.match(/^([A-Za-z_$][\w$]*)$/);
+    if (!ident) continue;
+    const name = ident[1];
     if (memoized.has(name)) continue;
     if (!declared.has(name)) continue; // a prop forwarded straight through
-    if (reported.has(name)) continue;
-    reported.add(name);
+    if (reportedNames.has(name)) continue;
+    reportedNames.add(name);
     findings.push({
       level: 'warn',
       rule: 'handler-not-memoized',
