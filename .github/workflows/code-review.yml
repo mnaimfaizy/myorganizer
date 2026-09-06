@@ -1,0 +1,223 @@
+name: Code Review
+
+# The `/code-review` skill, run in CI (ADR 0069, ADR 0070). The same skill,
+# the same JSON contract, the same validator and renderer as the terminal;
+# only the plumbing differs:
+#
+#   1. The Review Tier is computed here by the classifier and passed to the
+#      validator as `--tier`, so the job output is the truth (ADR 0069 item 3).
+#   2. The spec is resolved with the job token in its own step; the reviewer
+#      never holds a token (ADR 0070 item 8).
+#   3. The reviewer writes JSON only. A later step validates it, renders it,
+#      and posts it. A report that fails the contract is rejected whole, the
+#      Pull Request is relabelled `review:human`, and this check fails.
+#   4. The job named "Agent Verdict" fails on `request-changes` and on a
+#      rejected report. It is a status check, never a review approval
+#      (ADR 0069 item 6). Merge policy does not change here.
+#
+# Runs only when ANTHROPIC_API_KEY is set; otherwise it explains and skips.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+  id-token: write
+
+concurrency:
+  group: code-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Agent Verdict
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: github.event.pull_request.draft == false
+
+    env:
+      BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      # Required for Prisma v7 config loading if a reviewer runs backend tests.
+      DATABASE_URL: postgresql://localhost:5432/myorganizer
+
+    steps:
+      - name: Check for a reviewer credential
+        id: preflight
+        env:
+          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        run: |
+          if [ "$HAS_KEY" != 'true' ]; then
+            echo 'skip=true' >> "$GITHUB_OUTPUT"
+            {
+              echo '## Code review skipped'
+              echo
+              echo 'No `ANTHROPIC_API_KEY` repository secret is set, so the reviewer did not run and there is no verdict. Add the secret to enable automated review.'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'skip=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout repository
+        if: steps.preflight.outputs.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22
+        if: steps.preflight.outputs.skip != 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Restore dependency cache
+        if: steps.preflight.outputs.skip != 'true'
+        id: dependency-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
+
+      - name: Install dependencies
+        if: steps.preflight.outputs.skip != 'true' && steps.dependency-cache.outputs.cache-hit != 'true'
+        run: corepack yarn install --immutable
+
+      # The classifier's output, not the label, is what the validator reads.
+      - name: Classify the diff
+        if: steps.preflight.outputs.skip != 'true'
+        id: tier
+        run: |
+          corepack yarn review:tier:check \
+            --base "$BASE_SHA" --head "$HEAD_SHA" --author "$PR_AUTHOR" \
+            --out "$RUNNER_TEMP/tier.json"
+
+      # Spec discovery with the job token: branch name, then commit
+      # references, then none. The reviewer reads the file and fetches nothing.
+      - name: Resolve the spec source
+        if: steps.preflight.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p tmp/code-review
+          corepack yarn review:spec \
+            --head-ref "$HEAD_REF" --base "$BASE_SHA" --head "$HEAD_SHA" \
+            --repo "$GITHUB_REPOSITORY" --out tmp/code-review/spec.json
+
+      # The previous run's normalized report, for the new / persisting /
+      # resolved strip. Best effort: a first run has none.
+      - name: Fetch the previous report
+        if: steps.preflight.outputs.skip != 'true'
+        id: previous
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          found=''
+          for run_id in $(gh run list --workflow code-review.yml --branch "$HEAD_REF" --status success --json databaseId --jq '.[].databaseId' --limit 5); do
+            if gh run download "$run_id" --name code-review-normalized --dir "$RUNNER_TEMP/previous" >/dev/null 2>&1; then
+              found="$RUNNER_TEMP/previous/normalized.json"
+              break
+            fi
+          done
+          echo "path=$found" >> "$GITHUB_OUTPUT"
+          echo "previous report: ${found:-none}"
+
+      # JSON only. The allowed tools are read, search, sub-agents, git
+      # reads, existing Nx targets, and the validator; no gh, no network, no
+      # push. The action's own GitHub tools are not in the list, so the
+      # reviewer cannot post.
+      - name: Run the reviewer
+        if: steps.preflight.outputs.skip != 'true'
+        id: reviewer
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            /code-review
+
+            You are running in CI (see "In CI" in the skill). Facts for this run:
+            - fixed point (base): ${{ github.event.pull_request.base.sha }}
+            - head: ${{ github.event.pull_request.head.sha }}
+            - branch name: ${{ github.event.pull_request.head.ref }}
+            - tier: ${{ steps.tier.outputs.label }}
+            - spec: already resolved in tmp/code-review/spec.json. Read it. Do not fetch issues, do not ask anyone. If its spec.kind is "none", skip the Spec axis.
+            - write the envelope to tmp/code-review/report.json and run the validator on it as the skill says. Do not run the renderer and do not post anything: a later step publishes.
+            - the model id to record in the envelope: ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
+          claude_args: >-
+            --model ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
+            --max-turns 80
+            --allowedTools "Read,Glob,Grep,Write,Edit,Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node --test:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*)"
+
+      # The script, not the model, decides whether the report stands. The
+      # job's tier overrides whatever the envelope says.
+      - name: Validate the report
+        if: steps.preflight.outputs.skip != 'true'
+        id: validate
+        continue-on-error: true
+        run: |
+          if [ ! -f tmp/code-review/report.json ]; then
+            echo 'the reviewer wrote no tmp/code-review/report.json' | tee "$RUNNER_TEMP/rejected.txt"
+            exit 1
+          fi
+          corepack yarn review:validate tmp/code-review/report.json \
+            --tier '${{ steps.tier.outputs.label }}' \
+            --out tmp/code-review/normalized.json 2> >(tee "$RUNNER_TEMP/rejected.txt" >&2)
+
+      - name: Render the report
+        if: steps.preflight.outputs.skip != 'true' && steps.validate.outcome == 'success'
+        run: |
+          if [ -n '${{ steps.previous.outputs.path }}' ]; then
+            corepack yarn review:render tmp/code-review/normalized.json \
+              --previous '${{ steps.previous.outputs.path }}' --out tmp/code-review/report.md
+          else
+            corepack yarn review:render tmp/code-review/normalized.json --out tmp/code-review/report.md
+          fi
+          cat tmp/code-review/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Keep the normalized report for the next run
+        if: steps.preflight.outputs.skip != 'true' && steps.validate.outcome == 'success'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: code-review-normalized
+          path: tmp/code-review/normalized.json
+          retention-days: 30
+
+      # The only step with a token that can write to the Pull Request.
+      - name: Publish to the pull request
+        if: steps.preflight.outputs.skip != 'true' && github.event.pull_request.head.repo.full_name == github.repository
+        id: publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ '${{ steps.validate.outcome }}' = 'success' ]; then
+            corepack yarn review:publish --pr "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+              --head "$HEAD_SHA" --run-url "$RUN_URL" --tier '${{ steps.tier.outputs.label }}' \
+              --normalized tmp/code-review/normalized.json --rendered tmp/code-review/report.md
+          else
+            corepack yarn review:publish --pr "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+              --head "$HEAD_SHA" --run-url "$RUN_URL" --tier '${{ steps.tier.outputs.label }}' \
+              --rejected "$RUNNER_TEMP/rejected.txt"
+          fi
+
+      - name: Agent verdict
+        if: steps.preflight.outputs.skip != 'true'
+        run: |
+          echo "reviewer step: ${{ steps.reviewer.outcome }}; validation: ${{ steps.validate.outcome }}; verdict: ${{ steps.publish.outputs.verdict || 'none' }}"
+          if [ '${{ steps.validate.outcome }}' != 'success' ]; then
+            echo '::error::the reviewer produced no valid report; this pull request is review:human'
+            exit 1
+          fi
+          if [ '${{ steps.publish.outputs.fail }}' = 'true' ]; then
+            echo '::error::verdict request-changes: at least one blocking finding'
+            exit 1
+          fi

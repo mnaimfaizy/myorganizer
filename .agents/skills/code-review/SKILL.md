@@ -192,6 +192,25 @@ head SHA; pass `--no-hunks` to suppress that, for example when the head is not i
 Present the rendered Markdown verbatim. Do not summarise across axes, do not rerank, and do not add
 a verdict of your own: the heading already carries the computed one.
 
+## In CI
+
+`.github/workflows/code-review.yml` runs this skill on every non-draft Pull Request with the same
+contract, validator, and renderer. The prompt states the facts the terminal would discover; do not
+rediscover them:
+
+- **Fixed point, head, branch name, and tier are given.** Use them verbatim. `tier` goes into the
+  envelope; the workflow pins it again with `review:validate --tier`, so the job output is the truth
+  (ADR 0069 item 3).
+- **The spec is already resolved** in `tmp/code-review/spec.json` as
+  `{ "spec": { kind, ref, foundBy }, "title", "body" }` by `review:spec`, using the job token. Copy
+  `spec` into the envelope and hand `body` to the Spec sub-agent as the fetched text. Fetch nothing;
+  there is no token in your environment and nobody to ask. `kind: none` skips the Spec axis.
+- **Write `tmp/code-review/report.json`**, run the validator as in step 5, retry a failing
+  sub-agent once, and stop. Do not render, do not post: `review:publish` edits the one summary
+  comment, posts inline comments for blocking findings, and relabels (ADR 0070 item 8).
+- **A rejected report is a failed check.** The workflow posts the validator's reasons and the Pull
+  Request goes to `review:human`. Nothing is downgraded to make it pass.
+
 ## Why two axes
 
 A change can pass one axis and fail the other:
