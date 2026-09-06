@@ -6,22 +6,27 @@ jest.mock('@myorganizer/web-ui', () => ({
   useToast: () => mockUseToast(),
 }));
 
-const mockUseOptionalVaultSession = jest.fn();
-jest.mock('./session', () => ({
-  useOptionalVaultSession: () => mockUseOptionalVaultSession(),
-}));
-
+// State sources for the session mock: the gate reads claimEvidence and
+// absentEvidence from the session, not from the hooks.
 const mockUseVaultClaimEvidence = jest.fn();
-jest.mock('./useVaultClaimEvidence', () => ({
-  useVaultClaimEvidence: (handle: VaultHandle | null) =>
-    mockUseVaultClaimEvidence(handle),
-}));
-
 const mockUseVaultAbsentEvidence = jest.fn();
-jest.mock('./useVaultAbsentEvidence', () => ({
-  useVaultAbsentEvidence: (handle: VaultHandle | null) =>
-    mockUseVaultAbsentEvidence(handle),
-}));
+
+const mockUseOptionalVaultSession = jest.fn();
+jest.mock('./session', () => {
+  return {
+    useOptionalVaultSession: () => {
+      const session = mockUseOptionalVaultSession();
+      if (!session) return null;
+      // Augment the session mock with evidence read from the hook mocks.
+      // The gate now reads evidence from the session, not the hooks.
+      return {
+        ...session,
+        claimEvidence: mockUseVaultClaimEvidence(session.handle),
+        absentEvidence: mockUseVaultAbsentEvidence(session.handle),
+      };
+    },
+  };
+});
 
 const mockUseLocalVaultRevision = jest.fn();
 jest.mock('./useLocalVaultRevision', () => ({
@@ -80,6 +85,11 @@ describe('VaultGate', () => {
     toastFn = jest.fn();
     mockUseToast.mockReturnValue({ toast: toastFn });
     mockUseOptionalVaultSession.mockReturnValue(null);
+    // Default mock returns for evidence. When session is null, the gate uses
+    // the fallback constants: claimEvidence = CLAIM_EVIDENCE_WITHOUT_OWNER
+    // (settled, skipped-nothing-to-claim) and absentEvidence =
+    // ABSENT_EVIDENCE_WITHOUT_OWNER (checking). These mocks drive the evidence
+    // when a session is present.
     mockUseVaultClaimEvidence.mockReturnValue({ status: 'checking' });
     mockUseVaultAbsentEvidence.mockReturnValue({
       status: 'settled',
@@ -567,28 +577,36 @@ describe('VaultGate', () => {
 
   describe('handle identity change recovery', () => {
     test('should show unlock panel not create panel when handle changes from null to owned status', () => {
-      const handle = createStubHandle({
+      const handleAbsent = createStubHandle({
+        vaultStatus: jest.fn(() => 'absent'),
+      });
+      const handleOwned = createStubHandle({
         vaultStatus: jest.fn(() => 'owned'),
       });
 
-      // Initially render with no session (handle is null)
-      mockUseOptionalVaultSession.mockReturnValue(null);
+      // Initially render with handle whose vaultStatus is 'absent'
+      mockUseOptionalVaultSession.mockReturnValue({
+        masterKeyBytes: null,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle: handleAbsent,
+      });
 
       const { rerender } = render(
         <VaultGate title="MyVault">{() => <div>children</div>}</VaultGate>,
       );
 
-      // Initially shows create panel because handle is null, so vaultStatus defaults to 'absent'
+      // Initially shows create panel because vaultStatus is 'absent'
       expect(
         screen.getByText(/MyVault: Set encryption passphrase/),
       ).toBeInTheDocument();
 
-      // Rerender with handle now available whose vaultStatus is 'owned'
+      // Rerender with handle now owned
       mockUseOptionalVaultSession.mockReturnValue({
         masterKeyBytes: null,
         setMasterKeyBytes: jest.fn(),
         lock: jest.fn(),
-        handle,
+        handle: handleOwned,
       });
 
       rerender(

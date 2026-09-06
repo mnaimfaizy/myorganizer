@@ -5,6 +5,8 @@ import {
   routeApi,
   submitLoginForm,
   unlockWithPassphrase,
+  vaultBlobRouteRelative,
+  vaultBlobTypeExtractor,
   waitForOwnedVault,
 } from './helpers';
 
@@ -22,6 +24,159 @@ function corsHeaders(origin: string) {
     'access-control-allow-methods': 'GET,POST,PUT,PATCH,DELETE,OPTIONS',
     'access-control-allow-headers': 'content-type,authorization,if-match',
   } as const;
+}
+
+async function setupVaultRoutes(page: import('@playwright/test').Page) {
+  const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
+  const vaultBlobUrl = vaultBlobRouteRelative();
+
+  // Absence is 404, not an empty object. A truthy placeholder makes GET /vault
+  // 200, which Vault Absent Evidence reads as server-holds-vault and withholds
+  // the create offer on a fresh browser.
+  let serverMeta: any | null = null;
+  let serverMetaEtag = 'W/"0"';
+  let serverMetaUpdatedAt = new Date(0).toISOString();
+
+  const serverBlobs: Record<string, any | null> = {};
+  const serverBlobEtags: Record<string, string> = {};
+  const serverBlobUpdatedAt: Record<string, string> = {};
+
+  await routeApi(page, vaultMetaUrl, async (route) => {
+    const request = route.request();
+    const origin = new URL(page.url() || 'http://localhost:3000').origin;
+    const headers = corsHeaders(origin);
+
+    if (request.method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers });
+      return;
+    }
+
+    if (request.method() === 'GET') {
+      if (!serverMeta) {
+        await route.fulfill({
+          status: 404,
+          headers,
+          contentType: 'application/json',
+          body: JSON.stringify({ message: 'Vault not found' }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        headers,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          meta: serverMeta,
+          etag: serverMetaEtag,
+          updatedAt: serverMetaUpdatedAt,
+        }),
+      });
+      return;
+    }
+
+    if (request.method() === 'PUT') {
+      const bodyStr = request.postData();
+      let body: any = undefined;
+      try {
+        body = bodyStr ? JSON.parse(bodyStr) : undefined;
+      } catch {
+        body = undefined;
+      }
+
+      serverMeta = body?.meta ?? serverMeta;
+      serverMetaUpdatedAt = new Date().toISOString();
+      serverMetaEtag = `W/"${Date.now()}"`;
+
+      await route.fulfill({
+        status: 200,
+        headers,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          etag: serverMetaEtag,
+          updatedAt: serverMetaUpdatedAt,
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({ status: 405, headers });
+  });
+
+  await routeApi(page, vaultBlobUrl, async (route) => {
+    const request = route.request();
+    const origin = new URL(page.url() || 'http://localhost:3000').origin;
+    const headers = corsHeaders(origin);
+    const blobTypeMatch = request.url().match(vaultBlobTypeExtractor());
+    const blobType = blobTypeMatch ? blobTypeMatch[1] : undefined;
+
+    if (request.method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers });
+      return;
+    }
+
+    if (!blobType) {
+      await route.fulfill({ status: 400, headers });
+      return;
+    }
+
+    if (request.method() === 'GET') {
+      const blob = serverBlobs[blobType];
+      if (!blob) {
+        await route.fulfill({
+          status: 404,
+          headers,
+          contentType: 'application/json',
+          body: JSON.stringify({ message: 'Vault blob not found' }),
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        headers,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          type: blobType,
+          blob,
+          etag: serverBlobEtags[blobType] ?? 'W/"0"',
+          updatedAt: serverBlobUpdatedAt[blobType] ?? new Date(0).toISOString(),
+        }),
+      });
+      return;
+    }
+
+    if (request.method() === 'PUT') {
+      const bodyStr = request.postData();
+      let body: any = undefined;
+      try {
+        body = bodyStr ? JSON.parse(bodyStr) : undefined;
+      } catch {
+        body = undefined;
+      }
+
+      const nextBlob = body?.blob;
+      const created = !serverBlobs[blobType];
+      serverBlobs[blobType] = nextBlob;
+      serverBlobUpdatedAt[blobType] = new Date().toISOString();
+      serverBlobEtags[blobType] = `W/"${Date.now()}"`;
+
+      await route.fulfill({
+        status: created ? 201 : 200,
+        headers,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          ok: true,
+          etag: serverBlobEtags[blobType],
+          updatedAt: serverBlobUpdatedAt[blobType],
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({ status: 405, headers });
+  });
 }
 
 async function login(page: import('@playwright/test').Page) {
@@ -301,6 +456,7 @@ async function assertItemRowVisible(
 
 test.describe('Groceries Items (E2E)', () => {
   test.beforeEach(async ({ page }) => {
+    await setupVaultRoutes(page);
     // start from root to ensure clean navigation state
     await page.goto('/');
   });

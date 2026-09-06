@@ -34,8 +34,8 @@ import { RecoveryKeyAcknowledgment } from './RecoveryKeyAcknowledgment';
 import { RecoverySetNewPassphraseForm } from './RecoverySetNewPassphraseForm';
 import { useOptionalVaultSession } from './session';
 import { useLocalVaultRevision } from './useLocalVaultRevision';
-import { useVaultAbsentEvidence } from './useVaultAbsentEvidence';
-import { useVaultClaimEvidence } from './useVaultClaimEvidence';
+import { ABSENT_EVIDENCE_WITHOUT_OWNER } from './useVaultAbsentEvidence';
+import { CLAIM_EVIDENCE_WITHOUT_OWNER } from './useVaultClaimEvidence';
 import { VAULT_ABSENT_EVIDENCE_GATE_VIEWS } from './vaultAbsentEvidenceGateView';
 import { VAULT_CLAIM_EVIDENCE_GATE_VIEWS } from './vaultClaimEvidenceGateView';
 import { VaultReplaceOffer } from './VaultReplaceOffer';
@@ -51,15 +51,15 @@ export function VaultGate(props: VaultGateProps) {
   const vaultSession = useOptionalVaultSession();
   const handle = vaultSession?.handle ?? null;
 
-  // Vault Claim Evidence runs for every signed-in User and costs nothing for
-  // the ones it does not apply to — a User who already holds their own Local
-  // Vault is answered without the server being asked at all.
-  const claimEvidence = useVaultClaimEvidence(handle);
-
-  // Mirrors Vault Claim Evidence's placement: costs nothing for a User this
-  // device already holds a Vault or an Unclaimed Local Vault for — the hook
-  // gates its own network check on `absent` internally.
-  const absentEvidence = useVaultAbsentEvidence(handle);
+  // Both read from the Vault Session rather than asked here. The session asks
+  // once per owner and `VaultReconcileRunner` waits on the same claim answer,
+  // which a check run inside each gate could never have told it (#673). A gate
+  // rendered without a session has no owner and gets the answers the hooks
+  // give for none: nothing to claim, and a create offer withheld.
+  const claimEvidence =
+    vaultSession?.claimEvidence ?? CLAIM_EVIDENCE_WITHOUT_OWNER;
+  const absentEvidence =
+    vaultSession?.absentEvidence ?? ABSENT_EVIDENCE_WITHOUT_OWNER;
 
   // Vault Reconcile downloads the server's wrapping onto an absent device by
   // writing through `saveVault`, which bumps the Local Vault Revision. Without

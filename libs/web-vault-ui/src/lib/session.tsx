@@ -21,6 +21,16 @@ import {
   type VaultSyncQueue,
 } from '@myorganizer/web-vault';
 
+import {
+  useVaultAbsentEvidence,
+  type VaultAbsentEvidenceState,
+} from './useVaultAbsentEvidence';
+import { useLocalVaultRevisionOf } from './useLocalVaultRevisionOf';
+import {
+  useVaultClaimEvidence,
+  type VaultClaimEvidenceState,
+} from './useVaultClaimEvidence';
+
 type VaultSessionContextValue = {
   masterKeyBytes: Uint8Array | null;
   setMasterKeyBytes: (value: Uint8Array | null) => void;
@@ -34,6 +44,24 @@ type VaultSessionContextValue = {
    * so a page holding decrypted records can read them again.
    */
   revision: LocalVaultRevision | null;
+  /**
+   * What proves the Unclaimed Local Vault on this device is this User's,
+   * asked once per owner here rather than once per gate. Held on the session
+   * because it has two readers: `VaultGate`, which offers nothing about an
+   * Unclaimed Local Vault until it settles, and `VaultReconcileRunner`, which
+   * starts no pass over one until it settles — a pass that read `unclaimed` as
+   * absent downloaded the server's wrapping ahead of the claim
+   * ([#673](https://github.com/mnaimfaizy/myorganizer/issues/673); ADR 0066's
+   * amendment).
+   */
+  claimEvidence: VaultClaimEvidenceState;
+  /**
+   * Whether the server holds a Vault for this User while this device holds
+   * none. Its one reader is `VaultGate`'s `absent` branch; it lives beside the
+   * claim check because the two are the same shape and splitting them across
+   * the session and the gate would leave nothing to explain the split.
+   */
+  absentEvidence: VaultAbsentEvidenceState;
 };
 
 const VaultSessionContext = createContext<VaultSessionContextValue | null>(
@@ -121,6 +149,19 @@ export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
     void syncQueue.markUnsentFromBookmarks(handle);
   }, [syncQueue, handle]);
 
+  // Subscribed for the re-render alone — the number is not read. Vault Absent
+  // Evidence reads `vaultStatus()` at render and gates its own check on
+  // `absent`, so a provider that did not re-render when the Local Vault is
+  // replaced would go on reporting the status the device had at sign-in.
+  // Cheap: the context value below does not depend on the revision number, so
+  // a bump that changes no evidence re-renders nothing beneath this provider.
+  useLocalVaultRevisionOf(revision);
+
+  // Both keyed on the owner inside, so a lock or an unlock — a new handle over
+  // the same Local Vault — never re-asks a question that already answered.
+  const claimEvidence = useVaultClaimEvidence(handle);
+  const absentEvidence = useVaultAbsentEvidence(handle);
+
   const value = useMemo<VaultSessionContextValue>(
     () => ({
       masterKeyBytes: currentMasterKeyBytes,
@@ -129,6 +170,8 @@ export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
       handle,
       syncQueue,
       revision,
+      claimEvidence,
+      absentEvidence,
     }),
     [
       currentMasterKeyBytes,
@@ -137,6 +180,8 @@ export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
       handle,
       syncQueue,
       revision,
+      claimEvidence,
+      absentEvidence,
     ],
   );
 
