@@ -615,6 +615,9 @@ jobs:
       - name: Gate manifest checker contracts
         run: corepack yarn gates:run:test
 
+      - name: Code review report contracts
+        run: corepack yarn review:test
+
       - name: Gate coverage checker contracts
         run: corepack yarn gates:coverage:test
 
