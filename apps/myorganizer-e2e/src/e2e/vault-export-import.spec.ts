@@ -479,8 +479,12 @@ test.describe('Vault export/import (E2E)', () => {
 
     const importButton = page.getByTestId('import-vault-button');
     await expect(importButton).toBeEnabled({ timeout: 60000 });
-    page.once('dialog', (d) => d.accept());
     await importButton.click();
+
+    // Fresh device — no replace dialog; import runs immediately.
+    await expect(page.getByTestId('import-vault-replace-dialog')).toHaveCount(
+      0,
+    );
 
     // After import, local vault should be restored in browser storage.
     await waitForOwnedVault(page, E2E_USER_ID);
@@ -514,15 +518,44 @@ test.describe('Vault export/import (E2E)', () => {
 
     const importButton = page.getByTestId('import-vault-button');
     await expect(importButton).toBeEnabled({ timeout: 60000 });
-    page.once('dialog', (d) => d.accept());
     await importButton.click();
+
+    const replaceDialog = page.getByTestId('import-vault-replace-dialog');
+    await expect(replaceDialog).toBeVisible({ timeout: 60000 });
+    await expect(
+      replaceDialog.getByRole('heading', {
+        name: "Replace this device's vault?",
+      }),
+    ).toBeVisible();
+    await expect(
+      replaceDialog.getByText(
+        "The passphrase and Recovery Key will be replaced by the backup's values.",
+      ),
+    ).toBeVisible();
+
+    const confirmReplace = replaceDialog.getByTestId(
+      'import-vault-replace-confirm',
+    );
+    await expect(confirmReplace).toBeDisabled();
+
+    const acknowledge = replaceDialog.getByTestId(
+      'import-vault-replace-acknowledge',
+    );
+    await acknowledge.click();
+    await expect(acknowledge).toBeChecked({ timeout: 30000 });
+    await expect(confirmReplace).toBeEnabled();
+
+    await confirmReplace.click();
 
     // A toast should surface a user-facing error message.
     await expect(page.getByText('Import failed', { exact: true })).toBeVisible({
       timeout: 60000,
     });
 
-    // Local vault must be unchanged.
+    // Dialog stays open with an inline alert; local vault must be unchanged.
+    await expect(replaceDialog).toBeVisible();
+    await expect(replaceDialog.getByRole('alert')).toBeVisible();
+
     const afterVault = await readOwnedVault(page, E2E_USER_ID);
     expect(afterVault).toBe(beforeVault);
 
@@ -613,8 +646,12 @@ test.describe('Vault export/import (E2E)', () => {
 
     const importButton = page.getByTestId('import-vault-button');
     await expect(importButton).toBeEnabled({ timeout: 60000 });
-    page.once('dialog', (d) => d.accept());
     await importButton.click();
+
+    // Fresh device — no replace dialog; import runs immediately.
+    await expect(page.getByTestId('import-vault-replace-dialog')).toHaveCount(
+      0,
+    );
 
     // Wait for import to complete and vault to be restored
     await waitForOwnedVault(page, E2E_USER_ID);
@@ -629,6 +666,89 @@ test.describe('Vault export/import (E2E)', () => {
     ).toBeVisible({
       timeout: 60000,
     });
+
+    await ctx.close();
+  });
+
+  test('import over existing vault: replace dialog disclosure and succeeds', async ({
+    browser,
+  }) => {
+    test.setTimeout(180000);
+
+    const ctx = await browser.newContext({
+      acceptDownloads: true,
+    });
+    const page = await ctx.newPage();
+    setupBackend(page);
+
+    await login(page);
+    await setupVaultWithSampleData(page);
+
+    await gotoStable(page, '/dashboard/vault');
+    const exportButton = page.getByTestId('export-vault-button');
+    await expect(exportButton).toBeVisible({ timeout: 60000 });
+
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      exportButton.click(),
+    ]);
+    const downloadPath = await download.path();
+    expect(downloadPath).toBeTruthy();
+    const fs = await import('node:fs/promises');
+    const exportedText = await fs.readFile(downloadPath as string, 'utf8');
+
+    const importInput = page.getByTestId('import-vault-file');
+    await expect(importInput).toBeVisible({ timeout: 60000 });
+    await importInput.setInputFiles({
+      name: 'vault-export.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(exportedText, 'utf8'),
+    });
+
+    const importButton = page.getByTestId('import-vault-button');
+    await expect(importButton).toBeEnabled({ timeout: 60000 });
+    await importButton.click();
+
+    const replaceDialog = page.getByTestId('import-vault-replace-dialog');
+    await expect(replaceDialog).toBeVisible({ timeout: 60000 });
+    await expect(
+      replaceDialog.getByRole('heading', {
+        name: "Replace this device's vault?",
+      }),
+    ).toBeVisible();
+    await expect(
+      replaceDialog.getByText(
+        "The passphrase and Recovery Key will be replaced by the backup's values.",
+      ),
+    ).toBeVisible();
+    await expect(
+      replaceDialog.getByTestId('import-vault-replace-cancel'),
+    ).toBeVisible();
+
+    const confirmReplace = replaceDialog.getByTestId(
+      'import-vault-replace-confirm',
+    );
+    await expect(confirmReplace).toBeDisabled();
+
+    const acknowledge = replaceDialog.getByTestId(
+      'import-vault-replace-acknowledge',
+    );
+    await acknowledge.click();
+    await expect(acknowledge).toBeChecked({ timeout: 30000 });
+    await expect(confirmReplace).toBeEnabled();
+
+    await confirmReplace.click();
+
+    await expect(
+      page.getByText('Import complete', { exact: true }),
+    ).toBeVisible({ timeout: 60000 });
+    await expect(page.getByTestId('import-vault-replace-dialog')).toHaveCount(
+      0,
+    );
+    await expect(
+      page.getByText('Import canceled', { exact: true }),
+    ).toHaveCount(0);
+    await expect(importButton).toBeDisabled();
 
     await ctx.close();
   });
