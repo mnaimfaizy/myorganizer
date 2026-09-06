@@ -138,9 +138,10 @@ jobs:
           echo "previous report: ${found:-none}"
 
       # JSON only. The allowed tools are read, search, sub-agents, git
-      # reads, existing Nx targets, and the validator; no gh, no network, no
-      # push. The action's own GitHub tools are not in the list, so the
-      # reviewer cannot post. `github_token` is the job token: the action
+      # reads, existing Nx targets, the validator, and `node` for a
+      # reviewer-written reproduction (the executed-evidence class ADR 0070
+      # values most); no gh, no network, no push. The action's own GitHub
+      # tools are not in the list, so the reviewer cannot post. `github_token` is the job token: the action
       # uses it for its own plumbing instead of minting a GitHub App token,
       # so the Claude GitHub App does not need to be installed.
       - name: Run the reviewer
@@ -166,7 +167,7 @@ jobs:
           claude_args: >-
             --model ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
             --max-turns 80
-            --allowedTools "Read,Glob,Grep,Write,Edit,Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node --test:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*)"
+            --allowedTools "Read,Glob,Grep,Write,Edit,Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(rm -f tmp/code-review/*)"
 
       # The action hides the reviewer's transcript from the log. Keep it as a
       # short-lived artifact so a run that wrote no report can be read.

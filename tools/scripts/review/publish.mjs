@@ -19,17 +19,10 @@
  */
 
 import { evidenceText } from './evidence.mjs';
-import { FINDING_AXES, REVIEW_TIER_LABELS, VERDICT_VALUES } from './schema.mjs';
+import { AXIS_TITLES, REVIEW_TIER_LABELS, VERDICT_VALUES } from './schema.mjs';
 
 export const STICKY_MARKER = '<!-- code-review-report -->';
 export const findingMarker = (id) => `<!-- code-review:finding:${id} -->`;
-
-const AXIS_WORD = /** @type {const} */ ({
-  standards: 'Standards',
-  spec: 'Spec',
-});
-for (const axis of FINDING_AXES)
-  if (!AXIS_WORD[axis]) throw new Error(`AXIS_WORD lacks ${axis}`);
 
 /**
  * The label the Pull Request should wear after this run. A blocking
@@ -106,7 +99,7 @@ export const inlineComments = ({ findings, existingBodies = [] }) => {
           : undefined,
       body: [
         findingMarker(f.id),
-        `**Blocking · ${AXIS_WORD[f.axis]}** — ${f.summary}`,
+        `**Blocking · ${AXIS_TITLES[f.axis]}** — ${f.summary}`,
         '',
         `Rule: ${f.rule} (${f.source})`,
         `Evidence: ${evidenceText(f)}`,

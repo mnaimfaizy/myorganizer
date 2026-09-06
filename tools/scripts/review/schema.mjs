@@ -300,14 +300,42 @@ const IDENTITY_ACCESSORS =
     file: (f) => f.location?.file ?? '',
   });
 
-export const findingId = (finding) => {
+/**
+ * `occurrence` is 0 for the first finding with this identity tuple in a
+ * report and counts up for repeats, so two findings that share axis,
+ * source, rule, and file but differ by line keep distinct ids without the
+ * line entering the hash (ADR 0070 item 6). Repeats are numbered in
+ * startLine order, so the numbering survives a rebase the same way the
+ * tuple does.
+ */
+export const findingId = (finding, occurrence = 0) => {
   const tuple = FINDING_IDENTITY_FIELDS.map((field) =>
     IDENTITY_ACCESSORS[field](finding),
   );
+  if (occurrence > 0) tuple.push(occurrence);
   return createHash('sha256')
     .update(JSON.stringify(tuple))
     .digest('hex')
     .slice(0, 12);
+};
+
+const assignFindingIds = (findings) => {
+  const byTuple = new Map();
+  const order = findings
+    .map((f, index) => ({ f, index }))
+    .sort(
+      (a, b) =>
+        (a.f.location?.startLine ?? 0) - (b.f.location?.startLine ?? 0) ||
+        a.index - b.index,
+    );
+  const ids = new Array(findings.length);
+  for (const { f, index } of order) {
+    const key = findingId(f);
+    const occurrence = byTuple.get(key) ?? 0;
+    byTuple.set(key, occurrence + 1);
+    ids[index] = findingId(f, occurrence);
+  }
+  return findings.map((f, index) => ({ id: ids[index], ...f }));
 };
 
 /** Any blocking → request-changes; only nits (or nothing) → approve; else comment. */
@@ -333,7 +361,7 @@ export const computeEffectiveTier = (report) => {
  */
 export const normalizeReport = (raw) => {
   const input = ReportInputSchema.parse(raw);
-  const findings = input.findings.map((f) => ({ id: findingId(f), ...f }));
+  const findings = assignFindingIds(input.findings);
   return {
     ...input,
     findings,

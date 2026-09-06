@@ -192,6 +192,46 @@ test('a spec of kind none cannot carry a ref', () => {
   );
 });
 
+test('two findings with the same identity tuple in one report get distinct, stable ids', () => {
+  const at = (startLine) => ({
+    axis: 'standards',
+    severity: 'should-fix',
+    summary: 's',
+    source: 'AGENTS.md',
+    rule: 'r',
+    evidence: {
+      kind: 'cited',
+      sourceKind: 'standard',
+      quote: 'q',
+      untrusted: false,
+    },
+    location: { file: 'libs/a.ts', startLine, headSha: 'a'.repeat(40) },
+  });
+  const envelope = (findings) => ({
+    schemaVersion: 1,
+    base: 'b'.repeat(40),
+    head: 'a'.repeat(40),
+    tier: null,
+    spec: { kind: 'none', foundBy: 'none' },
+    standardsSources: ['AGENTS.md'],
+    executed: [],
+    suppressed: { redundant: 0 },
+    model: 'm',
+    durationMs: 1,
+    findings,
+  });
+  const ids = (findings) =>
+    normalizeReport(envelope(findings)).findings.map((f) => f.id);
+
+  const [first, second] = ids([at(10), at(50)]);
+  assert.notEqual(first, second);
+  assert.equal(first, findingId(at(10)));
+  // Numbering follows startLine, not report order, so a reorder is stable.
+  assert.deepEqual(ids([at(50), at(10)]), [second, first]);
+  // A lone finding keeps the plain tuple id.
+  assert.deepEqual(ids([at(50)]), [first]);
+});
+
 test('finding identity ignores the line and changes with the file', () => {
   const a = cited();
   const b = cited({ location: { ...a.location, startLine: 99 } });
