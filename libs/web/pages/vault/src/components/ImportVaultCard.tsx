@@ -142,9 +142,7 @@ export function ImportVaultCard() {
             data-testid="import-vault-file"
             type="file"
             accept="application/json"
-            onChange={(e) => {
-              setSelectedFile(e.target.files?.[0] ?? null);
-            }}
+            onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
           />
         </div>
 

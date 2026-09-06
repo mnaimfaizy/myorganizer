@@ -8,6 +8,7 @@ import {
   Skeleton,
 } from '@myorganizer/web-ui';
 import Link from 'next/link';
+import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatRetryAt, isRetryCooldownActive } from '../hooks';
 import type { YouTubeSubscription } from '../types';
@@ -35,6 +36,20 @@ export function SubscriptionManager({
   );
   const retryLabel = formatRetryAt(syncRetryAt);
 
+  const handleSync = useCallback(() => {
+    if (isCooldownActive) return;
+    onSync();
+  }, [isCooldownActive, onSync]);
+
+  const handleSelectChannel = useCallback(
+    (channelId: string) => {
+      router.push(
+        `/dashboard/youtube?channel=${encodeURIComponent(channelId)}`,
+      );
+    },
+    [router],
+  );
+
   return (
     <Card className="p-4">
       <div className="flex items-center justify-between">
@@ -43,10 +58,7 @@ export function SubscriptionManager({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              if (isCooldownActive) return;
-              onSync();
-            }}
+            onClick={handleSync}
             disabled={loading || isCooldownActive}
             aria-label={
               isCooldownActive && retryLabel
@@ -103,11 +115,7 @@ export function SubscriptionManager({
                 <button
                   type="button"
                   className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-1 py-0.5 text-left transition-colors hover:bg-muted"
-                  onClick={() =>
-                    router.push(
-                      `/dashboard/youtube?channel=${encodeURIComponent(sub.channelId)}`,
-                    )
-                  }
+                  onClick={() => handleSelectChannel(sub.channelId)}
                 >
                   {sub.channelThumbnail ? (
                     <img

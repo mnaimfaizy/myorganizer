@@ -2,6 +2,7 @@ import { AddressRecord } from '@myorganizer/core';
 import { Badge, Button } from '@myorganizer/web-ui';
 import { ArrowRight, MapPin, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useCallback } from 'react';
 import { formatAddress } from '../utils/formatAddress';
 
 interface AddressListItemProps {
@@ -9,14 +10,25 @@ interface AddressListItemProps {
   onRequestDelete: (item: AddressRecord) => void | Promise<void>;
 }
 
-export function AddressListItem(props: AddressListItemProps) {
-  const usageCount = props.item.usageLocations.length;
+export function AddressListItem({
+  item,
+  onRequestDelete,
+}: AddressListItemProps) {
+  const usageCount = item.usageLocations.length;
+
+  const handleDeleteClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      onRequestDelete(item);
+    },
+    [onRequestDelete, item],
+  );
 
   return (
     <div className="group relative rounded-lg border bg-card p-4 transition-all duration-200 hover:border-primary/50 hover:shadow-md">
       <div className="flex items-start justify-between gap-4">
         <Link
-          href={`/dashboard/addresses/${props.item.id}`}
+          href={`/dashboard/addresses/${item.id}`}
           className="flex-1 min-w-0"
         >
           <div className="flex items-start gap-3">
@@ -26,7 +38,7 @@ export function AddressListItem(props: AddressListItemProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="truncate text-base font-semibold transition-colors group-hover:text-primary">
-                  {props.item.label}
+                  {item.label}
                 </h3>
                 {usageCount > 0 && (
                   <Badge variant="secondary" className="text-xs">
@@ -35,16 +47,14 @@ export function AddressListItem(props: AddressListItemProps) {
                 )}
               </div>
               <p className="mb-2 text-sm text-muted-foreground wrap-break-word">
-                {formatAddress(props.item)}
+                {formatAddress(item)}
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <Badge
-                  variant={
-                    props.item.status === 'current' ? 'default' : 'outline'
-                  }
+                  variant={item.status === 'current' ? 'default' : 'outline'}
                   className="text-xs"
                 >
-                  {props.item.status}
+                  {item.status}
                 </Badge>
                 <span className="inline-flex items-center gap-1 text-xs text-primary">
                   Open
@@ -58,12 +68,9 @@ export function AddressListItem(props: AddressListItemProps) {
         <Button
           variant="ghost"
           size="icon"
-          aria-label={`Delete ${props.item.label}`}
+          aria-label={`Delete ${item.label}`}
           className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-          onClick={(e) => {
-            e.preventDefault();
-            props.onRequestDelete(props.item);
-          }}
+          onClick={handleDeleteClick}
         >
           <Trash2 className="h-4 w-4" />
         </Button>

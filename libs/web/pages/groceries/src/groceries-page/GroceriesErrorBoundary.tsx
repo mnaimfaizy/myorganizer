@@ -30,6 +30,10 @@ export class GroceriesErrorBoundary extends Component<Props, State> {
     console.error('Groceries error boundary caught:', error, errorInfo);
   }
 
+  private readonly handleReload = (): void => {
+    window.location.reload();
+  };
+
   render() {
     if (this.state.hasError) {
       return (
@@ -44,7 +48,7 @@ export class GroceriesErrorBoundary extends Component<Props, State> {
                 refreshing the page.
               </p>
               <button
-                onClick={() => window.location.reload()}
+                onClick={this.handleReload}
                 className="mt-4 rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:bg-primary/90"
               >
                 Refresh Page

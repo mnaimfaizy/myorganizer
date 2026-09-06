@@ -1,3 +1,5 @@
+'use client';
+
 import {
   SubscriptionBillingCycleEnum,
   SubscriptionStatusEnum,
@@ -12,6 +14,7 @@ import {
   SelectValue,
 } from '@myorganizer/web-ui';
 import { type UseFormReturn } from 'react-hook-form';
+import { useCallback } from 'react';
 
 import {
   getSubscriptionBillingCycleLabel,
@@ -26,6 +29,26 @@ export interface SubscriptionGeneralFieldsProps {
 export function SubscriptionGeneralFields({
   form,
 }: SubscriptionGeneralFieldsProps) {
+  const handleStatusChange = useCallback(
+    (value: string) => {
+      form.setValue('status', value as SubscriptionFormValues['status'], {
+        shouldValidate: true,
+      });
+    },
+    [form],
+  );
+
+  const handleBillingCycleChange = useCallback(
+    (value: string) => {
+      form.setValue(
+        'billingCycle',
+        value as SubscriptionFormValues['billingCycle'],
+        { shouldValidate: true },
+      );
+    },
+    [form],
+  );
+
   return (
     <>
       <div className="space-y-2">
@@ -38,11 +61,7 @@ export function SubscriptionGeneralFields({
           <Label htmlFor="sub-status">Status</Label>
           <Select
             value={form.watch('status')}
-            onValueChange={(v) =>
-              form.setValue('status', v as SubscriptionFormValues['status'], {
-                shouldValidate: true,
-              })
-            }
+            onValueChange={handleStatusChange}
           >
             <SelectTrigger id="sub-status">
               <SelectValue placeholder="Select status" />
@@ -61,13 +80,7 @@ export function SubscriptionGeneralFields({
           <Label htmlFor="sub-billing">Billing cycle</Label>
           <Select
             value={form.watch('billingCycle')}
-            onValueChange={(v) =>
-              form.setValue(
-                'billingCycle',
-                v as SubscriptionFormValues['billingCycle'],
-                { shouldValidate: true },
-              )
-            }
+            onValueChange={handleBillingCycleChange}
           >
             <SelectTrigger id="sub-billing">
               <SelectValue placeholder="Select cycle" />

@@ -337,6 +337,108 @@ export function VaultGate(props: VaultGateProps) {
     setRecoveryKeyUnacknowledged(false);
   }, [handle]);
 
+  const handleCreateVault = useCallback(async () => {
+    if (!handle) {
+      toast({
+        title: 'Failed to create vault',
+        description: 'Sign in to create a vault.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      const result = await handle.initialize({
+        passphrase: setupPassphrase,
+      });
+      setUnacknowledgedRecoveryKey(result.recoveryKey);
+      toast({
+        title: 'Vault created',
+        description: 'Save your recovery key now.',
+      });
+    } catch (e: unknown) {
+      toast({
+        title: 'Failed to create vault',
+        description: e instanceof Error ? e.message : String(e),
+        variant: 'destructive',
+      });
+    }
+  }, [handle, setupPassphrase, toast]);
+
+  const handleUnlockWithRecoveryKey = useCallback(async () => {
+    if (!handle) {
+      toast({
+        title: 'Recovery failed',
+        description: 'Sign in to recover a vault.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      const result = await handle.unlockWithRecoveryKey({
+        recoveryKey: recoveryInput.trim(),
+      });
+
+      setMasterKeyBytes(result.masterKeyBytes);
+      toast({
+        title: 'Recovered',
+        description: 'Vault unlocked with your recovery key.',
+      });
+    } catch (e: unknown) {
+      if (e instanceof VaultSecretMismatchError) {
+        toast({
+          title: "That recovery key didn't unlock this vault",
+          description:
+            'The recovery key does not match this vault. Nothing was changed.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Recovery failed',
+          description:
+            'Something went wrong. Nothing on this device was changed.',
+          variant: 'destructive',
+        });
+      }
+    }
+  }, [handle, recoveryInput, setMasterKeyBytes, toast]);
+
+  const handleUnlockWithPassphrase = useCallback(async () => {
+    if (!handle) {
+      toast({
+        title: 'Unlock failed',
+        description: 'Sign in to unlock a vault.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    try {
+      const result = await handle.unlockWithPassphrase({
+        passphrase,
+      });
+      setMasterKeyBytes(result.masterKeyBytes);
+      toast({
+        title: 'Unlocked',
+        description: 'Vault unlocked for this session.',
+      });
+    } catch (e: unknown) {
+      if (e instanceof VaultSecretMismatchError) {
+        toast({
+          title: "That passphrase didn't unlock this vault",
+          description:
+            'The passphrase does not match this vault. Nothing was changed.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Unlock failed',
+          description:
+            'Something went wrong. Nothing on this device was changed.',
+          variant: 'destructive',
+        });
+      }
+    }
+  }, [handle, passphrase, setMasterKeyBytes, toast]);
+
   const title = useMemo(() => props.title, [props.title]);
 
   // Recovery Key Acknowledgment: the User just created a Vault and needs to
@@ -542,35 +644,7 @@ export function VaultGate(props: VaultGateProps) {
               </p>
             </div>
 
-            <Button
-              disabled={!canCreate}
-              onClick={async () => {
-                if (!handle) {
-                  toast({
-                    title: 'Failed to create vault',
-                    description: 'Sign in to create a vault.',
-                    variant: 'destructive',
-                  });
-                  return;
-                }
-                try {
-                  const result = await handle.initialize({
-                    passphrase: setupPassphrase,
-                  });
-                  setUnacknowledgedRecoveryKey(result.recoveryKey);
-                  toast({
-                    title: 'Vault created',
-                    description: 'Save your recovery key now.',
-                  });
-                } catch (e: unknown) {
-                  toast({
-                    title: 'Failed to create vault',
-                    description: e instanceof Error ? e.message : String(e),
-                    variant: 'destructive',
-                  });
-                }
-              }}
-            >
+            <Button disabled={!canCreate} onClick={handleCreateVault}>
               Create encrypted vault
             </Button>
 
@@ -626,43 +700,7 @@ export function VaultGate(props: VaultGateProps) {
 
             <Button
               disabled={!canRecover}
-              onClick={async () => {
-                if (!handle) {
-                  toast({
-                    title: 'Recovery failed',
-                    description: 'Sign in to recover a vault.',
-                    variant: 'destructive',
-                  });
-                  return;
-                }
-                try {
-                  const result = await handle.unlockWithRecoveryKey({
-                    recoveryKey: recoveryInput.trim(),
-                  });
-
-                  setMasterKeyBytes(result.masterKeyBytes);
-                  toast({
-                    title: 'Recovered',
-                    description: 'Vault unlocked with your recovery key.',
-                  });
-                } catch (e: unknown) {
-                  if (e instanceof VaultSecretMismatchError) {
-                    toast({
-                      title: "That recovery key didn't unlock this vault",
-                      description:
-                        'The recovery key does not match this vault. Nothing was changed.',
-                      variant: 'destructive',
-                    });
-                  } else {
-                    toast({
-                      title: 'Recovery failed',
-                      description:
-                        'Something went wrong. Nothing on this device was changed.',
-                      variant: 'destructive',
-                    });
-                  }
-                }
-              }}
+              onClick={handleUnlockWithRecoveryKey}
             >
               Unlock with recovery key
             </Button>
@@ -712,46 +750,7 @@ export function VaultGate(props: VaultGateProps) {
             />
           </div>
 
-          <Button
-            onClick={async () => {
-              if (!handle) {
-                toast({
-                  title: 'Unlock failed',
-                  description: 'Sign in to unlock a vault.',
-                  variant: 'destructive',
-                });
-                return;
-              }
-              try {
-                const result = await handle.unlockWithPassphrase({
-                  passphrase,
-                });
-                setMasterKeyBytes(result.masterKeyBytes);
-                toast({
-                  title: 'Unlocked',
-                  description: 'Vault unlocked for this session.',
-                });
-              } catch (e: unknown) {
-                if (e instanceof VaultSecretMismatchError) {
-                  toast({
-                    title: "That passphrase didn't unlock this vault",
-                    description:
-                      'The passphrase does not match this vault. Nothing was changed.',
-                    variant: 'destructive',
-                  });
-                } else {
-                  toast({
-                    title: 'Unlock failed',
-                    description:
-                      'Something went wrong. Nothing on this device was changed.',
-                    variant: 'destructive',
-                  });
-                }
-              }
-            }}
-          >
-            Unlock
-          </Button>
+          <Button onClick={handleUnlockWithPassphrase}>Unlock</Button>
 
           {/* A User who is already `owned` here may also hold a recovery key
               for a second, unclaimed Vault on this device, and this is where

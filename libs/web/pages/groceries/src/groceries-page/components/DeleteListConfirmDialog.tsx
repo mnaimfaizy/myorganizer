@@ -40,8 +40,15 @@ export function DeleteListConfirmDialog({
     }
   }, [onConfirm]);
 
+  const handleOpenChange = useCallback(
+    (open: boolean) => {
+      if (!open) onClose();
+    },
+    [onClose],
+  );
+
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent className="w-[calc(100%-2rem)] md:max-w-md">
         <DialogHeader>
           <div className="mb-4 flex items-center justify-center">

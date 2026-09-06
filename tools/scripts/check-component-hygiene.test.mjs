@@ -470,6 +470,193 @@ test('an apostrophe in JSX text does not mask the rest of the file', (t) => {
   assert.match(result.stdout, /handler-not-memoized/);
 });
 
+test('expression-bodied member call is reported as handler-not-memoized', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/MemberCallComponent.tsx',
+    [
+      "import * as React from 'react';",
+      '',
+      'export function MemberCallComponent() {',
+      '  const cloud = { connect() {} };',
+      '  return <button onClick={() => void cloud.connect()}>Connect</button>;',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const result = runChecker(workspace, '--json', file);
+
+  assert.equal(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.warnings, 1);
+  assert.equal(parsed.results[0].findings[0].rule, 'handler-not-memoized');
+});
+
+test('thin wrapper calling a useCallback binding with extra arguments is not a finding', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/ThinWrapperComponent.tsx',
+    [
+      "import * as React from 'react';",
+      '',
+      'interface ThinWrapperComponentProps { id: string }',
+      'export function ThinWrapperComponent({ id }: ThinWrapperComponentProps) {',
+      '  const handleDelete = React.useCallback((_id: string) => {}, []);',
+      '  return <button onClick={() => handleDelete(id)}>Delete</button>;',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const result = runChecker(workspace, '--json', file);
+
+  assert.equal(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.warnings, 0);
+  assert.equal(parsed.results[0].findings.length, 0);
+});
+
+test('unparenthesized local arrow called from a thin wrapper is still a finding', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/BareParamWrapperComponent.tsx',
+    [
+      "import * as React from 'react';",
+      '',
+      'interface BareParamWrapperComponentProps { id: string }',
+      'export function BareParamWrapperComponent({ id }: BareParamWrapperComponentProps) {',
+      '  const handleDelete = _id => {};',
+      '  return <button onClick={() => handleDelete(id)}>Delete</button>;',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const result = runChecker(workspace, '--json', file);
+
+  assert.equal(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.warnings, 1);
+  assert.equal(parsed.results[0].findings[0].rule, 'handler-not-memoized');
+});
+
+test('thin wrapper calling an unmemoized local function is still a finding', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/UnmemoizedWrapperComponent.tsx',
+    [
+      "import * as React from 'react';",
+      '',
+      'interface UnmemoizedWrapperComponentProps { id: string }',
+      'export function UnmemoizedWrapperComponent({ id }: UnmemoizedWrapperComponentProps) {',
+      '  const handleDelete = (_id: string) => {};',
+      '  return <button onClick={() => handleDelete(id)}>Delete</button>;',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const result = runChecker(workspace, '--json', file);
+
+  assert.equal(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.warnings, 1);
+  assert.equal(parsed.results[0].findings[0].rule, 'handler-not-memoized');
+});
+
+test('expression-bodied setter wrapper is not a finding', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/SetterWrapperComponent.tsx',
+    [
+      "import * as React from 'react';",
+      '',
+      'export function SetterWrapperComponent() {',
+      '  const [open, setOpen] = React.useState(false);',
+      '  return <button onClick={() => setOpen(true)}>{String(open)}</button>;',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const result = runChecker(workspace, '--json', file);
+
+  assert.equal(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.warnings, 0, JSON.stringify(parsed.results[0]?.findings));
+  assert.equal(parsed.results[0].findings.length, 0);
+});
+
+test('inline function expression with a statement body is reported as handler-not-memoized', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/InlineFnComponent.tsx',
+    [
+      "import * as React from 'react';",
+      '',
+      'export function InlineFnComponent() {',
+      '  return (',
+      '    <button',
+      '      onClick={function () {',
+      "        window.alert('clicked');",
+      '      }}',
+      '    >',
+      '      Click',
+      '    </button>',
+      '  );',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const result = runChecker(workspace, '--json', file);
+
+  assert.equal(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.warnings, 1);
+  assert.equal(parsed.results[0].findings[0].rule, 'handler-not-memoized');
+  assert.match(parsed.results[0].findings[0].message, /inline/i);
+});
+
+test('inline arrow with a statement body is reported as handler-not-memoized', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/InlineArrowComponent.tsx',
+    [
+      "import * as React from 'react';",
+      '',
+      'export function InlineArrowComponent() {',
+      '  return (',
+      '    <button',
+      '      onClick={() => {',
+      "        window.alert('clicked');",
+      '      }}',
+      '    >',
+      '      Click',
+      '    </button>',
+      '  );',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const result = runChecker(workspace, '--json', file);
+
+  assert.equal(result.status, 0);
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.warnings, 1);
+  assert.equal(parsed.results[0].findings[0].rule, 'handler-not-memoized');
+  assert.match(parsed.results[0].findings[0].message, /inline/i);
+});
+
 test('summary distinguishes a run that skipped everything from a clean run', (t) => {
   const workspace = createWorkspace(t);
   const file = writeFixture(

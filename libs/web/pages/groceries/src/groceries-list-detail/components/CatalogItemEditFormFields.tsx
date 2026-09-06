@@ -53,7 +53,7 @@ export function CatalogItemEditFormFields({
       <FormField
         control={control}
         name="category"
-        render={({ field }) => (
+        render={({ field: { onChange } }) => (
           <FormItem>
             <FormLabel id="catalog-item-category-label">Category</FormLabel>
             <div
@@ -69,7 +69,7 @@ export function CatalogItemEditFormFields({
                   aria-checked={selectedCategory === category}
                   data-category={category}
                   disabled={isLoading}
-                  onClick={() => field.onChange(category)}
+                  onClick={() => onChange(category)}
                   className={cn(
                     'rounded-lg p-2 text-center',
                     selectedCategory === category

@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 
 import { useRouter } from 'next/navigation';
+import { useCallback } from 'react';
 
 import {
   Avatar,
@@ -41,10 +42,26 @@ export function NavUser({
   const router = useRouter();
   const { isMobile } = useSidebar();
 
-  async function handleLogout() {
+  const handleLogout = useCallback(async () => {
     await logout();
     router.push('/login');
-  }
+  }, [router]);
+
+  const handleAccountSelect = useCallback(
+    (event: Event) => {
+      event.preventDefault();
+      router.push('/dashboard/account');
+    },
+    [router],
+  );
+
+  const handleLogoutSelect = useCallback(
+    (event: Event) => {
+      event.preventDefault();
+      void handleLogout();
+    },
+    [handleLogout],
+  );
 
   const initials = user.name
     .split(' ')
@@ -104,12 +121,7 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  router.push('/dashboard/account');
-                }}
-              >
+              <DropdownMenuItem onSelect={handleAccountSelect}>
                 <BadgeCheck />
                 Account
               </DropdownMenuItem>
@@ -123,12 +135,7 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                void handleLogout();
-              }}
-            >
+            <DropdownMenuItem onSelect={handleLogoutSelect}>
               <LogOut />
               Log out
             </DropdownMenuItem>
