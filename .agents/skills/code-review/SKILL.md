@@ -165,6 +165,7 @@ Write the envelope to `tmp/code-review/<head>.report.json` (uncommitted, ADR 004
   "suppressed": { "redundant": <sum of both suppressedRedundant> },
   "model": "<model id the sub-agents ran on>",
   "durationMs": <wall-clock of step 4>,
+  "cost": { "inputTokens": <n>, "outputTokens": <n> },   (optional: only when the harness reports usage)
   "findings": [ ...standards findings, ...spec findings ]
 }
 ```
@@ -185,7 +186,8 @@ corepack yarn review:render tmp/code-review/<head>.normalized.json
 ```
 
 Pass `--previous <earlier normalized file>` when one exists for this branch to get the new /
-persisting / resolved strip.
+persisting / resolved strip. Located findings render the addressed lines from the checkout at the
+head SHA; pass `--no-hunks` to suppress that, for example when the head is not in the local clone.
 
 Present the rendered Markdown verbatim. Do not summarise across axes, do not rerank, and do not add
 a verdict of your own: the heading already carries the computed one.

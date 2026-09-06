@@ -230,7 +230,7 @@ test('the renderer keeps the axes apart, folds nits, and diffs by id', () => {
       findings: [cited(), inferred()],
     }),
   );
-  const md = renderReport(current, previous);
+  const md = renderReport(current, previous, { hunks: false });
   assert.match(md, /^# Code review — Request changes/);
   assert.ok(md.indexOf('## Standards') < md.indexOf('## Spec'));
   assert.match(md, /<summary>1 nit<\/summary>/);
@@ -243,4 +243,30 @@ test('the renderer keeps the axes apart, folds nits, and diffs by id', () => {
   );
   const standards = md.slice(md.indexOf('## Standards'), md.indexOf('## Spec'));
   assert.ok(standards.indexOf('**blocking**') < standards.indexOf('<details>'));
+});
+
+test('a smell-baseline finding cannot block even with cited evidence', () => {
+  rejects(
+    envelope({
+      findings: [cited({ source: 'smell-baseline', rule: 'Feature Envy' })],
+    }),
+    /findings\.0\.severity: a smell-baseline finding is always a judgement call/,
+  );
+});
+
+test('the renderer refuses a raw report that skipped the validator', () => {
+  assert.throws(
+    () => renderReport(envelope({ findings: [cited()] })),
+    /verdict|effectiveTier/,
+  );
+});
+
+test('cost is optional and rendered when present', () => {
+  const report = normalizeReport(
+    envelope({ cost: { inputTokens: 1200, outputTokens: 300 } }),
+  );
+  assert.match(
+    renderReport(report, null, { hunks: false }),
+    /1200 in \/ 300 out tokens/,
+  );
 });

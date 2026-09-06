@@ -654,6 +654,9 @@ jobs:
       - name: Check auth diagram pages
         run: corepack yarn auth:pages:check
 
+      - name: Check review pipeline page
+        run: corepack yarn review:pages:check
+
       - name: Check release pipeline page
         run: corepack yarn deploy:pages:check
 

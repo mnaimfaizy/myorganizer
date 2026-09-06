@@ -5,23 +5,26 @@
   "tier": null,
   "spec": { "kind": "issue", "ref": "#123", "foundBy": "branch" },
   "standardsSources": ["AGENTS.md", "docs/ui/GUIDELINES.md"],
-  "executed": ["yarn nx test web-vault"],
+  "executed": [
+    "yarn nx test web-vault --testFile=libs/web-vault/src/sync.repro.test.ts"
+  ],
   "suppressed": { "redundant": 1 },
   "model": "claude-fable-5-1",
   "durationMs": 48000,
+  "cost": { "inputTokens": 91000, "outputTokens": 6400 },
   "findings": [
     {
       "axis": "standards",
       "severity": "blocking",
-      "summary": "sync.ts hand-enumerates VaultBlobType members in an if-chain",
-      "source": "AGENTS.md",
-      "rule": "Code fanning out over a domain enum reaches one as const satisfies Record table",
+      "summary": "reconcile() silently drops a blob type the server does not hold",
+      "source": "docs/adr/0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md",
+      "rule": "A vault blob converges by record and absence is recorded; nothing destroys ciphertext silently",
       "evidence": {
         "kind": "executed",
-        "command": "yarn enum:fanout:check",
+        "command": "yarn nx test web-vault --testFile=libs/web-vault/src/sync.repro.test.ts",
         "exitCode": 1,
-        "outputExcerpt": "enum-fanout: libs/web-vault/src/sync.ts:42 covers VaultBlobType by hand (3 of 4 members)",
-        "cwd": "."
+        "outputExcerpt": "FAIL sync.repro.test.ts > reconcile keeps a blob type the server does not hold\n  Expected: [\"groceries\", \"tasks\"]\n  Received: [\"groceries\"]",
+        "cwd": "tmp/code-review/worktree"
       },
       "location": {
         "file": "libs/web-vault/src/sync.ts",
@@ -29,7 +32,7 @@
         "endLine": 58,
         "headSha": "abcdef1234567890abcdef1234567890abcdef12"
       },
-      "remedy": "Iterate VAULT_BLOB_TYPE_TABLE instead of listing members."
+      "remedy": "Reconcile per blob type from the Pinned Table and record absence instead of skipping the member."
     },
     {
       "axis": "spec",

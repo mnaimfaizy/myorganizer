@@ -9,8 +9,9 @@
  * written.
  *
  * The exported constants are the names the House Explainer Page manifest
- * (`docs/review/finding-lifecycle.html`) asserts against. Rename here and the
- * page check fails, which is the point.
+ * (`docs/review/finding-lifecycle.html`) asserts against through
+ * `tools/scripts/check-review-pages.mjs`. Rename here and that gate fails,
+ * which is the point.
  */
 
 import { createHash } from 'node:crypto';
@@ -63,6 +64,38 @@ export const SPEC_FOUND_BY = /** @type {const} */ ([
   'user',
   'none',
 ]);
+
+/**
+ * The `source` a Fowler smell-baseline finding carries. The baseline is
+ * always a judgement call, so the validator caps it at should-fix even when
+ * the reviewer cites something (ADR 0070 item 1).
+ */
+export const SMELL_BASELINE_SOURCE = 'smell-baseline';
+
+/**
+ * Pinned display tables. Each covers every member of its enum and is asserted
+ * at module load, so a new axis or verdict cannot render as `undefined`
+ * (AGENTS.md, fan-out over a domain enum).
+ */
+export const AXIS_TITLES =
+  /** @type {Record<typeof FINDING_AXES[number], string>} */ ({
+    standards: 'Standards',
+    spec: 'Spec',
+  });
+export const VERDICT_TITLES =
+  /** @type {Record<typeof VERDICT_VALUES[number], string>} */ ({
+    'request-changes': 'Request changes',
+    comment: 'Comment',
+    approve: 'Approve',
+  });
+for (const [members, table, name] of [
+  [FINDING_AXES, AXIS_TITLES, 'AXIS_TITLES'],
+  [VERDICT_VALUES, VERDICT_TITLES, 'VERDICT_TITLES'],
+]) {
+  for (const m of members) {
+    if (!(m in table)) throw new Error(`${name} is missing "${m}"`);
+  }
+}
 
 /** Cap on quoted issue text: enough for one requirement, not a body. */
 export const SPEC_QUOTE_MAX_CHARS = 400;
@@ -148,6 +181,12 @@ export const FindingInputSchema = z
     }
 
     if (f.severity === 'blocking') {
+      if (f.source === SMELL_BASELINE_SOURCE) {
+        issue(
+          'a smell-baseline finding is always a judgement call and caps at should-fix',
+          ['severity'],
+        );
+      }
       if (f.evidence.kind === 'inferred') {
         issue(
           'blocking requires executed or cited evidence; an inferred finding caps at should-fix',
@@ -197,7 +236,7 @@ export const SpecSourceSchema = z
  * The envelope as a reviewer writes it. `strictObject` is what rejects a
  * hand-written `verdict`, `effectiveTier`, or finding `id`.
  */
-export const ReportInputSchema = z.strictObject({
+const envelopeFields = {
   schemaVersion: z.literal(REPORT_SCHEMA_VERSION),
   base: sha,
   head: sha,
@@ -208,7 +247,37 @@ export const ReportInputSchema = z.strictObject({
   suppressed: z.strictObject({ redundant: z.int().nonnegative() }),
   model: nonEmpty,
   durationMs: z.int().nonnegative(),
+  /**
+   * Token spend, when the harness reports it. Optional because not every
+   * harness exposes usage; the trust ratchet reads it where present and
+   * falls back to model plus wall-clock.
+   */
+  cost: z
+    .strictObject({
+      inputTokens: z.int().nonnegative(),
+      outputTokens: z.int().nonnegative(),
+    })
+    .optional(),
+};
+
+export const ReportInputSchema = z.strictObject({
+  ...envelopeFields,
   findings: z.array(FindingInputSchema),
+});
+
+/**
+ * What the validator writes and the only thing the renderer accepts: the
+ * input plus derived ids, the computed verdict, and the effective tier.
+ */
+export const NormalizedReportSchema = z.strictObject({
+  ...envelopeFields,
+  findings: z.array(
+    z
+      .object({ id: z.string().regex(/^[0-9a-f]{12}$/) })
+      .and(FindingInputSchema),
+  ),
+  verdict: z.enum(VERDICT_VALUES),
+  effectiveTier: z.enum(REVIEW_TIER_LABELS).nullable(),
 });
 
 const SEVERITY_RANK = Object.fromEntries(
@@ -223,13 +292,18 @@ export const bySeverity = (a, b) =>
  * Derived identity: axis + source + rule + file, line excluded so a rebase
  * does not mint a new finding (ADR 0070 item 6).
  */
+const IDENTITY_ACCESSORS =
+  /** @type {Record<typeof FINDING_IDENTITY_FIELDS[number], (f: object) => string>} */ ({
+    axis: (f) => f.axis,
+    source: (f) => f.source,
+    rule: (f) => f.rule,
+    file: (f) => f.location?.file ?? '',
+  });
+
 export const findingId = (finding) => {
-  const tuple = [
-    finding.axis,
-    finding.source,
-    finding.rule,
-    finding.location?.file ?? '',
-  ];
+  const tuple = FINDING_IDENTITY_FIELDS.map((field) =>
+    IDENTITY_ACCESSORS[field](finding),
+  );
   return createHash('sha256')
     .update(JSON.stringify(tuple))
     .digest('hex')
