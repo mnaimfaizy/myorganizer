@@ -75,11 +75,11 @@ Verify these before starting E2E planning — if not met, recommend a PR to comp
 
 ## References
 
-| Need                                                                                                                                                                                         | Read                                                         |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| Flow matrix, selector/fixture rules, change workflow, validation                                                                                                                             | [`references/runbook.md`](./references/runbook.md)           |
-| Code-level patterns and anti-patterns: Radix context menus, vault unlock, async content waits, CORS preflight mocking, parallel resilience, React Hook Form flows, cross-browser differences | [`references/e2e-patterns.md`](./references/e2e-patterns.md) |
-| Nx project tooling: config, file naming, commands                                                                                                                                            | `docs/testing/projects/e2e.md`                               |
+| Need                                                                                                                                                                                                                                                                 | Read                                                         |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Flow matrix, selector/fixture rules, change workflow, validation                                                                                                                                                                                                     | [`references/runbook.md`](./references/runbook.md)           |
+| Code-level patterns and anti-patterns: Radix context menus, vault unlock, vault API stubs, reconcile/claim leftovers, `getByLabel` exact matches, async content waits, CORS preflight mocking, parallel resilience, React Hook Form flows, cross-browser differences | [`references/e2e-patterns.md`](./references/e2e-patterns.md) |
+| Nx project tooling: config, file naming, commands                                                                                                                                                                                                                    | `docs/testing/projects/e2e.md`                               |
 
 `references/e2e-patterns.md` is the **single home** for E2E code patterns. Do not copy them into
 agent prompts, briefs, or `docs/testing` — link to it instead.

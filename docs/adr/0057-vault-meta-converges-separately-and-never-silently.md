@@ -166,3 +166,36 @@ a durable Vault Meta Refusal rather than relying on a boolean that could not tel
 another. This ADR's consequence that "a device can sit indefinitely on an old wrapping while merging
 data normally, if the User keeps declining" survives intact, and gains the property it was assumed
 to have: a _second_, genuinely different wrapping change still asks.
+
+## Amendment: Vault Identity, and a guarantee this ADR claimed but did not have
+
+Three corrections, all in the same place: what a Vault Blob decision may read from a Vault Meta.
+
+**The enum has a third member.** Point 5 pins `VAULT_META_CHANGES` as `['passphrase', 'recovery-key']`.
+It has been `['different-vault', 'passphrase', 'recovery-key']` since a User signing in with one Vault
+on one device and another on a second was told "your passphrase was changed on another device" and
+offered the button that adopts the server's wrapping over this device's Ciphertext. That fix landed in
+code and tests without amending this ADR, which is how the pin and its record came apart. The salt is
+what settles it — `changePassphrase` re-derives from the salt the Vault already has, `initialize` mints
+a fresh one — so a moved salt is never a rotated passphrase. It is two Vaults. The third member reads
+the salt alone, is ordered first so it wins the first-match scan, and is pinned non-adoptable.
+
+**This ADR claimed a guarantee `convergeVaultBlob` did not make.** The Consequences say, justifying the
+`keep-server` trade, that "the case is not silent — `convergeVaultBlob` already asks on
+`undecryptable-remote` before it gets here". That is true only where this device has unsent changes.
+On the clean path — nothing unsent locally, the server's Ciphertext differs — convergence takes the
+remote copy without decrypting anything and without asking, which is
+[#571](https://github.com/mnaimfaizy/myorganizer/issues/571). A trade this ADR accepted knowingly was
+accepted partly on the strength of a check that does not run in the ordinary background case. The
+sentence should be read as describing the dirty path only, and
+[ADR 0067](0067-a-vault-blob-is-never-taken-across-a-vault-identity.md) closes the gap it names.
+
+**Point 1's "neither is an input to the other" is narrowed, deliberately.** ADR 0067 has
+`convergeVaultBlob` refuse to take a Vault Blob across a differing Vault Identity, which makes one fact
+about a Vault Meta an input to a Vault Blob decision. What this ADR forbids is intact: gating
+mergeability on Vault Meta **equality**, which is false-positive by construction because a rewrap moves
+the meta without moving the key. Vault Identity is not equality. It is the single field that cannot
+move without the Master Key moving, it fires on nothing this ADR protects, and it triggers a refusal
+rather than an adoption — so no wrapping is ever taken on the strength of it. The separation this ADR
+exists to defend is between the two convergences' _answers_, not a ban on the cheapest available proof
+that two sides are not the same Vault at all.
