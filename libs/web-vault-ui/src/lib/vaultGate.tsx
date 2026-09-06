@@ -9,7 +9,7 @@ import {
   Label,
   useToast,
 } from '@myorganizer/web-ui';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
   type VaultHandle,
@@ -31,6 +31,7 @@ import {
   type RecoveryKeyClaimAnswer,
 } from './RecoveryKeyClaimOffer';
 import { RecoveryKeyAcknowledgment } from './RecoveryKeyAcknowledgment';
+import { UnacknowledgedRecoveryKeyBanner } from './UnacknowledgedRecoveryKeyBanner';
 import { RecoverySetNewPassphraseForm } from './RecoverySetNewPassphraseForm';
 import { useOptionalVaultSession } from './session';
 import { useLocalVaultRevision } from './useLocalVaultRevision';
@@ -64,10 +65,9 @@ export function VaultGate(props: VaultGateProps) {
   // Vault Reconcile downloads the server's wrapping onto an absent device by
   // writing through `saveVault`, which bumps the Local Vault Revision. Without
   // subscribing to it below, a status change that replaces storage would be
-  // invisible. Subscribe to the revision for that effect alone — do not read it;
-  // a status change that does not bump the revision (e.g., a write from another
-  // tab) was already invisible and is out of scope.
-  useLocalVaultRevision();
+  // invisible. The revision number is also read so a rotation bump re-checks
+  // whether Recovery Key Acknowledgment is still owed (ADR 0069).
+  const localVaultRevision = useLocalVaultRevision();
 
   // Live read of vault status from storage. No seeded state, no render-phase
   // reset — status is authoritative at every render because it is read from
@@ -99,12 +99,49 @@ export function VaultGate(props: VaultGateProps) {
   const [unacknowledgedRecoveryKey, setUnacknowledgedRecoveryKey] = useState<
     string | null
   >(null);
+  const [recoveryKeyUnacknowledged, setRecoveryKeyUnacknowledged] =
+    useState(false);
 
   const [passphrase, setPassphrase] = useState('');
   const [useRecovery, setUseRecovery] = useState(false);
   const [recoveryInput, setRecoveryInput] = useState('');
 
   const isUnlocked = masterKeyBytes !== null;
+
+  useEffect(() => {
+    if (!handle) {
+      return;
+    }
+
+    let cancelled = false;
+
+    handle
+      .isRecoveryKeyUnacknowledged()
+      .then((unacknowledged) => {
+        if (!cancelled) {
+          setRecoveryKeyUnacknowledged(unacknowledged);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRecoveryKeyUnacknowledged(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [handle, localVaultRevision, currentVaultStatus]);
+
+  const showRemountRecoveryKeyBanner =
+    unacknowledgedRecoveryKey === null &&
+    Boolean(handle) &&
+    recoveryKeyUnacknowledged;
+
+  const handleAlreadyHaveRecoveryKey = useCallback((): void => {
+    handle?.acknowledgeRecoveryKey();
+    setRecoveryKeyUnacknowledged(false);
+  }, [handle]);
 
   // The automatic (server-meta) replace offer has no explicit `pendingReplace`
   // of its own — `useVaultClaimEvidence` settling to `replace-offer` *is* the
@@ -295,8 +332,10 @@ export function VaultGate(props: VaultGateProps) {
   );
 
   const handleAcknowledgeRecoveryKey = useCallback((): void => {
+    handle?.acknowledgeRecoveryKey();
     setUnacknowledgedRecoveryKey(null);
-  }, []);
+    setRecoveryKeyUnacknowledged(false);
+  }, [handle]);
 
   const title = useMemo(() => props.title, [props.title]);
 
@@ -325,11 +364,17 @@ export function VaultGate(props: VaultGateProps) {
 
   if (isUnlocked && masterKeyBytes) {
     return (
-      <>
+      <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
+        {showRemountRecoveryKeyBanner && (
+          <UnacknowledgedRecoveryKeyBanner
+            surface="unlocked"
+            onAlreadyHaveIt={handleAlreadyHaveRecoveryKey}
+          />
+        )}
         {props.children({
           handle: vaultSession?.handle ?? null,
         })}
-      </>
+      </div>
     );
   }
 
@@ -548,6 +593,9 @@ export function VaultGate(props: VaultGateProps) {
         <Card className="p-4">
           <CardTitle className="text-lg">{title}: Recover</CardTitle>
           <CardContent className="mt-4 space-y-4">
+            {showRemountRecoveryKeyBanner && (
+              <UnacknowledgedRecoveryKeyBanner surface="locked" />
+            )}
             <div className="flex gap-2">
               <Button
                 type="button"
@@ -634,6 +682,9 @@ export function VaultGate(props: VaultGateProps) {
       <Card className="p-4">
         <CardTitle className="text-lg">{title}: Unlock</CardTitle>
         <CardContent className="mt-4 space-y-4">
+          {showRemountRecoveryKeyBanner && (
+            <UnacknowledgedRecoveryKeyBanner surface="locked" />
+          )}
           <div className="flex gap-2">
             <Button
               type="button"

@@ -17,9 +17,11 @@ export type RecoveryKeyAcknowledgmentProps = {
  * the key in a read-only input with options to download or copy it, and a button
  * to confirm they have saved it.
  *
- * The Recovery Key is never persisted; it is shown once and stored nowhere the
- * product can reach. Acknowledgment is held in component state only and is lost
- * on remount (CONTEXT.md, "Recovery Key Acknowledgment").
+ * The Recovery Key plaintext is never persisted; it is shown once in this
+ * session and stored nowhere the product can reach. The pending Acknowledgment
+ * record (fingerprint only, not the key) is durable on the VaultHandle (ADR
+ * 0069) and survives remount until the User acknowledges or confirms they
+ * already hold the key (CONTEXT.md, "Recovery Key Acknowledgment").
  */
 export function RecoveryKeyAcknowledgment(
   props: RecoveryKeyAcknowledgmentProps,

@@ -113,6 +113,9 @@ import type { VaultMetaV1 } from '@myorganizer/app-api-client';
 
 import type { VaultStorageV1 } from './localVaultStorage';
 import { localVaultStorageKey } from './localVaultStorage';
+import { createLocalVaultRevision } from './localVaultRevision';
+import { mintRecoveryKey } from './recoveryKeyMint';
+import { recoveryKeyAcknowledgmentStorageKey } from './recoveryKeyAcknowledgmentStorage';
 import * as vaultHandleModule from './vaultHandle';
 import {
   createVaultHandle,
@@ -2582,6 +2585,123 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       expect(
         await handle.isVaultMetaRefused({ meta, change: 'passphrase' }),
       ).toBe(true);
+    });
+  });
+
+  describe('Recovery Key Acknowledgment — handle surface (ADR 0069)', () => {
+    const OWNER = 'user-a';
+    const PASSPHRASE = 'test-pass';
+    const ACK_KEY = recoveryKeyAcknowledgmentStorageKey(OWNER);
+
+    function assertRecoveryKeyAbsentFromStorage(recoveryKey: string): void {
+      for (const storage of [localStorage, sessionStorage]) {
+        for (let i = 0; i < storage.length; i++) {
+          const key = storage.key(i)!;
+          expect(key).not.toContain(recoveryKey);
+          expect(storage.getItem(key)).not.toContain(recoveryKey);
+        }
+      }
+    }
+
+    test('1: isRecoveryKeyUnacknowledged is false when no vault exists', async () => {
+      const handle = createVaultHandle({ owner: OWNER });
+
+      expect(await handle.isRecoveryKeyUnacknowledged()).toBe(false);
+    });
+
+    test('2: initialize records a pending Acknowledgment (fingerprint only)', async () => {
+      const handle = createVaultHandle({ owner: OWNER });
+
+      await handle.initialize({ passphrase: PASSPHRASE });
+
+      expect(await handle.isRecoveryKeyUnacknowledged()).toBe(true);
+
+      const raw = localStorage.getItem(ACK_KEY);
+      expect(raw).not.toBeNull();
+      const record = JSON.parse(raw!) as {
+        wrappingHash: string;
+        owner: string;
+        version: number;
+      };
+      expect(record.owner).toBe(OWNER);
+      expect(typeof record.wrappingHash).toBe('string');
+      expect(record.wrappingHash.length).toBeGreaterThan(0);
+    });
+
+    test('3: initialize never stores the recoveryKey string in localStorage or sessionStorage', async () => {
+      const handle = createVaultHandle({ owner: OWNER });
+
+      const { recoveryKey } = await handle.initialize({
+        passphrase: PASSPHRASE,
+      });
+
+      assertRecoveryKeyAbsentFromStorage(recoveryKey);
+    });
+
+    test('4: acknowledgeRecoveryKey clears the pending Acknowledgment', async () => {
+      const handle = createVaultHandle({ owner: OWNER });
+
+      await handle.initialize({ passphrase: PASSPHRASE });
+      expect(await handle.isRecoveryKeyUnacknowledged()).toBe(true);
+
+      handle.acknowledgeRecoveryKey();
+
+      expect(await handle.isRecoveryKeyUnacknowledged()).toBe(false);
+      expect(localStorage.getItem(ACK_KEY)).toBeNull();
+    });
+
+    test('5: removeVault clears the pending Acknowledgment and removes the storage key', async () => {
+      const handle = createVaultHandle({ owner: OWNER });
+
+      await handle.initialize({ passphrase: PASSPHRASE });
+      expect(await handle.isRecoveryKeyUnacknowledged()).toBe(true);
+
+      handle.removeVault();
+
+      expect(await handle.isRecoveryKeyUnacknowledged()).toBe(false);
+      expect(localStorage.getItem(ACK_KEY)).toBeNull();
+      expect(handle.hasVault()).toBe(false);
+    });
+
+    test('6: a moved recovery wrapping stops applying a leftover Acknowledgment record', async () => {
+      const handle = createVaultHandle({ owner: OWNER });
+
+      await handle.initialize({ passphrase: PASSPHRASE });
+      expect(await handle.isRecoveryKeyUnacknowledged()).toBe(true);
+
+      const vault = handle.loadVault()!;
+      handle.saveVault({
+        ...vault,
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'different-recovery-iv',
+          ciphertext: 'different-recovery-ct',
+        },
+      });
+
+      expect(await handle.isRecoveryKeyUnacknowledged()).toBe(false);
+      // Structural guard: the stale record is not cleared — hash mismatch retires it.
+      expect(localStorage.getItem(ACK_KEY)).not.toBeNull();
+    });
+
+    test('7: rotateRecoveryKey clears owed status and bumps revision', async () => {
+      const revision = createLocalVaultRevision();
+      const handle = createVaultHandle({ owner: OWNER, revision });
+
+      await handle.initialize({ passphrase: PASSPHRASE });
+      await handle.unlockWithPassphrase({ passphrase: PASSPHRASE });
+      expect(await handle.isRecoveryKeyUnacknowledged()).toBe(true);
+      expect(revision.current()).toBeGreaterThan(0);
+
+      const revisionBeforeRotate = revision.current();
+      const newRecoveryKey = mintRecoveryKey();
+
+      await handle.rotateRecoveryKey({
+        currentPassphrase: PASSPHRASE,
+        recoveryKey: newRecoveryKey,
+      });
+
+      expect(await handle.isRecoveryKeyUnacknowledged()).toBe(false);
+      expect(revision.current()).toBeGreaterThan(revisionBeforeRotate);
     });
   });
 });
