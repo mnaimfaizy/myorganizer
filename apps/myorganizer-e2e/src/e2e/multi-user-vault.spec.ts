@@ -257,9 +257,14 @@ test.describe('Multi-user vault isolation (E2E)', () => {
     // ensure the navigation commits before assertions resume (issue #557, see #524).
     await waitForReload(page, () => deleteButton.click());
 
-    // Verify User A's vault was removed
+    // After removal and reload, reconcile runs on mount (commit 83f5495) and
+    // discovers the server still holds User A's vault. It re-downloads the
+    // server copy instead of offering to create a new one. Therefore, the
+    // vault after removal equals the vault before removal.
+    // See vault-removal-offers-real-vault-back.spec.ts for the UI-level behavior
+    // (unlock panel appears, not create form).
     const userAVaultAfterRemoval = await readOwnedVault(page, USER_A_ID);
-    expect(userAVaultAfterRemoval).toBeNull();
+    expect(userAVaultAfterRemoval).toBe(userAVaultBefore);
 
     // Verify User B's vault is unchanged
     const userBVaultAfterARemoval = await readOwnedVault(page, USER_B_ID);
