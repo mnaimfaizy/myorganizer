@@ -205,7 +205,7 @@ rediscover them:
   `{ "spec": { kind, ref, foundBy }, "title", "body" }` by `review:spec`, using the job token. Copy
   `spec` into the envelope and hand `body` to the Spec sub-agent as the fetched text. Fetch nothing;
   there is no token in your environment and nobody to ask. `kind: none` skips the Spec axis.
-- **Write `tmp/code-review/report.json`**, run the validator as in step 5, retry a failing
+- **Write `tmp/code-review/report.json`** (that exact name, not `<head>.report.json`), run the validator as in step 5, retry a failing
   sub-agent once, and stop. Do not render, do not post: `review:publish` edits the one summary
   comment, posts inline comments for blocking findings, and relabels (ADR 0070 item 8).
 - **A rejected report is a failed check.** The workflow posts the validator's reasons and the Pull
