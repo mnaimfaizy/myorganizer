@@ -70,6 +70,12 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'nx:tags:check',
+    npmScript: 'nx:tags:check',
+    script: 'tools/scripts/check-nx-project-tags.mjs',
+    args: [],
+  },
+  {
     id: 'deploy:pages:check',
     npmScript: 'deploy:pages:check',
     script: 'tools/scripts/check-deploy-pipeline.mjs',

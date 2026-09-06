@@ -3,7 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/web-vault-ui/src",
   "projectType": "library",
-  "tags": [],
+  "tags": ["type:feature", "scope:web", "tier:human"],
   "targets": {
     "lint": {
       "executor": "@nx/eslint:lint",

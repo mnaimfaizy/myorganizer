@@ -3,7 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "apps/mobile/src",
   "projectType": "application",
-  "tags": [],
+  "tags": ["type:app", "scope:mobile", "tier:agent"],
   "// targets": "to see all targets run: nx show project mobile --web",
   "targets": {}
 }

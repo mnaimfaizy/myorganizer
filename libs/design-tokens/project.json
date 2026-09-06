@@ -3,7 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/design-tokens/src",
   "projectType": "library",
-  "tags": [],
+  "tags": ["type:util", "scope:shared", "tier:agent"],
   "targets": {
     "build-tokens": {
       "executor": "nx:run-commands",

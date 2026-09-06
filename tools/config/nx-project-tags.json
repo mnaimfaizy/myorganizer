@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "description": "Every Nx project carries exactly one tag from each dimension. `type` and `scope` drive @nx/enforce-module-boundaries in eslint.config.js; `tier` is the Review Tier classifier's primary signal (ADR 0069 item 4). Asserted by tools/scripts/check-nx-project-tags.mjs.",
+  "dimensions": {
+    "type": {
+      "app": "A deployable application. May depend on anything below it, never on another app.",
+      "e2e": "A Playwright project. Depends only on the app it drives and utilities.",
+      "page": "A route or screen library that composes features. Never imported by another page.",
+      "feature": "A domain feature with its own UI and data access, composed by pages.",
+      "ui": "Presentational components with no data access.",
+      "data-access": "Talks to the API or storage. Never imports UI.",
+      "domain": "Pure domain logic and types with no I/O.",
+      "util": "Leaf helpers, generated specs, tokens. Depends only on other utils.",
+      "tooling": "Repo scripts and checkers. Not application code."
+    },
+    "scope": {
+      "web": "The Next.js app and its libraries.",
+      "mobile": "The React Native app and its libraries.",
+      "backend": "The Express API.",
+      "shared": "Imported by more than one scope. May depend only on shared.",
+      "tooling": "Repo scripts."
+    },
+    "tier": {
+      "human": "Failure is silent or unrecoverable: vault, crypto, auth, persistence, gates. A diff reaching this tier is review:human.",
+      "agent": "Merge on green checks plus an agent verdict with no blocking finding.",
+      "auto": "Generated or leaf output verified entirely by deterministic checks."
+    }
+  }
+}

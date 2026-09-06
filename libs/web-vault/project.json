@@ -3,7 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/web-vault/src",
   "projectType": "library",
-  "tags": [],
+  "tags": ["type:data-access", "scope:web", "tier:human"],
   "targets": {
     "lint": {
       "executor": "@nx/eslint:lint",

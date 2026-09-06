@@ -12,5 +12,5 @@
       }
     }
   },
-  "tags": ["scope:tooling", "type:util"]
+  "tags": ["type:tooling", "scope:tooling", "tier:human"]
 }
