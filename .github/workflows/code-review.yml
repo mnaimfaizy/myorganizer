@@ -15,7 +15,9 @@ name: Code Review
 #      rejected report. It is a status check, never a review approval
 #      (ADR 0069 item 6). Merge policy does not change here.
 #
-# Runs only when ANTHROPIC_API_KEY is set; otherwise it explains and skips.
+# Credential: the CLAUDE_CODE_OAUTH_TOKEN secret (a subscription token from
+# `claude setup-token`) is preferred; ANTHROPIC_API_KEY is accepted as a
+# fallback. With neither set the job explains and skips.
 
 on:
   pull_request:
@@ -52,17 +54,19 @@ jobs:
       - name: Check for a reviewer credential
         id: preflight
         env:
-          HAS_KEY: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+          HAS_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
+          USING: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' && 'subscription token (CLAUDE_CODE_OAUTH_TOKEN)' || 'API key (ANTHROPIC_API_KEY)' }}
         run: |
           if [ "$HAS_KEY" != 'true' ]; then
             echo 'skip=true' >> "$GITHUB_OUTPUT"
             {
               echo '## Code review skipped'
               echo
-              echo 'No `ANTHROPIC_API_KEY` repository secret is set, so the reviewer did not run and there is no verdict. Add the secret to enable automated review.'
+              echo 'Neither `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) nor `ANTHROPIC_API_KEY` is set as a repository secret, so the reviewer did not run and there is no verdict.'
             } >> "$GITHUB_STEP_SUMMARY"
           else
             echo 'skip=false' >> "$GITHUB_OUTPUT"
+            echo "reviewer credential: $USING"
           fi
 
       - name: Checkout repository
@@ -141,6 +145,7 @@ jobs:
         continue-on-error: true
         uses: anthropics/claude-code-action@v1
         with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           prompt: |
             /code-review
