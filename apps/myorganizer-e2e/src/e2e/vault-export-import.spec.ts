@@ -399,6 +399,39 @@ async function setupVaultWithGroceryData(page: Page) {
   return passphrase;
 }
 
+/**
+ * Wipe + reload is not an empty Local Vault: reconcile restores from the stub,
+ * so Import opens the replace dialog when loadVault() is truthy.
+ */
+async function confirmImportReplaceDialog(page: Page) {
+  const replaceDialog = page.getByTestId('import-vault-replace-dialog');
+  await expect(replaceDialog).toBeVisible({ timeout: 60000 });
+  await expect(
+    replaceDialog.getByRole('heading', {
+      name: "Replace this device's vault?",
+    }),
+  ).toBeVisible();
+  await expect(
+    replaceDialog.getByText(
+      "The passphrase and Recovery Key will be replaced by the backup's values.",
+    ),
+  ).toBeVisible();
+
+  const confirmReplace = replaceDialog.getByTestId(
+    'import-vault-replace-confirm',
+  );
+  await expect(confirmReplace).toBeDisabled();
+
+  const acknowledge = replaceDialog.getByTestId(
+    'import-vault-replace-acknowledge',
+  );
+  await acknowledge.click();
+  await expect(acknowledge).toBeChecked({ timeout: 30000 });
+  await expect(confirmReplace).toBeEnabled();
+
+  await confirmReplace.click();
+}
+
 test.describe('Vault export/import (E2E)', () => {
   test('redirect: /dashboard/vault-export navigates to /dashboard/vault', async ({
     browser,
@@ -481,10 +514,12 @@ test.describe('Vault export/import (E2E)', () => {
     await expect(importButton).toBeEnabled({ timeout: 60000 });
     await importButton.click();
 
-    // Fresh device — no replace dialog; import runs immediately.
-    await expect(page.getByTestId('import-vault-replace-dialog')).toHaveCount(
-      0,
-    );
+    // Reconcile restored a Local Vault from the stub — replace dialog is expected.
+    await confirmImportReplaceDialog(page);
+
+    await expect(
+      page.getByText('Import complete', { exact: true }),
+    ).toBeVisible({ timeout: 60000 });
 
     // After import, local vault should be restored in browser storage.
     await waitForOwnedVault(page, E2E_USER_ID);
@@ -520,32 +555,9 @@ test.describe('Vault export/import (E2E)', () => {
     await expect(importButton).toBeEnabled({ timeout: 60000 });
     await importButton.click();
 
+    await confirmImportReplaceDialog(page);
+
     const replaceDialog = page.getByTestId('import-vault-replace-dialog');
-    await expect(replaceDialog).toBeVisible({ timeout: 60000 });
-    await expect(
-      replaceDialog.getByRole('heading', {
-        name: "Replace this device's vault?",
-      }),
-    ).toBeVisible();
-    await expect(
-      replaceDialog.getByText(
-        "The passphrase and Recovery Key will be replaced by the backup's values.",
-      ),
-    ).toBeVisible();
-
-    const confirmReplace = replaceDialog.getByTestId(
-      'import-vault-replace-confirm',
-    );
-    await expect(confirmReplace).toBeDisabled();
-
-    const acknowledge = replaceDialog.getByTestId(
-      'import-vault-replace-acknowledge',
-    );
-    await acknowledge.click();
-    await expect(acknowledge).toBeChecked({ timeout: 30000 });
-    await expect(confirmReplace).toBeEnabled();
-
-    await confirmReplace.click();
 
     // A toast should surface a user-facing error message.
     await expect(page.getByText('Import failed', { exact: true })).toBeVisible({
@@ -648,10 +660,8 @@ test.describe('Vault export/import (E2E)', () => {
     await expect(importButton).toBeEnabled({ timeout: 60000 });
     await importButton.click();
 
-    // Fresh device — no replace dialog; import runs immediately.
-    await expect(page.getByTestId('import-vault-replace-dialog')).toHaveCount(
-      0,
-    );
+    // Reconcile restored a Local Vault from the stub — replace dialog is expected.
+    await confirmImportReplaceDialog(page);
 
     // Wait for import to complete and vault to be restored
     await waitForOwnedVault(page, E2E_USER_ID);
@@ -710,34 +720,11 @@ test.describe('Vault export/import (E2E)', () => {
     await importButton.click();
 
     const replaceDialog = page.getByTestId('import-vault-replace-dialog');
-    await expect(replaceDialog).toBeVisible({ timeout: 60000 });
-    await expect(
-      replaceDialog.getByRole('heading', {
-        name: "Replace this device's vault?",
-      }),
-    ).toBeVisible();
-    await expect(
-      replaceDialog.getByText(
-        "The passphrase and Recovery Key will be replaced by the backup's values.",
-      ),
-    ).toBeVisible();
     await expect(
       replaceDialog.getByTestId('import-vault-replace-cancel'),
     ).toBeVisible();
 
-    const confirmReplace = replaceDialog.getByTestId(
-      'import-vault-replace-confirm',
-    );
-    await expect(confirmReplace).toBeDisabled();
-
-    const acknowledge = replaceDialog.getByTestId(
-      'import-vault-replace-acknowledge',
-    );
-    await acknowledge.click();
-    await expect(acknowledge).toBeChecked({ timeout: 30000 });
-    await expect(confirmReplace).toBeEnabled();
-
-    await confirmReplace.click();
+    await confirmImportReplaceDialog(page);
 
     await expect(
       page.getByText('Import complete', { exact: true }),
