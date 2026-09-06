@@ -116,27 +116,6 @@ jobs:
             --head-ref "$HEAD_REF" --base "$BASE_SHA" --head "$HEAD_SHA" \
             --repo "$GITHUB_REPOSITORY" --out tmp/code-review/spec.json
 
-      # The previous run's normalized report, for the new / persisting /
-      # resolved strip. Best effort: a first run has none.
-      - name: Fetch the previous report
-        if: steps.preflight.outputs.skip != 'true'
-        id: previous
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set +e
-          found=''
-          # No --status filter: a run with a blocking verdict concludes
-          # "failure" by design and still carries the artifact.
-          for run_id in $(gh run list --workflow code-review.yml --branch "$HEAD_REF" --json databaseId --jq '.[].databaseId' --limit 5); do
-            if gh run download "$run_id" --name code-review-normalized --dir "$RUNNER_TEMP/previous" >/dev/null 2>&1; then
-              found="$RUNNER_TEMP/previous/normalized.json"
-              break
-            fi
-          done
-          echo "path=$found" >> "$GITHUB_OUTPUT"
-          echo "previous report: ${found:-none}"
-
       # JSON only. The allowed tools are read, search, sub-agents, git
       # reads, existing Nx targets, the validator, and `node` for a
       # reviewer-written reproduction (the executed-evidence class ADR 0070
@@ -167,7 +146,30 @@ jobs:
           claude_args: >-
             --model ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
             --max-turns 80
-            --allowedTools "Read,Glob,Grep,Write,Edit,Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(rm -f tmp/code-review/*)"
+            --allowedTools "Read,Glob,Grep,Write,Edit,Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(sed -n:*),Bash(rm -f tmp/code-review/*)"
+
+      # The previous run's normalized report, for the new / persisting /
+      # resolved strip. Fetched only after the reviewer has exited: the
+      # reviewer never sees its last report (ADR 0070). Best effort: a first
+      # run has none.
+      - name: Fetch the previous report
+        if: steps.preflight.outputs.skip != 'true'
+        id: previous
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          found=''
+          # No --status filter: a run with a blocking verdict concludes
+          # "failure" by design and still carries the artifact.
+          for run_id in $(gh run list --workflow code-review.yml --branch "$HEAD_REF" --json databaseId --jq '.[].databaseId' --limit 5); do
+            if gh run download "$run_id" --name code-review-normalized --dir "$RUNNER_TEMP/previous" >/dev/null 2>&1; then
+              found="$RUNNER_TEMP/previous/normalized.json"
+              break
+            fi
+          done
+          echo "path=$found" >> "$GITHUB_OUTPUT"
+          echo "previous report: ${found:-none}"
 
       # The action hides the reviewer's transcript from the log. Keep it as a
       # short-lived artifact so a run that wrote no report can be read.

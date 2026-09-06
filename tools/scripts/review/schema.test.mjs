@@ -5,6 +5,7 @@ import {
   REPORT_SCHEMA_VERSION,
   computeEffectiveTier,
   computeVerdict,
+  FindingInputSchema,
   findingId,
   formatIssues,
   normalizeReport,
@@ -230,6 +231,32 @@ test('two findings with the same identity tuple in one report get distinct, stab
   assert.deepEqual(ids([at(50), at(10)]), [second, first]);
   // A lone finding keeps the plain tuple id.
   assert.deepEqual(ids([at(50)]), [first]);
+});
+
+test('a cited finding must cite its own axis: standards → standard, spec → spec', () => {
+  const cited = (axis, sourceKind) =>
+    FindingInputSchema.safeParse({
+      axis,
+      severity: 'should-fix',
+      summary: 's',
+      source: axis === 'spec' ? '#12' : 'AGENTS.md',
+      rule: 'r',
+      evidence: {
+        kind: 'cited',
+        sourceKind,
+        quote: 'q',
+        untrusted: sourceKind === 'spec',
+      },
+    });
+  assert.equal(cited('standards', 'standard').success, true);
+  assert.equal(cited('spec', 'spec').success, true);
+  const crossed = cited('standards', 'spec');
+  assert.equal(crossed.success, false);
+  assert.match(
+    JSON.stringify(crossed.error.issues),
+    /standards finding cites standard text, not spec/,
+  );
+  assert.equal(cited('spec', 'standard').success, false);
 });
 
 test('finding identity ignores the line and changes with the file', () => {

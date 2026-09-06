@@ -148,6 +148,15 @@ export const EvidenceSchema = z.discriminatedUnion('kind', [
  * or the issue reference, and the rule or requirement it applies. `summary`
  * is the human claim. Nothing here carries diff text (ADR 0070 item 3).
  */
+/** Which citation source each axis may rest on (pinned; asserted below). */
+export const AXIS_CITATION_SOURCE = /** @type {const} */ ({
+  standards: 'standard',
+  spec: 'spec',
+});
+for (const axis of FINDING_AXES)
+  if (!AXIS_CITATION_SOURCE[axis])
+    throw new Error(`AXIS_CITATION_SOURCE lacks ${axis}`);
+
 export const FindingInputSchema = z
   .strictObject({
     axis: z.enum(FINDING_AXES),
@@ -166,6 +175,16 @@ export const FindingInputSchema = z
       ctx.addIssue({ code: 'custom', message, path });
 
     if (f.evidence.kind === 'cited') {
+      // A Standards finding cites a repo standard; a Spec finding cites the
+      // spec. Crossing them lets untrusted issue text stand behind a
+      // standards claim, or a repo file pose as the spec.
+      const expected = AXIS_CITATION_SOURCE[f.axis];
+      if (f.evidence.sourceKind !== expected) {
+        issue(
+          `a ${f.axis} finding cites ${expected} text, not ${f.evidence.sourceKind}`,
+          ['evidence', 'sourceKind'],
+        );
+      }
       if (f.evidence.sourceKind === 'spec' && f.evidence.untrusted !== true) {
         issue(
           'a quoted spec line is authored outside the repo and must carry untrusted: true',
