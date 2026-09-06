@@ -115,7 +115,7 @@ Do not include these unless the implementation explicitly supports them:
 Only when the target spec is under `apps/myorganizer-e2e/`.
 
 1. Follow `.agents/skills/playwright-e2e-workflow/SKILL.md` for workflow and policy.
-2. Read `.agents/skills/playwright-e2e-workflow/references/e2e-patterns.md` before writing any spec code. It is the single source for Radix/context-menu handling, vault unlock, vault API stubs, vault reconcile/claim leftovers, accessible-name substring matches (`getByLabel` + `exact`), async content waits, CORS preflight mocking, parallel-execution resilience, React Hook Form flows, cross-browser differences, and the anti-pattern table. Do not re-derive these.
+2. Read `.agents/skills/playwright-e2e-workflow/references/e2e-patterns.md` before writing any spec code. It is the single source for Radix/context-menu handling, vault unlock, async content waits, CORS preflight mocking, parallel-execution resilience, React Hook Form flows, cross-browser differences, and the anti-pattern table. Do not re-derive these.
 3. **If an E2EPlanner plan was provided, implement from it.** It is a filled-in
    contract: `Component inspection` gives you the roles and accessible names,
    `Patterns required` names the `e2e-patterns.md` sections to apply, and
@@ -133,7 +133,6 @@ Only when the target spec is under `apps/myorganizer-e2e/`.
 8. Never depend on live Google OAuth, email delivery, external APIs, or manual local setup.
 9. **Never execute Playwright.** Do not run `yarn nx e2e`. Report the spec for `TestReviewer` structural review; a human runs the browsers.
 10. Do not commit traces, screenshots, videos, or generated artifacts.
-11. For vault-backed specs: start `GET /vault` as 404 (`serverMeta = null`) until a PUT, stub blob routes with `vaultBlobRouteRelative()`, and never assert localStorage byte-identity in the wrapping-only window after a reconcile download. See `e2e-patterns.md` "Vault API stubs" and "Vault reconcile and claim leftovers".
 
 If the flow is broad or ambiguous, ask the main agent for `E2EPlanner` output before implementing.
 

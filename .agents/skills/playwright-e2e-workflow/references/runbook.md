@@ -23,8 +23,7 @@ Before writing or delegating a Playwright spec, define:
 
 ## Selector And Fixture Rules
 
-- Use stable selectors or user-facing queries. When one accessible name contains
-  another (`New passphrase` / `Confirm new passphrase`), pass `{ exact: true }`.
+- Use stable selectors or user-facing queries.
 - Avoid selectors tied to Tailwind classes, animation wrappers, or incidental DOM nesting.
 - Keep fixtures deterministic.
 - Do not rely on live Google OAuth, real email delivery, or external APIs.

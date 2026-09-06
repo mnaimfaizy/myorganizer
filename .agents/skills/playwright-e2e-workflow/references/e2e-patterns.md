@@ -77,67 +77,6 @@ For vault flows, the full unlock/lock cycle belongs in the preconditions of the 
 
 ---
 
-## Vault API stubs
-
-Vault Absent Evidence treats a 200 from `GET /vault` as "the server holds a Vault" and withholds
-create (#1963142). A dummy body such as `{ version: 1 }` is therefore not "no vault" — it is a
-real-looking Vault Meta, and gated routes render "Getting your vault back" instead of create/unlock.
-
-```typescript
-// ❌ Wrong — 200 with a dummy meta withholds the create offer.
-let serverMeta: object | null = { version: 1 };
-
-// ✅ Correct — 404 until the spec's own PUT writes one.
-let serverMeta: object | null = null;
-```
-
-Stub blob routes as well (`vaultBlobRouteRelative()` / `vaultBlobTypeExtractor()` in
-`helpers/vaultBlobRoutes.ts`). Reconcile will GET every Vault Blob Type on mount; an unstubbed
-request can leak to a real backend, or a stub that never records PUT will later restore wrapping
-with `data: {}`. Do not seed a recovery key into every vault spec — only the flow that is proving
-recovery-key evidence needs one.
-
----
-
-## Vault reconcile and claim leftovers
-
-Reconcile's download is two writes, not one. It first saves the server wrapping with `data: {}`,
-then pulls each blob. A `readOwnedVault` immediately after removal + reload snapshots that
-intermediate and fails byte-identity against the record that still had ciphertext
-(`multi-user-vault` Test 4). Poll until the stub has the blob **before** treating the server as
-the source of truth, then poll the local record until it matches.
-
-A Vault Claim **copies** the Unclaimed Local Vault; it does not move it. After a silent claim the
-unsuffixed slot still holds the same wrapping. `gotoStable` is a full `page.goto`, so
-`login()` (which already lands on the dashboard) followed by `gotoStable` to another dashboard
-route remounts `VaultSessionProvider` and re-asks claim evidence. Owned + leftover copy is the
-same Vault, not a second one — the primitive returns `skipped-already-owned`, and the gate must
-show unlock, never "Replace this device's vault?" (#673 FLOW 2). Do not plan a replace-offer
-assertion for that leftover.
-
----
-
-## Accessible names that contain each other
-
-`getByLabel('New passphrase')` is a substring match. It also resolves "Confirm new passphrase",
-which Playwright reports as a strict-mode violation after a 30s wait that looks like the field
-never appeared (`vault-passphrase-change-reaches-open-tab`). The unlock helper already uses
-`{ exact: true }` for "Passphrase" versus "Show password".
-
-```typescript
-// ❌ Wrong — matches both "New passphrase" and "Confirm new passphrase".
-page.getByLabel('New passphrase');
-
-// ✅ Correct — one accessible name.
-page.getByLabel('New passphrase', { exact: true });
-```
-
-When inspecting a form, list every accessible name and flag any that contain another. Put
-`exact: true` on those locators in the plan; do not leave TestScaffold to discover it from a
-red run.
-
----
-
 ## Async component initialization
 
 Vault init and Next.js hydration are client-side async. The network can be idle while React is
@@ -442,7 +381,3 @@ Run on all three browsers before marking an E2E change complete.
 | Asserting retry / concurrency / timeout behavior           | The UI usually doesn't implement it                                                            | Only test behavior the flow exposes                                                |
 | `locator.check()` on a checkbox persisted through an await | Its state verification does not retry, so it races the round-trip that flips `checked`         | `click()`, then `expect(...).toBeChecked({ timeout })`                             |
 | Waiting for persistent chrome after `location.reload()`    | The pre-reload document already satisfies it; the next `evaluate` loses its execution context  | `waitForReload(page, () => trigger())`                                             |
-| Dummy `{ version: 1 }` as `GET /vault` "no vault"          | A 200 is Vault Absent Evidence that the server holds a Vault; create is withheld               | Start `serverMeta` at `null` (404) until the spec's PUT                            |
-| `readOwnedVault` immediately after vault removal + reload  | Reconcile writes wrapping with `data: {}` first, then blobs                                    | Poll the stub for the blob, then poll local storage until it matches               |
-| `getByLabel('New passphrase')` without `exact`             | Substring match also hits "Confirm new passphrase"; strict mode waits 30s                      | `{ exact: true }` whenever one accessible name contains another                    |
-| Asserting replace-offer after a silent claim leftover      | Claim copies; a later `page.goto` re-asks and the leftover is the same Vault                   | Expect unlock (`skipped-already-owned`); replace-offer is a different vault        |
