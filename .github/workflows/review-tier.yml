@@ -73,8 +73,17 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
+          # The label must exist: `yarn ai:create-labels` provisions the
+          # catalog in tools/config/github-labels.json. Say so instead of
+          # failing on a bare 422.
+          if ! gh label list --search 'review:' --json name --jq '.[].name' | grep -qx "$LABEL"; then
+            echo "::error::label $LABEL does not exist in this repository; run 'yarn ai:create-labels' once"
+            exit 1
+          fi
+          # Remove only the review:* labels the pull request currently wears;
+          # removing an absent label is an error, not a no-op.
           REMOVE=''
-          for other in review:auto review:agent review:human; do
+          for other in $(gh pr view "$PR" --json labels --jq '.labels[].name' | grep '^review:' || true); do
             if [ "$other" != "$LABEL" ]; then REMOVE="$REMOVE --remove-label $other"; fi
           done
           # shellcheck disable=SC2086
