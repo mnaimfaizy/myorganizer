@@ -618,6 +618,9 @@ jobs:
       - name: Nx project tag checker contracts
         run: corepack yarn nx:tags:test
 
+      - name: Review tier classifier contracts
+        run: corepack yarn review:tier:test
+
       - name: Gate coverage checker contracts
         run: corepack yarn gates:coverage:test
 

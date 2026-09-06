@@ -10,6 +10,7 @@ import {
   normalizeLabelArgs,
   provisionLabels,
   rejectedPrLabels,
+  reviewTierLabelNames,
   surfaceLabelNames,
   syncSurfaceLabelChanges,
 } from './github-labels.mjs';
@@ -55,6 +56,22 @@ test('qa and grilling are Orchestration Labels, not Surface Labels (ADR 0049)', 
     'qa',
     'grilling',
   ]);
+});
+
+test('review:* is a third set: provisioned, never a Surface Label, never accepted from --label (ADR 0069)', () => {
+  const catalog = loadGithubLabelCatalog();
+  const review = [...reviewTierLabelNames(catalog)].sort();
+  assert.deepEqual(review, ['review:agent', 'review:auto', 'review:human']);
+  for (const name of review) {
+    assert.equal(surfaceLabelNames(catalog).has(name), false);
+    assert.equal(
+      catalog.orchestration.some((l) => l.name === name),
+      false,
+    );
+  }
+  assert.deepEqual(rejectedPrLabels(review, catalog), review);
+  const provisioned = provisionLabels(catalog).map((label) => label.name);
+  for (const name of review) assert.equal(provisioned.includes(name), true);
 });
 
 test('provision list includes orchestration and surface labels', () => {

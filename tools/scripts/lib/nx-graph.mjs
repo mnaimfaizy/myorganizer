@@ -22,7 +22,10 @@ export class GraphUnavailableError extends Error {
 
 /**
  * @param {string | undefined} graphArg Path to an existing graph JSON, or undefined to generate one.
- * @returns {{ nodes: Record<string, { name: string, data: { root: string, targets: Record<string, unknown> } }> }}
+ * @returns {{ nodes: Record<string, { name: string, data: { root: string, tags?: string[], targets: Record<string, unknown> } }>,
+ *            dependencies: Record<string, Array<{ source: string, target: string, type: string }>> }}
+ * `dependencies` is what the Review Tier classifier walks to find the projects a
+ * change reaches (ADR 0069 item 4); an older graph file without it yields `{}`.
  */
 export function loadProjectGraph(graphArg) {
   let file = graphArg;
@@ -64,5 +67,6 @@ export function loadProjectGraph(graphArg) {
     throw new GraphUnavailableError(`${file} has no project nodes`);
   }
 
-  return { nodes };
+  const dependencies = parsed.graph?.dependencies ?? parsed.dependencies ?? {};
+  return { nodes, dependencies };
 }
