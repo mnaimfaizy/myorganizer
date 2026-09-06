@@ -50,7 +50,14 @@ if (!(globalThis as any).TextEncoder) {
 }
 
 import '@testing-library/jest-dom';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { useEffect } from 'react';
 
 import type { VaultHandle } from '@myorganizer/web-vault';
@@ -59,6 +66,77 @@ import { VaultSessionProvider, useOptionalVaultSession } from './session';
 
 const TEST_USER_ID = 'test-user-id';
 const TEST_PASSPHRASE = 'testPass123456';
+const RECOVERY_KEY_ACK_STORAGE_KEY = `myorganizer_recovery_key_acknowledgment_v1:${TEST_USER_ID}`;
+
+const gateChildren = () => (
+  <div data-testid="children">Tasks Content (unlocked)</div>
+);
+
+function renderVaultGate(options?: {
+  captureHandle?: (h: VaultHandle | null) => void;
+}) {
+  return render(
+    <VaultSessionProvider>
+      {options?.captureHandle ? (
+        <HandleCapture onHandle={options.captureHandle} />
+      ) : null}
+      <VaultGate title="Tasks">{gateChildren}</VaultGate>
+    </VaultSessionProvider>,
+  );
+}
+
+async function waitForCreatePanel(): Promise<void> {
+  await waitFor(() => {
+    expect(
+      screen.getByText(/Tasks: Set encryption passphrase/),
+    ).toBeInTheDocument();
+  });
+}
+
+async function fillPassphraseAndCreate(): Promise<void> {
+  const passphraseInput = screen.getByLabelText(
+    'Encryption passphrase',
+  ) as HTMLInputElement;
+  const confirmInput = screen.getByLabelText(
+    'Confirm passphrase',
+  ) as HTMLInputElement;
+  fireEvent.change(passphraseInput, {
+    target: { value: TEST_PASSPHRASE },
+  });
+  fireEvent.change(confirmInput, {
+    target: { value: TEST_PASSPHRASE },
+  });
+  fireEvent.click(
+    screen.getByRole('button', { name: /Create encrypted vault/ }),
+  );
+}
+
+async function waitForRecoveryKeyPanel(): Promise<void> {
+  await waitFor(() => {
+    expect(
+      screen.getByLabelText(/Recovery key \(save this\)/),
+    ).toBeInTheDocument();
+  });
+}
+
+async function createVaultThroughGate(): Promise<void> {
+  await waitForCreatePanel();
+  await fillPassphraseAndCreate();
+  await waitForRecoveryKeyPanel();
+}
+
+async function unlockWithPassphrase(): Promise<void> {
+  const unlockInput = screen.getByLabelText(
+    /Encryption passphrase/,
+  ) as HTMLInputElement;
+  fireEvent.change(unlockInput, {
+    target: { value: TEST_PASSPHRASE },
+  });
+  fireEvent.click(screen.getByRole('button', { name: /^Unlock$/ }));
+  await waitFor(() => {
+    expect(screen.getByTestId('children')).toBeInTheDocument();
+  });
+}
 
 /**
  * Helper component to capture the vault handle from the session context.
@@ -412,73 +490,195 @@ describe('VaultGate (create recovery key flow)', () => {
   }, 15000);
 
   /**
-   * Test 6 (boundary — agreed scope): Unmount and remount the gate:
-   * the Acknowledgment does NOT survive, so no Recovery Key is shown and
-   * the User lands on the unlock panel. This pins issue #667's agreed scope
-   * — persistence is #668.
+   * Test 6 (remount persistence — issue #668): Unmount and remount after create
+   * without in-session acknowledgment. The pending record survives; the banner
+   * replaces the hard-gate recovery key panel on the unlock screen.
    */
-  test('boundary: acknowledgment does not persist across remount (issue 668 scope)', async () => {
-    // Arrange
-    const { unmount } = render(
-      <VaultSessionProvider>
-        <VaultGate title="Tasks">
-          {() => <div data-testid="children">Tasks Content (unlocked)</div>}
-        </VaultGate>
-      </VaultSessionProvider>,
-    );
+  test('remount persistence: locked banner appears without recovery key panel', async () => {
+    const { unmount } = renderVaultGate();
 
-    // Wait for create panel and create
+    await createVaultThroughGate();
+
+    expect(localStorage.getItem(RECOVERY_KEY_ACK_STORAGE_KEY)).not.toBeNull();
+
+    unmount();
+    renderVaultGate();
+
     await waitFor(() => {
       expect(
-        screen.getByText(/Tasks: Set encryption passphrase/),
+        screen.getByTestId('unacknowledged-recovery-key-banner'),
       ).toBeInTheDocument();
     });
 
-    const passphraseInput = screen.getByLabelText(
-      'Encryption passphrase',
-    ) as HTMLInputElement;
-    const confirmInput = screen.getByLabelText(
-      'Confirm passphrase',
-    ) as HTMLInputElement;
-    fireEvent.change(passphraseInput, {
-      target: { value: TEST_PASSPHRASE },
+    expect(
+      screen.getByTestId('unacknowledged-recovery-key-fact'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/Recovery key \(save this\)/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('unacknowledged-recovery-key-rotate-link'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId(
+        'unacknowledged-recovery-key-already-have-it-button',
+      ),
+    ).not.toBeInTheDocument();
+
+    expect(screen.getByText(/Tasks: Unlock/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Encryption passphrase/)).toBeInTheDocument();
+    expect(screen.queryByTestId('children')).not.toBeInTheDocument();
+  }, 15000);
+
+  /**
+   * Test 6b: After remount, unlocking shows the unlocked banner with rotate
+   * and "I already have it" actions above the children.
+   */
+  test('remount persistence: unlock while owed shows unlocked banner with actions', async () => {
+    const { unmount } = renderVaultGate();
+
+    await createVaultThroughGate();
+    unmount();
+    renderVaultGate();
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('unacknowledged-recovery-key-banner'),
+      ).toBeInTheDocument();
     });
-    fireEvent.change(confirmInput, {
-      target: { value: TEST_PASSPHRASE },
+
+    await unlockWithPassphrase();
+
+    expect(
+      screen.getByTestId('unacknowledged-recovery-key-banner'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('unacknowledged-recovery-key-rotate-link'),
+    ).toHaveAttribute('href', '/dashboard/vault');
+    expect(
+      screen.getByTestId('unacknowledged-recovery-key-already-have-it-button'),
+    ).toBeInTheDocument();
+  }, 15000);
+
+  /**
+   * Test 6c: Confirming "I already have it" on the unlocked banner clears
+   * the reminder and removes the durable acknowledgment record.
+   */
+  test('remount persistence: confirming I already have it clears banner and ack record', async () => {
+    const { unmount } = renderVaultGate();
+
+    await createVaultThroughGate();
+    unmount();
+    renderVaultGate();
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('unacknowledged-recovery-key-banner'),
+      ).toBeInTheDocument();
     });
+
+    await unlockWithPassphrase();
+
     fireEvent.click(
-      screen.getByRole('button', { name: /Create encrypted vault/ }),
+      screen.getByTestId('unacknowledged-recovery-key-already-have-it-button'),
     );
 
-    // Wait for recovery key
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.click(
+      within(dialog).getByRole('button', { name: /I already have it/ }),
+    );
+
     await waitFor(() => {
       expect(
-        screen.getByLabelText(/Recovery key \(save this\)/),
-      ).toBeInTheDocument();
+        screen.queryByTestId('unacknowledged-recovery-key-banner'),
+      ).not.toBeInTheDocument();
+    });
+    expect(localStorage.getItem(RECOVERY_KEY_ACK_STORAGE_KEY)).toBeNull();
+    expect(screen.getByTestId('children')).toBeInTheDocument();
+  }, 15000);
+
+  /**
+   * Test 6d: A recovery wrapping change retires a stale acknowledgment without
+   * the User confirming they already hold the key.
+   */
+  test('remount persistence: different recovery wrapping retires stale banner', async () => {
+    let capturedHandle: VaultHandle | null = null;
+
+    const { unmount } = renderVaultGate({
+      captureHandle: (handle) => {
+        capturedHandle = handle;
+      },
     });
 
-    // Act: Unmount the gate
+    await createVaultThroughGate();
     unmount();
 
-    // Act: Remount the gate
-    render(
-      <VaultSessionProvider>
-        <VaultGate title="Tasks">
-          {() => <div data-testid="children">Tasks Content (unlocked)</div>}
-        </VaultGate>
-      </VaultSessionProvider>,
-    );
+    renderVaultGate({
+      captureHandle: (handle) => {
+        capturedHandle = handle;
+      },
+    });
 
-    // Assert: Recovery key input should NOT be shown after remount
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('unacknowledged-recovery-key-banner'),
+      ).toBeInTheDocument();
+    });
+
+    expect(capturedHandle).not.toBeNull();
+    const sessionHandle = capturedHandle as unknown as VaultHandle;
+    const vault = sessionHandle.loadVault();
+    expect(vault).not.toBeNull();
+
+    await act(async () => {
+      sessionHandle.saveVault({
+        ...vault!,
+        masterKeyWrappedWithRecoveryKey: {
+          iv: 'ZGlmZmVyZW50LXY=',
+          ciphertext: 'ZGlmZmVyZW50LWN0',
+        },
+      });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('unacknowledged-recovery-key-banner'),
+      ).not.toBeInTheDocument();
+    });
+  }, 15000);
+
+  /**
+   * Test 6e: In-session "I saved it" clears the record; a remount must not
+   * resurrect the banner.
+   */
+  test('remount persistence: in-session I saved it prevents banner on remount', async () => {
+    const { unmount } = renderVaultGate();
+
+    await createVaultThroughGate();
+
+    fireEvent.click(screen.getByRole('button', { name: /I saved it/ }));
+
     await waitFor(() => {
       expect(
         screen.queryByLabelText(/Recovery key \(save this\)/),
       ).not.toBeInTheDocument();
     });
 
-    // Unlock panel should be shown (because vault is owned but session is locked)
-    expect(screen.getByText(/Tasks: Unlock/)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Encryption passphrase/)).toBeInTheDocument();
+    expect(localStorage.getItem(RECOVERY_KEY_ACK_STORAGE_KEY)).toBeNull();
+
+    unmount();
+    renderVaultGate();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Tasks: Unlock/)).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByTestId('unacknowledged-recovery-key-banner'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText(/Recovery key \(save this\)/),
+    ).not.toBeInTheDocument();
   }, 15000);
 
   /**
@@ -537,6 +737,13 @@ describe('VaultGate (create recovery key flow)', () => {
 
     // Assert: The recovery key value should not appear in any storage
     expect(recoveryKeyValue).toMatch(/^[A-Za-z0-9+/=]{20,}$/);
+
+    const ackRaw = localStorage.getItem(RECOVERY_KEY_ACK_STORAGE_KEY);
+    expect(ackRaw).not.toBeNull();
+    const ackRecord = JSON.parse(ackRaw!);
+    expect(ackRecord).toHaveProperty('wrappingHash');
+    expect(ackRecord).not.toHaveProperty('recoveryKey');
+    expect(ackRaw).not.toContain(recoveryKeyValue);
 
     // Scan all localStorage entries
     for (let i = 0; i < localStorage.length; i++) {

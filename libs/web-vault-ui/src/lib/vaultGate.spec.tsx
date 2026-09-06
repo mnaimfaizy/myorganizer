@@ -115,6 +115,8 @@ describe('VaultGate', () => {
       resetPassphrase: jest.fn(),
       loadDecryptedData: jest.fn(),
       saveEncryptedData: jest.fn(),
+      isRecoveryKeyUnacknowledged: jest.fn().mockResolvedValue(false),
+      acknowledgeRecoveryKey: jest.fn(),
       ...overrides,
     } as unknown as VaultHandle;
   }
