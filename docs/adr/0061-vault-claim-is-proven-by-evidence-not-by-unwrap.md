@@ -42,6 +42,8 @@ Vault Claim becomes a two-part check: does the server confirm this User's Vault 
 
 The server check asks the User for nothing at all: it compares Vault Meta the server already holds against Vault Meta already on the device.
 
+It is also the check every convergence pass waits on. A device holding an Unclaimed Local Vault resolves no Vault for the signed-in User, and a Vault Reconcile that read that as absent would download the server's copy over the claim outcome 1 was about to make, leaving the User offered a replace of their Vault with itself. Reconcile therefore does not run for such an owner until this check has settled — see the amendment to [ADR 0066](0066-a-convergence-pass-runs-freely-and-only-the-question-is-suppressed.md).
+
 The Claim Offer tells a User whether it can proceed, never whether a passphrase is "correct" in the abstract. This is important: offering the Claim Offer whether or not a Vault is present (so that it discloses nothing about what this device holds) means a User who enters a shared passphrase gets the same response as a User on a device holding nothing. The response says "I found evidence" or "I found no evidence yet" — not "the passphrase is wrong."
 
 The server's Vault Meta is an input to the Claim check, not to the unlock. A User unlocking a Vault they already own uses a passphrase or a Recovery Key like any other unlock, and the server is not consulted. Where the server's Vault Meta does apply, it is the primary evidence rather than a supporting hint: it is the one answer only the authenticated User could have written.

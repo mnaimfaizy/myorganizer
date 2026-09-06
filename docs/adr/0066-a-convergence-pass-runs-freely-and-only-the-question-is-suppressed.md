@@ -157,3 +157,58 @@ meaningless. Whether it belongs inside the existing bookmark record or beside it
 implementation question, but it strains that record's scope sentence — "what this device owes the
 server" — which has now been widened once already for the Vault Meta Bookmark. A refusal is not
 owed. If it goes in there, the record needs a truer name.
+
+## Amendment: an Unclaimed Local Vault is a question, not an absence
+
+Decision point 2 puts Vault Reconcile on mount, and decision point 4 withholds the create control
+while "does the server hold a Vault" is outstanding. Between them sat a case neither named. A
+device holding an Unclaimed Local Vault resolves _no_ Local Vault for the signed-in owner
+([ADR 0061](0061-vault-claim-is-proven-by-evidence-not-by-unwrap.md) — the slot is never offered
+without evidence), so reconcile read it as absent. With the server holding that owner's Vault
+Meta, the mount-time pass downloaded the server's wrapping into the owned slot. The device then
+held an owned Vault beside the unclaimed one, and Vault Claim Evidence — which had been about to
+claim the unclaimed one silently — found an owned Vault and raised the replace offer instead:
+"replace this device's vault with the other vault that is also yours", where the two are the same
+Vault ([#673](https://github.com/mnaimfaizy/myorganizer/issues/673)).
+
+This was not a rare ordering. Silent claim fires only on `server-meta-match`, which requires the
+server to hold Vault Meta, which is exactly the condition under which the download runs. ADR 0061's
+first evidence outcome was reachable only by a race the layout-mounted runner always won, and the
+race had a worse tail: the claim hook reads `vaultStatus()` before its fetch, so a claim that read
+`unclaimed` and landed after the download copied the unclaimed slot over Ciphertext reconcile had
+just converged.
+
+**The rule of decision point 4 applies one step earlier. Reconcile does not run for an owner whose
+device holds an Unclaimed Local Vault until Vault Claim Evidence has settled.** An unclaimed slot is
+an open question about what the device holds, and a pass that downloads while it is out answers it
+by accident. Once it settles, each answer says what the pass does: `claimed` leaves an owned Vault
+and an ordinary `both` pass; `refused-not-this-vault` means the server holds the owner's real Vault
+and it is not this one, so the pass downloads it as before; `no-evidence` is a noop; a postponement
+is waited on, because the pass could not have reached the server either.
+
+For reconcile to see the answer, **Vault Claim Evidence moves out of `VaultGate` and into the Vault
+Session**, asked once per owner and read by both the gate and the runner. Vault Absent Evidence
+moves with it: it is the same shape, it was duplicated across the same eight gates, and leaving it
+behind would have the gate reading ownership proof from context and server-holds-a-Vault proof
+from a local hook with nothing to explain the split. Lifting changes what re-asks a postponement —
+there is no gate re-render in the session — so both checks take the `online` event and window
+focus, the pair `VaultMetaConvergeRunner` already uses. Neither is a prompt, so there is nothing
+here for decision point 1 to ration.
+
+The reconcile runner therefore has three triggers: mount, a Local Vault Revision bump, and
+evidence settling. On `claimed` the claim bumps the revision and the settlement arrives as well;
+the in-flight guard and the settled-at watermark make the second a no-op. On a refusal or an
+absence only the settlement arrives, and it is the one that starts the download or the noop.
+
+**Folding the claim check into the reconcile primitive** was the alternative. It already fetches
+the same Vault Meta, and it would have removed the ordering rather than managed it. Rejected because
+`reconcileVaultWithServer` is "a loop and a pair of degenerate cases" by design
+([ADR 0054](0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md)), and a claim is a
+decision about ownership that ADR 0061 keeps structurally read-only in its own module. The gate's
+hook would also have kept running, and the two writers would have remained.
+
+A consequence worth recording so nobody reads it as a bug: the server-meta `replace-offer` is now
+close to unreachable. It needs an owned Vault that differs from the server's Vault Meta while the
+unclaimed slot matches it, and that state raises reconcile's whole-Vault "not the one on the
+server" question first. The recovery-key replace path is untouched — a key proves a second Vault
+is the User's without the server saying anything.
