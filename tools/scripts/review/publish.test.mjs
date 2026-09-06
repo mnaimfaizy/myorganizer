@@ -114,7 +114,7 @@ test('inline comments: blocking with a location only, once per id', () => {
   );
   assert.ok(out[0].body.startsWith(findingMarker('abc123def456')));
   assert.match(out[0].body, /\*\*Blocking · Standards\*\*/);
-  assert.match(out[0].body, /Cited: q/);
+  assert.match(out[0].body, /Evidence: cited standard: q/);
 });
 
 test('a published plan carries the sticky marker, the inline set, the relabel, and the check outcome', () => {

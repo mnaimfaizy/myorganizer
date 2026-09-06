@@ -17,25 +17,39 @@ test('a branch without a number falls back to the first commit reference', () =>
   assert.deepEqual(
     discoverSpec({
       headRef: 'feat/review-tier-classifier',
-      commits: ['feat(review): classifier', 'Refs #123 and #456'],
+      commits: ['feat(review): classifier', 'Refs #123 and closes #456'],
     }),
     { kind: 'issue', ref: '#123', foundBy: 'commits' },
   );
 });
 
-test('a bare number that is not an issue reference is not a spec', () => {
+test('a bare number is a PR number or a citation, not an issue reference', () => {
   assert.deepEqual(
     discoverSpec({
       headRef: 'chore/tidy',
-      commits: ['bump to v1.2.3', 'ADR 0069 item #4 reads'],
+      commits: [
+        'bump to v1.2.3',
+        'ADR 0069 item #4 reads',
+        'feat: squash merge (#123)',
+        'the first run on #678 failed',
+      ],
     }),
-    // "#4" preceded by a space is a reference; the test pins that reading.
-    { kind: 'issue', ref: '#4', foundBy: 'commits' },
+    { kind: 'none', foundBy: 'none' },
   );
   assert.deepEqual(
     discoverSpec({ headRef: 'release/v1.2.3', commits: ['sha abc#12'] }),
     { kind: 'none', foundBy: 'none' },
   );
+});
+
+test('a keyword reference in a commit body is found, case-insensitively', () => {
+  for (const line of ['Closes #12', 'fixes #12', 'Refs #12', 'see #12']) {
+    assert.deepEqual(
+      discoverSpec({ headRef: 'chore/tidy', commits: ['subject', line] }),
+      { kind: 'issue', ref: '#12', foundBy: 'commits' },
+      line,
+    );
+  }
 });
 
 test('nothing found is a none spec with no ref', () => {

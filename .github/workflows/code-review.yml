@@ -25,6 +25,7 @@ on:
 
 permissions:
   contents: read
+  issues: read
   pull-requests: write
   actions: read
 
@@ -216,15 +217,20 @@ jobs:
               --rejected "$RUNNER_TEMP/rejected.txt"
           fi
 
+      # Reads the verdict from the validator's file, not from the publish
+      # step, so a fork pull request (where publish is skipped) still fails
+      # on a blocking finding.
       - name: Agent verdict
         if: steps.preflight.outputs.skip != 'true'
         run: |
-          echo "reviewer step: ${{ steps.reviewer.outcome }}; validation: ${{ steps.validate.outcome }}; verdict: ${{ steps.publish.outputs.verdict || 'none' }}"
+          echo "reviewer step: ${{ steps.reviewer.outcome }}; validation: ${{ steps.validate.outcome }}; publish: ${{ steps.publish.outcome }}"
           if [ '${{ steps.validate.outcome }}' != 'success' ]; then
             echo '::error::the reviewer produced no valid report; this pull request is review:human'
             exit 1
           fi
-          if [ '${{ steps.publish.outputs.fail }}' = 'true' ]; then
+          VERDICT="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('tmp/code-review/normalized.json','utf8')).verdict)")"
+          echo "verdict: $VERDICT"
+          if [ "$VERDICT" = 'request-changes' ]; then
             echo '::error::verdict request-changes: at least one blocking finding'
             exit 1
           fi

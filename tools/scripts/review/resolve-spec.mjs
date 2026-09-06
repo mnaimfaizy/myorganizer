@@ -23,11 +23,17 @@ import { dirname } from 'node:path';
 import { cannotRun, isMain, parseArgs } from './cli.mjs';
 
 const BRANCH_ISSUE = /^[a-z]+\/(\d+)-/;
-const COMMIT_ISSUE = /(?:^|[\s(])#(\d+)\b/;
+// A commit reference is a keyword and a number, the shapes GitHub links
+// to an issue. A bare `#N` is not one: `(#123)` is the squash-merge PR
+// number and `item #4` is an ADR citation.
+const COMMIT_ISSUE =
+  /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|refs?|see|issue|for)\s+#(\d+)\b/i;
 
 /**
  * Pure: which issue, and how it was found. Branch first, then commits, in
- * commit order (oldest first is what `git log --reverse` hands us).
+ * commit order (oldest first is what `git log --reverse` hands us). A commit
+ * counts only when it names the issue the way GitHub does (`closes #12`,
+ * `refs #12`, `fix #12`); a bare `#12` is a PR number or a citation.
  *
  * @param {{ headRef?: string, commits?: string[] }} input
  */

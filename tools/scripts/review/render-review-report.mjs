@@ -20,6 +20,7 @@ import { writeFileSync } from 'node:fs';
 import { ZodError } from 'zod';
 
 import { cannotRun, isMain, parseArgs, readJsonOr } from './cli.mjs';
+import { evidenceText } from './evidence.mjs';
 import {
   AXIS_TITLES,
   FINDING_AXES,
@@ -62,20 +63,6 @@ export const readHunk = (location, cwd = process.cwd()) => {
     .slice(start - 1, end)
     .map((l, i) => `${String(start + i).padStart(width)} | ${l}`)
     .join('\n');
-};
-
-const evidenceText = (f) => {
-  const e = f.evidence;
-  if (e.kind === 'executed') {
-    return `executed \`${e.command}\` (exit ${e.exitCode}, in \`${e.cwd}\`)`;
-  }
-  if (e.kind === 'cited') {
-    // Spec quotes are authored outside the repo: fenced, never interpolated.
-    return e.sourceKind === 'spec'
-      ? `cited spec (untrusted quote): \`${e.quote.replace(/`/g, "'")}\``
-      : `cited standard: ${e.quote}`;
-  }
-  return `inferred: ${e.reasoning}`;
 };
 
 const fence = (text) => [

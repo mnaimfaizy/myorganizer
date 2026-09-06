@@ -18,6 +18,7 @@
  *      lowers a tier, and only on a fresh run.
  */
 
+import { evidenceText } from './evidence.mjs';
 import { FINDING_AXES, REVIEW_TIER_LABELS, VERDICT_VALUES } from './schema.mjs';
 
 export const STICKY_MARKER = '<!-- code-review-report -->';
@@ -83,17 +84,6 @@ export const rejectedBody = ({ reason, headSha, runUrl }) =>
     '',
   ].join('\n');
 
-const evidenceLine = (f) => {
-  const e = f.evidence;
-  if (e.kind === 'executed')
-    return `Executed \`${e.command}\` (exit ${e.exitCode}).`;
-  if (e.kind === 'cited')
-    return e.sourceKind === 'spec'
-      ? 'Cited the spec (untrusted quote; see the summary comment).'
-      : `Cited: ${e.quote}`;
-  return `Inferred: ${e.reasoning}`;
-};
-
 /**
  * Inline comments for blocking findings with a location, skipping any id
  * already present in an existing review comment body.
@@ -119,7 +109,7 @@ export const inlineComments = ({ findings, existingBodies = [] }) => {
         `**Blocking · ${AXIS_WORD[f.axis]}** — ${f.summary}`,
         '',
         `Rule: ${f.rule} (${f.source})`,
-        evidenceLine(f),
+        `Evidence: ${evidenceText(f)}`,
         ...(f.remedy ? ['', `Suggested: ${f.remedy}`] : []),
       ].join('\n'),
     }));
