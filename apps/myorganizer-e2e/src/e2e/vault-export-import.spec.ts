@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import os from 'node:os';
-import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   createOwnedVault,
   E2E_USER_ID,
@@ -10,6 +10,8 @@ import {
   routeApi,
   submitLoginForm,
   unlockWithPassphrase,
+  vaultBlobRouteRelative,
+  vaultBlobTypeExtractor,
   waitForOwnedVault,
 } from './helpers';
 
@@ -85,8 +87,7 @@ function setupBackend(page: Page) {
 
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
   const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
-  const vaultBlobUrl =
-    /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos|groceries)\/?(\?.*)?$/;
+  const vaultBlobUrl = vaultBlobRouteRelative();
   const backupsRecordUrl = /\/vault\/backups\/?(\?.*)?$/;
   const backupsLatestUrl = /\/vault\/backups\/latest\/?(\?.*)?$/;
 
@@ -250,11 +251,7 @@ function setupBackend(page: Page) {
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
 
-    const match = request
-      .url()
-      .match(
-        /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos|groceries)/,
-      );
+    const match = request.url().match(vaultBlobTypeExtractor());
     const type = match?.[1];
     if (!type) {
       await route.fulfill({ status: 400, headers });
@@ -554,10 +551,7 @@ test.describe('Vault export/import (E2E)', () => {
       page.waitForEvent('download'),
       exportButton.click(),
     ]);
-    const downloadPath = path.join(
-      os.tmpdir(),
-      `vault-export-${Date.now()}.json`,
-    );
+    const downloadPath = join(tmpdir(), `vault-export-${Date.now()}.json`);
     await download.saveAs(downloadPath);
     const fs = await import('node:fs/promises');
     const exportedText = await fs.readFile(downloadPath, 'utf8');
@@ -597,10 +591,7 @@ test.describe('Vault export/import (E2E)', () => {
       page.waitForEvent('download'),
       exportButton.click(),
     ]);
-    const downloadPath = path.join(
-      os.tmpdir(),
-      `vault-export-${Date.now()}.json`,
-    );
+    const downloadPath = join(tmpdir(), `vault-export-${Date.now()}.json`);
     await download.saveAs(downloadPath);
     const fs = await import('node:fs/promises');
     const exportedText = await fs.readFile(downloadPath, 'utf8');

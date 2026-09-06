@@ -2,6 +2,7 @@ export * from './lib/CloudBackupCard';
 export * from './lib/LastBackupCard';
 export * from './lib/metaConvergeRunner';
 export * from './lib/pullRunner';
+export * from './lib/RecoveryKeyAcknowledgment';
 export * from './lib/RecoveryKeyClaimOffer';
 export * from './lib/RecoverySetNewPassphraseForm';
 export * from './lib/reconcileRunner';
@@ -12,8 +13,20 @@ export * from './lib/SyncStatusIndicator';
 export * from './lib/syncStatusWidget';
 export * from './lib/useLocalVaultRevision';
 export * from './lib/useServerReachability';
-export * from './lib/useVaultClaimEvidence';
+// The two evidence hooks are deliberately not exported. They are called from
+// `VaultSessionProvider` and nowhere else (libs/web-vault-ui/AGENTS.md); a
+// reader wants the state on the session context, and a gate rendered without
+// one wants the no-owner answers below.
+export {
+  ABSENT_EVIDENCE_WITHOUT_OWNER,
+  type VaultAbsentEvidenceState,
+} from './lib/useVaultAbsentEvidence';
+export {
+  CLAIM_EVIDENCE_WITHOUT_OWNER,
+  type VaultClaimEvidenceState,
+} from './lib/useVaultClaimEvidence';
 export * from './lib/useVaultSyncStatus';
+export * from './lib/vaultAbsentEvidenceGateView';
 export * from './lib/vaultClaimEvidenceGateView';
 export * from './lib/vaultGate';
 export * from './lib/vaultImportErrorMessages';
