@@ -402,6 +402,14 @@ _Avoid_: agent label, workflow label, status label (as the general name)
 A GitHub label that names a change's kind (`bug`, `enhancement`, `documentation`, …) or area (`backend`, `web-app`, …). Distinct from Issue Orchestration Labels. Issues may wear both; Pull Requests wear Surface Labels only.
 _Avoid_: PR label (as a second vocabulary), topic tag, category
 
+**Gate Tier**:
+The pipeline depth chosen for a piece of work before its code exists — `gate:mechanical`, `gate:standard`, or `gate:full` (ADR 0012). Chosen by `to-issues` or by the main agent, recorded as an Issue Orchestration Label, and a judgement about intent that nothing later verifies. Never applied to a Pull Request.
+_Avoid_: tier (alone), risk tier, review depth
+
+**Review Tier**:
+The merge policy a Pull Request's diff earns — `review:auto`, `review:agent`, or `review:human` — computed after the code exists by a deterministic Wired Gate from affected projects, a path map, manifests, size, and author; never by an LLM and never by hand (ADR 0069). The job output is the state; the label is a view of it. Anything unclassifiable or any classifier error is `human`. Distinct from a Gate Tier in time, author, and question; either may only tighten the other's effect.
+_Avoid_: tier (alone), risk level, gate tier (for this sense), PR label
+
 **Gated Pipeline**:
 A specialist chain that retries between agents until a reviewer or runner verdict passes, with a cap. Components and Jest use this shape. Hitting the cap is a stop, not another silent retry.
 _Avoid_: review loop, QA cycle, writer-reviewer loop
