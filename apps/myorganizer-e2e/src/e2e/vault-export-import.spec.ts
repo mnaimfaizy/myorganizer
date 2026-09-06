@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
-import os from 'node:os';
-import path from 'node:path';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   createOwnedVault,
   E2E_USER_ID,
@@ -551,10 +551,7 @@ test.describe('Vault export/import (E2E)', () => {
       page.waitForEvent('download'),
       exportButton.click(),
     ]);
-    const downloadPath = path.join(
-      os.tmpdir(),
-      `vault-export-${Date.now()}.json`,
-    );
+    const downloadPath = join(tmpdir(), `vault-export-${Date.now()}.json`);
     await download.saveAs(downloadPath);
     const fs = await import('node:fs/promises');
     const exportedText = await fs.readFile(downloadPath, 'utf8');
@@ -594,10 +591,7 @@ test.describe('Vault export/import (E2E)', () => {
       page.waitForEvent('download'),
       exportButton.click(),
     ]);
-    const downloadPath = path.join(
-      os.tmpdir(),
-      `vault-export-${Date.now()}.json`,
-    );
+    const downloadPath = join(tmpdir(), `vault-export-${Date.now()}.json`);
     await download.saveAs(downloadPath);
     const fs = await import('node:fs/promises');
     const exportedText = await fs.readFile(downloadPath, 'utf8');
