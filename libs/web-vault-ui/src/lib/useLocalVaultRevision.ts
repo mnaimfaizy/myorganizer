@@ -14,39 +14,9 @@
  * that it changed matters. A page outside a Vault Session gets a constant, so
  * a component that may render without a provider needs no branch of its own.
  */
-import { useCallback, useSyncExternalStore } from 'react';
-
 import { useOptionalVaultSession } from './session';
-
-/**
- * The revision a caller sees when there is no Vault Session to read one from.
- * Constant, so it never triggers a reload.
- *
- * Exported because `reconcileRunner.tsx` answers the same question — what a
- * reader holding no Local Vault Revision should read — and two constants
- * spelling one concept drift apart.
- */
-export const NO_REVISION = 0;
+import { useLocalVaultRevisionOf } from './useLocalVaultRevisionOf';
 
 export function useLocalVaultRevision(): number {
-  const revision = useOptionalVaultSession()?.revision ?? null;
-
-  const subscribe = useCallback(
-    (onStoreChange: () => void) => {
-      if (!revision) return () => undefined;
-      return revision.subscribe(onStoreChange);
-    },
-    [revision],
-  );
-
-  const getSnapshot = useCallback(
-    () => revision?.current() ?? NO_REVISION,
-    [revision],
-  );
-
-  // The third argument is the server snapshot. It has to be the same constant
-  // every render or React reports a hydration mismatch — and it is honest
-  // besides: a Local Vault lives in browser storage, so on the server there is
-  // no revision to have moved.
-  return useSyncExternalStore(subscribe, getSnapshot, () => NO_REVISION);
+  return useLocalVaultRevisionOf(useOptionalVaultSession()?.revision ?? null);
 }

@@ -331,9 +331,14 @@ test.describe('Vault Passphrase Change Reaches Open Tab (E2E)', () => {
 
     // Step 16: Fill and submit ChangePassphraseCard
     // The ChangePassphraseCard renders when vault is unlocked on the vault settings page
-    const currentPassphrase = page1.getByLabel('Current passphrase');
-    const newPassphrase = page1.getByLabel('New passphrase');
-    const confirmPassphrase = page1.getByLabel('Confirm new passphrase');
+    const currentPassphrase = page1.getByLabel('Current passphrase', {
+      exact: true,
+    });
+    // Without `exact`, this also matches "Confirm new passphrase".
+    const newPassphrase = page1.getByLabel('New passphrase', { exact: true });
+    const confirmPassphrase = page1.getByLabel('Confirm new passphrase', {
+      exact: true,
+    });
     const changeSubmit = page1.getByTestId('change-passphrase-submit');
 
     await expect(currentPassphrase).toBeVisible({ timeout: 30000 });

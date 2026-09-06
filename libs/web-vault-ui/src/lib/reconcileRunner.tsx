@@ -13,6 +13,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 
 import type {
+  VaultClaimOnEvidenceResult,
   VaultReconcileAsk,
   VaultReconcileDecision,
   VaultReconcileResult,
@@ -25,7 +26,7 @@ import {
 } from '@myorganizer/web-vault';
 
 import { useOptionalVaultSession } from './session';
-import { NO_REVISION } from './useLocalVaultRevision';
+import { NO_REVISION } from './useLocalVaultRevisionOf';
 import { vaultBlobTypeLabel } from './vaultSyncMessages';
 
 type PendingVaultConflictPrompt = {
@@ -196,8 +197,42 @@ function getUserFacingErrorMessage(error: unknown): string {
 }
 
 /**
- * Runs Vault Reconcile: on mount, and again whenever the Local Vault Revision
- * moves above the revision the last pass settled at.
+ * Whether a settled Vault Claim Evidence answer lets a pass start over a
+ * device whose status is still `unclaimed`.
+ *
+ * `claimed` never reaches this table in practice — the claim's write moves
+ * the status to `owned` before the answer is recorded — and the three
+ * `skipped-*` / `replace-offer` answers cannot be given while the status is
+ * `unclaimed`. They are still stated rather than left out, for the reason
+ * `VAULT_CLAIM_EVIDENCE_GATE_VIEWS` gives: a table with a hole in it stops
+ * failing to compile when a hole matters (ADR 0053).
+ *
+ * The two `false`s are the point. A postponement is the server not having
+ * answered, and this pass could not have reached it either; a pass started
+ * now would read no Local Vault and download the wrapping the claim is
+ * waiting to compare against, answering the question by accident. The
+ * hook re-asks a postponement on reconnect and on focus, and the next
+ * settlement arrives here. A lost Session has no pass to run either, and is
+ * not re-asked at all — a new sign-in is a new owner and a new mount.
+ */
+const RECONCILE_MAY_START_AFTER_CLAIM_EVIDENCE = {
+  claimed: true,
+  // The server holds this User's real Vault and it is not this one: the pass
+  // downloads it, and the unclaimed slot stays for whoever owns it.
+  'refused-not-this-vault': true,
+  // The server holds nothing. The pass is a noop, and the gate offers create.
+  'no-evidence': true,
+  postponed: false,
+  'session-lost': false,
+  'skipped-already-owned': true,
+  'replace-offer': true,
+  'skipped-nothing-to-claim': true,
+} as const satisfies Record<VaultClaimOnEvidenceResult['kind'], boolean>;
+
+/**
+ * Runs Vault Reconcile: on mount, again whenever the Local Vault Revision
+ * moves above the revision the last pass settled at, and again when Vault
+ * Claim Evidence settles.
  *
  * The trigger is the revision rather than the removal that prompted it
  * ([#628](https://github.com/mnaimfaizy/myorganizer/issues/628)). A removal, an
@@ -205,6 +240,24 @@ function getUserFacingErrorMessage(error: unknown): string {
  * other than what it held a moment ago, all three already move the revision,
  * and a fourth door added later moves it without having to remember this runner
  * exists.
+ *
+ * It starts no pass for an owner whose device holds an Unclaimed Local Vault
+ * until Vault Claim Evidence has settled. An unclaimed slot resolves no Local
+ * Vault for that owner (ADR 0061), so a pass over it reads the device as
+ * absent and downloads the server's wrapping into the owned slot — and the
+ * server holding that owner's Vault Meta is exactly the condition under which
+ * the claim would have fired silently. The User then met an offer to replace
+ * their Vault with itself
+ * ([#673](https://github.com/mnaimfaizy/myorganizer/issues/673)). The same
+ * discipline ADR 0066's decision point 4 applies to the create control applies
+ * here to the download: no answer is acted on while the question is out. Once
+ * it settles, each answer says what the pass does — a claim leaves an owned
+ * Vault and an ordinary pass; a refusal means the server holds the User's real
+ * Vault and it is not this one, so the pass downloads it; no evidence is a
+ * noop; a postponement is waited on, because this pass could not have reached
+ * the server either. Settlement is therefore a trigger, and on a claim it
+ * arrives beside the revision bump the claim's own write causes; the in-flight
+ * guard and the watermark make the second arrival a no-op.
  *
  * It takes no focus trigger. What changed on the server for Vault Blobs is
  * `VaultPullRunner`'s question, and asking it a second time from a runner that
@@ -232,6 +285,18 @@ export function VaultReconcileRunner() {
   // pass that is already in flight. Read per pass rather than captured once, so
   // a later pass is not still holding the handle that existed at mount.
   const handleRef = useRef(handle);
+  // Read through a ref for the same reason the revision is read as a store:
+  // the pass effect stays keyed on the owner, and a settlement arriving mid
+  // pass must not re-key it and cancel the pass. `null` outside a session,
+  // where there is no owner and no pass either.
+  const claimEvidence = vaultSession?.claimEvidence ?? null;
+  const claimEvidenceRef = useRef(claimEvidence);
+  /**
+   * The current pass effect's `requestPass`, so the settlement effect below
+   * can knock on it. Set when the pass effect mounts and cleared when it
+   * unmounts, so a settlement landing between owners knocks on nothing.
+   */
+  const requestPassRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     toastRef.current = toast;
@@ -240,6 +305,13 @@ export function VaultReconcileRunner() {
   useEffect(() => {
     handleRef.current = handle;
   }, [handle]);
+
+  // Declared before the pass effect so the mount pass is the pass effect's
+  // own; on mount this finds no `requestPass` registered yet and does nothing.
+  useEffect(() => {
+    claimEvidenceRef.current = claimEvidence;
+    requestPassRef.current?.();
+  }, [claimEvidence]);
 
   useEffect(() => {
     let cancelled = false;
@@ -334,6 +406,18 @@ export function VaultReconcileRunner() {
     const requestPass = () => {
       if (cancelled) return;
       if (inFlight) return;
+      // An unclaimed slot is a question, not an absence. A pass started now
+      // would read no Local Vault, download the server's wrapping, and answer
+      // the question by accident (see the component's doc comment). The
+      // settlement that lifts this arrives through the effect above, and
+      // which settlements lift it is pinned rather than decided here.
+      if (handleRef.current?.vaultStatus() === 'unclaimed') {
+        const evidence = claimEvidenceRef.current;
+        if (!evidence || evidence.status !== 'settled') return;
+        if (!RECONCILE_MAY_START_AFTER_CLAIM_EVIDENCE[evidence.result.kind]) {
+          return;
+        }
+      }
       // A dismissed question is unfinished business, and it comes back the way
       // every other pass arrives: the next mount, or the next replacement. It
       // is not brought back by withholding the watermark, which would re-ask
@@ -343,11 +427,13 @@ export function VaultReconcileRunner() {
       runPass();
     };
 
+    requestPassRef.current = requestPass;
     requestPass();
     const unsubscribe = revision?.subscribe(requestPass);
 
     return () => {
       cancelled = true;
+      requestPassRef.current = null;
       unsubscribe?.();
       if (pendingPromptRef.current) {
         pendingPromptRef.current.resolve('defer');

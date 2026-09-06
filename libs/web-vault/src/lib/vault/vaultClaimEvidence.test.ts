@@ -722,6 +722,71 @@ describe('vaultClaimEvidence', () => {
       assertStorageByteIdentical(storageBefore, storageAfter);
     });
 
+    test('should return skipped-already-owned when unclaimed is a copy of the owned vault; api not called', async () => {
+      const handle = createVaultHandle({ owner: testOwner });
+      await handle.initialize({ passphrase });
+
+      const ownedVault = handle.loadVault();
+      if (!ownedVault) {
+        throw new Error('Failed to load vault after initialize');
+      }
+
+      // Claim copies rather than moves — leftover in unsuffixed slot is the same Vault
+      localStorage.setItem(VAULT_STORAGE_KEY, JSON.stringify(ownedVault));
+
+      const storageBefore = snapshotLocalStorage();
+
+      const api = createApiDouble();
+
+      const result = await claimUnclaimedLocalVaultOnEvidence({
+        api,
+        handle,
+      });
+
+      expect(result).toEqual({ kind: 'skipped-already-owned' });
+      expect(api.getVaultMeta).not.toHaveBeenCalled();
+      expect(handle.vaultStatus()).toBe('owned');
+      expect(handle.isUnlocked).toBe(false);
+      const storageAfter = snapshotLocalStorage();
+      assertStorageByteIdentical(storageBefore, storageAfter);
+    });
+
+    test('second ask after a successful claim returns skipped-already-owned without calling api again', async () => {
+      const fixture = await seedUnclaimedVaultWithHandle(testOwner, passphrase);
+
+      const api = createApiDouble();
+      api.getVaultMeta.mockResolvedValue({
+        data: {
+          etag: 'test-etag',
+          updatedAt: '2026-01-01T00:00:00Z',
+          meta: {
+            version: 1,
+            kdf_salt: fixture.vault.kdf.salt,
+            wrapped_mk_passphrase: fixture.vault.masterKeyWrappedWithPassphrase,
+            wrapped_mk_recovery: fixture.vault.masterKeyWrappedWithRecoveryKey,
+          } as VaultMetaV1,
+        },
+      } as AxiosResponse);
+
+      const firstResult = await claimUnclaimedLocalVaultOnEvidence({
+        api,
+        handle: fixture.claimHandle,
+      });
+
+      expect(firstResult).toEqual({ kind: 'claimed' });
+      expect(fixture.claimHandle.vaultStatus()).toBe('owned');
+      expect(fixture.claimHandle.isUnlocked).toBe(false);
+
+      const secondResult = await claimUnclaimedLocalVaultOnEvidence({
+        api,
+        handle: fixture.claimHandle,
+      });
+
+      expect(secondResult).toEqual({ kind: 'skipped-already-owned' });
+      expect(api.getVaultMeta).toHaveBeenCalledTimes(1);
+      expect(localStorage.getItem(VAULT_STORAGE_KEY)).toBe(fixture.raw);
+    });
+
     test('should return skipped-already-owned when owner holds owned vault with no unclaimed vault at all; api not called', async () => {
       // When an owner is already owned AND there is NO separate unclaimed vault
       // on the device (unsuffixed slot is empty), the check is skipped entirely.

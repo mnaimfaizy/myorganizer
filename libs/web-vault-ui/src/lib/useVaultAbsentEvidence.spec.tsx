@@ -26,7 +26,7 @@ jest.mock('@myorganizer/web-vault', () => ({
 }));
 
 import { act, renderHook, waitFor } from '@testing-library/react';
-import type { VaultHandle } from '@myorganizer/web-vault';
+import type { VaultAbsentEvidence, VaultHandle } from '@myorganizer/web-vault';
 import type { VaultAbsentEvidenceState } from './useVaultAbsentEvidence';
 import { useVaultAbsentEvidence } from './useVaultAbsentEvidence';
 
@@ -301,5 +301,89 @@ describe('useVaultAbsentEvidence', () => {
     expect(consoleSpy).not.toHaveBeenCalled();
 
     consoleSpy.mockRestore();
+  });
+
+  test('retries on focus event when result is postponed', async () => {
+    const handle = createMockHandle('user-1') as VaultHandle;
+
+    const deferred: {
+      first: { resolve?: (val: VaultAbsentEvidence) => void };
+      second: { resolve?: (val: VaultAbsentEvidence) => void };
+    } = { first: {}, second: {} };
+
+    mockCheckVaultAbsentEvidence
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            deferred.first.resolve = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            deferred.second.resolve = resolve;
+          }),
+      );
+
+    const { result } = renderHook(() => useVaultAbsentEvidence(handle));
+
+    // First call should be in progress
+    expect(result.current.status).toBe('checking');
+
+    // Resolve first with postponed
+    deferred.first.resolve?.({ kind: 'postponed' });
+
+    // Wait for first postponed
+    await waitFor(() => {
+      expect(result.current.status).toBe('settled');
+      expect(getSettledResult(result.current).kind).toBe('postponed');
+    });
+
+    // Dispatch focus event to trigger retry
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    // Should have been called twice
+    await waitFor(() => {
+      expect(mockCheckVaultAbsentEvidence).toHaveBeenCalledTimes(2);
+    });
+
+    // Resolve second with no-server-vault
+    deferred.second.resolve?.({ kind: 'no-server-vault' });
+
+    // Should settle to no-server-vault
+    await waitFor(() => {
+      expect(getSettledResult(result.current).kind).toBe('no-server-vault');
+    });
+  });
+
+  test('does not retry on focus event when result is not postponed', async () => {
+    const handle = createMockHandle('user-1') as VaultHandle;
+
+    mockCheckVaultAbsentEvidence.mockResolvedValue({
+      kind: 'no-server-vault',
+    });
+
+    const { result } = renderHook(() => useVaultAbsentEvidence(handle));
+
+    // Wait for settled
+    await waitFor(() => {
+      expect(result.current.status).toBe('settled');
+      expect(getSettledResult(result.current).kind).toBe('no-server-vault');
+    });
+
+    const callCount = mockCheckVaultAbsentEvidence.mock.calls.length;
+
+    // Dispatch focus event
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    // Wait a bit to ensure no retry happens
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Should not have been called again
+    expect(mockCheckVaultAbsentEvidence).toHaveBeenCalledTimes(callCount);
   });
 });

@@ -88,6 +88,7 @@ function createFakeRevision(): FakeRevision {
 type MockHandle = {
   owner: string;
   isUnlocked: boolean;
+  vaultStatus: jest.Mock;
   loadVault: jest.Mock;
   saveVault: jest.Mock;
   removeVault: jest.Mock;
@@ -96,13 +97,18 @@ type MockHandle = {
 
 function createMockHandle(
   owner: string,
-  options: { revision?: FakeRevision; isUnlocked?: boolean } = {},
+  options: {
+    revision?: FakeRevision;
+    isUnlocked?: boolean;
+    vaultStatus?: 'owned' | 'unclaimed';
+  } = {},
 ): MockHandle {
   const bump = () => options.revision?.bump();
 
   return {
     owner,
     isUnlocked: options.isUnlocked ?? true,
+    vaultStatus: jest.fn(() => options.vaultStatus ?? 'owned'),
     loadVault: jest.fn(() => ({ data: {} })),
     saveVault: jest.fn(bump),
     removeVault: jest.fn(bump),
@@ -110,8 +116,21 @@ function createMockHandle(
   };
 }
 
-function arrangeSession(handle: MockHandle, revision: FakeRevision | null) {
-  (useOptionalVaultSession as jest.Mock).mockReturnValue({ handle, revision });
+function arrangeSession(
+  handle: MockHandle,
+  revision: FakeRevision | null,
+  claimEvidence?:
+    | { status: 'checking' }
+    | { status: 'settled'; result: { kind: string } },
+) {
+  (useOptionalVaultSession as jest.Mock).mockReturnValue({
+    handle,
+    revision,
+    claimEvidence: claimEvidence ?? {
+      status: 'settled' as const,
+      result: { kind: 'skipped-already-owned' },
+    },
+  });
 }
 
 const QUIET_RESULT = {
@@ -793,6 +812,192 @@ describe('VaultReconcileRunner', () => {
       await flushPasses();
 
       expect(mockReconcileVaultWithServer).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Vault Claim Evidence is waited on (#673)', () => {
+    test('mount with unclaimed status and checking evidence runs no pass', async () => {
+      const revision = createFakeRevision();
+      const handle = createMockHandle('user-a', {
+        revision,
+        vaultStatus: 'unclaimed',
+      });
+      arrangeSession(handle, revision, { status: 'checking' });
+
+      arrangeNoPromptReconcile();
+
+      render(<VaultReconcileRunner />);
+
+      // No pass should start on mount when unclaimed and evidence is checking.
+      await flushPasses();
+
+      expect(mockReconcileVaultWithServer).not.toHaveBeenCalled();
+    });
+
+    test('settling evidence with refused-not-this-vault starts a pass', async () => {
+      const revision = createFakeRevision();
+      const handle = createMockHandle('user-a', {
+        revision,
+        vaultStatus: 'unclaimed',
+      });
+      const { rerender } = render(<VaultReconcileRunner />);
+
+      arrangeSession(handle, revision, { status: 'checking' });
+      rerender(<VaultReconcileRunner />);
+
+      arrangeNoPromptReconcile();
+
+      // No pass yet while evidence is checking.
+      await flushPasses();
+      expect(mockReconcileVaultWithServer).not.toHaveBeenCalled();
+
+      // Settle evidence with a refusal.
+      arrangeSession(handle, revision, {
+        status: 'settled',
+        result: { kind: 'refused-not-this-vault' },
+      });
+      rerender(<VaultReconcileRunner />);
+
+      await waitFor(() => {
+        expect(mockReconcileVaultWithServer).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    test('settling evidence with no-evidence starts a pass', async () => {
+      const revision = createFakeRevision();
+      const handle = createMockHandle('user-a', {
+        revision,
+        vaultStatus: 'unclaimed',
+      });
+      arrangeSession(handle, revision, { status: 'checking' });
+      const { rerender } = render(<VaultReconcileRunner />);
+
+      arrangeNoPromptReconcile();
+
+      await flushPasses();
+      expect(mockReconcileVaultWithServer).not.toHaveBeenCalled();
+
+      // Settle evidence with no-evidence result.
+      arrangeSession(handle, revision, {
+        status: 'settled',
+        result: { kind: 'no-evidence' },
+      });
+      rerender(<VaultReconcileRunner />);
+
+      await waitFor(() => {
+        expect(mockReconcileVaultWithServer).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    test('settling evidence with claimed (and vaultStatus flipping to owned with revision bump) starts exactly one pass', async () => {
+      const revision = createFakeRevision();
+      const handle = createMockHandle('user-a', {
+        revision,
+        vaultStatus: 'unclaimed',
+      });
+      arrangeSession(handle, revision, { status: 'checking' });
+      const { rerender } = render(<VaultReconcileRunner />);
+
+      arrangeNoPromptReconcile();
+
+      // (i) Mount with unclaimed + checking, assert no pass.
+      await flushPasses();
+      expect(mockReconcileVaultWithServer).not.toHaveBeenCalled();
+
+      // (ii) Flip the handle's vaultStatus mock to return 'owned' FIRST.
+      handle.vaultStatus.mockReturnValue('owned');
+
+      // (iii) Bump the fake revision (this is the claim's write reporting itself).
+      // A pass must start now because the status is owned and settledAt is null.
+      await act(async () => {
+        revision.bump();
+      });
+
+      // (iv) Assert exactly one call to requestPass.
+      await waitFor(() => {
+        expect(mockReconcileVaultWithServer).toHaveBeenCalledTimes(1);
+      });
+
+      // (v) Rerender with evidence settled { kind: 'claimed' } — the settlement effect
+      // calls requestPass while the pass is in flight, so assert the count is still 1.
+      arrangeSession(handle, revision, {
+        status: 'settled',
+        result: { kind: 'claimed' },
+      });
+      rerender(<VaultReconcileRunner />);
+
+      await flushPasses();
+      expect(mockReconcileVaultWithServer).toHaveBeenCalledTimes(1);
+
+      // (vi) flushPasses() and assert still one (the watermark now covers the bump).
+      await flushPasses();
+      expect(mockReconcileVaultWithServer).toHaveBeenCalledTimes(1);
+    });
+
+    test('postponed evidence does not start a pass; when settled later, exactly one pass runs', async () => {
+      const revision = createFakeRevision();
+      const handle = createMockHandle('user-a', {
+        revision,
+        vaultStatus: 'unclaimed',
+      });
+      arrangeSession(handle, revision, { status: 'checking' });
+      const { rerender } = render(<VaultReconcileRunner />);
+
+      arrangeNoPromptReconcile();
+
+      await flushPasses();
+      expect(mockReconcileVaultWithServer).not.toHaveBeenCalled();
+
+      // Settle evidence with postponed result.
+      arrangeSession(handle, revision, {
+        status: 'settled',
+        result: { kind: 'postponed' },
+      });
+      rerender(<VaultReconcileRunner />);
+
+      // Postponed is not acted upon; no pass should start.
+      await flushPasses();
+      expect(mockReconcileVaultWithServer).not.toHaveBeenCalled();
+
+      // Evidence goes back to checking (e.g., on reconnect or focus).
+      arrangeSession(handle, revision, { status: 'checking' });
+      rerender(<VaultReconcileRunner />);
+
+      await flushPasses();
+      expect(mockReconcileVaultWithServer).not.toHaveBeenCalled();
+
+      // Then settles with a different outcome.
+      arrangeSession(handle, revision, {
+        status: 'settled',
+        result: { kind: 'refused-not-this-vault' },
+      });
+      rerender(<VaultReconcileRunner />);
+
+      await waitFor(() => {
+        expect(mockReconcileVaultWithServer).toHaveBeenCalledTimes(1);
+      });
+
+      // Exactly one pass should have run overall.
+      await flushPasses();
+      expect(mockReconcileVaultWithServer).toHaveBeenCalledTimes(1);
+    });
+
+    test('owned handle runs mount pass even with checking evidence', async () => {
+      const revision = createFakeRevision();
+      const handle = createMockHandle('user-a', {
+        revision,
+        vaultStatus: 'owned',
+      });
+      arrangeSession(handle, revision, { status: 'checking' });
+
+      arrangeNoPromptReconcile();
+
+      render(<VaultReconcileRunner />);
+
+      // Owned status should run a pass regardless of evidence being checking.
+      await waitFor(() => {
+        expect(mockReconcileVaultWithServer).toHaveBeenCalledTimes(1);
+      });
     });
   });
 });

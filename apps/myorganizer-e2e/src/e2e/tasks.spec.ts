@@ -78,7 +78,10 @@ async function setupRoutes(page: import('@playwright/test').Page) {
   const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
   const vaultBlobUrl = vaultBlobRouteRelative();
 
-  let serverMeta: any = { version: 1 };
+  // Absence is 404, not an empty object. A truthy placeholder makes GET /vault
+  // 200, which Vault Absent Evidence reads as server-holds-vault and withholds
+  // the create offer on a fresh browser.
+  let serverMeta: any | null = null;
   let serverMetaEtag = 'W/"0"';
   let serverMetaUpdatedAt = new Date(0).toISOString();
 

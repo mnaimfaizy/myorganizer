@@ -191,9 +191,12 @@ Session**, asked once per owner and read by both the gate and the runner. Vault 
 moves with it: it is the same shape, it was duplicated across the same eight gates, and leaving it
 behind would have the gate reading ownership proof from context and server-holds-a-Vault proof
 from a local hook with nothing to explain the split. Lifting changes what re-asks a postponement —
-there is no gate re-render in the session — so both checks take the `online` event and window
-focus, the pair `VaultMetaConvergeRunner` already uses. Neither is a prompt, so there is nothing
-here for decision point 1 to ration.
+there is no gate re-render in the session — so both checks keep the `online` event they had and
+add window focus, the trigger `VaultMetaConvergeRunner` already uses for a remote event with no
+local signal. Only a postponement is re-asked. A lost Session is not: there is no Session to ask
+with, and a new sign-in is a new owner and a fresh question, so `session-lost` is terminal for the
+owner it was answered for. Neither trigger is a prompt, so there is nothing here for decision
+point 1 to ration.
 
 The reconcile runner therefore has three triggers: mount, a Local Vault Revision bump, and
 evidence settling. On `claimed` the claim bumps the revision and the settlement arrives as well;

@@ -56,7 +56,7 @@ describe('VAULT_ABSENT_EVIDENCE_GATE_VIEWS', () => {
     if (view.kind === 'cannot-check') {
       expect(view.title).toBe('We could not reach the server');
       expect(view.description).toBe(
-        'Checking for your vault needs the server, and we could not reach it. Nothing here was changed, and we will try again when you are back online.',
+        'Checking for your vault needs the server, and we could not reach it. Nothing here was changed, and we will keep trying.',
       );
     }
   });
