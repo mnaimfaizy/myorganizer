@@ -25,6 +25,8 @@ import { AXIS_TITLES, REVIEW_TIER_LABELS, VERDICT_VALUES } from './schema.mjs';
 
 export const SUMMARY_MARKER = '<!-- code-review-report -->';
 export const findingMarker = (id) => `<!-- code-review:finding:${id} -->`;
+/** Marks the one reply a thread gets when its finding is gone but the token cannot resolve it. */
+export const STALE_MARKER = '<!-- code-review:stale -->';
 const FINDING_MARKER_RE = /<!-- code-review:finding:([0-9a-f]+) -->/g;
 
 export const findingIdsIn = (body) =>

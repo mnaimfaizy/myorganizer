@@ -34,7 +34,7 @@ import {
   parseArgs,
   readJsonOr,
 } from './cli.mjs';
-import { planPublication } from './publish.mjs';
+import { STALE_MARKER, planPublication } from './publish.mjs';
 
 const THREADS_QUERY = `
   query($owner: String!, $name: String!, $number: Int!, $after: String) {
@@ -42,7 +42,7 @@ const THREADS_QUERY = `
       pullRequest(number: $number) {
         reviewThreads(first: 100, after: $after) {
           pageInfo { hasNextPage endCursor }
-          nodes { id isResolved comments(first: 1) { nodes { body databaseId } } }
+          nodes { id isResolved comments(first: 20) { nodes { body databaseId } } }
         }
       }
     }
@@ -93,6 +93,12 @@ const openThreadsOf = ({ owner, name, number }) => {
           id: t.id,
           body: t.comments.nodes[0]?.body ?? '',
           firstCommentId: t.comments.nodes[0]?.databaseId,
+          // The prefix also matches replies posted before the marker existed.
+          alreadyNotified: t.comments.nodes.some(
+            (c) =>
+              (c.body ?? '').includes(STALE_MARKER) ||
+              (c.body ?? '').startsWith('No longer reported as of'),
+          ),
         });
     if (!page.pageInfo.hasNextPage) break;
     after = page.pageInfo.endCursor;
@@ -259,10 +265,12 @@ export const main = (argv) => {
     tryAct(
       `resolve thread ${threadId} (finding no longer reported)`,
       () => graphql(RESOLVE_THREAD, { id: threadId }),
-      // The job token is sometimes refused the mutation; a reply in the
-      // thread says the same thing to a human reader.
+      // The job token is refused the mutation; one reply in the thread
+      // says the same thing to a human reader, and only one — a run that
+      // finds the reply already there says nothing more.
       () =>
         thread?.firstCommentId &&
+        !thread.alreadyNotified &&
         gh(
           [
             'api',
@@ -273,7 +281,7 @@ export const main = (argv) => {
             '-',
           ],
           JSON.stringify({
-            body: `No longer reported as of \`${flags.head.slice(0, 7)}\`; this thread can be resolved.`,
+            body: `${STALE_MARKER}\nNo longer reported as of \`${flags.head.slice(0, 7)}\`; this thread can be resolved.`,
           }),
         ),
     );
