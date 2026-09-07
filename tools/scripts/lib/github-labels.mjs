@@ -38,6 +38,13 @@ export function loadGithubLabelCatalog(
     );
   }
 
+  // ADR 0070 item 7: a third set, applied by the Review Tier classifier alone.
+  if (!Array.isArray(catalog.review) || !catalog.review.every(isLabelRecord)) {
+    throw new Error(
+      'github-labels catalog review must be an array of label records.',
+    );
+  }
+
   if (
     !Array.isArray(catalog.surface?.kind) ||
     !catalog.surface.kind.every(isLabelRecord) ||
@@ -59,9 +66,14 @@ export function surfaceLabelNames(catalog) {
   ]);
 }
 
+export function reviewTierLabelNames(catalog) {
+  return new Set(catalog.review.map((label) => label.name));
+}
+
 export function provisionLabels(catalog) {
   return [
     ...catalog.orchestration,
+    ...catalog.review,
     ...catalog.surface.kind,
     ...catalog.surface.area,
   ];

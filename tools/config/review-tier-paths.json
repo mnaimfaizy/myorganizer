@@ -1,0 +1,203 @@
+{
+  "schemaVersion": 1,
+  "comment": "Inputs to the Review Tier classifier (ADR 0070). `rules` are ordered and first match wins; a file no rule matches takes the `tier:*` tag of the Nx project that owns it, and a file neither matches falls to `human`. The human rules come first on purpose: a broad prose rule further down must never reach a path listed above it. Lowering a path's tier means editing this file, and this file is itself a human path (item 3). Thresholds and the reach exclusions were set from the replay in docs/research/2026-09-06-review-tier-replay.md, not guessed.",
+  "rules": [
+    {
+      "id": "workflows-and-ownership",
+      "tier": "human",
+      "reason": "CI workflows decide which gates run and CODEOWNERS decides who must approve; a change here changes what every later Pull Request is held to (ADR 0070 item 4).",
+      "patterns": [
+        ".github/workflows/**",
+        ".github/dependabot.yml",
+        ".github/CODEOWNERS"
+      ]
+    },
+    {
+      "id": "dependency-lockfiles",
+      "tier": "human",
+      "reason": "A dependency change always moves the lockfile: CI installs with --immutable, so a package.json that pulls something new without a yarn.lock change cannot merge. The lockfile is the only record of what was actually installed.",
+      "patterns": [
+        "yarn.lock",
+        ".yarnrc.yml",
+        ".npmrc",
+        "pnpm-workspace.yaml",
+        "**/package-lock.json",
+        "**/pnpm-lock.yaml"
+      ]
+    },
+    {
+      "id": "gates-and-their-config",
+      "tier": "human",
+      "reason": "The Assertion Gates, the hook that runs them, the config they read, and this map are the things that decide what merges; the map protects itself (ADR 0070 item 3). project.json is here because tier:* tags are the classifier's primary signal.",
+      "patterns": [
+        "tools/scripts/check-*.mjs",
+        "tools/scripts/run-assertion-gates.mjs",
+        "tools/scripts/lib/**",
+        "tools/scripts/ai/**",
+        "tools/config/**",
+        ".husky/**",
+        "**/project.json"
+      ]
+    },
+    {
+      "id": "review-pipeline",
+      "tier": "human",
+      "reason": "The reviewer's own instructions, the sub-agents that judge code, and the report contract. A Pull Request that edits how it will be reviewed is one component grading its own authority. Other sub-agents are agent-instructions.",
+      "patterns": [
+        ".agents/skills/code-review/**",
+        "tools/scripts/review/**",
+        ".github/agents/*review*",
+        ".github/agents/*audit*"
+      ]
+    },
+    {
+      "id": "orchestrator",
+      "tier": "human",
+      "reason": "The sandcastle loop dispatches agents with a token and merges slices into integration branches; a change here changes what runs unattended.",
+      "patterns": [".sandcastle/**"]
+    },
+    {
+      "id": "workspace-config",
+      "tier": "human",
+      "reason": "Root build, lint, and TypeScript configuration applies to every project at once and its failure mode is a rule that silently stops applying.",
+      "patterns": [
+        "nx.json",
+        "eslint.config.js",
+        "tsconfig.base.json",
+        "tsconfig.json",
+        "jest.preset.js",
+        "jest.config.ts",
+        "vercel.json",
+        "openapitools.json"
+      ]
+    },
+    {
+      "id": "persistence",
+      "tier": "human",
+      "reason": "Prisma schema and migrations: a wrong migration is unrecoverable once it runs against production data.",
+      "patterns": [
+        "apps/backend/src/prisma/**",
+        "apps/backend/src/prisma.config.ts"
+      ]
+    },
+    {
+      "id": "backend-auth-and-session",
+      "tier": "human",
+      "reason": "Authentication, guards, and request middleware: the backend app is tier:human already, and these paths are listed so the human set reads in one place.",
+      "patterns": [
+        "apps/backend/src/middleware/**",
+        "apps/backend/src/guards/**",
+        "apps/backend/src/**/*auth*",
+        "apps/backend/src/**/*session*"
+      ]
+    },
+    {
+      "id": "security-policy",
+      "tier": "human",
+      "reason": "The published security policy and its supporting documents are the repo's promise to reporters; CODEOWNERS already names them.",
+      "patterns": ["SECURITY.md", "docs/SECURITY/**"]
+    },
+    {
+      "id": "package-manifests",
+      "tier": "agent",
+      "reason": "package.json without a lockfile change is scripts and metadata, not a dependency change (see dependency-lockfiles). Forty-one of the last two hundred Pull Requests touched it without touching yarn.lock, almost always to add an npm script.",
+      "patterns": ["package.json", "**/package.json"]
+    },
+    {
+      "id": "agent-instructions",
+      "tier": "agent",
+      "reason": "Harness instructions, skills, and the domain glossary shape what agents do next; a reviewer should read them, and a human decides only when the diff also reaches a human path.",
+      "patterns": [
+        "AGENTS.md",
+        "**/AGENTS.md",
+        "CLAUDE.md",
+        "GEMINI.md",
+        "CODING_STANDARDS.md",
+        "CONTEXT.md",
+        "DEVELOPMENT.md",
+        "TECH_STACK.md",
+        ".agents/**",
+        ".claude/**",
+        ".cursor/**",
+        ".gemini/**",
+        ".github/copilot-instructions.md",
+        ".github/instructions/**",
+        "skills-lock.json",
+        "upstream-brief.config.yml"
+      ]
+    },
+    {
+      "id": "decisions-and-explainers",
+      "tier": "agent",
+      "reason": "ADRs record decisions and House Explainer Pages carry gated facts; both deserve a reading, neither can break a build.",
+      "patterns": ["docs/adr/**", "docs/**/*.html"]
+    },
+    {
+      "id": "repo-hygiene",
+      "tier": "agent",
+      "reason": "Editor, formatter, ignore, and local-service configuration: low blast radius, but a wrong ignore pattern hides files from every later gate.",
+      "patterns": [
+        ".editorconfig",
+        ".gitattributes",
+        ".gitignore",
+        ".graphifyignore",
+        ".nxignore",
+        ".prettierrc",
+        ".prettierignore",
+        ".mcp.json",
+        ".env.example",
+        ".vscode/**",
+        ".github/**",
+        "docker-compose.yml",
+        "chromatic.config.json",
+        "component.json",
+        "CHANGELOG.md",
+        "RELEASE_NOTES.md"
+      ]
+    },
+    {
+      "id": "prose",
+      "tier": "auto",
+      "reason": "Markdown that is not an instruction file or a decision: feature docs, research, READMEs, licences. Nothing executes it.",
+      "patterns": ["docs/**/*.md", "**/*.md", "LICENSE", "NOTICE"]
+    }
+  ],
+  "reach": {
+    "comment": "Files that count toward their project's own tier but never seed the dependency walk: a story, a test, or a note cannot change what a dependent project runs.",
+    "exclude": [
+      "**/*.stories.tsx",
+      "**/*.stories.ts",
+      "**/*.spec.ts",
+      "**/*.spec.tsx",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+      "**/*.test.mjs",
+      "**/__tests__/**",
+      "**/*.md"
+    ]
+  },
+  "size": {
+    "comment": "Lines are additions plus deletions across the diff. A diff over the `agent` ceiling is human regardless of what it touches; over the `auto` ceiling it is at least agent.",
+    "auto": {
+      "maxFiles": 10,
+      "maxLines": 300
+    },
+    "agent": {
+      "maxFiles": 80,
+      "maxLines": 3000
+    }
+  },
+  "blastRadius": {
+    "comment": "Projects reached: the changed projects plus every project that depends on one of them, transitively, through the Nx graph.",
+    "auto": {
+      "maxProjects": 3
+    },
+    "agent": {
+      "maxProjects": 20
+    }
+  },
+  "authors": {
+    "comment": "Logins whose Pull Requests may classify below human. Bots (any login ending in [bot]) and every other login are human.",
+    "trusted": ["mnaimfaizy"]
+  }
+}

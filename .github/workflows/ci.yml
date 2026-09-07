@@ -620,6 +620,9 @@ jobs:
       - name: Code review report contracts
         run: corepack yarn review:test
 
+      - name: Review tier classifier contracts
+        run: corepack yarn review:tier:test
+
       - name: Gate coverage checker contracts
         run: corepack yarn gates:coverage:test
 

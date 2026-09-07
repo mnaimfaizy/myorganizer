@@ -77,6 +77,23 @@
       "description": "Design must be stress-tested in a grilling session before work starts \u2014 dispatch-agents skips it"
     }
   ],
+  "review": [
+    {
+      "name": "review:auto",
+      "color": "c2e0c6",
+      "description": "Review Tier: merges on green checks and an agent verdict with no finding above nit (ADR 0070)"
+    },
+    {
+      "name": "review:agent",
+      "color": "fbca04",
+      "description": "Review Tier: merges on green checks and an agent verdict with no blocking finding (ADR 0070)"
+    },
+    {
+      "name": "review:human",
+      "color": "d93f0b",
+      "description": "Review Tier: a named human approval is required; the agent verdict is never sufficient (ADR 0070)"
+    }
+  ],
   "surface": {
     "kind": [
       {

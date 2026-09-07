@@ -6,7 +6,7 @@
 //
 // An untagged project matches no @nx/enforce-module-boundaries constraint and
 // may import anything, and a project without `tier:*` reaches the Review Tier
-// classifier as an unknown (ADR 0069). Both are silent. This check is what
+// classifier as an unknown (ADR 0070). Both are silent. This check is what
 // makes "tag the new library" someone's job.
 //
 // Deliberately pure: reads project.json files from disk, no Nx daemon.

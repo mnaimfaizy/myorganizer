@@ -1,0 +1,90 @@
+name: Review Tier
+
+# Computes the Review Tier of a Pull Request from its diff (ADR 0070). The job
+# output is the truth; the label the second step applies is a display of it,
+# and downstream jobs read the output, never the label (item 3).
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: review-tier-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  classify:
+    name: Review Tier
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    outputs:
+      tier: ${{ steps.classify.outputs.tier }}
+      label: ${{ steps.classify.outputs.label }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
+
+      - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: corepack yarn install --immutable
+
+      # Exit 2 means the classifier could not run; it still writes tier=human
+      # to $GITHUB_OUTPUT, so the label step below applies human and the run
+      # fails visibly rather than silently.
+      - name: Classify the diff
+        id: classify
+        env:
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          corepack yarn review:tier:check \
+            --base '${{ github.event.pull_request.base.sha }}' \
+            --head '${{ github.event.pull_request.head.sha }}' \
+            --author "$PR_AUTHOR" \
+            --out "$RUNNER_TEMP/review-tier.json"
+
+      # A fork's token cannot write labels; the output above still stands.
+      - name: Apply the review tier label
+        if: always() && steps.classify.outputs.label != '' && github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LABEL: ${{ steps.classify.outputs.label }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          # The label must exist: `yarn ai:create-labels` provisions the
+          # catalog in tools/config/github-labels.json. Say so instead of
+          # failing on a bare 422.
+          if ! gh label list --search 'review:' --json name --jq '.[].name' | grep -qx "$LABEL"; then
+            echo "::error::label $LABEL does not exist in this repository; run 'yarn ai:create-labels' once"
+            exit 1
+          fi
+          # Remove only the review:* labels the pull request currently wears;
+          # removing an absent label is an error, not a no-op.
+          REMOVE=''
+          for other in $(gh pr view "$PR" --json labels --jq '.labels[].name' | grep '^review:' || true); do
+            if [ "$other" != "$LABEL" ]; then REMOVE="$REMOVE --remove-label $other"; fi
+          done
+          # shellcheck disable=SC2086
+          gh pr edit "$PR" --add-label "$LABEL" $REMOVE

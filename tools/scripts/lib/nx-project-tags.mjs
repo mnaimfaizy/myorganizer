@@ -7,7 +7,7 @@
  * constrains projects whose tags match a constraint. An untagged project
  * matches nothing and may import anything, so "add tags to the new lib" is
  * exactly the kind of instruction that decays. The Review Tier classifier
- * (ADR 0069) treats a missing `tier:*` as `human`, which is safe but hides
+ * (ADR 0070) treats a missing `tier:*` as `human`, which is safe but hides
  * that the tag was forgotten.
  */
 import { readFileSync } from 'node:fs';
