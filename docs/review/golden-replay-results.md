@@ -29,11 +29,11 @@ Promotion to `guard` takes **three consecutive catches**; demotion to
 `frontier` takes **one miss**. The asymmetry is deliberate — a wrongly
 promoted case is a detector that quietly stopped running.
 
-| Case                                          | Tier       | Since      |
-| --------------------------------------------- | ---------- | ---------- |
-| `groceries-blob-type-without-fanouts`         | `guard`    | 2026-09-07 |
-| `export-envelope-drops-tasks`                 | `guard`    | 2026-09-07 |
-| `groceries-ui-written-against-absent-roles`   | `frontier` | 2026-09-07 |
+| Case                                          | Tier       | Since      | History                                                                       |
+| --------------------------------------------- | ---------- | ---------- | ----------------------------------------------------------------------------- |
+| `groceries-blob-type-without-fanouts`         | `guard`    | 2026-09-07 | caught in all six runs                                                        |
+| `export-envelope-drops-tasks`                 | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391 the same day |
+| `groceries-ui-written-against-absent-roles`   | `frontier` | 2026-09-07 |                                                                               |
 | `sync-bookmarks-without-restore-or-meta-push` | `frontier` | 2026-09-07 |
 | `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 |
 | `signup-password-wrapper-inside-formcontrol`  | `frontier` | 2026-09-07 |
@@ -47,30 +47,57 @@ The tier and the evidence that earned it are in
 
 Newest last. "Cases" is the tier replayed, not the whole set.
 
-| Date       | Model             | Cases        | Result                      | Reviewer change under test                    |
-| ---------- | ----------------- | ------------ | --------------------------- | --------------------------------------------- |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier) | 1 of 3                      | none — first measurement                      |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier) | 2 of 3                      | none — same skill, re-run                     |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier) | 2 of 3                      | reach-through checks added to Standards brief |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier) | 2 of 3                      | reach-through checks, re-run                  |
-| 2026-09-07 | `claude-sonnet-5` | 7 (pre-tier) | **2 of 7**, 2 of 8 findings | reach-through checks, full set                |
+| Date       | Model             | Cases         | Result                      | Reviewer change under test                    |
+| ---------- | ----------------- | ------------- | --------------------------- | --------------------------------------------- |
+| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)  | 1 of 3                      | none — first measurement                      |
+| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)  | 2 of 3                      | none — same skill, re-run                     |
+| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)  | 2 of 3                      | reach-through checks added to Standards brief |
+| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)  | 2 of 3                      | reach-through checks, re-run                  |
+| 2026-09-07 | `claude-sonnet-5` | 7 (pre-tier)  | **2 of 7**, 2 of 8 findings | reach-through checks, full set                |
+| 2026-09-07 | `claude-sonnet-5` | 8 (all tiers) | **1 of 8**, 1 of 9 findings | consequence checks added to Standards brief   |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each.
 
-### Not yet run
+### What the consequence checks measured
 
-The consequence checks added on 2026-09-07 have **not** been measured. The
-next replay is their first measurement, and it is the one that decides whether
-the Opus bake-off is worth running: if the checks move Sonnet substantially,
-the misses were instruction rather than capability and a stronger model buys
-little. Run the bake-off, if at all, on the cases that still miss after that —
-a case Sonnet already catches cannot distinguish two models.
+Run [34105977391](https://github.com/mnaimfaizy/myorganizer/actions/runs/34105977391).
+The consequence checks did not work. Recall fell from 2 of 7 to 1 of 8, and the
+case that changed direction changed the wrong way.
 
-Note that five of the eight cases were the source of those checks, so the next
-run is partly a mirror. `mail-test-setup-assigns-undefined-to-env` was added as
-a held-out case for exactly this reason: it turns on a language semantic inside
-the hunk, which none of the consequence checks addresses.
+- **None of the five cases the checks were written from moved.**
+  `groceries-ui-written-against-absent-roles` (check 1),
+  `sync-bookmarks-without-restore-or-meta-push` (check 2),
+  `release-bump-leaves-generated-client-stale` (check 3),
+  `import-confirm-is-bare-window-confirm` (check 4) and
+  `signup-password-wrapper-inside-formcontrol` (check 5) all still miss.
+  Writing an instruction at a miss did not produce a catch.
+- **`export-envelope-drops-tasks` regressed.** It had been caught four times
+  running under the reach-through brief alone; here it missed, while producing
+  four other findings. It is demoted to `frontier` by the rule.
+- **The held-out case missed too.** `mail-test-setup-assigns-undefined-to-env`
+  turns on a language semantic inside the hunk, and the reviewer did not raise
+  it. So the miss is not confined to the reach-through class of defect.
+- Every failing case produced a **valid report with other findings in it**, two
+  to eight of them. None of these is a rejected report or a scoring artefact,
+  and none is the incident.
+
+Two readings survive this run, and one run cannot separate them. **Dilution**:
+the brief roughly doubled in length, and the reach-through instruction now
+competes with five more, which would explain the one regression precisely.
+**Variance**: `export-envelope-drops-tasks` now reads
+`missed, caught, caught, caught, caught, missed` — four of six — and a single
+run of a stochastic reviewer was never going to settle it.
+
+What the run does settle is that the consequence checks bought nothing
+measurable on the cases they were written for, at the cost of doubling the
+brief. The parsimonious next step is to remove them and re-measure, not to
+shorten them; a second instruction class that helps should show something on
+its first eight cases.
+
+The Opus bake-off is now more interesting, not less. If instruction volume is
+what hurt, a stronger model is the cleaner test of whether the misses are
+capability at all.
 
 ## Reproduce
 

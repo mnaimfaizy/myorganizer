@@ -36,8 +36,7 @@
       "id": "export-envelope-drops-tasks",
       "title": "The hardened export envelope enumerates blob types by hand and omits Tasks",
       "incident": "ADR 0053, issue #537, fixed by PR #540, introduced by PR #77",
-      "tier": "guard",
-      "tierEvidence": "promoted 2026-09-07 on four consecutive catches recorded in docs/research/2026-09-07-golden-replay-baseline.md: missed in 3-case run 1, then caught in 3-case run 2, in both runs after the reach-through brief, and in the 7-case run.",
+      "tier": "frontier",
       "base": "dea9122c1854879044d51696dec93a57c89e914d",
       "head": "7fde881c0a2f57d05bfc92a20c9cbb863dd52200",
       "spec": {
