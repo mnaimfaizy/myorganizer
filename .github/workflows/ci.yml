@@ -666,6 +666,9 @@ jobs:
       - name: Check review pipeline page
         run: corepack yarn review:pages:check
 
+      - name: Check the code-review golden set
+        run: corepack yarn review:golden:check
+
       - name: Check release pipeline page
         run: corepack yarn deploy:pages:check
 

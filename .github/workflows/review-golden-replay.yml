@@ -1,0 +1,189 @@
+name: Golden Replay
+
+# Replays the code reviewer against the golden set (ADR 0070, Consequences):
+# commit ranges from this repository's own history in which a documented
+# incident was merged, and the finding a reviewer should have raised. Runs
+# on every Pull Request that changes how reviews are produced — the skill,
+# the schema, the validator, the renderer, the review workflow, or the set —
+# so a prompt or contract change is measured before it reaches a real Pull
+# Request. One reviewer run per case; the job named "Golden Replay" fails
+# when any case's recall falls below its minimum.
+#
+# Same credential rules as code-review.yml.
+
+on:
+  pull_request:
+    paths:
+      - '.agents/skills/code-review/**'
+      - 'tools/scripts/review/**'
+      - '.github/workflows/code-review.yml'
+      - '.github/workflows/review-golden-replay.yml'
+      - 'tools/config/review-golden-set.json'
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+
+concurrency:
+  group: golden-replay-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  cases:
+    name: Golden cases
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.list.outputs.matrix }}
+      has_key: ${{ steps.list.outputs.has_key }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: List the cases
+        id: list
+        env:
+          HAS_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
+        run: |
+          echo "matrix=$(jq -c '[.cases[].id]' tools/config/review-golden-set.json)" >> "$GITHUB_OUTPUT"
+          echo "has_key=$HAS_KEY" >> "$GITHUB_OUTPUT"
+          if [ "$HAS_KEY" != 'true' ]; then
+            {
+              echo '## Golden replay skipped'
+              echo
+              echo 'Neither `CLAUDE_CODE_OAUTH_TOKEN` nor `ANTHROPIC_API_KEY` is set as a repository secret, so no case was replayed.'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  replay:
+    name: Replay ${{ matrix.case }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: cases
+    if: needs.cases.outputs.has_key == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        case: ${{ fromJSON(needs.cases.outputs.matrix) }}
+    env:
+      # Required for Prisma v7 config loading if a reviewer runs backend tests.
+      DATABASE_URL: postgresql://localhost:5432/myorganizer
+    steps:
+      # The Pull Request head: today's skill and tooling review yesterday's
+      # range. Full history so both ends of the case exist.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
+
+      - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: corepack yarn install --immutable
+
+      - name: Load the case
+        id: case
+        run: |
+          CASE="$(node tools/scripts/review/score-golden-case.mjs --show '${{ matrix.case }}')"
+          echo "base=$(jq -r .base <<<"$CASE")" >> "$GITHUB_OUTPUT"
+          echo "head=$(jq -r .head <<<"$CASE")" >> "$GITHUB_OUTPUT"
+          echo "title=$(jq -r .title <<<"$CASE")" >> "$GITHUB_OUTPUT"
+          mkdir -p tmp/code-review
+          jq '{spec: .spec}' <<<"$CASE" > tmp/code-review/spec.json
+          echo "replaying $(jq -r .incident <<<"$CASE"): $(jq -r .base <<<"$CASE" | cut -c1-7)...$(jq -r .head <<<"$CASE" | cut -c1-7)"
+
+      - name: Run the reviewer
+        id: reviewer
+        continue-on-error: true
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: |
+            /code-review
+
+            You are running in CI (see "In CI" in the skill), replaying a historical range from this repository's own history. Facts for this run:
+            - fixed point (base): ${{ steps.case.outputs.base }}
+            - head: ${{ steps.case.outputs.head }}
+            - the head is NOT the current checkout. Read the changed files with `git show <head>:<path>` and the diff with `git diff <base>...<head>`; for executed evidence use `git worktree add tmp/code-review/worktree <head>` and remove it afterwards. The standards sources are the current checkout's, as the skill says.
+            - branch name: none (historical range)
+            - tier: null — write `"tier": null` in the envelope
+            - spec: already resolved in tmp/code-review/spec.json (kind none). Skip the Spec axis. Do not fetch anything, do not ask anyone.
+            - write the envelope to exactly tmp/code-review/report.json and run the validator on it as the skill says. Do not run the renderer and do not post anything.
+            - the model id to record in the envelope: ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
+            - your run ends the moment you reply without calling a tool, and no background notification ever reaches you here. Invoke the sub-agent with the Agent tool's `run_in_background: false`; never reply "waiting", never schedule a wake-up, and do not stop until tmp/code-review/report.json exists and the validator has run on it.
+          claude_args: >-
+            --model ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
+            --max-turns 80
+            --allowedTools "Read,Glob,Grep,Write,Edit,Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git ls-tree:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(sed -n:*),Bash(echo:*),Bash(rm -f tmp/code-review/*)"
+
+      - name: Keep the reviewer transcript
+        if: steps.reviewer.outputs.execution_file != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: golden-transcript-${{ matrix.case }}
+          path: ${{ steps.reviewer.outputs.execution_file }}
+          retention-days: 7
+
+      - name: Validate the report
+        run: |
+          if [ ! -f tmp/code-review/report.json ]; then
+            candidate="$(ls tmp/code-review/*.report.json 2>/dev/null | head -1 || true)"
+            [ -n "$candidate" ] && mv "$candidate" tmp/code-review/report.json
+          fi
+          if [ ! -f tmp/code-review/report.json ]; then
+            echo "::error::the reviewer wrote no report for case ${{ matrix.case }} (reviewer step outcome: ${{ steps.reviewer.outcome }})"
+            exit 1
+          fi
+          corepack yarn review:validate tmp/code-review/report.json --out tmp/code-review/normalized.json
+
+      # Recall against the case's expected findings; below the minimum fails
+      # this case, and the summary names what was missed and why it mattered.
+      - name: Score the case
+        run: |
+          corepack yarn review:golden:score --case '${{ matrix.case }}' \
+            --normalized tmp/code-review/normalized.json --out tmp/code-review/score.json
+
+      - name: Keep the report and score
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: golden-${{ matrix.case }}
+          path: |
+            tmp/code-review/normalized.json
+            tmp/code-review/score.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  verdict:
+    name: Golden Replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [cases, replay]
+    if: always()
+    steps:
+      - name: Combine
+        run: |
+          echo "cases: ${{ needs.cases.result }}; replay: ${{ needs.replay.result }}"
+          if [ '${{ needs.cases.outputs.has_key }}' != 'true' ]; then
+            echo 'no reviewer credential; nothing replayed'
+            exit 0
+          fi
+          if [ '${{ needs.replay.result }}' != 'success' ]; then
+            echo '::error::at least one golden case fell below its minimum recall; see the Replay jobs'
+            exit 1
+          fi

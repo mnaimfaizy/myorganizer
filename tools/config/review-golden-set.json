@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "comment": "The code-review golden set (ADR 0070, Consequences). Each case is a real commit range from this repository's history in which a defect the repo later documented as an ADR incident was merged, and the finding a reviewer should have raised about it. `source` and `rule` are case-insensitive patterns because the reviewer phrases a rule in the source's words; `files` lists every path at which the same defect is fairly located. Recall is matched over expected and a case passes at or above `minRecall`. Replayed by .github/workflows/review-golden-replay.yml on every Pull Request that touches the skill, the schema, the validator, the renderer, the review workflow, or this file; scored by tools/scripts/review/score-golden-case.mjs; shape and ranges asserted by tools/scripts/check-review-golden-set.mjs. Grows by attribution: when a merged defect is traced to a review that should have caught it, its range and expected finding go here.",
+  "cases": [
+    {
+      "id": "groceries-blob-type-without-fanouts",
+      "title": "A sixth VaultBlobType member is added and no hand-enumerated consumer is touched",
+      "incident": "ADR 0053, issue #512, merged as PR #101",
+      "base": "d95c25bdd486af5a51d128a4f7018d02d0be0ac8",
+      "head": "b9176851470821a4cad65f5290134f1882ef9ec1",
+      "spec": { "kind": "none", "foundBy": "none" },
+      "expected": [
+        {
+          "id": "reconcile-omits-new-member",
+          "axis": "standards",
+          "source": "AGENTS\\.md|0053|vaultMigration",
+          "rule": "fan-?out|enum|every member|Record<|blob type",
+          "files": [
+            "libs/app-api-client/src/api.ts",
+            "libs/api-specs/src/api-specs.openapi.yaml",
+            "libs/web-vault/src/lib/vault/vaultMigration.ts",
+            "apps/backend/src/services/VaultService.ts"
+          ],
+          "minSeverity": "should-fix",
+          "why": "the diff added Groceries to VaultBlobType and changed no consumer; libs/web-vault/src/lib/vault/vaultMigration.ts hand-enumerated five members, so the keep-server reconcile never uploaded or compared groceries ciphertext and destroyed it (#512)"
+        }
+      ],
+      "minRecall": 1
+    },
+    {
+      "id": "export-envelope-drops-tasks",
+      "title": "The hardened export envelope enumerates blob types by hand and omits Tasks",
+      "incident": "ADR 0053, issue #537, merged as PR #77",
+      "base": "dea9122c1854879044d51696dec93a57c89e914d",
+      "head": "7fde881c0a2f57d05bfc92a20c9cbb863dd52200",
+      "spec": { "kind": "none", "foundBy": "none" },
+      "expected": [
+        {
+          "id": "envelope-omits-tasks",
+          "axis": "standards",
+          "source": "AGENTS\\.md|0053",
+          "rule": "fan-?out|enum|every member|Record<|blob type",
+          "files": ["libs/web-vault/src/lib/vault/vaultExportImport.ts"],
+          "minSeverity": "should-fix",
+          "why": "envelopeFromLocalVault listed the blob types as property names and left Tasks out, so a hardened export silently dropped that blob from the day it was written (#537)"
+        }
+      ],
+      "minRecall": 1
+    },
+    {
+      "id": "warning-role-unstyles-groceries",
+      "title": "The Tailwind preset stops emitting literal palette utilities that pages still use",
+      "incident": "ADR 0065, issue #632, merged as PR #631",
+      "base": "fbaef0744a6790c94c1bb60d2f5a53f9ecef8718",
+      "head": "e4220d012f7fa62fcc5d8766675586bf92038f24",
+      "spec": { "kind": "none", "foundBy": "none" },
+      "expected": [
+        {
+          "id": "palette-classes-resolve-to-nothing",
+          "axis": "standards",
+          "source": "AGENTS\\.md|DESIGN\\.md|0065|tokens",
+          "rule": "token|palette|hard-?cod|colou?r|tailwind|utilit",
+          "files": [
+            "libs/design-tokens/src/tokens.json",
+            "libs/design-tokens/src/generated/tailwind-preset.js",
+            "apps/myorganizer/tailwind.config.js",
+            "libs/web-ui/tailwind.config.js",
+            "apps/myorganizer/src/app/global.css"
+          ],
+          "minSeverity": "should-fix",
+          "why": "the groceries pages used literal palette classes that the reshaped preset no longer emitted; Tailwind drops an unresolvable class silently, so the pages shipped unstyled (#632)"
+        }
+      ],
+      "minRecall": 1
+    }
+  ]
+}
