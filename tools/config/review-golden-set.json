@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "comment": "The code-review golden set (ADR 0070, Consequences). Each case is a real commit range from this repository's history in which a defect the repo later documented as an ADR incident was merged, and the finding a reviewer should have raised about it. `source` and `rule` are case-insensitive patterns because the reviewer phrases a rule in the source's words; `files` lists every path at which the same defect is fairly located. Recall is matched over expected and a case passes at or above `minRecall`. Replayed by .github/workflows/review-golden-replay.yml on every Pull Request that touches the skill, the schema, the validator, the renderer, the review workflow, or this file; scored by tools/scripts/review/score-golden-case.mjs; shape and ranges asserted by tools/scripts/check-review-golden-set.mjs. Grows by attribution: when a merged defect is traced to a review that should have caught it, its range and expected finding go here.",
+  "comment": "The code-review golden set (ADR 0070, Consequences). Each case is a real commit range from this repository's history in which a defect the repo later documented was merged, and the finding a reviewer should have raised about it. `source` and `rule` are case-insensitive patterns because the reviewer phrases a rule in the source's words; `files` lists every path at which the same defect is fairly located. Recall is matched over expected and a case passes at or above `minRecall`. Replayed by .github/workflows/review-golden-replay.yml on every Pull Request that touches the skill, the review scripts, the shared reviewer action, the review workflows, or this file; scored by tools/scripts/review/score-golden-case.mjs; shape and ranges asserted by tools/scripts/check-review-golden-set.mjs. Standards are always today's: the question a case asks is whether the current reviewer would catch the defect, not whether the rule existed when it merged. Grows by attribution: when a merged defect is traced to the pull request that introduced it, its range and expected finding go here, with the attribution evidence in the incident line. A squash-merged pull request uses the squash commit as head and its first parent as base.",
   "cases": [
     {
       "id": "groceries-blob-type-without-fanouts",
       "title": "A sixth VaultBlobType member is added and no hand-enumerated consumer is touched",
-      "incident": "ADR 0053, issue #512, merged as PR #101",
+      "incident": "ADR 0053, issue #512, fixed by PR #536, introduced by PR #101",
       "base": "d95c25bdd486af5a51d128a4f7018d02d0be0ac8",
       "head": "b9176851470821a4cad65f5290134f1882ef9ec1",
       "spec": { "kind": "none", "foundBy": "none" },
@@ -30,7 +30,7 @@
     {
       "id": "export-envelope-drops-tasks",
       "title": "The hardened export envelope enumerates blob types by hand and omits Tasks",
-      "incident": "ADR 0053, issue #537, merged as PR #77",
+      "incident": "ADR 0053, issue #537, fixed by PR #540, introduced by PR #77",
       "base": "dea9122c1854879044d51696dec93a57c89e914d",
       "head": "7fde881c0a2f57d05bfc92a20c9cbb863dd52200",
       "spec": { "kind": "none", "foundBy": "none" },
@@ -48,27 +48,132 @@
       "minRecall": 1
     },
     {
-      "id": "warning-role-unstyles-groceries",
-      "title": "The Tailwind preset stops emitting literal palette utilities that pages still use",
-      "incident": "ADR 0065, issue #632, merged as PR #631",
-      "base": "fbaef0744a6790c94c1bb60d2f5a53f9ecef8718",
-      "head": "e4220d012f7fa62fcc5d8766675586bf92038f24",
+      "id": "groceries-ui-written-against-absent-roles",
+      "title": "The groceries UI is written against Material Design 3 role names that no token or Tailwind config defines",
+      "incident": "ADR 0065, issue #632, fixed by PR #636, introduced by PR #108 (git log -S surface-container-low -- libs/web/pages/groceries → 9382c16)",
+      "base": "4ba00b4c247f91ba2918551f15816f36a4704a18",
+      "head": "c0f1a10b0c81d66175c3d46cecd58b1cb8ba3b64",
       "spec": { "kind": "none", "foundBy": "none" },
       "expected": [
         {
-          "id": "palette-classes-resolve-to-nothing",
+          "id": "classes-resolve-to-no-css",
           "axis": "standards",
-          "source": "AGENTS\\.md|DESIGN\\.md|0065|tokens",
-          "rule": "token|palette|hard-?cod|colou?r|tailwind|utilit",
+          "source": "AGENTS\\.md|DESIGN\\.md|GUIDELINES|0065|tokens",
+          "rule": "token|palette|hard-?cod|colou?r|tailwind|utilit|class|role",
           "files": [
-            "libs/design-tokens/src/tokens.json",
-            "libs/design-tokens/src/generated/tailwind-preset.js",
-            "apps/myorganizer/tailwind.config.js",
-            "libs/web-ui/tailwind.config.js",
-            "apps/myorganizer/src/app/global.css"
+            "libs/web/pages/groceries/src/components/GroceriesPageClient.tsx",
+            "libs/web/pages/groceries/src/components/GroceryListSelector.tsx",
+            "libs/web/pages/groceries/src/components/DeleteListConfirmDialog.tsx",
+            "libs/web/pages/groceries/src/components/GroceriesErrorBoundary.tsx"
           ],
           "minSeverity": "should-fix",
-          "why": "the groceries pages used literal palette classes that the reshaped preset no longer emitted; Tailwind drops an unresolvable class silently, so the pages shipped unstyled (#632)"
+          "why": "the diff styled every groceries component with role names such as surface-container-low, on-surface-variant, and outline-variant that existed in neither tokens.json nor either Tailwind config; Tailwind drops an unresolvable class silently, so 212 occurrences compiled to no CSS and the pages shipped unstyled (#632)"
+        }
+      ],
+      "minRecall": 1
+    },
+    {
+      "id": "sync-bookmarks-without-restore-or-meta-push",
+      "title": "Sync Bookmarks and separate Vault Meta convergence arrive without a restore that clears them or a path that pushes a local wrapping",
+      "incident": "issues #617 and #589, fixed by PRs #620 and #594, introduced by PR #573 (git log --diff-filter=A -- syncBookmarkStorage.ts → f267817; vaultMetaConverge split 0cce8c1; both in #573)",
+      "base": "0d05e9cb5c10bf84f5b3c3d6b94a9bbeb99c0086",
+      "head": "bf58bc8276656e287b334a9bae8dc3e0b9c2b96c",
+      "spec": { "kind": "none", "foundBy": "none" },
+      "expected": [
+        {
+          "id": "restore-leaves-bookmark-etag-in-place",
+          "axis": "standards",
+          "source": "0063|0058|0055|web-vault/AGENTS\\.md",
+          "rule": "bookmark|restore|evidence|If-?Match|etag|conditional push",
+          "files": [
+            "libs/web-vault/src/lib/vault/syncBookmarkAccess.ts",
+            "libs/web-vault/src/lib/vault/syncBookmarkStorage.ts",
+            "libs/web-vault/src/lib/vault/vaultHandle.ts",
+            "libs/web-vault/src/lib/vault/vaultConverge.ts",
+            "libs/web-vault/src/lib/vault/vaultExportImport.ts"
+          ],
+          "minSeverity": "should-fix",
+          "why": "the diff added per-type Sync Bookmarks holding the last pushed ETag and left importVault untouched, so a restored older vault hashed as unsent while the bookmark's If-Match still matched an unmoved server, and the old ciphertext was conditionally pushed over newer data on every device (#617)"
+        },
+        {
+          "id": "local-wrapping-change-never-leaves-device",
+          "axis": "standards",
+          "source": "0057|0060|web-vault/AGENTS\\.md|CONTEXT",
+          "rule": "vault meta|wrapping|passphrase|push|never silently|holds no",
+          "files": [
+            "libs/web-vault/src/lib/vault/vaultReconcile.ts",
+            "libs/web-vault/src/lib/vault/vaultMetaConverge.ts",
+            "libs/web-vault/src/lib/vault/vaultHandle.ts",
+            "docs/adr/0057-vault-meta-converges-separately-and-never-silently.md"
+          ],
+          "minSeverity": "should-fix",
+          "why": "the diff deleted keep-local's putServerVaultMetaEtagAware push and guarded the one remaining meta write on the server holding no Vault Meta at all, while changePassphrase still rewrapped locally, so a passphrase change never reached the server and the changing device was later told its own change came from another device (#589)"
+        }
+      ],
+      "minRecall": 0.5
+    },
+    {
+      "id": "release-bump-leaves-generated-client-stale",
+      "title": "A release bumps package.json and does not resync the generated OpenAPI spec and client",
+      "incident": "issue #408, fixed by PR #417, introduced by PR #379 (git log -S '\"version\": \"0.4.0\"' -- package.json → ced2895, named as root cause in #408)",
+      "base": "c3c17c9efb3d727a5297a9fe9a993cdefcab11b3",
+      "head": "8175cb64bf07888610756a52a5dcae7f09f06e7b",
+      "spec": { "kind": "none", "foundBy": "none" },
+      "expected": [
+        {
+          "id": "version-bump-without-openapi-sync",
+          "axis": "standards",
+          "source": "AGENTS\\.md",
+          "rule": "openapi:sync|openapi:check|generated|synced output|api-specs|app-api-client",
+          "files": [
+            "package.json",
+            "libs/app-api-client/src/configuration.ts",
+            "libs/app-api-client/src/api.ts",
+            "libs/api-specs/src/api-specs.openapi.yaml",
+            "apps/backend/src/swagger/swagger.yaml"
+          ],
+          "minSeverity": "should-fix",
+          "why": "the diff moved package.json to 0.4.0 without running yarn openapi:sync; the generator embeds the package version into the spec and every generated client header, so openapi:check failed on main from that merge on and nothing ran it (#408)"
+        }
+      ],
+      "minRecall": 1
+    },
+    {
+      "id": "signup-password-wrapper-inside-formcontrol",
+      "title": "The unified sign-up form wraps its password inputs in a div inside FormControl so the label association lands on the div",
+      "incident": "issue #525, fixed by PR #532, introduced by PR #215 (git blame on the FormControl > div lines → 8fb1087, the squash commit; base is its first parent)",
+      "base": "25edfd7ad7b4d11d44e9716dfc2185a4f4df7df5",
+      "head": "8fb1087f36938f5e8e4631a65cff43b3997ff6db",
+      "spec": { "kind": "none", "foundBy": "none" },
+      "expected": [
+        {
+          "id": "formcontrol-slot-injects-onto-div",
+          "axis": "standards",
+          "source": "GUIDELINES",
+          "rule": "FormLabel|htmlFor|associated|label|accessib|aria-describedby",
+          "files": ["apps/myorganizer/src/app/(auth)/signup/page.tsx"],
+          "minSeverity": "should-fix",
+          "why": "the diff placed a positioning div for the show/hide button as FormControl's direct child, so the Radix Slot injected id, aria-describedby, and aria-invalid onto the div and both password inputs were announced by their bullet placeholder with no label association (#525)"
+        }
+      ],
+      "minRecall": 1
+    },
+    {
+      "id": "import-confirm-is-bare-window-confirm",
+      "title": "Vault import replaces both wrappings behind a bare window.confirm that only mentions local vault data",
+      "incident": "issue #657, fixed by PR #683, introduced by PR #40 (git log -S 'Importing will replace' → b030fd1, the squash commit; base is its first parent)",
+      "base": "66a59cac6b0d174476cb3fbc27f803cc9e678abc",
+      "head": "b030fd19547e544c461607c10594f1c95f453377",
+      "spec": { "kind": "none", "foundBy": "none" },
+      "expected": [
+        {
+          "id": "destructive-replace-without-disclosure-dialog",
+          "axis": "standards",
+          "source": "GUIDELINES|0068|0063",
+          "rule": "dialog|Radix|window\\.confirm|confirm|disclos|destroy|what it will",
+          "files": ["apps/myorganizer/src/app/vault-export/page.tsx"],
+          "minSeverity": "should-fix",
+          "why": "the diff gated a whole-vault replace, including wrapped_mk_passphrase and kdf_salt, behind window.confirm('Importing will replace your current local vault data. Continue?') instead of a Radix dialog stating that the passphrase and Recovery Key are replaced by the backup's, so a user could accept and lose access without the backup's credentials (#657)"
         }
       ],
       "minRecall": 1

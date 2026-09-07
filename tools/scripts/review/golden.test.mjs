@@ -46,8 +46,13 @@ const finding = (over = {}) => ({
 test('a well-formed set passes and the committed set loads', () => {
   assert.equal(assertGoldenSet(set), set);
   const committed = loadGoldenSet();
-  assert.ok(committed.cases.length >= 2);
-  for (const c of committed.cases) assert.match(c.incident, /ADR 00(53|65)/);
+  assert.ok(committed.cases.length >= 3);
+  // Every case is attributed: it names the issue it came from and the pull
+  // request that introduced it.
+  for (const c of committed.cases) {
+    assert.match(c.incident, /#\d+/, c.id);
+    assert.match(c.incident, /introduced by PR #\d+/, c.id);
+  }
 });
 
 test('malformed sets are named precisely', () => {
