@@ -114,12 +114,13 @@ jobs:
             exit 0
           }
 
-          if [ "$TIERS" = 'all' ]; then
-            MATRIX="$(node tools/scripts/review/score-golden-case.mjs --list)"
-          else
-            MATRIX="$(node tools/scripts/review/score-golden-case.mjs --list --tier "$TIERS")"
-          fi
+          # jq, not the scorer: this job installs nothing, and the scorer
+          # reaches schema.mjs, which imports zod. The tier is a plain field.
+          MATRIX="$(jq -c --arg t "$TIERS" \
+            '[.cases[] | select($t == "all" or .tier == $t) | .id]' \
+            tools/config/review-golden-set.json)"
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "tier $TIERS: $MATRIX"
 
           # The same off switch as code-review.yml: CODE_REVIEW_ENABLED=false
           # stops the replay too, which matters at roughly one reviewer run
@@ -264,6 +265,13 @@ jobs:
       - name: Combine
         run: |
           echo "cases: ${{ needs.cases.result }}; replay: ${{ needs.replay.result }}"
+          # A job that decided to skip and a job that crashed both leave
+          # has_key unset, and only one of them is a pass. Read the job's
+          # result first, or a broken matrix step reports this check green.
+          if [ '${{ needs.cases.result }}' != 'success' ]; then
+            echo '::error::the Golden cases job did not complete; nothing was replayed and nothing was measured'
+            exit 1
+          fi
           if [ '${{ needs.cases.outputs.has_key }}' != 'true' ]; then
             # Off switch, [skip replay], an empty tier, or no credential.
             # The Golden cases job's summary says which. None of them is a
