@@ -143,10 +143,11 @@ jobs:
             - spec: already resolved in tmp/code-review/spec.json. Read it. Do not fetch issues, do not ask anyone. If its spec.kind is "none", skip the Spec axis.
             - write the envelope to exactly tmp/code-review/report.json (this path, not <head>.report.json) and run the validator on it as the skill says. Do not run the renderer and do not post anything: a later step publishes.
             - the model id to record in the envelope: ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
+            - your run ends the moment you reply without calling a tool. Wait for both sub-agents in the same turn (never background them, never reply "waiting"), and do not stop until tmp/code-review/report.json exists and the validator has run on it. A run that ends without that file is a rejected report and a failed check.
           claude_args: >-
             --model ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
             --max-turns 80
-            --allowedTools "Read,Glob,Grep,Write,Edit,Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(sed -n:*),Bash(rm -f tmp/code-review/*)"
+            --allowedTools "Read,Glob,Grep,Write,Edit,Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(sed -n:*),Bash(echo:*),Bash(rm -f tmp/code-review/*)"
 
       # The previous run's normalized report, for the new / persisting /
       # resolved strip. Fetched only after the reviewer has exited: the
