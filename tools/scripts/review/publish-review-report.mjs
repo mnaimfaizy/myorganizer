@@ -255,9 +255,14 @@ export const main = (argv) => {
     tryAct(
       `resolve thread ${threadId} (finding no longer reported)`,
       () => graphql(RESOLVE_THREAD, { id: threadId }),
-      // The job token is refused the mutation; one reply in the thread
-      // says the same thing to a human reader, and only one — a run that
-      // finds the reply already there says nothing more.
+      // The fallback for when the mutation is refused. It was refused on
+      // every run of a job holding `contents: read`; `resolveReviewThread`
+      // is reported to require `contents: write` despite writing nothing,
+      // so the publish job now holds it and this path should stop being
+      // taken (docs/research/2026-09-07-resolve-review-thread-token.md,
+      // issue #685). One reply in the thread says the same thing to a human
+      // reader, and only one — a run that finds the reply already there
+      // says nothing more.
       () =>
         thread?.firstCommentId &&
         !thread.alreadyNotified &&

@@ -8,9 +8,10 @@ name: Code Review
 #      validator as `--tier`, so the job output is the truth (ADR 0069 item 3).
 #   2. The spec is resolved with the job token in its own step; the reviewer
 #      never holds a token (ADR 0070 item 8).
-#   3. The reviewer writes JSON only. A later step validates it, renders it,
-#      and posts it. A report that fails the contract is rejected whole, the
-#      Pull Request is relabelled `review:human`, and this check fails.
+#   3. The reviewer writes JSON only. A later step validates and renders it,
+#      and a separate job — the only one whose token can write — posts it. A
+#      report that fails the contract is rejected whole, the Pull Request is
+#      relabelled `review:human`, and this check fails.
 #   4. The job named "Agent Verdict" fails on `request-changes` and on a
 #      rejected report. It is a status check, never a review approval
 #      (ADR 0069 item 6). Merge policy does not change here.
@@ -163,6 +164,14 @@ jobs:
     needs: context
     if: needs.context.outputs.run == 'true'
 
+    # Inherits the workflow's contents: read. The reviewer runs in this job,
+    # and the publish job is the only one holding a token that can write to
+    # the repository (ADR 0070 item 8).
+    outputs:
+      skip: ${{ steps.preflight.outputs.skip }}
+      tier: ${{ steps.tier.outputs.label }}
+      validated: ${{ steps.reviewer.outputs.validated }}
+
     env:
       BASE_SHA: ${{ needs.context.outputs.base_sha }}
       HEAD_SHA: ${{ needs.context.outputs.head_sha }}
@@ -291,36 +300,29 @@ jobs:
           fi
           cat tmp/code-review/report.md >> "$GITHUB_STEP_SUMMARY"
 
+      # Read back by the next run for the new / persisting / resolved strip,
+      # and by this run's publish job, which holds the write token and so
+      # cannot share a filesystem with the reviewer.
       - name: Keep the normalized report for the next run
         if: steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: code-review-normalized
-          path: tmp/code-review/normalized.json
+          path: |
+            tmp/code-review/normalized.json
+            tmp/code-review/report.md
           retention-days: 30
 
-      # The only step with a token that can write to the Pull Request. A new
-      # summary comment every run; the previous one is marked outdated, never
-      # deleted. Threads of findings that went away are resolved when the
-      # token is allowed to; GitHub refuses the job token that mutation
-      # ("Resource not accessible by integration"), so today the publisher
-      # replies in the thread that the finding is no longer reported and a
-      # human resolves it with one click.
-      - name: Publish to the pull request
-        if: steps.preflight.outputs.skip != 'true' && needs.context.outputs.same_repo == 'true'
-        id: publish
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if [ '${{ steps.reviewer.outputs.validated }}' = 'true' ]; then
-            corepack yarn review:publish --pr "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
-              --head "$HEAD_SHA" --run-url "$RUN_URL" --tier '${{ steps.tier.outputs.label }}' \
-              --normalized tmp/code-review/normalized.json --rendered tmp/code-review/report.md
-          else
-            corepack yarn review:publish --pr "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
-              --head "$HEAD_SHA" --run-url "$RUN_URL" --tier '${{ steps.tier.outputs.label }}' \
-              --rejected '${{ steps.reviewer.outputs.rejected-file }}'
-          fi
+      # A rejected report still gets published — as the reason the check
+      # failed, not as a review. Its file is outside the workspace.
+      - name: Keep the rejection reason
+        if: steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated != 'true' && steps.reviewer.outputs.rejected-file != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: code-review-rejected
+          path: ${{ steps.reviewer.outputs.rejected-file }}
+          retention-days: 7
+          if-no-files-found: ignore
 
       # The trigger label is a button: remove it so it can be pressed again.
       - name: Reset the agent-review label
@@ -335,7 +337,7 @@ jobs:
       - name: Agent verdict
         if: steps.preflight.outputs.skip != 'true'
         run: |
-          echo "reviewer step: ${{ steps.reviewer.outputs.reviewer-outcome }}; validated: ${{ steps.reviewer.outputs.validated }}; publish: ${{ steps.publish.outcome }}"
+          echo "reviewer step: ${{ steps.reviewer.outputs.reviewer-outcome }}; validated: ${{ steps.reviewer.outputs.validated }}"
           if [ '${{ steps.reviewer.outputs.validated }}' != 'true' ]; then
             echo '::error::the reviewer produced no valid report; this pull request is review:human'
             exit 1
@@ -345,4 +347,87 @@ jobs:
           if [ "$VERDICT" = 'request-changes' ]; then
             echo '::error::verdict request-changes: at least one blocking finding'
             exit 1
+          fi
+
+  # The only job holding a token that can write. It is separate from the
+  # reviewer for two reasons. ADR 0070 item 8 keeps the GitHub token away
+  # from the model, and GitHub scopes permissions per job, not per step: a
+  # `contents: write` on the job the reviewer runs in would hand repository
+  # write to a step that reads an untrusted diff.
+  #
+  # `contents: write` is here because `resolveReviewThread` is reported to
+  # require it, despite creating no commit, modifying no file and moving no
+  # ref (docs/research/2026-09-07-resolve-review-thread-token.md, issue #685).
+  # That is a community report with a GitHub staff acknowledgement, not
+  # documentation, so it is a hypothesis this job tests: if threads still are
+  # not resolved, the finding is that App installation tokens really are
+  # barred, and the reply fallback stands.
+  publish:
+    name: Publish Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [context, review]
+    if: always() && needs.review.result != 'skipped' && needs.review.outputs.skip != 'true' && needs.context.outputs.same_repo == 'true'
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: read
+    env:
+      PR_NUMBER: ${{ needs.context.outputs.pr }}
+      HEAD_SHA: ${{ needs.context.outputs.head_sha }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      TIER: ${{ needs.review.outputs.tier }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      # The scripts are plain node with no dependencies, so this job needs
+      # the checkout and nothing else — no yarn install, no cache.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      # Tolerant on purpose: a reviewer job that died before writing either
+      # artifact should leave a legible failure here, not an opaque one from
+      # the download action.
+      - name: Fetch this run's report
+        id: fetch
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: ${{ needs.review.outputs.validated == 'true' && 'code-review-normalized' || 'code-review-rejected' }}
+          path: tmp/code-review
+
+      # A new summary comment every run; the previous one is marked outdated,
+      # never deleted. Threads of findings that went away are resolved when
+      # the token is allowed to, and replied to when it is not.
+      - name: Publish to the pull request
+        run: |
+          set -euo pipefail
+          if [ '${{ needs.review.outputs.validated }}' = 'true' ]; then
+            if [ ! -f tmp/code-review/normalized.json ]; then
+              echo '::error::the review job reported a validated report and no artifact carries it'
+              exit 1
+            fi
+            node tools/scripts/review/publish-review-report.mjs \
+              --pr "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+              --head "$HEAD_SHA" --run-url "$RUN_URL" --tier "$TIER" \
+              --normalized tmp/code-review/normalized.json \
+              --rendered tmp/code-review/report.md
+          else
+            REJECTED="$(find tmp/code-review -type f 2>/dev/null | head -1)"
+            if [ -z "$REJECTED" ]; then
+              # Nothing to say and no reason to say it. The Agent Verdict
+              # check has already failed; this job stays quiet rather than
+              # posting an empty review.
+              echo 'the review job wrote no report and no rejection reason; nothing to publish'
+              exit 0
+            fi
+            node tools/scripts/review/publish-review-report.mjs \
+              --pr "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+              --head "$HEAD_SHA" --run-url "$RUN_URL" --tier "$TIER" \
+              --rejected "$REJECTED"
           fi
