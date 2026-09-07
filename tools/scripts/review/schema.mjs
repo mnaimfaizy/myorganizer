@@ -1,5 +1,5 @@
 /**
- * The finding contract for `/code-review` (ADR 0070).
+ * The finding contract for `/code-review` (ADR 0071).
  *
  * A reviewer emits a report that matches `ReportInputSchema`. The validator
  * (`validate-review-report.mjs`) turns it into a `NormalizedReport`: every
@@ -68,7 +68,7 @@ export const SPEC_FOUND_BY = /** @type {const} */ ([
 /**
  * The `source` a Fowler smell-baseline finding carries. The baseline is
  * always a judgement call, so the validator caps it at should-fix even when
- * the reviewer cites something (ADR 0070 item 1).
+ * the reviewer cites something (ADR 0071 item 1).
  */
 export const SMELL_BASELINE_SOURCE = 'smell-baseline';
 
@@ -146,7 +146,7 @@ export const EvidenceSchema = z.discriminatedUnion('kind', [
 /**
  * `source` and `rule` are the identity half of a finding: the standard's path
  * or the issue reference, and the rule or requirement it applies. `summary`
- * is the human claim. Nothing here carries diff text (ADR 0070 item 3).
+ * is the human claim. Nothing here carries diff text (ADR 0071 item 3).
  */
 export const FindingInputSchema = z
   .strictObject({
@@ -290,7 +290,7 @@ export const bySeverity = (a, b) =>
 
 /**
  * Derived identity: axis + source + rule + file, line excluded so a rebase
- * does not mint a new finding (ADR 0070 item 6).
+ * does not mint a new finding (ADR 0071 item 6).
  */
 const IDENTITY_ACCESSORS =
   /** @type {Record<typeof FINDING_IDENTITY_FIELDS[number], (f: object) => string>} */ ({

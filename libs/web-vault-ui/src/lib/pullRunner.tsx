@@ -12,7 +12,7 @@ import { useOptionalVaultSession } from './session';
  * nothing — a pull never asks the User anything (`prompt` always defers),
  * the same choice `VaultSessionProvider`'s push queue makes and for the same
  * reason: a Vault Blob Type pinned `promptOnConflict` surfaces its
- * divergence at the next sign-in reconcile, not as a dialog interrupting
+ * divergence at the next reconcile pass, not as a dialog interrupting
  * whatever the User is doing in the background.
  */
 export function VaultPullRunner() {

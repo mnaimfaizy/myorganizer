@@ -21,7 +21,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { Building2, Edit, ExternalLink, Plus, Trash2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { titleCase } from '../utils/enumUtils';
 
@@ -154,6 +154,14 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
     },
   });
 
+  const handlePreviousPage = useCallback(() => {
+    table.previousPage();
+  }, [table]);
+
+  const handleNextPage = useCallback(() => {
+    table.nextPage();
+  }, [table]);
+
   if (props.usageLocations.length === 0) {
     return (
       <Card className="p-4">
@@ -238,7 +246,7 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => table.previousPage()}
+                onClick={handlePreviousPage}
                 disabled={!table.getCanPreviousPage()}
               >
                 Previous
@@ -246,7 +254,7 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => table.nextPage()}
+                onClick={handleNextPage}
                 disabled={!table.getCanNextPage()}
               >
                 Next

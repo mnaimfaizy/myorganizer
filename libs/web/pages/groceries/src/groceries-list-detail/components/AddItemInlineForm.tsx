@@ -10,7 +10,7 @@ interface AddItemInlineFormProps {
   isLoading?: boolean;
 }
 
-const addItemSchema = z.object({
+const addItemInlineSchema = z.object({
   name: z
     .string()
     .trim()
@@ -37,7 +37,7 @@ export function AddItemInlineForm({
       setError(null);
 
       try {
-        const result = addItemSchema.parse({ name });
+        const result = addItemInlineSchema.parse({ name });
         setIsSubmitting(true);
         onAdd(result.name);
         setName('');
@@ -56,6 +56,14 @@ export function AddItemInlineForm({
     [name, onAdd],
   );
 
+  const handleNameChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setName(e.target.value);
+      if (error) setError(null);
+    },
+    [error],
+  );
+
   return (
     <div className="space-y-2">
       <form onSubmit={handleSubmit} className="flex gap-2">
@@ -64,10 +72,7 @@ export function AddItemInlineForm({
           type="text"
           placeholder="Add to list..."
           value={name}
-          onChange={(e) => {
-            setName(e.target.value);
-            if (error) setError(null);
-          }}
+          onChange={handleNameChange}
           disabled={isSubmitting || isLoading}
           maxLength={200}
           className="grow"

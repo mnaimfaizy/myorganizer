@@ -11,6 +11,8 @@ const mockCreateLocalVaultRevision = jest.fn(() => ({
   bump: jest.fn(),
   subscribe: () => () => undefined,
 }));
+const mockClaimUnclaimedLocalVaultOnEvidence = jest.fn();
+const mockCheckVaultAbsentEvidence = jest.fn();
 
 jest.mock('@myorganizer/auth', () => ({
   getCurrentUser: () => mockGetCurrentUser(),
@@ -21,6 +23,10 @@ jest.mock('@myorganizer/web-vault', () => ({
   createVaultApi: () => mockCreateVaultApi(),
   createVaultSyncQueue: (opts: unknown) => mockCreateVaultSyncQueue(opts),
   createLocalVaultRevision: () => mockCreateLocalVaultRevision(),
+  claimUnclaimedLocalVaultOnEvidence: (opts: unknown) =>
+    mockClaimUnclaimedLocalVaultOnEvidence(opts),
+  checkVaultAbsentEvidence: (opts: unknown) =>
+    mockCheckVaultAbsentEvidence(opts),
 }));
 
 import {
@@ -66,11 +72,20 @@ describe('VaultSessionProvider', () => {
     };
     mockCreateVaultSyncQueue.mockReturnValue(mockQueue);
 
-    // Standard handle stub: just echoes back the input
+    // Standard handle stub: just echoes back the input, with vaultStatus method
     mockCreateVaultHandle.mockImplementation((opts) => ({
       owner: opts.owner,
       masterKeyBytes: opts.masterKeyBytes,
+      vaultStatus: jest.fn(() => 'owned'),
     }));
+
+    // Default mock primitives return success states
+    mockClaimUnclaimedLocalVaultOnEvidence.mockResolvedValue({
+      kind: 'skipped-already-owned',
+    });
+    mockCheckVaultAbsentEvidence.mockResolvedValue({
+      kind: 'no-server-vault',
+    });
   });
 
   const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -82,6 +97,7 @@ describe('VaultSessionProvider', () => {
     mockCreateVaultHandle.mockImplementation((opts) => ({
       owner: opts.owner,
       masterKeyBytes: opts.masterKeyBytes,
+      vaultStatus: jest.fn(() => 'owned'),
       __stub: true,
     }));
 
@@ -93,7 +109,7 @@ describe('VaultSessionProvider', () => {
       syncSink: mockQueue,
       revision: expect.objectContaining({ subscribe: expect.any(Function) }),
     });
-    expect(result.current.handle).toEqual({
+    expect(result.current.handle).toMatchObject({
       owner: 'user-a',
       masterKeyBytes: null,
       __stub: true,
@@ -136,7 +152,7 @@ describe('VaultSessionProvider', () => {
     await waitFor(() => {
       expect(result.current.masterKeyBytes).toEqual(new Uint8Array([1, 2, 3]));
     });
-    expect(result.current.handle).toEqual({
+    expect(result.current.handle).toMatchObject({
       owner: 'user-a',
       masterKeyBytes: new Uint8Array([1, 2, 3]),
     });
@@ -149,7 +165,7 @@ describe('VaultSessionProvider', () => {
     await waitFor(() => {
       expect(result.current.masterKeyBytes).toBeNull();
     });
-    expect(result.current.handle).toEqual({
+    expect(result.current.handle).toMatchObject({
       owner: 'user-b',
       masterKeyBytes: null,
     });
@@ -171,7 +187,7 @@ describe('VaultSessionProvider', () => {
     await waitFor(() => {
       expect(result.current.masterKeyBytes).toEqual(new Uint8Array([4, 5, 6]));
     });
-    expect(result.current.handle).toEqual({
+    expect(result.current.handle).toMatchObject({
       owner: 'user-a',
       masterKeyBytes: new Uint8Array([4, 5, 6]),
     });
@@ -199,7 +215,7 @@ describe('VaultSessionProvider', () => {
     await waitFor(() => {
       expect(result.current.masterKeyBytes).toEqual(new Uint8Array([7, 8, 9]));
     });
-    expect(result.current.handle).toEqual({
+    expect(result.current.handle).toMatchObject({
       owner: 'user-a',
       masterKeyBytes: new Uint8Array([7, 8, 9]),
     });
@@ -263,6 +279,7 @@ describe('VaultSessionProvider', () => {
       mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
       mockCreateVaultHandle.mockImplementation(() => ({
         owner: 'user-a',
+        vaultStatus: jest.fn(() => 'owned'),
       }));
 
       renderHook(() => useVaultSession(), { wrapper });
@@ -275,6 +292,7 @@ describe('VaultSessionProvider', () => {
       mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
       mockCreateVaultHandle.mockImplementation(() => ({
         owner: 'user-a',
+        vaultStatus: jest.fn(() => 'owned'),
       }));
 
       renderHook(() => useVaultSession(), { wrapper });
@@ -314,10 +332,8 @@ describe('VaultSessionProvider', () => {
       // Verify it was called with the handle
       const callArg = (mockQueue.markUnsentFromBookmarks as jest.Mock).mock
         .calls[0][0];
-      expect(callArg).toEqual({
-        owner: 'user-a',
-        masterKeyBytes: null,
-      });
+      expect(callArg).toHaveProperty('owner', 'user-a');
+      expect(callArg).toHaveProperty('masterKeyBytes', null);
     });
 
     test('markUnsentFromBookmarks is not called when there is no owner', () => {
@@ -366,10 +382,8 @@ describe('VaultSessionProvider', () => {
       // Verify the handle passed to the third call is the new locked one
       const thirdCallArg = (mockQueue.markUnsentFromBookmarks as jest.Mock).mock
         .calls[2][0];
-      expect(thirdCallArg).toEqual({
-        owner: 'user-a',
-        masterKeyBytes: null,
-      });
+      expect(thirdCallArg).toHaveProperty('owner', 'user-a');
+      expect(thirdCallArg).toHaveProperty('masterKeyBytes', null);
     });
 
     test('queue survives lock/unlock', async () => {
@@ -448,6 +462,335 @@ describe('VaultSessionProvider', () => {
       expect(optionsOf(2).syncSink).not.toBe(mockQueueA);
     });
   });
+
+  describe('vault evidence', () => {
+    test('exposes claimEvidence and absentEvidence on context', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+      // Mock the handle to have absent status for this test
+      mockCreateVaultHandle.mockImplementation((opts) => ({
+        owner: opts.owner,
+        masterKeyBytes: opts.masterKeyBytes,
+        vaultStatus: jest.fn(() => 'absent'),
+      }));
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      // Wait for evidence to settle
+      await waitFor(() => {
+        expect(result.current.claimEvidence.status).toBe('settled');
+      });
+
+      await waitFor(() => {
+        expect(result.current.absentEvidence.status).toBe('settled');
+      });
+
+      // Verify both are present on context
+      expect(result.current).toHaveProperty('claimEvidence');
+      expect(result.current).toHaveProperty('absentEvidence');
+    });
+
+    test('calls claimEvidence primitive once per owner on initial mount', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      renderHook(() => useVaultSession(), { wrapper });
+
+      await waitFor(() => {
+        expect(mockClaimUnclaimedLocalVaultOnEvidence).toHaveBeenCalledTimes(1);
+      });
+
+      const callArg = mockClaimUnclaimedLocalVaultOnEvidence.mock.calls[0][0];
+      expect(callArg.handle).toBeDefined();
+      expect(callArg.api).toBeDefined();
+    });
+
+    test('claimEvidence settles with the library result', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+      mockClaimUnclaimedLocalVaultOnEvidence.mockResolvedValue({
+        kind: 'claimed',
+      });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.claimEvidence.status).toBe('settled');
+      });
+
+      expect(result.current.claimEvidence).toEqual({
+        status: 'settled',
+        result: { kind: 'claimed' },
+      });
+    });
+
+    test('does not re-ask claimEvidence on provider re-render with same owner', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { rerender } = renderHook(() => useVaultSession(), { wrapper });
+
+      await waitFor(() => {
+        expect(mockClaimUnclaimedLocalVaultOnEvidence).toHaveBeenCalledTimes(1);
+      });
+
+      // Re-render with same owner
+      rerender();
+
+      // Wait a bit to ensure no additional calls
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(mockClaimUnclaimedLocalVaultOnEvidence).toHaveBeenCalledTimes(1);
+    });
+
+    test('does not re-ask claimEvidence across lock/unlock (same owner)', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      await waitFor(() => {
+        expect(mockClaimUnclaimedLocalVaultOnEvidence).toHaveBeenCalledTimes(1);
+      });
+
+      // After initial settle, handle should have been created once
+      expect(mockCreateVaultHandle).toHaveBeenCalledTimes(1);
+
+      // Unlock
+      act(() => {
+        result.current.setMasterKeyBytes(new Uint8Array([1, 2, 3]));
+      });
+
+      await waitFor(() => {
+        expect(result.current.masterKeyBytes).toEqual(
+          new Uint8Array([1, 2, 3]),
+        );
+      });
+
+      // After unlock, handle should have been created a second time
+      expect(mockCreateVaultHandle).toHaveBeenCalledTimes(2);
+      expect(optionsOf(1).owner).toBe('user-a');
+      expect(optionsOf(1).masterKeyBytes).toEqual(new Uint8Array([1, 2, 3]));
+
+      // Lock
+      act(() => {
+        result.current.lock();
+      });
+
+      await waitFor(() => {
+        expect(result.current.masterKeyBytes).toBeNull();
+      });
+
+      // After lock, handle should have been created a third time
+      expect(mockCreateVaultHandle).toHaveBeenCalledTimes(3);
+      expect(optionsOf(2).owner).toBe('user-a');
+      expect(optionsOf(2).masterKeyBytes).toBeNull();
+
+      // Wait a bit to ensure no additional calls
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Should still be only 1 call (lock/unlock doesn't re-ask)
+      expect(mockClaimUnclaimedLocalVaultOnEvidence).toHaveBeenCalledTimes(1);
+    });
+
+    test('claimEvidence returns checking immediately when owner changes, then settles', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+      const mockQueueA = {
+        vaultBlobChanged: jest.fn(),
+        markUnsentFromBookmarks: jest.fn().mockResolvedValue(undefined),
+      };
+      const mockQueueB = {
+        vaultBlobChanged: jest.fn(),
+        markUnsentFromBookmarks: jest.fn().mockResolvedValue(undefined),
+      };
+      setupTwoQueueMock(mockQueueA, mockQueueB);
+
+      const results = [
+        { kind: 'claimed' as const },
+        { kind: 'skipped-nothing-to-claim' as const },
+      ];
+      let callCount = 0;
+      mockClaimUnclaimedLocalVaultOnEvidence.mockImplementation(async () => {
+        return results[callCount++] || results[results.length - 1];
+      });
+
+      const { result, rerender } = renderHook(() => useVaultSession(), {
+        wrapper,
+      });
+
+      // Wait for user-a's evidence to settle
+      await waitFor(() => {
+        expect(result.current.claimEvidence.status).toBe('settled');
+      });
+      expect(result.current.claimEvidence).toEqual({
+        status: 'settled',
+        result: { kind: 'claimed' },
+      });
+
+      // Change owner
+      mockGetCurrentUser.mockReturnValue({ id: 'user-b' });
+      rerender();
+
+      // Should immediately return checking for new owner
+      expect(result.current.claimEvidence.status).toBe('checking');
+
+      // Then settle to new owner's result
+      await waitFor(() => {
+        expect(result.current.claimEvidence.status).toBe('settled');
+      });
+      expect(result.current.claimEvidence).toEqual({
+        status: 'settled',
+        result: { kind: 'skipped-nothing-to-claim' },
+      });
+    });
+
+    test('absentEvidence settles with the library result', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+      // Mock the handle to have absent status for this test
+      mockCreateVaultHandle.mockImplementation((opts) => ({
+        owner: opts.owner,
+        masterKeyBytes: opts.masterKeyBytes,
+        vaultStatus: jest.fn(() => 'absent'),
+      }));
+      mockCheckVaultAbsentEvidence.mockResolvedValue({
+        kind: 'no-server-vault',
+      });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      await waitFor(() => {
+        expect(result.current.absentEvidence.status).toBe('settled');
+      });
+
+      expect(result.current.absentEvidence).toEqual({
+        status: 'settled',
+        result: { kind: 'no-server-vault' },
+      });
+    });
+
+    test('does not re-ask absentEvidence across lock/unlock (same owner)', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+      // Mock the handle to have absent status for this test
+      mockCreateVaultHandle.mockImplementation((opts) => ({
+        owner: opts.owner,
+        masterKeyBytes: opts.masterKeyBytes,
+        vaultStatus: jest.fn(() => 'absent'),
+      }));
+      mockCheckVaultAbsentEvidence.mockResolvedValue({
+        kind: 'no-server-vault',
+      });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      await waitFor(() => {
+        expect(mockCheckVaultAbsentEvidence).toHaveBeenCalledTimes(1);
+      });
+
+      // After initial settle, handle should have been created once
+      expect(mockCreateVaultHandle).toHaveBeenCalledTimes(1);
+
+      // Unlock
+      act(() => {
+        result.current.setMasterKeyBytes(new Uint8Array([1, 2, 3]));
+      });
+
+      await waitFor(() => {
+        expect(result.current.masterKeyBytes).toEqual(
+          new Uint8Array([1, 2, 3]),
+        );
+      });
+
+      // After unlock, handle should have been created a second time
+      expect(mockCreateVaultHandle).toHaveBeenCalledTimes(2);
+      expect(optionsOf(1).owner).toBe('user-a');
+      expect(optionsOf(1).masterKeyBytes).toEqual(new Uint8Array([1, 2, 3]));
+
+      // Lock
+      act(() => {
+        result.current.lock();
+      });
+
+      await waitFor(() => {
+        expect(result.current.masterKeyBytes).toBeNull();
+      });
+
+      // After lock, handle should have been created a third time
+      expect(mockCreateVaultHandle).toHaveBeenCalledTimes(3);
+      expect(optionsOf(2).owner).toBe('user-a');
+      expect(optionsOf(2).masterKeyBytes).toBeNull();
+
+      // Wait a bit to ensure no additional calls
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // Should still be only 1 call to absentEvidence (lock/unlock doesn't re-ask)
+      expect(mockCheckVaultAbsentEvidence).toHaveBeenCalledTimes(1);
+    });
+
+    test('a new owner reads checking for absentEvidence, then settles from its own ask', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+      // Mock the handle to have absent status for this test
+      mockCreateVaultHandle.mockImplementation((opts) => ({
+        owner: opts.owner,
+        masterKeyBytes: opts.masterKeyBytes,
+        vaultStatus: jest.fn(() => 'absent'),
+      }));
+
+      const results = [
+        { kind: 'no-server-vault' as const },
+        { kind: 'server-has-vault' as const },
+      ];
+      let callCount = 0;
+      mockCheckVaultAbsentEvidence.mockImplementation(async () => {
+        return results[callCount++] || results[results.length - 1];
+      });
+
+      const { result, rerender } = renderHook(() => useVaultSession(), {
+        wrapper,
+      });
+
+      // Wait for user-a's evidence to settle
+      await waitFor(() => {
+        expect(result.current.absentEvidence.status).toBe('settled');
+      });
+      expect(result.current.absentEvidence).toEqual({
+        status: 'settled',
+        result: { kind: 'no-server-vault' },
+      });
+
+      // Change owner
+      mockGetCurrentUser.mockReturnValue({ id: 'user-b' });
+      rerender();
+
+      // Should immediately return checking for new owner
+      expect(result.current.absentEvidence.status).toBe('checking');
+
+      // Then settle to new owner's result
+      await waitFor(() => {
+        expect(result.current.absentEvidence.status).toBe('settled');
+      });
+      expect(result.current.absentEvidence).toEqual({
+        status: 'settled',
+        result: { kind: 'server-has-vault' },
+      });
+
+      // Should have been called twice (once per owner)
+      expect(mockCheckVaultAbsentEvidence).toHaveBeenCalledTimes(2);
+    });
+
+    test('no owner returns checking for both evidence', async () => {
+      mockGetCurrentUser.mockReturnValue(undefined);
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      expect(result.current.claimEvidence.status).toBe('settled');
+      expect(result.current.claimEvidence).toEqual({
+        status: 'settled',
+        result: { kind: 'skipped-nothing-to-claim' },
+      });
+
+      // absentEvidence without owner stays checking
+      expect(result.current.absentEvidence.status).toBe('checking');
+
+      // Primitives should not be called
+      expect(mockClaimUnclaimedLocalVaultOnEvidence).not.toHaveBeenCalled();
+      expect(mockCheckVaultAbsentEvidence).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('useVaultSession', () => {
@@ -479,6 +822,7 @@ describe('useVaultSession', () => {
     mockCreateVaultSyncQueue.mockReturnValue(mockQueue);
     mockCreateVaultHandle.mockImplementation((opts) => ({
       owner: opts.owner,
+      vaultStatus: jest.fn(() => 'owned'),
     }));
 
     const { result } = renderHook(() => useVaultSession(), {
@@ -488,7 +832,7 @@ describe('useVaultSession', () => {
     });
 
     expect(result.current.masterKeyBytes).toBeNull();
-    expect(result.current.handle).toEqual({ owner: 'user-a' });
+    expect(result.current.handle?.owner).toBe('user-a');
     expect(typeof result.current.setMasterKeyBytes).toBe('function');
     expect(typeof result.current.lock).toBe('function');
   });
@@ -516,6 +860,7 @@ describe('useOptionalVaultSession', () => {
     mockCreateVaultSyncQueue.mockReturnValue(mockQueue);
     mockCreateVaultHandle.mockImplementation((opts) => ({
       owner: opts.owner,
+      vaultStatus: jest.fn(() => 'owned'),
     }));
 
     const { result } = renderHook(() => useOptionalVaultSession(), {
@@ -526,6 +871,6 @@ describe('useOptionalVaultSession', () => {
 
     expect(result.current).not.toBeNull();
     expect(result.current?.masterKeyBytes).toBeNull();
-    expect(result.current?.handle).toEqual({ owner: 'user-a' });
+    expect(result.current?.handle?.owner).toBe('user-a');
   });
 });

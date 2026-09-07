@@ -91,6 +91,14 @@ libs/web/pages/<route>/src/
     └── <feature>.ts        ← Zod schemas shared between add and edit forms
 ```
 
+### Feature files export one component named after the file
+
+A Feature Component file under a `components/` directory exports **exactly one** React component, and that component's name is the file basename (kebab-case maps to PascalCase: `task-add-dialog.tsx` → `TaskAddDialog`). Default exports count. Types, Zod schemas, and camelCase helpers may share the file; a second exported React component may not.
+
+UI Primitives and Vault UI Components keep the compound-in-one-file pattern in §3: the file basename matches the compound root (`Card.tsx` exports `Card`), and prefixed sub-exports (`CardHeader`) stay in that file.
+
+`check-component-hygiene.mjs` asserts this. A Feature exception is a `{ path, reason }` entry in that script — there is no comment-in-file escape.
+
 ### Split signals — extract a component when any of these are true
 
 - A component file exceeds **~150 lines of JSX**
@@ -355,9 +363,7 @@ Choose the lowest level that satisfies the requirement:
 
 ### 5.6 Handlers and callbacks
 
-**Every handler passed as a prop to a child component must be wrapped in `useCallback`. No exceptions.**
-
-Before finishing a component, grep the file for every prop passed to a child (`<Child onX={...} />`), confirm each handler is wrapped in `useCallback`, and verify the function signature (parameter names, types, return type) matches the child component's props interface exactly.
+**Every handler passed as a prop to a child component must be wrapped in `useCallback`.** Passing the binding by name is the default:
 
 ```typescript
 const handleDelete = useCallback((id: string) => {
@@ -366,6 +372,18 @@ const handleDelete = useCallback((id: string) => {
 
 return <TodoItem onDelete={handleDelete} />;
 ```
+
+Inline arrows and function expressions (`onX={() => { … }}`, `onX={function () { … }}`) are the same violation. `check-component-hygiene.mjs` reports them: a PASS is a claim that §5.6 holds, including this form.
+
+**Thin-wrapper exception.** An expression-bodied arrow whose body is a single call to a `useCallback` already in this file, or to a name not declared as a local function (a prop or a `useState` setter), may bind extra arguments:
+
+```typescript
+return <button onClick={() => handleDelete(id)}>Delete</button>;
+```
+
+The wrapper still allocates each render. It exists because hooks cannot run inside `.map()`, and because the child's event signature does not carry the id. A block body, an `if`, a `try`, a member call (`e.preventDefault()`, `cloud.connect()`), or a call to a local function that is _not_ wrapped in `useCallback` is not this exception — extract a `useCallback`.
+
+Before finishing a component, grep the file for every prop passed to a child (`<Child onX={...} />`), confirm each handler is a `useCallback` binding or a thin wrapper of one, and verify the function signature (parameter names, types, return type) matches the child component's props interface exactly.
 
 ---
 
@@ -393,9 +411,9 @@ return <TodoItem onDelete={handleDelete} />;
 
 ### Exports
 
-- UI Primitives: named exports only — `export { Card, CardHeader, CardContent }`
-- Vault UI Components: named exports from `libs/web-vault-ui`
-- Feature components: named export preferred — `export function TodoForm(...)`; default export acceptable for leaf components
+- UI Primitives: named exports only — `export { Card, CardHeader, CardContent }`. The file basename matches the compound root.
+- Vault UI Components: named exports from `libs/web-vault-ui`. The file basename matches the component.
+- Feature components: named export preferred — `export function TodoForm(...)`; default export acceptable for leaf components. The file under `components/` exports that one component and no other React component.
 
 ---
 
@@ -419,11 +437,11 @@ This document is the source of truth. The agents do not paraphrase it into their
 
 Enforcement is split three ways by what each layer can actually decide:
 
-| Layer                         | Owns                                                                                                                                                                                                                                             |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `check-component-hygiene.mjs` | Shape rules: `forwardRef`/`displayName`, `cn()` merging, barrel export, deep imports, `useCallback` on handler props, inline props types, effect cleanup, generic names, oversized JSX. Deterministic — a script counts where a model estimates. |
-| `tsc --noEmit` + `eslint`     | Type correctness, importer compatibility, `any`, unused vars, hook dependency arrays.                                                                                                                                                            |
-| ComponentReviewer             | Judgment: is the composition pattern right, is the component in the right scope, is it mixing too many concerns, is the client boundary correct, should this be Radix, accessibility beyond the shape rules.                                     |
+| Layer                         | Owns                                                                                                                                                                                                                                                                                                                                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `check-component-hygiene.mjs` | Shape rules: `forwardRef`/`displayName`, `cn()` merging, barrel export, deep imports, `useCallback` on handler props, inline props types, effect cleanup, generic names, oversized JSX, export/basename match (Feature: one exported component named after the file; primitive/vault-ui: basename matches the compound root). Deterministic — a script counts where a model estimates. |
+| `tsc --noEmit` + `eslint`     | Type correctness, importer compatibility, `any`, unused vars, hook dependency arrays.                                                                                                                                                                                                                                                                                                  |
+| ComponentReviewer             | Judgment: is the composition pattern right, is the component in the right scope, is it mixing too many concerns, is the client boundary correct, should this be Radix, accessibility beyond the shape rules.                                                                                                                                                                           |
 
 Run the shape rules yourself at any time:
 

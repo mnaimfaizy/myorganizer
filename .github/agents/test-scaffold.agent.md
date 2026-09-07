@@ -26,17 +26,18 @@ Determine the owning Nx project and test type first, then read exactly two refer
 1. `docs/testing/projects/<project>.md` — the tooling guide for that project (config, mock patterns, commands). **Read only the file for the project you are testing**, not the whole `docs/testing` tree.
 2. The owning project's `jest.config.ts` (or `playwright.config.ts`).
 
-| Surface                               | Test type             | Project guide                          | Command                       |
-| ------------------------------------- | --------------------- | -------------------------------------- | ----------------------------- |
-| `apps/backend`                        | Jest unit/integration | `docs/testing/projects/backend.md`     | `yarn nx test backend`        |
-| `apps/myorganizer`                    | Jest unit/integration | `docs/testing/projects/myorganizer.md` | `yarn nx test myorganizer`    |
-| `libs/web-ui`                         | Jest unit/integration | `docs/testing/projects/web-ui.md`      | `yarn nx test web-ui`         |
-| `libs/auth`                           | Jest unit/integration | `docs/testing/projects/auth.md`        | `yarn nx test auth`           |
-| `libs/core`                           | Jest unit             | `docs/testing/projects/core.md`        | `yarn nx test core`           |
-| `libs/vault-core`                     | Jest unit/integration | `docs/testing/projects/vault-core.md`  | `yarn nx test vault-core`     |
-| `libs/web-vault`, `libs/web-vault-ui` | Jest unit/integration | `docs/testing/projects/web-vault.md`   | `yarn nx test <lib-name>`     |
-| `libs/web/pages/*`                    | Jest unit/integration | `docs/testing/projects/web-pages.md`   | `yarn nx test <lib-name>`     |
-| `apps/myorganizer-e2e`                | Playwright E2E        | `docs/testing/projects/e2e.md`         | `yarn nx e2e myorganizer-e2e` |
+| Surface                | Test type             | Project guide                           | Command                       |
+| ---------------------- | --------------------- | --------------------------------------- | ----------------------------- |
+| `apps/backend`         | Jest unit/integration | `docs/testing/projects/backend.md`      | `yarn nx test backend`        |
+| `apps/myorganizer`     | Jest unit/integration | `docs/testing/projects/myorganizer.md`  | `yarn nx test myorganizer`    |
+| `libs/web-ui`          | Jest unit/integration | `docs/testing/projects/web-ui.md`       | `yarn nx test web-ui`         |
+| `libs/auth`            | Jest unit/integration | `docs/testing/projects/auth.md`         | `yarn nx test auth`           |
+| `libs/core`            | Jest unit             | `docs/testing/projects/core.md`         | `yarn nx test core`           |
+| `libs/vault-core`      | Jest unit/integration | `docs/testing/projects/vault-core.md`   | `yarn nx test vault-core`     |
+| `libs/web-vault`       | Jest unit/integration | `docs/testing/projects/web-vault.md`    | `yarn nx test web-vault`      |
+| `libs/web-vault-ui`    | Jest unit/integration | `docs/testing/projects/web-vault-ui.md` | `yarn nx test web-vault-ui`   |
+| `libs/web/pages/*`     | Jest unit/integration | `docs/testing/projects/web-pages.md`    | `yarn nx test <lib-name>`     |
+| `apps/myorganizer-e2e` | Playwright E2E        | `docs/testing/projects/e2e.md`          | `yarn nx e2e myorganizer-e2e` |
 
 Use Jest for `*.spec.ts`, `*.spec.tsx`, `*.test.ts`, and `*.test.tsx` outside `apps/myorganizer-e2e`. Use `@playwright/test` only under `apps/myorganizer-e2e`.
 
@@ -116,7 +117,7 @@ Do not include these unless the implementation explicitly supports them:
 Only when the target spec is under `apps/myorganizer-e2e/`.
 
 1. Follow `.agents/skills/playwright-e2e-workflow/SKILL.md` for workflow and policy.
-2. Read `.agents/skills/playwright-e2e-workflow/references/e2e-patterns.md` before writing any spec code. It is the single source for Radix/context-menu handling, vault unlock, async content waits, CORS preflight mocking, parallel-execution resilience, React Hook Form flows, cross-browser differences, and the anti-pattern table. Do not re-derive these.
+2. Read `.agents/skills/playwright-e2e-workflow/references/e2e-patterns.md` before writing any spec code. It is the single source for Radix/context-menu handling, vault unlock, vault API stubs, vault reconcile/claim leftovers, accessible-name substring matches (`getByLabel` + `exact`), async content waits, CORS preflight mocking, parallel-execution resilience, React Hook Form flows, cross-browser differences, and the anti-pattern table. Do not re-derive these.
 3. **If an E2EPlanner plan was provided, implement from it.** It is a filled-in
    contract: `Component inspection` gives you the roles and accessible names,
    `Patterns required` names the `e2e-patterns.md` sections to apply, and
@@ -134,6 +135,7 @@ Only when the target spec is under `apps/myorganizer-e2e/`.
 8. Never depend on live Google OAuth, email delivery, external APIs, or manual local setup.
 9. **Never execute Playwright.** Do not run `yarn nx e2e`. Report the spec for `TestReviewer` structural review; a human runs the browsers.
 10. Do not commit traces, screenshots, videos, or generated artifacts.
+11. For vault-backed specs: start `GET /vault` as 404 (`serverMeta = null`) until a PUT, stub blob routes with `vaultBlobRouteRelative()`, and never assert localStorage byte-identity in the wrapping-only window after a reconcile download. See `e2e-patterns.md` "Vault API stubs" and "Vault reconcile and claim leftovers".
 
 If the flow is broad or ambiguous, ask the main agent for `E2EPlanner` output before implementing.
 

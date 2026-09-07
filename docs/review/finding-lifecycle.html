@@ -899,8 +899,8 @@
       <p class="small muted" style="max-width: 34ch; text-align: right">
         Grounded, mixed: source is cited by <code>file:line</code>; the
         not-yet-built pipeline is cited by ADR item number
-        (<a href="../adr/0069-a-review-tier-is-a-fact-about-the-diff-and-a-gate-tier-is-a-decision-about-the-work.md">ADR&nbsp;0069</a>,
-        <a href="../adr/0070-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md">ADR&nbsp;0070</a>).
+        (<a href="../adr/0070-a-review-tier-is-a-fact-about-the-diff-and-a-gate-tier-is-a-decision-about-the-work.md">ADR&nbsp;0069</a>,
+        <a href="../adr/0071-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md">ADR&nbsp;0070</a>).
       </p>
     </div>
   </header>
@@ -919,7 +919,7 @@
   <section class="panel" aria-labelledby="hero-h">
     <div class="phead">
       <h2 id="hero-h">One Pull Request, five stations, two lanes</h2>
-      <span class="src">ADR 0069, ADR 0070</span>
+      <span class="src">ADR 0070, ADR 0071</span>
     </div>
     <div class="pbody">
       <p class="small muted">
@@ -1007,7 +1007,7 @@
               <circle class="tipdot" cx="292" cy="608" r="4" />
               <text class="title" x="52" y="626">CI trigger</text>
               <text x="52" y="646">opened&#8226;sync&#8226;ready&#8226;reopened</text>
-              <text class="src" x="52" y="664">ADR 0069</text>
+              <text class="src" x="52" y="664">ADR 0070</text>
             </g>
             <g class="step" data-tip="ci-concurrency" tabindex="0" aria-label="One concurrency group per Pull Request, a superseded run is cancelled" aria-describedby="note-ci-concurrency">
               <rect class="box" x="330" y="600" width="290" height="76" rx="6" />
@@ -1151,17 +1151,17 @@
         </dd>
         <dt>classifier</dt>
         <dd id="note-classifier">
-          A Wired Gate, never an LLM (ADR 0069 item 2). Five inputs: affected
+          A Wired Gate, never an LLM (ADR 0070 item 2). Five inputs: affected
           Nx projects and their <code>tier:*</code> tags, the path map in
           <code>tools/config/</code>, dependency manifests, diff size, author.
           Output is <code>review:auto | review:agent | review:human</code>,
           written as a job output; the label on the Pull Request is only a
-          view of it (ADR 0069 item 3). Unknown, unmatched, or error resolves
-          to <code>human</code> (ADR 0069 item 5) &mdash; and a fixed
+          view of it (ADR 0070 item 3). Unknown, unmatched, or error resolves
+          to <code>human</code> (ADR 0070 item 5) &mdash; and a fixed
           &ldquo;initial human set&rdquo; (vault/crypto, auth/session, Prisma
           schema, workflows, the gate scripts, CODEOWNERS, dependency
           manifests) is <code>review:human</code> through the dependency
-          graph even when a diff touches none of them directly (ADR 0069 item
+          graph even when a diff touches none of them directly (ADR 0070 item
           4).
         </dd>
         <dt>reviewer</dt>
@@ -1169,37 +1169,37 @@
           Two sub-agents, one per axis, <code>standards</code> and
           <code>spec</code> (<code>SKILL.md:15,64</code>), each emitting a
           findings array; the main agent assembles the envelope and authors no
-          finding of its own (ADR 0070 item 7). It may execute, in a
+          finding of its own (ADR 0071 item 7). It may execute, in a
           <code>git worktree</code> under <code>tmp/</code> it cannot keep
-          (ADR 0070 item 4).
+          (ADR 0071 item 4).
         </dd>
         <dt>json</dt>
         <dd id="note-json">
           The Local lane and the CI lane converge here: the same Zod schema in
           <code>tools/scripts/review/</code>, the same validator, the same
-          renderer (ADR 0070 item 8). It is one object, not two pipelines that
+          renderer (ADR 0071 item 8). It is one object, not two pipelines that
           happen to look alike.
         </dd>
         <dt>validator</dt>
         <dd id="note-validator">
-          Rejects the report whole on any schema violation (ADR 0070 item 5).
+          Rejects the report whole on any schema violation (ADR 0071 item 5).
           Derives each finding's id from <code>axis + source + rule +
-          file</code>, line excluded (ADR 0070 item 6). Computes the verdict:
+          file</code>, line excluded (ADR 0071 item 6). Computes the verdict:
           any <code>blocking</code> means <code>request-changes</code>; only
           <code>nit</code> means <code>approve</code>; otherwise
-          <code>comment</code> (ADR 0070 item 5).
+          <code>comment</code> (ADR 0071 item 5).
           No spec source tightens the envelope to <code>human</code> &mdash;
           see the reading test above the diagram.
         </dd>
         <dt>decide</dt>
         <dd id="note-decide">
           The verdict is a required status check beside <code>Lint</code> and
-          <code>Test</code>, never a review approval (ADR 0069 item 6).
+          <code>Test</code>, never a review approval (ADR 0070 item 6).
           <code>review:human</code> additionally needs a code-owner approval,
           which today means everything, because
           <code>.github/CODEOWNERS:3</code> is <code>* @mnaimfaizy</code>.
           Until CODEOWNERS is narrowed, every tier meets a human in effect
-          (ADR 0069, Consequences) &mdash; see
+          (ADR 0070, Consequences) &mdash; see
           <a href="#halt-h">the halt</a> below.
         </dd>
       </dl>
@@ -1210,7 +1210,7 @@
   <section class="panel" aria-labelledby="halt-h">
     <div class="phead">
       <h2 id="halt-h">The halt — station 5, GitHub decides</h2>
-      <span class="src">ADR 0069, Consequences</span>
+      <span class="src">ADR 0070, Consequences</span>
     </div>
     <div class="pbody">
       <p class="small muted">
@@ -1220,7 +1220,7 @@
         today, that stop is not conditional on the tier at all: it applies to
         every tier, because CODEOWNERS assigns everything to one person. That
         is the <b>current</b> state; a <b>future</b>, narrower CODEOWNERS is
-        described in ADR 0069's Consequences but is not implemented and has no
+        described in ADR 0070's Consequences but is not implemented and has no
         ADR number of its own yet. Nothing about this stop relies on motion:
         both states below are legible with no animation and no autoplay.
       </p>
@@ -1248,7 +1248,7 @@
   <section class="panel" aria-labelledby="pa-h">
     <div class="phead">
       <h2 id="pa-h">Panel A — Anatomy of a finding</h2>
-      <span class="src">ADR 0070 items 1&ndash;2, 6</span>
+      <span class="src">ADR 0071 items 1&ndash;2, 6</span>
     </div>
     <div class="pbody">
       <p class="small muted">
@@ -1309,7 +1309,7 @@
   <section class="panel" aria-labelledby="pb-h">
     <div class="phead">
       <h2 id="pb-h">Panel B — What earns <code>blocking</code></h2>
-      <span class="src">ADR 0070 item 1</span>
+      <span class="src">ADR 0071 item 1</span>
     </div>
     <div class="pbody">
       <table class="dtable">
@@ -1360,7 +1360,7 @@
   <section class="panel" aria-labelledby="pc-h">
     <div class="phead">
       <h2 id="pc-h">Panel C — Gate Tier versus Review Tier</h2>
-      <span class="src">ADR 0012, ADR 0069 item 7</span>
+      <span class="src">ADR 0012, ADR 0070 item 7</span>
     </div>
     <div class="pbody">
       <p class="small muted">
@@ -1381,7 +1381,7 @@
         </div>
         <div class="arrowcol">
           <span class="glyph" aria-hidden="true">&#8596;</span>
-          <span class="cap">either may tighten<br />the other's effect;<br />neither loosens<br />(ADR 0069 item 5)</span>
+          <span class="cap">either may tighten<br />the other's effect;<br />neither loosens<br />(ADR 0070 item 5)</span>
         </div>
         <div class="tcol">
           <h3>Review Tier</h3>
@@ -1409,7 +1409,7 @@
   <section class="panel" aria-labelledby="pd-h">
     <div class="phead">
       <h2 id="pd-h">Panel D — What never enters the JSON</h2>
-      <span class="src">ADR 0070 item 3, item 8</span>
+      <span class="src">ADR 0071 item 3, item 8</span>
     </div>
     <div class="pbody">
       <div class="fates">
@@ -1428,7 +1428,7 @@
       </div>
       <p class="small muted" style="margin-top: 12px">
         And one more line: the GitHub token is never among the Reviewer's
-        tools. A script posts the comment (ADR 0070 item 8) &mdash; the
+        tools. A script posts the comment (ADR 0071 item 8) &mdash; the
         prompt-injection story in one glance.
       </p>
     </div>
@@ -1438,12 +1438,12 @@
   <section class="panel" aria-labelledby="pe-h">
     <div class="phead">
       <h2 id="pe-h">Panel E — The report on the PR</h2>
-      <span class="src">SKILL.md:82, ADR 0070 item 7</span>
+      <span class="src">SKILL.md:82, ADR 0071 item 7</span>
     </div>
     <div class="pbody">
       <p class="small muted">
         One summary comment, edited in place per run &mdash; two sections,
-        each sorted by severity within itself and never across (ADR 0070 item
+        each sorted by severity within itself and never across (ADR 0071 item
         7), nits folded, a new/persisting/resolved strip against the previous
         artifact, and inline comments only for <code>blocking</code> findings
         that carry a <code>location</code>.
@@ -1476,7 +1476,7 @@
   <section class="panel" aria-labelledby="pf-h">
     <div class="phead">
       <h2 id="pf-h">Panel F — Calibration</h2>
-      <span class="src">ADR 0070, Consequences</span>
+      <span class="src">ADR 0071, Consequences</span>
     </div>
     <div class="pbody">
       <p>
@@ -1716,7 +1716,7 @@
     }
     function needsApproval(tier, state) {
       /* Current: CODEOWNERS is "* @mnaimfaizy" — every tier meets a human in
-         effect (ADR 0069, Consequences). Future (hypothetical, unimplemented):
+         effect (ADR 0070, Consequences). Future (hypothetical, unimplemented):
          only review:human would still need it. */
       if (state === 'current') return true;
       return tier === 'human';
@@ -1748,7 +1748,7 @@
           '<div class="htitle">&#9632; Approved as code owner</div><p>' +
           'The code-owner approval is recorded. The PR is mergeable once the ' +
           'required checks and the agent verdict are also green — the approval ' +
-          'is necessary, never sufficient on its own (ADR 0069 item 1).</p>' +
+          'is necessary, never sufficient on its own (ADR 0070 item 1).</p>' +
           '<button type="button" class="haltbtn" id="haltUndo">Withdraw approval</button>';
         const undo = document.getElementById('haltUndo');
         if (undo) {

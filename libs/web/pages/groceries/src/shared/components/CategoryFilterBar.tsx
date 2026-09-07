@@ -2,7 +2,7 @@
 
 import { GroceryCategoryType, GroceryItem } from '@myorganizer/core';
 import { cn } from '@myorganizer/web-ui';
-import { memo, useMemo } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import {
   CATEGORY_LABELS,
   CATEGORY_ORDER,
@@ -35,19 +35,22 @@ function CategoryFilterBarComponent({
     return CATEGORY_ORDER.filter((cat) => categoriesSet.has(cat));
   }, [items]);
 
+  const handleKeyDown = useCallback(
+    (
+      e: React.KeyboardEvent<HTMLButtonElement>,
+      category: GroceryCategoryType | 'all',
+    ) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        onCategoryChange(category);
+      }
+    },
+    [onCategoryChange],
+  );
+
   if (items.length === 0) {
     return null;
   }
-
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLButtonElement>,
-    category: GroceryCategoryType | 'all',
-  ) => {
-    if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault();
-      onCategoryChange(category);
-    }
-  };
 
   return (
     <div

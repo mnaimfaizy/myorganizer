@@ -12,6 +12,7 @@ import {
   SelectValue,
 } from '@myorganizer/web-ui';
 import { Controller, type UseFormReturn } from 'react-hook-form';
+import { useCallback } from 'react';
 
 import type { SubscriptionFormValues } from '../schemas/subscription';
 
@@ -24,6 +25,15 @@ export function SubscriptionScheduleFields({
   form,
   showEndDate = true,
 }: SubscriptionScheduleFieldsProps) {
+  const handleCurrencyChange = useCallback(
+    (value: string) => {
+      form.setValue('currency', value as SubscriptionFormValues['currency'], {
+        shouldValidate: true,
+      });
+    },
+    [form],
+  );
+
   return (
     <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -41,15 +51,7 @@ export function SubscriptionScheduleFields({
           <Label htmlFor="sub-currency">Currency</Label>
           <Select
             value={form.watch('currency')}
-            onValueChange={(v) =>
-              form.setValue(
-                'currency',
-                v as SubscriptionFormValues['currency'],
-                {
-                  shouldValidate: true,
-                },
-              )
-            }
+            onValueChange={handleCurrencyChange}
           >
             <SelectTrigger id="sub-currency">
               <SelectValue placeholder="Select currency" />

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Asserts that docs/review/finding-lifecycle.html still describes the review
-// pipeline the code implements (ADR 0069, ADR 0070).
+// pipeline the code implements (ADR 0070, ADR 0071).
 //
 //   node tools/scripts/check-review-pages.mjs
 //

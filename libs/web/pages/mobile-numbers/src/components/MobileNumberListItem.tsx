@@ -2,6 +2,7 @@ import { MobileNumberRecord } from '@myorganizer/core';
 import { Badge, Button } from '@myorganizer/web-ui';
 import { Smartphone, Trash2 } from 'lucide-react';
 import Link from 'next/link';
+import { useCallback } from 'react';
 import { formatMobileNumber } from '../utils/formatMobileNumber';
 
 interface MobileNumberListItemProps {
@@ -9,14 +10,25 @@ interface MobileNumberListItemProps {
   onRequestDelete: (item: MobileNumberRecord) => void | Promise<void>;
 }
 
-export function MobileNumberListItem(props: MobileNumberListItemProps) {
-  const usageCount = props.item.usageLocations.length;
+export function MobileNumberListItem({
+  item,
+  onRequestDelete,
+}: MobileNumberListItemProps) {
+  const usageCount = item.usageLocations.length;
+
+  const handleDeleteClick = useCallback(
+    (event: React.MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      onRequestDelete(item);
+    },
+    [onRequestDelete, item],
+  );
 
   return (
     <div className="group relative border rounded-lg p-4 transition-all duration-200 hover:shadow-md hover:border-primary/50 bg-card">
       <div className="flex items-start justify-between gap-4">
         <Link
-          href={`/dashboard/mobile-numbers/${props.item.id}`}
+          href={`/dashboard/mobile-numbers/${item.id}`}
           className="flex-1 min-w-0"
         >
           <div className="flex items-start gap-3">
@@ -26,7 +38,7 @@ export function MobileNumberListItem(props: MobileNumberListItemProps) {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="font-semibold text-base truncate group-hover:text-primary transition-colors">
-                  {props.item.label}
+                  {item.label}
                 </h3>
                 {usageCount > 0 && (
                   <Badge variant="secondary" className="text-xs">
@@ -35,7 +47,7 @@ export function MobileNumberListItem(props: MobileNumberListItemProps) {
                 )}
               </div>
               <p className="text-sm text-muted-foreground break-words font-mono">
-                {formatMobileNumber(props.item)}
+                {formatMobileNumber(item)}
               </p>
               {usageCount === 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
@@ -49,12 +61,9 @@ export function MobileNumberListItem(props: MobileNumberListItemProps) {
         <Button
           variant="ghost"
           size="icon"
-          aria-label={`Delete ${props.item.label}`}
+          aria-label={`Delete ${item.label}`}
           className="opacity-0 group-hover:opacity-100 transition-opacity text-destructive hover:text-destructive hover:bg-destructive/10"
-          onClick={(e) => {
-            e.preventDefault();
-            props.onRequestDelete(props.item);
-          }}
+          onClick={handleDeleteClick}
         >
           <Trash2 className="h-4 w-4" />
         </Button>

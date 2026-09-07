@@ -60,18 +60,10 @@ export function CloudBackupLiveCard({
       isLatestLoading={latestCloud.status === 'loading'}
       isBusy={cloud.isBusy}
       lastError={cloud.lastError}
-      onConnect={() => {
-        void cloud.connect();
-      }}
-      onDisconnect={() => {
-        void cloud.disconnect();
-      }}
-      onBackupNow={() => {
-        void cloud.backupNow();
-      }}
-      onRestoreLatest={() => {
-        void cloud.restoreLatest();
-      }}
+      onConnect={cloud.connect}
+      onDisconnect={cloud.disconnect}
+      onBackupNow={cloud.backupNow}
+      onRestoreLatest={cloud.restoreLatest}
       onAutoIntervalChange={cloud.setAutoInterval}
     />
   );

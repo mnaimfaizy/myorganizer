@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Validates a `/code-review` report and writes its normalized form (ADR 0070).
+// Validates a `/code-review` report and writes its normalized form (ADR 0071).
 //
 //   node tools/scripts/review/validate-review-report.mjs <report.json> [--out <normalized.json>]
 //

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Renders a normalized `/code-review` report as the two-section Markdown a
-// human reads, in the terminal or on the Pull Request (ADR 0070 item 8).
+// human reads, in the terminal or on the Pull Request (ADR 0071 item 8).
 //
 //   node tools/scripts/review/render-review-report.mjs <normalized.json> [--previous <normalized.json>] [--out <report.md>] [--no-hunks]
 //

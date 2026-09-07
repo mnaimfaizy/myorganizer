@@ -6,8 +6,8 @@ description: Review changes since a fixed point (commit, branch, tag, or merge-b
 # Code Review
 
 Adapted from [mattpocock/skills — code-review](https://github.com/mattpocock/skills/tree/main/skills/engineering/code-review) for MyOrganizer. The finding contract is
-[ADR 0070](../../../docs/adr/0070-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md);
-the tier it feeds is [ADR 0069](../../../docs/adr/0069-a-review-tier-is-a-fact-about-the-diff-and-a-gate-tier-is-a-decision-about-the-work.md).
+[ADR 0071](../../../docs/adr/0071-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md);
+the tier it feeds is [ADR 0070](../../../docs/adr/0070-a-review-tier-is-a-fact-about-the-diff-and-a-gate-tier-is-a-decision-about-the-work.md).
 
 Two-axis review of the diff between `HEAD` and a fixed point:
 
