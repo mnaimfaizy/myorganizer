@@ -134,11 +134,37 @@ Rules the validator enforces — a report that breaks one is rejected whole:
 ```
 
 **Standards sub-agent prompt** — include the diff command and commit list, `head`, the standards
-source list, the smell baseline pasted in full, the contract above, and the brief: "Report every
-place the diff violates a documented standard — `source` is the file, `rule` is the rule, evidence
-is `cited` with `sourceKind: standard` — and every baseline smell as `source: smell-baseline`,
-`inferred`. You may run existing targets on affected projects to turn a suspicion into `executed`
-evidence. Set `axis: standards` on every finding."
+source list, the smell baseline pasted in full, the reach-through checks below pasted in full, the
+contract above, and the brief: "Report every place the diff violates a documented standard —
+`source` is the file, `rule` is the rule, evidence is `cited` with `sourceKind: standard` — and
+every baseline smell as `source: smell-baseline`, `inferred`. Run the reach-through checks before
+you write findings. You may run existing targets on affected projects to turn a suspicion into
+`executed` evidence. Set `axis: standards` on every finding."
+
+The **reach-through checks** exist because the two defects the golden set was seeded from
+([ADR 0053](../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md),
+[ADR 0065](../../../docs/adr/0065-tokens-json-is-the-single-source-of-web-colour.md)) were both
+invisible inside the hunks: the diff changed a set, and the code that broke was a consumer of that
+set which the diff never touched. A reviewer who reads only the diff cannot see either. Paste this
+block verbatim:
+
+```
+Reach-through checks — do these against the whole tree at <head>, not only the diff:
+1. A member added to a set. If the diff adds a member to an enum, a union, a const-object map, a
+   list of blob/record/kind names, or an OpenAPI enum, grep the tree at <head> for every place that
+   enumerates the existing members by hand (object literals keyed by member, switch/if chains,
+   Record<...> tables, test fixtures that list them). Every such site the diff does not update is a
+   finding at THAT site's file — cite the fan-out rule (AGENTS.md, ADR 0053) — even though the
+   diff never touched it. A missing member fails silently: a reconcile skips it, an export drops it.
+2. A shared value removed, renamed, or reshaped. If the diff removes or renames a design token, a
+   Tailwind theme entry or preset colour, a CSS variable, an exported constant, an environment
+   variable, a route, or a generated-client symbol, grep the tree at <head> for every consumer of
+   the old name. Every consumer that now resolves to nothing is a finding at the consumer's file or
+   at the config that removed the value. A green build is not evidence: Tailwind drops an unknown
+   class silently, and a missing token renders as no style.
+3. Prefer executed evidence for both: `git grep -n '<member or old name>' <head> -- <paths>` in the
+   checkout, or the relevant `*:check` gate, and quote the command and its exit code.
+```
 
 **Spec sub-agent prompt** — include the diff command and commit list, `head`, the spec reference
 and its fetched text, the contract above, and the brief: "Report (a) requirements the spec asked for
