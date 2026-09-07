@@ -1,19 +1,17 @@
 'use client';
 
-import { Button, Skeleton, cn } from '@myorganizer/web-ui';
-import { CheckCircle, Circle, ExternalLink, ListPlus, X } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Button, Skeleton } from '@myorganizer/web-ui';
+import { ExternalLink } from 'lucide-react';
+import { useCallback, useRef, useState } from 'react';
 import { updateVideoWatched } from '../hooks';
-import type { ChannelCarousel, YouTubeVideo } from '../types';
+import { useCachedUploadExpansion } from '../hooks/useCachedUploadExpansion';
+import { useEnabledChannelSelection } from '../hooks/useEnabledChannelSelection';
+import type { ChannelCarousel } from '../types';
+import { ActivePlayerPanel } from './ActivePlayerPanel';
 import { ChannelList } from './ChannelList';
-import { YouTubeVideoPlayer } from './YouTubeVideoPlayer';
+import { UploadListItem } from './UploadListItem';
 
-/**
- * Uploads per channel returned by the channel list endpoint. Sync caches the
- * latest 100 per channel, so anything past this is reachable only by asking
- * for the rest — see `onLoadMoreUploads`.
- */
-export const CHANNEL_LIST_UPLOAD_CAP = 20;
+export { CHANNEL_LIST_UPLOAD_CAP } from '../hooks/useCachedUploadExpansion';
 
 /** The single detail pane both channel tab lists swap. */
 const CHANNEL_PANEL_ID = 'channel-directory-panel';
@@ -73,9 +71,9 @@ export function ChannelDirectory({
   loadingMoreChannelIds,
   fullyLoadedChannelIds,
 }: ChannelDirectoryProps) {
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(
-    initialChannelId,
-  );
+  const { effectiveSelectedChannelId, selectedChannel, selectChannel } =
+    useEnabledChannelSelection({ channels, initialChannelId });
+
   const [pickedVideoId, setPickedVideoId] = useState<string | null>(null);
   const [focusedVideoIndex, setFocusedVideoIndex] = useState<number>(0);
 
@@ -83,6 +81,15 @@ export function ChannelDirectory({
   const channelMobileRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const videoRowRefs = useRef<(HTMLDivElement | null)[]>([]);
   const playerTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const { isLoadingMoreUploads, canLoadMoreUploads, handleLoadMoreUploads } =
+    useCachedUploadExpansion({
+      effectiveSelectedChannelId,
+      selectedChannel,
+      onLoadMoreUploads,
+      loadingMoreChannelIds,
+      fullyLoadedChannelIds,
+    });
 
   // Playback is derived, not synced: while another surface owns the single
   // active player this one renders none, whatever the User last picked here.
@@ -92,29 +99,18 @@ export function ChannelDirectory({
   // yanked back: the surface that claimed playback owns where focus lands.
   const activeVideoId = playbackSuspended ? null : pickedVideoId;
 
-  // Effective selection: the User's own pick when it still names an Enabled
-  // Channel, otherwise the first. A deep link to a channel the User has since
-  // disabled therefore opens the directory rather than an empty pane.
-  const selectionIsEnabled = channels.some(
-    (c) => c.channelId === selectedChannelId,
-  );
-  const effectiveSelectedChannelId =
-    (selectionIsEnabled ? selectedChannelId : null) ??
-    channels[0]?.channelId ??
-    null;
-  const selectedChannel = effectiveSelectedChannelId
-    ? channels.find((c) => c.channelId === effectiveSelectedChannelId)
-    : null;
-
   const handleRetryClick = useCallback(() => {
     onRetry?.();
   }, [onRetry]);
 
-  const handleChannelSelect = useCallback((channelId: string) => {
-    setSelectedChannelId(channelId);
-    setPickedVideoId(null);
-    setFocusedVideoIndex(0);
-  }, []);
+  const handleChannelSelect = useCallback(
+    (channelId: string) => {
+      selectChannel(channelId);
+      setPickedVideoId(null);
+      setFocusedVideoIndex(0);
+    },
+    [selectChannel],
+  );
 
   const handleChannelKeyDown = useCallback(
     (
@@ -152,11 +148,11 @@ export function ChannelDirectory({
           ? channelDesktopRefs.current
           : channelMobileRefs.current;
       refs[targetIndex]?.focus();
-      setSelectedChannelId(channels[targetIndex].channelId);
+      selectChannel(channels[targetIndex].channelId);
       setPickedVideoId(null);
       setFocusedVideoIndex(0);
     },
-    [channels],
+    [channels, selectChannel],
   );
 
   const handleVideoKeyDown = useCallback(
@@ -211,26 +207,6 @@ export function ChannelDirectory({
     setPickedVideoId(null);
     playerTriggerRef.current?.focus();
   }, []);
-
-  // The channel list arrives capped, so a channel sitting exactly on the cap
-  // probably has more behind it. Offering to load is a guess by design: the
-  // response settles it, and a channel that turns out to hold exactly the cap
-  // simply loses the button on the next render. The alternative — a per
-  // channel total on the list endpoint — is an API contract change for a
-  // button label.
-  const isLoadingMoreUploads = effectiveSelectedChannelId
-    ? (loadingMoreChannelIds?.has(effectiveSelectedChannelId) ?? false)
-    : false;
-  const canLoadMoreUploads =
-    !!onLoadMoreUploads &&
-    !!effectiveSelectedChannelId &&
-    !fullyLoadedChannelIds?.has(effectiveSelectedChannelId) &&
-    (selectedChannel?.videos.length ?? 0) >= CHANNEL_LIST_UPLOAD_CAP;
-
-  const handleLoadMoreUploads = useCallback(() => {
-    if (!effectiveSelectedChannelId) return;
-    onLoadMoreUploads?.(effectiveSelectedChannelId);
-  }, [effectiveSelectedChannelId, onLoadMoreUploads]);
 
   const handleVideoNearEnd = useCallback(() => {
     if (!activeVideoId || !effectiveSelectedChannelId) return;
@@ -430,274 +406,3 @@ export function ChannelDirectory({
     </div>
   );
 }
-
-interface ActivePlayerPanelProps {
-  activeVideoId: string;
-  video?: YouTubeVideo;
-  onClose: () => void;
-  onNearEnd: () => void;
-}
-
-function ActivePlayerPanel({
-  activeVideoId,
-  video,
-  onClose,
-  onNearEnd,
-}: ActivePlayerPanelProps) {
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      }
-    },
-    [onClose],
-  );
-
-  if (!video) return null;
-
-  return (
-    <div
-      onKeyDown={handleKeyDown}
-      className="rounded-lg border border-border bg-card p-4 lg:sticky lg:top-2 lg:z-10"
-    >
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold text-foreground">{video.title}</h3>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onClose}
-          className="h-6 w-6 p-0"
-          aria-label="Close player"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-      <YouTubeVideoPlayer
-        key={activeVideoId}
-        video={video}
-        watched={video.watched ?? false}
-        onNearEnd={onNearEnd}
-        defaultPlaying
-      />
-    </div>
-  );
-}
-
-interface UploadListItemProps {
-  video: YouTubeVideo;
-  index: number;
-  isFocused: boolean;
-  tabIndex: number;
-  onKeyDown: (e: React.KeyboardEvent<HTMLDivElement>) => void;
-  onPlay: (triggerElement: HTMLButtonElement) => void;
-  onWatchedToggle?: (videoId: string, watched: boolean) => void;
-  onAddToQueue?: (videoId: string) => void;
-  isQueued: boolean;
-  queueFull: boolean;
-}
-
-const UploadListItem = React.forwardRef<HTMLDivElement, UploadListItemProps>(
-  (
-    {
-      video,
-      onPlay,
-      onWatchedToggle,
-      onAddToQueue,
-      isQueued,
-      queueFull,
-      tabIndex,
-      onKeyDown,
-      isFocused,
-    },
-    ref,
-  ) => {
-    const [watched, setWatched] = useState<boolean>(!!video.watched);
-    const [updating, setUpdating] = useState<boolean>(false);
-    const [error, setError] = useState<string | null>(null);
-    const playButtonRef = useRef<HTMLButtonElement>(null);
-
-    useEffect(() => {
-      setWatched(!!video.watched);
-    }, [video.watched]);
-
-    const formattedDate = new Date(video.publishedAt).toLocaleDateString(
-      undefined,
-      { year: 'numeric', month: 'short', day: 'numeric' },
-    );
-
-    const youtubeWatchUrl = `https://www.youtube.com/watch?v=${encodeURIComponent(
-      video.videoId,
-    )}`;
-
-    const handleToggleWatched = useCallback(
-      async (e?: React.MouseEvent) => {
-        e?.preventDefault();
-        e?.stopPropagation();
-
-        const nextWatched = !watched;
-        const prevWatched = watched;
-
-        setWatched(nextWatched);
-        setUpdating(true);
-        setError(null);
-
-        try {
-          const result = await updateVideoWatched(video.videoId, nextWatched);
-          setWatched(result.watched);
-          onWatchedToggle?.(video.videoId, result.watched);
-        } catch {
-          setWatched(prevWatched);
-          setError('Failed to update status');
-        } finally {
-          setUpdating(false);
-        }
-      },
-      [watched, video.videoId, onWatchedToggle],
-    );
-
-    const handlePlayClick = useCallback(
-      (e: React.MouseEvent) => {
-        e.preventDefault();
-        if (playButtonRef.current) {
-          onPlay(playButtonRef.current);
-        }
-      },
-      [onPlay],
-    );
-
-    const handleAddToQueue = useCallback(() => {
-      onAddToQueue?.(video.videoId);
-    }, [onAddToQueue, video.videoId]);
-
-    return (
-      <div
-        ref={ref}
-        tabIndex={tabIndex}
-        onKeyDown={onKeyDown}
-        className={cn(
-          'group flex gap-3 rounded-lg border bg-card p-3 transition-colors',
-          isFocused
-            ? 'border-brand bg-brand/10 ring-2 ring-brand/50'
-            : 'border-border hover:bg-muted',
-        )}
-      >
-        {/* Thumbnail */}
-        <div className="flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden bg-muted flex items-center justify-center">
-          {video.thumbnail ? (
-            <img
-              src={video.thumbnail}
-              alt={video.title}
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <span className="text-2xl text-muted-foreground">▶</span>
-          )}
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 min-w-0">
-          <h4 className="line-clamp-2 text-sm font-medium text-foreground">
-            <a
-              href={youtubeWatchUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:underline"
-            >
-              {video.title}
-            </a>
-          </h4>
-
-          <div className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-            {video.channelTitle && (
-              <>
-                <span className="truncate">{video.channelTitle}</span>
-                <span>·</span>
-              </>
-            )}
-            <span>{formattedDate}</span>
-            <span>·</span>
-            <span>{watched ? 'Watched' : 'New'}</span>
-          </div>
-
-          <div className="mt-2 flex items-center gap-1 flex-wrap">
-            <Button
-              type="button"
-              ref={playButtonRef}
-              variant="ghost"
-              size="sm"
-              onClick={handlePlayClick}
-              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-              aria-label={`Play ${video.title} in app`}
-            >
-              Play in app
-            </Button>
-
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={handleToggleWatched}
-              disabled={updating}
-              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground"
-              aria-label={
-                watched
-                  ? `Mark ${video.title} as new`
-                  : `Mark ${video.title} as watched`
-              }
-            >
-              {watched ? (
-                <>
-                  <CheckCircle className="mr-1 h-3.5 w-3.5 text-success" />
-                  Mark as new
-                </>
-              ) : (
-                <>
-                  <Circle className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
-                  Mark as watched
-                </>
-              )}
-            </Button>
-
-            {onAddToQueue && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={handleAddToQueue}
-                disabled={isQueued || queueFull}
-                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
-                aria-label={
-                  isQueued
-                    ? `${video.title} is already queued`
-                    : queueFull
-                      ? `Queue is full — remove an upload to add ${video.title}`
-                      : `Add ${video.title} to queue`
-                }
-              >
-                <ListPlus className="mr-1 h-3.5 w-3.5 text-muted-foreground" />
-                {isQueued
-                  ? 'Queued'
-                  : queueFull
-                    ? 'Queue full'
-                    : 'Add to queue'}
-              </Button>
-            )}
-
-            {error && (
-              <span
-                role="alert"
-                className="text-[10px] font-medium text-destructive"
-              >
-                {error}
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  },
-);
-UploadListItem.displayName = 'UploadListItem';
