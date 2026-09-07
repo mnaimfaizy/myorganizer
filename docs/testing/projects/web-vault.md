@@ -1,10 +1,13 @@
-# Testing `libs/web-vault` and `libs/web-vault-ui`
+# Testing `libs/web-vault`
 
-Jest unit/integration · `babel-jest` + `jsdom` env (React) · `yarn nx test web-vault` / `yarn nx test web-vault-ui`
+Jest unit/integration · `babel-jest` + `jsdom` env (React) · `yarn nx test web-vault`
 
 ## Config summary
 
 Same transform as [`libs/web-ui`](./web-ui.md) — babel-jest + `@nx/react/babel` + jsdom.
+
+`libs/web-vault-ui` has its own guide: [`web-vault-ui.md`](./web-vault-ui.md). The mock-crypto
+rule below does not apply there.
 
 ## Rules
 
@@ -21,7 +24,5 @@ Same transform as [`libs/web-ui`](./web-ui.md) — babel-jest + `@nx/react/babel
 
 ```bash
 yarn nx test web-vault
-yarn nx test web-vault-ui
 yarn nx lint web-vault
-yarn nx lint web-vault-ui
 ```

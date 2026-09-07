@@ -25,7 +25,7 @@ export class GraphUnavailableError extends Error {
  * @returns {{ nodes: Record<string, { name: string, data: { root: string, tags?: string[], targets: Record<string, unknown> } }>,
  *            dependencies: Record<string, Array<{ source: string, target: string, type: string }>> }}
  * `dependencies` is what the Review Tier classifier walks to find the projects a
- * change reaches (ADR 0069 item 4); an older graph file without it yields `{}`.
+ * change reaches (ADR 0070 item 4); an older graph file without it yields `{}`.
  */
 export function loadProjectGraph(graphArg) {
   let file = graphArg;

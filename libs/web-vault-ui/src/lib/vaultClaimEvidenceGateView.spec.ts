@@ -72,6 +72,7 @@ describe('VAULT_CLAIM_EVIDENCE_GATE_VIEWS', () => {
       expect(typeof view.title).toBe('string');
       expect(view.description).toBeTruthy();
       expect(typeof view.description).toBe('string');
+      expect(view.description).toMatch(/and we will keep trying\.$/);
     }
   });
 

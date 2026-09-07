@@ -3,6 +3,10 @@ import { routeApi } from './apiStub';
 import { submitLoginForm, waitForSignupFormInteractive } from './auth';
 import { gotoStable } from './navigation';
 import { createOwnedVault, unlockWithPassphrase } from './vaultGate';
+import {
+  vaultBlobRouteRelative,
+  vaultBlobTypeExtractor,
+} from './vaultBlobRoutes';
 
 /**
  * Identity entry for email-to-userId mapping in specs.
@@ -93,8 +97,7 @@ export function setupBackend(
   const registerUrl = /\/auth\/register\/?(\?.*)?$/;
   const logoutUrl = /\/auth\/logout\/([a-zA-Z0-9-]+)\/?(\?.*)?$/;
   const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
-  const vaultBlobUrl =
-    /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos)\/?(\?.*)?$/;
+  const vaultBlobUrl = vaultBlobRouteRelative();
   const vaultBackupsLatestUrl = /\/vault\/backups\/latest\/?(\?.*)?$/;
 
   routeApi(page, loginUrl, async (route) => {
@@ -264,9 +267,7 @@ export function setupBackend(
     const origin = new URL(page.url() || 'http://localhost:3000').origin;
     const headers = headersFor(origin);
 
-    const match = request
-      .url()
-      .match(/\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos)/);
+    const match = request.url().match(vaultBlobTypeExtractor());
     const type = match?.[1];
 
     if (!type) {

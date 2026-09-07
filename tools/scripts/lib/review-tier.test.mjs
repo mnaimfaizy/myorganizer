@@ -265,7 +265,7 @@ test('the committed path map loads and keeps human rules ahead of auto rules', (
   const lastHuman = tiers.lastIndexOf('human');
   const firstAuto = tiers.indexOf('auto');
   assert.ok(lastHuman < firstAuto, 'a human rule follows an auto rule');
-  // The map protects itself and the tags the classifier reads (ADR 0069 item 3).
+  // The map protects itself and the tags the classifier reads (ADR 0070 item 3).
   const gates = map.rules.find((r) => r.id === 'gates-and-their-config');
   assert.ok(gates.patterns.includes('tools/config/**'));
   assert.ok(gates.patterns.includes('**/project.json'));

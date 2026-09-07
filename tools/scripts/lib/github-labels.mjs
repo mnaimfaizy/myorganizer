@@ -38,7 +38,7 @@ export function loadGithubLabelCatalog(
     );
   }
 
-  // ADR 0069 item 7: a third set, applied by the Review Tier classifier alone.
+  // ADR 0070 item 7: a third set, applied by the Review Tier classifier alone.
   if (!Array.isArray(catalog.review) || !catalog.review.every(isLabelRecord)) {
     throw new Error(
       'github-labels catalog review must be an array of label records.',

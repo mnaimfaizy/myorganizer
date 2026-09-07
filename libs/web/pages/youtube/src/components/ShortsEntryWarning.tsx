@@ -2,6 +2,7 @@
 
 import { Button, Dialog, DialogContent } from '@myorganizer/web-ui';
 import Link from 'next/link';
+import { useCallback } from 'react';
 import { formatShortsDuration } from '../lib/shortsBudget';
 
 interface ShortsEntryWarningProps {
@@ -24,20 +25,23 @@ export function ShortsEntryWarning({
   remainingMs,
   onContinue,
 }: ShortsEntryWarningProps) {
+  const handleOpenChange = useCallback((_open: boolean) => {
+    // Dialog can only be dismissed via explicit action buttons.
+  }, []);
+
+  const handlePointerDownOutside = useCallback(
+    (event: { preventDefault: () => void }) => {
+      event.preventDefault();
+    },
+    [],
+  );
+
   return (
-    <Dialog
-      open={true}
-      onOpenChange={(open) => {
-        if (!open) {
-          // Dialog can only be dismissed via explicit action buttons.
-          return;
-        }
-      }}
-    >
+    <Dialog open={true} onOpenChange={handleOpenChange}>
       <DialogContent
         className="max-w-sm"
         showCloseButton={false}
-        onPointerDownOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={handlePointerDownOutside}
       >
         <div className="space-y-4">
           <div>

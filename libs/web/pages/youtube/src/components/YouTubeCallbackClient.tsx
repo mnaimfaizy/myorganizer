@@ -3,13 +3,17 @@
 import { getAccessToken } from '@myorganizer/auth';
 import { getApiBaseUrl } from '@myorganizer/core';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 export default function YouTubeCallbackClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const didRun = useRef(false);
+
+  const handleBack = useCallback(() => {
+    router.replace('/dashboard/youtube');
+  }, [router]);
 
   useEffect(() => {
     if (didRun.current) return;
@@ -60,10 +64,7 @@ export default function YouTubeCallbackClient() {
           Connection Failed
         </p>
         <p className="text-muted-foreground text-sm">{error}</p>
-        <button
-          className="text-primary underline text-sm"
-          onClick={() => router.replace('/dashboard/youtube')}
-        >
+        <button className="text-primary underline text-sm" onClick={handleBack}>
           Back to YouTube
         </button>
       </div>

@@ -1,5 +1,5 @@
 /**
- * The Review Tier classifier (ADR 0069): a deterministic function from a diff
+ * The Review Tier classifier (ADR 0070): a deterministic function from a diff
  * to `auto | agent | human`, explained signal by signal.
  *
  * Inputs, all passed in so the contract tests never touch the repository:
@@ -16,7 +16,7 @@
  * fired, and the signals are returned so the job can post why.
  *
  * Never an LLM, never reads the label: the tier is computed from the diff and
- * the label on the Pull Request is a display of it (ADR 0069 items 2 and 3).
+ * the label on the Pull Request is a display of it (ADR 0070 items 2 and 3).
  */
 
 import { readFileSync } from 'node:fs';
@@ -425,7 +425,7 @@ export function renderReviewTierSummary(result, { base, head } = {}) {
   const lines = [
     `## Review Tier: \`${result.label}\``,
     '',
-    `_${TIER_MEANING[result.tier]}._ Computed from the diff by \`tools/scripts/check-review-tier.mjs\` (ADR 0069); the label is a display of this output, not the other way round.`,
+    `_${TIER_MEANING[result.tier]}._ Computed from the diff by \`tools/scripts/check-review-tier.mjs\` (ADR 0070); the label is a display of this output, not the other way round.`,
     '',
   ];
   if (base && head)

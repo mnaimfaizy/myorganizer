@@ -21,7 +21,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { Building2, Edit, ExternalLink, Plus, Trash2 } from 'lucide-react';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 
 import { titleCase } from '../utils/enumUtils';
 
@@ -32,7 +32,12 @@ interface UsageLocationsTableProps {
   onAddLocation: () => void;
 }
 
-export function UsageLocationsTable(props: UsageLocationsTableProps) {
+export function UsageLocationsTable({
+  usageLocations,
+  onEdit,
+  onRequestDelete,
+  onAddLocation,
+}: UsageLocationsTableProps) {
   const columns = useMemo<ColumnDef<UsageLocationRecord>[]>(
     () => [
       {
@@ -118,7 +123,7 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => props.onEdit(row.original)}
+              onClick={() => onEdit(row.original)}
               className="h-8 w-8 p-0"
             >
               <Edit className="h-4 w-4" />
@@ -127,7 +132,7 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => props.onRequestDelete(row.original)}
+              onClick={() => onRequestDelete(row.original)}
               className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
             >
               <Trash2 className="h-4 w-4" />
@@ -137,11 +142,11 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
         ),
       },
     ],
-    [props],
+    [onEdit, onRequestDelete],
   );
 
   const table = useReactTable({
-    data: props.usageLocations,
+    data: usageLocations,
     columns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
@@ -152,7 +157,15 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
     },
   });
 
-  if (props.usageLocations.length === 0) {
+  const handlePreviousPage = useCallback(() => {
+    table.previousPage();
+  }, [table]);
+
+  const handleNextPage = useCallback(() => {
+    table.nextPage();
+  }, [table]);
+
+  if (usageLocations.length === 0) {
     return (
       <Card className="p-4">
         <CardTitle className="text-lg mb-4">Used at</CardTitle>
@@ -166,7 +179,7 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
               Add every organisation that needs to be told about this mobile
               number.
             </p>
-            <Button onClick={props.onAddLocation} className="mt-4 gap-2">
+            <Button onClick={onAddLocation} className="mt-4 gap-2">
               <Plus className="h-4 w-4" />
               Add location
             </Button>
@@ -237,7 +250,7 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => table.previousPage()}
+                onClick={handlePreviousPage}
                 disabled={!table.getCanPreviousPage()}
               >
                 Previous
@@ -245,7 +258,7 @@ export function UsageLocationsTable(props: UsageLocationsTableProps) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => table.nextPage()}
+                onClick={handleNextPage}
                 disabled={!table.getCanNextPage()}
               >
                 Next

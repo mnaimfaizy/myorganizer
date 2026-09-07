@@ -206,7 +206,7 @@ test.describe('Multi-user vault isolation (E2E)', () => {
 
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
-    setupBackend(page);
+    const serverState = setupBackend(page);
 
     // Test criterion 6: Removing User A's vault does not affect User B's vault
 
@@ -215,6 +215,16 @@ test.describe('Multi-user vault isolation (E2E)', () => {
     await gotoStable(page, '/dashboard/addresses');
     await createAndUnlockVault(page, USER_A_ID, ALICE_VAULT_PASSPHRASE);
     await writeAddressToVault(page, USER_A_ADDRESS, ALICE_VAULT_PASSPHRASE);
+
+    // Local list appearance is not a server push. Reconcile restores wrapping
+    // first and blobs after, so a download with no addresses blob on the stub
+    // would come back as the same wrapping and `data: {}`. Snapshot the local
+    // record only after the stub has the blob, so restore can match it.
+    await expect
+      .poll(() => Boolean(serverState.blobs[USER_A_ID]?.addresses), {
+        timeout: 30000,
+      })
+      .toBeTruthy();
 
     await waitForOwnedVault(page, USER_A_ID);
     const userAVaultBefore = await readOwnedVault(page, USER_A_ID);
@@ -257,9 +267,15 @@ test.describe('Multi-user vault isolation (E2E)', () => {
     // ensure the navigation commits before assertions resume (issue #557, see #524).
     await waitForReload(page, () => deleteButton.click());
 
-    // Verify User A's vault was removed
-    const userAVaultAfterRemoval = await readOwnedVault(page, USER_A_ID);
-    expect(userAVaultAfterRemoval).toBeNull();
+    // After removal and reload, reconcile runs on mount (commit 83f5495) and
+    // discovers the server still holds User A's vault. It re-downloads the
+    // wrapping first (`data: {}`) and then each blob. Wait for the pass to
+    // finish rather than snapshotting the wrapping-only intermediate.
+    // See vault-removal-offers-real-vault-back.spec.ts for the UI-level behavior
+    // (unlock panel appears, not create form).
+    await expect
+      .poll(() => readOwnedVault(page, USER_A_ID), { timeout: 30000 })
+      .toBe(userAVaultBefore);
 
     // Verify User B's vault is unchanged
     const userBVaultAfterARemoval = await readOwnedVault(page, USER_B_ID);

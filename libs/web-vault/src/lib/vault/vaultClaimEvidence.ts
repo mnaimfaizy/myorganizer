@@ -87,6 +87,36 @@ export const VAULT_META_CHANGE_SAME_VAULT = {
 } as const satisfies Record<VaultMetaChange, boolean>;
 
 /**
+ * Whether two Local Vault wrappings are the same Vault, not two separately
+ * initialized ones.
+ *
+ * The match test `checkVaultClaimEvidence` uses against the server, pointed
+ * at two local records instead. A claim copies the Unclaimed Local Vault
+ * rather than moving it, so a later ask finds an owned record beside the
+ * slot it was copied from. That leftover is not a second Vault, and it is
+ * not a replace.
+ */
+function vaultsAreTheSameVault(
+  left: VaultStorageV1,
+  right: VaultStorageV1,
+): boolean {
+  let divergence: ReturnType<typeof describeVaultMetaDivergence>;
+  try {
+    divergence = describeVaultMetaDivergence({
+      local: localToServerMeta(left),
+      remote: localToServerMeta(right),
+    });
+  } catch {
+    return false;
+  }
+
+  return (
+    divergence.kind === 'none' ||
+    VAULT_META_CHANGE_SAME_VAULT[divergence.change]
+  );
+}
+
+/**
  * What asking the server about an Unclaimed Local Vault established.
  *
  * Four outcomes, and no fewer. `no-evidence` and `postponed` are the pair that
@@ -200,8 +230,10 @@ export type VaultClaimOnEvidenceResult =
   | { kind: 'session-lost' }
   /**
    * This User already holds a Local Vault of their own on this device, and
-   * this device holds no Unclaimed Local Vault at all. There is nothing to
-   * check and nothing to offer, so the server is not even asked.
+   * the Unclaimed Local Vault slot is either empty or still holds the copy a
+   * claim left behind. A claim copies rather than moves, so that leftover is
+   * the same Vault, not a second one. There is nothing to replace and nothing
+   * to check, so the server is not even asked.
    */
   | { kind: 'skipped-already-owned' }
   /**
@@ -248,6 +280,13 @@ export async function claimUnclaimedLocalVaultOnEvidence(options: {
       return { kind: 'skipped-already-owned' };
     }
 
+    // A claim copies. A later mount that finds this leftover must not offer
+    // to replace this Vault with itself.
+    const ownedVault = handle.loadVault();
+    if (ownedVault && vaultsAreTheSameVault(ownedVault, unclaimedVault)) {
+      return { kind: 'skipped-already-owned' };
+    }
+
     const evidence = await checkVaultClaimEvidence({
       api: options.api,
       unclaimedVault,
@@ -291,9 +330,21 @@ export async function claimUnclaimedLocalVaultOnEvidence(options: {
   });
 
   switch (evidence.kind) {
-    case 'server-meta-match':
+    case 'server-meta-match': {
+      // Re-read after the fetch: a concurrent writer may have put this Vault
+      // in the owned slot while we were asking. Claiming again is a copy of
+      // the same bytes; treating that leftover as a replace would offer the
+      // User their Vault in place of itself.
+      if (handle.vaultStatus() === 'owned') {
+        const ownedVault = handle.loadVault();
+        if (ownedVault && vaultsAreTheSameVault(ownedVault, unclaimedVault)) {
+          return { kind: 'claimed' };
+        }
+        return { kind: 'replace-offer' };
+      }
       handle.claimUnclaimedLocalVaultLocked();
       return { kind: 'claimed' };
+    }
     case 'server-meta-mismatch':
       return { kind: 'refused-not-this-vault' };
     case 'no-evidence':

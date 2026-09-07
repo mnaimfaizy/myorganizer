@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Replays the Review Tier classifier over merged Pull Requests (ADR 0069,
+// Replays the Review Tier classifier over merged Pull Requests (ADR 0070,
 // Consequences): "run it over the last two hundred merged Pull Requests and
 // hand-check the tiering before it gates anything."
 //

@@ -6,6 +6,8 @@ import {
   routeApi,
   submitLoginForm,
   unlockWithPassphrase,
+  vaultBlobRouteRelative,
+  vaultBlobTypeExtractor,
   waitForOwnedVault,
   readOwnedVault,
 } from './helpers';
@@ -82,8 +84,7 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
       // Every VaultBlobType must be stubbed: the download path fetches all of
       // them, and one unmatched type escapes to the real (absent) backend and
       // rejects the whole reconcile (issue #506).
-      const vaultBlobUrl =
-        /\/vault\/blob\/(addresses|groceries|mobileNumbers|subscriptions|tasks|todos)\/?(\?.*)?$/;
+      const vaultBlobUrl = vaultBlobRouteRelative();
 
       await routeApi(page, loginUrl, async (route) => {
         const request = route.request();
@@ -189,11 +190,7 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
         const origin = new URL(page.url() || 'http://localhost:3000').origin;
         const headers = corsHeaders(origin);
 
-        const match = request
-          .url()
-          .match(
-            /\/vault\/blob\/(addresses|groceries|mobileNumbers|subscriptions|tasks|todos)/,
-          );
+        const match = request.url().match(vaultBlobTypeExtractor());
         const type = match?.[1];
 
         if (!type) {
@@ -291,12 +288,9 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
     // Step 3: Unlock — VaultGate does not auto-unlock after creation
     await unlockWithPassphrase(page1, passphrase);
 
-    // Step 4: Clear reconcile session flag and re-navigate to force reconcile upload.
-    await page1.evaluate((userId) => {
-      window.sessionStorage.removeItem(
-        `myorganizer_vault_reconcile_ran_v1:${userId}`,
-      );
-    }, E2E_USER_ID);
+    // Step 4: Re-navigate to force a reconcile upload. The runner passes on
+    // every mount since ADR 0066 — there is no session flag left to clear
+    // first (issue #645).
     await gotoStable(page1, '/dashboard/tasks');
 
     // Re-navigating dropped the in-memory Master Key, so ctx1 is locked
