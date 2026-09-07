@@ -3,7 +3,7 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/email-shell/src",
   "projectType": "library",
-  "tags": [],
+  "tags": ["type:ui", "scope:shared", "tier:agent"],
   "// targets": "to see all targets run: nx show project email-shell --web",
   "targets": {
     "build-logo": {

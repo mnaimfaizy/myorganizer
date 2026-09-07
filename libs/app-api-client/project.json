@@ -22,5 +22,5 @@
     }
   },
   "implicitDependencies": ["api-specs"],
-  "tags": []
+  "tags": ["type:data-access", "scope:shared", "tier:auto"]
 }

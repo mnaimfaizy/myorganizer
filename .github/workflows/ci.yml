@@ -615,6 +615,8 @@ jobs:
       - name: Gate manifest checker contracts
         run: corepack yarn gates:run:test
 
+      - name: Nx project tag checker contracts
+        run: corepack yarn nx:tags:test
       - name: Code review report contracts
         run: corepack yarn review:test
 
@@ -654,6 +656,8 @@ jobs:
       - name: Check auth diagram pages
         run: corepack yarn auth:pages:check
 
+      - name: Check Nx project tags
+        run: corepack yarn nx:tags:check
       - name: Check review pipeline page
         run: corepack yarn review:pages:check
 

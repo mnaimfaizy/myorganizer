@@ -91,6 +91,8 @@
     "review:test": "node --test tools/scripts/review/schema.test.mjs tools/scripts/review/cli.test.mjs",
     "nx-graph:test": "node --test tools/scripts/lib/nx-graph.test.mjs",
     "auth:pages:check": "node tools/scripts/check-auth-pages.mjs",
+    "nx:tags:check": "node tools/scripts/check-nx-project-tags.mjs",
+    "nx:tags:test": "node --test tools/scripts/lib/nx-project-tags.test.mjs",
     "review:pages:check": "node tools/scripts/check-review-pages.mjs",
     "deploy:pages:check": "node tools/scripts/check-deploy-pipeline.mjs",
     "deploy:pages:test": "node --test tools/scripts/check-deploy-pipeline.test.mjs",

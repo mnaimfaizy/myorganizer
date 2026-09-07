@@ -39,10 +39,101 @@ module.exports = [
         {
           enforceBuildableLibDependency: true,
           allow: ['^.*/eslint(\\.base)?\\.config\\.[cm]?js$'],
+          // Two dimensions, both enforced (a project must satisfy every
+          // constraint its tags match). The vocabulary is pinned in
+          // tools/config/nx-project-tags.json and every project must carry one
+          // tag per dimension (yarn nx:tags:check), so no project falls through
+          // to "matches nothing, may import anything".
           depConstraints: [
+            // type: the layering ladder.
             {
-              sourceTag: '*',
-              onlyDependOnLibsWithTags: ['*'],
+              sourceTag: 'type:app',
+              onlyDependOnLibsWithTags: [
+                'type:page',
+                'type:feature',
+                'type:ui',
+                'type:data-access',
+                'type:domain',
+                'type:util',
+              ],
+            },
+            {
+              sourceTag: 'type:e2e',
+              // `type:data-access` is the generated API client. An E2E spec
+              // derives route matchers from its enums rather than
+              // hand-enumerating the members, which is what ADR 0053 asks of
+              // any fan-out; forbidding the import would force the tests back
+              // to the alternations that ADR exists to prevent.
+              onlyDependOnLibsWithTags: [
+                'type:app',
+                'type:util',
+                'type:data-access',
+              ],
+            },
+            {
+              sourceTag: 'type:page',
+              onlyDependOnLibsWithTags: [
+                'type:feature',
+                'type:ui',
+                'type:data-access',
+                'type:domain',
+                'type:util',
+              ],
+            },
+            {
+              sourceTag: 'type:feature',
+              onlyDependOnLibsWithTags: [
+                'type:feature',
+                'type:ui',
+                'type:data-access',
+                'type:domain',
+                'type:util',
+              ],
+            },
+            {
+              sourceTag: 'type:ui',
+              onlyDependOnLibsWithTags: ['type:ui', 'type:util'],
+            },
+            {
+              sourceTag: 'type:data-access',
+              onlyDependOnLibsWithTags: [
+                'type:data-access',
+                'type:domain',
+                'type:util',
+              ],
+            },
+            {
+              sourceTag: 'type:domain',
+              onlyDependOnLibsWithTags: ['type:domain', 'type:util'],
+            },
+            {
+              sourceTag: 'type:util',
+              onlyDependOnLibsWithTags: ['type:util'],
+            },
+            {
+              sourceTag: 'type:tooling',
+              onlyDependOnLibsWithTags: ['type:util'],
+            },
+            // scope: shared is the only thing that crosses a platform line.
+            {
+              sourceTag: 'scope:web',
+              onlyDependOnLibsWithTags: ['scope:web', 'scope:shared'],
+            },
+            {
+              sourceTag: 'scope:mobile',
+              onlyDependOnLibsWithTags: ['scope:mobile', 'scope:shared'],
+            },
+            {
+              sourceTag: 'scope:backend',
+              onlyDependOnLibsWithTags: ['scope:backend', 'scope:shared'],
+            },
+            {
+              sourceTag: 'scope:shared',
+              onlyDependOnLibsWithTags: ['scope:shared'],
+            },
+            {
+              sourceTag: 'scope:tooling',
+              onlyDependOnLibsWithTags: ['scope:tooling'],
             },
           ],
         },
