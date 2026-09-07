@@ -54,6 +54,8 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Agent orchestration map check: `yarn agents:map:check` (asserts `docs/agents/orchestration-map.html` and `docs/agents/agent-journey.html` against `tools/config/agent-model-policy.json`).
 - Vault diagram pages check: `yarn vault:pages:check` (asserts `docs/vault/*.html` against the vault source constants).
 - Auth diagram pages check: `yarn auth:pages:check` (asserts `docs/authentication/session-lifecycle.html` against the auth source constants).
+- Review pipeline page check: `yarn review:pages:check` (asserts `docs/review/finding-lifecycle.html` against the finding contract in `tools/scripts/review/schema.mjs`, the CI job names, and the gate tier labels).
+- Code review report contract: `yarn review:validate <report.json> --out <normalized.json>` rejects or normalizes a `/code-review` report and computes its verdict; `yarn review:render <normalized.json>` renders the two-section Markdown; `yarn review:test` runs the contract tests (ADR 0071).
 - Release pipeline page check: `yarn deploy:pages:check` (asserts `docs/deployment/release-pipeline.html` against `.github/workflows/*.yml`, `package.json`, and `tools/scripts/release.mjs`; `--print` shows what each extractor resolved).
 - Libs markdown allowlist: `yarn libs:markdown:check` (Husky + CI; do not skip).
 - Guarded enum fan-out check: `yarn enum:fanout:check` (parses the TypeScript corpus and asserts that every scope covering a Guarded Enum reaches that enum's Pinned `satisfies Record<…>` table instead of hand-enumerating the members; `--print` shows the members, the pin, and the exempt declaration sites — see [ADR 0053](docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).

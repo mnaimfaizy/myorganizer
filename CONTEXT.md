@@ -349,7 +349,7 @@ Where a Vault Handle reports that one Vault Blob Type changed. It belongs to the
 _Avoid_: save listener, push callback, change observer, write hook
 
 **Local Vault Revision**:
-What a Vault Handle reports when the whole Local Vault has been replaced under whoever is reading it — convergence taking the server's Ciphertext, an import, a removal. It is the inbound counterpart to the Vault Sync Sink and deliberately not the same thing: the sink is told that one Vault Blob Type changed here so it can be sent, while this says that what a reader already holds is no longer what is stored. Feeding one from the other would be a loop, since convergence writes through the path the sink must not hear. It carries a number and never a Vault Blob Type or Ciphertext, so a reader re-reads what it already knows how to read rather than being told what changed. An edit made on this device does not move it — only a replacement does. Recovery Key Rotation is a replacement of the recovery wrapping, not of Ciphertext, and it still bumps this number so a pending Recovery Key Acknowledgment can be re-derived against the wrapping that just moved ([ADR 0069](docs/adr/0069-a-recovery-key-is-acknowledged-and-only-the-acknowledgment-is-stored.md)).
+What a Vault Handle reports when the whole Local Vault has been replaced under whoever is reading it — convergence taking the server's Ciphertext, an import, a removal. It is the inbound counterpart to the Vault Sync Sink and deliberately not the same thing: the sink is told that one Vault Blob Type changed here so it can be sent, while this says that what a reader already holds is no longer what is stored. Feeding one from the other would be a loop, since convergence writes through the path the sink must not hear. It carries a number and never a Vault Blob Type or Ciphertext, so a reader re-reads what it already knows how to read rather than being told what changed. An edit made on this device does not move it — only a replacement does. Recovery Key Rotation is a replacement of the recovery wrapping, not of Ciphertext, and it still bumps this number so a pending Recovery Key Acknowledgment can be re-derived against the wrapping that just moved ([ADR 0070](docs/adr/0069-a-recovery-key-is-acknowledged-and-only-the-acknowledgment-is-stored.md)).
 _Avoid_: vault version, change event, invalidation signal, refresh token
 
 **Vault Sync Queue**:
@@ -409,6 +409,14 @@ _Avoid_: agent label, workflow label, status label (as the general name)
 **Surface Label**:
 A GitHub label that names a change's kind (`bug`, `enhancement`, `documentation`, …) or area (`backend`, `web-app`, …). Distinct from Issue Orchestration Labels. Issues may wear both; Pull Requests wear Surface Labels only.
 _Avoid_: PR label (as a second vocabulary), topic tag, category
+
+**Gate Tier**:
+The pipeline depth chosen for a piece of work before its code exists — `gate:mechanical`, `gate:standard`, or `gate:full` (ADR 0012). Chosen by `to-issues` or by the main agent, recorded as an Issue Orchestration Label, and a judgement about intent that nothing later verifies. Never applied to a Pull Request.
+_Avoid_: tier (alone), risk tier, review depth
+
+**Review Tier**:
+The merge policy a Pull Request's diff earns — `review:auto`, `review:agent`, or `review:human` — computed after the code exists by a deterministic Wired Gate from affected projects, a path map, manifests, size, and author; never by an LLM and never by hand (ADR 0070). The job output is the state; the label is a view of it. Anything unclassifiable or any classifier error is `human`. Distinct from a Gate Tier in time, author, and question; either may only tighten the other's effect.
+_Avoid_: tier (alone), risk level, gate tier (for this sense), PR label
 
 **Gated Pipeline**:
 A specialist chain that retries between agents until a reviewer or runner verdict passes, with a cap. Components and Jest use this shape. Hitting the cap is a stop, not another silent retry.
