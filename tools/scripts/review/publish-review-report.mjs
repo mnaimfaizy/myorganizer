@@ -47,7 +47,7 @@ const THREADS_QUERY = `
       pullRequest(number: $number) {
         reviewThreads(first: 100, after: $after) {
           pageInfo { hasNextPage endCursor }
-          nodes { id isResolved comments(first: 1) { nodes { body } } }
+          nodes { id isResolved comments(first: 1) { nodes { body databaseId } } }
         }
       }
     }
@@ -65,7 +65,11 @@ const openThreadsOf = ({ owner, name, number }) => {
       .repository.pullRequest.reviewThreads;
     for (const t of page.nodes)
       if (!t.isResolved)
-        threads.push({ id: t.id, body: t.comments.nodes[0]?.body ?? '' });
+        threads.push({
+          id: t.id,
+          body: t.comments.nodes[0]?.body ?? '',
+          firstCommentId: t.comments.nodes[0]?.databaseId,
+        });
     if (!page.pageInfo.hasNextPage) break;
     after = page.pageInfo.endCursor;
   }
@@ -137,9 +141,29 @@ export const main = (argv) => {
     say(description);
     return result;
   };
+  // After the summary is up, nothing else may abort the run: a refused
+  // thread resolution or relabel is reported and the verdict still stands.
+  const warnings = [];
+  const tryAct = (description, fn, fallback) => {
+    try {
+      return act(description, fn);
+    } catch (err) {
+      const why = firstLine(err);
+      warnings.push(`${description}: ${why}`);
+      say(`could not ${description}: ${why}`);
+      if (fallback && !dryRun) {
+        try {
+          fallback();
+        } catch (inner) {
+          say(`fallback failed too: ${firstLine(inner)}`);
+        }
+      }
+      return null;
+    }
+  };
 
   for (const nodeId of plan.outdate)
-    act(`mark previous summary ${nodeId} outdated`, () =>
+    tryAct(`mark previous summary ${nodeId} outdated`, () =>
       graphql(MINIMIZE, { id: nodeId }),
     );
 
@@ -217,19 +241,43 @@ export const main = (argv) => {
     }
   }
 
-  for (const threadId of plan.resolve)
-    act(`resolve thread ${threadId} (finding no longer reported)`, () =>
-      graphql(RESOLVE_THREAD, { id: threadId }),
+  for (const threadId of plan.resolve) {
+    const thread = openThreads.find((t) => t.id === threadId);
+    tryAct(
+      `resolve thread ${threadId} (finding no longer reported)`,
+      () => graphql(RESOLVE_THREAD, { id: threadId }),
+      // The job token is sometimes refused the mutation; a reply in the
+      // thread says the same thing to a human reader.
+      () =>
+        thread?.firstCommentId &&
+        gh(
+          [
+            'api',
+            `repos/${repo}/pulls/${pr}/comments/${thread.firstCommentId}/replies`,
+            '--method',
+            'POST',
+            '--input',
+            '-',
+          ],
+          JSON.stringify({
+            body: `No longer reported as of \`${flags.head.slice(0, 7)}\`; this thread can be resolved.`,
+          }),
+        ),
     );
+  }
 
   if (plan.relabel) {
     const args = ['pr', 'edit', pr, '--repo', repo];
     for (const l of plan.relabel.add) args.push('--add-label', l);
     for (const l of plan.relabel.remove) args.push('--remove-label', l);
-    act(`relabel: +${plan.relabel.add} -${plan.relabel.remove}`, () =>
+    tryAct(`relabel: +${plan.relabel.add} -${plan.relabel.remove}`, () =>
       gh(args),
     );
   }
+  if (warnings.length)
+    say(
+      `${warnings.length} action(s) could not be completed; the verdict stands`,
+    );
 
   if (process.env.GITHUB_OUTPUT && !dryRun) {
     appendFileSync(
