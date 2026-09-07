@@ -5,6 +5,8 @@ import {
   routeApi,
   submitLoginForm,
   unlockWithPassphrase,
+  vaultBlobRouteRelative,
+  vaultBlobTypeExtractor,
   waitForOwnedVault,
 } from './helpers';
 
@@ -118,12 +120,15 @@ async function gotoGroceriesAndUnlock(
  * Setup route handlers and an in-memory store for groceries blob.
  * Returns helpers to inspect and control behavior for assertions.
  */
-async function _setupRoutes(page: import('@playwright/test').Page) {
+async function setupRoutes(page: import('@playwright/test').Page) {
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
   const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
-  const vaultBlobUrl = /\/vault\/blob\/groceries\/?(\?.*)?$/;
+  const vaultBlobUrl = vaultBlobRouteRelative();
 
-  let serverMeta: any = { version: 1 };
+  // Absence is 404, not an empty object. A truthy placeholder makes GET /vault
+  // 200, which Vault Absent Evidence reads as server-holds-vault and withholds
+  // the create offer on a fresh browser.
+  let serverMeta: any | null = null;
   let serverMetaEtag = 'W/"0"';
   let serverMetaUpdatedAt = new Date(0).toISOString();
 
@@ -241,8 +246,15 @@ async function _setupRoutes(page: import('@playwright/test').Page) {
       return;
     }
 
+    const blobTypeMatch = request.url().match(vaultBlobTypeExtractor());
+    const blobType = blobTypeMatch ? blobTypeMatch[1] : undefined;
+
     if (request.method() === 'GET') {
-      const blob = serverBlobs.groceries;
+      if (!blobType) {
+        await route.fulfill({ status: 400, headers });
+        return;
+      }
+      const blob = serverBlobs[blobType];
       if (!blob) {
         await route.fulfill({
           status: 404,
@@ -258,10 +270,10 @@ async function _setupRoutes(page: import('@playwright/test').Page) {
         headers,
         contentType: 'application/json',
         body: JSON.stringify({
-          type: 'groceries',
+          type: blobType,
           blob,
-          etag: serverBlobEtags.groceries,
-          updatedAt: serverBlobUpdatedAt.groceries,
+          etag: serverBlobEtags[blobType] ?? 'W/"0"',
+          updatedAt: serverBlobUpdatedAt[blobType] ?? new Date(0).toISOString(),
         }),
       });
       return;
@@ -293,11 +305,16 @@ async function _setupRoutes(page: import('@playwright/test').Page) {
         return;
       }
 
+      if (!blobType) {
+        await route.fulfill({ status: 400, headers });
+        return;
+      }
+
       const nextBlob = body?.blob;
-      const created = !serverBlobs.groceries;
-      serverBlobs.groceries = nextBlob;
-      serverBlobUpdatedAt.groceries = new Date().toISOString();
-      serverBlobEtags.groceries = `W/"${Date.now()}"`;
+      const created = !serverBlobs[blobType];
+      serverBlobs[blobType] = nextBlob;
+      serverBlobUpdatedAt[blobType] = new Date().toISOString();
+      serverBlobEtags[blobType] = `W/"${Date.now()}"`;
 
       await route.fulfill({
         status: created ? 201 : 200,
@@ -305,8 +322,8 @@ async function _setupRoutes(page: import('@playwright/test').Page) {
         contentType: 'application/json',
         body: JSON.stringify({
           ok: true,
-          etag: serverBlobEtags.groceries,
-          updatedAt: serverBlobUpdatedAt.groceries,
+          etag: serverBlobEtags[blobType],
+          updatedAt: serverBlobUpdatedAt[blobType],
         }),
       });
       return;
@@ -385,6 +402,10 @@ async function openTripActionsMenu(
 
 test.describe('Groceries (E2E)', () => {
   const passphrase = 'correct horse battery staple';
+
+  test.beforeEach(async ({ page }) => {
+    await setupRoutes(page);
+  });
 
   test.describe('F1 — Create List Flow', () => {
     test('creates a list, persists to server, and survives reload', async ({

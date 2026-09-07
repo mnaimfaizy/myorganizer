@@ -2,11 +2,8 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Form } from '@myorganizer/web-ui';
-import {
-  AddItemMetadataFields,
-  addItemSchema,
-  type AddItemFormValues,
-} from './AddItemFormFields';
+import { AddItemMetadataFields } from './AddItemMetadataFields';
+import { addItemSchema, type AddItemFormValues } from '../schemas';
 
 const meta: Meta<typeof AddItemMetadataFields> = {
   component: AddItemMetadataFields,

@@ -24,11 +24,9 @@ import {
 } from '../schemas/usageLocation';
 import { parseEnumValue } from '../utils/enumUtils';
 import { randomId } from '../utils/randomId';
-import {
-  BackToMobileNumbersLink,
-  MobileNumberDetailLoading,
-  MobileNumberDetailNotFound,
-} from './MobileNumberDetailScaffold';
+import { BackToMobileNumbersLink } from './BackToMobileNumbersLink';
+import { MobileNumberDetailLoading } from './MobileNumberDetailLoading';
+import { MobileNumberDetailNotFound } from './MobileNumberDetailNotFound';
 import { MobileNumberDetailsCard } from './MobileNumberDetailsCard';
 import { MobileNumberEditDialog } from './MobileNumberEditDialog';
 import { UsageLocationDialog } from './UsageLocationDialog';

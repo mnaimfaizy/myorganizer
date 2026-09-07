@@ -59,7 +59,16 @@ module.exports = [
             },
             {
               sourceTag: 'type:e2e',
-              onlyDependOnLibsWithTags: ['type:app', 'type:util'],
+              // `type:data-access` is the generated API client. An E2E spec
+              // derives route matchers from its enums rather than
+              // hand-enumerating the members, which is what ADR 0053 asks of
+              // any fan-out; forbidding the import would force the tests back
+              // to the alternations that ADR exists to prevent.
+              onlyDependOnLibsWithTags: [
+                'type:app',
+                'type:util',
+                'type:data-access',
+              ],
             },
             {
               sourceTag: 'type:page',

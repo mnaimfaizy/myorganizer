@@ -23,6 +23,12 @@ import {
 } from './localVaultStorage';
 import { createSyncBookmarkAccess } from './syncBookmarkAccess';
 import { VAULT_BLOB_TYPE_BY_FIELD } from './vaultBlobFields';
+import { createRecoveryKeyAcknowledgmentAccess } from './recoveryKeyAcknowledgment';
+import {
+  createVaultMetaRefusalAccess,
+  type VaultMetaQuestion,
+  type VaultMetaRefusalLifetime,
+} from './vaultMetaRefusal';
 
 export { VaultLockedError, VaultSecretMismatchError } from './localVaultAccess';
 // `NoUnclaimedLocalVaultError` and `LocalVaultAlreadyOwnedError` stay
@@ -97,6 +103,52 @@ export type VaultHandle = LocalVaultAccess & {
    */
   recordVaultMetaAgreement(options: { meta: VaultMetaV1 }): Promise<void>;
   /**
+   * Whether this device has already been asked this question — `change` about
+   * `meta` — and declined it. Derived by comparing the Vault Meta and the Vault
+   * Meta Change against this owner's Vault Meta Refusal, never read from a flag
+   * saying a question was asked.
+   *
+   * It is what lets a second and genuinely different wrapping change ask again
+   * where a record of having asked stays silent. See CONTEXT.md's "Vault Meta
+   * Refusal" entry and ADR 0066.
+   */
+  isVaultMetaRefused(question: VaultMetaQuestion): Promise<boolean>;
+  /**
+   * Record that this device declined this question: `durable` for an answer,
+   * which holds until the question changes, `session` for a dismissal, which
+   * holds until the tab closes.
+   *
+   * Records nothing about the Vault itself — no wrapping is adopted and no
+   * Ciphertext is touched, on either side.
+   */
+  recordVaultMetaRefusal(
+    options: VaultMetaQuestion & { lifetime: VaultMetaRefusalLifetime },
+  ): Promise<void>;
+  /**
+   * Whether this owner's current recovery wrapping is one that was minted and
+   * never acknowledged. Derived by hashing `masterKeyWrappedWithRecoveryKey`
+   * and comparing that hash to this owner's pending Recovery Key
+   * Acknowledgment, never read from a flag saying a key was shown.
+   *
+   * `false` when there is no Local Vault, when nothing readable is stored, or
+   * when a record exists for a wrapping this device no longer holds — a claim,
+   * an import, a replacement or a rotation retires the question with the
+   * wrapping (CONTEXT.md, "Recovery Key Acknowledgment").
+   */
+  isRecoveryKeyUnacknowledged(): Promise<boolean>;
+  /**
+   * Record that this owner's current recovery wrapping was minted and has not
+   * been acknowledged. Writes the wrapping's fingerprint and never the
+   * Recovery Key. Called from `initialize` after the write lands; a caller
+   * that mints by some other path and owes the same reminder can call it too.
+   */
+  recordUnacknowledgedRecoveryKey(): Promise<void>;
+  /**
+   * The User states they have recorded the Recovery Key. Clears the pending
+   * Acknowledgment. The product cannot verify that claim.
+   */
+  acknowledgeRecoveryKey(): void;
+  /**
    * Forget everything this device recorded about what it and the server last
    * agreed on — every Vault Blob Type's Sync Bookmark and the Vault Meta
    * Bookmark alike.
@@ -157,6 +209,8 @@ export function createVaultHandle(options: {
     masterKeyBytes: options.masterKeyBytes,
   });
   const bookmarks = createSyncBookmarkAccess(options.owner);
+  const refusals = createVaultMetaRefusalAccess(options.owner);
+  const acknowledgments = createRecoveryKeyAcknowledgmentAccess(options.owner);
   const syncSink = options.syncSink ?? null;
   const revision = options.revision ?? null;
 
@@ -227,12 +281,18 @@ export function createVaultHandle(options: {
       reportVaultReplaced();
     },
     // Explicit Local Vault removal (ADR 0033) also removes this owner's Sync
-    // Bookmarks (ADR 0058) — the two per-User namespaces are removed together
-    // because a bookmark for a Vault this device no longer holds is stale by
-    // construction, and a stray one only ever costs a redundant push.
+    // Bookmarks (ADR 0058), their Vault Meta Refusals (ADR 0066) and their
+    // pending Recovery Key Acknowledgment (ADR 0069) — the per-User namespaces
+    // are removed together because a bookmark, a refusal or an owed
+    // Acknowledgment about a Vault this device no longer holds is stale by
+    // construction. The Acknowledgment's wrapping fingerprint already retires
+    // the question when the wrapping moves; clearing it here is belt-and-braces
+    // beside that guard, consistent with its neighbours.
     removeVault: () => {
       access.removeVault();
       bookmarks.removeBookmarks();
+      refusals.removeRefusals();
+      acknowledgments.remove();
       reportVaultReplaced();
     },
     async hasUnsentChanges(type) {
@@ -244,6 +304,25 @@ export function createVaultHandle(options: {
     },
     lastAgreedVaultMetaHash: bookmarks.lastAgreedVaultMetaHash,
     recordVaultMetaAgreement: bookmarks.recordVaultMetaAgreement,
+    isVaultMetaRefused: refusals.isRefused,
+    recordVaultMetaRefusal: refusals.record,
+    async isRecoveryKeyUnacknowledged() {
+      const vault = access.loadVault();
+      if (!vault) return false;
+      return acknowledgments.isUnacknowledged(
+        vault.masterKeyWrappedWithRecoveryKey,
+      );
+    },
+    async recordUnacknowledgedRecoveryKey() {
+      const vault = access.loadVault();
+      if (!vault) return;
+      await acknowledgments.record(vault.masterKeyWrappedWithRecoveryKey);
+    },
+    acknowledgeRecoveryKey: acknowledgments.acknowledge,
+    // Deliberately not clearing refusals. This drops evidence about the
+    // *server's* copy, which a restore invalidates (ADR 0063); a refusal is
+    // evidence about neither copy — it is what a User answered when asked — and
+    // replacing this device's Ciphertext does not un-answer it.
     forgetSyncBookmarks: () => {
       bookmarks.removeBookmarks();
     },
@@ -257,7 +336,28 @@ export function createVaultHandle(options: {
       }
       await bookmarks.recordPushSuccess({ type, blob, etag });
     },
-    initialize: access.initialize,
+    // Creating a Vault replaces what a reader holds just as squarely as a
+    // claim or an import does: a device that read `absent` a moment ago now
+    // holds this owner's own Local Vault. It was the one door that stayed
+    // silent, and the silence was load-bearing in the wrong direction — the
+    // gate kept a newly minted Recovery Key on screen only because its status
+    // had gone stale, so the first reader to consult storage live withheld the
+    // very screen the key is shown on ([#667](https://github.com/mnaimfaizy/myorganizer/issues/667)).
+    //
+    // Reported after `initialize` resolves, so the write has landed before any
+    // reader is told to look again — the same ordering every other door here
+    // keeps. What holds the Recovery Key on screen afterwards is a Recovery Key
+    // Acknowledgment (CONTEXT.md) and no longer a status nobody refreshed.
+    async initialize(initializeOptions) {
+      const result = await access.initialize(initializeOptions);
+      // The wrapping exists the moment initialize writes. Creation cannot mint
+      // before it writes the way Recovery Key Rotation does, so the owed
+      // Acknowledgment is recorded after the write — fingerprint of the
+      // wrapping, never the key that came back (ADR 0069).
+      await handle.recordUnacknowledgedRecoveryKey();
+      reportVaultReplaced();
+      return result;
+    },
     // A claim now changes what a reader sees, so readers are told. It did not
     // used to: an owner holding no Vault of their own resolved the Unclaimed
     // Local Vault implicitly, so recording it as theirs handed back the same
@@ -293,13 +393,21 @@ export function createVaultHandle(options: {
     },
     changePassphrase: access.changePassphrase,
     resetPassphrase: access.resetPassphrase,
-    // Not reported to the sink and not a revision bump, the same as the two
-    // passphrase changes above it. A rotation replaces a wrapping and no
+    // Not reported to the sink. A rotation replaces a wrapping and no
     // Ciphertext: every Vault Blob a reader holds is exactly as readable as it
     // was, because the Master Key did not move. What the server needs to hear
     // about it is a Vault Meta Push, which `rotateRecoveryKeyWithPassphrase`
     // does above this layer.
-    rotateRecoveryKey: access.rotateRecoveryKey,
+    //
+    // The Local Vault Revision *is* bumped. A pending Recovery Key
+    // Acknowledgment is keyed to the wrapping that moved, and a reader that
+    // already holds "owed" would otherwise keep showing it until the next
+    // remount. Passphrase changes do not move this wrapping and do not bump.
+    async rotateRecoveryKey(rotateOptions) {
+      const result = await access.rotateRecoveryKey(rotateOptions);
+      reportVaultReplaced();
+      return result;
+    },
     loadDecryptedData: access.loadDecryptedData,
     decryptCiphertext: access.decryptCiphertext,
     // The one write that names a Vault Blob Type, so the one the sink hears

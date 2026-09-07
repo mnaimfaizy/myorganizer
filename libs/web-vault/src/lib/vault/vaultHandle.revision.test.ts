@@ -253,6 +253,92 @@ describe('createVaultHandle with revision', () => {
     });
   });
 
+  describe('initialize() bumps revision', () => {
+    it('initialize() increments revision counter from 0 to 1', async () => {
+      const revision = createLocalVaultRevision();
+      const handle = createVaultHandle({
+        owner: 'user-a',
+        revision,
+      });
+
+      expect(revision.current()).toBe(0);
+
+      await handle.initialize({ passphrase: 'test-phrase' });
+
+      expect(revision.current()).toBe(1);
+    });
+
+    it('initialize() bump is observable in subscription callback', async () => {
+      const revision = createLocalVaultRevision();
+      const handle = createVaultHandle({
+        owner: 'user-a',
+        revision,
+      });
+
+      let callbackInvoked = false;
+      let vaultStatusInCallback: string | undefined;
+
+      const unsubscribe = revision.subscribe(() => {
+        callbackInvoked = true;
+        vaultStatusInCallback = handle.vaultStatus();
+      });
+
+      await handle.initialize({ passphrase: 'test-phrase' });
+
+      // Cleanup subscription
+      unsubscribe();
+
+      // Assert callback was invoked and saw the Vault as owned
+      expect(callbackInvoked).toBe(true);
+      expect(vaultStatusInCallback).toBe('owned');
+    });
+
+    it('initialize() without revision does not throw', async () => {
+      const handle = createVaultHandle({ owner: 'user-a' });
+
+      // Should not throw and should return a result with recovery key
+      const result = await handle.initialize({
+        passphrase: 'test-phrase',
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({ recoveryKey: expect.any(String) }),
+      );
+      expect(result.recoveryKey).toMatch(/^[A-Za-z0-9+/]+=*$/);
+      expect(result.recoveryKey.length).toBeGreaterThanOrEqual(40);
+      expect(handle.vaultStatus()).toBe('owned');
+      expect(handle.hasVault()).toBe(true);
+    });
+
+    it('initialize() succeeds even when revision.bump() throws', async () => {
+      const revision = createLocalVaultRevision();
+      const throwingRevision = {
+        ...revision,
+        bump: jest.fn(() => {
+          throw new Error('bump failed');
+        }),
+      };
+
+      const handle = createVaultHandle({
+        owner: 'user-a',
+        revision: throwingRevision,
+      });
+
+      // Should not throw despite revision.bump() throwing
+      const result = await handle.initialize({
+        passphrase: 'test-phrase',
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({ recoveryKey: expect.any(String) }),
+      );
+      expect(result.recoveryKey).toMatch(/^[A-Za-z0-9+/]+=*$/);
+      expect(result.recoveryKey.length).toBeGreaterThanOrEqual(40);
+      expect(handle.vaultStatus()).toBe('owned');
+      expect(handle.hasVault()).toBe(true);
+    });
+  });
+
   describe('saveEncryptedData() does NOT bump revision', () => {
     it('saveEncryptedData() leaves revision unchanged', async () => {
       const revision = createLocalVaultRevision();
@@ -262,14 +348,14 @@ describe('createVaultHandle with revision', () => {
         revision,
       });
 
-      // Initialize vault
+      // Initialize vault (bumps revision from 0 to 1)
       await handle.initialize({ passphrase: 'test-pass' });
       await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
 
-      // Manually bump revision to simulate a prior convergence/saveVault
+      // Save vault to stable state (bumps revision again)
       handle.saveVault(handle.loadVault()!);
-      expect(revision.current()).toBe(1);
 
+      // Capture revision after setup to test that saveEncryptedData does not bump it
       const startRevision = revision.current();
 
       // Save encrypted data
@@ -293,10 +379,11 @@ describe('createVaultHandle with revision', () => {
       await handle.initialize({ passphrase: 'test-pass' });
       await handle.unlockWithPassphrase({ passphrase: 'test-pass' });
 
-      // Manually bump revision to simulate a prior convergence/saveVault
+      // Save vault to stable state
       handle.saveVault(handle.loadVault()!);
+
+      // Capture revision after setup to test that saveEncryptedData does not bump it
       const startRevision = revision.current();
-      expect(startRevision).toBe(1);
 
       await handle.saveEncryptedData({
         type: 'tasks',

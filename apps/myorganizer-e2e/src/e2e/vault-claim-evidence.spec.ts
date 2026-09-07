@@ -245,6 +245,14 @@ test.describe('Vault Claim Evidence (E2E)', () => {
     const setupPassphrase = page.locator('#setup-passphrase');
     await expect(setupPassphrase).toHaveCount(0);
 
+    // NEGATIVE pin (#673): Replace offer never renders (rightful owner reaches unlock, not replace).
+    // Reconcile must wait on Vault Claim Evidence before downloading server-meta.
+    await expect(page.getByText(/Replace this device's vault\?/)).toHaveCount(
+      0,
+    );
+    const replaceConfirmButton = page.getByRole('button', { name: 'Confirm' });
+    await expect(replaceConfirmButton).toHaveCount(0);
+
     // Step 5: Unlock with owner's passphrase
     await unlockWithPassphrase(page, OWNER_VAULT_PASSPHRASE);
 

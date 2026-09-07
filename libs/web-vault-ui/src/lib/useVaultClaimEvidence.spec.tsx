@@ -301,4 +301,190 @@ describe('useVaultClaimEvidence', () => {
 
     consoleSpy.mockRestore();
   });
+
+  test('retries on focus event when result is postponed', async () => {
+    const handle = createMockHandle('user-1') as VaultHandle;
+
+    const deferred: {
+      first: { resolve?: (val: VaultClaimOnEvidenceResult) => void };
+      second: { resolve?: (val: VaultClaimOnEvidenceResult) => void };
+    } = { first: {}, second: {} };
+
+    mockClaimUnclaimedLocalVaultOnEvidence
+      .mockImplementationOnce(
+        () =>
+          new Promise<VaultClaimOnEvidenceResult>((resolve) => {
+            deferred.first.resolve = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<VaultClaimOnEvidenceResult>((resolve) => {
+            deferred.second.resolve = resolve;
+          }),
+      );
+
+    const { result } = renderHook(() => useVaultClaimEvidence(handle));
+
+    // First call should be in progress
+    expect(result.current.status).toBe('checking');
+
+    // Resolve first with postponed
+    deferred.first.resolve?.({ kind: 'postponed' });
+
+    // Wait for first postponed
+    await waitFor(() => {
+      expect(result.current.status).toBe('settled');
+      expect(getSettledResult(result.current).kind).toBe('postponed');
+    });
+
+    // Dispatch focus event to trigger retry
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    // Should have been called twice
+    await waitFor(() => {
+      expect(mockClaimUnclaimedLocalVaultOnEvidence).toHaveBeenCalledTimes(2);
+    });
+
+    // Resolve second with claimed
+    deferred.second.resolve?.({ kind: 'claimed' });
+
+    // Should settle to claimed
+    await waitFor(() => {
+      expect(getSettledResult(result.current).kind).toBe('claimed');
+    });
+  });
+
+  test('does not retry on focus event when result is not postponed', async () => {
+    const handle = createMockHandle('user-1') as VaultHandle;
+
+    mockClaimUnclaimedLocalVaultOnEvidence.mockResolvedValue({
+      kind: 'claimed',
+    });
+
+    const { result } = renderHook(() => useVaultClaimEvidence(handle));
+
+    // Wait for settled
+    await waitFor(() => {
+      expect(result.current.status).toBe('settled');
+      expect(getSettledResult(result.current).kind).toBe('claimed');
+    });
+
+    const callCount = mockClaimUnclaimedLocalVaultOnEvidence.mock.calls.length;
+
+    // Dispatch focus event
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    // Wait a bit to ensure no retry happens
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Should not have been called again
+    expect(mockClaimUnclaimedLocalVaultOnEvidence).toHaveBeenCalledTimes(
+      callCount,
+    );
+  });
+
+  test('does not double-ask when online and focus events fire before retry resolves', async () => {
+    const handle = createMockHandle('user-1') as VaultHandle;
+
+    const deferred: {
+      first: { resolve?: (val: VaultClaimOnEvidenceResult) => void };
+      second: { resolve?: (val: VaultClaimOnEvidenceResult) => void };
+    } = { first: {}, second: {} };
+
+    mockClaimUnclaimedLocalVaultOnEvidence
+      .mockImplementationOnce(
+        () =>
+          new Promise<VaultClaimOnEvidenceResult>((resolve) => {
+            deferred.first.resolve = resolve;
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<VaultClaimOnEvidenceResult>((resolve) => {
+            deferred.second.resolve = resolve;
+          }),
+      );
+
+    const { result } = renderHook(() => useVaultClaimEvidence(handle));
+
+    // Resolve first with postponed
+    deferred.first.resolve?.({ kind: 'postponed' });
+
+    // Wait for postponed
+    await waitFor(() => {
+      expect(result.current.status).toBe('settled');
+      expect(getSettledResult(result.current).kind).toBe('postponed');
+    });
+
+    // Dispatch online event
+    act(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+
+    // Then dispatch focus event before retry resolves
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    // Should have been called exactly twice (first + one retry)
+    await waitFor(() => {
+      expect(mockClaimUnclaimedLocalVaultOnEvidence).toHaveBeenCalledTimes(2);
+    });
+
+    // Resolve the retry
+    deferred.second.resolve?.({ kind: 'claimed' });
+
+    await waitFor(() => {
+      expect(getSettledResult(result.current).kind).toBe('claimed');
+    });
+  });
+
+  test('listeners are removed on unmount, no retry after unmount', async () => {
+    const handle = createMockHandle('user-1') as VaultHandle;
+
+    const deferred: {
+      first: { resolve?: (val: VaultClaimOnEvidenceResult) => void };
+    } = { first: {} };
+
+    mockClaimUnclaimedLocalVaultOnEvidence.mockImplementationOnce(
+      () =>
+        new Promise<VaultClaimOnEvidenceResult>((resolve) => {
+          deferred.first.resolve = resolve;
+        }),
+    );
+
+    const { result, unmount } = renderHook(() => useVaultClaimEvidence(handle));
+
+    // Resolve first with postponed
+    deferred.first.resolve?.({ kind: 'postponed' });
+
+    // Wait for postponed
+    await waitFor(() => {
+      expect(result.current.status).toBe('settled');
+      expect(getSettledResult(result.current).kind).toBe('postponed');
+    });
+
+    const callCount = mockClaimUnclaimedLocalVaultOnEvidence.mock.calls.length;
+
+    // Unmount
+    unmount();
+
+    // Dispatch focus event after unmount
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    // Wait a bit
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Should not have been called again
+    expect(mockClaimUnclaimedLocalVaultOnEvidence).toHaveBeenCalledTimes(
+      callCount,
+    );
+  });
 });

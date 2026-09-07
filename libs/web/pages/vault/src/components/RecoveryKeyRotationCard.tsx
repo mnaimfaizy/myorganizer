@@ -46,6 +46,10 @@ export function RecoveryKeyRotationCard() {
 
   const [mintedKey, setMintedKey] = useState<MintedRecoveryKey | null>(null);
 
+  const handlePreventSubmit = useCallback((event: React.FormEvent) => {
+    event.preventDefault();
+  }, []);
+
   const form = useForm<RotationFormInput>({
     resolver: zodResolver(rotationFormSchema),
     defaultValues: {
@@ -186,10 +190,7 @@ export function RecoveryKeyRotationCard() {
         )}
 
         <Form {...form}>
-          <form
-            onSubmit={(e) => e.preventDefault()}
-            className="flex flex-col gap-3"
-          >
+          <form onSubmit={handlePreventSubmit} className="flex flex-col gap-3">
             <FormField
               control={form.control}
               name="currentPassphrase"

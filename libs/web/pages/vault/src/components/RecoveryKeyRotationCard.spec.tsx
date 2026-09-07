@@ -211,6 +211,11 @@ function createMockHandle(overrides?: Partial<VaultHandle>): VaultHandle {
     recordPushSuccess: jest.fn(),
     lastAgreedVaultMetaHash: jest.fn().mockReturnValue(undefined),
     recordVaultMetaAgreement: jest.fn(),
+    isVaultMetaRefused: jest.fn().mockResolvedValue(false),
+    recordVaultMetaRefusal: jest.fn(),
+    isRecoveryKeyUnacknowledged: jest.fn().mockResolvedValue(false),
+    recordUnacknowledgedRecoveryKey: jest.fn(),
+    acknowledgeRecoveryKey: jest.fn(),
     forgetSyncBookmarks: jest.fn(),
     decryptCiphertext: jest.fn(),
   };

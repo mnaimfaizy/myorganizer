@@ -26,6 +26,7 @@ import {
   useOptionalVaultSession,
 } from '@myorganizer/web-vault-ui';
 
+import { ImportVaultReplaceDialog } from './ImportVaultReplaceDialog';
 import { formatBytes } from '../utils/formatBytes';
 import { getErrorMessage } from '../utils/getErrorMessage';
 
@@ -37,33 +38,10 @@ export function ImportVaultCard() {
   const [importing, setImporting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [lastServerNote, setLastServerNote] = useState<string | null>(null);
+  const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
 
-  const handleImport = useCallback(async () => {
-    if (!handle) {
-      toast({
-        title: 'Import failed',
-        description: 'Sign in to import a vault.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!selectedFile) {
-      toast({
-        title: 'Choose a file',
-        description: 'Select a vault export bundle (.json) to import.',
-      });
-      return;
-    }
-
-    if (selectedFile.size > VAULT_ENVELOPE_PARSE_MAX_BYTES) {
-      toast({
-        title: 'File too large',
-        description: `Max supported size is ${formatBytes(
-          VAULT_ENVELOPE_PARSE_MAX_BYTES,
-        )}.`,
-        variant: 'destructive',
-      });
+  const runImport = useCallback(async () => {
+    if (!handle || !selectedFile) {
       return;
     }
 
@@ -72,20 +50,6 @@ export function ImportVaultCard() {
 
     try {
       const text = await selectedFile.text();
-
-      const existingLocalVault = handle.loadVault();
-      if (existingLocalVault) {
-        const confirmed = window.confirm(
-          'Importing will replace your current local vault data. Continue?',
-        );
-        if (!confirmed) {
-          toast({
-            title: 'Import canceled',
-            description: 'Your local vault was not changed.',
-          });
-          return;
-        }
-      }
 
       // Hardened import: parse → validate → migrate → stage → atomic commit.
       // The default audit reporter records a success/failed event with the
@@ -120,48 +84,116 @@ export function ImportVaultCard() {
         description,
         variant: 'destructive',
       });
+      throw new Error(description);
     } finally {
       setImporting(false);
     }
   }, [handle, selectedFile, toast]);
 
+  const handleImport = useCallback(async () => {
+    if (!handle) {
+      toast({
+        title: 'Import failed',
+        description: 'Sign in to import a vault.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!selectedFile) {
+      toast({
+        title: 'Choose a file',
+        description: 'Select a vault export bundle (.json) to import.',
+      });
+      return;
+    }
+
+    if (selectedFile.size > VAULT_ENVELOPE_PARSE_MAX_BYTES) {
+      toast({
+        title: 'File too large',
+        description: `Max supported size is ${formatBytes(
+          VAULT_ENVELOPE_PARSE_MAX_BYTES,
+        )}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const existingLocalVault = handle.loadVault();
+    if (existingLocalVault) {
+      setReplaceDialogOpen(true);
+      return;
+    }
+
+    try {
+      await runImport();
+    } catch {
+      // Error toast already shown in runImport.
+    }
+  }, [handle, runImport, selectedFile, toast]);
+
+  const handleReplaceDecline = useCallback(() => {
+    toast({
+      title: 'Import canceled',
+      description: 'Your local vault was not changed.',
+    });
+  }, [toast]);
+
+  const handleReplaceDialogOpenChange = useCallback((open: boolean) => {
+    setReplaceDialogOpen(open);
+  }, []);
+
+  const handleFileChange = useCallback(
+    (event: React.ChangeEvent<HTMLInputElement>) => {
+      setSelectedFile(event.target.files?.[0] ?? null);
+    },
+    [],
+  );
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Import encrypted vault</CardTitle>
-        <CardDescription>
-          Validate and load a previously exported ciphertext bundle. After
-          import, unlock with your passphrase or recovery key.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="vault-import-file">Vault export file (.json)</Label>
-          <Input
-            id="vault-import-file"
-            data-testid="import-vault-file"
-            type="file"
-            accept="application/json"
-            onChange={(e) => {
-              setSelectedFile(e.target.files?.[0] ?? null);
-            }}
-          />
-        </div>
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Import encrypted vault</CardTitle>
+          <CardDescription>
+            Validate and load a previously exported ciphertext bundle. After
+            import, unlock with the backup&apos;s passphrase or Recovery Key.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="vault-import-file">Vault export file (.json)</Label>
+            <Input
+              id="vault-import-file"
+              data-testid="import-vault-file"
+              type="file"
+              accept="application/json"
+              onChange={handleFileChange}
+            />
+          </div>
 
-        <div className="flex gap-2">
-          <Button
-            data-testid="import-vault-button"
-            onClick={handleImport}
-            disabled={importing || !selectedFile}
-          >
-            {importing ? 'Importing…' : 'Import vault JSON'}
-          </Button>
-        </div>
+          <div className="flex gap-2">
+            <Button
+              data-testid="import-vault-button"
+              onClick={handleImport}
+              disabled={importing || !selectedFile}
+            >
+              {importing ? 'Importing…' : 'Import vault JSON'}
+            </Button>
+          </div>
 
-        {lastServerNote && (
-          <p className="text-sm text-muted-foreground">{lastServerNote}</p>
-        )}
-      </CardContent>
-    </Card>
+          {lastServerNote && (
+            <p className="text-sm text-muted-foreground">{lastServerNote}</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <ImportVaultReplaceDialog
+        open={replaceDialogOpen}
+        onOpenChange={handleReplaceDialogOpenChange}
+        onConfirm={runImport}
+        onDecline={handleReplaceDecline}
+      />
+    </>
   );
 }
