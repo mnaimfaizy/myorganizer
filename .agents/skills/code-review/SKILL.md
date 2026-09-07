@@ -134,13 +134,12 @@ Rules the validator enforces — a report that breaks one is rejected whole:
 ```
 
 **Standards sub-agent prompt** — include the diff command and commit list, `head`, the standards
-source list, the smell baseline pasted in full, the reach-through checks and the consequence checks
-below pasted in full, the contract above, and the brief: "Report every place the diff violates a
-documented standard — `source` is the file, `rule` is the rule, evidence is `cited` with
-`sourceKind: standard` — and every baseline smell as `source: smell-baseline`, `inferred`. Run the
-reach-through checks and the consequence checks before you write findings. You may run existing
-targets on affected projects to turn a suspicion into `executed` evidence. Set `axis: standards` on
-every finding."
+source list, the smell baseline pasted in full, the reach-through checks below pasted in full, the
+contract above, and the brief: "Report every place the diff violates a documented standard —
+`source` is the file, `rule` is the rule, evidence is `cited` with `sourceKind: standard` — and
+every baseline smell as `source: smell-baseline`, `inferred`. Run the reach-through checks before
+you write findings. You may run existing targets on affected projects to turn a suspicion into
+`executed` evidence. Set `axis: standards` on every finding."
 
 The **reach-through checks** exist because the two defects the golden set was seeded from
 ([ADR 0053](../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md),
@@ -165,45 +164,6 @@ Reach-through checks — do these against the whole tree at <head>, not only the
    class silently, and a missing token renders as no style.
 3. Prefer executed evidence for both: `git grep -n '<member or old name>' <head> -- <paths>` in the
    checkout, or the relevant `*:check` gate, and quote the command and its exit code.
-```
-
-The **consequence checks** are the second instruction class, and they exist because of what the
-first replay measured
-([the baseline](../../../docs/research/2026-09-07-golden-replay-baseline.md)). On five of the seven
-golden ranges the reviewer produced real findings, several of them blocking and correct, and none of
-them the incident. The pattern it recorded: the reviewer applies the documented rule to the hunk in
-front of it and does not ask what the hunk does to the running system. Each check below is one of
-those five misses, generalised. Paste this block verbatim:
-
-```
-Consequence checks — for each hunk ask what the running system does differently, not only whether
-the hunk obeys a rule. Do these against the whole tree at <head>:
-1. A name the new code depends on. New code that names a Tailwind class, a design token, a theme
-   role, a CSS variable, a route, an environment variable, or a generated-client symbol is a
-   finding unless that name is defined at <head>. This is check 2 above run the other way: there
-   the diff removed the definition, here the diff adds the reference and the definition was never
-   there. Prove it — `git grep -n '<name>'` over the file that defines names of that kind, or the
-   gate that compiles them (`yarn tailwind:classes:check`). A name that resolves to nothing does
-   not fail the build: Tailwind drops an unknown class, a missing token renders as no style.
-2. A write without its read, a push without its pull. If the diff adds or changes one direction of
-   a round trip — a sync push, a pull or restore, an export, an import, a save, an upload — name
-   the opposite direction and read it at <head>. If the opposite direction does not exist, or does
-   not clear or replace what the new direction writes, that is the finding, and its location is the
-   file that should have carried it. Say what the user then observes: "a local change now never
-   reaches the server", "a restore now leaves deleted rows behind".
-3. A value with a second home. If the diff changes something other artifacts are derived from or
-   pinned to — a version, a schema, a spec enum, a token source, a lockfile input — name every
-   derived artifact and check that it moved with the value. The gate is the evidence where one
-   exists (`yarn openapi:check`, `yarn nx run design-tokens:build-tokens`).
-4. A destructive or irreversible action. If the diff adds, or routes a user into, code that
-   deletes, overwrites, or replaces data it does not own — a whole collection, a vault, another
-   device's state — read how this repo confirms the nearest comparable action and compare. No
-   confirmation, a bare `window.confirm`, or no way back is a finding at that call site.
-5. A new usage of a shared component, hook, or helper. Open one existing usage at <head> and
-   compare how it is composed, not only which props it passes. A usage that nests, wraps, or orders
-   the parts differently from every existing usage is a finding at the new usage's file.
-Where a check turns on a fact you can check, run the command and record executed evidence. A check
-that finds nothing is not reported; it is not a finding that the code is fine.
 ```
 
 **Spec sub-agent prompt** — include the diff command and commit list, `head`, the spec reference
