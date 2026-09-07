@@ -41,12 +41,14 @@
  * 2 = bad invocation.
  */
 
+import { existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 import { execFileSync } from 'node:child_process';
 
 import {
+  blockAfter,
   lineOf,
   maskNonCode,
   normalize,
@@ -86,6 +88,16 @@ const SCOPE_BARRELS = {
 };
 
 const MAX_JSX_LINES = 150;
+
+const PASCAL_NAME = /^[A-Z][a-zA-Z0-9]*$/;
+
+/**
+ * Feature files that are allowed to violate the one-export-named-after-the-file
+ * rule. Each entry is a decision: a repo-relative path and a written reason.
+ * An entry without a reason, or one naming a file that is gone, is rejected
+ * at startup — there is no silent exemption (GUIDELINES §2).
+ */
+const EXPORT_BASENAME_EXEMPTIONS = [];
 
 // --- scope -------------------------------------------------------------------
 
@@ -217,10 +229,105 @@ function checkDeepImport(code, raw, findings) {
 }
 
 /**
+ * True when `inner` (the contents of a JSX `{…}` handler prop) is an arrow
+ * or function expression rather than a binding name.
+ *
+ * Depth-0 `=>` is what `#670` was about: the previous regex only captured
+ * `onX={identifier}`, so `onX={() => { … }}` never became a finding.
+ */
+function isInlineFunctionExpr(inner) {
+  const source = inner.trim();
+  if (/^(?:async\s+)?function\b/.test(source)) return true;
+  let depth = 0;
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i];
+    if (ch === '(' || ch === '{' || ch === '[') depth += 1;
+    else if (ch === ')' || ch === '}' || ch === ']') {
+      depth = Math.max(0, depth - 1);
+    } else if (depth === 0 && ch === '=' && source[i + 1] === '>') {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Expression body of an arrow, or null when the arrow has a block body or
+ * the expression is a `function` keyword form. GUIDELINES §5.6's thin-wrapper
+ * carve-out is only the expression-bodied form (`() => handleDelete(id)`).
+ */
+function arrowExpressionBody(inner) {
+  const source = inner.trim().replace(/^async\s+/, '');
+  if (/^function\b/.test(source)) return null;
+  let depth = 0;
+  let arrow = -1;
+  for (let i = 0; i < source.length; i += 1) {
+    const ch = source[i];
+    if (ch === '(' || ch === '{' || ch === '[') depth += 1;
+    else if (ch === ')' || ch === '}' || ch === ']') {
+      depth = Math.max(0, depth - 1);
+    } else if (depth === 0 && ch === '=' && source[i + 1] === '>') {
+      arrow = i;
+      break;
+    }
+  }
+  if (arrow === -1) return null;
+  const body = source.slice(arrow + 2).trim();
+  if (body.startsWith('{')) return null;
+  return body;
+}
+
+const CALL_PREFIX = /^(?:void|await|return)\s+/;
+
+/**
+ * Root identifier of a single *identifier* call (`handleDelete(id)`,
+ * `setOpen(true)`, `void onClose()`), or null when the body is anything
+ * else — a member call (`e.preventDefault()`, `cloud.connect()`), `if`,
+ * `&&`, a sequence. GUIDELINES §5.6's thin wrapper is a named callee, not
+ * a method lookup.
+ */
+function singleCallRoot(expr) {
+  const body = expr.trim().replace(CALL_PREFIX, '');
+  const match = body.match(/^([A-Za-z_$][\w$]*)\s*\(/);
+  if (!match) return null;
+  const open = body.indexOf('(');
+  const call = parenAfter(body, open);
+  if (!call) return null;
+  const rest = body
+    .slice(open + call.length)
+    .trim()
+    .replace(/;$/, '');
+  if (rest !== '') return null;
+  return match[1];
+}
+
+/**
+ * `onClick={() => handleDelete(id)}` where `handleDelete` is already a
+ * useCallback (or is not a local function at all — a prop or a useState
+ * setter). The wrapper still allocates each render; the carve-out exists
+ * because hooks cannot be called inside `.map()` and because binding one
+ * extra argument is the shape GUIDELINES §5.6 names as allowed.
+ *
+ * A local function that is *not* memoized is not a stable callee: wrapping
+ * it in an arrow does not satisfy the rule.
+ */
+function isThinStableWrapper(inner, memoized, declared) {
+  const expr = arrowExpressionBody(inner);
+  if (expr == null) return false;
+  const root = singleCallRoot(expr);
+  if (root == null) return false;
+  if (memoized.has(root)) return true;
+  return !declared.has(root);
+}
+
+/**
  * A handler recreated every render defeats memoization in the child and, for
  * children in a list, re-renders the whole list. GUIDELINES §5.6 makes this
- * unconditional, so the check only has to find handlers that are passed down
- * and not wrapped.
+ * unconditional for real handler bodies; a documented thin wrapper that only
+ * calls a stable callee with extra arguments is the one carve-out.
+ *
+ * The previous matcher only saw `onX={identifierName}`, so inline arrows
+ * passed the check with no finding at all (#670).
  */
 function checkHandlerCallbacks(code, raw, findings) {
   const memoized = new Set();
@@ -231,7 +338,7 @@ function checkHandlerCallbacks(code, raw, findings) {
 
   const declared = new Map();
   const declRe =
-    /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\([^)]*\)\s*(?::[^=;]*)?=>/g;
+    /\bconst\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*(?::[^=;]*)?=>/g;
   while ((m = declRe.exec(code)) !== null) {
     if (!declared.has(m[1])) declared.set(m[1], lineOf(raw, m.index));
   }
@@ -240,14 +347,36 @@ function checkHandlerCallbacks(code, raw, findings) {
     if (!declared.has(m[1])) declared.set(m[1], lineOf(raw, m.index));
   }
 
-  const reported = new Set();
-  const propRe = /\bon[A-Z]\w*\s*=\s*\{\s*([A-Za-z_$][\w$]*)\s*\}/g;
+  const reportedNames = new Set();
+  const propRe = /\bon[A-Z]\w*\s*=\s*/g;
   while ((m = propRe.exec(code)) !== null) {
-    const name = m[1];
+    let cursor = m.index + m[0].length;
+    while (cursor < code.length && /\s/.test(code[cursor])) cursor += 1;
+    if (code[cursor] !== '{') continue;
+    const exprBlock = blockAfter(code, cursor);
+    if (!exprBlock || exprBlock.length < 2) continue;
+    const inner = exprBlock.slice(1, -1).trim();
+    if (!inner) continue;
+
+    if (isInlineFunctionExpr(inner)) {
+      if (isThinStableWrapper(inner, memoized, declared)) continue;
+      findings.push({
+        level: 'warn',
+        rule: 'handler-not-memoized',
+        line: lineOf(raw, m.index),
+        message:
+          'Inline function passed as a handler prop. GUIDELINES §5.6 — wrap the handler in useCallback. An expression-bodied call to a useCallback (or to a name not declared as a local function) is the documented thin-wrapper exception.',
+      });
+      continue;
+    }
+
+    const ident = inner.match(/^([A-Za-z_$][\w$]*)$/);
+    if (!ident) continue;
+    const name = ident[1];
     if (memoized.has(name)) continue;
     if (!declared.has(name)) continue; // a prop forwarded straight through
-    if (reported.has(name)) continue;
-    reported.add(name);
+    if (reportedNames.has(name)) continue;
+    reportedNames.add(name);
     findings.push({
       level: 'warn',
       rule: 'handler-not-memoized',
@@ -335,6 +464,139 @@ function checkGenericName(file, code, raw, findings) {
 }
 
 /**
+ * Path helpers for the export/basename rule. kebab-case filenames map to
+ * PascalCase exports (`task-add-dialog.tsx` → `TaskAddDialog`).
+ */
+function repoRelativePosix(file) {
+  const p = posix(file);
+  const marker = '/libs/';
+  const idx = p.indexOf(marker);
+  if (idx !== -1) return p.slice(idx + 1);
+  return p;
+}
+
+function kebabToPascal(base) {
+  return base
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
+}
+
+function collectExportedComponents(code) {
+  const names = new Set();
+  const add = (name) => {
+    if (name && PASCAL_NAME.test(name)) names.add(name);
+  };
+
+  const fnRe = /\bexport\s+(?:default\s+)?function\s+([A-Za-z_$][\w$]*)/g;
+  let m;
+  while ((m = fnRe.exec(code)) !== null) add(m[1]);
+
+  const constRe = /\bexport\s+const\s+([A-Za-z_$][\w$]*)\s*=/g;
+  while ((m = constRe.exec(code)) !== null) add(m[1]);
+
+  const defaultRe = /\bexport\s+default\s+([A-Za-z_$][\w$]*)\b/g;
+  while ((m = defaultRe.exec(code)) !== null) {
+    if (m[1] !== 'function') add(m[1]);
+  }
+
+  const listRe = /\bexport\s+(type\s+)?\{([^}]+)\}/g;
+  while ((m = listRe.exec(code)) !== null) {
+    if (m[1]) continue;
+    for (const spec of m[2].split(',')) {
+      const trimmed = spec.trim();
+      if (!trimmed) continue;
+      const parts = trimmed.split(/\s+as\s+/);
+      add((parts[1] || parts[0]).trim());
+    }
+  }
+
+  return names;
+}
+
+function assertExportBasenameExemptions() {
+  for (const entry of EXPORT_BASENAME_EXEMPTIONS) {
+    if (!entry?.path || !String(entry.reason ?? '').trim()) {
+      throw new Error(
+        'EXPORT_BASENAME_EXEMPTIONS entry is missing a path or a written reason. ' +
+          'An exemption without a reason is a hole, not a decision.',
+      );
+    }
+    if (!existsSync(entry.path)) {
+      throw new Error(
+        `EXPORT_BASENAME_EXEMPTIONS names '${entry.path}' which does not exist. ` +
+          'An exemption naming something that is gone is a hole nobody sees.',
+      );
+    }
+  }
+}
+
+/**
+ * GUIDELINES §2 / §6 — a Feature file under components/ exports exactly one
+ * React component, named after the file (kebab-case → PascalCase). UI Primitives
+ * and Vault UI Components keep a basename-matching compound root; prefixed
+ * sub-exports may stay. Types, schemas, and camelCase helpers do not count.
+ */
+function checkExportBasename(file, scope, code, _raw, findings) {
+  const rel = repoRelativePosix(file);
+  if (EXPORT_BASENAME_EXEMPTIONS.some((entry) => entry.path === rel)) {
+    return;
+  }
+
+  const p = posix(file);
+  if (scope === 'feature' && !p.includes('/components/')) return;
+
+  const base = path.basename(p).replace(/\.tsx?$/, '');
+  const expected = kebabToPascal(base);
+  const names = collectExportedComponents(code);
+  const listed = [...names].sort().join(', ');
+
+  if (scope === 'feature') {
+    if (names.size === 1 && names.has(expected)) return;
+    if (!names.has(expected)) {
+      findings.push({
+        level: 'error',
+        rule: 'export-basename',
+        line: 1,
+        message:
+          `Feature file '${path.basename(p)}' must export a React component ` +
+          `named '${expected}'. GUIDELINES §2 — one exported component, named ` +
+          `after the file. Found: ${listed || 'none'}.`,
+      });
+      return;
+    }
+    findings.push({
+      level: 'error',
+      rule: 'export-basename',
+      line: 1,
+      message:
+        `Feature file '${path.basename(p)}' exports more than one React ` +
+        `component (${listed}). GUIDELINES §2 — one exported component per file.`,
+    });
+    return;
+  }
+
+  // GUIDELINES §1 carves out `session`, `vaultGate`, and the runners as not
+  // Vault UI Components. They stay in this library's hygiene scope for effect
+  // cleanup and barrel rules, but their camelCase filenames are not a compound
+  // root to match.
+  if (!PASCAL_NAME.test(base)) return;
+
+  if (!names.has(expected)) {
+    findings.push({
+      level: 'error',
+      rule: 'export-basename',
+      line: 1,
+      message:
+        `'${path.basename(p)}' must export a React component named '${expected}' ` +
+        `(the compound root). GUIDELINES §3 — prefixed sub-exports may stay. ` +
+        `Found: ${listed || 'none'}.`,
+    });
+  }
+}
+
+/**
  * GUIDELINES §2 lists "exceeds ~150 lines of JSX" as the primary split signal.
  * Measured on the largest returned expression rather than the whole file so
  * that hooks, schemas, and helpers above the return do not inflate it.
@@ -391,7 +653,12 @@ const SCOPE_RULES = {
 };
 
 /** Rules every scope is checked against, whatever else applies. */
-const SHARED_RULES = ['effectCleanup', 'genericName', 'jsxSize'];
+const SHARED_RULES = [
+  'effectCleanup',
+  'genericName',
+  'jsxSize',
+  'exportBasename',
+];
 
 const RULES = {
   effectCleanup: ({ code, raw, findings }) =>
@@ -399,6 +666,8 @@ const RULES = {
   genericName: ({ file, code, raw, findings }) =>
     checkGenericName(file, code, raw, findings),
   jsxSize: ({ code, raw, findings }) => checkJsxSize(code, raw, findings),
+  exportBasename: ({ file, scope, code, raw, findings }) =>
+    checkExportBasename(file, scope, code, raw, findings),
   displayName: ({ code, raw, findings }) =>
     checkDisplayName(code, raw, findings),
   classNameMerge: ({ code, raw, findings }) =>
@@ -545,6 +814,7 @@ async function main() {
 
   if (all) files = await collectAll();
   assertScopesCovered();
+  assertExportBasenameExemptions();
 
   if (staged) files = collectStaged();
   if (!files.length) {

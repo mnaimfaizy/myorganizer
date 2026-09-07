@@ -61,7 +61,14 @@ export function RemoveVaultCard() {
 
       setOpen(false);
 
-      // Full page reload to reset vault-dependent surfaces and VaultGate state
+      // Full page reload to reset vault-dependent surfaces and VaultGate state.
+      //
+      // The reconcile runner no longer needs it: `removeVault` moves the Local
+      // Vault Revision and the runner passes on that alone (ADR 0066, decision
+      // point 2). What still needs it is `VaultGate`, which seeds its status
+      // from storage once and re-reads only when the handle identity changes —
+      // and a removal does not change it. Decision point 4 is what makes the
+      // gate answer for itself; this line goes with it, not before it.
       window.location.reload();
     } catch (error) {
       toast({

@@ -7,10 +7,8 @@ import { Info, Lock } from 'lucide-react';
 import { useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { editItemSchema, type EditItemFormValues } from '../schemas';
-import {
-  EditItemCoreFields,
-  EditItemDetailsFields,
-} from './EditItemFormFields';
+import { EditItemCoreFields } from './EditItemCoreFields';
+import { EditItemDetailsFields } from './EditItemDetailsFields';
 
 interface EditItemDialogProps {
   item: GroceryItem | null;

@@ -6,6 +6,8 @@ import {
   routeApi,
   submitLoginForm,
   unlockWithPassphrase,
+  vaultBlobRouteRelative,
+  vaultBlobTypeExtractor,
 } from './helpers';
 
 /**
@@ -78,10 +80,12 @@ async function login(page: import('@playwright/test').Page) {
 async function setupRoutes(page: import('@playwright/test').Page) {
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
   const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
-  const vaultBlobUrl =
-    /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos|tasks)\/?(\?.*)?$/;
+  const vaultBlobUrl = vaultBlobRouteRelative();
 
-  let serverMeta: any = { version: 1 };
+  // Absence is 404, not an empty object. A truthy placeholder makes GET /vault
+  // 200, which Vault Absent Evidence reads as server-holds-vault and withholds
+  // the create offer on a fresh browser.
+  let serverMeta: any | null = null;
   let serverMetaEtag = 'W/"0"';
   let serverMetaUpdatedAt = new Date(0).toISOString();
 
@@ -207,11 +211,7 @@ async function setupRoutes(page: import('@playwright/test').Page) {
     const headers = corsHeaders(origin);
 
     // Extract blob type from URL
-    const blobTypeMatch = request
-      .url()
-      .match(
-        /\/vault\/blob\/(addresses|mobileNumbers|subscriptions|todos|tasks)/,
-      );
+    const blobTypeMatch = request.url().match(vaultBlobTypeExtractor());
     const blobType = blobTypeMatch ? blobTypeMatch[1] : 'addresses';
 
     if (request.method() === 'OPTIONS') {

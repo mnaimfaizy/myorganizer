@@ -9,6 +9,7 @@ import {
 } from '@myorganizer/web-ui';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useCallback } from 'react';
 import { useYouTubeVideos } from '../hooks';
 import { VideoGrid } from './VideoGrid';
 
@@ -20,6 +21,9 @@ export default function ChannelVideosClient({
   channelId,
 }: ChannelVideosClientProps) {
   const router = useRouter();
+  const handleBack = useCallback(() => {
+    router.push('/dashboard/youtube');
+  }, [router]);
   const {
     videos,
     loading,
@@ -40,11 +44,7 @@ export default function ChannelVideosClient({
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <div className="flex items-center gap-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push('/dashboard/youtube')}
-        >
+        <Button variant="ghost" size="sm" onClick={handleBack}>
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back
         </Button>

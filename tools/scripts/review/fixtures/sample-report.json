@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "base": "1234567890abcdef1234567890abcdef12345678",
+  "head": "abcdef1234567890abcdef1234567890abcdef12",
+  "tier": null,
+  "spec": { "kind": "issue", "ref": "#123", "foundBy": "branch" },
+  "standardsSources": ["AGENTS.md", "docs/ui/GUIDELINES.md"],
+  "executed": [
+    "yarn nx test web-vault --testFile=libs/web-vault/src/sync.repro.test.ts"
+  ],
+  "suppressed": { "redundant": 1 },
+  "model": "claude-fable-5-1",
+  "durationMs": 48000,
+  "cost": { "inputTokens": 91000, "outputTokens": 6400 },
+  "findings": [
+    {
+      "axis": "standards",
+      "severity": "blocking",
+      "summary": "reconcile() silently drops a blob type the server does not hold",
+      "source": "docs/adr/0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md",
+      "rule": "A vault blob converges by record and absence is recorded; nothing destroys ciphertext silently",
+      "evidence": {
+        "kind": "executed",
+        "command": "yarn nx test web-vault --testFile=libs/web-vault/src/sync.repro.test.ts",
+        "exitCode": 1,
+        "outputExcerpt": "FAIL sync.repro.test.ts > reconcile keeps a blob type the server does not hold\n  Expected: [\"groceries\", \"tasks\"]\n  Received: [\"groceries\"]",
+        "cwd": "tmp/code-review/worktree"
+      },
+      "location": {
+        "file": "libs/web-vault/src/sync.ts",
+        "startLine": 42,
+        "endLine": 58,
+        "headSha": "abcdef1234567890abcdef1234567890abcdef12"
+      },
+      "remedy": "Reconcile per blob type from the Pinned Table and record absence instead of skipping the member."
+    },
+    {
+      "axis": "spec",
+      "severity": "should-fix",
+      "summary": "The settings toggle is not in the acceptance criteria",
+      "source": "#123",
+      "rule": "Scope: the slice adds export only",
+      "evidence": {
+        "kind": "inferred",
+        "reasoning": "No AC mentions a toggle; the diff adds one in settings.tsx"
+      },
+      "location": {
+        "file": "libs/web/pages/vault/src/settings.tsx",
+        "startLine": 10,
+        "headSha": "abcdef1234567890abcdef1234567890abcdef12"
+      },
+      "wouldBlock": true,
+      "confidence": "medium"
+    },
+    {
+      "axis": "standards",
+      "severity": "nit",
+      "summary": "Mysterious Name: `d2` in reconcile()",
+      "source": "smell-baseline",
+      "rule": "Mysterious Name",
+      "evidence": {
+        "kind": "inferred",
+        "reasoning": "d2 holds the remote digest"
+      },
+      "location": {
+        "file": "libs/web-vault/src/sync.ts",
+        "startLine": 71,
+        "headSha": "abcdef1234567890abcdef1234567890abcdef12"
+      }
+    }
+  ]
+}

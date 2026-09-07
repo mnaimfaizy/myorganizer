@@ -21,11 +21,9 @@ import {
 } from '../schemas/usageLocation';
 import { parseEnumValue } from '../utils/enumUtils';
 import { randomId } from '../utils/randomId';
-import {
-  AddressDetailLoading,
-  AddressDetailNotFound,
-  BackToAddressesLink,
-} from './AddressDetailScaffold';
+import { AddressDetailLoading } from './AddressDetailLoading';
+import { AddressDetailNotFound } from './AddressDetailNotFound';
+import { BackToAddressesLink } from './BackToAddressesLink';
 import { AddressDetailsCard } from './AddressDetailsCard';
 import { AddressEditDialog } from './AddressEditDialog';
 import { UsageLocationDialog } from './UsageLocationDialog';

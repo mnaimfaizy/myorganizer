@@ -1,3 +1,5 @@
+'use client';
+
 import {
   SubscriptionPaymentMethodEnum,
   SubscriptionRenewalTypeEnum,
@@ -12,6 +14,7 @@ import {
   SelectValue,
 } from '@myorganizer/web-ui';
 import { type UseFormReturn } from 'react-hook-form';
+import { useCallback } from 'react';
 
 import {
   getSubscriptionPaymentMethodLabel,
@@ -25,19 +28,44 @@ export interface SubscriptionPlanFieldsProps {
 }
 
 export function SubscriptionPlanFields({ form }: SubscriptionPlanFieldsProps) {
+  const handlePaymentMethodChange = useCallback(
+    (value: string) => {
+      form.setValue(
+        'paymentMethod',
+        value as SubscriptionFormValues['paymentMethod'],
+        { shouldValidate: true },
+      );
+    },
+    [form],
+  );
+
+  const handleRenewalTypeChange = useCallback(
+    (value: string) => {
+      form.setValue(
+        'renewalType',
+        value as SubscriptionFormValues['renewalType'],
+        { shouldValidate: true },
+      );
+    },
+    [form],
+  );
+
+  const handleTierChange = useCallback(
+    (value: string) => {
+      form.setValue('tier', value as SubscriptionFormValues['tier'], {
+        shouldValidate: true,
+      });
+    },
+    [form],
+  );
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div className="space-y-2">
         <Label htmlFor="sub-payment">Payment method</Label>
         <Select
           value={form.watch('paymentMethod')}
-          onValueChange={(v) =>
-            form.setValue(
-              'paymentMethod',
-              v as SubscriptionFormValues['paymentMethod'],
-              { shouldValidate: true },
-            )
-          }
+          onValueChange={handlePaymentMethodChange}
         >
           <SelectTrigger id="sub-payment">
             <SelectValue placeholder="Select payment method" />
@@ -56,13 +84,7 @@ export function SubscriptionPlanFields({ form }: SubscriptionPlanFieldsProps) {
         <Label htmlFor="sub-renewal">Renewal type</Label>
         <Select
           value={form.watch('renewalType')}
-          onValueChange={(v) =>
-            form.setValue(
-              'renewalType',
-              v as SubscriptionFormValues['renewalType'],
-              { shouldValidate: true },
-            )
-          }
+          onValueChange={handleRenewalTypeChange}
         >
           <SelectTrigger id="sub-renewal">
             <SelectValue placeholder="Select renewal" />
@@ -79,14 +101,7 @@ export function SubscriptionPlanFields({ form }: SubscriptionPlanFieldsProps) {
 
       <div className="space-y-2">
         <Label htmlFor="sub-tier">Tier</Label>
-        <Select
-          value={form.watch('tier')}
-          onValueChange={(v) =>
-            form.setValue('tier', v as SubscriptionFormValues['tier'], {
-              shouldValidate: true,
-            })
-          }
-        >
+        <Select value={form.watch('tier')} onValueChange={handleTierChange}>
           <SelectTrigger id="sub-tier">
             <SelectValue placeholder="Select tier" />
           </SelectTrigger>
