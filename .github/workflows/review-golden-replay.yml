@@ -9,6 +9,15 @@ name: Golden Replay
 # before it reaches a real Pull Request. One reviewer run per case; the job
 # named "Golden Replay" fails when any case's recall falls below its minimum.
 #
+# Two things keep that from being paid on every push (ADR 0071). Cases are
+# tiered: frontier cases, the ones the reviewer misses, run on any of the
+# paths above; guard cases, the ones it catches reliably, run only when the
+# brief or the finding contract changes. And `[skip replay]` in the head
+# commit message skips the whole replay for that push, which the path filter
+# cannot do — GitHub matches a pull_request path filter against the entire
+# PR diff, so a docs-only push to a branch that touched the skill ten commits
+# ago still satisfies it. `workflow_dispatch` replays a tier on demand.
+#
 # The reviewer step is the composite action at .github/actions/code-reviewer,
 # shared with code-review.yml. Same credential rules; CODE_REVIEW_ENABLED=false
 # stops the replay too.
@@ -22,6 +31,13 @@ on:
       - '.github/workflows/code-review.yml'
       - '.github/workflows/review-golden-replay.yml'
       - 'tools/config/review-golden-set.json'
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: Which tier to replay.
+        type: choice
+        options: [frontier, guard, all]
+        default: all
 
 permissions:
   contents: read
@@ -29,7 +45,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: golden-replay-${{ github.event.pull_request.number }}
+  group: golden-replay-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -43,25 +59,91 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Which tiers this run replays (ADR 0071). A frontier case is one the
+      # reviewer misses, so it runs whenever anything that produces a review
+      # changes — the workflow's own path filter already decided that. A
+      # guard case is one the reviewer catches reliably; it runs only when
+      # the brief or the finding contract changes, because those are what
+      # could silently undo the instruction the guard protects.
+      #
+      # The path filter cannot make this distinction itself: on a
+      # pull_request event GitHub matches paths against the whole PR diff,
+      # not the push, so once any commit in the PR touches a filtered path
+      # every later push re-satisfies the filter. That is also why the
+      # [skip replay] escape below exists.
+      - name: Choose the tiers
+        id: tiers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISPATCH_TIER: ${{ inputs.tier }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [ -n "${DISPATCH_TIER:-}" ]; then
+            echo "tiers=$DISPATCH_TIER" >> "$GITHUB_OUTPUT"
+            echo "run by hand: $DISPATCH_TIER"
+            exit 0
+          fi
+          CHANGED="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" \
+            --paginate --jq '.[].filename')"
+          # The brief the guards protect, and the contract that decides
+          # whether a finding of theirs is even accepted.
+          if grep -qE '^(\.agents/skills/code-review/|\.github/actions/code-reviewer/|tools/scripts/review/(schema|validate-review-report)\.mjs$)' <<<"$CHANGED"; then
+            echo 'tiers=all' >> "$GITHUB_OUTPUT"
+            echo 'the brief or the finding contract changed: guards run too'
+          else
+            echo 'tiers=frontier' >> "$GITHUB_OUTPUT"
+            echo 'neither the brief nor the finding contract changed: frontier only'
+          fi
+
       - name: List the cases
         id: list
         env:
           HAS_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
           ENABLED: ${{ vars.CODE_REVIEW_ENABLED }}
+          TIERS: ${{ steps.tiers.outputs.tiers }}
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
-          echo "matrix=$(jq -c '[.cases[].id]' tools/config/review-golden-set.json)" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          skip() {
+            echo 'has_key=false' >> "$GITHUB_OUTPUT"
+            { echo '## Golden replay skipped'; echo; echo "$1"; } >> "$GITHUB_STEP_SUMMARY"
+            echo "$1"
+            exit 0
+          }
+
+          if [ "$TIERS" = 'all' ]; then
+            MATRIX="$(node tools/scripts/review/score-golden-case.mjs --list)"
+          else
+            MATRIX="$(node tools/scripts/review/score-golden-case.mjs --list --tier "$TIERS")"
+          fi
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+
           # The same off switch as code-review.yml: CODE_REVIEW_ENABLED=false
           # stops the replay too, which matters at roughly one reviewer run
           # per case per push.
           if [ "${ENABLED:-true}" = 'false' ]; then
-            echo 'has_key=false' >> "$GITHUB_OUTPUT"
-            {
-              echo '## Golden replay skipped'
-              echo
-              echo 'The CODE_REVIEW_ENABLED repository variable is false.'
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
+            skip 'The CODE_REVIEW_ENABLED repository variable is false.'
           fi
+
+          # The per-push escape. Read the head commit's message from the API
+          # rather than the checkout: on a pull_request event the default
+          # checkout is a synthetic merge commit, whose message is "Merge X
+          # into Y" and never the author's. Never interpolate the message
+          # into the script — it is somebody's text, matched, not run.
+          if [ -n "${HEAD_SHA:-}" ]; then
+            MESSAGE="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}" --jq .commit.message)"
+            if grep -qiF '[skip replay]' <<<"$MESSAGE"; then
+              skip 'The head commit message contains `[skip replay]`. The reviewer itself still ran; only the golden replay was skipped.'
+            fi
+          fi
+
+          if [ "$MATRIX" = '[]' ]; then
+            skip "No case is in tier \`$TIERS\`."
+          fi
+
           echo "has_key=$HAS_KEY" >> "$GITHUB_OUTPUT"
           if [ "$HAS_KEY" != 'true' ]; then
             {
@@ -83,7 +165,8 @@ jobs:
       # also runs code-review.yml. Eight at once exceeded the subscription's
       # session limit and lost a whole run to failures in under a minute
       # (docs/research/2026-09-07-golden-replay-baseline.md, Limits). Four
-      # leaves headroom for the ordinary review running alongside.
+      # leaves headroom for the ordinary review running alongside, and holds
+      # whether this run is the frontier alone or every tier.
       max-parallel: 4
       matrix:
         case: ${{ fromJSON(needs.cases.outputs.matrix) }}
@@ -182,7 +265,10 @@ jobs:
         run: |
           echo "cases: ${{ needs.cases.result }}; replay: ${{ needs.replay.result }}"
           if [ '${{ needs.cases.outputs.has_key }}' != 'true' ]; then
-            echo 'no reviewer credential; nothing replayed'
+            # Off switch, [skip replay], an empty tier, or no credential.
+            # The Golden cases job's summary says which. None of them is a
+            # measurement, so none of them is a failure.
+            echo 'nothing replayed; see the Golden cases summary for why'
             exit 0
           fi
           if [ '${{ needs.replay.result }}' != 'success' ]; then
