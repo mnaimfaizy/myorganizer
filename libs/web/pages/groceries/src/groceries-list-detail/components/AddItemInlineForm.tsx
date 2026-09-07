@@ -10,7 +10,7 @@ interface AddItemInlineFormProps {
   isLoading?: boolean;
 }
 
-const addItemSchema = z.object({
+const addItemInlineSchema = z.object({
   name: z
     .string()
     .trim()
@@ -37,7 +37,7 @@ export function AddItemInlineForm({
       setError(null);
 
       try {
-        const result = addItemSchema.parse({ name });
+        const result = addItemInlineSchema.parse({ name });
         setIsSubmitting(true);
         onAdd(result.name);
         setName('');

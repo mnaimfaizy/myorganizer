@@ -41,6 +41,7 @@
  * 2 = bad invocation.
  */
 
+import { existsSync } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
@@ -87,6 +88,16 @@ const SCOPE_BARRELS = {
 };
 
 const MAX_JSX_LINES = 150;
+
+const PASCAL_NAME = /^[A-Z][a-zA-Z0-9]*$/;
+
+/**
+ * Feature files that are allowed to violate the one-export-named-after-the-file
+ * rule. Each entry is a decision: a repo-relative path and a written reason.
+ * An entry without a reason, or one naming a file that is gone, is rejected
+ * at startup — there is no silent exemption (GUIDELINES §2).
+ */
+const EXPORT_BASENAME_EXEMPTIONS = [];
 
 // --- scope -------------------------------------------------------------------
 
@@ -453,6 +464,139 @@ function checkGenericName(file, code, raw, findings) {
 }
 
 /**
+ * Path helpers for the export/basename rule. kebab-case filenames map to
+ * PascalCase exports (`task-add-dialog.tsx` → `TaskAddDialog`).
+ */
+function repoRelativePosix(file) {
+  const p = posix(file);
+  const marker = '/libs/';
+  const idx = p.indexOf(marker);
+  if (idx !== -1) return p.slice(idx + 1);
+  return p;
+}
+
+function kebabToPascal(base) {
+  return base
+    .split('-')
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join('');
+}
+
+function collectExportedComponents(code) {
+  const names = new Set();
+  const add = (name) => {
+    if (name && PASCAL_NAME.test(name)) names.add(name);
+  };
+
+  const fnRe = /\bexport\s+(?:default\s+)?function\s+([A-Za-z_$][\w$]*)/g;
+  let m;
+  while ((m = fnRe.exec(code)) !== null) add(m[1]);
+
+  const constRe = /\bexport\s+const\s+([A-Za-z_$][\w$]*)\s*=/g;
+  while ((m = constRe.exec(code)) !== null) add(m[1]);
+
+  const defaultRe = /\bexport\s+default\s+([A-Za-z_$][\w$]*)\b/g;
+  while ((m = defaultRe.exec(code)) !== null) {
+    if (m[1] !== 'function') add(m[1]);
+  }
+
+  const listRe = /\bexport\s+(type\s+)?\{([^}]+)\}/g;
+  while ((m = listRe.exec(code)) !== null) {
+    if (m[1]) continue;
+    for (const spec of m[2].split(',')) {
+      const trimmed = spec.trim();
+      if (!trimmed) continue;
+      const parts = trimmed.split(/\s+as\s+/);
+      add((parts[1] || parts[0]).trim());
+    }
+  }
+
+  return names;
+}
+
+function assertExportBasenameExemptions() {
+  for (const entry of EXPORT_BASENAME_EXEMPTIONS) {
+    if (!entry?.path || !String(entry.reason ?? '').trim()) {
+      throw new Error(
+        'EXPORT_BASENAME_EXEMPTIONS entry is missing a path or a written reason. ' +
+          'An exemption without a reason is a hole, not a decision.',
+      );
+    }
+    if (!existsSync(entry.path)) {
+      throw new Error(
+        `EXPORT_BASENAME_EXEMPTIONS names '${entry.path}' which does not exist. ` +
+          'An exemption naming something that is gone is a hole nobody sees.',
+      );
+    }
+  }
+}
+
+/**
+ * GUIDELINES §2 / §6 — a Feature file under components/ exports exactly one
+ * React component, named after the file (kebab-case → PascalCase). UI Primitives
+ * and Vault UI Components keep a basename-matching compound root; prefixed
+ * sub-exports may stay. Types, schemas, and camelCase helpers do not count.
+ */
+function checkExportBasename(file, scope, code, _raw, findings) {
+  const rel = repoRelativePosix(file);
+  if (EXPORT_BASENAME_EXEMPTIONS.some((entry) => entry.path === rel)) {
+    return;
+  }
+
+  const p = posix(file);
+  if (scope === 'feature' && !p.includes('/components/')) return;
+
+  const base = path.basename(p).replace(/\.tsx?$/, '');
+  const expected = kebabToPascal(base);
+  const names = collectExportedComponents(code);
+  const listed = [...names].sort().join(', ');
+
+  if (scope === 'feature') {
+    if (names.size === 1 && names.has(expected)) return;
+    if (!names.has(expected)) {
+      findings.push({
+        level: 'error',
+        rule: 'export-basename',
+        line: 1,
+        message:
+          `Feature file '${path.basename(p)}' must export a React component ` +
+          `named '${expected}'. GUIDELINES §2 — one exported component, named ` +
+          `after the file. Found: ${listed || 'none'}.`,
+      });
+      return;
+    }
+    findings.push({
+      level: 'error',
+      rule: 'export-basename',
+      line: 1,
+      message:
+        `Feature file '${path.basename(p)}' exports more than one React ` +
+        `component (${listed}). GUIDELINES §2 — one exported component per file.`,
+    });
+    return;
+  }
+
+  // GUIDELINES §1 carves out `session`, `vaultGate`, and the runners as not
+  // Vault UI Components. They stay in this library's hygiene scope for effect
+  // cleanup and barrel rules, but their camelCase filenames are not a compound
+  // root to match.
+  if (!PASCAL_NAME.test(base)) return;
+
+  if (!names.has(expected)) {
+    findings.push({
+      level: 'error',
+      rule: 'export-basename',
+      line: 1,
+      message:
+        `'${path.basename(p)}' must export a React component named '${expected}' ` +
+        `(the compound root). GUIDELINES §3 — prefixed sub-exports may stay. ` +
+        `Found: ${listed || 'none'}.`,
+    });
+  }
+}
+
+/**
  * GUIDELINES §2 lists "exceeds ~150 lines of JSX" as the primary split signal.
  * Measured on the largest returned expression rather than the whole file so
  * that hooks, schemas, and helpers above the return do not inflate it.
@@ -509,7 +653,12 @@ const SCOPE_RULES = {
 };
 
 /** Rules every scope is checked against, whatever else applies. */
-const SHARED_RULES = ['effectCleanup', 'genericName', 'jsxSize'];
+const SHARED_RULES = [
+  'effectCleanup',
+  'genericName',
+  'jsxSize',
+  'exportBasename',
+];
 
 const RULES = {
   effectCleanup: ({ code, raw, findings }) =>
@@ -517,6 +666,8 @@ const RULES = {
   genericName: ({ file, code, raw, findings }) =>
     checkGenericName(file, code, raw, findings),
   jsxSize: ({ code, raw, findings }) => checkJsxSize(code, raw, findings),
+  exportBasename: ({ file, scope, code, raw, findings }) =>
+    checkExportBasename(file, scope, code, raw, findings),
   displayName: ({ code, raw, findings }) =>
     checkDisplayName(code, raw, findings),
   classNameMerge: ({ code, raw, findings }) =>
@@ -663,6 +814,7 @@ async function main() {
 
   if (all) files = await collectAll();
   assertScopesCovered();
+  assertExportBasenameExemptions();
 
   if (staged) files = collectStaged();
   if (!files.length) {

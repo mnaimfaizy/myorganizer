@@ -14,12 +14,9 @@ import { Info, Lock } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import { useForm } from 'react-hook-form';
-import {
-  AddItemDetailsFields,
-  AddItemMetadataFields,
-  addItemSchema,
-} from './AddItemFormFields';
-import type { AddItemFormValues } from './AddItemFormFields';
+import { addItemSchema, type AddItemFormValues } from '../schemas';
+import { AddItemDetailsFields } from './AddItemDetailsFields';
+import { AddItemMetadataFields } from './AddItemMetadataFields';
 
 export interface AddItemFormResult {
   name: string;
