@@ -98,7 +98,7 @@
     {
       "name": "agent-review",
       "color": "5319e7",
-      "description": "Request an automated code review of this pull request now; the workflow removes the label when the run finishes"
+      "description": "Request an automated code review now; the workflow removes the label when the run finishes"
     }
   ],
   "surface": {

@@ -45,10 +45,12 @@ for (const label of LABELS) {
     continue;
   }
 
+  // Only the API's own code counts. A bare 422 is a validation error — a
+  // description over 100 characters, for one — and masking it as "exists"
+  // is how a trigger label went unprovisioned while the run reported success.
   const isAlreadyExists =
     result.stderr.includes('already_exists') ||
-    result.stdout.includes('already_exists') ||
-    (result.status === 1 && result.stderr.includes('422'));
+    result.stdout.includes('already_exists');
 
   if (isAlreadyExists) {
     results.skipped.push(label.name);
