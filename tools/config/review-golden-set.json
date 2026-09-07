@@ -177,6 +177,26 @@
         }
       ],
       "minRecall": 1
+    },
+    {
+      "id": "mail-test-setup-assigns-undefined-to-env",
+      "title": "The mail sender's test setup assigns undefined to two SMTP environment variables, which stores the string \"undefined\"",
+      "incident": "issue #409, fixed by PR #423, introduced by PR #415 (git log --follow --diff-filter=A -- apps/backend/src/services/EmailService.spec.ts → 1f056fa, the interrupted slice #396 checkpoint that #415 carried; the file is absent at the merge commit's first parent, and MAIL_USERNAME = undefined is present at its head)",
+      "base": "264e7d6141eb5a55ce3a7027062043aed0ca18db",
+      "head": "194fd43b4927bb0b63fec611f3175eb8f8d12262",
+      "spec": { "kind": "none", "foundBy": "none" },
+      "expected": [
+        {
+          "id": "assigning-undefined-to-a-process-env-key-stores-a-string",
+          "axis": "standards",
+          "source": "smell-baseline|testing|AGENTS|CODING_STANDARDS",
+          "rule": "undefined|coerc|string|truthy|delete|setup|misleading|no-op|dead",
+          "files": ["apps/backend/src/services/EmailService.spec.ts"],
+          "minSeverity": "nit",
+          "why": "the setup writes MAIL_USERNAME and MAIL_PASSWORD as undefined to configure no SMTP auth, but a process.env setter coerces its value to a string, so the transport is built with auth: { user: 'undefined', pass: 'undefined' } while the code reads as though it configures none; delete on both keys was meant (#409). This case is deliberately held out from the consequence checks added on 2026-09-07: the defect is entirely inside the hunk and turns on a language semantic, not on what the hunk does to code the diff never touched. No documented rule names it, so the honest report is smell-baseline and inferred, which caps at should-fix — hence no severity floor. The question this case asks is only whether the reviewer sees it"
+        }
+      ],
+      "minRecall": 1
     }
   ]
 }
