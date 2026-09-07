@@ -26,7 +26,24 @@ export const REVIEW_GOLDEN_SET_PATH = join(
   'config',
   'review-golden-set.json',
 );
-export const GOLDEN_SET_SCHEMA_VERSION = 1;
+export const GOLDEN_SET_SCHEMA_VERSION = 2;
+
+/**
+ * A case's tier decides how often it is replayed (ADR 0071).
+ *
+ * `frontier` is a case the reviewer misses. It is the reason to run the
+ * replay at all, so it runs whenever anything that produces a review
+ * changes. `guard` is a case the reviewer catches reliably; it carries no
+ * new information per run and exists only to catch a brief or contract
+ * edit silently undoing something that works, so it runs on the narrower
+ * set of paths that could do that.
+ *
+ * Promotion to `guard` takes three consecutive catches, recorded in the
+ * case's `tierEvidence`. Demotion to `frontier` takes one miss. The
+ * asymmetry is deliberate: a wrongly promoted case is a detector that
+ * quietly stopped running.
+ */
+export const GOLDEN_CASE_TIERS = ['guard', 'frontier'];
 
 const SHA = /^[0-9a-f]{40}$/;
 const ID = /^[a-z0-9][a-z0-9-]*$/;
@@ -69,6 +86,15 @@ export function assertGoldenSet(set, source = 'golden set') {
     if (typeof c.title !== 'string' || !c.title) fail(`${where}: no title`);
     if (typeof c.incident !== 'string' || !c.incident)
       fail(`${where}: incident must cite the ADR or issue it comes from`);
+    if (!GOLDEN_CASE_TIERS.includes(c.tier))
+      fail(`${where}: tier must be one of ${GOLDEN_CASE_TIERS.join(', ')}`);
+    // A guard runs on a narrower trigger than a frontier case, so the claim
+    // that the reviewer catches it reliably has to be auditable from here.
+    if (
+      c.tier === 'guard' &&
+      (typeof c.tierEvidence !== 'string' || !c.tierEvidence)
+    )
+      fail(`${where}: a guard must cite the runs that promoted it`);
     if (!SHA.test(c.base) || !SHA.test(c.head))
       fail(`${where}: base and head must be full 40-hex SHAs`);
     if (c.base === c.head) fail(`${where}: base equals head`);

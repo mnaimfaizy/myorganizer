@@ -1,14 +1,19 @@
 {
-  "schemaVersion": 1,
-  "comment": "The code-review golden set (ADR 0070, Consequences). Each case is a real commit range from this repository's history in which a defect the repo later documented was merged, and the finding a reviewer should have raised about it. `source` and `rule` are case-insensitive patterns because the reviewer phrases a rule in the source's words; `files` lists every path at which the same defect is fairly located. Recall is matched over expected and a case passes at or above `minRecall`. Replayed by .github/workflows/review-golden-replay.yml on every Pull Request that touches the skill, the review scripts, the shared reviewer action, the review workflows, or this file; scored by tools/scripts/review/score-golden-case.mjs; shape and ranges asserted by tools/scripts/check-review-golden-set.mjs. Standards are always today's: the question a case asks is whether the current reviewer would catch the defect, not whether the rule existed when it merged. Grows by attribution: when a merged defect is traced to the pull request that introduced it, its range and expected finding go here, with the attribution evidence in the incident line. A squash-merged pull request uses the squash commit as head and its first parent as base.",
+  "schemaVersion": 2,
+  "comment": "The code-review golden set (ADR 0070, Consequences). Each case is a real commit range from this repository's history in which a defect the repo later documented was merged, and the finding a reviewer should have raised about it. `source` and `rule` are case-insensitive patterns because the reviewer phrases a rule in the source's words; `files` lists every path at which the same defect is fairly located. Recall is matched over expected and a case passes at or above `minRecall`. Each case carries a `tier` (ADR 0071). A `frontier` case is one the reviewer misses; it is the reason to run the replay and runs whenever anything that produces a review changes. A `guard` case is one the reviewer catches reliably; it carries no new information per run and exists to catch a brief or contract edit silently undoing something that works, so it runs only when the brief or the finding contract changes. Promotion to `guard` takes three consecutive catches cited in `tierEvidence`; demotion takes one miss. Replayed by .github/workflows/review-golden-replay.yml, which skips a push whose head commit message contains [skip replay]; scored by tools/scripts/review/score-golden-case.mjs; shape and ranges asserted by tools/scripts/check-review-golden-set.mjs. Standards are always today's: the question a case asks is whether the current reviewer would catch the defect, not whether the rule existed when it merged. Grows by attribution: when a merged defect is traced to the pull request that introduced it, its range and expected finding go here, with the attribution evidence in the incident line. A squash-merged pull request uses the squash commit as head and its first parent as base.",
   "cases": [
     {
       "id": "groceries-blob-type-without-fanouts",
       "title": "A sixth VaultBlobType member is added and no hand-enumerated consumer is touched",
       "incident": "ADR 0053, issue #512, fixed by PR #536, introduced by PR #101",
+      "tier": "guard",
+      "tierEvidence": "promoted 2026-09-07 on all five replays recorded in docs/research/2026-09-07-golden-replay-baseline.md: caught in 3-case runs 1 and 2, in both runs after the reach-through brief, and in the 7-case run.",
       "base": "d95c25bdd486af5a51d128a4f7018d02d0be0ac8",
       "head": "b9176851470821a4cad65f5290134f1882ef9ec1",
-      "spec": { "kind": "none", "foundBy": "none" },
+      "spec": {
+        "kind": "none",
+        "foundBy": "none"
+      },
       "expected": [
         {
           "id": "reconcile-omits-new-member",
@@ -31,9 +36,14 @@
       "id": "export-envelope-drops-tasks",
       "title": "The hardened export envelope enumerates blob types by hand and omits Tasks",
       "incident": "ADR 0053, issue #537, fixed by PR #540, introduced by PR #77",
+      "tier": "guard",
+      "tierEvidence": "promoted 2026-09-07 on four consecutive catches recorded in docs/research/2026-09-07-golden-replay-baseline.md: missed in 3-case run 1, then caught in 3-case run 2, in both runs after the reach-through brief, and in the 7-case run.",
       "base": "dea9122c1854879044d51696dec93a57c89e914d",
       "head": "7fde881c0a2f57d05bfc92a20c9cbb863dd52200",
-      "spec": { "kind": "none", "foundBy": "none" },
+      "spec": {
+        "kind": "none",
+        "foundBy": "none"
+      },
       "expected": [
         {
           "id": "envelope-omits-tasks",
@@ -51,9 +61,13 @@
       "id": "groceries-ui-written-against-absent-roles",
       "title": "The groceries UI is written against Material Design 3 role names that no token or Tailwind config defines",
       "incident": "ADR 0065, issue #632, fixed by PR #636, introduced by PR #108 (git log -S surface-container-low -- libs/web/pages/groceries → 9382c16)",
+      "tier": "frontier",
       "base": "4ba00b4c247f91ba2918551f15816f36a4704a18",
       "head": "c0f1a10b0c81d66175c3d46cecd58b1cb8ba3b64",
-      "spec": { "kind": "none", "foundBy": "none" },
+      "spec": {
+        "kind": "none",
+        "foundBy": "none"
+      },
       "expected": [
         {
           "id": "classes-resolve-to-no-css",
@@ -76,9 +90,13 @@
       "id": "sync-bookmarks-without-restore-or-meta-push",
       "title": "Sync Bookmarks and separate Vault Meta convergence arrive without a restore that clears them or a path that pushes a local wrapping",
       "incident": "issues #617 and #589, fixed by PRs #620 and #594, introduced by PR #573 (git log --diff-filter=A -- syncBookmarkStorage.ts → f267817; vaultMetaConverge split 0cce8c1; both in #573)",
+      "tier": "frontier",
       "base": "0d05e9cb5c10bf84f5b3c3d6b94a9bbeb99c0086",
       "head": "bf58bc8276656e287b334a9bae8dc3e0b9c2b96c",
-      "spec": { "kind": "none", "foundBy": "none" },
+      "spec": {
+        "kind": "none",
+        "foundBy": "none"
+      },
       "expected": [
         {
           "id": "restore-leaves-bookmark-etag-in-place",
@@ -116,9 +134,13 @@
       "id": "release-bump-leaves-generated-client-stale",
       "title": "A release bumps package.json and does not resync the generated OpenAPI spec and client",
       "incident": "issue #408, fixed by PR #417, introduced by PR #379 (git log -S '\"version\": \"0.4.0\"' -- package.json → ced2895, named as root cause in #408)",
+      "tier": "frontier",
       "base": "c3c17c9efb3d727a5297a9fe9a993cdefcab11b3",
       "head": "8175cb64bf07888610756a52a5dcae7f09f06e7b",
-      "spec": { "kind": "none", "foundBy": "none" },
+      "spec": {
+        "kind": "none",
+        "foundBy": "none"
+      },
       "expected": [
         {
           "id": "version-bump-without-openapi-sync",
@@ -142,9 +164,13 @@
       "id": "signup-password-wrapper-inside-formcontrol",
       "title": "The unified sign-up form wraps its password inputs in a div inside FormControl so the label association lands on the div",
       "incident": "issue #525, fixed by PR #532, introduced by PR #215 (git blame on the FormControl > div lines → 8fb1087, the squash commit; base is its first parent)",
+      "tier": "frontier",
       "base": "25edfd7ad7b4d11d44e9716dfc2185a4f4df7df5",
       "head": "8fb1087f36938f5e8e4631a65cff43b3997ff6db",
-      "spec": { "kind": "none", "foundBy": "none" },
+      "spec": {
+        "kind": "none",
+        "foundBy": "none"
+      },
       "expected": [
         {
           "id": "formcontrol-slot-injects-onto-div",
@@ -162,9 +188,13 @@
       "id": "import-confirm-is-bare-window-confirm",
       "title": "Vault import replaces both wrappings behind a bare window.confirm that only mentions local vault data",
       "incident": "issue #657, fixed by PR #683, introduced by PR #40 (git log -S 'Importing will replace' → b030fd1, the squash commit; base is its first parent)",
+      "tier": "frontier",
       "base": "66a59cac6b0d174476cb3fbc27f803cc9e678abc",
       "head": "b030fd19547e544c461607c10594f1c95f453377",
-      "spec": { "kind": "none", "foundBy": "none" },
+      "spec": {
+        "kind": "none",
+        "foundBy": "none"
+      },
       "expected": [
         {
           "id": "destructive-replace-without-disclosure-dialog",
@@ -182,9 +212,13 @@
       "id": "mail-test-setup-assigns-undefined-to-env",
       "title": "The mail sender's test setup assigns undefined to two SMTP environment variables, which stores the string \"undefined\"",
       "incident": "issue #409, fixed by PR #423, introduced by PR #415 (git log --follow --diff-filter=A -- apps/backend/src/services/EmailService.spec.ts → 1f056fa, the interrupted slice #396 checkpoint that #415 carried; the file is absent at the merge commit's first parent, and MAIL_USERNAME = undefined is present at its head)",
+      "tier": "frontier",
       "base": "264e7d6141eb5a55ce3a7027062043aed0ca18db",
       "head": "194fd43b4927bb0b63fec611f3175eb8f8d12262",
-      "spec": { "kind": "none", "foundBy": "none" },
+      "spec": {
+        "kind": "none",
+        "foundBy": "none"
+      },
       "expected": [
         {
           "id": "assigning-undefined-to-a-process-env-key-stores-a-string",

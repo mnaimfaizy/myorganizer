@@ -6,18 +6,24 @@
 //   node tools/scripts/review/score-golden-case.mjs --case <id> \
 //     --normalized <normalized.json> [--out <score.json>]
 //
-//   node tools/scripts/review/score-golden-case.mjs --list
+//   node tools/scripts/review/score-golden-case.mjs --list [--tier <tier>]
 //   node tools/scripts/review/score-golden-case.mjs --show <id>
 //
-// `--list` prints the case ids (the replay workflow's matrix); `--show`
-// prints the facts the reviewer prompt needs for one case as JSON.
+// `--list` prints the case ids (the replay workflow's matrix), optionally
+// narrowed to one tier (ADR 0071); `--show` prints the facts the reviewer
+// prompt needs for one case as JSON.
 //
 // Exit 0 = recall at or above the case's minimum. Exit 1 = below it.
 // Exit 2 = could not run.
 import { appendFileSync, writeFileSync } from 'node:fs';
 
 import { cannotRun, isMain, parseArgs, readJsonOr } from './cli.mjs';
-import { loadGoldenSet, renderScore, scoreCase } from './golden.mjs';
+import {
+  GOLDEN_CASE_TIERS,
+  loadGoldenSet,
+  renderScore,
+  scoreCase,
+} from './golden.mjs';
 
 export const main = (argv) => {
   const bail = cannotRun('review-golden');
@@ -25,7 +31,13 @@ export const main = (argv) => {
   const set = loadGoldenSet();
 
   if ('list' in flags) {
-    process.stdout.write(`${JSON.stringify(set.cases.map((c) => c.id))}\n`);
+    // `--list --tier frontier` is the replay matrix for an ordinary push;
+    // `--tier guard` is the narrower one (ADR 0071). No --tier lists all.
+    const tier = typeof flags.tier === 'string' ? flags.tier : null;
+    if (tier && !GOLDEN_CASE_TIERS.includes(tier))
+      bail(`--tier must be one of ${GOLDEN_CASE_TIERS.join(', ')}`);
+    const cases = tier ? set.cases.filter((c) => c.tier === tier) : set.cases;
+    process.stdout.write(`${JSON.stringify(cases.map((c) => c.id))}\n`);
     return;
   }
   if (flags.show) {

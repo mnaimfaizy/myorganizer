@@ -16,6 +16,7 @@ const goldenCase = {
   id: 'enum-fanout',
   title: 'A blob type added without its fan-outs',
   incident: 'ADR 0053, #512',
+  tier: 'frontier',
   base: sha('a'),
   head: sha('b'),
   expected: [
@@ -31,7 +32,7 @@ const goldenCase = {
   ],
   minRecall: 1,
 };
-const set = { schemaVersion: 1, cases: [goldenCase] };
+const set = { schemaVersion: 2, cases: [goldenCase] };
 
 const finding = (over = {}) => ({
   id: 'abcdefabcdef',
@@ -53,6 +54,16 @@ test('a well-formed set passes and the committed set loads', () => {
     assert.match(c.incident, /#\d+/, c.id);
     assert.match(c.incident, /introduced by PR #\d+/, c.id);
   }
+  // A guard runs on a narrower trigger than a frontier case (ADR 0071), so
+  // the promotion has to cite the runs that earned it rather than assert it.
+  for (const c of committed.cases.filter((x) => x.tier === 'guard'))
+    assert.match(c.tierEvidence, /promoted \d{4}-\d{2}-\d{2}/, c.id);
+  // The frontier is the reason to run the replay at all. A set that is all
+  // guard measures nothing, and is far more likely a mistake than a triumph.
+  assert.ok(
+    committed.cases.some((c) => c.tier === 'frontier'),
+    'the set has no frontier case left',
+  );
 });
 
 test('malformed sets are named precisely', () => {
@@ -62,8 +73,21 @@ test('malformed sets are named precisely', () => {
     return () => assertGoldenSet(copy);
   };
   assert.throws(
-    bad((s) => (s.schemaVersion = 2)),
+    bad((s) => (s.schemaVersion = 1)),
     /schemaVersion/,
+  );
+  assert.throws(
+    bad((s) => (s.cases[0].tier = 'occasional')),
+    /tier/,
+  );
+  assert.throws(
+    bad((s) => delete s.cases[0].tier),
+    /tier/,
+  );
+  // A guard runs on a narrower trigger, so it has to say what promoted it.
+  assert.throws(
+    bad((s) => (s.cases[0].tier = 'guard')),
+    /promoted it/,
   );
   assert.throws(
     bad((s) => (s.cases[0].head = 'abc')),
