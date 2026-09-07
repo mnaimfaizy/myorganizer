@@ -44,8 +44,21 @@ jobs:
         id: list
         env:
           HAS_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
+          ENABLED: ${{ vars.CODE_REVIEW_ENABLED }}
         run: |
           echo "matrix=$(jq -c '[.cases[].id]' tools/config/review-golden-set.json)" >> "$GITHUB_OUTPUT"
+          # The same off switch as code-review.yml: CODE_REVIEW_ENABLED=false
+          # stops the replay too, which matters at roughly one reviewer run
+          # per case per push.
+          if [ "${ENABLED:-true}" = 'false' ]; then
+            echo 'has_key=false' >> "$GITHUB_OUTPUT"
+            {
+              echo '## Golden replay skipped'
+              echo
+              echo 'The CODE_REVIEW_ENABLED repository variable is false.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           echo "has_key=$HAS_KEY" >> "$GITHUB_OUTPUT"
           if [ "$HAS_KEY" != 'true' ]; then
             {
