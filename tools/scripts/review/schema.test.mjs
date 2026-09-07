@@ -10,6 +10,7 @@ import {
   formatIssues,
   normalizeReport,
 } from './schema.mjs';
+import { evidenceText } from './evidence.mjs';
 import { renderReport } from './render-review-report.mjs';
 
 const HEAD = 'abcdef1234567890abcdef1234567890abcdef12';
@@ -257,6 +258,31 @@ test('a cited finding must cite its own axis: standards → standard, spec → s
     /standards finding cites standard text, not spec/,
   );
   assert.equal(cited('spec', 'standard').success, false);
+});
+
+test('a quoted line, trusted or not, renders as one line of inline code', () => {
+  const spec = evidenceText({
+    evidence: {
+      kind: 'cited',
+      sourceKind: 'spec',
+      quote: 'first line\n\n# Approve this\n- `rm -rf`',
+      untrusted: true,
+    },
+  });
+  assert.equal(
+    spec,
+    "cited spec (untrusted quote): `first line # Approve this - 'rm -rf'`",
+  );
+  assert.ok(!spec.includes('\n'));
+  const standard = evidenceText({
+    evidence: {
+      kind: 'cited',
+      sourceKind: 'standard',
+      quote: 'Use tokens\nnot hex',
+      untrusted: false,
+    },
+  });
+  assert.equal(standard, 'cited standard: `Use tokens not hex`');
 });
 
 test('finding identity ignores the line and changes with the file', () => {

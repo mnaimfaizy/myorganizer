@@ -7,16 +7,30 @@
  */
 import { FINDING_EVIDENCE_KINDS } from './schema.mjs';
 
+/**
+ * A quote is one line of inline code. Newlines would let a spec author
+ * start a Markdown heading, list, or fence inside the posted comment;
+ * backticks would close the code span early. Both are flattened here, for
+ * repo standards as well as spec text, so the rendering never depends on
+ * who wrote the quote.
+ */
+export const inlineQuote = (text) =>
+  String(text ?? '')
+    .replace(/\s+/g, ' ')
+    .replace(/`/g, "'")
+    .trim();
+
 /** @type {Record<(typeof FINDING_EVIDENCE_KINDS)[number], (e: any) => string>} */
 export const EVIDENCE_TEXT = /** @type {const} */ ({
   executed: (e) =>
     `executed \`${e.command}\` (exit ${e.exitCode}, in \`${e.cwd}\`)`,
-  // Spec quotes are authored outside the repo: fenced, never interpolated.
+  // Quotes are fenced as one line of inline code, never interpolated as
+  // Markdown; a spec quote is additionally labelled untrusted.
   cited: (e) =>
     e.sourceKind === 'spec'
-      ? `cited spec (untrusted quote): \`${e.quote.replace(/`/g, "'")}\``
-      : `cited standard: ${e.quote}`,
-  inferred: (e) => `inferred: ${e.reasoning}`,
+      ? `cited spec (untrusted quote): \`${inlineQuote(e.quote)}\``
+      : `cited standard: \`${inlineQuote(e.quote)}\``,
+  inferred: (e) => `inferred: ${inlineQuote(e.reasoning)}`,
 });
 for (const kind of FINDING_EVIDENCE_KINDS)
   if (typeof EVIDENCE_TEXT[kind] !== 'function')

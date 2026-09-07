@@ -63,48 +63,38 @@ const RESOLVE_THREAD = `
 const MINIMIZE = `
   mutation($id: ID!) { minimizeComment(input: { subjectId: $id, classifier: OUTDATED }) { minimizedComment { isMinimized } } }`;
 
-const pullRequestCommentsOf = ({ owner, name, number }) => {
-  const comments = [];
+/** Walks one GraphQL connection on the pull request to the end. */
+const paginate = (query, pick, { owner, name, number }) => {
+  const nodes = [];
   let after = null;
   for (;;) {
-    const page = graphql(COMMENTS_QUERY, { owner, name, number, after }).data
-      .repository.pullRequest.comments;
-    for (const c of page.nodes)
-      comments.push({
-        nodeId: c.id,
-        body: c.body ?? '',
-        minimized: c.isMinimized,
-      });
+    const page = pick(graphql(query, { owner, name, number, after }).data);
+    nodes.push(...page.nodes);
     if (!page.pageInfo.hasNextPage) break;
     after = page.pageInfo.endCursor;
   }
-  return comments;
+  return nodes;
 };
 
-const openThreadsOf = ({ owner, name, number }) => {
-  const threads = [];
-  let after = null;
-  for (;;) {
-    const page = graphql(THREADS_QUERY, { owner, name, number, after }).data
-      .repository.pullRequest.reviewThreads;
-    for (const t of page.nodes)
-      if (!t.isResolved)
-        threads.push({
-          id: t.id,
-          body: t.comments.nodes[0]?.body ?? '',
-          firstCommentId: t.comments.nodes[0]?.databaseId,
-          // The prefix also matches replies posted before the marker existed.
-          alreadyNotified: t.comments.nodes.some(
-            (c) =>
-              (c.body ?? '').includes(STALE_MARKER) ||
-              (c.body ?? '').startsWith('No longer reported as of'),
-          ),
-        });
-    if (!page.pageInfo.hasNextPage) break;
-    after = page.pageInfo.endCursor;
-  }
-  return threads;
-};
+const pullRequestCommentsOf = (pr) =>
+  paginate(COMMENTS_QUERY, (d) => d.repository.pullRequest.comments, pr).map(
+    (c) => ({ nodeId: c.id, body: c.body ?? '', minimized: c.isMinimized }),
+  );
+
+const openThreadsOf = (pr) =>
+  paginate(THREADS_QUERY, (d) => d.repository.pullRequest.reviewThreads, pr)
+    .filter((t) => !t.isResolved)
+    .map((t) => ({
+      id: t.id,
+      body: t.comments.nodes[0]?.body ?? '',
+      firstCommentId: t.comments.nodes[0]?.databaseId,
+      // The prefix also matches replies posted before the marker existed.
+      alreadyNotified: t.comments.nodes.some(
+        (c) =>
+          (c.body ?? '').includes(STALE_MARKER) ||
+          (c.body ?? '').startsWith('No longer reported as of'),
+      ),
+    }));
 
 export const main = (argv) => {
   const bail = cannotRun('review-publish');
