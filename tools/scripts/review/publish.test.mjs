@@ -112,7 +112,7 @@ test('inline comments: blocking with a location only, and not while a thread is 
   );
   assert.ok(out[0].body.startsWith(findingMarker('abc123def456')));
   assert.match(out[0].body, /\*\*Blocking · Standards\*\*/);
-  assert.match(out[0].body, /Evidence: cited standard: q/);
+  assert.match(out[0].body, /Evidence: cited standard: `q`/);
 });
 
 test('a finding that was resolved and comes back gets a fresh inline comment', () => {
