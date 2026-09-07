@@ -79,6 +79,12 @@ jobs:
     if: needs.cases.outputs.has_key == 'true'
     strategy:
       fail-fast: false
+      # One reviewer session per case, and a push that reaches this workflow
+      # also runs code-review.yml. Eight at once exceeded the subscription's
+      # session limit and lost a whole run to failures in under a minute
+      # (docs/research/2026-09-07-golden-replay-baseline.md, Limits). Four
+      # leaves headroom for the ordinary review running alongside.
+      max-parallel: 4
       matrix:
         case: ${{ fromJSON(needs.cases.outputs.matrix) }}
     env:
