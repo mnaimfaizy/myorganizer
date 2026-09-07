@@ -210,9 +210,10 @@ rediscover them:
   comment, posts inline comments for blocking findings, and relabels (ADR 0070 item 8).
 - **A rejected report is a failed check.** The workflow posts the validator's reasons and the Pull
   Request goes to `review:human`. Nothing is downgraded to make it pass.
-- **Your run ends when you reply without a tool call.** Nobody reads a "waiting for the sub-agent"
-  message; the workflow only sees whether `report.json` exists. Run both sub-agents in the
-  foreground of one turn and keep working until the file is written and validated.
+- **Your run ends when you reply without a tool call, and no background notification reaches you.**
+  Nobody reads a "waiting for the sub-agent" message; the workflow only sees whether `report.json`
+  exists. Invoke the sub-agents with `run_in_background: false`, both in one message so they still
+  run in parallel, and keep working in that turn until the file is written and validated.
 
 ## Why two axes
 

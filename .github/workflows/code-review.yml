@@ -265,7 +265,7 @@ jobs:
             - spec: already resolved in tmp/code-review/spec.json. Read it. Do not fetch issues, do not ask anyone. If its spec.kind is "none", skip the Spec axis.
             - write the envelope to exactly tmp/code-review/report.json (this path, not <head>.report.json) and run the validator on it as the skill says. Do not run the renderer and do not post anything: a later step publishes.
             - the model id to record in the envelope: ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
-            - your run ends the moment you reply without calling a tool. Wait for both sub-agents in the same turn (never background them, never reply "waiting"), and do not stop until tmp/code-review/report.json exists and the validator has run on it. A run that ends without that file is a rejected report and a failed check.
+            - your run ends the moment you reply without calling a tool, and no background notification ever reaches you here. Invoke each sub-agent with the Agent tool's `run_in_background: false` (both calls in one message so they still run in parallel); the results come back in that same turn. Never reply "waiting", never schedule a wake-up, and do not stop until tmp/code-review/report.json exists and the validator has run on it. A run that ends without that file is a rejected report and a failed check.
           claude_args: >-
             --model ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
             --max-turns 80
