@@ -380,8 +380,6 @@ jobs:
       TIER: ${{ needs.review.outputs.tier }}
       GH_TOKEN: ${{ github.token }}
     steps:
-      # The scripts are plain node with no dependencies, so this job needs
-      # the checkout and nothing else — no yarn install, no cache.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -389,6 +387,22 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
+
+      # The publisher reaches schema.mjs for the finding shape and the tier
+      # labels, and schema.mjs imports zod. This job needs the install like
+      # any other, and the cache the review job populated makes it cheap.
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
+
+      - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: corepack yarn install --immutable
 
       # Tolerant on purpose: a reviewer job that died before writing either
       # artifact should leave a legible failure here, not an opaque one from
@@ -412,7 +426,7 @@ jobs:
               echo '::error::the review job reported a validated report and no artifact carries it'
               exit 1
             fi
-            node tools/scripts/review/publish-review-report.mjs \
+            corepack yarn review:publish \
               --pr "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
               --head "$HEAD_SHA" --run-url "$RUN_URL" --tier "$TIER" \
               --normalized tmp/code-review/normalized.json \
@@ -426,7 +440,7 @@ jobs:
               echo 'the review job wrote no report and no rejection reason; nothing to publish'
               exit 0
             fi
-            node tools/scripts/review/publish-review-report.mjs \
+            corepack yarn review:publish \
               --pr "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
               --head "$HEAD_SHA" --run-url "$RUN_URL" --tier "$TIER" \
               --rejected "$REJECTED"
