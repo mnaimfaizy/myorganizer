@@ -55,6 +55,7 @@ Newest last. "Cases" is the tier replayed, not the whole set.
 | 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)  | 2 of 3                      | reach-through checks, re-run                  |
 | 2026-09-07 | `claude-sonnet-5` | 7 (pre-tier)  | **2 of 7**, 2 of 8 findings | reach-through checks, full set                |
 | 2026-09-07 | `claude-sonnet-5` | 8 (all tiers) | **1 of 8**, 1 of 9 findings | consequence checks added to Standards brief   |
+| 2026-09-07 | `claude-sonnet-5` | 8 (all tiers) | **2 of 8**, 2 of 9 findings | consequence checks reverted                   |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each.
@@ -98,6 +99,37 @@ its first eight cases.
 The Opus bake-off is now more interesting, not less. If instruction volume is
 what hurt, a stronger model is the cleaner test of whether the misses are
 capability at all.
+
+### What the revert measured
+
+Run [34117988776](https://github.com/mnaimfaizy/myorganizer/actions/runs/34117988776),
+on a brief byte-identical to the one the 2-of-7 baseline was taken on. Recall
+returned to **2 of 8**, and the case that moved is the same one that moved
+before, in the opposite direction: `export-envelope-drops-tasks` is caught
+again.
+
+Every other case is unchanged across the two runs. The two arms differ by one
+case, and it is the case the reach-through brief was written for.
+
+`export-envelope-drops-tasks` now reads, in order: missed, caught, caught,
+caught, caught (reach-through brief) — missed (consequence checks added) —
+caught (checks reverted). Five catches in six runs under the shorter brief,
+zero in one under the longer one. That is consistent with dilution and does not
+prove it: each arm is a single run at the eight-case size, and the reviewer is
+stochastic. It is enough to keep the brief short, which is what the revert did.
+
+What both runs agree on is more important than what separates them. Six of the
+eight cases miss under either brief, and the five misses the consequence checks
+were written to address are exactly the six-minus-one that never moved. Two
+instruction classes have now been tried against them and neither produced a
+catch. The next lever is not a third instruction class.
+
+`mail-test-setup-assigns-undefined-to-env` missed in both runs. It was added as
+a held-out case, and it holds: whatever is wrong is not specific to the
+reach-through class of defect.
+
+The case stays `frontier`. Promotion takes three consecutive catches and it has
+one, which is the asymmetry doing its job rather than an oversight.
 
 ## Reproduce
 
