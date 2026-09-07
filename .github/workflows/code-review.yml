@@ -164,9 +164,19 @@ jobs:
     needs: context
     if: needs.context.outputs.run == 'true'
 
-    # Inherits the workflow's contents: read. The reviewer runs in this job,
-    # and the publish job is the only one holding a token that can write to
-    # the repository (ADR 0070 item 8).
+    # Every scope this job holds is a read (ADR 0070 item 8: the GitHub token
+    # is never among the reviewer's tools). The reviewer's allowlist excludes
+    # `gh`, but it can run `node`, and the token is in the job environment —
+    # so the guarantee has to come from the permissions, not the allowlist.
+    # `issues` and `pull-requests` are read for the spec resolver; `actions`
+    # is read for the previous run's artifact. Everything that writes to the
+    # Pull Request happens in the publish job.
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+      actions: read
+
     outputs:
       skip: ${{ steps.preflight.outputs.skip }}
       tier: ${{ steps.tier.outputs.label }}
@@ -324,13 +334,6 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
-      # The trigger label is a button: remove it so it can be pressed again.
-      - name: Reset the agent-review label
-        if: always() && needs.context.outputs.trigger == 'label'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --remove-label agent-review || true
-
       # Reads the verdict from the validator's file, not from the publish
       # step, so a fork pull request (where publish is skipped) still fails
       # on a blocking finding.
@@ -445,3 +448,12 @@ jobs:
               --head "$HEAD_SHA" --run-url "$RUN_URL" --tier "$TIER" \
               --rejected "$REJECTED"
           fi
+
+      # The trigger label is a button: remove it so it can be pressed again.
+      # It lives here rather than in the review job because removing a label
+      # is a write, and the review job holds no write (ADR 0070 item 8). A
+      # fork pull request keeps its label: publish does not run there at all,
+      # and a fork's job token could not remove it anyway.
+      - name: Reset the agent-review label
+        if: always() && needs.context.outputs.trigger == 'label'
+        run: gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --remove-label agent-review || true
