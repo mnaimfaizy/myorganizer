@@ -10,14 +10,16 @@
 //     [--dry-run]
 //
 // What it does, all decided by publish.mjs and only executed here:
-//   - edits the one sticky summary comment in place (or creates it)
-//   - posts an inline comment for each blocking finding with a location,
-//     once per finding id
+//   - posts a new summary comment and marks the previous one outdated
+//     (never deleted, never rewritten)
+//   - posts an inline comment for each blocking finding with a location
+//     whose thread is not already open
+//   - resolves the threads of findings that are no longer reported
 //   - relabels the Pull Request when the verdict or the effective tier says
 //     it must be human
 //
 // Exit 0 = posted (even when the verdict is request-changes: the workflow
-// reads `verdict=` from $GITHUB_OUTPUT and fails the check itself).
+// reads the verdict from the normalized report and fails the check itself).
 // Exit 2 = could not run or could not post.
 import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
@@ -25,7 +27,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { cannotRun, isMain, parseArgs, readJsonOr } from './cli.mjs';
-import { STICKY_MARKER, planPublication } from './publish.mjs';
+import { planPublication } from './publish.mjs';
 
 const gh = (args, input) => {
   const opts = { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] };
@@ -33,6 +35,42 @@ const gh = (args, input) => {
   return execFileSync('gh', args, opts);
 };
 const ghJson = (args, input) => JSON.parse(gh(args, input) || 'null');
+const graphql = (query, variables) =>
+  ghJson(
+    ['api', 'graphql', '--input', '-'],
+    JSON.stringify({ query, variables }),
+  );
+
+const THREADS_QUERY = `
+  query($owner: String!, $name: String!, $number: Int!, $after: String) {
+    repository(owner: $owner, name: $name) {
+      pullRequest(number: $number) {
+        reviewThreads(first: 100, after: $after) {
+          pageInfo { hasNextPage endCursor }
+          nodes { id isResolved comments(first: 1) { nodes { body } } }
+        }
+      }
+    }
+  }`;
+const RESOLVE_THREAD = `
+  mutation($id: ID!) { resolveReviewThread(input: { threadId: $id }) { thread { isResolved } } }`;
+const MINIMIZE = `
+  mutation($id: ID!) { minimizeComment(input: { subjectId: $id, classifier: OUTDATED }) { minimizedComment { isMinimized } } }`;
+
+const openThreadsOf = ({ owner, name, number }) => {
+  const threads = [];
+  let after = null;
+  for (;;) {
+    const page = graphql(THREADS_QUERY, { owner, name, number, after }).data
+      .repository.pullRequest.reviewThreads;
+    for (const t of page.nodes)
+      if (!t.isResolved)
+        threads.push({ id: t.id, body: t.comments.nodes[0]?.body ?? '' });
+    if (!page.pageInfo.hasNextPage) break;
+    after = page.pageInfo.endCursor;
+  }
+  return threads;
+};
 
 export const main = (argv) => {
   const bail = cannotRun('review-publish');
@@ -41,7 +79,9 @@ export const main = (argv) => {
     if (!flags[k]) bail(`--${k} is required`);
   const dryRun = 'dry-run' in flags;
   const repo = flags.repo;
+  const [owner, name] = repo.split('/');
   const pr = flags.pr;
+  const number = Number(pr);
 
   let normalized;
   let rendered;
@@ -58,15 +98,7 @@ export const main = (argv) => {
     rendered = readFileSync(flags.rendered, 'utf8');
   }
 
-  const prView = ghJson([
-    'pr',
-    'view',
-    pr,
-    '--repo',
-    repo,
-    '--json',
-    'labels,headRefOid',
-  ]);
+  const prView = ghJson(['pr', 'view', pr, '--repo', repo, '--json', 'labels']);
   const currentLabels = prView.labels.map((l) => l.name);
   const issueComments = ghJson([
     'api',
@@ -74,12 +106,7 @@ export const main = (argv) => {
     '--paginate',
     '--slurp',
   ]).flat();
-  const reviewComments = ghJson([
-    'api',
-    `repos/${repo}/pulls/${pr}/comments`,
-    '--paginate',
-    '--slurp',
-  ]).flat();
+  const openThreads = openThreadsOf({ owner, name, number });
 
   const plan = planPublication({
     normalized,
@@ -89,34 +116,35 @@ export const main = (argv) => {
     headSha: flags.head,
     runUrl: flags['run-url'],
     currentLabels,
-    existingReviewBodies: reviewComments.map((c) => c.body ?? ''),
+    existingComments: issueComments.map((c) => ({
+      nodeId: c.node_id,
+      body: c.body ?? '',
+      // REST does not expose minimization; the mutation is idempotent, so a
+      // second OUTDATED mark on an already-minimized comment is harmless.
+      minimized: false,
+    })),
+    openThreads,
   });
 
-  const sticky = issueComments.find((c) =>
-    (c.body ?? '').includes(STICKY_MARKER),
-  );
   const say = (msg) =>
     console.log(`review-publish: ${dryRun ? '[dry-run] ' : ''}${msg}`);
+  const act = (description, fn) => {
+    if (dryRun) {
+      say(`would ${description}`);
+      return null;
+    }
+    const result = fn();
+    say(description);
+    return result;
+  };
 
-  if (dryRun) {
-    say(
-      `would ${sticky ? 'update' : 'create'} the summary comment (${plan.summary.length} chars)`,
+  for (const nodeId of plan.outdate)
+    act(`mark previous summary ${nodeId} outdated`, () =>
+      graphql(MINIMIZE, { id: nodeId }),
     );
-  } else if (sticky) {
-    gh(
-      [
-        'api',
-        `repos/${repo}/issues/comments/${sticky.id}`,
-        '--method',
-        'PATCH',
-        '--input',
-        '-',
-      ],
-      JSON.stringify({ body: plan.summary }),
-    );
-    say(`updated summary comment ${sticky.id}`);
-  } else {
-    const created = ghJson(
+
+  act(`post a new summary comment (${plan.summary.length} chars)`, () =>
+    ghJson(
       [
         'api',
         `repos/${repo}/issues/${pr}/comments`,
@@ -126,9 +154,8 @@ export const main = (argv) => {
         '-',
       ],
       JSON.stringify({ body: plan.summary }),
-    );
-    say(`created summary comment ${created.id}`);
-  }
+    ),
+  );
 
   if (plan.inline.length) {
     const comments = plan.inline.map((c) => ({
@@ -138,10 +165,9 @@ export const main = (argv) => {
       ...(c.startLine ? { start_line: c.startLine, start_side: 'RIGHT' } : {}),
       body: c.body,
     }));
+    const where = plan.inline.map((c) => `${c.path}:${c.line}`).join(', ');
     if (dryRun) {
-      say(
-        `would post ${comments.length} inline comment(s): ${plan.inline.map((c) => `${c.path}:${c.line}`).join(', ')}`,
-      );
+      say(`would post ${comments.length} inline comment(s): ${where}`);
     } else {
       // One review with every comment; if GitHub refuses (a line outside the
       // diff), fall back to one comment at a time so the rest still land.
@@ -162,7 +188,7 @@ export const main = (argv) => {
             comments,
           }),
         );
-        say(`posted ${comments.length} inline comment(s)`);
+        say(`posted ${comments.length} inline comment(s): ${where}`);
       } catch (err) {
         say(
           `batched inline post refused (${firstLine(err)}); posting one at a time`,
@@ -191,16 +217,18 @@ export const main = (argv) => {
     }
   }
 
+  for (const threadId of plan.resolve)
+    act(`resolve thread ${threadId} (finding no longer reported)`, () =>
+      graphql(RESOLVE_THREAD, { id: threadId }),
+    );
+
   if (plan.relabel) {
     const args = ['pr', 'edit', pr, '--repo', repo];
     for (const l of plan.relabel.add) args.push('--add-label', l);
     for (const l of plan.relabel.remove) args.push('--remove-label', l);
-    if (dryRun)
-      say(`would relabel: +${plan.relabel.add} -${plan.relabel.remove}`);
-    else {
-      gh(args);
-      say(`relabelled: +${plan.relabel.add} -${plan.relabel.remove}`);
-    }
+    act(`relabel: +${plan.relabel.add} -${plan.relabel.remove}`, () =>
+      gh(args),
+    );
   }
 
   if (process.env.GITHUB_OUTPUT && !dryRun) {

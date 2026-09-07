@@ -15,37 +15,156 @@ name: Code Review
 #      rejected report. It is a status check, never a review approval
 #      (ADR 0069 item 6). Merge policy does not change here.
 #
+# How it is invoked — like any reviewer bot:
+#
+#   - automatically on every non-draft pull request (when CODE_REVIEW_MODE is
+#     `auto`, the default), on open, push, reopen, and ready-for-review;
+#   - on demand, in any mode, by adding the `agent-review` label to the pull
+#     request (the label is removed again once the run finishes, so it works
+#     as a button), by commenting `/code-review` on it (write access
+#     required), or from the Actions tab with a pull request number.
+#
+# Repository variables (Settings → Secrets and variables → Actions → Variables):
+#
+#   CODE_REVIEW_ENABLED  `false` turns the workflow off entirely; every
+#                        trigger explains and skips. Default: on.
+#   CODE_REVIEW_MODE     `auto` (default) or `manual`. In `manual`, pull
+#                        request events do not start a review; the label, the
+#                        comment, and the manual dispatch still do.
+#   CODE_REVIEW_MODEL    the model id, default `claude-sonnet-5`.
+#
 # Credential: the CLAUDE_CODE_OAUTH_TOKEN secret (a subscription token from
 # `claude setup-token`) is preferred; ANTHROPIC_API_KEY is accepted as a
 # fallback. With neither set the job explains and skips.
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number to review
+        required: true
+        type: number
 
 permissions:
   contents: read
-  issues: read
+  issues: write
   pull-requests: write
   actions: read
 
 concurrency:
-  group: code-review-${{ github.event.pull_request.number }}
+  group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
   cancel-in-progress: true
 
 jobs:
+  # Decides whether this event is a review request, and resolves the pull
+  # request it is about. Every trigger funnels through here so the review
+  # job below sees one shape regardless of how it was asked for.
+  context:
+    name: Review Context
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # A comment starts a run only when it is on a pull request and is the
+    # command; everything else is filtered below with the API.
+    if: >-
+      github.event_name != 'issue_comment' ||
+      (github.event.issue.pull_request && startsWith(github.event.comment.body, '/code-review'))
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+      reason: ${{ steps.decide.outputs.reason }}
+      trigger: ${{ steps.decide.outputs.trigger }}
+      pr: ${{ steps.decide.outputs.pr }}
+      base_sha: ${{ steps.decide.outputs.base_sha }}
+      head_sha: ${{ steps.decide.outputs.head_sha }}
+      head_ref: ${{ steps.decide.outputs.head_ref }}
+      author: ${{ steps.decide.outputs.author }}
+      same_repo: ${{ steps.decide.outputs.same_repo }}
+    steps:
+      - name: Decide
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ENABLED: ${{ vars.CODE_REVIEW_ENABLED }}
+          MODE: ${{ vars.CODE_REVIEW_MODE }}
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
+          PR_EVENT_NUMBER: ${{ github.event.pull_request.number }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          COMMENT_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          COMMENT_ASSOC: ${{ github.event.comment.author_association }}
+          DISPATCH_PR: ${{ inputs.pr }}
+        run: |
+          set -euo pipefail
+          out() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
+          skip() { out run false; out reason "$1"; echo "code review skipped: $1"; echo "## Code review skipped" >> "$GITHUB_STEP_SUMMARY"; echo >> "$GITHUB_STEP_SUMMARY"; echo "$1" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+
+          if [ "${ENABLED:-true}" = 'false' ]; then
+            skip 'the CODE_REVIEW_ENABLED repository variable is false'
+          fi
+          MODE="${MODE:-auto}"
+
+          case "$EVENT" in
+            pull_request)
+              PR="$PR_EVENT_NUMBER"
+              if [ "$ACTION" = 'labeled' ]; then
+                [ "$LABEL" = 'agent-review' ] || skip "label '$LABEL' is not the agent-review trigger"
+                TRIGGER=label
+              else
+                [ "$MODE" = 'auto' ] || skip "CODE_REVIEW_MODE is $MODE; add the agent-review label or comment /code-review to request a review"
+                [ "$PR_DRAFT" != 'true' ] || skip 'the pull request is a draft'
+                TRIGGER=push
+              fi
+              ;;
+            issue_comment)
+              PR="$COMMENT_NUMBER"
+              case "$COMMENT_ASSOC" in
+                OWNER|MEMBER|COLLABORATOR) ;;
+                *) skip "/code-review from a $COMMENT_ASSOC is ignored; write access is required" ;;
+              esac
+              # Acknowledge the request the way a reviewer bot does.
+              gh api "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" -f content=eyes >/dev/null || true
+              TRIGGER=comment
+              ;;
+            workflow_dispatch)
+              PR="$DISPATCH_PR"
+              TRIGGER=dispatch
+              ;;
+            *) skip "unsupported event $EVENT" ;;
+          esac
+
+          VIEW="$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json number,state,isDraft,isCrossRepository,baseRefOid,headRefOid,headRefName,author)"
+          STATE="$(jq -r .state <<<"$VIEW")"
+          [ "$STATE" = 'OPEN' ] || skip "pull request #$PR is $STATE"
+
+          out run true
+          out reason "$TRIGGER"
+          out trigger "$TRIGGER"
+          out pr "$PR"
+          out base_sha "$(jq -r .baseRefOid <<<"$VIEW")"
+          out head_sha "$(jq -r .headRefOid <<<"$VIEW")"
+          out head_ref "$(jq -r .headRefName <<<"$VIEW")"
+          out author "$(jq -r .author.login <<<"$VIEW")"
+          if [ "$(jq -r .isCrossRepository <<<"$VIEW")" = 'true' ]; then out same_repo false; else out same_repo true; fi
+          echo "reviewing #$PR ($TRIGGER)"
+
   review:
     name: Agent Verdict
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    if: github.event.pull_request.draft == false
+    needs: context
+    if: needs.context.outputs.run == 'true'
 
     env:
-      BASE_SHA: ${{ github.event.pull_request.base.sha }}
-      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      HEAD_REF: ${{ github.event.pull_request.head.ref }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
-      PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+      BASE_SHA: ${{ needs.context.outputs.base_sha }}
+      HEAD_SHA: ${{ needs.context.outputs.head_sha }}
+      HEAD_REF: ${{ needs.context.outputs.head_ref }}
+      PR_NUMBER: ${{ needs.context.outputs.pr }}
+      PR_AUTHOR: ${{ needs.context.outputs.author }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       # Required for Prisma v7 config loading if a reviewer runs backend tests.
       DATABASE_URL: postgresql://localhost:5432/myorganizer
@@ -69,10 +188,12 @@ jobs:
             echo "reviewer credential: $USING"
           fi
 
+      # The pull request head, whatever event brought us here.
       - name: Checkout repository
         if: steps.preflight.outputs.skip != 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ needs.context.outputs.head_sha }}
           fetch-depth: 0
 
       - name: Setup Node.js 22
@@ -120,9 +241,10 @@ jobs:
       # reads, existing Nx targets, the validator, and `node` for a
       # reviewer-written reproduction (the executed-evidence class ADR 0070
       # values most); no gh, no network, no push. The action's own GitHub
-      # tools are not in the list, so the reviewer cannot post. `github_token` is the job token: the action
-      # uses it for its own plumbing instead of minting a GitHub App token,
-      # so the Claude GitHub App does not need to be installed.
+      # tools are not in the list, so the reviewer cannot post. `github_token`
+      # is the job token: the action uses it for its own plumbing instead of
+      # minting a GitHub App token, so the Claude GitHub App does not need to
+      # be installed.
       - name: Run the reviewer
         if: steps.preflight.outputs.skip != 'true'
         id: reviewer
@@ -136,9 +258,9 @@ jobs:
             /code-review
 
             You are running in CI (see "In CI" in the skill). Facts for this run:
-            - fixed point (base): ${{ github.event.pull_request.base.sha }}
-            - head: ${{ github.event.pull_request.head.sha }}
-            - branch name: ${{ github.event.pull_request.head.ref }}
+            - fixed point (base): ${{ needs.context.outputs.base_sha }}
+            - head: ${{ needs.context.outputs.head_sha }}
+            - branch name: ${{ needs.context.outputs.head_ref }}
             - tier: ${{ steps.tier.outputs.label }}
             - spec: already resolved in tmp/code-review/spec.json. Read it. Do not fetch issues, do not ask anyone. If its spec.kind is "none", skip the Spec axis.
             - write the envelope to exactly tmp/code-review/report.json (this path, not <head>.report.json) and run the validator on it as the skill says. Do not run the renderer and do not post anything: a later step publishes.
@@ -152,7 +274,8 @@ jobs:
       # The previous run's normalized report, for the new / persisting /
       # resolved strip. Fetched only after the reviewer has exited: the
       # reviewer never sees its last report (ADR 0070). Best effort: a first
-      # run has none.
+      # run has none. No --status filter: a run with a blocking verdict
+      # concludes "failure" by design and still carries the artifact.
       - name: Fetch the previous report
         if: steps.preflight.outputs.skip != 'true'
         id: previous
@@ -161,8 +284,6 @@ jobs:
         run: |
           set +e
           found=''
-          # No --status filter: a run with a blocking verdict concludes
-          # "failure" by design and still carries the artifact.
           for run_id in $(gh run list --workflow code-review.yml --branch "$HEAD_REF" --json databaseId --jq '.[].databaseId' --limit 5); do
             if gh run download "$run_id" --name code-review-normalized --dir "$RUNNER_TEMP/previous" >/dev/null 2>&1; then
               found="$RUNNER_TEMP/previous/normalized.json"
@@ -225,9 +346,11 @@ jobs:
           path: tmp/code-review/normalized.json
           retention-days: 30
 
-      # The only step with a token that can write to the Pull Request.
+      # The only step with a token that can write to the Pull Request. A new
+      # summary comment every run; the previous one is marked outdated, never
+      # deleted; threads of findings that went away are resolved.
       - name: Publish to the pull request
-        if: steps.preflight.outputs.skip != 'true' && github.event.pull_request.head.repo.full_name == github.repository
+        if: steps.preflight.outputs.skip != 'true' && needs.context.outputs.same_repo == 'true'
         id: publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -241,6 +364,13 @@ jobs:
               --head "$HEAD_SHA" --run-url "$RUN_URL" --tier '${{ steps.tier.outputs.label }}' \
               --rejected "$RUNNER_TEMP/rejected.txt"
           fi
+
+      # The trigger label is a button: remove it so it can be pressed again.
+      - name: Reset the agent-review label
+        if: always() && needs.context.outputs.trigger == 'label'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --remove-label agent-review || true
 
       # Reads the verdict from the validator's file, not from the publish
       # step, so a fork pull request (where publish is skipped) still fails

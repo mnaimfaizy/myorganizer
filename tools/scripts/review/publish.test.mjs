@@ -2,12 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  STICKY_MARKER,
+  SUMMARY_MARKER,
   findingMarker,
   inlineComments,
   planPublication,
   planRelabel,
+  summariesToOutdate,
   targetTierLabel,
+  threadsToResolve,
 } from './publish.mjs';
 
 const finding = (over = {}) => ({
@@ -36,11 +38,7 @@ const normalized = (
   findings,
   verdict = 'request-changes',
   effectiveTier = 'review:agent',
-) => ({
-  verdict,
-  effectiveTier,
-  findings,
-});
+) => ({ verdict, effectiveTier, findings });
 
 const ctx = {
   tier: 'review:agent',
@@ -95,7 +93,7 @@ test('relabel adds the target and removes the other review labels, or does nothi
   assert.throws(() => planRelabel([], 'review:ship'), /unknown tier label/);
 });
 
-test('inline comments: blocking with a location only, once per id', () => {
+test('inline comments: blocking with a location only, and not while a thread is open', () => {
   const out = inlineComments({
     findings: [
       finding(),
@@ -106,7 +104,7 @@ test('inline comments: blocking with a location only, once per id', () => {
         location: { file: 'x.ts', startLine: 9, headSha: 'a'.repeat(40) },
       }),
     ],
-    existingBodies: [`hello ${findingMarker('dddddddddddd')} world`],
+    openThreadBodies: [`hello ${findingMarker('dddddddddddd')} world`],
   });
   assert.deepEqual(
     out.map((c) => [c.id, c.path, c.line, c.startLine]),
@@ -117,17 +115,50 @@ test('inline comments: blocking with a location only, once per id', () => {
   assert.match(out[0].body, /Evidence: cited standard: q/);
 });
 
-test('a published plan carries the sticky marker, the inline set, the relabel, and the check outcome', () => {
+test('a finding that was resolved and comes back gets a fresh inline comment', () => {
+  // Only open threads suppress a repost; a resolved thread is history.
+  const out = inlineComments({ findings: [finding()], openThreadBodies: [] });
+  assert.equal(out.length, 1);
+});
+
+test('threads resolve when their finding is gone, never when it persists or when a human wrote them', () => {
+  const resolve = threadsToResolve({
+    findings: [finding({ id: 'aaaaaaaaaaaa' })],
+    openThreads: [
+      { id: 'T1', body: `${findingMarker('aaaaaaaaaaaa')} still here` },
+      { id: 'T2', body: `${findingMarker('bbbbbbbbbbbb')} gone` },
+      { id: 'T3', body: 'a human asked a question' },
+    ],
+  });
+  assert.deepEqual(resolve, ['T2']);
+});
+
+test('previous summaries are marked outdated, never deleted, and only once', () => {
+  assert.deepEqual(
+    summariesToOutdate([
+      { nodeId: 'C1', body: `${SUMMARY_MARKER} old` },
+      { nodeId: 'C2', body: `${SUMMARY_MARKER} older`, minimized: true },
+      { nodeId: 'C3', body: 'a human comment' },
+    ]),
+    ['C1'],
+  );
+});
+
+test('a published plan: new summary, outdated predecessors, inline set, resolutions, relabel, check outcome', () => {
   const plan = planPublication({
     ...ctx,
     normalized: normalized([finding()]),
     rendered: '# Code review — request changes\n\nbody\n',
+    existingComments: [{ nodeId: 'C1', body: `${SUMMARY_MARKER} previous` }],
+    openThreads: [{ id: 'T9', body: `${findingMarker('999999999999')} x` }],
   });
   assert.equal(plan.outcome, 'published');
-  assert.ok(plan.summary.startsWith(STICKY_MARKER));
+  assert.ok(plan.summary.startsWith(SUMMARY_MARKER));
   assert.match(plan.summary, /aaaaaaa/);
   assert.match(plan.summary, /# Code review — request changes/);
+  assert.deepEqual(plan.outdate, ['C1']);
   assert.equal(plan.inline.length, 1);
+  assert.deepEqual(plan.resolve, ['T9']);
   assert.deepEqual(plan.relabel, {
     add: ['review:human'],
     remove: ['review:agent'],
@@ -159,15 +190,19 @@ test('no spec tightens the label to human even with no blocking finding', () => 
   assert.equal(plan.failCheck, false);
 });
 
-test('a rejected report posts the reason, relabels to human, and fails the check', () => {
+test('a rejected report posts the reason, outdates the last summary, resolves nothing, relabels to human, fails the check', () => {
   const plan = planPublication({
     ...ctx,
     rejectedReason: 'findings.0: blocking needs evidence\n',
+    existingComments: [{ nodeId: 'C1', body: `${SUMMARY_MARKER} previous` }],
+    openThreads: [{ id: 'T1', body: `${findingMarker('aaaaaaaaaaaa')} x` }],
   });
   assert.equal(plan.outcome, 'rejected');
   assert.equal(plan.verdict, null);
   assert.match(plan.summary, /no verdict/);
   assert.match(plan.summary, /blocking needs evidence/);
+  assert.deepEqual(plan.outdate, ['C1']);
+  assert.deepEqual(plan.resolve, []);
   assert.deepEqual(plan.relabel, {
     add: ['review:human'],
     remove: ['review:agent'],

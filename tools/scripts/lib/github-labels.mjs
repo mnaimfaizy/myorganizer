@@ -45,6 +45,17 @@ export function loadGithubLabelCatalog(
     );
   }
 
+  // Request triggers: a human (or ai:create-pr) puts one on a Pull Request
+  // to start a workflow, and the workflow takes it off again.
+  if (
+    !Array.isArray(catalog.triggers) ||
+    !catalog.triggers.every(isLabelRecord)
+  ) {
+    throw new Error(
+      'github-labels catalog triggers must be an array of label records.',
+    );
+  }
+
   if (
     !Array.isArray(catalog.surface?.kind) ||
     !catalog.surface.kind.every(isLabelRecord) ||
@@ -70,10 +81,15 @@ export function reviewTierLabelNames(catalog) {
   return new Set(catalog.review.map((label) => label.name));
 }
 
+export function triggerLabelNames(catalog) {
+  return new Set(catalog.triggers.map((label) => label.name));
+}
+
 export function provisionLabels(catalog) {
   return [
     ...catalog.orchestration,
     ...catalog.review,
+    ...catalog.triggers,
     ...catalog.surface.kind,
     ...catalog.surface.area,
   ];
@@ -100,7 +116,12 @@ export function normalizeLabelArgs(values) {
 }
 
 export function rejectedPrLabels(labels, catalog) {
-  const allowed = surfaceLabelNames(catalog);
+  // A Pull Request may be opened with a trigger label already on it: that is
+  // "open it and review it", which is a request, not a classification.
+  const allowed = new Set([
+    ...surfaceLabelNames(catalog),
+    ...triggerLabelNames(catalog),
+  ]);
   return labels.filter((name) => !allowed.has(name));
 }
 

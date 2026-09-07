@@ -27,7 +27,7 @@ const BRANCH_ISSUE = /^[a-z]+\/(\d+)-/;
 // to an issue. A bare `#N` is not one: `(#123)` is the squash-merge PR
 // number and `item #4` is an ADR citation.
 const COMMIT_ISSUE =
-  /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|refs?|see|issue|for)\s+#(\d+)\b/i;
+  /\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?|refs?|see|issue)\s+#(\d+)\b/i;
 
 /**
  * Pure: which issue, and how it was found. Branch first, then commits, in
