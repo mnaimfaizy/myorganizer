@@ -15,6 +15,10 @@ name: Code Review
 #      rejected report. It is a status check, never a review approval
 #      (ADR 0069 item 6). Merge policy does not change here.
 #
+# The reviewer step itself — the action call, its tool allowlist, the prompt
+# discipline, and the report validation — is the composite action at
+# .github/actions/code-reviewer, shared with review-golden-replay.yml.
+#
 # How it is invoked — like any reviewer bot:
 #
 #   - automatically on every non-draft pull request (when CODE_REVIEW_MODE is
@@ -237,39 +241,22 @@ jobs:
             --head-ref "$HEAD_REF" --base "$BASE_SHA" --head "$HEAD_SHA" \
             --repo "$GITHUB_REPOSITORY" --out tmp/code-review/spec.json
 
-      # JSON only. The allowed tools are read, search, sub-agents, git
-      # reads, existing Nx targets, the validator, and `node` for a
-      # reviewer-written reproduction (the executed-evidence class ADR 0070
-      # values most); no gh, no network, no push. The action's own GitHub
-      # tools are not in the list, so the reviewer cannot post. `github_token`
-      # is the job token: the action uses it for its own plumbing instead of
-      # minting a GitHub App token, so the Claude GitHub App does not need to
-      # be installed.
+      # The reviewer, the transcript artifact, and the validation, with the
+      # classifier's tier pinned. See .github/actions/code-reviewer.
       - name: Run the reviewer
         if: steps.preflight.outputs.skip != 'true'
         id: reviewer
-        continue-on-error: true
-        uses: anthropics/claude-code-action@v1
+        uses: ./.github/actions/code-reviewer
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
-          prompt: |
-            /code-review
-
-            You are running in CI (see "In CI" in the skill). Facts for this run:
-            - fixed point (base): ${{ needs.context.outputs.base_sha }}
-            - head: ${{ needs.context.outputs.head_sha }}
-            - branch name: ${{ needs.context.outputs.head_ref }}
-            - tier: ${{ steps.tier.outputs.label }}
-            - spec: already resolved in tmp/code-review/spec.json. Read it. Do not fetch issues, do not ask anyone. If its spec.kind is "none", skip the Spec axis.
-            - write the envelope to exactly tmp/code-review/report.json (this path, not <head>.report.json) and run the validator on it as the skill says. Do not run the renderer and do not post anything: a later step publishes.
-            - the model id to record in the envelope: ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
-            - your run ends the moment you reply without calling a tool, and no background notification ever reaches you here. Invoke each sub-agent with the Agent tool's `run_in_background: false` (both calls in one message so they still run in parallel); the results come back in that same turn. Never reply "waiting", never schedule a wake-up, and do not stop until tmp/code-review/report.json exists and the validator has run on it. A run that ends without that file is a rejected report and a failed check.
-          claude_args: >-
-            --model ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
-            --max-turns 80
-            --allowedTools "Read,Glob,Grep,Write,Edit,Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(sed -n:*),Bash(echo:*),Bash(rm -f tmp/code-review/*)"
+          base: ${{ needs.context.outputs.base_sha }}
+          head: ${{ needs.context.outputs.head_sha }}
+          head-ref: ${{ needs.context.outputs.head_ref }}
+          tier: ${{ steps.tier.outputs.label }}
+          model: ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github-token: ${{ github.token }}
+          transcript-artifact: code-review-transcript
 
       # The previous run's normalized report, for the new / persisting /
       # resolved strip. Fetched only after the reviewer has exited: the
@@ -293,42 +280,8 @@ jobs:
           echo "path=$found" >> "$GITHUB_OUTPUT"
           echo "previous report: ${found:-none}"
 
-      # The action hides the reviewer's transcript from the log. Keep it as a
-      # short-lived artifact so a run that wrote no report can be read.
-      - name: Keep the reviewer transcript
-        if: steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.execution_file != ''
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: code-review-transcript
-          path: ${{ steps.reviewer.outputs.execution_file }}
-          retention-days: 7
-
-      # The script, not the model, decides whether the report stands. The
-      # job's tier overrides whatever the envelope says.
-      - name: Validate the report
-        if: steps.preflight.outputs.skip != 'true'
-        id: validate
-        continue-on-error: true
-        run: |
-          # Accept the skill's interactive name too, in case the reviewer
-          # followed step 5 rather than the prompt.
-          if [ ! -f tmp/code-review/report.json ]; then
-            candidate="$(ls tmp/code-review/*.report.json 2>/dev/null | head -1 || true)"
-            if [ -n "$candidate" ]; then
-              echo "using $candidate"
-              mv "$candidate" tmp/code-review/report.json
-            fi
-          fi
-          if [ ! -f tmp/code-review/report.json ]; then
-            echo "the reviewer wrote no tmp/code-review/report.json (reviewer step outcome: ${{ steps.reviewer.outcome }}; see the run log)" | tee "$RUNNER_TEMP/rejected.txt"
-            exit 1
-          fi
-          corepack yarn review:validate tmp/code-review/report.json \
-            --tier '${{ steps.tier.outputs.label }}' \
-            --out tmp/code-review/normalized.json 2> >(tee "$RUNNER_TEMP/rejected.txt" >&2)
-
       - name: Render the report
-        if: steps.preflight.outputs.skip != 'true' && steps.validate.outcome == 'success'
+        if: steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated == 'true'
         run: |
           if [ -n '${{ steps.previous.outputs.path }}' ]; then
             corepack yarn review:render tmp/code-review/normalized.json \
@@ -339,7 +292,7 @@ jobs:
           cat tmp/code-review/report.md >> "$GITHUB_STEP_SUMMARY"
 
       - name: Keep the normalized report for the next run
-        if: steps.preflight.outputs.skip != 'true' && steps.validate.outcome == 'success'
+        if: steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: code-review-normalized
@@ -359,14 +312,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ '${{ steps.validate.outcome }}' = 'success' ]; then
+          if [ '${{ steps.reviewer.outputs.validated }}' = 'true' ]; then
             corepack yarn review:publish --pr "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
               --head "$HEAD_SHA" --run-url "$RUN_URL" --tier '${{ steps.tier.outputs.label }}' \
               --normalized tmp/code-review/normalized.json --rendered tmp/code-review/report.md
           else
             corepack yarn review:publish --pr "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
               --head "$HEAD_SHA" --run-url "$RUN_URL" --tier '${{ steps.tier.outputs.label }}' \
-              --rejected "$RUNNER_TEMP/rejected.txt"
+              --rejected '${{ steps.reviewer.outputs.rejected-file }}'
           fi
 
       # The trigger label is a button: remove it so it can be pressed again.
@@ -382,8 +335,8 @@ jobs:
       - name: Agent verdict
         if: steps.preflight.outputs.skip != 'true'
         run: |
-          echo "reviewer step: ${{ steps.reviewer.outcome }}; validation: ${{ steps.validate.outcome }}; publish: ${{ steps.publish.outcome }}"
-          if [ '${{ steps.validate.outcome }}' != 'success' ]; then
+          echo "reviewer step: ${{ steps.reviewer.outputs.reviewer-outcome }}; validated: ${{ steps.reviewer.outputs.validated }}; publish: ${{ steps.publish.outcome }}"
+          if [ '${{ steps.reviewer.outputs.validated }}' != 'true' ]; then
             echo '::error::the reviewer produced no valid report; this pull request is review:human'
             exit 1
           fi

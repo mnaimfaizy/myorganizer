@@ -4,18 +4,21 @@ name: Golden Replay
 # commit ranges from this repository's own history in which a documented
 # incident was merged, and the finding a reviewer should have raised. Runs
 # on every Pull Request that changes how reviews are produced — the skill,
-# the schema, the validator, the renderer, the review workflow, or the set —
-# so a prompt or contract change is measured before it reaches a real Pull
-# Request. One reviewer run per case; the job named "Golden Replay" fails
-# when any case's recall falls below its minimum.
+# the schema, the validator, the renderer, the review workflow, the shared
+# reviewer action, or the set — so a prompt or contract change is measured
+# before it reaches a real Pull Request. One reviewer run per case; the job
+# named "Golden Replay" fails when any case's recall falls below its minimum.
 #
-# Same credential rules as code-review.yml.
+# The reviewer step is the composite action at .github/actions/code-reviewer,
+# shared with code-review.yml. Same credential rules; CODE_REVIEW_ENABLED=false
+# stops the replay too.
 
 on:
   pull_request:
     paths:
       - '.agents/skills/code-review/**'
       - 'tools/scripts/review/**'
+      - '.github/actions/code-reviewer/**'
       - '.github/workflows/code-review.yml'
       - '.github/workflows/review-golden-replay.yml'
       - 'tools/config/review-golden-set.json'
@@ -113,56 +116,36 @@ jobs:
           CASE="$(node tools/scripts/review/score-golden-case.mjs --show '${{ matrix.case }}')"
           echo "base=$(jq -r .base <<<"$CASE")" >> "$GITHUB_OUTPUT"
           echo "head=$(jq -r .head <<<"$CASE")" >> "$GITHUB_OUTPUT"
-          echo "title=$(jq -r .title <<<"$CASE")" >> "$GITHUB_OUTPUT"
           mkdir -p tmp/code-review
           jq '{spec: .spec}' <<<"$CASE" > tmp/code-review/spec.json
           echo "replaying $(jq -r .incident <<<"$CASE"): $(jq -r .base <<<"$CASE" | cut -c1-7)...$(jq -r .head <<<"$CASE" | cut -c1-7)"
 
+      # The reviewer, the transcript artifact, and the validation, with no
+      # tier: a historical range has none. See .github/actions/code-reviewer.
       - name: Run the reviewer
         id: reviewer
-        continue-on-error: true
-        uses: anthropics/claude-code-action@v1
+        uses: ./.github/actions/code-reviewer
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ github.token }}
-          prompt: |
-            /code-review
+          base: ${{ steps.case.outputs.base }}
+          head: ${{ steps.case.outputs.head }}
+          head-ref: none (historical range)
+          tier: 'null'
+          facts: |
+            - this is a replay of a historical range: the head is NOT the current checkout. Read the changed files with `git show <head>:<path>` and the diff with `git diff <base>...<head>`; for executed evidence use `git worktree add tmp/code-review/worktree <head>` and remove it afterwards. The standards sources are the current checkout's, as the skill says.
+            - tier is null: write `"tier": null` in the envelope
+          model: ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github-token: ${{ github.token }}
+          transcript-artifact: golden-transcript-${{ matrix.case }}
 
-            You are running in CI (see "In CI" in the skill), replaying a historical range from this repository's own history. Facts for this run:
-            - fixed point (base): ${{ steps.case.outputs.base }}
-            - head: ${{ steps.case.outputs.head }}
-            - the head is NOT the current checkout. Read the changed files with `git show <head>:<path>` and the diff with `git diff <base>...<head>`; for executed evidence use `git worktree add tmp/code-review/worktree <head>` and remove it afterwards. The standards sources are the current checkout's, as the skill says.
-            - branch name: none (historical range)
-            - tier: null — write `"tier": null` in the envelope
-            - spec: already resolved in tmp/code-review/spec.json (kind none). Skip the Spec axis. Do not fetch anything, do not ask anyone.
-            - write the envelope to exactly tmp/code-review/report.json and run the validator on it as the skill says. Do not run the renderer and do not post anything.
-            - the model id to record in the envelope: ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
-            - your run ends the moment you reply without calling a tool, and no background notification ever reaches you here. Invoke the sub-agent with the Agent tool's `run_in_background: false`; never reply "waiting", never schedule a wake-up, and do not stop until tmp/code-review/report.json exists and the validator has run on it.
-          claude_args: >-
-            --model ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
-            --max-turns 80
-            --allowedTools "Read,Glob,Grep,Write,Edit,Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git ls-tree:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(sed -n:*),Bash(echo:*),Bash(rm -f tmp/code-review/*)"
-
-      - name: Keep the reviewer transcript
-        if: steps.reviewer.outputs.execution_file != ''
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
-        with:
-          name: golden-transcript-${{ matrix.case }}
-          path: ${{ steps.reviewer.outputs.execution_file }}
-          retention-days: 7
-
-      - name: Validate the report
+      - name: Require a validated report
         run: |
-          if [ ! -f tmp/code-review/report.json ]; then
-            candidate="$(ls tmp/code-review/*.report.json 2>/dev/null | head -1 || true)"
-            [ -n "$candidate" ] && mv "$candidate" tmp/code-review/report.json
-          fi
-          if [ ! -f tmp/code-review/report.json ]; then
-            echo "::error::the reviewer wrote no report for case ${{ matrix.case }} (reviewer step outcome: ${{ steps.reviewer.outcome }})"
+          if [ '${{ steps.reviewer.outputs.validated }}' != 'true' ]; then
+            echo "::error::no valid report for case ${{ matrix.case }} (reviewer step outcome: ${{ steps.reviewer.outputs.reviewer-outcome }})"
+            cat '${{ steps.reviewer.outputs.rejected-file }}' 2>/dev/null || true
             exit 1
           fi
-          corepack yarn review:validate tmp/code-review/report.json --out tmp/code-review/normalized.json
 
       # Recall against the case's expected findings; below the minimum fails
       # this case, and the summary names what was missed and why it mattered.

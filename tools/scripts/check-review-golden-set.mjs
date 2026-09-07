@@ -26,6 +26,7 @@ const REPLAY_WORKFLOW = '.github/workflows/review-golden-replay.yml';
 export const REPLAY_TRIGGER_PATHS = [
   '.agents/skills/code-review/**',
   'tools/scripts/review/**',
+  '.github/actions/code-reviewer/**',
   '.github/workflows/code-review.yml',
   '.github/workflows/review-golden-replay.yml',
   'tools/config/review-golden-set.json',
