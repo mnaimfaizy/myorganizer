@@ -1,6 +1,6 @@
 # Resolving a review thread from CI (2026-09-07)
 
-Research date: **2026-09-07**. Frozen at that date: sources are GitHub's own documentation, GitHub Security Lab, and first-hand reports on `github.com/orgs/community/discussions`, read as they stood on 2026-09-07. Facts not confirmed in a primary source are marked **unknown**. Decision context: [ADR 0069](../adr/0069-a-review-tier-is-a-fact-about-the-diff-and-a-gate-tier-is-a-decision-about-the-work.md), [ADR 0070](../adr/0070-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md), issue [#685](https://github.com/mnaimfaizy/myorganizer/issues/685).
+Research date: **2026-09-07**. Frozen at that date: sources are GitHub's own documentation, GitHub Security Lab, and first-hand reports on `github.com/orgs/community/discussions`, read as they stood on 2026-09-07. Facts not confirmed in a primary source are marked **unknown**. Decision context: [ADR 0070](../adr/0070-a-review-tier-is-a-fact-about-the-diff-and-a-gate-tier-is-a-decision-about-the-work.md), [ADR 0071](../adr/0071-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md), issue [#685](https://github.com/mnaimfaizy/myorganizer/issues/685).
 
 ## Question
 
@@ -123,6 +123,6 @@ Two things gate this. Grant `contents: write` on the **publish job only**, not w
 
 ## Constraint
 
-Whatever is chosen must respect ADR 0070 item 8: "The reviewer emits JSON only. A renderer produces the two-section Markdown for the terminal and the Pull Request, and a script — not the model — posts one summary comment edited in place and inline comments only for located `blocking` findings. **The GitHub token is never among the reviewer's tools.**"
+Whatever is chosen must respect ADR 0071 item 8: "The reviewer emits JSON only. A renderer produces the two-section Markdown for the terminal and the Pull Request, and a script — not the model — posts one summary comment edited in place and inline comments only for located `blocking` findings. **The GitHub token is never among the reviewer's tools.**"
 
 Option 0 preserves this without effort, because it changes a permission on a step the model never runs in and introduces no credential the model could reach. Options 2 and 3 preserve it only by construction — the secret must be bound to the publish step's `env` alone and must never appear in the job-level environment the reviewer step inherits. That is one more thing to get right and keep right, and it counts against them.

@@ -1,6 +1,6 @@
 name: Golden Replay
 
-# Replays the code reviewer against the golden set (ADR 0070, Consequences):
+# Replays the code reviewer against the golden set (ADR 0071, Consequences):
 # commit ranges from this repository's own history in which a documented
 # incident was merged, and the finding a reviewer should have raised. Runs
 # on every Pull Request that changes how reviews are produced — the skill,
@@ -9,7 +9,7 @@ name: Golden Replay
 # before it reaches a real Pull Request. One reviewer run per case; the job
 # named "Golden Replay" fails when any case's recall falls below its minimum.
 #
-# Two things keep that from being paid on every push (ADR 0071). Cases are
+# Two things keep that from being paid on every push (ADR 0072). Cases are
 # tiered: frontier cases, the ones the reviewer misses, run on any of the
 # paths above; guard cases, the ones it catches reliably, run only when the
 # brief or the finding contract changes. And `[skip replay]` in the head
@@ -60,7 +60,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      # Which tiers this run replays (ADR 0071). A frontier case is one the
+      # Which tiers this run replays (ADR 0072). A frontier case is one the
       # reviewer misses, so it runs whenever anything that produces a review
       # changes — the workflow's own path filter already decided that. A
       # guard case is one the reviewer catches reliably; it runs only when

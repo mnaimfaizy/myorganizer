@@ -1,5 +1,5 @@
 /**
- * The golden set (ADR 0070, Consequences): incidents the repo already paid
+ * The golden set (ADR 0071, Consequences): incidents the repo already paid
  * for, written as the findings a reviewer should have raised, so a change to
  * the skill, the schema, the validator, the renderer, or the workflow can be
  * replayed against them before it reaches a Pull Request.
@@ -29,7 +29,7 @@ export const REVIEW_GOLDEN_SET_PATH = join(
 export const GOLDEN_SET_SCHEMA_VERSION = 2;
 
 /**
- * A case's tier decides how often it is replayed (ADR 0071).
+ * A case's tier decides how often it is replayed (ADR 0072).
  *
  * `frontier` is a case the reviewer misses. It is the reason to run the
  * replay at all, so it runs whenever anything that produces a review

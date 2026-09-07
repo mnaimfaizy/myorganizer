@@ -6,8 +6,8 @@ description: Review changes since a fixed point (commit, branch, tag, or merge-b
 # Code Review
 
 Adapted from [mattpocock/skills — code-review](https://github.com/mattpocock/skills/tree/main/skills/engineering/code-review) for MyOrganizer. The finding contract is
-[ADR 0070](../../../docs/adr/0070-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md);
-the tier it feeds is [ADR 0069](../../../docs/adr/0069-a-review-tier-is-a-fact-about-the-diff-and-a-gate-tier-is-a-decision-about-the-work.md).
+[ADR 0071](../../../docs/adr/0071-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md);
+the tier it feeds is [ADR 0070](../../../docs/adr/0070-a-review-tier-is-a-fact-about-the-diff-and-a-gate-tier-is-a-decision-about-the-work.md).
 
 Two-axis review of the diff between `HEAD` and a fixed point:
 
@@ -226,14 +226,14 @@ rediscover them:
 
 - **Fixed point, head, branch name, and tier are given.** Use them verbatim. `tier` goes into the
   envelope; the workflow pins it again with `review:validate --tier`, so the job output is the truth
-  (ADR 0069 item 3).
+  (ADR 0070 item 3).
 - **The spec is already resolved** in `tmp/code-review/spec.json` as
   `{ "spec": { kind, ref, foundBy }, "title", "body" }` by `review:spec`, using the job token. Copy
   `spec` into the envelope and hand `body` to the Spec sub-agent as the fetched text. Fetch nothing;
   there is no token in your environment and nobody to ask. `kind: none` skips the Spec axis.
 - **Write `tmp/code-review/report.json`** (that exact name, not `<head>.report.json`), run the validator as in step 5, retry a failing
   sub-agent once, and stop. Do not render, do not post: `review:publish` edits the one summary
-  comment, posts inline comments for blocking findings, and relabels (ADR 0070 item 8).
+  comment, posts inline comments for blocking findings, and relabels (ADR 0071 item 8).
 - **A rejected report is a failed check.** The workflow posts the validator's reasons and the Pull
   Request goes to `review:human`. Nothing is downgraded to make it pass.
 - **Your run ends when you reply without a tool call, and no background notification reaches you.**

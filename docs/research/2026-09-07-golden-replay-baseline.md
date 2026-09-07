@@ -1,6 +1,6 @@
 # Golden replay baseline (2026-09-07)
 
-Research date: **2026-09-07**. Frozen at that date: every number below comes from a run of `.github/workflows/review-golden-replay.yml` on branch `feat/ci-review-workflow` (PR #682) and will not be updated. Decision context: [ADR 0070](../adr/0070-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md), whose Consequences say the ADR that narrows CODEOWNERS and makes the agent verdict a required check "can be written once the golden-set replay has a record". This is that record's first entry.
+Research date: **2026-09-07**. Frozen at that date: every number below comes from a run of `.github/workflows/review-golden-replay.yml` on branch `feat/ci-review-workflow` (PR #682) and will not be updated. Decision context: [ADR 0071](../adr/0071-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md), whose Consequences say the ADR that narrows CODEOWNERS and makes the agent verdict a required check "can be written once the golden-set replay has a record". This is that record's first entry.
 
 ## Question
 
@@ -55,7 +55,7 @@ The pattern across all five: the reviewer applies the documented rule to the hun
 
 ## What this settles
 
-The verdict is not ready to be a required check. Two catches in seven is a reviewer that finds real problems and misses the ones the repository has already paid for, and ADR 0070 makes the second number the one that matters. The next work is on the reviewer, measured here: the brief's reach-through checks moved one case from a coin toss to certain, and the misses point at a second class of instruction, "what does this hunk do to the running system", that the brief does not yet carry.
+The verdict is not ready to be a required check. Two catches in seven is a reviewer that finds real problems and misses the ones the repository has already paid for, and ADR 0071 makes the second number the one that matters. The next work is on the reviewer, measured here: the brief's reach-through checks moved one case from a coin toss to certain, and the misses point at a second class of instruction, "what does this hunk do to the running system", that the brief does not yet carry.
 
 ## Reproduce
 

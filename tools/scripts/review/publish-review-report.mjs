@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Posts a code review to its Pull Request (ADR 0070 item 8). This is the
+// Posts a code review to its Pull Request (ADR 0071 item 8). This is the
 // only review script that talks to GitHub, and it runs after the reviewer
 // has exited: the token is in this step's environment and nowhere near the
 // model.

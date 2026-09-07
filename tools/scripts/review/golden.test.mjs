@@ -54,7 +54,7 @@ test('a well-formed set passes and the committed set loads', () => {
     assert.match(c.incident, /#\d+/, c.id);
     assert.match(c.incident, /introduced by PR #\d+/, c.id);
   }
-  // A guard runs on a narrower trigger than a frontier case (ADR 0071), so
+  // A guard runs on a narrower trigger than a frontier case (ADR 0072), so
   // the promotion has to cite the runs that earned it rather than assert it.
   for (const c of committed.cases.filter((x) => x.tier === 'guard'))
     assert.match(c.tierEvidence, /promoted \d{4}-\d{2}-\d{2}/, c.id);

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The Review Tier classifier as a Wired Gate (ADR 0069 item 2).
+// The Review Tier classifier as a Wired Gate (ADR 0070 item 2).
 //
 //   node tools/scripts/check-review-tier.mjs --base <sha> --head <sha> \
 //     [--author <login>] [--graph <nx-graph.json>] [--files <numstat.json>] \

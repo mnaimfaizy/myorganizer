@@ -48,7 +48,7 @@ export const readJsonOr = (path, onError) => {
 /**
  * The one way the review scripts call `gh`. Only the spec resolver and the
  * publisher use it, and only from steps that hold the job token; the
- * reviewer itself never does (ADR 0070 item 8).
+ * reviewer itself never does (ADR 0071 item 8).
  */
 export const gh = (args, input) => {
   const opts = { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] };

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Asserts that tools/config/review-golden-set.json is a golden set the
-// replay can run (ADR 0070, Consequences).
+// replay can run (ADR 0071, Consequences).
 //
 //   node tools/scripts/check-review-golden-set.mjs
 //
@@ -22,7 +22,7 @@ import {
 } from './review/golden.mjs';
 
 const REPLAY_WORKFLOW = '.github/workflows/review-golden-replay.yml';
-/** Inputs a replay must cover (ADR 0070). Globs as the workflow spells them. */
+/** Inputs a replay must cover (ADR 0071). Globs as the workflow spells them. */
 export const REPLAY_TRIGGER_PATHS = [
   '.agents/skills/code-review/**',
   'tools/scripts/review/**',

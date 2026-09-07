@@ -1,6 +1,6 @@
 # Review Tier replay over 200 merged Pull Requests (2026-09-06)
 
-Research date: **2026-09-06**. Frozen at that date: the numbers below come from `yarn review:tier:replay --limit 200` run against the graph, tags, and path map as they stood on branch `feat/review-tier-classifier`, and will not be updated. Decision context: [ADR 0069](../adr/0069-a-review-tier-is-a-fact-about-the-diff-and-a-gate-tier-is-a-decision-about-the-work.md), whose Consequences section asks for exactly this replay before the classifier gates anything.
+Research date: **2026-09-06**. Frozen at that date: the numbers below come from `yarn review:tier:replay --limit 200` run against the graph, tags, and path map as they stood on branch `feat/review-tier-classifier`, and will not be updated. Decision context: [ADR 0070](../adr/0070-a-review-tier-is-a-fact-about-the-diff-and-a-gate-tier-is-a-decision-about-the-work.md), whose Consequences section asks for exactly this replay before the classifier gates anything.
 
 ## Question
 
@@ -95,7 +95,7 @@ Which human project was reached, and through which changed project.
 | `web-vault-ui`      | `vault-core`     |             4 |
 | `web-vault-ui`      | `web-ui`         |             4 |
 
-Most chains land on a project that was already human by its own tag. The one that changes an outcome is `app-api-client`: it is `tier:auto` (generated), but every vault and auth project imports it, so every OpenAPI sync is `human`. That is what ADR 0069 item 4 asks for, and it is the first thing to revisit once the generated client is reviewed against its spec instead of by hand.
+Most chains land on a project that was already human by its own tag. The one that changes an outcome is `app-api-client`: it is `tier:auto` (generated), but every vault and auth project imports it, so every OpenAPI sync is `human`. That is what ADR 0070 item 4 asks for, and it is the first thing to revisit once the generated client is reviewed against its spec instead of by hand.
 
 ## Hand-check
 
@@ -103,7 +103,7 @@ Most chains land on a project that was already human by its own tag. The one tha
 
 **A sample of `agent`** reads right: glossary and ADR additions (#610, #607, #586, #523), e2e fixes confined to `myorganizer-e2e` (#629, #559), page work that reaches only agent projects (#539, #429, #211), the Storybook series (#369 to #374, #486) now `agent` after the reach exclusion, and script-only `package.json` edits.
 
-**`human` is dominated by the tooling the repository is made of.** 62 Pull Requests touch `tools/scripts/lib`, `tools/config`, a `check-*.mjs`, or a `project.json`; 26 more touch other files in the `tools` project, which is `tier:human`; 28 touch a workflow. Together with the vault, auth, backend, and orchestrator projects this is the human set ADR 0069 item 4 names, and it is the majority of what this repository merges. Only one Pull Request is human by size alone (#238, 33 files and 6,036 lines, a form-context fix that should have been split), and only one by reach alone (#486, a `web-ui` runtime change).
+**`human` is dominated by the tooling the repository is made of.** 62 Pull Requests touch `tools/scripts/lib`, `tools/config`, a `check-*.mjs`, or a `project.json`; 26 more touch other files in the `tools` project, which is `tier:human`; 28 touch a workflow. Together with the vault, auth, backend, and orchestrator projects this is the human set ADR 0070 item 4 names, and it is the majority of what this repository merges. Only one Pull Request is human by size alone (#238, 33 files and 6,036 lines, a form-context fix that should have been split), and only one by reach alone (#486, a `web-ui` runtime change).
 
 **Nothing in the `human` set looked wrong**, in the sense of a Pull Request a careful reviewer would have waved through without reading. Several look heavier than they need to be, and every one of those traces to one rule: `**/project.json` under `gates-and-their-config`. A new library's `project.json` is a human path because the `tier:*` tag on it is the classifier's primary signal. That is the right default while the tag vocabulary is a week old.
 

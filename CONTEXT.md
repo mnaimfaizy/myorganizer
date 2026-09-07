@@ -407,11 +407,11 @@ The pipeline depth chosen for a piece of work before its code exists — `gate:m
 _Avoid_: tier (alone), risk tier, review depth
 
 **Review Tier**:
-The merge policy a Pull Request's diff earns — `review:auto`, `review:agent`, or `review:human` — computed after the code exists by a deterministic Wired Gate from affected projects, a path map, manifests, size, and author; never by an LLM and never by hand (ADR 0069). The job output is the state; the label is a view of it. Anything unclassifiable or any classifier error is `human`. Distinct from a Gate Tier in time, author, and question; either may only tighten the other's effect.
+The merge policy a Pull Request's diff earns — `review:auto`, `review:agent`, or `review:human` — computed after the code exists by a deterministic Wired Gate from affected projects, a path map, manifests, size, and author; never by an LLM and never by hand (ADR 0070). The job output is the state; the label is a view of it. Anything unclassifiable or any classifier error is `human`. Distinct from a Gate Tier in time, author, and question; either may only tighten the other's effect.
 _Avoid_: tier (alone), risk level, gate tier (for this sense), PR label
 
 **Request Label**:
-A GitHub label a human or `ai:create-pr` puts on a Pull Request to ask a workflow to run now, and which that workflow removes when the run ends — a button, not a state. The one Request Label is `agent-review`, which starts the CI code review in any `CODE_REVIEW_MODE` (ADR 0069 item 7). Distinct from a Surface Label (names the change), a Review Tier label (computed, never hand-applied), and an Issue Orchestration Label (never on a Pull Request). Carries no classification and never appears on an Issue.
+A GitHub label a human or `ai:create-pr` puts on a Pull Request to ask a workflow to run now, and which that workflow removes when the run ends — a button, not a state. The one Request Label is `agent-review`, which starts the CI code review in any `CODE_REVIEW_MODE` (ADR 0070 item 7). Distinct from a Surface Label (names the change), a Review Tier label (computed, never hand-applied), and an Issue Orchestration Label (never on a Pull Request). Carries no classification and never appears on an Issue.
 _Avoid_: trigger label (in prose), review label, review requested
 
 **Gated Pipeline**:

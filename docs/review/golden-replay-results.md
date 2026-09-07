@@ -1,6 +1,6 @@
 # Golden replay results
 
-**Kept current.** This file is the running record ADR 0070 asks for: "the ADR
+**Kept current.** This file is the running record ADR 0071 asks for: "the ADR
 that narrows CODEOWNERS and makes the agent verdict a required check can be
 written once the golden-set replay has a record." Append a row per replay run
 and keep the tier table honest; do not freeze it at a date. Interpretation —
@@ -24,7 +24,7 @@ promotion between tiers takes three consecutive catches.
 ## Tiers
 
 A case's tier decides how often it is replayed
-([ADR 0071](../adr/0071-a-golden-case-earns-its-replay-frequency.md)).
+([ADR 0072](../adr/0072-a-golden-case-earns-its-replay-frequency.md)).
 Promotion to `guard` takes **three consecutive catches**; demotion to
 `frontier` takes **one miss**. The asymmetry is deliberate — a wrongly
 promoted case is a detector that quietly stopped running.

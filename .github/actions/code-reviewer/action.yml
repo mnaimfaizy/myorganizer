@@ -4,7 +4,7 @@ description: >-
   commit range, keeps the transcript, and validates the JSON report it wrote.
   Shared by code-review.yml (a pull request) and review-golden-replay.yml (a
   historical range), so the tool allowlist, the prompt discipline, and the
-  report lookup live in one place (ADR 0069, ADR 0070).
+  report lookup live in one place (ADR 0070, ADR 0071).
 
 inputs:
   base:
@@ -57,7 +57,7 @@ runs:
   steps:
     # JSON only. The allowed tools are read, search, sub-agents, git reads,
     # existing Nx targets, the validator, and `node` for a reviewer-written
-    # reproduction (the executed-evidence class ADR 0070 values most); no gh,
+    # reproduction (the executed-evidence class ADR 0071 values most); no gh,
     # no network, no push. The action's own GitHub tools are not in the list,
     # so the reviewer cannot post. `github_token` is the job token: the action
     # uses it for its own plumbing instead of minting a GitHub App token.
@@ -98,7 +98,7 @@ runs:
         retention-days: 7
 
     # The script, not the model, decides whether the report stands. The
-    # caller's tier overrides whatever the envelope says (ADR 0069 item 3).
+    # caller's tier overrides whatever the envelope says (ADR 0070 item 3).
     - name: Validate the report
       id: validate
       shell: bash

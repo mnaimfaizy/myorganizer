@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Scores one golden replay (ADR 0070, Consequences): did the reviewer, run
+// Scores one golden replay (ADR 0071, Consequences): did the reviewer, run
 // against a case's historical range with today's skill and tooling, raise
 // the findings the incident says it should have?
 //
@@ -10,7 +10,7 @@
 //   node tools/scripts/review/score-golden-case.mjs --show <id>
 //
 // `--list` prints the case ids (the replay workflow's matrix), optionally
-// narrowed to one tier (ADR 0071); `--show` prints the facts the reviewer
+// narrowed to one tier (ADR 0072); `--show` prints the facts the reviewer
 // prompt needs for one case as JSON.
 //
 // Exit 0 = recall at or above the case's minimum. Exit 1 = below it.
@@ -32,7 +32,7 @@ export const main = (argv) => {
 
   if ('list' in flags) {
     // `--list --tier frontier` is the replay matrix for an ordinary push;
-    // `--tier guard` is the narrower one (ADR 0071). No --tier lists all.
+    // `--tier guard` is the narrower one (ADR 0072). No --tier lists all.
     const tier = typeof flags.tier === 'string' ? flags.tier : null;
     if (tier && !GOLDEN_CASE_TIERS.includes(tier))
       bail(`--tier must be one of ${GOLDEN_CASE_TIERS.join(', ')}`);

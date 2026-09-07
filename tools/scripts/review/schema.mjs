@@ -1,5 +1,5 @@
 /**
- * The finding contract for `/code-review` (ADR 0070).
+ * The finding contract for `/code-review` (ADR 0071).
  *
  * A reviewer emits a report that matches `ReportInputSchema`. The validator
  * (`validate-review-report.mjs`) turns it into a `NormalizedReport`: every
@@ -68,7 +68,7 @@ export const SPEC_FOUND_BY = /** @type {const} */ ([
 /**
  * The `source` a Fowler smell-baseline finding carries. The baseline is
  * always a judgement call, so the validator caps it at should-fix even when
- * the reviewer cites something (ADR 0070 item 1).
+ * the reviewer cites something (ADR 0071 item 1).
  */
 export const SMELL_BASELINE_SOURCE = 'smell-baseline';
 
@@ -146,7 +146,7 @@ export const EvidenceSchema = z.discriminatedUnion('kind', [
 /**
  * `source` and `rule` are the identity half of a finding: the standard's path
  * or the issue reference, and the rule or requirement it applies. `summary`
- * is the human claim. Nothing here carries diff text (ADR 0070 item 3).
+ * is the human claim. Nothing here carries diff text (ADR 0071 item 3).
  */
 /** Which citation source each axis may rest on (pinned; asserted below). */
 export const AXIS_CITATION_SOURCE = /** @type {const} */ ({
@@ -309,7 +309,7 @@ export const bySeverity = (a, b) =>
 
 /**
  * Derived identity: axis + source + rule + file, line excluded so a rebase
- * does not mint a new finding (ADR 0070 item 6).
+ * does not mint a new finding (ADR 0071 item 6).
  */
 const IDENTITY_ACCESSORS =
   /** @type {Record<typeof FINDING_IDENTITY_FIELDS[number], (f: object) => string>} */ ({
@@ -323,7 +323,7 @@ const IDENTITY_ACCESSORS =
  * `occurrence` is 0 for the first finding with this identity tuple in a
  * report and counts up for repeats, so two findings that share axis,
  * source, rule, and file but differ by line keep distinct ids without the
- * line entering the hash (ADR 0070 item 6). Repeats are numbered in
+ * line entering the hash (ADR 0071 item 6). Repeats are numbered in
  * startLine order, so the numbering survives a rebase the same way the
  * tuple does.
  */

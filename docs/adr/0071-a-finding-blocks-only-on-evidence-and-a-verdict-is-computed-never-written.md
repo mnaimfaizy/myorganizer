@@ -6,7 +6,7 @@ proposed
 
 ## Context
 
-[ADR 0069](0069-a-review-tier-is-a-fact-about-the-diff-and-a-gate-tier-is-a-decision-about-the-work.md)
+[ADR 0070](0070-a-review-tier-is-a-fact-about-the-diff-and-a-gate-tier-is-a-decision-about-the-work.md)
 lets a `review:agent` Pull Request merge on green checks plus an agent verdict with no `blocking`
 finding. That sentence borrows a word the repo has not defined. `/code-review` today
 ([ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md)) returns two prose reports, one per
@@ -17,7 +17,7 @@ in it can be measured against a later escaped defect.
 The roadmap this repo is following asks for findings with file, line, severity, confidence, and
 evidence, and for an aggregator that emits `APPROVE | REQUEST_CHANGES | COMMENT`. Taken literally that
 leaves the two most consequential words — `blocking` and `APPROVE` — as free choices of the model
-that also wrote the review. A model grading its own authority is the shape ADR 0069 rejected for the
+that also wrote the review. A model grading its own authority is the shape ADR 0070 rejected for the
 tier, and the same objection applies one level down.
 
 Three further facts shape the contract. Pull Request text is untrusted input and must not flow into
@@ -60,7 +60,7 @@ writes it.**
    otherwise the verdict is comment. A report with no spec source is tightened to `review:human` at
    the envelope level without becoming a finding, because half of the reviewer's value is absent and
    there is nothing in the diff to fix. A report that fails validation is rejected whole — no partial
-   verdict, no downgraded severity — and a rejected report is a pipeline error, which ADR 0069
+   verdict, no downgraded severity — and a rejected report is a pipeline error, which ADR 0070
    resolves to `human`.
 
 6. **Identity is derived, and the reviewer never sees its last report.** The validator hashes
@@ -128,7 +128,7 @@ from incidents the repo already documents — the enum fan-out losses behind
 pages behind [ADR 0065](0065-tokens-json-is-the-single-source-of-web-colour.md) — and from merged Pull
 Requests a later `fix/` branch names, ten to fifteen to start, growing by attribution. Replay runs as a
 required check on any Pull Request touching the skill, the schema, the validator, the renderer, or the
-review workflow, all of which ADR 0069 already places in `review:human`.
+review workflow, all of which ADR 0070 already places in `review:human`.
 
 No finding count is capped; the renderer folds `nit` findings so they cannot bury the rest. Labels,
 CODEOWNERS, and the ruleset are untouched by this ADR; the ADR that narrows CODEOWNERS and adds the agent

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Asserts that docs/review/finding-lifecycle.html still describes the review
-// pipeline the code implements (ADR 0069, ADR 0070).
+// pipeline the code implements (ADR 0070, ADR 0071).
 //
 //   node tools/scripts/check-review-pages.mjs
 //
@@ -32,7 +32,7 @@ const REVIEW_WORKFLOW = '.github/workflows/code-review.yml';
 const LABELS = 'tools/config/github-labels.json';
 
 /**
- * The status-check context the code-review workflow produces (ADR 0069 item
+ * The status-check context the code-review workflow produces (ADR 0070 item
  * 6). Not in the ruleset yet; the page describes it, so the page must name
  * the job that actually exists.
  */

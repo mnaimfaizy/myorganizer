@@ -1,20 +1,20 @@
 name: Code Review
 
-# The `/code-review` skill, run in CI (ADR 0069, ADR 0070). The same skill,
+# The `/code-review` skill, run in CI (ADR 0070, ADR 0071). The same skill,
 # the same JSON contract, the same validator and renderer as the terminal;
 # only the plumbing differs:
 #
 #   1. The Review Tier is computed here by the classifier and passed to the
-#      validator as `--tier`, so the job output is the truth (ADR 0069 item 3).
+#      validator as `--tier`, so the job output is the truth (ADR 0070 item 3).
 #   2. The spec is resolved with the job token in its own step; the reviewer
-#      never holds a token (ADR 0070 item 8).
+#      never holds a token (ADR 0071 item 8).
 #   3. The reviewer writes JSON only. A later step validates and renders it,
 #      and a separate job — the only one whose token can write — posts it. A
 #      report that fails the contract is rejected whole, the Pull Request is
 #      relabelled `review:human`, and this check fails.
 #   4. The job named "Agent Verdict" fails on `request-changes` and on a
 #      rejected report. It is a status check, never a review approval
-#      (ADR 0069 item 6). Merge policy does not change here.
+#      (ADR 0070 item 6). Merge policy does not change here.
 #
 # Permissions and attribution. The reviewer's job holds four read scopes and
 # nothing else; the "Publish Review" job is the only one that can write, and
@@ -180,7 +180,7 @@ jobs:
     needs: context
     if: needs.context.outputs.run == 'true'
 
-    # Every scope this job holds is a read (ADR 0070 item 8: the GitHub token
+    # Every scope this job holds is a read (ADR 0071 item 8: the GitHub token
     # is never among the reviewer's tools). The reviewer's allowlist excludes
     # `gh`, but it can run `node`, and the token is in the job environment —
     # so the guarantee has to come from the permissions, not the allowlist.
@@ -295,7 +295,7 @@ jobs:
 
       # The previous run's normalized report, for the new / persisting /
       # resolved strip. Fetched only after the reviewer has exited: the
-      # reviewer never sees its last report (ADR 0070). Best effort: a first
+      # reviewer never sees its last report (ADR 0071). Best effort: a first
       # run has none. No --status filter: a run with a blocking verdict
       # concludes "failure" by design and still carries the artifact.
       - name: Fetch the previous report
@@ -369,7 +369,7 @@ jobs:
           fi
 
   # The only job holding a token that can write. It is separate from the
-  # reviewer for two reasons. ADR 0070 item 8 keeps the GitHub token away
+  # reviewer for two reasons. ADR 0071 item 8 keeps the GitHub token away
   # from the model, and GitHub scopes permissions per job, not per step: a
   # `contents: write` on the job the reviewer runs in would hand repository
   # write to a step that reads an untrusted diff.
@@ -467,7 +467,7 @@ jobs:
 
       # The trigger label is a button: remove it so it can be pressed again.
       # It lives here rather than in the review job because removing a label
-      # is a write, and the review job holds no write (ADR 0070 item 8). A
+      # is a write, and the review job holds no write (ADR 0071 item 8). A
       # fork pull request keeps its label: publish does not run there at all,
       # and a fork's job token could not remove it anyway.
       - name: Reset the agent-review label

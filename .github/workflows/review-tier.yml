@@ -1,6 +1,6 @@
 name: Review Tier
 
-# Computes the Review Tier of a Pull Request from its diff (ADR 0069). The job
+# Computes the Review Tier of a Pull Request from its diff (ADR 0070). The job
 # output is the truth; the label the second step applies is a display of it,
 # and downstream jobs read the output, never the label (item 3).
 

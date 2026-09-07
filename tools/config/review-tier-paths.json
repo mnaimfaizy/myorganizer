@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "comment": "Inputs to the Review Tier classifier (ADR 0069). `rules` are ordered and first match wins; a file no rule matches takes the `tier:*` tag of the Nx project that owns it, and a file neither matches falls to `human`. The human rules come first on purpose: a broad prose rule further down must never reach a path listed above it. Lowering a path's tier means editing this file, and this file is itself a human path (item 3). Thresholds and the reach exclusions were set from the replay in docs/research/2026-09-06-review-tier-replay.md, not guessed.",
+  "comment": "Inputs to the Review Tier classifier (ADR 0070). `rules` are ordered and first match wins; a file no rule matches takes the `tier:*` tag of the Nx project that owns it, and a file neither matches falls to `human`. The human rules come first on purpose: a broad prose rule further down must never reach a path listed above it. Lowering a path's tier means editing this file, and this file is itself a human path (item 3). Thresholds and the reach exclusions were set from the replay in docs/research/2026-09-06-review-tier-replay.md, not guessed.",
   "rules": [
     {
       "id": "workflows-and-ownership",
       "tier": "human",
-      "reason": "CI workflows decide which gates run and CODEOWNERS decides who must approve; a change here changes what every later Pull Request is held to (ADR 0069 item 4).",
+      "reason": "CI workflows decide which gates run and CODEOWNERS decides who must approve; a change here changes what every later Pull Request is held to (ADR 0070 item 4).",
       "patterns": [
         ".github/workflows/**",
         ".github/dependabot.yml",
@@ -28,7 +28,7 @@
     {
       "id": "gates-and-their-config",
       "tier": "human",
-      "reason": "The Assertion Gates, the hook that runs them, the config they read, and this map are the things that decide what merges; the map protects itself (ADR 0069 item 3). project.json is here because tier:* tags are the classifier's primary signal.",
+      "reason": "The Assertion Gates, the hook that runs them, the config they read, and this map are the things that decide what merges; the map protects itself (ADR 0070 item 3). project.json is here because tier:* tags are the classifier's primary signal.",
       "patterns": [
         "tools/scripts/check-*.mjs",
         "tools/scripts/run-assertion-gates.mjs",

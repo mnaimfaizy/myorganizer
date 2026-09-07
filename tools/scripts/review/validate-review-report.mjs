@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Validates a `/code-review` report and writes its normalized form (ADR 0070).
+// Validates a `/code-review` report and writes its normalized form (ADR 0071).
 //
 //   node tools/scripts/review/validate-review-report.mjs <report.json> [--out <normalized.json>]
 //
@@ -30,7 +30,7 @@ export const main = (argv) => {
 
   const raw = readJsonOr(inputPath, bail);
   // In CI the tier is the classifier's job output, not whatever the reviewer
-  // wrote into the envelope (ADR 0069 item 3). The schema still checks it.
+  // wrote into the envelope (ADR 0070 item 3). The schema still checks it.
   if ('tier' in flags) {
     if (!flags.tier) bail('--tier needs a review:* label');
     if (raw && typeof raw === 'object') raw.tier = flags.tier;

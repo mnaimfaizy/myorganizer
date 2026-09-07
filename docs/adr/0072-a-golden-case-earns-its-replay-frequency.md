@@ -6,7 +6,7 @@ proposed
 
 ## Context
 
-[ADR 0070](0070-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md) gave
+[ADR 0071](0071-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md) gave
 the reviewer a regression test of its own: the golden set, commit ranges from this repository's
 history in which a documented incident merged, replayed one reviewer session per case whenever
 anything that produces a review changes. The set has eight cases and the first record
@@ -64,7 +64,7 @@ replay it knows is pointless.**
    [`docs/review/golden-replay-results.md`](../review/golden-replay-results.md), appended per run.
    Interpretation — why a case missed, what a brief change did — is a dated Research Brief under
    `docs/research/`, frozen at its date ([ADR 0041](0041-internal-notes-have-homes.md)). The record
-   ADR 0070 gates its final step on is the pair, not either alone.
+   ADR 0071 gates its final step on is the pair, not either alone.
 
 6. **The replay measures the model that reviews.** Both workflows read `CODE_REVIEW_MODEL`; the
    replay follows production rather than being pinned separately. A replay run on a model no pull
@@ -84,7 +84,7 @@ nothing, and the tests assert that at least one remains.
 `schemaVersion` moves to `2`. `tier` is required on every case, so no golden set from before this
 decision loads — deliberate, since a case with no tier has no defined frequency.
 
-Two things this does not do. It does not make `Agent Verdict` a required check; ADR 0070 still gates
+Two things this does not do. It does not make `Agent Verdict` a required check; ADR 0071 still gates
 that on the record, and the record's first entry says two of seven. And `[skip replay]` is a
 judgement a human makes in a commit message, which means it can be wrong — the mitigation is that
 the frontier is cheap enough to run when unsure, not that the escape is safe.
@@ -98,7 +98,7 @@ the frontier is cheap enough to run when unsure, not that the escape is safe.
   reaches a real pull request" property that made the replay a gate.
 
 - **Pin the replay to a stronger model than production.** Rejected as a default; kept as an
-  experiment. It would certify a reviewer no pull request receives, and ADR 0070 gates a required
+  experiment. It would certify a reviewer no pull request receives, and ADR 0071 gates a required
   check on that certification.
 
 - **`[skip ci]` instead of a bespoke token.** Rejected. GitHub honours it on `pull_request`, but it

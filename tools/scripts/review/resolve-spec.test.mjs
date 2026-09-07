@@ -29,7 +29,7 @@ test('a bare number is a PR number or a citation, not an issue reference', () =>
       headRef: 'chore/tidy',
       commits: [
         'bump to v1.2.3',
-        'ADR 0069 item #4 reads',
+        'ADR 0070 item #4 reads',
         'feat: squash merge (#123)',
         'the first run on #678 failed',
       ],

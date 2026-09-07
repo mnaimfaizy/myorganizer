@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Resolves the spec source for a CI code review (SKILL.md step 2) with the
-// job token, so the reviewer never holds one (ADR 0070 item 8).
+// job token, so the reviewer never holds one (ADR 0071 item 8).
 //
 //   node tools/scripts/review/resolve-spec.mjs --head-ref <branch> \
 //     --base <sha> --head <sha> --out <spec.json> [--repo owner/name]
@@ -12,7 +12,7 @@
 //   { "spec": { "kind": "issue", "ref": "#123", "foundBy": "branch" },
 //     "title": "...", "body": "..." }
 //
-// The body is untrusted text (ADR 0070 item 4); it is written verbatim for
+// The body is untrusted text (ADR 0071 item 4); it is written verbatim for
 // the reviewer to quote, never interpreted here.
 //
 // Exit 0 = written (a `none` spec is a valid result). Exit 2 = could not run.

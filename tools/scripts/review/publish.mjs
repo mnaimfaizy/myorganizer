@@ -1,6 +1,6 @@
 /**
  * What the CI review workflow posts, decided as pure functions so the
- * contract tests never touch GitHub (ADR 0070 item 8: a script posts, the
+ * contract tests never touch GitHub (ADR 0071 item 8: a script posts, the
  * reviewer never holds a token). `publish-review-report.mjs` is the only
  * file that calls `gh`.
  *
@@ -14,7 +14,7 @@
  *      per finding id while a thread for that id is still open. A finding
  *      that disappears from the report resolves its thread; a finding that
  *      comes back after being resolved gets a fresh comment.
- *   3. The label. ADR 0069 item 1: a blocking finding relabels an `auto` or
+ *   3. The label. ADR 0070 item 1: a blocking finding relabels an `auto` or
  *      `agent` Pull Request to `review:human`; no spec source does the same
  *      (`effectiveTier`). The label never loosens here — only the classifier
  *      lowers a tier, and only on a fresh run.
@@ -59,7 +59,7 @@ export const planRelabel = (currentLabels, target) => {
 const header = ({ headSha, runUrl }) =>
   [
     SUMMARY_MARKER,
-    `<sub>Automated code review of \`${headSha.slice(0, 7)}\` · [run](${runUrl}) · findings are JSON validated by \`tools/scripts/review/schema.mjs\`; the verdict below is computed, never written (ADR 0070).</sub>`,
+    `<sub>Automated code review of \`${headSha.slice(0, 7)}\` · [run](${runUrl}) · findings are JSON validated by \`tools/scripts/review/schema.mjs\`; the verdict below is computed, never written (ADR 0071).</sub>`,
     '',
   ].join('\n');
 
@@ -69,7 +69,7 @@ export const summaryBody = ({ rendered, headSha, runUrl }) =>
 
 /**
  * The summary comment when the reviewer produced nothing usable. The Pull
- * Request goes to a human (ADR 0069 item 5); the reason is the validator's
+ * Request goes to a human (ADR 0070 item 5); the reason is the validator's
  * output or the workflow's, never a guess.
  */
 export const rejectedBody = ({ reason, headSha, runUrl }) =>

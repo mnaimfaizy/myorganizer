@@ -59,7 +59,7 @@ test('qa and grilling are Orchestration Labels, not Surface Labels (ADR 0049)', 
   ]);
 });
 
-test('review:* is a third set: provisioned, never a Surface Label, never accepted from --label (ADR 0069)', () => {
+test('review:* is a third set: provisioned, never a Surface Label, never accepted from --label (ADR 0070)', () => {
   const catalog = loadGithubLabelCatalog();
   const review = [...reviewTierLabelNames(catalog)].sort();
   assert.deepEqual(review, ['review:agent', 'review:auto', 'review:human']);
