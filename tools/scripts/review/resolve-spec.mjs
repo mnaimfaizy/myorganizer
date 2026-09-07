@@ -20,7 +20,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-import { cannotRun, isMain, parseArgs } from './cli.mjs';
+import { cannotRun, ghJson, isMain, parseArgs } from './cli.mjs';
 
 const BRANCH_ISSUE = /^[a-z]+\/(\d+)-/;
 // A commit reference is a keyword and a number, the shapes GitHub links
@@ -68,20 +68,14 @@ export const main = (argv) => {
   if (spec.kind === 'issue') {
     const repoArgs = flags.repo ? ['--repo', flags.repo] : [];
     try {
-      const issue = JSON.parse(
-        execFileSync(
-          'gh',
-          [
-            'issue',
-            'view',
-            spec.ref.slice(1),
-            ...repoArgs,
-            '--json',
-            'title,body,state',
-          ],
-          { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
-        ),
-      );
+      const issue = ghJson([
+        'issue',
+        'view',
+        spec.ref.slice(1),
+        ...repoArgs,
+        '--json',
+        'title,body,state',
+      ]);
       result.title = issue.title;
       result.body = issue.body ?? '';
       result.state = issue.state;

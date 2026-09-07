@@ -348,7 +348,11 @@ jobs:
 
       # The only step with a token that can write to the Pull Request. A new
       # summary comment every run; the previous one is marked outdated, never
-      # deleted; threads of findings that went away are resolved.
+      # deleted. Threads of findings that went away are resolved when the
+      # token is allowed to; GitHub refuses the job token that mutation
+      # ("Resource not accessible by integration"), so today the publisher
+      # replies in the thread that the finding is no longer reported and a
+      # human resolves it with one click.
       - name: Publish to the pull request
         if: steps.preflight.outputs.skip != 'true' && needs.context.outputs.same_repo == 'true'
         id: publish

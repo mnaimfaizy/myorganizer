@@ -21,25 +21,20 @@
 // Exit 0 = posted (even when the verdict is request-changes: the workflow
 // reads the verdict from the normalized report and fails the check itself).
 // Exit 2 = could not run or could not post.
-import { execFileSync } from 'node:child_process';
 import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { cannotRun, isMain, parseArgs, readJsonOr } from './cli.mjs';
+import {
+  cannotRun,
+  gh,
+  ghGraphql as graphql,
+  ghJson,
+  isMain,
+  parseArgs,
+  readJsonOr,
+} from './cli.mjs';
 import { planPublication } from './publish.mjs';
-
-const gh = (args, input) => {
-  const opts = { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] };
-  if (input !== undefined) opts.input = input;
-  return execFileSync('gh', args, opts);
-};
-const ghJson = (args, input) => JSON.parse(gh(args, input) || 'null');
-const graphql = (query, variables) =>
-  ghJson(
-    ['api', 'graphql', '--input', '-'],
-    JSON.stringify({ query, variables }),
-  );
 
 const THREADS_QUERY = `
   query($owner: String!, $name: String!, $number: Int!, $after: String) {
@@ -52,10 +47,39 @@ const THREADS_QUERY = `
       }
     }
   }`;
+const COMMENTS_QUERY = `
+  query($owner: String!, $name: String!, $number: Int!, $after: String) {
+    repository(owner: $owner, name: $name) {
+      pullRequest(number: $number) {
+        comments(first: 100, after: $after) {
+          pageInfo { hasNextPage endCursor }
+          nodes { id body isMinimized }
+        }
+      }
+    }
+  }`;
 const RESOLVE_THREAD = `
   mutation($id: ID!) { resolveReviewThread(input: { threadId: $id }) { thread { isResolved } } }`;
 const MINIMIZE = `
   mutation($id: ID!) { minimizeComment(input: { subjectId: $id, classifier: OUTDATED }) { minimizedComment { isMinimized } } }`;
+
+const pullRequestCommentsOf = ({ owner, name, number }) => {
+  const comments = [];
+  let after = null;
+  for (;;) {
+    const page = graphql(COMMENTS_QUERY, { owner, name, number, after }).data
+      .repository.pullRequest.comments;
+    for (const c of page.nodes)
+      comments.push({
+        nodeId: c.id,
+        body: c.body ?? '',
+        minimized: c.isMinimized,
+      });
+    if (!page.pageInfo.hasNextPage) break;
+    after = page.pageInfo.endCursor;
+  }
+  return comments;
+};
 
 const openThreadsOf = ({ owner, name, number }) => {
   const threads = [];
@@ -104,12 +128,7 @@ export const main = (argv) => {
 
   const prView = ghJson(['pr', 'view', pr, '--repo', repo, '--json', 'labels']);
   const currentLabels = prView.labels.map((l) => l.name);
-  const issueComments = ghJson([
-    'api',
-    `repos/${repo}/issues/${pr}/comments`,
-    '--paginate',
-    '--slurp',
-  ]).flat();
+  const existingComments = pullRequestCommentsOf({ owner, name, number });
   const openThreads = openThreadsOf({ owner, name, number });
 
   const plan = planPublication({
@@ -120,13 +139,7 @@ export const main = (argv) => {
     headSha: flags.head,
     runUrl: flags['run-url'],
     currentLabels,
-    existingComments: issueComments.map((c) => ({
-      nodeId: c.node_id,
-      body: c.body ?? '',
-      // REST does not expose minimization; the mutation is idempotent, so a
-      // second OUTDATED mark on an already-minimized comment is harmless.
-      minimized: false,
-    })),
+    existingComments,
     openThreads,
   });
 
