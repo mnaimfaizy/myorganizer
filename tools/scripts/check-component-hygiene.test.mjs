@@ -677,3 +677,261 @@ test('summary distinguishes a run that skipped everything from a clean run', (t)
     /0 file\(s\) inspected, 1 skipped as out of scope/,
   );
 });
+
+function exportBasenameFindings(workspace, file) {
+  const result = runChecker(workspace, '--json', file);
+  const parsed = JSON.parse(result.stdout);
+  const findings = parsed.results[0]?.findings ?? [];
+  return {
+    status: result.status,
+    stderr: result.stderr,
+    findings: findings.filter((f) => f.rule === 'export-basename'),
+    all: findings,
+  };
+}
+
+function setExportBasenameExemptions(workspace, literal) {
+  const checkerPath = join(
+    workspace,
+    'tools/scripts/check-component-hygiene.mjs',
+  );
+  const source = readFileSync(checkerPath, 'utf8');
+  const next = source.replace(
+    'const EXPORT_BASENAME_EXEMPTIONS = [];',
+    `const EXPORT_BASENAME_EXEMPTIONS = ${literal};`,
+  );
+  assert.notEqual(next, source, 'exemption splice did not match source');
+  writeFileSync(checkerPath, next);
+}
+
+test('feature components/ file whose export matches the basename is clean', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/components/MatchName.tsx',
+    'export function MatchName() { return <div />; }\n',
+  );
+
+  const { status, findings } = exportBasenameFindings(workspace, file);
+  assert.equal(status, 0);
+  assert.equal(findings.length, 0);
+});
+
+test('feature components/ file that exports no matching component is an error', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/components/AddItemFormFields.tsx',
+    [
+      'export function AddItemMetadataFields() { return <div />; }',
+      'export function AddItemDetailsFields() { return <div />; }',
+      '',
+    ].join('\n'),
+  );
+
+  const { status, findings } = exportBasenameFindings(workspace, file);
+  assert.equal(status, 1);
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].message, /AddItemFormFields/);
+  assert.match(findings[0].message, /AddItemDetailsFields/);
+});
+
+test('feature components/ file with a matching export plus another component is an error', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/components/AddressDetailLoading.tsx',
+    [
+      'export function AddressDetailLoading() { return <div />; }',
+      'export function AddressDetailNotFound() { return <div />; }',
+      '',
+    ].join('\n'),
+  );
+
+  const { status, findings } = exportBasenameFindings(workspace, file);
+  assert.equal(status, 1);
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].message, /more than one/);
+});
+
+test('feature file outside components/ may export more than one component', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/page.tsx',
+    [
+      'export function AddressesPage() { return <div />; }',
+      'export function Extra() { return <div />; }',
+      '',
+    ].join('\n'),
+  );
+
+  const { status, findings } = exportBasenameFindings(workspace, file);
+  assert.equal(status, 0);
+  assert.equal(findings.length, 0);
+});
+
+test('kebab-case feature filename maps to PascalCase export', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/components/task-add-dialog.tsx',
+    'export function TaskAddDialog() { return <div />; }\n',
+  );
+
+  const { status, findings } = exportBasenameFindings(workspace, file);
+  assert.equal(status, 0);
+  assert.equal(findings.length, 0);
+});
+
+test('default export matching the basename counts as the component', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/components/LandingContent.tsx',
+    'export default function LandingContent() { return <div />; }\n',
+  );
+
+  const { status, findings } = exportBasenameFindings(workspace, file);
+  assert.equal(status, 0);
+  assert.equal(findings.length, 0);
+});
+
+test('camelCase helper plus matching component is not a second component export', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/components/DynamicBreadcrumb.tsx',
+    [
+      'export function getBreadcrumbItems() { return []; }',
+      'export function DynamicBreadcrumb() { return <div />; }',
+      '',
+    ].join('\n'),
+  );
+
+  const { status, findings } = exportBasenameFindings(workspace, file);
+  assert.equal(status, 0);
+  assert.equal(findings.length, 0);
+});
+
+test('primitive compound file passes when the basename matches the root export', (t) => {
+  const workspace = createWorkspace(t);
+  writeFixture(
+    workspace,
+    'libs/web-ui/src/index.ts',
+    "export * from './lib/components/Card/Card';\n",
+  );
+  const file = writeFixture(
+    workspace,
+    'libs/web-ui/src/lib/components/Card/Card.tsx',
+    [
+      'const Card = () => <div />;',
+      'const CardHeader = () => <div />;',
+      'export { Card, CardHeader };',
+      '',
+    ].join('\n'),
+  );
+
+  const { findings } = exportBasenameFindings(workspace, file);
+  assert.equal(findings.length, 0);
+});
+
+test('primitive file with no basename-matching root is an error', (t) => {
+  const workspace = createWorkspace(t);
+  writeFixture(
+    workspace,
+    'libs/web-ui/src/index.ts',
+    "export * from './lib/components/Card/Card';\n",
+  );
+  const file = writeFixture(
+    workspace,
+    'libs/web-ui/src/lib/components/Card/Card.tsx',
+    'export function CardHeader() { return <div />; }\n',
+  );
+
+  const { status, findings } = exportBasenameFindings(workspace, file);
+  assert.equal(status, 1);
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].message, /compound root/);
+});
+
+test('vault-ui camelCase module is not treated as a Vault UI Component basename', (t) => {
+  const workspace = createWorkspace(t);
+  writeFixture(
+    workspace,
+    'libs/web-vault-ui/src/index.ts',
+    "export * from './lib/session';\n",
+  );
+  const file = writeFixture(
+    workspace,
+    'libs/web-vault-ui/src/lib/session.tsx',
+    'export function VaultSessionProvider() { return <div />; }\n',
+  );
+
+  const { findings } = exportBasenameFindings(workspace, file);
+  assert.equal(findings.length, 0);
+});
+
+test('a reasoned exemption skips the export-basename rule', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/components/AddItemFormFields.tsx',
+    [
+      'export function AddItemMetadataFields() { return <div />; }',
+      'export function AddItemDetailsFields() { return <div />; }',
+      '',
+    ].join('\n'),
+  );
+  setExportBasenameExemptions(
+    workspace,
+    JSON.stringify([
+      {
+        path: 'libs/web/pages/todos/src/components/AddItemFormFields.tsx',
+        reason: 'test fixture: deliberate multi-export',
+      },
+    ]),
+  );
+
+  const { findings } = exportBasenameFindings(workspace, file);
+  assert.equal(findings.length, 0);
+});
+
+test('an exemption without a reason is rejected', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/components/MatchName.tsx',
+    'export function MatchName() { return <div />; }\n',
+  );
+  setExportBasenameExemptions(
+    workspace,
+    JSON.stringify([{ path: file, reason: '' }]),
+  );
+
+  const result = runChecker(workspace, file);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /written reason/);
+});
+
+test('an exemption naming a file that is gone is rejected', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/components/MatchName.tsx',
+    'export function MatchName() { return <div />; }\n',
+  );
+  setExportBasenameExemptions(
+    workspace,
+    JSON.stringify([
+      {
+        path: 'libs/web/pages/todos/src/components/Gone.tsx',
+        reason: 'used to be a compound file',
+      },
+    ]),
+  );
+
+  const result = runChecker(workspace, file);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /does not exist/);
+});
