@@ -16,6 +16,22 @@ name: Code Review
 #      rejected report. It is a status check, never a review approval
 #      (ADR 0069 item 6). Merge policy does not change here.
 #
+# Permissions and attribution. The reviewer's job holds four read scopes and
+# nothing else; the "Publish Review" job is the only one that can write, and
+# it holds `contents: write` because `resolveReviewThread` is reported to
+# require it despite creating no commit, modifying no file and moving no ref
+# (docs/research/2026-09-07-resolve-review-thread-token.md, issue #685).
+# Splitting the job is what makes that grant safe: GitHub scopes permissions
+# per job, not per step, so the same grant on the reviewer's job would hand
+# repository write to a step that reads an untrusted diff.
+#
+# Every comment, label change and resolved thread is the job token, so all of
+# it is attributed to `github-actions[bot]` — the GitHub App installed on this
+# repository, since `GITHUB_TOKEN` is that App's installation access token. No
+# personal access token is used and none should be added: a PAT would attribute
+# machine actions to a maintainer, which is the one thing a review audit trail
+# must not do.
+#
 # The reviewer step itself — the action call, its tool allowlist, the prompt
 # discipline, and the report validation — is the composite action at
 # .github/actions/code-reviewer, shared with review-golden-replay.yml.
