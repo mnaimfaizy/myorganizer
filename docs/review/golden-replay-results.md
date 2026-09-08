@@ -29,13 +29,12 @@ Promotion to `guard` takes **three consecutive catches**; demotion to
 `frontier` takes **one miss**. The asymmetry is deliberate — a wrongly
 promoted case is a detector that quietly stopped running.
 
-| Case                                          | Tier       | Since      | History                                                                       |
-| --------------------------------------------- | ---------- | ---------- | ----------------------------------------------------------------------------- |
-| `groceries-blob-type-without-fanouts`         | `guard`    | 2026-09-07 | caught in all six runs                                                        |
-| `export-envelope-drops-tasks`                 | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391 the same day |
-| `groceries-ui-written-against-absent-roles`   | `frontier` | 2026-09-07 |                                                                               |
+| Case                                          | Tier       | Since      | History                                                                                       |
+| --------------------------------------------- | ---------- | ---------- | --------------------------------------------------------------------------------------------- |
+| `groceries-blob-type-without-fanouts`         | `guard`    | 2026-09-07 | caught in all six runs                                                                        |
+| `export-envelope-drops-tasks`                 | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640 |
 | `sync-bookmarks-without-restore-or-meta-push` | `frontier` | 2026-09-07 |
-| `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 |
+| `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 | caught once, in 34171728640                                                                   |
 | `signup-password-wrapper-inside-formcontrol`  | `frontier` | 2026-09-07 |
 | `import-confirm-is-bare-window-confirm`       | `frontier` | 2026-09-07 |
 | `mail-test-setup-assigns-undefined-to-env`    | `frontier` | 2026-09-07 |
@@ -43,19 +42,28 @@ promoted case is a detector that quietly stopped running.
 The tier and the evidence that earned it are in
 `tools/config/review-golden-set.json`, asserted by `yarn review:golden:check`.
 
+**Retired.** `groceries-ui-written-against-absent-roles` was retired on
+2026-09-08 as unwinnable rather than hard: the gate ADR 0065 added as the fix
+for that incident fails on the case's own range, and the brief tells the
+reviewer that a gate-covered defect is a suppressed count and not a finding.
+It stays in the set under `retired`, with its reason and its id reserved, so
+nothing re-adds it — the workings are below. Seven cases remain.
+
 ## Runs
 
 Newest last. "Cases" is the tier replayed, not the whole set.
 
-| Date       | Model             | Cases         | Result                      | Reviewer change under test                    |
-| ---------- | ----------------- | ------------- | --------------------------- | --------------------------------------------- |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)  | 1 of 3                      | none — first measurement                      |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)  | 2 of 3                      | none — same skill, re-run                     |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)  | 2 of 3                      | reach-through checks added to Standards brief |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)  | 2 of 3                      | reach-through checks, re-run                  |
-| 2026-09-07 | `claude-sonnet-5` | 7 (pre-tier)  | **2 of 7**, 2 of 8 findings | reach-through checks, full set                |
-| 2026-09-07 | `claude-sonnet-5` | 8 (all tiers) | **1 of 8**, 1 of 9 findings | consequence checks added to Standards brief   |
-| 2026-09-07 | `claude-sonnet-5` | 8 (all tiers) | **2 of 8**, 2 of 9 findings | consequence checks reverted                   |
+| Date       | Model             | Cases          | Result                      | Reviewer change under test                    |
+| ---------- | ----------------- | -------------- | --------------------------- | --------------------------------------------- |
+| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)   | 1 of 3                      | none — first measurement                      |
+| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)   | 2 of 3                      | none — same skill, re-run                     |
+| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)   | 2 of 3                      | reach-through checks added to Standards brief |
+| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)   | 2 of 3                      | reach-through checks, re-run                  |
+| 2026-09-07 | `claude-sonnet-5` | 7 (pre-tier)   | **2 of 7**, 2 of 8 findings | reach-through checks, full set                |
+| 2026-09-07 | `claude-sonnet-5` | 8 (all tiers)  | **1 of 8**, 1 of 9 findings | consequence checks added to Standards brief   |
+| 2026-09-07 | `claude-sonnet-5` | 8 (all tiers)  | **2 of 8**, 2 of 9 findings | consequence checks reverted                   |
+| 2026-09-08 | `claude-sonnet-5` | 8 (all tiers)  | **2 of 8**, 2 of 9 findings | none — same brief, on `main` as base          |
+| 2026-09-08 | `claude-sonnet-5` | 7 (`frontier`) | **void** — rate-limited     | none — first tier-selected run                |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each.
@@ -100,6 +108,29 @@ The Opus bake-off is now more interesting, not less. If instruction volume is
 what hurt, a stronger model is the cleaner test of whether the misses are
 capability at all.
 
+### The same score, a different pair
+
+Run [34171728640](https://github.com/mnaimfaizy/myorganizer/actions/runs/34171728640),
+on the reverted brief again, with `main` as the base rather than a stacked
+branch. **2 of 8 again — and not the same two.**
+`release-bump-leaves-generated-client-stale` was caught for the first time in
+four attempts; `export-envelope-drops-tasks`, caught in the run immediately
+before, missed.
+
+That is the clearest statement of variance the record holds. Same brief, same
+set, same model, same score, different cases. It also settles how much weight
+the 1-of-8 run can carry: a single run moves a case in either direction, so the
+consequence-check result was suggestive and never conclusive. The revert stands
+on parsimony — the checks bought nothing measurable — not on that one number.
+
+No case earns promotion. `export-envelope-drops-tasks` has now missed twice in
+three runs and stays `frontier`; `groceries-blob-type-without-fanouts` is caught
+in all seven and remains the only `guard`.
+
+The practical consequence for anyone reading this table: **do not act on a
+single run.** A brief change that matters should show itself across several, and
+the cheapest way to see that is the frontier tier, not the whole set.
+
 ### What the revert measured
 
 Run [34117988776](https://github.com/mnaimfaizy/myorganizer/actions/runs/34117988776),
@@ -130,6 +161,181 @@ reach-through class of defect.
 
 The case stays `frontier`. Promotion takes three consecutive catches and it has
 one, which is the asymmetry doing its job rather than an oversight.
+
+### The frontier alone, and a run that measured nothing
+
+Run [34176461268](https://github.com/mnaimfaizy/myorganizer/actions/runs/34176461268)
+is the first run the tier filter selected: seven `frontier` cases, no `guard`.
+That part worked exactly as designed — `golden-tiers.mjs` chose the tier from a
+job with no dependencies installed, which is the thing no local test could
+prove.
+
+**Its score is void, not zero.** Every one of the seven sessions was cut off by
+the five-hour subscription window, which the transcripts record as
+`rate_limit_event` with `status: rejected` and `five_hour.utilization: 1`. Four
+sessions died mid-review at 11 to 27 turns, against the 40 to 60 a finished
+review takes. Three never reached their first turn. No case in this run was
+measured, and none of it belongs in the recall history.
+
+It was very nearly recorded as `0 of 7`. Seven check names read
+`Replay <case> — failure`, which is what a run of seven misses looks like from
+the outside, and the first version of this section drew exactly that conclusion.
+The transcripts are the only place the difference is written down. That is now
+a pipeline behaviour rather than a habit: the reviewer action reads its own
+transcript, and a rate-limited case fails with `measured nothing` instead of
+being scored.
+
+#### What it does measure: the budget
+
+This is the clearest data the repository has on what a replay costs, and the
+answer is that the binding constraint is not money.
+
+- **Seven parallel Sonnet sessions exhausted the five-hour window**, at
+  `max-parallel: 4` — a limit added after eight-at-once had already lost a run,
+  and evidently still too high when the window is not empty at the start.
+- The **seven-day** window was at 6% at the moment the five-hour window hit
+  100%. Nothing here is a weekly-quota problem.
+- The four sessions that ran cost **$6.00** between them before being cut off,
+  against roughly $14 for a complete seven-case run.
+- Overage was unavailable (`org_level_disabled`), so the window does not
+  degrade gracefully. It stops.
+
+The practical consequences are worth stating, because they apply to the reviewer
+as much as the replay:
+
+1. **A replay competes with everything else on the same subscription.** The
+   token is the maintainer's; a full-set replay can lock the maintainer out of
+   their own session, and did.
+2. **A replay must start from a known-empty window**, or be small enough to fit
+   what is left. There is no way to ask, so in practice this means dispatching
+   it deliberately rather than letting a push trigger it.
+3. **An Opus replay of the full set is not affordable on this plan.** Seven
+   Sonnet sessions already reach 100%. The dispatch-only `model` input exists so
+   a bake-off can be run on two or three cases without switching every per-PR
+   review to that model, and two or three cases is the honest size.
+
+#### And what it means for the open questions
+
+The frontier arm's measured history is therefore **0, 1, 1** catches out of
+seven across three valid runs, not four — roughly one case in seven, with a
+spread that swallows any single result.
+
+- **The tier split is earning its keep.** One case is a detector; seven are a
+  measurement, and the measurement is expensive enough to lock the window.
+- **"Which brief is better" is not answerable at this sample size.** Separating
+  one-in-seven from two-in-seven needs repetitions this budget will not pay for.
+  Two brief changes have now been recorded as inconclusive; a third would be the
+  same result again.
+- **A single Opus pass would not settle the model question either.** At 0 to 1
+  catches per run, an Opus run scoring 2 of 7 sits inside the Sonnet spread.
+  What a small bake-off can settle cheaply is the different question of whether
+  these findings are reachable from the brief at all — and the transcripts of
+  the four sessions that did run are worth reading before spending anything,
+  because they are free.
+
+No case moves tier, in either direction. A void run promotes nothing and demotes
+nothing.
+
+### Reading a transcript instead of buying a run
+
+Before spending anything on a stronger model, the four complete transcripts
+from run [34117988776](https://github.com/mnaimfaizy/myorganizer/actions/runs/34117988776)
+were free to read. One of them answers the question the bake-off was going to
+ask.
+
+`groceries-ui-written-against-absent-roles` is a case the reviewer has never
+caught. Its transcript is not the failure it looks like from the score. In 112
+tool calls the reviewer produced **nine findings, all valid**, five of them
+`blocking`, four with executed evidence — it ran `check-libs-markdown.mjs`,
+`check-component-hygiene.mjs` and `sync-subagents.mjs --check` against a
+worktree at the case's head, and every finding it raised is a real violation of
+a real standard. It also suppressed six more as redundant with existing gates.
+This is a competent review that missed the incident.
+
+**It read the defect and did not see it.** The class names the incident is about
+— `bg-surface-container-lowest`, `border-outline-variant`, `text-on-surface` —
+appear four times in the transcript, and every one of those is inside a file the
+reviewer read. Not one is in anything the reviewer wrote. It had the lines on
+screen and never formed a thought about them.
+
+**Why it could not have seen them.** The standards it loaded were
+`AGENTS.md` (found by `find -name AGENTS.md`), ADRs 0023, 0041 and 0053 by
+number, `docs/testing/README.md`, and the first fifty lines of
+`docs/ui/GUIDELINES.md` — `sed -n '1,50p'`, a truncated read of the one document
+most likely to point at the token rules. It never opened
+`libs/design-tokens/DESIGN.md`, never opened `tokens.json`, never opened
+[ADR 0065](../adr/0065-tokens-json-is-the-single-source-of-web-colour.md), and
+never ran `tailwind:classes:check`. With none of those loaded, a class name that
+resolves to no CSS is indistinguishable from one that does. The reviewer was not
+weighing the evidence and getting it wrong; it was applying standards that have
+nothing to say about the defect.
+
+So the miss is **retrieval, not capability**. The reviewer picks its standards by
+discretion — `find`, a few ADRs by number, a partial read — and the repository
+now has more standards than that sampling reaches. Which document it happens to
+open decides which defects are even expressible, and nothing ties that choice to
+the files in the diff.
+
+That reframes both open levers:
+
+- **A stronger model is no longer the obvious first lever.** Opus might sample
+  standards better, and that is a real possibility rather than a certainty. But
+  it would be paying model cost to improve a guess that does not need to be a
+  guess.
+- **The cheap lever is to stop leaving the choice to discretion.** A diff that
+  touches `libs/web/**` implies the token standards the same way a diff that
+  touches `libs/` implies ADR 0023 — and ADR 0023 is the one the reviewer _did_
+  find and _did_ raise. The gates already encode most of this mapping.
+
+One thing this transcript does not settle, and it should be tested before any
+mapping is written: `tailwind:classes:check` exists **because of this incident**
+(ADR 0065), and the brief says anything a `*:check` gate would already fail is
+not a finding but a `suppressedRedundant` count. If that gate catches this
+range, then a reviewer that loaded the right standards would have been correct
+to suppress it, and the case is unwinnable as written rather than hard. Six
+findings were suppressed in this very run and the normalized report keeps only
+the count, so the transcript cannot say whether this was among them. Any case
+whose incident was fixed by adding a gate has the same problem.
+
+### Testing the caveat: one case is unwinnable, and only one
+
+The question the transcript raised was cheap to answer. Each case's incident
+names the gate its fix introduced; running that gate against the case's own head,
+in a worktree with the current checkout's tooling, says whether the defect is
+gate-covered today.
+
+| Case                                          | Gate                     | At the case head       |
+| --------------------------------------------- | ------------------------ | ---------------------- |
+| `groceries-ui-written-against-absent-roles`   | `tailwind:classes:check` | **exit 1 — violation** |
+| — the same gate at that case's _base_         | `tailwind:classes:check` | exit 0 — clean         |
+| `groceries-blob-type-without-fanouts` (guard) | `enum:fanout:check`      | exit 2 — cannot run    |
+| `export-envelope-drops-tasks`                 | `enum:fanout:check`      | exit 2 — cannot run    |
+| `sync-bookmarks-without-restore-or-meta-push` | `enum:fanout:check`      | exit 0 — passes        |
+
+**`groceries-ui-written-against-absent-roles` is unwinnable as written.** The gate
+is clean at the base and fails at the head with 25 utilities that compile to no
+CSS — `bg-surface-container-lowest`, `border-outline-variant`, `text-on-surface`,
+the exact names in the case's `why`. So the defect is precisely what a `*:check`
+gate would already fail, and the brief says that is not a finding but a
+`suppressedRedundant` count. A reviewer that loaded ADR 0065 and ran the gate
+would have been _correct_ to suppress it. The case scores the reviewer as missing
+something it is instructed not to report, and it should be retired or rewritten
+rather than counted against recall.
+
+**The two cases the reviewer handles best are the two no gate can substitute
+for.** `enum:fanout:check` cannot even run at the guard's head or at
+`export-envelope`'s — the pinned table the gate reads is part of the fix, so it
+does not exist yet in the range under review. Those are the cases that require
+reading the diff and reasoning about it, and they are the ones the reviewer
+catches: the guard in every run, `export-envelope` in five of seven.
+
+**And gate coverage does not explain the rest.** `sync-bookmarks` has never been
+caught, and its gate passes cleanly at its head — nothing suppresses it and the
+reviewer misses it anyway. Four of the eight cases were tested here, against the
+gate each incident names; the other four have no obvious gate and were not
+tested. So this retires one case, sharpens why the guard is a guard, and leaves
+the general miss rate exactly where the transcript put it: the reviewer does not
+load the standards that would make the defect expressible.
 
 ## Reproduce
 

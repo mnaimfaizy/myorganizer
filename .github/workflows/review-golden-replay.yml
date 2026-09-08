@@ -38,6 +38,15 @@ on:
         type: choice
         options: [frontier, guard, all]
         default: all
+      # A bake-off is a deliberate, dispatch-only experiment. Without this the
+      # only way to replay on another model is the CODE_REVIEW_MODEL repository
+      # variable, which would also switch every per-PR review — a standing cost
+      # change to answer a one-off question. The default keeps the variable in
+      # charge of everything that runs by itself.
+      model:
+        description: Model id for this replay only. Empty uses CODE_REVIEW_MODEL.
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -105,6 +114,7 @@ jobs:
           TIERS: ${{ steps.tiers.outputs.tiers }}
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MODEL: ${{ inputs.model || vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
         run: |
           set -euo pipefail
           skip() {
@@ -114,11 +124,12 @@ jobs:
             exit 0
           }
 
-          # jq, not the scorer: this job installs nothing, and the scorer
-          # reaches schema.mjs, which imports zod. The tier is a plain field.
-          MATRIX="$(jq -c --arg t "$TIERS" \
-            '[.cases[] | select($t == "all" or .tier == $t) | .id]' \
-            tools/config/review-golden-set.json)"
+          # golden-tiers.mjs, not the scorer: this job installs nothing, and
+          # the scorer reaches schema.mjs, which imports zod. That script is
+          # dependency-free for exactly this reason, and it is the only
+          # implementation of the tier filter — the scorer's `--list --tier`
+          # calls the same function, so the two cannot drift apart.
+          MATRIX="$(node tools/scripts/review/golden-tiers.mjs --tier "$TIERS")"
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "tier $TIERS: $MATRIX"
 
@@ -146,6 +157,13 @@ jobs:
           fi
 
           echo "has_key=$HAS_KEY" >> "$GITHUB_OUTPUT"
+          # Which model ran is the first thing a result row needs and the one
+          # thing the run page does not otherwise say.
+          {
+            echo '## Golden replay'
+            echo
+            echo "Tier \`$TIERS\`, model \`$MODEL\`, $(jq 'length' <<<"$MATRIX") case(s)."
+          } >> "$GITHUB_STEP_SUMMARY"
           if [ "$HAS_KEY" != 'true' ]; then
             {
               echo '## Golden replay skipped'
@@ -223,14 +241,25 @@ jobs:
           facts: |
             - this is a replay of a historical range: the head is NOT the current checkout. Read the changed files with `git show <head>:<path>` and the diff with `git diff <base>...<head>`; for executed evidence use `git worktree add tmp/code-review/worktree <head>` and remove it afterwards. The standards sources are the current checkout's, as the skill says.
             - tier is null: write `"tier": null` in the envelope
-          model: ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
+          model: ${{ inputs.model || vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           github-token: ${{ github.token }}
           transcript-artifact: golden-transcript-${{ matrix.case }}
 
+      # A rate-limited case is not a result. It has to fail — the reviewer
+      # never finished — but it must never be written into the record as a
+      # miss, because nothing about the reviewer was measured.
       - name: Require a validated report
         run: |
+          case '${{ steps.reviewer.outputs.rate-limited }}' in
+            true)
+              echo "::error::case ${{ matrix.case }} was cut off by the subscription rate limit and measured nothing; do not record it as a miss"
+              exit 1 ;;
+            unknown)
+              echo "::error::case ${{ matrix.case }} produced a transcript that could not be read for rate-limit events, so whether it measured anything is unknown; do not record it as a miss"
+              exit 1 ;;
+          esac
           if [ '${{ steps.reviewer.outputs.validated }}' != 'true' ]; then
             echo "::error::no valid report for case ${{ matrix.case }} (reviewer step outcome: ${{ steps.reviewer.outputs.reviewer-outcome }})"
             cat '${{ steps.reviewer.outputs.rejected-file }}' 2>/dev/null || true

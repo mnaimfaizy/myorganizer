@@ -18,12 +18,8 @@
 import { appendFileSync, writeFileSync } from 'node:fs';
 
 import { cannotRun, isMain, parseArgs, readJsonOr } from './cli.mjs';
-import {
-  GOLDEN_CASE_TIERS,
-  loadGoldenSet,
-  renderScore,
-  scoreCase,
-} from './golden.mjs';
+import { loadGoldenSet, renderScore, scoreCase } from './golden.mjs';
+import { caseIdsInTier } from './golden-tiers.mjs';
 
 export const main = (argv) => {
   const bail = cannotRun('review-golden');
@@ -32,12 +28,17 @@ export const main = (argv) => {
 
   if ('list' in flags) {
     // `--list --tier frontier` is the replay matrix for an ordinary push;
-    // `--tier guard` is the narrower one (ADR 0072). No --tier lists all.
-    const tier = typeof flags.tier === 'string' ? flags.tier : null;
-    if (tier && !GOLDEN_CASE_TIERS.includes(tier))
-      bail(`--tier must be one of ${GOLDEN_CASE_TIERS.join(', ')}`);
-    const cases = tier ? set.cases.filter((c) => c.tier === tier) : set.cases;
-    process.stdout.write(`${JSON.stringify(cases.map((c) => c.id))}\n`);
+    // `--tier guard` is the narrower one (ADR 0072). `all`, or no --tier,
+    // lists everything. The filter itself is golden-tiers.mjs and only
+    // golden-tiers.mjs: the replay workflow cannot call this script (its
+    // `cases` job installs nothing, and the import above reaches zod), so
+    // the one thing both callers must agree on lives where both can reach.
+    try {
+      const tier = typeof flags.tier === 'string' ? flags.tier : undefined;
+      process.stdout.write(`${JSON.stringify(caseIdsInTier(set, tier))}\n`);
+    } catch (err) {
+      bail(err.message);
+    }
     return;
   }
   if (flags.show) {

@@ -32,7 +32,7 @@ const goldenCase = {
   ],
   minRecall: 1,
 };
-const set = { schemaVersion: 2, cases: [goldenCase] };
+const set = { schemaVersion: 3, cases: [goldenCase] };
 
 const finding = (over = {}) => ({
   id: 'abcdefabcdef',
@@ -79,6 +79,28 @@ test('malformed sets are named precisely', () => {
   assert.throws(
     bad((s) => (s.cases[0].tier = 'occasional')),
     /tier/,
+  );
+  // A retired case keeps its id reserved, so nothing can quietly re-add it as
+  // a live case, and it has to say why it cannot be won.
+  const retired = {
+    id: 'groceries-ui-written-against-absent-roles',
+    title: 'a case a gate already covers',
+    incident: 'ADR 0065, issue #632',
+    reason:
+      'tailwind:classes:check fails on this range, so the brief says suppress',
+  };
+  assert.equal(
+    assertGoldenSet({ ...set, retired: [retired] }).retired.length,
+    1,
+  );
+  assert.throws(
+    () => assertGoldenSet({ ...set, retired: [{ ...retired, reason: '' }] }),
+    /cannot be won/,
+  );
+  assert.throws(
+    () =>
+      assertGoldenSet({ ...set, retired: [{ ...retired, id: goldenCase.id }] }),
+    /both a case and retired/,
   );
   assert.throws(
     bad((s) => delete s.cases[0].tier),

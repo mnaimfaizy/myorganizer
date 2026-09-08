@@ -51,6 +51,13 @@ outputs:
   rejected-file:
     description: Path of the file holding the rejection reason when validation failed.
     value: ${{ steps.validate.outputs.rejected_file }}
+  rate-limited:
+    description: >-
+      `true` when the reviewer was cut off by the subscription's rate limit,
+      `false` when the transcript says it was not, `unknown` when the transcript
+      could not be read. A case that is not `false` measured nothing and must
+      not be read as a miss.
+    value: ${{ steps.limits.outputs.rate_limited }}
 
 runs:
   using: composite
@@ -86,6 +93,47 @@ runs:
           --model ${{ inputs.model }}
           --max-turns 80
           --allowedTools "Read,Glob,Grep,Write,Edit,Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git ls-tree:*),Bash(git grep:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(sed -n:*),Bash(echo:*),Bash(rm -f tmp/code-review/*)"
+
+    # A reviewer stopped by the five-hour subscription window produces no
+    # report, which is indistinguishable from a reviewer that read the diff and
+    # found nothing — and the golden set scores the second as a miss. That
+    # mistake was made once already: the whole of run 34176461268 was read as
+    # `0 of 7` recall when in fact every one of its seven sessions was cut off,
+    # three before their first turn. The transcript says which happened, so
+    # read it here rather than leaving it to whoever opens the artifact.
+    - name: Detect a rate-limit lockout
+      id: limits
+      if: always() && steps.reviewer.outputs.execution_file != ''
+      shell: bash
+      env:
+        EXECUTION_FILE: ${{ steps.reviewer.outputs.execution_file }}
+      run: |
+        set -uo pipefail
+        # Three answers, not two. A detector that cannot read the transcript
+        # must not answer "no rate limit": that is the reading which lets a
+        # lockout be scored as a miss, and it is the whole failure this step
+        # exists to prevent. jq exits 5 on a parse error and on a type error
+        # from a reshaped transcript, so the exit code is separated from the
+        # boolean rather than folded into it with `-e`.
+        HITS="$(jq '[.[] | select(type == "object")
+                        | select(.type == "rate_limit_event")
+                        | .rate_limit_info
+                        | select(type == "object")
+                        | select(.status == "rejected")] | length'                   "$EXECUTION_FILE" 2>&1)"
+        JQ_STATUS=$?
+        if [ "$JQ_STATUS" -ne 0 ] || ! [ "$HITS" -eq "$HITS" ] 2>/dev/null; then
+          echo "::warning::could not read $EXECUTION_FILE for rate-limit events (jq exit $JQ_STATUS); treating the result as unknown"
+          echo 'rate_limited=unknown' >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [ "$HITS" -gt 0 ]; then
+          WINDOW="$(jq -r '[.[] | select(type == "object") | select(.type == "rate_limit_event") | .rate_limit_info][-1].rateLimitType // "unknown"' "$EXECUTION_FILE" 2>/dev/null || echo unknown)"
+          TURNS="$(jq -r '[.[] | select(type == "object") | select(.type == "result")][-1].num_turns // 0' "$EXECUTION_FILE" 2>/dev/null || echo 0)"
+          echo "::error::the reviewer was cut off by the $WINDOW rate limit after $TURNS turn(s); this run measured nothing and is not a miss"
+          echo 'rate_limited=true' >> "$GITHUB_OUTPUT"
+        else
+          echo 'rate_limited=false' >> "$GITHUB_OUTPUT"
+        fi
 
     # The action hides the reviewer's transcript from the log. Keep it as a
     # short-lived artifact so a run that wrote no report can be read.
