@@ -146,8 +146,11 @@ jobs:
             pull_request)
               PR="$PR_EVENT_NUMBER"
               if [ "$ACTION" = 'labeled' ]; then
-                # The job `if:` already filtered these, so reaching here
-                # means the two disagree. Fail rather than skip quietly.
+                # Unreachable today: the job `if:` admits no other label. It
+                # is kept as drift defence — the filter and this branch read
+                # the same payload in two languages, and an edit to one that
+                # forgets the other should stop the run rather than quietly
+                # review on a trigger nobody chose.
                 [ "$LABEL" = 'agent-review' ] || { echo "label '$LABEL' reached the label trigger" >&2; exit 1; }
                 TRIGGER=label
               else
@@ -374,10 +377,14 @@ jobs:
           echo "reviewer step: ${{ steps.reviewer.outputs.reviewer-outcome }}; validated: ${{ steps.reviewer.outputs.validated }}"
           # Say which kind of no-report this is. Both are review:human, but one
           # is a reviewer that failed and one is a reviewer that never ran.
-          if [ '${{ steps.reviewer.outputs.rate-limited }}' = 'true' ]; then
-            echo '::error::the reviewer was cut off by the subscription rate limit before it finished; this pull request is review:human and nothing was reviewed'
-            exit 1
-          fi
+          case '${{ steps.reviewer.outputs.rate-limited }}' in
+            true)
+              echo '::error::the reviewer was cut off by the subscription rate limit before it finished; this pull request is review:human and nothing was reviewed'
+              exit 1 ;;
+            unknown)
+              echo '::error::the reviewer transcript could not be read, so whether it finished is unknown; this pull request is review:human'
+              exit 1 ;;
+          esac
           if [ '${{ steps.reviewer.outputs.validated }}' != 'true' ]; then
             echo '::error::the reviewer produced no valid report; this pull request is review:human'
             exit 1

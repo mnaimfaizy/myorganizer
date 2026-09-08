@@ -19,13 +19,16 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { CASE_TIERS, GOLDEN_SET_PATH } from './golden-tiers.mjs';
 import { FINDING_AXES, FINDING_SEVERITIES, findingId } from './schema.mjs';
 
-export const REVIEW_GOLDEN_SET_PATH = join(
-  'tools',
-  'config',
-  'review-golden-set.json',
-);
+// The tier vocabulary and the set's location are declared once, in the
+// dependency-free module the no-install replay job runs. This file may import
+// that one; the reverse is not true, because this file reaches `zod` through
+// schema.mjs and the replay's `cases` job installs nothing. A tier added to
+// only one of two hand-typed lists would let the filter accept a case the
+// validator rejects — the same disagreement the single filter removed.
+export const REVIEW_GOLDEN_SET_PATH = join(...GOLDEN_SET_PATH.split('/'));
 export const GOLDEN_SET_SCHEMA_VERSION = 2;
 
 /**
@@ -43,7 +46,7 @@ export const GOLDEN_SET_SCHEMA_VERSION = 2;
  * asymmetry is deliberate: a wrongly promoted case is a detector that
  * quietly stopped running.
  */
-export const GOLDEN_CASE_TIERS = ['guard', 'frontier'];
+export const GOLDEN_CASE_TIERS = CASE_TIERS;
 
 const SHA = /^[0-9a-f]{40}$/;
 const ID = /^[a-z0-9][a-z0-9-]*$/;

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { sep } from 'node:path';
 import test from 'node:test';
 
 import {
@@ -39,6 +40,23 @@ test('"all" and no tier both mean every case', () => {
 test('an unknown tier is refused by name', () => {
   assert.throws(() => caseIdsInTier(set, 'occasional'), /occasional/);
   assert.throws(() => caseIdsInTier(set, 'occasional'), /guard, frontier, all/);
+});
+
+// golden.mjs validates the committed set against the same vocabulary this
+// module filters by. They were two hand-typed arrays until the reviewer pointed
+// out that the change claiming one filter had left two copies of what it
+// filters over: a third tier added to one list only would let the filter accept
+// a case the validator rejects.
+test('the validator and the filter share one tier vocabulary', async () => {
+  const { GOLDEN_CASE_TIERS, REVIEW_GOLDEN_SET_PATH } =
+    await import('./golden.mjs');
+  assert.deepEqual(GOLDEN_CASE_TIERS, CASE_TIERS);
+  // Same location, spelled for the platform on one side and for the workflow
+  // on the other.
+  assert.deepEqual(
+    REVIEW_GOLDEN_SET_PATH.split(sep),
+    GOLDEN_SET_PATH.split('/'),
+  );
 });
 
 test('every tier the committed set uses is one this module knows', () => {
