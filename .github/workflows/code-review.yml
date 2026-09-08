@@ -12,9 +12,13 @@ name: Code Review
 #      and a separate job — the only one whose token can write — posts it. A
 #      report that fails the contract is rejected whole, the Pull Request is
 #      relabelled `review:human`, and this check fails.
-#   4. The job named "Agent Verdict" fails on `request-changes` and on a
-#      rejected report. It is a status check, never a review approval
-#      (ADR 0070 item 6). Merge policy does not change here.
+#   4. Two checks, not one. "Agent Review Ran" fails when the reviewer
+#      crashed, was rate-limited, or wrote a report the contract rejected —
+#      a broken gate. "Agent Verdict" fails on `request-changes` — a
+#      judgment about the diff. Only the first is worth requiring in a
+#      ruleset; the reviewer's recall does not earn a merge block. Both are
+#      status checks, never a review approval (ADR 0070 item 6). Merge
+#      policy does not change here.
 #
 # Permissions and attribution. The reviewer's job holds four read scopes and
 # nothing else; the "Publish Review" job is the only one that can write, and
@@ -192,7 +196,7 @@ jobs:
           echo "reviewing #$PR ($TRIGGER)"
 
   review:
-    name: Agent Verdict
+    name: Agent Review Ran
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: context
@@ -215,6 +219,7 @@ jobs:
       skip: ${{ steps.preflight.outputs.skip }}
       tier: ${{ steps.tier.outputs.label }}
       validated: ${{ steps.reviewer.outputs.validated }}
+      verdict: ${{ steps.verdict.outputs.verdict }}
 
     env:
       BASE_SHA: ${{ needs.context.outputs.base_sha }}
@@ -369,9 +374,11 @@ jobs:
           if-no-files-found: ignore
 
       # Reads the verdict from the validator's file, not from the publish
-      # step, so a fork pull request (where publish is skipped) still fails
-      # on a blocking finding.
-      - name: Agent verdict
+      # step, so a fork pull request (where publish is skipped) still has one.
+      # This step decides only whether the reviewer *ran*; what it concluded is
+      # the separate "Agent Verdict" job below.
+      - name: Agent review ran
+        id: verdict
         if: steps.preflight.outputs.skip != 'true'
         run: |
           echo "reviewer step: ${{ steps.reviewer.outputs.reviewer-outcome }}; validated: ${{ steps.reviewer.outputs.validated }}"
@@ -391,7 +398,37 @@ jobs:
           fi
           VERDICT="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('tmp/code-review/normalized.json','utf8')).verdict)")"
           echo "verdict: $VERDICT"
-          if [ "$VERDICT" = 'request-changes' ]; then
+          echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+
+  # The reviewer's judgment, split from the fact that it ran. The two fail for
+  # unrelated reasons and only one of them is about your code: "Agent Review
+  # Ran" fails when the reviewer crashed, was rate-limited, or wrote a report
+  # the contract rejected, which is a broken gate; this job fails when the
+  # reviewer read the diff and asked for changes, which is a judgment.
+  #
+  # They are separate checks because they deserve different answers. A reviewer
+  # measured at roughly one catch in seven on the golden set's frontier cases
+  # (docs/review/golden-replay-results.md) has no business blocking a merge on
+  # its opinion, so this check is advisory and belongs in no ruleset. A
+  # reviewer that silently did not run is worth blocking on, and that is the
+  # other check. Merging them hid exactly that: three pull requests in a row
+  # ran no review at all and nothing said so, because a skipped run and a
+  # clean run were the same green tick.
+  verdict:
+    name: Agent Verdict
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [context, review]
+    if: needs.review.result == 'success' && needs.review.outputs.skip != 'true'
+    permissions: {}
+    steps:
+      - name: Read the verdict
+        env:
+          VERDICT: ${{ needs.review.outputs.verdict }}
+        run: |
+          set -euo pipefail
+          echo "verdict: ${VERDICT:-(none)}"
+          if [ "${VERDICT:-}" = 'request-changes' ]; then
             echo '::error::verdict request-changes: at least one blocking finding'
             exit 1
           fi

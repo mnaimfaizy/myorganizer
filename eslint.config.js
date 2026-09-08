@@ -71,6 +71,19 @@ module.exports = [
               ],
             },
             {
+              // Constraints AND together, so this narrows the line above
+              // rather than replacing it. Three libraries carry
+              // `type:data-access`: the generated client and `auth` are
+              // `scope:shared`, and `web-vault` is `scope:web`. The E2E
+              // project needs one enum from the generated client; it was
+              // never meant to reach the vault data-access layer, and the
+              // widening that let it in was broader than the import it was
+              // written for. A future helper that genuinely needs a
+              // `scope:web` library should land here and argue for itself.
+              sourceTag: 'type:e2e',
+              notDependOnLibsWithTags: ['scope:web'],
+            },
+            {
               sourceTag: 'type:page',
               onlyDependOnLibsWithTags: [
                 'type:feature',
