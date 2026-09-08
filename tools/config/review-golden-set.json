@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "comment": "The code-review golden set (ADR 0071, Consequences). Each case is a real commit range from this repository's history in which a defect the repo later documented was merged, and the finding a reviewer should have raised about it. `source` and `rule` are case-insensitive patterns because the reviewer phrases a rule in the source's words; `files` lists every path at which the same defect is fairly located. Recall is matched over expected and a case passes at or above `minRecall`. Each case carries a `tier` (ADR 0072). A `frontier` case is one the reviewer misses; it is the reason to run the replay and runs whenever anything that produces a review changes. A `guard` case is one the reviewer catches reliably; it carries no new information per run and exists to catch a brief or contract edit silently undoing something that works, so it runs only when the brief or the finding contract changes. Promotion to `guard` takes three consecutive catches cited in `tierEvidence`; demotion takes one miss. Replayed by .github/workflows/review-golden-replay.yml, which skips a push whose head commit message contains [skip replay]; scored by tools/scripts/review/score-golden-case.mjs; shape and ranges asserted by tools/scripts/check-review-golden-set.mjs. Standards are always today's: the question a case asks is whether the current reviewer would catch the defect, not whether the rule existed when it merged. Grows by attribution: when a merged defect is traced to the pull request that introduced it, its range and expected finding go here, with the attribution evidence in the incident line. A squash-merged pull request uses the squash commit as head and its first parent as base.",
   "cases": [
     {
@@ -52,35 +52,6 @@
           "files": ["libs/web-vault/src/lib/vault/vaultExportImport.ts"],
           "minSeverity": "should-fix",
           "why": "envelopeFromLocalVault listed the blob types as property names and left Tasks out, so a hardened export silently dropped that blob from the day it was written (#537)"
-        }
-      ],
-      "minRecall": 1
-    },
-    {
-      "id": "groceries-ui-written-against-absent-roles",
-      "title": "The groceries UI is written against Material Design 3 role names that no token or Tailwind config defines",
-      "incident": "ADR 0065, issue #632, fixed by PR #636, introduced by PR #108 (git log -S surface-container-low -- libs/web/pages/groceries → 9382c16)",
-      "tier": "frontier",
-      "base": "4ba00b4c247f91ba2918551f15816f36a4704a18",
-      "head": "c0f1a10b0c81d66175c3d46cecd58b1cb8ba3b64",
-      "spec": {
-        "kind": "none",
-        "foundBy": "none"
-      },
-      "expected": [
-        {
-          "id": "classes-resolve-to-no-css",
-          "axis": "standards",
-          "source": "AGENTS\\.md|DESIGN\\.md|GUIDELINES|0065|tokens",
-          "rule": "token|palette|hard-?cod|colou?r|tailwind|utilit|class|role",
-          "files": [
-            "libs/web/pages/groceries/src/components/GroceriesPageClient.tsx",
-            "libs/web/pages/groceries/src/components/GroceryListSelector.tsx",
-            "libs/web/pages/groceries/src/components/DeleteListConfirmDialog.tsx",
-            "libs/web/pages/groceries/src/components/GroceriesErrorBoundary.tsx"
-          ],
-          "minSeverity": "should-fix",
-          "why": "the diff styled every groceries component with role names such as surface-container-low, on-surface-variant, and outline-variant that existed in neither tokens.json nor either Tailwind config; Tailwind drops an unresolvable class silently, so 212 occurrences compiled to no CSS and the pages shipped unstyled (#632)"
         }
       ],
       "minRecall": 1
@@ -230,6 +201,16 @@
         }
       ],
       "minRecall": 1
+    }
+  ],
+  "retired": [
+    {
+      "id": "groceries-ui-written-against-absent-roles",
+      "title": "The groceries UI is written against Material Design 3 role names that no token or Tailwind config defines",
+      "incident": "ADR 0065, issue #632, fixed by PR #636, introduced by PR #108 (git log -S surface-container-low -- libs/web/pages/groceries → 9382c16)",
+      "base": "4ba00b4c247f91ba2918551f15816f36a4704a18",
+      "head": "c0f1a10b0c81d66175c3d46cecd58b1cb8ba3b64",
+      "reason": "Unwinnable rather than hard. `tailwind:classes:check` — the gate ADR 0065 added as the fix for this very incident — exits 0 at this case's base and exits 1 at its head, naming the same 25 utilities the expected finding is about. The Standards brief says anything a `*:check` gate would already fail is not a finding but a suppressedRedundant count, so a reviewer that loaded ADR 0065 and ran the gate would have been correct to say nothing. The case scored the reviewer as missing what it is instructed not to report. Retired 2026-09-08; see docs/review/golden-replay-results.md."
     }
   ]
 }

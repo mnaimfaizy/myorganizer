@@ -29,7 +29,7 @@ import { FINDING_AXES, FINDING_SEVERITIES, findingId } from './schema.mjs';
 // only one of two hand-typed lists would let the filter accept a case the
 // validator rejects — the same disagreement the single filter removed.
 export const REVIEW_GOLDEN_SET_PATH = join(...GOLDEN_SET_PATH.split('/'));
-export const GOLDEN_SET_SCHEMA_VERSION = 2;
+export const GOLDEN_SET_SCHEMA_VERSION = 3;
 
 /**
  * A case's tier decides how often it is replayed (ADR 0072).
@@ -124,6 +124,31 @@ export function assertGoldenSet(set, source = 'golden set') {
     }
     if (typeof c.minRecall !== 'number' || c.minRecall < 0 || c.minRecall > 1)
       fail(`${where}: minRecall must be between 0 and 1`);
+  }
+  // Retired cases are kept, not deleted. A case leaves the replay when it turns
+  // out to be unwinnable rather than hard — most often because the incident was
+  // fixed by adding a gate, and the brief tells the reviewer that anything a
+  // `*:check` gate would already fail is not a finding but a suppressed count.
+  // Deleting such a case loses the reason and invites the next person to add it
+  // back; the id stays reserved and the reason stays readable.
+  if (set.retired !== undefined) {
+    if (!Array.isArray(set.retired)) fail('retired must be an array');
+    for (const r of set.retired) {
+      const where = `retired ${r.id ?? '(no id)'}`;
+      if (typeof r.id !== 'string' || !ID.test(r.id))
+        fail(`${where}: id must be a lowercase slug`);
+      if (ids.has(r.id)) fail(`${r.id} is both a case and retired`);
+      ids.add(r.id);
+      if (typeof r.title !== 'string' || !r.title) fail(`${where}: no title`);
+      if (typeof r.incident !== 'string' || !r.incident)
+        fail(`${where}: incident must cite the ADR or issue it comes from`);
+      if (typeof r.reason !== 'string' || !r.reason)
+        fail(`${where}: reason must say why the case cannot be won`);
+      if (r.base !== undefined && !SHA.test(r.base))
+        fail(`${where}: base must be a full 40-hex SHA`);
+      if (r.head !== undefined && !SHA.test(r.head))
+        fail(`${where}: head must be a full 40-hex SHA`);
+    }
   }
   return set;
 }

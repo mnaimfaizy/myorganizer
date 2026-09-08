@@ -33,7 +33,6 @@ promoted case is a detector that quietly stopped running.
 | --------------------------------------------- | ---------- | ---------- | --------------------------------------------------------------------------------------------- |
 | `groceries-blob-type-without-fanouts`         | `guard`    | 2026-09-07 | caught in all six runs                                                                        |
 | `export-envelope-drops-tasks`                 | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640 |
-| `groceries-ui-written-against-absent-roles`   | `frontier` | 2026-09-07 |                                                                                               |
 | `sync-bookmarks-without-restore-or-meta-push` | `frontier` | 2026-09-07 |
 | `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 | caught once, in 34171728640                                                                   |
 | `signup-password-wrapper-inside-formcontrol`  | `frontier` | 2026-09-07 |
@@ -42,6 +41,13 @@ promoted case is a detector that quietly stopped running.
 
 The tier and the evidence that earned it are in
 `tools/config/review-golden-set.json`, asserted by `yarn review:golden:check`.
+
+**Retired.** `groceries-ui-written-against-absent-roles` was retired on
+2026-09-08 as unwinnable rather than hard: the gate ADR 0065 added as the fix
+for that incident fails on the case's own range, and the brief tells the
+reviewer that a gate-covered defect is a suppressed count and not a finding.
+It stays in the set under `retired`, with its reason and its id reserved, so
+nothing re-adds it — the workings are below. Seven cases remain.
 
 ## Runs
 
