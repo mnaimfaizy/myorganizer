@@ -87,42 +87,27 @@ permissions:
 # request. Concurrency is evaluated when the run is created, before any job
 # `if:` is read, so "the job skips" is not the same as "the run is harmless" —
 # the run still joins the group and, with `cancel-in-progress`, takes the
-# review with it.
+# review with it. Why that keeps happening, and to which pull requests, is in
+# the header of tools/scripts/check-review-concurrency.mjs; it is written once,
+# there, because that file is what enforces it.
 #
-# Authorization has to be part of that decision, not a step inside the run. A
-# `/code-review` from someone without write access is refused — but refusing it
-# in the `Decide` step happens after the run has joined the group and cancelled
-# the review, so on a public repository any commenter could stop a review by
-# typing the command. The association is therefore read in the group expression
-# and in the job `if:`, and the step's own check is drift defence.
+# What this expression does:
 #
-# Two triggers create runs that almost always skip. A `labeled` event fires for
-# every label, and `ai:create-pr` adds labels a second after opening. An
-# `issue_comment` event fires for every comment by anyone, including the
-# pipeline's own bots: GitGuardian's comment on pull request #693 landed three
-# seconds after a branch update and cancelled the review that update had just
-# started. Both were found the hard way, one after the other, and the second
-# was invisible in the obvious place — `issue_comment` runs are attributed to
-# the default branch, so they do not appear when listing runs for the pull
-# request's branch.
+#   * Runs that will skip — every label but `agent-review`, every comment but
+#     an authorized `/code-review` — get a group of their own, one per run.
+#     Per run, because two of them in one group cancel each other, and a
+#     cancelled run's check runs overwrite a passing review's in the rollup.
+#   * Runs that should supersede a review stay in the review's group: a new
+#     push, and the two deliberate re-review requests. Pressing one while a
+#     review runs replaces it rather than racing it — one session instead of
+#     two, on the newer code, out of a five-hour window that seven sessions
+#     are measured to exhaust (docs/review/golden-replay-results.md).
+#   * Authorization is decided here rather than in the `Decide` step, because
+#     a step runs after the run has already cancelled the review.
 #
-# Both now go to a group of their own, one per run, and touch nothing. The
-# suffix carries `github.run_id` because a shared inert group is not harmless
-# either: `ai:create-pr` adds two labels, both runs landed in one inert group,
-# the second cancelled the first, and the cancelled run's check runs — `Agent
-# Review Ran`, `Agent Verdict`, `Publish Review` — overwrote the passing
-# review's in the pull request's rollup. A successful review reported as
-# cancelled, which is the same lie in the other direction. What stays in the
-# review's group is what should supersede a review: a new push, and the two
-# deliberate re-review requests (`agent-review`, `/code-review`). Pressing
-# either while a review runs replaces it rather than racing it — one session
-# instead of two, on the newer code, out of a five-hour window that seven
-# sessions are measured to exhaust (docs/review/golden-replay-results.md).
-#
-# The condition is duplicated from the `context` job's `if:` below, in a
-# different language, because concurrency cannot read a job's decision. If you
-# change one, change the other; they are checked against each other by
-# tools/scripts/check-review-concurrency.mjs.
+# The condition restates the `context` job's `if:` below in a different
+# language, because concurrency cannot read a job's decision. Change one and
+# change the other; `yarn review:concurrency:check` fails until you do.
 concurrency:
   group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}${{ ((github.event.action == 'labeled' && github.event.label.name != 'agent-review') || (github.event_name == 'issue_comment' && !(startsWith(github.event.comment.body, '/code-review') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)))) && format('-inert-{0}', github.run_id) || '' }}
   cancel-in-progress: true
