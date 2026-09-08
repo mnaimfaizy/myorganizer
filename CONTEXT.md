@@ -316,6 +316,14 @@ _Avoid_: pending push flag, meta dirty flag, wrapping marker, meta etag
 What one device records, per User, about a Vault Meta it was offered and declined — the wrapping that was refused, not the fact that a question was once asked. It is what lets a second, genuinely different change ask again where a record of having asked stays silent, and it is losable in the same direction as a Vault Meta Bookmark: losing one costs a repeated question, never a User's data. A refusal given as an answer outlives the tab; one given by dismissal does not.
 _Avoid_: dismissed flag, prompt flag, snooze, seen, asked-already, suppression flag
 
+**Observed Vault Identity**:
+What one device records, per User, about the Vault Identity a pass last saw on the server. It is what lets a Vault Sync Standoff be derived from local state alone: comparing it against this device's own Vault Identity is a fact that stops being true on its own the moment a later pass observes a matching one, so nothing has to notice a standoff has ended and clear a flag for it. Recorded whether or not it matches, since a matching observation is what lets the next comparison read false. Losable in the same direction as a Sync Bookmark: losing one costs a status that under-reports a standoff until the next pass, never a User's data.
+_Avoid_: vault identity flag, mismatch flag, standoff flag, vault check cache
+
+**Vault Sync Standoff**:
+The sync status reported while a device's Observed Vault Identity for a User differs from that device's own — the visible half of a Vault Blob convergence refusing to take across a differing Vault Identity ([ADR 0067](docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)). It exists because that refusal is otherwise invisible: nothing else says why sync has stopped, and a User who has durably declined the Vault Meta dialog has no other notification left to silence. A standoff is not fixed by retrying — the two sides are different Vaults — and it clears only when a pass observes a Vault Identity that matches this device's own again.
+_Avoid_: vault mismatch, sync conflict, identity conflict, vault divergence
+
 **Server Reachability**:
 What one attempt to reach a User's own Vault Meta found, at the moment it ran. It is an observation and never a state: it is discovered by trying, in the same way a Linked Provider's token is, and it says nothing about whether the next write will land — a third device can move the server between the reading and the push. It is therefore shown and never gated on, and a reading that found the server is shown as nothing at all, because a User told the server is reachable has been told something the product cannot keep. What it can honestly carry is the negative: a User about to retire a Recovery Key can be told, before the point of no return, that the retirement will not reach their other devices yet.
 _Avoid_: online, connected, server status, connectivity check, health check

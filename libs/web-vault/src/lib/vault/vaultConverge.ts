@@ -26,6 +26,12 @@
  * That comparison costs one field and needs no Master Key, so it holds on a
  * locked device — where decrypting the remote copy to answer the same question
  * could only guess or defer ([#571](https://github.com/mnaimfaizy/myorganizer/issues/571)).
+ *
+ * The observation behind that comparison is also recorded here, per User,
+ * whenever a caller supplies one — matching identity or not. Recording is
+ * what lets `computeVaultSyncStatus` derive a standoff from local state alone
+ * afterwards, without a flag anyone has to remember to clear (ADR 0067,
+ * decision point 7).
  */
 import {
   EncryptedBlobV1,
@@ -84,6 +90,7 @@ export type ConvergingVaultHandle = Pick<
   | 'recordPushSuccess'
   | 'saveEncryptedData'
   | 'decryptCiphertext'
+  | 'recordObservedVaultIdentity'
 >;
 
 /**
@@ -284,6 +291,18 @@ export async function convergeVaultBlob(options: {
 
   const vault = handle.loadVault();
   if (!vault) return { kind: 'nothing', reason: 'no-local-vault' };
+
+  // Recorded before the guard reads it, and regardless of what the guard
+  // decides: a matching identity has to be recorded too, since that is what
+  // lets a standoff clear on its own at the next pass rather than needing
+  // something to notice it is over (ADR 0067, decision point 7). The sync
+  // status is what reads this back — this function never re-reads it in the
+  // same pass.
+  if (options.serverMeta) {
+    handle.recordObservedVaultIdentity({
+      identity: vaultIdentityOf(options.serverMeta.meta),
+    });
+  }
 
   // Above the clean/dirty branch, and the first thing decided once the Local
   // Vault is in hand. What selects between those two paths is whether this

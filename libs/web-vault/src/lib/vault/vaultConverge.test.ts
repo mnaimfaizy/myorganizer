@@ -51,7 +51,7 @@ import {
   type VaultBlobConvergePrompt,
 } from './vaultConverge';
 import type { ServerVaultBlob, ServerVaultMeta } from './serverVaultSync';
-import { convergeVaultMeta } from './vaultMetaConverge';
+import { convergeVaultMeta, vaultIdentityOf } from './vaultMetaConverge';
 import {
   localToServerMeta,
   serverEncryptedBlobToLocal,
@@ -2620,5 +2620,90 @@ describe('convergeVaultBlob', () => {
     // Verify no API calls
     expect(api.getVaultBlob).not.toHaveBeenCalled();
     expect(api.putVaultBlob).not.toHaveBeenCalled();
+  });
+
+  describe('Observed Vault Identity recording', () => {
+    test('should record observed vault identity when serverMeta is present and identity matches (ordinary case)', async () => {
+      const handle = await setupHandle('user-1', []);
+      await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+      const api = createApiDouble();
+      const prompt = jest.fn() as VaultBlobConvergePrompt;
+
+      // Get the expected identity from the local vault
+      const vault = handle.loadVault();
+      if (!vault) throw new Error('Setup failed');
+      const expectedIdentity = vaultIdentityOf(localToServerMeta(vault));
+
+      const outcome = await convergeVaultBlob({
+        api,
+        handle,
+        type: VaultBlobType.Tasks,
+        prompt,
+        serverMeta: serverMetaFor(handle),
+      });
+
+      // Should converge normally
+      expect(outcome.kind).toMatch(/nothing|sent|took/);
+
+      // Assert: observed vault identity was recorded
+      expect(handle.observedVaultIdentity()).toBe(expectedIdentity);
+    });
+
+    test('should record observed vault identity even when identity differs (refused/different-vault case)', async () => {
+      const localHandle = await setupHandle('user-1', []);
+      await localHandle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+      // Create a remote vault under a different master key
+      const remoteHandle = await setupHandle('user-2', []);
+      const remoteMeta = serverMetaFor(remoteHandle);
+      const remoteIdentity = vaultIdentityOf(remoteMeta.meta);
+
+      const api = createApiDouble();
+      const prompt = jest.fn() as VaultBlobConvergePrompt;
+
+      const outcome = await convergeVaultBlob({
+        api,
+        handle: localHandle,
+        type: VaultBlobType.Tasks,
+        prompt,
+        serverMeta: remoteMeta,
+      });
+
+      // Should refuse the different vault
+      expect(outcome).toEqual({ kind: 'refused', reason: 'different-vault' });
+
+      // Assert: observed vault identity was still recorded (before the refusal)
+      expect(localHandle.observedVaultIdentity()).toBe(remoteIdentity);
+    });
+
+    test('should not record observed vault identity when serverMeta is null (first sync / no server meta)', async () => {
+      const handle = await setupHandle('user-1', []);
+      await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+      const api = createApiDouble();
+      const prompt = jest.fn() as VaultBlobConvergePrompt;
+
+      // Record an existing identity first
+      handle.recordObservedVaultIdentity({
+        identity: 'previous-identity',
+      });
+      expect(handle.observedVaultIdentity()).toBe('previous-identity');
+
+      const outcome = await convergeVaultBlob({
+        api,
+        handle,
+        type: VaultBlobType.Tasks,
+        prompt,
+        serverMeta: null, // No server meta — nothing to observe
+      });
+
+      // Should converge (in-sync in this case)
+      expect(outcome.kind).toBe('nothing');
+
+      // Assert: observed vault identity was NOT overwritten
+      // (it remains at the previously recorded value since no new observation was made)
+      expect(handle.observedVaultIdentity()).toBe('previous-identity');
+    });
   });
 });

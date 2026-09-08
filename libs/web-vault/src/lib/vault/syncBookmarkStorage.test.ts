@@ -28,9 +28,12 @@ import {
   writeSyncBookmark,
   writeVaultMetaBookmark,
   removeSyncBookmarks,
+  readObservedVaultIdentity,
+  writeObservedVaultIdentity,
   type SyncBookmarkEntry,
   type SyncBookmarkRecord,
   type VaultMetaBookmarkEntry,
+  type ObservedVaultIdentityEntry,
 } from './syncBookmarkStorage';
 
 beforeEach(() => {
@@ -323,6 +326,247 @@ describe('syncBookmarkStorage — Sync Bookmark storage primitives', () => {
       expect(() => removeSyncBookmarks('   ')).toThrow(
         'A Sync Bookmark cannot be resolved without an owner',
       );
+    });
+  });
+
+  describe('readObservedVaultIdentity and writeObservedVaultIdentity — Observed Vault Identity storage', () => {
+    test('33: readObservedVaultIdentity returns undefined for owner with no record at all', () => {
+      const result = readObservedVaultIdentity('user-a');
+      expect(result).toBeUndefined();
+    });
+
+    test('34: readObservedVaultIdentity returns undefined for owner whose record has bookmarks but no observedVaultIdentity', () => {
+      // Pre-write a record with only sync bookmarks and meta bookmark, no observed identity
+      const record: SyncBookmarkRecord = {
+        version: SYNC_BOOKMARK_RECORD_VERSION,
+        owner: 'user-a',
+        bookmarks: { tasks: { ciphertextHash: 'hash1', etag: 'etag1' } },
+        metaBookmark: { metaHash: 'meta-hash-1' },
+        // observedVaultIdentity is deliberately absent
+      };
+      localStorage.setItem(
+        syncBookmarkStorageKey('user-a'),
+        JSON.stringify(record),
+      );
+
+      const result = readObservedVaultIdentity('user-a');
+      expect(result).toBeUndefined();
+    });
+
+    test('35: writeObservedVaultIdentity then readObservedVaultIdentity round-trips the entry', () => {
+      const entry: ObservedVaultIdentityEntry = {
+        identity: 'vault-identity-salt-abc123',
+      };
+
+      writeObservedVaultIdentity({
+        owner: 'user-a',
+        entry,
+      });
+
+      const result = readObservedVaultIdentity('user-a');
+      expect(result).toEqual(entry);
+      expect(result?.identity).toBe('vault-identity-salt-abc123');
+    });
+
+    test('36: writeObservedVaultIdentity preserves existing sync bookmarks', () => {
+      // Write a Sync Bookmark first
+      const syncEntry: SyncBookmarkEntry = {
+        ciphertextHash: 'hash-1',
+        etag: 'etag-1',
+      };
+      writeSyncBookmark({
+        owner: 'user-a',
+        type: 'tasks',
+        entry: syncEntry,
+      });
+
+      // Verify Sync Bookmark is present
+      expect(readSyncBookmarks('user-a').tasks).toEqual(syncEntry);
+
+      // Now write an Observed Vault Identity
+      const identityEntry: ObservedVaultIdentityEntry = {
+        identity: 'salt-value-1',
+      };
+      writeObservedVaultIdentity({
+        owner: 'user-a',
+        entry: identityEntry,
+      });
+
+      // Assert: Sync Bookmark still exists and is unchanged
+      expect(readSyncBookmarks('user-a').tasks).toEqual(syncEntry);
+      // Assert: Observed Vault Identity also exists
+      expect(readObservedVaultIdentity('user-a')).toEqual(identityEntry);
+    });
+
+    test('37: writeObservedVaultIdentity preserves existing Vault Meta Bookmark', () => {
+      // Write a Vault Meta Bookmark first
+      const metaEntry: VaultMetaBookmarkEntry = {
+        metaHash: 'meta-hash-1',
+      };
+      writeVaultMetaBookmark({
+        owner: 'user-a',
+        entry: metaEntry,
+      });
+
+      // Verify Vault Meta Bookmark is present
+      expect(readVaultMetaBookmark('user-a')).toEqual(metaEntry);
+
+      // Now write an Observed Vault Identity
+      const identityEntry: ObservedVaultIdentityEntry = {
+        identity: 'salt-value-1',
+      };
+      writeObservedVaultIdentity({
+        owner: 'user-a',
+        entry: identityEntry,
+      });
+
+      // Assert: Vault Meta Bookmark still exists and is unchanged
+      expect(readVaultMetaBookmark('user-a')).toEqual(metaEntry);
+      // Assert: Observed Vault Identity also exists
+      expect(readObservedVaultIdentity('user-a')).toEqual(identityEntry);
+    });
+
+    test('38: writeSyncBookmark preserves existing Observed Vault Identity', () => {
+      // Write an Observed Vault Identity first
+      const identityEntry: ObservedVaultIdentityEntry = {
+        identity: 'salt-value-1',
+      };
+      writeObservedVaultIdentity({
+        owner: 'user-a',
+        entry: identityEntry,
+      });
+
+      // Verify Observed Vault Identity is present
+      expect(readObservedVaultIdentity('user-a')).toEqual(identityEntry);
+
+      // Now write a Sync Bookmark
+      const syncEntry: SyncBookmarkEntry = {
+        ciphertextHash: 'hash-1',
+        etag: 'etag-1',
+      };
+      writeSyncBookmark({
+        owner: 'user-a',
+        type: 'tasks',
+        entry: syncEntry,
+      });
+
+      // Assert: Observed Vault Identity still exists and is unchanged
+      expect(readObservedVaultIdentity('user-a')).toEqual(identityEntry);
+      // Assert: Sync Bookmark also exists
+      expect(readSyncBookmarks('user-a').tasks).toEqual(syncEntry);
+    });
+
+    test('39: writeVaultMetaBookmark preserves existing Observed Vault Identity', () => {
+      // Write an Observed Vault Identity first
+      const identityEntry: ObservedVaultIdentityEntry = {
+        identity: 'salt-value-1',
+      };
+      writeObservedVaultIdentity({
+        owner: 'user-a',
+        entry: identityEntry,
+      });
+
+      // Verify Observed Vault Identity is present
+      expect(readObservedVaultIdentity('user-a')).toEqual(identityEntry);
+
+      // Now write a Vault Meta Bookmark
+      const metaEntry: VaultMetaBookmarkEntry = {
+        metaHash: 'meta-hash-1',
+      };
+      writeVaultMetaBookmark({
+        owner: 'user-a',
+        entry: metaEntry,
+      });
+
+      // Assert: Observed Vault Identity still exists and is unchanged
+      expect(readObservedVaultIdentity('user-a')).toEqual(identityEntry);
+      // Assert: Vault Meta Bookmark also exists
+      expect(readVaultMetaBookmark('user-a')).toEqual(metaEntry);
+    });
+
+    test('40: removeSyncBookmarks removes the Observed Vault Identity while leaving other owners untouched', () => {
+      const identityA: ObservedVaultIdentityEntry = {
+        identity: 'salt-a',
+      };
+      const identityB: ObservedVaultIdentityEntry = {
+        identity: 'salt-b',
+      };
+
+      writeObservedVaultIdentity({
+        owner: 'user-a',
+        entry: identityA,
+      });
+      writeObservedVaultIdentity({
+        owner: 'user-b',
+        entry: identityB,
+      });
+
+      // Also add sync bookmarks to user-b to verify removal is complete
+      writeSyncBookmark({
+        owner: 'user-b',
+        type: 'tasks',
+        entry: { ciphertextHash: 'hash-b', etag: 'etag-b' },
+      });
+
+      // Act: remove user-a's bookmarks
+      removeSyncBookmarks('user-a');
+
+      // Assert: user-a's Observed Vault Identity is gone
+      expect(readObservedVaultIdentity('user-a')).toBeUndefined();
+      // Assert: user-a's sync bookmarks are gone
+      expect(readSyncBookmarks('user-a')).toEqual({});
+      // Assert: user-b's Observed Vault Identity is still present and unchanged
+      expect(readObservedVaultIdentity('user-b')).toEqual(identityB);
+      // Assert: user-b's sync bookmarks are still present
+      expect(readSyncBookmarks('user-b').tasks).toBeDefined();
+    });
+
+    test('41: owner isolation - Observed Vault Identity written for user-a is not visible to user-b', () => {
+      const entryA: ObservedVaultIdentityEntry = {
+        identity: 'salt-a',
+      };
+      const entryB: ObservedVaultIdentityEntry = {
+        identity: 'salt-b',
+      };
+
+      writeObservedVaultIdentity({
+        owner: 'user-a',
+        entry: entryA,
+      });
+      writeObservedVaultIdentity({
+        owner: 'user-b',
+        entry: entryB,
+      });
+
+      // Assert: user-a's Observed Vault Identity is not visible to user-b
+      expect(readObservedVaultIdentity('user-a')).toEqual(entryA);
+      expect(readObservedVaultIdentity('user-b')).toEqual(entryB);
+      expect(readObservedVaultIdentity('user-b')).not.toEqual(entryA);
+    });
+
+    test('42: readObservedVaultIdentity returns undefined for corrupted entry, and writeObservedVaultIdentity silently overwrites it without throwing', () => {
+      // Pre-write a corrupted (malformed JSON) entry under user-a's key
+      localStorage.setItem(syncBookmarkStorageKey('user-a'), '{not json');
+
+      // Part 1: read should return undefined, not throw
+      const readResult = readObservedVaultIdentity('user-a');
+      expect(readResult).toBeUndefined();
+
+      // Part 2: write should not throw
+      const identityEntry: ObservedVaultIdentityEntry = {
+        identity: 'vault-salt-post-corrupt',
+      };
+      expect(() => {
+        writeObservedVaultIdentity({
+          owner: 'user-a',
+          entry: identityEntry,
+        });
+      }).not.toThrow();
+
+      // Part 3: verify the corrupted entry was overwritten
+      const newReadResult = readObservedVaultIdentity('user-a');
+      expect(newReadResult).toEqual(identityEntry);
+      expect(newReadResult?.identity).toBe('vault-salt-post-corrupt');
     });
   });
 

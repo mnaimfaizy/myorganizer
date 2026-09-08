@@ -2704,4 +2704,90 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       expect(revision.current()).toBeGreaterThan(revisionBeforeRotate);
     });
   });
+
+  describe('observedVaultIdentity and recordObservedVaultIdentity', () => {
+    const OWNER = 'test-user';
+    const PASSPHRASE = 'testpass2026';
+
+    test('1: observedVaultIdentity returns undefined when never recorded', () => {
+      const handle = createVaultHandle({ owner: OWNER });
+
+      const result = handle.observedVaultIdentity();
+
+      expect(result).toBeUndefined();
+    });
+
+    test('2: recordObservedVaultIdentity stores and observedVaultIdentity retrieves the identity', () => {
+      const handle = createVaultHandle({ owner: OWNER });
+      const identityValue = 'vault-identity-salt-abc123';
+
+      handle.recordObservedVaultIdentity({ identity: identityValue });
+
+      expect(handle.observedVaultIdentity()).toBe(identityValue);
+    });
+
+    test('3: recordObservedVaultIdentity overwrites previous observation', () => {
+      const handle = createVaultHandle({ owner: OWNER });
+
+      handle.recordObservedVaultIdentity({ identity: 'identity-1' });
+      expect(handle.observedVaultIdentity()).toBe('identity-1');
+
+      handle.recordObservedVaultIdentity({ identity: 'identity-2' });
+      expect(handle.observedVaultIdentity()).toBe('identity-2');
+    });
+
+    test('4: observedVaultIdentity is per-owner isolated (User A cannot see User B)', () => {
+      const handleA = createVaultHandle({ owner: 'user-a' });
+      const handleB = createVaultHandle({ owner: 'user-b' });
+
+      handleA.recordObservedVaultIdentity({ identity: 'identity-a' });
+      handleB.recordObservedVaultIdentity({ identity: 'identity-b' });
+
+      // Assert: each handle holds its own observation
+      expect(handleA.observedVaultIdentity()).toBe('identity-a');
+      expect(handleB.observedVaultIdentity()).toBe('identity-b');
+
+      // Assert: no cross-user leakage
+      expect(handleA.observedVaultIdentity()).not.toBe('identity-b');
+      expect(handleB.observedVaultIdentity()).not.toBe('identity-a');
+    });
+
+    test('5: removeVault clears the recorded Observed Vault Identity', async () => {
+      const handle = createVaultHandle({ owner: OWNER });
+
+      // Initialize, unlock, and record an identity
+      await handle.initialize({ passphrase: PASSPHRASE });
+      handle.recordObservedVaultIdentity({ identity: 'test-identity' });
+
+      expect(handle.observedVaultIdentity()).toBe('test-identity');
+
+      // Act: remove vault
+      handle.removeVault();
+
+      // Assert: identity is cleared
+      expect(handle.observedVaultIdentity()).toBeUndefined();
+      expect(handle.hasVault()).toBe(false);
+    });
+
+    test('6: removeVault clears identity only for the target owner', async () => {
+      const handleA = createVaultHandle({ owner: 'user-a' });
+      const handleB = createVaultHandle({ owner: 'user-b' });
+
+      // Initialize both with identities
+      await handleA.initialize({ passphrase: PASSPHRASE });
+      await handleB.initialize({ passphrase: PASSPHRASE });
+
+      handleA.recordObservedVaultIdentity({ identity: 'identity-a' });
+      handleB.recordObservedVaultIdentity({ identity: 'identity-b' });
+
+      // Remove only user-a's vault
+      handleA.removeVault();
+
+      // Assert: user-a's identity is gone
+      expect(handleA.observedVaultIdentity()).toBeUndefined();
+
+      // Assert: user-b's identity is unaffected
+      expect(handleB.observedVaultIdentity()).toBe('identity-b');
+    });
+  });
 });
