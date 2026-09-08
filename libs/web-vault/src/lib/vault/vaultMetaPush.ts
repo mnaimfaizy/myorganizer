@@ -523,19 +523,21 @@ export async function settleVaultMeta(options: {
     }
   }
 
+  // Recorded through `onObserved` rather than from the result below.
+  // `convergeVaultMeta` holds no handle and cannot write by design, so the
+  // write still happens here — but it happens the moment the server's Vault
+  // Meta is read, before the User is asked anything. Taking it from the
+  // result instead meant a User who left the `different-vault` dialog open
+  // recorded nothing at all, and the standoff their Vault Blobs were already
+  // being refused for never appeared (ADR 0067's amendment, #691).
   const result = await convergeVaultMeta({
     api,
     localVault,
     prompt: options.prompt,
+    onObserved: ({ identity }) => {
+      handle.recordObservedVaultIdentity({ identity });
+    },
   });
-
-  // Recorded here rather than inside `convergeVaultMeta`, which holds no
-  // handle and cannot write by design. Every outcome that actually read the
-  // server's Vault Meta carries the identity it saw; the `skipped-*` ones
-  // carry none, and record nothing rather than guessing.
-  if ('observedIdentity' in result) {
-    handle.recordObservedVaultIdentity({ identity: result.observedIdentity });
-  }
 
   return { kind: 'converged', result };
 }

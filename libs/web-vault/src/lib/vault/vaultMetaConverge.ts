@@ -267,6 +267,20 @@ export async function convergeVaultMeta(options: {
   api: Pick<VaultApi, 'getVaultMeta'>;
   localVault: VaultStorageV1 | null;
   prompt: VaultMetaConvergePrompt;
+  /**
+   * Called with the Vault Identity this pass observed on the server, the
+   * moment it is observed and before anything is asked.
+   *
+   * Required rather than optional, for the reason ADR 0067 gives about the
+   * evidence parameter on `convergeVaultBlob`: optional would let a caller
+   * omit it and silently get the under-reporting back, and a compiler that
+   * enumerates every call site is the whole value.
+   *
+   * This does not make the module able to write. It calls a callback its
+   * caller supplied and holds no handle — the same shape adoption already
+   * uses to return a next Local Vault rather than saving one.
+   */
+  onObserved: (observation: { identity: string }) => void;
 }): Promise<VaultMetaConvergeResult> {
   const { localVault } = options;
   if (!localVault) {
@@ -293,6 +307,14 @@ export async function convergeVaultMeta(options: {
   // per branch: a branch that forgot it would silently under-report a
   // standoff, which is the failure this evidence exists to prevent.
   const observedIdentity = vaultIdentityOf(serverMeta.meta);
+
+  // Reported here rather than left to the returned result. What follows may
+  // ask the User, and on `different-vault` that question is a dialog that
+  // stays on screen until it is answered — so a record written from the
+  // result is a record a User can withhold indefinitely by not answering.
+  // The observation is evidence about the server and nothing the User
+  // decides can make it untrue (ADR 0067's amendment, #691).
+  options.onObserved({ identity: observedIdentity });
 
   const divergence = describeVaultMetaDivergence({
     local: localToServerMeta(localVault),
