@@ -168,6 +168,16 @@ jobs:
                 # forgets the other should stop the run rather than quietly
                 # review on a trigger nobody chose.
                 [ "$LABEL" = 'agent-review' ] || { echo "label '$LABEL' reached the label trigger" >&2; exit 1; }
+                # Label runs sit in their own concurrency group so they cannot
+                # disturb a review, which also means they no longer queue
+                # behind one. Two reviewers on the same pull request would
+                # spend two sessions out of a five-hour window that seven
+                # sessions have already been measured to exhaust
+                # (docs/review/golden-replay-results.md), so ask instead of
+                # racing. Self is excluded; anything else still running for
+                # this pull request is a review in flight.
+                RUNNING="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?event=pull_request&status=in_progress"                   --jq "[.workflow_runs[] | select(.name == \"$GITHUB_WORKFLOW\") | select(.id != $GITHUB_RUN_ID) | select(any(.pull_requests[]?; .number == $PR))] | length" 2>/dev/null || echo 0)"
+                [ "${RUNNING:-0}" -eq 0 ] || skip "a review of #$PR is already running; the label did not start a second one"
                 TRIGGER=label
               else
                 [ "$MODE" = 'auto' ] || skip "CODE_REVIEW_MODE is $MODE; add the agent-review label or comment /code-review to request a review"
@@ -530,9 +540,10 @@ jobs:
           else
             REJECTED="$(find tmp/code-review -type f 2>/dev/null | head -1)"
             if [ -z "$REJECTED" ]; then
-              # Nothing to say and no reason to say it. The Agent Verdict
-              # check has already failed; this job stays quiet rather than
-              # posting an empty review.
+              # Nothing to say and no reason to say it. A missing report is
+              # the "Agent Review Ran" check's business and it has already
+              # failed; this job stays quiet rather than posting an empty
+              # review.
               echo 'the review job wrote no report and no rejection reason; nothing to publish'
               exit 0
             fi
