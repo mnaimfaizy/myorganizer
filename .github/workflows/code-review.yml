@@ -232,7 +232,7 @@ jobs:
       skip: ${{ steps.preflight.outputs.skip }}
       tier: ${{ steps.tier.outputs.label }}
       validated: ${{ steps.reviewer.outputs.validated }}
-      verdict: ${{ steps.verdict.outputs.verdict }}
+      verdict: ${{ steps.outcome.outputs.verdict }}
 
     env:
       BASE_SHA: ${{ needs.context.outputs.base_sha }}
@@ -391,7 +391,7 @@ jobs:
       # This step decides only whether the reviewer *ran*; what it concluded is
       # the separate "Agent Verdict" job below.
       - name: Agent review ran
-        id: verdict
+        id: outcome
         if: steps.preflight.outputs.skip != 'true'
         run: |
           echo "reviewer step: ${{ steps.reviewer.outputs.reviewer-outcome }}; validated: ${{ steps.reviewer.outputs.validated }}"
