@@ -35,7 +35,7 @@ promoted case is a detector that quietly stopped running.
 | `export-envelope-drops-tasks`                 | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640 |
 | `groceries-ui-written-against-absent-roles`   | `frontier` | 2026-09-07 |                                                                                               |
 | `sync-bookmarks-without-restore-or-meta-push` | `frontier` | 2026-09-07 |
-| `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 |
+| `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 | caught once, in 34171728640; missed again in 34176461268                                      |
 | `signup-password-wrapper-inside-formcontrol`  | `frontier` | 2026-09-07 |
 | `import-confirm-is-bare-window-confirm`       | `frontier` | 2026-09-07 |
 | `mail-test-setup-assigns-undefined-to-env`    | `frontier` | 2026-09-07 |
@@ -47,16 +47,17 @@ The tier and the evidence that earned it are in
 
 Newest last. "Cases" is the tier replayed, not the whole set.
 
-| Date       | Model             | Cases         | Result                      | Reviewer change under test                    |
-| ---------- | ----------------- | ------------- | --------------------------- | --------------------------------------------- |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)  | 1 of 3                      | none — first measurement                      |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)  | 2 of 3                      | none — same skill, re-run                     |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)  | 2 of 3                      | reach-through checks added to Standards brief |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)  | 2 of 3                      | reach-through checks, re-run                  |
-| 2026-09-07 | `claude-sonnet-5` | 7 (pre-tier)  | **2 of 7**, 2 of 8 findings | reach-through checks, full set                |
-| 2026-09-07 | `claude-sonnet-5` | 8 (all tiers) | **1 of 8**, 1 of 9 findings | consequence checks added to Standards brief   |
-| 2026-09-07 | `claude-sonnet-5` | 8 (all tiers) | **2 of 8**, 2 of 9 findings | consequence checks reverted                   |
-| 2026-09-08 | `claude-sonnet-5` | 8 (all tiers) | **2 of 8**, 2 of 9 findings | none — same brief, on `main` as base          |
+| Date       | Model             | Cases          | Result                      | Reviewer change under test                    |
+| ---------- | ----------------- | -------------- | --------------------------- | --------------------------------------------- |
+| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)   | 1 of 3                      | none — first measurement                      |
+| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)   | 2 of 3                      | none — same skill, re-run                     |
+| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)   | 2 of 3                      | reach-through checks added to Standards brief |
+| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)   | 2 of 3                      | reach-through checks, re-run                  |
+| 2026-09-07 | `claude-sonnet-5` | 7 (pre-tier)   | **2 of 7**, 2 of 8 findings | reach-through checks, full set                |
+| 2026-09-07 | `claude-sonnet-5` | 8 (all tiers)  | **1 of 8**, 1 of 9 findings | consequence checks added to Standards brief   |
+| 2026-09-07 | `claude-sonnet-5` | 8 (all tiers)  | **2 of 8**, 2 of 9 findings | consequence checks reverted                   |
+| 2026-09-08 | `claude-sonnet-5` | 8 (all tiers)  | **2 of 8**, 2 of 9 findings | none — same brief, on `main` as base          |
+| 2026-09-08 | `claude-sonnet-5` | 7 (`frontier`) | **0 of 7**, 0 of 7 findings | none — first tier-selected run                |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each.
@@ -154,6 +155,42 @@ reach-through class of defect.
 
 The case stays `frontier`. Promotion takes three consecutive catches and it has
 one, which is the asymmetry doing its job rather than an oversight.
+
+### The frontier alone, and a number worth stating plainly
+
+Run [34176461268](https://github.com/mnaimfaizy/myorganizer/actions/runs/34176461268)
+is the first run the tier filter selected: seven `frontier` cases, no `guard`.
+That much worked exactly as designed — `golden-tiers.mjs` chose the tier from a
+job with no dependencies installed, which is the thing no local test could
+prove.
+
+The score is **0 of 7**. `release-bump-leaves-generated-client-stale`, caught
+for the first time in the run immediately before, missed again.
+
+Read against the earlier runs, the frontier arm now reads **0, 1, 1, 0** catches
+out of seven, across four runs on the same brief. That is a recall of roughly
+one case in fourteen, with a spread wide enough that any single run is
+consistent with any other. The guard case is caught every time; the frontier
+cases are, to a first approximation, not being caught at all.
+
+This is worth stating plainly because it changes what the open questions are:
+
+- **The tier split is earning its keep.** One case is a detector; seven are a
+  measurement. Running the seven on every review-tooling change was buying a
+  number too noisy to act on, at seven sessions a push.
+- **"Which brief is better" is not answerable at this sample size.** Separating
+  0.5 of 7 from 1.5 of 7 needs repetitions this budget will not pay for. The
+  record has now recorded two brief changes as inconclusive; a third would be
+  the same result again.
+- **The Opus bake-off is the right next measurement and the wrong shape.** At
+  0 to 1 catches per run, a single Opus pass that scores 2 of 7 is not evidence
+  of a better model; it is inside the Sonnet spread. What a bake-off can settle
+  cheaply is the opposite question — whether these findings are reachable from
+  the brief at all — and that needs a couple of cases run deliberately, not
+  seven run once.
+
+No case moves tier. `release-bump-leaves-generated-client-stale` had one catch
+and needed three; it keeps the tier it had.
 
 ## Reproduce
 

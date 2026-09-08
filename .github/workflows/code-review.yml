@@ -45,6 +45,9 @@ name: Code Review
 #     as a button), by commenting `/code-review` on it (write access
 #     required), or from the Actions tab with a pull request number.
 #
+# Every other label is inert: it neither starts a review nor disturbs one that
+# is running. That second half is not free — see the note on `concurrency`.
+#
 # Repository variables (Settings → Secrets and variables → Actions → Variables):
 #
 #   CODE_REVIEW_ENABLED  `false` turns the workflow off entirely; every
@@ -76,9 +79,16 @@ permissions:
   pull-requests: write
   actions: read
 
+# A label event must never cancel a review that is already running. Workflow
+# concurrency is evaluated when the run is created, before any job `if:` is
+# read, so a run started by an unrelated label — `tooling` on a new pull
+# request — cancelled the `opened` review and then skipped, leaving the pull
+# request with no verdict and a green "skipped" check that looked deliberate.
+# Adding `agent-review` is a button press, so it queues behind the running
+# review rather than replacing it.
 concurrency:
   group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event.action != 'labeled' }}
 
 jobs:
   # Decides whether this event is a review request, and resolves the pull
@@ -88,11 +98,14 @@ jobs:
     name: Review Context
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # A comment starts a run only when it is on a pull request and is the
-    # command; everything else is filtered below with the API.
+    # Two filters, both cheap enough to run before a runner is claimed: a
+    # comment starts a run only when it is on a pull request and is the
+    # command, and a label starts one only when it is the trigger label.
+    # Everything else is filtered below with the API.
     if: >-
-      github.event_name != 'issue_comment' ||
-      (github.event.issue.pull_request && startsWith(github.event.comment.body, '/code-review'))
+      (github.event_name != 'issue_comment' ||
+        (github.event.issue.pull_request && startsWith(github.event.comment.body, '/code-review'))) &&
+      (github.event.action != 'labeled' || github.event.label.name == 'agent-review')
     outputs:
       run: ${{ steps.decide.outputs.run }}
       reason: ${{ steps.decide.outputs.reason }}
@@ -133,7 +146,9 @@ jobs:
             pull_request)
               PR="$PR_EVENT_NUMBER"
               if [ "$ACTION" = 'labeled' ]; then
-                [ "$LABEL" = 'agent-review' ] || skip "label '$LABEL' is not the agent-review trigger"
+                # The job `if:` already filtered these, so reaching here
+                # means the two disagree. Fail rather than skip quietly.
+                [ "$LABEL" = 'agent-review' ] || { echo "label '$LABEL' reached the label trigger" >&2; exit 1; }
                 TRIGGER=label
               else
                 [ "$MODE" = 'auto' ] || skip "CODE_REVIEW_MODE is $MODE; add the agent-review label or comment /code-review to request a review"

@@ -38,6 +38,15 @@ on:
         type: choice
         options: [frontier, guard, all]
         default: all
+      # A bake-off is a deliberate, dispatch-only experiment. Without this the
+      # only way to replay on another model is the CODE_REVIEW_MODEL repository
+      # variable, which would also switch every per-PR review — a standing cost
+      # change to answer a one-off question. The default keeps the variable in
+      # charge of everything that runs by itself.
+      model:
+        description: Model id for this replay only. Empty uses CODE_REVIEW_MODEL.
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -105,6 +114,7 @@ jobs:
           TIERS: ${{ steps.tiers.outputs.tiers }}
           GH_TOKEN: ${{ github.token }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          MODEL: ${{ inputs.model || vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
         run: |
           set -euo pipefail
           skip() {
@@ -147,6 +157,13 @@ jobs:
           fi
 
           echo "has_key=$HAS_KEY" >> "$GITHUB_OUTPUT"
+          # Which model ran is the first thing a result row needs and the one
+          # thing the run page does not otherwise say.
+          {
+            echo '## Golden replay'
+            echo
+            echo "Tier \`$TIERS\`, model \`$MODEL\`, $(jq 'length' <<<"$MATRIX") case(s)."
+          } >> "$GITHUB_STEP_SUMMARY"
           if [ "$HAS_KEY" != 'true' ]; then
             {
               echo '## Golden replay skipped'
@@ -224,7 +241,7 @@ jobs:
           facts: |
             - this is a replay of a historical range: the head is NOT the current checkout. Read the changed files with `git show <head>:<path>` and the diff with `git diff <base>...<head>`; for executed evidence use `git worktree add tmp/code-review/worktree <head>` and remove it afterwards. The standards sources are the current checkout's, as the skill says.
             - tier is null: write `"tier": null` in the envelope
-          model: ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
+          model: ${{ inputs.model || vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           github-token: ${{ github.token }}
