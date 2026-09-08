@@ -624,6 +624,9 @@ jobs:
       - name: Code review report contracts
         run: corepack yarn review:test
 
+      - name: Code review concurrency checker contracts
+        run: corepack yarn review:concurrency:test
+
       - name: Gate coverage checker contracts
         run: corepack yarn gates:coverage:test
 

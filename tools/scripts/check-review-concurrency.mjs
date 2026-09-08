@@ -45,19 +45,44 @@ try {
   fail(`cannot read ${WORKFLOW}: ${err.message}`);
 }
 
-/** The `concurrency:` block's `group:` line, expression and all. */
-const group = source.match(/^concurrency:\n(?:.*\n)*?\s*group:\s*(.+)$/m)?.[1];
-if (!group) fail(`no concurrency group found in ${WORKFLOW}`);
-
 /**
- * The `context` job's `if:`. It is a `>-` block, so take the indented lines
- * that follow until the next key at the same depth.
+ * Both extractions are bounded, and both must be unique. An unbounded search
+ * walks past an empty `concurrency:` block and reads a `group:` belonging to a
+ * job, then asserts against the wrong string and passes — this check's own
+ * version of the failure it exists to prevent.
  */
-const contextIf = source
-  .match(/^ {2}context:\n(?:.*\n)*?^ {4}if: >-\n((?:^ {6}.*\n)+)/m)?.[1]
-  ?.replace(/\s+/g, ' ')
-  .trim();
-if (!contextIf) fail(`no context job \`if:\` found in ${WORKFLOW}`);
+const exactlyOne = (matches, what) => {
+  if (matches.length === 0) fail(`no ${what} found in ${WORKFLOW}`);
+  if (matches.length > 1)
+    fail(
+      `${matches.length} ${what}s found in ${WORKFLOW}; this check assumes exactly one`,
+    );
+  return matches[0];
+};
+
+/** The top-level `concurrency:` block: its own line and the indented lines under it. */
+const concurrencyBlock = exactlyOne(
+  [...source.matchAll(/^concurrency:\n((?:[ \t]+.*\n|\n)*)/gm)].map(
+    (m) => m[1],
+  ),
+  'top-level `concurrency:` block',
+);
+const group = exactlyOne(
+  [...concurrencyBlock.matchAll(/^\s+group:\s*(.+)$/gm)].map((m) =>
+    m[1].trim(),
+  ),
+  '`group:` line inside the concurrency block',
+);
+
+/** The `context` job's `if:`, a `>-` block of lines indented six spaces. */
+const contextIf = exactlyOne(
+  [
+    ...source.matchAll(
+      /^ {2}context:\n(?:(?! {2}\S).*\n)*?^ {4}if: >-\n((?:^ {6}.*\n)+)/gm,
+    ),
+  ].map((m) => m[1].replace(/\s+/g, ' ').trim()),
+  '`context` job `if:` block',
+);
 
 // Each gate is one trigger the context job refuses. `admits` is what the `if:`
 // must say to let the deliberate case through; `steers` is what the group must
@@ -71,7 +96,21 @@ const GATES = [
   {
     what: 'the re-review command',
     admits: /startsWith\(github\.event\.comment\.body, '([^']+)'\)/,
-    steers: (cmd) => `!startsWith(github.event.comment.body, '${cmd}')`,
+    // The group negates the whole admitting clause rather than each half, so
+    // require the clause itself to be present and check the negation once
+    // below.
+    steers: (cmd) => `startsWith(github.event.comment.body, '${cmd}')`,
+  },
+  // Authorization belongs to the routing decision, not to a step inside the
+  // run. Refusing an unauthorized `/code-review` in the `Decide` step happens
+  // after the run has joined the group and cancelled the review, so on a public
+  // repository any commenter could stop a review by typing the command.
+  {
+    what: 'the commenter associations allowed to request a review',
+    admits:
+      /contains\(fromJSON\('(\[[^']+\])'\), github\.event\.comment\.author_association\)/,
+    steers: (list) =>
+      `contains(fromJSON('${list}'), github.event.comment.author_association)`,
   },
 ];
 
@@ -92,6 +131,14 @@ for (const gate of GATES) {
       `${gate.what} is '${literal}' in the context job's \`if:\`, but the concurrency group does not contain \`${needle}\` — a run that skips would still cancel the review`,
     );
 }
+
+// Naming the comment clause is not enough: the group must *negate* it, or the
+// group would steer the deliberate `/code-review` away instead of the drive-by
+// one — the invariant inverted.
+if (!/!\(\s*startsWith\(github\.event\.comment\.body/.test(group))
+  findings.push(
+    'the concurrency group names the comment trigger but does not negate it, so it would steer the deliberate `/code-review` out of the review group rather than the runs that skip',
+  );
 
 // The group must actually route somewhere else, not merely mention the guards,
 // and the elsewhere must be one group per run. A shared inert group is not

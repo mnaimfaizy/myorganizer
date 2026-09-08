@@ -89,6 +89,13 @@ permissions:
 # the run still joins the group and, with `cancel-in-progress`, takes the
 # review with it.
 #
+# Authorization has to be part of that decision, not a step inside the run. A
+# `/code-review` from someone without write access is refused — but refusing it
+# in the `Decide` step happens after the run has joined the group and cancelled
+# the review, so on a public repository any commenter could stop a review by
+# typing the command. The association is therefore read in the group expression
+# and in the job `if:`, and the step's own check is drift defence.
+#
 # Two triggers create runs that almost always skip. A `labeled` event fires for
 # every label, and `ai:create-pr` adds labels a second after opening. An
 # `issue_comment` event fires for every comment by anyone, including the
@@ -117,7 +124,7 @@ permissions:
 # change one, change the other; they are checked against each other by
 # tools/scripts/check-review-concurrency.mjs.
 concurrency:
-  group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}${{ ((github.event.action == 'labeled' && github.event.label.name != 'agent-review') || (github.event_name == 'issue_comment' && !startsWith(github.event.comment.body, '/code-review'))) && format('-inert-{0}', github.run_id) || '' }}
+  group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}${{ ((github.event.action == 'labeled' && github.event.label.name != 'agent-review') || (github.event_name == 'issue_comment' && !(startsWith(github.event.comment.body, '/code-review') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)))) && format('-inert-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 jobs:
@@ -134,7 +141,8 @@ jobs:
     # Everything else is filtered below with the API.
     if: >-
       (github.event_name != 'issue_comment' ||
-        (github.event.issue.pull_request && startsWith(github.event.comment.body, '/code-review'))) &&
+        (github.event.issue.pull_request && startsWith(github.event.comment.body, '/code-review') &&
+          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))) &&
       (github.event.action != 'labeled' || github.event.label.name == 'agent-review')
     outputs:
       run: ${{ steps.decide.outputs.run }}
@@ -191,9 +199,14 @@ jobs:
               ;;
             issue_comment)
               PR="$COMMENT_NUMBER"
+              # Unreachable today: the job `if:` admits no other association,
+              # and it has to, because authorization decided here would be
+              # decided too late — the run has already joined the concurrency
+              # group and cancelled the review by the time this line runs.
+              # Kept as drift defence between the two expressions.
               case "$COMMENT_ASSOC" in
                 OWNER|MEMBER|COLLABORATOR) ;;
-                *) skip "/code-review from a $COMMENT_ASSOC is ignored; write access is required" ;;
+                *) echo "/code-review from a $COMMENT_ASSOC reached the comment trigger" >&2; exit 1 ;;
               esac
               # Acknowledge the request the way a reviewer bot does.
               gh api "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" -f content=eyes >/dev/null || true
