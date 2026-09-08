@@ -230,6 +230,67 @@ spread that swallows any single result.
 No case moves tier, in either direction. A void run promotes nothing and demotes
 nothing.
 
+### Reading a transcript instead of buying a run
+
+Before spending anything on a stronger model, the four complete transcripts
+from run [34117988776](https://github.com/mnaimfaizy/myorganizer/actions/runs/34117988776)
+were free to read. One of them answers the question the bake-off was going to
+ask.
+
+`groceries-ui-written-against-absent-roles` is a case the reviewer has never
+caught. Its transcript is not the failure it looks like from the score. In 112
+tool calls the reviewer produced **nine findings, all valid**, five of them
+`blocking`, four with executed evidence — it ran `check-libs-markdown.mjs`,
+`check-component-hygiene.mjs` and `sync-subagents.mjs --check` against a
+worktree at the case's head, and every finding it raised is a real violation of
+a real standard. It also suppressed six more as redundant with existing gates.
+This is a competent review that missed the incident.
+
+**It read the defect and did not see it.** The class names the incident is about
+— `bg-surface-container-lowest`, `border-outline-variant`, `text-on-surface` —
+appear four times in the transcript, and every one of those is inside a file the
+reviewer read. Not one is in anything the reviewer wrote. It had the lines on
+screen and never formed a thought about them.
+
+**Why it could not have seen them.** The standards it loaded were
+`AGENTS.md` (found by `find -name AGENTS.md`), ADRs 0023, 0041 and 0053 by
+number, `docs/testing/README.md`, and the first fifty lines of
+`docs/ui/GUIDELINES.md` — `sed -n '1,50p'`, a truncated read of the one document
+most likely to point at the token rules. It never opened
+`libs/design-tokens/DESIGN.md`, never opened `tokens.json`, never opened
+[ADR 0065](../adr/0065-tokens-json-is-the-single-source-of-web-colour.md), and
+never ran `tailwind:classes:check`. With none of those loaded, a class name that
+resolves to no CSS is indistinguishable from one that does. The reviewer was not
+weighing the evidence and getting it wrong; it was applying standards that have
+nothing to say about the defect.
+
+So the miss is **retrieval, not capability**. The reviewer picks its standards by
+discretion — `find`, a few ADRs by number, a partial read — and the repository
+now has more standards than that sampling reaches. Which document it happens to
+open decides which defects are even expressible, and nothing ties that choice to
+the files in the diff.
+
+That reframes both open levers:
+
+- **A stronger model is no longer the obvious first lever.** Opus might sample
+  standards better, and that is a real possibility rather than a certainty. But
+  it would be paying model cost to improve a guess that does not need to be a
+  guess.
+- **The cheap lever is to stop leaving the choice to discretion.** A diff that
+  touches `libs/web/**` implies the token standards the same way a diff that
+  touches `libs/` implies ADR 0023 — and ADR 0023 is the one the reviewer _did_
+  find and _did_ raise. The gates already encode most of this mapping.
+
+One thing this transcript does not settle, and it should be tested before any
+mapping is written: `tailwind:classes:check` exists **because of this incident**
+(ADR 0065), and the brief says anything a `*:check` gate would already fail is
+not a finding but a `suppressedRedundant` count. If that gate catches this
+range, then a reviewer that loaded the right standards would have been correct
+to suppress it, and the case is unwinnable as written rather than hard. Six
+findings were suppressed in this very run and the normalized report keeps only
+the count, so the transcript cannot say whether this was among them. Any case
+whose incident was fixed by adding a gate has the same problem.
+
 ## Reproduce
 
 ```bash
