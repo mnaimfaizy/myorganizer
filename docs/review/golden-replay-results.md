@@ -35,7 +35,7 @@ promoted case is a detector that quietly stopped running.
 | `export-envelope-drops-tasks`                 | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640 |
 | `groceries-ui-written-against-absent-roles`   | `frontier` | 2026-09-07 |                                                                                               |
 | `sync-bookmarks-without-restore-or-meta-push` | `frontier` | 2026-09-07 |
-| `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 | caught once, in 34171728640; missed again in 34176461268                                      |
+| `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 | caught once, in 34171728640                                                                   |
 | `signup-password-wrapper-inside-formcontrol`  | `frontier` | 2026-09-07 |
 | `import-confirm-is-bare-window-confirm`       | `frontier` | 2026-09-07 |
 | `mail-test-setup-assigns-undefined-to-env`    | `frontier` | 2026-09-07 |
@@ -57,7 +57,7 @@ Newest last. "Cases" is the tier replayed, not the whole set.
 | 2026-09-07 | `claude-sonnet-5` | 8 (all tiers)  | **1 of 8**, 1 of 9 findings | consequence checks added to Standards brief   |
 | 2026-09-07 | `claude-sonnet-5` | 8 (all tiers)  | **2 of 8**, 2 of 9 findings | consequence checks reverted                   |
 | 2026-09-08 | `claude-sonnet-5` | 8 (all tiers)  | **2 of 8**, 2 of 9 findings | none — same brief, on `main` as base          |
-| 2026-09-08 | `claude-sonnet-5` | 7 (`frontier`) | **0 of 7**, 0 of 7 findings | none — first tier-selected run                |
+| 2026-09-08 | `claude-sonnet-5` | 7 (`frontier`) | **void** — rate-limited     | none — first tier-selected run                |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each.
@@ -156,41 +156,79 @@ reach-through class of defect.
 The case stays `frontier`. Promotion takes three consecutive catches and it has
 one, which is the asymmetry doing its job rather than an oversight.
 
-### The frontier alone, and a number worth stating plainly
+### The frontier alone, and a run that measured nothing
 
 Run [34176461268](https://github.com/mnaimfaizy/myorganizer/actions/runs/34176461268)
 is the first run the tier filter selected: seven `frontier` cases, no `guard`.
-That much worked exactly as designed — `golden-tiers.mjs` chose the tier from a
+That part worked exactly as designed — `golden-tiers.mjs` chose the tier from a
 job with no dependencies installed, which is the thing no local test could
 prove.
 
-The score is **0 of 7**. `release-bump-leaves-generated-client-stale`, caught
-for the first time in the run immediately before, missed again.
+**Its score is void, not zero.** Every one of the seven sessions was cut off by
+the five-hour subscription window, which the transcripts record as
+`rate_limit_event` with `status: rejected` and `five_hour.utilization: 1`. Four
+sessions died mid-review at 11 to 27 turns, against the 40 to 60 a finished
+review takes. Three never reached their first turn. No case in this run was
+measured, and none of it belongs in the recall history.
 
-Read against the earlier runs, the frontier arm now reads **0, 1, 1, 0** catches
-out of seven, across four runs on the same brief. That is a recall of roughly
-one case in fourteen, with a spread wide enough that any single run is
-consistent with any other. The guard case is caught every time; the frontier
-cases are, to a first approximation, not being caught at all.
+It was very nearly recorded as `0 of 7`. Seven check names read
+`Replay <case> — failure`, which is what a run of seven misses looks like from
+the outside, and the first version of this section drew exactly that conclusion.
+The transcripts are the only place the difference is written down. That is now
+a pipeline behaviour rather than a habit: the reviewer action reads its own
+transcript, and a rate-limited case fails with `measured nothing` instead of
+being scored.
 
-This is worth stating plainly because it changes what the open questions are:
+#### What it does measure: the budget
+
+This is the clearest data the repository has on what a replay costs, and the
+answer is that the binding constraint is not money.
+
+- **Seven parallel Sonnet sessions exhausted the five-hour window**, at
+  `max-parallel: 4` — a limit added after eight-at-once had already lost a run,
+  and evidently still too high when the window is not empty at the start.
+- The **seven-day** window was at 6% at the moment the five-hour window hit
+  100%. Nothing here is a weekly-quota problem.
+- The four sessions that ran cost **$6.00** between them before being cut off,
+  against roughly $14 for a complete seven-case run.
+- Overage was unavailable (`org_level_disabled`), so the window does not
+  degrade gracefully. It stops.
+
+The practical consequences are worth stating, because they apply to the reviewer
+as much as the replay:
+
+1. **A replay competes with everything else on the same subscription.** The
+   token is the maintainer's; a full-set replay can lock the maintainer out of
+   their own session, and did.
+2. **A replay must start from a known-empty window**, or be small enough to fit
+   what is left. There is no way to ask, so in practice this means dispatching
+   it deliberately rather than letting a push trigger it.
+3. **An Opus replay of the full set is not affordable on this plan.** Seven
+   Sonnet sessions already reach 100%. The dispatch-only `model` input exists so
+   a bake-off can be run on two or three cases without switching every per-PR
+   review to that model, and two or three cases is the honest size.
+
+#### And what it means for the open questions
+
+The frontier arm's measured history is therefore **0, 1, 1** catches out of
+seven across three valid runs, not four — roughly one case in seven, with a
+spread that swallows any single result.
 
 - **The tier split is earning its keep.** One case is a detector; seven are a
-  measurement. Running the seven on every review-tooling change was buying a
-  number too noisy to act on, at seven sessions a push.
+  measurement, and the measurement is expensive enough to lock the window.
 - **"Which brief is better" is not answerable at this sample size.** Separating
-  0.5 of 7 from 1.5 of 7 needs repetitions this budget will not pay for. The
-  record has now recorded two brief changes as inconclusive; a third would be
-  the same result again.
-- **The Opus bake-off is the right next measurement and the wrong shape.** At
-  0 to 1 catches per run, a single Opus pass that scores 2 of 7 is not evidence
-  of a better model; it is inside the Sonnet spread. What a bake-off can settle
-  cheaply is the opposite question — whether these findings are reachable from
-  the brief at all — and that needs a couple of cases run deliberately, not
-  seven run once.
+  one-in-seven from two-in-seven needs repetitions this budget will not pay for.
+  Two brief changes have now been recorded as inconclusive; a third would be the
+  same result again.
+- **A single Opus pass would not settle the model question either.** At 0 to 1
+  catches per run, an Opus run scoring 2 of 7 sits inside the Sonnet spread.
+  What a small bake-off can settle cheaply is the different question of whether
+  these findings are reachable from the brief at all — and the transcripts of
+  the four sessions that did run are worth reading before spending anything,
+  because they are free.
 
-No case moves tier. `release-bump-leaves-generated-client-stale` had one catch
-and needed three; it keeps the tier it had.
+No case moves tier, in either direction. A void run promotes nothing and demotes
+nothing.
 
 ## Reproduce
 

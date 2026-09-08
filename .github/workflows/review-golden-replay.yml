@@ -247,8 +247,15 @@ jobs:
           github-token: ${{ github.token }}
           transcript-artifact: golden-transcript-${{ matrix.case }}
 
+      # A rate-limited case is not a result. It has to fail — the reviewer
+      # never finished — but it must never be written into the record as a
+      # miss, because nothing about the reviewer was measured.
       - name: Require a validated report
         run: |
+          if [ '${{ steps.reviewer.outputs.rate-limited }}' = 'true' ]; then
+            echo "::error::case ${{ matrix.case }} was cut off by the subscription rate limit and measured nothing; do not record it as a miss"
+            exit 1
+          fi
           if [ '${{ steps.reviewer.outputs.validated }}' != 'true' ]; then
             echo "::error::no valid report for case ${{ matrix.case }} (reviewer step outcome: ${{ steps.reviewer.outputs.reviewer-outcome }})"
             cat '${{ steps.reviewer.outputs.rejected-file }}' 2>/dev/null || true
