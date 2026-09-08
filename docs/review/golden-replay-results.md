@@ -29,11 +29,11 @@ Promotion to `guard` takes **three consecutive catches**; demotion to
 `frontier` takes **one miss**. The asymmetry is deliberate — a wrongly
 promoted case is a detector that quietly stopped running.
 
-| Case                                          | Tier       | Since      | History                                                                       |
-| --------------------------------------------- | ---------- | ---------- | ----------------------------------------------------------------------------- |
-| `groceries-blob-type-without-fanouts`         | `guard`    | 2026-09-07 | caught in all six runs                                                        |
-| `export-envelope-drops-tasks`                 | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391 the same day |
-| `groceries-ui-written-against-absent-roles`   | `frontier` | 2026-09-07 |                                                                               |
+| Case                                          | Tier       | Since      | History                                                                                       |
+| --------------------------------------------- | ---------- | ---------- | --------------------------------------------------------------------------------------------- |
+| `groceries-blob-type-without-fanouts`         | `guard`    | 2026-09-07 | caught in all six runs                                                                        |
+| `export-envelope-drops-tasks`                 | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640 |
+| `groceries-ui-written-against-absent-roles`   | `frontier` | 2026-09-07 |                                                                                               |
 | `sync-bookmarks-without-restore-or-meta-push` | `frontier` | 2026-09-07 |
 | `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 |
 | `signup-password-wrapper-inside-formcontrol`  | `frontier` | 2026-09-07 |
@@ -56,6 +56,7 @@ Newest last. "Cases" is the tier replayed, not the whole set.
 | 2026-09-07 | `claude-sonnet-5` | 7 (pre-tier)  | **2 of 7**, 2 of 8 findings | reach-through checks, full set                |
 | 2026-09-07 | `claude-sonnet-5` | 8 (all tiers) | **1 of 8**, 1 of 9 findings | consequence checks added to Standards brief   |
 | 2026-09-07 | `claude-sonnet-5` | 8 (all tiers) | **2 of 8**, 2 of 9 findings | consequence checks reverted                   |
+| 2026-09-08 | `claude-sonnet-5` | 8 (all tiers) | **2 of 8**, 2 of 9 findings | none — same brief, on `main` as base          |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each.
@@ -99,6 +100,29 @@ its first eight cases.
 The Opus bake-off is now more interesting, not less. If instruction volume is
 what hurt, a stronger model is the cleaner test of whether the misses are
 capability at all.
+
+### The same score, a different pair
+
+Run [34171728640](https://github.com/mnaimfaizy/myorganizer/actions/runs/34171728640),
+on the reverted brief again, with `main` as the base rather than a stacked
+branch. **2 of 8 again — and not the same two.**
+`release-bump-leaves-generated-client-stale` was caught for the first time in
+four attempts; `export-envelope-drops-tasks`, caught in the run immediately
+before, missed.
+
+That is the clearest statement of variance the record holds. Same brief, same
+set, same model, same score, different cases. It also settles how much weight
+the 1-of-8 run can carry: a single run moves a case in either direction, so the
+consequence-check result was suggestive and never conclusive. The revert stands
+on parsimony — the checks bought nothing measurable — not on that one number.
+
+No case earns promotion. `export-envelope-drops-tasks` has now missed twice in
+three runs and stays `frontier`; `groceries-blob-type-without-fanouts` is caught
+in all seven and remains the only `guard`.
+
+The practical consequence for anyone reading this table: **do not act on a
+single run.** A brief change that matters should show itself across several, and
+the cheapest way to see that is the frontier tier, not the whole set.
 
 ### What the revert measured
 

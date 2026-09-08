@@ -114,11 +114,12 @@ jobs:
             exit 0
           }
 
-          # jq, not the scorer: this job installs nothing, and the scorer
-          # reaches schema.mjs, which imports zod. The tier is a plain field.
-          MATRIX="$(jq -c --arg t "$TIERS" \
-            '[.cases[] | select($t == "all" or .tier == $t) | .id]' \
-            tools/config/review-golden-set.json)"
+          # golden-tiers.mjs, not the scorer: this job installs nothing, and
+          # the scorer reaches schema.mjs, which imports zod. That script is
+          # dependency-free for exactly this reason, and it is the only
+          # implementation of the tier filter — the scorer's `--list --tier`
+          # calls the same function, so the two cannot drift apart.
+          MATRIX="$(node tools/scripts/review/golden-tiers.mjs --tier "$TIERS")"
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "tier $TIERS: $MATRIX"
 
