@@ -83,16 +83,28 @@ permissions:
   pull-requests: write
   actions: read
 
-# A label event must never cancel a review that is already running. Workflow
-# concurrency is evaluated when the run is created, before any job `if:` is
-# read, so a run started by an unrelated label — `tooling` on a new pull
-# request — cancelled the `opened` review and then skipped, leaving the pull
-# request with no verdict and a green "skipped" check that looked deliberate.
-# Adding `agent-review` is a button press, so it queues behind the running
-# review rather than replacing it.
+# A label event must never disturb the review of the same pull request, so it
+# does not share a concurrency group with one. Two separate mechanisms had to be
+# closed here and the first fix only closed one of them.
+#
+# Concurrency is evaluated when the run is created, before any job `if:` is
+# read, so a run started by an unrelated label — `tooling`, added by
+# `ai:create-pr` — enters the group whatever the workflow later decides to skip.
+# Turning `cancel-in-progress` off for `labeled` events stopped it cancelling a
+# review that had already *started*, which is what pull request #687 happened to
+# hit. It did nothing for a review still *pending*: GitHub keeps only the newest
+# pending run in a group and cancels the rest regardless of that setting. Since
+# `ai:create-pr` labels within a second of opening, the `opened` review was
+# usually still queued, and pull request #690 lost it that way — three runs
+# created in the same second, the review cancelled before a single job ran.
+#
+# Separating the groups closes both at once: a label run can neither cancel a
+# running review nor evict a queued one, because it is not in the review's group
+# at all. `cancel-in-progress` is then plain `true` in each group, which is what
+# it should mean — a newer push supersedes an older review of the same branch.
 concurrency:
-  group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
-  cancel-in-progress: ${{ github.event.action != 'labeled' }}
+  group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}-${{ github.event.action == 'labeled' && 'label' || 'review' }}
+  cancel-in-progress: true
 
 jobs:
   # Decides whether this event is a review request, and resolves the pull

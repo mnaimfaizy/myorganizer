@@ -34,9 +34,13 @@ hard. This is not a detector whose opinion should stand between a change and `ma
 
 **What the single check was hiding.** `Agent Verdict` failed for two unrelated reasons: a
 `request-changes` verdict, and a report the contract rejected — including a reviewer that crashed
-or never ran. Those are not the same event. Three pull requests in this stack received no review at
-all, because `ai:create-pr` adds labels at creation and a `labeled` event cancelled the `opened`
-run and then skipped; the check reported green each time. A merged failure mode is a hidden one.
+or never ran. Those are not the same event. Several pull requests in this stack received no review
+at all, because `ai:create-pr` adds labels at creation and the `labeled` runs displaced the
+`opened` one from a shared concurrency group; the check reported green each time. It took two
+attempts to close, because a label run can both cancel a review that has started and evict one
+still queued, and only the first is governed by `cancel-in-progress`. Neither attempt would have
+been necessary if the absence of a review were itself visible — which is the point of this ADR.
+A merged failure mode is a hidden one.
 
 ## Decision
 
