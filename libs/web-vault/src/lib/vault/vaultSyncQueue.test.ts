@@ -723,6 +723,13 @@ describe('createVaultSyncQueue', () => {
     const callback1 = scheduledCallbacks[0]!;
     callback1();
 
+    // The callback starts a drain it cannot hand back — a scheduler callback
+    // returns void. Await one through the same serialised chain so that drain
+    // finishes inside this test. Left in flight it resumes during a later
+    // test, reads whatever this owner's Local Vault holds by then, pushes it
+    // through this test's API double, and records a Sync Bookmark against it.
+    await queue.drain(handle);
+
     // Clear for next mark
     scheduledCallbacks.length = 0;
 
@@ -983,11 +990,11 @@ describe('createVaultSyncQueue', () => {
       expect(api.putVaultBlob).not.toHaveBeenCalled();
       expect(queue.unsentTypes()).toContain(VaultBlobType.Tasks);
     } finally {
-      // The spy calls through, so a real one-second timer is armed. Today it
-      // never fires — this test sits near the end of the suite — but that is
-      // position, not safety: were it to fire mid-suite it would drain against
-      // a handle this test has finished with. Clear it and the safety is
-      // deliberate.
+      // The spy calls through, so a real one-second timer is armed. Were it
+      // to fire mid-suite it would drain against a handle this test has
+      // finished with, recording a Sync Bookmark against whatever this owner's
+      // Local Vault holds by then. Clear it rather than relying on this test's
+      // position in the file.
       setTimeoutSpy.mock.results.forEach((result) => {
         if (result.type === 'return') clearTimeout(result.value);
       });
