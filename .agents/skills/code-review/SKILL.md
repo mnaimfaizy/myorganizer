@@ -134,11 +134,37 @@ Rules the validator enforces — a report that breaks one is rejected whole:
 ```
 
 **Standards sub-agent prompt** — include the diff command and commit list, `head`, the standards
-source list, the smell baseline pasted in full, the contract above, and the brief: "Report every
-place the diff violates a documented standard — `source` is the file, `rule` is the rule, evidence
-is `cited` with `sourceKind: standard` — and every baseline smell as `source: smell-baseline`,
-`inferred`. You may run existing targets on affected projects to turn a suspicion into `executed`
-evidence. Set `axis: standards` on every finding."
+source list, the smell baseline pasted in full, the reach-through checks below pasted in full, the
+contract above, and the brief: "Report every place the diff violates a documented standard —
+`source` is the file, `rule` is the rule, evidence is `cited` with `sourceKind: standard` — and
+every baseline smell as `source: smell-baseline`, `inferred`. Run the reach-through checks before
+you write findings. You may run existing targets on affected projects to turn a suspicion into
+`executed` evidence. Set `axis: standards` on every finding."
+
+The **reach-through checks** exist because the two defects the golden set was seeded from
+([ADR 0053](../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md),
+[ADR 0065](../../../docs/adr/0065-tokens-json-is-the-single-source-of-web-colour.md)) were both
+invisible inside the hunks: the diff changed a set, and the code that broke was a consumer of that
+set which the diff never touched. A reviewer who reads only the diff cannot see either. Paste this
+block verbatim:
+
+```
+Reach-through checks — do these against the whole tree at <head>, not only the diff:
+1. A member added to a set. If the diff adds a member to an enum, a union, a const-object map, a
+   list of blob/record/kind names, or an OpenAPI enum, grep the tree at <head> for every place that
+   enumerates the existing members by hand (object literals keyed by member, switch/if chains,
+   Record<...> tables, test fixtures that list them). Every such site the diff does not update is a
+   finding at THAT site's file — cite the fan-out rule (AGENTS.md, ADR 0053) — even though the
+   diff never touched it. A missing member fails silently: a reconcile skips it, an export drops it.
+2. A shared value removed, renamed, or reshaped. If the diff removes or renames a design token, a
+   Tailwind theme entry or preset colour, a CSS variable, an exported constant, an environment
+   variable, a route, or a generated-client symbol, grep the tree at <head> for every consumer of
+   the old name. Every consumer that now resolves to nothing is a finding at the consumer's file or
+   at the config that removed the value. A green build is not evidence: Tailwind drops an unknown
+   class silently, and a missing token renders as no style.
+3. Prefer executed evidence for both: `git grep -n '<member or old name>' <head> -- <paths>` in the
+   checkout, or the relevant `*:check` gate, and quote the command and its exit code.
+```
 
 **Spec sub-agent prompt** — include the diff command and commit list, `head`, the spec reference
 and its fetched text, the contract above, and the brief: "Report (a) requirements the spec asked for
@@ -191,6 +217,29 @@ head SHA; pass `--no-hunks` to suppress that, for example when the head is not i
 
 Present the rendered Markdown verbatim. Do not summarise across axes, do not rerank, and do not add
 a verdict of your own: the heading already carries the computed one.
+
+## In CI
+
+`.github/workflows/code-review.yml` runs this skill on every non-draft Pull Request with the same
+contract, validator, and renderer. The prompt states the facts the terminal would discover; do not
+rediscover them:
+
+- **Fixed point, head, branch name, and tier are given.** Use them verbatim. `tier` goes into the
+  envelope; the workflow pins it again with `review:validate --tier`, so the job output is the truth
+  (ADR 0070 item 3).
+- **The spec is already resolved** in `tmp/code-review/spec.json` as
+  `{ "spec": { kind, ref, foundBy }, "title", "body" }` by `review:spec`, using the job token. Copy
+  `spec` into the envelope and hand `body` to the Spec sub-agent as the fetched text. Fetch nothing;
+  there is no token in your environment and nobody to ask. `kind: none` skips the Spec axis.
+- **Write `tmp/code-review/report.json`** (that exact name, not `<head>.report.json`), run the validator as in step 5, retry a failing
+  sub-agent once, and stop. Do not render, do not post: `review:publish` edits the one summary
+  comment, posts inline comments for blocking findings, and relabels (ADR 0071 item 8).
+- **A rejected report is a failed check.** The workflow posts the validator's reasons and the Pull
+  Request goes to `review:human`. Nothing is downgraded to make it pass.
+- **Your run ends when you reply without a tool call, and no background notification reaches you.**
+  Nobody reads a "waiting for the sub-agent" message; the workflow only sees whether `report.json`
+  exists. Invoke the sub-agents with `run_in_background: false`, both in one message so they still
+  run in parallel, and keep working in that turn until the file is written and validated.
 
 ## Why two axes
 

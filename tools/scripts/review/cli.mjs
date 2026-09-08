@@ -3,6 +3,7 @@
  * "could not run" helper, and the is-main guard. Kept here so the validator
  * and the renderer do not each carry a differently shaped copy.
  */
+import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -43,6 +44,23 @@ export const readJsonOr = (path, onError) => {
     return onError(`cannot read ${path}: ${err.message}`);
   }
 };
+
+/**
+ * The one way the review scripts call `gh`. Only the spec resolver and the
+ * publisher use it, and only from steps that hold the job token; the
+ * reviewer itself never does (ADR 0071 item 8).
+ */
+export const gh = (args, input) => {
+  const opts = { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] };
+  if (input !== undefined) opts.input = input;
+  return execFileSync('gh', args, opts);
+};
+export const ghJson = (args, input) => JSON.parse(gh(args, input) || 'null');
+export const ghGraphql = (query, variables) =>
+  ghJson(
+    ['api', 'graphql', '--input', '-'],
+    JSON.stringify({ query, variables }),
+  );
 
 /** True when `moduleUrl` is the script node was asked to run. */
 export const isMain = (moduleUrl) =>

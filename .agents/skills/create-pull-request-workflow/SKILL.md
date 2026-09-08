@@ -31,7 +31,7 @@ Humans (or CI) may still run `yarn ai:create-pr` with no `--title` / `--body-fil
 - Always pass `--title`, `--body-file`, and `--merge-base` from the `PrAuthor` draft.
 - The `MERGE-BASE:` SHA is the draft's proof that `PrAuthor` actually inspected the branch. The runner recomputes the merge base and rejects any agent-path invocation whose SHA is missing or wrong, so a draft returned without one is not publishable — send `PrAuthor` back to inspect the branch rather than filling the SHA in yourself. See #456.
 - If the draft includes a `LABELS:` line, pass each Surface Label with `--label`. Omit `--label` when the line is absent (default: unlabeled).
-- Do not invent labels. The runner rejects names that are not Surface Labels in `tools/config/github-labels.json` (ADR 0025).
+- Do not invent labels. The runner rejects names that are not Surface Labels in `tools/config/github-labels.json` (ADR 0025); the one other name it accepts is the `agent-review` Request Label, which asks the CI code review to run on the new Pull Request (ADR 0070 item 7).
 - Push the branch upstream if it is not already tracked (the runner does this).
 - If the branch was rebased, the remote branch is no longer a fast-forward and the runner refuses the push. Re-run with `--force-with-lease`. The runner pins the lease to the upstream commit it just observed, and refuses regardless of the flag if the remote carries any commit with no patch-equivalent in your branch — that is somebody else's work, not a rebase artifact. Never reach for `git push --force` yourself.
 - Assign the PR to the authenticated GitHub user (the runner does this).

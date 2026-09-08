@@ -148,6 +148,15 @@ export const EvidenceSchema = z.discriminatedUnion('kind', [
  * or the issue reference, and the rule or requirement it applies. `summary`
  * is the human claim. Nothing here carries diff text (ADR 0071 item 3).
  */
+/** Which citation source each axis may rest on (pinned; asserted below). */
+export const AXIS_CITATION_SOURCE = /** @type {const} */ ({
+  standards: 'standard',
+  spec: 'spec',
+});
+for (const axis of FINDING_AXES)
+  if (!AXIS_CITATION_SOURCE[axis])
+    throw new Error(`AXIS_CITATION_SOURCE lacks ${axis}`);
+
 export const FindingInputSchema = z
   .strictObject({
     axis: z.enum(FINDING_AXES),
@@ -166,6 +175,16 @@ export const FindingInputSchema = z
       ctx.addIssue({ code: 'custom', message, path });
 
     if (f.evidence.kind === 'cited') {
+      // A Standards finding cites a repo standard; a Spec finding cites the
+      // spec. Crossing them lets untrusted issue text stand behind a
+      // standards claim, or a repo file pose as the spec.
+      const expected = AXIS_CITATION_SOURCE[f.axis];
+      if (f.evidence.sourceKind !== expected) {
+        issue(
+          `a ${f.axis} finding cites ${expected} text, not ${f.evidence.sourceKind}`,
+          ['evidence', 'sourceKind'],
+        );
+      }
       if (f.evidence.sourceKind === 'spec' && f.evidence.untrusted !== true) {
         issue(
           'a quoted spec line is authored outside the repo and must carry untrusted: true',
@@ -300,14 +319,42 @@ const IDENTITY_ACCESSORS =
     file: (f) => f.location?.file ?? '',
   });
 
-export const findingId = (finding) => {
+/**
+ * `occurrence` is 0 for the first finding with this identity tuple in a
+ * report and counts up for repeats, so two findings that share axis,
+ * source, rule, and file but differ by line keep distinct ids without the
+ * line entering the hash (ADR 0071 item 6). Repeats are numbered in
+ * startLine order, so the numbering survives a rebase the same way the
+ * tuple does.
+ */
+export const findingId = (finding, occurrence = 0) => {
   const tuple = FINDING_IDENTITY_FIELDS.map((field) =>
     IDENTITY_ACCESSORS[field](finding),
   );
+  if (occurrence > 0) tuple.push(occurrence);
   return createHash('sha256')
     .update(JSON.stringify(tuple))
     .digest('hex')
     .slice(0, 12);
+};
+
+const assignFindingIds = (findings) => {
+  const byTuple = new Map();
+  const order = findings
+    .map((f, index) => ({ f, index }))
+    .sort(
+      (a, b) =>
+        (a.f.location?.startLine ?? 0) - (b.f.location?.startLine ?? 0) ||
+        a.index - b.index,
+    );
+  const ids = new Array(findings.length);
+  for (const { f, index } of order) {
+    const key = findingId(f);
+    const occurrence = byTuple.get(key) ?? 0;
+    byTuple.set(key, occurrence + 1);
+    ids[index] = findingId(f, occurrence);
+  }
+  return findings.map((f, index) => ({ id: ids[index], ...f }));
 };
 
 /** Any blocking → request-changes; only nits (or nothing) → approve; else comment. */
@@ -333,7 +380,7 @@ export const computeEffectiveTier = (report) => {
  */
 export const normalizeReport = (raw) => {
   const input = ReportInputSchema.parse(raw);
-  const findings = input.findings.map((f) => ({ id: findingId(f), ...f }));
+  const findings = assignFindingIds(input.findings);
   return {
     ...input,
     findings,

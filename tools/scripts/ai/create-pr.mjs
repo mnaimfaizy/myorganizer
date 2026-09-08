@@ -35,7 +35,7 @@ Options:
   --body-file <path>      Read the pull request body from a file. Agent sessions pass the PrAuthor draft here.
   --merge-base <sha>      Merge-base SHA the draft was written from. Required whenever --title or --body-file is passed; it is the PrAuthor draft's MERGE-BASE line and must match this branch.
   --reviewer <login>      Reviewer to request. Repeat the flag or pass a comma-separated list.
-  --label <name>          Surface Label to apply (ADR 0025). Repeat the flag or pass a comma-separated list. Default: none.
+  --label <name>          Surface Label (ADR 0025) or the agent-review Request Label (ADR 0070) to apply. Repeat the flag or pass a comma-separated list. Default: none.
   --force-with-lease      Replace a diverged remote branch after a rebase. The lease is pinned to the upstream commit this run observed, and the push is still refused if the remote carries any commit with no equivalent here.
   --draft                 Create the pull request as a draft.
   --help                  Show this help text.
@@ -193,7 +193,7 @@ function validateLabels(labels, catalog) {
   }
 
   fail(
-    `Not Surface Labels (ADR 0025): ${rejected.join(', ')}. Use kind/area names from tools/config/github-labels.json.`,
+    `Not Surface Labels (ADR 0025) or the agent-review Request Label (ADR 0070): ${rejected.join(', ')}. Use kind/area/trigger names from tools/config/github-labels.json.`,
   );
 }
 

@@ -1,0 +1,285 @@
+name: Golden Replay
+
+# Replays the code reviewer against the golden set (ADR 0071, Consequences):
+# commit ranges from this repository's own history in which a documented
+# incident was merged, and the finding a reviewer should have raised. Runs
+# on every Pull Request that changes how reviews are produced — the skill,
+# the schema, the validator, the renderer, the review workflow, the shared
+# reviewer action, or the set — so a prompt or contract change is measured
+# before it reaches a real Pull Request. One reviewer run per case; the job
+# named "Golden Replay" fails when any case's recall falls below its minimum.
+#
+# Two things keep that from being paid on every push (ADR 0072). Cases are
+# tiered: frontier cases, the ones the reviewer misses, run on any of the
+# paths above; guard cases, the ones it catches reliably, run only when the
+# brief or the finding contract changes. And `[skip replay]` in the head
+# commit message skips the whole replay for that push, which the path filter
+# cannot do — GitHub matches a pull_request path filter against the entire
+# PR diff, so a docs-only push to a branch that touched the skill ten commits
+# ago still satisfies it. `workflow_dispatch` replays a tier on demand.
+#
+# The reviewer step is the composite action at .github/actions/code-reviewer,
+# shared with code-review.yml. Same credential rules; CODE_REVIEW_ENABLED=false
+# stops the replay too.
+
+on:
+  pull_request:
+    paths:
+      - '.agents/skills/code-review/**'
+      - 'tools/scripts/review/**'
+      - '.github/actions/code-reviewer/**'
+      - '.github/workflows/code-review.yml'
+      - '.github/workflows/review-golden-replay.yml'
+      - 'tools/config/review-golden-set.json'
+  workflow_dispatch:
+    inputs:
+      tier:
+        description: Which tier to replay.
+        type: choice
+        options: [frontier, guard, all]
+        default: all
+
+permissions:
+  contents: read
+  pull-requests: read
+  actions: read
+
+concurrency:
+  group: golden-replay-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cases:
+    name: Golden cases
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.list.outputs.matrix }}
+      has_key: ${{ steps.list.outputs.has_key }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Which tiers this run replays (ADR 0072). A frontier case is one the
+      # reviewer misses, so it runs whenever anything that produces a review
+      # changes — the workflow's own path filter already decided that. A
+      # guard case is one the reviewer catches reliably; it runs only when
+      # the brief or the finding contract changes, because those are what
+      # could silently undo the instruction the guard protects.
+      #
+      # The path filter cannot make this distinction itself: on a
+      # pull_request event GitHub matches paths against the whole PR diff,
+      # not the push, so once any commit in the PR touches a filtered path
+      # every later push re-satisfies the filter. That is also why the
+      # [skip replay] escape below exists.
+      - name: Choose the tiers
+        id: tiers
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DISPATCH_TIER: ${{ inputs.tier }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          if [ -n "${DISPATCH_TIER:-}" ]; then
+            echo "tiers=$DISPATCH_TIER" >> "$GITHUB_OUTPUT"
+            echo "run by hand: $DISPATCH_TIER"
+            exit 0
+          fi
+          CHANGED="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" \
+            --paginate --jq '.[].filename')"
+          # The brief the guards protect, and the contract that decides
+          # whether a finding of theirs is even accepted.
+          if grep -qE '^(\.agents/skills/code-review/|\.github/actions/code-reviewer/|tools/scripts/review/(schema|validate-review-report)\.mjs$)' <<<"$CHANGED"; then
+            echo 'tiers=all' >> "$GITHUB_OUTPUT"
+            echo 'the brief or the finding contract changed: guards run too'
+          else
+            echo 'tiers=frontier' >> "$GITHUB_OUTPUT"
+            echo 'neither the brief nor the finding contract changed: frontier only'
+          fi
+
+      - name: List the cases
+        id: list
+        env:
+          HAS_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
+          ENABLED: ${{ vars.CODE_REVIEW_ENABLED }}
+          TIERS: ${{ steps.tiers.outputs.tiers }}
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          skip() {
+            echo 'has_key=false' >> "$GITHUB_OUTPUT"
+            { echo '## Golden replay skipped'; echo; echo "$1"; } >> "$GITHUB_STEP_SUMMARY"
+            echo "$1"
+            exit 0
+          }
+
+          # jq, not the scorer: this job installs nothing, and the scorer
+          # reaches schema.mjs, which imports zod. The tier is a plain field.
+          MATRIX="$(jq -c --arg t "$TIERS" \
+            '[.cases[] | select($t == "all" or .tier == $t) | .id]' \
+            tools/config/review-golden-set.json)"
+          echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
+          echo "tier $TIERS: $MATRIX"
+
+          # The same off switch as code-review.yml: CODE_REVIEW_ENABLED=false
+          # stops the replay too, which matters at roughly one reviewer run
+          # per case per push.
+          if [ "${ENABLED:-true}" = 'false' ]; then
+            skip 'The CODE_REVIEW_ENABLED repository variable is false.'
+          fi
+
+          # The per-push escape. Read the head commit's message from the API
+          # rather than the checkout: on a pull_request event the default
+          # checkout is a synthetic merge commit, whose message is "Merge X
+          # into Y" and never the author's. Never interpolate the message
+          # into the script — it is somebody's text, matched, not run.
+          if [ -n "${HEAD_SHA:-}" ]; then
+            MESSAGE="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}" --jq .commit.message)"
+            if grep -qiF '[skip replay]' <<<"$MESSAGE"; then
+              skip 'The head commit message contains `[skip replay]`. The reviewer itself still ran; only the golden replay was skipped.'
+            fi
+          fi
+
+          if [ "$MATRIX" = '[]' ]; then
+            skip "No case is in tier \`$TIERS\`."
+          fi
+
+          echo "has_key=$HAS_KEY" >> "$GITHUB_OUTPUT"
+          if [ "$HAS_KEY" != 'true' ]; then
+            {
+              echo '## Golden replay skipped'
+              echo
+              echo 'Neither `CLAUDE_CODE_OAUTH_TOKEN` nor `ANTHROPIC_API_KEY` is set as a repository secret, so no case was replayed.'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  replay:
+    name: Replay ${{ matrix.case }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: cases
+    if: needs.cases.outputs.has_key == 'true'
+    strategy:
+      fail-fast: false
+      # One reviewer session per case, and a push that reaches this workflow
+      # also runs code-review.yml. Eight at once exceeded the subscription's
+      # session limit and lost a whole run to failures in under a minute
+      # (docs/research/2026-09-07-golden-replay-baseline.md, Limits). Four
+      # leaves headroom for the ordinary review running alongside, and holds
+      # whether this run is the frontier alone or every tier.
+      max-parallel: 4
+      matrix:
+        case: ${{ fromJSON(needs.cases.outputs.matrix) }}
+    env:
+      # Required for Prisma v7 config loading if a reviewer runs backend tests.
+      DATABASE_URL: postgresql://localhost:5432/myorganizer
+    steps:
+      # The Pull Request head: today's skill and tooling review yesterday's
+      # range. Full history so both ends of the case exist.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
+
+      - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: corepack yarn install --immutable
+
+      - name: Load the case
+        id: case
+        run: |
+          CASE="$(node tools/scripts/review/score-golden-case.mjs --show '${{ matrix.case }}')"
+          echo "base=$(jq -r .base <<<"$CASE")" >> "$GITHUB_OUTPUT"
+          echo "head=$(jq -r .head <<<"$CASE")" >> "$GITHUB_OUTPUT"
+          mkdir -p tmp/code-review
+          jq '{spec: .spec}' <<<"$CASE" > tmp/code-review/spec.json
+          echo "replaying $(jq -r .incident <<<"$CASE"): $(jq -r .base <<<"$CASE" | cut -c1-7)...$(jq -r .head <<<"$CASE" | cut -c1-7)"
+
+      # The reviewer, the transcript artifact, and the validation, with no
+      # tier: a historical range has none. See .github/actions/code-reviewer.
+      - name: Run the reviewer
+        id: reviewer
+        uses: ./.github/actions/code-reviewer
+        with:
+          base: ${{ steps.case.outputs.base }}
+          head: ${{ steps.case.outputs.head }}
+          head-ref: none (historical range)
+          tier: 'null'
+          facts: |
+            - this is a replay of a historical range: the head is NOT the current checkout. Read the changed files with `git show <head>:<path>` and the diff with `git diff <base>...<head>`; for executed evidence use `git worktree add tmp/code-review/worktree <head>` and remove it afterwards. The standards sources are the current checkout's, as the skill says.
+            - tier is null: write `"tier": null` in the envelope
+          model: ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github-token: ${{ github.token }}
+          transcript-artifact: golden-transcript-${{ matrix.case }}
+
+      - name: Require a validated report
+        run: |
+          if [ '${{ steps.reviewer.outputs.validated }}' != 'true' ]; then
+            echo "::error::no valid report for case ${{ matrix.case }} (reviewer step outcome: ${{ steps.reviewer.outputs.reviewer-outcome }})"
+            cat '${{ steps.reviewer.outputs.rejected-file }}' 2>/dev/null || true
+            exit 1
+          fi
+
+      # Recall against the case's expected findings; below the minimum fails
+      # this case, and the summary names what was missed and why it mattered.
+      - name: Score the case
+        run: |
+          corepack yarn review:golden:score --case '${{ matrix.case }}' \
+            --normalized tmp/code-review/normalized.json --out tmp/code-review/score.json
+
+      - name: Keep the report and score
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: golden-${{ matrix.case }}
+          path: |
+            tmp/code-review/normalized.json
+            tmp/code-review/score.json
+          if-no-files-found: ignore
+          retention-days: 30
+
+  verdict:
+    name: Golden Replay
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [cases, replay]
+    if: always()
+    steps:
+      - name: Combine
+        run: |
+          echo "cases: ${{ needs.cases.result }}; replay: ${{ needs.replay.result }}"
+          # A job that decided to skip and a job that crashed both leave
+          # has_key unset, and only one of them is a pass. Read the job's
+          # result first, or a broken matrix step reports this check green.
+          if [ '${{ needs.cases.result }}' != 'success' ]; then
+            echo '::error::the Golden cases job did not complete; nothing was replayed and nothing was measured'
+            exit 1
+          fi
+          if [ '${{ needs.cases.outputs.has_key }}' != 'true' ]; then
+            # Off switch, [skip replay], an empty tier, or no credential.
+            # The Golden cases job's summary says which. None of them is a
+            # measurement, so none of them is a failure.
+            echo 'nothing replayed; see the Golden cases summary for why'
+            exit 0
+          fi
+          if [ '${{ needs.replay.result }}' != 'success' ]; then
+            echo '::error::at least one golden case fell below its minimum recall; see the Replay jobs'
+            exit 1
+          fi

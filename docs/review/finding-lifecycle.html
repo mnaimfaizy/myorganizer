@@ -1493,13 +1493,15 @@
 
   <footer class="pagefoot">
     <div>
-      Diff this page against the source with the check script named in
-      <code>tools/scripts/review/</code> once it exists; it reads the embedded
+      <code>tools/scripts/check-review-pages.mjs</code> diffs this page
+      against its sources on every commit; it reads the embedded
       <code>review-lifecycle-manifest</code> block below.
-      <code>requiredCheckContexts</code> and <code>gateTierLabels</code> exist
-      today (<code>ci.yml</code> job names;
-      <code>tools/config/github-labels.json</code>); the rest are claims on
-      names the implementation must export.
+      <code>requiredCheckContexts</code> are <code>ci.yml</code> job names,
+      <code>agentVerdictCheck</code> is the job name in
+      <code>code-review.yml</code> (the Agent Verdict check),
+      <code>gateTierLabels</code> come from
+      <code>tools/config/github-labels.json</code>, and the rest are the
+      constants <code>tools/scripts/review/schema.mjs</code> exports.
     </div>
   </footer>
 </div>
@@ -1522,7 +1524,8 @@
       "Lint",
       "Test"
     ],
-    "gateTierLabels": ["gate:mechanical", "gate:standard", "gate:full"]
+    "gateTierLabels": ["gate:mechanical", "gate:standard", "gate:full"],
+    "agentVerdictCheck": "Agent Verdict"
   }
 </script>
 
