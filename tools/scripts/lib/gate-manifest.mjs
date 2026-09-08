@@ -76,6 +76,12 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'review:concurrency:check',
+    npmScript: 'review:concurrency:check',
+    script: 'tools/scripts/check-review-concurrency.mjs',
+    args: [],
+  },
+  {
     id: 'review:pages:check',
     npmScript: 'review:pages:check',
     script: 'tools/scripts/check-review-pages.mjs',

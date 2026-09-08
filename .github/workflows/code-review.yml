@@ -83,28 +83,33 @@ permissions:
   pull-requests: write
   actions: read
 
-# A label event must never disturb the review of the same pull request, and an
-# `agent-review` press must still supersede one. Both come from the group name.
+# A run that is going to skip must never disturb the review of the same pull
+# request. Concurrency is evaluated when the run is created, before any job
+# `if:` is read, so "the job skips" is not the same as "the run is harmless" —
+# the run still joins the group and, with `cancel-in-progress`, takes the
+# review with it. Why that keeps happening, and to which pull requests, is in
+# the header of tools/scripts/check-review-concurrency.mjs; it is written once,
+# there, because that file is what enforces it.
 #
-# Concurrency is evaluated when the run is created, before any job `if:` is
-# read, so a run started by an unrelated label — `tooling`, added by
-# `ai:create-pr` — enters the group whatever the workflow later decides to skip.
-# Two mechanisms then bite, and only one is governed by `cancel-in-progress`:
-# it can cancel a review that has already started, which is what pull request
-# #687 hit, and it can evict one still queued, because GitHub keeps only the
-# newest pending run in a group regardless of that setting. `ai:create-pr`
-# labels within a second of opening, so the review is usually still queued;
-# pull request #690 lost it that way, three runs created in the same second.
+# What this expression does:
 #
-# So a label that is not the trigger goes to a group of its own and touches
-# nothing. `agent-review` deliberately stays in the review group: pressing the
-# button while a review runs should replace it, not race it. Two reviewers on
-# one pull request would spend two sessions out of a five-hour window that
-# seven sessions are measured to exhaust
-# (docs/review/golden-replay-results.md), and the older run is reviewing older
-# code anyway.
+#   * Runs that will skip — every label but `agent-review`, every comment but
+#     an authorized `/code-review` — get a group of their own, one per run.
+#     Per run, because two of them in one group cancel each other, and a
+#     cancelled run's check runs overwrite a passing review's in the rollup.
+#   * Runs that should supersede a review stay in the review's group: a new
+#     push, and the two deliberate re-review requests. Pressing one while a
+#     review runs replaces it rather than racing it — one session instead of
+#     two, on the newer code, out of a five-hour window that seven sessions
+#     are measured to exhaust (docs/review/golden-replay-results.md).
+#   * Authorization is decided here rather than in the `Decide` step, because
+#     a step runs after the run has already cancelled the review.
+#
+# The condition restates the `context` job's `if:` below in a different
+# language, because concurrency cannot read a job's decision. Change one and
+# change the other; `yarn review:concurrency:check` fails until you do.
 concurrency:
-  group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}${{ github.event.action == 'labeled' && github.event.label.name != 'agent-review' && '-inert' || '' }}
+  group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}${{ ((github.event.action == 'labeled' && github.event.label.name != 'agent-review') || (github.event_name == 'issue_comment' && !(startsWith(github.event.comment.body, '/code-review') && contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)))) && format('-inert-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 jobs:
@@ -121,7 +126,8 @@ jobs:
     # Everything else is filtered below with the API.
     if: >-
       (github.event_name != 'issue_comment' ||
-        (github.event.issue.pull_request && startsWith(github.event.comment.body, '/code-review'))) &&
+        (github.event.issue.pull_request && startsWith(github.event.comment.body, '/code-review') &&
+          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))) &&
       (github.event.action != 'labeled' || github.event.label.name == 'agent-review')
     outputs:
       run: ${{ steps.decide.outputs.run }}
@@ -178,9 +184,14 @@ jobs:
               ;;
             issue_comment)
               PR="$COMMENT_NUMBER"
+              # Unreachable today: the job `if:` admits no other association,
+              # and it has to, because authorization decided here would be
+              # decided too late — the run has already joined the concurrency
+              # group and cancelled the review by the time this line runs.
+              # Kept as drift defence between the two expressions.
               case "$COMMENT_ASSOC" in
                 OWNER|MEMBER|COLLABORATOR) ;;
-                *) skip "/code-review from a $COMMENT_ASSOC is ignored; write access is required" ;;
+                *) echo "/code-review from a $COMMENT_ASSOC reached the comment trigger" >&2; exit 1 ;;
               esac
               # Acknowledge the request the way a reviewer bot does.
               gh api "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" -f content=eyes >/dev/null || true
@@ -464,7 +475,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [context, review]
-    if: always() && needs.review.result != 'skipped' && needs.review.outputs.skip != 'true' && needs.context.outputs.same_repo == 'true'
+    # `cancelled` belongs with `skipped`, not with `failure`: a reviewer that was
+    # superseded wrote nothing, and this job's own failure on #693 was it trying
+    # to fetch an artifact that never existed.
+    if: always() && needs.review.result != 'skipped' && needs.review.result != 'cancelled' && needs.review.outputs.skip != 'true' && needs.context.outputs.same_repo == 'true'
     permissions:
       contents: write
       issues: write
