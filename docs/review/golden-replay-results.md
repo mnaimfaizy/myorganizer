@@ -1,9 +1,18 @@
 # Golden replay results
 
-**Kept current.** This file is the running record ADR 0071 asks for: "the ADR
-that narrows CODEOWNERS and makes the agent verdict a required check can be
-written once the golden-set replay has a record." Append a row per replay run
-and keep the tier table honest; do not freeze it at a date. Interpretation —
+**Kept current.** This file is the running record ADR 0071 asks for. It was
+started to answer one question — whether the agent verdict had earned a place
+in the ruleset — and that question is now closed:
+[ADR 0073](../adr/0073-a-required-check-is-a-fact-about-the-pipeline-not-a-judgment-about-the-diff.md)
+makes the verdict advisory permanently, because a check may assert a fact about
+the pipeline and not a judgment about the diff. No number in this file reopens
+it.
+
+What the record is for now is the reviewer itself: whether a brief change helped,
+which cases are worth replaying, and what a replay costs. That is worth knowing
+whether or not anything gates on it, and it is the reason the numbers below are
+still collected. Append a row per replay run and keep the tier table honest; do
+not freeze it at a date. Interpretation —
 why a case missed, what a brief change did — belongs in a dated Research Brief
 under `docs/research/`, which is frozen and never edited
 ([ADR 0041](../adr/0041-internal-notes-have-homes.md)). The numbers live here

@@ -133,3 +133,14 @@ review workflow, all of which ADR 0070 already places in `review:human`.
 No finding count is capped; the renderer folds `nit` findings so they cannot bury the rest. Labels,
 CODEOWNERS, and the ruleset are untouched by this ADR; the ADR that narrows CODEOWNERS and adds the agent
 verdict as a required check can be written once the golden-set replay has a record.
+
+> **Amended by [ADR 0073](0073-a-required-check-is-a-fact-about-the-pipeline-not-a-judgment-about-the-diff.md).**
+> The record was collected and the ADR was written, but it does not add the verdict to the ruleset:
+> the verdict is advisory permanently, because a check may assert a fact about the pipeline and not a
+> judgment about the diff. The reviewer's work is now two checks, and it is the other one —
+> `Agent Review Ran` — that is eligible to be required. No recall number reopens this.
+>
+> Two paragraphs above, "Replay runs as a required check" was never true and is not true now:
+> `Golden Replay` is in no ruleset, which
+> [ADR 0072](0072-a-golden-case-earns-its-replay-frequency.md) makes deliberate. Noted here because
+> it sits beside a claim being corrected, not because ADR 0073 changed it.

@@ -130,6 +130,11 @@ agent verdict to the ruleset's required checks. That ADR can only be written onc
 replay record and the reviewer has a finding schema whose `blocking` is precise enough to gate on —
 the subject of the next ADR in this series.
 
+> **Amended by [ADR 0073](0073-a-required-check-is-a-fact-about-the-pipeline-not-a-judgment-about-the-diff.md).**
+> That later ADR was written, and it decided the opposite: the agent verdict is not added to the
+> ruleset, and no replay record will change that. The paragraph above still describes CODEOWNERS
+> correctly — everything is assigned to one person, so every tier meets a human in effect.
+
 `/code-review` ([ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md)) is unchanged by this
 decision except that, when run in CI, it reads the Review Tier from the job output to decide whether a
 `blocking` finding relabels the Pull Request.

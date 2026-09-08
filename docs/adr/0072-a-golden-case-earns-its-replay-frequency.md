@@ -89,6 +89,13 @@ that on the record, and the record's first entry says two of seven. And `[skip r
 judgement a human makes in a commit message, which means it can be wrong — the mitigation is that
 the frontier is cheap enough to run when unsure, not that the escape is safe.
 
+> **Amended by [ADR 0073](0073-a-required-check-is-a-fact-about-the-pipeline-not-a-judgment-about-the-diff.md).**
+> The first sentence above described the required-check question as open and waiting on the record.
+> It is closed. ADR 0073 decides `Agent Verdict` is advisory permanently, on the ground that a check
+> may assert a fact about the pipeline but not a judgment about the diff — so no recall number
+> reopens it. The replay's purpose is unchanged: it measures the reviewer, which is worth knowing
+> whether or not anything gates on it.
+
 ## Alternatives considered
 
 - **Move the replay to a nightly or 48-hourly schedule.** Rejected. The replay's input changes a
