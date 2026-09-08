@@ -20,6 +20,7 @@ import {
   type VaultMetaChange,
   type VaultMetaConvergePrompt,
   type VaultMetaDecision,
+  vaultIdentityOf,
 } from './vaultMetaConverge';
 import type { ServerVaultMeta } from './serverVaultSync';
 
@@ -171,7 +172,10 @@ describe('convergeVaultMeta', () => {
       prompt,
     });
 
-    expect(result).toEqual({ kind: 'noop-already-in-sync' });
+    expect(result).toEqual({
+      kind: 'noop-already-in-sync',
+      observedIdentity: vaultIdentityOf(makeServerMeta()),
+    });
     expect(prompt).not.toHaveBeenCalled();
   });
 
@@ -208,7 +212,10 @@ describe('convergeVaultMeta', () => {
       prompt,
     });
 
-    expect(result).toEqual({ kind: 'noop-already-in-sync' });
+    expect(result).toEqual({
+      kind: 'noop-already-in-sync',
+      observedIdentity: vaultIdentityOf(serverMetaData),
+    });
     expect(prompt).not.toHaveBeenCalled();
   });
 
@@ -422,7 +429,11 @@ describe('convergeVaultMeta', () => {
       prompt,
     });
 
-    expect(result).toEqual({ kind: 'noop-deferred', change: 'passphrase' });
+    expect(result).toEqual({
+      kind: 'noop-deferred',
+      change: 'passphrase',
+      observedIdentity: vaultIdentityOf(makeServerMeta()),
+    });
   });
 
   test('returns noop-declined when prompt returns keep-local (passphrase)', async () => {
@@ -449,7 +460,11 @@ describe('convergeVaultMeta', () => {
       prompt,
     });
 
-    expect(result).toEqual({ kind: 'noop-declined', change: 'passphrase' });
+    expect(result).toEqual({
+      kind: 'noop-declined',
+      change: 'passphrase',
+      observedIdentity: vaultIdentityOf(makeServerMeta()),
+    });
   });
 
   test('nothing is written when decision is defer (passphrase)', async () => {
@@ -698,6 +713,9 @@ describe('convergeVaultMeta', () => {
     expect(result).toEqual({
       kind: 'noop-deferred',
       change: 'different-vault',
+      observedIdentity: vaultIdentityOf(
+        makeServerMeta({ kdf_salt: 'different-salt' }),
+      ),
     });
   });
 
@@ -722,7 +740,59 @@ describe('convergeVaultMeta', () => {
     expect(result).toEqual({
       kind: 'noop-declined',
       change: 'different-vault',
+      observedIdentity: vaultIdentityOf(
+        makeServerMeta({ kdf_salt: 'different-salt' }),
+      ),
     });
+  });
+
+  // ===== observedIdentity field tests (ADR 0067) =====
+
+  test('includes observedIdentity on noop-deferred outcome (different-vault case with different server identity)', async () => {
+    const localVault = makeLocalVault();
+    const differentServerMeta = makeServerMeta({ kdf_salt: 'different-salt' });
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: differentServerMeta,
+    });
+
+    const prompt = jest.fn<
+      Promise<VaultMetaDecision>,
+      [{ change: VaultMetaChange; remote: ServerVaultMeta }]
+    >(async () => 'defer' as const);
+    const result = await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault,
+      prompt,
+    });
+
+    expect(result.kind).toBe('noop-deferred');
+    if (result.kind === 'noop-deferred') {
+      expect(result).toHaveProperty('observedIdentity');
+      expect(result.observedIdentity).toBe(
+        vaultIdentityOf(differentServerMeta),
+      );
+      // Regression test: ensure it's the SERVER identity, not local
+      const localIdentity = vaultIdentityOf(
+        makeServerMeta(), // default local salt
+      );
+      expect(result.observedIdentity).not.toBe(localIdentity);
+    }
+  });
+
+  test('does NOT include observedIdentity on skipped-no-server-meta outcome (no server read)', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue(null);
+
+    const prompt: VaultMetaConvergePrompt = jest.fn();
+    const result = await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault: makeLocalVault(),
+      prompt,
+    });
+
+    expect(result).toEqual({ kind: 'skipped-no-server-meta' });
+    expect(result).not.toHaveProperty('observedIdentity');
   });
 
   // ===== Type-level API contract test =====

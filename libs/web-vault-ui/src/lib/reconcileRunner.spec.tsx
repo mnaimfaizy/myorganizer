@@ -406,6 +406,17 @@ describe('VaultReconcileRunner', () => {
           saysSomething: true,
         },
       ],
+      refused: [
+        {
+          name: 'refused across different Vault Identity',
+          outcome: { kind: 'refused', reason: 'different-vault' },
+          // Refusal does not produce a "Vault updated" toast — the pass declines
+          // to move Ciphertext on either side, so saying "Vault updated" would be
+          // a lie. Telling the User about the standoff is the sync status's job
+          // (ADR 0067).
+          saysSomething: false,
+        },
+      ],
     } as const satisfies Record<
       VaultBlobConvergeOutcome['kind'],
       readonly ConvergedOutcomeCase[]

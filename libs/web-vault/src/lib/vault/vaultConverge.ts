@@ -14,12 +14,24 @@
  * hand-written fan-outs that agreed about five Vault Blob Types and destroyed
  * the sixth. See [ADR 0054](../../../../../docs/adr/0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md).
  *
- * Note what this function is never handed: Vault Meta. Whether two sides may
- * be merged is answered by decrypting the server's copy and nothing else, so
- * meta equality cannot creep back in as a gate here — there is no meta to
- * compare. Changing a passphrase rewraps the same Master Key, which would make
- * such a gate fire a destructive prompt on the most routine security action
- * the product offers.
+ * Exactly one thing about a Vault Meta reaches a decision here: the Vault
+ * Identity. Whether two sides may be *merged* is still answered by decrypting
+ * the server's copy and nothing else, so meta equality cannot creep back in as
+ * a gate — changing a passphrase rewraps the same Master Key, and such a gate
+ * would fire a destructive prompt on the most routine security action the
+ * product offers. But whether the two sides are the same Vault *at all* is a
+ * question that comes before merging, and it is answered by the Vault Identity
+ * alone: a Vault Blob is never taken across one that differs
+ * ([ADR 0067](../../../../../docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)).
+ * That comparison costs one field and needs no Master Key, so it holds on a
+ * locked device — where decrypting the remote copy to answer the same question
+ * could only guess or defer ([#571](https://github.com/mnaimfaizy/myorganizer/issues/571)).
+ *
+ * The observation behind that comparison is also recorded here, per User,
+ * whenever a caller supplies one — matching identity or not. Recording is
+ * what lets `computeVaultSyncStatus` derive a standoff from local state alone
+ * afterwards, without a flag anyone has to remember to clear (ADR 0067,
+ * decision point 7).
  */
 import {
   EncryptedBlobV1,
@@ -40,13 +52,22 @@ import type {
   VaultRecordType,
   VaultStorageV1,
 } from './localVaultStorage';
-import { getServerVaultBlob, type ServerVaultBlob } from './serverVaultSync';
+import {
+  getServerVaultBlob,
+  type ServerVaultBlob,
+  type ServerVaultMeta,
+} from './serverVaultSync';
 import {
   VAULT_BLOB_CONVERGE_STRATEGIES,
   VAULT_BLOB_FIELDS,
 } from './vaultBlobFields';
 import type { VaultHandle } from './vaultHandle';
-import { serverEncryptedBlobToLocal, toEncryptedBlobV1 } from './vaultShapes';
+import { vaultIdentityOf } from './vaultMetaConverge';
+import {
+  localToServerMeta,
+  serverEncryptedBlobToLocal,
+  toEncryptedBlobV1,
+} from './vaultShapes';
 
 /** The two Vault Blob endpoints convergence uses, and no others. */
 type VaultBlobApi = Pick<VaultApi, 'getVaultBlob' | 'putVaultBlob'>;
@@ -69,6 +90,7 @@ export type ConvergingVaultHandle = Pick<
   | 'recordPushSuccess'
   | 'saveEncryptedData'
   | 'decryptCiphertext'
+  | 'recordObservedVaultIdentity'
 >;
 
 /**
@@ -126,7 +148,31 @@ export type VaultBlobConvergeIdleReason =
   | 'no-local-vault';
 
 /**
- * What convergence did. One of the five things it can do.
+ * Why convergence refused to converge at all.
+ *
+ * A refusal is not an idle pass and not a question. Nothing is written on
+ * either side, nothing is asked, and — unlike every `nothing` reason — the
+ * condition is not one the next pass is expected to find resolved on its own.
+ * A caller can act on it; the sync status is what does (ADR 0067).
+ */
+export type VaultBlobConvergeRefusalReason =
+  /**
+   * The server's Vault Meta carries a different Vault Identity, so the two
+   * sides are two Vaults under two Master Keys. Taking would replace readable
+   * Ciphertext with bytes this device cannot open
+   * ([#571](https://github.com/mnaimfaizy/myorganizer/issues/571)), and there
+   * is no merge across two Vaults to offer instead.
+   *
+   * Refused rather than asked, and named as Vault Meta Converge names it:
+   * `different-vault` is already a Vault Meta Change with its own dialog and
+   * no adopt button, and asking again per Vault Blob Type would tell the User
+   * the same fact a third time in one sign-in — at a granularity where either
+   * answer discards an entire Vault one type at a time.
+   */
+  'different-vault';
+
+/**
+ * What convergence did. One of the six things it can do.
  *
  * `merged` without an `etag` means the merge is saved locally but the server
  * moved again before the retry landed, so it is still unsent — the next
@@ -135,6 +181,7 @@ export type VaultBlobConvergeIdleReason =
  */
 export type VaultBlobConvergeOutcome =
   | { kind: 'nothing'; reason: VaultBlobConvergeIdleReason }
+  | { kind: 'refused'; reason: VaultBlobConvergeRefusalReason }
   | { kind: 'sent'; etag: string }
   | { kind: 'took'; etag: string }
   | { kind: 'merged'; etag?: string }
@@ -183,6 +230,27 @@ function isConflict(error: unknown): boolean {
 }
 
 /**
+ * Whether the server's Vault Meta belongs to a Vault other than the one this
+ * device holds.
+ *
+ * A server holding no Vault Meta is not another Vault — there is nothing there
+ * to differ, and the Ciphertext this device holds is the only copy either side
+ * has. That case is a first sync, which Vault Reconcile resolves by writing
+ * this device's wrapping up.
+ */
+function isDifferentVault(
+  vault: VaultStorageV1,
+  serverMeta: ServerVaultMeta | null,
+): boolean {
+  if (!serverMeta) return false;
+
+  return (
+    vaultIdentityOf(localToServerMeta(vault)) !==
+    vaultIdentityOf(serverMeta.meta)
+  );
+}
+
+/**
  * Converge one Vault Blob Type between this device and the server.
  *
  * `remote` is a copy the caller already fetched — Vault Pull has one in hand
@@ -199,6 +267,23 @@ export async function convergeVaultBlob(options: {
   handle: ConvergingVaultHandle;
   type: VaultBlobType;
   prompt: VaultBlobConvergePrompt;
+  /**
+   * The server's Vault Meta as this pass observed it, and `null` for a server
+   * observed to hold none. Never a failed observation: a caller that could not
+   * reach the server has nothing to say here and converges nothing.
+   *
+   * Evidence, not a lookup. This function runs once per Vault Blob Type inside
+   * a loop, so fetching a Vault Meta here would be one request per type per
+   * pass, and reaching for the meta endpoint from the blob module would cross
+   * the separation ADR 0057 built structurally. The caller supplies what it
+   * saw; the classification and the decision stay here.
+   *
+   * Required, unlike `remote`. `remote` is an optimisation — omitting it gets
+   * a correct answer more slowly. This is the guard that keeps a take from
+   * destroying readable Ciphertext, and optional would mean a caller can omit
+   * it and silently get the destructive behaviour back (ADR 0067).
+   */
+  serverMeta: ServerVaultMeta | null;
   remote?: ServerVaultBlob | null;
 }): Promise<VaultBlobConvergeOutcome> {
   const { api, handle, type, prompt } = options;
@@ -206,6 +291,28 @@ export async function convergeVaultBlob(options: {
 
   const vault = handle.loadVault();
   if (!vault) return { kind: 'nothing', reason: 'no-local-vault' };
+
+  // Recorded before the guard reads it, and regardless of what the guard
+  // decides: a matching identity has to be recorded too, since that is what
+  // lets a standoff clear on its own at the next pass rather than needing
+  // something to notice it is over (ADR 0067, decision point 7). The sync
+  // status is what reads this back — this function never re-reads it in the
+  // same pass.
+  if (options.serverMeta) {
+    handle.recordObservedVaultIdentity({
+      identity: vaultIdentityOf(options.serverMeta.meta),
+    });
+  }
+
+  // Above the clean/dirty branch, and the first thing decided once the Local
+  // Vault is in hand. What selects between those two paths is whether this
+  // device happened to hold unsent Ciphertext, which has nothing to do with
+  // the hazard: the clean path takes outright, and the dirty path reaches the
+  // identical `takeRemote` through a `keep-remote` answer. Guarding one of
+  // them is the two-places shape #512 punished (ADR 0067).
+  if (isDifferentVault(vault, options.serverMeta)) {
+    return { kind: 'refused', reason: 'different-vault' };
+  }
 
   const context: ConvergeContext = { api, handle, type, field, prompt, vault };
   const local = vault.data[field];

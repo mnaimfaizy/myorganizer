@@ -103,6 +103,19 @@ export type VaultHandle = LocalVaultAccess & {
    */
   recordVaultMetaAgreement(options: { meta: VaultMetaV1 }): Promise<void>;
   /**
+   * The Vault Identity a pass last observed on the server for this owner, or
+   * `undefined` when no pass ever has. See CONTEXT.md's "Observed Vault
+   * Identity" entry and ADR 0067.
+   */
+  observedVaultIdentity(): string | undefined;
+  /**
+   * Record the Vault Identity a pass just observed on the server for this
+   * owner — whether or not it matches this device's own. Called from
+   * `convergeVaultBlob`, the one place a pass's observation of the server's
+   * Vault Meta reaches a decision.
+   */
+  recordObservedVaultIdentity(options: { identity: string }): void;
+  /**
    * Whether this device has already been asked this question — `change` about
    * `meta` — and declined it. Derived by comparing the Vault Meta and the Vault
    * Meta Change against this owner's Vault Meta Refusal, never read from a flag
@@ -281,13 +294,14 @@ export function createVaultHandle(options: {
       reportVaultReplaced();
     },
     // Explicit Local Vault removal (ADR 0033) also removes this owner's Sync
-    // Bookmarks (ADR 0058), their Vault Meta Refusals (ADR 0066) and their
-    // pending Recovery Key Acknowledgment (ADR 0069) — the per-User namespaces
-    // are removed together because a bookmark, a refusal or an owed
-    // Acknowledgment about a Vault this device no longer holds is stale by
-    // construction. The Acknowledgment's wrapping fingerprint already retires
-    // the question when the wrapping moves; clearing it here is belt-and-braces
-    // beside that guard, consistent with its neighbours.
+    // Bookmarks, Vault Meta Bookmark and Observed Vault Identity (ADR 0058,
+    // ADR 0067), their Vault Meta Refusals (ADR 0066) and their pending
+    // Recovery Key Acknowledgment (ADR 0069) — the per-User namespaces are
+    // removed together because a bookmark, an observation, a refusal or an
+    // owed Acknowledgment about a Vault this device no longer holds is stale
+    // by construction. The Acknowledgment's wrapping fingerprint already
+    // retires the question when the wrapping moves; clearing it here is
+    // belt-and-braces beside that guard, consistent with its neighbours.
     removeVault: () => {
       access.removeVault();
       bookmarks.removeBookmarks();
@@ -304,6 +318,8 @@ export function createVaultHandle(options: {
     },
     lastAgreedVaultMetaHash: bookmarks.lastAgreedVaultMetaHash,
     recordVaultMetaAgreement: bookmarks.recordVaultMetaAgreement,
+    observedVaultIdentity: bookmarks.observedVaultIdentity,
+    recordObservedVaultIdentity: bookmarks.recordObservedVaultIdentity,
     isVaultMetaRefused: refusals.isRefused,
     recordVaultMetaRefusal: refusals.record,
     async isRecoveryKeyUnacknowledged() {

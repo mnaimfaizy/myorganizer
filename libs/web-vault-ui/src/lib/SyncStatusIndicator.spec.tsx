@@ -247,4 +247,76 @@ describe('SyncStatusIndicator', () => {
       iconElement?.querySelector('[aria-hidden="true"]'),
     ).toBeInTheDocument();
   });
+
+  test('standoff status renders visibly different from pending and terminal', () => {
+    const status: VaultSyncStatus = {
+      kind: 'standoff',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+
+    render(<SyncStatusIndicator status={status} />);
+
+    const label = screen.getByTestId('sync-status-label');
+    const detail = screen.getByTestId('sync-status-detail');
+
+    expect(label).toBeInTheDocument();
+    expect(label.textContent).toBe('This vault is not the one on the server');
+    expect(detail).toBeInTheDocument();
+    // Ensure it's different from pending's "Changes not yet sent"
+    expect(label.textContent).not.toBe('Changes not yet sent');
+    // Ensure it's different from terminal's "Some changes could not be saved"
+    expect(label.textContent).not.toBe('Some changes could not be saved');
+  });
+
+  test('standoff status detail mentions data is intact and readable', () => {
+    const status: VaultSyncStatus = {
+      kind: 'standoff',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+
+    render(<SyncStatusIndicator status={status} />);
+
+    const detail = screen.getByTestId('sync-status-detail');
+    expect(detail.textContent).toContain('intact and readable');
+    // Ensure it reassures the user data is safe, not lost/destroyed
+    expect(detail.textContent).toContain('nothing here has been lost');
+    expect(detail.textContent).toContain('data stays');
+  });
+
+  test('retry button is absent when onRetry is provided but canRetry is false (standoff)', () => {
+    const onRetry = jest.fn();
+    const status: VaultSyncStatus = {
+      kind: 'standoff',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+
+    render(<SyncStatusIndicator status={status} onRetry={onRetry} />);
+
+    expect(
+      screen.queryByTestId('sync-status-retry-button'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('standoff status region announces label and detail for screen readers', () => {
+    const status: VaultSyncStatus = {
+      kind: 'standoff',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+
+    render(<SyncStatusIndicator status={status} />);
+
+    const statusRegion = screen.getByRole('status');
+    expect(statusRegion.textContent).toContain(
+      'This vault is not the one on the server',
+    );
+    expect(statusRegion.textContent).toContain('intact and readable');
+  });
 });

@@ -174,6 +174,26 @@ export function vaultMetaIdentity(meta: VaultMetaV1): string {
 }
 
 /**
+ * The Vault Identity a Vault Meta carries: which Vault it belongs to, and
+ * nothing about how that Vault is opened.
+ *
+ * Read through the same pinned facet `different-vault` divergence is read
+ * through, so "these two Vault Metas are two Vaults" has exactly one
+ * definition and cannot drift into a second. Rewrapping — a changed
+ * passphrase, a replaced Recovery Key — re-derives from the salt the Vault
+ * already holds and never moves this, while `initialize` mints a fresh one
+ * beside a fresh Master Key.
+ *
+ * This is the one thing about a Vault Meta a Vault Blob decision may rest on
+ * ([ADR 0067](../../../../../docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)),
+ * and unlike everything else about opening a Vault it is answerable without
+ * unlocking anything — which is what lets a locked device keep converging.
+ */
+export function vaultIdentityOf(meta: VaultMetaV1): string {
+  return stableStringify(VAULT_META_CHANGE_FACETS['different-vault'](meta));
+}
+
+/**
  * The three answers to "start using the new wrapping here?".
  *
  * `defer` is the answer given by a User who gave no answer — a dismissed
@@ -189,30 +209,50 @@ export type VaultMetaConvergePrompt = (params: {
   remote: ServerVaultMeta;
 }) => Promise<VaultMetaDecision> | VaultMetaDecision;
 
+/**
+ * The Vault Identity this pass saw on the server, reported on every outcome
+ * reached after the server's Vault Meta was actually read.
+ *
+ * Evidence, not a write: this module cannot write (its `api` is one read-only
+ * method and it holds no handle), so it reports what it saw and lets
+ * `settleVaultMeta` record it. That split is what lets the Observed Vault
+ * Identity be recorded by the pass that reads the Vault Meta, rather than only
+ * by `convergeVaultBlob` — which a differing identity stops from running, so
+ * recording only there could never observe the very case it exists to report
+ * (ADR 0067, decision point 7).
+ *
+ * Absent on the three `skipped-*` outcomes, which are reached without an
+ * observation: no Local Vault, no Session, or no Vault Meta on the server.
+ */
+type ObservedIdentity = { observedIdentity: string };
+
 export type VaultMetaConvergeResult =
   /** No Local Vault on this device — there is no wrapping to replace. */
   | { kind: 'skipped-no-local-vault' }
   | { kind: 'skipped-not-authenticated' }
   /** The server holds no Vault Meta yet. First sync is Vault Reconcile's job. */
   | { kind: 'skipped-no-server-meta' }
-  | { kind: 'noop-already-in-sync' }
+  | ({ kind: 'noop-already-in-sync' } & ObservedIdentity)
   /** The User answered, and the answer was to leave this device alone. */
-  | { kind: 'noop-declined'; change: VaultMetaChange }
+  | ({ kind: 'noop-declined'; change: VaultMetaChange } & ObservedIdentity)
   /** The User gave no answer. Nothing was written; ask again later. */
-  | { kind: 'noop-deferred'; change: VaultMetaChange }
+  | ({ kind: 'noop-deferred'; change: VaultMetaChange } & ObservedIdentity)
   /**
    * The User answered `adopt-remote` for a change that cannot be adopted.
    * Reported rather than silently treated as `keep-local`: an answer that
    * cannot be carried out is something the caller has to know it gave, and a
    * silent downgrade would hide a UI offering an action the library refuses.
    */
-  | { kind: 'refused-not-adoptable'; change: VaultMetaChange }
-  | {
+  | ({
+      kind: 'refused-not-adoptable';
+      change: VaultMetaChange;
+    } & ObservedIdentity)
+  | ({
       kind: 'adopted-remote';
       change: VaultMetaChange;
       /** The Local Vault to save: the remote wrapping over local Ciphertext. */
       nextLocalVault: VaultStorageV1;
-    };
+    } & ObservedIdentity);
 
 /**
  * Converge one User's Vault Meta with the server's, asking before replacing.
@@ -248,13 +288,19 @@ export async function convergeVaultMeta(options: {
     return { kind: 'skipped-no-server-meta' };
   }
 
+  // Every outcome below this line follows a real observation of the server's
+  // Vault Meta, so every one of them carries it. Read once here rather than
+  // per branch: a branch that forgot it would silently under-report a
+  // standoff, which is the failure this evidence exists to prevent.
+  const observedIdentity = vaultIdentityOf(serverMeta.meta);
+
   const divergence = describeVaultMetaDivergence({
     local: localToServerMeta(localVault),
     remote: serverMeta.meta,
   });
 
   if (divergence.kind === 'none') {
-    return { kind: 'noop-already-in-sync' };
+    return { kind: 'noop-already-in-sync', observedIdentity };
   }
 
   const decision = await options.prompt({
@@ -263,11 +309,19 @@ export async function convergeVaultMeta(options: {
   });
 
   if (decision === 'defer') {
-    return { kind: 'noop-deferred', change: divergence.change };
+    return {
+      kind: 'noop-deferred',
+      change: divergence.change,
+      observedIdentity,
+    };
   }
 
   if (decision === 'keep-local') {
-    return { kind: 'noop-declined', change: divergence.change };
+    return {
+      kind: 'noop-declined',
+      change: divergence.change,
+      observedIdentity,
+    };
   }
 
   if (!VAULT_META_CHANGE_ADOPTABLE[divergence.change]) {
@@ -275,12 +329,17 @@ export async function convergeVaultMeta(options: {
     // is no Ciphertext here it can open. Abandoning this device's Vault for
     // another is an explicit removal (ADR 0033), never a wrapping quietly
     // swapped in underneath the data it cannot decrypt.
-    return { kind: 'refused-not-adoptable', change: divergence.change };
+    return {
+      kind: 'refused-not-adoptable',
+      change: divergence.change,
+      observedIdentity,
+    };
   }
 
   return {
     kind: 'adopted-remote',
     change: divergence.change,
+    observedIdentity,
     nextLocalVault: adoptServerMetaIntoLocalVault({
       localVault,
       meta: serverMeta.meta,

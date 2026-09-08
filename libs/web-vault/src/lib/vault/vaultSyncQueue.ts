@@ -31,6 +31,7 @@
  */
 import { VaultApi, VaultBlobType } from '@myorganizer/app-api-client';
 
+import { observeServerVaultMetaOnce } from './serverVaultSync';
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
 import {
   convergeVaultBlob,
@@ -213,8 +214,14 @@ const drainAfterDelay: VaultSyncDrainScheduler = (drain) => {
 };
 
 export function createVaultSyncQueue(options: {
-  /** The two Vault Blob endpoints convergence uses, and no others. */
-  api: Pick<VaultApi, 'getVaultBlob' | 'putVaultBlob'>;
+  /**
+   * The Vault Blob endpoints convergence uses, plus the one read a drain owes
+   * it: `getVaultMeta` is this drain's observation of the server's Vault Meta,
+   * which convergence needs to refuse a take across a differing Vault Identity
+   * ([ADR 0067](../../../../../docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)).
+   * Read only — a queue cannot write a Vault Meta.
+   */
+  api: Pick<VaultApi, 'getVaultBlob' | 'putVaultBlob' | 'getVaultMeta'>;
   /** Asked only for the Vault Blob Types pinned `promptOnConflict`. */
   prompt: VaultBlobConvergePrompt;
   schedule?: VaultSyncDrainScheduler;
@@ -262,6 +269,13 @@ export function createVaultSyncQueue(options: {
      */
     const stalled = new Set<VaultBlobType>();
 
+    /**
+     * This drain's one observation of the server's Vault Meta. A failed one
+     * re-throws for every type after it, so it is re-marked or stopped by the
+     * classification below exactly as a failed send would be.
+     */
+    const observeServerMeta = observeServerVaultMetaOnce(options.api);
+
     const takeNext = (): VaultBlobType | undefined => {
       for (const type of unsent) {
         if (stalled.has(type)) continue;
@@ -284,15 +298,17 @@ export function createVaultSyncQueue(options: {
             handle,
             type,
             prompt: options.prompt,
+            serverMeta: await observeServerMeta(),
           }),
         });
 
         // Converging is not the same as agreeing. Convergence returns without
         // sending in several ordinary cases — a conflict met while the Vault
         // was locked, a merge the server outran, a User who deferred the
-        // choice — and each one leaves this device holding Ciphertext the
-        // server has not got. Ask the Sync Bookmark rather than reading the
-        // outcome's shape: the bookmark is what makes a Vault Blob unsent, so
+        // choice, a refusal to cross a differing Vault Identity — and each one
+        // leaves this device holding Ciphertext the server has not got. Ask
+        // the Sync Bookmark rather than reading the outcome's shape: the
+        // bookmark is what makes a Vault Blob unsent, so
         // it cannot disagree with itself, and a seventh outcome kind added
         // later needs no branch here to be handled correctly.
         if (await handle.hasUnsentChanges(VAULT_BLOB_FIELDS[type])) {

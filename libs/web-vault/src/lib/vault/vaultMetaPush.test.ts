@@ -37,6 +37,7 @@ import {
   changePassphraseWithCurrent,
   settleVaultMeta,
 } from './vaultMetaPush';
+import { vaultIdentityOf } from './vaultMetaConverge';
 import { hashVaultMeta } from './syncBookmarkAccess';
 import { localToServerMeta } from './vaultShapes';
 
@@ -823,6 +824,22 @@ describe('settleVaultMeta', () => {
     expect(api.getVaultMeta).not.toHaveBeenCalled();
   });
 
+  // ===== Case 14a: No local vault, recordObservedVaultIdentity not called =====
+
+  test('14a: does NOT call recordObservedVaultIdentity when handle has no vault (skipped-no-local-vault)', async () => {
+    const handle = createVaultHandle({ owner });
+    const api = createApiDouble();
+    const recordObservedSpy = jest.spyOn(handle, 'recordObservedVaultIdentity');
+
+    await settleVaultMeta({
+      api,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    expect(recordObservedSpy).not.toHaveBeenCalled();
+  });
+
   // ===== Case 15: Bookmark absent (device never agreed) =====
 
   test('15: bookmark absent falls through to converge, returns {kind: "converged", ...}, and does NOT call putVaultMeta', async () => {
@@ -941,5 +958,176 @@ describe('settleVaultMeta', () => {
     expect(result.kind).toBe('converged');
     expect(prompt).toHaveBeenCalled();
     expect(api.putVaultMeta).not.toHaveBeenCalled();
+  });
+
+  // ===== Case 19: Push path records this device's identity =====
+
+  test("19: pushed path calls recordObservedVaultIdentity with this device's identity (vaultIdentityOf(meta))", async () => {
+    const handle = await setupHandle(owner, passphrase);
+    const api = createApiDouble();
+    const recordObservedSpy = jest.spyOn(handle, 'recordObservedVaultIdentity');
+
+    // Record base meta
+    const baseLocalMeta = localToServerMeta(handle.loadVault()!);
+    await handle.recordVaultMetaAgreement({ meta: baseLocalMeta });
+
+    // Change passphrase locally
+    await handle.resetPassphrase({ newPassphrase: 'new-pass' });
+
+    // Server still holds the base
+    const serverMeta = baseLocalMeta;
+    api.getVaultMeta.mockResolvedValue({
+      data: { etag: 'etag-server', updatedAt: 't1', meta: serverMeta },
+    } as AxiosResponse);
+
+    api.putVaultMeta.mockResolvedValue({
+      data: { etag: 'etag-new', updatedAt: 't2' },
+    } as AxiosResponse);
+
+    const result = await settleVaultMeta({
+      api,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    expect(result).toEqual({ kind: 'pushed-local-wrapping' });
+    expect(recordObservedSpy).toHaveBeenCalledTimes(1);
+    // The identity should be of THIS DEVICE'S new meta (after rewrap)
+    const newMeta = localToServerMeta(handle.loadVault()!);
+    const expectedIdentity = vaultIdentityOf(newMeta);
+    expect(recordObservedSpy).toHaveBeenCalledWith({
+      identity: expectedIdentity,
+    });
+  });
+
+  // ===== Case 20: noop-already-in-sync push path records this device's identity =====
+
+  test("20: noop-already-in-sync push path calls recordObservedVaultIdentity with this device's identity", async () => {
+    const handle = await setupHandle(owner, passphrase);
+    const api = createApiDouble();
+    const recordObservedSpy = jest.spyOn(handle, 'recordObservedVaultIdentity');
+
+    const localMeta = localToServerMeta(handle.loadVault()!);
+    await handle.recordVaultMetaAgreement({ meta: localMeta });
+
+    // Server holds same meta
+    api.getVaultMeta.mockResolvedValue({
+      data: { etag: 'etag-server', updatedAt: 't1', meta: localMeta },
+    } as AxiosResponse);
+
+    const result = await settleVaultMeta({
+      api,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    expect(result).toEqual({ kind: 'noop-already-in-sync' });
+    expect(recordObservedSpy).toHaveBeenCalledTimes(1);
+    // The identity should be of THIS DEVICE'S meta (unchanged, still in sync)
+    const expectedIdentity = vaultIdentityOf(localMeta);
+    expect(recordObservedSpy).toHaveBeenCalledWith({
+      identity: expectedIdentity,
+    });
+  });
+
+  // ===== Case 21: Converge records SERVER's identity on different-vault divergence (standoff case) =====
+
+  test("21: converge with different-vault divergence records SERVER's identity (standoff case), not local", async () => {
+    const handle = await setupHandle(owner, passphrase);
+    const api = createApiDouble();
+    const recordObservedSpy = jest.spyOn(handle, 'recordObservedVaultIdentity');
+
+    const baseLocalMeta = localToServerMeta(handle.loadVault()!);
+    await handle.recordVaultMetaAgreement({ meta: baseLocalMeta });
+
+    // Change passphrase locally (changes local identity)
+    await handle.resetPassphrase({ newPassphrase: 'new-pass' });
+    const newLocalMeta = localToServerMeta(handle.loadVault()!);
+
+    // Server holds a completely different vault (different salt)
+    const differentServerMeta = makeServerMeta({ kdf_salt: 'different-salt' });
+    api.getVaultMeta.mockResolvedValue({
+      data: { etag: 'etag-server', updatedAt: 't1', meta: differentServerMeta },
+    } as AxiosResponse);
+
+    const prompt = jest.fn().mockResolvedValue('defer');
+    const result = await settleVaultMeta({
+      api,
+      handle,
+      prompt,
+    });
+
+    // Should have fallen through to converge
+    expect(result.kind).toBe('converged');
+
+    // recordObservedVaultIdentity should be called exactly once (from converge result)
+    expect(recordObservedSpy).toHaveBeenCalledTimes(1);
+    // The identity should be of SERVER's meta, not local's
+    const serverIdentity = vaultIdentityOf(differentServerMeta);
+    const localIdentity = vaultIdentityOf(newLocalMeta);
+    expect(serverIdentity).not.toBe(localIdentity);
+    expect(recordObservedSpy).toHaveBeenCalledWith({
+      identity: serverIdentity,
+    });
+  });
+
+  // ===== Case 22: skipped-not-authenticated does NOT record observed identity =====
+
+  test('22: skipped-not-authenticated from initial getServerVaultMeta does NOT call recordObservedVaultIdentity', async () => {
+    const handle = await setupHandle(owner, passphrase);
+    const api = createApiDouble();
+    const recordObservedSpy = jest.spyOn(handle, 'recordObservedVaultIdentity');
+
+    const baseLocalMeta = localToServerMeta(handle.loadVault()!);
+    await handle.recordVaultMetaAgreement({ meta: baseLocalMeta });
+
+    // getVaultMeta rejects with 401
+    const authError = new Error('Unauthorized') as Error & {
+      response?: { status: number };
+    };
+    authError.response = { status: 401 };
+    api.getVaultMeta.mockRejectedValue(authError);
+
+    const result = await settleVaultMeta({
+      api,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    expect(result).toEqual({ kind: 'skipped-not-authenticated' });
+    expect(recordObservedSpy).not.toHaveBeenCalled();
+  });
+
+  // ===== Case 23: skipped-no-server-meta does NOT record observed identity =====
+
+  test('23: skipped-no-server-meta from converge does NOT call recordObservedVaultIdentity', async () => {
+    const handle = await setupHandle(owner, passphrase);
+    const api = createApiDouble();
+    const recordObservedSpy = jest.spyOn(handle, 'recordObservedVaultIdentity');
+
+    // Do NOT set a bookmark (device never agreed)
+    // Just ensure we have a local vault
+    expect(handle.loadVault()).not.toBeNull();
+
+    // getVaultMeta rejects with 404 (server has no Vault Meta)
+    const notFoundError = new Error('Not Found') as Error & {
+      response?: { status: number };
+    };
+    notFoundError.response = { status: 404 };
+    api.getVaultMeta.mockRejectedValue(notFoundError);
+
+    const result = await settleVaultMeta({
+      api,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    // Falls through to converge, which returns skipped-no-server-meta
+    expect(result.kind).toBe('converged');
+    if (result.kind === 'converged') {
+      expect(result.result.kind).toBe('skipped-no-server-meta');
+    }
+    // Should not have called recordObservedVaultIdentity
+    expect(recordObservedSpy).not.toHaveBeenCalled();
   });
 });
