@@ -22,6 +22,7 @@ import {
   type VaultMetaDecision,
   vaultIdentityOf,
 } from './vaultMetaConverge';
+import { expectStillPending } from './promisePending.testutil';
 import type { ServerVaultMeta } from './serverVaultSync';
 
 function makeLocalVault(
@@ -1115,13 +1116,9 @@ describe('convergeVaultMeta', () => {
       identity: vaultIdentityOf(serverMeta),
     });
 
-    // Clean up: ensure the promise is still pending (not resolved/rejected)
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), 10),
-    );
-    await expect(
-      Promise.race([convergePromise, timeoutPromise]),
-    ).rejects.toThrow('timeout');
+    // The pass has not settled, so the recording above was not simply it
+    // finishing early — and the deliberate hang stays inside this test.
+    await expectStillPending(convergePromise);
   });
 
   test('onObserved identity equals observedIdentity on all post-observation outcomes', async () => {

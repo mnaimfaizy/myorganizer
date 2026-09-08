@@ -38,6 +38,7 @@ import {
   settleVaultMeta,
 } from './vaultMetaPush';
 import { vaultIdentityOf, type VaultMetaDecision } from './vaultMetaConverge';
+import { expectStillPending } from './promisePending.testutil';
 import { hashVaultMeta } from './syncBookmarkAccess';
 import { localToServerMeta } from './vaultShapes';
 
@@ -1174,12 +1175,8 @@ describe('settleVaultMeta', () => {
       identity: serverIdentity,
     });
 
-    // Clean up: ensure the promise is still pending
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('timeout')), 10),
-    );
-    await expect(Promise.race([settlePromise, timeoutPromise])).rejects.toThrow(
-      'timeout',
-    );
+    // The pass has not settled, so the recording above was not simply it
+    // finishing early — and the deliberate hang stays inside this test.
+    await expectStillPending(settlePromise);
   });
 });
