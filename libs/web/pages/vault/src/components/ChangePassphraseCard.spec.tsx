@@ -243,7 +243,7 @@ describe('ChangePassphraseCard', () => {
       ).toBeInTheDocument();
     });
 
-    test('4: handle present and masterKeyBytes non-null → form enabled, submit button enabled', () => {
+    test('4: handle present and masterKeyBytes non-null → form enabled, submit button enabled, no unavailability message', () => {
       (useVaultDisabledState as jest.Mock).mockReturnValue('enabled');
 
       render(<ChangePassphraseCard />);
@@ -252,6 +252,9 @@ describe('ChangePassphraseCard', () => {
       const submitButton = screen.getByTestId('change-passphrase-submit');
       expect(submitButton).not.toBeDisabled();
       expect(submitButton).toHaveTextContent('Change passphrase');
+      expect(
+        screen.queryByTestId('change-passphrase-unavailable'),
+      ).not.toBeInTheDocument();
     });
   });
 

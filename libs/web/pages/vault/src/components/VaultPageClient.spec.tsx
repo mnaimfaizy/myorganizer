@@ -11,7 +11,7 @@ jest.mock('../hooks', () => ({
     rotating: false,
     rotateRecoveryKey: jest.fn(),
   }),
-  useVaultDisabledState: jest.fn(() => 'locked'),
+  useVaultDisabledState: jest.fn(),
   useVaultUnlock: () => ({ unlocking: false, unlock: jest.fn() }),
 }));
 
@@ -44,12 +44,14 @@ jest.mock('@myorganizer/web-vault-ui', () => {
 });
 
 import { VaultPageClient } from './VaultPageClient';
+import { useVaultDisabledState } from '../hooks';
 
 describe('VaultPageClient', () => {
   const ORIGINAL_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   beforeEach(() => {
     delete process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    (useVaultDisabledState as jest.Mock).mockReturnValue('locked');
   });
 
   afterEach(() => {
@@ -144,5 +146,52 @@ describe('VaultPageClient', () => {
       unlockTitle.compareDocumentPosition(changePassphraseTitle) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  describe('Cloud backup unavailability policy (ADR 0068)', () => {
+    test('E1: no-local-vault state shows vault policy reason, not config reason', () => {
+      // Policy takes precedence: with no Local Vault, how Google Drive is configured
+      // is not the reason the card is unavailable.
+      (useVaultDisabledState as jest.Mock).mockReturnValue('no-local-vault');
+
+      render(<VaultPageClient />);
+
+      // Should show the policy reason from vaultOperationAvailability
+      expect(
+        screen.getByText('There is no vault on this device to back up.'),
+      ).toBeInTheDocument();
+
+      // Should NOT show the config reason
+      expect(
+        screen.queryByText(
+          /Cloud backup is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID/,
+        ),
+      ).not.toBeInTheDocument();
+    });
+
+    test('E2: signed-out state shows vault policy reason, not config reason', () => {
+      (useVaultDisabledState as jest.Mock).mockReturnValue('signed-out');
+
+      render(<VaultPageClient />);
+
+      // Should show the policy reason (signed-out copy) — appears in multiple cards,
+      // so check that at least one appears
+      const signedOutMessages = screen.getAllByText(
+        'Your vault is not available on this device right now.',
+      );
+      expect(signedOutMessages.length).toBeGreaterThan(0);
+
+      // Should NOT show the old "Sign in to enable cloud backup" string
+      expect(
+        screen.queryByText(/Sign in to enable cloud backup/),
+      ).not.toBeInTheDocument();
+
+      // Should NOT show the config reason
+      expect(
+        screen.queryByText(
+          /Cloud backup is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID/,
+        ),
+      ).not.toBeInTheDocument();
+    });
   });
 });

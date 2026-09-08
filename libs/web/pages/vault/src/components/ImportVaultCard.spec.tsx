@@ -1,6 +1,10 @@
 /* eslint-disable import/first -- jest.mock must precede application imports */
 import '@testing-library/jest-dom';
 
+jest.mock('../hooks', () => ({
+  useVaultDisabledState: jest.fn(),
+}));
+
 jest.mock('@myorganizer/web-vault-ui', () => ({
   useOptionalVaultSession: jest.fn(),
   getVaultImportErrorMessage: jest.fn(
@@ -33,6 +37,7 @@ import {
 } from '@myorganizer/web-vault';
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 import { useToast } from '@myorganizer/web-ui';
+import { useVaultDisabledState } from '../hooks';
 
 import { ImportVaultCard } from './ImportVaultCard';
 
@@ -84,6 +89,7 @@ describe('ImportVaultCard', () => {
 
     mockToast = jest.fn();
     (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
+    (useVaultDisabledState as jest.Mock).mockReturnValue('enabled');
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: createMockHandle(),
     });
@@ -273,5 +279,67 @@ describe('ImportVaultCard', () => {
         /After import, unlock with the backup's passphrase or Recovery Key\./,
       ),
     ).toBeInTheDocument();
+  });
+
+  describe('Vault disabled state handling', () => {
+    test('C1: signed-out state disables file input and button, shows unavailability reason', () => {
+      (useVaultDisabledState as jest.Mock).mockReturnValue('signed-out');
+
+      render(<ImportVaultCard />);
+
+      expect(screen.getByTestId('import-vault-file')).toBeDisabled();
+      expect(screen.getByTestId('import-vault-button')).toBeDisabled();
+      expect(
+        screen.getByTestId('import-vault-unavailable'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'Your vault is not available on this device right now.',
+        ),
+      ).toBeInTheDocument();
+    });
+
+    test('C2: no-local-vault state disables file input and button, shows correct unavailability reason', () => {
+      (useVaultDisabledState as jest.Mock).mockReturnValue('no-local-vault');
+
+      render(<ImportVaultCard />);
+
+      expect(screen.getByTestId('import-vault-file')).toBeDisabled();
+      expect(screen.getByTestId('import-vault-button')).toBeDisabled();
+      expect(
+        screen.getByTestId('import-vault-unavailable'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          'Set up a local vault on this device before importing a backup into it.',
+        ),
+      ).toBeInTheDocument();
+    });
+
+    test('C3: locked state enables file input and button (import does not need Master Key per ADR 0068 / #625 regression guard)', async () => {
+      (useVaultDisabledState as jest.Mock).mockReturnValue('locked');
+
+      render(<ImportVaultCard />);
+
+      expect(screen.getByTestId('import-vault-file')).not.toBeDisabled();
+      expect(
+        screen.queryByTestId('import-vault-unavailable'),
+      ).not.toBeInTheDocument();
+
+      // File input and button should be functional in locked state
+      selectVaultFile();
+      expect(screen.getByTestId('import-vault-button')).not.toBeDisabled();
+    });
+
+    test('C4: enabled state enables file input and button', () => {
+      (useVaultDisabledState as jest.Mock).mockReturnValue('enabled');
+
+      render(<ImportVaultCard />);
+
+      expect(screen.getByTestId('import-vault-file')).not.toBeDisabled();
+      expect(
+        screen.queryByTestId('import-vault-unavailable'),
+      ).not.toBeInTheDocument();
+    });
   });
 });

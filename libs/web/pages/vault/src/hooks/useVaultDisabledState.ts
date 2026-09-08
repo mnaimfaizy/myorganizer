@@ -2,9 +2,9 @@
 
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 
-type DisabledState = 'signed-out' | 'no-local-vault' | 'locked' | 'enabled';
+import type { VaultDisabledState } from '../policy';
 
-export function useVaultDisabledState(): DisabledState {
+export function useVaultDisabledState(): VaultDisabledState {
   const vaultSession = useOptionalVaultSession();
   const handle = vaultSession?.handle ?? null;
   const masterKeyBytes = vaultSession?.masterKeyBytes ?? null;
@@ -13,7 +13,7 @@ export function useVaultDisabledState(): DisabledState {
   const isSignedOut = handle === null;
   const hasLocalVault = handle !== null && handle.loadVault() !== null;
 
-  const disabledState: DisabledState = isSignedOut
+  const disabledState: VaultDisabledState = isSignedOut
     ? 'signed-out'
     : !hasLocalVault
       ? 'no-local-vault'

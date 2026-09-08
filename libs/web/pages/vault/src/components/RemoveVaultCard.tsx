@@ -16,7 +16,13 @@ import {
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 
 import { getErrorMessage } from '../utils/getErrorMessage';
-import { useExportVault, useLatestCloudBackup } from '../hooks';
+import {
+  useExportVault,
+  useLatestCloudBackup,
+  useVaultDisabledState,
+} from '../hooks';
+import { VAULT_OPERATIONS, vaultOperationAvailability } from '../policy';
+import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
 /**
  * Format an ISO date string to locale string, with fallback.
@@ -35,6 +41,11 @@ export function RemoveVaultCard() {
   const { toast } = useToast();
   const vaultSession = useOptionalVaultSession();
   const handle = vaultSession?.handle ?? null;
+  const disabledState = useVaultDisabledState();
+  const { allowed, unavailableReason } = vaultOperationAvailability(
+    VAULT_OPERATIONS.Removal,
+    disabledState,
+  );
 
   const [open, setOpen] = useState(false);
   const { exporting, exportVaultNow } = useExportVault();
@@ -78,11 +89,6 @@ export function RemoveVaultCard() {
       });
     }
   }, [handle, toast]);
-
-  // Render nothing if there's no vault or this vault is not owned by this user
-  if (!handle || !handle.hasOwnedVault()) {
-    return null;
-  }
 
   /**
    * Render the confirmation dialog description based on backup status.
@@ -160,10 +166,15 @@ export function RemoveVaultCard() {
             not delete your account, does not touch any other user's Local Vault
             on this device, and does not affect a cloud backup if one exists.
           </p>
+          <VaultUnavailableNotice
+            reason={unavailableReason}
+            testId="remove-vault-unavailable"
+          />
           <div className="flex gap-2">
             <Button
               variant="destructive"
               data-testid="remove-vault-button"
+              disabled={!allowed}
               onClick={handleOpenDialog}
             >
               Remove local vault

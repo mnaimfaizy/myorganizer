@@ -8,6 +8,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 jest.mock('../hooks', () => ({
   useLatestCloudBackup: jest.fn(),
   useExportVault: jest.fn(),
+  useVaultDisabledState: jest.fn(),
 }));
 
 /**
@@ -66,7 +67,11 @@ import { RemoveVaultCard } from './RemoveVaultCard';
 import type { VaultHandle } from '@myorganizer/web-vault';
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 import { useToast } from '@myorganizer/web-ui';
-import { useLatestCloudBackup, useExportVault } from '../hooks';
+import {
+  useLatestCloudBackup,
+  useExportVault,
+  useVaultDisabledState,
+} from '../hooks';
 
 // === Mock helpers ===
 
@@ -94,6 +99,7 @@ describe('RemoveVaultCard', () => {
     jest.clearAllMocks();
 
     // Default mocks
+    (useVaultDisabledState as jest.Mock).mockReturnValue('enabled');
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: createMockHandle({ hasOwnedVault: () => true }),
     });
@@ -112,49 +118,68 @@ describe('RemoveVaultCard', () => {
     jest.restoreAllMocks();
   });
 
-  test('1: renders nothing when useOptionalVaultSession returns null/no handle', () => {
-    (useOptionalVaultSession as jest.Mock).mockReturnValue(null);
-
-    const { container } = render(<RemoveVaultCard />);
-    expect(container.firstChild).toBeNull();
-  });
-
-  test('2: renders nothing when handle.hasOwnedVault() returns false (Unclaimed Local Vault exclusion)', () => {
-    (useOptionalVaultSession as jest.Mock).mockReturnValue({
-      handle: createMockHandle({ hasOwnedVault: () => false }),
-    });
-
-    const { container } = render(<RemoveVaultCard />);
-    expect(screen.queryByTestId('remove-vault-button')).not.toBeInTheDocument();
-    expect(container.firstChild).toBeNull();
-  });
-
-  test('3: renders the card and button when handle.hasOwnedVault() returns true (locked)', () => {
-    (useOptionalVaultSession as jest.Mock).mockReturnValue({
-      handle: createMockHandle({
-        hasOwnedVault: () => true,
-        isUnlocked: false,
-      }),
-    });
+  test('1: signed-out state renders card, disables button, shows unavailability message', () => {
+    (useVaultDisabledState as jest.Mock).mockReturnValue('signed-out');
 
     render(<RemoveVaultCard />);
 
     expect(screen.getByTestId('card')).toBeInTheDocument();
-    expect(screen.getByTestId('remove-vault-button')).toBeInTheDocument();
+    expect(screen.getByTestId('remove-vault-button')).toBeDisabled();
+    expect(screen.getByTestId('remove-vault-unavailable')).toBeInTheDocument();
+    expect(
+      screen.getByText('Your vault is not available on this device right now.'),
+    ).toBeInTheDocument();
   });
 
-  test('4: renders the card and button when handle.hasOwnedVault() returns true (unlocked)', () => {
-    (useOptionalVaultSession as jest.Mock).mockReturnValue({
-      handle: createMockHandle({
-        hasOwnedVault: () => true,
-        isUnlocked: true,
-      }),
-    });
+  test('2: no-local-vault state renders card, disables button, shows correct unavailability message', () => {
+    (useVaultDisabledState as jest.Mock).mockReturnValue('no-local-vault');
 
     render(<RemoveVaultCard />);
 
     expect(screen.getByTestId('card')).toBeInTheDocument();
-    expect(screen.getByTestId('remove-vault-button')).toBeInTheDocument();
+    expect(screen.getByTestId('remove-vault-button')).toBeDisabled();
+    expect(screen.getByTestId('remove-vault-unavailable')).toBeInTheDocument();
+    expect(
+      screen.getByText('There is no vault on this device to remove.'),
+    ).toBeInTheDocument();
+  });
+
+  test('3: locked state renders card, enables button, no unavailability message (removal does not need Master Key per ADR 0068)', () => {
+    (useVaultDisabledState as jest.Mock).mockReturnValue('locked');
+
+    render(<RemoveVaultCard />);
+
+    expect(screen.getByTestId('card')).toBeInTheDocument();
+    expect(screen.getByTestId('remove-vault-button')).not.toBeDisabled();
+    expect(
+      screen.queryByTestId('remove-vault-unavailable'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('4: enabled state renders card, enables button', () => {
+    (useVaultDisabledState as jest.Mock).mockReturnValue('enabled');
+
+    render(<RemoveVaultCard />);
+
+    expect(screen.getByTestId('card')).toBeInTheDocument();
+    expect(screen.getByTestId('remove-vault-button')).not.toBeDisabled();
+  });
+
+  test('D5: signed-out state + attempted click does not open confirmation dialog', async () => {
+    (useVaultDisabledState as jest.Mock).mockReturnValue('signed-out');
+
+    render(<RemoveVaultCard />);
+
+    const button = screen.getByTestId('remove-vault-button');
+    expect(button).toBeDisabled();
+
+    // Try to click anyway
+    fireEvent.click(button);
+
+    // Dialog should not open
+    expect(
+      screen.queryByTestId('confirm-delete-dialog'),
+    ).not.toBeInTheDocument();
   });
 
   test('5: clicking the "Remove local vault" button opens the confirmation dialog', async () => {

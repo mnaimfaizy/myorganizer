@@ -234,6 +234,15 @@ If it is empty (or the GIS script fails to load) the page renders a
 disabled card with the message _"Cloud backup is not configured…"_ instead
 of the connect controls.
 
+The Vault operation policy answers first, though
+([ADR 0068](../adr/0068-a-locked-vault-blocks-exactly-the-operations-that-need-the-master-key.md)).
+While the User is signed out or this device holds no Local Vault, the card is
+unavailable for that reason and says so, whatever the client ID is set to — with
+nothing to back up, how Google Drive is configured is not why the card is
+unavailable. The configuration messages above are shown only once the policy
+permits cloud backup. A locked Vault does **not** hide the card: cloud backup
+moves Ciphertext and needs no Master Key.
+
 For Next.js to pick up the variable, restart `corepack yarn start:myorganizer`
 after editing `.env`. `NEXT_PUBLIC_*` values are inlined at build time.
 

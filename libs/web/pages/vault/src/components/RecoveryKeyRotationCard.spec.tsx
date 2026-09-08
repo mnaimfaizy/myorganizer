@@ -298,7 +298,7 @@ describe('RecoveryKeyRotationCard', () => {
       ).toBeInTheDocument();
     });
 
-    test('4: handle and masterKeyBytes present, passphrase field empty → mint button disabled independently (empty passphrase gates it)', () => {
+    test('4: handle and masterKeyBytes present, passphrase field empty → mint button disabled independently (empty passphrase gates it), no unavailability message', () => {
       (useOptionalVaultSession as jest.Mock).mockReturnValue({
         handle: createMockHandle({ loadVault: jest.fn().mockReturnValue({}) }),
         masterKeyBytes: new Uint8Array(32),
@@ -317,6 +317,9 @@ describe('RecoveryKeyRotationCard', () => {
         screen.queryByText('Set up a local vault'),
       ).not.toBeInTheDocument();
       expect(screen.queryByText('Unlock your vault')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('recovery-key-rotation-unavailable'),
+      ).not.toBeInTheDocument();
     });
   });
 
