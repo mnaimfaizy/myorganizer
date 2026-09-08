@@ -18,7 +18,8 @@ import { ZodError } from 'zod';
 import { cannotRun, isMain, parseArgs, readJsonOr } from './cli.mjs';
 import { formatIssues, normalizeReport } from './schema.mjs';
 
-const USAGE = 'usage: validate-review-report.mjs <report.json> [--out <path>]';
+const USAGE =
+  'usage: validate-review-report.mjs <report.json> [--out <path>] [--tier <review:label>]';
 
 export const main = (argv) => {
   const bail = cannotRun('review-validate');
@@ -28,6 +29,12 @@ export const main = (argv) => {
   if ('out' in flags && !flags.out) bail('--out needs a path');
 
   const raw = readJsonOr(inputPath, bail);
+  // In CI the tier is the classifier's job output, not whatever the reviewer
+  // wrote into the envelope (ADR 0070 item 3). The schema still checks it.
+  if ('tier' in flags) {
+    if (!flags.tier) bail('--tier needs a review:* label');
+    if (raw && typeof raw === 'object') raw.tier = flags.tier;
+  }
 
   let normalized;
   try {

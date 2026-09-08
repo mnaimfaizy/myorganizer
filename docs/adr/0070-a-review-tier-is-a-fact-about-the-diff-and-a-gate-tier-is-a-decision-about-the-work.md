@@ -72,8 +72,12 @@ different times by different authorities, and neither one changes the other.**
 7. **`review:*` is a third label set.** It is not a Surface Label, because it names neither kind nor
    area, and not an Issue Orchestration Label, because it never appears on an Issue. It is applied by
    the classifier alone. [ADR 0025](0025-pr-surface-labels.md)'s rule that a Pull Request wears Surface
-   Labels only is narrowed to: a Pull Request wears Surface Labels and at most one Review Tier label,
-   and no human applies the latter.
+   Labels only is narrowed to: a Pull Request wears Surface Labels, at most one Review Tier label, and
+   at most one Request Label. No human applies the Review Tier label. The one Request Label,
+   `agent-review`, is the opposite: a human or `ai:create-pr` puts it on to ask the review workflow to
+   run now, the workflow takes it off when the run ends, and it classifies nothing. It exists because
+   a reviewer bot must be callable on demand and the repository has no App identity a reviewer could
+   be requested through. It never appears on an Issue.
 
 ## Considered Options
 

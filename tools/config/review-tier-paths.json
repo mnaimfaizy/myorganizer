@@ -46,6 +46,7 @@
       "patterns": [
         ".agents/skills/code-review/**",
         "tools/scripts/review/**",
+        ".github/actions/code-reviewer/**",
         ".github/agents/*review*",
         ".github/agents/*audit*"
       ]

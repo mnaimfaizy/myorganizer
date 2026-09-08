@@ -1,0 +1,475 @@
+name: Code Review
+
+# The `/code-review` skill, run in CI (ADR 0070, ADR 0071). The same skill,
+# the same JSON contract, the same validator and renderer as the terminal;
+# only the plumbing differs:
+#
+#   1. The Review Tier is computed here by the classifier and passed to the
+#      validator as `--tier`, so the job output is the truth (ADR 0070 item 3).
+#   2. The spec is resolved with the job token in its own step; the reviewer
+#      never holds a token (ADR 0071 item 8).
+#   3. The reviewer writes JSON only. A later step validates and renders it,
+#      and a separate job — the only one whose token can write — posts it. A
+#      report that fails the contract is rejected whole, the Pull Request is
+#      relabelled `review:human`, and this check fails.
+#   4. The job named "Agent Verdict" fails on `request-changes` and on a
+#      rejected report. It is a status check, never a review approval
+#      (ADR 0070 item 6). Merge policy does not change here.
+#
+# Permissions and attribution. The reviewer's job holds four read scopes and
+# nothing else; the "Publish Review" job is the only one that can write, and
+# it holds `contents: write` because `resolveReviewThread` is reported to
+# require it despite creating no commit, modifying no file and moving no ref
+# (docs/research/2026-09-07-resolve-review-thread-token.md, issue #685).
+# Splitting the job is what makes that grant safe: GitHub scopes permissions
+# per job, not per step, so the same grant on the reviewer's job would hand
+# repository write to a step that reads an untrusted diff.
+#
+# Every comment, label change and resolved thread is the job token, so all of
+# it is attributed to `github-actions[bot]` — the GitHub App installed on this
+# repository, since `GITHUB_TOKEN` is that App's installation access token. No
+# personal access token is used and none should be added: a PAT would attribute
+# machine actions to a maintainer, which is the one thing a review audit trail
+# must not do.
+#
+# The reviewer step itself — the action call, its tool allowlist, the prompt
+# discipline, and the report validation — is the composite action at
+# .github/actions/code-reviewer, shared with review-golden-replay.yml.
+#
+# How it is invoked — like any reviewer bot:
+#
+#   - automatically on every non-draft pull request (when CODE_REVIEW_MODE is
+#     `auto`, the default), on open, push, reopen, and ready-for-review;
+#   - on demand, in any mode, by adding the `agent-review` label to the pull
+#     request (the label is removed again once the run finishes, so it works
+#     as a button), by commenting `/code-review` on it (write access
+#     required), or from the Actions tab with a pull request number.
+#
+# Repository variables (Settings → Secrets and variables → Actions → Variables):
+#
+#   CODE_REVIEW_ENABLED  `false` turns the workflow off entirely; every
+#                        trigger explains and skips. Default: on.
+#   CODE_REVIEW_MODE     `auto` (default) or `manual`. In `manual`, pull
+#                        request events do not start a review; the label, the
+#                        comment, and the manual dispatch still do.
+#   CODE_REVIEW_MODEL    the model id, default `claude-sonnet-5`.
+#
+# Credential: the CLAUDE_CODE_OAUTH_TOKEN secret (a subscription token from
+# `claude setup-token`) is preferred; ANTHROPIC_API_KEY is accepted as a
+# fallback. With neither set the job explains and skips.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled]
+  issue_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Pull request number to review
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+  actions: read
+
+concurrency:
+  group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
+  cancel-in-progress: true
+
+jobs:
+  # Decides whether this event is a review request, and resolves the pull
+  # request it is about. Every trigger funnels through here so the review
+  # job below sees one shape regardless of how it was asked for.
+  context:
+    name: Review Context
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    # A comment starts a run only when it is on a pull request and is the
+    # command; everything else is filtered below with the API.
+    if: >-
+      github.event_name != 'issue_comment' ||
+      (github.event.issue.pull_request && startsWith(github.event.comment.body, '/code-review'))
+    outputs:
+      run: ${{ steps.decide.outputs.run }}
+      reason: ${{ steps.decide.outputs.reason }}
+      trigger: ${{ steps.decide.outputs.trigger }}
+      pr: ${{ steps.decide.outputs.pr }}
+      base_sha: ${{ steps.decide.outputs.base_sha }}
+      head_sha: ${{ steps.decide.outputs.head_sha }}
+      head_ref: ${{ steps.decide.outputs.head_ref }}
+      author: ${{ steps.decide.outputs.author }}
+      same_repo: ${{ steps.decide.outputs.same_repo }}
+    steps:
+      - name: Decide
+        id: decide
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ENABLED: ${{ vars.CODE_REVIEW_ENABLED }}
+          MODE: ${{ vars.CODE_REVIEW_MODE }}
+          EVENT: ${{ github.event_name }}
+          ACTION: ${{ github.event.action }}
+          LABEL: ${{ github.event.label.name }}
+          PR_EVENT_NUMBER: ${{ github.event.pull_request.number }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          COMMENT_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_ID: ${{ github.event.comment.id }}
+          COMMENT_ASSOC: ${{ github.event.comment.author_association }}
+          DISPATCH_PR: ${{ inputs.pr }}
+        run: |
+          set -euo pipefail
+          out() { echo "$1=$2" >> "$GITHUB_OUTPUT"; }
+          skip() { out run false; out reason "$1"; echo "code review skipped: $1"; echo "## Code review skipped" >> "$GITHUB_STEP_SUMMARY"; echo >> "$GITHUB_STEP_SUMMARY"; echo "$1" >> "$GITHUB_STEP_SUMMARY"; exit 0; }
+
+          if [ "${ENABLED:-true}" = 'false' ]; then
+            skip 'the CODE_REVIEW_ENABLED repository variable is false'
+          fi
+          MODE="${MODE:-auto}"
+
+          case "$EVENT" in
+            pull_request)
+              PR="$PR_EVENT_NUMBER"
+              if [ "$ACTION" = 'labeled' ]; then
+                [ "$LABEL" = 'agent-review' ] || skip "label '$LABEL' is not the agent-review trigger"
+                TRIGGER=label
+              else
+                [ "$MODE" = 'auto' ] || skip "CODE_REVIEW_MODE is $MODE; add the agent-review label or comment /code-review to request a review"
+                [ "$PR_DRAFT" != 'true' ] || skip 'the pull request is a draft'
+                TRIGGER=push
+              fi
+              ;;
+            issue_comment)
+              PR="$COMMENT_NUMBER"
+              case "$COMMENT_ASSOC" in
+                OWNER|MEMBER|COLLABORATOR) ;;
+                *) skip "/code-review from a $COMMENT_ASSOC is ignored; write access is required" ;;
+              esac
+              # Acknowledge the request the way a reviewer bot does.
+              gh api "repos/$GITHUB_REPOSITORY/issues/comments/$COMMENT_ID/reactions" -f content=eyes >/dev/null || true
+              TRIGGER=comment
+              ;;
+            workflow_dispatch)
+              PR="$DISPATCH_PR"
+              TRIGGER=dispatch
+              ;;
+            *) skip "unsupported event $EVENT" ;;
+          esac
+
+          VIEW="$(gh pr view "$PR" --repo "$GITHUB_REPOSITORY" --json number,state,isDraft,isCrossRepository,baseRefOid,headRefOid,headRefName,author)"
+          STATE="$(jq -r .state <<<"$VIEW")"
+          [ "$STATE" = 'OPEN' ] || skip "pull request #$PR is $STATE"
+
+          out run true
+          out reason "$TRIGGER"
+          out trigger "$TRIGGER"
+          out pr "$PR"
+          out base_sha "$(jq -r .baseRefOid <<<"$VIEW")"
+          out head_sha "$(jq -r .headRefOid <<<"$VIEW")"
+          out head_ref "$(jq -r .headRefName <<<"$VIEW")"
+          out author "$(jq -r .author.login <<<"$VIEW")"
+          if [ "$(jq -r .isCrossRepository <<<"$VIEW")" = 'true' ]; then out same_repo false; else out same_repo true; fi
+          echo "reviewing #$PR ($TRIGGER)"
+
+  review:
+    name: Agent Verdict
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: context
+    if: needs.context.outputs.run == 'true'
+
+    # Every scope this job holds is a read (ADR 0071 item 8: the GitHub token
+    # is never among the reviewer's tools). The reviewer's allowlist excludes
+    # `gh`, but it can run `node`, and the token is in the job environment —
+    # so the guarantee has to come from the permissions, not the allowlist.
+    # `issues` and `pull-requests` are read for the spec resolver; `actions`
+    # is read for the previous run's artifact. Everything that writes to the
+    # Pull Request happens in the publish job.
+    permissions:
+      contents: read
+      issues: read
+      pull-requests: read
+      actions: read
+
+    outputs:
+      skip: ${{ steps.preflight.outputs.skip }}
+      tier: ${{ steps.tier.outputs.label }}
+      validated: ${{ steps.reviewer.outputs.validated }}
+
+    env:
+      BASE_SHA: ${{ needs.context.outputs.base_sha }}
+      HEAD_SHA: ${{ needs.context.outputs.head_sha }}
+      HEAD_REF: ${{ needs.context.outputs.head_ref }}
+      PR_NUMBER: ${{ needs.context.outputs.pr }}
+      PR_AUTHOR: ${{ needs.context.outputs.author }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      # Required for Prisma v7 config loading if a reviewer runs backend tests.
+      DATABASE_URL: postgresql://localhost:5432/myorganizer
+
+    steps:
+      - name: Check for a reviewer credential
+        id: preflight
+        env:
+          HAS_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
+          USING: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' && 'subscription token (CLAUDE_CODE_OAUTH_TOKEN)' || 'API key (ANTHROPIC_API_KEY)' }}
+        run: |
+          if [ "$HAS_KEY" != 'true' ]; then
+            echo 'skip=true' >> "$GITHUB_OUTPUT"
+            {
+              echo '## Code review skipped'
+              echo
+              echo 'Neither `CLAUDE_CODE_OAUTH_TOKEN` (from `claude setup-token`) nor `ANTHROPIC_API_KEY` is set as a repository secret, so the reviewer did not run and there is no verdict.'
+            } >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'skip=false' >> "$GITHUB_OUTPUT"
+            echo "reviewer credential: $USING"
+          fi
+
+      # The pull request head, whatever event brought us here.
+      - name: Checkout repository
+        if: steps.preflight.outputs.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ needs.context.outputs.head_sha }}
+          fetch-depth: 0
+
+      - name: Setup Node.js 22
+        if: steps.preflight.outputs.skip != 'true'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Restore dependency cache
+        if: steps.preflight.outputs.skip != 'true'
+        id: dependency-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
+
+      - name: Install dependencies
+        if: steps.preflight.outputs.skip != 'true' && steps.dependency-cache.outputs.cache-hit != 'true'
+        run: corepack yarn install --immutable
+
+      # The classifier's output, not the label, is what the validator reads.
+      - name: Classify the diff
+        if: steps.preflight.outputs.skip != 'true'
+        id: tier
+        run: |
+          corepack yarn review:tier:check \
+            --base "$BASE_SHA" --head "$HEAD_SHA" --author "$PR_AUTHOR" \
+            --out "$RUNNER_TEMP/tier.json"
+
+      # Spec discovery with the job token: branch name, then commit
+      # references, then none. The reviewer reads the file and fetches nothing.
+      - name: Resolve the spec source
+        if: steps.preflight.outputs.skip != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p tmp/code-review
+          corepack yarn review:spec \
+            --head-ref "$HEAD_REF" --base "$BASE_SHA" --head "$HEAD_SHA" \
+            --repo "$GITHUB_REPOSITORY" --out tmp/code-review/spec.json
+
+      # The reviewer, the transcript artifact, and the validation, with the
+      # classifier's tier pinned. See .github/actions/code-reviewer.
+      - name: Run the reviewer
+        if: steps.preflight.outputs.skip != 'true'
+        id: reviewer
+        uses: ./.github/actions/code-reviewer
+        with:
+          base: ${{ needs.context.outputs.base_sha }}
+          head: ${{ needs.context.outputs.head_sha }}
+          head-ref: ${{ needs.context.outputs.head_ref }}
+          tier: ${{ steps.tier.outputs.label }}
+          model: ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
+          oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          api-key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github-token: ${{ github.token }}
+          transcript-artifact: code-review-transcript
+
+      # The previous run's normalized report, for the new / persisting /
+      # resolved strip. Fetched only after the reviewer has exited: the
+      # reviewer never sees its last report (ADR 0071). Best effort: a first
+      # run has none. No --status filter: a run with a blocking verdict
+      # concludes "failure" by design and still carries the artifact.
+      - name: Fetch the previous report
+        if: steps.preflight.outputs.skip != 'true'
+        id: previous
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          found=''
+          for run_id in $(gh run list --workflow code-review.yml --branch "$HEAD_REF" --json databaseId --jq '.[].databaseId' --limit 5); do
+            if gh run download "$run_id" --name code-review-normalized --dir "$RUNNER_TEMP/previous" >/dev/null 2>&1; then
+              found="$RUNNER_TEMP/previous/normalized.json"
+              break
+            fi
+          done
+          echo "path=$found" >> "$GITHUB_OUTPUT"
+          echo "previous report: ${found:-none}"
+
+      - name: Render the report
+        if: steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated == 'true'
+        run: |
+          if [ -n '${{ steps.previous.outputs.path }}' ]; then
+            corepack yarn review:render tmp/code-review/normalized.json \
+              --previous '${{ steps.previous.outputs.path }}' --out tmp/code-review/report.md
+          else
+            corepack yarn review:render tmp/code-review/normalized.json --out tmp/code-review/report.md
+          fi
+          cat tmp/code-review/report.md >> "$GITHUB_STEP_SUMMARY"
+
+      # Read back by the next run for the new / persisting / resolved strip,
+      # and by this run's publish job, which holds the write token and so
+      # cannot share a filesystem with the reviewer.
+      - name: Keep the normalized report for the next run
+        if: steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: code-review-normalized
+          path: |
+            tmp/code-review/normalized.json
+            tmp/code-review/report.md
+          retention-days: 30
+
+      # A rejected report still gets published — as the reason the check
+      # failed, not as a review. Its file is outside the workspace.
+      - name: Keep the rejection reason
+        if: steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated != 'true' && steps.reviewer.outputs.rejected-file != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: code-review-rejected
+          path: ${{ steps.reviewer.outputs.rejected-file }}
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # Reads the verdict from the validator's file, not from the publish
+      # step, so a fork pull request (where publish is skipped) still fails
+      # on a blocking finding.
+      - name: Agent verdict
+        if: steps.preflight.outputs.skip != 'true'
+        run: |
+          echo "reviewer step: ${{ steps.reviewer.outputs.reviewer-outcome }}; validated: ${{ steps.reviewer.outputs.validated }}"
+          if [ '${{ steps.reviewer.outputs.validated }}' != 'true' ]; then
+            echo '::error::the reviewer produced no valid report; this pull request is review:human'
+            exit 1
+          fi
+          VERDICT="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('tmp/code-review/normalized.json','utf8')).verdict)")"
+          echo "verdict: $VERDICT"
+          if [ "$VERDICT" = 'request-changes' ]; then
+            echo '::error::verdict request-changes: at least one blocking finding'
+            exit 1
+          fi
+
+  # The only job holding a token that can write. It is separate from the
+  # reviewer for two reasons. ADR 0071 item 8 keeps the GitHub token away
+  # from the model, and GitHub scopes permissions per job, not per step: a
+  # `contents: write` on the job the reviewer runs in would hand repository
+  # write to a step that reads an untrusted diff.
+  #
+  # `contents: write` is here because `resolveReviewThread` is reported to
+  # require it, despite creating no commit, modifying no file and moving no
+  # ref (docs/research/2026-09-07-resolve-review-thread-token.md, issue #685).
+  # That is a community report with a GitHub staff acknowledgement, not
+  # documentation, so it is a hypothesis this job tests: if threads still are
+  # not resolved, the finding is that App installation tokens really are
+  # barred, and the reply fallback stands.
+  publish:
+    name: Publish Review
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [context, review]
+    if: always() && needs.review.result != 'skipped' && needs.review.outputs.skip != 'true' && needs.context.outputs.same_repo == 'true'
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: read
+    env:
+      PR_NUMBER: ${{ needs.context.outputs.pr }}
+      HEAD_SHA: ${{ needs.context.outputs.head_sha }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      TIER: ${{ needs.review.outputs.tier }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      # The publisher reaches schema.mjs for the finding shape and the tier
+      # labels, and schema.mjs imports zod. This job needs the install like
+      # any other, and the cache the review job populated makes it cheap.
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
+
+      - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: corepack yarn install --immutable
+
+      # Tolerant on purpose: a reviewer job that died before writing either
+      # artifact should leave a legible failure here, not an opaque one from
+      # the download action.
+      - name: Fetch this run's report
+        id: fetch
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: ${{ needs.review.outputs.validated == 'true' && 'code-review-normalized' || 'code-review-rejected' }}
+          path: tmp/code-review
+
+      # A new summary comment every run; the previous one is marked outdated,
+      # never deleted. Threads of findings that went away are resolved when
+      # the token is allowed to, and replied to when it is not.
+      - name: Publish to the pull request
+        run: |
+          set -euo pipefail
+          if [ '${{ needs.review.outputs.validated }}' = 'true' ]; then
+            if [ ! -f tmp/code-review/normalized.json ]; then
+              echo '::error::the review job reported a validated report and no artifact carries it'
+              exit 1
+            fi
+            corepack yarn review:publish \
+              --pr "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+              --head "$HEAD_SHA" --run-url "$RUN_URL" --tier "$TIER" \
+              --normalized tmp/code-review/normalized.json \
+              --rendered tmp/code-review/report.md
+          else
+            REJECTED="$(find tmp/code-review -type f 2>/dev/null | head -1)"
+            if [ -z "$REJECTED" ]; then
+              # Nothing to say and no reason to say it. The Agent Verdict
+              # check has already failed; this job stays quiet rather than
+              # posting an empty review.
+              echo 'the review job wrote no report and no rejection reason; nothing to publish'
+              exit 0
+            fi
+            corepack yarn review:publish \
+              --pr "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+              --head "$HEAD_SHA" --run-url "$RUN_URL" --tier "$TIER" \
+              --rejected "$REJECTED"
+          fi
+
+      # The trigger label is a button: remove it so it can be pressed again.
+      # It lives here rather than in the review job because removing a label
+      # is a write, and the review job holds no write (ADR 0071 item 8). A
+      # fork pull request keeps its label: publish does not run there at all,
+      # and a fork's job token could not remove it anyway.
+      - name: Reset the agent-review label
+        if: always() && needs.context.outputs.trigger == 'label'
+        run: gh pr edit "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --remove-label agent-review || true

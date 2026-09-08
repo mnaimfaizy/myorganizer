@@ -1,0 +1,132 @@
+name: Run the code reviewer
+description: >-
+  Runs the /code-review skill through anthropics/claude-code-action against a
+  commit range, keeps the transcript, and validates the JSON report it wrote.
+  Shared by code-review.yml (a pull request) and review-golden-replay.yml (a
+  historical range), so the tool allowlist, the prompt discipline, and the
+  report lookup live in one place (ADR 0070, ADR 0071).
+
+inputs:
+  base:
+    description: The fixed point (base SHA).
+    required: true
+  head:
+    description: The head SHA the findings address.
+    required: true
+  head-ref:
+    description: The branch name, or "none (historical range)".
+    required: true
+  tier:
+    description: The Review Tier label from the classifier, or "null" when the range has none.
+    required: true
+  facts:
+    description: Extra prompt lines specific to the caller, one per line, each starting with "- ".
+    required: false
+    default: ''
+  model:
+    description: The model id.
+    required: true
+  oauth-token:
+    description: CLAUDE_CODE_OAUTH_TOKEN, if set.
+    required: false
+    default: ''
+  api-key:
+    description: ANTHROPIC_API_KEY, if set.
+    required: false
+    default: ''
+  github-token:
+    description: The job token the action uses for its own plumbing.
+    required: true
+  transcript-artifact:
+    description: Artifact name for the reviewer transcript.
+    required: true
+
+outputs:
+  reviewer-outcome:
+    description: success or failure of the action step.
+    value: ${{ steps.reviewer.outcome }}
+  validated:
+    description: true when tmp/code-review/normalized.json was written.
+    value: ${{ steps.validate.outputs.validated }}
+  rejected-file:
+    description: Path of the file holding the rejection reason when validation failed.
+    value: ${{ steps.validate.outputs.rejected_file }}
+
+runs:
+  using: composite
+  steps:
+    # JSON only. The allowed tools are read, search, sub-agents, git reads,
+    # existing Nx targets, the validator, and `node` for a reviewer-written
+    # reproduction (the executed-evidence class ADR 0071 values most); no gh,
+    # no network, no push. The action's own GitHub tools are not in the list,
+    # so the reviewer cannot post. `github_token` is the job token: the action
+    # uses it for its own plumbing instead of minting a GitHub App token.
+    - name: Run the reviewer
+      id: reviewer
+      continue-on-error: true
+      uses: anthropics/claude-code-action@v1
+      with:
+        claude_code_oauth_token: ${{ inputs.oauth-token }}
+        anthropic_api_key: ${{ inputs.api-key }}
+        github_token: ${{ inputs.github-token }}
+        prompt: |
+          /code-review
+
+          You are running in CI (see "In CI" in the skill). Facts for this run:
+          - fixed point (base): ${{ inputs.base }}
+          - head: ${{ inputs.head }}
+          - branch name: ${{ inputs.head-ref }}
+          - tier: ${{ inputs.tier }}
+          ${{ inputs.facts }}
+          - spec: already resolved in tmp/code-review/spec.json. Read it. Do not fetch issues, do not ask anyone. If its spec.kind is "none", skip the Spec axis.
+          - write the envelope to exactly tmp/code-review/report.json (this path, not <head>.report.json) and run the validator on it as the skill says. Do not run the renderer and do not post anything: a later step publishes.
+          - the model id to record in the envelope: ${{ inputs.model }}
+          - your run ends the moment you reply without calling a tool, and no background notification ever reaches you here. Invoke each sub-agent with the Agent tool's `run_in_background: false` (both calls in one message so they still run in parallel); the results come back in that same turn. Never reply "waiting", never schedule a wake-up, and do not stop until tmp/code-review/report.json exists and the validator has run on it. A run that ends without that file is a rejected report and a failed check.
+        claude_args: >-
+          --model ${{ inputs.model }}
+          --max-turns 80
+          --allowedTools "Read,Glob,Grep,Write,Edit,Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git ls-tree:*),Bash(git grep:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(sed -n:*),Bash(echo:*),Bash(rm -f tmp/code-review/*)"
+
+    # The action hides the reviewer's transcript from the log. Keep it as a
+    # short-lived artifact so a run that wrote no report can be read.
+    - name: Keep the reviewer transcript
+      if: steps.reviewer.outputs.execution_file != ''
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+      with:
+        name: ${{ inputs.transcript-artifact }}
+        path: ${{ steps.reviewer.outputs.execution_file }}
+        retention-days: 7
+
+    # The script, not the model, decides whether the report stands. The
+    # caller's tier overrides whatever the envelope says (ADR 0070 item 3).
+    - name: Validate the report
+      id: validate
+      shell: bash
+      run: |
+        set +e
+        REJECTED="$RUNNER_TEMP/rejected.txt"
+        echo "rejected_file=$REJECTED" >> "$GITHUB_OUTPUT"
+        # Accept the skill's interactive name too, in case the reviewer
+        # followed step 5 rather than the prompt.
+        if [ ! -f tmp/code-review/report.json ]; then
+          candidate="$(ls tmp/code-review/*.report.json 2>/dev/null | head -1 || true)"
+          if [ -n "$candidate" ]; then
+            echo "using $candidate"
+            mv "$candidate" tmp/code-review/report.json
+          fi
+        fi
+        if [ ! -f tmp/code-review/report.json ]; then
+          echo "the reviewer wrote no tmp/code-review/report.json (reviewer step outcome: ${{ steps.reviewer.outcome }}; see the run log or the transcript artifact)" | tee "$REJECTED"
+          echo 'validated=false' >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [ '${{ inputs.tier }}' = 'null' ]; then
+          corepack yarn review:validate tmp/code-review/report.json --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
+        else
+          corepack yarn review:validate tmp/code-review/report.json --tier '${{ inputs.tier }}' --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
+        fi
+        if [ -f tmp/code-review/normalized.json ]; then
+          echo 'validated=true' >> "$GITHUB_OUTPUT"
+        else
+          echo 'validated=false' >> "$GITHUB_OUTPUT"
+        fi

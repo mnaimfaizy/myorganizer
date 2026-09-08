@@ -617,11 +617,12 @@ jobs:
 
       - name: Nx project tag checker contracts
         run: corepack yarn nx:tags:test
-      - name: Code review report contracts
-        run: corepack yarn review:test
 
       - name: Review tier classifier contracts
         run: corepack yarn review:tier:test
+
+      - name: Code review report contracts
+        run: corepack yarn review:test
 
       - name: Gate coverage checker contracts
         run: corepack yarn gates:coverage:test
@@ -661,8 +662,12 @@ jobs:
 
       - name: Check Nx project tags
         run: corepack yarn nx:tags:check
+
       - name: Check review pipeline page
         run: corepack yarn review:pages:check
+
+      - name: Check the code-review golden set
+        run: corepack yarn review:golden:check
 
       - name: Check release pipeline page
         run: corepack yarn deploy:pages:check
