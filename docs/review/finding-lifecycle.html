@@ -1083,7 +1083,7 @@
               <rect class="box halt" x="1360" y="284" width="230" height="122" rx="6" />
               <circle class="tipdot" cx="1582" cy="292" r="4" />
               <text class="title" x="1372" y="310">5 &middot; GitHub decides</text>
-              <text x="1372" y="330">required status check</text>
+              <text x="1372" y="330">verdict advisory, no ruleset</text>
               <text x="1372" y="348">never a review approval</text>
               <text x="1372" y="366">review:human &#8594; code-owner approval</text>
               <text class="tag det" x="1372" y="386">NEVER AN LLM &middot; THE HALT</text>
@@ -1193,8 +1193,20 @@
         </dd>
         <dt>decide</dt>
         <dd id="note-decide">
-          The verdict is a required status check beside <code>Lint</code> and
-          <code>Test</code>, never a review approval (ADR 0070 item 6).
+          The reviewer produces two status checks, not one
+          (ADR 0073 item 1): <code>Agent Review Ran</code> fails on a fact
+          about the pipeline &mdash; the reviewer crashed, was cut off by the
+          rate limit, or wrote a report the contract rejected &mdash; and
+          <code>Agent Verdict</code> fails on a judgment about the diff, a
+          <code>request-changes</code> verdict. <code>Agent Verdict</code> is
+          advisory and appears in no ruleset; ADR 0073 rejects making it
+          required on principle, not on a recall threshold (ADR 0073 item 2).
+          <code>Agent Review Ran</code> is eligible to be required but is not
+          required yet &mdash; that needs the GitHub ruleset,
+          <code>REQUIRED_CHECK_CONTEXTS</code>, and the job-name resolution
+          in <code>check-review-pages.mjs</code> (today <code>ci.yml</code>
+          only) to change together (ADR 0073, Consequences). Neither check is
+          ever a review approval (ADR 0070 item 6).
           <code>review:human</code> additionally needs a code-owner approval,
           which today means everything, because
           <code>.github/CODEOWNERS:3</code> is <code>* @mnaimfaizy</code>.
@@ -1499,7 +1511,8 @@
       <code>requiredCheckContexts</code> are <code>ci.yml</code> job names,
       <code>agentVerdictCheck</code> is the job name in
       <code>code-review.yml</code> (the Agent Verdict check),
-      <code>gateTierLabels</code> come from
+      <code>agentReviewRanCheck</code> is the sibling job name for the
+      pipeline-fact check, <code>gateTierLabels</code> come from
       <code>tools/config/github-labels.json</code>, and the rest are the
       constants <code>tools/scripts/review/schema.mjs</code> exports.
     </div>
@@ -1525,7 +1538,8 @@
       "Test"
     ],
     "gateTierLabels": ["gate:mechanical", "gate:standard", "gate:full"],
-    "agentVerdictCheck": "Agent Verdict"
+    "agentVerdictCheck": "Agent Verdict",
+    "agentReviewRanCheck": "Agent Review Ran"
   }
 </script>
 
@@ -1741,7 +1755,8 @@
           '<div class="htitle">&#9632; No code-owner gate here</div><p>' +
           'review:<code>' + tier + '</code> under the future, hypothetical CODEOWNERS ' +
           'narrows to the human set only — this tier merges on the required checks ' +
-          'and the agent verdict alone. Not implemented; no ADR number yet.</p>';
+          'alone. The agent verdict is advisory and appears in no ruleset (ADR 0073); ' +
+          'not implemented; no ADR number yet.</p>';
         return;
       }
 
@@ -1750,8 +1765,9 @@
         box.innerHTML =
           '<div class="htitle">&#9632; Approved as code owner</div><p>' +
           'The code-owner approval is recorded. The PR is mergeable once the ' +
-          'required checks and the agent verdict are also green — the approval ' +
-          'is necessary, never sufficient on its own (ADR 0070 item 1).</p>' +
+          'required checks are also green — the agent verdict is advisory and ' +
+          'does not gate merge (ADR 0073); the approval is necessary, never ' +
+          'sufficient on its own (ADR 0070 item 1).</p>' +
           '<button type="button" class="haltbtn" id="haltUndo">Withdraw approval</button>';
         const undo = document.getElementById('haltUndo');
         if (undo) {

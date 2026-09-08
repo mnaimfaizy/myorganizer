@@ -12,9 +12,13 @@ name: Code Review
 #      and a separate job — the only one whose token can write — posts it. A
 #      report that fails the contract is rejected whole, the Pull Request is
 #      relabelled `review:human`, and this check fails.
-#   4. The job named "Agent Verdict" fails on `request-changes` and on a
-#      rejected report. It is a status check, never a review approval
-#      (ADR 0070 item 6). Merge policy does not change here.
+#   4. Two checks, not one. "Agent Review Ran" fails when the reviewer
+#      crashed, was rate-limited, or wrote a report the contract rejected —
+#      a broken gate. "Agent Verdict" fails on `request-changes` — a
+#      judgment about the diff. Only the first is worth requiring in a
+#      ruleset; the reviewer's recall does not earn a merge block. Both are
+#      status checks, never a review approval (ADR 0070 item 6). Merge
+#      policy does not change here.
 #
 # Permissions and attribution. The reviewer's job holds four read scopes and
 # nothing else; the "Publish Review" job is the only one that can write, and
@@ -79,16 +83,29 @@ permissions:
   pull-requests: write
   actions: read
 
-# A label event must never cancel a review that is already running. Workflow
-# concurrency is evaluated when the run is created, before any job `if:` is
-# read, so a run started by an unrelated label — `tooling` on a new pull
-# request — cancelled the `opened` review and then skipped, leaving the pull
-# request with no verdict and a green "skipped" check that looked deliberate.
-# Adding `agent-review` is a button press, so it queues behind the running
-# review rather than replacing it.
+# A label event must never disturb the review of the same pull request, and an
+# `agent-review` press must still supersede one. Both come from the group name.
+#
+# Concurrency is evaluated when the run is created, before any job `if:` is
+# read, so a run started by an unrelated label — `tooling`, added by
+# `ai:create-pr` — enters the group whatever the workflow later decides to skip.
+# Two mechanisms then bite, and only one is governed by `cancel-in-progress`:
+# it can cancel a review that has already started, which is what pull request
+# #687 hit, and it can evict one still queued, because GitHub keeps only the
+# newest pending run in a group regardless of that setting. `ai:create-pr`
+# labels within a second of opening, so the review is usually still queued;
+# pull request #690 lost it that way, three runs created in the same second.
+#
+# So a label that is not the trigger goes to a group of its own and touches
+# nothing. `agent-review` deliberately stays in the review group: pressing the
+# button while a review runs should replace it, not race it. Two reviewers on
+# one pull request would spend two sessions out of a five-hour window that
+# seven sessions are measured to exhaust
+# (docs/review/golden-replay-results.md), and the older run is reviewing older
+# code anyway.
 concurrency:
-  group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}
-  cancel-in-progress: ${{ github.event.action != 'labeled' }}
+  group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}${{ github.event.action == 'labeled' && github.event.label.name != 'agent-review' && '-inert' || '' }}
+  cancel-in-progress: true
 
 jobs:
   # Decides whether this event is a review request, and resolves the pull
@@ -192,7 +209,7 @@ jobs:
           echo "reviewing #$PR ($TRIGGER)"
 
   review:
-    name: Agent Verdict
+    name: Agent Review Ran
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: context
@@ -215,6 +232,7 @@ jobs:
       skip: ${{ steps.preflight.outputs.skip }}
       tier: ${{ steps.tier.outputs.label }}
       validated: ${{ steps.reviewer.outputs.validated }}
+      verdict: ${{ steps.outcome.outputs.verdict }}
 
     env:
       BASE_SHA: ${{ needs.context.outputs.base_sha }}
@@ -369,9 +387,11 @@ jobs:
           if-no-files-found: ignore
 
       # Reads the verdict from the validator's file, not from the publish
-      # step, so a fork pull request (where publish is skipped) still fails
-      # on a blocking finding.
-      - name: Agent verdict
+      # step, so a fork pull request (where publish is skipped) still has one.
+      # This step decides only whether the reviewer *ran*; what it concluded is
+      # the separate "Agent Verdict" job below.
+      - name: Agent review ran
+        id: outcome
         if: steps.preflight.outputs.skip != 'true'
         run: |
           echo "reviewer step: ${{ steps.reviewer.outputs.reviewer-outcome }}; validated: ${{ steps.reviewer.outputs.validated }}"
@@ -391,7 +411,37 @@ jobs:
           fi
           VERDICT="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('tmp/code-review/normalized.json','utf8')).verdict)")"
           echo "verdict: $VERDICT"
-          if [ "$VERDICT" = 'request-changes' ]; then
+          echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+
+  # The reviewer's judgment, split from the fact that it ran. The two fail for
+  # unrelated reasons and only one of them is about your code: "Agent Review
+  # Ran" fails when the reviewer crashed, was rate-limited, or wrote a report
+  # the contract rejected, which is a broken gate; this job fails when the
+  # reviewer read the diff and asked for changes, which is a judgment.
+  #
+  # They are separate checks because they deserve different answers. A reviewer
+  # measured at roughly one catch in seven on the golden set's frontier cases
+  # (docs/review/golden-replay-results.md) has no business blocking a merge on
+  # its opinion, so this check is advisory and belongs in no ruleset. A
+  # reviewer that silently did not run is worth blocking on, and that is the
+  # other check. Merging them hid exactly that: three pull requests in a row
+  # ran no review at all and nothing said so, because a skipped run and a
+  # clean run were the same green tick.
+  verdict:
+    name: Agent Verdict
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [context, review]
+    if: needs.review.result == 'success' && needs.review.outputs.skip != 'true'
+    permissions: {}
+    steps:
+      - name: Read the verdict
+        env:
+          VERDICT: ${{ needs.review.outputs.verdict }}
+        run: |
+          set -euo pipefail
+          echo "verdict: ${VERDICT:-(none)}"
+          if [ "${VERDICT:-}" = 'request-changes' ]; then
             echo '::error::verdict request-changes: at least one blocking finding'
             exit 1
           fi
@@ -481,9 +531,10 @@ jobs:
           else
             REJECTED="$(find tmp/code-review -type f 2>/dev/null | head -1)"
             if [ -z "$REJECTED" ]; then
-              # Nothing to say and no reason to say it. The Agent Verdict
-              # check has already failed; this job stays quiet rather than
-              # posting an empty review.
+              # Nothing to say and no reason to say it. A missing report is
+              # the "Agent Review Ran" check's business and it has already
+              # failed; this job stays quiet rather than posting an empty
+              # review.
               echo 'the review job wrote no report and no rejection reason; nothing to publish'
               exit 0
             fi

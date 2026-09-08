@@ -32,11 +32,22 @@ const REVIEW_WORKFLOW = '.github/workflows/code-review.yml';
 const LABELS = 'tools/config/github-labels.json';
 
 /**
- * The status-check context the code-review workflow produces (ADR 0070 item
- * 6). Not in the ruleset yet; the page describes it, so the page must name
- * the job that actually exists.
+ * The reviewer's judgment. Advisory, and staying that way: ADR 0073 rejects
+ * requiring it on principle rather than on a recall threshold, so this is not
+ * a context waiting for a number to improve. The page describes it, so the
+ * page must name the job that actually exists.
  */
 export const AGENT_VERDICT_CHECK = 'Agent Verdict';
+
+/**
+ * The other half of the same split (ADR 0073 item 1): whether the reviewer ran
+ * at all, as opposed to what it concluded. This one is *eligible* to be
+ * required and is not required today — adding it means editing the ruleset,
+ * REQUIRED_CHECK_CONTEXTS below, and the job-name lookup that resolves those
+ * contexts from ci.yml only. Tracked here so a rename is caught before it
+ * silently removes the check a ruleset may come to depend on.
+ */
+export const AGENT_REVIEW_RAN_CHECK = 'Agent Review Ran';
 
 /**
  * The status-check contexts the `*main*` ruleset requires. The ruleset lives
@@ -126,14 +137,22 @@ for (const context of REQUIRED_CHECK_CONTEXTS) {
 }
 eqList('gateTierLabels (catalog)', GATE_TIER_LABELS, gateTierLabelsInCatalog);
 
-if (manifest.agentVerdictCheck !== AGENT_VERDICT_CHECK)
-  findings.push(
-    `agentVerdictCheck: source says ${JSON.stringify(AGENT_VERDICT_CHECK)}, page says ${JSON.stringify(manifest.agentVerdictCheck ?? null)}`,
-  );
-if (!reviewJobNames.has(AGENT_VERDICT_CHECK))
-  findings.push(
-    `agentVerdictCheck: "${AGENT_VERDICT_CHECK}" is not a job name in ${REVIEW_WORKFLOW}`,
-  );
+// Both checks get the same three guards, because either name going stale
+// leaves the page confidently wrong: the manifest must agree with the source
+// constant, the name must still be a job, and the word must appear in the
+// prose below. `Agent Review Ran` had only the middle one for a while, which
+// is the asymmetry this loop removes.
+for (const [key, check] of [
+  ['agentVerdictCheck', AGENT_VERDICT_CHECK],
+  ['agentReviewRanCheck', AGENT_REVIEW_RAN_CHECK],
+]) {
+  if (manifest[key] !== check)
+    findings.push(
+      `${key}: source says ${JSON.stringify(check)}, page says ${JSON.stringify(manifest[key] ?? null)}`,
+    );
+  if (!reviewJobNames.has(check))
+    findings.push(`${key}: "${check}" is not a job name in ${REVIEW_WORKFLOW}`);
+}
 
 // Every vocabulary word the manifest asserts must also be visible in the page
 // body, or the manifest is decoration rather than a description of the picture.
@@ -144,6 +163,7 @@ for (const word of [
   ...FINDING_EVIDENCE_KINDS,
   ...VERDICT_VALUES,
   AGENT_VERDICT_CHECK,
+  AGENT_REVIEW_RAN_CHECK,
 ]) {
   if (!body.includes(word))
     findings.push(`"${word}" is in the manifest but nowhere in the page body`);
@@ -158,5 +178,5 @@ if (findings.length) {
 }
 
 console.log(
-  `review-pages: OK — ${PAGE} matches the finding contract, ${REQUIRED_CHECK_CONTEXTS.length} required checks, the ${AGENT_VERDICT_CHECK} job, and ${GATE_TIER_LABELS.length} gate tier labels`,
+  `review-pages: OK — ${PAGE} matches the finding contract, ${REQUIRED_CHECK_CONTEXTS.length} required checks, the ${AGENT_VERDICT_CHECK} and ${AGENT_REVIEW_RAN_CHECK} jobs, and ${GATE_TIER_LABELS.length} gate tier labels`,
 );
