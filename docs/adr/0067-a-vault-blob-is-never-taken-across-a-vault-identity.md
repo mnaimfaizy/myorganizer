@@ -134,3 +134,38 @@ moving to the focus trigger
 Reachability already probing the same endpoint on focus, three readers now want the same server Vault
 Meta on the same event. Sharing one fetch between them is not sharing a decision and is not forbidden
 here, but the duplication is real and is named so it is not discovered as a surprise.
+
+## Amendment: the observation is recorded when it is made, not when the pass settles
+
+Decision point 7 says "the last Vault Identity a pass observed on the server is recorded per User."
+It is silent on _when_ within the pass, because at the time of writing that read as a detail: a pass
+observes, a pass finishes, and the gap between the two looked like nothing.
+
+It is not nothing on the Vault Meta path. `convergeVaultMeta` reads the server's Vault Meta, computes
+the identity, and only then asks the User about the divergence — and on the `different-vault` change
+that question is a dialog that stays on screen until it is answered. `settleVaultMeta` recorded the
+identity from the returned result, so the record was written after the answer. A User who left the
+dialog up, or dismissed it and never came back, recorded nothing. The sync status therefore kept
+reading this device's own stale observation and reported `synced`, while Vault Blobs were being
+refused behind it ([#691](https://github.com/mnaimfaizy/myorganizer/issues/691)).
+
+That is exactly the outcome decision point 6 calls load-bearing and this ADR exists to prevent: a
+refusal that is safe and invisible. Worse, it is invisible precisely for the User who has been shown
+the dialog and has not acted on it — the one the indicator is for.
+
+The intent stands and the mechanics move. The observation is evidence about the server, not a
+consequence of the User's answer, and nothing the User decides can make it untrue. So it is recorded
+at the moment it is made: `convergeVaultMeta` takes an `onObserved` callback and calls it with the
+identity immediately after reading the server's Vault Meta, before anything is asked. The module
+stays structurally unable to write — it calls a callback its caller supplied and holds no handle,
+which is the same shape adoption already uses to return a next Local Vault rather than saving one.
+
+The callback is **required, not optional**, for the reason decision point 4 gives about the evidence
+parameter: optional would let a caller omit it and silently get the under-reporting back, and the
+compiler enumerating every call site is the whole value. The under-report is not a data loss, which
+is why point 7 could afford to call a lost observation cheap — but a permanent one is not a status
+that "under-reports until the next pass", it is a standoff that never appears at all.
+
+The result still carries `observedIdentity` on every post-observation outcome, because a caller that
+wants the identity a pass saw should not have to install a callback to learn it. What moved is the
+write, which now happens once, at observation, rather than a second time at settle.
