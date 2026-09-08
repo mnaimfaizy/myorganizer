@@ -1985,6 +1985,7 @@ describe('convergeVaultBlob', () => {
       api,
       localVault,
       prompt: async () => 'defer' as const,
+      onObserved: jest.fn(),
     });
 
     // Assert meta converge saw the divergence and deferred it

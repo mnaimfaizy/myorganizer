@@ -377,30 +377,48 @@ test.describe('Vault Identity Standoff Reproduction (E2E)', () => {
     // Step 12: Snapshot device 1's local vault before pull
     const beforeRaw = await readOwnedVault(page1, E2E_USER_ID);
 
+    // Step 12.5: Read baseline identity before divergence
+    // Device 1 recorded its own matching identity during vault creation in step 3,
+    // so observedVaultIdentity.identity is already truthy before the focus dispatch.
+    // The real test is that it CHANGES after the server sync; truthiness alone proves nothing.
+    const baselineRaw = await page1.evaluate(
+      (key) => localStorage.getItem(key),
+      syncBookmarkStorageKey(E2E_USER_ID),
+    );
+    const baselineParsed = baselineRaw ? JSON.parse(baselineRaw) : null;
+    const baselineIdentity = baselineParsed?.observedVaultIdentity?.identity;
+    expect(baselineIdentity).toBeTruthy();
+
     // Step 13: First focus dispatch on device 1
     // This triggers VaultPullRunner and related listeners but the network
     // round-trip hasn't completed yet, so observedVaultIdentity won't be
     // recorded in localStorage yet.
     await page1.evaluate(() => window.dispatchEvent(new Event('focus')));
 
-    // Step 14: Poll/settle loop: dismiss the "different vault" dialog if it appears,
-    // and wait until observedVaultIdentity is recorded in localStorage.
+    // Step 14: Poll until observed identity DIFFERS from baseline
+    // The identity change is recorded the moment the server's Vault Meta is read,
+    // before the "different vault" dialog is even shown or answered. This proves
+    // the spec catches the identity divergence and standoff pre-dismissal (issue #691).
     await expect(async () => {
-      const dialog = page1
-        .getByRole('dialog')
-        .filter({ hasText: 'This device holds a different vault' });
-      if (await dialog.isVisible().catch(() => false)) {
-        await dialog
-          .getByRole('button', { name: /Keep this device.s vault/i })
-          .click();
-      }
       const raw = await page1.evaluate(
         (key) => localStorage.getItem(key),
         syncBookmarkStorageKey(E2E_USER_ID),
       );
       const parsed = raw ? JSON.parse(raw) : null;
-      expect(parsed?.observedVaultIdentity?.identity).toBeTruthy();
+      const currentIdentity = parsed?.observedVaultIdentity?.identity;
+      expect(currentIdentity).not.toBe(baselineIdentity);
     }).toPass({ timeout: 30000 });
+
+    // Step 14.5: Dismiss the "different vault" dialog deterministically
+    // Wait for it to be visible, click the button, and wait for it to hide.
+    const dialog = page1
+      .getByRole('dialog')
+      .filter({ hasText: 'This device holds a different vault' });
+    await expect(dialog).toBeVisible({ timeout: 30000 });
+    await dialog
+      .getByRole('button', { name: /Keep this device.s vault/i })
+      .click();
+    await expect(dialog).not.toBeVisible({ timeout: 30000 });
 
     // Step 15: Assert local vault was not mutated by the refused pull
     const afterRaw = await readOwnedVault(page1, E2E_USER_ID);
@@ -435,10 +453,17 @@ test.describe('Vault Identity Standoff Reproduction (E2E)', () => {
     // This forces TasksPageClient/useTasksWorkflow to re-decrypt the local
     // (unchanged, un-corrupted) ciphertext under the still-live Master Key,
     // proving the refusal succeeded and data integrity held.
+    // Scoped to the sidebar, which is what this step means by "via sidebar":
+    // the dashboard home also renders a Tasks link of its own, so an
+    // unscoped role query matches two and fails Playwright's strict mode.
+    // Exactly one `[data-sidebar="sidebar"]` exists at a time — the mobile
+    // sheet and the desktop rail are mutually exclusive.
+    const sidebar1 = page1.locator('[data-sidebar="sidebar"]');
+
     await page1.keyboard.press('Escape');
-    await page1.getByRole('link', { name: 'Home', exact: true }).click();
+    await sidebar1.getByRole('link', { name: 'Home', exact: true }).click();
     await expect(page1).toHaveURL(/.*dashboard\/?$/, { timeout: 60000 });
-    await page1.getByRole('link', { name: 'Tasks', exact: true }).click();
+    await sidebar1.getByRole('link', { name: 'Tasks', exact: true }).click();
     await expect(page1).toHaveURL(/.*dashboard\/tasks/, { timeout: 60000 });
 
     // Step 20: Assert original task is readable post-pull and post-navigation

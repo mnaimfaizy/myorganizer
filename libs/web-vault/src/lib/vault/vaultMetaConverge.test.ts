@@ -84,6 +84,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault: null,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result).toEqual({ kind: 'skipped-no-local-vault' });
@@ -102,6 +103,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault: makeLocalVault(),
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result).toEqual({ kind: 'skipped-not-authenticated' });
@@ -120,6 +122,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault: makeLocalVault(),
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result).toEqual({ kind: 'skipped-not-authenticated' });
@@ -139,6 +142,7 @@ describe('convergeVaultMeta', () => {
         api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
         localVault: makeLocalVault(),
         prompt,
+        onObserved: jest.fn(),
       }),
     ).rejects.toThrow('server error');
   });
@@ -151,6 +155,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault: makeLocalVault(),
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result).toEqual({ kind: 'skipped-no-server-meta' });
@@ -170,6 +175,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result).toEqual({
@@ -210,6 +216,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result).toEqual({
@@ -243,6 +250,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result.kind).toBe('noop-deferred');
@@ -267,6 +275,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result.kind).toBe('noop-deferred');
@@ -293,6 +302,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result.kind).toBe('noop-deferred');
@@ -325,6 +335,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result.kind).toBe('noop-deferred');
@@ -362,6 +373,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result.kind).toBe('noop-deferred');
@@ -395,6 +407,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(prompt).toHaveBeenCalledTimes(1);
@@ -427,6 +440,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result).toEqual({
@@ -458,6 +472,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result).toEqual({
@@ -494,6 +509,7 @@ describe('convergeVaultMeta', () => {
       api: apiDouble as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     // Verify input was not mutated
@@ -532,6 +548,7 @@ describe('convergeVaultMeta', () => {
       api: apiDouble as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result.kind).toBe('noop-declined');
@@ -570,6 +587,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result.kind).toBe('adopted-remote');
@@ -614,6 +632,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result.kind).toBe('adopted-remote');
@@ -652,6 +671,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result.kind).toBe('noop-deferred');
@@ -679,6 +699,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result.kind).toBe('refused-not-adoptable');
@@ -708,6 +729,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result).toEqual({
@@ -735,6 +757,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result).toEqual({
@@ -765,6 +788,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result.kind).toBe('noop-deferred');
@@ -789,6 +813,7 @@ describe('convergeVaultMeta', () => {
       api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
       localVault: makeLocalVault(),
       prompt,
+      onObserved: jest.fn(),
     });
 
     expect(result).toEqual({ kind: 'skipped-no-server-meta' });
@@ -806,10 +831,329 @@ describe('convergeVaultMeta', () => {
       api: apiDouble as Pick<VaultApi, 'getVaultMeta'>,
       localVault,
       prompt: jest.fn(),
+      onObserved: jest.fn(),
     });
 
     // If the code compiled and this runs, the API type was correct
     expect(result.kind).toBe('skipped-no-server-meta');
+  });
+
+  // ===== onObserved callback tests (ADR 0067, amendment #691) =====
+
+  test('onObserved is called exactly once with server identity on noop-already-in-sync outcome', async () => {
+    const localVault = makeLocalVault();
+    const serverMeta = makeServerMeta();
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: serverMeta,
+    });
+
+    const onObserved = jest.fn();
+    const result = await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault,
+      prompt: jest.fn(),
+
+      onObserved,
+    });
+
+    expect(result.kind).toBe('noop-already-in-sync');
+    expect(onObserved).toHaveBeenCalledTimes(1);
+    expect(onObserved).toHaveBeenCalledWith({
+      identity: vaultIdentityOf(serverMeta),
+    });
+  });
+
+  test('onObserved is called exactly once with server identity on noop-deferred outcome', async () => {
+    const localVault = makeLocalVault();
+    const serverMeta = makeServerMeta({
+      wrapped_mk_passphrase: {
+        version: 1,
+        iv: 'remote-iv',
+        ciphertext: 'remote-ct',
+      },
+    });
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: serverMeta,
+    });
+
+    const onObserved = jest.fn();
+    const result = await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault,
+      prompt: jest.fn().mockResolvedValue('defer'),
+
+      onObserved,
+    });
+
+    expect(result.kind).toBe('noop-deferred');
+    expect(onObserved).toHaveBeenCalledTimes(1);
+    expect(onObserved).toHaveBeenCalledWith({
+      identity: vaultIdentityOf(serverMeta),
+    });
+  });
+
+  test('onObserved is called exactly once with server identity on noop-declined outcome', async () => {
+    const localVault = makeLocalVault();
+    const serverMeta = makeServerMeta({
+      wrapped_mk_passphrase: {
+        version: 1,
+        iv: 'remote-iv',
+        ciphertext: 'remote-ct',
+      },
+    });
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: serverMeta,
+    });
+
+    const onObserved = jest.fn();
+    const result = await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault,
+      prompt: jest.fn().mockResolvedValue('keep-local'),
+
+      onObserved,
+    });
+
+    expect(result.kind).toBe('noop-declined');
+    expect(onObserved).toHaveBeenCalledTimes(1);
+    expect(onObserved).toHaveBeenCalledWith({
+      identity: vaultIdentityOf(serverMeta),
+    });
+  });
+
+  test('onObserved is called exactly once with server identity on refused-not-adoptable outcome', async () => {
+    const localVault = makeLocalVault();
+    const differentServerMeta = makeServerMeta({ kdf_salt: 'different-salt' });
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: differentServerMeta,
+    });
+
+    const onObserved = jest.fn();
+    const result = await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault,
+      prompt: jest.fn().mockResolvedValue('adopt-remote'),
+
+      onObserved,
+    });
+
+    expect(result.kind).toBe('refused-not-adoptable');
+    expect(onObserved).toHaveBeenCalledTimes(1);
+    expect(onObserved).toHaveBeenCalledWith({
+      identity: vaultIdentityOf(differentServerMeta),
+    });
+  });
+
+  test('onObserved is called exactly once with server identity on adopted-remote outcome', async () => {
+    const localVault = makeLocalVault();
+    const remoteMeta = makeServerMeta({
+      wrapped_mk_passphrase: {
+        version: 1,
+        iv: 'remote-iv',
+        ciphertext: 'remote-ct',
+      },
+    });
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: remoteMeta,
+    });
+
+    const onObserved = jest.fn();
+    const result = await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault,
+      prompt: jest.fn().mockResolvedValue('adopt-remote'),
+
+      onObserved,
+    });
+
+    expect(result.kind).toBe('adopted-remote');
+    expect(onObserved).toHaveBeenCalledTimes(1);
+    expect(onObserved).toHaveBeenCalledWith({
+      identity: vaultIdentityOf(remoteMeta),
+    });
+  });
+
+  test('onObserved is called BEFORE the prompt is awaited (call order test)', async () => {
+    const localVault = makeLocalVault();
+    const serverMeta = makeServerMeta({
+      wrapped_mk_passphrase: {
+        version: 1,
+        iv: 'remote-iv',
+        ciphertext: 'remote-ct',
+      },
+    });
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: serverMeta,
+    });
+
+    const callOrder: string[] = [];
+    const onObserved = jest.fn(() => {
+      callOrder.push('onObserved');
+    });
+
+    const prompt = jest.fn<
+      Promise<VaultMetaDecision>,
+      [{ change: VaultMetaChange; remote: ServerVaultMeta }]
+    >(async () => {
+      callOrder.push('prompt-called');
+      return 'defer';
+    });
+
+    await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault,
+      prompt,
+
+      onObserved,
+    });
+
+    // onObserved should be called before prompt is even invoked
+    expect(callOrder).toEqual(['onObserved', 'prompt-called']);
+  });
+
+  test('onObserved is NOT called on skipped-no-local-vault outcome', async () => {
+    const onObserved = jest.fn();
+
+    await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault: null,
+      prompt: jest.fn(),
+
+      onObserved,
+    });
+
+    expect(onObserved).not.toHaveBeenCalled();
+  });
+
+  test('onObserved is NOT called on skipped-not-authenticated outcome', async () => {
+    const error = new Error('unauth') as Error & {
+      response?: { status: number };
+    };
+    error.response = { status: 401 };
+    serverVaultSync.getServerVaultMeta.mockRejectedValue(error);
+
+    const onObserved = jest.fn();
+
+    await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault: makeLocalVault(),
+      prompt: jest.fn(),
+
+      onObserved,
+    });
+
+    expect(onObserved).not.toHaveBeenCalled();
+  });
+
+  test('onObserved is NOT called on skipped-no-server-meta outcome', async () => {
+    serverVaultSync.getServerVaultMeta.mockResolvedValue(null);
+
+    const onObserved = jest.fn();
+
+    await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault: makeLocalVault(),
+      prompt: jest.fn(),
+
+      onObserved,
+    });
+
+    expect(onObserved).not.toHaveBeenCalled();
+  });
+
+  test('onObserved is called even when prompt never resolves (unresolved promise case)', async () => {
+    const localVault = makeLocalVault();
+    const serverMeta = makeServerMeta({
+      wrapped_mk_passphrase: {
+        version: 1,
+        iv: 'remote-iv',
+        ciphertext: 'remote-ct',
+      },
+    });
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: serverMeta,
+    });
+
+    const onObserved = jest.fn();
+
+    // Return a promise that never resolves
+    const neverResolvingPromise = new Promise<VaultMetaDecision>(() => {
+      // intentionally never resolve or reject
+    });
+
+    const prompt = jest.fn().mockReturnValue(neverResolvingPromise);
+
+    // Start the convergence but don't await it (to avoid hanging)
+    const convergePromise = convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault,
+      prompt,
+
+      onObserved,
+    });
+
+    // Give it a tick to call onObserved before we check
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Even though the prompt never resolves, onObserved should have been called
+    expect(onObserved).toHaveBeenCalledTimes(1);
+    expect(onObserved).toHaveBeenCalledWith({
+      identity: vaultIdentityOf(serverMeta),
+    });
+
+    // Clean up: ensure the promise is still pending (not resolved/rejected)
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 10),
+    );
+    await expect(
+      Promise.race([convergePromise, timeoutPromise]),
+    ).rejects.toThrow('timeout');
+  });
+
+  test('onObserved identity equals observedIdentity on all post-observation outcomes', async () => {
+    // Test with different-vault to ensure we're comparing identities correctly
+    const localVault = makeLocalVault();
+    const differentServerMeta = makeServerMeta({ kdf_salt: 'different-salt' });
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: differentServerMeta,
+    });
+
+    let capturedIdentity: string | undefined;
+    const onObserved = jest.fn((observation: { identity: string }) => {
+      capturedIdentity = observation.identity;
+    });
+
+    const result = await convergeVaultMeta({
+      api: { getVaultMeta: jest.fn() } as Pick<VaultApi, 'getVaultMeta'>,
+      localVault,
+      prompt: jest.fn().mockResolvedValue('defer'),
+
+      onObserved,
+    });
+
+    expect(result.kind).toBe('noop-deferred');
+    if (result.kind === 'noop-deferred') {
+      expect(capturedIdentity).toBe(result.observedIdentity);
+      expect(result.observedIdentity).toBe(
+        vaultIdentityOf(differentServerMeta),
+      );
+    }
   });
 });
 

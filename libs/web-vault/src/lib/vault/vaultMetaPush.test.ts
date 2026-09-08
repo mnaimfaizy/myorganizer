@@ -37,7 +37,7 @@ import {
   changePassphraseWithCurrent,
   settleVaultMeta,
 } from './vaultMetaPush';
-import { vaultIdentityOf } from './vaultMetaConverge';
+import { vaultIdentityOf, type VaultMetaDecision } from './vaultMetaConverge';
 import { hashVaultMeta } from './syncBookmarkAccess';
 import { localToServerMeta } from './vaultShapes';
 
@@ -1129,5 +1129,57 @@ describe('settleVaultMeta', () => {
     }
     // Should not have called recordObservedVaultIdentity
     expect(recordObservedSpy).not.toHaveBeenCalled();
+  });
+
+  // ===== Case 24: Regression test for #691 — unresolved prompt records SERVER identity =====
+
+  test('24: unresolved prompt (different-vault standoff) records SERVER identity through onObserved callback', async () => {
+    const handle = await setupHandle(owner, passphrase);
+    const api = createApiDouble();
+    const recordObservedSpy = jest.spyOn(handle, 'recordObservedVaultIdentity');
+
+    const baseLocalMeta = localToServerMeta(handle.loadVault()!);
+    await handle.recordVaultMetaAgreement({ meta: baseLocalMeta });
+
+    // Server holds a completely different vault (different salt = different-vault)
+    const differentServerMeta = makeServerMeta({ kdf_salt: 'different-salt' });
+    api.getVaultMeta.mockResolvedValue({
+      data: { etag: 'etag-server', updatedAt: 't1', meta: differentServerMeta },
+    } as AxiosResponse);
+
+    // Return a promise that never resolves (simulating a dialog left open)
+    const neverResolvingPromise = new Promise<VaultMetaDecision>(() => {
+      // intentionally never resolve or reject
+    });
+
+    const prompt = jest.fn().mockReturnValue(neverResolvingPromise);
+
+    // Start settleVaultMeta but don't await it (to avoid hanging)
+    const settlePromise = settleVaultMeta({
+      api,
+      handle,
+      prompt,
+    });
+
+    // Give it a tick to call onObserved (via convergeVaultMeta's callback)
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // The identity should be recorded even though the prompt never resolved
+    expect(recordObservedSpy).toHaveBeenCalledTimes(1);
+    // The recorded identity should be the SERVER's identity, not this device's
+    const serverIdentity = vaultIdentityOf(differentServerMeta);
+    const localIdentity = vaultIdentityOf(baseLocalMeta);
+    expect(serverIdentity).not.toBe(localIdentity);
+    expect(recordObservedSpy).toHaveBeenCalledWith({
+      identity: serverIdentity,
+    });
+
+    // Clean up: ensure the promise is still pending
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('timeout')), 10),
+    );
+    await expect(Promise.race([settlePromise, timeoutPromise])).rejects.toThrow(
+      'timeout',
+    );
   });
 });
