@@ -11,16 +11,14 @@ import {
   CardTitle,
 } from '@myorganizer/web-ui';
 
-import { useExportVault, useVaultDisabledState } from '../hooks';
-import { VAULT_OPERATIONS, vaultOperationAvailability } from '../policy';
+import { useExportVault, useVaultOperationAvailability } from '../hooks';
+import { VAULT_OPERATIONS } from '../policy';
 import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
 export function ExportVaultCard() {
   const { exporting, exportVaultNow } = useExportVault();
-  const disabledState = useVaultDisabledState();
-  const { allowed, unavailableReason } = vaultOperationAvailability(
+  const { allowed, unavailableReason } = useVaultOperationAvailability(
     VAULT_OPERATIONS.Export,
-    disabledState,
   );
 
   const handleExport = useCallback(async () => {

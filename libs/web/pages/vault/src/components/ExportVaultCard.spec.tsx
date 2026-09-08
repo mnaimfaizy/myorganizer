@@ -3,12 +3,24 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 /**
- * Mock the hooks from ../hooks before importing ExportVaultCard.
+ * Mock useVaultDisabledState at its module path so the real useVaultOperationAvailability
+ * (which imports it from the same file) will use the mock when it calls useVaultDisabledState().
  */
-jest.mock('../hooks', () => ({
-  useExportVault: jest.fn(),
+jest.mock('../hooks/useVaultDisabledState', () => ({
   useVaultDisabledState: jest.fn(),
 }));
+
+/**
+ * Mock the hooks from ../hooks before importing ExportVaultCard.
+ * Include the real useVaultOperationAvailability so the policy table is tested.
+ */
+jest.mock('../hooks', () => {
+  const actual = jest.requireActual('../hooks');
+  return {
+    ...actual,
+    useExportVault: jest.fn(),
+  };
+});
 
 /**
  * Mock web-ui components.
@@ -27,7 +39,8 @@ jest.mock('@myorganizer/web-ui', () => ({
 }));
 
 import { ExportVaultCard } from './ExportVaultCard';
-import { useExportVault, useVaultDisabledState } from '../hooks';
+import { useExportVault } from '../hooks';
+import { useVaultDisabledState } from '../hooks/useVaultDisabledState';
 
 describe('ExportVaultCard', () => {
   beforeEach(() => {

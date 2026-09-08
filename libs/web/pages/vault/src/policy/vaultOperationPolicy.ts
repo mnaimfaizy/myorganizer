@@ -12,15 +12,8 @@
  * correctness rather than security: in those states there is no Local Vault for
  * any of the six operations to act on.
  *
- * Open question, recorded here because ADR 0068 §2's whole point is that a rule
- * with nowhere to be written down is a rule six authors decide independently:
- * uniform `no-local-vault` blocking is what #660 and ADR 0068 §3 ask for, but
- * §3's justification — "there is nothing to export, remove, or back up" — names
- * three of the four and not import. Import and cloud *restore* are the two
- * operations whose subject is the bundle rather than the device's Local Vault,
- * so they are the ones a fresh device needs in exactly this state. Blocking
- * them is implemented as specified; whether it is right is a question for the
- * PRD, not for this table.
+ * This table implements ADR 0068 §3 as written; whether uniform `no-local-vault`
+ * blocking is right for import is deferred to PRD #658.
  *
  * Every answer lives in `VAULT_OPERATION_POLICY`, one `satisfies
  * Record<VaultOperation, …>` table (ADR 0053), so a seventh card cannot be added

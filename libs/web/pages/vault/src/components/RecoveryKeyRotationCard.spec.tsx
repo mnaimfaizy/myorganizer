@@ -10,12 +10,24 @@ jest.mock('../utils', () => ({
 }));
 
 /**
- * Mock the hooks from ../hooks before importing RecoveryKeyRotationCard.
+ * Mock useVaultDisabledState at its module path so the real useVaultOperationAvailability
+ * (which imports it from the same file) will use the mock when it calls useVaultDisabledState().
  */
-jest.mock('../hooks', () => ({
-  useRecoveryKeyRotation: jest.fn(),
+jest.mock('../hooks/useVaultDisabledState', () => ({
   useVaultDisabledState: jest.fn(),
 }));
+
+/**
+ * Mock the hooks from ../hooks before importing RecoveryKeyRotationCard.
+ * Include the real useVaultOperationAvailability so the policy table is tested.
+ */
+jest.mock('../hooks', () => {
+  const actual = jest.requireActual('../hooks');
+  return {
+    ...actual,
+    useRecoveryKeyRotation: jest.fn(),
+  };
+});
 
 /**
  * Mock web-vault-ui hooks and components.
@@ -177,7 +189,8 @@ import {
   SERVER_REACHABILITY_READINGS,
 } from '@myorganizer/web-vault-ui';
 import { useToast } from '@myorganizer/web-ui';
-import { useRecoveryKeyRotation, useVaultDisabledState } from '../hooks';
+import { useRecoveryKeyRotation } from '../hooks';
+import { useVaultDisabledState } from '../hooks/useVaultDisabledState';
 import { downloadTextFile } from '../utils';
 
 // === Mock helpers ===

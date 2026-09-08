@@ -19,9 +19,9 @@ import { getErrorMessage } from '../utils/getErrorMessage';
 import {
   useExportVault,
   useLatestCloudBackup,
-  useVaultDisabledState,
+  useVaultOperationAvailability,
 } from '../hooks';
-import { VAULT_OPERATIONS, vaultOperationAvailability } from '../policy';
+import { VAULT_OPERATIONS } from '../policy';
 import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
 /**
@@ -41,10 +41,8 @@ export function RemoveVaultCard() {
   const { toast } = useToast();
   const vaultSession = useOptionalVaultSession();
   const handle = vaultSession?.handle ?? null;
-  const disabledState = useVaultDisabledState();
-  const { allowed, unavailableReason } = vaultOperationAvailability(
+  const { allowed, unavailableReason } = useVaultOperationAvailability(
     VAULT_OPERATIONS.Removal,
-    disabledState,
   );
 
   const [open, setOpen] = useState(false);

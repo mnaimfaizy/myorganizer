@@ -29,8 +29,11 @@ import {
 } from '@myorganizer/web-vault';
 
 import { downloadTextFile } from '../utils';
-import { useRecoveryKeyRotation, useVaultDisabledState } from '../hooks';
-import { VAULT_OPERATIONS, vaultOperationAvailability } from '../policy';
+import {
+  useRecoveryKeyRotation,
+  useVaultOperationAvailability,
+} from '../hooks';
+import { VAULT_OPERATIONS } from '../policy';
 import { RecoveryKeyMintedSection } from './RecoveryKeyMintedSection';
 import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
@@ -44,10 +47,8 @@ export type RotationFormInput = z.infer<typeof rotationFormSchema>;
 export function RecoveryKeyRotationCard() {
   const { toast } = useToast();
   const { rotating, rotateRecoveryKey } = useRecoveryKeyRotation();
-  const disabledState = useVaultDisabledState();
-  const { allowed, unavailableReason } = vaultOperationAvailability(
+  const { allowed, unavailableReason } = useVaultOperationAvailability(
     VAULT_OPERATIONS.RecoveryKeyRotation,
-    disabledState,
   );
 
   const [mintedKey, setMintedKey] = useState<MintedRecoveryKey | null>(null);

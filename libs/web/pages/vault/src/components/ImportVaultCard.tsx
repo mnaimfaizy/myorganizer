@@ -29,18 +29,16 @@ import {
 import { ImportVaultReplaceDialog } from './ImportVaultReplaceDialog';
 import { formatBytes } from '../utils/formatBytes';
 import { getErrorMessage } from '../utils/getErrorMessage';
-import { useVaultDisabledState } from '../hooks';
-import { VAULT_OPERATIONS, vaultOperationAvailability } from '../policy';
+import { useVaultOperationAvailability } from '../hooks';
+import { VAULT_OPERATIONS } from '../policy';
 import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
 export function ImportVaultCard() {
   const { toast } = useToast();
   const vaultSession = useOptionalVaultSession();
   const handle = vaultSession?.handle ?? null;
-  const disabledState = useVaultDisabledState();
-  const { allowed, unavailableReason } = vaultOperationAvailability(
+  const { allowed, unavailableReason } = useVaultOperationAvailability(
     VAULT_OPERATIONS.Import,
-    disabledState,
   );
 
   const [importing, setImporting] = useState(false);

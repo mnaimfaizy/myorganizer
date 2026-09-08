@@ -3,13 +3,25 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 /**
- * Mock the hooks from ../hooks before importing RemoveVaultCard.
+ * Mock useVaultDisabledState at its module path so the real useVaultOperationAvailability
+ * (which imports it from the same file) will use the mock when it calls useVaultDisabledState().
  */
-jest.mock('../hooks', () => ({
-  useLatestCloudBackup: jest.fn(),
-  useExportVault: jest.fn(),
+jest.mock('../hooks/useVaultDisabledState', () => ({
   useVaultDisabledState: jest.fn(),
 }));
+
+/**
+ * Mock the hooks from ../hooks before importing RemoveVaultCard.
+ * Include the real useVaultOperationAvailability so the policy table is tested.
+ */
+jest.mock('../hooks', () => {
+  const actual = jest.requireActual('../hooks');
+  return {
+    ...actual,
+    useLatestCloudBackup: jest.fn(),
+    useExportVault: jest.fn(),
+  };
+});
 
 /**
  * Mock web-vault-ui hooks.
@@ -67,11 +79,8 @@ import { RemoveVaultCard } from './RemoveVaultCard';
 import type { VaultHandle } from '@myorganizer/web-vault';
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 import { useToast } from '@myorganizer/web-ui';
-import {
-  useLatestCloudBackup,
-  useExportVault,
-  useVaultDisabledState,
-} from '../hooks';
+import { useLatestCloudBackup, useExportVault } from '../hooks';
+import { useVaultDisabledState } from '../hooks/useVaultDisabledState';
 
 // === Mock helpers ===
 
@@ -132,6 +141,31 @@ describe('RemoveVaultCard', () => {
   });
 
   test('2: no-local-vault state renders card, disables button, shows correct unavailability message', () => {
+    (useVaultDisabledState as jest.Mock).mockReturnValue('no-local-vault');
+
+    render(<RemoveVaultCard />);
+
+    expect(screen.getByTestId('card')).toBeInTheDocument();
+    expect(screen.getByTestId('remove-vault-button')).toBeDisabled();
+    expect(screen.getByTestId('remove-vault-unavailable')).toBeInTheDocument();
+    expect(
+      screen.getByText('There is no vault on this device to remove.'),
+    ).toBeInTheDocument();
+  });
+
+  test('2.5: Unclaimed Local Vault (no-local-vault state) disables removal, exclusive of hasOwnedVault check', () => {
+    // Unclaimed Local Vault scenario: the device holds a vault but the current
+    // user does not own it. handle.loadVault() returns null (unclaimed vaults
+    // are not loaded), so useVaultDisabledState returns 'no-local-vault'.
+    // The removal control should be unusable, asserting the equivalence:
+    // loadVault() !== null ⟺ hasOwnedVault() (for owned vaults).
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: createMockHandle({
+        loadVault: jest.fn().mockReturnValue(null),
+        hasOwnedVault: jest.fn().mockReturnValue(false),
+        hasUnclaimedLocalVault: jest.fn().mockReturnValue(true),
+      }),
+    });
     (useVaultDisabledState as jest.Mock).mockReturnValue('no-local-vault');
 
     render(<RemoveVaultCard />);

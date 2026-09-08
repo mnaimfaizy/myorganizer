@@ -3,12 +3,24 @@ import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 /**
- * Mock the hooks from ../hooks before importing ChangePassphraseCard.
+ * Mock useVaultDisabledState at its module path so the real useVaultOperationAvailability
+ * (which imports it from the same file) will use the mock when it calls useVaultDisabledState().
  */
-jest.mock('../hooks', () => ({
-  useChangePassphrase: jest.fn(),
+jest.mock('../hooks/useVaultDisabledState', () => ({
   useVaultDisabledState: jest.fn(),
 }));
+
+/**
+ * Mock the hooks from ../hooks before importing ChangePassphraseCard.
+ * Include the real useVaultOperationAvailability so the policy table is tested.
+ */
+jest.mock('../hooks', () => {
+  const actual = jest.requireActual('../hooks');
+  return {
+    ...actual,
+    useChangePassphrase: jest.fn(),
+  };
+});
 
 /**
  * Mock web-vault-ui hooks.
@@ -131,7 +143,8 @@ import type { VaultHandle } from '@myorganizer/web-vault';
 import { resetPassphraseAfterRecovery } from '@myorganizer/web-vault';
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 import { useToast } from '@myorganizer/web-ui';
-import { useChangePassphrase, useVaultDisabledState } from '../hooks';
+import { useChangePassphrase } from '../hooks';
+import { useVaultDisabledState } from '../hooks/useVaultDisabledState';
 
 // === Mock helpers ===
 

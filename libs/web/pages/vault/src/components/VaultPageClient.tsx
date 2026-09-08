@@ -5,8 +5,11 @@ import { useMemo } from 'react';
 import { GoogleDriveCloudBackupProvider } from '@myorganizer/web-vault';
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 
-import { useGoogleIdentityScript, useVaultDisabledState } from '../hooks';
-import { VAULT_OPERATIONS, vaultOperationAvailability } from '../policy';
+import {
+  useGoogleIdentityScript,
+  useVaultOperationAvailability,
+} from '../hooks';
+import { VAULT_OPERATIONS } from '../policy';
 import { ChangePassphraseCard } from './ChangePassphraseCard';
 import { CloudBackupLiveCard } from './CloudBackupLiveCard';
 import { CloudBackupUnavailableCard } from './CloudBackupUnavailableCard';
@@ -20,7 +23,9 @@ export function VaultPageClient() {
   const gisStatus = useGoogleIdentityScript();
   const vaultSession = useOptionalVaultSession();
   const handle = vaultSession?.handle ?? null;
-  const disabledState = useVaultDisabledState();
+  const cloudBackup = useVaultOperationAvailability(
+    VAULT_OPERATIONS.CloudBackup,
+  );
   const clientId =
     typeof process !== 'undefined' && process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
       ? process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
@@ -33,11 +38,6 @@ export function VaultPageClient() {
     if (!clientId || gisStatus !== 'ready') return null;
     return new GoogleDriveCloudBackupProvider({ clientId });
   }, [clientId, gisStatus]);
-
-  const cloudBackup = vaultOperationAvailability(
-    VAULT_OPERATIONS.CloudBackup,
-    disabledState,
-  );
 
   function renderCloudBackupCard() {
     // The policy answers first: with no Local Vault to back up, how Google Drive

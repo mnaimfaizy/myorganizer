@@ -27,16 +27,14 @@ import {
   MIN_PASSPHRASE_LENGTH,
 } from '@myorganizer/web-vault';
 
-import { useChangePassphrase, useVaultDisabledState } from '../hooks';
-import { VAULT_OPERATIONS, vaultOperationAvailability } from '../policy';
+import { useChangePassphrase, useVaultOperationAvailability } from '../hooks';
+import { VAULT_OPERATIONS } from '../policy';
 import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
 export function ChangePassphraseCard() {
   const { changing, changePassphrase } = useChangePassphrase();
-  const disabledState = useVaultDisabledState();
-  const { allowed, unavailableReason } = vaultOperationAvailability(
+  const { allowed, unavailableReason } = useVaultOperationAvailability(
     VAULT_OPERATIONS.PassphraseChange,
-    disabledState,
   );
 
   const form = useForm<ChangePassphraseInput>({

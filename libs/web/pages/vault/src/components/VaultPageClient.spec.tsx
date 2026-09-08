@@ -2,18 +2,35 @@
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 
-jest.mock('../hooks', () => ({
-  useGoogleIdentityScript: () => 'loading',
-  useLatestCloudBackup: () => ({ status: 'empty', record: null }),
-  useExportVault: () => ({ exporting: false, exportVaultNow: jest.fn() }),
-  useChangePassphrase: () => ({ changing: false, changePassphrase: jest.fn() }),
-  useRecoveryKeyRotation: () => ({
-    rotating: false,
-    rotateRecoveryKey: jest.fn(),
-  }),
+// Mock useVaultDisabledState at its module path so the real useVaultOperationAvailability
+// (which imports it from the same file) will use the mock when it calls useVaultDisabledState().
+jest.mock('../hooks/useVaultDisabledState.ts', () => ({
   useVaultDisabledState: jest.fn(),
-  useVaultUnlock: () => ({ unlocking: false, unlock: jest.fn() }),
 }));
+
+jest.mock('../hooks', () => {
+  const actual = jest.requireActual('../hooks');
+  return {
+    ...actual,
+    useGoogleIdentityScript: jest.fn(() => 'loading'),
+    useLatestCloudBackup: () => ({ status: 'empty', record: null }),
+    useExportVault: () => ({ exporting: false, exportVaultNow: jest.fn() }),
+    useChangePassphrase: () => ({
+      changing: false,
+      changePassphrase: jest.fn(),
+    }),
+    useRecoveryKeyRotation: () => ({
+      rotating: false,
+      rotateRecoveryKey: jest.fn(),
+    }),
+    useVaultUnlock: () => ({ unlocking: false, unlock: jest.fn() }),
+    useCloudBackup: () => ({
+      status: 'idle',
+      backup: jest.fn(),
+      clear: jest.fn(),
+    }),
+  };
+});
 
 jest.mock('@myorganizer/web-vault-ui', () => {
   const actual = jest.requireActual('@myorganizer/web-vault-ui');
@@ -43,14 +60,23 @@ jest.mock('@myorganizer/web-vault-ui', () => {
   };
 });
 
+jest.mock('./CloudBackupLiveCard', () => ({
+  CloudBackupLiveCard: () => (
+    <div data-testid="cloud-backup-live-card">Encrypted cloud backup</div>
+  ),
+}));
+
 import { VaultPageClient } from './VaultPageClient';
-import { useVaultDisabledState } from '../hooks';
+import { useGoogleIdentityScript } from '../hooks';
+import { useVaultDisabledState } from '../hooks/useVaultDisabledState';
 
 describe('VaultPageClient', () => {
   const ORIGINAL_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   beforeEach(() => {
+    jest.clearAllMocks();
     delete process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    (useGoogleIdentityScript as jest.Mock).mockReturnValue('loading');
     (useVaultDisabledState as jest.Mock).mockReturnValue('locked');
   });
 
@@ -174,12 +200,15 @@ describe('VaultPageClient', () => {
 
       render(<VaultPageClient />);
 
-      // Should show the policy reason (signed-out copy) — appears in multiple cards,
-      // so check that at least one appears
+      // Should show the policy reason (signed-out copy) in multiple cards that show
+      // VaultUnavailableNotice: RemoveVaultCard, ExportVaultCard, ChangePassphraseCard,
+      // RecoveryKeyRotationCard, ImportVaultCard, and CloudBackupUnavailableCard.
+      // Exact count ensures that if a new card were added without proper integration
+      // or if an existing card stopped showing the notice, the test catches it.
       const signedOutMessages = screen.getAllByText(
         'Your vault is not available on this device right now.',
       );
-      expect(signedOutMessages.length).toBeGreaterThan(0);
+      expect(signedOutMessages.length).toBe(6);
 
       // Should NOT show the old "Sign in to enable cloud backup" string
       expect(
@@ -192,6 +221,59 @@ describe('VaultPageClient', () => {
           /Cloud backup is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID/,
         ),
       ).not.toBeInTheDocument();
+    });
+
+    test('E3: locked state allows cloud backup (does not need Master Key per ADR 0068), renders live card when clientId is set', () => {
+      // A locked Vault does not block cloud backup: it touches Ciphertext only,
+      // not plaintext, so unlock is not a plaintext-access boundary for it.
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = 'test-client-id';
+      (useVaultDisabledState as jest.Mock).mockReturnValue('locked');
+      (useGoogleIdentityScript as jest.Mock).mockReturnValue('ready');
+
+      render(<VaultPageClient />);
+
+      // Should NOT show a policy reason (locked state does not block backup)
+      expect(
+        screen.queryByText(
+          /There is no vault on this device to back up|Your vault is not available/,
+        ),
+      ).not.toBeInTheDocument();
+
+      // Should NOT show the "Cloud backup is not configured" reason
+      expect(
+        screen.queryByText(
+          /Cloud backup is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID/,
+        ),
+      ).not.toBeInTheDocument();
+
+      // Should render the live cloud backup card (CloudBackupLiveCard renders a heading
+      // "Encrypted cloud backup" and the provider/handle are present)
+      expect(screen.getByText('Encrypted cloud backup')).toBeInTheDocument();
+    });
+
+    test('E4: enabled state allows cloud backup, renders live card when clientId is set', () => {
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = 'test-client-id';
+      (useVaultDisabledState as jest.Mock).mockReturnValue('enabled');
+      (useGoogleIdentityScript as jest.Mock).mockReturnValue('ready');
+
+      render(<VaultPageClient />);
+
+      // Should NOT show any policy reason (enabled state allows everything)
+      expect(
+        screen.queryByText(
+          /There is no vault on this device to back up|Your vault is not available/,
+        ),
+      ).not.toBeInTheDocument();
+
+      // Should NOT show the config reason
+      expect(
+        screen.queryByText(
+          /Cloud backup is not configured. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID/,
+        ),
+      ).not.toBeInTheDocument();
+
+      // Should render the live cloud backup card
+      expect(screen.getByText('Encrypted cloud backup')).toBeInTheDocument();
     });
   });
 });
