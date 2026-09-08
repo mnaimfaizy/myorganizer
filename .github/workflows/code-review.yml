@@ -83,28 +83,35 @@ permissions:
   pull-requests: write
   actions: read
 
-# A label event must never disturb the review of the same pull request, and an
-# `agent-review` press must still supersede one. Both come from the group name.
+# A run that is going to skip must never disturb the review of the same pull
+# request. Concurrency is evaluated when the run is created, before any job
+# `if:` is read, so "the job skips" is not the same as "the run is harmless" —
+# the run still joins the group and, with `cancel-in-progress`, takes the
+# review with it.
 #
-# Concurrency is evaluated when the run is created, before any job `if:` is
-# read, so a run started by an unrelated label — `tooling`, added by
-# `ai:create-pr` — enters the group whatever the workflow later decides to skip.
-# Two mechanisms then bite, and only one is governed by `cancel-in-progress`:
-# it can cancel a review that has already started, which is what pull request
-# #687 hit, and it can evict one still queued, because GitHub keeps only the
-# newest pending run in a group regardless of that setting. `ai:create-pr`
-# labels within a second of opening, so the review is usually still queued;
-# pull request #690 lost it that way, three runs created in the same second.
+# Two triggers create runs that almost always skip. A `labeled` event fires for
+# every label, and `ai:create-pr` adds labels a second after opening. An
+# `issue_comment` event fires for every comment by anyone, including the
+# pipeline's own bots: GitGuardian's comment on pull request #693 landed three
+# seconds after a branch update and cancelled the review that update had just
+# started. Both were found the hard way, one after the other, and the second
+# was invisible in the obvious place — `issue_comment` runs are attributed to
+# the default branch, so they do not appear when listing runs for the pull
+# request's branch.
 #
-# So a label that is not the trigger goes to a group of its own and touches
-# nothing. `agent-review` deliberately stays in the review group: pressing the
-# button while a review runs should replace it, not race it. Two reviewers on
-# one pull request would spend two sessions out of a five-hour window that
-# seven sessions are measured to exhaust
-# (docs/review/golden-replay-results.md), and the older run is reviewing older
-# code anyway.
+# Both now go to a group of their own and touch nothing. What stays in the
+# review's group is what should supersede a review: a new push, and the two
+# deliberate re-review requests (`agent-review`, `/code-review`). Pressing
+# either while a review runs replaces it rather than racing it — one session
+# instead of two, on the newer code, out of a five-hour window that seven
+# sessions are measured to exhaust (docs/review/golden-replay-results.md).
+#
+# The condition is duplicated from the `context` job's `if:` below, in a
+# different language, because concurrency cannot read a job's decision. If you
+# change one, change the other; they are checked against each other by
+# tools/scripts/check-review-concurrency.mjs.
 concurrency:
-  group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}${{ github.event.action == 'labeled' && github.event.label.name != 'agent-review' && '-inert' || '' }}
+  group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}${{ ((github.event.action == 'labeled' && github.event.label.name != 'agent-review') || (github.event_name == 'issue_comment' && !startsWith(github.event.comment.body, '/code-review'))) && '-inert' || '' }}
   cancel-in-progress: true
 
 jobs:
@@ -464,7 +471,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [context, review]
-    if: always() && needs.review.result != 'skipped' && needs.review.outputs.skip != 'true' && needs.context.outputs.same_repo == 'true'
+    # `cancelled` belongs with `skipped`, not with `failure`: a reviewer that was
+    # superseded wrote nothing, and this job's own failure on #693 was it trying
+    # to fetch an artifact that never existed.
+    if: always() && needs.review.result != 'skipped' && needs.review.result != 'cancelled' && needs.review.outputs.skip != 'true' && needs.context.outputs.same_repo == 'true'
     permissions:
       contents: write
       issues: write

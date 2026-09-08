@@ -100,6 +100,7 @@
     "review:tier:check": "node tools/scripts/check-review-tier.mjs",
     "review:tier:test": "node --test tools/scripts/lib/review-tier.test.mjs tools/scripts/lib/nx-graph.test.mjs",
     "review:tier:replay": "node tools/scripts/review/replay-review-tier.mjs",
+    "review:concurrency:check": "node tools/scripts/check-review-concurrency.mjs",
     "review:pages:check": "node tools/scripts/check-review-pages.mjs",
     "deploy:pages:check": "node tools/scripts/check-deploy-pipeline.mjs",
     "deploy:pages:test": "node --test tools/scripts/check-deploy-pipeline.test.mjs",
