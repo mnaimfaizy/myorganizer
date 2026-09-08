@@ -11,14 +11,14 @@
 // concurrency group, and with `cancel-in-progress` it takes the in-flight
 // review with it.
 //
-// It happened twice. `ai:create-pr` adds labels a second after opening a pull
-// request, and those `labeled` runs cancelled the review on #687 and #690. The
-// fix sent them to a group of their own, and three weeks of nothing later a
-// GitGuardian comment on #693 did exactly the same thing through the
-// `issue_comment` trigger, which had been left in the shared group. That one
-// was invisible where anyone would look: `issue_comment` runs are attributed
-// to the default branch, so they never appear when listing runs for the pull
-// request's branch.
+// It happened three times in one morning. `ai:create-pr` adds labels a second
+// after opening a pull request, and those `labeled` runs cancelled the review
+// on #687 and #690. The fix sent them to a group of their own, and a
+// GitGuardian comment on #693 did the same thing an hour later through the
+// `issue_comment` trigger, which had been left in the shared group — invisible
+// where anyone would look, because `issue_comment` runs are attributed to the
+// default branch and never appear when listing runs for the pull request's
+// branch. Then the shared inert group cancelled itself on #694.
 //
 // So the invariant is: every trigger the `context` job refuses must also be
 // steered out of the review's concurrency group. This cannot be checked by
@@ -93,10 +93,18 @@ for (const gate of GATES) {
     );
 }
 
-// The group must actually route somewhere else, not merely mention the guards.
-if (!/'-[a-z]+'/.test(group))
+// The group must actually route somewhere else, not merely mention the guards,
+// and the elsewhere must be one group per run. A shared inert group is not
+// harmless: `ai:create-pr` adds two labels, the second run cancels the first,
+// and the cancelled run's check runs overwrite the passing review's in the
+// pull request's rollup — a green review reported as cancelled.
+if (!/-inert/.test(group))
   findings.push(
     'the concurrency group has no distinct suffix for inert runs, so every trigger shares one group',
+  );
+else if (!/github\.run_id/.test(group))
+  findings.push(
+    'the inert suffix is not unique per run, so two inert runs cancel each other and the cancelled one overwrites the review in the checks rollup',
   );
 
 if (printOnly) {

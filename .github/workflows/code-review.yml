@@ -99,7 +99,13 @@ permissions:
 # the default branch, so they do not appear when listing runs for the pull
 # request's branch.
 #
-# Both now go to a group of their own and touch nothing. What stays in the
+# Both now go to a group of their own, one per run, and touch nothing. The
+# suffix carries `github.run_id` because a shared inert group is not harmless
+# either: `ai:create-pr` adds two labels, both runs landed in one inert group,
+# the second cancelled the first, and the cancelled run's check runs — `Agent
+# Review Ran`, `Agent Verdict`, `Publish Review` — overwrote the passing
+# review's in the pull request's rollup. A successful review reported as
+# cancelled, which is the same lie in the other direction. What stays in the
 # review's group is what should supersede a review: a new push, and the two
 # deliberate re-review requests (`agent-review`, `/code-review`). Pressing
 # either while a review runs replaces it rather than racing it — one session
@@ -111,7 +117,7 @@ permissions:
 # change one, change the other; they are checked against each other by
 # tools/scripts/check-review-concurrency.mjs.
 concurrency:
-  group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}${{ ((github.event.action == 'labeled' && github.event.label.name != 'agent-review') || (github.event_name == 'issue_comment' && !startsWith(github.event.comment.body, '/code-review'))) && '-inert' || '' }}
+  group: code-review-${{ github.event.pull_request.number || github.event.issue.number || inputs.pr }}${{ ((github.event.action == 'labeled' && github.event.label.name != 'agent-review') || (github.event_name == 'issue_comment' && !startsWith(github.event.comment.body, '/code-review'))) && format('-inert-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 jobs:
