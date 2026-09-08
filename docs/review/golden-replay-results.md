@@ -291,6 +291,46 @@ findings were suppressed in this very run and the normalized report keeps only
 the count, so the transcript cannot say whether this was among them. Any case
 whose incident was fixed by adding a gate has the same problem.
 
+### Testing the caveat: one case is unwinnable, and only one
+
+The question the transcript raised was cheap to answer. Each case's incident
+names the gate its fix introduced; running that gate against the case's own head,
+in a worktree with the current checkout's tooling, says whether the defect is
+gate-covered today.
+
+| Case                                          | Gate                     | At the case head       |
+| --------------------------------------------- | ------------------------ | ---------------------- |
+| `groceries-ui-written-against-absent-roles`   | `tailwind:classes:check` | **exit 1 — violation** |
+| — the same gate at that case's _base_         | `tailwind:classes:check` | exit 0 — clean         |
+| `groceries-blob-type-without-fanouts` (guard) | `enum:fanout:check`      | exit 2 — cannot run    |
+| `export-envelope-drops-tasks`                 | `enum:fanout:check`      | exit 2 — cannot run    |
+| `sync-bookmarks-without-restore-or-meta-push` | `enum:fanout:check`      | exit 0 — passes        |
+
+**`groceries-ui-written-against-absent-roles` is unwinnable as written.** The gate
+is clean at the base and fails at the head with 25 utilities that compile to no
+CSS — `bg-surface-container-lowest`, `border-outline-variant`, `text-on-surface`,
+the exact names in the case's `why`. So the defect is precisely what a `*:check`
+gate would already fail, and the brief says that is not a finding but a
+`suppressedRedundant` count. A reviewer that loaded ADR 0065 and ran the gate
+would have been _correct_ to suppress it. The case scores the reviewer as missing
+something it is instructed not to report, and it should be retired or rewritten
+rather than counted against recall.
+
+**The two cases the reviewer handles best are the two no gate can substitute
+for.** `enum:fanout:check` cannot even run at the guard's head or at
+`export-envelope`'s — the pinned table the gate reads is part of the fix, so it
+does not exist yet in the range under review. Those are the cases that require
+reading the diff and reasoning about it, and they are the ones the reviewer
+catches: the guard in every run, `export-envelope` in five of seven.
+
+**And gate coverage does not explain the rest.** `sync-bookmarks` has never been
+caught, and its gate passes cleanly at its head — nothing suppresses it and the
+reviewer misses it anyway. Four of the eight cases were tested here, against the
+gate each incident names; the other four have no obvious gate and were not
+tested. So this retires one case, sharpens why the guard is a guard, and leaves
+the general miss rate exactly where the transcript put it: the reviewer does not
+load the standards that would make the defect expressible.
+
 ## Reproduce
 
 ```bash
