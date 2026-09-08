@@ -55,10 +55,10 @@ function nameList(types: VaultBlobType[]): string {
 /**
  * What each Vault Sync Status Kind is read as, pinned against the kind rather
  * than switched on it — so a later kind fails to compile here until it says
- * what a User is told for it ([ADR 0053](../../../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
+ * what a User is told for it ([ADR 0053](../../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
  * A `default` branch would have let `standoff` fall through as an unlabeled,
  * silently-synced reading, which is exactly the invisible refusal
- * [ADR 0067](../../../../../docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)
+ * [ADR 0067](../../../../docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)
  * exists to end.
  */
 const VAULT_SYNC_STATUS_READINGS = {

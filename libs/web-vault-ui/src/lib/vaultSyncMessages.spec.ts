@@ -199,7 +199,7 @@ describe('vaultSyncMessages', () => {
       expect(reading.detail).toContain('Subscriptions');
     });
 
-    test('standoff status returns error tone with vault mismatch message', () => {
+    test('standoff status returns error tone with a Vault Sync Standoff message', () => {
       const status: VaultSyncStatus = {
         kind: 'standoff',
         pendingTypes: [],
