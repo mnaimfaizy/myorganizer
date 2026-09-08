@@ -32,6 +32,7 @@ if (!(globalThis as any).crypto?.subtle) {
 }
 
 import type { AxiosResponse } from 'axios';
+import { VaultBlobType } from '@myorganizer/app-api-client';
 
 import { createVaultHandle } from './vaultHandle';
 import {
@@ -39,6 +40,7 @@ import {
   type VaultPullTriggerScheduler,
   VAULT_PULL_DEBOUNCE_MS,
 } from './vaultPullTrigger';
+import { localToServerMeta } from './vaultShapes';
 
 beforeEach(() => {
   localStorage.clear();
@@ -51,8 +53,10 @@ describe('createVaultPullTrigger', () => {
   /**
    * Helper to create a properly typed API double for vault operations.
    */
-  function createApiDouble() {
-    return {
+  function createApiDouble(handle?: Awaited<ReturnType<typeof setupHandle>>) {
+    const api = {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getVaultMeta: jest.fn<Promise<AxiosResponse<any>>, []>(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       getVaultBlob: jest.fn<Promise<AxiosResponse<any>>, [any?]>(),
       putVaultBlob: jest.fn<
@@ -68,6 +72,27 @@ describe('createVaultPullTrigger', () => {
         [any]
       >(),
     };
+
+    // Default getVaultMeta returns server meta matching local vault identity
+    if (handle) {
+      const localVault = handle.loadVault();
+      if (localVault) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        api.getVaultMeta.mockResolvedValue({
+          data: {
+            etag: 'meta-etag',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+            meta: localToServerMeta(localVault),
+          },
+          status: 200,
+          statusText: 'OK',
+          headers: {},
+          config: { headers: {} as any },
+        } as unknown as AxiosResponse<any>);
+      }
+    }
+
+    return api;
   }
 
   /**
@@ -83,7 +108,7 @@ describe('createVaultPullTrigger', () => {
   test('should coalesce multiple requestCheck calls into one scheduled pass', async () => {
     // Matrix row: "Debounce coalescing"
     const handle = await setupHandle('user-1');
-    const api = createApiDouble();
+    const api = createApiDouble(handle);
     // 404 makes all types resolve quickly without further calls
     api.getVaultBlob.mockRejectedValue({
       response: { status: 404 },
@@ -120,7 +145,7 @@ describe('createVaultPullTrigger', () => {
     const spyA = jest.spyOn(handleA, 'lastPushedEtag');
     const spyB = jest.spyOn(handleB, 'lastPushedEtag');
 
-    const api = createApiDouble();
+    const api = createApiDouble(handleB);
     api.getVaultBlob.mockRejectedValue({
       response: { status: 404 },
     });
@@ -162,7 +187,7 @@ describe('createVaultPullTrigger', () => {
   test('check() should bypass debounce and run immediately', async () => {
     // Matrix row: "check() bypasses debounce"
     const handle = await setupHandle('user-1');
-    const api = createApiDouble();
+    const api = createApiDouble(handle);
     api.getVaultBlob.mockRejectedValue({
       response: { status: 404 },
     });
@@ -196,7 +221,7 @@ describe('createVaultPullTrigger', () => {
   test('should serialize concurrent check() calls', async () => {
     // Matrix row: "Serialization"
     const handle = await setupHandle('user-1');
-    const api = createApiDouble();
+    const api = createApiDouble(handle);
     api.getVaultBlob.mockImplementation(async () => {
       // Simulate async work
       await new Promise((resolve) => setTimeout(resolve, 5));
@@ -235,7 +260,7 @@ describe('createVaultPullTrigger', () => {
   test('should stop and not retry on 401 response', async () => {
     // Matrix row: "Stop-and-no-retry on 401"
     const handle = await setupHandle('user-1');
-    const api = createApiDouble();
+    const api = createApiDouble(handle);
     // First call: 401
     api.getVaultBlob.mockRejectedValueOnce({
       response: { status: 401 },
@@ -270,7 +295,7 @@ describe('createVaultPullTrigger', () => {
   test('should stop and not retry on 403 response', async () => {
     // Matrix row: "Stop-and-no-retry on 403"
     const handle = await setupHandle('user-1');
-    const api = createApiDouble();
+    const api = createApiDouble(handle);
     // First call: 403
     api.getVaultBlob.mockRejectedValueOnce({
       response: { status: 403 },
@@ -305,7 +330,7 @@ describe('createVaultPullTrigger', () => {
   test('should not schedule when trigger is stopped', async () => {
     // Matrix row: "Stopped + requestCheck"
     const handle = await setupHandle('user-1');
-    const api = createApiDouble();
+    const api = createApiDouble(handle);
     api.getVaultBlob.mockRejectedValueOnce({
       response: { status: 401 },
     });
@@ -335,7 +360,7 @@ describe('createVaultPullTrigger', () => {
   test('should return stopped result immediately after trigger stopped via requestCheck+schedule', async () => {
     // Matrix row: "Stopped + requestCheck then schedule"
     const handle = await setupHandle('user-1');
-    const api = createApiDouble();
+    const api = createApiDouble(handle);
     api.getVaultBlob.mockRejectedValue({
       response: { status: 401 },
     });
@@ -387,7 +412,7 @@ describe('createVaultPullTrigger', () => {
     // Matrix row: "Default scheduler"
     // Verify the default scheduler schedules with setTimeout at the correct delay
     const handle = await setupHandle('user-1');
-    const api = createApiDouble();
+    const api = createApiDouble(handle);
     api.getVaultBlob.mockRejectedValue({
       response: { status: 404 },
     });
@@ -508,5 +533,79 @@ describe('createVaultPullTrigger', () => {
 
     // No new API calls
     expect(api.getVaultBlob).toHaveBeenCalledTimes(firstCallCount);
+  });
+
+  // ===== Different-Vault Identity Refusal Test (ADR 0067 T1) =====
+
+  test('trigger-driven pass with different vault identity refuses rather than takes', async () => {
+    const handle = await setupHandle('user-1');
+
+    // Create a different vault's meta to simulate a different vault on the server
+    const differentVaultHandle = createVaultHandle({ owner: 'user-2' });
+    await differentVaultHandle.initialize({ passphrase: 'different key' });
+    const differentVaultMeta = localToServerMeta(
+      differentVaultHandle.loadVault()!,
+    );
+
+    const api = createApiDouble(handle);
+
+    // Mock getVaultMeta to return the different vault's meta
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    api.getVaultMeta.mockResolvedValue({
+      data: {
+        etag: 'different-meta-etag',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        meta: differentVaultMeta,
+      },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: { headers: {} as any },
+    } as unknown as AxiosResponse<any>);
+
+    // Mock getVaultBlob to return a blob (changed, not 304) so convergence is triggered
+    // and getVaultMeta is called
+    api.getVaultBlob.mockResolvedValue({
+      data: {
+        etag: 'changed-etag',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        type: VaultBlobType.Tasks,
+        blob: { version: 1, iv: 'some-iv', ciphertext: 'some-ct' },
+      },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: { headers: {} as any },
+    } as unknown as AxiosResponse<any>);
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    // Run check directly to get the result
+    const result = await trigger.check(handle);
+
+    // Verify that getVaultMeta was called to get the server's meta
+    expect(api.getVaultMeta).toHaveBeenCalled();
+
+    // Asserted on the converged entries themselves rather than inside a
+    // conditional walk: a pass that converged nothing would satisfy an
+    // `if (kind === 'converged')` body that never runs, and this test would
+    // then prove nothing at all.
+    const converged = result.checked.filter(
+      (entry) => entry.outcome.kind === 'converged',
+    );
+    expect(converged.length).toBeGreaterThan(0);
+    converged.forEach((entry) => {
+      expect(entry.outcome).toEqual({
+        kind: 'converged',
+        outcome: { kind: 'refused', reason: 'different-vault' },
+      });
+    });
+
+    // Verify no putVaultBlob was attempted
+    expect(api.putVaultBlob).not.toHaveBeenCalled();
   });
 });

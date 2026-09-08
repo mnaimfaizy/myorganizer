@@ -174,6 +174,26 @@ export function vaultMetaIdentity(meta: VaultMetaV1): string {
 }
 
 /**
+ * The Vault Identity a Vault Meta carries: which Vault it belongs to, and
+ * nothing about how that Vault is opened.
+ *
+ * Read through the same pinned facet `different-vault` divergence is read
+ * through, so "these two Vault Metas are two Vaults" has exactly one
+ * definition and cannot drift into a second. Rewrapping — a changed
+ * passphrase, a replaced Recovery Key — re-derives from the salt the Vault
+ * already holds and never moves this, while `initialize` mints a fresh one
+ * beside a fresh Master Key.
+ *
+ * This is the one thing about a Vault Meta a Vault Blob decision may rest on
+ * ([ADR 0067](../../../../../docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)),
+ * and unlike everything else about opening a Vault it is answerable without
+ * unlocking anything — which is what lets a locked device keep converging.
+ */
+export function vaultIdentityOf(meta: VaultMetaV1): string {
+  return stableStringify(VAULT_META_CHANGE_FACETS['different-vault'](meta));
+}
+
+/**
  * The three answers to "start using the new wrapping here?".
  *
  * `defer` is the answer given by a User who gave no answer — a dismissed

@@ -43,15 +43,20 @@ import {
   readVaultBlobRecords,
 } from '@myorganizer/core';
 
+import { mintRecoveryKey } from './recoveryKeyMint';
 import { createVaultHandle, VaultSecretMismatchError } from './vaultHandle';
 import {
   convergeVaultBlob,
   type ConvergingVaultHandle,
   type VaultBlobConvergePrompt,
 } from './vaultConverge';
-import type { ServerVaultBlob } from './serverVaultSync';
+import type { ServerVaultBlob, ServerVaultMeta } from './serverVaultSync';
 import { convergeVaultMeta } from './vaultMetaConverge';
-import { serverEncryptedBlobToLocal, toEncryptedBlobV1 } from './vaultShapes';
+import {
+  localToServerMeta,
+  serverEncryptedBlobToLocal,
+  toEncryptedBlobV1,
+} from './vaultShapes';
 
 beforeEach(() => {
   localStorage.clear();
@@ -243,6 +248,23 @@ describe('convergeVaultBlob', () => {
     return error;
   }
 
+  /**
+   * Helper to create a ServerVaultMeta with the same Vault Identity as a handle's Local Vault.
+   * Used to give existing tests a matching identity so they are not refused.
+   */
+  function serverMetaFor(
+    handle: ConvergingVaultHandle,
+    etag = 'meta-etag',
+  ): ServerVaultMeta {
+    const vault = handle.loadVault();
+    if (!vault) throw new Error('Handle has no vault');
+    return {
+      etag,
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      meta: localToServerMeta(vault),
+    };
+  }
+
   // ===== Row 1: No Local Vault on the device =====
   test('should return nothing/no-local-vault when device has no local vault', async () => {
     // #548 matrix row 1
@@ -255,6 +277,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: null,
     });
 
     expect(outcome).toEqual({ kind: 'nothing', reason: 'no-local-vault' });
@@ -276,6 +299,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     expect(outcome).toEqual({ kind: 'nothing', reason: 'in-sync' });
@@ -306,6 +330,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
       remote,
     });
 
@@ -338,6 +363,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
       remote,
     });
 
@@ -398,6 +424,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     expect(outcome).toEqual({ kind: 'sent', etag: 'etag-server' });
@@ -461,6 +488,7 @@ describe('convergeVaultBlob', () => {
       handle: lockedHandle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(lockedHandle),
     });
 
     expect(outcome).toEqual({ kind: 'sent', etag: 'etag-server' });
@@ -496,6 +524,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     expect(outcome).toEqual({ kind: 'sent', etag: 'etag-new' });
@@ -552,6 +581,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     expect(outcome).toEqual({ kind: 'merged', etag: 'etag-merged' });
@@ -632,6 +662,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     expect(outcome).toEqual({ kind: 'merged', etag: 'etag-server' });
@@ -738,6 +769,7 @@ describe('convergeVaultBlob', () => {
       handle: lockedHandle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(lockedHandle),
       remote,
     });
 
@@ -818,6 +850,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     expect(outcome).toEqual({
@@ -909,6 +942,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     expect(outcome).toEqual({
@@ -989,6 +1023,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     expect(outcome).toEqual({
@@ -1056,6 +1091,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Groceries,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     expect(outcome).toEqual({
@@ -1132,6 +1168,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Groceries,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     expect(outcome).toEqual({
@@ -1216,6 +1253,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     // No etag because retry also lost
@@ -1299,6 +1337,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     expect(outcome).toEqual({ kind: 'sent', etag: 'etag-server' });
@@ -1361,6 +1400,7 @@ describe('convergeVaultBlob', () => {
         handle,
         type: VaultBlobType.Tasks,
         prompt,
+        serverMeta: serverMetaFor(handle),
       }),
     ).rejects.toThrow('server error');
   });
@@ -1452,6 +1492,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     // Merge proceeds without prompt (no undecryptable-remote)
@@ -1557,6 +1598,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     // Prompt asked, user deferred
@@ -1639,6 +1681,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Todos,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     expect(outcome).toEqual({
@@ -1736,6 +1779,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     expect(outcome).toEqual({
@@ -1834,6 +1878,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     expect(outcome).toEqual({
@@ -1957,6 +2002,7 @@ describe('convergeVaultBlob', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt: jest.fn() as VaultBlobConvergePrompt,
+      serverMeta: serverMetaFor(handle),
     });
 
     // 3. Assert getVaultMeta was still called exactly once (zero additional calls)
@@ -1986,5 +2032,593 @@ describe('convergeVaultBlob', () => {
         expect.objectContaining({ id: 'task-2', title: 'Remote task' }),
       ]),
     );
+  });
+
+  // ===== NEW: Vault Identity guard tests (ADR 0067) =====
+
+  test('should refuse to take clean remote with differing vault identity', async () => {
+    // Test 1: Clean path, remote differs, DIFFERING identity → refused
+    const handle1 = await setupHandle('user-1', [
+      {
+        id: 'task-1',
+        title: 'Local task',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+    await handle1.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    // Capture local ciphertext before converge
+    const vault1Before = handle1.loadVault();
+    const localCiphertextBefore = vault1Before?.data.tasks;
+
+    // Create a different vault (user-2 with different Vault Identity)
+    const handle2 = await setupHandle('user-2', [
+      {
+        id: 'task-2',
+        title: 'Other vault task',
+        status: 'done',
+        priority: 'medium',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    const remote = await captureRemoteBlob(handle2, [
+      {
+        id: 'task-2',
+        title: 'Other vault task',
+        status: 'done',
+        priority: 'medium',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    // Build serverMeta with user-2's identity, not user-1's
+    const differentVaultMeta = serverMetaFor(handle2);
+
+    const api = createApiDouble();
+    const prompt = jest.fn() as VaultBlobConvergePrompt;
+
+    const outcome = await convergeVaultBlob({
+      api,
+      handle: handle1,
+      type: VaultBlobType.Tasks,
+      prompt,
+      serverMeta: differentVaultMeta,
+      remote,
+    });
+
+    expect(outcome).toEqual({
+      kind: 'refused',
+      reason: 'different-vault',
+    });
+
+    // Verify no API calls made
+    expect(api.getVaultBlob).not.toHaveBeenCalled();
+    expect(api.putVaultBlob).not.toHaveBeenCalled();
+
+    // Verify local Ciphertext byte-identical (unchanged)
+    const vault1After = handle1.loadVault();
+    const localCiphertextAfter = vault1After?.data.tasks;
+    expect(localCiphertextAfter?.iv).toBe(localCiphertextBefore?.iv);
+    expect(localCiphertextAfter?.ciphertext).toBe(
+      localCiphertextBefore?.ciphertext,
+    );
+
+    // Verify bookmark unchanged
+    expect(handle1.lastPushedEtag('tasks')).toBe('etag-1');
+  });
+
+  test('should take clean remote with identical vault identity', async () => {
+    // Test 2: Clean path, IDENTICAL identity, remote differs → still took
+    const handle = await setupHandle('user-1', []);
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    const remote = await captureRemoteBlob(handle, [
+      {
+        id: 'task-1',
+        title: 'Remote task',
+        status: 'done',
+        priority: 'medium',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    const api = createApiDouble();
+    const prompt = jest.fn() as VaultBlobConvergePrompt;
+
+    const outcome = await convergeVaultBlob({
+      api,
+      handle,
+      type: VaultBlobType.Tasks,
+      prompt,
+      serverMeta: serverMetaFor(handle),
+      remote,
+    });
+
+    // Should take because identity matches
+    expect(outcome).toEqual({ kind: 'took', etag: 'etag-remote' });
+
+    // Verify bookmark advanced
+    expect(handle.lastPushedEtag('tasks')).toBe('etag-remote');
+
+    // Verify remote payload was taken
+    const decrypted = await handle.loadDecryptedData({
+      type: 'tasks',
+      defaultValue: null,
+    });
+    if (!decrypted) throw new Error('Failed to decrypt tasks');
+    const records = readVaultBlobRecords(decrypted);
+    expect(records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'task-1', title: 'Remote task' }),
+      ]),
+    );
+  });
+
+  test('should refuse dirty local with differing vault identity before asking', async () => {
+    // Test 3: Dirty path, DIFFERING identity → refused BEFORE guard ladder
+    const handle1 = await setupHandle('user-1', [
+      {
+        id: 'task-1',
+        title: 'Local task',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+    await handle1.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    // Make dirty
+    const envelope: VaultBlobEnvelope<unknown> = {
+      records: [
+        {
+          id: 'task-1',
+          title: 'Updated',
+          status: 'done',
+          priority: 'medium',
+          archived: false,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T01:00:00.000Z',
+        },
+      ],
+      deletions: {},
+    };
+    await handle1.saveEncryptedData({ type: 'tasks', value: envelope });
+
+    // Create different vault meta
+    const handle2 = await setupHandle('user-2', []);
+    const differentVaultMeta = serverMetaFor(handle2);
+
+    const api = {
+      getVaultBlob: jest.fn(),
+      putVaultBlob: jest.fn(),
+    };
+    const prompt = jest.fn() as VaultBlobConvergePrompt;
+
+    const outcome = await convergeVaultBlob({
+      api,
+      handle: handle1,
+      type: VaultBlobType.Tasks,
+      prompt,
+      serverMeta: differentVaultMeta,
+    });
+
+    expect(outcome).toEqual({
+      kind: 'refused',
+      reason: 'different-vault',
+    });
+
+    // Verify prompt was never called (guard happens before asking)
+    expect(prompt).not.toHaveBeenCalled();
+
+    // Verify no API calls
+    expect(api.putVaultBlob).not.toHaveBeenCalled();
+
+    // Verify local Ciphertext unchanged
+    expect(await handle1.hasUnsentChanges('tasks')).toBe(true);
+  });
+
+  test('should refuse dirty local with differing vault identity even if prompt answers keep-remote', async () => {
+    // Test 4: Dirty path, DIFFERING identity + prompt='keep-remote' → still refused
+    // This is the #571 route the old code left open
+    const handle1 = await setupHandle('user-1', [
+      {
+        id: 'task-1',
+        title: 'Local task',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+    await handle1.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    // Make dirty
+    const envelope: VaultBlobEnvelope<unknown> = {
+      records: [
+        {
+          id: 'task-1',
+          title: 'Updated',
+          status: 'done',
+          priority: 'medium',
+          archived: false,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T01:00:00.000Z',
+        },
+      ],
+      deletions: {},
+    };
+    await handle1.saveEncryptedData({ type: 'tasks', value: envelope });
+
+    // Create different vault meta
+    const handle2 = await setupHandle('user-2', []);
+    const differentVaultMeta = serverMetaFor(handle2);
+
+    const api = {
+      getVaultBlob: jest.fn(),
+      putVaultBlob: jest.fn(),
+    };
+    const prompt = jest.fn().mockResolvedValue('keep-remote' as const);
+
+    const outcome = await convergeVaultBlob({
+      api,
+      handle: handle1,
+      type: VaultBlobType.Tasks,
+      prompt,
+      serverMeta: differentVaultMeta,
+    });
+
+    expect(outcome).toEqual({
+      kind: 'refused',
+      reason: 'different-vault',
+    });
+
+    // Verify prompt was never called (guard refuses before prompt)
+    expect(prompt).not.toHaveBeenCalled();
+
+    // Verify no API calls
+    expect(api.putVaultBlob).not.toHaveBeenCalled();
+
+    // Verify local Ciphertext unchanged
+    expect(await handle1.hasUnsentChanges('tasks')).toBe(true);
+  });
+
+  test('should merge dirty local with identical vault identity despite differing remote', async () => {
+    // Test 5: Dirty path, IDENTICAL identity → unchanged merging behavior
+    // Use Row 8 pattern: dirty but no bookmark, so merge happens on first push
+    const handle = await setupHandle('user-1', [
+      {
+        id: 'task-1',
+        title: 'Local',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T10:00:00.000Z',
+      },
+    ]);
+    // NO bookmark — this is first push
+
+    const remote = await captureRemoteBlob(handle, [
+      {
+        id: 'task-2',
+        title: 'Remote',
+        status: 'done',
+        priority: 'medium',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T09:00:00.000Z',
+      },
+    ]);
+
+    const api = {
+      getVaultBlob: jest
+        .fn()
+        .mockResolvedValue(formatGetVaultBlobResponse(remote)),
+      putVaultBlob: jest
+        .fn()
+        .mockResolvedValue(formatPutVaultBlobResponse('etag-merged')),
+    };
+    const prompt = jest.fn() as VaultBlobConvergePrompt;
+
+    const outcome = await convergeVaultBlob({
+      api,
+      handle,
+      type: VaultBlobType.Tasks,
+      prompt,
+      serverMeta: serverMetaFor(handle),
+    });
+
+    // Verify merge happens (same identity, so converge proceeds normally)
+    expect(outcome).toEqual({ kind: 'merged', etag: 'etag-merged' });
+
+    // Verify both local and remote records are present
+    const merged = await handle.loadDecryptedData({
+      type: 'tasks',
+      defaultValue: null,
+    });
+    if (!merged) throw new Error('Failed to decrypt merged tasks');
+    const records = readVaultBlobRecords(merged);
+    expect(records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'task-1', title: 'Local' }),
+        expect.objectContaining({ id: 'task-2', title: 'Remote' }),
+      ]),
+    );
+  });
+
+  test('should refuse locked vault with differing vault identity', async () => {
+    // Test 6: LOCKED Vault + DIFFERING identity → still refused
+    // Locked detection needed no Master Key
+    const handle1 = await setupHandle('user-1', []);
+    await handle1.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    // Create locked handle
+    const lockedHandle = createVaultHandle({ owner: 'user-1' });
+    expect(lockedHandle.isUnlocked).toBe(false);
+
+    // Create different vault meta
+    const handle2 = await setupHandle('user-2', []);
+    const differentVaultMeta = serverMetaFor(handle2);
+
+    const api = createApiDouble();
+    const prompt = jest.fn() as VaultBlobConvergePrompt;
+    const decryptSpy = jest
+      .spyOn(lockedHandle, 'decryptCiphertext')
+      .mockRejectedValue(new Error('Should not decrypt'));
+
+    const outcome = await convergeVaultBlob({
+      api,
+      handle: lockedHandle,
+      type: VaultBlobType.Tasks,
+      prompt,
+      serverMeta: differentVaultMeta,
+    });
+
+    expect(outcome).toEqual({
+      kind: 'refused',
+      reason: 'different-vault',
+    });
+
+    // Verify decryptCiphertext was never called (refused before decrypt attempt)
+    expect(decryptSpy).not.toHaveBeenCalled();
+
+    decryptSpy.mockRestore();
+  });
+
+  test('should take clean remote on locked vault with identical vault identity', async () => {
+    // Test 7: LOCKED Vault + IDENTICAL identity → locked convergence behaves as before
+    const handle = await setupHandle('user-1', []);
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    const remote = await captureRemoteBlob(handle, [
+      {
+        id: 'task-1',
+        title: 'Remote task',
+        status: 'done',
+        priority: 'medium',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    // Create fresh locked handle
+    const lockedHandle = createVaultHandle({ owner: 'user-1' });
+    expect(lockedHandle.isUnlocked).toBe(false);
+
+    const api = createApiDouble();
+    const prompt = jest.fn() as VaultBlobConvergePrompt;
+
+    const outcome = await convergeVaultBlob({
+      api,
+      handle: lockedHandle,
+      type: VaultBlobType.Tasks,
+      prompt,
+      serverMeta: serverMetaFor(lockedHandle),
+      remote,
+    });
+
+    // Should take even while locked (clean path needs no Master Key)
+    expect(outcome).toEqual({ kind: 'took', etag: 'etag-remote' });
+  });
+
+  test('should not refuse after passphrase rotation (identity unchanged)', async () => {
+    // Test 8: Rotated passphrase is NOT a differing identity
+    // Proof: converge proceeds normally (clean take) after rotation
+    const handle = await setupHandle('user-1', [
+      {
+        id: 'task-1',
+        title: 'Local',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    // Capture remote BEFORE passphrase change
+    const remote = await captureRemoteBlob(handle, [
+      {
+        id: 'task-2',
+        title: 'Remote',
+        status: 'done',
+        priority: 'medium',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    // Capture the vault state BEFORE passphrase change (same identity)
+    const preRotationVault = handle.loadVault();
+    if (!preRotationVault) throw new Error('Vault load failed');
+    const preRotationMeta = localToServerMeta(preRotationVault);
+
+    // Change passphrase (identity stays same, wrapping changes). Authorized by
+    // the current passphrase — the rewrap re-derives from the salt the Vault
+    // already holds, which is exactly why it cannot read as another Vault.
+    await handle.changePassphrase({
+      currentPassphrase: passphrase,
+      newPassphrase: 'new pass 2026',
+    });
+
+    // Build serverMeta from PRE-rotation vault (identity unchanged)
+    const serverMeta: ServerVaultMeta = {
+      etag: 'meta-etag',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      meta: preRotationMeta,
+    };
+
+    const api = createApiDouble();
+    const prompt = jest.fn() as VaultBlobConvergePrompt;
+
+    const outcome = await convergeVaultBlob({
+      api,
+      handle,
+      type: VaultBlobType.Tasks,
+      prompt,
+      serverMeta,
+      remote,
+    });
+
+    // Should take normally (identity same, passphrase wrapping doesn't affect blob convergence)
+    expect(outcome).toEqual({ kind: 'took', etag: 'etag-remote' });
+  });
+
+  test('should not refuse after recovery key rotation (identity unchanged)', async () => {
+    // Test 9: Replaced Recovery Key is NOT a differing identity
+    // Proof: converge proceeds normally (clean take) after rotation
+    const handle = await setupHandle('user-1', [
+      {
+        id: 'task-1',
+        title: 'Local',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    // Capture remote BEFORE recovery key rotation
+    const remote = await captureRemoteBlob(handle, [
+      {
+        id: 'task-2',
+        title: 'Remote',
+        status: 'done',
+        priority: 'medium',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    // Capture vault state BEFORE recovery key rotation (same identity)
+    const preRotationVault = handle.loadVault();
+    if (!preRotationVault) throw new Error('Vault load failed');
+    const preRotationMeta = localToServerMeta(preRotationVault);
+
+    // Rotate the Recovery Key (identity stays same, recovery wrapping changes).
+    // Authorized by the passphrase and never by the key being replaced, and the
+    // Master Key does not move — no salt and no KDF parameter changes, which is
+    // why another device reads this as a rotation rather than a second Vault.
+    await handle.rotateRecoveryKey({
+      currentPassphrase: passphrase,
+      recoveryKey: mintRecoveryKey(),
+    });
+
+    // Build serverMeta from PRE-rotation vault (identity unchanged)
+    const serverMeta: ServerVaultMeta = {
+      etag: 'meta-etag',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      meta: preRotationMeta,
+    };
+
+    const api = createApiDouble();
+    const prompt = jest.fn() as VaultBlobConvergePrompt;
+
+    const outcome = await convergeVaultBlob({
+      api,
+      handle,
+      type: VaultBlobType.Tasks,
+      prompt,
+      serverMeta,
+      remote,
+    });
+
+    // Should take normally (identity same, recovery key doesn't affect blob convergence)
+    expect(outcome).toEqual({ kind: 'took', etag: 'etag-remote' });
+  });
+
+  test('should take clean remote when serverMeta is null (no server meta)', async () => {
+    // Test 10: serverMeta: null (server holds no Vault Meta) → never refused
+    const handle = await setupHandle('user-1', []);
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    const remote = await captureRemoteBlob(handle, [
+      {
+        id: 'task-1',
+        title: 'Remote task',
+        status: 'done',
+        priority: 'medium',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    const api = createApiDouble();
+    const prompt = jest.fn() as VaultBlobConvergePrompt;
+
+    const outcome = await convergeVaultBlob({
+      api,
+      handle,
+      type: VaultBlobType.Tasks,
+      prompt,
+      serverMeta: null, // No server meta — first sync
+      remote,
+    });
+
+    // Should take (null means server has nothing yet, so no refusal)
+    expect(outcome).toEqual({ kind: 'took', etag: 'etag-remote' });
+
+    // Verify bookmark advanced
+    expect(handle.lastPushedEtag('tasks')).toBe('etag-remote');
+  });
+
+  test('should return nothing when no local vault even with differing serverMeta', async () => {
+    // Test 11: No Local Vault + DIFFERING serverMeta → still nothing/no-local-vault
+    const handle = createVaultHandle({ owner: 'user-1' });
+    // No initialize — no local vault
+
+    // Create a different vault meta (doesn't matter if no local vault)
+    const otherHandle = await setupHandle('user-2', []);
+    const differentVaultMeta = serverMetaFor(otherHandle);
+
+    const api = createApiDouble();
+    const prompt = jest.fn() as VaultBlobConvergePrompt;
+
+    const outcome = await convergeVaultBlob({
+      api,
+      handle,
+      type: VaultBlobType.Tasks,
+      prompt,
+      serverMeta: differentVaultMeta,
+    });
+
+    // Should return no-local-vault (guard after local vault load check)
+    expect(outcome).toEqual({
+      kind: 'nothing',
+      reason: 'no-local-vault',
+    });
+
+    // Verify no API calls
+    expect(api.getVaultBlob).not.toHaveBeenCalled();
+    expect(api.putVaultBlob).not.toHaveBeenCalled();
   });
 });

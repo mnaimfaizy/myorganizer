@@ -40,6 +40,7 @@ import {
   type VaultSyncDrainScheduler,
   VAULT_SYNC_DRAIN_DELAY_MS,
 } from './vaultSyncQueue';
+import { localToServerMeta } from './vaultShapes';
 
 beforeEach(() => {
   localStorage.clear();
@@ -64,8 +65,13 @@ describe('createVaultSyncQueue', () => {
 
   /**
    * Helper to create a properly typed API double for vault operations.
+   * getVaultMeta defaults to lazily reading the handle at call time and
+   * returning a meta matching the Local Vault's identity. Tests that need
+   * 404, errors, or different vaults must override after creation.
    */
   function createApiDouble() {
+    let handle: ReturnType<typeof createVaultHandle> | null = null;
+
     return {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       getVaultBlob: jest.fn<Promise<AxiosResponse<any>>, [any?]>(),
@@ -86,7 +92,66 @@ describe('createVaultSyncQueue', () => {
           },
         ]
       >(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getVaultMeta: jest
+        .fn<Promise<AxiosResponse<any>>, []>()
+        .mockImplementation(async () => {
+          // Lazy: read the vault from any drain attempt. Resolves with a meta
+          // matching the current handle's identity. Tests pass the handle via
+          // setHandleForMeta() or override entirely.
+          if (!handle) {
+            throw Object.assign(new Error('not found'), {
+              response: { status: 404 },
+            });
+          }
+          const vault = handle.loadVault();
+          if (!vault) {
+            throw Object.assign(new Error('not found'), {
+              response: { status: 404 },
+            });
+          }
+          return {
+            data: {
+              etag: 'etag-server-meta',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              meta: localToServerMeta(vault),
+            },
+            status: 200,
+            statusText: 'OK',
+            headers: {},
+            config: { headers: {} as any },
+          } as unknown as AxiosResponse<any>;
+        }),
+      setHandleForMeta: (h: ReturnType<typeof createVaultHandle>) => {
+        handle = h;
+      },
     };
+  }
+
+  /**
+   * Configure getVaultMeta to return a server meta matching the given handle's
+   * Vault Identity. Clears any previous mock config and sets up a new resolved value.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function configureGetVaultMetaForHandle(
+    api: any,
+    handle: ReturnType<typeof createVaultHandle>,
+  ): void {
+    const vault = handle.loadVault();
+    if (!vault) throw new Error('Handle has no vault');
+    const serverMeta = localToServerMeta(vault);
+    api.getVaultMeta.mockClear();
+    api.getVaultMeta.mockResolvedValue({
+      data: {
+        etag: 'etag-server-meta',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        meta: serverMeta,
+      },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: { headers: {} as any },
+    } as unknown as AxiosResponse<any>);
   }
 
   /**
@@ -360,7 +425,7 @@ describe('createVaultSyncQueue', () => {
     const queue = createVaultSyncQueue({
       api,
       prompt: jest.fn(),
-      schedule: (cb) => cb(),
+      schedule: () => undefined,
     });
 
     const result = await queue.drain(handle);
@@ -368,6 +433,10 @@ describe('createVaultSyncQueue', () => {
     // No API calls
     expect(api.putVaultBlob).not.toHaveBeenCalled();
     expect(api.getVaultBlob).not.toHaveBeenCalled();
+
+    // Not even the Vault Meta: the observation is lazy, and a drain with
+    // nothing marked has nothing for the evidence to guard (ADR 0067).
+    expect(api.getVaultMeta).not.toHaveBeenCalled();
 
     // Result reflects no work
     expect(result).toEqual({ converged: [], failed: [] });
@@ -1127,6 +1196,501 @@ describe('createVaultSyncQueue', () => {
       finalVault?.data.tasks?.ciphertext,
     );
   });
+
+  describe('Vault Identity refusal (ADR 0067)', () => {
+    // Q1: Different Vault Identity → refused, putVaultBlob never called, Local Vault unchanged, Bookmark unchanged
+    test('drain with differing Vault Identity refuses and sends nothing', async () => {
+      const handle1 = await setupHandle('user-1', [
+        { id: 'task-1', title: 'Task 1' },
+      ]);
+      // Note: NO recordPushSuccess call - bookmark should stay undefined
+
+      // Make dirty
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: [{ id: 'task-2', title: 'Task 2' }],
+        deletions: {},
+      };
+      await handle1.saveEncryptedData({ type: 'tasks', value: envelope });
+
+      // Capture local ciphertext before drain
+      const vaultBefore = handle1.loadVault();
+      const ciphertextBefore = vaultBefore?.data.tasks;
+
+      const api = createApiDouble();
+
+      // Create a second handle with different vault identity (different owner = different KDF salt)
+      const handle2 = await setupHandle('user-2', [
+        { id: 'remote-task', title: 'Remote Task' },
+      ]);
+      const vault2 = handle2.loadVault();
+      if (!vault2) throw new Error('Handle 2 has no vault');
+
+      // Configure getVaultMeta to return handle2's meta (different vault)
+      const serverMetaDifferent = localToServerMeta(vault2);
+      api.getVaultMeta.mockResolvedValue({
+        data: {
+          etag: 'etag-server-meta-different',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          meta: serverMetaDifferent,
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: { headers: {} as any },
+      } as unknown as AxiosResponse<any>);
+
+      const scheduledCallbacks: Array<() => void> = [];
+      const schedule: VaultSyncDrainScheduler = (cb) => {
+        scheduledCallbacks.push(cb);
+      };
+
+      const queue = createVaultSyncQueue({
+        api,
+        prompt: jest.fn(),
+        schedule,
+      });
+
+      queue.vaultBlobChanged({ type: VaultBlobType.Tasks, handle: handle1 });
+
+      const result = await queue.drain(handle1);
+
+      // Outcome should be refused
+      expect(result.converged).toHaveLength(1);
+      expect(result.converged[0]?.outcome).toEqual(
+        expect.objectContaining({
+          kind: 'refused',
+          reason: 'different-vault',
+        }),
+      );
+
+      // putVaultBlob should never have been called
+      expect(api.putVaultBlob).not.toHaveBeenCalled();
+
+      // Local vault ciphertext should be unchanged
+      const vaultAfter = handle1.loadVault();
+      expect(vaultAfter?.data.tasks?.ciphertext).toBe(
+        ciphertextBefore?.ciphertext,
+      );
+
+      // Sync bookmark should remain undefined (did not advance)
+      expect(handle1.lastPushedEtag('tasks')).toBeUndefined();
+    });
+
+    // Q2: Refused type stays unsent, not recorded as terminal failure
+    test('refused type stays in unsent, not terminal failure', async () => {
+      const handle1 = await setupHandle('user-1', []);
+      await handle1.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: [{ id: 'task-1' }],
+        deletions: {},
+      };
+      await handle1.saveEncryptedData({ type: 'tasks', value: envelope });
+
+      const api = createApiDouble();
+
+      // Different vault from server
+      const handle2 = await setupHandle('user-2');
+      const vault2 = handle2.loadVault();
+      if (!vault2) throw new Error('No vault');
+      api.getVaultMeta.mockResolvedValue({
+        data: {
+          etag: 'etag-meta',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          meta: localToServerMeta(vault2),
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: { headers: {} as any },
+      } as unknown as AxiosResponse<any>);
+
+      const queue = createVaultSyncQueue({
+        api,
+        prompt: jest.fn(),
+        schedule: (cb) => cb(),
+      });
+
+      queue.vaultBlobChanged({ type: VaultBlobType.Tasks, handle: handle1 });
+      await queue.drain(handle1);
+
+      // After drain, type should still be in unsent
+      expect(queue.status().unsentTypes).toContain(VaultBlobType.Tasks);
+
+      // Should NOT be in terminalFailures
+      expect(queue.status().terminalFailures).toHaveLength(0);
+    });
+
+    // Q3: Identical identity → works as before, bookmark advances
+    test('identical Vault Identity allows send, bookmark advances', async () => {
+      const handle = await setupHandle('user-1', [
+        { id: 'task-a', title: 'Task A' },
+      ]);
+      await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+      // Save dirty state
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: [{ id: 'task-b', title: 'Task B' }],
+        deletions: {},
+      };
+      await handle.saveEncryptedData({ type: 'tasks', value: envelope });
+
+      const api = createApiDouble();
+      api.setHandleForMeta(handle);
+      api.putVaultBlob.mockResolvedValue(
+        formatPutVaultBlobResponse('etag-new'),
+      );
+
+      const scheduledCallbacks: Array<() => void> = [];
+      const schedule: VaultSyncDrainScheduler = (cb) => {
+        scheduledCallbacks.push(cb);
+      };
+
+      const queue = createVaultSyncQueue({
+        api,
+        prompt: jest.fn(),
+        schedule,
+      });
+
+      queue.vaultBlobChanged({ type: VaultBlobType.Tasks, handle });
+
+      // Drain is now the ONLY drain
+      const result = await queue.drain(handle);
+
+      // Should converge as 'sent'
+      expect(result.converged).toHaveLength(1);
+      expect(result.converged[0]?.outcome).toEqual(
+        expect.objectContaining({ kind: 'sent' }),
+      );
+
+      // Bookmark should have advanced
+      expect(handle.lastPushedEtag('tasks')).toBe('etag-new');
+
+      // Type should no longer be unsent
+      expect(queue.status().unsentTypes).not.toContain(VaultBlobType.Tasks);
+    });
+
+    // Q4: Multiple marked types → `getVaultMeta` called exactly once
+    test('multiple marked types call getVaultMeta exactly once', async () => {
+      const handle = await setupHandle('user-1', []);
+
+      // Mark multiple types
+      const tasksEnvelope: VaultBlobEnvelope<unknown> = {
+        records: [{ id: 't1' }],
+        deletions: {},
+      };
+      await handle.saveEncryptedData({ type: 'tasks', value: tasksEnvelope });
+      await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+      const tasksDirty: VaultBlobEnvelope<unknown> = {
+        records: [{ id: 't2' }],
+        deletions: {},
+      };
+      await handle.saveEncryptedData({ type: 'tasks', value: tasksDirty });
+
+      const addressesEnvelope: VaultBlobEnvelope<unknown> = {
+        records: [{ id: 'a1' }],
+        deletions: {},
+      };
+      await handle.saveEncryptedData({
+        type: 'addresses',
+        value: addressesEnvelope,
+      });
+      await handle.recordPushSuccess({ type: 'addresses', etag: 'etag-2' });
+
+      const addressesDirty: VaultBlobEnvelope<unknown> = {
+        records: [{ id: 'a2' }],
+        deletions: {},
+      };
+      await handle.saveEncryptedData({
+        type: 'addresses',
+        value: addressesDirty,
+      });
+
+      const api = createApiDouble();
+      configureGetVaultMetaForHandle(api, handle);
+      api.putVaultBlob.mockResolvedValue({
+        data: {
+          ok: true,
+          etag: 'etag-new',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          message: 'OK',
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: { headers: {} as any },
+      } as unknown as AxiosResponse<any>);
+
+      const queue = createVaultSyncQueue({
+        api,
+        prompt: jest.fn(),
+        schedule: (cb) => cb(),
+      });
+
+      queue.vaultBlobChanged({ type: VaultBlobType.Tasks, handle });
+      queue.vaultBlobChanged({ type: VaultBlobType.Addresses, handle });
+
+      await queue.drain(handle);
+
+      // getVaultMeta should have been called exactly once
+      expect(api.getVaultMeta).toHaveBeenCalledTimes(1);
+    });
+
+    // Q5: Nothing marked → `getVaultMeta` never called
+    test('empty drain never calls getVaultMeta', async () => {
+      const handle = await setupHandle('user-1', []);
+
+      const api = createApiDouble();
+      configureGetVaultMetaForHandle(api, handle);
+
+      const queue = createVaultSyncQueue({
+        api,
+        prompt: jest.fn(),
+        schedule: (cb) => cb(),
+      });
+
+      // Don't mark anything
+      await queue.drain(handle);
+
+      // getVaultMeta should never have been called
+      expect(api.getVaultMeta).not.toHaveBeenCalled();
+    });
+
+    // Q6: `getVaultMeta` rejects 401/403 → sessionEnded true, type stays marked, stops
+    test('getVaultMeta 401/403 stops drain, marks sessionEnded', async () => {
+      const handle1 = await setupHandle('user-1', []);
+      await handle1.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+      const tasksEnvelope: VaultBlobEnvelope<unknown> = {
+        records: [{ id: 't1' }],
+        deletions: {},
+      };
+      await handle1.saveEncryptedData({ type: 'tasks', value: tasksEnvelope });
+
+      const addressesEnvelope: VaultBlobEnvelope<unknown> = {
+        records: [{ id: 'a1' }],
+        deletions: {},
+      };
+      await handle1.saveEncryptedData({
+        type: 'addresses',
+        value: addressesEnvelope,
+      });
+      await handle1.recordPushSuccess({ type: 'addresses', etag: 'etag-2' });
+
+      const addressesDirty: VaultBlobEnvelope<unknown> = {
+        records: [{ id: 'a2' }],
+        deletions: {},
+      };
+      await handle1.saveEncryptedData({
+        type: 'addresses',
+        value: addressesDirty,
+      });
+
+      const api = createApiDouble();
+      api.getVaultMeta.mockRejectedValue(
+        Object.assign(new Error('Unauthorized'), {
+          response: { status: 401 },
+        }),
+      );
+
+      const scheduledCallbacks: Array<() => void> = [];
+      const schedule: VaultSyncDrainScheduler = (cb) => {
+        scheduledCallbacks.push(cb);
+      };
+
+      const queue = createVaultSyncQueue({
+        api,
+        prompt: jest.fn(),
+        schedule,
+      });
+
+      queue.vaultBlobChanged({ type: VaultBlobType.Tasks, handle: handle1 });
+      queue.vaultBlobChanged({
+        type: VaultBlobType.Addresses,
+        handle: handle1,
+      });
+
+      const result = await queue.drain(handle1);
+
+      // First type should fail
+      expect(result.failed).toHaveLength(1);
+      expect(result.failed[0]?.type).toBe(VaultBlobType.Tasks);
+
+      // Second type was not attempted
+      expect(api.putVaultBlob).not.toHaveBeenCalled();
+
+      // sessionEnded should be true
+      expect(queue.status().sessionEnded).toBe(true);
+
+      // First type should still be marked
+      expect(queue.status().unsentTypes).toContain(VaultBlobType.Tasks);
+    });
+
+    // Q7: `getVaultMeta` rejects with a 500 → classified transient
+    test('getVaultMeta 500 classified as transient, re-marked, retry scheduled', async () => {
+      const handle = await setupHandle('user-1', []);
+      await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: [{ id: 't1' }],
+        deletions: {},
+      };
+      await handle.saveEncryptedData({ type: 'tasks', value: envelope });
+
+      const api = createApiDouble();
+      api.getVaultMeta.mockRejectedValue(
+        Object.assign(new Error('Server Error'), {
+          response: { status: 500 },
+        }),
+      );
+
+      let retryScheduleCalled = false;
+      const mockRetrySchedule = (retry: () => void, attempt: number) => {
+        // Just record that it was called
+        retryScheduleCalled = true;
+      };
+
+      const scheduledCallbacks: Array<() => void> = [];
+      const schedule: VaultSyncDrainScheduler = (cb) => {
+        scheduledCallbacks.push(cb);
+      };
+
+      const queue = createVaultSyncQueue({
+        api,
+        prompt: jest.fn(),
+        schedule,
+        retrySchedule: mockRetrySchedule,
+      });
+
+      queue.vaultBlobChanged({ type: VaultBlobType.Tasks, handle });
+
+      const result = await queue.drain(handle);
+
+      // Should have recorded a failure
+      expect(result.failed).toHaveLength(1);
+
+      // Type should be re-marked
+      expect(queue.status().unsentTypes).toContain(VaultBlobType.Tasks);
+
+      // Should have scheduled a retry
+      expect(queue.status().retryScheduled).toBe(true);
+      expect(retryScheduleCalled).toBe(true);
+    });
+
+    // Q8: Locked Vault with differing identity still refuses; with identical identity behaves as before
+    test('locked vault refuses on different identity, allows on identical', async () => {
+      const handle1 = await setupHandle('user-1', []);
+      await handle1.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: [{ id: 't1' }],
+        deletions: {},
+      };
+      await handle1.saveEncryptedData({ type: 'tasks', value: envelope });
+
+      // A fresh handle over the same Local Vault is locked: no Master Key is
+      // bound to it. Everything below drains through this one, so a refusal
+      // here is a refusal reached without a Master Key — which is the whole
+      // claim (ADR 0067: the comparison costs one field and needs no unlock).
+      const lockedHandle = createVaultHandle({ owner: 'user-1' });
+      expect(lockedHandle.isUnlocked).toBe(false);
+
+      // Test case 1: different identity when locked
+      const api = createApiDouble();
+
+      // Override getVaultMeta to return handle2's meta (different vault)
+      const handle2 = await setupHandle('user-2');
+      const vault2 = handle2.loadVault();
+      if (!vault2) throw new Error('No vault');
+      api.getVaultMeta.mockResolvedValue({
+        data: {
+          etag: 'etag-meta',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          meta: localToServerMeta(vault2),
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: { headers: {} as any },
+      } as unknown as AxiosResponse<any>);
+
+      const scheduledCallbacks: Array<() => void> = [];
+      const schedule: VaultSyncDrainScheduler = (cb) => {
+        scheduledCallbacks.push(cb);
+      };
+
+      const queue = createVaultSyncQueue({
+        api,
+        prompt: jest.fn(),
+        schedule,
+      });
+
+      queue.vaultBlobChanged({
+        type: VaultBlobType.Tasks,
+        handle: lockedHandle,
+      });
+      const result1 = await queue.drain(lockedHandle);
+
+      // Should refuse due to different vault
+      expect(result1.converged[0]?.outcome).toEqual(
+        expect.objectContaining({
+          kind: 'refused',
+          reason: 'different-vault',
+        }),
+      );
+      expect(api.putVaultBlob).not.toHaveBeenCalled();
+
+      // Test case 2: identical identity when locked. An unconflicted send
+      // touches no plaintext, so a locked drain still sends — exactly as it
+      // did before the guard existed.
+      const api2 = createApiDouble();
+      api2.setHandleForMeta(lockedHandle);
+
+      // Mock getVaultBlob to return 404 (no remote)
+      api2.getVaultBlob.mockRejectedValue(
+        Object.assign(new Error('not found'), {
+          response: { status: 404 },
+        }),
+      );
+
+      api2.putVaultBlob.mockResolvedValue({
+        data: {
+          ok: true,
+          etag: 'etag-new',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          message: 'OK',
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: { headers: {} as any },
+      } as unknown as AxiosResponse<any>);
+
+      const scheduledCallbacks2: Array<() => void> = [];
+      const schedule2: VaultSyncDrainScheduler = (cb) => {
+        scheduledCallbacks2.push(cb);
+      };
+
+      const queue2 = createVaultSyncQueue({
+        api: api2,
+        prompt: jest.fn(),
+        schedule: schedule2,
+      });
+
+      queue2.vaultBlobChanged({
+        type: VaultBlobType.Tasks,
+        handle: lockedHandle,
+      });
+      const result2 = await queue2.drain(lockedHandle);
+
+      // Should converge normally
+      expect(result2.converged[0]?.outcome).toEqual(
+        expect.objectContaining({ kind: 'sent', etag: 'etag-new' }),
+      );
+      expect(lockedHandle.lastPushedEtag('tasks')).toBe('etag-new');
+    });
+  });
 });
 
 describe('createVaultSyncQueue - session-ended (401/403) failures', () => {
@@ -1153,6 +1717,12 @@ describe('createVaultSyncQueue - session-ended (401/403) failures', () => {
           },
         ]
       >(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getVaultMeta: jest
+        .fn<Promise<AxiosResponse<any>>, []>()
+        .mockRejectedValue(
+          Object.assign(new Error('not found'), { response: { status: 404 } }),
+        ),
     };
   }
 
@@ -1389,6 +1959,12 @@ describe('createVaultSyncQueue - rejected (422) failures', () => {
           },
         ]
       >(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getVaultMeta: jest
+        .fn<Promise<AxiosResponse<any>>, []>()
+        .mockRejectedValue(
+          Object.assign(new Error('not found'), { response: { status: 404 } }),
+        ),
     };
   }
 
@@ -1640,6 +2216,12 @@ describe('createVaultSyncQueue - transient failures and retry scheduling', () =>
           },
         ]
       >(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getVaultMeta: jest
+        .fn<Promise<AxiosResponse<any>>, []>()
+        .mockRejectedValue(
+          Object.assign(new Error('not found'), { response: { status: 404 } }),
+        ),
     };
   }
 
@@ -1865,6 +2447,12 @@ describe('createVaultSyncQueue - retryNow', () => {
           },
         ]
       >(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getVaultMeta: jest
+        .fn<Promise<AxiosResponse<any>>, []>()
+        .mockRejectedValue(
+          Object.assign(new Error('not found'), { response: { status: 404 } }),
+        ),
     };
   }
 
@@ -2108,6 +2696,12 @@ describe('createVaultSyncQueue - markUnsentFromBookmarks', () => {
           },
         ]
       >(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getVaultMeta: jest
+        .fn<Promise<AxiosResponse<any>>, []>()
+        .mockRejectedValue(
+          Object.assign(new Error('not found'), { response: { status: 404 } }),
+        ),
     };
   }
 
@@ -2451,6 +3045,12 @@ describe('createVaultSyncQueue - subscribe listener', () => {
           },
         ]
       >(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getVaultMeta: jest
+        .fn<Promise<AxiosResponse<any>>, []>()
+        .mockRejectedValue(
+          Object.assign(new Error('not found'), { response: { status: 404 } }),
+        ),
     };
   }
 

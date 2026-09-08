@@ -146,6 +146,8 @@ function createBlobApiDouble() {
       >,
       [{ ifMatch?: string }]
     >(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    getVaultMeta: jest.fn<Promise<AxiosResponse<any>>, []>(),
   };
 }
 
@@ -154,7 +156,8 @@ function createBlobApiDouble() {
  */
 function createMetaApiDouble() {
   return {
-    getVaultMeta: jest.fn(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    getVaultMeta: jest.fn<Promise<AxiosResponse<any>>, []>(),
     putVaultMeta: jest.fn(),
   };
 }
@@ -308,6 +311,7 @@ describe('importVault - Sync Bookmark forgetting (bug #617)', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: null,
     });
 
     // Should ask the user because device has no bookmark to prove server state,
@@ -626,6 +630,7 @@ describe('importVault - Sync Bookmark forgetting (bug #617)', () => {
       handle,
       type: VaultBlobType.Tasks,
       prompt,
+      serverMeta: null,
     });
 
     expect(outcome).toEqual({ kind: 'sent', etag: 'etag-pushed' });

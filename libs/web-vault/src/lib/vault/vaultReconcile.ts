@@ -25,6 +25,13 @@
  * anything. It is asked once and the answer is applied to every type that
  * raises it.
  *
+ * Ahead of that question is one that is not asked at all. The Vault Meta this
+ * pass already fetched goes into every converge as evidence, and a Vault
+ * Identity that differs refuses the type outright — no take, no prompt, no
+ * Sync Bookmark ([ADR 0067](../../../../../docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)).
+ * Fetched once here and handed to every type, rather than let the primitive go
+ * and look once per type.
+ *
  * Reconcile decides Vault Blobs and only Vault Blobs. Vault Meta converges
  * separately in `vaultMetaConverge.ts` ([ADR 0057](../../../../../docs/adr/0057-vault-meta-converges-separately-and-never-silently.md)),
  * and no answer given here moves a wrapping on either side — the one exception
@@ -194,7 +201,7 @@ export async function reconcileVaultWithServer(options: {
     // The only Vault Meta write left in reconcile, and the only safe one: the
     // server holds no wrapping at all, so there is nothing here to override
     // and no other device whose passphrase change could be reverted.
-    await putServerVaultMetaEtagAware({
+    const put = await putServerVaultMetaEtagAware({
       api,
       meta: localToServerMeta(localVault),
       // Reachable only as a race: the server held no Vault Meta at the read
@@ -204,6 +211,15 @@ export async function reconcileVaultWithServer(options: {
       // exactly what reconcile is not allowed to do (ADR 0057, ADR 0060).
       onConflict: () => 'keep-remote',
     });
+
+    if (put.kind === 'kept-remote') {
+      // That race also means this pass has now observed a server Vault Meta
+      // after all, and it may belong to a different Vault than this device's.
+      // Carrying it into the loop keeps the evidence below the one this pass
+      // actually saw rather than the absence it started from.
+      serverMeta = put.remote;
+    }
+
     start = 'uploaded-local-wrapping';
   } else {
     start = 'both';
@@ -234,7 +250,17 @@ export async function reconcileVaultWithServer(options: {
 
       converged.push({
         type,
-        outcome: await convergeVaultBlob({ api, handle, type, prompt, remote }),
+        outcome: await convergeVaultBlob({
+          api,
+          handle,
+          type,
+          prompt,
+          // The Vault Meta this pass already fetched, reused rather than
+          // fetched a second time — one observation per pass, not one per
+          // Vault Blob Type (ADR 0067).
+          serverMeta: serverMeta ?? null,
+          remote,
+        }),
       });
     } catch (error) {
       if (isSessionGone(error)) return { kind: 'skipped-not-authenticated' };

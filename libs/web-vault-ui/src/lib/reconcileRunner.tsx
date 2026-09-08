@@ -123,6 +123,14 @@ function reconcileChangedSomething(result: VaultReconcileResult): boolean {
     switch (outcome.kind) {
       case 'nothing':
         return false;
+      // A refusal is the pass declining to move Ciphertext — the whole point
+      // of it is that nothing was written on either side (ADR 0067), so there
+      // is no "Vault updated" to report. Saying so positively is a separate
+      // job and nothing does it yet: ADR 0067 decision 6 puts the standoff in
+      // the sync status, which #653 builds. Until then a refusal is silent
+      // here, which is the known gap rather than the finished behaviour.
+      case 'refused':
+        return false;
       case 'asked':
         return outcome.decision !== 'defer';
       case 'sent':

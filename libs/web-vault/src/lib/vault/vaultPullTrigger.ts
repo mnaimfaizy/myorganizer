@@ -61,7 +61,12 @@ const debounceAfterDelay: VaultPullTriggerScheduler = (run) => {
 };
 
 export function createVaultPullTrigger(options: {
-  api: Pick<VaultApi, 'getVaultBlob' | 'putVaultBlob'>;
+  /**
+   * What the pass below uses. `getVaultMeta` is read-only evidence for the
+   * Vault Identity guard, never a Vault Meta convergence — see
+   * `vaultPullCheck.ts`.
+   */
+  api: Pick<VaultApi, 'getVaultBlob' | 'putVaultBlob' | 'getVaultMeta'>;
   prompt: VaultBlobConvergePrompt;
   schedule?: VaultPullTriggerScheduler;
 }): VaultPullTrigger {
