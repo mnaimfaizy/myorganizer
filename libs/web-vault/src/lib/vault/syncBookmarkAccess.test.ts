@@ -562,8 +562,72 @@ describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
     });
   });
 
+  describe('observedVaultIdentity and recordObservedVaultIdentity', () => {
+    test('21: observedVaultIdentity returns undefined before any observation', () => {
+      const access = createSyncBookmarkAccess('user-a');
+
+      const result = access.observedVaultIdentity();
+
+      expect(result).toBeUndefined();
+    });
+
+    test('22: recordObservedVaultIdentity records identity and observedVaultIdentity returns the recorded value', () => {
+      const access = createSyncBookmarkAccess('user-a');
+      const identityValue = 'vault-identity-from-server';
+
+      // Record the observation
+      access.recordObservedVaultIdentity({ identity: identityValue });
+
+      // observedVaultIdentity should return the recorded value
+      expect(access.observedVaultIdentity()).toBe(identityValue);
+    });
+
+    test('23: observedVaultIdentity persists after recordObservedVaultIdentity', () => {
+      const identityValue = 'vault-identity-salt-abc123';
+
+      // Create access instance and record observation
+      const access1 = createSyncBookmarkAccess('user-a');
+      access1.recordObservedVaultIdentity({ identity: identityValue });
+
+      // Simulate reload by creating a new access instance for the same owner
+      const access2 = createSyncBookmarkAccess('user-a');
+
+      // Should still be available in the new instance
+      expect(access2.observedVaultIdentity()).toBe(identityValue);
+    });
+
+    test('24: recordObservedVaultIdentity overwrites previous observation', () => {
+      const access = createSyncBookmarkAccess('user-a');
+
+      // Record first observation
+      access.recordObservedVaultIdentity({ identity: 'identity-1' });
+      expect(access.observedVaultIdentity()).toBe('identity-1');
+
+      // Record second observation (overwrites)
+      access.recordObservedVaultIdentity({ identity: 'identity-2' });
+      expect(access.observedVaultIdentity()).toBe('identity-2');
+    });
+
+    test('25: observedVaultIdentity is per-owner isolated', () => {
+      const accessA = createSyncBookmarkAccess('user-a');
+      const accessB = createSyncBookmarkAccess('user-b');
+
+      // Record different observations for each owner
+      accessA.recordObservedVaultIdentity({ identity: 'identity-a' });
+      accessB.recordObservedVaultIdentity({ identity: 'identity-b' });
+
+      // Assert: each owner holds their own observation
+      expect(accessA.observedVaultIdentity()).toBe('identity-a');
+      expect(accessB.observedVaultIdentity()).toBe('identity-b');
+
+      // Assert: no cross-owner leakage
+      expect(accessA.observedVaultIdentity()).not.toBe('identity-b');
+      expect(accessB.observedVaultIdentity()).not.toBe('identity-a');
+    });
+  });
+
   describe('lastAgreedVaultMetaHash and recordVaultMetaAgreement', () => {
-    test('21: lastAgreedVaultMetaHash returns undefined before any agreement', async () => {
+    test('26: lastAgreedVaultMetaHash returns undefined before any agreement', async () => {
       const access = createSyncBookmarkAccess('user-a');
 
       const result = access.lastAgreedVaultMetaHash();
@@ -571,7 +635,7 @@ describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
       expect(result).toBeUndefined();
     });
 
-    test('22: recordVaultMetaAgreement records hash and lastAgreedVaultMetaHash returns the recorded value', async () => {
+    test('27: recordVaultMetaAgreement records hash and lastAgreedVaultMetaHash returns the recorded value', async () => {
       const meta = makeVaultMeta();
       const access = createSyncBookmarkAccess('user-a');
 
@@ -585,7 +649,7 @@ describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
       expect(storedHash).toBe(expectedHash);
     });
 
-    test('23: lastAgreedVaultMetaHash persists after recordVaultMetaAgreement and survives reload', async () => {
+    test('28: lastAgreedVaultMetaHash persists after recordVaultMetaAgreement and survives reload', async () => {
       const meta = makeVaultMeta();
       const expectedHash = await hashVaultMeta(meta);
 

@@ -48,7 +48,11 @@ import {
 } from './vaultReconcile';
 import type { ServerVaultBlob } from './serverVaultSync';
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
-import { serverEncryptedBlobToLocal, toEncryptedBlobV1 } from './vaultShapes';
+import {
+  localToServerMeta,
+  serverEncryptedBlobToLocal,
+  toEncryptedBlobV1,
+} from './vaultShapes';
 
 jest.mock('./serverVaultSync', () => ({
   getServerVaultMeta: jest.fn(),
@@ -386,10 +390,11 @@ describe('reconcileVaultWithServer', () => {
     const remoteBlob = remoteFromLocal(handle1);
     await handle1.recordPushSuccess({ type: 'tasks', etag: remoteBlob.etag });
 
+    const serverMeta = localToServerMeta(handle1.loadVault()!);
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
       updatedAt: 't1',
-      meta: makeServerMeta(),
+      meta: serverMeta,
     });
 
     serverVaultSync.getServerVaultBlob.mockImplementation(
@@ -449,10 +454,11 @@ describe('reconcileVaultWithServer', () => {
       },
     ]);
 
+    const serverMeta = localToServerMeta(handle.loadVault()!);
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
       updatedAt: 't1',
-      meta: makeServerMeta(),
+      meta: serverMeta,
     });
 
     serverVaultSync.getServerVaultBlob.mockImplementation(
@@ -504,10 +510,11 @@ describe('reconcileVaultWithServer', () => {
       VaultBlobType.Groceries,
     );
 
+    const serverMeta = localToServerMeta(handle.loadVault()!);
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
       updatedAt: 't1',
-      meta: makeServerMeta(),
+      meta: serverMeta,
     });
 
     const promptAsks: VaultReconcileAsk[] = [];
@@ -565,16 +572,19 @@ describe('reconcileVaultWithServer', () => {
       [],
     );
 
+    // Server meta with same Vault Identity (same salt) but different wrapping
+    const localMeta = localToServerMeta(handle.loadVault()!);
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
       updatedAt: 't1',
-      meta: makeServerMeta({
+      meta: {
+        ...localMeta,
         wrapped_mk_passphrase: {
           version: 1,
           iv: 'different-iv',
           ciphertext: 'different-ct',
         },
-      }),
+      },
     });
 
     serverVaultSync.getServerVaultBlob.mockImplementation(
@@ -612,10 +622,11 @@ describe('reconcileVaultWithServer', () => {
 
     const undecryptableBlob = await makeUndecryptableRemote();
 
+    const serverMeta = localToServerMeta(handle.loadVault()!);
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
       updatedAt: 't1',
-      meta: makeServerMeta(),
+      meta: serverMeta,
     });
 
     const promptAsks: VaultReconcileAsk[] = [];
@@ -675,10 +686,11 @@ describe('reconcileVaultWithServer', () => {
       VaultBlobType.Groceries,
     );
 
+    const serverMeta = localToServerMeta(handle.loadVault()!);
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
       updatedAt: 't1',
-      meta: makeServerMeta(),
+      meta: serverMeta,
     });
 
     const prompt = jest.fn<
@@ -717,10 +729,14 @@ describe('reconcileVaultWithServer', () => {
       response: { status: 401 },
     });
 
+    const handle = await setupHandle('user-1', []);
+
+    // This Vault's own identity, so the loop converges its way to the third
+    // type rather than refusing each one before the error can be reached.
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
       updatedAt: 't1',
-      meta: makeServerMeta(),
+      meta: localToServerMeta(handle.loadVault()!),
     });
 
     let callCount = 0;
@@ -731,8 +747,6 @@ describe('reconcileVaultWithServer', () => {
       }
       return null;
     });
-
-    const handle = await setupHandle('user-1', []);
 
     const result = await reconcileVaultWithServer({
       api: createApiDouble() as unknown as ApiParam,
@@ -747,10 +761,13 @@ describe('reconcileVaultWithServer', () => {
   test('rethrows non-auth error during loop', async () => {
     const error = new Error('network error');
 
+    const handle = await setupHandle('user-1', []);
+
+    // This Vault's own identity — see the note in the auth-error test above.
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
       updatedAt: 't1',
-      meta: makeServerMeta(),
+      meta: localToServerMeta(handle.loadVault()!),
     });
 
     let callCount = 0;
@@ -762,8 +779,6 @@ describe('reconcileVaultWithServer', () => {
       return null;
     });
 
-    const handle = await setupHandle('user-1', []);
-
     await expect(
       reconcileVaultWithServer({
         api: createApiDouble() as unknown as ApiParam,
@@ -774,15 +789,19 @@ describe('reconcileVaultWithServer', () => {
   });
 
   test('all VAULT_BLOB_TYPES are reached in order', async () => {
+    const handle = await setupHandle('user-1', []);
+
+    // The server's Vault Meta has to be *this* Vault's. A pinned salt is a
+    // different Vault Identity, and every type would refuse before converging
+    // — leaving this test asserting only that the loop iterates, which is not
+    // what it was written to guard (ADR 0067).
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
       updatedAt: 't1',
-      meta: makeServerMeta(),
+      meta: localToServerMeta(handle.loadVault()!),
     });
 
     serverVaultSync.getServerVaultBlob.mockResolvedValue(null);
-
-    const handle = await setupHandle('user-1', []);
 
     const result = await reconcileVaultWithServer({
       api: createApiDouble() as unknown as ApiParam,
@@ -796,6 +815,11 @@ describe('reconcileVaultWithServer', () => {
       result.converged.forEach((entry, index) => {
         expect(entry.type).toBe(VAULT_BLOB_TYPES[index]);
       });
+
+      // Every type was actually converged, not refused before it got there.
+      expect(
+        result.converged.filter((entry) => entry.outcome.kind === 'refused'),
+      ).toEqual([]);
 
       // #512 in one line: the types reconcile reaches are every member of the
       // API contract's enum, not the subset some table happens to carry.
@@ -873,10 +897,11 @@ describe('reconcileVaultWithServer', () => {
     // Create an undecryptable blob (different Master Key)
     const undecryptableBlob = await makeUndecryptableRemote();
 
+    const serverMeta = localToServerMeta(handle.loadVault()!);
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
       updatedAt: 't1',
-      meta: makeServerMeta(),
+      meta: serverMeta,
     });
 
     let promptCallCount = 0;
@@ -914,7 +939,12 @@ describe('reconcileVaultWithServer', () => {
     expect(promptCallCount).toBe(1);
   });
 
-  test('keep-remote leaves wrapping untouched (ADR 0057)', async () => {
+  // Was written with a server meta whose salt and passphrase wrapping both
+  // differed, to show a blob decision never touches the wrapping. That exact
+  // scenario is now a refusal (ADR 0067), so the wrapping claim is asserted
+  // here for a merge and in R1 for a refusal — the two paths a blob decision
+  // can now take. Either way no wrapping moves, which is ADR 0057's point.
+  test('a merge leaves the wrapping untouched (ADR 0057)', async () => {
     const api = createApiDouble();
 
     const handle = await setupHandle('user-1', [
@@ -937,42 +967,25 @@ describe('reconcileVaultWithServer', () => {
     const originalRecoveryWrapped =
       originalVault.masterKeyWrappedWithRecoveryKey;
 
-    const remoteBlob = await captureRemoteBlob(
-      await setupHandle('user-2', [
-        {
-          id: 'remote-1',
-          title: 'Remote task',
-          status: 'done',
-          priority: 'low',
-          archived: false,
-          createdAt: '2026-01-02T00:00:00.000Z',
-          updatedAt: '2026-01-02T00:00:00.000Z',
-        },
-      ]),
-      [
-        {
-          id: 'remote-1',
-          title: 'Remote task',
-          status: 'done',
-          priority: 'low',
-          archived: false,
-          createdAt: '2026-01-02T00:00:00.000Z',
-          updatedAt: '2026-01-02T00:00:00.000Z',
-        },
-      ],
-    );
+    // Capture a remote blob with different data
+    const remoteBlob = await captureRemoteBlob(handle, [
+      {
+        id: 'remote-1',
+        title: 'Remote task',
+        status: 'done',
+        priority: 'low',
+        archived: false,
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      },
+    ]);
 
+    // Server meta with same Vault Identity
+    const localMeta = localToServerMeta(handle.loadVault()!);
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
       updatedAt: 't1',
-      meta: makeServerMeta({
-        kdf_salt: 'different-salt',
-        wrapped_mk_passphrase: {
-          version: 1,
-          iv: 'different-iv',
-          ciphertext: 'different-ct',
-        },
-      }),
+      meta: localMeta,
     });
 
     serverVaultSync.getServerVaultBlob.mockImplementation(
@@ -996,6 +1009,11 @@ describe('reconcileVaultWithServer', () => {
 
     expect(result.kind).toBe('reconciled');
 
+    // The remote decrypts under this Master Key and Tasks merges by record,
+    // so nothing is asked — the queued answer is never consumed. Stated so
+    // the test cannot drift back into claiming it exercises `keep-remote`.
+    expect(prompt).not.toHaveBeenCalled();
+
     // Verify wrapping is unchanged
     const finalVault = handle.loadVault();
     if (!finalVault) throw new Error('Vault lost');
@@ -1007,11 +1025,7 @@ describe('reconcileVaultWithServer', () => {
       originalRecoveryWrapped,
     );
 
-    // The answer was about data, so the data is the thing that moved: the
-    // server's Ciphertext is what this device now holds.
-    expect(finalVault.data.tasks).toEqual(
-      serverEncryptedBlobToLocal(remoteBlob.blob),
-    );
+    // The key assertion: the wrapping did not change, even though we answered "keep-remote"
     expect(serverVaultSync.putServerVaultMetaEtagAware).not.toHaveBeenCalled();
   });
 
@@ -1038,10 +1052,11 @@ describe('reconcileVaultWithServer', () => {
       VaultBlobType.Todos,
     );
 
+    const serverMeta = localToServerMeta(handle.loadVault()!);
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
       updatedAt: 't1',
-      meta: makeServerMeta(),
+      meta: serverMeta,
     });
 
     const promptAsks: VaultReconcileAsk[] = [];
@@ -1087,7 +1102,7 @@ describe('reconcileVaultWithServer', () => {
   });
 
   test('downloaded-server-wrapping records sync bookmark for each type', async () => {
-    const remoteBlob = await captureRemoteBlob(await setupHandle('user-2'), [
+    const remoteHandle = await setupHandle('user-2', [
       {
         id: 'task-1',
         title: 'Remote task',
@@ -1097,11 +1112,13 @@ describe('reconcileVaultWithServer', () => {
         createdAt: '2026-01-01T00:00:00.000Z',
       },
     ]);
+    const remoteBlob = remoteFromLocal(remoteHandle);
+    const remoteVaultMeta = localToServerMeta(remoteHandle.loadVault()!);
 
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
       updatedAt: 't1',
-      meta: makeServerMeta(),
+      meta: remoteVaultMeta,
     });
 
     serverVaultSync.getServerVaultBlob.mockImplementation(
@@ -1130,7 +1147,7 @@ describe('reconcileVaultWithServer', () => {
     serverVaultSync.getServerVaultMeta.mockResolvedValue({
       etag: 'e1',
       updatedAt: 't1',
-      meta: makeServerMeta(),
+      meta: remoteVaultMeta,
     });
 
     serverVaultSync.getServerVaultBlob.mockImplementation(
@@ -1221,5 +1238,437 @@ describe('reconcileVaultWithServer', () => {
     // (Groceries was missing from some directions in the hand-written reconcile)
     expect(putCalls).toContain(VaultBlobType.Tasks);
     expect(putCalls).toContain(VaultBlobType.Groceries);
+  });
+
+  // ===== Different-Vault Identity Refusal Tests (ADR 0067) =====
+
+  test('different vault identity refuses all types without prompting', async () => {
+    const api = createApiDouble();
+
+    const handle = await setupHandle('user-1', [
+      {
+        id: 'task-1',
+        title: 'Local task',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    const localVaultBefore = handle.loadVault();
+    if (!localVaultBefore) throw new Error('Setup failed');
+    const localTasksBefore = localVaultBefore.data.tasks;
+
+    // Create a server meta with a different vault identity (different salt)
+    const differentVaultHandle = createVaultHandle({ owner: 'user-2' });
+    await differentVaultHandle.initialize({ passphrase: 'different key' });
+    const differentVaultMeta = localToServerMeta(
+      differentVaultHandle.loadVault()!,
+    );
+
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: differentVaultMeta,
+    });
+
+    serverVaultSync.getServerVaultBlob.mockResolvedValue(null);
+
+    const prompt = jest.fn();
+
+    const result = await reconcileVaultWithServer({
+      api: api as unknown as ApiParam,
+      handle,
+      prompt,
+    });
+
+    expect(result.kind).toBe('reconciled');
+    if (result.kind === 'reconciled') {
+      // Every type should be refused with 'different-vault' reason
+      result.converged.forEach((entry) => {
+        expect(entry.outcome).toEqual({
+          kind: 'refused',
+          reason: 'different-vault',
+        });
+      });
+    }
+
+    // No prompt should be called (ADR 0067 decision 5)
+    expect(prompt).not.toHaveBeenCalled();
+
+    // No putVaultBlob should be called
+    expect(api.putVaultBlob).not.toHaveBeenCalled();
+
+    // Local Vault ciphertext should be byte-identical
+    const localVaultAfter = handle.loadVault();
+    expect(localVaultAfter?.data.tasks).toEqual(localTasksBefore);
+
+    // And so is the wrapping. A refusal is a blob decision like any other, so
+    // it may not move a wrapping either — the other half of the claim the
+    // merge test above carries (ADR 0057).
+    expect(localVaultAfter?.kdf).toEqual(localVaultBefore?.kdf);
+    expect(localVaultAfter?.masterKeyWrappedWithPassphrase).toEqual(
+      localVaultBefore?.masterKeyWrappedWithPassphrase,
+    );
+    expect(localVaultAfter?.masterKeyWrappedWithRecoveryKey).toEqual(
+      localVaultBefore?.masterKeyWrappedWithRecoveryKey,
+    );
+
+    // No sync bookmark should be advanced
+    expect(handle.lastPushedEtag('tasks')).toBeUndefined();
+  });
+
+  test('identical vault identity converges as before', async () => {
+    const handle = await setupHandle('user-1', []);
+    const remoteBlob = remoteFromLocal(handle);
+    await handle.recordPushSuccess({ type: 'tasks', etag: remoteBlob.etag });
+
+    const serverMeta = localToServerMeta(handle.loadVault()!);
+
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: serverMeta,
+    });
+
+    serverVaultSync.getServerVaultBlob.mockImplementation(
+      async (api: unknown, type: VaultBlobType) => {
+        if (type === remoteBlob.type) return remoteBlob;
+        return null;
+      },
+    );
+
+    const api = createApiDouble();
+    const prompt = jest.fn();
+
+    const result = await reconcileVaultWithServer({
+      api: api as unknown as ApiParam,
+      handle,
+      prompt,
+    });
+
+    expect(result.kind).toBe('reconciled');
+    if (result.kind === 'reconciled') {
+      expect(result.deferred).toBe(false);
+
+      // The assertions that actually carry this test. "Nothing was written"
+      // is equally true of a pass that refused every type, so a guard that
+      // refused unconditionally would satisfy the three below and still close
+      // #571 while breaking all convergence. Naming the outcomes is the only
+      // thing that catches it: Tasks converged and agreed, and no type was
+      // refused.
+      const tasks = result.converged.find(
+        (entry) => entry.type === remoteBlob.type,
+      );
+      expect(tasks?.outcome).toEqual({ kind: 'nothing', reason: 'in-sync' });
+      expect(
+        result.converged.filter((entry) => entry.outcome.kind === 'refused'),
+      ).toEqual([]);
+    }
+    expect(prompt).not.toHaveBeenCalled();
+    expect(api.putVaultBlob).not.toHaveBeenCalled();
+  });
+
+  test('getServerVaultMeta called once per pass, not once per type', async () => {
+    const api = createApiDouble();
+
+    const handle = await setupHandle('user-1', [
+      {
+        id: 'task-1',
+        title: 'Local task',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    // Add groceries too
+    const groceriesEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 'groc-1', name: 'Milk' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({
+      type: 'groceries',
+      value: groceriesEnvelope,
+    });
+
+    const serverMeta = localToServerMeta(handle.loadVault()!);
+
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: serverMeta,
+    });
+
+    serverVaultSync.getServerVaultBlob.mockResolvedValue(null);
+
+    const result = await reconcileVaultWithServer({
+      api: api as unknown as ApiParam,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    expect(result.kind).toBe('reconciled');
+
+    // Should be called exactly once for the whole pass
+    expect(serverVaultSync.getServerVaultMeta).toHaveBeenCalledTimes(1);
+  });
+
+  test('downloaded-server-wrapping with matching identity converges normally', async () => {
+    const remoteHandle = await setupHandle('user-2', [
+      {
+        id: 'remote-task',
+        title: 'Remote task',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    const remoteBlob = remoteFromLocal(remoteHandle);
+    const serverMeta = localToServerMeta(remoteHandle.loadVault()!);
+
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: serverMeta,
+    });
+
+    serverVaultSync.getServerVaultBlob.mockImplementation(
+      async (_api: unknown, type: VaultBlobType) => {
+        if (type === remoteBlob.type) return remoteBlob;
+        return null;
+      },
+    );
+
+    const handle = emptyHandle('user-1');
+
+    const result = await reconcileVaultWithServer({
+      api: createApiDouble() as unknown as ApiParam,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    expect(result.kind).toBe('reconciled');
+    if (result.kind === 'reconciled') {
+      expect(result.start).toBe('downloaded-server-wrapping');
+      // The Local Vault was written from the server's meta, so identity matches
+      // and every type takes as before (not refused)
+      const tasksOutcome = result.converged.find(
+        (c) => c.type === VaultBlobType.Tasks,
+      );
+      expect(tasksOutcome?.outcome.kind).not.toBe('refused');
+    }
+
+    // Ciphertext should be downloaded
+    const vault = handle.loadVault();
+    expect(vault?.data.tasks).toEqual(
+      serverEncryptedBlobToLocal(remoteBlob.blob),
+    );
+  });
+
+  test('uploaded-local-wrapping with null serverMeta converges normally', async () => {
+    const api = createApiDouble();
+
+    const handle = await setupHandle('user-1', [
+      {
+        id: 'task-1',
+        title: 'Local task',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    serverVaultSync.getServerVaultMeta.mockResolvedValue(null);
+    serverVaultSync.putServerVaultMetaEtagAware.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: localToServerMeta(handle.loadVault()!),
+    });
+    serverVaultSync.getServerVaultBlob.mockResolvedValue(null);
+
+    api.putVaultBlob.mockImplementation(async () =>
+      axiosResponse({
+        ok: true,
+        etag: 'etag-sent',
+        updatedAt: '2026-01-03T00:00:00.000Z',
+        message: 'OK',
+      }),
+    );
+
+    const result = await reconcileVaultWithServer({
+      api: api as unknown as ApiParam,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    expect(result.kind).toBe('reconciled');
+    if (result.kind === 'reconciled') {
+      expect(result.start).toBe('uploaded-local-wrapping');
+      // serverMeta was null, so nothing is refused — everything converges
+      result.converged.forEach((entry) => {
+        expect(entry.outcome.kind).not.toBe('refused');
+      });
+    }
+
+    // Local data should be sent
+    expect(api.putVaultBlob).toHaveBeenCalled();
+  });
+
+  test('uploaded-local-wrapping race with kept-remote refuses if different vault', async () => {
+    const api = createApiDouble();
+
+    const handle = await setupHandle('user-1', [
+      {
+        id: 'task-1',
+        title: 'Local task',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    const localVaultBefore = handle.loadVault();
+    if (!localVaultBefore) throw new Error('Setup failed');
+    const localTasksBefore = localVaultBefore.data.tasks;
+
+    // Create a different vault's meta
+    const differentVaultHandle = createVaultHandle({ owner: 'user-2' });
+    await differentVaultHandle.initialize({ passphrase: 'different key' });
+    const differentVaultMeta = localToServerMeta(
+      differentVaultHandle.loadVault()!,
+    );
+
+    // First call returns null (no server meta), then putVaultMetaEtagAware
+    // returns kept-remote with a different vault's meta (simulating the race)
+    serverVaultSync.getServerVaultMeta.mockResolvedValue(null);
+    // Exactly the `kept-remote` union member and nothing more — it carries
+    // `kind` and `remote` only (serverVaultSync.ts). Extra top-level fields
+    // would suggest reconcile could read `put.meta`, which the type forbids.
+    serverVaultSync.putServerVaultMetaEtagAware.mockResolvedValue({
+      kind: 'kept-remote',
+      remote: {
+        etag: 'e1',
+        updatedAt: 't1',
+        meta: differentVaultMeta,
+      },
+    });
+
+    serverVaultSync.getServerVaultBlob.mockResolvedValue(null);
+
+    const prompt = jest.fn();
+
+    const result = await reconcileVaultWithServer({
+      api: api as unknown as ApiParam,
+      handle,
+      prompt,
+    });
+
+    expect(result.kind).toBe('reconciled');
+    if (result.kind === 'reconciled') {
+      // The pass should have adopted the kept-remote meta as its observation,
+      // and since it's different, every type should be refused
+      result.converged.forEach((entry) => {
+        expect(entry.outcome).toEqual({
+          kind: 'refused',
+          reason: 'different-vault',
+        });
+      });
+    }
+
+    // No prompt
+    expect(prompt).not.toHaveBeenCalled();
+
+    // No putVaultBlob
+    expect(api.putVaultBlob).not.toHaveBeenCalled();
+
+    // Local ciphertext unchanged
+    const localVaultAfter = handle.loadVault();
+    expect(localVaultAfter?.data.tasks).toEqual(localTasksBefore);
+  });
+
+  test('locked vault with different identity refuses', async () => {
+    const api = createApiDouble();
+
+    // Create a handle, initialize it with some data, but do NOT unlock it
+    // This keeps it in the locked state (isUnlocked = false)
+    const handle = createVaultHandle({ owner: 'user-1' });
+    await handle.initialize({ passphrase });
+
+    // Save some encrypted data while we have the derived key from initialize
+    await handle.unlockWithPassphrase({ passphrase });
+    const envelope: VaultBlobEnvelope<unknown> = {
+      records: [
+        {
+          id: 'task-1',
+          title: 'Local task',
+          status: 'todo',
+          priority: 'high',
+          archived: false,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({
+      type: VAULT_BLOB_FIELDS[VaultBlobType.Tasks],
+      value: envelope,
+    });
+
+    const localVaultBefore = handle.loadVault();
+    if (!localVaultBefore) throw new Error('Setup failed');
+    const localTasksBefore = localVaultBefore.data.tasks;
+
+    // A fresh handle over the same Local Vault is locked: the record stays in
+    // storage and no Master Key is bound to this instance.
+    const lockedHandle = createVaultHandle({ owner: 'user-1' });
+    expect(lockedHandle.isUnlocked).toBe(false);
+
+    // Different vault identity
+    const differentVaultHandle = createVaultHandle({ owner: 'user-2' });
+    await differentVaultHandle.initialize({ passphrase: 'different key' });
+    const differentVaultMeta = localToServerMeta(
+      differentVaultHandle.loadVault()!,
+    );
+
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: differentVaultMeta,
+    });
+
+    serverVaultSync.getServerVaultBlob.mockResolvedValue(null);
+
+    const prompt = jest.fn();
+
+    const result = await reconcileVaultWithServer({
+      api: api as unknown as ApiParam,
+      handle: lockedHandle,
+      prompt,
+    });
+
+    expect(result.kind).toBe('reconciled');
+    if (result.kind === 'reconciled') {
+      // Should still refuse (identity check needs no Master Key)
+      result.converged.forEach((entry) => {
+        expect(entry.outcome).toEqual({
+          kind: 'refused',
+          reason: 'different-vault',
+        });
+      });
+    }
+
+    // No prompt (locked convergence never reaches the point of asking)
+    expect(prompt).not.toHaveBeenCalled();
+
+    // Local ciphertext unchanged
+    const localVaultAfter = lockedHandle.loadVault();
+    expect(localVaultAfter?.data.tasks).toEqual(localTasksBefore);
   });
 });

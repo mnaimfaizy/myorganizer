@@ -83,6 +83,25 @@ export const SessionEnded: Story = {
 };
 
 /**
+ * Vault identity mismatch: this device's Vault (derived from the encryption
+ * key-derivation salt) differs from what the server holds. Syncing is refused
+ * because merging would destroy readable ciphertext under different Master Keys.
+ * The detail text emphasizes safety and readability to counter the alarming
+ * headline. Retry is not offered because the mismatch requires user action, not
+ * a retry — removing the vault or signing in with the matching passphrase.
+ */
+export const Standoff: Story = {
+  args: {
+    status: {
+      kind: 'standoff',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    },
+  },
+};
+
+/**
  * Terminal failure: the server rejected a specific data type with a 422 and will
  * not retry automatically. The failing type is named in the detail. This story
  * must be visibly and semantically **different** from the `PendingNotRetrying`

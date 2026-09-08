@@ -12,9 +12,11 @@ import type { VaultMetaV1 } from '@myorganizer/app-api-client';
 
 import type { EncryptedBlob, VaultRecordType } from './localVaultStorage';
 import {
+  readObservedVaultIdentity,
   readSyncBookmarks,
   readVaultMetaBookmark,
   removeSyncBookmarks,
+  writeObservedVaultIdentity,
   writeSyncBookmark,
   writeVaultMetaBookmark,
 } from './syncBookmarkStorage';
@@ -105,8 +107,25 @@ export type SyncBookmarkAccess = {
    */
   recordVaultMetaAgreement(options: { meta: VaultMetaV1 }): Promise<void>;
   /**
-   * Remove every bookmark this owner holds, Sync Bookmarks and the Vault Meta
-   * Bookmark alike.
+   * The Vault Identity a pass last observed on the server for this owner, or
+   * `undefined` when no pass ever has.
+   *
+   * `undefined` is not "same Vault": it says this device holds no evidence
+   * about the server's Vault Identity, which is what makes a device that has
+   * never observed one report no standoff — under-reporting rather than
+   * guessing (ADR 0067).
+   */
+  observedVaultIdentity(): string | undefined;
+  /**
+   * Record the Vault Identity a pass just observed on the server for this
+   * owner. Call it whenever a pass observes a server Vault Meta, whether or
+   * not it matches this device's own — the standoff a mismatch produces
+   * clears on its own the moment a later pass records a matching one.
+   */
+  recordObservedVaultIdentity(options: { identity: string }): void;
+  /**
+   * Remove every bookmark this owner holds — Sync Bookmarks, the Vault Meta
+   * Bookmark, and the Observed Vault Identity alike.
    */
   removeBookmarks(): void;
 };
@@ -140,6 +159,14 @@ export function createSyncBookmarkAccess(owner: string): SyncBookmarkAccess {
         owner,
         entry: { metaHash: await hashVaultMeta(meta) },
       });
+    },
+
+    observedVaultIdentity() {
+      return readObservedVaultIdentity(owner)?.identity;
+    },
+
+    recordObservedVaultIdentity({ identity }) {
+      writeObservedVaultIdentity({ owner, entry: { identity } });
     },
 
     removeBookmarks() {

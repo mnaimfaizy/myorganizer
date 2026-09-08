@@ -11,7 +11,10 @@
  * of anything a User reads: there is no code path here that reads `error`.
  */
 import { VaultBlobType } from '@myorganizer/app-api-client';
-import type { VaultSyncStatus } from '@myorganizer/web-vault';
+import type {
+  VaultSyncStatus,
+  VaultSyncStatusKind,
+} from '@myorganizer/web-vault';
 
 /**
  * Every Vault Blob Type, and the name a User sees for it. Guarded by
@@ -50,6 +53,58 @@ function nameList(types: VaultBlobType[]): string {
 }
 
 /**
+ * What each Vault Sync Status Kind is read as, pinned against the kind rather
+ * than switched on it — so a later kind fails to compile here until it says
+ * what a User is told for it ([ADR 0053](../../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
+ * A `default` branch would have let `standoff` fall through as an unlabeled,
+ * silently-synced reading, which is exactly the invisible refusal
+ * [ADR 0067](../../../../docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)
+ * exists to end.
+ */
+const VAULT_SYNC_STATUS_READINGS = {
+  synced: () => ({ tone: 'ok', label: null, detail: null, canRetry: false }),
+
+  pending: (status) => {
+    const suffix = status.retrying ? ' Retrying automatically.' : '';
+    return {
+      tone: 'pending',
+      label: 'Changes not yet sent',
+      detail: `Not yet reached the server: ${nameList(status.pendingTypes)}.${suffix} Your edits are saved on this device.`,
+      canRetry: true,
+    };
+  },
+
+  'session-ended': () => ({
+    tone: 'error',
+    label: 'Sync stopped — sign in again',
+    detail:
+      'Your session ended, so changes have stopped reaching the server. Sign in again to resume syncing.',
+    canRetry: true,
+  }),
+
+  terminal: (status) => {
+    const names = nameList(status.terminalFailures.map((f) => f.type));
+    return {
+      tone: 'error',
+      label: 'Some changes could not be saved',
+      detail: `The server rejected this data and it will not be retried automatically: ${names}. It is still safe on this device.`,
+      canRetry: true,
+    };
+  },
+
+  standoff: () => ({
+    tone: 'error',
+    label: 'This vault is not the one on the server',
+    detail:
+      "The encrypted data on the server belongs to a different vault than this device's, so nothing can be combined. Syncing is refused specifically to prevent that — and nothing here has been lost: this device's data stays intact and readable exactly because that refusal held. Retrying will not change that. To use the server's vault instead, remove this one from the Vault page and sign in with its passphrase; to keep this device's vault, no action is needed and syncing stays off until the two match.",
+    canRetry: false,
+  }),
+} as const satisfies Record<
+  VaultSyncStatusKind,
+  (status: VaultSyncStatus) => VaultSyncStatusReading
+>;
+
+/**
  * Turn a derived {@link VaultSyncStatus} into what a User should be told.
  *
  * `null` means the status has not been computed yet (no Vault Session, or the
@@ -64,40 +119,5 @@ export function describeVaultSyncStatus(
     return { tone: 'pending', label: null, detail: null, canRetry: false };
   }
 
-  switch (status.kind) {
-    case 'synced':
-      return { tone: 'ok', label: null, detail: null, canRetry: false };
-
-    case 'pending': {
-      const suffix = status.retrying ? ' Retrying automatically.' : '';
-      return {
-        tone: 'pending',
-        label: 'Changes not yet sent',
-        detail: `Not yet reached the server: ${nameList(status.pendingTypes)}.${suffix} Your edits are saved on this device.`,
-        canRetry: true,
-      };
-    }
-
-    case 'session-ended':
-      return {
-        tone: 'error',
-        label: 'Sync stopped — sign in again',
-        detail:
-          'Your session ended, so changes have stopped reaching the server. Sign in again to resume syncing.',
-        canRetry: true,
-      };
-
-    case 'terminal': {
-      const names = nameList(status.terminalFailures.map((f) => f.type));
-      return {
-        tone: 'error',
-        label: 'Some changes could not be saved',
-        detail: `The server rejected this data and it will not be retried automatically: ${names}. It is still safe on this device.`,
-        canRetry: true,
-      };
-    }
-
-    default:
-      return { tone: 'pending', label: null, detail: null, canRetry: false };
-  }
+  return VAULT_SYNC_STATUS_READINGS[status.kind](status);
 }

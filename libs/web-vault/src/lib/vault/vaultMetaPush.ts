@@ -40,6 +40,7 @@ import type { VaultHandle } from './vaultHandle';
 import {
   describeVaultMetaDivergence,
   vaultMetaIdentity,
+  vaultIdentityOf,
   type VaultMetaChange,
   type VaultMetaConvergePrompt,
   type VaultMetaConvergeResult,
@@ -508,22 +509,33 @@ export async function settleVaultMeta(options: {
     if (push.kind === 'pushed') {
       await handle.recordVaultMetaAgreement({ meta });
       // Both sides hold this Vault Meta by construction now, so there is
-      // nothing left to converge and no reason to read the server again.
+      // nothing left to converge and no reason to read the server again —
+      // and the identity both sides hold is this device's own, which is what
+      // clears a standoff recorded by an earlier pass.
+      handle.recordObservedVaultIdentity({ identity: vaultIdentityOf(meta) });
       return { kind: 'pushed-local-wrapping' };
     }
 
     if (push.kind === 'noop-already-in-sync') {
       await handle.recordVaultMetaAgreement({ meta });
+      handle.recordObservedVaultIdentity({ identity: vaultIdentityOf(meta) });
       return { kind: 'noop-already-in-sync' };
     }
   }
 
-  return {
-    kind: 'converged',
-    result: await convergeVaultMeta({
-      api,
-      localVault,
-      prompt: options.prompt,
-    }),
-  };
+  const result = await convergeVaultMeta({
+    api,
+    localVault,
+    prompt: options.prompt,
+  });
+
+  // Recorded here rather than inside `convergeVaultMeta`, which holds no
+  // handle and cannot write by design. Every outcome that actually read the
+  // server's Vault Meta carries the identity it saw; the `skipped-*` ones
+  // carry none, and record nothing rather than guessing.
+  if ('observedIdentity' in result) {
+    handle.recordObservedVaultIdentity({ identity: result.observedIdentity });
+  }
+
+  return { kind: 'converged', result };
 }

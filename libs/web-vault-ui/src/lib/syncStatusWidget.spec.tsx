@@ -261,4 +261,101 @@ describe('SyncStatusWidget', () => {
     const indicator = screen.getByTestId('sync-status-indicator');
     expect(indicator).toHaveClass('custom-class');
   });
+
+  test('standoff status renders chip with label text', async () => {
+    const status: VaultSyncStatus = {
+      kind: 'standoff',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+
+    mockUseVaultSyncStatus.mockReturnValue({
+      status,
+      retry: jest.fn(),
+    });
+
+    render(<SyncStatusWidget />);
+
+    const trigger = screen.getByTestId('sync-status-trigger');
+    expect(trigger).toBeInTheDocument();
+    expect(trigger).toHaveTextContent(
+      'This vault is not the one on the server',
+    );
+  });
+
+  test('clicking standoff chip opens popover and shows detail', async () => {
+    const status: VaultSyncStatus = {
+      kind: 'standoff',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+
+    mockUseVaultSyncStatus.mockReturnValue({
+      status,
+      retry: jest.fn(),
+    });
+
+    render(<SyncStatusWidget />);
+
+    const trigger = screen.getByTestId('sync-status-trigger');
+    fireEvent.click(trigger);
+
+    await waitFor(() => {
+      const detail = screen.getByTestId('sync-status-detail');
+      expect(detail).toBeInTheDocument();
+      expect(detail.textContent).toContain('intact and readable');
+    });
+  });
+
+  test('standoff status popover does not show retry button (canRetry is false)', async () => {
+    const mockRetry = jest.fn();
+    const status: VaultSyncStatus = {
+      kind: 'standoff',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+
+    mockUseVaultSyncStatus.mockReturnValue({
+      status,
+      retry: mockRetry,
+    });
+
+    render(<SyncStatusWidget />);
+
+    const trigger = screen.getByTestId('sync-status-trigger');
+    fireEvent.click(trigger);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('sync-status-detail')).toBeInTheDocument();
+    });
+
+    // Verify retry button is NOT present
+    expect(
+      screen.queryByTestId('sync-status-retry-button'),
+    ).not.toBeInTheDocument();
+  });
+
+  test('standoff chip has sr-only accessible name', () => {
+    const status: VaultSyncStatus = {
+      kind: 'standoff',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+
+    mockUseVaultSyncStatus.mockReturnValue({
+      status,
+      retry: jest.fn(),
+    });
+
+    render(<SyncStatusWidget />);
+
+    const trigger = screen.getByTestId('sync-status-trigger');
+    expect(trigger).toHaveAccessibleName(
+      'This vault is not the one on the server. Show sync details.',
+    );
+  });
 });

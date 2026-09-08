@@ -14,12 +14,22 @@
  * keyed by `VaultRecordType`. What it shares with the map is the per-User key
  * and, with it, removal: both go when a User's Local Vault does.
  *
- * Unlike a Local Vault, neither is irreplaceable: losing a Sync Bookmark costs
- * at most one redundant push next time a dirtiness check runs, and losing the
- * Vault Meta Bookmark costs at most a prompt that misattributes a wrapping
- * change. Neither costs a User's data. A mis-keyed or corrupted entry is
- * therefore replaced rather than refused — there is no write guard here to
- * mirror `writeOwnedLocalVault`'s. See ADR 0058.
+ * A third thing sits beside the map for the same reason: the Observed Vault
+ * Identity a pass last saw on the server. It is what lets the sync status
+ * derive a standoff — the server holding a different Vault than this device's
+ * own — from local state alone, without a flag anyone has to remember to
+ * clear (ADR 0067, decision point 7). Recording is the whole of it: the
+ * comparison against this device's own Vault Identity happens where the
+ * status is derived, never here.
+ *
+ * Unlike a Local Vault, none of the three is irreplaceable: losing a Sync
+ * Bookmark costs at most one redundant push next time a dirtiness check runs,
+ * losing the Vault Meta Bookmark costs at most a prompt that misattributes a
+ * wrapping change, and losing the Observed Vault Identity costs a status that
+ * under-reports a standoff until the next pass observes one. None costs a
+ * User's data. A mis-keyed or corrupted entry is therefore replaced rather
+ * than refused — there is no write guard here to mirror
+ * `writeOwnedLocalVault`'s. See ADR 0058.
  */
 
 import type { VaultRecordType } from './localVaultStorage';
@@ -48,6 +58,19 @@ export type VaultMetaBookmarkEntry = {
   metaHash: string;
 };
 
+/**
+ * What an Observed Vault Identity entry records: the Vault Identity a pass
+ * last observed on the server for this owner.
+ *
+ * A plain string rather than a hash, unlike the Vault Meta Bookmark: a Vault
+ * Identity is already the narrow, stable field `vaultIdentityOf` reads — the
+ * key-derivation salt — and hashing it would only obscure a value that is
+ * already sent to and stored by the server as part of Vault Meta.
+ */
+export type ObservedVaultIdentityEntry = {
+  identity: string;
+};
+
 /** The storage key prefix every per-User Sync Bookmark key is composed from. */
 export const SYNC_BOOKMARK_STORAGE_KEY = 'myorganizer_sync_bookmarks_v1';
 
@@ -66,6 +89,13 @@ export type SyncBookmarkRecord = {
    * before there was a bookmark to hold.
    */
   metaBookmark?: VaultMetaBookmarkEntry;
+  /**
+   * Absent until a pass has observed the server's Vault Meta at least once.
+   * Absent is not "same Vault": it says this device holds no evidence about
+   * the server's Vault Identity, which is what makes an unobserved device
+   * report no standoff — under-reporting rather than guessing.
+   */
+  observedVaultIdentity?: ObservedVaultIdentityEntry;
 };
 
 function assertOwner(owner: string): void {
@@ -121,6 +151,16 @@ function isVaultMetaBookmarkEntry(
   );
 }
 
+function isObservedVaultIdentityEntry(
+  value: unknown,
+): value is ObservedVaultIdentityEntry {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    typeof (value as { identity?: unknown }).identity === 'string'
+  );
+}
+
 /**
  * A validated record for `owner`, or `null` when the stored JSON does not
  * parse as a current-version record naming this owner. An entry naming
@@ -153,6 +193,10 @@ function asSyncBookmarkRecord(
 
   if (isVaultMetaBookmarkEntry(candidate.metaBookmark)) {
     record.metaBookmark = candidate.metaBookmark;
+  }
+
+  if (isObservedVaultIdentityEntry(candidate.observedVaultIdentity)) {
+    record.observedVaultIdentity = candidate.observedVaultIdentity;
   }
 
   return record;
@@ -202,6 +246,17 @@ export function readVaultMetaBookmark(
 }
 
 /**
+ * Read `owner`'s Observed Vault Identity, or `undefined` when no pass has
+ * ever observed the server's Vault Meta for this owner — or when storage is
+ * unavailable or the entry does not validate.
+ */
+export function readObservedVaultIdentity(
+  owner: string,
+): ObservedVaultIdentityEntry | undefined {
+  return readSyncBookmarkRecord(owner)?.observedVaultIdentity;
+}
+
+/**
  * Advance `owner`'s bookmark for `type` — the storage half of recording a
  * confirmed successful Vault Push. Merges into whatever bookmarks this owner
  * already holds for other Vault Blob Types.
@@ -228,6 +283,9 @@ export function writeSyncBookmark(options: {
   if (existing?.metaBookmark) {
     record.metaBookmark = existing.metaBookmark;
   }
+  if (existing?.observedVaultIdentity) {
+    record.observedVaultIdentity = existing.observedVaultIdentity;
+  }
 
   writeRecord(record);
 }
@@ -245,12 +303,43 @@ export function writeVaultMetaBookmark(options: {
   assertOwner(options.owner);
 
   const existing = readSyncBookmarkRecord(options.owner);
-  writeRecord({
+  const record: SyncBookmarkRecord = {
     version: SYNC_BOOKMARK_RECORD_VERSION,
     owner: options.owner,
     bookmarks: existing?.bookmarks ?? {},
     metaBookmark: options.entry,
-  });
+  };
+  if (existing?.observedVaultIdentity) {
+    record.observedVaultIdentity = existing.observedVaultIdentity;
+  }
+
+  writeRecord(record);
+}
+
+/**
+ * Advance `owner`'s Observed Vault Identity — the storage half of recording
+ * what a pass just observed on the server. Merges into whatever Sync
+ * Bookmarks and Vault Meta Bookmark this owner already holds, for the same
+ * reason the other two writers merge the other way.
+ */
+export function writeObservedVaultIdentity(options: {
+  owner: string;
+  entry: ObservedVaultIdentityEntry;
+}): void {
+  assertOwner(options.owner);
+
+  const existing = readSyncBookmarkRecord(options.owner);
+  const record: SyncBookmarkRecord = {
+    version: SYNC_BOOKMARK_RECORD_VERSION,
+    owner: options.owner,
+    bookmarks: existing?.bookmarks ?? {},
+    observedVaultIdentity: options.entry,
+  };
+  if (existing?.metaBookmark) {
+    record.metaBookmark = existing.metaBookmark;
+  }
+
+  writeRecord(record);
 }
 
 function writeRecord(record: SyncBookmarkRecord): void {
@@ -261,10 +350,11 @@ function writeRecord(record: SyncBookmarkRecord): void {
 }
 
 /**
- * Remove every Sync Bookmark `owner` holds, and their Vault Meta Bookmark
- * with them — the bookmark half of Explicit
+ * Remove every Sync Bookmark `owner` holds, and their Vault Meta Bookmark and
+ * Observed Vault Identity with them — the bookmark half of Explicit
  * Local Vault removal (ADR 0033, restated over this second per-User
- * namespace in ADR 0058).
+ * namespace in ADR 0058). An Observed Vault Identity about a Vault this
+ * device no longer holds is meaningless, same as the other two (ADR 0067).
  *
  * Touches only the key `owner` is stored under, so it can never remove
  * another User's bookmarks.

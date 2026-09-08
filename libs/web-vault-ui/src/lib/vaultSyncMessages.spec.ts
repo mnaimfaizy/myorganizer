@@ -199,6 +199,22 @@ describe('vaultSyncMessages', () => {
       expect(reading.detail).toContain('Subscriptions');
     });
 
+    test('standoff status returns error tone with a Vault Sync Standoff message', () => {
+      const status: VaultSyncStatus = {
+        kind: 'standoff',
+        pendingTypes: [],
+        terminalFailures: [],
+        retrying: false,
+      };
+
+      const reading = describeVaultSyncStatus(status);
+      expect(reading.tone).toBe('error');
+      expect(reading.label).toBe('This vault is not the one on the server');
+      expect(reading.detail).toBeDefined();
+      expect(reading.detail).not.toBeNull();
+      expect(reading.canRetry).toBe(false);
+    });
+
     test('security: output contains only fixed template text and blob type labels', () => {
       const status: VaultSyncStatus = {
         kind: 'terminal',

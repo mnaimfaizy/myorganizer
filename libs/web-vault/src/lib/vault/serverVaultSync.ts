@@ -94,6 +94,34 @@ export async function getServerVaultMeta(
   }
 }
 
+/**
+ * One pass's observation of the server's Vault Meta, made at most once and
+ * only if something actually asks for it.
+ *
+ * Convergence refuses to take a Vault Blob across a differing Vault Identity
+ * and cannot go and look for itself, because it runs once per Vault Blob Type
+ * inside a loop ([ADR 0067](../../../../../docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)).
+ * So each pass observes once and hands the same answer to every type. Lazy
+ * because a pass that converges nothing — every type answering 304, a drain
+ * with nothing marked — has nothing for the evidence to guard.
+ *
+ * The promise is what is remembered, not its value, so a failed observation is
+ * remembered too: every type after it re-throws the same rejection into its
+ * caller's own failure handling instead of converging against evidence the
+ * pass never got. Returning `null` there would be a claim this code cannot
+ * make — that the server holds no Vault Meta — and that claim is exactly what
+ * disarms the guard.
+ *
+ * One per pass, so a caller builds it inside the pass and lets it fall out of
+ * scope afterwards; a shared one would pin an observation across passes.
+ */
+export function observeServerVaultMetaOnce(
+  api: Pick<VaultApiLike, 'getVaultMeta'>,
+): () => Promise<ServerVaultMeta | null> {
+  let observation: Promise<ServerVaultMeta | null> | null = null;
+  return () => (observation ??= getServerVaultMeta(api));
+}
+
 export async function getServerVaultBlob(
   // Narrower than `VaultApiLike` on purpose: reading one Vault Blob needs one
   // method, and asking for the other three would make every caller hand over

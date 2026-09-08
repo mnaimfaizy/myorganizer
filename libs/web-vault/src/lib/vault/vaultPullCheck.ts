@@ -11,6 +11,14 @@
  * up as `If-None-Match`, and a 304 answers it for free — no body, no local
  * write, nothing for convergence to do.
  *
+ * A pass that has something to converge also observes the server's Vault Meta
+ * once, and hands that observation to every type it converges: convergence
+ * refuses to take a Vault Blob across a differing Vault Identity and cannot go
+ * and look for itself, because it runs once per type
+ * ([ADR 0067](../../../../../docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)).
+ * A pass where every type answers 304 makes no such request — there is nothing
+ * for the evidence to guard.
+ *
  * Session loss is not a retryable failure here. A 401 or 403 means this
  * device can no longer speak for the User, so the pass stops rather than
  * working through the remaining Vault Blob Types against a Session that is
@@ -22,6 +30,7 @@ import { getHttpStatus } from '../http/getHttpStatus';
 
 import {
   checkServerVaultBlob,
+  observeServerVaultMetaOnce,
   type ServerVaultBlobCheck,
 } from './serverVaultSync';
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
@@ -56,8 +65,20 @@ export type VaultPullCheckResult = {
   stoppedUnauthenticated: boolean;
 };
 
-/** The two Vault Blob endpoints this check uses, and no others. */
-type VaultPullApi = Pick<VaultApi, 'getVaultBlob' | 'putVaultBlob'>;
+/**
+ * The endpoints this check uses, and no others.
+ *
+ * `getVaultMeta` is here for one field: convergence refuses to take a Vault
+ * Blob across a differing Vault Identity and needs this pass's observation of
+ * the server's Vault Meta to say whether it differs
+ * ([ADR 0067](../../../../../docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)).
+ * Reading a Vault Meta is not converging one — that stays in
+ * `vaultMetaConverge.ts`, and nothing here can write one.
+ */
+type VaultPullApi = Pick<
+  VaultApi,
+  'getVaultBlob' | 'putVaultBlob' | 'getVaultMeta'
+>;
 
 /**
  * Check every Vault Blob Type against the server and converge the ones that
@@ -80,6 +101,9 @@ export async function checkVaultBlobsForUpdates(options: {
     stoppedUnauthenticated: false,
   };
 
+  /** This pass's one observation of the server's Vault Meta. */
+  const observeServerMeta = observeServerVaultMetaOnce(api);
+
   for (const type of VAULT_BLOB_TYPES) {
     const ifNoneMatch = handle.lastPushedEtag(VAULT_BLOB_FIELDS[type]);
 
@@ -99,6 +123,7 @@ export async function checkVaultBlobsForUpdates(options: {
         handle,
         type,
         prompt,
+        serverMeta: await observeServerMeta(),
         remote: check.blob,
       });
       result.checked.push({ type, outcome: { kind: 'converged', outcome } });
