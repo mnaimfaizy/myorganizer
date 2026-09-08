@@ -63,11 +63,19 @@ different times by different authorities, and neither one changes the other.**
    rule — when unsure, promote — holds mechanically here: unknown project, unmatched path, or script
    error all resolve to `human`.
 
-6. **The agent verdict is a required status check, not a review approval.** It is one more context in
-   the ruleset beside `Lint` and `Test`. Whether a GitHub App's review can satisfy a required-approval
-   count is a question this repo does not need to answer, because approvals are what CODEOWNERS
-   demands of humans and checks are what the ruleset demands of machines. Keeping the two separate is
-   what makes "the agent cannot exceed its permissions by construction" true rather than hoped.
+6. **The agent verdict is a status check, not a review approval.** Whether a GitHub App's review can
+   satisfy a required-approval count is a question this repo does not need to answer, because
+   approvals are what CODEOWNERS demands of humans and checks are what the ruleset demands of
+   machines. Keeping the two separate is what makes "the agent cannot exceed its permissions by
+   construction" true rather than hoped.
+
+   > **Amended by [ADR 0073](0073-a-required-check-is-a-fact-about-the-pipeline-not-a-judgment-about-the-diff.md).**
+   > This item originally read "a **required** status check … one more context in the ruleset beside
+   > `Lint` and `Test`". That never happened — the verdict was never added to the ruleset — and
+   > ADR 0073 decides it never will be, on the ground that a check may assert a fact about the
+   > pipeline but not a judgment about the diff. The reviewer's work is now two checks:
+   > `Agent Review Ran`, which is eligible to be required, and `Agent Verdict`, which is advisory.
+   > The separation of checks from approvals that this item exists to state is unchanged.
 
 7. **`review:*` is a third label set.** It is not a Surface Label, because it names neither kind nor
    area, and not an Issue Orchestration Label, because it never appears on an Issue. It is applied by

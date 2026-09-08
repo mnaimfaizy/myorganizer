@@ -32,11 +32,22 @@ const REVIEW_WORKFLOW = '.github/workflows/code-review.yml';
 const LABELS = 'tools/config/github-labels.json';
 
 /**
- * The status-check context the code-review workflow produces (ADR 0070 item
- * 6). Not in the ruleset yet; the page describes it, so the page must name
- * the job that actually exists.
+ * The reviewer's judgment. Advisory, and staying that way: ADR 0073 rejects
+ * requiring it on principle rather than on a recall threshold, so this is not
+ * a context waiting for a number to improve. The page describes it, so the
+ * page must name the job that actually exists.
  */
 export const AGENT_VERDICT_CHECK = 'Agent Verdict';
+
+/**
+ * The other half of the same split (ADR 0073 item 1): whether the reviewer ran
+ * at all, as opposed to what it concluded. This one is *eligible* to be
+ * required and is not required today — adding it means editing the ruleset,
+ * REQUIRED_CHECK_CONTEXTS below, and the job-name lookup that resolves those
+ * contexts from ci.yml only. Tracked here so a rename is caught before it
+ * silently removes the check a ruleset may come to depend on.
+ */
+export const AGENT_REVIEW_RAN_CHECK = 'Agent Review Ran';
 
 /**
  * The status-check contexts the `*main*` ruleset requires. The ruleset lives
@@ -130,10 +141,9 @@ if (manifest.agentVerdictCheck !== AGENT_VERDICT_CHECK)
   findings.push(
     `agentVerdictCheck: source says ${JSON.stringify(AGENT_VERDICT_CHECK)}, page says ${JSON.stringify(manifest.agentVerdictCheck ?? null)}`,
   );
-if (!reviewJobNames.has(AGENT_VERDICT_CHECK))
-  findings.push(
-    `agentVerdictCheck: "${AGENT_VERDICT_CHECK}" is not a job name in ${REVIEW_WORKFLOW}`,
-  );
+for (const check of [AGENT_VERDICT_CHECK, AGENT_REVIEW_RAN_CHECK])
+  if (!reviewJobNames.has(check))
+    findings.push(`"${check}" is not a job name in ${REVIEW_WORKFLOW}`);
 
 // Every vocabulary word the manifest asserts must also be visible in the page
 // body, or the manifest is decoration rather than a description of the picture.
