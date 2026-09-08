@@ -23,9 +23,10 @@
 // So the invariant is: every trigger the `context` job refuses must also be
 // steered out of the review's concurrency group. This cannot be checked by
 // evaluating the expressions — that would mean implementing GitHub's
-// expression language — so it is checked structurally, on the two literals
-// that decide it. If someone renames the trigger label or the command, both
-// places have to change, and this fails until they do.
+// expression language — so it is checked structurally, on the literals that
+// decide it: the trigger label, the command, and the commenter associations
+// allowed to use it. Rename or widen any of them in one place and this fails
+// until the other follows.
 //
 // Exit 0 = the two agree. Exit 1 = they have drifted. Exit 2 = could not run.
 import { readFileSync } from 'node:fs';
