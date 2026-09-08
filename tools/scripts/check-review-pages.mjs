@@ -137,13 +137,22 @@ for (const context of REQUIRED_CHECK_CONTEXTS) {
 }
 eqList('gateTierLabels (catalog)', GATE_TIER_LABELS, gateTierLabelsInCatalog);
 
-if (manifest.agentVerdictCheck !== AGENT_VERDICT_CHECK)
-  findings.push(
-    `agentVerdictCheck: source says ${JSON.stringify(AGENT_VERDICT_CHECK)}, page says ${JSON.stringify(manifest.agentVerdictCheck ?? null)}`,
-  );
-for (const check of [AGENT_VERDICT_CHECK, AGENT_REVIEW_RAN_CHECK])
+// Both checks get the same three guards, because either name going stale
+// leaves the page confidently wrong: the manifest must agree with the source
+// constant, the name must still be a job, and the word must appear in the
+// prose below. `Agent Review Ran` had only the middle one for a while, which
+// is the asymmetry this loop removes.
+for (const [key, check] of [
+  ['agentVerdictCheck', AGENT_VERDICT_CHECK],
+  ['agentReviewRanCheck', AGENT_REVIEW_RAN_CHECK],
+]) {
+  if (manifest[key] !== check)
+    findings.push(
+      `${key}: source says ${JSON.stringify(check)}, page says ${JSON.stringify(manifest[key] ?? null)}`,
+    );
   if (!reviewJobNames.has(check))
-    findings.push(`"${check}" is not a job name in ${REVIEW_WORKFLOW}`);
+    findings.push(`${key}: "${check}" is not a job name in ${REVIEW_WORKFLOW}`);
+}
 
 // Every vocabulary word the manifest asserts must also be visible in the page
 // body, or the manifest is decoration rather than a description of the picture.
@@ -154,6 +163,7 @@ for (const word of [
   ...FINDING_EVIDENCE_KINDS,
   ...VERDICT_VALUES,
   AGENT_VERDICT_CHECK,
+  AGENT_REVIEW_RAN_CHECK,
 ]) {
   if (!body.includes(word))
     findings.push(`"${word}" is in the manifest but nowhere in the page body`);
@@ -168,5 +178,5 @@ if (findings.length) {
 }
 
 console.log(
-  `review-pages: OK — ${PAGE} matches the finding contract, ${REQUIRED_CHECK_CONTEXTS.length} required checks, the ${AGENT_VERDICT_CHECK} job, and ${GATE_TIER_LABELS.length} gate tier labels`,
+  `review-pages: OK — ${PAGE} matches the finding contract, ${REQUIRED_CHECK_CONTEXTS.length} required checks, the ${AGENT_VERDICT_CHECK} and ${AGENT_REVIEW_RAN_CHECK} jobs, and ${GATE_TIER_LABELS.length} gate tier labels`,
 );

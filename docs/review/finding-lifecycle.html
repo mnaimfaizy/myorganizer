@@ -1511,7 +1511,8 @@
       <code>requiredCheckContexts</code> are <code>ci.yml</code> job names,
       <code>agentVerdictCheck</code> is the job name in
       <code>code-review.yml</code> (the Agent Verdict check),
-      <code>gateTierLabels</code> come from
+      <code>agentReviewRanCheck</code> is the sibling job name for the
+      pipeline-fact check, <code>gateTierLabels</code> come from
       <code>tools/config/github-labels.json</code>, and the rest are the
       constants <code>tools/scripts/review/schema.mjs</code> exports.
     </div>
@@ -1537,7 +1538,8 @@
       "Test"
     ],
     "gateTierLabels": ["gate:mechanical", "gate:standard", "gate:full"],
-    "agentVerdictCheck": "Agent Verdict"
+    "agentVerdictCheck": "Agent Verdict",
+    "agentReviewRanCheck": "Agent Review Ran"
   }
 </script>
 
