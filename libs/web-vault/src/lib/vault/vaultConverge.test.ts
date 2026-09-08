@@ -1991,6 +1991,7 @@ describe('convergeVaultBlob', () => {
     expect(metaResult).toEqual({
       kind: 'noop-deferred',
       change: 'passphrase',
+      observedIdentity: expect.any(String),
     });
 
     // Assert getVaultMeta was called exactly once
