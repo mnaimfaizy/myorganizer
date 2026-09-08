@@ -73,6 +73,7 @@ Newest last. "Cases" is the tier replayed, not the whole set.
 | 2026-09-07 | `claude-sonnet-5` | 8 (all tiers)  | **2 of 8**, 2 of 9 findings | consequence checks reverted                   |
 | 2026-09-08 | `claude-sonnet-5` | 8 (all tiers)  | **2 of 8**, 2 of 9 findings | none — same brief, on `main` as base          |
 | 2026-09-08 | `claude-sonnet-5` | 7 (`frontier`) | **void** — rate-limited     | none — first tier-selected run                |
+| 2026-09-08 | `claude-sonnet-5` | 6 (`frontier`) | **1 of 6**, 1 of 6 findings | none — first run after the retirement         |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each.
@@ -345,6 +346,26 @@ gate each incident names; the other four have no obvious gate and were not
 tested. So this retires one case, sharpens why the guard is a guard, and leaves
 the general miss rate exactly where the transcript put it: the reviewer does not
 load the standards that would make the defect expressible.
+
+### One of six, and a clean instrument
+
+Run [34215499508](https://github.com/mnaimfaizy/myorganizer/actions/runs/34215499508)
+is the first replay of the six-case frontier that remains after
+`groceries-ui-written-against-absent-roles` was retired.
+`export-envelope-drops-tasks` was caught; the other five missed.
+
+Two things about it are worth more than the number.
+
+**Every failure was a real one.** All five stopped at `Score the case`, not at
+the rate-limit guard — so each produced a valid report and simply did not
+contain the incident. That is the distinction the previous run could not make,
+and it is the first time the record can say "missed" without a caveat.
+
+**The frontier arm now reads 0, 1, 1, 1** across four valid runs, on a set that
+no longer contains a case the reviewer was instructed not to report. Removing
+that case did not move the number, which is worth knowing on its own: the
+retirement was correct on its own terms, and it was not the explanation for the
+miss rate.
 
 ## Reproduce
 
