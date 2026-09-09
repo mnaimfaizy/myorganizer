@@ -11,10 +11,15 @@ import {
   CardTitle,
 } from '@myorganizer/web-ui';
 
-import { useExportVault } from '../hooks';
+import { useExportVault, useVaultOperationAvailability } from '../hooks';
+import { VAULT_OPERATIONS } from '../policy';
+import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
 export function ExportVaultCard() {
   const { exporting, exportVaultNow } = useExportVault();
+  const { allowed, unavailableReason } = useVaultOperationAvailability(
+    VAULT_OPERATIONS.Export,
+  );
 
   const handleExport = useCallback(async () => {
     await exportVaultNow();
@@ -35,11 +40,15 @@ export function ExportVaultCard() {
           passphrase or recovery key. The server stores audit metadata only —
           never the bundle itself.
         </p>
+        <VaultUnavailableNotice
+          reason={unavailableReason}
+          testId="export-vault-unavailable"
+        />
         <div className="flex gap-2">
           <Button
             data-testid="export-vault-button"
             onClick={handleExport}
-            disabled={exporting}
+            disabled={exporting || !allowed}
           >
             {exporting ? 'Exporting…' : 'Export vault JSON'}
           </Button>

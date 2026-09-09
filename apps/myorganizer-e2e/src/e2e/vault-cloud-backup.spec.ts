@@ -651,8 +651,13 @@ test.describe('Vault cloud backup via Google Drive (E2E)', () => {
     // Navigate to the old account vault URL; should redirect to /dashboard/vault.
     await page.goto('/dashboard/account/vault');
     await expect(page).toHaveURL(/.*\/dashboard\/vault$/);
-    // Verify the vault page loaded.
-    await expect(page.getByTestId('cloud-backup-card')).toBeVisible({
+    // Verify the vault page loaded. This User has no Local Vault, and since
+    // ADR 0068 that state disables cloud backup — there is nothing to back up
+    // — so the live `cloud-backup-card` is not rendered here and cannot serve
+    // as the page-loaded probe. The import card renders in every Vault state
+    // (disabled, with a notice saying why), which is what a probe for "the
+    // route resolved" needs to be.
+    await expect(page.getByTestId('import-vault-file')).toBeVisible({
       timeout: 60000,
     });
 

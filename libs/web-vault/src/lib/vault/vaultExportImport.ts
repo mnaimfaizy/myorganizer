@@ -529,6 +529,11 @@ export async function importVault(
 export {
   CURRENT_VAULT_EXPORT_SCHEMA_VERSION,
   isVaultImportError,
+  // Reading a bundle's Vault Meta before committing it is what lets the import
+  // confirmation say which of three things it will do to the User's
+  // credentials (ADR 0068, decision point 5), so parsing is part of the public
+  // surface and not only an internal step of `importVault`.
+  parseVaultExportEnvelope,
   VAULT_ENVELOPE_PARSE_MAX_BYTES,
   VAULT_EXPORT_BLOB_TYPES,
   VaultImportError,

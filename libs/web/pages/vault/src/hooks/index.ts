@@ -4,5 +4,8 @@ export * from './useExportVault';
 export * from './useGoogleIdentityScript';
 export * from './useLatestCloudBackup';
 export * from './useRecoveryKeyRotation';
+export * from './useUnsentVaultBlobTypes';
 export * from './useVaultDisabledState';
+export * from './useVaultImportDisclosure';
+export * from './useVaultOperationAvailability';
 export * from './useVaultUnlock';

@@ -27,11 +27,15 @@ import {
   MIN_PASSPHRASE_LENGTH,
 } from '@myorganizer/web-vault';
 
-import { useChangePassphrase, useVaultDisabledState } from '../hooks';
+import { useChangePassphrase, useVaultOperationAvailability } from '../hooks';
+import { VAULT_OPERATIONS } from '../policy';
+import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
 export function ChangePassphraseCard() {
   const { changing, changePassphrase } = useChangePassphrase();
-  const disabledState = useVaultDisabledState();
+  const { allowed, unavailableReason } = useVaultOperationAvailability(
+    VAULT_OPERATIONS.PassphraseChange,
+  );
 
   const form = useForm<ChangePassphraseInput>({
     resolver: zodResolver(changePassphraseSchema),
@@ -80,23 +84,10 @@ export function ChangePassphraseCard() {
           change on each of them; they will ask the next time they sync.
         </p>
 
-        {disabledState === 'locked' && (
-          <p className="text-sm text-muted-foreground">
-            Unlock your vault to change its passphrase.
-          </p>
-        )}
-
-        {disabledState === 'no-local-vault' && (
-          <p className="text-sm text-muted-foreground">
-            Set up a local vault on this device to change its passphrase.
-          </p>
-        )}
-
-        {disabledState === 'signed-out' && (
-          <p className="text-sm text-muted-foreground">
-            Your vault is not available on this device right now.
-          </p>
-        )}
+        <VaultUnavailableNotice
+          reason={unavailableReason}
+          testId="change-passphrase-unavailable"
+        />
 
         <Form {...form}>
           <form
@@ -110,11 +101,7 @@ export function ChangePassphraseCard() {
                 <FormItem>
                   <FormLabel>Current passphrase</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      type="password"
-                      disabled={disabledState !== 'enabled'}
-                    />
+                    <Input {...field} type="password" disabled={!allowed} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -128,11 +115,7 @@ export function ChangePassphraseCard() {
                 <FormItem>
                   <FormLabel>New passphrase</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      type="password"
-                      disabled={disabledState !== 'enabled'}
-                    />
+                    <Input {...field} type="password" disabled={!allowed} />
                   </FormControl>
                   <FormDescription>
                     Minimum {MIN_PASSPHRASE_LENGTH} characters.
@@ -149,11 +132,7 @@ export function ChangePassphraseCard() {
                 <FormItem>
                   <FormLabel>Confirm new passphrase</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      type="password"
-                      disabled={disabledState !== 'enabled'}
-                    />
+                    <Input {...field} type="password" disabled={!allowed} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -164,7 +143,7 @@ export function ChangePassphraseCard() {
               <Button
                 type="submit"
                 data-testid="change-passphrase-submit"
-                disabled={changing || disabledState !== 'enabled'}
+                disabled={changing || !allowed}
               >
                 {changing ? 'Changing…' : 'Change passphrase'}
               </Button>

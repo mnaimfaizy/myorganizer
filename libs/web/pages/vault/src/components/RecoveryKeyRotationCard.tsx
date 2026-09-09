@@ -29,8 +29,13 @@ import {
 } from '@myorganizer/web-vault';
 
 import { downloadTextFile } from '../utils';
-import { useRecoveryKeyRotation, useVaultDisabledState } from '../hooks';
+import {
+  useRecoveryKeyRotation,
+  useVaultOperationAvailability,
+} from '../hooks';
+import { VAULT_OPERATIONS } from '../policy';
 import { RecoveryKeyMintedSection } from './RecoveryKeyMintedSection';
+import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
 const rotationFormSchema = z.object({
   currentPassphrase: currentPassphraseSchema,
@@ -42,7 +47,9 @@ export type RotationFormInput = z.infer<typeof rotationFormSchema>;
 export function RecoveryKeyRotationCard() {
   const { toast } = useToast();
   const { rotating, rotateRecoveryKey } = useRecoveryKeyRotation();
-  const disabledState = useVaultDisabledState();
+  const { allowed, unavailableReason } = useVaultOperationAvailability(
+    VAULT_OPERATIONS.RecoveryKeyRotation,
+  );
 
   const [mintedKey, setMintedKey] = useState<MintedRecoveryKey | null>(null);
 
@@ -171,23 +178,10 @@ export function RecoveryKeyRotationCard() {
           recovery key — see "Export encrypted vault" below.
         </p>
 
-        {disabledState === 'locked' && (
-          <p className="text-sm text-muted-foreground">
-            Unlock your vault to rotate its recovery key.
-          </p>
-        )}
-
-        {disabledState === 'no-local-vault' && (
-          <p className="text-sm text-muted-foreground">
-            Set up a local vault on this device to rotate its recovery key.
-          </p>
-        )}
-
-        {disabledState === 'signed-out' && (
-          <p className="text-sm text-muted-foreground">
-            Your vault is not available on this device right now.
-          </p>
-        )}
+        <VaultUnavailableNotice
+          reason={unavailableReason}
+          testId="recovery-key-rotation-unavailable"
+        />
 
         <Form {...form}>
           <form onSubmit={handlePreventSubmit} className="flex flex-col gap-3">
@@ -198,11 +192,7 @@ export function RecoveryKeyRotationCard() {
                 <FormItem>
                   <FormLabel>Passphrase to authorize this rotation</FormLabel>
                   <FormControl>
-                    <Input
-                      {...field}
-                      type="password"
-                      disabled={disabledState !== 'enabled'}
-                    />
+                    <Input {...field} type="password" disabled={!allowed} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -212,11 +202,7 @@ export function RecoveryKeyRotationCard() {
             <Button
               type="button"
               data-testid="recovery-key-rotation-mint"
-              disabled={
-                disabledState !== 'enabled' ||
-                isPassphraseEmpty ||
-                mintedKey !== null
-              }
+              disabled={!allowed || isPassphraseEmpty || mintedKey !== null}
               onClick={handleGenerateKey}
             >
               Generate recovery key
@@ -226,7 +212,7 @@ export function RecoveryKeyRotationCard() {
               <RecoveryKeyMintedSection
                 mintedKey={mintedKey}
                 form={form}
-                disabledState={disabledState}
+                disabled={!allowed}
                 rotating={rotating}
                 onDownload={handleDownload}
                 onCopy={handleCopy}

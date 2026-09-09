@@ -23,7 +23,8 @@ import type { RotationFormInput } from './RecoveryKeyRotationCard';
 interface RecoveryKeyMintedSectionProps {
   mintedKey: MintedRecoveryKey;
   form: UseFormReturn<RotationFormInput>;
-  disabledState: 'signed-out' | 'no-local-vault' | 'locked' | 'enabled';
+  /** True when the Vault operation policy refuses the rotation in the current state. */
+  disabled: boolean;
   rotating: boolean;
   onDownload: () => void;
   onCopy: () => Promise<void>;
@@ -34,7 +35,7 @@ interface RecoveryKeyMintedSectionProps {
 export function RecoveryKeyMintedSection({
   mintedKey,
   form,
-  disabledState,
+  disabled,
   rotating,
   onDownload,
   onCopy,
@@ -94,7 +95,7 @@ export function RecoveryKeyMintedSection({
                 type="text"
                 data-testid="recovery-key-rotation-confirm"
                 placeholder="Paste the recovery key shown above"
-                disabled={disabledState !== 'enabled'}
+                disabled={disabled}
               />
             </FormControl>
             <FormMessage />
@@ -122,9 +123,7 @@ export function RecoveryKeyMintedSection({
         <Button
           type="button"
           data-testid="recovery-key-rotation-submit"
-          disabled={
-            disabledState !== 'enabled' || !isConfirmMatched || rotating
-          }
+          disabled={disabled || !isConfirmMatched || rotating}
           onClick={onRotate}
         >
           {rotating ? 'Rotating…' : 'Rotate recovery key'}

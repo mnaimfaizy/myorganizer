@@ -32,6 +32,7 @@ export * from './lib/vault/recoveryKeyMint';
 export * from './lib/vault/vaultAbsentEvidence';
 export * from './lib/vault/vaultClaimEvidence';
 export * from './lib/vault/vaultConverge';
+export * from './lib/vault/vaultImportDisclosure';
 export * from './lib/vault/vaultMetaConverge';
 export * from './lib/vault/vaultMetaPush';
 // The question and the lifetime only. Vault Meta Refusal storage keys and

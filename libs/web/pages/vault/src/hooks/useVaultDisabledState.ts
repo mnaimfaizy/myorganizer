@@ -1,25 +1,38 @@
 'use client';
 
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
+import { useMemo } from 'react';
 
-type DisabledState = 'signed-out' | 'no-local-vault' | 'locked' | 'enabled';
+import {
+  useLocalVaultRevision,
+  useOptionalVaultSession,
+} from '@myorganizer/web-vault-ui';
 
-export function useVaultDisabledState(): DisabledState {
+import type { VaultDisabledState } from '../policy';
+
+export function useVaultDisabledState(): VaultDisabledState {
   const vaultSession = useOptionalVaultSession();
-  const handle = vaultSession?.handle ?? null;
-  const masterKeyBytes = vaultSession?.masterKeyBytes ?? null;
+  // Convergence replaces the Local Vault without passing through this hook,
+  // so the revision is the only thing that says the vault changed. Adding it
+  // to dependencies invalidates the memoized state when a reconcile completes.
+  const revision = useLocalVaultRevision();
 
-  const isUnlocked = handle !== null && masterKeyBytes !== null;
-  const isSignedOut = handle === null;
-  const hasLocalVault = handle !== null && handle.loadVault() !== null;
+  return useMemo(() => {
+    const handle = vaultSession?.handle ?? null;
+    const masterKeyBytes = vaultSession?.masterKeyBytes ?? null;
 
-  const disabledState: DisabledState = isSignedOut
-    ? 'signed-out'
-    : !hasLocalVault
-      ? 'no-local-vault'
-      : !isUnlocked
-        ? 'locked'
-        : 'enabled';
+    const isUnlocked = handle !== null && masterKeyBytes !== null;
+    const isSignedOut = handle === null;
+    const hasLocalVault = handle !== null && handle.loadVault() !== null;
 
-  return disabledState;
+    const disabledState: VaultDisabledState = isSignedOut
+      ? 'signed-out'
+      : !hasLocalVault
+        ? 'no-local-vault'
+        : !isUnlocked
+          ? 'locked'
+          : 'enabled';
+
+    return disabledState;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vaultSession, revision]);
 }

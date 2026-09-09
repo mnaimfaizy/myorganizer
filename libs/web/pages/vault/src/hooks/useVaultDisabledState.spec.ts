@@ -1,14 +1,18 @@
 /* eslint-disable import/first -- jest.mock must precede application imports */
 
 /**
- * Mock web-vault-ui hook before importing the tested hook.
+ * Mock web-vault-ui hooks before importing the tested hook.
  */
 jest.mock('@myorganizer/web-vault-ui', () => ({
   useOptionalVaultSession: jest.fn(),
+  useLocalVaultRevision: jest.fn(),
 }));
 
 import { renderHook } from '@testing-library/react';
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
+import {
+  useOptionalVaultSession,
+  useLocalVaultRevision,
+} from '@myorganizer/web-vault-ui';
 import { useVaultDisabledState } from './useVaultDisabledState';
 import type { VaultHandle } from '@myorganizer/web-vault';
 
@@ -59,6 +63,7 @@ function createMockHandle(overrides?: Partial<VaultHandle>): VaultHandle {
 describe('useVaultDisabledState', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (useLocalVaultRevision as jest.Mock).mockReturnValue(undefined);
   });
 
   afterEach(() => {
@@ -109,6 +114,30 @@ describe('useVaultDisabledState', () => {
 
     const { result } = renderHook(() => useVaultDisabledState());
 
+    expect(result.current).toBe('enabled');
+  });
+
+  test('recomputes state when revision changes (reconcile restores vault)', () => {
+    // Start: no vault, revision is 1
+    const mockHandle = createMockHandle({
+      loadVault: jest.fn().mockReturnValue(null),
+    });
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+      masterKeyBytes: new Uint8Array(32),
+    });
+    (useLocalVaultRevision as jest.Mock).mockReturnValue(1);
+
+    const { result, rerender } = renderHook(() => useVaultDisabledState());
+    expect(result.current).toBe('no-local-vault');
+
+    // Simulate reconcile: vault restored and revision incremented
+    (mockHandle.loadVault as jest.Mock).mockReturnValue({});
+    (useLocalVaultRevision as jest.Mock).mockReturnValue(2);
+
+    rerender();
+
+    // State should update to 'enabled' because vault now exists
     expect(result.current).toBe('enabled');
   });
 });
