@@ -38,15 +38,15 @@ Promotion to `guard` takes **three consecutive catches**; demotion to
 `frontier` takes **one miss**. The asymmetry is deliberate — a wrongly
 promoted case is a detector that quietly stopped running.
 
-| Case                                          | Tier       | Since      | History                                                                                                                                     |
-| --------------------------------------------- | ---------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `groceries-blob-type-without-fanouts`         | `guard`    | 2026-09-07 | caught in every run, now eight of eight (34344266006, 34345667427)                                                                          |
-| `export-envelope-drops-tasks`                 | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught in 34344266006, missed in 34345667427 |
-| `sync-bookmarks-without-restore-or-meta-push` | `frontier` | 2026-09-07 | invalid report in 34344266006 (void); missed in 34345667427                                                                                 |
-| `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427                                                                          |
-| `signup-password-wrapper-inside-formcontrol`  | `frontier` | 2026-09-07 | missed in 34345667427                                                                                                                       |
-| `import-confirm-is-bare-window-confirm`       | `frontier` | 2026-09-07 | first catch in 34345667427; one of three needed for promotion                                                                               |
-| `mail-test-setup-assigns-undefined-to-env`    | `frontier` | 2026-09-07 | missed in 34345667427                                                                                                                       |
+| Case                                          | Tier       | Since      | History                                                                                                                                                     |
+| --------------------------------------------- | ---------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `groceries-blob-type-without-fanouts`         | `guard`    | 2026-09-07 | caught in every run, now nine of nine (34344266006, 34345667427, 34351285079)                                                                               |
+| `export-envelope-drops-tasks`                 | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught in 34344266006, missed in 34345667427 and 34351285079 |
+| `sync-bookmarks-without-restore-or-meta-push` | `frontier` | 2026-09-07 | invalid report in 34344266006 (void); missed in 34345667427 and 34351285079                                                                                 |
+| `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit)                                                        |
+| `signup-password-wrapper-inside-formcontrol`  | `frontier` | 2026-09-07 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; one of three needed for promotion               |
+| `import-confirm-is-bare-window-confirm`       | `frontier` | 2026-09-07 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak                                                   |
+| `mail-test-setup-assigns-undefined-to-env`    | `frontier` | 2026-09-07 | missed in 34345667427; void in 34351285079 (rate limit)                                                                                                     |
 
 The tier and the evidence that earned it are in
 `tools/config/review-golden-set.json`, asserted by `yarn review:golden:check`.
@@ -76,6 +76,7 @@ Newest last. "Cases" is the tier replayed, not the whole set.
 | 2026-09-08 | `claude-sonnet-5` | 7 (`frontier`) | **void** — rate-limited     | none — first tier-selected run                |
 | 2026-09-08 | `claude-sonnet-5` | 6 (`frontier`) | **1 of 6**, 1 of 6 findings | none — first run after the retirement         |
 | 2026-09-09 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 7**, 2 of 8 findings | wired-gate qualifier on the suppression rule  |
+| 2026-09-09 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 4 scorable**, 3 void | obligation worklist live (pre-fix triggers)   |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each.
