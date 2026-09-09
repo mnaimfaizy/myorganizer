@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test';
 import {
   createAndUnlockVault,
   gotoStable,
+  writeAddressToVault,
   login,
   setupBackend,
   waitForDashboardReady,
@@ -51,6 +52,14 @@ test.describe('Vault Locked Policy (E2E)', () => {
     // 2. Create and unlock vault via /dashboard/addresses route
     await gotoStable(page, '/dashboard/addresses');
     await createAndUnlockVault(page, USER_ID, VAULT_PASSPHRASE);
+
+    // 2b. Seed one Vault Blob. `exportVault` refuses an envelope with no
+    // blobs (`empty-envelope`), so a freshly created Vault cannot be exported
+    // at all — locked or unlocked. Without this the download in step 6 never
+    // fires and the failure reads as "export is blocked while locked", which
+    // is the opposite of what this spec exists to prove. The helper does its
+    // own unlock and asserts the row landed, so the write is real Ciphertext.
+    await writeAddressToVault(page, '12 Baker Street', VAULT_PASSPHRASE);
 
     // 3. Hard navigation to /dashboard/vault (the re-lock trigger)
     // This is page.goto(), not a sidebar link, so the vault is locked on arrival
