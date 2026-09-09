@@ -98,9 +98,9 @@ instruction naming one. Golden case
 ## 2. A destructive confirmation names everything it destroys
 
 **id** `destructive-confirmation-names-what-it-mutates`
-**Fires when** the diff contains `window.confirm(`, an `AlertDialog`, the text
-"Are you sure", or a handler whose name contains `delete`, `replace`, `reset`,
-or `restore` and which is reachable from a confirmation.
+**Fires when** an added line contains `window.confirm(`, an `AlertDialog`, or
+the text "Are you sure". Nothing else — the trigger is three literal strings,
+and this entry documents exactly what the selector matches.
 
 **Answer**
 
@@ -182,6 +182,13 @@ Real, incident-backed, and deliberately not in the first cohort. The first
 measurement needs a small list; a long one repeats the mistake this file exists
 to avoid. Promote them once the four above have been measured.
 
+- **A destructive handler reachable from a confirmation.** Entry 2 fires on
+  the three confirmation literals, which misses a handler named `delete…`,
+  `replace…`, `reset…` or `restore…` that reaches a confirmation indirectly.
+  Catching those needs reachability, not a regex: a name-only trigger fires on
+  every `deleteRow` in the codebase, and a trigger that fires everywhere
+  teaches the reviewer to ignore it — the failure this file exists to avoid.
+  Held until the selector can walk call sites rather than lines.
 - **New persisted state has an inverse.** A write path added — a bookmark, a
   cached ETag, a sync marker — without the restore, reset, or import path that
   clears it. Issue #617: per-type Sync Bookmarks held the last pushed ETag and

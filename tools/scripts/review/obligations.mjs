@@ -117,7 +117,22 @@ export function assertObligationCatalogue(cat, source = 'obligations') {
     if (!Array.isArray(t.paths) || t.paths.length === 0)
       fail(`${where}: trigger.paths must name at least one glob`);
     for (const g of t.paths) {
-      if (typeof g !== 'string' || !g) fail(`${where}: bad trigger path`);
+      // A path is a bare glob, or a glob with its own addedPattern. One entry
+      // often spans places that need different evidence: a version line in
+      // package.json is a trigger, a whole generated directory is a trigger,
+      // and the same regex cannot mean both.
+      if (typeof g === 'string') {
+        if (!g) fail(`${where}: bad trigger path`);
+        continue;
+      }
+      if (!g || typeof g !== 'object') fail(`${where}: bad trigger path`);
+      if (typeof g.glob !== 'string' || !g.glob)
+        fail(`${where}: a trigger path object needs a glob`);
+      if (g.addedPattern !== undefined) {
+        if (typeof g.addedPattern !== 'string')
+          fail(`${where}: ${g.glob}: addedPattern must be a string`);
+        compile(g.addedPattern, `${where} (${g.glob})`);
+      }
     }
     if (t.addedPattern !== undefined) {
       if (typeof t.addedPattern !== 'string')
@@ -177,20 +192,31 @@ export const selectObligations = ({
 }) => {
   const selected = [];
   for (const o of catalogue.obligations) {
-    const globs = o.trigger.paths.map(globToRegExp);
-    const pattern = o.trigger.addedPattern
+    const entryPattern = o.trigger.addedPattern
       ? compile(o.trigger.addedPattern, o.id)
       : null;
+    const rules = o.trigger.paths.map((p) =>
+      typeof p === 'string'
+        ? { glob: globToRegExp(p), pattern: entryPattern }
+        : {
+            glob: globToRegExp(p.glob),
+            pattern:
+              p.addedPattern === undefined
+                ? entryPattern
+                : compile(p.addedPattern, `${o.id} (${p.glob})`),
+          },
+    );
     const sites = [];
     for (const [file, lines] of addedLines) {
-      if (!globs.some((g) => g.test(file))) continue;
-      if (!pattern) {
+      const rule = rules.find((r) => r.glob.test(file));
+      if (!rule) continue;
+      if (!rule.pattern) {
         // A path-only trigger fires on the file, at its first changed line.
         sites.push({ file, line: lines[0]?.line ?? 1 });
         continue;
       }
       for (const { line, text } of lines) {
-        if (pattern.test(text)) sites.push({ file, line });
+        if (rule.pattern.test(text)) sites.push({ file, line });
       }
     }
     if (sites.length === 0) continue;

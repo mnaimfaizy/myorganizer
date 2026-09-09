@@ -9,7 +9,10 @@
       "defect": "A non-zero exitCode is a finding with the command and exit code as executed evidence. exitCode 0 with wiredBy \"none\" is also a finding: per ADR 0074 the checker is not a gate, so nothing would have caught this on main.",
       "trigger": {
         "paths": [
-          "package.json",
+          {
+            "glob": "package.json",
+            "addedPattern": "\"version\"\\s*:"
+          },
           "libs/app-api-client/**",
           "libs/api-specs/**",
           "apps/backend/src/swagger/**",

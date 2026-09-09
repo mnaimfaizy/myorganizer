@@ -282,6 +282,64 @@ test('an empty worklist is not "complete" — there was nothing to complete', ()
   assert.equal(report.complete, false);
 });
 
+test('a path may carry its own addedPattern, overriding the entry-level one', () => {
+  // One entry often spans a value line and a whole generated directory. The
+  // gate obligation shipped firing on ANY package.json edit because a single
+  // entry-level pattern cannot say both things; the CI reviewer proved it on
+  // this branch's own scripts-only edit.
+  const cat = catalogue([
+    obligation({
+      trigger: {
+        paths: [{ glob: 'package.json', addedPattern: 'needle' }, 'libs/**'],
+      },
+    }),
+  ]);
+  const fired = (diffText) =>
+    selectObligations({
+      catalogue: cat,
+      addedLines: parseAddedLines(diffText),
+      head: 'abc',
+    }).selected;
+
+  // The pattern gates package.json...
+  assert.deepEqual(
+    fired(diff('--- a/x', '+++ b/package.json', '@@ -0,0 +1,1 @@', '+chaff')),
+    [],
+  );
+  assert.equal(
+    fired(diff('--- a/x', '+++ b/package.json', '@@ -0,0 +1,1 @@', '+needle'))
+      .length,
+    1,
+  );
+  // ...and does not leak onto the bare glob beside it.
+  assert.equal(
+    fired(diff('--- a/x', '+++ b/libs/a.ts', '@@ -0,0 +1,1 @@', '+chaff'))
+      .length,
+    1,
+  );
+});
+
+test('a path object is validated like any other trigger', () => {
+  assert.throws(
+    () =>
+      assertObligationCatalogue(
+        catalogue([obligation({ trigger: { paths: [{}] } })]),
+      ),
+    /needs a glob/,
+  );
+  assert.throws(
+    () =>
+      assertObligationCatalogue(
+        catalogue([
+          obligation({
+            trigger: { paths: [{ glob: 'x', addedPattern: '(' }] },
+          }),
+        ]),
+      ),
+    /bad pattern/,
+  );
+});
+
 test('the shipped catalogue is well-formed', () => {
   assert.ok(loadObligationCatalogue().obligations.length > 0);
 });
@@ -351,6 +409,36 @@ test('#409: a process.env assignment fires the env obligation', () => {
         '+++ b/apps/backend/src/services/EmailService.spec.ts',
         '@@ -0,0 +12,1 @@',
         '+    process.env.MAIL_USERNAME = undefined;',
+      ),
+    ),
+  );
+});
+
+test('#408: a package.json edit that is not a version bump does NOT fire', () => {
+  // The boundary the reviewer found unverified, and the behaviour it should
+  // have had: adding a yarn script is not a release.
+  assert.ok(
+    !fires(
+      'run-the-gate-that-covers-this-change',
+      diff(
+        '--- a/x',
+        '+++ b/package.json',
+        '@@ -10,1 +10,1 @@',
+        '+    "review:obligations:select": "node x.mjs",',
+      ),
+    ),
+  );
+});
+
+test('#408: a generated output still fires without a version line', () => {
+  assert.ok(
+    fires(
+      'run-the-gate-that-covers-this-change',
+      diff(
+        '--- a/x',
+        '+++ b/libs/api-specs/src/api-specs.openapi.yaml',
+        '@@ -1,1 +1,1 @@',
+        '+  title: MyOrganizer',
       ),
     ),
   );

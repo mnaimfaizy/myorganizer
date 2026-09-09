@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Reports how much of an obligation worklist the reviewer actually answered.
 //
-//   node tools/scripts/review/check-obligation-answers.mjs <worklist.json> <answers.json> [--out <report.json>]
+//   node tools/scripts/check-review-obligation-answers.mjs <worklist.json> <answers.json> [--out <report.json>]
 //
 // This never fails a review. An unanswered obligation is a fact about the
 // review's thoroughness — neither a fact about the pipeline nor a judgment
@@ -16,17 +16,25 @@
 //   selected, unanswered -> the forcing function is too weak.
 //   answered, no finding -> a capability limit, and now known to be one.
 //
+// It sits in tools/scripts/ rather than beside obligations.mjs because
+// gates:coverage:check discovers checkers with a NON-RECURSIVE scan of that
+// directory (tools/scripts/lib/gate-coverage.mjs). A check-*.mjs in a
+// subdirectory is invisible to the Meta-Gate: it would look wired forever,
+// and if the workflow line invoking it were deleted nothing would notice.
+// That is precisely the shape ADR 0074 names — a checker nothing runs — so
+// this file is named and placed to be seen.
+//
 // Exit 0 always when it could run, whatever the answers say.
 // Exit 2 = the script could not run (missing file, unreadable JSON, bad shape).
 import { writeFileSync } from 'node:fs';
 import { ZodError } from 'zod';
 
-import { cannotRun, isMain, parseArgs, readJsonOr } from './cli.mjs';
-import { AnswerSheetSchema, checkAnswers } from './obligations.mjs';
-import { formatIssues } from './schema.mjs';
+import { cannotRun, isMain, parseArgs, readJsonOr } from './review/cli.mjs';
+import { AnswerSheetSchema, checkAnswers } from './review/obligations.mjs';
+import { formatIssues } from './review/schema.mjs';
 
 const USAGE =
-  'usage: check-obligation-answers.mjs <worklist.json> <answers.json> [--out <path>]';
+  'usage: check-review-obligation-answers.mjs <worklist.json> <answers.json> [--out <path>]';
 
 export const main = (argv) => {
   const bail = cannotRun('review-obligations-check');
