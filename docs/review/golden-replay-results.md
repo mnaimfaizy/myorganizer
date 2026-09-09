@@ -299,8 +299,8 @@ That reframes both open levers:
 
 One thing this transcript does not settle, and it should be tested before any
 mapping is written: `tailwind:classes:check` exists **because of this incident**
-(ADR 0065), and the brief says anything a `*:check` gate would already fail is
-not a finding but a `suppressedRedundant` count. If that gate catches this
+(ADR 0065), and the brief says anything a wired `*:check` gate would already
+fail is not a finding but a `suppressedRedundant` count. If that gate catches this
 range, then a reviewer that loaded the right standards would have been correct
 to suppress it, and the case is unwinnable as written rather than hard. Six
 findings were suppressed in this very run and the normalized report keeps only
@@ -325,8 +325,9 @@ gate-covered today.
 **`groceries-ui-written-against-absent-roles` is unwinnable as written.** The gate
 is clean at the base and fails at the head with 25 utilities that compile to no
 CSS — `bg-surface-container-lowest`, `border-outline-variant`, `text-on-surface`,
-the exact names in the case's `why`. So the defect is precisely what a `*:check`
-gate would already fail, and the brief says that is not a finding but a
+the exact names in the case's `why`. So the defect is precisely what a wired
+`*:check` gate would already fail — `tailwind:classes:check` is invoked by
+`.github/workflows/ci.yml` — and the brief says that is not a finding but a
 `suppressedRedundant` count. A reviewer that loaded ADR 0065 and ran the gate
 would have been _correct_ to suppress it. The case scores the reviewer as missing
 something it is instructed not to report, and it should be retired or rewritten
