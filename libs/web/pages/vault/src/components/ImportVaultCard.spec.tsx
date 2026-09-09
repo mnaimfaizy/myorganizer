@@ -17,6 +17,7 @@ jest.mock('../hooks', () => {
   const actual = jest.requireActual('../hooks');
   return {
     ...actual,
+    useVaultImportDisclosure: jest.fn(),
   };
 });
 
@@ -53,6 +54,10 @@ import {
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 import { useToast } from '@myorganizer/web-ui';
 import { useVaultDisabledState } from '../hooks/useVaultDisabledState';
+import {
+  useVaultImportDisclosure,
+  type VaultImportDisclosureState,
+} from '../hooks';
 
 import { ImportVaultCard } from './ImportVaultCard';
 
@@ -114,6 +119,12 @@ describe('ImportVaultCard', () => {
       }),
       masterKeyBytes: new Uint8Array(32),
     });
+    // Default: different-vault outcome (the worst case)
+    const defaultDisclosure: VaultImportDisclosureState = {
+      status: 'loaded',
+      outcome: { kind: 'different-vault' },
+    };
+    (useVaultImportDisclosure as jest.Mock).mockReturnValue(defaultDisclosure);
     jest.mocked(importVault).mockResolvedValue({} as ImportVaultResult);
     jest.mocked(isVaultImportError).mockReturnValue(false);
 
@@ -200,6 +211,31 @@ describe('ImportVaultCard', () => {
 
     expect(importVault).not.toHaveBeenCalled();
     expect(confirmSpy).not.toHaveBeenCalled();
+  });
+
+  test('renders the disclosure returned by useVaultImportDisclosure in the dialog', async () => {
+    // Set up a distinctive outcome (unchanged) that produces unique text
+    (useVaultImportDisclosure as jest.Mock).mockReturnValue({
+      status: 'loaded',
+      outcome: { kind: 'unchanged' },
+    });
+
+    render(<ImportVaultCard />);
+    selectVaultFile();
+
+    fireEvent.click(screen.getByTestId('import-vault-button'));
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('import-vault-replace-dialog'),
+      ).toBeInTheDocument();
+    });
+
+    // The unchanged disclosure should render a distinctive message
+    const disclosure = screen.getByTestId('import-vault-replace-disclosure');
+    expect(disclosure.textContent).toContain(
+      'Nothing about opening your Vault changes',
+    );
   });
 
   test('runs import after acknowledgement and shows Import complete without Import canceled toast', async () => {

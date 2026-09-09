@@ -29,7 +29,10 @@ import {
 import { ImportVaultReplaceDialog } from './ImportVaultReplaceDialog';
 import { formatBytes } from '../utils/formatBytes';
 import { getErrorMessage } from '../utils/getErrorMessage';
-import { useVaultOperationAvailability } from '../hooks';
+import {
+  useVaultOperationAvailability,
+  useVaultImportDisclosure,
+} from '../hooks';
 import { VAULT_OPERATIONS } from '../policy';
 import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
@@ -45,6 +48,7 @@ export function ImportVaultCard() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [lastServerNote, setLastServerNote] = useState<string | null>(null);
   const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
+  const disclosure = useVaultImportDisclosure(selectedFile, replaceDialogOpen);
 
   const runImport = useCallback(async () => {
     if (!handle || !selectedFile) {
@@ -204,6 +208,7 @@ export function ImportVaultCard() {
         onOpenChange={handleReplaceDialogOpenChange}
         onConfirm={runImport}
         onDecline={handleReplaceDecline}
+        disclosure={disclosure}
       />
     </>
   );
