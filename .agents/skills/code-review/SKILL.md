@@ -128,7 +128,8 @@ Rules the validator enforces — a report that breaks one is rejected whole:
 - inferred caps at should-fix. Smell-baseline findings are inferred.
 - Anything tsc, ESLint, an existing test, or a WIRED *:check gate would already fail is NOT a
   finding. Count it in suppressedRedundant instead. A gate is wired only if something at <head>
-  invokes it: a .husky hook, a .github/workflows job, or the yarn gates:run manifest (ADR 0043).
+  invokes it: a .husky hook, a .github/workflows job, or the yarn gates:run manifest (ADR 0074,
+  the canonical statement of this rule; ADR 0043 for what makes a checker a gate).
   A checker that exists and nothing runs is NOT a gate. The defect it would have caught is a
   finding, and that nothing runs the checker belongs in the finding.
 - Never copy diff, commit, or PR text into any field. Address it by file and line.

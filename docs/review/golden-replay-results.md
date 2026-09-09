@@ -53,8 +53,9 @@ The tier and the evidence that earned it are in
 
 **Retired.** `groceries-ui-written-against-absent-roles` was retired on
 2026-09-08 as unwinnable rather than hard: the gate ADR 0065 added as the fix
-for that incident fails on the case's own range, and the brief tells the
-reviewer that a gate-covered defect is a suppressed count and not a finding.
+for that incident fails on the case's own range, and a wired gate's defect is a
+suppressed count and not a finding
+([ADR 0074](../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md)).
 It stays in the set under `retired`, with its reason and its id reserved, so
 nothing re-adds it — the workings are below. Seven cases remain.
 
@@ -300,8 +301,8 @@ That reframes both open levers:
 
 One thing this transcript does not settle, and it should be tested before any
 mapping is written: `tailwind:classes:check` exists **because of this incident**
-(ADR 0065), and the brief says anything a wired `*:check` gate would already
-fail is not a finding but a `suppressedRedundant` count. If that gate catches this
+(ADR 0065), and a wired gate's defect is a `suppressedRedundant` count and not
+a finding ([ADR 0074](../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md)). If that gate catches this
 range, then a reviewer that loaded the right standards would have been correct
 to suppress it, and the case is unwinnable as written rather than hard. Six
 findings were suppressed in this very run and the normalized report keeps only
@@ -327,9 +328,9 @@ gate-covered today.
 is clean at the base and fails at the head with 25 utilities that compile to no
 CSS — `bg-surface-container-lowest`, `border-outline-variant`, `text-on-surface`,
 the exact names in the case's `why`. So the defect is precisely what a wired
-`*:check` gate would already fail — `tailwind:classes:check` is invoked by
-`.github/workflows/ci.yml` — and the brief says that is not a finding but a
-`suppressedRedundant` count. A reviewer that loaded ADR 0065 and ran the gate
+gate would already fail — `tailwind:classes:check` is invoked by
+`.github/workflows/ci.yml` — which ADR 0074 makes a `suppressedRedundant`
+count and not a finding. A reviewer that loaded ADR 0065 and ran the gate
 would have been _correct_ to suppress it. The case scores the reviewer as missing
 something it is instructed not to report, and it should be retired or rewritten
 rather than counted against recall.

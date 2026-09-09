@@ -127,10 +127,8 @@ export function assertGoldenSet(set, source = 'golden set') {
   }
   // Retired cases are kept, not deleted. A case leaves the replay when it turns
   // out to be unwinnable rather than hard — most often because the incident was
-  // fixed by adding a gate, and the brief tells the reviewer that anything a
-  // wired `*:check` gate — one a hook or a workflow invokes — would already
-  // fail is not a finding but a suppressed count. A checker nothing runs is
-  // not a gate, so it retires no case.
+  // fixed by adding a gate whose defect the reviewer is told not to report
+  // (ADR 0074: a wired gate suppresses; a checker nothing runs does not).
   // Deleting such a case loses the reason and invites the next person to add it
   // back; the id stays reserved and the reason stays readable.
   if (set.retired !== undefined) {
