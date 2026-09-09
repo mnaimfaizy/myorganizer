@@ -145,10 +145,20 @@ jobs:
           # checkout is a synthetic merge commit, whose message is "Merge X
           # into Y" and never the author's. Never interpolate the message
           # into the script — it is somebody's text, matched, not run.
+          #
+          # The marker is read from the SUBJECT LINE only, not the whole
+          # message. A substring match over the body means a commit that merely
+          # writes about the escape triggers it: dd8da1df said "No [skip
+          # replay]: this changes how a review is produced, and the replay is
+          # the measurement" and skipped its own measurement, reporting success
+          # in 19 seconds. A skip that looks exactly like a pass is the failure
+          # mode this whole workflow exists to measure, so it does not get to
+          # live in the workflow itself.
           if [ -n "${HEAD_SHA:-}" ]; then
             MESSAGE="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}" --jq .commit.message)"
-            if grep -qiF '[skip replay]' <<<"$MESSAGE"; then
-              skip 'The head commit message contains `[skip replay]`. The reviewer itself still ran; only the golden replay was skipped.'
+            SUBJECT="$(head -n 1 <<<"$MESSAGE")"
+            if grep -qiF '[skip replay]' <<<"$SUBJECT"; then
+              skip 'The head commit subject contains `[skip replay]`. The reviewer itself still ran; only the golden replay was skipped.'
             fi
           fi
 
