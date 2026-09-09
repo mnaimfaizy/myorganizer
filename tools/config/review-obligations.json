@@ -57,7 +57,7 @@
       "defect": "matchesIntent false is a finding. Assigning undefined or null to unset a variable is the common shape: the setter coerces to string, so the key holds the truthy literal \"undefined\". delete is what unsets it.",
       "trigger": {
         "paths": ["apps/**", "libs/**", "tools/**"],
-        "addedPattern": "process\\.env\\.[A-Za-z_][A-Za-z0-9_]*\\s*="
+        "addedPattern": "process\\.env\\.[A-Za-z_][A-Za-z0-9_]*\\s*=(?!=)"
       },
       "seededFrom": "#409",
       "goldenCase": "mail-test-setup-assigns-undefined-to-env"

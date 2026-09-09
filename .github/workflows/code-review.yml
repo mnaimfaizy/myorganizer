@@ -405,6 +405,9 @@ jobs:
           name: code-review-normalized
           path: |
             tmp/code-review/normalized.json
+            tmp/code-review/obligations.json
+            tmp/code-review/obligations.answers.json
+            tmp/code-review/obligations.report.json
             tmp/code-review/report.md
           retention-days: 30
 

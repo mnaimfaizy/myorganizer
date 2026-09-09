@@ -39,7 +39,7 @@ counts as a defect, and which incident bought it.
 ```jsonc
 {
   "id": "kebab-case-id",
-  "trigger": { "kind": "regex", "paths": ["libs/**"], "pattern": "…" },
+  "trigger": { "paths": [{ "glob": "libs/**", "addedPattern": "…" }] },
   "question": "What the reviewer must answer, in the imperative.",
   "answerFields": ["…"],
   "defect": "The comparison that makes the answer a finding.",

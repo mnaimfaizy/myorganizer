@@ -348,6 +348,8 @@ test('the shipped catalogue is well-formed', () => {
 // reviewer noticing them. Each case below is the shape of the incident the
 // entry was bought from; if the selector stops firing on it, the entry is
 // dead and the golden case that scores it can only ever miss.
+const ENV = 'process' + '.env.';
+
 const fires = (id, diffText) => {
   const { selected } = selectObligations({
     catalogue: loadObligationCatalogue(),
@@ -440,6 +442,20 @@ test('#408: a generated output still fires without a version line', () => {
         '@@ -1,1 +1,1 @@',
         '+  title: MyOrganizer',
       ),
+    ),
+  );
+});
+
+test('#409: a comparison is not an assignment and does not fire', () => {
+  // The pattern ended at a bare `=`, which is also the first character of
+  // `===`, so every ordinary read of an environment variable fired the
+  // obligation. A trigger that fires everywhere teaches the reviewer to ignore
+  // it, which is the failure the checklist exists to avoid.
+  const READ = '+  if (' + ENV + "NODE_ENV === 'production') {";
+  assert.ok(
+    !fires(
+      'env-assignment-runtime-value',
+      diff('--- a/x', '+++ b/apps/a.ts', '@@ -0,0 +1,1 @@', READ),
     ),
   );
 });
