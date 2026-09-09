@@ -62,6 +62,19 @@ outputs:
 runs:
   using: composite
   steps:
+    # The obligation worklist, matched against the diff outside the model
+    # (docs/review/REVIEW_CHECKLIST.md). This lives in the shared action rather
+    # than in code-review.yml because the golden replay calls the action
+    # directly: an obligation the replay cannot see is an obligation nothing
+    # can ever measure. An empty worklist is normal and costs nothing.
+    - name: Select the obligations
+      shell: bash
+      run: |
+        mkdir -p tmp/code-review
+        corepack yarn review:obligations:select \
+          --base "${{ inputs.base }}" --head "${{ inputs.head }}" \
+          --out tmp/code-review/obligations.json
+
     # JSON only. The allowed tools are read, search, sub-agents, git reads,
     # existing Nx targets, the validator, and `node` for a reviewer-written
     # reproduction (the executed-evidence class ADR 0071 values most); no gh,
@@ -85,6 +98,7 @@ runs:
           - branch name: ${{ inputs.head-ref }}
           - tier: ${{ inputs.tier }}
           ${{ inputs.facts }}
+          - obligations: the worklist for this diff is already selected in tmp/code-review/obligations.json. Read it, answer every site as the skill's step 4 says, and write tmp/code-review/obligations.answers.json. An empty "selected" array means nothing fired; write no answer sheet and move on. Do not re-run the selector.
           - spec: already resolved in tmp/code-review/spec.json. Read it. Do not fetch issues, do not ask anyone. If its spec.kind is "none", skip the Spec axis.
           - write the envelope to exactly tmp/code-review/report.json (this path, not <head>.report.json) and run the validator on it as the skill says. Do not run the renderer and do not post anything: a later step publishes.
           - the model id to record in the envelope: ${{ inputs.model }}

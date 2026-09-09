@@ -340,6 +340,28 @@ jobs:
           github-token: ${{ github.token }}
           transcript-artifact: code-review-transcript
 
+      # Completeness of the obligation answers, beside the finding contract and
+      # never inside it. This fails nothing: an unanswered obligation says the
+      # review was thin, which is neither a fact about the pipeline nor a
+      # judgment about the diff (ADR 0073), and a report that met its contract
+      # is not rejected for it. What it buys is that a missed defect now reads
+      # as one of three causes instead of one opaque one — see the script.
+      - name: Check the obligation answers
+        if: always() && steps.preflight.outputs.skip != 'true'
+        continue-on-error: true
+        run: |
+          if [ ! -f tmp/code-review/obligations.json ]; then
+            echo 'no worklist: nothing to check'; exit 0
+          fi
+          if [ ! -f tmp/code-review/obligations.answers.json ]; then
+            echo 'review-obligations-check: the reviewer wrote no answer sheet'
+            exit 0
+          fi
+          corepack yarn review:obligations:check \
+            tmp/code-review/obligations.json \
+            tmp/code-review/obligations.answers.json \
+            --out tmp/code-review/obligations.report.json
+
       # The previous run's normalized report, for the new / persisting /
       # resolved strip. Fetched only after the reviewer has exited: the
       # reviewer never sees its last report (ADR 0071). Best effort: a first

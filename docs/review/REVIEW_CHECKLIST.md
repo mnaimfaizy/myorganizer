@@ -19,13 +19,17 @@ noticing is nobody's job.
 
 ## Status
 
-**Drafted, not wired.** The selector does not exist yet, and this file is
-deliberately absent from [`CODING_STANDARDS.md`](../../CODING_STANDARDS.md).
-Indexing it there today would put the whole file into every review's standards
-sources — the dilution that has now failed to help twice. Index it in the same
-change that lands the selector, not before.
+**Wired.** `tools/config/review-obligations.json` is the machine form of the four
+entries below, matched against the diff by
+`yarn review:obligations:select` before the reviewer runs, and answered into
+`tmp/code-review/obligations.answers.json`. Completeness is reported by
+`yarn review:obligations:check`, which fails nothing.
 
-Until then it is usable by a human as-is.
+This file is indexed in [`CODING_STANDARDS.md`](../../CODING_STANDARDS.md) so a human can find
+it, and is deliberately **excluded from the reviewer's standards sources**: its entries reach the
+reviewer already selected, never as prose in the brief. That exclusion is written into
+[the skill](../../.agents/skills/code-review/SKILL.md) step 3, and it is the whole reason the
+selector exists.
 
 ## What an entry looks like
 
