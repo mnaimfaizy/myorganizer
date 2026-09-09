@@ -260,12 +260,14 @@ describe('vaultClaimedVaultConverge', () => {
     };
   }
 
-  // ===== Group A: Meta push guards =====
-
-  test('A1: After evidence-claim, settleVaultMeta converges without pushing when server meta is identical', async () => {
-    const fixture = await seedUnclaimedLocalVaultForEvidence(passphrase);
-
-    // Claim via evidence (locked)
+  /**
+   * Claim an unclaimed local vault via evidence route.
+   * Returns a locked, owned handle ready for testing convergence behaviors.
+   * Throws if the claim did not succeed.
+   */
+  async function claimViaEvidence(
+    fixture: Awaited<ReturnType<typeof seedUnclaimedLocalVaultForEvidence>>,
+  ): Promise<ReturnType<typeof createVaultHandle>> {
     const claimHandle = createVaultHandle({ owner: testOwner });
     const api = createMetaApiDouble();
     api.getVaultMeta.mockResolvedValue(
@@ -284,6 +286,40 @@ describe('vaultClaimedVaultConverge', () => {
     if (claimResult.kind !== 'claimed') {
       throw new Error(`Expected claimed, got ${claimResult.kind}`);
     }
+
+    return claimHandle;
+  }
+
+  /**
+   * Claim an unclaimed local vault via recovery key route.
+   * Returns a locked, owned handle ready for testing convergence behaviors.
+   * Throws if the claim did not succeed.
+   */
+  async function claimViaRecoveryKey(
+    fixture: Awaited<
+      ReturnType<typeof seedUnclaimedLocalVaultWithTasksForRecoveryKey>
+    >,
+  ): Promise<ReturnType<typeof createVaultHandle>> {
+    const claimHandle = createVaultHandle({ owner: testOwner });
+    const claimResult = await claimUnclaimedLocalVaultWithRecoveryKey({
+      handle: claimHandle,
+      recoveryKey: fixture.recoveryKey,
+    });
+
+    if (claimResult.kind !== 'claimed') {
+      throw new Error(`Expected claimed, got ${claimResult.kind}`);
+    }
+
+    return claimHandle;
+  }
+
+  // ===== Group A: Meta push guards =====
+
+  test('A1: After evidence-claim, settleVaultMeta converges without pushing when server meta is identical', async () => {
+    const fixture = await seedUnclaimedLocalVaultForEvidence(passphrase);
+
+    // Claim via evidence (locked)
+    const claimHandle = await claimViaEvidence(fixture);
 
     // After claim: locked, owned, no bookmark
     expect(claimHandle.isUnlocked).toBe(false);
@@ -320,24 +356,9 @@ describe('vaultClaimedVaultConverge', () => {
     const fixture = await seedUnclaimedLocalVaultForEvidence(passphrase);
 
     // Claim via evidence (locked)
-    const claimHandle = createVaultHandle({ owner: testOwner });
-    const claimApi = createMetaApiDouble();
-    claimApi.getVaultMeta.mockResolvedValue(
-      axiosResponse({
-        etag: 'meta-etag',
-        updatedAt: '2026-01-01T00:00:00Z',
-        meta: localToServerMeta(fixture.vault),
-      } as GetVaultMetaResponse),
-    );
-
-    const claimResult = await claimUnclaimedLocalVaultOnEvidence({
-      api: claimApi,
-      handle: claimHandle,
-    });
-
-    if (claimResult.kind !== 'claimed') {
-      throw new Error(`Expected claimed, got ${claimResult.kind}`);
-    }
+    const claimHandle = await claimViaEvidence(fixture);
+    expect(claimHandle.isUnlocked).toBe(false);
+    expect(claimHandle.vaultStatus()).toBe('owned');
 
     // Now push with identical server meta and no baseHash
     const pushApi = createMetaApiDouble();
@@ -365,15 +386,7 @@ describe('vaultClaimedVaultConverge', () => {
       await seedUnclaimedLocalVaultWithTasksForRecoveryKey(passphrase);
 
     // Claim via recovery key
-    const claimHandle = createVaultHandle({ owner: testOwner });
-    const claimResult = await claimUnclaimedLocalVaultWithRecoveryKey({
-      handle: claimHandle,
-      recoveryKey: fixture.recoveryKey,
-    });
-
-    if (claimResult.kind !== 'claimed') {
-      throw new Error(`Expected claimed, got ${claimResult.kind}`);
-    }
+    await claimViaRecoveryKey(fixture);
 
     // Reload: fresh handle (no masterKeyBytes) for same owner
     const freshHandle = createVaultHandle({ owner: testOwner });
@@ -409,24 +422,52 @@ describe('vaultClaimedVaultConverge', () => {
     const fixture = await seedUnclaimedLocalVaultForEvidence(passphrase);
 
     // Claim via evidence
-    const claimHandle = createVaultHandle({ owner: testOwner });
-    const claimApi = createMetaApiDouble();
-    claimApi.getVaultMeta.mockResolvedValue(
+    const claimHandle = await claimViaEvidence(fixture);
+    expect(claimHandle.isUnlocked).toBe(false);
+    expect(claimHandle.vaultStatus()).toBe('owned');
+
+    // Server meta differs in passphrase wrapping (same salt, different wrapped_mk_passphrase)
+    const localMeta = localToServerMeta(fixture.vault);
+    const serverMeta: VaultMetaV1 = {
+      ...localMeta,
+      wrapped_mk_passphrase: {
+        version: 1,
+        iv: 'different-iv',
+        ciphertext: 'different-ciphertext',
+      },
+    };
+
+    const pushApi = createMetaApiDouble();
+    pushApi.getVaultMeta.mockResolvedValue(
       axiosResponse({
         etag: 'meta-etag',
         updatedAt: '2026-01-01T00:00:00Z',
-        meta: localToServerMeta(fixture.vault),
+        meta: serverMeta,
       } as GetVaultMetaResponse),
     );
+    pushApi.putVaultMeta.mockResolvedValue(axiosResponse({}) as AxiosResponse);
 
-    const claimResult = await claimUnclaimedLocalVaultOnEvidence({
-      api: claimApi,
-      handle: claimHandle,
+    const pushResult = await pushLocalVaultMeta({
+      api: pushApi,
+      meta: localMeta,
+      baseHash: undefined,
     });
 
-    if (claimResult.kind !== 'claimed') {
-      throw new Error(`Expected claimed, got ${claimResult.kind}`);
-    }
+    expect(pushResult.kind).toBe('refused-no-base');
+    expect(pushApi.putVaultMeta).not.toHaveBeenCalled();
+  });
+
+  test('A5: After recovery-key claim with fresh reloaded (locked) handle, pushLocalVaultMeta with no baseHash returns refused-no-base when server meta differs in a pushable way', async () => {
+    const fixture =
+      await seedUnclaimedLocalVaultWithTasksForRecoveryKey(passphrase);
+
+    // Claim via recovery key
+    await claimViaRecoveryKey(fixture);
+
+    // Reload with fresh handle (no masterKeyBytes)
+    const freshHandle = createVaultHandle({ owner: testOwner });
+    expect(freshHandle.isUnlocked).toBe(false);
+    expect(freshHandle.vaultStatus()).toBe('owned');
 
     // Server meta differs in passphrase wrapping (same salt, different wrapped_mk_passphrase)
     const localMeta = localToServerMeta(fixture.vault);
@@ -466,24 +507,7 @@ describe('vaultClaimedVaultConverge', () => {
       await seedUnclaimedLocalVaultWithTasksForEvidence(passphrase);
 
     // Claim via evidence (locked)
-    const claimHandle = createVaultHandle({ owner: testOwner });
-    const claimApi = createMetaApiDouble();
-    claimApi.getVaultMeta.mockResolvedValue(
-      axiosResponse({
-        etag: 'meta-etag',
-        updatedAt: '2026-01-01T00:00:00Z',
-        meta: localToServerMeta(fixture.vault),
-      } as GetVaultMetaResponse),
-    );
-
-    const claimResult = await claimUnclaimedLocalVaultOnEvidence({
-      api: claimApi,
-      handle: claimHandle,
-    });
-
-    if (claimResult.kind !== 'claimed') {
-      throw new Error(`Expected claimed, got ${claimResult.kind}`);
-    }
+    const claimHandle = await claimViaEvidence(fixture);
 
     // Capture local tasks ciphertext before convergence
     const beforeVault = claimHandle.loadVault();
@@ -531,15 +555,7 @@ describe('vaultClaimedVaultConverge', () => {
       await seedUnclaimedLocalVaultWithTasksForRecoveryKey(passphrase);
 
     // Claim via recovery key
-    const claimHandle = createVaultHandle({ owner: testOwner });
-    const result = await claimUnclaimedLocalVaultWithRecoveryKey({
-      handle: claimHandle,
-      recoveryKey: fixture.recoveryKey,
-    });
-
-    if (result.kind !== 'claimed') {
-      throw new Error(`Expected claimed, got ${result.kind}`);
-    }
+    await claimViaRecoveryKey(fixture);
 
     // Reload with fresh handle (no masterKeyBytes)
     const freshHandle = createVaultHandle({ owner: testOwner });
@@ -602,24 +618,7 @@ describe('vaultClaimedVaultConverge', () => {
       await seedUnclaimedLocalVaultWithTasksForEvidence(passphrase);
 
     // Claim via evidence (locked)
-    const claimHandle = createVaultHandle({ owner: testOwner });
-    const claimApi = createMetaApiDouble();
-    claimApi.getVaultMeta.mockResolvedValue(
-      axiosResponse({
-        etag: 'meta-etag',
-        updatedAt: '2026-01-01T00:00:00Z',
-        meta: localToServerMeta(fixture.vault),
-      } as GetVaultMetaResponse),
-    );
-
-    const claimResult = await claimUnclaimedLocalVaultOnEvidence({
-      api: claimApi,
-      handle: claimHandle,
-    });
-
-    if (claimResult.kind !== 'claimed') {
-      throw new Error(`Expected claimed, got ${claimResult.kind}`);
-    }
+    const claimHandle = await claimViaEvidence(fixture);
 
     // Record a Sync Bookmark so the blob is clean (not unsent).
     // A freshly claimed vault has no bookmarks, so even the unchanged claimed blob reads as dirty.
@@ -633,21 +632,10 @@ describe('vaultClaimedVaultConverge', () => {
     expect(await claimHandle.hasUnsentChanges('tasks')).toBe(false);
 
     // Create a different remote blob
-    const remotePayload = [
-      {
-        id: 'task-2',
-        title: 'Remote task',
-        status: 'done',
-        priority: 'low',
-        archived: false,
-        createdAt: '2026-01-01T00:00:00.000Z',
-      },
-    ];
-
     // Need to capture remote from an unlocked handle
     const tempHandle = createVaultHandle({ owner: testOwner });
     await tempHandle.unlockWithPassphrase({ passphrase });
-    const remoteBlob = await captureRemoteBlob(tempHandle, remotePayload);
+    const remoteBlob = await captureRemoteBlob(tempHandle, remoteTaskPayload);
 
     // Converge with locked handle, clean local, and different remote
     const convergeApi = createBlobApiDouble();
@@ -677,6 +665,65 @@ describe('vaultClaimedVaultConverge', () => {
     expect(await claimHandle.hasUnsentChanges('tasks')).toBe(false);
   });
 
+  test('B4: After recovery-key claim with fresh reloaded (locked) handle and clean blob, convergeVaultBlob takes different remote and advances bookmark', async () => {
+    const fixture =
+      await seedUnclaimedLocalVaultWithTasksForRecoveryKey(passphrase);
+
+    // Claim via recovery key
+    await claimViaRecoveryKey(fixture);
+
+    // Reload with fresh handle (no masterKeyBytes)
+    const freshHandle = createVaultHandle({ owner: testOwner });
+    expect(freshHandle.isUnlocked).toBe(false);
+    expect(freshHandle.vaultStatus()).toBe('owned');
+
+    // Record a Sync Bookmark so the blob is clean
+    await freshHandle.recordPushSuccess({
+      type: 'tasks',
+      etag: 'etag-claimed',
+    });
+
+    // Local has no unsent changes now
+    expect(await freshHandle.hasUnsentChanges('tasks')).toBe(false);
+
+    // Create a different remote blob using an unlocked temp handle
+    const tempHandle = createVaultHandle({ owner: testOwner });
+    await tempHandle.unlockWithPassphrase({ passphrase });
+    const remoteBlob = await captureRemoteBlob(tempHandle, remoteTaskPayload);
+
+    // Create a fresh locked handle for convergence
+    const convergeHandle = createVaultHandle({ owner: testOwner });
+    expect(convergeHandle.isUnlocked).toBe(false);
+    expect(await convergeHandle.hasUnsentChanges('tasks')).toBe(false);
+
+    // Converge with fresh locked handle, clean local, and different remote
+    const convergeApi = createBlobApiDouble();
+    const convergePrompt = jest.fn() as VaultBlobConvergePrompt;
+
+    const convergeResult = await convergeVaultBlob({
+      api: convergeApi,
+      handle: convergeHandle,
+      type: VaultBlobType.Tasks,
+      prompt: convergePrompt,
+      serverMeta: serverMetaFor(convergeHandle),
+      remote: remoteBlob,
+    });
+
+    expect(convergeResult).toEqual({
+      kind: 'took',
+      etag: 'etag-remote',
+    });
+    expect(convergeApi.putVaultBlob).not.toHaveBeenCalled();
+    expect(convergePrompt).not.toHaveBeenCalled();
+
+    // Verify vault still owned (claim survives take)
+    expect(convergeHandle.vaultStatus()).toBe('owned');
+
+    // Verify bookmark advanced
+    expect(convergeHandle.lastPushedEtag('tasks')).toBe('etag-remote');
+    expect(await convergeHandle.hasUnsentChanges('tasks')).toBe(false);
+  });
+
   // ===== Group C: Reload survival + intact ciphertext after unlock =====
 
   test('C1: After evidence-claim with deferred conflict, unlock and decrypt yields original local payload', async () => {
@@ -684,24 +731,7 @@ describe('vaultClaimedVaultConverge', () => {
       await seedUnclaimedLocalVaultWithTasksForEvidence(passphrase);
 
     // Claim via evidence (locked)
-    const claimHandle = createVaultHandle({ owner: testOwner });
-    const claimApi = createMetaApiDouble();
-    claimApi.getVaultMeta.mockResolvedValue(
-      axiosResponse({
-        etag: 'meta-etag',
-        updatedAt: '2026-01-01T00:00:00Z',
-        meta: localToServerMeta(fixture.vault),
-      } as GetVaultMetaResponse),
-    );
-
-    const claimResult = await claimUnclaimedLocalVaultOnEvidence({
-      api: claimApi,
-      handle: claimHandle,
-    });
-
-    if (claimResult.kind !== 'claimed') {
-      throw new Error(`Expected claimed, got ${claimResult.kind}`);
-    }
+    const claimHandle = await claimViaEvidence(fixture);
 
     // Capture local ciphertext while locked (to verify it stays unchanged)
     const beforeVault = claimHandle.loadVault();
@@ -711,20 +741,9 @@ describe('vaultClaimedVaultConverge', () => {
     const localTasksCiphertext = beforeVault.data.tasks;
 
     // Create a different remote blob using an unlocked temp handle
-    const remotePayload = [
-      {
-        id: 'task-2',
-        title: 'Remote task',
-        status: 'done',
-        priority: 'low',
-        archived: false,
-        createdAt: '2026-01-01T00:00:00.000Z',
-      },
-    ];
-
     const tempHandle = createVaultHandle({ owner: testOwner });
     await tempHandle.unlockWithPassphrase({ passphrase });
-    const remoteBlob = await captureRemoteBlob(tempHandle, remotePayload);
+    const remoteBlob = await captureRemoteBlob(tempHandle, remoteTaskPayload);
 
     // Converge while locked (defers)
     const convergeApi = createBlobApiDouble();
@@ -755,7 +774,6 @@ describe('vaultClaimedVaultConverge', () => {
       defaultValue: null,
     });
 
-    expect(decrypted).toBeDefined();
     const records = readVaultBlobRecords(decrypted);
     expect(records).toEqual(
       expect.arrayContaining([
@@ -772,24 +790,7 @@ describe('vaultClaimedVaultConverge', () => {
       await seedUnclaimedLocalVaultWithTasksForEvidence(passphrase);
 
     // Claim via evidence (locked)
-    const claimHandle = createVaultHandle({ owner: testOwner });
-    const claimApi = createMetaApiDouble();
-    claimApi.getVaultMeta.mockResolvedValue(
-      axiosResponse({
-        etag: 'meta-etag',
-        updatedAt: '2026-01-01T00:00:00Z',
-        meta: localToServerMeta(fixture.vault),
-      } as GetVaultMetaResponse),
-    );
-
-    const claimResult = await claimUnclaimedLocalVaultOnEvidence({
-      api: claimApi,
-      handle: claimHandle,
-    });
-
-    if (claimResult.kind !== 'claimed') {
-      throw new Error(`Expected claimed, got ${claimResult.kind}`);
-    }
+    const claimHandle = await claimViaEvidence(fixture);
 
     // Record bookmark so local is clean
     await claimHandle.recordPushSuccess({
@@ -798,20 +799,9 @@ describe('vaultClaimedVaultConverge', () => {
     });
 
     // Create a different remote blob
-    const remotePayload = [
-      {
-        id: 'task-2',
-        title: 'Remote task',
-        status: 'done',
-        priority: 'low',
-        archived: false,
-        createdAt: '2026-01-01T00:00:00.000Z',
-      },
-    ];
-
     const tempHandle = createVaultHandle({ owner: testOwner });
     await tempHandle.unlockWithPassphrase({ passphrase });
-    const remoteBlob = await captureRemoteBlob(tempHandle, remotePayload);
+    const remoteBlob = await captureRemoteBlob(tempHandle, remoteTaskPayload);
 
     // Create a fresh locked handle for convergence (tempHandle modified localStorage,
     // so we need a fresh view of the vault)
@@ -845,7 +835,6 @@ describe('vaultClaimedVaultConverge', () => {
       defaultValue: null,
     });
 
-    expect(decrypted).toBeDefined();
     const records = readVaultBlobRecords(decrypted);
     expect(records).toEqual(
       expect.arrayContaining([
@@ -862,15 +851,7 @@ describe('vaultClaimedVaultConverge', () => {
       await seedUnclaimedLocalVaultWithTasksForRecoveryKey(passphrase);
 
     // Claim via recovery key
-    const claimHandle = createVaultHandle({ owner: testOwner });
-    const result = await claimUnclaimedLocalVaultWithRecoveryKey({
-      handle: claimHandle,
-      recoveryKey: fixture.recoveryKey,
-    });
-
-    if (result.kind !== 'claimed') {
-      throw new Error(`Expected claimed, got ${result.kind}`);
-    }
+    await claimViaRecoveryKey(fixture);
 
     // Reload with fresh handle (no masterKeyBytes)
     const freshHandle = createVaultHandle({ owner: testOwner });
@@ -893,13 +874,118 @@ describe('vaultClaimedVaultConverge', () => {
       type: 'tasks',
       defaultValue: null,
     });
-    expect(decrypted).toBeDefined();
     const records = readVaultBlobRecords(decrypted);
     expect(records).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: 'task-1',
           title: 'Local task',
+        }),
+      ]),
+    );
+  });
+
+  // ===== New tests for coverage gaps =====
+
+  test('C4: After evidence-claim with fresh reloaded (locked) handle, vault status is owned and locked, unsuffixed slot is byte-identical', async () => {
+    const fixture =
+      await seedUnclaimedLocalVaultWithTasksForEvidence(passphrase);
+
+    // Claim via evidence (locked)
+    await claimViaEvidence(fixture);
+
+    // Reload with fresh handle (no masterKeyBytes)
+    const freshHandle = createVaultHandle({ owner: testOwner });
+
+    // Verify state
+    expect(freshHandle.vaultStatus()).toBe('owned');
+    expect(freshHandle.isUnlocked).toBe(false);
+
+    // Verify unsuffixed slot is byte-identical to seeded fixture
+    const unclaimedRaw = localStorage.getItem(VAULT_STORAGE_KEY);
+    expect(unclaimedRaw).toBe(fixture.raw);
+
+    // Verify vault can be read (once unlocked) and ciphertext survived
+    await freshHandle.unlockWithPassphrase({ passphrase });
+    const vault = freshHandle.loadVault();
+    expect(vault).not.toBeNull();
+
+    // Decrypt and verify original task-1 payload is intact
+    const decrypted = await freshHandle.loadDecryptedData({
+      type: 'tasks',
+      defaultValue: null,
+    });
+    const records = readVaultBlobRecords(decrypted);
+    expect(records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'task-1',
+          title: 'Local task',
+        }),
+      ]),
+    );
+  });
+
+  test('C5: After recovery-key claim with unconflicted take, unlock and decrypt yields remote payload', async () => {
+    const fixture =
+      await seedUnclaimedLocalVaultWithTasksForRecoveryKey(passphrase);
+
+    // Claim via recovery key
+    await claimViaRecoveryKey(fixture);
+
+    // Reload with fresh handle (no masterKeyBytes)
+    const claimHandle = createVaultHandle({ owner: testOwner });
+    expect(claimHandle.isUnlocked).toBe(false);
+    expect(claimHandle.vaultStatus()).toBe('owned');
+
+    // Record bookmark so local is clean
+    await claimHandle.recordPushSuccess({
+      type: 'tasks',
+      etag: 'etag-claimed',
+    });
+
+    // Create a different remote blob using an unlocked temp handle
+    const tempHandle = createVaultHandle({ owner: testOwner });
+    await tempHandle.unlockWithPassphrase({ passphrase });
+    const remoteBlob = await captureRemoteBlob(tempHandle, remoteTaskPayload);
+
+    // Create a fresh locked handle for convergence
+    const convergeHandle = createVaultHandle({ owner: testOwner });
+    expect(convergeHandle.isUnlocked).toBe(false);
+    expect(await convergeHandle.hasUnsentChanges('tasks')).toBe(false);
+
+    // Converge with fresh locked handle, clean local, and different remote
+    const convergeApi = createBlobApiDouble();
+    const convergeResult = await convergeVaultBlob({
+      api: convergeApi,
+      handle: convergeHandle,
+      type: VaultBlobType.Tasks,
+      prompt: jest.fn() as VaultBlobConvergePrompt,
+      serverMeta: serverMetaFor(convergeHandle),
+      remote: remoteBlob,
+    });
+
+    expect(convergeResult).toEqual({
+      kind: 'took',
+      etag: 'etag-remote',
+    });
+    expect(convergeApi.putVaultBlob).not.toHaveBeenCalled();
+
+    // Now unlock the converge handle and decrypt to verify remote payload was taken
+    await convergeHandle.unlockWithPassphrase({ passphrase });
+    expect(convergeHandle.isUnlocked).toBe(true);
+
+    const decrypted = await convergeHandle.loadDecryptedData({
+      type: 'tasks',
+      defaultValue: null,
+    });
+
+    const records = readVaultBlobRecords(decrypted);
+    expect(records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'task-2',
+          title: 'Remote task',
         }),
       ]),
     );
