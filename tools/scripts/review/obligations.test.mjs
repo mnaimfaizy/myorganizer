@@ -306,6 +306,40 @@ test('false and zero are answers, and are not mistaken for blanks', () => {
   assert.deepEqual(report.incomplete, []);
 });
 
+test('the real selector output carries defectWhen all the way to checkAnswers', () => {
+  // The wiring, not the pieces. defectWhen was validated in the catalogue and
+  // read in checkAnswers, and selectObligations - the only thing that builds a
+  // worklist in the real pipeline - did not copy it. Every test until this one
+  // hand-built a worklist literal with defectWhen already set, so they all
+  // passed while the gate could not fire once. The contradiction guard reads
+  // `want.defectWhen && ...`, so a dropped field is not an error: it is a gate
+  // that passes everything, silently.
+  const catalogue = loadObligationCatalogue();
+  const addedLines = parseAddedLines(
+    diff('--- a/x', '+++ b/apps/a.tsx', '@@ -0,0 +1,1 @@', '+  <FormControl>'),
+  );
+  const w = selectObligations({ catalogue, addedLines, head: 'abc' });
+  assert.equal(w.selected.length, 1);
+  assert.ok(w.selected[0].defectWhen, 'defectWhen must survive selection');
+
+  const sheet = {
+    head: 'abc',
+    answers: w.selected.flatMap((o) =>
+      o.sites.map((site) => ({
+        id: o.id,
+        site,
+        answer: {
+          slotChild: 'div',
+          propsLandOn: 'div',
+          isFocusableControl: false,
+        },
+        raisedFindingIds: [],
+      })),
+    ),
+  };
+  assert.equal(checkAnswers(w, sheet).contradictions.length, 1);
+});
+
 test('an answer meeting its own defect condition and raising nothing contradicts itself', () => {
   // Run 45. import-confirm wrote namesEverything: false - which its own defect
   // rule calls a finding in as many words - and raised nothing, and the

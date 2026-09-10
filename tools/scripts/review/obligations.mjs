@@ -226,6 +226,11 @@ export const selectObligations = ({
       question: o.question,
       answerFields: o.answerFields,
       defect: o.defect,
+      // Carried, or the contradiction check downstream reads undefined on
+      // every entry and silently reports nothing. Its guard is
+      // `want.defectWhen && ...`, so a missing field is not an error — it is
+      // a gate that passes everything.
+      defectWhen: o.defectWhen,
       sites: sites.slice(0, maxSites),
       truncated: Math.max(0, sites.length - maxSites),
     });

@@ -57,7 +57,7 @@ appearing in prose.
 
 3. **This ADR is the canonical statement, and the rule has one author.** What is forbidden is
    re-authoring: stating the condition as though this document did not exist, so that a reader
-   could act on the paraphrase without ever opening it. That is how the rule came to have nine
+   could act on the paraphrase without ever opening it. That is how the rule came to have seven
    copies free to drift apart, which is the whole reason this ADR exists.
 
    Two things are not re-authoring and are expected. A **gloss** — a clause that names this ADR in
