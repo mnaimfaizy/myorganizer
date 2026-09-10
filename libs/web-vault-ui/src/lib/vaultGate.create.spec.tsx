@@ -26,7 +26,6 @@ jest.mock('@myorganizer/web-vault', () => {
   };
 });
 
-import '@testing-library/jest-dom';
 import {
   act,
   fireEvent,

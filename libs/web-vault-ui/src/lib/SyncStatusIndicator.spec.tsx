@@ -1,4 +1,3 @@
-import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import { fireEvent } from '@testing-library/react';
 import type { VaultSyncStatus } from '@myorganizer/web-vault';

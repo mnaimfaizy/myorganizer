@@ -52,7 +52,6 @@ jest.mock('@myorganizer/web-vault', () => ({
     mockCreateDefaultAuditReporter(...args),
 }));
 
-import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 // Import real VaultSecretMismatchError so instanceof checks work

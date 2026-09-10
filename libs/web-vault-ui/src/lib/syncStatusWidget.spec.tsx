@@ -1,5 +1,4 @@
 /* eslint-disable import/first -- jest.mock must precede application imports */
-import '@testing-library/jest-dom';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import type { VaultSyncStatus } from '@myorganizer/web-vault';
 import { VaultBlobType } from '@myorganizer/app-api-client';
