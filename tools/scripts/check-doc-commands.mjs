@@ -31,6 +31,8 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 
+import { tokenize } from './lib/shell-command.mjs';
+
 const fail = (msg) => {
   console.error(`doc-commands: ${msg}`);
   process.exit(2);
@@ -59,19 +61,10 @@ const FENCE = /```(?:bash|sh|shell|console)\n([\s\S]*?)```/g;
 /** A token with a shell placeholder, variable, or glob in it is not naming one file. */
 const isPlaceholder = (token) => /[<>${}*?|!]/.test(token);
 
-/**
- * Split one command line into tokens, keeping a quoted argument whole. `"Vault Trust
- * Boundary.dc.html"` is one filename; splitting on whitespace turns it into three tokens and the
- * check then asserts against a name nobody wrote.
- */
-export function tokenize(line) {
-  const tokens = [];
-  const pattern = /"([^"]*)"|'([^']*)'|(\S+)/g;
-  for (const m of line.matchAll(pattern)) {
-    tokens.push(m[1] ?? m[2] ?? m[3]);
-  }
-  return tokens;
-}
+// Re-exported so this module's contract tests, and any reader who comes here
+// first, still find the split beside the rules that use it. The one copy lives
+// in lib/ because the reviewer's allowlist gate needs the same split.
+export { tokenize };
 
 /** Strip shell and prose punctuation a path picks up in running text. */
 export function clean(token) {

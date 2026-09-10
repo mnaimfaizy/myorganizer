@@ -630,6 +630,9 @@ jobs:
       - name: Review checklist checker contracts
         run: corepack yarn review:checklist:test
 
+      - name: Reviewer tool allowlist checker contracts
+        run: corepack yarn review:allowlist:test
+
       - name: Gate coverage checker contracts
         run: corepack yarn gates:coverage:test
 
@@ -638,6 +641,20 @@ jobs:
       # manifest. Nine checkers ran nowhere when ADR 0043 was written.
       - name: Check gate coverage
         run: corepack yarn gates:coverage:check
+
+      # An instruction the reviewer is refused permission to follow is an
+      # instruction nothing can carry out, and it is not free: run 45's guard
+      # case spent 26 permission denials of an 81-turn budget and wrote no
+      # report at all. Unlike the block below this one is CI-only rather than
+      # also running in the pre-commit hook, and not on ADR 0043's runtime
+      # grounds — it is a ~350ms file-reading checker that belongs in the
+      # aggregate. It fails on the tree that introduced it, deliberately (the
+      # contradiction it names is fixed in a later change), and the aggregate
+      # is what `.husky/pre-commit` calls, so wiring it there now would block
+      # every commit in the repository until then. Move it into
+      # `tools/scripts/lib/gate-manifest.mjs` once it passes.
+      - name: Check the reviewer may run what it is told to run
+        run: corepack yarn review:allowlist:check
 
       # The checks below also run through `yarn gates:run` in the pre-commit
       # hook (ADR 0043). CI runs each as its own named step instead of the
