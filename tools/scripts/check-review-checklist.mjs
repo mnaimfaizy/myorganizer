@@ -21,6 +21,7 @@
 // Exit 0 = sound. Exit 1 = findings. Exit 2 = could not run.
 import { readFileSync } from 'node:fs';
 
+import { isMain } from './review/cli.mjs';
 import { loadObligationCatalogue } from './review/obligations.mjs';
 
 const CHECKLIST = 'docs/review/REVIEW_CHECKLIST.md';
@@ -60,63 +61,75 @@ export function parseChecklist(md) {
   return entries;
 }
 
-let md;
-try {
-  md = readFileSync(CHECKLIST, 'utf8');
-} catch (err) {
-  die(`cannot read ${CHECKLIST}: ${err.message}`);
-}
+const main = () => {
+  let md;
+  try {
+    md = readFileSync(CHECKLIST, 'utf8');
+  } catch (err) {
+    die(`cannot read ${CHECKLIST}: ${err.message}`);
+  }
 
-let catalogue;
-try {
-  catalogue = loadObligationCatalogue();
-} catch (err) {
-  die(err.message);
-}
+  let catalogue;
+  try {
+    catalogue = loadObligationCatalogue();
+  } catch (err) {
+    die(err.message);
+  }
 
-const entries = parseChecklist(md);
-const findings = [];
+  const entries = parseChecklist(md);
+  const findings = [];
 
-const wanted = catalogue.obligations.map((o) => o.id);
-const found = entries.map((e) => e.id);
+  const wanted = catalogue.obligations.map((o) => o.id);
+  const found = entries.map((e) => e.id);
 
-for (const id of wanted)
-  if (!found.includes(id))
-    findings.push(`obligation ${id} has no entry in ${CHECKLIST}`);
-for (const id of found)
-  if (!wanted.includes(id))
-    findings.push(`${CHECKLIST} documents ${id}, which the catalogue does not`);
+  for (const id of wanted)
+    if (!found.includes(id))
+      findings.push(`obligation ${id} has no entry in ${CHECKLIST}`);
+  for (const id of found)
+    if (!wanted.includes(id))
+      findings.push(
+        `${CHECKLIST} documents ${id}, which the catalogue does not`,
+      );
 
-// Order is asserted only once both sides carry the same ids; reporting a
-// reorder on top of a missing entry is noise about a problem already named.
-if (findings.length === 0 && wanted.join(',') !== found.join(','))
-  findings.push(
-    `entry order differs: catalogue has ${wanted.join(', ')}; ` +
-      `${CHECKLIST} has ${found.join(', ')}`,
-  );
-
-for (const o of catalogue.obligations) {
-  const entry = entries.find((e) => e.id === o.id);
-  if (!entry) continue;
-  const a = o.answerFields.join(', ');
-  const b = entry.answerFields.join(', ');
-  if (a !== b)
+  // Order is asserted only once both sides carry the same ids; reporting a
+  // reorder on top of a missing entry is noise about a problem already named.
+  if (findings.length === 0 && wanted.join(',') !== found.join(','))
     findings.push(
-      `${o.id}: answerFields are [${a}] in the catalogue but the entry's ` +
-        `answer table lists [${b}]`,
+      `entry order differs: catalogue has ${wanted.join(', ')}; ` +
+        `${CHECKLIST} has ${found.join(', ')}`,
     );
-}
 
-if (process.argv.includes('--print')) {
-  console.log(`catalogue: ${wanted.join(', ')}`);
-  for (const e of entries)
-    console.log(`entry ${e.id}: ${e.answerFields.join(', ')}`);
-}
+  for (const o of catalogue.obligations) {
+    const entry = entries.find((e) => e.id === o.id);
+    if (!entry) continue;
+    const a = o.answerFields.join(', ');
+    const b = entry.answerFields.join(', ');
+    if (a !== b)
+      findings.push(
+        `${o.id}: answerFields are [${a}] in the catalogue but the entry's ` +
+          `answer table lists [${b}]`,
+      );
+  }
 
-if (findings.length) {
-  for (const f of findings) console.error(`review-checklist: ${f}`);
-  process.exit(1);
-}
-console.log(
-  `review-checklist: ${entries.length} entries match the obligation catalogue`,
-);
+  if (process.argv.includes('--print')) {
+    console.log(`catalogue: ${wanted.join(', ')}`);
+    for (const e of entries)
+      console.log(`entry ${e.id}: ${e.answerFields.join(', ')}`);
+  }
+
+  if (findings.length) {
+    for (const f of findings) console.error(`review-checklist: ${f}`);
+    process.exit(1);
+  }
+  console.log(
+    `review-checklist: ${entries.length} entries match the obligation catalogue`,
+  );
+};
+
+// Behind an isMain guard because this module's own contract tests import
+// parseChecklist from it. Run at load, the comparison below calls
+// process.exit(1) the moment the checklist and the catalogue disagree - so
+// the test file would die before a single test ran, and precisely when the
+// gate was doing its job. A checker whose tests cannot run while it is
+// failing is the shape ADR 0043 exists to keep out of this directory.
+if (isMain(import.meta.url)) main();
