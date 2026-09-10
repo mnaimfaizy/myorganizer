@@ -284,7 +284,14 @@ jobs:
           corepack yarn review:golden:score --case '${{ matrix.case }}' \
             --normalized tmp/code-review/normalized.json --out tmp/code-review/score.json
 
-      - name: Keep the report and score
+      # The obligation files ride along with the report. Run 45 asked whether a
+      # miss on a case whose obligation fired was answered-and-wrong or never
+      # answered at all - opposite diagnoses, one indicting the question's
+      # wording and the other its enforcement - and the answer was not
+      # collectable, because only normalized.json and score.json were kept.
+      # code-review.yml had carried these three since c6f7117c; the replay,
+      # which is where the measurement actually happens, had not.
+      - name: Keep the report, the score, and the obligations
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -292,6 +299,8 @@ jobs:
           path: |
             tmp/code-review/normalized.json
             tmp/code-review/score.json
+            tmp/code-review/obligations.json
+            tmp/code-review/obligations.answers.json
           if-no-files-found: ignore
           retention-days: 30
 
