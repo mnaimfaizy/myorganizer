@@ -9,16 +9,6 @@
  * strict write guards).
  */
 
-// === Global setup for jsdom ===
-if (
-  typeof (globalThis as unknown as { TextEncoder?: unknown }).TextEncoder ===
-  'undefined'
-) {
-  const { TextEncoder, TextDecoder } = require('util');
-  (globalThis as unknown as Record<string, unknown>).TextEncoder = TextEncoder;
-  (globalThis as unknown as Record<string, unknown>).TextDecoder = TextDecoder;
-}
-
 import {
   SYNC_BOOKMARK_STORAGE_KEY,
   SYNC_BOOKMARK_RECORD_VERSION,
