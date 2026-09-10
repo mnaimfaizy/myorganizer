@@ -19,14 +19,15 @@
  * the label on the Pull Request is a display of it (ADR 0070 items 2 and 3).
  */
 
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { globToRegExp } from './glob.mjs';
 
 // Re-exported so this module's contract tests and callers keep one import
 // site, while the implementation lives in glob.mjs beside the obligation
 // selector that used to carry a second, divergent copy.
 export { globToRegExp };
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 
 export const REVIEW_TIER_PATHS_CONFIG = join(
   'tools',
