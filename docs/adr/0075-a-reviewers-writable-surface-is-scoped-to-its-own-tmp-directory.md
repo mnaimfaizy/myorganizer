@@ -33,10 +33,10 @@ entry has no reason to exist.
 
 ## Decision
 
-1. **`Write` and `Edit` are scoped to `tmp/code-review/**`.** The allow-list entries read
-`Write(tmp/code-review/**)`and`Edit(tmp/code-review/**)`, not bare `Write,Edit`. That directory
-already holds everything the reviewer legitimately writes: `report.json`,
-`obligations.answers.json`, and the throwaway `git worktree` ADR 0071 item 4 permits. Nothing the
+1. **`Write` and `Edit` are scoped to a directory only this run owns.** The allow-list entries read
+   `Write(tmp/code-review/**)` and `Edit(tmp/code-review/**)`, not bare `Write,Edit`. That directory
+   already holds everything the reviewer legitimately writes: `report.json`,
+   `obligations.answers.json`, and the throwaway `git worktree` ADR 0071 item 4 permits. Nothing the
    reviewer is asked to produce lives outside it.
 
 2. **The interpreter stays unrestricted; the writable surface does not.** `Bash(node:*)` keeps its
