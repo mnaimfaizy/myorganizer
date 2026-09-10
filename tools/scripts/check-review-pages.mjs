@@ -5,11 +5,11 @@
 //   node tools/scripts/check-review-pages.mjs
 //
 // The page embeds a manifest of the vocabularies it asserts. This diffs each
-// entry against its source: the finding contract's exported constants, the CI
-// job names the main-branch ruleset requires, the Agent Verdict job name in
-// the code-review workflow, and the gate tier labels in the label catalog. A
-// rename in any of those fails here instead of leaving a confidently wrong
-// explainer in docs/.
+// entry against its source: the finding contract's exported constants and its
+// report schema version, the CI job names the main-branch ruleset requires,
+// the Agent Verdict job name in the code-review workflow, and the gate tier
+// labels in the label catalog. A rename in any of those fails here instead of
+// leaving a confidently wrong explainer in docs/.
 //
 // Exit 0 = in sync. Exit 1 = drift (fix the page or the source). Exit 2 = the
 // check could not run.
@@ -21,6 +21,7 @@ import {
   FINDING_IDENTITY_FIELDS,
   FINDING_SEVERITIES,
   GATE_TIER_LABELS,
+  REPORT_SCHEMA_VERSION,
   REVIEW_TIER_LABELS,
   VERDICT_VALUES,
 } from './review/schema.mjs';
@@ -127,6 +128,17 @@ eqList(
   REQUIRED_CHECK_CONTEXTS,
   manifest.requiredCheckContexts,
 );
+// The identity fields and the version that scopes them move together: an id
+// only means anything within a schema version, so a page that names one and
+// not the other describes a diff nobody can reproduce (issue #718).
+if (manifest.reportSchemaVersion !== REPORT_SCHEMA_VERSION)
+  findings.push(
+    `reportSchemaVersion: source says ${REPORT_SCHEMA_VERSION}, page says ${JSON.stringify(manifest.reportSchemaVersion ?? null)}`,
+  );
+if (!page.replace(raw[0], '').includes('schemaVersion'))
+  findings.push(
+    'reportSchemaVersion: the manifest pins a version the page body never names',
+  );
 eqList('gateTierLabels', GATE_TIER_LABELS, manifest.gateTierLabels);
 
 for (const context of REQUIRED_CHECK_CONTEXTS) {

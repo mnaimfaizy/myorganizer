@@ -600,7 +600,10 @@
     font-size: 10.5px;
     letter-spacing: 0.06em;
     text-align: right;
-    white-space: nowrap;
+    /* Was nowrap; the "NOT HASHED" label (issue #718) runs longer than the
+       130px column at this size, and clipped text is worse than a
+       second line. */
+    white-space: normal;
   }
   .frow.gr {
     border-left: 4px solid var(--accent);
@@ -1183,11 +1186,18 @@
         <dt>validator</dt>
         <dd id="note-validator">
           Rejects the report whole on any schema violation (ADR 0071 item 5).
-          Derives each finding's id from <code>axis + source + rule +
-          file</code>, line excluded (ADR 0071 item 6). Computes the verdict:
-          any <code>blocking</code> means <code>request-changes</code>; only
-          <code>nit</code> means <code>approve</code>; otherwise
-          <code>comment</code> (ADR 0071 item 5).
+          Derives each finding's id from <code>axis + source + file</code>,
+          line and <code>rule</code> excluded &mdash; <code>rule</code> is
+          prose the reviewer rewrites every run, not a copied citation (ADR
+          0071 item 6, amended by issue #718). An id only means anything
+          within one report schema version
+          (<code>REPORT_SCHEMA_VERSION</code>, currently <code>2</code>): a
+          stored artifact whose <code>schemaVersion</code> does not match
+          this run's is not diffable at all &mdash; see Panel E. Computes the
+          verdict: any <code>blocking</code> means
+          <code>request-changes</code>; only <code>nit</code> means
+          <code>approve</code>; otherwise <code>comment</code> (ADR 0071
+          item 5).
           No spec source tightens the envelope to <code>human</code> &mdash;
           see the reading test above the diagram.
         </dd>
@@ -1294,8 +1304,18 @@
           <div class="fclass">GATE READS</div>
         </div>
         <div class="frow gr">
+          <div class="fname">source</div>
+          <div class="fdesc">The standard's path or the issue reference the finding cites &mdash; copied from the citation, not composed by the model. Feeds <code>id</code> below, together with <code>axis</code> and <code>file</code>.</div>
+          <div class="fclass">GATE READS &middot; IDENTITY</div>
+        </div>
+        <div class="frow do">
+          <div class="fname">rule</div>
+          <div class="fdesc">Names the requirement the citation applies &mdash; prose the reviewer composes fresh every run. Not hashed: a single Unicode arrow degrading to ASCII once minted a brand-new finding id here, which is why it left the tuple (issue #718).</div>
+          <div class="fclass">DISPLAY ONLY &middot; NOT HASHED</div>
+        </div>
+        <div class="frow gr">
           <div class="fname">id</div>
-          <div class="fdesc">Derived from <code>axis + source + rule + file</code>, line excluded &mdash; never written by the reviewer. Used to diff new / persisting / resolved findings against the previous artifact.</div>
+          <div class="fdesc">Derived from <code>axis + source + file</code>, line and <code>rule</code> excluded &mdash; never written by the reviewer. Used to diff new / persisting / resolved findings against the previous artifact, and only comparable within one report schema version.</div>
           <div class="fclass">GATE READS &middot; DERIVED</div>
         </div>
         <div class="frow do">
@@ -1313,6 +1333,27 @@
           <div class="fdesc">True when an <code>inferred</code> finding the reviewer believes would block with evidence is capped to <code>should-fix</code>. A calibration signal, not a gate input.</div>
           <div class="fclass">DISPLAY ONLY</div>
         </div>
+      </div>
+      <p class="small muted" style="margin-top: 12px">
+        The identity tuple is deliberately coarser than the finding it names:
+        two distinct defects in the same file, cited against the same
+        source, collide, and the disambiguator orders repeats by line, so
+        across runs, swapping which of the two is fixed reads as the other
+        one persisting. Accepted, not overlooked &mdash; a false persist is a
+        stale row in a strip, and the alternative was a false resolve that
+        closes a thread on live blocking feedback. Issue #724 closes it with
+        a bounded rule identifier: a closed vocabulary the reviewer selects
+        from rather than writes.
+      </p>
+      <div class="callout" style="margin-top: 16px">
+        <div class="ctitle">The reading test &mdash; for finding identity</div>
+        <blockquote>
+          &ldquo;If your change only reworks what the reviewer writes &mdash;
+          a <code>rule</code> sentence, a <code>summary</code> &mdash; no
+          finding changes identity. If it touches <code>axis</code>,
+          <code>source</code>, or the file a finding is located at, every
+          open thread for that finding is orphaned.&rdquo;
+        </blockquote>
       </div>
     </div>
   </section>
@@ -1468,9 +1509,13 @@
       <p class="small muted">
         One summary comment, edited in place per run &mdash; two sections,
         each sorted by severity within itself and never across (ADR 0071 item
-        7), nits folded, a new/persisting/resolved strip against the previous
-        artifact, and inline comments only for <code>blocking</code> findings
-        that carry a <code>location</code>.
+        7), nits folded, and inline comments only for <code>blocking</code>
+        findings that carry a <code>location</code>. The strip has two
+        forms: a new/persisting/resolved diff against the previous artifact,
+        but only when that artifact's <code>schemaVersion</code> matches this
+        run's <code>REPORT_SCHEMA_VERSION</code> (currently <code>2</code>);
+        otherwise the second form below, because ids minted under a different
+        schema version are not comparable at all.
       </p>
       <div class="mockcomment">
         <span class="tag">Illustrative &mdash; not a live comment</span>
@@ -1492,6 +1537,18 @@
           <span>persisting: 1</span>
           <span>resolved: 2</span>
         </div>
+      </div>
+      <div class="mockcomment" style="margin-top: 12px">
+        <span class="tag"
+          >Illustrative &mdash; the other form, when
+          <code>schemaVersion</code> does not match</span
+        >
+        <p class="small" style="margin: 8px 0 0; font-family: var(--mono)">
+          No comparable previous run: the stored report is report schema
+          <code>1</code>, this run is <code>2</code>.<br />
+          - finding identities are only comparable within a schema version,
+          so nothing below is marked new, persisting, or resolved.
+        </p>
       </div>
     </div>
   </section>
@@ -1540,7 +1597,8 @@
     "findingEvidenceKinds": ["executed", "cited", "inferred"],
     "findingAxes": ["standards", "spec"],
     "verdictValues": ["request-changes", "comment", "approve"],
-    "findingIdentityFields": ["axis", "source", "rule", "file"],
+    "findingIdentityFields": ["axis", "source", "file"],
+    "reportSchemaVersion": 2,
     "requiredCheckContexts": [
       "Authoritative Lockfile Policy",
       "Secure Install Review",

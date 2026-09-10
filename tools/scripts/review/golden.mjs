@@ -6,12 +6,13 @@
  *
  * A case names a real commit range from this repository's history and the
  * findings expected in a report about that range. An expected finding is
- * the same tuple a finding id is hashed from — axis, source, rule, file —
- * but source and rule are patterns and file is a set: the reviewer phrases
- * a rule in the source's words, and the same defect is fairly located at
- * more than one of the files involved. Recall is matched over expected. A
- * finding that matches an expected tuple also reports whether its id would
- * have matched exactly, so the strict ADR reading stays visible.
+ * axis, source, rule, and file, where source and rule are patterns and file
+ * is a set: the reviewer phrases a rule in the source's words, and the same
+ * defect is fairly located at more than one of the files involved. `rule` is
+ * a matching pattern only — it left the identity tuple in issue #718 because
+ * the reviewer rewords it every run — so the strict-tuple annotation below
+ * hashes axis, source, and file, exactly what the validator hashes. Recall is
+ * matched over expected.
  *
  * Everything here is pure; `score-golden-case.mjs` reads files and exits.
  */
@@ -188,7 +189,6 @@ export const scoreCase = (goldenCase, normalized) => {
       findingId({
         axis: expected.axis,
         source: expected.source,
-        rule: expected.rule,
         location: { file: hit.location.file },
       });
     matched.push({ expected: expected.id, finding: hit.id, strict });

@@ -17,7 +17,14 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
-export const REPORT_SCHEMA_VERSION = 1;
+/**
+ * Bumped to 2 when `rule` left the identity tuple (issue #718). The version is
+ * what tells a run whether the stored artifact from the previous run is
+ * comparable: identities minted at 1 mean nothing at 2, so the renderer says
+ * there is no comparable previous run instead of announcing every finding new
+ * and every prior finding resolved.
+ */
+export const REPORT_SCHEMA_VERSION = 2;
 
 export const REVIEW_TIER_LABELS = /** @type {const} */ ([
   'review:auto',
@@ -45,10 +52,18 @@ export const VERDICT_VALUES = /** @type {const} */ ([
   'comment',
   'approve',
 ]);
+/**
+ * What a finding is, for the purpose of recognising it again on the next run.
+ * `rule` is deliberately absent: it is free-form prose the model rewrites
+ * every run, and a single Unicode arrow degrading to ASCII minted a new
+ * identity. The published record showed a persisting count of zero in 38 of 38
+ * consecutive reports across four Pull Requests — no identity ever survived a
+ * push, so a declined finding was announced as resolved and its thread closed
+ * (issue #718).
+ */
 export const FINDING_IDENTITY_FIELDS = /** @type {const} */ ([
   'axis',
   'source',
-  'rule',
   'file',
 ]);
 export const CONFIDENCE_VALUES = /** @type {const} */ ([
@@ -144,9 +159,10 @@ export const EvidenceSchema = z.discriminatedUnion('kind', [
 ]);
 
 /**
- * `source` and `rule` are the identity half of a finding: the standard's path
- * or the issue reference, and the rule or requirement it applies. `summary`
- * is the human claim. Nothing here carries diff text (ADR 0071 item 3).
+ * `source` is the identity half of a finding: the standard's path or the issue
+ * reference. `rule` names the requirement it applies and `summary` is the
+ * human claim — both are prose the reviewer composes, so neither is hashed.
+ * Nothing here carries diff text (ADR 0071 item 3).
  */
 /** Which citation source each axis may rest on (pinned; asserted below). */
 export const AXIS_CITATION_SOURCE = /** @type {const} */ ({
@@ -308,24 +324,32 @@ export const bySeverity = (a, b) =>
   SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity];
 
 /**
- * Derived identity: axis + source + rule + file, line excluded so a rebase
- * does not mint a new finding (ADR 0071 item 6).
+ * Derived identity: axis + source + file. Line is excluded so a rebase does
+ * not mint a new finding, and `rule` is excluded so a reworded sentence does
+ * not either (ADR 0071 item 6, amended by issue #718). Every field here is
+ * either a closed enum or a path the reviewer copies rather than composes.
  */
 const IDENTITY_ACCESSORS =
   /** @type {Record<typeof FINDING_IDENTITY_FIELDS[number], (f: object) => string>} */ ({
     axis: (f) => f.axis,
     source: (f) => f.source,
-    rule: (f) => f.rule,
     file: (f) => f.location?.file ?? '',
   });
 
 /**
  * `occurrence` is 0 for the first finding with this identity tuple in a
- * report and counts up for repeats, so two findings that share axis,
- * source, rule, and file but differ by line keep distinct ids without the
- * line entering the hash (ADR 0071 item 6). Repeats are numbered in
- * startLine order, so the numbering survives a rebase the same way the
- * tuple does.
+ * report and counts up for repeats, so two findings that share axis, source,
+ * and file keep distinct ids without the line entering the hash (ADR 0071
+ * item 6). Repeats are numbered in startLine order, so the numbering survives
+ * a rebase the same way the tuple does.
+ *
+ * The tuple is coarser than the finding: two distinct defects in one file
+ * cited against one source now collide, and the disambiguator orders them by
+ * line, so swapping which of the two is fixed reads as the other persisting.
+ * That is accepted for now — a false persist is a stale row in a strip, where
+ * the alternative was a false resolve that closed a thread on live blocking
+ * feedback. A bounded rule identifier — a closed vocabulary the reviewer
+ * selects from rather than writes — closes it (issue #724).
  */
 export const findingId = (finding, occurrence = 0) => {
   const tuple = FINDING_IDENTITY_FIELDS.map((field) =>
@@ -356,6 +380,23 @@ const assignFindingIds = (findings) => {
   }
   return findings.map((f, index) => ({ id: ids[index], ...f }));
 };
+
+/**
+ * Whether a stored artifact from an earlier run can be diffed against this
+ * one. Ids are only meaningful within a schema version — a report written
+ * before `rule` left the tuple carries identities this run can never mint —
+ * so a mismatch is "no comparable previous run", not "everything resolved".
+ *
+ * @param {unknown} raw a report read back from an artifact, of any vintage
+ */
+export const isComparableReport = (raw) =>
+  typeof raw === 'object' &&
+  raw !== null &&
+  raw.schemaVersion === REPORT_SCHEMA_VERSION;
+
+/** The version a stored artifact claims, for the message when it is not ours. */
+export const reportSchemaVersionOf = (raw) =>
+  typeof raw === 'object' && raw !== null ? raw.schemaVersion : undefined;
 
 /** Any blocking → request-changes; only nits (or nothing) → approve; else comment. */
 export const computeVerdict = (findings) => {

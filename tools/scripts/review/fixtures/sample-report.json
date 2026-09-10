@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "base": "1234567890abcdef1234567890abcdef12345678",
   "head": "abcdef1234567890abcdef1234567890abcdef12",
   "tier": null,

@@ -76,6 +76,26 @@ writes it.**
    show new, persisting, and resolved findings. Feeding a model its own prior verdict trades
    correctness for consistency.
 
+   > **Amended by issue #718 — `rule` is out of the tuple; the hash is `axis + source + file`.**
+   > Excluding the line was the right instinct applied to the wrong half. `rule` is free-form prose the
+   > reviewer composes in the source's words, and it composes it differently every run — a single
+   > Unicode arrow degrading to ASCII is enough. The published record shows a persisting count of zero
+   > in 38 of 38 consecutive reports across four Pull Requests: no identity has ever survived a push.
+   > The consequence is not a wrong counter. A finding the author declined is announced as resolved on
+   > the next push and vanishes, and the publisher resolves every inline thread on every push, because
+   > every prior id is always absent — ignored blocking feedback certified as fixed. Every field that
+   > remains is either a closed enum or a path the reviewer copies.
+   >
+   > The tuple is now coarser than the finding: two distinct defects in one file cited against one
+   > source collide, and the within-report disambiguator orders them by line, so swapping which one is
+   > fixed reads as the other persisting. That is accepted — a false persist is a stale row in a strip;
+   > the false resolve it replaces closed a thread on live blocking feedback. Issue #724 closes it with
+   > a bounded rule identifier, a closed vocabulary the reviewer selects from rather than writes.
+   >
+   > `schemaVersion` moves to `2`, because an id is only meaningful within a version. The renderer
+   > refuses to diff across versions and says there is no comparable previous run, so the change lands
+   > without one final mass auto-resolve.
+
 7. **Two axes stay two.** Every finding carries `axis: standards | spec`. The prose report renders two
    sections and sorts by severity within each, never across them, so ADR 0017's refusal to rerank one
    axis against the other is preserved in a single array. In the interactive skill, one sub-agent per
@@ -128,8 +148,10 @@ Spec discovery reads the branch name first, because `<type>/<issue>-slug` is the
 makes the issue mandatory and machine-readable; then commit references, then an argument, and only the
 interactive mode asks.
 
-A golden set lives in `tools/config/review-golden-set.json` as expected findings written as the same
-`axis + source + rule + file` tuples, hashed identically, so recall is a set intersection. It is seeded
+A golden set lives in `tools/config/review-golden-set.json` as expected findings written as
+`axis + source + rule + file`, where `source` and `rule` are patterns and `file` is a set, so recall is
+a match over expected rather than a hash comparison; the strict-tuple annotation beside each match
+hashes what the validator hashes (`axis + source + file` since item 6's amendment). It is seeded
 from incidents the repo already documents — the enum fan-out losses behind
 [ADR 0053](0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md), the unstyled groceries
 pages behind [ADR 0065](0065-tokens-json-is-the-single-source-of-web-colour.md) — and from merged Pull

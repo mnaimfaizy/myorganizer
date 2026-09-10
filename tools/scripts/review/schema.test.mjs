@@ -194,13 +194,17 @@ test('a spec of kind none cannot carry a ref', () => {
   );
 });
 
+// The accepted collision (issue #718): two distinct defects in one file cited
+// against one source now share a tuple, because the rule text that told them
+// apart was the unstable input. The within-report disambiguator orders by
+// line. Closed by the bounded rule identifier (issue #724).
 test('two findings with the same identity tuple in one report get distinct, stable ids', () => {
-  const at = (startLine) => ({
+  const at = (startLine, rule = 'r') => ({
     axis: 'standards',
     severity: 'should-fix',
     summary: 's',
     source: 'AGENTS.md',
-    rule: 'r',
+    rule,
     evidence: {
       kind: 'cited',
       sourceKind: 'standard',
@@ -210,7 +214,7 @@ test('two findings with the same identity tuple in one report get distinct, stab
     location: { file: 'libs/a.ts', startLine, headSha: 'a'.repeat(40) },
   });
   const envelope = (findings) => ({
-    schemaVersion: 1,
+    schemaVersion: REPORT_SCHEMA_VERSION,
     base: 'b'.repeat(40),
     head: 'a'.repeat(40),
     tier: null,
@@ -225,7 +229,11 @@ test('two findings with the same identity tuple in one report get distinct, stab
   const ids = (findings) =>
     normalizeReport(envelope(findings)).findings.map((f) => f.id);
 
-  const [first, second] = ids([at(10), at(50)]);
+  // Two different rules at two lines of one file: one tuple, two occurrences.
+  const [first, second] = ids([
+    at(10, 'no hex literals'),
+    at(50, 'await cookies()'),
+  ]);
   assert.notEqual(first, second);
   assert.equal(first, findingId(at(10)));
   // Numbering follows startLine, not report order, so a reorder is stable.
@@ -285,12 +293,76 @@ test('a quoted line, trusted or not, renders as one line of inline code', () => 
   assert.equal(standard, 'cited standard: `Use tokens not hex`');
 });
 
-test('finding identity ignores the line and changes with the file', () => {
+test('finding identity ignores the line and the rule text, and changes with the file', () => {
   const a = cited();
   const b = cited({ location: { ...a.location, startLine: 99 } });
   const c = cited({ location: { ...a.location, file: 'other.ts' } });
+  // The same rule, rewritten the way a model rewrites it between runs: an
+  // arrow degraded to ASCII, a clause reordered, a word swapped.
+  const reworded = cited({
+    rule: 'A fan-out over a domain enum must reach one satisfies Record table -> never an object literal',
+  });
+  const differentAxis = cited({ axis: 'spec', source: '#123' });
   assert.equal(findingId(a), findingId(b));
+  assert.equal(findingId(a), findingId(reworded));
   assert.notEqual(findingId(a), findingId(c));
+  assert.notEqual(findingId(a), findingId(differentAxis));
+});
+
+// The decisive test for issue #718. Before the tuple dropped `rule`, the
+// published record showed a persisting count of zero in 38 of 38 consecutive
+// reports: every re-run reworded the rule text and so minted a fresh id, which
+// announced live findings as resolved and closed their threads.
+test('rewording the rule keeps the identity, so the finding persists across two runs', () => {
+  const defect = (rule) =>
+    cited({
+      summary: 'reconcile() drops a blob type the server does not hold',
+      rule,
+    });
+  const first = normalizeReport(
+    envelope({
+      findings: [
+        defect(
+          'A fan-out over a domain enum reaches the Pinned Table → never an object literal',
+        ),
+      ],
+    }),
+  );
+  const second = normalizeReport(
+    envelope({
+      head: '9999999999999999999999999999999999999999',
+      findings: [
+        defect(
+          'Fan-out over a domain enum must reach one satisfies Record table -> not an object literal',
+        ),
+      ],
+    }),
+  );
+  assert.equal(second.findings[0].id, first.findings[0].id);
+  const md = renderReport(second, first, { hunks: false });
+  assert.match(md, /- new: 0\n/);
+  assert.match(md, /- persisting: 1 \(`[0-9a-f]{12}`\)/);
+  assert.match(md, /- resolved: 0\n/);
+});
+
+test('a previous report from another schema version is reported as not comparable', () => {
+  const current = normalizeReport(envelope({ findings: [cited()] }));
+  const older = { ...current, schemaVersion: REPORT_SCHEMA_VERSION - 1 };
+  const md = renderReport(current, older, { hunks: false });
+  assert.match(
+    md,
+    new RegExp(
+      `No comparable previous run: the stored report is report schema \`${REPORT_SCHEMA_VERSION - 1}\`, this run is \`${REPORT_SCHEMA_VERSION}\``,
+    ),
+  );
+  // No mass auto-resolve, and no strip at all: nothing is new, persisting, or
+  // resolved against a report whose ids this run could never mint.
+  assert.ok(!/- (new|persisting|resolved): /.test(md));
+  // An artifact so old it has no version at all is named, not guessed at.
+  assert.match(
+    renderReport(current, { findings: [] }, { hunks: false }),
+    /report schema `unknown`/,
+  );
 });
 
 test('the renderer keeps the axes apart, folds nits, and diffs by id', () => {
@@ -301,6 +373,13 @@ test('the renderer keeps the axes apart, folds nits, and diffs by id', () => {
           severity: 'nit',
           summary: 'Rename x',
           rule: 'Mysterious Name',
+          // Its own file, so it is a separate identity from the previous
+          // run's unlocated smell-baseline finding rather than a collision.
+          location: {
+            file: 'libs/web-vault/src/digest.ts',
+            startLine: 7,
+            headSha: HEAD,
+          },
         }),
         cited(),
         {
