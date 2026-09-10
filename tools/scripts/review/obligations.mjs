@@ -26,6 +26,13 @@ import { join } from 'node:path';
 
 import { z } from 'zod';
 
+import { globToRegExp } from '../lib/glob.mjs';
+
+// Re-exported: callers and tests of this module treat glob matching as
+// part of the selector's surface. The implementation is shared with the
+// Review Tier classifier, which is why it is not defined here.
+export { globToRegExp };
+
 export const OBLIGATION_CATALOGUE_SCHEMA_VERSION = 1;
 export const OBLIGATIONS_PATH = join(
   'tools',
@@ -44,32 +51,6 @@ export class ObligationError extends Error {
     this.name = 'ObligationError';
   }
 }
-
-/**
- * A minimal glob: `**` crosses directory separators, `*` does not, everything
- * else is literal. Enough for the path prefixes the catalogue uses, and small
- * enough to read — a dependency here would have to survive the no-install jobs.
- */
-export const globToRegExp = (glob) => {
-  let out = '^';
-  for (let i = 0; i < glob.length; i += 1) {
-    const c = glob[i];
-    if (c === '*') {
-      if (glob[i + 1] === '*') {
-        out += '.*';
-        i += 1;
-        if (glob[i + 1] === '/') i += 1;
-      } else {
-        out += '[^/]*';
-      }
-    } else if ('\\^$.|?+()[]{}'.includes(c)) {
-      out += `\\${c}`;
-    } else {
-      out += c;
-    }
-  }
-  return new RegExp(`${out}$`);
-};
 
 const compile = (pattern, where) => {
   try {
@@ -275,9 +256,14 @@ export const checkAnswers = (worklist, sheet) => {
       continue;
     }
     seen.add(key);
-    const missing = want.fields.filter(
-      (f) => a.answer[f] === undefined || a.answer[f] === null,
-    );
+    // A field is answered when it carries a value. An empty or whitespace-only
+    // string is the shape that slips through: it satisfies a presence test
+    // while telling a reader nothing, and every obligation's defect rule is a
+    // comparison over what was actually written.
+    const missing = want.fields.filter((f) => {
+      const v = a.answer[f];
+      return v === undefined || v === null || String(v).trim() === '';
+    });
     if (missing.length) incomplete.push({ key, missing });
   }
   for (const [key, want] of expected) {

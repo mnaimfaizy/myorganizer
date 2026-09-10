@@ -19,6 +19,12 @@
  * the label on the Pull Request is a display of it (ADR 0070 items 2 and 3).
  */
 
+import { globToRegExp } from './glob.mjs';
+
+// Re-exported so this module's contract tests and callers keep one import
+// site, while the implementation lives in glob.mjs beside the obligation
+// selector that used to carry a second, divergent copy.
+export { globToRegExp };
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -108,35 +114,6 @@ export function assertPathMap(map, source = 'path map') {
   )
     fail('authors.trusted must be an array of logins');
   return map;
-}
-
-/**
- * Minimal glob → RegExp: `**` spans directories, `*` and `?` stay inside one
- * segment, everything else is literal. Patterns match the whole path.
- */
-export function globToRegExp(glob) {
-  let out = '';
-  for (let i = 0; i < glob.length; i += 1) {
-    const c = glob[i];
-    if (c === '*') {
-      if (glob[i + 1] === '*') {
-        i += 1;
-        if (glob[i + 1] === '/') {
-          i += 1;
-          out += '(?:.*/)?';
-        } else {
-          out += '.*';
-        }
-      } else {
-        out += '[^/]*';
-      }
-    } else if (c === '?') {
-      out += '[^/]';
-    } else {
-      out += c.replace(/[.+^${}()|[\]\\]/g, '\\$&');
-    }
-  }
-  return new RegExp(`^${out}$`);
 }
 
 const compileRules = (map) =>

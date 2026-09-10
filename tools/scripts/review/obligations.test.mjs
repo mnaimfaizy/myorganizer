@@ -255,6 +255,56 @@ test('a missing answer field is incomplete, not merely present', () => {
   );
 });
 
+test('an empty or whitespace-only answer is not an answer', () => {
+  // Presence is not an answer. Every obligation's defect rule is a comparison
+  // over what was written - namesEverything against a quoted confirmation,
+  // runtimeValue against an expression - so a blank field satisfies the
+  // completeness signal while leaving the question unanswered.
+  const report = checkAnswers(worklist, {
+    head: 'abc',
+    answers: [
+      {
+        id: 'an-obligation',
+        site: worklist.selected[0].sites[0],
+        answer: { a: '', b: 2 },
+      },
+      {
+        id: 'an-obligation',
+        site: worklist.selected[0].sites[1],
+        answer: { a: 1, b: '   ' },
+      },
+    ],
+  });
+  assert.equal(report.complete, false);
+  assert.deepEqual(
+    report.incomplete.map((i) => i.missing),
+    [['a'], ['b']],
+  );
+});
+
+test('false and zero are answers, and are not mistaken for blanks', () => {
+  // The obvious way to write the blank test is a falsiness check, which would
+  // discard exactly the answers that matter: namesEverything and
+  // isFocusableControl are findings precisely when they are false.
+  const report = checkAnswers(worklist, {
+    head: 'abc',
+    answers: [
+      {
+        id: 'an-obligation',
+        site: worklist.selected[0].sites[0],
+        answer: { a: false, b: 0 },
+      },
+      {
+        id: 'an-obligation',
+        site: worklist.selected[0].sites[1],
+        answer: { a: false, b: 0 },
+      },
+    ],
+  });
+  assert.equal(report.complete, true);
+  assert.deepEqual(report.incomplete, []);
+});
+
 test('an answer for a site nobody asked about is reported, not counted', () => {
   const report = checkAnswers(worklist, {
     head: 'abc',
@@ -317,6 +367,19 @@ test('a path may carry its own addedPattern, overriding the entry-level one', ()
       .length,
     1,
   );
+});
+
+test('one glob compiler, and it does not eat the separator after **', () => {
+  // There were two. This module carried its own, in which `**` consumed the
+  // following `/` without putting one back, so `libs/**/x.ts` matched
+  // `libs/ax.ts`; `?` was a literal here and a wildcard in the other. A glob
+  // moved between the two catalogues changed meaning.
+  assert.ok(!globToRegExp('libs/**/x.ts').test('libs/ax.ts'));
+  assert.ok(globToRegExp('libs/**/x.ts').test('libs/a/x.ts'));
+  // `**/` is optional, so the pattern still matches with no directory between.
+  assert.ok(globToRegExp('libs/**/x.ts').test('libs/x.ts'));
+  assert.ok(globToRegExp('a?.ts').test('ab.ts'));
+  assert.ok(!globToRegExp('a?.ts').test('abc.ts'));
 });
 
 test('a path object is validated like any other trigger', () => {
