@@ -60,11 +60,28 @@ outputs:
     value: ${{ steps.limits.outputs.rate_limited }}
   turn-exhausted:
     description: >-
-      `true` when the reviewer hit the turn ceiling and stopped without writing
-      a report. Like a rate-limit lockout this measured nothing and must not be
-      read as a miss, and it is reported separately because it has a different
-      cause and a different fix: the ceiling, or whatever burned the turns.
+      `true` when the reviewer hit the turn ceiling. This can be `true`
+      alongside `validated: true` — dispatching both axes first (the skill's
+      step 3) means a run the ceiling cut short partway through often still
+      wrote and validated a report before it ended; a caller should read
+      `validated` first and only fall back to this output when it is not
+      `true`. When there is no report, this measured nothing and must not be
+      read as a miss, and it is reported separately from a rate-limit lockout
+      because it has a different cause and a different fix: the ceiling, or
+      whatever burned the turns.
     value: ${{ steps.limits.outputs.turn_exhausted }}
+  prevented:
+    description: >-
+      `true` when turn exhaustion was driven by the harness refusing a
+      permission the reviewer's own instructions told it to use — the skill
+      or the CI prompt disagreed with `--allowedTools`, and the disagreement,
+      not the case, burned the turns. `false` when the reviewer hit the
+      ceiling with no permission denials, or did not hit it at all. Like
+      `turn-exhausted`, this can be `true` alongside `validated: true`; a
+      caller should read `validated` first. This is the one outcome someone
+      can fix by editing the allowlist or the instructions; a window lockout
+      and a case the reviewer genuinely read and missed are not.
+    value: ${{ steps.limits.outputs.prevented }}
 
 runs:
   using: composite
@@ -112,7 +129,8 @@ runs:
           - branch name: ${{ inputs.head-ref }}
           - tier: ${{ inputs.tier }}
           ${{ inputs.facts }}
-          - obligations: the worklist for this diff is already selected in tmp/code-review/obligations.json. Read it, answer every site as the skill's step 4 says, and write tmp/code-review/obligations.answers.json. An empty "selected" array means nothing fired; write no answer sheet and move on. Do not re-run the selector.
+          - dispatch both sub-agents (the skill's step 3) as your first substantive action, right after you have the diff command, the commit list, and the spec fact below — before you read CODING_STANDARDS.md, walk the tree for nested AGENTS.md files, or do any other exploration of your own. Both calls go in the SAME message so they still run in parallel. A run cut short after that message still has two axes' worth of findings to assemble into a report (step 5); a run cut short before it has nothing to write, which is the whole reason this comes first.
+          - obligations: the worklist for this diff is already selected in tmp/code-review/obligations.json. Read it, answer every site as the skill's step 4 says, and write tmp/code-review/obligations.answers.json. An empty "selected" array means nothing fired; write no answer sheet and move on. Do not re-run the selector. Do this after the sub-agents are dispatched, not before: if you are running low on turns when you get to this step, skip it and go straight to step 5 with what the sub-agents already returned — an unanswered obligation fails nothing, but a report you never write is silence.
           - spec: already resolved in tmp/code-review/spec.json. Read it. Do not fetch issues, do not ask anyone. If its spec.kind is "none", skip the Spec axis.
           - write the envelope to exactly tmp/code-review/report.json (this path, not <head>.report.json) and run the validator on it as the skill says. Do not run the renderer and do not post anything: a later step publishes.
           - the model id to record in the envelope: ${{ inputs.model }}
@@ -129,7 +147,7 @@ runs:
     # `0 of 7` recall when in fact every one of its seven sessions was cut off,
     # three before their first turn. The transcript says which happened, so
     # read it here rather than leaving it to whoever opens the artifact.
-    - name: Detect a rate-limit lockout
+    - name: Detect a rate-limit lockout or a prevented measurement
       id: limits
       if: always() && steps.reviewer.outputs.execution_file != ''
       shell: bash
@@ -177,8 +195,22 @@ runs:
           DENIED="$(jq -r '[.[] | select(type == "object") | select(.type == "result")][-1].permission_denials_count // 0' "$EXECUTION_FILE" 2>/dev/null || echo 0)"
           echo "::error::the reviewer hit the turn ceiling after $TURNS turn(s) with $DENIED permission denial(s); this run measured nothing and is not a miss"
           echo 'turn_exhausted=true' >> "$GITHUB_OUTPUT"
+          # 26 permission denials is not a hard case; it is the allowlist and
+          # the instructions disagreeing about what the reviewer may do, and
+          # that disagreement is what burned the turns, not the diff. That is
+          # a bug someone can fix by editing the allowlist or the skill.
+          # Plain turn exhaustion with no denial is a genuinely hard case (or,
+          # after the axes dispatch first, usually a run that still wrote a
+          # report — see "Require a validated report").
+          if [ "$DENIED" -gt 0 ] 2>/dev/null; then
+            echo "::error::$DENIED of those turns were spent on a permission the reviewer's own instructions told it to use and --allowedTools refused; this measurement was prevented by the apparatus, not by a hard case"
+            echo 'prevented=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'prevented=false' >> "$GITHUB_OUTPUT"
+          fi
         else
           echo 'turn_exhausted=false' >> "$GITHUB_OUTPUT"
+          echo 'prevented=false' >> "$GITHUB_OUTPUT"
         fi
 
     # The action hides the reviewer's transcript from the log. Keep it as a

@@ -65,88 +65,18 @@ In this order; record which step found it as `spec.foundBy`:
 
 Fetch issues via [`docs/agents/issue-tracker.md`](../../../docs/agents/issue-tracker.md).
 
-### 3. Identify the standards sources
+### 3. Spawn both sub-agents in parallel
 
-Read [`CODING_STANDARDS.md`](../../../CODING_STANDARDS.md). It indexes every document that holds a
-standard, so this is a lookup. Add the nearest nested `AGENTS.md` for each area the diff touches.
-List every file you hand the sub-agent; it becomes `standardsSources`.
+Dispatch as your first substantive action after steps 1 and 2 — before you read
+[`CODING_STANDARDS.md`](../../../CODING_STANDARDS.md), walk the tree for nested `AGENTS.md` files, or
+do any other exploration of your own. A run cut short after this step still has two axes' worth of
+findings to assemble into a report (step 5); a run cut short before it has nothing to assemble, which
+is the whole reason this comes third instead of fifth.
 
-[`docs/review/REVIEW_CHECKLIST.md`](../../../docs/review/REVIEW_CHECKLIST.md) is **not** a standards
-source and is never handed over whole. Its entries reach the reviewer already matched, as the
-worklist in step 4. Pasting the file in would put every entry into every review, which is the
-dilution two measurements have rejected.
-
-The Standards axis also carries the **smell baseline** below — Fowler smells (_Refactoring_, ch.3)
-that apply even where the repo documents nothing. Two rules bind it:
-
-- **The repo overrides.** A documented standard wins; where it endorses what the baseline would flag,
-  suppress the smell.
-- **Never blocking.** A smell is `evidence.kind: inferred` with `source: smell-baseline`, so the
-  schema caps it at `should-fix`. Skip anything tooling already enforces.
-
-Each smell reads _what it is_ → _how to fix_:
-
-- **Mysterious Name** — a name that doesn't reveal what it does or holds. → rename; if no honest name comes, the design's murky.
-- **Duplicated Code** — the same logic shape in more than one hunk or file. → extract the shared shape.
-- **Feature Envy** — a method reaching into another object's data more than its own. → move it onto the data it envies.
-- **Data Clumps** — the same few fields or params travelling together. → bundle them into one type.
-- **Primitive Obsession** — a primitive standing in for a domain concept. → give the concept its own small type.
-- **Repeated Switches** — the same `switch`/`if`-cascade on the same type recurring. → polymorphism, or one shared map.
-- **Shotgun Surgery** — one logical change forcing scattered edits across many files. → gather what changes together.
-- **Divergent Change** — one module edited for several unrelated reasons. → split so each changes for one reason.
-- **Speculative Generality** — abstraction or hooks for needs the spec doesn't have. → delete; inline until a real need shows.
-- **Message Chains** — long `a.b().c().d()` navigation. → hide the walk behind one method.
-- **Middle Man** — a class or function that mostly delegates. → cut it, call the target direct.
-- **Refused Bequest** — an implementer ignoring most of what it inherits. → drop the inheritance, compose.
-
-### 4. Take the obligation worklist
-
-`tools/config/review-obligations.json` is the machine form of
-[the review checklist](../../../docs/review/REVIEW_CHECKLIST.md). Its entries are matched against
-the diff **outside the model**, so this step is a read, not a judgement:
-
-```bash
-corepack yarn review:obligations:select --base <fixed-point> --head <head> --out tmp/code-review/obligations.json
-```
-
-In CI the file is already there; read it. An empty `selected` array is a normal result — most diffs
-trigger nothing — and the step ends there.
-
-For every site in the worklist, answer the obligation's `question` with its `answerFields`, and
-write **one line per site** to `tmp/code-review/obligations.answers.json`:
-
-```json
-{
-  "head": "<head>",
-  "answers": [
-    {
-      "id": "<obligation id>",
-      "site": { "file": "<file>", "line": 88 },
-      "answer": { "<field>": "<value>" },
-      "raisedFindingIds": []
-    }
-  ]
-}
-```
-
-Three rules, and they are the whole difference between this and an instruction:
-
-- **Answer every site, including the ones that turn out clean.** The answer is the work; a site you
-  skip is indistinguishable from a site you looked at and cleared.
-- **Answer from the code, not from the name.** The fields ask what a path actually mutates, what a
-  value actually becomes. Reading the handler's name is how these defects shipped.
-- **A defect the answer exposes is an ordinary finding**, written into the report against the
-  contract like any other, and severity is earned the same way. The answer sheet is not a second
-  findings list, and nothing in it changes the verdict.
-
-The answers live beside the report and never inside it. A report is accepted or rejected whole
-(ADR 0071), so an answer sheet folded into it could take valid findings down with it. Completeness
-is reported by `review:obligations:check` and fails nothing.
-
-### 5. Spawn both sub-agents in parallel
-
-Use the harness's parallel sub-agent mechanism (do not hard-code a tool or agent-type name). Each
-sub-agent returns **one JSON object and nothing else**:
+Use the harness's parallel sub-agent mechanism (do not hard-code a tool or agent-type name), both
+calls in the **same message** so they still run in parallel. Each sub-agent returns **one JSON
+object and nothing else**, sharing this shape (the Standards sub-agent's reply carries one more
+field, `standardsSources` — see its brief below):
 
 ```json
 {
@@ -192,13 +122,43 @@ Rules the validator enforces — a report that breaks one is rejected whole:
 - Do not write an id, a verdict, or prose. JSON only.
 ```
 
-**Standards sub-agent prompt** — include the diff command and commit list, `head`, the standards
-source list, the smell baseline pasted in full, the reach-through checks below pasted in full, the
-contract above, and the brief: "Report every place the diff violates a documented standard —
-`source` is the file, `rule` is the rule, evidence is `cited` with `sourceKind: standard` — and
-every baseline smell as `source: smell-baseline`, `inferred`. Run the reach-through checks before
-you write findings. You may run existing targets on affected projects to turn a suspicion into
-`executed` evidence. Set `axis: standards` on every finding."
+**Standards sub-agent prompt** — include the diff command and commit list, `head`, the smell baseline
+below pasted in full, the reach-through checks below pasted in full, the contract above, and the
+brief: "Read [`CODING_STANDARDS.md`](../../../CODING_STANDARDS.md) yourself first — it indexes every
+document that holds a standard, so this is a lookup — and add the nearest nested `AGENTS.md` for each
+area the diff touches. List every file you used and return it as `standardsSources` in your reply,
+alongside `findings`, `executed`, and `suppressedRedundant`.
+[`docs/review/REVIEW_CHECKLIST.md`](../../../docs/review/REVIEW_CHECKLIST.md) is **not** a standards
+source and must never be pasted in whole — its entries reach you already matched, as the worklist
+step 4 answers, never as prose here; that dilution is what two measurements rejected. Report every
+place the diff violates a documented standard — `source` is the file, `rule` is the rule, evidence is
+`cited` with `sourceKind: standard` — and every baseline smell as `source: smell-baseline`,
+`inferred`. Run the reach-through checks before you write findings. You may run existing targets on
+affected projects to turn a suspicion into `executed` evidence. Set `axis: standards` on every
+finding."
+
+The Standards axis carries the **smell baseline** below — Fowler smells (_Refactoring_, ch.3) that
+apply even where the repo documents nothing. Two rules bind it:
+
+- **The repo overrides.** A documented standard wins; where it endorses what the baseline would flag,
+  suppress the smell.
+- **Never blocking.** A smell is `evidence.kind: inferred` with `source: smell-baseline`, so the
+  schema caps it at `should-fix`. Skip anything tooling already enforces.
+
+Each smell reads _what it is_ → _how to fix_:
+
+- **Mysterious Name** — a name that doesn't reveal what it does or holds. → rename; if no honest name comes, the design's murky.
+- **Duplicated Code** — the same logic shape in more than one hunk or file. → extract the shared shape.
+- **Feature Envy** — a method reaching into another object's data more than its own. → move it onto the data it envies.
+- **Data Clumps** — the same few fields or params travelling together. → bundle them into one type.
+- **Primitive Obsession** — a primitive standing in for a domain concept. → give the concept its own small type.
+- **Repeated Switches** — the same `switch`/`if`-cascade on the same type recurring. → polymorphism, or one shared map.
+- **Shotgun Surgery** — one logical change forcing scattered edits across many files. → gather what changes together.
+- **Divergent Change** — one module edited for several unrelated reasons. → split so each changes for one reason.
+- **Speculative Generality** — abstraction or hooks for needs the spec doesn't have. → delete; inline until a real need shows.
+- **Message Chains** — long `a.b().c().d()` navigation. → hide the walk behind one method.
+- **Middle Man** — a class or function that mostly delegates. → cut it, call the target direct.
+- **Refused Bequest** — an implementer ignoring most of what it inherits. → drop the inheritance, compose.
 
 The **reach-through checks** exist because the two defects the golden set was seeded from
 ([ADR 0053](../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md),
@@ -234,9 +194,59 @@ may be `blocking` with no location. Set `axis: spec` on every finding."
 
 If the spec is `none`, skip the Spec sub-agent.
 
-### 6. Assemble, validate, render
+### 4. Take the obligation worklist
 
-Write the envelope to `tmp/code-review/<head>.report.json` (uncommitted, ADR 0041):
+`tools/config/review-obligations.json` is the machine form of
+[the review checklist](../../../docs/review/REVIEW_CHECKLIST.md). Its entries are matched against
+the diff **outside the model**, so this step is a read, not a judgement:
+
+```bash
+corepack yarn review:obligations:select --base <fixed-point> --head <head> --out tmp/code-review/obligations.json
+```
+
+In CI the file is already there; read it. An empty `selected` array is a normal result — most diffs
+trigger nothing — and the step ends there.
+
+For every site in the worklist, answer the obligation's `question` with its `answerFields`, and
+write **one line per site** to `tmp/code-review/obligations.answers.json`:
+
+```json
+{
+  "head": "<head>",
+  "answers": [
+    {
+      "id": "<obligation id>",
+      "site": { "file": "<file>", "line": 88 },
+      "answer": { "<field>": "<value>" },
+      "raisedFindingIds": []
+    }
+  ]
+}
+```
+
+Three rules, and they are the whole difference between this and an instruction:
+
+- **Answer every site, including the ones that turn out clean.** The answer is the work; a site you
+  skip is indistinguishable from a site you looked at and cleared.
+- **Answer from the code, not from the name.** The fields ask what a path actually mutates, what a
+  value actually becomes. Reading the handler's name is how these defects shipped.
+- **A defect the answer exposes is an ordinary finding**, written into the report against the
+  contract like any other, and severity is earned the same way. The answer sheet is not a second
+  findings list, and nothing in it changes the verdict.
+
+The answers live beside the report and never inside it. A report is accepted or rejected whole
+(ADR 0071), so an answer sheet folded into it could take valid findings down with it. Completeness
+is reported by `review:obligations:check` and fails nothing.
+
+If you are low on remaining turns when you reach this step, skip it and go straight to step 5 with
+whatever the two sub-agents already returned — an unanswered obligation fails nothing
+(`review:obligations:check` reports it and blocks nobody), but a report you never write is silence.
+
+### 5. Assemble, validate, render
+
+Write the envelope to `tmp/code-review/<head>.report.json` (uncommitted, ADR 0041). Use the
+Standards sub-agent's own `standardsSources` from step 3 for the envelope field of the same name —
+do not recompute it:
 
 ```json
 {
@@ -245,11 +255,11 @@ Write the envelope to `tmp/code-review/<head>.report.json` (uncommitted, ADR 004
   "head": "<head sha>",
   "tier": null,
   "spec": { "kind": "issue" | "path" | "none", "ref": "<#123 | path>", "foundBy": "branch" | "commits" | "argument" | "user" | "none" },
-  "standardsSources": ["<files from step 3>"],
+  "standardsSources": ["<the Standards sub-agent's reported standardsSources, step 3>"],
   "executed": ["<union of both sub-agents' executed lists>"],
   "suppressed": { "redundant": <sum of both suppressedRedundant> },
   "model": "<model id the sub-agents ran on>",
-  "durationMs": <wall-clock of step 5>,
+  "durationMs": <wall-clock of step 3>,
   "cost": { "inputTokens": <n>, "outputTokens": <n> },   (optional: only when the harness reports usage)
   "findings": [ ...standards findings, ...spec findings ]
 }
@@ -286,6 +296,10 @@ rediscover them:
 - **Fixed point, head, branch name, and tier are given.** Use them verbatim. `tier` goes into the
   envelope; the workflow pins it again with `review:validate --tier`, so the job output is the truth
   (ADR 0070 item 3).
+- **Dispatch both sub-agents first (step 3), before you read anything else.** The CI prompt repeats
+  this because it is the whole point of the reordering: a run the harness cuts off partway through
+  still has two axes' worth of findings to assemble (step 5) only if it dispatched before it started
+  exploring standards sources on its own.
 - **The spec is already resolved** in `tmp/code-review/spec.json` as
   `{ "spec": { kind, ref, foundBy }, "title", "body" }` by `review:spec`, using the job token. Copy
   `spec` into the envelope and hand `body` to the Spec sub-agent as the fetched text. Fetch nothing;
@@ -293,7 +307,7 @@ rediscover them:
 - **The obligation worklist is already selected** in `tmp/code-review/obligations.json` by
   `review:obligations:select`. Read it, answer every site, and write
   `tmp/code-review/obligations.answers.json`. Do not re-run the selector.
-- **Write `tmp/code-review/report.json`** (that exact name, not `<head>.report.json`), run the validator as in step 6, retry a failing
+- **Write `tmp/code-review/report.json`** (that exact name, not `<head>.report.json`), run the validator as in step 5, retry a failing
   sub-agent once, and stop. Do not render, do not post: `review:publish` edits the one summary
   comment, posts inline comments for blocking findings, and relabels (ADR 0071 item 8).
 - **A rejected report is a failed check.** The workflow posts the validator's reasons and the Pull

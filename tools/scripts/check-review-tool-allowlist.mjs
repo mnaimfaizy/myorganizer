@@ -152,7 +152,7 @@ export const NOT_THE_REVIEWERS_TO_RUN = [
   {
     command: 'yarn review:render',
     reason:
-      'Step 6 renders the report for a human at a terminal. In CI the prompt says not to render: a later job publishes.',
+      'Step 5 renders the report for a human at a terminal. In CI the prompt says not to render: a later job publishes.',
   },
   {
     command: 'yarn review:publish',

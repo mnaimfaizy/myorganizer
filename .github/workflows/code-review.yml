@@ -13,8 +13,12 @@ name: Code Review
 #      report that fails the contract is rejected whole, the Pull Request is
 #      relabelled `review:human`, and this check fails.
 #   4. Two checks, not one. "Agent Review Ran" fails when the reviewer
-#      crashed, was rate-limited, or wrote a report the contract rejected —
-#      a broken gate. "Agent Verdict" fails on `request-changes` — a
+#      crashed, was rate-limited, hit the turn ceiling before writing a
+#      report, or wrote a report the contract rejected — a broken gate. A
+#      validated report wins over all of those: dispatching both axes first
+#      (the skill's step 3) means a run the ceiling or the lockout cut short
+#      partway through often still has one. "Agent Verdict" fails on
+#      `request-changes` — a
 #      judgment about the diff. Only the first is worth requiring in a
 #      ruleset; the reviewer's recall does not earn a merge block. Both are
 #      status checks, never a review approval (ADR 0070 item 6). Merge
@@ -440,8 +444,33 @@ jobs:
         if: steps.preflight.outputs.skip != 'true'
         run: |
           echo "reviewer step: ${{ steps.reviewer.outputs.reviewer-outcome }}; validated: ${{ steps.reviewer.outputs.validated }}"
-          # Say which kind of no-report this is. Both are review:human, but one
-          # is a reviewer that failed and one is a reviewer that never ran.
+          # A validated report wins regardless of what else happened in the
+          # run. Dispatching both axes first (the skill's step 3) means a run
+          # cut short partway through still has one to assemble; treating
+          # turn-exhausted or rate-limited as an automatic failure here would
+          # throw that report away and read a partial measurement as none.
+          if [ '${{ steps.reviewer.outputs.validated }}' = 'true' ]; then
+            VERDICT="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('tmp/code-review/normalized.json','utf8')).verdict)")"
+            echo "verdict: $VERDICT"
+            echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # No report. Say which kind of no-report this is. All three below
+          # are review:human, but they are not the same event: a prevented
+          # measurement is a bug in the allowlist or the instructions: the
+          # reviewer was refused a permission its own instructions told it to
+          # use, and the disagreement, not the diff, burned the turns. A
+          # window lockout is a scheduling fact about the subscription. Only
+          # a report that fails validation, or a reviewer that crashed
+          # outright, is actually about this pull request.
+          if [ '${{ steps.reviewer.outputs.prevented }}' = 'true' ]; then
+            echo '::error::the reviewer hit the turn ceiling after being refused a permission its own instructions told it to use; this pull request is review:human, and the fix is the allowlist or the instructions, not this diff'
+            exit 1
+          fi
+          if [ '${{ steps.reviewer.outputs.turn-exhausted }}' = 'true' ]; then
+            echo '::error::the reviewer hit the turn ceiling before writing a report; this pull request is review:human'
+            exit 1
+          fi
           case '${{ steps.reviewer.outputs.rate-limited }}' in
             true)
               echo '::error::the reviewer was cut off by the subscription rate limit before it finished; this pull request is review:human and nothing was reviewed'
@@ -450,19 +479,16 @@ jobs:
               echo '::error::the reviewer transcript could not be read, so whether it finished is unknown; this pull request is review:human'
               exit 1 ;;
           esac
-          if [ '${{ steps.reviewer.outputs.validated }}' != 'true' ]; then
-            echo '::error::the reviewer produced no valid report; this pull request is review:human'
-            exit 1
-          fi
-          VERDICT="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('tmp/code-review/normalized.json','utf8')).verdict)")"
-          echo "verdict: $VERDICT"
-          echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+          echo '::error::the reviewer produced no valid report; this pull request is review:human'
+          exit 1
 
   # The reviewer's judgment, split from the fact that it ran. The two fail for
   # unrelated reasons and only one of them is about your code: "Agent Review
-  # Ran" fails when the reviewer crashed, was rate-limited, or wrote a report
-  # the contract rejected, which is a broken gate; this job fails when the
-  # reviewer read the diff and asked for changes, which is a judgment.
+  # Ran" fails when the reviewer crashed, was rate-limited, hit the turn
+  # ceiling before writing a report (whether or not a refused permission
+  # caused it), or wrote a report the contract rejected, which is a broken
+  # gate; this job fails when the reviewer read the diff and asked for
+  # changes, which is a judgment.
   #
   # They are separate checks because they deserve different answers. A reviewer
   # measured at roughly one catch in seven on the golden set's frontier cases
