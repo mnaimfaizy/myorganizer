@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "obligations": [
+    {
+      "id": "run-the-gate-that-covers-this-change",
+      "title": "Run the gate that covers this change",
+      "question": "For each site: name the *:check gate that covers the changed artifact, run it at the head commit, and record the exact command, its exit code, and what invokes it (a .husky hook, a .github/workflows job, the yarn gates:run manifest, or none).",
+      "answerFields": ["gate", "command", "exitCode", "wiredBy"],
+      "defect": "A non-zero exitCode is a finding with the command and exit code as executed evidence. exitCode 0 with wiredBy \"none\" is also a finding: per ADR 0074 the checker is not a gate, so nothing would have caught this on main.",
+      "trigger": {
+        "paths": [
+          {
+            "glob": "package.json",
+            "addedPattern": "\"version\"\\s*:"
+          },
+          "libs/app-api-client/**",
+          "libs/api-specs/**",
+          "apps/backend/src/swagger/**",
+          "apps/backend/src/prisma/**",
+          "libs/design-tokens/src/tokens.json"
+        ]
+      },
+      "seededFrom": "#408",
+      "goldenCase": "release-bump-leaves-generated-client-stale",
+      "defectWhen": {
+        "any": [
+          {
+            "field": "exitCode",
+            "notEquals": 0
+          },
+          {
+            "all": [
+              {
+                "field": "exitCode",
+                "equals": 0
+              },
+              {
+                "field": "wiredBy",
+                "equals": "none"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "destructive-confirmation-names-what-it-mutates",
+      "title": "A destructive confirmation names everything it destroys",
+      "question": "For each site: follow the confirmed code path and list every persisted key, store, or record it writes or clears; quote the confirmation text verbatim; then state whether the text names everything in that list. Do not infer the mutation set from the handler's name.",
+      "answerFields": ["mutates", "confirmationText", "namesEverything"],
+      "defect": "namesEverything false is a finding. A whole-vault or whole-account destructive action behind a bare window.confirm rather than a dialog is also a finding.",
+      "trigger": {
+        "paths": ["apps/**", "libs/**"],
+        "addedPattern": "window\\.confirm\\(|AlertDialog|Are you sure"
+      },
+      "seededFrom": "#657",
+      "goldenCase": "import-confirm-is-bare-window-confirm",
+      "defectWhen": {
+        "field": "namesEverything",
+        "equals": false
+      }
+    },
+    {
+      "id": "slot-injected-props-land-on-the-control",
+      "title": "Injected props land on the control, not on a wrapper",
+      "question": "For each site: name the element that is the direct child of the Slot-based component, state where the injected id, aria-describedby and aria-invalid land, and state whether that element is the focusable control the user types into.",
+      "answerFields": ["slotChild", "propsLandOn", "isFocusableControl"],
+      "defect": "isFocusableControl false is a finding: Radix Slot forwards its props to its single direct child, so a wrapper element between FormControl and the input takes the label association and the input is announced by its placeholder or not at all.",
+      "trigger": {
+        "paths": ["apps/**", "libs/**"],
+        "addedPattern": "<FormControl|Slot\\b"
+      },
+      "seededFrom": "#525",
+      "goldenCase": "signup-password-wrapper-inside-formcontrol",
+      "defectWhen": {
+        "field": "isFocusableControl",
+        "equals": false
+      }
+    },
+    {
+      "id": "env-assignment-runtime-value",
+      "title": "An environment assignment stores what it looks like it stores",
+      "question": "For each site: quote the right-hand side of the assignment as written, state the value actually stored after the process.env setter coerces it, and state whether that is what the surrounding code reads as intending.",
+      "answerFields": ["assignedExpression", "runtimeValue", "matchesIntent"],
+      "defect": "matchesIntent false is a finding. Assigning undefined or null to unset a variable is the common shape: the setter coerces to string, so the key holds the truthy literal \"undefined\". delete is what unsets it.",
+      "trigger": {
+        "paths": ["apps/**", "libs/**", "tools/**"],
+        "addedPattern": "process\\.env\\.[A-Za-z_][A-Za-z0-9_]*\\s*=(?!=)"
+      },
+      "seededFrom": "#409",
+      "goldenCase": "mail-test-setup-assigns-undefined-to-env",
+      "defectWhen": {
+        "field": "matchesIntent",
+        "equals": false
+      }
+    }
+  ]
+}

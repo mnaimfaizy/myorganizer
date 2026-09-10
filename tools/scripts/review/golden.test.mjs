@@ -87,7 +87,7 @@ test('malformed sets are named precisely', () => {
     title: 'a case a gate already covers',
     incident: 'ADR 0065, issue #632',
     reason:
-      'tailwind:classes:check fails on this range, so the brief says suppress',
+      'tailwind:classes:check is wired and fails on this range, so ADR 0074 suppresses it',
   };
   assert.equal(
     assertGoldenSet({ ...set, retired: [retired] }).retired.length,

@@ -88,6 +88,12 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'review:checklist:check',
+    npmScript: 'review:checklist:check',
+    script: 'tools/scripts/check-review-checklist.mjs',
+    args: [],
+  },
+  {
     id: 'review:golden:check',
     npmScript: 'review:golden:check',
     script: 'tools/scripts/check-review-golden-set.mjs',

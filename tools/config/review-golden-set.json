@@ -210,7 +210,7 @@
       "incident": "ADR 0065, issue #632, fixed by PR #636, introduced by PR #108 (git log -S surface-container-low -- libs/web/pages/groceries → 9382c16)",
       "base": "4ba00b4c247f91ba2918551f15816f36a4704a18",
       "head": "c0f1a10b0c81d66175c3d46cecd58b1cb8ba3b64",
-      "reason": "Unwinnable rather than hard. `tailwind:classes:check` — the gate ADR 0065 added as the fix for this very incident — exits 0 at this case's base and exits 1 at its head, naming the same 25 utilities the expected finding is about. The Standards brief says anything a `*:check` gate would already fail is not a finding but a suppressedRedundant count, so a reviewer that loaded ADR 0065 and ran the gate would have been correct to say nothing. The case scored the reviewer as missing what it is instructed not to report. Retired 2026-09-08; see docs/review/golden-replay-results.md."
+      "reason": "Unwinnable rather than hard. `tailwind:classes:check` — the gate ADR 0065 added as the fix for this very incident — exits 0 at this case's base and exits 1 at its head, naming the same 25 utilities the expected finding is about. It is a wired gate (invoked by .github/workflows/ci.yml), and per ADR 0074 a wired gate's defect is a suppressedRedundant count and not a finding, so a reviewer that loaded ADR 0065 and ran the gate would have been correct to say nothing. The case scored the reviewer as missing what it is instructed not to report. Retired 2026-09-08; see docs/review/golden-replay-results.md."
     }
   ]
 }

@@ -58,10 +58,30 @@ outputs:
       could not be read. A case that is not `false` measured nothing and must
       not be read as a miss.
     value: ${{ steps.limits.outputs.rate_limited }}
+  turn-exhausted:
+    description: >-
+      `true` when the reviewer hit the turn ceiling and stopped without writing
+      a report. Like a rate-limit lockout this measured nothing and must not be
+      read as a miss, and it is reported separately because it has a different
+      cause and a different fix: the ceiling, or whatever burned the turns.
+    value: ${{ steps.limits.outputs.turn_exhausted }}
 
 runs:
   using: composite
   steps:
+    # The obligation worklist, matched against the diff outside the model
+    # (docs/review/REVIEW_CHECKLIST.md). This lives in the shared action rather
+    # than in code-review.yml because the golden replay calls the action
+    # directly: an obligation the replay cannot see is an obligation nothing
+    # can ever measure. An empty worklist is normal and costs nothing.
+    - name: Select the obligations
+      shell: bash
+      run: |
+        mkdir -p tmp/code-review
+        corepack yarn review:obligations:select \
+          --base "${{ inputs.base }}" --head "${{ inputs.head }}" \
+          --out tmp/code-review/obligations.json
+
     # JSON only. The allowed tools are read, search, sub-agents, git reads,
     # existing Nx targets, the validator, and `node` for a reviewer-written
     # reproduction (the executed-evidence class ADR 0071 values most); no gh,
@@ -85,6 +105,7 @@ runs:
           - branch name: ${{ inputs.head-ref }}
           - tier: ${{ inputs.tier }}
           ${{ inputs.facts }}
+          - obligations: the worklist for this diff is already selected in tmp/code-review/obligations.json. Read it, answer every site as the skill's step 4 says, and write tmp/code-review/obligations.answers.json. An empty "selected" array means nothing fired; write no answer sheet and move on. Do not re-run the selector.
           - spec: already resolved in tmp/code-review/spec.json. Read it. Do not fetch issues, do not ask anyone. If its spec.kind is "none", skip the Spec axis.
           - write the envelope to exactly tmp/code-review/report.json (this path, not <head>.report.json) and run the validator on it as the skill says. Do not run the renderer and do not post anything: a later step publishes.
           - the model id to record in the envelope: ${{ inputs.model }}
@@ -133,6 +154,24 @@ runs:
           echo 'rate_limited=true' >> "$GITHUB_OUTPUT"
         else
           echo 'rate_limited=false' >> "$GITHUB_OUTPUT"
+        fi
+
+        # Turn exhaustion is a third outcome, and until run 45 the apparatus
+        # had no word for it: groceries-blob-type-without-fanouts stopped at
+        # error_max_turns with 26 permission denials, the detector correctly
+        # said rate_limited=false, and the job fell through to "no valid
+        # report" - indistinguishable from a miss. ADR 0072 demotes a guard
+        # case on one miss, so that silence would have demoted a case the
+        # reviewer never failed: the same error the rate-limit rule exists to
+        # prevent, through a different door.
+        SUBTYPE="$(jq -r '[.[] | select(type == "object") | select(.type == "result")][-1].subtype // ""' "$EXECUTION_FILE" 2>/dev/null || echo '')"
+        if [ "$SUBTYPE" = 'error_max_turns' ]; then
+          TURNS="$(jq -r '[.[] | select(type == "object") | select(.type == "result")][-1].num_turns // 0' "$EXECUTION_FILE" 2>/dev/null || echo 0)"
+          DENIED="$(jq -r '[.[] | select(type == "object") | select(.type == "result")][-1].permission_denials_count // 0' "$EXECUTION_FILE" 2>/dev/null || echo 0)"
+          echo "::error::the reviewer hit the turn ceiling after $TURNS turn(s) with $DENIED permission denial(s); this run measured nothing and is not a miss"
+          echo 'turn_exhausted=true' >> "$GITHUB_OUTPUT"
+        else
+          echo 'turn_exhausted=false' >> "$GITHUB_OUTPUT"
         fi
 
     # The action hides the reviewer's transcript from the log. Keep it as a

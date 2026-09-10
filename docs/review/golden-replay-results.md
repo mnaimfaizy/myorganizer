@@ -38,23 +38,24 @@ Promotion to `guard` takes **three consecutive catches**; demotion to
 `frontier` takes **one miss**. The asymmetry is deliberate — a wrongly
 promoted case is a detector that quietly stopped running.
 
-| Case                                          | Tier       | Since      | History                                                                                       |
-| --------------------------------------------- | ---------- | ---------- | --------------------------------------------------------------------------------------------- |
-| `groceries-blob-type-without-fanouts`         | `guard`    | 2026-09-07 | caught in all six runs                                                                        |
-| `export-envelope-drops-tasks`                 | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640 |
-| `sync-bookmarks-without-restore-or-meta-push` | `frontier` | 2026-09-07 |
-| `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 | caught once, in 34171728640                                                                   |
-| `signup-password-wrapper-inside-formcontrol`  | `frontier` | 2026-09-07 |
-| `import-confirm-is-bare-window-confirm`       | `frontier` | 2026-09-07 |
-| `mail-test-setup-assigns-undefined-to-env`    | `frontier` | 2026-09-07 |
+| Case                                          | Tier       | Since      | History                                                                                                                                                     |
+| --------------------------------------------- | ---------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `groceries-blob-type-without-fanouts`         | `guard`    | 2026-09-07 | caught in every run, now nine of nine (34344266006, 34345667427, 34351285079)                                                                               |
+| `export-envelope-drops-tasks`                 | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught in 34344266006, missed in 34345667427 and 34351285079 |
+| `sync-bookmarks-without-restore-or-meta-push` | `frontier` | 2026-09-07 | invalid report in 34344266006 (void); missed in 34345667427 and 34351285079                                                                                 |
+| `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit)                                                        |
+| `signup-password-wrapper-inside-formcontrol`  | `frontier` | 2026-09-07 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; one of three needed for promotion               |
+| `import-confirm-is-bare-window-confirm`       | `frontier` | 2026-09-07 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak                                                   |
+| `mail-test-setup-assigns-undefined-to-env`    | `frontier` | 2026-09-07 | missed in 34345667427; void in 34351285079 (rate limit)                                                                                                     |
 
 The tier and the evidence that earned it are in
 `tools/config/review-golden-set.json`, asserted by `yarn review:golden:check`.
 
 **Retired.** `groceries-ui-written-against-absent-roles` was retired on
 2026-09-08 as unwinnable rather than hard: the gate ADR 0065 added as the fix
-for that incident fails on the case's own range, and the brief tells the
-reviewer that a gate-covered defect is a suppressed count and not a finding.
+for that incident fails on the case's own range, and a wired gate's defect is a
+suppressed count and not a finding
+([ADR 0074](../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md)).
 It stays in the set under `retired`, with its reason and its id reserved, so
 nothing re-adds it — the workings are below. Seven cases remain.
 
@@ -74,9 +75,31 @@ Newest last. "Cases" is the tier replayed, not the whole set.
 | 2026-09-08 | `claude-sonnet-5` | 8 (all tiers)  | **2 of 8**, 2 of 9 findings | none — same brief, on `main` as base          |
 | 2026-09-08 | `claude-sonnet-5` | 7 (`frontier`) | **void** — rate-limited     | none — first tier-selected run                |
 | 2026-09-08 | `claude-sonnet-5` | 6 (`frontier`) | **1 of 6**, 1 of 6 findings | none — first run after the retirement         |
+| 2026-09-09 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 7**, 2 of 8 findings | wired-gate qualifier on the suppression rule  |
+| 2026-09-09 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 4 scorable**, 3 void | obligation worklist live (pre-fix triggers)   |
+| 2026-09-10 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 6 scorable**, 1 void | corrected triggers; first dispatched run      |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each.
+
+### Run 45 (2026-09-10), the first deliberately dispatched replay
+
+`release-bump` and `mail-test-setup` caught — the latter for the first time in
+any run. `signup-password-wrapper`, `import-confirm`, `export-envelope` and
+`sync-bookmarks` missed. `groceries-blob-type-without-fanouts` is **void, and
+its `guard` tier does not move**: it stopped at `error_max_turns` after 80
+turns with 26 permission denials, and the rate-limit detector correctly
+reported `rate_limited=false`. Turn exhaustion is a third outcome the
+apparatus had no word for, and scoring it as a miss would demote a case the
+reviewer never failed. The detector now reports it separately.
+
+The two obligation-covered misses were read from their transcripts and are the
+subject of a frozen brief:
+[2026-09-10](../research/2026-09-10-the-answer-sheet-is-inert.md). The short
+version is that the obligations fired on exactly the right lines, were
+answered at every site, and two of those answers were false while a third was
+true and ignored — so a written answer is not a verified answer. That brief
+also retracts this record's earlier reading of run 37's `signup` catch.
 
 ### What the consequence checks measured
 
@@ -299,8 +322,8 @@ That reframes both open levers:
 
 One thing this transcript does not settle, and it should be tested before any
 mapping is written: `tailwind:classes:check` exists **because of this incident**
-(ADR 0065), and the brief says anything a `*:check` gate would already fail is
-not a finding but a `suppressedRedundant` count. If that gate catches this
+(ADR 0065), and a wired gate's defect is a `suppressedRedundant` count and not
+a finding ([ADR 0074](../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md)). If that gate catches this
 range, then a reviewer that loaded the right standards would have been correct
 to suppress it, and the case is unwinnable as written rather than hard. Six
 findings were suppressed in this very run and the normalized report keeps only
@@ -325,9 +348,10 @@ gate-covered today.
 **`groceries-ui-written-against-absent-roles` is unwinnable as written.** The gate
 is clean at the base and fails at the head with 25 utilities that compile to no
 CSS — `bg-surface-container-lowest`, `border-outline-variant`, `text-on-surface`,
-the exact names in the case's `why`. So the defect is precisely what a `*:check`
-gate would already fail, and the brief says that is not a finding but a
-`suppressedRedundant` count. A reviewer that loaded ADR 0065 and ran the gate
+the exact names in the case's `why`. So the defect is precisely what a wired
+gate would already fail — `tailwind:classes:check` is invoked by
+`.github/workflows/ci.yml` — which ADR 0074 makes a `suppressedRedundant`
+count and not a finding. A reviewer that loaded ADR 0065 and ran the gate
 would have been _correct_ to suppress it. The case scores the reviewer as missing
 something it is instructed not to report, and it should be retired or rewritten
 rather than counted against recall.

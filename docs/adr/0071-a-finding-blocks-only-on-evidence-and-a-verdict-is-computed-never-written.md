@@ -36,7 +36,9 @@ writes it.**
    diff location or a quoted spec line. Smell-baseline findings and anything resting on reasoning
    alone cap at `should-fix`. A finding a deterministic check would already fail is not reported; the
    report counts what it suppressed under `suppressed.redundant`, so the number is visible and the
-   items are not.
+   items are not. **Narrowed by [ADR 0074](0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md):**
+   only a _wired_ check suppresses — one a hook or a workflow actually invokes. The structure of this
+   item is unchanged; the suppression condition is qualified there.
 
 2. **Evidence is an enum, not a sentence.** `executed` carries the command, its exit code, an output
    excerpt, and the working directory. `cited` carries the source — a repo standard by path and rule,

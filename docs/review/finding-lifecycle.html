@@ -1359,9 +1359,21 @@
             <td class="no">no &mdash; caps at should-fix</td>
           </tr>
           <tr class="drop">
-            <td>would fail a deterministic check anyway</td>
+            <td>
+              would fail a <em>wired</em> deterministic check anyway &mdash; one a
+              hook or a workflow actually invokes
+              (<a
+                href="../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md"
+                >ADR 0074</a
+              >)
+            </td>
             <td>any</td>
             <td>dropped, counted under <code>suppressed.redundant</code></td>
+          </tr>
+          <tr class="drop">
+            <td>would fail a checker that nothing runs</td>
+            <td>any</td>
+            <td class="no">not dropped &mdash; it is a finding</td>
           </tr>
         </tbody>
       </table>

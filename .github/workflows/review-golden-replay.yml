@@ -31,6 +31,7 @@ on:
       - '.github/workflows/code-review.yml'
       - '.github/workflows/review-golden-replay.yml'
       - 'tools/config/review-golden-set.json'
+      - 'tools/config/review-obligations.json'
   workflow_dispatch:
     inputs:
       tier:
@@ -145,10 +146,20 @@ jobs:
           # checkout is a synthetic merge commit, whose message is "Merge X
           # into Y" and never the author's. Never interpolate the message
           # into the script — it is somebody's text, matched, not run.
+          #
+          # The marker is read from the SUBJECT LINE only, not the whole
+          # message. A substring match over the body means a commit that merely
+          # writes about the escape triggers it: dd8da1df said "No [skip
+          # replay]: this changes how a review is produced, and the replay is
+          # the measurement" and skipped its own measurement, reporting success
+          # in 19 seconds. A skip that looks exactly like a pass is the failure
+          # mode this whole workflow exists to measure, so it does not get to
+          # live in the workflow itself.
           if [ -n "${HEAD_SHA:-}" ]; then
             MESSAGE="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}" --jq .commit.message)"
-            if grep -qiF '[skip replay]' <<<"$MESSAGE"; then
-              skip 'The head commit message contains `[skip replay]`. The reviewer itself still ran; only the golden replay was skipped.'
+            SUBJECT="$(head -n 1 <<<"$MESSAGE")"
+            if grep -qiF '[skip replay]' <<<"$SUBJECT"; then
+              skip 'The head commit subject contains `[skip replay]`. The reviewer itself still ran; only the golden replay was skipped.'
             fi
           fi
 
@@ -247,11 +258,19 @@ jobs:
           github-token: ${{ github.token }}
           transcript-artifact: golden-transcript-${{ matrix.case }}
 
-      # A rate-limited case is not a result. It has to fail — the reviewer
-      # never finished — but it must never be written into the record as a
-      # miss, because nothing about the reviewer was measured.
+      # A case that never finished is not a result. It has to fail — there is
+      # no report to score — but it must never be written into the record as a
+      # miss, because nothing about the reviewer was measured. Two ways to not
+      # finish: the subscription rate limit, and the turn ceiling. Run 45 hit
+      # the second on the guard case and the message below said only "no valid
+      # report", which reads exactly like a miss and would have demoted a tier
+      # under ADR 0072.
       - name: Require a validated report
         run: |
+          if [ '${{ steps.reviewer.outputs.turn-exhausted }}' = 'true' ]; then
+            echo "::error::case ${{ matrix.case }} hit the turn ceiling and wrote no report; it measured nothing and is not a miss"
+            exit 1
+          fi
           case '${{ steps.reviewer.outputs.rate-limited }}' in
             true)
               echo "::error::case ${{ matrix.case }} was cut off by the subscription rate limit and measured nothing; do not record it as a miss"
@@ -273,7 +292,14 @@ jobs:
           corepack yarn review:golden:score --case '${{ matrix.case }}' \
             --normalized tmp/code-review/normalized.json --out tmp/code-review/score.json
 
-      - name: Keep the report and score
+      # The obligation files ride along with the report. Run 45 asked whether a
+      # miss on a case whose obligation fired was answered-and-wrong or never
+      # answered at all - opposite diagnoses, one indicting the question's
+      # wording and the other its enforcement - and the answer was not
+      # collectable, because only normalized.json and score.json were kept.
+      # code-review.yml had carried these three since c6f7117c; the replay,
+      # which is where the measurement actually happens, had not.
+      - name: Keep the report, the score, and the obligations
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
@@ -281,6 +307,8 @@ jobs:
           path: |
             tmp/code-review/normalized.json
             tmp/code-review/score.json
+            tmp/code-review/obligations.json
+            tmp/code-review/obligations.answers.json
           if-no-files-found: ignore
           retention-days: 30
 
