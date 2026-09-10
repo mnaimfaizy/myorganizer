@@ -135,10 +135,6 @@ if (manifest.reportSchemaVersion !== REPORT_SCHEMA_VERSION)
   findings.push(
     `reportSchemaVersion: source says ${REPORT_SCHEMA_VERSION}, page says ${JSON.stringify(manifest.reportSchemaVersion ?? null)}`,
   );
-if (!page.replace(raw[0], '').includes('schemaVersion'))
-  findings.push(
-    'reportSchemaVersion: the manifest pins a version the page body never names',
-  );
 eqList('gateTierLabels', GATE_TIER_LABELS, manifest.gateTierLabels);
 
 for (const context of REQUIRED_CHECK_CONTEXTS) {
@@ -179,6 +175,26 @@ for (const word of [
 ]) {
   if (!body.includes(word))
     findings.push(`"${word}" is in the manifest but nowhere in the page body`);
+}
+
+// The version is a number the page states in prose, so asserting the word
+// `schemaVersion` appears would be satisfied by editing the file — the shape
+// ADR 0043 rejects. The page writes its current-version claims as
+// `currently <code>N</code>`; every one of them is compared to the constant,
+// and there must be at least one, or the manifest pins a version the picture
+// never states.
+const versionClaims = [...body.matchAll(/currently <code>(\d+)<\/code>/g)].map(
+  (m) => Number(m[1]),
+);
+if (versionClaims.length === 0)
+  findings.push(
+    'reportSchemaVersion: the page body states no current version — write it as `currently <code>N</code>`',
+  );
+for (const claimed of versionClaims) {
+  if (claimed !== REPORT_SCHEMA_VERSION)
+    findings.push(
+      `reportSchemaVersion: the page body says the current version is ${claimed}, source says ${REPORT_SCHEMA_VERSION}`,
+    );
 }
 
 if (findings.length) {

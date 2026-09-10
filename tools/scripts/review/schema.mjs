@@ -345,11 +345,18 @@ const IDENTITY_ACCESSORS =
  *
  * The tuple is coarser than the finding: two distinct defects in one file
  * cited against one source now collide, and the disambiguator orders them by
- * line, so swapping which of the two is fixed reads as the other persisting.
- * That is accepted for now — a false persist is a stale row in a strip, where
- * the alternative was a false resolve that closed a thread on live blocking
- * feedback. A bounded rule identifier — a closed vocabulary the reviewer
- * selects from rather than writes — closes it (issue #724).
+ * line. Fixing one of two colliding findings renumbers the survivor onto the
+ * vacated id, so the strip reads one persisting and one resolved while the
+ * report re-posts the survivor under the other id. The blast radius is widest
+ * where `file` is empty: an unlocated finding hashes the empty string, so on
+ * the spec axis, where every finding cites the same issue ref, all unlocated
+ * findings collide with each other rather than only with their file-mates.
+ *
+ * That is accepted for now. What it costs is churn — a resolve and a repost
+ * of feedback that is still on the report — where the bug it replaces lost
+ * the feedback outright, resolving the thread of a finding nothing reported
+ * again. A bounded rule identifier — a closed vocabulary the reviewer selects
+ * from rather than writes — closes it (issue #724).
  */
 export const findingId = (finding, occurrence = 0) => {
   const tuple = FINDING_IDENTITY_FIELDS.map((field) =>
@@ -390,13 +397,14 @@ const assignFindingIds = (findings) => {
  * @param {unknown} raw a report read back from an artifact, of any vintage
  */
 export const isComparableReport = (raw) =>
-  typeof raw === 'object' &&
-  raw !== null &&
-  raw.schemaVersion === REPORT_SCHEMA_VERSION;
+  reportSchemaVersionOf(raw) === REPORT_SCHEMA_VERSION;
 
 /** The version a stored artifact claims, for the message when it is not ours. */
-export const reportSchemaVersionOf = (raw) =>
-  typeof raw === 'object' && raw !== null ? raw.schemaVersion : undefined;
+export function reportSchemaVersionOf(raw) {
+  return typeof raw === 'object' && raw !== null
+    ? raw.schemaVersion
+    : undefined;
+}
 
 /** Any blocking → request-changes; only nits (or nothing) → approve; else comment. */
 export const computeVerdict = (findings) => {

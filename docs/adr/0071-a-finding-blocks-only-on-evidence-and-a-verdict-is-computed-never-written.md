@@ -87,14 +87,21 @@ writes it.**
    > remains is either a closed enum or a path the reviewer copies.
    >
    > The tuple is now coarser than the finding: two distinct defects in one file cited against one
-   > source collide, and the within-report disambiguator orders them by line, so swapping which one is
-   > fixed reads as the other persisting. That is accepted — a false persist is a stale row in a strip;
-   > the false resolve it replaces closed a thread on live blocking feedback. Issue #724 closes it with
-   > a bounded rule identifier, a closed vocabulary the reviewer selects from rather than writes.
+   > source collide, and the within-report disambiguator orders them by line. Fixing one of the two
+   > renumbers the survivor onto the vacated id, so the strip reads one persisting and one resolved
+   > while the report re-posts the survivor under the other id. The collision is widest where `file`
+   > is empty — an unlocated finding hashes the empty string, so on the spec axis, where every finding
+   > cites the same issue ref, all unlocated findings collide with each other. That is accepted: the
+   > cost is churn, a resolve and a repost of feedback still on the report, where the bug it replaces
+   > lost the feedback outright. Issue #724 closes it with a bounded rule identifier, a closed
+   > vocabulary the reviewer selects from rather than writes.
    >
-   > `schemaVersion` moves to `2`, because an id is only meaningful within a version. The renderer
-   > refuses to diff across versions and says there is no comparable previous run, so the change lands
-   > without one final mass auto-resolve.
+   > `schemaVersion` moves to `2`, because an id is only meaningful within a version. Both readers of
+   > an id are scoped to it. The renderer refuses to diff across versions and says there is no
+   > comparable previous run; the publisher's thread markers carry the version that minted the id
+   > inside them, so a thread from an earlier version is neither reused nor resolved — it is left for
+   > a human, the way a human's own thread is. Without that second half the bump would have prevented
+   > the mass auto-resolve in the strip and delivered it through the publisher instead.
 
 7. **Two axes stay two.** Every finding carries `axis: standards | spec`. The prose report renders two
    sections and sorts by severity within each, never across them, so ADR 0017's refusal to rerank one

@@ -13,7 +13,10 @@
  *   2. Inline comments go on blocking findings that carry a location, once
  *      per finding id while a thread for that id is still open. A finding
  *      that disappears from the report resolves its thread; a finding that
- *      comes back after being resolved gets a fresh comment.
+ *      comes back after being resolved gets a fresh comment. Both readings
+ *      are scoped to the report schema version that minted the id, so a
+ *      change to how ids are derived orphans old threads rather than
+ *      resolving them (issue #718).
  *   3. The label. ADR 0070 item 1: a blocking finding relabels an `auto` or
  *      `agent` Pull Request to `review:human`; no spec source does the same
  *      (`effectiveTier`). The label never loosens here — only the classifier
@@ -21,14 +24,37 @@
  */
 
 import { evidenceText } from './evidence.mjs';
-import { AXIS_TITLES, REVIEW_TIER_LABELS, VERDICT_VALUES } from './schema.mjs';
+import {
+  AXIS_TITLES,
+  REPORT_SCHEMA_VERSION,
+  REVIEW_TIER_LABELS,
+  VERDICT_VALUES,
+} from './schema.mjs';
 
 export const SUMMARY_MARKER = '<!-- code-review-report -->';
-export const findingMarker = (id) => `<!-- code-review:finding:${id} -->`;
+/**
+ * A thread marker carries the report schema version that minted the id inside
+ * it, because an id only means anything within a version (issue #718). A
+ * thread from an earlier version reads as somebody else's here: this run does
+ * not recognise its id, so it neither reuses nor resolves it. Without the
+ * version, the run that changed how ids are derived would resolve every open
+ * thread on every Pull Request at once — the mass auto-resolve the bump exists
+ * to prevent, arriving through the publisher instead of the strip.
+ */
+export const findingMarker = (id) =>
+  `<!-- code-review:finding:v${REPORT_SCHEMA_VERSION}:${id} -->`;
 /** Marks the one reply a thread gets when its finding is gone but the token cannot resolve it. */
 export const STALE_MARKER = '<!-- code-review:stale -->';
-const FINDING_MARKER_RE = /<!-- code-review:finding:([0-9a-f]+) -->/g;
+const FINDING_MARKER_RE = new RegExp(
+  `<!-- code-review:finding:v${REPORT_SCHEMA_VERSION}:([0-9a-f]+) -->`,
+  'g',
+);
 
+/**
+ * The finding ids this run can act on: those minted at this schema version.
+ * A marker from another version yields nothing, which is what leaves its
+ * thread alone.
+ */
 export const findingIdsIn = (body) =>
   [...(body ?? '').matchAll(FINDING_MARKER_RE)].map((m) => m[1]);
 
@@ -115,8 +141,9 @@ export const inlineComments = ({ findings, openThreadBodies = [] }) => {
 };
 
 /**
- * Open threads whose finding is no longer reported. A thread with no
- * finding marker is a human's and is never touched.
+ * Open threads whose finding is no longer reported. A thread with no finding
+ * marker this run recognises is a human's — or an earlier schema version's,
+ * which amounts to the same thing here — and is never touched.
  *
  * @param {{ findings: object[], openThreads: Array<{ id: string, body: string }> }} input
  */

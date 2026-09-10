@@ -1336,14 +1336,23 @@
       </div>
       <p class="small muted" style="margin-top: 12px">
         The identity tuple is deliberately coarser than the finding it names:
-        two distinct defects in the same file, cited against the same
-        source, collide, and the disambiguator orders repeats by line, so
-        across runs, swapping which of the two is fixed reads as the other
-        one persisting. Accepted, not overlooked &mdash; a false persist is a
-        stale row in a strip, and the alternative was a false resolve that
-        closes a thread on live blocking feedback. Issue #724 closes it with
-        a bounded rule identifier: a closed vocabulary the reviewer selects
-        from rather than writes.
+        two distinct defects cited against the same source in the same file
+        collide &mdash; and the blast radius is widest where
+        <code>file</code> is empty, because an unlocated finding hashes
+        <code>''</code> for it. On the <code>spec</code> axis every finding
+        cites the same issue reference as <code>source</code>, so <b>every
+        unlocated spec finding collides with every other one</b>, not only
+        with its file-mates. The disambiguator orders repeats by line and
+        renumbers on the next run, so fixing one of two colliding findings
+        moves the survivor onto the vacated id: the strip reads one
+        persisting and one resolved, and the report re-posts the survivor
+        under the other id &mdash; <b>churn, a resolve plus a repost of
+        feedback that is still on the report</b>, not the silent loss the old
+        four-field tuple produced. Accepted, not overlooked: that churn is
+        the cost of a fix that stopped a false resolve from closing a thread
+        on live blocking feedback. Issue #724 closes it with a bounded rule
+        identifier: a closed vocabulary the reviewer selects from rather than
+        writes.
       </p>
       <div class="callout" style="margin-top: 16px">
         <div class="ctitle">The reading test &mdash; for finding identity</div>
@@ -1550,6 +1559,16 @@
           so nothing below is marked new, persisting, or resolved.
         </p>
       </div>
+      <p class="small muted" style="margin-top: 12px">
+        The strip is not the only reader the version scopes: an inline
+        thread's marker carries it too, as
+        <code>&lt;!-- code-review:finding:v2:&lt;id&gt; --&gt;</code>
+        (currently <code>2</code>). A thread minted at an earlier version is
+        neither reused nor resolved &mdash; it is left for a human, exactly
+        like a human's own thread &mdash; because without that, the version
+        bump would have stopped the strip's mass auto-resolve and delivered
+        the same mass resolve through the publisher instead.
+      </p>
     </div>
   </section>
 
