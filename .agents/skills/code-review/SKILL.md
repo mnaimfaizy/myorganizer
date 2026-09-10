@@ -61,7 +61,8 @@ In this order; record which step found it as `spec.foundBy`:
 3. **An argument** — a path or issue the user passed. `foundBy: argument`.
 4. **Ask the user** (interactive only). `foundBy: user`.
 5. Otherwise `spec: { kind: 'none', foundBy: 'none' }`. The Spec sub-agent is skipped, and the
-   validator tightens the effective tier to `review:human` when a tier is set.
+   validator drops the effective tier one level (`auto` → `agent`, `agent` → `human`,
+   `human` → `human`) when a tier is set, because the spec source contributes one confidence step.
 
 Fetch issues via [`docs/agents/issue-tracker.md`](../../../docs/agents/issue-tracker.md).
 

@@ -64,9 +64,11 @@ writes it.**
    from there forward.
 
 5. **The verdict is computed.** Any `blocking` finding requests changes; only `nit` findings approve;
-   otherwise the verdict is comment. A report with no spec source is tightened to `review:human` at
-   the envelope level without becoming a finding, because half of the reviewer's value is absent and
-   there is nothing in the diff to fix. A report that fails validation is rejected whole — no partial
+   otherwise the verdict is comment. A report with no spec source is tightened down one tier level
+   at the envelope level without becoming a finding — `auto` → `agent`, `agent` → `human`,
+   `human` → `human` — because the spec source contributes one confidence step to the tier decision:
+   half of the reviewer's value is absent, and there is nothing in the diff to fix. Interactive
+   runs (tier `null`) stay `null`. A report that fails validation is rejected whole — no partial
    verdict, no downgraded severity — and a rejected report is a pipeline error, which ADR 0070
    resolves to `human`.
 

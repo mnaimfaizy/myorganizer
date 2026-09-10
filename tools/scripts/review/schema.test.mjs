@@ -171,19 +171,39 @@ test('verdict is a pure function of severities', () => {
   );
 });
 
-test('no spec tightens the effective tier to human, interactive stays null', () => {
+test('no spec drops the effective tier one level; interactive stays null', () => {
   const none = { kind: 'none', foundBy: 'none' };
+  // auto with no spec → agent
   assert.equal(
     computeEffectiveTier({ tier: 'review:auto', spec: none }),
+    'review:agent',
+  );
+  // agent with no spec → human
+  assert.equal(
+    computeEffectiveTier({ tier: 'review:agent', spec: none }),
     'review:human',
   );
+  // human with no spec → human (can't go lower)
+  assert.equal(
+    computeEffectiveTier({ tier: 'review:human', spec: none }),
+    'review:human',
+  );
+  // interactive (null) with no spec → null (unchanged)
   assert.equal(computeEffectiveTier({ tier: null, spec: none }), null);
+  // present spec leaves tier untouched
   assert.equal(
     computeEffectiveTier({
       tier: 'review:auto',
       spec: { kind: 'path', ref: 'x', foundBy: 'argument' },
     }),
     'review:auto',
+  );
+  assert.equal(
+    computeEffectiveTier({
+      tier: 'review:agent',
+      spec: { kind: 'issue', ref: '#123', foundBy: 'branch' },
+    }),
+    'review:agent',
   );
 });
 

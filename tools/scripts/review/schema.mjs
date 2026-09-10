@@ -414,12 +414,18 @@ export const computeVerdict = (findings) => {
 };
 
 /**
- * A report with no spec source is tightened to human at the envelope level.
- * Interactive runs (tier null) stay null: there is no label to tighten.
+ * A report with no spec source is tightened down one tier level at the
+ * envelope level: auto → agent, agent → human, human → human. Interactive
+ * runs (tier null) stay null: there is no label to tighten.
  */
 export const computeEffectiveTier = (report) => {
   if (report.tier === null) return null;
-  if (report.spec.kind === 'none') return 'review:human';
+  if (report.spec.kind === 'none') {
+    const tiers = ['review:auto', 'review:agent', 'review:human'];
+    const current = tiers.indexOf(report.tier);
+    const next = Math.min(current + 1, tiers.length - 1);
+    return tiers[next];
+  }
   return report.tier;
 };
 
