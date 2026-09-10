@@ -55,11 +55,22 @@ appearing in prose.
    fact that nothing runs the checker belongs in that finding. It is not counted in
    `suppressed.redundant`.
 
-3. **This ADR is the canonical statement.** Every other site references it rather than restating
-   it. The one exception is the finding contract in
-   [`.agents/skills/code-review/SKILL.md`](../../.agents/skills/code-review/SKILL.md), which is
-   pasted verbatim into sub-agent prompts that cannot follow a link: it carries the operative
-   sentence and cites this ADR beside it. Nowhere else re-authors the rule.
+3. **This ADR is the canonical statement, and the rule has one author.** What is forbidden is
+   re-authoring: stating the condition as though this document did not exist, so that a reader
+   could act on the paraphrase without ever opening it. That is how the rule came to have nine
+   copies free to drift apart, which is the whole reason this ADR exists.
+
+   Two things are not re-authoring and are expected. A **gloss** — a clause that names this ADR in
+   the same breath, telling a reader why the pointer is there — cannot become a competing authority,
+   because it points at the authority as it speaks; analysis, a retirement reason, and a code
+   comment all legitimately need one, and stripping them to a bare citation makes the surrounding
+   argument unreadable without buying any protection. And the finding contract in
+   [`.agents/skills/code-review/SKILL.md`](../../.agents/skills/code-review/SKILL.md) carries the
+   operative sentence in full, with this ADR cited beside it, because it is pasted verbatim into
+   sub-agent prompts that cannot follow a link.
+
+   The test is therefore whether the passage stands alone as the rule. A paraphrase that does — or
+   one that claims to be the rule's home while being a copy of it — is the defect.
 
 4. **ADR 0071 item 1 is narrowed, not superseded.** Its structure — earned severity, computed
    verdict, a visible suppression count with invisible items — stands unchanged. Only the

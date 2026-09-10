@@ -31,6 +31,7 @@ on:
       - '.github/workflows/code-review.yml'
       - '.github/workflows/review-golden-replay.yml'
       - 'tools/config/review-golden-set.json'
+      - 'tools/config/review-obligations.json'
   workflow_dispatch:
     inputs:
       tier:

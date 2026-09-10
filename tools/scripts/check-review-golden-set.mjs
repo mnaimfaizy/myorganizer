@@ -30,6 +30,11 @@ export const REPLAY_TRIGGER_PATHS = [
   '.github/workflows/code-review.yml',
   '.github/workflows/review-golden-replay.yml',
   'tools/config/review-golden-set.json',
+  // The obligation catalogue is an input to the review itself: the selector
+  // matches it against the diff and the reviewer answers what fired. A
+  // trigger edited here changes what every case is asked, so it must be
+  // measured like any other reviewer input.
+  'tools/config/review-obligations.json',
 ];
 
 const fail = (msg) => {
