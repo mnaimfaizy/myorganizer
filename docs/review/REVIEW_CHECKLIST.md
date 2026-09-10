@@ -25,6 +25,12 @@ entries below, matched against the diff by
 `tmp/code-review/obligations.answers.json`. Completeness is reported by
 `yarn review:obligations:check`, which fails nothing.
 
+The two forms are held together by `yarn review:checklist:check`, which does
+fail: it asserts that the entries below carry the same ids, in the same order,
+with the same answer fields as the catalogue. Only that much is mechanical, so
+only that much is gated — the rationale and the incident history below are
+writing, and a gate over writing is one nobody can satisfy.
+
 This file is indexed in [`CODING_STANDARDS.md`](../../CODING_STANDARDS.md) so a human can find
 it, and is deliberately **excluded from the reviewer's standards sources**: its entries reach the
 reviewer already selected, never as prose in the brief. That exclusion is written into
@@ -59,9 +65,9 @@ Rules that keep the list honest:
   both mechanical, it stops being a checklist entry and becomes a wired gate.
   The best outcome for an entry is to leave. Its golden case then retires the
   way `groceries-ui-written-against-absent-roles` did.
-- **Skip what a wired gate already fails.** Per the finding contract, that is a
-  suppressed count, not a finding — but only when a hook or a workflow actually
-  invokes the checker.
+- **Skip what a wired gate already fails**, on the condition
+  [ADR 0074](../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md)
+  states.
 
 ---
 

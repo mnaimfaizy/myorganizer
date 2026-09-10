@@ -91,6 +91,8 @@
     "review:test": "node --test tools/scripts/review/schema.test.mjs tools/scripts/review/cli.test.mjs tools/scripts/review/resolve-spec.test.mjs tools/scripts/review/publish.test.mjs tools/scripts/review/golden.test.mjs tools/scripts/review/golden-tiers.test.mjs tools/scripts/review/obligations.test.mjs",
     "review:spec": "node tools/scripts/review/resolve-spec.mjs",
     "review:publish": "node tools/scripts/review/publish-review-report.mjs",
+    "review:checklist:check": "node tools/scripts/check-review-checklist.mjs",
+    "review:checklist:test": "node --test tools/scripts/check-review-checklist.test.mjs",
     "review:golden:check": "node tools/scripts/check-review-golden-set.mjs",
     "review:golden:score": "node tools/scripts/review/score-golden-case.mjs",
     "review:obligations:select": "node tools/scripts/review/select-obligations.mjs",

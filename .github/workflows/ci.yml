@@ -627,6 +627,9 @@ jobs:
       - name: Code review concurrency checker contracts
         run: corepack yarn review:concurrency:test
 
+      - name: Review checklist checker contracts
+        run: corepack yarn review:checklist:test
+
       - name: Gate coverage checker contracts
         run: corepack yarn gates:coverage:test
 
@@ -639,6 +642,9 @@ jobs:
       # The checks below also run through `yarn gates:run` in the pre-commit
       # hook (ADR 0043). CI runs each as its own named step instead of the
       # aggregate so a failure is identifiable without opening a log.
+      - name: Check the review checklist against the obligation catalogue
+        run: corepack yarn review:checklist:check
+
       - name: Check root README
         run: corepack yarn readme:check
 
