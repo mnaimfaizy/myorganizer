@@ -52,20 +52,6 @@ jest.mock('@myorganizer/web-vault', () => ({
     mockCreateDefaultAuditReporter(...args),
 }));
 
-// === Polyfill crypto.subtle for Node's jsdom environment ===
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-if (!(globalThis as any).crypto?.subtle) {
-  const { webcrypto } = require('crypto');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!(globalThis as any).crypto) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (globalThis as any).crypto = {};
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).crypto.subtle = webcrypto.subtle;
-}
-
-import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 // Import real VaultSecretMismatchError so instanceof checks work

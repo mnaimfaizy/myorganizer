@@ -7,31 +7,11 @@
  * keeping storage mutations observable.
  */
 
-// === Global setup for jsdom ===
-if (
-  typeof (globalThis as unknown as { TextEncoder?: unknown }).TextEncoder ===
-  'undefined'
-) {
-  const { TextEncoder, TextDecoder } = require('util');
-  (globalThis as unknown as Record<string, unknown>).TextEncoder = TextEncoder;
-  (globalThis as unknown as Record<string, unknown>).TextDecoder = TextDecoder;
-}
-
-// === Polyfill crypto.subtle for Node's jsdom environment ===
-// jsdom ~22.1 does not provide crypto.subtle, but Node's webcrypto is available.
-// This polyfill allows the real hashCiphertext implementation in syncBookmarkAccess to run unmodified.
-if (!(globalThis as any).crypto?.subtle) {
-  const { webcrypto } = require('crypto');
-  if (!(globalThis as any).crypto) {
-    (globalThis as any).crypto = {};
-  }
-  (globalThis as any).crypto.subtle = webcrypto.subtle;
-}
-
 // === Crypto mocking ===
 // Mock all WebCrypto operations; keep pure helpers real for JSON round-tripping.
 // Note: This only affects ./crypto module exports (PBKDF2, AES-GCM), not crypto.subtle.digest
-// which is called directly from syncBookmarkAccess.ts via globalThis.crypto.subtle (now polyfilled above).
+// which is called directly from syncBookmarkAccess.ts via globalThis.crypto.subtle (polyfilled
+// in src/test-setup.ts, wired globally through jest.config.ts setupFilesAfterEnv).
 
 let mockRandomBytesCounter = 0;
 

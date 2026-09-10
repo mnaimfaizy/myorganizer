@@ -6,16 +6,6 @@
  * the byte-identity preservation invariants for the unsuffixed slot and failed unwraps.
  */
 
-// === Global setup for jsdom ===
-if (
-  typeof (globalThis as unknown as { TextEncoder?: unknown }).TextEncoder ===
-  'undefined'
-) {
-  const { TextEncoder, TextDecoder } = require('util');
-  (globalThis as unknown as Record<string, unknown>).TextEncoder = TextEncoder;
-  (globalThis as unknown as Record<string, unknown>).TextDecoder = TextDecoder;
-}
-
 jest.mock('./crypto', () => {
   const actual = jest.requireActual('./crypto');
   return {

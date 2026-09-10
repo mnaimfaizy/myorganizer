@@ -27,8 +27,10 @@ A test whose subject is the gate itself must drive the real handle. Stubbed doub
 state-machine bugs this library exists to catch — `vaultGate.create.spec.tsx` is the worked
 example (issue #667). Do not mock `initialize` or unwrap there.
 
-jsdom has no `crypto.subtle`. Suites that drive the real handle polyfill it from Node's
-`crypto.webcrypto`, and polyfill `TextEncoder` / `TextDecoder` when initialize needs them.
+jsdom has no `crypto.subtle`. It is installed once from Node's `crypto.webcrypto`, along with
+`TextEncoder` / `TextDecoder`, in `libs/web-vault-ui/src/test-setup.ts` — which `jest.config.ts`
+runs through `setupFilesAfterEnv`, before any test module loads. Suites that drive the real handle
+need no polyfill block of their own; do not add one back.
 
 **Timeouts.** Real PBKDF2 on create/unlock routinely needs 10–15 second `waitFor` / test
 timeouts. That cost is expected, not a smell, and is why most suites still stub the handle.

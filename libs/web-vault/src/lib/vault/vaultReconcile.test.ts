@@ -13,29 +13,6 @@
  * responses consistently.
  */
 
-// === Global setup for jsdom ===
-if (
-  typeof (globalThis as unknown as { TextEncoder?: unknown }).TextEncoder ===
-  'undefined'
-) {
-  const { TextEncoder, TextDecoder } = require('util');
-  (globalThis as unknown as Record<string, unknown>).TextEncoder = TextEncoder;
-  (globalThis as unknown as Record<string, unknown>).TextDecoder = TextDecoder;
-}
-
-// === Polyfill crypto.subtle for Node's jsdom environment ===
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-if (!(globalThis as any).crypto?.subtle) {
-  const { webcrypto } = require('crypto');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!(globalThis as any).crypto) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (globalThis as any).crypto = {};
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).crypto.subtle = webcrypto.subtle;
-}
-
 import type { AxiosResponse } from 'axios';
 import { VaultBlobType, type VaultMetaV1 } from '@myorganizer/app-api-client';
 import type { VaultBlobEnvelope } from '@myorganizer/core';

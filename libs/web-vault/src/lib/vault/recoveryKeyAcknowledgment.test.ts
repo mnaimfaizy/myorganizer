@@ -8,25 +8,6 @@
  * by reading a boolean flag.
  */
 
-// === Global setup for jsdom ===
-if (
-  typeof (globalThis as unknown as { TextEncoder?: unknown }).TextEncoder ===
-  'undefined'
-) {
-  const { TextEncoder, TextDecoder } = require('util');
-  (globalThis as unknown as Record<string, unknown>).TextEncoder = TextEncoder;
-  (globalThis as unknown as Record<string, unknown>).TextDecoder = TextDecoder;
-}
-
-// === Polyfill crypto.subtle for Node's jsdom environment ===
-if (!(globalThis as any).crypto?.subtle) {
-  const { webcrypto } = require('crypto');
-  if (!(globalThis as any).crypto) {
-    (globalThis as any).crypto = {};
-  }
-  (globalThis as any).crypto.subtle = webcrypto.subtle;
-}
-
 import type { EncryptedBlob } from './localVaultStorage';
 
 import {

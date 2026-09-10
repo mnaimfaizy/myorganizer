@@ -26,30 +26,6 @@ jest.mock('@myorganizer/web-vault', () => {
   };
 });
 
-// === Polyfill crypto.subtle and TextEncoder for Node's jsdom environment ===
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-if (!(globalThis as any).crypto?.subtle) {
-  const { webcrypto } = require('crypto');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!(globalThis as any).crypto) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (globalThis as any).crypto = {};
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).crypto.subtle = webcrypto.subtle;
-}
-
-// TextEncoder and TextDecoder are needed for crypto operations
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-if (!(globalThis as any).TextEncoder) {
-  const { TextEncoder, TextDecoder } = require('util');
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).TextEncoder = TextEncoder;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (globalThis as any).TextDecoder = TextDecoder;
-}
-
-import '@testing-library/jest-dom';
 import {
   act,
   fireEvent,

@@ -17,25 +17,6 @@
  * prove the server state and must look before pushing.
  */
 
-// === Global setup for jsdom ===
-if (
-  typeof (globalThis as unknown as { TextEncoder?: unknown }).TextEncoder ===
-  'undefined'
-) {
-  const { TextEncoder, TextDecoder } = require('util');
-  (globalThis as unknown as Record<string, unknown>).TextEncoder = TextEncoder;
-  (globalThis as unknown as Record<string, unknown>).TextDecoder = TextDecoder;
-}
-
-// === Polyfill crypto.subtle for Node's jsdom environment ===
-if (!(globalThis as any).crypto?.subtle) {
-  const { webcrypto } = require('crypto');
-  if (!(globalThis as any).crypto) {
-    (globalThis as any).crypto = {};
-  }
-  (globalThis as any).crypto.subtle = webcrypto.subtle;
-}
-
 import type { AxiosResponse } from 'axios';
 import { VaultBlobType, type VaultMetaV1 } from '@myorganizer/app-api-client';
 import type { VaultBlobEnvelope } from '@myorganizer/core';

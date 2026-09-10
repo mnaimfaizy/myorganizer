@@ -9,7 +9,6 @@
  * - Does not crash when onExport or onConfirm reject
  */
 
-import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { VaultReplaceOffer } from './VaultReplaceOffer';
 
@@ -69,7 +68,9 @@ describe('VaultReplaceOffer', () => {
 
       // Should show loading state
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /Exporting/ })).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /Exporting/ }),
+        ).toBeInTheDocument();
       });
 
       expect(onExport).toHaveBeenCalledTimes(1);
@@ -211,20 +212,26 @@ describe('VaultReplaceOffer', () => {
 
       // Should show loading state and be disabled
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /Replacing/ })).toBeDisabled();
+        expect(
+          screen.getByRole('button', { name: /Replacing/ }),
+        ).toBeDisabled();
       });
 
       expect(onConfirm).toHaveBeenCalledTimes(1);
 
       // Should revert to normal state after async operation completes
       await waitFor(() => {
-        expect(screen.getByRole('button', { name: /Confirm/ })).toBeInTheDocument();
+        expect(
+          screen.getByRole('button', { name: /Confirm/ }),
+        ).toBeInTheDocument();
       });
     });
 
     test('should show error state when onConfirm rejects', async () => {
       const onExport = jest.fn().mockResolvedValue(undefined);
-      const onConfirm = jest.fn().mockRejectedValue(new Error('Replace failed'));
+      const onConfirm = jest
+        .fn()
+        .mockRejectedValue(new Error('Replace failed'));
       const onDecline = jest.fn();
 
       render(
@@ -336,7 +343,9 @@ describe('VaultReplaceOffer', () => {
       );
 
       // Should render the core elements
-      expect(screen.getByText(/This device holds two vaults/)).toBeInTheDocument();
+      expect(
+        screen.getByText(/This device holds two vaults/),
+      ).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: /Export the vault I'm using now/ }),
       ).toBeInTheDocument();

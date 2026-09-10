@@ -48,9 +48,10 @@ Mocking the vault-core primitives themselves is a third thing, and no suite here
 that would need such a mock is either in the carve-out (use the real handle) or does not need
 crypto in the first place (use fixtures).
 
-jsdom has no `crypto.subtle`. Suites that drive the real handle polyfill it from Node's
-`crypto.webcrypto`, and polyfill `TextEncoder` / `TextDecoder`, before the application imports —
-copy the block at the top of `vaultConverge.test.ts`.
+jsdom has no `crypto.subtle`. It is installed once from Node's `crypto.webcrypto`, along with
+`TextEncoder` / `TextDecoder`, in `libs/web-vault/src/test-setup.ts` — which `jest.config.ts` runs
+through `setupFilesAfterEnv`, before any test module loads. Suites that drive the real handle need
+no polyfill block of their own; do not add one back.
 
 Keep fixture passphrases to 10–15 characters — see
 [Credentials in test fixtures](../README.md#credentials-in-test-fixtures).
