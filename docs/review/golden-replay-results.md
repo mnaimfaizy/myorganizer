@@ -77,9 +77,29 @@ Newest last. "Cases" is the tier replayed, not the whole set.
 | 2026-09-08 | `claude-sonnet-5` | 6 (`frontier`) | **1 of 6**, 1 of 6 findings | none — first run after the retirement         |
 | 2026-09-09 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 7**, 2 of 8 findings | wired-gate qualifier on the suppression rule  |
 | 2026-09-09 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 4 scorable**, 3 void | obligation worklist live (pre-fix triggers)   |
+| 2026-09-10 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 6 scorable**, 1 void | corrected triggers; first dispatched run      |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each.
+
+### Run 45 (2026-09-10), the first deliberately dispatched replay
+
+`release-bump` and `mail-test-setup` caught — the latter for the first time in
+any run. `signup-password-wrapper`, `import-confirm`, `export-envelope` and
+`sync-bookmarks` missed. `groceries-blob-type-without-fanouts` is **void, and
+its `guard` tier does not move**: it stopped at `error_max_turns` after 80
+turns with 26 permission denials, and the rate-limit detector correctly
+reported `rate_limited=false`. Turn exhaustion is a third outcome the
+apparatus had no word for, and scoring it as a miss would demote a case the
+reviewer never failed. The detector now reports it separately.
+
+The two obligation-covered misses were read from their transcripts and are the
+subject of a frozen brief:
+[2026-09-10](../research/2026-09-10-the-answer-sheet-is-inert.md). The short
+version is that the obligations fired on exactly the right lines, were
+answered at every site, and two of those answers were false while a third was
+true and ignored — so a written answer is not a verified answer. That brief
+also retracts this record's earlier reading of run 37's `signup` catch.
 
 ### What the consequence checks measured
 

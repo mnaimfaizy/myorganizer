@@ -258,11 +258,19 @@ jobs:
           github-token: ${{ github.token }}
           transcript-artifact: golden-transcript-${{ matrix.case }}
 
-      # A rate-limited case is not a result. It has to fail — the reviewer
-      # never finished — but it must never be written into the record as a
-      # miss, because nothing about the reviewer was measured.
+      # A case that never finished is not a result. It has to fail — there is
+      # no report to score — but it must never be written into the record as a
+      # miss, because nothing about the reviewer was measured. Two ways to not
+      # finish: the subscription rate limit, and the turn ceiling. Run 45 hit
+      # the second on the guard case and the message below said only "no valid
+      # report", which reads exactly like a miss and would have demoted a tier
+      # under ADR 0072.
       - name: Require a validated report
         run: |
+          if [ '${{ steps.reviewer.outputs.turn-exhausted }}' = 'true' ]; then
+            echo "::error::case ${{ matrix.case }} hit the turn ceiling and wrote no report; it measured nothing and is not a miss"
+            exit 1
+          fi
           case '${{ steps.reviewer.outputs.rate-limited }}' in
             true)
               echo "::error::case ${{ matrix.case }} was cut off by the subscription rate limit and measured nothing; do not record it as a miss"

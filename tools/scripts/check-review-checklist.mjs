@@ -22,6 +22,7 @@
 import { readFileSync } from 'node:fs';
 
 import { isMain } from './review/cli.mjs';
+import { loadGoldenSet } from './review/golden.mjs';
 import { loadObligationCatalogue } from './review/obligations.mjs';
 
 const CHECKLIST = 'docs/review/REVIEW_CHECKLIST.md';
@@ -98,6 +99,27 @@ const main = () => {
       `entry order differs: catalogue has ${wanted.join(', ')}; ` +
         `${CHECKLIST} has ${found.join(', ')}`,
     );
+
+  // Every obligation cites the golden case that scores it. That field was
+  // shape-validated and never resolved, so a case renamed or retired left it
+  // dangling with nothing noticing - the same drift this file gates for the
+  // checklist, on the sibling relationship. A retired case still counts: its
+  // id stays reserved precisely so the reason it left is not lost.
+  let known;
+  try {
+    const set = loadGoldenSet();
+    known = new Set([
+      ...(set.cases ?? []).map((c) => c.id),
+      ...(set.retired ?? []).map((c) => c.id),
+    ]);
+  } catch (err) {
+    die(`cannot read the golden set: ${err.message}`);
+  }
+  for (const o of catalogue.obligations)
+    if (!known.has(o.goldenCase))
+      findings.push(
+        `${o.id}: goldenCase ${o.goldenCase} names no case in the golden set`,
+      );
 
   for (const o of catalogue.obligations) {
     const entry = entries.find((e) => e.id === o.id);
