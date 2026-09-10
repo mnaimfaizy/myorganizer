@@ -32,6 +32,12 @@ finding and writes no verdict: the verdict is computed from the findings by
   throwaway reproduction goes in `git worktree add tmp/code-review/worktree HEAD`, and the worktree is
   removed with `git worktree remove --force tmp/code-review/worktree` before the report is written.
   Nothing from it is committed or pushed.
+- **Read a file range with the Read tool, not a shell utility.** Pass `offset`/`limit`; there is no
+  `sed`, `head -n`, or `tail -n` on the allowlist for this, and there does not need to be one.
+- **Write and Edit reach only `tmp/code-review/**`.\*\* That is where the report, the obligation answer
+  sheet, and the throwaway worktree live. The harness allow-list refuses an edit anywhere else — there
+  is no scratch file outside it to fall back to when a command is refused (ADR 0071 item 4, corrected
+  by ADR 0075).
 
 ## Process
 

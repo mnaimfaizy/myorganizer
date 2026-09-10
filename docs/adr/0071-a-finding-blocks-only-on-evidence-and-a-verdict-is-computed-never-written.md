@@ -55,8 +55,13 @@ writes it.**
 4. **The reviewer may execute, in a tree it cannot keep.** Existing targets on affected projects and
    throwaway reproductions in a `git worktree` under `tmp/` are permitted; the tree is discarded after
    the run and nothing is committed or pushed. A failing test the reviewer wrote is the strongest
-   evidence class there is. Network, `git push`, and edits outside that tree are refused by the harness
-   allow-list, not by prose.
+   evidence class there is. Network and `git push` are refused by the harness allow-list.
+   **Corrected by [ADR 0075](0075-a-reviewers-writable-surface-is-scoped-to-its-own-tmp-directory.md):**
+   "edits outside that tree are refused by the harness allow-list, not by prose" was not true when
+   written — `Write` and `Edit` were granted unscoped, and a replay run wrote a scratch script outside
+   its worktree after an inline execution was refused, then ran that script instead, and separately
+   tried to disable the sandbox. `Write` and `Edit` now carry `tmp/code-review/**`, so the claim holds
+   from there forward.
 
 5. **The verdict is computed.** Any `blocking` finding requests changes; only `nit` findings approve;
    otherwise the verdict is comment. A report with no spec source is tightened to `review:human` at

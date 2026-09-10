@@ -88,6 +88,13 @@ runs:
     # no network, no push. The action's own GitHub tools are not in the list,
     # so the reviewer cannot post. `github_token` is the job token: the action
     # uses it for its own plumbing instead of minting a GitHub App token.
+    # Write and Edit are scoped to tmp/code-review/** — the report, the
+    # obligation answer sheet, and the throwaway worktree all live there. A
+    # replay run found the gap an unscoped grant leaves: refused an inline
+    # script, the reviewer wrote a scratch script outside its worktree and
+    # ran that instead (ADR 0071 item 4, corrected by ADR 0075). The
+    # interpreter (`node`) stays unrestricted in path — it is how executed
+    # evidence gets produced — only the writable surface is narrowed.
     - name: Run the reviewer
       id: reviewer
       continue-on-error: true
@@ -113,7 +120,7 @@ runs:
         claude_args: >-
           --model ${{ inputs.model }}
           --max-turns 80
-          --allowedTools "Read,Glob,Grep,Write,Edit,Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git ls-tree:*),Bash(git grep:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(sed -n:*),Bash(echo:*),Bash(rm -f tmp/code-review/*)"
+          --allowedTools "Read,Glob,Grep,Write(tmp/code-review/**),Edit(tmp/code-review/**),Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git ls-tree:*),Bash(git grep:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(echo:*),Bash(rm -f tmp/code-review/*)"
 
     # A reviewer stopped by the five-hour subscription window produces no
     # report, which is indistinguishable from a reviewer that read the diff and
