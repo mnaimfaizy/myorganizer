@@ -49,6 +49,7 @@ counts as a defect, and which incident bought it.
   "question": "What the reviewer must answer, in the imperative.",
   "answerFields": ["…"],
   "defect": "The comparison that makes the answer a finding.",
+  "defectWhen": { "field": "…", "equals": false },
   "seededFrom": "#123",
   "goldenCase": "case-id",
 }
@@ -68,6 +69,13 @@ Rules that keep the list honest:
 - **Skip what a wired gate already fails**, on the condition
   [ADR 0074](../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md)
   states.
+- **`defect` is prose; `defectWhen` is the machine form of the same sentence.**
+  Write both, and keep them saying the same thing. `defectWhen` is what lets
+  `yarn review:obligations:check` catch an answer that meets its own defect
+  condition and raises nothing — which is not a judgment the reviewer gets to
+  make, because the entry already decided that answer is a finding. It fires
+  only on fields listed in `answerFields`; naming any other field is a load
+  error, because a rule that can never fire is worse than no rule.
 
 ---
 

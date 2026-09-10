@@ -91,6 +91,25 @@ export function assertObligationCatalogue(cat, source = 'obligations') {
       fail(
         `${where}: seededFrom must cite the incident that bought this entry`,
       );
+    // A defectWhen that names a field outside answerFields can never fire,
+    // which is the silent-no-op shape this repo keeps finding: the rule looks
+    // present and asserts nothing. Validated here so a typo is a load error
+    // rather than an obligation that quietly stops catching contradictions.
+    if (o.defectWhen !== undefined) {
+      const fields = [];
+      const collect = (r) => {
+        if (!r || typeof r !== 'object') fail(`${where}: bad defectWhen`);
+        else if (Array.isArray(r.all)) r.all.forEach(collect);
+        else if (Array.isArray(r.any)) r.any.forEach(collect);
+        else if (typeof r.field === 'string') fields.push(r.field);
+        else fail(`${where}: bad defectWhen`);
+      };
+      collect(o.defectWhen);
+      if (fields.length === 0) fail(`${where}: defectWhen names no field`);
+      for (const f of fields)
+        if (!o.answerFields.includes(f))
+          fail(`${where}: defectWhen names ${f}, which is not an answerField`);
+    }
     if (typeof o.goldenCase !== 'string' || !ID.test(o.goldenCase))
       fail(`${where}: goldenCase must name the case that scores this entry`);
     const t = o.trigger;
@@ -215,6 +234,39 @@ export const selectObligations = ({
 };
 
 /** One answer per site the worklist named. */
+/**
+ * Evaluate an obligation's `defectWhen` against one written answer.
+ *
+ * Run 45 is why this exists. The obligations fired on exactly the right lines
+ * and the reviewer answered every one of them; two of those answers were
+ * simply false, and one was true and ignored. `import-confirm` wrote
+ * `namesEverything: false` - which its own defect rule calls a finding in so
+ * many words - and then raised nothing. A written answer is not a verified
+ * answer, and the cheapest half of that gap needs no source access at all:
+ * an answer that satisfies its own declared defect condition while raising no
+ * finding contradicts itself, on the page, in one file.
+ *
+ * The grammar is deliberately tiny - `all`, `any`, and a field compared for
+ * equality - because a predicate language rich enough to express judgment
+ * would be a second reviewer, and this is a comparison, not an opinion.
+ *
+ * @param {object|undefined} rule
+ * @param {Record<string, unknown>} answer
+ * @returns {boolean} true when the answer meets the defect condition
+ */
+export function defectHolds(rule, answer) {
+  if (!rule || typeof rule !== 'object') return false;
+  if (Array.isArray(rule.all))
+    return rule.all.length > 0 && rule.all.every((r) => defectHolds(r, answer));
+  if (Array.isArray(rule.any))
+    return rule.any.some((r) => defectHolds(r, answer));
+  if (typeof rule.field !== 'string') return false;
+  const actual = answer?.[rule.field];
+  if ('equals' in rule) return actual === rule.equals;
+  if ('notEquals' in rule) return actual !== rule.notEquals;
+  return false;
+}
+
 export const AnswerSchema = z.strictObject({
   id: z.string().regex(ID),
   site: z.strictObject({ file: z.string().min(1), line: z.number().int() }),
@@ -242,12 +294,14 @@ export const checkAnswers = (worklist, sheet) => {
         id: o.id,
         site,
         fields: o.answerFields,
+        defectWhen: o.defectWhen,
       });
   }
   const seen = new Set();
   const unanswered = [];
   const unexpected = [];
   const incomplete = [];
+  const contradictions = [];
   for (const a of sheet.answers) {
     const key = siteKey(a.id, a.site);
     const want = expected.get(key);
@@ -265,6 +319,23 @@ export const checkAnswers = (worklist, sheet) => {
       return v === undefined || v === null || String(v).trim() === '';
     });
     if (missing.length) incomplete.push({ key, missing });
+    // The self-contradiction. An answer that meets its obligation's own
+    // defect condition and raises nothing is not a judgment call the
+    // reviewer is entitled to make: the catalogue already decided that this
+    // answer is a finding. Only checked when the answer is complete, so a
+    // blank field is reported once as incomplete rather than twice.
+    if (
+      !missing.length &&
+      want.defectWhen &&
+      defectHolds(want.defectWhen, a.answer) &&
+      (a.raisedFindingIds ?? []).length === 0
+    )
+      contradictions.push({
+        key,
+        id: want.id,
+        site: want.site,
+        answer: a.answer,
+      });
   }
   for (const [key, want] of expected) {
     if (!seen.has(key)) unanswered.push({ key, id: want.id, site: want.site });
@@ -276,6 +347,7 @@ export const checkAnswers = (worklist, sheet) => {
     unanswered,
     incomplete,
     unexpected,
+    contradictions,
     complete:
       unanswered.length === 0 && incomplete.length === 0 && expected.size > 0,
   };

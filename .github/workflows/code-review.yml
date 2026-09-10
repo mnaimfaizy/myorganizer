@@ -341,11 +341,20 @@ jobs:
           transcript-artifact: code-review-transcript
 
       # Completeness of the obligation answers, beside the finding contract and
-      # never inside it. This fails nothing: an unanswered obligation says the
-      # review was thin, which is neither a fact about the pipeline nor a
-      # judgment about the diff (ADR 0073), and a report that met its contract
-      # is not rejected for it. What it buys is that a missed defect now reads
-      # as one of three causes instead of one opaque one — see the script.
+      # never inside it. Thoroughness fails nothing: an unanswered obligation
+      # says the review was thin, which is neither a fact about the pipeline
+      # nor a judgment about the diff (ADR 0073), and a report that met its
+      # contract is not rejected for it. What it buys is that a missed defect
+      # now reads as one of three causes instead of one opaque one.
+      #
+      # The script also exits 1 on a SELF-CONTRADICTION — an answer meeting its
+      # own defect condition while raising no finding — which is a different
+      # kind of fact and arguably an `Agent Review Ran` failure in the ADR 0073
+      # sense, alongside "wrote a report the contract rejected". That is a
+      # required-check semantics decision, so `continue-on-error` STAYS until
+      # it is made deliberately: today the contradiction is reported loudly and
+      # blocks nothing. Removing this line is the whole change; see
+      # docs/research/2026-09-10-the-answer-sheet-is-inert.md.
       - name: Check the obligation answers
         if: always() && steps.preflight.outputs.skip != 'true'
         continue-on-error: true

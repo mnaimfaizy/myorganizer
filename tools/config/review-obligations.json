@@ -21,7 +21,27 @@
         ]
       },
       "seededFrom": "#408",
-      "goldenCase": "release-bump-leaves-generated-client-stale"
+      "goldenCase": "release-bump-leaves-generated-client-stale",
+      "defectWhen": {
+        "any": [
+          {
+            "field": "exitCode",
+            "notEquals": 0
+          },
+          {
+            "all": [
+              {
+                "field": "exitCode",
+                "equals": 0
+              },
+              {
+                "field": "wiredBy",
+                "equals": "none"
+              }
+            ]
+          }
+        ]
+      }
     },
     {
       "id": "destructive-confirmation-names-what-it-mutates",
@@ -34,7 +54,11 @@
         "addedPattern": "window\\.confirm\\(|AlertDialog|Are you sure"
       },
       "seededFrom": "#657",
-      "goldenCase": "import-confirm-is-bare-window-confirm"
+      "goldenCase": "import-confirm-is-bare-window-confirm",
+      "defectWhen": {
+        "field": "namesEverything",
+        "equals": false
+      }
     },
     {
       "id": "slot-injected-props-land-on-the-control",
@@ -47,7 +71,11 @@
         "addedPattern": "<FormControl|Slot\\b"
       },
       "seededFrom": "#525",
-      "goldenCase": "signup-password-wrapper-inside-formcontrol"
+      "goldenCase": "signup-password-wrapper-inside-formcontrol",
+      "defectWhen": {
+        "field": "isFocusableControl",
+        "equals": false
+      }
     },
     {
       "id": "env-assignment-runtime-value",
@@ -60,7 +88,11 @@
         "addedPattern": "process\\.env\\.[A-Za-z_][A-Za-z0-9_]*\\s*=(?!=)"
       },
       "seededFrom": "#409",
-      "goldenCase": "mail-test-setup-assigns-undefined-to-env"
+      "goldenCase": "mail-test-setup-assigns-undefined-to-env",
+      "defectWhen": {
+        "field": "matchesIntent",
+        "equals": false
+      }
     }
   ]
 }

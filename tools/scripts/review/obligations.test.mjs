@@ -6,6 +6,7 @@ import {
   ObligationError,
   assertObligationCatalogue,
   checkAnswers,
+  defectHolds,
   globToRegExp,
   loadObligationCatalogue,
   parseAddedLines,
@@ -303,6 +304,107 @@ test('false and zero are answers, and are not mistaken for blanks', () => {
   });
   assert.equal(report.complete, true);
   assert.deepEqual(report.incomplete, []);
+});
+
+test('an answer meeting its own defect condition and raising nothing contradicts itself', () => {
+  // Run 45. import-confirm wrote namesEverything: false - which its own defect
+  // rule calls a finding in as many words - and raised nothing, and the
+  // completeness report called that sheet complete. Completeness was never
+  // the weak point: the answer was there, it was just ignored.
+  const w = {
+    head: 'abc',
+    selected: [
+      {
+        id: 'an-obligation',
+        question: 'q',
+        answerFields: ['a', 'b'],
+        defectWhen: { field: 'b', equals: false },
+        sites: worklist.selected[0].sites,
+      },
+    ],
+  };
+  const report = checkAnswers(w, {
+    head: 'abc',
+    answers: [
+      {
+        id: 'an-obligation',
+        site: w.selected[0].sites[0],
+        answer: { a: 1, b: false },
+        raisedFindingIds: [],
+      },
+      {
+        id: 'an-obligation',
+        site: w.selected[0].sites[1],
+        answer: { a: 1, b: false },
+        raisedFindingIds: ['f1'],
+      },
+    ],
+  });
+  assert.equal(report.contradictions.length, 1);
+  assert.equal(report.contradictions[0].site.file, w.selected[0].sites[0].file);
+  // The old signal saw nothing wrong, which is the point.
+  assert.equal(report.complete, true);
+});
+
+test('a blank field is reported once as incomplete, not also as a contradiction', () => {
+  const w = {
+    head: 'abc',
+    selected: [
+      {
+        id: 'an-obligation',
+        question: 'q',
+        answerFields: ['a', 'b'],
+        defectWhen: { field: 'b', equals: undefined },
+        sites: [worklist.selected[0].sites[0]],
+      },
+    ],
+  };
+  const report = checkAnswers(w, {
+    head: 'abc',
+    answers: [
+      { id: 'an-obligation', site: w.selected[0].sites[0], answer: { a: 1 } },
+    ],
+  });
+  assert.equal(report.incomplete.length, 1);
+  assert.equal(report.contradictions.length, 0);
+});
+
+test('defectHolds composes all and any, and an unknown shape never fires', () => {
+  const gate = {
+    any: [
+      { field: 'exitCode', notEquals: 0 },
+      {
+        all: [
+          { field: 'exitCode', equals: 0 },
+          { field: 'wiredBy', equals: 'none' },
+        ],
+      },
+    ],
+  };
+  assert.equal(defectHolds(gate, { exitCode: 1, wiredBy: 'husky' }), true);
+  assert.equal(defectHolds(gate, { exitCode: 0, wiredBy: 'none' }), true);
+  assert.equal(defectHolds(gate, { exitCode: 0, wiredBy: 'husky' }), false);
+  // A rule nobody can satisfy is worse than no rule, so these stay false
+  // rather than throwing and taking a whole review down with them.
+  assert.equal(defectHolds(undefined, { a: 1 }), false);
+  assert.equal(defectHolds({}, { a: 1 }), false);
+  assert.equal(defectHolds({ all: [] }, { a: 1 }), false);
+});
+
+test('a defectWhen naming a field outside answerFields is a load error', () => {
+  // The silent no-op shape: a rule that looks present and can never fire.
+  assert.throws(
+    () =>
+      assertObligationCatalogue(
+        catalogue([
+          obligation({
+            answerFields: ['a'],
+            defectWhen: { field: 'typo', equals: false },
+          }),
+        ]),
+      ),
+    /not an answerField/,
+  );
 });
 
 test('an answer for a site nobody asked about is reported, not counted', () => {
