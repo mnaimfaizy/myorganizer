@@ -89,8 +89,9 @@ generated or synced output — `libs/app-api-client/**`, `libs/api-specs/**`,
 | `wiredBy`  | The hook or workflow that invokes it, or `none`.                    |
 
 **Defect** — a non-zero exit is a finding, with the command and exit code as
-executed evidence. Exit 0 with `wiredBy: none` is also worth saying: the
-checker is not a gate, so nothing would have caught this on `main`.
+executed evidence. Exit 0 with `wiredBy: none` is also worth saying: per
+[ADR 0074](../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md)
+the checker is not a gate, so nothing would have caught this on `main`.
 
 **Why this exists** — issue #408. A release moved `package.json` to 0.4.0
 without `openapi:sync`; the generator embeds the version into the spec and every
