@@ -13,10 +13,8 @@ library does not reimplement it.
 
 ## Crypto and the vault handle
 
-The [`web-vault`](./web-vault.md) rule "mock `@myorganizer/vault-core` crypto primitives rather
-than running real crypto" does **not** extend here.
-
-Pick the seam from the subject of the test:
+[`web-vault`](./web-vault.md) picks its crypto seam from what a test claims about ciphertext.
+That table does **not** extend here; this library's seam follows the subject of the test:
 
 | Subject                                                     | Drive                                                 | Stub                                                                                                                     |
 | ----------------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
@@ -27,8 +25,7 @@ Pick the seam from the subject of the test:
 
 A test whose subject is the gate itself must drive the real handle. Stubbed doubles hide the
 state-machine bugs this library exists to catch — `vaultGate.create.spec.tsx` is the worked
-example (issue #667). Do not mock `initialize` or unwrap there to satisfy the web-vault
-mock-crypto rule.
+example (issue #667). Do not mock `initialize` or unwrap there.
 
 jsdom has no `crypto.subtle`. Suites that drive the real handle polyfill it from Node's
 `crypto.webcrypto`, and polyfill `TextEncoder` / `TextDecoder` when initialize needs them.

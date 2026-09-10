@@ -79,6 +79,19 @@ interface ServerState {
   blobUpdatedAt: Record<string, Record<string, string>>;
 }
 
+interface BackupRecord {
+  id: string;
+  userId: string;
+  event: string;
+  source: string;
+  status: string;
+  errorCode: string | null;
+  schemaVersion: number;
+  blobTypes: string[];
+  sizeBytes: number;
+  createdAt: string;
+}
+
 export function setupBackend(
   page: Page,
   identities = DEFAULT_IDENTITIES,
@@ -92,6 +105,8 @@ export function setupBackend(
     blobUpdatedAt: {},
   };
 
+  const backupRecords: BackupRecord[] = [];
+
   const headersFor = (origin: string) => corsHeaders(origin);
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
   const registerUrl = /\/auth\/register\/?(\?.*)?$/;
@@ -99,6 +114,7 @@ export function setupBackend(
   const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
   const vaultBlobUrl = vaultBlobRouteRelative();
   const vaultBackupsLatestUrl = /\/vault\/backups\/latest\/?(\?.*)?$/;
+  const vaultBackupsRecordUrl = /\/vault\/backups\/?(\?.*)?$/;
 
   routeApi(page, loginUrl, async (route) => {
     const request = route.request();
@@ -367,6 +383,43 @@ export function setupBackend(
     } else {
       await route.fulfill({ status: 405, headers });
     }
+  });
+
+  routeApi(page, vaultBackupsRecordUrl, async (route) => {
+    const request = route.request();
+    const origin = new URL(page.url() || 'http://localhost:3000').origin;
+    const headers = headersFor(origin);
+
+    if (request.method() === 'OPTIONS') {
+      await route.fulfill({ status: 204, headers });
+      return;
+    }
+
+    if (request.method() !== 'POST') {
+      await route.fulfill({ status: 405, headers });
+      return;
+    }
+
+    const body = (request.postDataJSON?.() ?? {}) as Partial<BackupRecord>;
+    const record: BackupRecord = {
+      id: `rec-${backupRecords.length + 1}`,
+      userId: 'user-id-placeholder',
+      event: String(body.event ?? 'export'),
+      source: String(body.source ?? 'local-file'),
+      status: String(body.status ?? 'success'),
+      errorCode: (body.errorCode ?? null) as string | null,
+      schemaVersion: Number(body.schemaVersion ?? 1),
+      blobTypes: Array.isArray(body.blobTypes) ? body.blobTypes : [],
+      sizeBytes: Number(body.sizeBytes ?? 0),
+      createdAt: new Date().toISOString(),
+    };
+    backupRecords.push(record);
+    await route.fulfill({
+      status: 201,
+      headers,
+      contentType: 'application/json',
+      body: JSON.stringify({ ...record, message: 'Created' }),
+    });
   });
 
   return serverState;

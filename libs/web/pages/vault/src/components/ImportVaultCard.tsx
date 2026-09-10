@@ -29,16 +29,26 @@ import {
 import { ImportVaultReplaceDialog } from './ImportVaultReplaceDialog';
 import { formatBytes } from '../utils/formatBytes';
 import { getErrorMessage } from '../utils/getErrorMessage';
+import {
+  useVaultOperationAvailability,
+  useVaultImportDisclosure,
+} from '../hooks';
+import { VAULT_OPERATIONS } from '../policy';
+import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
 export function ImportVaultCard() {
   const { toast } = useToast();
   const vaultSession = useOptionalVaultSession();
   const handle = vaultSession?.handle ?? null;
+  const { allowed, unavailableReason } = useVaultOperationAvailability(
+    VAULT_OPERATIONS.Import,
+  );
 
   const [importing, setImporting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [lastServerNote, setLastServerNote] = useState<string | null>(null);
   const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
+  const disclosure = useVaultImportDisclosure(selectedFile, replaceDialogOpen);
 
   const runImport = useCallback(async () => {
     if (!handle || !selectedFile) {
@@ -161,6 +171,10 @@ export function ImportVaultCard() {
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          <VaultUnavailableNotice
+            reason={unavailableReason}
+            testId="import-vault-unavailable"
+          />
           <div className="space-y-2">
             <Label htmlFor="vault-import-file">Vault export file (.json)</Label>
             <Input
@@ -168,6 +182,7 @@ export function ImportVaultCard() {
               data-testid="import-vault-file"
               type="file"
               accept="application/json"
+              disabled={!allowed}
               onChange={handleFileChange}
             />
           </div>
@@ -176,7 +191,7 @@ export function ImportVaultCard() {
             <Button
               data-testid="import-vault-button"
               onClick={handleImport}
-              disabled={importing || !selectedFile}
+              disabled={importing || !selectedFile || !allowed}
             >
               {importing ? 'Importing…' : 'Import vault JSON'}
             </Button>
@@ -193,6 +208,7 @@ export function ImportVaultCard() {
         onOpenChange={handleReplaceDialogOpenChange}
         onConfirm={runImport}
         onDecline={handleReplaceDecline}
+        disclosure={disclosure}
       />
     </>
   );

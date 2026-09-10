@@ -99,7 +99,7 @@ Do not include these unless the implementation explicitly supports them:
 
 - Backend: mock Prisma with an inline `jest.mock('../prisma', () => { ... })` factory that exports `__mockPrisma`; use `supertest` without starting a real server.
 - Frontend/page libraries: mock `@myorganizer/app-api-client`, `next/navigation`, `@myorganizer/auth`, and vault modules at the module boundary.
-- Vault: use deterministic IV/ciphertext stubs; do not leak plaintext outside the tested unit; mock lower-level crypto in higher-level tests.
+- Vault: do not leak plaintext outside the tested unit. Take the crypto seam from the owning project's guide, not from a default — [`web-vault.md`](../../docs/testing/projects/web-vault.md) keys it to what the test claims, [`web-vault-ui.md`](../../docs/testing/projects/web-vault-ui.md) to the subject of the test. Where the guide calls for no crypto, use deterministic IV/ciphertext stubs; never mock a crypto primitive in a suite the guide puts on the real handle.
 - Playwright: use role/label/text selectors where possible; avoid Tailwind class and incidental DOM selectors; seed or intercept data deterministically.
 
 ## Step 5 - Async React And Integration Patterns

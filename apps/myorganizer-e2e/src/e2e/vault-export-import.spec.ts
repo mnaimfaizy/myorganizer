@@ -400,10 +400,29 @@ async function setupVaultWithGroceryData(page: Page) {
 }
 
 /**
+ * Outcome of the import replace dialog's credential comparison.
+ *
+ * - `unchanged`: The bundle's Vault Meta is byte-identical to the local one;
+ *   no checkbox, confirm enabled immediately.
+ * - `unreadable`: The file could not be parsed as a vault export; checkbox
+ *   shown and gates confirm.
+ * - `different-vault`: The bundle holds a different Vault Identity; checkbox
+ *   shown and gates confirm.
+ */
+type ImportDisclosureOutcome = 'unchanged' | 'unreadable' | 'different-vault';
+
+/**
  * Wipe + reload is not an empty Local Vault: reconcile restores from the stub,
  * so Import opens the replace dialog when loadVault() is truthy.
+ *
+ * The dialog derives what the import does to the User's credentials by comparing
+ * the bundle's Vault Meta against the current one. The expected outcome determines
+ * whether the acknowledge checkbox is shown and what the disclosure copy says.
  */
-async function confirmImportReplaceDialog(page: Page) {
+async function confirmImportReplaceDialog(
+  page: Page,
+  outcome: ImportDisclosureOutcome,
+) {
   const replaceDialog = page.getByTestId('import-vault-replace-dialog');
   await expect(replaceDialog).toBeVisible({ timeout: 60000 });
   await expect(
@@ -411,25 +430,77 @@ async function confirmImportReplaceDialog(page: Page) {
       name: "Replace this device's vault?",
     }),
   ).toBeVisible();
-  await expect(
-    replaceDialog.getByText(
-      "The passphrase and Recovery Key will be replaced by the backup's values.",
-    ),
-  ).toBeVisible();
 
-  const confirmReplace = replaceDialog.getByTestId(
-    'import-vault-replace-confirm',
-  );
-  await expect(confirmReplace).toBeDisabled();
+  switch (outcome) {
+    case 'unchanged': {
+      // The bundle's meta is byte-identical to the local one. The dialog says
+      // nothing about credentials changing (the slice's acceptance criterion),
+      // and no checkbox is shown. Confirm is enabled without any tick.
+      await expect(
+        replaceDialog.getByTestId('import-vault-replace-disclosure'),
+      ).toContainText('Nothing about opening your Vault changes');
 
-  const acknowledge = replaceDialog.getByTestId(
-    'import-vault-replace-acknowledge',
-  );
-  await acknowledge.click();
-  await expect(acknowledge).toBeChecked({ timeout: 30000 });
-  await expect(confirmReplace).toBeEnabled();
+      const acknowledge = replaceDialog.locator(
+        '[data-testid="import-vault-replace-acknowledge"]',
+      );
+      await expect(acknowledge).toHaveCount(0);
 
-  await confirmReplace.click();
+      const confirmReplace = replaceDialog.getByTestId(
+        'import-vault-replace-confirm',
+      );
+      await expect(confirmReplace).toBeEnabled();
+      await confirmReplace.click();
+      break;
+    }
+
+    case 'unreadable': {
+      // The file could not be parsed as a vault export. The dialog says so and
+      // shows a checkbox; confirm is disabled until ticked.
+      await expect(
+        replaceDialog.getByTestId('import-vault-replace-disclosure'),
+      ).toContainText('This file could not be read as a vault backup');
+
+      const confirmReplace = replaceDialog.getByTestId(
+        'import-vault-replace-confirm',
+      );
+      await expect(confirmReplace).toBeDisabled();
+
+      const acknowledge = replaceDialog.getByTestId(
+        'import-vault-replace-acknowledge',
+      );
+      await acknowledge.click();
+      await expect(acknowledge).toBeChecked({ timeout: 30000 });
+      await expect(confirmReplace).toBeEnabled();
+
+      await confirmReplace.click();
+      break;
+    }
+
+    case 'different-vault': {
+      // The bundle holds a different Vault. Confirm is disabled until the
+      // checkbox is ticked; the checkbox gates the operation.
+      await expect(
+        replaceDialog.getByTestId('import-vault-replace-disclosure'),
+      ).toContainText(
+        'This backup is a different Vault. Its passphrase and Recovery Key replace',
+      );
+
+      const confirmReplace = replaceDialog.getByTestId(
+        'import-vault-replace-confirm',
+      );
+      await expect(confirmReplace).toBeDisabled();
+
+      const acknowledge = replaceDialog.getByTestId(
+        'import-vault-replace-acknowledge',
+      );
+      await acknowledge.click();
+      await expect(acknowledge).toBeChecked({ timeout: 30000 });
+      await expect(confirmReplace).toBeEnabled();
+
+      await confirmReplace.click();
+      break;
+    }
+  }
 }
 
 test.describe('Vault export/import (E2E)', () => {
@@ -515,7 +586,8 @@ test.describe('Vault export/import (E2E)', () => {
     await importButton.click();
 
     // Reconcile restored a Local Vault from the stub — replace dialog is expected.
-    await confirmImportReplaceDialog(page);
+    // The bundle is the same vault that was exported, so the dialog finds unchanged.
+    await confirmImportReplaceDialog(page, 'unchanged');
 
     await expect(
       page.getByText('Import complete', { exact: true }),
@@ -555,7 +627,8 @@ test.describe('Vault export/import (E2E)', () => {
     await expect(importButton).toBeEnabled({ timeout: 60000 });
     await importButton.click();
 
-    await confirmImportReplaceDialog(page);
+    // The file is not a valid vault export, so disclosure outcome is unreadable.
+    await confirmImportReplaceDialog(page, 'unreadable');
 
     const replaceDialog = page.getByTestId('import-vault-replace-dialog');
 
@@ -661,7 +734,8 @@ test.describe('Vault export/import (E2E)', () => {
     await importButton.click();
 
     // Reconcile restored a Local Vault from the stub — replace dialog is expected.
-    await confirmImportReplaceDialog(page);
+    // The bundle is the same vault that was exported, so the dialog finds unchanged.
+    await confirmImportReplaceDialog(page, 'unchanged');
 
     // Wait for import to complete and vault to be restored
     await waitForOwnedVault(page, E2E_USER_ID);
@@ -724,7 +798,8 @@ test.describe('Vault export/import (E2E)', () => {
       replaceDialog.getByTestId('import-vault-replace-cancel'),
     ).toBeVisible();
 
-    await confirmImportReplaceDialog(page);
+    // Re-importing the same vault without removing it; meta is byte-identical.
+    await confirmImportReplaceDialog(page, 'unchanged');
 
     await expect(
       page.getByText('Import complete', { exact: true }),
