@@ -48,7 +48,7 @@ promoted case is a detector that quietly stopped running.
 
 | Case                                         | Tier       | Since      | History                                                                                                                                                                                                                  |
 | -------------------------------------------- | ---------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `groceries-blob-type-without-fanouts`        | `guard`    | 2026-09-07 | caught in every run, now nine of nine (34344266006, 34345667427, 34351285079)                                                                                                                                            |
+| `groceries-blob-type-without-fanouts`        | `guard`    | 2026-09-07 | caught in every run, now ten of ten (34345667427, 34351285079, 34582767531); void in 34441162698 (turn ceiling), which neither extends nor breaks the streak                                                             |
 | `export-envelope-drops-tasks`                | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught again in 34215499508, the first run after retirement; caught in 34344266006, missed in 34345667427 and 34351285079 |
 | `release-bump-leaves-generated-client-stale` | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit)                                                                                                                     |
 | `signup-password-wrapper-inside-formcontrol` | `frontier` | 2026-09-07 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; one of three needed for promotion                                                                            |
@@ -109,18 +109,18 @@ correcting.
 | `mail-test-setup-assigns-undefined-to-env`    | PR #415, carrying interrupted slice #396's TestScaffold output | agent  | Claude (Haiku 4.5, `test-scaffold` on the Claude harness) |
 
 Catch rate by authorship, across every valid replay of each case recorded in
-this file through Run 45 (2026-09-10). "Valid" excludes void runs (rate limit,
+this file through Run 46 (2026-09-11). "Valid" excludes void runs (rate limit,
 turn exhaustion) and the 2026-09-09 run `34344266006`, which the record itself
 says not to read as evidence (confounded mid-flight, see the "wired-gate
 qualifier" run above).
 
 | Case                                             | Author        | Catches | Valid runs |    Rate |
 | ------------------------------------------------ | ------------- | ------: | ---------: | ------: |
-| `groceries-blob-type-without-fanouts` (guard)    | human         |       9 |          9 |    100% |
+| `groceries-blob-type-without-fanouts` (guard)    | human         |      10 |         10 |    100% |
 | `export-envelope-drops-tasks`                    | human         |       6 |         12 |     50% |
 | `release-bump-leaves-generated-client-stale`     | human         |       2 |          7 |     29% |
 | `import-confirm-is-bare-window-confirm`          | human         |       1 |          7 |     14% |
-| **Human total**                                  |               |  **18** |     **35** | **51%** |
+| **Human total**                                  |               |  **19** |     **36** | **53%** |
 | **Human total, frontier only** (drops the guard) |               |   **9** |     **26** | **35%** |
 | `signup-password-wrapper-inside-formcontrol`     | agent, Cursor |       1 |          8 |   12.5% |
 | `mail-test-setup-assigns-undefined-to-env`       | agent, Claude |       1 |          6 |     17% |
@@ -171,9 +171,12 @@ Newest last. "Cases" is the tier replayed, not the whole set.
 | 2026-09-09 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 7**, 2 of 8 findings | wired-gate qualifier on the suppression rule  |
 | 2026-09-09 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 4 scorable**, 3 void | obligation worklist live (pre-fix triggers)   |
 | 2026-09-10 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 6 scorable**, 1 void | corrected triggers; first dispatched run      |
+| 2026-09-11 | `claude-sonnet-5` | 1 (`guard`)    | **1 of 1**                  | reviewer containment and the allowlist check  |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
-to 60 turns each.
+to 60 turns each. Run 46 was one guard case: 56 turns of an 80-turn budget, 26
+permission denials, $2.93. Its reasoning is
+[the 2026-09-11 containment brief](../research/2026-09-11-the-guard-came-back-with-the-refusals-intact.md).
 
 ### Run 45 (2026-09-10), the first deliberately dispatched replay
 
