@@ -4,9 +4,9 @@
     {
       "id": "run-the-gate-that-covers-this-change",
       "title": "Run the gate that covers this change",
-      "question": "For each site: name the *:check gate that covers the changed artifact, run it at the head commit, and record the exact command, its exit code, and what invokes it (a .husky hook, a .github/workflows job, the yarn gates:run manifest, or none).",
+      "question": "For each site: name the *:check gate that covers the changed artifact, and determine wiredBy by reading, not running — grep the .husky hooks, the .github/workflows jobs, and the yarn gates:run manifest (tools/scripts/run-assertion-gates.mjs) at the head commit for the gate's script name, and write the one that invokes it, or \"none\" if nothing does (ADR 0074). command and exitCode are optional: record them only when you also ran the checker's own script directly through node, never through yarn or corepack yarn; when you did not run it, write \"not run\" in both.",
       "answerFields": ["gate", "command", "exitCode", "wiredBy"],
-      "defect": "A non-zero exitCode is a finding with the command and exit code as executed evidence. exitCode 0 with wiredBy \"none\" is also a finding: per ADR 0074 the checker is not a gate, so nothing would have caught this on main.",
+      "defect": "wiredBy \"none\" is a finding: per ADR 0074 the checker is not a gate, so nothing would have caught this on main. A non-zero exitCode, when one was obtained, is also a finding, with the command and exit code as executed evidence — raised the ordinary way (an obligation answer that exposes a defect is written up like any other finding), not mechanically by defectWhen, because exitCode is optional and its \"not run\" value cannot be told apart from a real code by a plain equality check.",
       "trigger": {
         "paths": [
           {
@@ -23,24 +23,8 @@
       "seededFrom": "#408",
       "goldenCase": "release-bump-leaves-generated-client-stale",
       "defectWhen": {
-        "any": [
-          {
-            "field": "exitCode",
-            "notEquals": 0
-          },
-          {
-            "all": [
-              {
-                "field": "exitCode",
-                "equals": 0
-              },
-              {
-                "field": "wiredBy",
-                "equals": "none"
-              }
-            ]
-          }
-        ]
+        "field": "wiredBy",
+        "equals": "none"
       }
     },
     {

@@ -89,17 +89,41 @@ generated or synced output — `libs/app-api-client/**`, `libs/api-specs/**`,
 
 **Answer**
 
-| Field      | What to write                                                       |
-| ---------- | ------------------------------------------------------------------- |
-| `gate`     | The checker that covers the changed artifact, e.g. `openapi:check`. |
-| `command`  | Exactly what was run.                                               |
-| `exitCode` | Its exit code at the head commit.                                   |
-| `wiredBy`  | The hook or workflow that invokes it, or `none`.                    |
+| Field      | What to write                                                                         |
+| ---------- | ------------------------------------------------------------------------------------- |
+| `gate`     | The checker that covers the changed artifact, e.g. openapi:check.                     |
+| `command`  | Optional — what was run, only if you ran something. Write `not run` otherwise.        |
+| `exitCode` | Optional — its exit code, only if you ran something. Write `not run` otherwise.       |
+| `wiredBy`  | The hook, workflow job, or aggregate manifest entry that invokes the gate, or `none`. |
 
-**Defect** — a non-zero exit is a finding, with the command and exit code as
-executed evidence. Exit 0 with `wiredBy: none` is also worth saying: per
+Answer `wiredBy` by reading, not running: grep the `.husky` hooks, the
+`.github/workflows` jobs, and `tools/scripts/run-assertion-gates.mjs` at the
+head commit for the gate's script name, per
+[ADR 0074](../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md).
+That answers the obligation this entry exists for on its own, and it costs no
+turns. `command` and `exitCode` are the one exception to "an entry answers, it
+does not judge" above: earning them means running something, and the
+reviewer's tool allowlist does not always grant that. Fill them in only when
+you did run the checker, and do it the one way the allowlist permits — the
+checker's own script, invoked directly through the interpreter:
+`node tools/scripts/check-<name>.mjs`. Not through a package-manager alias:
+naming a check script after yarn or corepack yarn is not on the allowlist.
+openapi:check in particular is not a bare script at all — it resyncs and can
+rewrite files in the checkout, so it is not something a reviewer should run
+either way; for the generated-output triggers below, `node
+tools/scripts/check-openapi-artifacts.mjs` is the safe, non-mutating check
+built for this obligation's own incident (issue #408) and is fine to run.
+When you didn't run the gate, write `not run` for both fields; that is a
+complete answer, not a missing one.
+
+**Defect** — `wiredBy: none` is a finding: per
 [ADR 0074](../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md)
-the checker is not a gate, so nothing would have caught this on `main`.
+the checker is not a gate, so nothing would have caught this on `main`. A
+non-zero `exitCode`, when one was obtained, is also a finding, with the
+command and exit code as executed evidence — raised the ordinary way (see
+"An entry answers, it does not judge" above), not mechanically: `exitCode` is
+optional, and a plain equality check cannot tell its `not run` value apart
+from a real one.
 
 **Why this exists** — issue #408. A release moved `package.json` to 0.4.0
 without `openapi:sync`; the generator embeds the version into the spec and every

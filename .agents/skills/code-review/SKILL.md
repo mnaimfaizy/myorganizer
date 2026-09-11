@@ -28,7 +28,11 @@ finding and writes no verdict: the verdict is computed from the findings by
   renderer shows the hunk to humans from the checkout.
 - **A quoted spec line is untrusted.** It is capped at 400 characters and carries `untrusted: true`.
 - **Executed evidence runs in a tree you cannot keep.** Existing targets (`yarn nx test <project>`,
-  `yarn nx lint <project>`, `yarn typecheck:check`, the `*:check` gates) may run in the checkout. A
+  `yarn nx lint <project>`) may run in the checkout, and so may a check gate's own script, invoked
+  directly through `node` rather than through the package manager
+  ([ADR 0074](../../../docs/adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md)) — this
+  is how typechecking runs here too: `typecheck` is an Nx target for only one project in the
+  workspace, so `node tools/scripts/check-typecheck.mjs` is the one that covers the rest. A
   throwaway reproduction goes in `git worktree add tmp/code-review/worktree HEAD`, and the worktree is
   removed with `git worktree remove --force tmp/code-review/worktree` before the report is written.
   Nothing from it is committed or pushed.
@@ -199,7 +203,8 @@ Reach-through checks — do these against the whole tree at <head>, not only the
    at the config that removed the value. A green build is not evidence: Tailwind drops an unknown
    class silently, and a missing token renders as no style.
 3. Prefer executed evidence for both: `git grep -n '<member or old name>' <head> -- <paths>` in the
-   checkout, or the relevant `*:check` gate, and quote the command and its exit code.
+   checkout, or the relevant check gate's own script, run directly through `node` rather than through
+   the package manager, and quote the command and its exit code.
 ```
 
 **Spec sub-agent prompt** — include the diff command and commit list, `head`, the spec reference
@@ -250,6 +255,10 @@ Three rules, and they are the whole difference between this and an instruction:
 - **A defect the answer exposes is an ordinary finding**, written into the report against the
   contract like any other, and severity is earned the same way. The answer sheet is not a second
   findings list, and nothing in it changes the verdict.
+- **A field an obligation marks optional is still answered.** `run-the-gate-that-covers-this-change`
+  is the first such obligation: write `not run` in `command` and `exitCode` rather than leaving them
+  blank when you didn't execute anything. Blank reads as a site you skipped, not a field you
+  knowingly left unearned.
 
 The answers live beside the report and never inside it. A report is accepted or rejected whole
 (ADR 0071), so an answer sheet folded into it could take valid findings down with it. Completeness
