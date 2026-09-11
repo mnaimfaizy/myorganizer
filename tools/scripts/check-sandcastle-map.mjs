@@ -291,10 +291,14 @@ const prdBase = () => {
   const m = mainSrc.match(/^const prdGateBase = gitRefExists\('([^']+)'\)/m);
   return m ? m[1] : '?';
 };
+// The slug is computed by `prdBranchSlug` rather than inline since ADR 0076
+// (a slug may not begin with a digit run, or the resolver reads it as an issue
+// number). The atlas claims the branch SHAPE, `feat/<slug>`, which is unchanged
+// — so the anchor matches the shape and not the expression that fills it.
 const FEAT_BRANCH = {
   file: MAIN,
   in: 'main',
-  re: /^\s*const branch = `feat\/\$\{slug\}`;$/gm,
+  re: /^\s*const branch = `feat\/\$\{[^}]+\}`;$/gm,
 };
 
 const SOURCE_ASSERTIONS = {

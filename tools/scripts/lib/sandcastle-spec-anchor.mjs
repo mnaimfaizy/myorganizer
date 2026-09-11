@@ -17,6 +17,8 @@
 // A pull request body is deliberately NOT a spec source, so this cannot be
 // solved by having the agent describe its own work — see the same ADR.
 
+import { discoverSpec } from '../review/resolve-spec.mjs';
+
 /** The reference keywords `resolve-spec.mjs` matches; `Closes` is one of them. */
 const CLOSING_KEYWORD = 'Closes';
 
@@ -49,14 +51,43 @@ export const specAnchorMessage = ({ branch, issue, title }) => {
 };
 
 /**
- * Pure: whether a branch already carries its issue where the resolver looks
- * first. A branch named `<type>/<issue>-<slug>` needs no anchor; `feat/<slug>`
- * and the reserved `claude/…` / `copilot/…` prefixes do.
+ * Pure: whether a branch's NAME already resolves to this exact issue, so an
+ * anchor would say nothing the resolver does not already know.
  *
- * Kept in step with `BRANCH_ISSUE` in tools/scripts/review/resolve-spec.mjs:
- * the anchor exists to cover exactly what that regex misses.
+ * This asks the resolver rather than restating its regex. A copy of the pattern
+ * is not a contract with it: it agrees on whatever examples a test lists and
+ * drifts silently on everything else.
+ *
+ * The comparison is against `issue`, not merely against the SHAPE of a branch
+ * name. `feat/2026-roadmap` matches the shape while the `2026` is a slug
+ * fragment, and treating that as "already carried" skips the anchor on exactly
+ * the branch that needed one — see `prdBranchSlug` for the other half.
  *
  * @param {string} branch
+ * @param {number} issue
  */
-export const branchNameCarriesIssue = (branch) =>
-  /^[a-z]+\/(\d+)-/.test(branch);
+export const branchNameCarriesIssue = (branch, issue) => {
+  const found = discoverSpec({ headRef: branch, commits: [] });
+  return found.foundBy === 'branch' && found.ref === `#${issue}`;
+};
+
+// A slug is a title, and a title may begin with a number: "2026 roadmap" slugs
+// to `2026-roadmap`, and `feat/2026-roadmap` is indistinguishable from a branch
+// deliberately named after issue 2026. The resolver then reads the slug fragment
+// as the issue and never reaches the anchor commit — silently reviewing against
+// the wrong ticket when that number exists, and failing the resolve when it does
+// not. A slug cannot begin with a digit run, so prefix one that would.
+const LEADING_DIGITS = /^\d+(?:-|$)/;
+
+/**
+ * Pure: the branch slug for a PRD title, safe to sit after `feat/`.
+ *
+ * @param {string} title
+ */
+export const prdBranchSlug = (title) => {
+  const slug = title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+  return LEADING_DIGITS.test(slug) ? `prd-${slug}` : slug;
+};

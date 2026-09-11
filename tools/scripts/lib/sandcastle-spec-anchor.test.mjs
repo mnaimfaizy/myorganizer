@@ -4,6 +4,7 @@ import test from 'node:test';
 import { discoverSpec } from '../review/resolve-spec.mjs';
 import {
   branchNameCarriesIssue,
+  prdBranchSlug,
   specAnchorMessage,
 } from './sandcastle-spec-anchor.mjs';
 
@@ -68,20 +69,49 @@ test('a missing or nonsense issue number is refused, not silently anchored', () 
   );
 });
 
-test('branchNameCarriesIssue agrees with the resolver about every prefix', () => {
-  const cases = [
-    'slice/720-code-review-trust',
-    'fix/292-graphify-extraction-gaps',
+// The anchor is skipped only when the branch name resolves to THIS issue. A
+// branch naming some other number is a different branch, not a carried issue.
+test('a branch carries an issue only when the name resolves to that issue', () => {
+  assert.equal(branchNameCarriesIssue('slice/720-trust', 720), true);
+  assert.equal(branchNameCarriesIssue('fix/292-graphify', 292), true);
+  assert.equal(branchNameCarriesIssue('slice/720-trust', 713), false);
+  for (const branch of [
     'feat/code-review-trust-harness',
     'claude/add-spec-anchor',
     'copilot/fix-thing',
     'release/v1.2.3',
-  ];
-  for (const branch of cases) {
+  ]) {
+    assert.equal(branchNameCarriesIssue(branch, 713), false, branch);
+  }
+});
+
+// Both halves of the same defect: a PRD titled "2026 roadmap" slugs to
+// `2026-roadmap`, whose branch matches the resolver's `<type>/<issue>-` shape
+// while the number is a slug fragment. Unguarded, the anchor is skipped AND the
+// resolver reads #2026 as the spec.
+test('a PRD title starting with a number does not mint a branch-name issue', () => {
+  for (const title of ['2026 Roadmap cleanup', '404 page redesign', '12']) {
+    const branch = `feat/${prdBranchSlug(title)}`;
     assert.equal(
-      branchNameCarriesIssue(branch),
-      discoverSpec({ headRef: branch, commits: [] }).foundBy === 'branch',
+      discoverSpec({ headRef: branch, commits: [] }).foundBy,
+      'none',
       branch,
     );
+    assert.equal(branchNameCarriesIssue(branch, 713), false, branch);
   }
+});
+
+test('an ordinary PRD title slugs unchanged', () => {
+  assert.equal(
+    prdBranchSlug('Code review trust: harness containment'),
+    'code-review-trust-harness-containment',
+  );
+  assert.equal(prdBranchSlug('Vault v2 rollout'), 'vault-v2-rollout');
+});
+
+// The whole point of asking the resolver instead of copying its regex: a branch
+// type the copy never anticipated is classified correctly with no edit here.
+test('an unanticipated branch type is classified by the resolver, not by a list', () => {
+  assert.equal(branchNameCarriesIssue('perf/851-vault-unlock', 851), true);
+  assert.equal(branchNameCarriesIssue('spike/9-idea', 9), true);
 });

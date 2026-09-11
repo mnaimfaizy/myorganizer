@@ -48,14 +48,23 @@ identically into the code and into the summary of the code.
    already carries the number; the commit is what survives integration into a branch whose name
    does not.
 
-4. The message is built by `tools/scripts/lib/sandcastle-spec-anchor.mjs`, whose tests assert
-   against the real `discoverSpec` rather than restating its regex. The two are a contract, and a
-   test that restates the pattern passes while the contract breaks.
+4. The message is built by `tools/scripts/lib/sandcastle-spec-anchor.mjs`, which **asks**
+   `discoverSpec` whether a branch name already carries the issue rather than restating its regex.
+   A copy of the pattern is not a contract with it: the copy agrees on whatever examples a test
+   lists and drifts silently on everything else, and a test enumerating six branch names is that
+   restatement by example.
 
-5. Agent-orchestrated work originates from a Slice Issue or a PRD Issue, so the reference always
+5. "Already carried" means the branch name resolves to **this** issue, not that it matches the
+   shape of a name that carries one. `feat/2026-roadmap` matches the shape while its `2026` is a
+   slug fragment, so a shape test skips the anchor on exactly the branch that needed it. The other
+   half of the same defect is that the resolver would then read `#2026` as the spec — reviewing
+   against the wrong ticket when that number exists, and failing the resolve when it does not. A
+   PRD slug therefore cannot begin with a digit run, and `prdBranchSlug` prefixes one that would.
+
+6. Agent-orchestrated work originates from a Slice Issue or a PRD Issue, so the reference always
    points at something a reviewer can read. Nothing in the orchestrator invents an issue number.
 
-6. **A pull request body is not a spec source**, for the reason above. If a future change admits
+7. **A pull request body is not a spec source**, for the reason above. If a future change admits
    one, the envelope must record the spec as author-derived and it must not satisfy the tightening
    step — it is weaker evidence than a tracked issue, not equal evidence from a different place.
    This is recorded in the skill beside the discovery order, not only here.
@@ -72,6 +81,12 @@ identically into the code and into the summary of the code.
 - Branches created before this decision have no anchor. They resolve a spec only if one of their
   commits happens to reference an issue, and otherwise review one axis, as they did before.
 
-- `branchNameCarriesIssue` duplicates the resolver's branch regex. The duplication is deliberate and
-  guarded: one test asserts the two agree across every prefix the repository uses, so the copy
-  cannot drift into anchoring a branch that needed no anchor, or skipping one that did.
+- `sandcastle-spec-anchor.mjs` imports from `tools/scripts/review/resolve-spec.mjs`, so the
+  orchestrator now depends on a review script. That edge is deliberate: it is the only way the two
+  cannot disagree, and it is one direction only — the resolver knows nothing about sandcastle.
+
+- **Observed.** The commit-reference path was exercised on this decision's own branch:
+  `feat/code-review-trust-harness-containment-finding-identity-and-escaped-defect-measurement`
+  carries no issue number, and `review:spec` resolved `#720 (found by commits)` from the slice
+  commit, with both axes running against the resolved issue. What is still unobserved is the
+  orchestrator writing the anchor on a branch it created — that needs a `dispatch-agents` PRD run.

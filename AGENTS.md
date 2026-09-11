@@ -184,9 +184,10 @@ A reserved-prefix branch carries no issue number in its name, so it carries the 
 commit** instead — a `Closes #<issue>` line, which `/code-review` reads through the commit step of
 its spec discovery order ([ADR 0076](docs/adr/0076-an-agent-branch-carries-its-issue-in-its-first-commit.md)).
 `yarn dispatch-agents` writes that commit itself when it creates a `feat/<prd-slug>` integration
-branch; on a `claude/…` or `copilot/…` branch the agent writes it into its own first commit. A
-pull request body is **not** a spec source, so a branch that carries no reference anywhere reviews
-one axis instead of two — do not leave one uncarried.
+branch. On a `claude/…` or `copilot/…` branch nothing writes it for you: **end your first commit's
+body with `Closes #<issue>`** (or `Refs #<issue>` when the work should not close the issue). A pull
+request body is **not** a spec source, so a branch that carries no reference anywhere reviews one
+axis instead of two — do not leave one uncarried.
 
 ## ⚠️ Tiered Quality Gates (ADR 0012)
 

@@ -44,6 +44,7 @@ import {
 } from '../tools/scripts/lib/sandcastle-subagent-trace.mjs';
 import {
   branchNameCarriesIssue,
+  prdBranchSlug,
   specAnchorMessage,
 } from '../tools/scripts/lib/sandcastle-spec-anchor.mjs';
 
@@ -293,7 +294,7 @@ function gitCmd(args: string[]): string {
  * runs and therefore contain it already.
  */
 function anchorBranchToIssue(branch: string, issue: number, title?: string) {
-  if (branchNameCarriesIssue(branch)) return;
+  if (branchNameCarriesIssue(branch, issue)) return;
   const tree = gitCmd(['rev-parse', `${branch}^{tree}`]);
   const commit = gitCmd([
     'commit-tree',
@@ -741,11 +742,7 @@ function planPrdRun(prd: number): RunPlan {
   ]);
 
   const name = prdIssue.title.replace(/^\[PRD\]\s*/i, '').trim();
-  const slug = name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
-  const branch = `feat/${slug}`;
+  const branch = `feat/${prdBranchSlug(name)}`;
 
   console.log(`\nPRD #${prd}: ${name}`);
   console.log(`Feature branch:  ${branch} (local only — never pushed)`);
