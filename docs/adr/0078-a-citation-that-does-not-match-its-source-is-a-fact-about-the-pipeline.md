@@ -51,7 +51,9 @@ fails the pipeline check.**
 2. **The check reads the quoted line out of the tree at the reviewed head and compares it.** Three
    ways it fails: the file is not there at head, the line is past the end of the file, or the text
    differs. Comparison is on collapsed whitespace, so re-indentation is the same line and different
-   content is not.
+   content is not — and for that reason a quotation that collapses to nothing is refused outright,
+   because `" "` would otherwise match every blank line in the tree and satisfy a citation without
+   reading anything.
 3. **A mismatch is a fact about the pipeline, not a judgment about the diff.** It says the
    reviewer's own answer sheet does not hold up. That is the `Agent Review Ran` kind of fact,
    alongside "wrote a report the contract rejected", and it is emphatically **not a finding**: a

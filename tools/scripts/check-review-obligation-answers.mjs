@@ -3,8 +3,8 @@
 //
 //   node tools/scripts/check-review-obligation-answers.mjs <worklist.json> <answers.json> [--out <report.json>]
 //
-// This never fails a review. An unanswered obligation is a fact about the
-// review's thoroughness — neither a fact about the pipeline nor a judgment
+// Thoroughness never fails a review. An unanswered obligation is a fact about
+// the review's thoroughness — neither a fact about the pipeline nor a judgment
 // about the diff (ADR 0073), and the finding contract is untouched by it
 // (ADR 0071: a report is accepted or rejected whole, so a malformed answer
 // sheet must not be able to take the findings down with it).
@@ -81,12 +81,39 @@ const gitSource = (head) => (file) => {
   }
 };
 
+/**
+ * Whether the reviewed head is a commit this clone actually has.
+ *
+ * `git show <head>:<file>` fails the same way for a missing path and for a ref
+ * that does not resolve, so without this the wrong head reports every
+ * quotation as citing a file that is not in the tree — the script's loudest
+ * accusation about the reviewer, made when the reviewer did nothing wrong.
+ * Resolving once tells the two apart: a head nobody can read is exit 2, could
+ * not run, not exit 1.
+ */
+const gitHasCommit = (head) => {
+  try {
+    execFileSync(
+      'git',
+      ['rev-parse', '--verify', '--quiet', `${head}^{commit}`],
+      {
+        stdio: ['ignore', 'ignore', 'ignore'],
+      },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 /** One line per failed quotation, naming what was claimed and what is there. */
 export const citationLine = (f) => {
   const at = `${f.key} field ${f.field}`;
   switch (f.reason) {
     case 'uncited':
       return `review-obligations-check: ${at} claims something about source and quotes no line`;
+    case 'quotes-nothing':
+      return `review-obligations-check: ${at} cites ${f.cited.file}:${f.cited.line} and quotes nothing but whitespace`;
     case 'file-not-found':
       return `review-obligations-check: ${at} cites ${f.cited.file}, which is not in the tree at head`;
     case 'line-out-of-range':
@@ -99,7 +126,10 @@ export const citationLine = (f) => {
   }
 };
 
-export const main = (argv, { source = gitSource } = {}) => {
+export const main = (
+  argv,
+  { source = gitSource, hasHead = gitHasCommit } = {},
+) => {
   const bail = cannotRun('review-obligations-check');
   const { positional, flags } = parseArgs(argv);
   const [worklistPath, answersPath] = positional;
@@ -121,6 +151,14 @@ export const main = (argv, { source = gitSource } = {}) => {
     for (const line of formatIssues(err)) console.error(`  ${line}`);
     process.exit(2);
   }
+
+  // Only when something is going to be read: a worklist that cites nothing
+  // never resolves the head, so it is not refused for one.
+  const cites = worklist.selected.some((o) => o.citedFields?.length);
+  if (cites && !hasHead(worklist.head))
+    bail(
+      `${worklistPath}: head ${worklist.head} is not a commit in this clone, so no quotation could be compared to anything`,
+    );
 
   let report;
   try {

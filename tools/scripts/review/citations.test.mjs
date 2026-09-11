@@ -10,6 +10,8 @@
 // what a fixture was built to say.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
@@ -119,6 +121,39 @@ test('a quotation whose line no longer exists is a mismatch, not a pass', () => 
   assert.equal(v.ok, false);
   assert.equal(v.reason, 'line-out-of-range');
   assert.equal(v.lineCount, 3);
+});
+
+test('a quotation of nothing but whitespace is refused before anything is read', () => {
+  // The cheapest forgery available once whitespace is presentation: `" "`
+  // collapses to the empty string and would otherwise match every blank line
+  // in the tree, satisfying a citation without reading a thing.
+  const v = verifyCitation({ file: 'libs/a.ts', line: 1, text: '   ' }, () => {
+    throw new Error('the tree must not be read for a quotation of nothing');
+  });
+  assert.equal(v.ok, false);
+  assert.equal(v.reason, 'quotes-nothing');
+});
+
+test('the trailing newline is not a line anybody can cite', () => {
+  // `split('\n')` on a file ending in a newline yields a trailing empty
+  // element. Counting it reports one more line than the file has, in the one
+  // message whose whole job is to say how many there are.
+  const withNewline = (file) =>
+    file === 'libs/n.ts' ? 'const x = 1;\nconst y = 2;\n' : null;
+  const v = verifyCitation(
+    { file: 'libs/n.ts', line: 3, text: 'const z = 3;' },
+    withNewline,
+  );
+  assert.equal(v.reason, 'line-out-of-range');
+  assert.equal(v.lineCount, 2);
+  // And the last real line still verifies.
+  assert.deepEqual(
+    verifyCitation(
+      { file: 'libs/n.ts', line: 2, text: 'const y = 2;' },
+      withNewline,
+    ),
+    { ok: true },
+  );
 });
 
 test('a quotation from a file that is not in the tree at head is a mismatch', () => {
@@ -249,6 +284,33 @@ const replay = (worklistFile, answersFile) =>
     [CHECKER, join(FIXTURES, worklistFile), join(FIXTURES, answersFile)],
     { encoding: 'utf8' },
   );
+
+test('a head this clone does not have is "could not run", not "the reviewer is wrong"', () => {
+  // `git show <head>:<file>` fails identically for a missing path and for a ref
+  // that does not resolve, so without the guard a mistyped head reports every
+  // quotation as citing a file that is not in the tree — the script's loudest
+  // accusation about the reviewer, made when the reviewer did nothing wrong.
+  const dir = mkdtempSync(join(tmpdir(), 'review-citations-'));
+  try {
+    const w = join(dir, 'worklist.json');
+    const a = join(dir, 'answers.json');
+    writeFileSync(w, JSON.stringify({ ...worklist(), head: '0'.repeat(40) }));
+    writeFileSync(
+      a,
+      JSON.stringify({
+        ...sheet({ a: { file: 'libs/a.ts', line: 1, text: 'const x = 1;' } }),
+        head: '0'.repeat(40),
+      }),
+    );
+    const out = spawnSync(process.execPath, [CHECKER, w, a], {
+      encoding: 'utf8',
+    });
+    assert.equal(out.status, 2, out.stderr);
+    assert.match(out.stderr, /is not a commit in this clone/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test('run 45: the signup sheet asserted where it should have cited', () => {
   // Sites 232 and 267 are the two the incident is about, and the two the

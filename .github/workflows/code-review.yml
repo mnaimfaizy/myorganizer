@@ -485,9 +485,10 @@ jobs:
   # unrelated reasons and only one of them is about your code: "Agent Review
   # Ran" fails when the reviewer crashed, was rate-limited, hit the turn
   # ceiling before writing a report (whether or not a refused permission
-  # caused it), or wrote a report the contract rejected, which is a broken
-  # gate; this job fails when the reviewer read the diff and asked for
-  # changes, which is a judgment.
+  # caused it), wrote a report the contract rejected, or wrote an obligation
+  # answer sheet that does not hold up against the tree at head (ADR 0078) —
+  # every one of them a broken gate; this job fails when the reviewer read the
+  # diff and asked for changes, which is a judgment.
   #
   # They are separate checks because they deserve different answers. A reviewer
   # measured at roughly one catch in seven on the golden set's frontier cases

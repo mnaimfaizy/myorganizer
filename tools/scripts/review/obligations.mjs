@@ -384,10 +384,21 @@ const normalizeSource = (s) => String(s).replace(/\s+/g, ' ').trim();
  * @returns {{ok: true} | {ok: false, reason: string, actual?: string, lineCount?: number}}
  */
 export const verifyCitation = (citation, readSource) => {
+  // A quotation with no content in it is not a quotation. Whitespace is
+  // presentation everywhere else in this comparison, which is exactly what
+  // makes `text: " "` a forgery that would otherwise match every blank line in
+  // the tree — the cheapest possible way to satisfy a citation without reading
+  // anything, and the failure this check exists to stop.
+  if (normalizeSource(citation.text) === '')
+    return { ok: false, reason: 'quotes-nothing' };
   const source = readSource(citation.file);
   if (source === null || source === undefined)
     return { ok: false, reason: 'file-not-found' };
+  // A file ending in a newline splits to a trailing empty element that is not
+  // a line anybody can cite. Counting it would report one more line than the
+  // file has, in the message whose whole job is to say how many there are.
   const lines = source.split('\n');
+  if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
   if (
     !Number.isInteger(citation.line) ||
     citation.line < 1 ||
