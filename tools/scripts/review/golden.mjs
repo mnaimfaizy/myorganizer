@@ -30,7 +30,7 @@ import { FINDING_AXES, FINDING_SEVERITIES, findingId } from './schema.mjs';
 // only one of two hand-typed lists would let the filter accept a case the
 // validator rejects — the same disagreement the single filter removed.
 export const REVIEW_GOLDEN_SET_PATH = join(...GOLDEN_SET_PATH.split('/'));
-export const GOLDEN_SET_SCHEMA_VERSION = 3;
+export const GOLDEN_SET_SCHEMA_VERSION = 4;
 
 /**
  * A case's tier decides how often it is replayed (ADR 0072).
@@ -126,30 +126,58 @@ export function assertGoldenSet(set, source = 'golden set') {
     if (typeof c.minRecall !== 'number' || c.minRecall < 0 || c.minRecall > 1)
       fail(`${where}: minRecall must be between 0 and 1`);
   }
-  // Retired cases are kept, not deleted. A case leaves the replay when it turns
-  // out to be unwinnable rather than hard — most often because the incident was
-  // fixed by adding a gate whose defect the reviewer is told not to report
-  // (ADR 0074: a wired gate suppresses; a checker nothing runs does not).
-  // Deleting such a case loses the reason and invites the next person to add it
-  // back; the id stays reserved and the reason stays readable.
+  // A case leaves `cases` for one of two reserved buckets, and both are kept,
+  // not deleted, so the id cannot be silently re-added. Retirement says a case
+  // cannot be won: a wired gate already suppresses its defect (ADR 0074), so it
+  // carries `reason`. Parking says the opposite — a case is merely hard, still
+  // never caught, with no reason to think it unwinnable — so filing it as
+  // retired would be a lie in the field that state exists to keep honest, and
+  // it carries `reentryCondition` instead: not why the case cannot be won, but
+  // the written, checkable fact that returns it to `cases`. The shape the two
+  // buckets share is asserted by one helper so a field added to one cannot
+  // drift from the other.
+  const assertReservedEntry = (
+    entry,
+    bucket,
+    narrativeField,
+    narrativeMustSay,
+  ) => {
+    const where = `${bucket} ${entry.id ?? '(no id)'}`;
+    if (typeof entry.id !== 'string' || !ID.test(entry.id))
+      fail(`${where}: id must be a lowercase slug`);
+    if (ids.has(entry.id))
+      fail(`${entry.id} is already a case, retired, or parked entry`);
+    ids.add(entry.id);
+    if (typeof entry.title !== 'string' || !entry.title)
+      fail(`${where}: no title`);
+    if (typeof entry.incident !== 'string' || !entry.incident)
+      fail(`${where}: incident must cite the ADR or issue it comes from`);
+    if (typeof entry[narrativeField] !== 'string' || !entry[narrativeField])
+      fail(`${where}: ${narrativeField} must ${narrativeMustSay}`);
+    if (entry.base !== undefined && !SHA.test(entry.base))
+      fail(`${where}: base must be a full 40-hex SHA`);
+    if (entry.head !== undefined && !SHA.test(entry.head))
+      fail(`${where}: head must be a full 40-hex SHA`);
+  };
+  if (set.parked !== undefined) {
+    if (!Array.isArray(set.parked)) fail('parked must be an array');
+    for (const p of set.parked)
+      assertReservedEntry(
+        p,
+        'parked',
+        'reentryCondition',
+        'say what returns this case to cases',
+      );
+  }
   if (set.retired !== undefined) {
     if (!Array.isArray(set.retired)) fail('retired must be an array');
-    for (const r of set.retired) {
-      const where = `retired ${r.id ?? '(no id)'}`;
-      if (typeof r.id !== 'string' || !ID.test(r.id))
-        fail(`${where}: id must be a lowercase slug`);
-      if (ids.has(r.id)) fail(`${r.id} is both a case and retired`);
-      ids.add(r.id);
-      if (typeof r.title !== 'string' || !r.title) fail(`${where}: no title`);
-      if (typeof r.incident !== 'string' || !r.incident)
-        fail(`${where}: incident must cite the ADR or issue it comes from`);
-      if (typeof r.reason !== 'string' || !r.reason)
-        fail(`${where}: reason must say why the case cannot be won`);
-      if (r.base !== undefined && !SHA.test(r.base))
-        fail(`${where}: base must be a full 40-hex SHA`);
-      if (r.head !== undefined && !SHA.test(r.head))
-        fail(`${where}: head must be a full 40-hex SHA`);
-    }
+    for (const r of set.retired)
+      assertReservedEntry(
+        r,
+        'retired',
+        'reason',
+        'say why the case cannot be won',
+      );
   }
   return set;
 }

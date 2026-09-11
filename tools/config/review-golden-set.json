@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 3,
-  "comment": "The code-review golden set (ADR 0071, Consequences). Each case is a real commit range from this repository's history in which a defect the repo later documented was merged, and the finding a reviewer should have raised about it. `source` and `rule` are case-insensitive patterns because the reviewer phrases a rule in the source's words; `files` lists every path at which the same defect is fairly located. Recall is matched over expected and a case passes at or above `minRecall`. Each case carries a `tier` (ADR 0072). A `frontier` case is one the reviewer misses; it is the reason to run the replay and runs whenever anything that produces a review changes. A `guard` case is one the reviewer catches reliably; it carries no new information per run and exists to catch a brief or contract edit silently undoing something that works, so it runs only when the brief or the finding contract changes. Promotion to `guard` takes three consecutive catches cited in `tierEvidence`; demotion takes one miss. Replayed by .github/workflows/review-golden-replay.yml, which skips a push whose head commit message contains [skip replay]; scored by tools/scripts/review/score-golden-case.mjs; shape and ranges asserted by tools/scripts/check-review-golden-set.mjs. Standards are always today's: the question a case asks is whether the current reviewer would catch the defect, not whether the rule existed when it merged. Grows by attribution: when a merged defect is traced to the pull request that introduced it, its range and expected finding go here, with the attribution evidence in the incident line. A squash-merged pull request uses the squash commit as head and its first parent as base.",
+  "schemaVersion": 4,
+  "comment": "The code-review golden set (ADR 0071, Consequences), re-pointed by ADR 0072's amendment as a regression harness for the obligations in tools/config/review-obligations.json: four of the six cases below are the goldenCase an obligation cites, and a case's own incident line still names the defect. Each case is a real commit range from this repository's history in which a defect the repo later documented was merged, and the finding a reviewer should have raised about it. `source` and `rule` are case-insensitive patterns because the reviewer phrases a rule in the source's words; `files` lists every path at which the same defect is fairly located. Recall is matched over expected and a case passes at or above `minRecall`. Each case carries a `tier` (ADR 0072). A `frontier` case is one the reviewer misses; it is the reason to run the replay and runs whenever anything that produces a review changes. A `guard` case is one the reviewer catches reliably; it carries no new information per run and exists to catch a brief or contract edit silently undoing something that works, so it runs only when the brief or the finding contract changes. Promotion to `guard` takes three consecutive catches cited in `tierEvidence`; demotion takes one miss. Replayed by .github/workflows/review-golden-replay.yml, which skips a push whose head commit message contains [skip replay]; scored by tools/scripts/review/score-golden-case.mjs; shape and ranges asserted by tools/scripts/check-review-golden-set.mjs. Standards are always today's: the question a case asks is whether the current reviewer would catch the defect, not whether the rule existed when it merged. Grows by attribution: when a merged defect is traced to the pull request that introduced it, its range and expected finding go here, with the attribution evidence in the incident line. A squash-merged pull request uses the squash commit as head and its first parent as base. A case leaves `cases` for `retired` when it is unwinnable rather than hard — a wired gate already suppresses its defect (ADR 0074) — and for `parked` when it is merely hard: never caught, but with no reason to think it cannot be won. A parked entry keeps its id reserved exactly as a retired one does, and carries `reentryCondition` in place of `reason`: the fact, checkable independently of anyone's opinion, that puts the case back in `cases`.",
   "cases": [
     {
       "id": "groceries-blob-type-without-fanouts",
@@ -55,50 +55,6 @@
         }
       ],
       "minRecall": 1
-    },
-    {
-      "id": "sync-bookmarks-without-restore-or-meta-push",
-      "title": "Sync Bookmarks and separate Vault Meta convergence arrive without a restore that clears them or a path that pushes a local wrapping",
-      "incident": "issues #617 and #589, fixed by PRs #620 and #594, introduced by PR #573 (git log --diff-filter=A -- syncBookmarkStorage.ts → f267817; vaultMetaConverge split 0cce8c1; both in #573)",
-      "tier": "frontier",
-      "base": "0d05e9cb5c10bf84f5b3c3d6b94a9bbeb99c0086",
-      "head": "bf58bc8276656e287b334a9bae8dc3e0b9c2b96c",
-      "spec": {
-        "kind": "none",
-        "foundBy": "none"
-      },
-      "expected": [
-        {
-          "id": "restore-leaves-bookmark-etag-in-place",
-          "axis": "standards",
-          "source": "0063|0058|0055|web-vault/AGENTS\\.md",
-          "rule": "bookmark|restore|evidence|If-?Match|etag|conditional push",
-          "files": [
-            "libs/web-vault/src/lib/vault/syncBookmarkAccess.ts",
-            "libs/web-vault/src/lib/vault/syncBookmarkStorage.ts",
-            "libs/web-vault/src/lib/vault/vaultHandle.ts",
-            "libs/web-vault/src/lib/vault/vaultConverge.ts",
-            "libs/web-vault/src/lib/vault/vaultExportImport.ts"
-          ],
-          "minSeverity": "should-fix",
-          "why": "the diff added per-type Sync Bookmarks holding the last pushed ETag and left importVault untouched, so a restored older vault hashed as unsent while the bookmark's If-Match still matched an unmoved server, and the old ciphertext was conditionally pushed over newer data on every device (#617)"
-        },
-        {
-          "id": "local-wrapping-change-never-leaves-device",
-          "axis": "standards",
-          "source": "0057|0060|web-vault/AGENTS\\.md|CONTEXT",
-          "rule": "vault meta|wrapping|passphrase|push|never silently|holds no",
-          "files": [
-            "libs/web-vault/src/lib/vault/vaultReconcile.ts",
-            "libs/web-vault/src/lib/vault/vaultMetaConverge.ts",
-            "libs/web-vault/src/lib/vault/vaultHandle.ts",
-            "docs/adr/0057-vault-meta-converges-separately-and-never-silently.md"
-          ],
-          "minSeverity": "should-fix",
-          "why": "the diff deleted keep-local's putServerVaultMetaEtagAware push and guarded the one remaining meta write on the server holding no Vault Meta at all, while changePassphrase still rewrapped locally, so a passphrase change never reached the server and the changing device was later told its own change came from another device (#589)"
-        }
-      ],
-      "minRecall": 0.5
     },
     {
       "id": "release-bump-leaves-generated-client-stale",
@@ -201,6 +157,16 @@
         }
       ],
       "minRecall": 1
+    }
+  ],
+  "parked": [
+    {
+      "id": "sync-bookmarks-without-restore-or-meta-push",
+      "title": "Sync Bookmarks and separate Vault Meta convergence arrive without a restore that clears them or a path that pushes a local wrapping",
+      "incident": "issues #617 and #589, fixed by PRs #620 and #594, introduced by PR #573 (git log --diff-filter=A -- syncBookmarkStorage.ts → f267817; vaultMetaConverge split 0cce8c1; both in #573)",
+      "base": "0d05e9cb5c10bf84f5b3c3d6b94a9bbeb99c0086",
+      "head": "bf58bc8276656e287b334a9bae8dc3e0b9c2b96c",
+      "reentryCondition": "Hard, not unwinnable: no gate covers this range (enum:fanout:check passes cleanly at its head, per docs/review/golden-replay-results.md), so ADR 0074 does not apply and retirement would misstate why the reviewer keeps missing it. Docs/review/REVIEW_CHECKLIST.md's Deferred candidates section holds the matching checklist entry — 'New persisted state has an inverse' — back for exactly one reason: its trigger cannot yet be stated precisely enough to fire only on a write path with no inverse, rather than on every write path in the repo. The case returns to `cases`, at the tier its evidence then supports, the day that entry is promoted into tools/config/review-obligations.json with `goldenCase: sync-bookmarks-without-restore-or-meta-push` — i.e. the day the trigger can be stated precisely. Parked 2026-09-11 (issue #722); see docs/adr/0072-a-golden-case-earns-its-replay-frequency.md and docs/review/golden-replay-results.md."
     }
   ],
   "retired": [

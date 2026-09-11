@@ -101,16 +101,18 @@ const main = () => {
     );
 
   // Every obligation cites the golden case that scores it. That field was
-  // shape-validated and never resolved, so a case renamed or retired left it
-  // dangling with nothing noticing - the same drift this file gates for the
-  // checklist, on the sibling relationship. A retired case still counts: its
-  // id stays reserved precisely so the reason it left is not lost.
+  // shape-validated and never resolved, so a case renamed, retired, or parked
+  // left it dangling with nothing noticing - the same drift this file gates
+  // for the checklist, on the sibling relationship. A retired or parked case
+  // still counts: its id stays reserved precisely so the reason it left is
+  // not lost.
   let known;
   try {
     const set = loadGoldenSet();
     known = new Set([
       ...(set.cases ?? []).map((c) => c.id),
       ...(set.retired ?? []).map((c) => c.id),
+      ...(set.parked ?? []).map((c) => c.id),
     ]);
   } catch (err) {
     die(`cannot read the golden set: ${err.message}`);

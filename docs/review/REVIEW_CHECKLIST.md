@@ -210,9 +210,13 @@ to avoid. Promote them once the four above have been measured.
   `importVault` was left untouched, so a restored older vault hashed as unsent
   while the bookmark's `If-Match` still matched, and old ciphertext was pushed
   over newer data on every device. Golden case
-  `sync-bookmarks-without-restore-or-meta-push`, never caught. Held back
-  because its trigger is the hardest to state precisely, and a vague trigger
-  fires everywhere and teaches the reviewer to ignore it.
+  `sync-bookmarks-without-restore-or-meta-push`, never caught, and **parked**
+  rather than replayed with the other six (ADR 0072's amendment;
+  `tools/config/review-golden-set.json`, `parked`). Held back because its
+  trigger is the hardest to state precisely, and a vague trigger fires
+  everywhere and teaches the reviewer to ignore it. This is that case's
+  re-entry condition: it returns to the replayed set the day this entry is
+  promoted into `tools/config/review-obligations.json`.
 
 ## Maintaining this file
 

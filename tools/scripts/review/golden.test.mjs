@@ -32,7 +32,7 @@ const goldenCase = {
   ],
   minRecall: 1,
 };
-const set = { schemaVersion: 3, cases: [goldenCase] };
+const set = { schemaVersion: 4, cases: [goldenCase] };
 
 const finding = (over = {}) => ({
   id: 'abcdefabcdef',
@@ -64,6 +64,15 @@ test('a well-formed set passes and the committed set loads', () => {
     committed.cases.some((c) => c.tier === 'frontier'),
     'the set has no frontier case left',
   );
+  // The narrowed set is six cases; the never-caught synchronisation case is
+  // parked, not retired, and its id stays reserved with a written condition
+  // for its return rather than a reason it cannot be won.
+  assert.equal(committed.cases.length, 6);
+  assert.ok(committed.parked?.length >= 1, 'the set has no parked case');
+  for (const p of committed.parked) {
+    assert.match(p.incident, /#\d+/, p.id);
+    assert.ok(p.reentryCondition, p.id);
+  }
 });
 
 test('malformed sets are named precisely', () => {
@@ -100,7 +109,44 @@ test('malformed sets are named precisely', () => {
   assert.throws(
     () =>
       assertGoldenSet({ ...set, retired: [{ ...retired, id: goldenCase.id }] }),
-    /both a case and retired/,
+    /already a case, retired, or parked/,
+  );
+  // A parked case keeps its id reserved the same way, but for the opposite
+  // reason retirement does: it is hard, not unwinnable, so it carries a
+  // reentryCondition rather than a reason it cannot be won.
+  const parked = {
+    id: 'sync-bookmarks-without-restore-or-meta-push',
+    title: 'a case that is hard, not unwinnable',
+    incident: 'issues #617 and #589',
+    reentryCondition:
+      'returns when the deferred checklist candidate becomes a real obligation',
+  };
+  assert.equal(assertGoldenSet({ ...set, parked: [parked] }).parked.length, 1);
+  assert.throws(
+    () =>
+      assertGoldenSet({
+        ...set,
+        parked: [{ ...parked, reentryCondition: '' }],
+      }),
+    /reentryCondition/,
+  );
+  assert.throws(
+    () =>
+      assertGoldenSet({ ...set, parked: [{ ...parked, id: goldenCase.id }] }),
+    /already a case, retired, or parked/,
+  );
+  // The collision message is worded generically because a retired id can
+  // collide with a parked one, not only with a case (this used to say "is
+  // both a case and retired" even when the real conflict was with a parked
+  // entry).
+  assert.throws(
+    () =>
+      assertGoldenSet({
+        ...set,
+        parked: [parked],
+        retired: [{ ...retired, id: parked.id }],
+      }),
+    /already a case, retired, or parked/,
   );
   assert.throws(
     bad((s) => delete s.cases[0].tier),

@@ -195,9 +195,15 @@ jobs:
       # also runs code-review.yml. Eight at once exceeded the subscription's
       # session limit and lost a whole run to failures in under a minute
       # (docs/research/2026-09-07-golden-replay-baseline.md, Limits). Four
-      # leaves headroom for the ordinary review running alongside, and holds
-      # whether this run is the frontier alone or every tier.
-      max-parallel: 4
+      # still locked the maintainer out of their own session for the rest of
+      # the five-hour window (docs/review/golden-replay-results.md, "What it
+      # does measure: the budget"; run 34176461268). A replay competes with
+      # the maintainer for the same token, on the same window, so it does not
+      # get to spend it on its own schedule: cases now run one at a time, and
+      # ADR 0072's amendment moves the second and third repetition of a
+      # measurement to separate dispatches on separate days rather than
+      # squeezing all three into one.
+      max-parallel: 1
       matrix:
         case: ${{ fromJSON(needs.cases.outputs.matrix) }}
     env:

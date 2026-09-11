@@ -71,6 +71,33 @@ replay it knows is pointless.**
    request receives certifies a reviewer nobody gets. Comparing models is a deliberate,
    `workflow_dispatch`-driven experiment, recorded as its own run rows — not the default.
 
+7. **A third state, `parked`, sits between `cases` and `retired`.** Retirement means a case cannot
+   be won: a wired gate already suppresses its defect (ADR 0074), so scoring it against the reviewer
+   penalises correct behaviour. Parking means the opposite — a case the reviewer has never caught,
+   with no gate and no reason to think it unwinnable, held out of the replayed set anyway because
+   nothing productive is learned from replaying a miss that a documented, precise cause already
+   explains. Filing a hard case as retired would be a lie in the one field that state exists to keep
+   honest, so a parked entry carries `reentryCondition` instead of `reason`: not why the case cannot
+   be won, but the written, checkable fact that returns it to `cases`. Its id stays reserved exactly
+   as a retired id does. `sync-bookmarks-without-restore-or-meta-push` is the first case parked this
+   way: never caught in any run, its miss is explained by the same cause that holds its matching entry
+   in `docs/review/REVIEW_CHECKLIST.md`'s Deferred candidates — the write-without-inverse trigger
+   cannot yet be stated precisely enough to fire only on the shape the incident was — and it returns
+   the day that entry is promoted into `tools/config/review-obligations.json`.
+
+8. **A replay's parallelism is one, and one `workflow_dispatch` is one repetition of the tier
+   requested.** The reviewer is stochastic (Consequences), so a measurement takes several
+   repetitions — the baseline took five. Running them close together, at any parallelism above one,
+   competes with the maintainer for the same five-hour subscription window the reviewer's own
+   sessions spend: seven cases at `max-parallel: 4` exhausted it once and locked the maintainer out of
+   their own session (`docs/review/golden-replay-results.md`, "What it does measure: the budget"; run
+   34176461268). Three repetitions, dispatched one at a time on separate days, cost the same total
+   reviewer-minutes without ever holding the window at the same moment the maintainer needs it. A
+   single dispatch is one repetition, not a measurement: it can still move a case's tier exactly as
+   before — promotion on three consecutive catches, demotion on one miss, both mechanical rules
+   unchanged by this — but no conclusion about a brief, a cadence, or the reviewer's capability should
+   rest on it alone. Three dispatches, read together, are what the record treats as one measurement.
+
 ## Consequences
 
 A docs-only push to a review-tooling branch costs one review instead of a review plus eight
@@ -95,6 +122,20 @@ the frontier is cheap enough to run when unsure, not that the escape is safe.
 > may assert a fact about the pipeline but not a judgment about the diff — so no recall number
 > reopens it. The replay's purpose is unchanged: it measures the reviewer, which is worth knowing
 > whether or not anything gates on it.
+
+> **Amended 2026-09-11 (issue #722).** The set is re-pointed as a regression harness for the
+> obligations: four of its six cases are the `goldenCase` an obligation in
+> `tools/config/review-obligations.json` cites, plus the guard — the only detector that would notice
+> a brief edit undoing the one instruction that demonstrably works — plus `export-envelope-drops-tasks`,
+> which earns its slot by flickering near half (`missed, caught, caught, caught, caught, missed,
+caught`): a case that always passes and a case that never passes both carry less information than
+> one in the middle. `sync-bookmarks-without-restore-or-meta-push`, never caught in any run, is
+> `parked` rather than dropped (Decision, item 7) — hard, not unwinnable, so retirement would have
+> misstated why. `schemaVersion` moves to `4` for the added `parked` array. Decision item 8 changes
+> the replay's cadence to parallelism one, after `max-parallel: 4` still locked the maintainer out of
+> their own session; `docs/review/golden-replay-results.md` states plainly, alongside the run that
+> cost that lockout, that a single run is not a measurement and a score moves nothing on its own
+> beyond the tier rule already in force.
 
 ## Alternatives considered
 

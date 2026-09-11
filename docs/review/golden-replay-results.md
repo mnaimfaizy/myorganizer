@@ -46,18 +46,24 @@ Promotion to `guard` takes **three consecutive catches**; demotion to
 `frontier` takes **one miss**. The asymmetry is deliberate — a wrongly
 promoted case is a detector that quietly stopped running.
 
-| Case                                          | Tier       | Since      | History                                                                                                                                                     |
-| --------------------------------------------- | ---------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `groceries-blob-type-without-fanouts`         | `guard`    | 2026-09-07 | caught in every run, now nine of nine (34344266006, 34345667427, 34351285079)                                                                               |
-| `export-envelope-drops-tasks`                 | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught in 34344266006, missed in 34345667427 and 34351285079 |
-| `sync-bookmarks-without-restore-or-meta-push` | `frontier` | 2026-09-07 | invalid report in 34344266006 (void); missed in 34345667427 and 34351285079                                                                                 |
-| `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit)                                                        |
-| `signup-password-wrapper-inside-formcontrol`  | `frontier` | 2026-09-07 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; one of three needed for promotion               |
-| `import-confirm-is-bare-window-confirm`       | `frontier` | 2026-09-07 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak                                                   |
-| `mail-test-setup-assigns-undefined-to-env`    | `frontier` | 2026-09-07 | missed in 34345667427; void in 34351285079 (rate limit)                                                                                                     |
+| Case                                         | Tier       | Since      | History                                                                                                                                                     |
+| -------------------------------------------- | ---------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `groceries-blob-type-without-fanouts`        | `guard`    | 2026-09-07 | caught in every run, now nine of nine (34344266006, 34345667427, 34351285079)                                                                               |
+| `export-envelope-drops-tasks`                | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught in 34344266006, missed in 34345667427 and 34351285079 |
+| `release-bump-leaves-generated-client-stale` | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit)                                                        |
+| `signup-password-wrapper-inside-formcontrol` | `frontier` | 2026-09-07 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; one of three needed for promotion               |
+| `import-confirm-is-bare-window-confirm`      | `frontier` | 2026-09-07 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak                                                   |
+| `mail-test-setup-assigns-undefined-to-env`   | `frontier` | 2026-09-07 | missed in 34345667427; void in 34351285079 (rate limit)                                                                                                     |
 
 The tier and the evidence that earned it are in
 `tools/config/review-golden-set.json`, asserted by `yarn review:golden:check`.
+`export-envelope-drops-tasks` keeps its slot for exactly this table's reason:
+`missed, caught, caught, caught, caught, missed, caught` is a case flickering
+near half, and a case that always passes or never passes carries less
+information per run than one in the middle (ADR 0072's Alternatives considered
+made the same point about this case when it was one of two fan-out cases; its
+2026-09-11 amendment repeats it as the reason this case keeps its slot in the
+narrowed six).
 
 **Retired.** `groceries-ui-written-against-absent-roles` was retired on
 2026-09-08 as unwinnable rather than hard: the gate ADR 0065 added as the fix
@@ -65,7 +71,46 @@ for that incident fails on the case's own range, and a wired gate's defect is a
 suppressed count and not a finding
 ([ADR 0074](../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md)).
 It stays in the set under `retired`, with its reason and its id reserved, so
-nothing re-adds it — the workings are below. Seven cases remain.
+nothing re-adds it — the workings are below.
+
+**Parked.** `sync-bookmarks-without-restore-or-meta-push` was parked on
+2026-09-11 (issue #722), never caught in any run above and never covered by
+the gate its own incident named (`enum:fanout:check` passes cleanly at its
+head). That is a different claim than retirement's: this case is hard, not
+unwinnable, and filing it as unwinnable would be a lie in the field that
+state exists to keep honest ([ADR 0072](../adr/0072-a-golden-case-earns-its-replay-frequency.md),
+item 7). It stays in the set under `parked`, id reserved the same way, with a
+`reentryCondition` in place of a `reason`: it returns to the replayed set the
+day the matching entry in `docs/review/REVIEW_CHECKLIST.md`'s Deferred
+candidates — "New persisted state has an inverse" — is promoted into
+`tools/config/review-obligations.json`. **Six cases remain**: one guard, five
+frontier.
+
+## Cadence
+
+The replay's own strategy now runs at **parallelism one**
+(`.github/workflows/review-golden-replay.yml`): cases replay one at a time
+within a dispatch instead of four at once. That is a direct response to what
+the budget section below records — `max-parallel: 4` locked the maintainer
+out of their own five-hour subscription window once, and a replay competes
+with the maintainer for that same window rather than a separate budget.
+
+One `workflow_dispatch` is **one repetition** of the tier requested, not
+three. Three repetitions, dispatched one at a time on separate days, cost the
+same total reviewer-minutes as three run back to back, without ever holding
+the window at the moment the maintainer needs it.
+
+**A single run is not a measurement, and a score moves nothing on its own.**
+The reviewer is stochastic — a single run of a single case never was a
+measurement, which is why the baseline above took five runs of the same three
+cases before drawing any conclusion. What changes here is only how the
+repetitions are spread out: three dispatches, read together once all three
+have landed, are what this record treats as one measurement. A single
+dispatch can still move a case's tier exactly as before — promotion on three
+consecutive catches, demotion on one miss, both mechanical rules ADR 0072
+already sets and this does not touch — but no narrative conclusion in this
+file ("the brief helped," "the cadence fixed it") should rest on one dispatch
+alone. See ADR 0072, item 8.
 
 ## Runs
 
@@ -410,3 +455,9 @@ Run the replay from the Actions tab — the **Golden Replay** workflow takes a
 itself: frontier cases on any review-tooling change, guards only when the brief
 or the finding contract changes. `[skip replay]` in the head commit message
 skips it for that push; `CODE_REVIEW_ENABLED=false` stops it entirely.
+
+Cases within a dispatch now run at parallelism one, so a dispatch is one
+repetition (see Cadence, above). Taking a real measurement means dispatching
+it three times, on separate days rather than back to back, so it never
+competes with the maintainer's own five-hour window the way run 34176461268
+did.
