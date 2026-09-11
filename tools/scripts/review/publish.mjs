@@ -33,6 +33,14 @@ import {
 
 export const SUMMARY_MARKER = '<!-- code-review-report -->';
 /**
+ * The heading a summary carries when the reviewer produced nothing usable.
+ * Named rather than inlined for the same reason `verdictHeading` is: the
+ * escaped-defect measurement reads this line back out of a merged Pull
+ * Request's comments to tell a review that produced no verdict from one that
+ * passed, and those two must never be the same guess.
+ */
+export const NO_VERDICT_HEADING = '## Code review — no verdict';
+/**
  * A thread marker carries the report schema version that minted the id inside
  * it, because an id only means anything within a version (issue #718). A
  * thread from an earlier version reads as somebody else's here: this run does
@@ -101,7 +109,7 @@ export const summaryBody = ({ rendered, headSha, runUrl }) =>
 export const rejectedBody = ({ reason, headSha, runUrl }) =>
   [
     header({ headSha, runUrl }),
-    '## Code review — no verdict',
+    NO_VERDICT_HEADING,
     '',
     'The reviewer did not produce a report that meets the finding contract, so there is no verdict and this Pull Request is `review:human`. Nothing was downgraded to make it pass.',
     '',

@@ -97,7 +97,10 @@ export const AXIS_TITLES =
     standards: 'Standards',
     spec: 'Spec',
   });
-export const VERDICT_TITLES =
+// Not exported: `verdictHeading` below is the only way this table reaches a
+// caller. An exported title table invites a second spelling of the heading
+// somewhere else, which is the drift the helper exists to prevent.
+const VERDICT_TITLES =
   /** @type {Record<typeof VERDICT_VALUES[number], string>} */ ({
     'request-changes': 'Request changes',
     comment: 'Comment',
@@ -111,6 +114,16 @@ for (const [members, table, name] of [
     if (!(m in table)) throw new Error(`${name} is missing "${m}"`);
   }
 }
+
+/**
+ * The heading a rendered report carries. It is a contract rather than a
+ * layout choice: the escaped-defect measurement reads a merged Pull
+ * Request's verdict back out of its published summary comment, so the
+ * renderer that writes this line and the parser that reads it must not each
+ * carry their own spelling of it (`escaped-defects.mjs`).
+ */
+export const verdictHeading = (verdict) =>
+  `# Code review — ${VERDICT_TITLES[verdict]}`;
 
 /** Cap on quoted issue text: enough for one requirement, not a body. */
 export const SPEC_QUOTE_MAX_CHARS = 400;

@@ -21,6 +21,14 @@ because they must stay current; the reasoning lives there because it must not.
 The first entry's reasoning is
 [the 2026-09-07 baseline](../research/2026-09-07-golden-replay-baseline.md).
 
+**Recall is not trust.** Every number here is scored against curated
+historical defects, which makes it a regression signal and nothing more: it
+says whether a change to the reviewer moved cases the reviewer has already
+seen. Whether a human can rely on a passing review is a different question
+with its own running record —
+[`escaped-defect-rate.md`](escaped-defect-rate.md), which asks what fraction
+of the Pull Requests the reviewer passed a later fix names as root cause.
+
 ## What the numbers mean
 
 Recall is matched expected findings over expected findings, scored by

@@ -430,6 +430,14 @@ _Avoid_: tier (alone), risk level, gate tier (for this sense), PR label
 A GitHub label a human or `ai:create-pr` puts on a Pull Request to ask a workflow to run now, and which that workflow removes when the run ends — a button, not a state. The one Request Label is `agent-review`, which starts the CI code review in any `CODE_REVIEW_MODE` (ADR 0070 item 7). Distinct from a Surface Label (names the change), a Review Tier label (computed, never hand-applied), and an Issue Orchestration Label (never on a Pull Request). Carries no classification and never appears on an Issue.
 _Avoid_: trigger label (in prose), review label, review requested
 
+**Escaped Defect**:
+A defect whose root cause is a Pull Request the code reviewer **saw and passed** — `approve` or `comment`, the two verdicts that do not block (ADR 0077). A Pull Request the reviewer never saw is not one, nor is one it asked changes on that merged anyway, and neither is ever counted as one. The escaped-defect rate is escaped defects over the Pull Requests the reviewer passed in the same window, and it is the reviewer's trust measure; golden recall is a regression signal and is not this.
+_Avoid_: miss, false negative, regression (for this sense), leaked bug
+
+**Attributable Fix**:
+A merged fix that names the change which introduced the defect, in its issue, its Pull Request body, or its commits — `introduced in #415`, not `Closes #721`, which names the ticket the fix resolves. A fix naming none is unattributable and is counted as such rather than dropped, because the denominator is only worth reading if nothing was filtered out of it silently.
+_Avoid_: linked fix, traced fix, root-caused fix
+
 **Gated Pipeline**:
 A specialist chain that retries between agents until a reviewer or runner verdict passes, with a cap. Components and Jest use this shape. Hitting the cap is a stop, not another silent retry.
 _Avoid_: review loop, QA cycle, writer-reviewer loop

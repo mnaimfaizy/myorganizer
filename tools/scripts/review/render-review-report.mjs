@@ -28,11 +28,11 @@ import {
   FINDING_AXES,
   NormalizedReportSchema,
   REPORT_SCHEMA_VERSION,
-  VERDICT_TITLES,
   bySeverity,
   formatIssues,
   isComparableReport,
   reportSchemaVersionOf,
+  verdictHeading,
 } from './schema.mjs';
 
 /** Most lines of a hunk shown inline; a finding is a pointer, not a file. */
@@ -184,7 +184,7 @@ export const renderReport = (raw, previous = null, { hunks = true } = {}) => {
     ? ` · ${report.cost.inputTokens} in / ${report.cost.outputTokens} out tokens`
     : '';
   const parts = [
-    `# Code review — ${VERDICT_TITLES[report.verdict]}`,
+    verdictHeading(report.verdict),
     '',
     `- range: \`${report.base.slice(0, 7)}...${report.head.slice(0, 7)}\``,
     `- tier: ${tierText}`,
