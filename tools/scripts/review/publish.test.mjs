@@ -115,6 +115,14 @@ test('inline comments: blocking with a location only, and not while a thread is 
   );
   assert.ok(out[0].body.startsWith(findingMarker('abc123def456')));
   assert.match(out[0].body, /\*\*Blocking · Standards\*\*/);
+  // The bounded id is on the inline comment, not just the summary: it is what
+  // a maintainer replying to the thread needs in order to say which rule they
+  // are declining, and it is the field that decides whether the next run
+  // recognises this thread as the same finding (issue #724).
+  assert.match(
+    out[0].body,
+    /Rule: `standard-enum-fanout-not-pinned` — the rule \(AGENTS\.md\)/,
+  );
   assert.match(out[0].body, /Evidence: cited standard: `q`/);
 });
 

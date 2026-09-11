@@ -1358,10 +1358,10 @@
           <div class="fdesc">The one identity field the reviewer chooses rather than copies: one id from a bounded catalogue of five families (<code>tools/config/review-rules.json</code>). The validator rejects an id that is not in the catalogue, and rejects an id used on the wrong axis &mdash; a rejected report is rejected whole. Feeds <code>id</code> below, together with <code>axis</code> and <code>file</code>.</div>
           <div class="fclass">GATE READS &middot; IDENTITY</div>
         </div>
-        <div class="frow do">
+        <div class="frow gr">
           <div class="fname">source</div>
           <div class="fdesc">The standard's path, the issue reference, or <code>smell-baseline</code> &mdash; copied from the citation, not composed by the model. Left the identity tuple when the bounded <code>ruleId</code> took its place (issue #724); still read, not merely shown &mdash; a <code>smell-baseline</code> source alone still caps a finding at should-fix, belt-and-braces with the catalogue's own cap.</div>
-          <div class="fclass">DISPLAY ONLY</div>
+          <div class="fclass">GATE READS &middot; CAPS SEVERITY</div>
         </div>
         <div class="frow do">
           <div class="fname">rule</div>

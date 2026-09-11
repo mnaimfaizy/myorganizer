@@ -202,10 +202,35 @@ const severityRank = (s) => FINDING_SEVERITIES.indexOf(s);
 const atLeast = (severity, min) =>
   !min || severityRank(severity) <= severityRank(min);
 
+/**
+ * Did the finding name the rule the expectation is about? Two ways, and either
+ * is enough.
+ *
+ * The prose patterns are the historical way and stay, for the reason the module
+ * header gives: a case is a historical measurement, and requiring one exact id
+ * would score a reviewer that named the defect defensibly differently as a miss.
+ *
+ * The pinned `ruleId` is the second way, added with the bounded catalogue
+ * (issue #724). It is a widening, never a tightening: a reviewer that picked the
+ * very id the expectation pins has named the rule exactly, and it would be
+ * perverse to score that a miss because its `source` or `rule` wording drifted
+ * off a keyword alternation. That drift is not hypothetical — rewording is what
+ * took `rule` out of the identity tuple in issue #718 — and leaving recall to
+ * rest on it alone is what makes the free-form text decide a measurement it is
+ * not supposed to decide (issue #724: the rule text feeds no decision).
+ *
+ * `strict` stays meaningful because this is not what it reads: matching never
+ * requires the id, so an expectation can still be matched loosely and annotated
+ * not-strict, which is the distinction the annotation exists to report.
+ */
+const namesTheRule = (expected, finding) =>
+  (expected.ruleId !== undefined && finding.ruleId === expected.ruleId) ||
+  (compile(expected.source).test(finding.source) &&
+    compile(expected.rule).test(finding.rule));
+
 const matches = (expected, finding) =>
   finding.axis === expected.axis &&
-  compile(expected.source).test(finding.source) &&
-  compile(expected.rule).test(finding.rule) &&
+  namesTheRule(expected, finding) &&
   expected.files.includes(finding.location?.file ?? '') &&
   atLeast(finding.severity, expected.minSeverity);
 

@@ -190,12 +190,24 @@ export const EvidenceSchema = z.discriminatedUnion('kind', [
 
 /**
  * `ruleId` is the identity half of a finding: one id from the bounded
- * catalogue (`tools/scripts/review/rules.mjs`). `source` names where the rule
+ * catalogue (`tools/config/review-rules.json`, read by
+ * `tools/scripts/review/rules.mjs`). `source` names where the rule
  * lives — the standard's path, the issue reference, `smell-baseline` — and
  * `rule` states the requirement in the source's own words; `summary` is the
- * human claim. Those three are display. They are read by people and by the
- * golden scorer's regexes, and by nothing that decides an identity, a
- * severity, or a verdict. Nothing here carries diff text (ADR 0071 item 3).
+ * human claim.
+ *
+ * `rule` and `summary` are display: read by people and by the golden scorer's
+ * regexes, and by nothing that decides an identity, a severity, or a verdict.
+ * `source` is not — it left the identity tuple in issue #724, but a `source` of
+ * `smell-baseline` still caps a finding at should-fix on its own below, which is
+ * why the House Explainer Page files it as read rather than shown. Calling all
+ * three display is the drift that made that page badge `source` DISPLAY ONLY
+ * while its own prose said it capped severity. Nothing asserts that badge: the
+ * page gate compares the manifest's vocabularies, not the per-field labels, so
+ * this comment and the page's own wording are the only things keeping the two
+ * in step.
+ *
+ * Nothing here carries diff text (ADR 0071 item 3).
  */
 /** Which citation source each axis may rest on (pinned; asserted below). */
 export const AXIS_CITATION_SOURCE = /** @type {const} */ ({

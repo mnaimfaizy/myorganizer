@@ -259,6 +259,37 @@ test('an expectation that pins a rule id is reported as strict', () => {
   );
 });
 
+test('a pinned rule id matches on its own, so reworded prose is not a miss', () => {
+  const pinned = {
+    ...goldenCase,
+    expected: [
+      { ...goldenCase.expected[0], ruleId: 'standard-enum-fanout-not-pinned' },
+    ],
+  };
+  // The reviewer picked exactly the pinned id but phrased `source` and `rule`
+  // nothing like the patterns. Rewording is what took `rule` out of the
+  // identity tuple in issue #718; letting it decide recall here would put the
+  // free-form text back in charge of a measurement (issue #724).
+  const reworded = finding({
+    source:
+      'docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md',
+    rule: 'reach the pinned table instead of listing the members again',
+  });
+  assert.equal(scoreCase(pinned, { findings: [reworded] }).pass, true);
+
+  // The widening is not a free pass: a finding that neither pins the id nor
+  // matches the prose is still a miss.
+  const unrelated = finding({
+    ruleId: 'standard-missing-focused-test',
+    source: 'docs/ui/GUIDELINES.md',
+    rule: 'Mysterious Name',
+  });
+  assert.equal(scoreCase(pinned, { findings: [unrelated] }).pass, false);
+
+  // An expectation that pins nothing is unchanged: the prose still decides.
+  assert.equal(scoreCase(goldenCase, { findings: [reworded] }).pass, false);
+});
+
 test('a pinned rule id must exist in the rule catalogue', () => {
   const copy = JSON.parse(JSON.stringify(set));
   copy.cases[0].expected[0].ruleId = 'standard-invented-here';

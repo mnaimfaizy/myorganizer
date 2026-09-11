@@ -474,6 +474,13 @@ test('the renderer keeps the axes apart, folds nits, and diffs by id', () => {
   assert.match(md, /^# Code review — Request changes/);
   assert.ok(md.indexOf('## Standards') < md.indexOf('## Spec'));
   assert.match(md, /<summary>1 nit<\/summary>/);
+  // The rendered rule line carries the bounded id alongside the display text
+  // and the source, so a human reading the report can see which catalogue
+  // entry was chosen — the field the identity hashes (issue #724).
+  assert.match(
+    md,
+    /- rule: `standard-enum-fanout-not-pinned` — Code fanning out over a domain enum reaches one satisfies Record table \(source: `AGENTS\.md`\)/,
+  );
   assert.match(md, /- new: 2/);
   assert.match(md, /- persisting: 1/);
   assert.match(md, /- resolved: 1/);

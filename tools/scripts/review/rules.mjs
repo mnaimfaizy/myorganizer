@@ -147,14 +147,24 @@ export function assertRuleCatalogue(cat, source = RULES_DISPLAY_PATH) {
   return cat;
 }
 
+/**
+ * The label is `path` rather than the shipped catalogue's display path, and the
+ * parse sits inside the try, so a caller reading some other file is told which
+ * file broke. Labelling every failure `tools/config/review-rules.json` would
+ * report the shipped catalogue as broken when the caller's own fixture is, and
+ * a bare `SyntaxError` from a malformed catalogue — the likeliest hand-edit
+ * failure — would name neither the file nor `RuleCatalogueError`, which this
+ * module's header promises is how it reports failure. Both sibling loaders
+ * (`loadGoldenSet`, `loadObligationCatalogue`) already pass their path through.
+ */
 export const loadRuleCatalogue = (path = RULES_PATH) => {
-  let raw;
+  const label = path === RULES_PATH ? RULES_DISPLAY_PATH : path;
   try {
-    raw = readFileSync(path, 'utf8');
+    return assertRuleCatalogue(JSON.parse(readFileSync(path, 'utf8')), label);
   } catch (err) {
-    throw new RuleCatalogueError(`${RULES_DISPLAY_PATH}: ${err.message}`);
+    if (err instanceof RuleCatalogueError) throw err;
+    throw new RuleCatalogueError(`${label}: ${err.message}`);
   }
-  return assertRuleCatalogue(JSON.parse(raw), RULES_DISPLAY_PATH);
 };
 
 let cached;
