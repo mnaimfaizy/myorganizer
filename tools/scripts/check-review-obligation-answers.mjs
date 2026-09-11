@@ -51,17 +51,27 @@
 // Exit 0 = answered or thin, but sound.
 // Exit 1 = an answer contradicts its own defect rule, or a quotation does not
 //          match the tree at head.
-// Exit 2 = the script could not run (missing file, unreadable JSON, bad shape).
+// Exit 2 = the script could not run (missing file, unreadable JSON, bad shape,
+//          a head this clone does not have). Since `continue-on-error` came
+//          off the workflow step this gates too, and deliberately: a sheet
+//          nobody can parse is a fact about the reviewer in the same family as
+//          one whose quotations do not hold. The two exit codes stay distinct
+//          because the log should say which happened, not because one of them
+//          is free.
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { ZodError } from 'zod';
 
 import { cannotRun, isMain, parseArgs, readJsonOr } from './review/cli.mjs';
-import { AnswerSheetSchema, checkAnswers } from './review/obligations.mjs';
+import {
+  AnswerSheetSchema,
+  checkAnswers,
+  obligationRuleId,
+} from './review/obligations.mjs';
 import { formatIssues } from './review/schema.mjs';
 
 const USAGE =
-  'usage: check-review-obligation-answers.mjs <worklist.json> <answers.json> [--out <path>]';
+  'usage: check-review-obligation-answers.mjs <worklist.json> <answers.json> [--report <report.json>] [--out <path>]';
 
 /**
  * The tree at the reviewed head, one file at a time. `git show` rather than the
@@ -136,17 +146,38 @@ export const main = (
   if (!worklistPath || !answersPath) bail(USAGE);
   if ('out' in flags && !flags.out) bail('--out needs a path');
 
+  if ('report' in flags && !flags.report) bail('--report needs a path');
+
   const worklist = readJsonOr(worklistPath, bail);
   if (!Array.isArray(worklist?.selected))
     bail(`${worklistPath}: not an obligation worklist`);
+
+  // The report the reviewer wrote, when it wrote one. Supplying it is what
+  // turns "did you raise the finding your own answer says is there" from a
+  // question the reviewer answers about itself into one this script answers by
+  // looking. Optional, because this script also runs where no report exists
+  // yet; without it the sheet's own declaration is all there is, and the
+  // contradiction records which of the two it was read from.
+  let findings;
+  if (flags.report) {
+    const envelope = readJsonOr(flags.report, bail);
+    if (!Array.isArray(envelope?.findings))
+      bail(`${flags.report}: not a review report`);
+    findings = envelope.findings;
+  }
 
   let sheet;
   try {
     sheet = AnswerSheetSchema.parse(readJsonOr(answersPath, bail));
   } catch (err) {
     if (!(err instanceof ZodError)) throw err;
-    // Exit 2, not 1: a malformed sheet means this script could not measure
-    // anything. It is never the reason a review is rejected.
+    // Exit 2, not 1: a malformed sheet is not the reviewer answering wrongly,
+    // it is this script unable to measure. The two are worth telling apart in
+    // the log even though the step gates on both — since `continue-on-error`
+    // came off, exit 2 fails the check as surely as exit 1 does, and a sheet
+    // nobody can parse is as much a fact about the reviewer as one whose
+    // quotations do not hold (ADR 0078). What it is NOT is a finding, and the
+    // findings still publish either way.
     console.error('review-obligations-check: answer sheet unreadable');
     for (const line of formatIssues(err)) console.error(`  ${line}`);
     process.exit(2);
@@ -164,6 +195,7 @@ export const main = (
   try {
     report = checkAnswers(worklist, sheet, {
       readSource: source(worklist.head),
+      findings,
     });
   } catch (err) {
     bail(err.message);
@@ -172,9 +204,10 @@ export const main = (
     report.expected === 0
       ? 'no obligation fired on this diff'
       : `${report.answered} of ${report.expected} site(s) answered` +
-        (report.citations.required
-          ? `, ${report.citations.verified} of ${report.citations.required} citation(s) verified`
-          : '') +
+        // Always, including `0 of 0`. A run that verified nothing is the one
+        // this check exists to make impossible to mistake for a clean one, and
+        // a line that disappears when the count is zero reads as a clean run.
+        `, ${report.citations.verified} of ${report.citations.required} citation(s) verified` +
         (report.incomplete.length
           ? `, ${report.incomplete.length} missing field(s)`
           : '') +
@@ -193,7 +226,10 @@ export const main = (
   for (const c of report.contradictions)
     console.error(
       `review-obligations-check: ${c.key} answers its own defect condition ` +
-        `and raises no finding: ${JSON.stringify(c.answer)}`,
+        `and raises no finding: ${JSON.stringify(c.answer)}` +
+        (c.readFrom === 'report'
+          ? ` (no finding with ruleId ${obligationRuleId(c.id)} in the report)`
+          : ' (the sheet declared none; no report was supplied to check against)'),
     );
   for (const f of report.citationFailures) console.error(citationLine(f));
   if (report.contradictions.length || report.citationFailures.length)

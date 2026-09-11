@@ -326,7 +326,11 @@ Four rules, and they are the whole difference between this and an instruction:
   entry's `uncitedWhen` carries no citation — `wiredBy: "none"` has no line to point at.
 - **A defect the answer exposes is an ordinary finding**, written into the report against the
   contract like any other, and severity is earned the same way. The answer sheet is not a second
-  findings list, and nothing in it changes the verdict.
+  findings list, and nothing in it changes the verdict. When your answer meets the entry's
+  `defectWhen`, the check looks in your report for a finding carrying that obligation's mirrored
+  `obligation-<id>` rule id in the site's file, and fails if there is none — raising the finding is
+  what clears it, and `raisedFindingIds` is bookkeeping you cannot fill with a real id anyway,
+  because the validator hashes ids after you write the sheet.
 - **A field an obligation marks optional is still answered.** `run-the-gate-that-covers-this-change`
   is the first such obligation: write `not run` in `command` and `exitCode` rather than leaving them
   blank when you didn't execute anything. Blank reads as a site you skipped, not a field you

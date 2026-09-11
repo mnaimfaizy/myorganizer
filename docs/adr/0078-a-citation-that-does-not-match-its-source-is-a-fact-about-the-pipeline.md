@@ -63,13 +63,25 @@ fails the pipeline check.**
    meeting its obligation's own `defectWhen` while raising no finding is not a judgment the
    reviewer is entitled to make: the catalogue entry already decided that answer is a finding. Like
    a mismatched citation, it is a comparison between two artifacts, not an opinion about the code.
-5. **The workflow step no longer continues on error.** Every step after it in the reviewer's job is
+   **Whether the finding was raised is read out of the report, not declared.** The check takes the
+   reviewer's own report and looks for a finding carrying the obligation's mirrored
+   `obligation-<id>` rule id in the site's file. The reviewer declaring it in `raisedFindingIds`
+   cannot be the test: a finding's id is a hash the validator computes after the sheet is written,
+   so a reviewer that raised the finding correctly has no id to write and would be failed for it,
+   while any string at all would pass — the same "a written answer is not a verified answer" one
+   level up. Where no report is supplied the declaration is all there is, and the failure says so.
+5. **An answer sheet nobody can parse fails too.** With `continue-on-error` gone, the script's
+   exit 2 gates alongside its exit 1. That is deliberate rather than incidental: an unreadable
+   sheet, or a head the checker cannot resolve, is a fact about the reviewer and its pipeline in
+   the same family as a quotation that does not hold. The two codes stay distinct so the log says
+   which happened, not because one of them is free.
+6. **The workflow step no longer continues on error.** Every step after it in the reviewer's job is
    `always()`, so a failed answer sheet still renders, still uploads its artifacts, and still
    publishes whatever findings the reviewer did produce. Removing `continue-on-error` alone would
    have skipped the artifact the publisher reads, which would have turned a bad answer sheet into a
    silently unpublished review — the failure mode ADR 0073 exists to prevent, arriving through a
    different door.
-6. **What this does not do.** A quotation can be true about the wrong line: quoting the `<Input>`
+7. **What this does not do.** A quotation can be true about the wrong line: quoting the `<Input>`
    line while claiming it is the direct child still passes. Checking that the quotation _supports_
    the claim is judgment, and a predicate language rich enough to express it would be a second
    reviewer. What is bought is narrower and real — the three facts in a citation are checkable by a
@@ -93,7 +105,11 @@ false. That is a worse review and a visible one — the sheet is uploaded, and i
 step log. Closing it means deciding that an unanswered obligation blocks, which is the
 thoroughness question this ADR deliberately does not reopen.
 
-`checkAnswers` refuses to run when a worklist carries cited fields and no reader of the tree was
-supplied, rather than reporting every sheet sound. A citation check with nothing to compare against
+`checkAnswers` refuses to run on two shapes rather than reporting every sheet sound: a worklist that
+carries cited fields with no reader of the tree supplied, and a selected entry that names no cited
+field at all — which the catalogue no longer permits, so an entry arriving without one did not come
+from the selector at this head. The summary line always reports the citation count, `0 of 0`
+included, for the same reason: a line that disappears when the count is zero reads as a clean run.
+A citation check with nothing to compare against
 is the silent no-op shape this repository keeps rediscovering, and it would be indistinguishable
 from the state run 45 was in.

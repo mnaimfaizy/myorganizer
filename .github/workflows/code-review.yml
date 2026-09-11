@@ -351,10 +351,12 @@ jobs:
       # is not rejected for it. What it buys is that a missed defect reads as
       # one of three causes instead of one opaque one.
       #
-      # Two things here DO fail the check, and both are facts about the
-      # reviewer rather than judgments about the diff (ADR 0078): an answer
-      # that meets its obligation's own defect condition while raising no
-      # finding, and a quotation that does not match the tree at head. This
+      # What DOES fail the check are facts about the reviewer rather than
+      # judgments about the diff (ADR 0078): an answer that meets its
+      # obligation's own defect condition while the report carries no finding
+      # for it, a quotation that does not match the tree at head, and — since
+      # the step gates at all — an answer sheet nobody can parse or a head that
+      # does not resolve, which the script exits 2 on. This
       # step no longer continues on error, which is what makes them gates;
       # every step below it is `always()` so that a failed answer sheet still
       # publishes the findings the reviewer did produce, instead of taking the
@@ -369,9 +371,20 @@ jobs:
             echo 'review-obligations-check: the reviewer wrote no answer sheet'
             exit 0
           fi
+          # --report is what makes "you answered your own defect condition and
+          # raised nothing" a thing this step looks up rather than a thing the
+          # reviewer declares about itself (ADR 0078 item 4). Passed only when
+          # the reviewer wrote one; without it the sheet's own declaration is
+          # all there is, and the failure message says which it read.
+          report=''
+          if [ -f tmp/code-review/report.json ]; then
+            report='--report tmp/code-review/report.json'
+          fi
+          # shellcheck disable=SC2086
           corepack yarn review:obligations:check \
             tmp/code-review/obligations.json \
             tmp/code-review/obligations.answers.json \
+            $report \
             --out tmp/code-review/obligations.report.json
 
       # The previous run's normalized report, for the new / persisting /

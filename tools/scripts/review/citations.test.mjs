@@ -20,6 +20,7 @@ import {
   assertObligationCatalogue,
   checkAnswers,
   normalizeCitedFields,
+  obligationRuleId,
   verifyCitation,
 } from './obligations.mjs';
 
@@ -238,9 +239,31 @@ test('a worklist with cited fields and no reader is refused, not skipped', () =>
   assert.throws(() => checkAnswers(worklist(), sheet(undefined)), /readSource/);
 });
 
-test('a worklist that cites nothing needs no reader', () => {
+test('a selected entry that cites nothing is refused, not waved through', () => {
+  // The catalogue requires a cited field on every entry, so an entry arriving
+  // without one did not come from the selector at this head. Defaulting it to
+  // "cites nothing" would report the sheet sound while comparing none of it —
+  // the same silent no-op as a missing reader, reached from the other side.
   const w = worklist({ citedFields: [] });
-  assert.equal(checkAnswers(w, sheet(undefined)).sound, true);
+  assert.throws(
+    () => checkAnswers(w, sheet(undefined), { readSource }),
+    /names no cited field/,
+  );
+  const gone = worklist({ citedFields: undefined });
+  assert.throws(
+    () => checkAnswers(gone, sheet(undefined), { readSource }),
+    ObligationError,
+  );
+});
+
+test('a worklist on which nothing fired needs no reader and is not refused', () => {
+  // The ordinary case: most diffs trigger no obligation at all.
+  const report = checkAnswers(
+    { head: 'abc', selected: [] },
+    { head: 'abc', answers: [] },
+  );
+  assert.equal(report.expected, 0);
+  assert.equal(report.sound, true);
 });
 
 test('the catalogue rejects an entry whose citations could never fire', () => {
@@ -348,4 +371,138 @@ test('run 45: the import-confirm sheet answers its own defect and raises nothing
     out.stderr,
     /field confirmationText claims something about source/,
   );
+});
+
+// ---------------------------------------------------------------------------
+// The self-contradiction, read out of the report rather than declared.
+
+const defectWorklist = () =>
+  worklist({ defectWhen: { field: 'a', equals: false } });
+
+const defectSheet = (raisedFindingIds) => ({
+  head: 'abc',
+  answers: [
+    {
+      id: 'an-obligation',
+      site: { file: 'libs/a.ts', line: 1 },
+      answer: { a: false, b: 'y' },
+      citations: { a: { file: 'libs/a.ts', line: 1, text: 'const x = 1;' } },
+      ...(raisedFindingIds === undefined ? {} : { raisedFindingIds }),
+    },
+  ],
+});
+
+test('the obligation rule id is the one the catalogue mirrors', () => {
+  assert.equal(obligationRuleId('an-obligation'), 'obligation-an-obligation');
+});
+
+test('an answer meeting its defect condition is cleared by the finding, not by saying so', () => {
+  // The reviewer raised it: a finding with the mirrored rule id, in the site's
+  // file. Nothing was declared in raisedFindingIds, because the reviewer has
+  // no id to declare — the validator hashes those after the sheet is written.
+  const report = checkAnswers(defectWorklist(), defectSheet(), {
+    readSource,
+    findings: [
+      {
+        ruleId: 'obligation-an-obligation',
+        location: { file: 'libs/a.ts' },
+      },
+    ],
+  });
+  assert.deepEqual(report.contradictions, []);
+  assert.equal(report.sound, true);
+});
+
+test('a report with no finding for the site contradicts the answer, whatever the sheet claims', () => {
+  // And the invented declaration does not save it: this is the half of ADR
+  // 0078 that a sheet cannot assert its way past.
+  for (const declared of [undefined, [], ['invented-id']]) {
+    const report = checkAnswers(defectWorklist(), defectSheet(declared), {
+      readSource,
+      findings: [
+        { ruleId: 'standard-other', location: { file: 'libs/a.ts' } },
+        {
+          ruleId: 'obligation-an-obligation',
+          location: { file: 'libs/elsewhere.ts' },
+        },
+      ],
+    });
+    assert.equal(report.contradictions.length, 1);
+    assert.equal(report.contradictions[0].readFrom, 'report');
+    assert.equal(report.sound, false);
+  }
+});
+
+test('a finding the contract allows to carry no location still counts', () => {
+  const report = checkAnswers(defectWorklist(), defectSheet(), {
+    readSource,
+    findings: [{ ruleId: 'obligation-an-obligation' }],
+  });
+  assert.deepEqual(report.contradictions, []);
+});
+
+test('with no report supplied the declaration is all there is, and it says so', () => {
+  const none = checkAnswers(defectWorklist(), defectSheet(), { readSource });
+  assert.equal(none.contradictions.length, 1);
+  assert.equal(none.contradictions[0].readFrom, 'declaration');
+  const declared = checkAnswers(defectWorklist(), defectSheet(['anything']), {
+    readSource,
+  });
+  assert.deepEqual(declared.contradictions, []);
+});
+
+test('the checker reads --report and names the rule id it looked for', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'review-citations-'));
+  try {
+    const w = join(dir, 'worklist.json');
+    const a = join(dir, 'answers.json');
+    const r = join(dir, 'report.json');
+    // Real files at a real head, so the citation itself verifies and the only
+    // thing under test is the contradiction.
+    const headFile = 'tools/scripts/review/obligations.mjs';
+    const headLine = 1;
+    const text = spawnSync('git', ['show', `HEAD:${headFile}`], {
+      encoding: 'utf8',
+    }).stdout.split('\n')[headLine - 1];
+    const base = {
+      head: 'HEAD',
+      selected: [
+        {
+          id: 'an-obligation',
+          question: 'q',
+          answerFields: ['a', 'b'],
+          citedFields: [{ field: 'a' }],
+          sites: [{ file: headFile, line: headLine }],
+          truncated: 0,
+          defectWhen: { field: 'a', equals: false },
+        },
+      ],
+    };
+    writeFileSync(w, JSON.stringify(base));
+    writeFileSync(
+      a,
+      JSON.stringify({
+        head: 'HEAD',
+        answers: [
+          {
+            id: 'an-obligation',
+            site: { file: headFile, line: headLine },
+            answer: { a: false, b: 'y' },
+            citations: { a: { file: headFile, line: headLine, text } },
+            raisedFindingIds: ['looks-like-an-id'],
+          },
+        ],
+      }),
+    );
+    writeFileSync(r, JSON.stringify({ findings: [] }));
+    const out = spawnSync(process.execPath, [CHECKER, w, a, '--report', r], {
+      encoding: 'utf8',
+    });
+    assert.equal(out.status, 1, out.stderr);
+    assert.match(out.stderr, /no finding with ruleId obligation-an-obligation/);
+    // The citation line is always reported, including when nothing failed it.
+    assert.match(out.stdout, /1 of 1 citation\(s\) verified/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

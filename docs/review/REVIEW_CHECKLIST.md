@@ -27,8 +27,10 @@ entries below, matched against the diff by
 
 The same script does fail on two things, and neither is a finding
 ([ADR 0078](../adr/0078-a-citation-that-does-not-match-its-source-is-a-fact-about-the-pipeline.md)):
-an answer that meets its entry's own defect condition while raising nothing,
-and a **citation that does not match its source**. Every answer field that
+an answer that meets its entry's own defect condition while the reviewer's
+report carries no finding for it — looked up by the entry's mirrored
+`obligation-<id>` rule id, never taken from the sheet's own word for it — and a
+**citation that does not match its source**. Every answer field that
 makes a claim about source carries the file, the line, and the literal text at
 that line, and the check reads that line out of the tree at the reviewed head
 and compares it. That is what stops an answer from merely asserting: run 45

@@ -416,6 +416,51 @@ export const verifyCitation = (citation, readSource) => {
 };
 
 /**
+ * The rule id the catalogue mirrors for an obligation. One per entry, asserted
+ * in both directions by `review:rules:check`, which is what makes it usable
+ * here: the reviewer picks it from a list it was handed, so a finding raised
+ * for an obligation is findable in the report without anybody agreeing on a
+ * second identifier.
+ */
+export const obligationRuleId = (id) => `obligation-${id}`;
+
+/**
+ * Did the reviewer actually raise the finding its own answer says is there?
+ *
+ * Read out of the report when there is one, and only declared otherwise. The
+ * declaration alone cannot be the check: a finding's id is a hash the
+ * validator computes after the sheet is written, so a reviewer that raised the
+ * finding correctly has no id to write and would be failed for it, while any
+ * string at all would pass. Same failure as the one ADR 0078 is about — a
+ * written answer is not a verified answer — one level up.
+ *
+ * A finding counts for a site when it carries the obligation's mirrored rule id
+ * and is anchored in the site's file, or carries no location at all (the
+ * contract allows a located-nowhere finding, and refusing to count one would
+ * fail a reviewer for using the contract as written).
+ *
+ * @param {string} id the obligation id
+ * @param {{file: string}} site
+ * @param {{raisedFindingIds?: string[]}} answer
+ * @param {{ruleId?: string, location?: {file?: string}}[]|undefined} findings
+ * @returns {{raised: boolean, readFrom: 'report'|'declaration'}}
+ */
+export const raisedForSite = (id, site, answer, findings) => {
+  if (!Array.isArray(findings))
+    return {
+      raised: (answer.raisedFindingIds ?? []).length > 0,
+      readFrom: 'declaration',
+    };
+  const want = obligationRuleId(id);
+  const raised = findings.some(
+    (f) =>
+      f?.ruleId === want &&
+      (f.location?.file === undefined || f.location.file === site.file),
+  );
+  return { raised, readFrom: 'report' };
+};
+
+/**
  * Two kinds of fact, kept apart.
  *
  * **Completeness is never a verdict.** An unanswered obligation says the
@@ -430,9 +475,16 @@ export const verifyCitation = (citation, readSource) => {
  *
  * @param {object} worklist the selector's output
  * @param {object} sheet the reviewer's answers
- * @param {{readSource?: (file: string) => string|null}} [io] source at head
+ * @param {{readSource?: (file: string) => string|null, findings?: object[]}} [io]
+ *   `readSource` reads a file at the reviewed head; `findings` is the report
+ *   the reviewer wrote, which is how a raised finding is confirmed rather than
+ *   taken on trust.
  */
-export const checkAnswers = (worklist, sheet, { readSource } = {}) => {
+export const checkAnswers = (
+  worklist,
+  sheet,
+  { readSource, findings } = {},
+) => {
   const expected = new Map();
   for (const o of worklist.selected) {
     for (const site of o.sites)
@@ -447,11 +499,19 @@ export const checkAnswers = (worklist, sheet, { readSource } = {}) => {
         defectWhen: o.defectWhen,
       });
   }
-  // Refused rather than skipped. A citation check with no tree to read is the
-  // silent no-op this module already guards against elsewhere: it would report
-  // every sheet sound and nothing would say why.
-  const anyCited = [...expected.values()].some((w) => w.cited.length > 0);
-  if (anyCited && typeof readSource !== 'function')
+  // Refused rather than skipped, twice over. A citation check with no tree to
+  // read, and an entry that asks for no citation at all, are the same silent
+  // no-op: every sheet comes back sound and nothing says why. The catalogue
+  // requires at least one cited field on every entry, so an entry that arrives
+  // here without one did not come from the selector at this head — a stale
+  // worklist or one written by hand — and waving it through is exactly the
+  // state run 45 was in.
+  for (const [key, want] of expected)
+    if (want.cited.length === 0)
+      throw new ObligationError(
+        `checkAnswers: ${key} names no cited field, so nothing in its answer could be compared to the tree`,
+      );
+  if (expected.size > 0 && typeof readSource !== 'function')
     throw new ObligationError(
       'checkAnswers: this worklist has cited fields and no readSource, so no quotation could be compared to anything',
     );
@@ -526,15 +586,18 @@ export const checkAnswers = (worklist, sheet, { readSource } = {}) => {
     if (
       !missing.length &&
       want.defectWhen &&
-      defectHolds(want.defectWhen, a.answer) &&
-      (a.raisedFindingIds ?? []).length === 0
-    )
-      contradictions.push({
-        key,
-        id: want.id,
-        site: want.site,
-        answer: a.answer,
-      });
+      defectHolds(want.defectWhen, a.answer)
+    ) {
+      const raised = raisedForSite(want.id, want.site, a, findings);
+      if (!raised.raised)
+        contradictions.push({
+          key,
+          id: want.id,
+          site: want.site,
+          answer: a.answer,
+          readFrom: raised.readFrom,
+        });
+    }
   }
   for (const [key, want] of expected) {
     if (!seen.has(key)) unanswered.push({ key, id: want.id, site: want.site });
