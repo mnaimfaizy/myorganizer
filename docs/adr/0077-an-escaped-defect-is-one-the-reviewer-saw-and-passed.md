@@ -1,9 +1,8 @@
-# 0077 — An escaped defect is one the reviewer saw and passed
+# An escaped defect is one the reviewer saw and passed
 
-- Status: proposed
-- Date: 2026-09-11
-- Deciders: maintainers
-- Issue: #721 (PRD #713)
+## Status
+
+accepted
 
 ## Context
 

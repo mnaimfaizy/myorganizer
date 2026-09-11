@@ -1,9 +1,8 @@
-# 0079 — An effective false positive is a finding nobody acted on
+# An effective false positive is a finding nobody acted on
 
-- Status: proposed
-- Date: 2026-09-11
-- Deciders: maintainers
-- Issue: #729 (PRD #713)
+## Status
+
+accepted
 
 ## Context
 
