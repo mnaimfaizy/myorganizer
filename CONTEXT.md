@@ -438,6 +438,18 @@ _Avoid_: miss, false negative, regression (for this sense), leaked bug
 A merged fix that names the change which introduced the defect, in its issue, its Pull Request body, or its commits — `introduced in #415`, not `Closes #721`, which names the ticket the fix resolves. A fix naming none is unattributable and is counted as such rather than dropped, because the denominator is only worth reading if nothing was filtered out of it silently.
 _Avoid_: linked fix, traced fix, root-caused fix
 
+**Effective False Positive**:
+A code review finding that was raised and was still there on the next push — inaction, not incorrectness. Whether the finding was right is deliberately not asked: it cost the same attention either way, and the question cannot be answered without a human labelling every comment (ADR 0079). The term is Google's. The effective-false-positive rate is these over the findings observed for the same rule, and it measures what the reviewer costs; the Escaped Defect rate measures what it misses, and neither is quoted as the other.
+_Avoid_: false positive (alone), noise, wrong finding, dismissed finding
+
+**Review Acknowledgement**:
+A `Review-ack: <finding id>` line in a commit message, which takes that finding out of the effective-false-positive numerator. Optional and never required — the measurement reads inaction and asks for no label. It names the finding id the report prints, never a rule id, and it can only remove evidence about a rule, never create it: an acknowledged finding leaves the denominator too.
+_Avoid_: suppression, ignore marker, wontfix, dismissal
+
+**Noise Budget**:
+The written share of effective false positives a rule may produce — 10%, borrowed with its definition from Google's Tricorder criteria, judged only once a rule has ten observations. A marker a human reads the rate against, not a threshold anything acts on: no rule is disabled on it (ADR 0079).
+_Avoid_: threshold (alone), error budget, SLO, quality bar
+
 **Gated Pipeline**:
 A specialist chain that retries between agents until a reviewer or runner verdict passes, with a cap. Components and Jest use this shape. Hitting the cap is a stop, not another silent retry.
 _Avoid_: review loop, QA cycle, writer-reviewer loop

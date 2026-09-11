@@ -2,7 +2,11 @@
 
 **Kept current.** This is the running record for the reviewer's trust
 measurement, and the sibling of
-[`golden-replay-results.md`](golden-replay-results.md). Append a measurement
+[`golden-replay-results.md`](golden-replay-results.md). It records what the
+reviewer **misses**; what it **costs** is the other half, and lives in
+[`effective-false-positive-rate.md`](effective-false-positive-rate.md)
+([ADR 0079](../adr/0079-an-effective-false-positive-is-a-finding-nobody-acted-on.md)).
+Neither number is quoted as the other. Append a measurement
 per run and keep the ledger honest; do not freeze it at a date.
 Interpretation — why a number is what it is, what a change to the reviewer
 did to it — belongs in a dated Research Brief under `docs/research/`, which is

@@ -22,16 +22,18 @@
 // for the commit in front of it, and reaches the network; it carries a
 // written opt-out in tools/config/gate-coverage-optout.json.
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
 
 import {
   cannotRun,
-  gh,
-  ghJson,
+  dateOnly,
+  ghJsonOrNull,
+  git,
+  githubAvailable,
   isMain,
   parseArgs,
   readJsonOr,
+  shiftDays,
+  writeFile,
 } from './cli.mjs';
 import {
   attributeFix,
@@ -53,42 +55,11 @@ const FIELD = '\u0000';
 const RECORD_FORMAT = '%x1e';
 const FIELD_FORMAT = '%x00';
 
-const git = (args) =>
-  execFileSync('git', args, {
-    encoding: 'utf8',
-    maxBuffer: 256 * 1024 * 1024,
-  });
-
 const gitLines = (args) =>
   git(args)
     .split('\n')
     .map((l) => l.trim())
     .filter(Boolean);
-
-/** `gh` reachable and logged in. Checked once; never assumed. */
-const githubAvailable = () => {
-  try {
-    gh(['auth', 'status']);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-/**
- * `ghJson`, except that a failure is an answer. Every `gh` call here is a
- * lookup whose absence is reportable — an unread verdict is `unknown`, not a
- * crash — so the throwing helper the publisher wants is wrong for this
- * caller. It still goes through `cli.mjs`, which is the one place the review
- * scripts spawn `gh`.
- */
-const ghJsonOrNull = (args) => {
-  try {
-    return ghJson(args);
-  } catch {
-    return null;
-  }
-};
 
 const MERGE_SUBJECT = /^Merge pull request #(\d+) from [^/\s]+\/(\S+)/;
 const SQUASH_SUBJECT = /\(#(\d+)\)\s*$/;
@@ -248,14 +219,6 @@ export const reviewerSinceFromGit = () => {
     '.github/workflows/code-review.yml',
   ]);
   return added.at(-1) ?? null;
-};
-
-const dateOnly = (iso) => (iso ? iso.slice(0, 10) : iso);
-
-const shiftDays = (iso, days) => {
-  const d = new Date(`${iso}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - days);
-  return d.toISOString().slice(0, 10);
 };
 
 /**
@@ -443,11 +406,6 @@ export const measure = (gathered, { base } = {}) => {
   });
 };
 
-const write = (path, text) => {
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, text);
-};
-
 export const main = (argv) => {
   const { flags } = parseArgs(argv);
   const base = flags.base ?? 'main';
@@ -468,12 +426,13 @@ export const main = (argv) => {
       useGithub: !('no-github' in flags) && githubAvailable(),
     });
   if (flags['save-gather'])
-    write(flags['save-gather'], `${JSON.stringify(gathered, null, 2)}\n`);
+    writeFile(flags['save-gather'], `${JSON.stringify(gathered, null, 2)}\n`);
 
   const summary = measure(gathered, { base });
   const markdown = renderMeasurement(summary);
-  if (flags.out) write(flags.out, markdown);
-  if (flags.json) write(flags.json, `${JSON.stringify(summary, null, 2)}\n`);
+  if (flags.out) writeFile(flags.out, markdown);
+  if (flags.json)
+    writeFile(flags.json, `${JSON.stringify(summary, null, 2)}\n`);
   if (!flags.out) process.stdout.write(markdown);
   console.error(
     `escaped-defects: ${summary.sample.fixes} fixes ${summary.window.since}..${summary.window.until}, ` +
