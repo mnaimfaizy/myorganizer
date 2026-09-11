@@ -1,0 +1,266 @@
+{
+  "schemaVersion": 1,
+  "rules": [
+    {
+      "id": "smell-mysterious-name",
+      "family": "smell",
+      "title": "Mysterious Name",
+      "axes": ["standards"],
+      "maxSeverity": "should-fix"
+    },
+    {
+      "id": "smell-duplicated-code",
+      "family": "smell",
+      "title": "Duplicated Code",
+      "axes": ["standards"],
+      "maxSeverity": "should-fix"
+    },
+    {
+      "id": "smell-feature-envy",
+      "family": "smell",
+      "title": "Feature Envy",
+      "axes": ["standards"],
+      "maxSeverity": "should-fix"
+    },
+    {
+      "id": "smell-data-clumps",
+      "family": "smell",
+      "title": "Data Clumps",
+      "axes": ["standards"],
+      "maxSeverity": "should-fix"
+    },
+    {
+      "id": "smell-primitive-obsession",
+      "family": "smell",
+      "title": "Primitive Obsession",
+      "axes": ["standards"],
+      "maxSeverity": "should-fix"
+    },
+    {
+      "id": "smell-repeated-switches",
+      "family": "smell",
+      "title": "Repeated Switches",
+      "axes": ["standards"],
+      "maxSeverity": "should-fix"
+    },
+    {
+      "id": "smell-shotgun-surgery",
+      "family": "smell",
+      "title": "Shotgun Surgery",
+      "axes": ["standards"],
+      "maxSeverity": "should-fix"
+    },
+    {
+      "id": "smell-divergent-change",
+      "family": "smell",
+      "title": "Divergent Change",
+      "axes": ["standards"],
+      "maxSeverity": "should-fix"
+    },
+    {
+      "id": "smell-speculative-generality",
+      "family": "smell",
+      "title": "Speculative Generality",
+      "axes": ["standards"],
+      "maxSeverity": "should-fix"
+    },
+    {
+      "id": "smell-message-chains",
+      "family": "smell",
+      "title": "Message Chains",
+      "axes": ["standards"],
+      "maxSeverity": "should-fix"
+    },
+    {
+      "id": "smell-middle-man",
+      "family": "smell",
+      "title": "Middle Man",
+      "axes": ["standards"],
+      "maxSeverity": "should-fix"
+    },
+    {
+      "id": "smell-refused-bequest",
+      "family": "smell",
+      "title": "Refused Bequest",
+      "axes": ["standards"],
+      "maxSeverity": "should-fix"
+    },
+
+    {
+      "id": "obligation-run-the-gate-that-covers-this-change",
+      "family": "obligation",
+      "title": "Run the gate that covers this change",
+      "axes": ["standards"],
+      "cites": "docs/review/REVIEW_CHECKLIST.md"
+    },
+    {
+      "id": "obligation-destructive-confirmation-names-what-it-mutates",
+      "family": "obligation",
+      "title": "A destructive confirmation names everything it destroys",
+      "axes": ["standards"],
+      "cites": "docs/review/REVIEW_CHECKLIST.md"
+    },
+    {
+      "id": "obligation-slot-injected-props-land-on-the-control",
+      "family": "obligation",
+      "title": "Injected props land on the control, not on a wrapper",
+      "axes": ["standards"],
+      "cites": "docs/review/REVIEW_CHECKLIST.md"
+    },
+    {
+      "id": "obligation-env-assignment-runtime-value",
+      "family": "obligation",
+      "title": "An environment assignment stores what it looks like it stores",
+      "axes": ["standards"],
+      "cites": "docs/review/REVIEW_CHECKLIST.md"
+    },
+
+    {
+      "id": "reach-through-member-added-to-a-set",
+      "family": "reach-through",
+      "title": "A member added to a set leaves a hand-enumeration behind",
+      "axes": ["standards"],
+      "cites": ".agents/skills/code-review/SKILL.md"
+    },
+    {
+      "id": "reach-through-shared-value-removed",
+      "family": "reach-through",
+      "title": "A shared value removed or renamed leaves a consumer resolving to nothing",
+      "axes": ["standards"],
+      "cites": ".agents/skills/code-review/SKILL.md"
+    },
+
+    {
+      "id": "standard-enum-fanout-not-pinned",
+      "family": "standard",
+      "title": "A fan-out over a domain enum does not reach its Pinned Table",
+      "axes": ["standards"],
+      "cites": "docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md"
+    },
+    {
+      "id": "standard-design-token-bypassed",
+      "family": "standard",
+      "title": "A colour, spacing, or radius literal stands in for a design token",
+      "axes": ["standards"],
+      "cites": "docs/adr/0065-tokens-json-is-the-single-source-of-web-colour.md"
+    },
+    {
+      "id": "standard-generated-artifact-hand-edited",
+      "family": "standard",
+      "title": "A generated artifact is hand-edited instead of regenerated",
+      "axes": ["standards"],
+      "cites": "AGENTS.md"
+    },
+    {
+      "id": "standard-vault-plaintext-leaves-the-client",
+      "family": "standard",
+      "title": "Vault plaintext reaches the server or a plaintext API",
+      "axes": ["standards"],
+      "cites": "libs/web-vault/AGENTS.md"
+    },
+    {
+      "id": "standard-nextjs-async-api-not-awaited",
+      "family": "standard",
+      "title": "A Next.js async API is read without awaiting it",
+      "axes": ["standards"],
+      "cites": "AGENTS.md"
+    },
+    {
+      "id": "standard-page-logic-in-route-wrapper",
+      "family": "standard",
+      "title": "Page logic sits in a route wrapper instead of a page library",
+      "axes": ["standards"],
+      "cites": "AGENTS.md"
+    },
+    {
+      "id": "standard-domain-term-off-glossary",
+      "family": "standard",
+      "title": "Domain language contradicts the glossary",
+      "axes": ["standards"],
+      "cites": "CONTEXT.md"
+    },
+    {
+      "id": "standard-note-has-no-home",
+      "family": "standard",
+      "title": "A note is filed outside the directory its kind belongs in",
+      "axes": ["standards"],
+      "cites": "docs/adr/0041-internal-notes-have-homes.md"
+    },
+    {
+      "id": "standard-adr-number-or-status-wrong",
+      "family": "standard",
+      "title": "An ADR number or status does not follow its pull request",
+      "axes": ["standards"],
+      "cites": "docs/adr/0042-adr-numbers-are-claims-until-merged.md"
+    },
+    {
+      "id": "standard-unwired-gate",
+      "family": "standard",
+      "title": "A checker exists that nothing at head runs",
+      "axes": ["standards"],
+      "cites": "docs/adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md"
+    },
+    {
+      "id": "standard-missing-focused-test",
+      "family": "standard",
+      "title": "Changed behaviour carries no focused test",
+      "axes": ["standards"],
+      "cites": "docs/testing/README.md"
+    },
+    {
+      "id": "standard-ui-composition",
+      "family": "standard",
+      "title": "A component breaks the composition or accessibility guidelines",
+      "axes": ["standards"],
+      "cites": "docs/ui/GUIDELINES.md"
+    },
+    {
+      "id": "standard-doc-claim-drifted",
+      "family": "standard",
+      "title": "A document still claims something the change made untrue",
+      "axes": ["standards"],
+      "cites": "AGENTS.md"
+    },
+    {
+      "id": "standard-secret-committed",
+      "family": "standard",
+      "title": "A secret, credential, or plaintext value is committed or logged",
+      "axes": ["standards"],
+      "cites": "AGENTS.md"
+    },
+    {
+      "id": "standard-branch-or-commit-convention",
+      "family": "standard",
+      "title": "A branch name or commit message breaks the naming convention",
+      "axes": ["standards"],
+      "cites": "AGENTS.md"
+    },
+    {
+      "id": "standard-other",
+      "family": "standard",
+      "title": "A documented standard this catalogue does not name yet",
+      "axes": ["standards"],
+      "cites": "CODING_STANDARDS.md",
+      "fallback": true
+    },
+
+    {
+      "id": "spec-requirement-missing",
+      "family": "spec",
+      "title": "A requirement the spec asked for is missing or partial",
+      "axes": ["spec"]
+    },
+    {
+      "id": "spec-behaviour-not-asked-for",
+      "family": "spec",
+      "title": "Behaviour the spec did not ask for",
+      "axes": ["spec"]
+    },
+    {
+      "id": "spec-requirement-implemented-wrong",
+      "family": "spec",
+      "title": "A requirement looks implemented but is wrong",
+      "axes": ["spec"]
+    }
+  ]
+}

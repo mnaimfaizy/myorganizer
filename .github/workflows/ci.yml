@@ -636,6 +636,9 @@ jobs:
       - name: Reviewer tool allowlist checker contracts
         run: corepack yarn review:allowlist:test
 
+      - name: Rule catalogue checker contracts
+        run: corepack yarn review:rules:test
+
       - name: Gate coverage checker contracts
         run: corepack yarn gates:coverage:test
 

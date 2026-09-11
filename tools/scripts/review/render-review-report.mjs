@@ -82,7 +82,7 @@ const renderFinding = (f, { hunks }) => {
     .join(' · ');
   const lines = [
     `- ${head}`,
-    `  - source: \`${f.source}\` — ${f.rule}`,
+    `  - rule: \`${f.ruleId}\` — ${f.rule} (source: \`${f.source}\`)`,
     `  - ${evidenceText(f)}`,
   ];
   if (f.evidence.kind === 'executed' && f.evidence.outputExcerpt) {

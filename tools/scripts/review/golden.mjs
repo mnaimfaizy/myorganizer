@@ -10,9 +10,15 @@
  * is a set: the reviewer phrases a rule in the source's words, and the same
  * defect is fairly located at more than one of the files involved. `rule` is
  * a matching pattern only — it left the identity tuple in issue #718 because
- * the reviewer rewords it every run — so the strict-tuple annotation below
- * hashes axis, source, and file, exactly what the validator hashes. Recall is
- * matched over expected.
+ * the reviewer rewords it every run. Matching stays on those patterns: a case
+ * is a historical measurement, and tightening it to one exact id would score
+ * a reviewer that named the defect defensibly differently as a miss.
+ *
+ * The strict-tuple annotation is the part that must track the tuple, because
+ * it claims the validator's own hash would have matched. Since issue #724 that
+ * hash is axis + ruleId + file, so an expectation says whether it is literal
+ * enough to be a tuple by pinning `ruleId` to one catalogue id; an expectation
+ * that pins none is simply never strict. Recall is matched over expected.
  *
  * Everything here is pure; `score-golden-case.mjs` reads files and exits.
  */
@@ -21,6 +27,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { CASE_TIERS, GOLDEN_SET_PATH } from './golden-tiers.mjs';
+import { RULES_DISPLAY_PATH, ruleById } from './rules.mjs';
 import { FINDING_AXES, FINDING_SEVERITIES, findingId } from './schema.mjs';
 
 // The tier vocabulary and the set's location are declared once, in the
@@ -116,6 +123,14 @@ export function assertGoldenSet(set, source = 'golden set') {
       compile(e.source, w);
       if (typeof e.rule !== 'string') fail(`${w}: rule pattern missing`);
       compile(e.rule, w);
+      // Optional, and a literal rather than a pattern: it is hashed, not
+      // matched. An id the catalogue does not carry could never be minted by
+      // the validator, so an expectation naming one would annotate `strict`
+      // false for ever and read as a reviewer that keeps missing the tuple.
+      if (e.ruleId !== undefined) {
+        if (typeof e.ruleId !== 'string' || !ruleById(e.ruleId))
+          fail(`${w}: ruleId ${e.ruleId} is not in ${RULES_DISPLAY_PATH}`);
+      }
       if (!Array.isArray(e.files) || e.files.length === 0)
         fail(`${w}: files must name at least one path`);
       if (e.minSeverity && !FINDING_SEVERITIES.includes(e.minSeverity))
@@ -210,15 +225,18 @@ export const scoreCase = (goldenCase, normalized) => {
       continue;
     }
     used.add(hit.id);
-    // Would the strict tuple hash have matched? Only when the expected
-    // patterns are literal enough to be a tuple themselves.
+    // Would the strict tuple hash have matched? Only when the expectation is
+    // literal enough to be a tuple itself, which since issue #724 means it
+    // pins the `ruleId` the validator hashes. Recomputing this from the
+    // finding's own id would make the claim circular and always true.
     const strict =
+      expected.ruleId !== undefined &&
       hit.id ===
-      findingId({
-        axis: expected.axis,
-        source: expected.source,
-        location: { file: hit.location.file },
-      });
+        findingId({
+          axis: expected.axis,
+          ruleId: expected.ruleId,
+          location: { file: hit.location.file },
+        });
     matched.push({ expected: expected.id, finding: hit.id, strict });
   }
   const recall = matched.length / goldenCase.expected.length;

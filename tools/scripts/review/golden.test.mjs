@@ -38,6 +38,10 @@ const finding = (over = {}) => ({
   id: 'abcdefabcdef',
   axis: 'standards',
   severity: 'blocking',
+  // A validated finding always carries one, and the strict-tuple annotation
+  // hashes it. A fixture without it makes that assertion compare two
+  // `undefined`s and pass while the shipped path is broken (issue #724).
+  ruleId: 'standard-enum-fanout-not-pinned',
   source: 'AGENTS.md',
   rule: 'Code fanning out over a domain enum reaches one table',
   location: { file: 'libs/web-vault/src/lib/vault/vaultMigration.ts' },
@@ -225,21 +229,43 @@ test('one finding satisfies one expectation, and extras are counted', () => {
   assert.equal(score.pass, false);
 });
 
-test('an exact tuple is reported as strict', () => {
-  const literal = {
+test('an expectation that pins a rule id is reported as strict', () => {
+  const pinned = {
     ...goldenCase,
     expected: [
       {
         ...goldenCase.expected[0],
-        source: 'AGENTS.md',
-        rule: 'Code fanning out over a domain enum reaches one table',
+        ruleId: 'standard-enum-fanout-not-pinned',
       },
     ],
   };
   const f = finding();
   f.id = findingId(f);
-  const score = scoreCase(literal, { findings: [f] });
-  assert.equal(score.matched[0].strict, true);
+  assert.equal(scoreCase(pinned, { findings: [f] }).matched[0].strict, true);
+  // The reviewer named the defect under a different catalogue id: matching
+  // still succeeds on the source and rule patterns, but the validator's tuple
+  // would not have matched, and the annotation must say so.
+  const other = finding({ ruleId: 'standard-missing-focused-test' });
+  other.id = findingId(other);
+  assert.equal(
+    scoreCase(pinned, { findings: [other] }).matched[0].strict,
+    false,
+  );
+  // An expectation that pins nothing is never strict — it is not literal
+  // enough to be a tuple, which is the whole claim the annotation makes.
+  assert.equal(
+    scoreCase(goldenCase, { findings: [f] }).matched[0].strict,
+    false,
+  );
+});
+
+test('a pinned rule id must exist in the rule catalogue', () => {
+  const copy = JSON.parse(JSON.stringify(set));
+  copy.cases[0].expected[0].ruleId = 'standard-invented-here';
+  assert.throws(
+    () => assertGoldenSet(copy),
+    /ruleId standard-invented-here is not in tools\/config\/review-rules\.json/,
+  );
 });
 
 test('the rendered score names misses with their why', () => {

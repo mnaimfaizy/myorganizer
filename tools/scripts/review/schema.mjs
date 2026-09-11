@@ -17,14 +17,17 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
+import { RULES_DISPLAY_PATH, ruleById, ruleIds } from './rules.mjs';
+
 /**
- * Bumped to 2 when `rule` left the identity tuple (issue #718). The version is
+ * Bumped to 2 when `rule` left the identity tuple (issue #718), and to 3 when
+ * the bounded `ruleId` replaced `source` in it (issue #724). The version is
  * what tells a run whether the stored artifact from the previous run is
- * comparable: identities minted at 1 mean nothing at 2, so the renderer says
+ * comparable: identities minted at 2 mean nothing at 3, so the renderer says
  * there is no comparable previous run instead of announcing every finding new
  * and every prior finding resolved.
  */
-export const REPORT_SCHEMA_VERSION = 2;
+export const REPORT_SCHEMA_VERSION = 3;
 
 export const REVIEW_TIER_LABELS = /** @type {const} */ ([
   'review:auto',
@@ -54,16 +57,24 @@ export const VERDICT_VALUES = /** @type {const} */ ([
 ]);
 /**
  * What a finding is, for the purpose of recognising it again on the next run.
- * `rule` is deliberately absent: it is free-form prose the model rewrites
- * every run, and a single Unicode arrow degrading to ASCII minted a new
- * identity. The published record showed a persisting count of zero in 38 of 38
+ * Every field is a closed vocabulary or a path the reviewer copies; nothing
+ * here is prose it composes.
+ *
+ * `rule` is deliberately absent: it is free-form text the model rewrites every
+ * run, and a single Unicode arrow degrading to ASCII minted a new identity.
+ * The published record showed a persisting count of zero in 38 of 38
  * consecutive reports across four Pull Requests — no identity ever survived a
  * push, so a declined finding was announced as resolved and its thread closed
  * (issue #718).
+ *
+ * `source` is absent too, and `ruleId` stands where it stood (issue #724). A
+ * source discriminates far too coarsely to be an identity on its own: one of
+ * them, `smell-baseline`, covered all twelve Fowler smells, so two unrelated
+ * smells in one file were one finding as far as the strip was concerned.
  */
 export const FINDING_IDENTITY_FIELDS = /** @type {const} */ ([
   'axis',
-  'source',
+  'ruleId',
   'file',
 ]);
 export const CONFIDENCE_VALUES = /** @type {const} */ ([
@@ -84,6 +95,12 @@ export const SPEC_FOUND_BY = /** @type {const} */ ([
  * The `source` a Fowler smell-baseline finding carries. The baseline is
  * always a judgement call, so the validator caps it at should-fix even when
  * the reviewer cites something (ADR 0071 item 1).
+ *
+ * Since issue #724 the cap is primarily the catalogue's: every `smell-*` rule
+ * declares `maxSeverity`, and that is what a finding is checked against. This
+ * stays because `source` is still what the reviewer writes and what the golden
+ * set matches on, so a finding marked smell-baseline under some other rule id
+ * is capped by the same principle rather than slipping between the two.
  */
 export const SMELL_BASELINE_SOURCE = 'smell-baseline';
 
@@ -172,10 +189,13 @@ export const EvidenceSchema = z.discriminatedUnion('kind', [
 ]);
 
 /**
- * `source` is the identity half of a finding: the standard's path or the issue
- * reference. `rule` names the requirement it applies and `summary` is the
- * human claim — both are prose the reviewer composes, so neither is hashed.
- * Nothing here carries diff text (ADR 0071 item 3).
+ * `ruleId` is the identity half of a finding: one id from the bounded
+ * catalogue (`tools/scripts/review/rules.mjs`). `source` names where the rule
+ * lives — the standard's path, the issue reference, `smell-baseline` — and
+ * `rule` states the requirement in the source's own words; `summary` is the
+ * human claim. Those three are display. They are read by people and by the
+ * golden scorer's regexes, and by nothing that decides an identity, a
+ * severity, or a verdict. Nothing here carries diff text (ADR 0071 item 3).
  */
 /** Which citation source each axis may rest on (pinned; asserted below). */
 export const AXIS_CITATION_SOURCE = /** @type {const} */ ({
@@ -191,6 +211,7 @@ export const FindingInputSchema = z
     axis: z.enum(FINDING_AXES),
     severity: z.enum(FINDING_SEVERITIES),
     summary: nonEmpty,
+    ruleId: nonEmpty,
     source: nonEmpty,
     rule: nonEmpty,
     evidence: EvidenceSchema,
@@ -202,6 +223,40 @@ export const FindingInputSchema = z
   .superRefine((f, ctx) => {
     const issue = (message, path = []) =>
       ctx.addIssue({ code: 'custom', message, path });
+
+    // The bounded rule (issue #724). An id outside the catalogue is rejected
+    // rather than accepted as prose, because the identity tuple hashes it: an
+    // id the reviewer invented is an id it would invent differently next run,
+    // which is the instability the catalogue replaced.
+    const rule = ruleById(f.ruleId);
+    if (!rule) {
+      issue(
+        `"${f.ruleId}" is not one of the ${ruleIds().length} rule ids in ` +
+          `${RULES_DISPLAY_PATH}; pick the closest, or the family's fallback ` +
+          `when nothing fits`,
+        ['ruleId'],
+      );
+    } else if (!rule.axes.includes(f.axis)) {
+      issue(
+        `"${f.ruleId}" is a ${rule.axes.join('/')} rule and this is a ${f.axis} finding`,
+        ['ruleId'],
+      );
+    }
+    if (rule?.maxSeverity) {
+      const cap = SEVERITY_RANK[rule.maxSeverity];
+      if (cap === undefined) {
+        // A cap nobody can compare against would pass everything, silently.
+        issue(
+          `${RULES_DISPLAY_PATH}: ${f.ruleId} caps at "${rule.maxSeverity}", which is not a severity`,
+          ['severity'],
+        );
+      } else if (SEVERITY_RANK[f.severity] < cap) {
+        issue(
+          `a ${rule.title} finding is a judgement call and caps at ${rule.maxSeverity}`,
+          ['severity'],
+        );
+      }
+    }
 
     if (f.evidence.kind === 'cited') {
       // A Standards finding cites a repo standard; a Spec finding cites the
@@ -337,39 +392,35 @@ export const bySeverity = (a, b) =>
   SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity];
 
 /**
- * Derived identity: axis + source + file. Line is excluded so a rebase does
+ * Derived identity: axis + ruleId + file. Line is excluded so a rebase does
  * not mint a new finding, and `rule` is excluded so a reworded sentence does
- * not either (ADR 0071 item 6, amended by issue #718). Every field here is
- * either a closed enum or a path the reviewer copies rather than composes.
+ * not either (ADR 0071 item 6, amended by issue #718 and issue #724). Every
+ * field here is a closed vocabulary or a path the reviewer copies rather than
+ * composes.
  */
 const IDENTITY_ACCESSORS =
   /** @type {Record<typeof FINDING_IDENTITY_FIELDS[number], (f: object) => string>} */ ({
     axis: (f) => f.axis,
-    source: (f) => f.source,
+    ruleId: (f) => f.ruleId,
     file: (f) => f.location?.file ?? '',
   });
 
 /**
  * `occurrence` is 0 for the first finding with this identity tuple in a
- * report and counts up for repeats, so two findings that share axis, source,
+ * report and counts up for repeats, so two findings that share axis, ruleId,
  * and file keep distinct ids without the line entering the hash (ADR 0071
  * item 6). Repeats are numbered in startLine order, so the numbering survives
  * a rebase the same way the tuple does.
  *
- * The tuple is coarser than the finding: two distinct defects in one file
- * cited against one source now collide, and the disambiguator orders them by
- * line. Fixing one of two colliding findings renumbers the survivor onto the
- * vacated id, so the strip reads one persisting and one resolved while the
- * report re-posts the survivor under the other id. The blast radius is widest
- * where `file` is empty: an unlocated finding hashes the empty string, so on
- * the spec axis, where every finding cites the same issue ref, all unlocated
- * findings collide with each other rather than only with their file-mates.
- *
- * That is accepted for now. What it costs is churn — a resolve and a repost
- * of feedback that is still on the report — where the bug it replaces lost
- * the feedback outright, resolving the thread of a finding nothing reported
- * again. A bounded rule identifier — a closed vocabulary the reviewer selects
- * from rather than writes — closes it (issue #724).
+ * Since issue #724 a repeat means two findings of the *same* rule in one file,
+ * not — as it did while `source` stood here — two unrelated rules that happen
+ * to be written down in the same document. What is left is genuinely one rule
+ * applied twice, plus one residue: several unlocated spec findings of the same
+ * kind all hash the empty file, and several `standard-other` findings in one
+ * file do the same because the fallback is what a reviewer reaches for when it
+ * cannot name the rule. Both are disambiguated by line order within the
+ * report, and both cost churn — a resolve and a repost of feedback still on
+ * the report — rather than the lost feedback of issue #718.
  */
 export const findingId = (finding, occurrence = 0) => {
   const tuple = FINDING_IDENTITY_FIELDS.map((field) =>
@@ -404,8 +455,9 @@ const assignFindingIds = (findings) => {
 /**
  * Whether a stored artifact from an earlier run can be diffed against this
  * one. Ids are only meaningful within a schema version — a report written
- * before `rule` left the tuple carries identities this run can never mint —
- * so a mismatch is "no comparable previous run", not "everything resolved".
+ * before `ruleId` replaced `source` in the tuple carries identities this run
+ * can never mint — so a mismatch is "no comparable previous run", not
+ * "everything resolved".
  *
  * @param {unknown} raw a report read back from an artifact, of any vintage
  */

@@ -141,7 +141,7 @@ export const inlineComments = ({ findings, openThreadBodies = [] }) => {
         findingMarker(f.id),
         `**Blocking · ${AXIS_TITLES[f.axis]}** — ${f.summary}`,
         '',
-        `Rule: ${f.rule} (${f.source})`,
+        `Rule: \`${f.ruleId}\` — ${f.rule} (${f.source})`,
         `Evidence: ${evidenceText(f)}`,
         ...(f.remedy ? ['', `Suggested: ${f.remedy}`] : []),
       ].join('\n'),

@@ -35,6 +35,7 @@ const cited = (overrides = {}) => ({
   axis: 'standards',
   severity: 'blocking',
   summary: 'Hand-enumerates VaultBlobType members',
+  ruleId: 'standard-enum-fanout-not-pinned',
   source: 'AGENTS.md',
   rule: 'Code fanning out over a domain enum reaches one satisfies Record table',
   evidence: {
@@ -55,6 +56,7 @@ const inferred = (overrides = {}) => ({
   axis: 'standards',
   severity: 'should-fix',
   summary: 'Possible Feature Envy',
+  ruleId: 'smell-feature-envy',
   source: 'smell-baseline',
   rule: 'Feature Envy',
   evidence: {
@@ -105,6 +107,7 @@ test('a blocking spec omission may anchor to the quoted spec line alone', () => 
           axis: 'spec',
           severity: 'blocking',
           summary: 'Acceptance criterion 3 is not implemented',
+          ruleId: 'spec-requirement-missing',
           source: '#123',
           rule: 'AC3: export includes the Tasks blob',
           evidence: {
@@ -126,6 +129,7 @@ test('a quoted spec line must be marked untrusted', () => {
       findings: [
         cited({
           axis: 'spec',
+          ruleId: 'spec-requirement-missing',
           evidence: {
             kind: 'cited',
             sourceKind: 'spec',
@@ -214,17 +218,17 @@ test('a spec of kind none cannot carry a ref', () => {
   );
 });
 
-// The accepted collision (issue #718): two distinct defects in one file cited
-// against one source now share a tuple, because the rule text that told them
-// apart was the unstable input. The within-report disambiguator orders by
-// line. Closed by the bounded rule identifier (issue #724).
+// The same rule applied twice in one file still shares a tuple — that is what
+// a repeat legitimately is — and the within-report disambiguator orders the
+// occurrences by line (issue #718).
 test('two findings with the same identity tuple in one report get distinct, stable ids', () => {
-  const at = (startLine, rule = 'r') => ({
+  const at = (startLine, ruleId = 'standard-design-token-bypassed') => ({
     axis: 'standards',
     severity: 'should-fix',
     summary: 's',
+    ruleId,
     source: 'AGENTS.md',
-    rule,
+    rule: 'r',
     evidence: {
       kind: 'cited',
       sourceKind: 'standard',
@@ -249,17 +253,42 @@ test('two findings with the same identity tuple in one report get distinct, stab
   const ids = (findings) =>
     normalizeReport(envelope(findings)).findings.map((f) => f.id);
 
-  // Two different rules at two lines of one file: one tuple, two occurrences.
-  const [first, second] = ids([
-    at(10, 'no hex literals'),
-    at(50, 'await cookies()'),
-  ]);
+  // One rule broken at two lines of one file: one tuple, two occurrences.
+  const [first, second] = ids([at(10), at(50)]);
   assert.notEqual(first, second);
   assert.equal(first, findingId(at(10)));
   // Numbering follows startLine, not report order, so a reorder is stable.
   assert.deepEqual(ids([at(50), at(10)]), [second, first]);
   // A lone finding keeps the plain tuple id.
   assert.deepEqual(ids([at(50)]), [first]);
+
+  // The collision issue #724 removes: two *different* rules in one file are
+  // two identities, not one tuple with two occurrences. Before the bounded
+  // rule id they hashed `axis + source + file` and collided, so fixing one
+  // renumbered the survivor onto the vacated id — the report resolved a
+  // thread and re-posted the same feedback under another id.
+  const tokens = at(10, 'standard-design-token-bypassed');
+  const secrets = at(50, 'standard-secret-committed');
+  assert.notEqual(findingId(tokens), findingId(secrets));
+  const together = ids([tokens, secrets]);
+  assert.deepEqual(together, [findingId(tokens), findingId(secrets)]);
+  // Neither is an occurrence of the other, so removing one leaves the
+  // survivor's id exactly where it was.
+  assert.deepEqual(ids([secrets]), [together[1]]);
+  assert.deepEqual(ids([tokens]), [together[0]]);
+});
+
+test('a rule id outside the catalogue is rejected, and so is one off its axis', () => {
+  rejects(
+    envelope({ findings: [cited({ ruleId: 'standard-i-made-this-up' })] }),
+    /findings\.0\.ruleId: "standard-i-made-this-up" is not one of the \d+ rule ids in tools\/config\/review-rules\.json/,
+  );
+  // A spec rule cannot carry a standards finding: the axis is in the tuple, so
+  // a mismatched pair would mint an identity no later run reproduces.
+  rejects(
+    envelope({ findings: [cited({ ruleId: 'spec-requirement-missing' })] }),
+    /findings\.0\.ruleId: "spec-requirement-missing" is a spec rule and this is a standards finding/,
+  );
 });
 
 test('a cited finding must cite its own axis: standards → standard, spec → spec', () => {
@@ -268,6 +297,10 @@ test('a cited finding must cite its own axis: standards → standard, spec → s
       axis,
       severity: 'should-fix',
       summary: 's',
+      ruleId:
+        axis === 'spec'
+          ? 'spec-requirement-missing'
+          : 'standard-design-token-bypassed',
       source: axis === 'spec' ? '#12' : 'AGENTS.md',
       rule: 'r',
       evidence: {
@@ -313,7 +346,7 @@ test('a quoted line, trusted or not, renders as one line of inline code', () => 
   assert.equal(standard, 'cited standard: `Use tokens not hex`');
 });
 
-test('finding identity ignores the line and the rule text, and changes with the file', () => {
+test('finding identity ignores the line, the rule text, and the source, and changes with the file', () => {
   const a = cited();
   const b = cited({ location: { ...a.location, startLine: 99 } });
   const c = cited({ location: { ...a.location, file: 'other.ts' } });
@@ -322,10 +355,23 @@ test('finding identity ignores the line and the rule text, and changes with the 
   const reworded = cited({
     rule: 'A fan-out over a domain enum must reach one satisfies Record table -> never an object literal',
   });
-  const differentAxis = cited({ axis: 'spec', source: '#123' });
+  // The same rule cited against the document that also records it. `source`
+  // left the tuple in issue #724, so this is the same finding.
+  const otherSource = cited({
+    source:
+      'docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md',
+  });
+  const differentRule = cited({ ruleId: 'standard-missing-focused-test' });
+  const differentAxis = cited({
+    axis: 'spec',
+    ruleId: 'spec-requirement-missing',
+    source: '#123',
+  });
   assert.equal(findingId(a), findingId(b));
   assert.equal(findingId(a), findingId(reworded));
+  assert.equal(findingId(a), findingId(otherSource));
   assert.notEqual(findingId(a), findingId(c));
+  assert.notEqual(findingId(a), findingId(differentRule));
   assert.notEqual(findingId(a), findingId(differentAxis));
 });
 
@@ -392,6 +438,7 @@ test('the renderer keeps the axes apart, folds nits, and diffs by id', () => {
         inferred({
           severity: 'nit',
           summary: 'Rename x',
+          ruleId: 'smell-mysterious-name',
           rule: 'Mysterious Name',
           // Its own file, so it is a separate identity from the previous
           // run's unlocated smell-baseline finding rather than a collision.
@@ -406,6 +453,7 @@ test('the renderer keeps the axes apart, folds nits, and diffs by id', () => {
           axis: 'spec',
           severity: 'should-fix',
           summary: 'Scope creep: adds a toggle nobody asked for',
+          ruleId: 'spec-behaviour-not-asked-for',
           source: '#123',
           rule: 'PRD scope',
           evidence: {
@@ -438,10 +486,25 @@ test('the renderer keeps the axes apart, folds nits, and diffs by id', () => {
 });
 
 test('a smell-baseline finding cannot block even with cited evidence', () => {
+  // The catalogue's cap: every `smell-*` rule declares maxSeverity, so the
+  // twelve smells are twelve capped identities rather than one opaque source.
   rejects(
     envelope({
-      findings: [cited({ source: 'smell-baseline', rule: 'Feature Envy' })],
+      findings: [
+        cited({
+          ruleId: 'smell-feature-envy',
+          source: 'smell-baseline',
+          rule: 'Feature Envy',
+        }),
+      ],
     }),
+    /findings\.0\.severity: a Feature Envy finding is a judgement call and caps at should-fix/,
+  );
+  // And the source's cap, which still stands on its own: a finding the
+  // reviewer marked smell-baseline under some other rule id is the same
+  // judgement call and must not slip between the two checks.
+  rejects(
+    envelope({ findings: [cited({ source: 'smell-baseline' })] }),
     /findings\.0\.severity: a smell-baseline finding is always a judgement call/,
   );
 });

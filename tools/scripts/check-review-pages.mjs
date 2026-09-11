@@ -15,6 +15,7 @@
 // check could not run.
 import { existsSync, readFileSync } from 'node:fs';
 
+import { RULE_FAMILIES } from './review/rules.mjs';
 import {
   FINDING_AXES,
   FINDING_EVIDENCE_KINDS,
@@ -123,6 +124,10 @@ eqList(
   FINDING_IDENTITY_FIELDS,
   manifest.findingIdentityFields,
 );
+// The identity tuple now names a bounded vocabulary rather than a free-form
+// source (issue #724), so the page has to show which vocabulary. A page that
+// pictures `ruleId` without its families describes an enum with no members.
+eqList('ruleFamilies', RULE_FAMILIES, manifest.ruleFamilies);
 eqList(
   'requiredCheckContexts',
   REQUIRED_CHECK_CONTEXTS,
@@ -170,6 +175,8 @@ for (const word of [
   ...FINDING_SEVERITIES,
   ...FINDING_EVIDENCE_KINDS,
   ...VERDICT_VALUES,
+  ...FINDING_IDENTITY_FIELDS,
+  ...RULE_FAMILIES,
   AGENT_VERDICT_CHECK,
   AGENT_REVIEW_RAN_CHECK,
 ]) {
@@ -206,5 +213,5 @@ if (findings.length) {
 }
 
 console.log(
-  `review-pages: OK — ${PAGE} matches the finding contract, ${REQUIRED_CHECK_CONTEXTS.length} required checks, the ${AGENT_VERDICT_CHECK} and ${AGENT_REVIEW_RAN_CHECK} jobs, and ${GATE_TIER_LABELS.length} gate tier labels`,
+  `review-pages: OK — ${PAGE} matches the finding contract, ${RULE_FAMILIES.length} rule families, ${REQUIRED_CHECK_CONTEXTS.length} required checks, the ${AGENT_VERDICT_CHECK} and ${AGENT_REVIEW_RAN_CHECK} jobs, and ${GATE_TIER_LABELS.length} gate tier labels`,
 );

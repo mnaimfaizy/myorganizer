@@ -32,6 +32,7 @@ on:
       - '.github/workflows/review-golden-replay.yml'
       - 'tools/config/review-golden-set.json'
       - 'tools/config/review-obligations.json'
+      - 'tools/config/review-rules.json'
   workflow_dispatch:
     inputs:
       tier:
@@ -98,8 +99,12 @@ jobs:
           CHANGED="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" \
             --paginate --jq '.[].filename')"
           # The brief the guards protect, and the contract that decides
-          # whether a finding of theirs is even accepted.
-          if grep -qE '^(\.agents/skills/code-review/|\.github/actions/code-reviewer/|tools/scripts/review/(schema|validate-review-report)\.mjs$)' <<<"$CHANGED"; then
+          # whether a finding of theirs is even accepted — which since issue
+          # #724 includes the rule catalogue: a finding naming an id the
+          # catalogue does not carry is rejected exactly as a bad severity is,
+          # so narrowing an axis or retiring an id can turn a guard's catch
+          # into a rejected report.
+          if grep -qE '^(\.agents/skills/code-review/|\.github/actions/code-reviewer/|tools/config/review-rules\.json$|tools/scripts/review/(schema|rules|validate-review-report)\.mjs$)' <<<"$CHANGED"; then
             echo 'tiers=all' >> "$GITHUB_OUTPUT"
             echo 'the brief or the finding contract changed: guards run too'
           else

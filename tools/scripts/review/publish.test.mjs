@@ -19,6 +19,7 @@ const finding = (over = {}) => ({
   axis: 'standards',
   severity: 'blocking',
   summary: 'a thing',
+  ruleId: 'standard-enum-fanout-not-pinned',
   source: 'AGENTS.md',
   rule: 'the rule',
   evidence: {

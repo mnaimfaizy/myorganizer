@@ -100,6 +100,12 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'review:rules:check',
+    npmScript: 'review:rules:check',
+    script: 'tools/scripts/check-review-rules.mjs',
+    args: [],
+  },
+  {
     id: 'deploy:pages:check',
     npmScript: 'deploy:pages:check',
     script: 'tools/scripts/check-deploy-pipeline.mjs',

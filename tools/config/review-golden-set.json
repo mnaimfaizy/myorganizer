@@ -18,6 +18,7 @@
         {
           "id": "reconcile-omits-new-member",
           "axis": "standards",
+          "ruleId": "standard-enum-fanout-not-pinned",
           "source": "AGENTS\\.md|0053|vaultMigration",
           "rule": "fan-?out|enum|every member|Record<|blob type",
           "files": [
@@ -47,6 +48,7 @@
         {
           "id": "envelope-omits-tasks",
           "axis": "standards",
+          "ruleId": "standard-enum-fanout-not-pinned",
           "source": "AGENTS\\.md|0053",
           "rule": "fan-?out|enum|every member|Record<|blob type",
           "files": ["libs/web-vault/src/lib/vault/vaultExportImport.ts"],
@@ -71,6 +73,7 @@
         {
           "id": "version-bump-without-openapi-sync",
           "axis": "standards",
+          "ruleId": "obligation-run-the-gate-that-covers-this-change",
           "source": "AGENTS\\.md",
           "rule": "openapi:sync|openapi:check|generated|synced output|api-specs|app-api-client",
           "files": [
@@ -101,6 +104,7 @@
         {
           "id": "formcontrol-slot-injects-onto-div",
           "axis": "standards",
+          "ruleId": "obligation-slot-injected-props-land-on-the-control",
           "source": "GUIDELINES",
           "rule": "FormLabel|htmlFor|associated|label|accessib|aria-describedby",
           "files": ["apps/myorganizer/src/app/(auth)/signup/page.tsx"],
@@ -125,6 +129,7 @@
         {
           "id": "destructive-replace-without-disclosure-dialog",
           "axis": "standards",
+          "ruleId": "obligation-destructive-confirmation-names-what-it-mutates",
           "source": "GUIDELINES|0068|0063",
           "rule": "dialog|Radix|window\\.confirm|confirm|disclos|destroy|what it will",
           "files": ["apps/myorganizer/src/app/vault-export/page.tsx"],
@@ -149,6 +154,7 @@
         {
           "id": "assigning-undefined-to-a-process-env-key-stores-a-string",
           "axis": "standards",
+          "ruleId": "obligation-env-assignment-runtime-value",
           "source": "smell-baseline|testing|AGENTS|CODING_STANDARDS",
           "rule": "undefined|coerc|string|truthy|delete|setup|misleading|no-op|dead",
           "files": ["apps/backend/src/services/EmailService.spec.ts"],
