@@ -42,6 +42,10 @@ import {
   formatSubagentIndex,
   formatTokens,
 } from '../tools/scripts/lib/sandcastle-subagent-trace.mjs';
+import {
+  branchNameCarriesIssue,
+  specAnchorMessage,
+} from '../tools/scripts/lib/sandcastle-spec-anchor.mjs';
 
 const REPO = 'mnaimfaizy/myorganizer';
 const SANDBOX_IMAGE = 'sandcastle:myorganizer';
@@ -272,6 +276,35 @@ function gitCmd(args: string[]): string {
   if (r.error) fail(`git error: ${r.error.message}`);
   if (r.status !== 0) fail(`git ${args.join(' ')} failed:\n${r.stderr.trim()}`);
   return r.stdout.trim();
+}
+
+/**
+ * Put an empty anchor commit on a branch whose NAME carries no issue number, so
+ * `/code-review` can resolve a spec for the pull request opened from it through
+ * the commit step of its existing discovery order (ADR 0076).
+ *
+ * Written with `commit-tree` rather than `git commit` on purpose: the branch is
+ * not checked out — the PRD branch is created before any worktree exists — and
+ * plumbing needs no worktree, no checkout dance, and runs no hooks, so there is
+ * nothing here to skip with `--no-verify`.
+ *
+ * The commit is empty, so it changes no diff, no `origin/main...feat/<slug>`
+ * gate scope, and no fast-forward: slices are cut from the branch AFTER this
+ * runs and therefore contain it already.
+ */
+function anchorBranchToIssue(branch: string, issue: number, title?: string) {
+  if (branchNameCarriesIssue(branch)) return;
+  const tree = gitCmd(['rev-parse', `${branch}^{tree}`]);
+  const commit = gitCmd([
+    'commit-tree',
+    tree,
+    '-p',
+    branch,
+    '-m',
+    specAnchorMessage({ branch, issue, title }),
+  ]);
+  gitCmd(['branch', '-f', branch, commit]);
+  console.log(`Anchored ${branch} to #${issue} (empty first commit).`);
 }
 
 /** True if the git ref resolves locally (branch, remote-tracking ref, or sha). */
@@ -736,6 +769,9 @@ function planPrdRun(prd: number): RunPlan {
     // a PR from it.
     gitCmd(['branch', '--no-track', branch, base]);
     console.log(`Created local branch ${branch} from ${base} (not pushed).`);
+    // `feat/<prd-slug>` names the PRD's title, not its number, so the reviewer's
+    // branch-name step cannot match it. Anchor it before any slice is cut.
+    anchorBranchToIssue(branch, prd, name);
   }
 
   const everyIssue = ghJson<Issue[]>([
@@ -2054,6 +2090,10 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     // Commit sub-agent was never invoked. Name the drafting hop explicitly.
     `- Commit via the \`commit-change-workflow\` Skill: stage the intended paths, have the \`Commit\` sub-agent draft the Conventional Commit message from the STAGED diff, write it to a file, then run \`corepack yarn ai:commit --message-file <path>\`. Do not hand-write the commit message and do not run \`git commit\` directly.`,
     `- Take the commit type from what the work does (an issue labelled \`bug\` is \`fix\`, not \`feat\`).`,
+    // The branch name carries #${issue.number} today, but a branch is renamed and
+    // a commit is not. The reference in the message is what survives into the
+    // feature branch, where the branch name carries nothing — ADR 0076.
+    `- End the commit message body with \`Closes #${issue.number}\` on its own line, so the commit carries the issue even after it is integrated into a branch whose name does not.`,
     `- Do NOT push and do NOT open a PR — this sandbox has no credentials. Just commit locally on your branch; leave nothing uncommitted. The orchestrator integrates your branch into the feature branch on the host.`,
     `- Do NOT output the completion promise until ALL of these hold: deterministic checks green; \`/code-review\` run once and its findings addressed; work committed through the \`Commit\` sub-agent + \`ai:commit\`; working tree clean.`,
     `- When all of the above hold, output <promise>COMPLETE</promise>.`,

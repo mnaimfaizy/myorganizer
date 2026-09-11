@@ -541,6 +541,9 @@ jobs:
       - name: Sandcastle sub-agent trace contracts
         run: corepack yarn sandcastle:subagent-trace:test
 
+      - name: Sandcastle spec-anchor contracts
+        run: corepack yarn sandcastle:spec-anchor:test
+
       - name: OpenAPI artifact checker contracts
         run: corepack yarn openapi:artifacts:test
 

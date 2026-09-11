@@ -66,6 +66,18 @@ In this order; record which step found it as `spec.foundBy`:
 
 Fetch issues via [`docs/agents/issue-tracker.md`](../../../docs/agents/issue-tracker.md).
 
+**A pull request body is not on this list, and must not be added to it**
+([ADR 0076](../../../docs/adr/0076-an-agent-branch-carries-its-issue-in-its-first-commit.md)). On an
+agent-authored pull request the body is written by the same agent that wrote the code, after it
+wrote the code: checking the diff against it is a tautology, and the Spec axis would report clean on
+work that does the wrong thing flawlessly. If a future change does admit it, the envelope must
+record the spec as author-derived and it must not satisfy the tightening step — it is weaker
+evidence than a tracked issue, not equal evidence from a different place.
+
+A branch whose name carries no issue number carries one in its first commit instead, so step 2 finds
+it (`AGENTS.md`, Branch naming). That is why an agent-authored pull request resolves a spec without
+any new discovery step.
+
 ### 3. Spawn both sub-agents in parallel
 
 Dispatch as your first substantive action after steps 1 and 2 — before you read
