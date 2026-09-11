@@ -88,7 +88,7 @@
     "typecheck:check:test": "node --test tools/scripts/check-typecheck.test.mjs",
     "review:validate": "node tools/scripts/review/validate-review-report.mjs",
     "review:render": "node tools/scripts/review/render-review-report.mjs",
-    "review:test": "node --test tools/scripts/review/schema.test.mjs tools/scripts/review/rules.test.mjs tools/scripts/review/cli.test.mjs tools/scripts/review/resolve-spec.test.mjs tools/scripts/review/publish.test.mjs tools/scripts/review/golden.test.mjs tools/scripts/review/golden-tiers.test.mjs tools/scripts/review/obligations.test.mjs tools/scripts/review/escaped-defects.test.mjs tools/scripts/review/measure-escaped-defects.test.mjs",
+    "review:test": "node --test tools/scripts/review/schema.test.mjs tools/scripts/review/rules.test.mjs tools/scripts/review/cli.test.mjs tools/scripts/review/resolve-spec.test.mjs tools/scripts/review/publish.test.mjs tools/scripts/review/golden.test.mjs tools/scripts/review/golden-tiers.test.mjs tools/scripts/review/obligations.test.mjs tools/scripts/review/citations.test.mjs tools/scripts/review/escaped-defects.test.mjs tools/scripts/review/measure-escaped-defects.test.mjs",
     "review:spec": "node tools/scripts/review/resolve-spec.mjs",
     "review:publish": "node tools/scripts/review/publish-review-report.mjs",
     "review:checklist:check": "node tools/scripts/check-review-checklist.mjs",

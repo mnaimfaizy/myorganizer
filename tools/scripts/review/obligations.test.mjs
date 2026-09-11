@@ -18,6 +18,7 @@ const obligation = (over = {}) => ({
   title: 'An obligation',
   question: 'Answer this.',
   answerFields: ['a', 'b'],
+  citedFields: ['a'],
   defect: 'a is false',
   trigger: { paths: ['libs/**'] },
   seededFrom: '#1',
@@ -321,6 +322,11 @@ test('the real selector output carries defectWhen all the way to checkAnswers', 
   const w = selectObligations({ catalogue, addedLines, head: 'abc' });
   assert.equal(w.selected.length, 1);
   assert.ok(w.selected[0].defectWhen, 'defectWhen must survive selection');
+  assert.deepEqual(
+    w.selected[0].citedFields,
+    [{ field: 'slotChild' }],
+    'citedFields must survive selection for the same reason defectWhen must',
+  );
 
   const sheet = {
     head: 'abc',
@@ -333,11 +339,19 @@ test('the real selector output carries defectWhen all the way to checkAnswers', 
           propsLandOn: 'div',
           isFocusableControl: false,
         },
+        citations: {
+          slotChild: {
+            file: 'apps/a.tsx',
+            line: 2,
+            text: '<div className="relative">',
+          },
+        },
         raisedFindingIds: [],
       })),
     ),
   };
-  assert.equal(checkAnswers(w, sheet).contradictions.length, 1);
+  const readSource = () => '  <FormControl>\n  <div className="relative">\n';
+  assert.equal(checkAnswers(w, sheet, { readSource }).contradictions.length, 1);
 });
 
 test('an answer meeting its own defect condition and raising nothing contradicts itself', () => {

@@ -24,21 +24,35 @@
 // That is precisely the shape ADR 0074 names — a checker nothing runs — so
 // this file is named and placed to be seen.
 //
-// Thoroughness never fails a review. A SELF-CONTRADICTION does, and it is a
-// different thing: an answer that meets its obligation's own declared defect
-// condition while raising no finding is not a judgment the reviewer is
-// entitled to make, because the catalogue already decided that answer is a
-// finding. That is an Assertion Gate in the ADR 0043 sense - two artifacts
-// compared, a factual mismatch named - not an opinion about the diff.
+// Thoroughness never fails a review. Two other things do, and they are a
+// different kind of fact — about the reviewer, not about the diff (ADR 0078,
+// on the ground ADR 0073 already holds):
 //
-// Run 45 is the case. `import-confirm` wrote `namesEverything: false`, whose
-// defect rule says in as many words that false is a finding, and raised
-// nothing; the completeness report called that sheet complete. This checker
-// now says so out loud and exits 1.
+//   A SELF-CONTRADICTION. An answer that meets its obligation's own declared
+//   defect condition while raising no finding is not a judgment the reviewer is
+//   entitled to make, because the catalogue already decided that answer is a
+//   finding. Run 45 is the case: `import-confirm` wrote
+//   `namesEverything: false`, whose defect rule says in as many words that
+//   false is a finding, and raised nothing; the completeness report called that
+//   sheet complete.
 //
-// Exit 0 = answered or thin, but never self-contradictory.
-// Exit 1 = at least one answer contradicts its own defect rule.
+//   A CITATION THAT DOES NOT MATCH ITS SOURCE. Every answer field that makes a
+//   claim about source carries the file, the line, and the literal text at that
+//   line, and this script reads that line out of the tree at the reviewed head
+//   and compares it. Run 45 again: `signup` wrote `slotChild: "Input"` for the
+//   two sites whose direct child is a positioning `div`, and nothing compared
+//   the writing to anything. Presence was never the weak point — a wrong
+//   element name is a perfectly non-blank string.
+//
+// Both are Assertion Gates in the ADR 0043 sense - two artifacts compared, a
+// factual mismatch named - not an opinion about the diff. Neither produces a
+// finding: a finding is about the code under review, and this is not.
+//
+// Exit 0 = answered or thin, but sound.
+// Exit 1 = an answer contradicts its own defect rule, or a quotation does not
+//          match the tree at head.
 // Exit 2 = the script could not run (missing file, unreadable JSON, bad shape).
+import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { ZodError } from 'zod';
 
@@ -49,7 +63,43 @@ import { formatIssues } from './review/schema.mjs';
 const USAGE =
   'usage: check-review-obligation-answers.mjs <worklist.json> <answers.json> [--out <path>]';
 
-export const main = (argv) => {
+/**
+ * The tree at the reviewed head, one file at a time. `git show` rather than the
+ * working tree: the checkout can have moved on, and a quotation is a claim
+ * about the commit that was reviewed. A file that is not there at that commit
+ * reads as absent, which is one of the mismatches worth reporting.
+ */
+const gitSource = (head) => (file) => {
+  try {
+    return execFileSync('git', ['show', `${head}:${file}`], {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  } catch {
+    return null;
+  }
+};
+
+/** One line per failed quotation, naming what was claimed and what is there. */
+export const citationLine = (f) => {
+  const at = `${f.key} field ${f.field}`;
+  switch (f.reason) {
+    case 'uncited':
+      return `review-obligations-check: ${at} claims something about source and quotes no line`;
+    case 'file-not-found':
+      return `review-obligations-check: ${at} cites ${f.cited.file}, which is not in the tree at head`;
+    case 'line-out-of-range':
+      return `review-obligations-check: ${at} cites ${f.cited.file}:${f.cited.line}, and that file has ${f.lineCount} line(s) at head`;
+    default:
+      return (
+        `review-obligations-check: ${at} quotes ${JSON.stringify(f.cited.text)} ` +
+        `at ${f.cited.file}:${f.cited.line}, where head has ${JSON.stringify(f.actual)}`
+      );
+  }
+};
+
+export const main = (argv, { source = gitSource } = {}) => {
   const bail = cannotRun('review-obligations-check');
   const { positional, flags } = parseArgs(argv);
   const [worklistPath, answersPath] = positional;
@@ -72,11 +122,21 @@ export const main = (argv) => {
     process.exit(2);
   }
 
-  const report = checkAnswers(worklist, sheet);
+  let report;
+  try {
+    report = checkAnswers(worklist, sheet, {
+      readSource: source(worklist.head),
+    });
+  } catch (err) {
+    bail(err.message);
+  }
   const summary =
     report.expected === 0
       ? 'no obligation fired on this diff'
       : `${report.answered} of ${report.expected} site(s) answered` +
+        (report.citations.required
+          ? `, ${report.citations.verified} of ${report.citations.required} citation(s) verified`
+          : '') +
         (report.incomplete.length
           ? `, ${report.incomplete.length} missing field(s)`
           : '') +
@@ -97,7 +157,9 @@ export const main = (argv) => {
       `review-obligations-check: ${c.key} answers its own defect condition ` +
         `and raises no finding: ${JSON.stringify(c.answer)}`,
     );
-  if (report.contradictions.length) process.exit(1);
+  for (const f of report.citationFailures) console.error(citationLine(f));
+  if (report.contradictions.length || report.citationFailures.length)
+    process.exit(1);
 };
 
 if (isMain(import.meta.url)) main(process.argv.slice(2));

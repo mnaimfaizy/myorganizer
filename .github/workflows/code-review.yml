@@ -344,24 +344,23 @@ jobs:
           github-token: ${{ github.token }}
           transcript-artifact: code-review-transcript
 
-      # Completeness of the obligation answers, beside the finding contract and
-      # never inside it. Thoroughness fails nothing: an unanswered obligation
-      # says the review was thin, which is neither a fact about the pipeline
-      # nor a judgment about the diff (ADR 0073), and a report that met its
-      # contract is not rejected for it. What it buys is that a missed defect
-      # now reads as one of three causes instead of one opaque one.
+      # The obligation answers, beside the finding contract and never inside
+      # it. Thoroughness still fails nothing: an unanswered obligation says the
+      # review was thin, which is neither a fact about the pipeline nor a
+      # judgment about the diff (ADR 0073), and a report that met its contract
+      # is not rejected for it. What it buys is that a missed defect reads as
+      # one of three causes instead of one opaque one.
       #
-      # The script also exits 1 on a SELF-CONTRADICTION — an answer meeting its
-      # own defect condition while raising no finding — which is a different
-      # kind of fact and arguably an `Agent Review Ran` failure in the ADR 0073
-      # sense, alongside "wrote a report the contract rejected". That is a
-      # required-check semantics decision, so `continue-on-error` STAYS until
-      # it is made deliberately: today the contradiction is reported loudly and
-      # blocks nothing. Removing this line is the whole change; see
-      # docs/research/2026-09-10-the-answer-sheet-is-inert.md.
+      # Two things here DO fail the check, and both are facts about the
+      # reviewer rather than judgments about the diff (ADR 0078): an answer
+      # that meets its obligation's own defect condition while raising no
+      # finding, and a quotation that does not match the tree at head. This
+      # step no longer continues on error, which is what makes them gates;
+      # every step below it is `always()` so that a failed answer sheet still
+      # publishes the findings the reviewer did produce, instead of taking the
+      # whole review down with it.
       - name: Check the obligation answers
         if: always() && steps.preflight.outputs.skip != 'true'
-        continue-on-error: true
         run: |
           if [ ! -f tmp/code-review/obligations.json ]; then
             echo 'no worklist: nothing to check'; exit 0
@@ -381,7 +380,7 @@ jobs:
       # run has none. No --status filter: a run with a blocking verdict
       # concludes "failure" by design and still carries the artifact.
       - name: Fetch the previous report
-        if: steps.preflight.outputs.skip != 'true'
+        if: always() && steps.preflight.outputs.skip != 'true'
         id: previous
         env:
           GH_TOKEN: ${{ github.token }}
@@ -398,7 +397,7 @@ jobs:
           echo "previous report: ${found:-none}"
 
       - name: Render the report
-        if: steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated == 'true'
+        if: always() && steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated == 'true'
         run: |
           if [ -n '${{ steps.previous.outputs.path }}' ]; then
             corepack yarn review:render tmp/code-review/normalized.json \
@@ -412,7 +411,7 @@ jobs:
       # and by this run's publish job, which holds the write token and so
       # cannot share a filesystem with the reviewer.
       - name: Keep the normalized report for the next run
-        if: steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated == 'true'
+        if: always() && steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: code-review-normalized
@@ -427,7 +426,7 @@ jobs:
       # A rejected report still gets published — as the reason the check
       # failed, not as a review. Its file is outside the workspace.
       - name: Keep the rejection reason
-        if: steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated != 'true' && steps.reviewer.outputs.rejected-file != ''
+        if: always() && steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated != 'true' && steps.reviewer.outputs.rejected-file != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: code-review-rejected
@@ -441,7 +440,7 @@ jobs:
       # the separate "Agent Verdict" job below.
       - name: Agent review ran
         id: outcome
-        if: steps.preflight.outputs.skip != 'true'
+        if: always() && steps.preflight.outputs.skip != 'true'
         run: |
           echo "reviewer step: ${{ steps.reviewer.outputs.reviewer-outcome }}; validated: ${{ steps.reviewer.outputs.validated }}"
           # A validated report wins regardless of what else happened in the

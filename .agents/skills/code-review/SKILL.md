@@ -301,18 +301,29 @@ write **one line per site** to `tmp/code-review/obligations.answers.json`:
       "id": "<obligation id>",
       "site": { "file": "<file>", "line": 88 },
       "answer": { "<field>": "<value>" },
+      "citations": {
+        "<cited field>": { "file": "<file>", "line": 233, "text": "<the line, verbatim>" }
+      },
       "raisedFindingIds": []
     }
   ]
 }
 ```
 
-Three rules, and they are the whole difference between this and an instruction:
+Four rules, and they are the whole difference between this and an instruction:
 
 - **Answer every site, including the ones that turn out clean.** The answer is the work; a site you
   skip is indistinguishable from a site you looked at and cleared.
 - **Answer from the code, not from the name.** The fields ask what a path actually mutates, what a
   value actually becomes. Reading the handler's name is how these defects shipped.
+- **Cite, do not assert.** Every field the worklist entry lists in `citedFields` needs a
+  `citations` entry keyed by that field: the file, the line number, and the literal text at that
+  line, read from the tree at `<head>`. `review:obligations:check` reads the same line and compares
+  it, and a quotation that does not match — wrong text, a line past the end of the file, a file
+  that is not there — **fails the check**, as does an answer meeting its own `defectWhen` while
+  raising nothing ([ADR 0078](../../../docs/adr/0078-a-citation-that-does-not-match-its-source-is-a-fact-about-the-pipeline.md)).
+  Neither becomes a finding; both are facts about the reviewer. A field whose value equals the
+  entry's `uncitedWhen` carries no citation — `wiredBy: "none"` has no line to point at.
 - **A defect the answer exposes is an ordinary finding**, written into the report against the
   contract like any other, and severity is earned the same way. The answer sheet is not a second
   findings list, and nothing in it changes the verdict.
@@ -323,7 +334,8 @@ Three rules, and they are the whole difference between this and an instruction:
 
 The answers live beside the report and never inside it. A report is accepted or rejected whole
 (ADR 0071), so an answer sheet folded into it could take valid findings down with it. Completeness
-is reported by `review:obligations:check` and fails nothing.
+is reported by `review:obligations:check` and fails nothing; a mismatched citation and a
+self-contradicting answer are the two things that do.
 
 If you are low on remaining turns when you reach this step, skip it and go straight to step 5 with
 whatever the two sub-agents already returned — an unanswered obligation fails nothing

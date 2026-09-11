@@ -1,0 +1,21 @@
+{
+  "head": "b030fd19547e544c461607c10594f1c95f453377",
+  "selected": [
+    {
+      "id": "destructive-confirmation-names-what-it-mutates",
+      "title": "A destructive confirmation names everything it destroys",
+      "question": "For each site: follow the confirmed code path and list every persisted key, store, or record it writes or clears; quote the confirmation text verbatim; then state whether the text names everything in that list.",
+      "answerFields": ["mutates", "confirmationText", "namesEverything"],
+      "citedFields": ["confirmationText"],
+      "defect": "namesEverything false is a finding.",
+      "defectWhen": { "field": "namesEverything", "equals": false },
+      "sites": [
+        {
+          "file": "apps/myorganizer/src/app/vault-export/page.tsx",
+          "line": 172
+        }
+      ],
+      "truncated": 0
+    }
+  ]
+}

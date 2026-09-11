@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { parseChecklist } from './check-review-checklist.mjs';
+import { citedFieldLabel, parseChecklist } from './check-review-checklist.mjs';
 
 const ENTRY = `## 1. Do the thing
 
@@ -19,6 +19,8 @@ const ENTRY = `## 1. Do the thing
 | ------- | ------------- |
 | \`alpha\` | The alpha.    |
 | \`beta\`  | The beta.     |
+
+**Cites** \`alpha\`
 
 **Defect** — alpha is missing.
 `;
@@ -71,4 +73,34 @@ test('a backticked word in prose outside a table row is not an answer field', ()
     '**Defect** — `alpha` is missing.',
   );
   assert.deepEqual(parseChecklist(md)[0].answerFields, ['alpha', 'beta']);
+});
+
+test('the Cites line names the fields whose answers must quote a line', () => {
+  const [entry] = parseChecklist(ENTRY);
+  assert.deepEqual(entry.citedFields, [{ field: 'alpha' }]);
+});
+
+test('a cited field may name the one value that has no line to quote', () => {
+  // `wiredBy: none` says nothing invokes the gate. The catalogue spells that
+  // `uncitedWhen`; the entry a human reads spells it `unless`, and the gate
+  // compares the two, so the parser has to see it.
+  const md = ENTRY.replace(
+    '**Cites** `alpha`',
+    '**Cites** `alpha` unless `none`, `beta`',
+  );
+  assert.deepEqual(parseChecklist(md)[0].citedFields, [
+    { field: 'alpha', uncitedWhen: 'none' },
+    { field: 'beta' },
+  ]);
+  assert.deepEqual(parseChecklist(md)[0].citedFields.map(citedFieldLabel), [
+    'alpha unless none',
+    'beta',
+  ]);
+});
+
+test('an entry with no Cites line cites nothing, and says so', () => {
+  // Not "cites everything" and not a crash: the comparison downstream is
+  // between two lists, and an absent line is an empty one.
+  const md = ENTRY.replace('**Cites** `alpha`\n\n', '');
+  assert.deepEqual(parseChecklist(md)[0].citedFields, []);
 });
