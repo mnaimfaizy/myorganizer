@@ -136,24 +136,6 @@ export function useYouTubeSubscriptions() {
     }
   }, []);
 
-  const sync = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Enforce authoritative backend cooldown before attempting PUT
-      const status =
-        await apiFetch<import('../types').YouTubeSyncStatus>('/sync-status');
-      if (isRetryCooldownActive(status.retryAt)) {
-        throw new Error(
-          `Sync disabled until ${formatRetryAt(status.retryAt) ?? status.retryAt}`,
-        );
-      }
-      await apiFetch('/subscriptions/sync', { method: 'PUT' });
-      await fetch_();
-    } finally {
-      setLoading(false);
-    }
-  }, [fetch_]);
-
   const toggle = useCallback(
     async (id: string, enabled: boolean) => {
       await apiFetch(`/subscriptions/${encodeURIComponent(id)}`, {
@@ -169,7 +151,7 @@ export function useYouTubeSubscriptions() {
     void fetch_();
   }, [fetch_]);
 
-  return { subscriptions, loading, sync, toggle, refresh: fetch_ };
+  return { subscriptions, loading, toggle, refresh: fetch_ };
 }
 
 export function useYouTubeVideos(channelId?: string) {
@@ -501,6 +483,7 @@ export function useYouTubeSyncStatus() {
       const data =
         await apiFetch<import('../types').YouTubeSyncStatus>('/sync-status');
       setStatus(data);
+      return data;
     } finally {
       setLoading(false);
     }
@@ -519,24 +502,17 @@ export function useYouTubeSyncStatus() {
         );
       }
 
-      // Backend PUT /youtube/subscriptions/sync returns YouTubeSyncResult
-      const data = await apiFetch<import('../types').YouTubeSyncResult>(
+      // Backend PUT /youtube/subscriptions/sync starts the run inline
+      await apiFetch<import('../types').YouTubeSyncResult>(
         '/subscriptions/sync',
         {
           method: 'PUT',
         },
       );
 
-      // Update local status from the result
-      setStatus({
-        status: data.status,
-        lastSyncedAt: data.lastSyncedAt,
-        lastSyncAttemptAt: data.lastSyncAttemptAt,
-        lastSyncError: data.lastSyncError,
-        retryAt: data.retryAt,
-      });
-
-      return data;
+      // Fetch the authoritative status including progress, not a hand-assembled subset
+      const finalStatus = await fetch_();
+      return finalStatus;
     } finally {
       setLoading(false);
     }

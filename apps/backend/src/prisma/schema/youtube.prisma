@@ -28,6 +28,17 @@ model YouTubeSubscription {
   uploadsPlaylistId String
   enabled           Boolean   @default(true)
   lastSyncedAt      DateTime?
+  /// When the most recent Sync Run last attempted this channel. Written on every
+  /// attempt (success or failure) with the run's timestamp. Used with
+  /// YouTubeIntegration.lastSyncAttemptAt to derive per-run progress: channels
+  /// where this equals the integration's run stamp have been processed. See
+  /// ADR 0080 decision 2 for the derivation schema.
+  lastSyncAttemptAt DateTime?
+  /// Error code from the most recent failed attempt on this channel; null when
+  /// the most recent attempt succeeded. Must be cleared on every successful sync.
+  /// Outlives the run: a channel that fails every sync is a Failing Channel
+  /// (durable channel state), not a transient run failure. See ADR 0080 decision 2.
+  lastSyncError     String?
   disabledAt        DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

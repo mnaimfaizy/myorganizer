@@ -122,12 +122,26 @@ interface UnsubscribeResponse {
   ok: boolean;
 }
 
+interface ProgressResponse {
+  total: number;
+  processed: number;
+  succeeded: number;
+  failed: number;
+  startedAt: string;
+  failedChannels: Array<{
+    channelId: string;
+    channelTitle: string;
+    error: string;
+  }>;
+}
+
 interface SyncStatusResponse {
   status: string;
   lastSyncedAt: string | null;
   lastSyncAttemptAt: string | null;
   lastSyncError: string | null;
   retryAt: string | null;
+  progress: ProgressResponse | null;
 }
 
 interface SyncResponse extends SyncStatusResponse {
@@ -153,6 +167,16 @@ function toSyncStatusResponse(
     lastSyncAttemptAt: status.lastSyncAttemptAt?.toISOString() ?? null,
     lastSyncError: status.lastSyncError,
     retryAt: status.retryAt?.toISOString() ?? null,
+    progress: status.progress
+      ? {
+          total: status.progress.total,
+          processed: status.progress.processed,
+          succeeded: status.progress.succeeded,
+          failed: status.progress.failed,
+          startedAt: status.progress.startedAt.toISOString(),
+          failedChannels: status.progress.failedChannels,
+        }
+      : null,
   };
 }
 

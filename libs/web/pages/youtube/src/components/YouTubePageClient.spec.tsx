@@ -225,21 +225,75 @@ describe('YouTubePageClient', () => {
     expect(screen.getByText(/Last synced/)).toHaveTextContent(/Last synced/);
   });
 
-  it('shows error after failed refresh and Retry triggers sync', async () => {
+  // Helper to create a sync status with test data
+  const statusOf = (
+    overrides: Partial<Record<string, unknown>> = {},
+  ): Record<string, unknown> => ({
+    status: 'success' as const,
+    lastSyncedAt: null,
+    lastSyncAttemptAt: null,
+    lastSyncError: null,
+    retryAt: null,
+    ...overrides,
+  });
+
+  it('triggers sync without blocking on the response', async () => {
     mockUseYouTubeStatus.mockReturnValue({
       connected: true,
       status: 'connected',
       refresh: jest.fn(),
     });
 
-    const trigger = jest.fn().mockResolvedValue({ status: 'failed' });
+    // triggerSync never resolves, simulating a stuck connection
+    const triggerSync = jest.fn(() => new Promise(() => {}));
+    const refresh = jest.fn();
+
     mockUseYouTubeSyncStatus.mockReturnValue({
       status: null,
       loading: false,
-      triggerSync: trigger,
+      triggerSync,
       isCooldownActive: false,
+      refresh,
+    });
+
+    render(<YouTubePageClient />);
+
+    // Click the sync button
+    const syncBtn = screen.getByRole('button', { name: 'Sync from YouTube' });
+    fireEvent.click(syncBtn);
+
+    // Verify triggerSync was called
+    expect(triggerSync).toHaveBeenCalled();
+
+    // Verify refresh was called to start polling
+    expect(refresh).toHaveBeenCalled();
+
+    // UI should be rendered and responsive (no hang waiting for triggerSync)
+    expect(screen.getByText('Videos')).toBeInTheDocument();
+  });
+
+  it('shows refresh failed alert when run completes and refresh fails', async () => {
+    jest.useFakeTimers();
+
+    mockUseYouTubeStatus.mockReturnValue({
+      connected: true,
+      status: 'connected',
       refresh: jest.fn(),
     });
+
+    const syncStatusState: {
+      current: Record<string, unknown> | null;
+    } = { current: null };
+    const syncStatusRefresh = jest.fn();
+    const triggerSync = jest.fn();
+
+    mockUseYouTubeSyncStatus.mockImplementation(() => ({
+      status: syncStatusState.current,
+      loading: false,
+      triggerSync,
+      isCooldownActive: false,
+      refresh: syncStatusRefresh,
+    }));
 
     const subs = {
       ...defaultSubs,
@@ -247,19 +301,72 @@ describe('YouTubePageClient', () => {
     };
     mockUseYouTubeSubscriptions.mockReturnValue(subs);
 
-    render(<YouTubePageClient />);
+    const { rerender } = render(<YouTubePageClient />);
 
-    // Click the subscription sync button
-    const syncBtn = screen.getByRole('button', { name: 'Sync from YouTube' });
-    expect(syncBtn).toBeInTheDocument();
-    await act(async () => {
-      fireEvent.click(syncBtn);
+    // Transition to running
+    syncStatusState.current = statusOf({ status: 'running' });
+    act(() => {
+      rerender(<YouTubePageClient />);
     });
 
-    // Wait for the alert to appear
+    // Allow effects to settle and polling to start
+    await act(async () => {
+      jest.advanceTimersByTime(0);
+    });
+
+    // Transition to terminal (success)
+    syncStatusState.current = statusOf({ status: 'success' });
+    act(() => {
+      rerender(<YouTubePageClient />);
+    });
+
+    // Allow effects to settle and onRunComplete to fire
+    await act(async () => {
+      jest.advanceTimersByTime(0);
+    });
+
+    // Wait for the alert to appear (subs.refresh rejection triggers alert)
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/Refresh failed/);
-    expect(trigger).toHaveBeenCalled();
+    expect(alert).toHaveTextContent('Refresh failed');
+
+    jest.useRealTimers();
+  });
+
+  it('does not surface error when triggerSync rejects', async () => {
+    mockUseYouTubeStatus.mockReturnValue({
+      connected: true,
+      status: 'connected',
+      refresh: jest.fn(),
+    });
+
+    // triggerSync rejects (504 timeout from long-running connection)
+    const triggerSync = jest.fn().mockRejectedValue(new Error('504 timeout'));
+    const refresh = jest.fn();
+
+    mockUseYouTubeSyncStatus.mockReturnValue({
+      status: null,
+      loading: false,
+      triggerSync,
+      isCooldownActive: false,
+      refresh,
+    });
+
+    render(<YouTubePageClient />);
+
+    // Click sync button
+    const syncBtn = screen.getByRole('button', { name: 'Sync from YouTube' });
+    await act(async () => {
+      fireEvent.click(syncBtn);
+      // Let the promise rejection settle
+      await Promise.resolve();
+    });
+
+    // Verify triggerSync was called
+    expect(triggerSync).toHaveBeenCalled();
+
+    // No error alert should appear (rejection is swallowed)
+    const alert = screen.queryByRole('alert');
+    expect(alert).not.toBeInTheDocument();
   });
 
   it('disables sync and retry when cooldown is active', () => {
