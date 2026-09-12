@@ -269,11 +269,15 @@ function isBoundName(node) {
   ) {
     return true;
   }
-  // `import { window as win }` / `export { window as w } from './m'`: the
-  // propertyName names a member of the other module, not a reference into this
-  // file's scope, so it can never reach the ambient global the rule catches.
+  // `import { window as win }` / `export { window as w } from './m'` /
+  // `const { window: win } = foo`: the propertyName names a member of the other
+  // module or of the object being destructured, not a reference into this file's
+  // scope, so it can never reach the ambient global the rule catches. All three
+  // share one carve-out because they share one reason.
   if (
-    (ts.isImportSpecifier(parent) || ts.isExportSpecifier(parent)) &&
+    (ts.isImportSpecifier(parent) ||
+      ts.isExportSpecifier(parent) ||
+      ts.isBindingElement(parent)) &&
     parent.propertyName === node
   ) {
     return true;

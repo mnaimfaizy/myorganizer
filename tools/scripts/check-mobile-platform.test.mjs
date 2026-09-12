@@ -233,6 +233,39 @@ test('does not flag a re-exported specifier aliased from a banned global name', 
   assert.equal(result.status, 0, result.stderr);
 });
 
+// And again for a destructuring rename, where the propertyName sits on a
+// BindingElement and names a member of the object being destructured.
+test('does not flag a destructuring rename of a banned global name', (t) => {
+  const workspace = scaffold(t, {
+    'libs/mobile/core/src/destructure.ts': `export function pick(foo: { window: number; document: string }) {
+  const { window: myWindow, document: myDocument } = foo;
+  return { myWindow, myDocument };
+}
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+// The counterpart: a shorthand destructure declares a local of the banned name,
+// so uses of it afterwards are that local — but the rule must still be live for
+// the name in a file that never destructures it.
+test('still flags the real global in a file that destructures a same-named property elsewhere', (t) => {
+  const workspace = scaffold(t, {
+    'libs/mobile/core/src/mixed.ts': `export function pick(foo: { window: number }) {
+  const { window: myWindow } = foo;
+  return myWindow;
+}
+export function leak() {
+  return document.title;
+}
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /references the browser global `document`/);
+});
+
 // A naive substring match on \`react-native/\` hits all three of these — each
 // is a reference to the separate \`@react-native/*\` scope one character in.
 test('does not flag the @react-native/ scope: babel preset, metro config, vite alias', (t) => {

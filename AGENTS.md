@@ -29,7 +29,7 @@ React Native ships no bundled documentation, so the Next.js "read the bundled do
 
 - Import only from the `react-native` package root, never a `react-native/...` subpath. Deep imports are deprecated at 0.80 with removal planned; `yarn mobile-platform:check` enforces this over `apps/mobile` and `libs/mobile`.
 - `targetSdk 35` means Android 15 already enforces edge-to-edge for this app; every screen root must come from `react-native-safe-area-context`, not a manual status-bar inset.
-- Style mobile components with `StyleSheet.create` over the token theme — never an inline style object, never a browser API. See [ADR 0008](docs/adr/0008-mobile-styling-stylesheet-theme.md).
+- Style mobile components with `StyleSheet.create` over the token theme, and never with a browser API. A component's styles live in a `StyleSheet.create` block, not in an inline object standing in for one; merging that reference with a small inline override for a per-render value — `style={[styles.header, { marginBottom: theme.spacing.md }]}` — is the established pattern here and stays fine. See [ADR 0008](docs/adr/0008-mobile-styling-stylesheet-theme.md).
 
 ## Setup
 
