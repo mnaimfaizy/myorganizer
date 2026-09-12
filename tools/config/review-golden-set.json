@@ -143,7 +143,8 @@
       "id": "mail-test-setup-assigns-undefined-to-env",
       "title": "The mail sender's test setup assigns undefined to two SMTP environment variables, which stores the string \"undefined\"",
       "incident": "issue #409, fixed by PR #423, introduced by PR #415 (git log --follow --diff-filter=A -- apps/backend/src/services/EmailService.spec.ts → 1f056fa, the interrupted slice #396 checkpoint that #415 carried; the file is absent at the merge commit's first parent, and MAIL_USERNAME = undefined is present at its head)",
-      "tier": "frontier",
+      "tier": "guard",
+      "tierEvidence": "promoted 2026-09-12 on three consecutive catches: run 34441162698 (its first catch in any run), run 34591297535, and the dispatched frontier run 34663295486. The rate-limit void in 34351285079 neither extends nor breaks the streak.",
       "base": "264e7d6141eb5a55ce3a7027062043aed0ca18db",
       "head": "194fd43b4927bb0b63fec611f3175eb8f8d12262",
       "spec": {
