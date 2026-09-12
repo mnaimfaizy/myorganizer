@@ -238,6 +238,10 @@ _Avoid_: native app, RN app, the app
 A thin implementation of a shared abstract interface (e.g. `VaultCrypto`, token storage) that supplies platform-specific behavior to otherwise platform-agnostic code. An interface earns the name once a platform implements it; a shape written ahead of its implementors is not a Platform Adapter, it is a guess.
 _Avoid_: shim, wrapper, provider
 
+**Platform Variant**:
+A module selected by bundler filename resolution rather than by an interface — `crypto.web.ts` standing in for `crypto.ts` because one target cannot resolve the other's dependencies. It is the only place mobile code may hold a browser API, and it is not a fallback: the two paths are wire-compatible and change together. Distinct from a Platform Adapter, which a platform is chosen for by implementing an interface, not by being named a certain way.
+_Avoid_: shim, web fallback, .web file, platform adapter (for this sense)
+
 ## Vault
 
 **Vault Unlock**:
