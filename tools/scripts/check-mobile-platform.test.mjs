@@ -174,6 +174,37 @@ export function put(k: string, v: string) {
   assert.equal(result.status, 0, result.stderr);
 });
 
+// An ambient re-declaration names the real global rather than shadowing it, so
+// it must not buy the file a pass — otherwise `declare global` is the one-line
+// way to switch the rule off.
+test('still flags a global re-declared via `declare global`', (t) => {
+  const workspace = scaffold(t, {
+    'apps/mobile/src/ambient.ts': `declare global {
+  const localStorage: { getItem(k: string): string };
+}
+
+export function use() {
+  return localStorage.getItem('k');
+}
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /references the browser global `localStorage`/);
+});
+
+test('still flags a global re-declared via a top-level `declare const`', (t) => {
+  const workspace = scaffold(t, {
+    'apps/mobile/src/ambient-const.ts': `declare const window: { innerWidth: number };
+
+export const w = window.innerWidth;
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /references the browser global `window`/);
+});
+
 // The shadow suppression is per name, not per file: a file that shadows one
 // banned name must still be held to the others.
 test('still flags a different banned global in a file that shadows one', (t) => {

@@ -50,6 +50,12 @@
 // positive breaks somebody's commit on correct code, while this false negative
 // needs a file that both shadows a browser global and reaches the real one,
 // which `dom`-free typechecking and review are better placed to catch.
+//
+// An ambient re-declaration is not a shadow and does not earn the pass:
+// `declare global { const localStorage: ... }` and a top-level `declare const
+// window` both *name the real global* rather than introducing a local, so
+// treating them as bindings would turn the rule off for that file — and would
+// be the obvious way to silence it deliberately.
 // A property name is not always a dead end, though: `globalThis.window` and
 // `self.localStorage` are how strict-mode code reaches the same ambient
 // global by qualifying it, so those two roots are followed rather than
@@ -208,29 +214,50 @@ function isGlobalObjectRoot(expr) {
  * the exception: `globalThis.window` and `self.localStorage` name the same
  * ambient global a bare reference does, so those are never treated as bound.
  */
+/**
+ * Declaration kinds that introduce a name which can later be *referenced as a
+ * bare identifier*. Only these can shadow an ambient global, so this is the
+ * list `declaredBannedNames` uses.
+ */
+const VALUE_BINDING_PARENTS = [
+  ts.isVariableDeclaration,
+  ts.isParameter,
+  ts.isBindingElement,
+  ts.isFunctionDeclaration,
+  ts.isFunctionExpression,
+  ts.isClassDeclaration,
+  ts.isClassExpression,
+  ts.isImportSpecifier,
+  ts.isImportClause,
+  ts.isNamespaceImport,
+];
+
+/**
+ * Declaration kinds whose name is *not* a value binding — a member, a type, or
+ * a label. They cannot shadow a global, so `declaredBannedNames` ignores them,
+ * but the name at that position is still not a reference, so `isBoundName`
+ * must skip it. That asymmetry is the only difference between the two lists:
+ * keep it in mind when adding a kind, and add it to the list it belongs to.
+ */
+const NON_VALUE_NAME_PARENTS = [
+  ts.isPropertySignature,
+  ts.isPropertyDeclaration,
+  ts.isMethodDeclaration,
+  ts.isMethodSignature,
+  ts.isEnumMember,
+  ts.isExportSpecifier,
+  ts.isTypeAliasDeclaration,
+  ts.isInterfaceDeclaration,
+  ts.isLabeledStatement,
+];
+
 function isBoundName(node) {
   const parent = node.parent;
   if (!parent) return false;
   if (
-    (ts.isVariableDeclaration(parent) ||
-      ts.isParameter(parent) ||
-      ts.isBindingElement(parent) ||
-      ts.isFunctionDeclaration(parent) ||
-      ts.isFunctionExpression(parent) ||
-      ts.isClassDeclaration(parent) ||
-      ts.isClassExpression(parent) ||
-      ts.isPropertySignature(parent) ||
-      ts.isPropertyDeclaration(parent) ||
-      ts.isMethodDeclaration(parent) ||
-      ts.isMethodSignature(parent) ||
-      ts.isEnumMember(parent) ||
-      ts.isImportSpecifier(parent) ||
-      ts.isExportSpecifier(parent) ||
-      ts.isImportClause(parent) ||
-      ts.isNamespaceImport(parent) ||
-      ts.isTypeAliasDeclaration(parent) ||
-      ts.isInterfaceDeclaration(parent) ||
-      ts.isLabeledStatement(parent)) &&
+    [...VALUE_BINDING_PARENTS, ...NON_VALUE_NAME_PARENTS].some((is) =>
+      is(parent),
+    ) &&
     parent.name === node
   ) {
     return true;
@@ -326,6 +353,22 @@ const SPECIFIER_FORMS = [
  * Banned names this file declares as its own binding. A reference to one of
  * these is the file's own local, not the ambient global.
  */
+function isAmbientRedeclaration(node) {
+  for (let n = node; n; n = n.parent) {
+    if (ts.isModuleDeclaration(n) && ts.isGlobalScopeAugmentation(n))
+      return true;
+    if (
+      (ts.isVariableStatement(n) ||
+        ts.isFunctionDeclaration(n) ||
+        ts.isClassDeclaration(n)) &&
+      n.modifiers?.some((m) => m.kind === ts.SyntaxKind.DeclareKeyword)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function declaredBannedNames(sourceFile) {
   const declared = new Set();
   const visit = (node) => {
@@ -333,17 +376,9 @@ function declaredBannedNames(sourceFile) {
       ts.isIdentifier(node) &&
       BANNED_BARE_GLOBALS.has(node.text) &&
       node.parent &&
-      (ts.isVariableDeclaration(node.parent) ||
-        ts.isParameter(node.parent) ||
-        ts.isBindingElement(node.parent) ||
-        ts.isFunctionDeclaration(node.parent) ||
-        ts.isFunctionExpression(node.parent) ||
-        ts.isClassDeclaration(node.parent) ||
-        ts.isClassExpression(node.parent) ||
-        ts.isImportSpecifier(node.parent) ||
-        ts.isImportClause(node.parent) ||
-        ts.isNamespaceImport(node.parent)) &&
-      node.parent.name === node
+      VALUE_BINDING_PARENTS.some((is) => is(node.parent)) &&
+      node.parent.name === node &&
+      !isAmbientRedeclaration(node)
     ) {
       declared.add(node.text);
     }
