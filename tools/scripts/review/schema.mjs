@@ -498,10 +498,13 @@ export const computeVerdict = (findings) => {
 export const computeEffectiveTier = (report) => {
   if (report.tier === null) return null;
   if (report.spec.kind === 'none') {
-    const tiers = ['review:auto', 'review:agent', 'review:human'];
-    const current = tiers.indexOf(report.tier);
-    const next = Math.min(current + 1, tiers.length - 1);
-    return tiers[next];
+    // Reaches the one declared list rather than re-enumerating the members
+    // (AGENTS.md, ADR 0053). That makes this step depend on REVIEW_TIER_LABELS
+    // being ordered loosest to strictest, which is what "tighten by one" means
+    // — reorder that constant and this tightens in the wrong direction.
+    const current = REVIEW_TIER_LABELS.indexOf(report.tier);
+    const next = Math.min(current + 1, REVIEW_TIER_LABELS.length - 1);
+    return REVIEW_TIER_LABELS[next];
   }
   return report.tier;
 };
