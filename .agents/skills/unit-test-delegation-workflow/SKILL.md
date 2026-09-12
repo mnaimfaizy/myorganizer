@@ -16,6 +16,8 @@ Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../../docs/adr/0012-tiered-
 
 Use `.agents/skills/playwright-e2e-workflow/SKILL.md` for Playwright specs in `apps/myorganizer-e2e`.
 
+**Mobile App**: React Native code has no Jest lane. The mobile test toolchain is unresolved (see TECH_STACK.md mobile note). The first mobile test should not be written without resolving the toolchain. Do not proceed with mobile test implementation; surface this as a blocker.
+
 ## Gate tier routing
 
 | Gate                          | Path                                                                                                                       |

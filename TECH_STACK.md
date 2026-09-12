@@ -235,23 +235,25 @@
 
 ## Testing
 
-| Package                         | Version | Purpose                                              |
-| ------------------------------- | ------- | ---------------------------------------------------- |
-| `jest`                          | 30.2.0  | Unit and integration test runner — canonical choice  |
-| `@nx/jest`                      | 22.7.7  | Nx/Jest integration                                  |
-| `jest-environment-jsdom`        | 30.2.0  | DOM environment for React component tests            |
-| `jest-environment-node`         | 30.2.0  | Node environment for backend tests                   |
-| `ts-jest`                       | 29.4.9  | TypeScript preprocessor for Jest                     |
-| `babel-jest`                    | 30.2.0  | Babel transform for Jest                             |
-| `@testing-library/react`        | 16.3.1  | React component testing utilities                    |
-| `@testing-library/react-native` | ~13.2.0 | React Native component testing utilities             |
-| `@testing-library/dom`          | 10.4.1  | DOM testing utilities                                |
-| `react-test-renderer`           | 19.0.0  | Test renderer for React Native/Jest tests            |
-| `jsdom`                         | ~22.1.0 | DOM environment for Jest tests                       |
-| `vitest`                        | 4.1.8   | Vite-native test runner (via `@nx/vitest`)           |
-| `@vitest/ui`                    | 4.1.8   | Vitest browser UI                                    |
-| `@playwright/test`              | 1.57.0  | End-to-end test runner                               |
-| `supertest`                     | 7.2.2   | HTTP assertion library for Express integration tests |
+| Package                         | Version | Purpose                                                |
+| ------------------------------- | ------- | ------------------------------------------------------ |
+| `jest`                          | 30.2.0  | Unit and integration test runner — canonical choice    |
+| `@nx/jest`                      | 22.7.7  | Nx/Jest integration                                    |
+| `jest-environment-jsdom`        | 30.2.0  | DOM environment for React component tests              |
+| `jest-environment-node`         | 30.2.0  | Node environment for backend tests                     |
+| `ts-jest`                       | 29.4.9  | TypeScript preprocessor for Jest                       |
+| `babel-jest`                    | 30.2.0  | Babel transform for Jest                               |
+| `@testing-library/react`        | 16.3.1  | React component testing utilities                      |
+| `@testing-library/react-native` | ~13.2.0 | React Native component testing utilities               |
+| `@testing-library/dom`          | 10.4.1  | DOM testing utilities                                  |
+| `react-test-renderer`           | 19.0.0  | Test renderer for React Native/Jest tests (deprecated) |
+| `jsdom`                         | ~22.1.0 | DOM environment for Jest tests                         |
+
+> **Mobile Test Toolchain Note**: This repo's mobile test infrastructure is unresolved. `@testing-library/react-native` v13.2.0 is the React 18 line; the repo runs React 19.2.3, which is beyond its support window. `react-test-renderer` is deprecated upstream and pinned at 19.0.0 to match React 19.2.3 — a mismatch that is already incorrect on its own terms, independent of the deprecation. Before adding the first Jest test to mobile, the toolchain must be resolved and this note removed. No package bumps are planned until the gate tier decision is made.
+> | `vitest` | 4.1.8 | Vite-native test runner (via `@nx/vitest`) |
+> | `@vitest/ui` | 4.1.8 | Vitest browser UI |
+> | `@playwright/test` | 1.57.0 | End-to-end test runner |
+> | `supertest` | 7.2.2 | HTTP assertion library for Express integration tests |
 
 > **Note**: Jest is the canonical unit test runner for web and mobile. Vitest is installed for Vite-based projects via `@nx/vitest`.
 
