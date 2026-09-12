@@ -615,6 +615,9 @@ jobs:
       - name: Tailwind class checker contracts
         run: corepack yarn tailwind:classes:test
 
+      - name: Mobile platform checker contracts
+        run: corepack yarn mobile-platform:test
+
       - name: Gate manifest checker contracts
         run: corepack yarn gates:run:test
 
@@ -719,6 +722,12 @@ jobs:
       # utility that paints nothing ships without a build error (issue #632).
       - name: Check Tailwind colour utilities resolve
         run: corepack yarn tailwind:classes:check
+
+      # A bare `react-native/…` subpath import is deprecated at 0.80 with
+      # removal planned, and a browser global typechecks on mobile because the
+      # base config puts `dom` in `lib`. Nothing else in CI sees either.
+      - name: Check mobile platform rules
+        run: corepack yarn mobile-platform:check
 
       - name: Restore Nx computation cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

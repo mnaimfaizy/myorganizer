@@ -1,10 +1,10 @@
 import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '@myorganizer/mobile/feat-auth';
 import { useVaultSession } from '@myorganizer/mobile/feat-vault';
-import { theme } from '@myorganizer/mobile/ui';
+import { ScreenContainer, theme } from '@myorganizer/mobile/ui';
 import { LoginScreen } from './LoginScreen';
 import { UnlockScreen } from './UnlockScreen';
 import { TasksScreen } from './TasksScreen';
@@ -17,19 +17,19 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+const styles = StyleSheet.create({
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
+
 /** Full-screen spinner shown while the auth session is being restored. */
 function LoadingScreen(): React.JSX.Element {
   return (
-    <View
-      style={{
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: theme.colors.surface,
-      }}
-    >
+    <ScreenContainer noPadding style={styles.center}>
       <ActivityIndicator color={theme.colors.primary} />
-    </View>
+    </ScreenContainer>
   );
 }
 

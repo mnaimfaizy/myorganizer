@@ -2,7 +2,9 @@
 
 ## Scope
 
-React Native libraries consumed by the thin `apps/mobile` shell: screens, hooks, UI, utils, and feature adapters under `libs/mobile/*`.
+React Native libraries consumed by the thin `apps/mobile` shell: screens, hooks, UI, utils, and feature adapters under `libs/mobile/*`. This guide also covers `screens`, `core`, `hooks`, and `utils` — four libraries with no Agent Guide of their own, reached only by directory walk-up from this parent.
+
+Root-level React Native rules (package-root imports, edge-to-edge via `react-native-safe-area-context`, `StyleSheet` over the token theme) live in the root [Agent Guide](../../AGENTS.md#react-native) and are not restated here.
 
 ## Commands
 
@@ -12,7 +14,7 @@ React Native libraries consumed by the thin `apps/mobile` shell: screens, hooks,
 ## Do
 
 - Keep feature screens, hooks, UI, and platform adapters here; the app stays native wiring and navigation entry.
-- Style with React Native `StyleSheet` and the token-derived theme (ADR 0008).
+- Reach for `useSafeAreaInsets` when `SafeAreaView` will not do — e.g. offsetting a fixed-position element or a custom scroll inset — rather than a manual inset calculation.
 - Keep vault plaintext and the Master Key on the device.
 
 ## Do Not

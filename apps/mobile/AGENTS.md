@@ -4,6 +4,8 @@
 
 React Native app shell. Feature screens, hooks, UI, and platform adapters live under `libs/mobile/*`. Shares the vault format and auth contract with the web client.
 
+Root-level React Native rules (package-root imports, edge-to-edge via `react-native-safe-area-context`, `StyleSheet` over the token theme) live in the root [Agent Guide](../../AGENTS.md#react-native) and are not restated here.
+
 ## Commands
 
 - Start Metro: `yarn nx start mobile`.
@@ -20,7 +22,6 @@ The autonomous verification gate for mobile is lint + typecheck + format. Do not
 - Keep this app thin: native wiring, root providers, and navigation entry.
 - Put feature code in `libs/mobile/*`.
 - Store the refresh token in the OS keychain and send it in the refresh body (ADR 0006).
-- Style with React Native `StyleSheet` and the token-derived theme (ADR 0008).
 - Keep vault plaintext and the Master Key on the device.
 
 ## Do Not
@@ -30,3 +31,4 @@ The autonomous verification gate for mobile is lint + typecheck + format. Do not
 - Do not run `nx run mobile:bundle` as a slice or PR gate.
 - Do not treat mobile refresh as an httpOnly cookie.
 - Do not add NativeWind or `className` styling.
+- Do not remove `jest.config.ts` from `tools/config/mobile-platform-exemptions.json`, and do not "fix" its `require.resolve('react-native/jest/assetFileTransformer.js')`. That is the transformer React Native ships for Jest and it has no package-root export, so the subpath is the published interface for that one line. `yarn mobile-platform:check` parses `require.resolve` like every other call form — the file passes because of the named exemption and its written reason, not because the form is ignored.

@@ -23,6 +23,14 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Do not suggest `next lint`. Lint with Nx/ESLint (`yarn nx lint <project>` or `yarn lint`).
 - Express middleware in `apps/backend/src/middleware/` is unrelated. Do not rename it to proxy.
 
+## React Native
+
+React Native ships no bundled documentation, so the Next.js "read the bundled docs" instrument above does not transfer — verify an export against the installed package rather than from memory.
+
+- Import only from the `react-native` package root, never a `react-native/...` subpath. Deep imports are deprecated at 0.80 with removal planned; `yarn mobile-platform:check` enforces this over `apps/mobile` and `libs/mobile`.
+- `targetSdk 35` means Android 15 already enforces edge-to-edge for this app; every screen root must come from `react-native-safe-area-context`, not a manual status-bar inset.
+- Style mobile components with `StyleSheet.create` over the token theme, and never with a browser API. A component's styles live in a `StyleSheet.create` block, not in an inline object standing in for one; merging that reference with a small inline override for a per-render value — `style={[styles.header, { marginBottom: theme.spacing.md }]}` — is the established pattern here and stays fine. See [ADR 0008](docs/adr/0008-mobile-styling-stylesheet-theme.md).
+
 ## Setup
 
 - Use Node and Corepack-managed Yarn.
@@ -75,6 +83,7 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
   unresolvable class names silently, which is how the groceries pages shipped unstyled — see
   [ADR 0065](docs/adr/0065-tokens-json-is-the-single-source-of-web-colour.md)).
 - Documented-command check: `yarn docs:commands:check` (asserts that a path named inside a fenced shell block in any tracked Markdown file exists; placeholders and git-ignored build outputs are skipped — see [ADR 0052](docs/adr/0052-a-built-explainer-page-is-its-own-source.md)).
+- Mobile platform check: `yarn mobile-platform:check` (parses `apps/mobile` and `libs/mobile` source and fails a bare `react-native/…` subpath import — deprecated at 0.80 with removal planned, and never caught here because `@react-native/eslint-config` is not installed — or a browser global (`localStorage`, `sessionStorage`, `window`, `document`, `crypto.subtle`), which typechecks today because the base TypeScript config puts `dom` in `lib`; `--print` lists what was scanned. The subpath match excludes the separate `@react-native/*` scope and covers all four call forms — `from '...'`, `require('...')`, `require.resolve('...')`, and dynamic `import('...')`. Exemptions carry a written reason in `tools/config/mobile-platform-exemptions.json`; a stale entry fails the check.
 - Assertion gates aggregate: `yarn gates:run` (runs the file-reading checkers above plus OpenAPI artifacts, ADR numbering, and the wired-gate check in one Node process; Husky calls this single line instead of one `corepack yarn` line per checker — see ADR 0043).
 - Wired-gate check: `yarn gates:coverage:check` (the Meta-Gate — asserts every `tools/scripts/check-*.mjs` is invoked by a hook or workflow, resolving one level of indirection through the aggregate's manifest). A checker that is deliberately not a gate needs an entry with a written reason in `tools/config/gate-coverage-optout.json` — there is no silent exemption.
 - House Explainer Page hygiene: `yarn design:hygiene <path>` (or `--all`, `--staged`). `yarn design:hygiene --print-font-block` emits the canonical `@font-face` block to splice into a new page ([ADR 0046](docs/adr/0046-house-explainer-pages-have-a-designer-and-a-gate.md)).
@@ -203,14 +212,15 @@ Do not treat every test/component touch as a full multi-agent pipeline. Classify
 | `gate:standard`   | Matching specialist hop for the artifact                                                             |
 | `gate:full`       | Full mandatory pipelines                                                                             |
 
-| File Pattern                                      | Skill                                                   |
-| ------------------------------------------------- | ------------------------------------------------------- |
-| `*.spec.ts` (Playwright E2E)                      | `.agents/skills/playwright-e2e-workflow/SKILL.md`       |
-| `*.test.ts` (Jest)                                | `.agents/skills/unit-test-delegation-workflow/SKILL.md` |
-| `*.stories.tsx`                                   | `.agents/skills/storybook-delegation-workflow/SKILL.md` |
-| Components in `libs/web-ui/` / `libs/web/pages/`  | `.agents/skills/component-builder/SKILL.md`             |
-| API Contract (controllers, DTOs, Prisma for HTTP) | `.agents/skills/backend-api-contract-change/SKILL.md`   |
-| House Explainer Page (`docs/**/*.html`)           | `.agents/skills/design-brief/SKILL.md` → `Designer`     |
+| File Pattern                                              | Skill                                                                                                           |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `*.spec.ts` (Playwright E2E)                              | `.agents/skills/playwright-e2e-workflow/SKILL.md`                                                               |
+| `*.test.ts` (Jest)                                        | `.agents/skills/unit-test-delegation-workflow/SKILL.md`                                                         |
+| `*.stories.tsx`                                           | `.agents/skills/storybook-delegation-workflow/SKILL.md`                                                         |
+| Components in `libs/web-ui/` / `libs/web/pages/`          | `.agents/skills/component-builder/SKILL.md`                                                                     |
+| API Contract (controllers, DTOs, Prisma for HTTP)         | `.agents/skills/backend-api-contract-change/SKILL.md`                                                           |
+| House Explainer Page (`docs/**/*.html`)                   | `.agents/skills/design-brief/SKILL.md` → `Designer`                                                             |
+| Mobile app / library (`apps/mobile/**`, `libs/mobile/**`) | No specialist hop — direct edit; gate is lint + typecheck + format (ADR 0005) plus `yarn mobile-platform:check` |
 
 ### Key Anti-Patterns
 

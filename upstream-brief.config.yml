@@ -5,11 +5,12 @@ current_versions:
   path: TECH_STACK.md
 
 instruction_globs:
-  - AGENTS.md
+  - '**/AGENTS.md'
   - CLAUDE.md
   - GEMINI.md
   - DEVELOPMENT.md
   - .github/copilot-instructions.md
+  - .claude/checklist.md
   - .agents/skills/**/*.md
   - .github/agents/*.agent.md
   - docs/ui/GUIDELINES.md
@@ -20,12 +21,15 @@ script_globs:
   - tools/scripts/check-readme.mjs
   - tools/scripts/check-vault-pages.mjs
   - tools/scripts/check-auth-pages.mjs
+  - tools/scripts/check-mobile-platform.mjs
 
 source_globs:
   - apps/myorganizer/src/**/*.{ts,tsx}
   - apps/backend/src/**/*.{ts,js}
+  - apps/mobile/src/**/*.{ts,tsx}
   - libs/web-ui/src/**/*.{ts,tsx}
   - libs/web/pages/**/src/**/*.{ts,tsx}
+  - libs/mobile/**/*.{ts,tsx}
 
 brief_dir: docs/research
 

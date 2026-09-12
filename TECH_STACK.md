@@ -235,25 +235,27 @@
 
 ## Testing
 
-| Package                         | Version | Purpose                                              |
-| ------------------------------- | ------- | ---------------------------------------------------- |
-| `jest`                          | 30.2.0  | Unit and integration test runner — canonical choice  |
-| `@nx/jest`                      | 22.7.7  | Nx/Jest integration                                  |
-| `jest-environment-jsdom`        | 30.2.0  | DOM environment for React component tests            |
-| `jest-environment-node`         | 30.2.0  | Node environment for backend tests                   |
-| `ts-jest`                       | 29.4.9  | TypeScript preprocessor for Jest                     |
-| `babel-jest`                    | 30.2.0  | Babel transform for Jest                             |
-| `@testing-library/react`        | 16.3.1  | React component testing utilities                    |
-| `@testing-library/react-native` | ~13.2.0 | React Native component testing utilities             |
-| `@testing-library/dom`          | 10.4.1  | DOM testing utilities                                |
-| `react-test-renderer`           | 19.0.0  | Test renderer for React Native/Jest tests            |
-| `jsdom`                         | ~22.1.0 | DOM environment for Jest tests                       |
-| `vitest`                        | 4.1.8   | Vite-native test runner (via `@nx/vitest`)           |
-| `@vitest/ui`                    | 4.1.8   | Vitest browser UI                                    |
-| `@playwright/test`              | 1.57.0  | End-to-end test runner                               |
-| `supertest`                     | 7.2.2   | HTTP assertion library for Express integration tests |
+| Package                         | Version | Purpose                                                |
+| ------------------------------- | ------- | ------------------------------------------------------ |
+| `jest`                          | 30.2.0  | Unit and integration test runner — canonical choice    |
+| `@nx/jest`                      | 22.7.7  | Nx/Jest integration                                    |
+| `jest-environment-jsdom`        | 30.2.0  | DOM environment for React component tests              |
+| `jest-environment-node`         | 30.2.0  | Node environment for backend tests                     |
+| `ts-jest`                       | 29.4.9  | TypeScript preprocessor for Jest                       |
+| `babel-jest`                    | 30.2.0  | Babel transform for Jest                               |
+| `@testing-library/react`        | 16.3.1  | React component testing utilities                      |
+| `@testing-library/react-native` | ~13.2.0 | React Native component testing utilities               |
+| `@testing-library/dom`          | 10.4.1  | DOM testing utilities                                  |
+| `react-test-renderer`           | 19.0.0  | Test renderer for React Native/Jest tests (deprecated) |
+| `jsdom`                         | ~22.1.0 | DOM environment for Jest tests                         |
+| `vitest`                        | 4.1.8   | Vite-native test runner (via `@nx/vitest`)             |
+| `@vitest/ui`                    | 4.1.8   | Vitest browser UI                                      |
+| `@playwright/test`              | 1.57.0  | End-to-end test runner                                 |
+| `supertest`                     | 7.2.2   | HTTP assertion library for Express integration tests   |
 
 > **Note**: Jest is the canonical unit test runner for web and mobile. Vitest is installed for Vite-based projects via `@nx/vitest`.
+
+> **Mobile Test Toolchain Note**: This repo's mobile test infrastructure is unresolved, and the reason is `react-test-renderer`, not a React version range. The installed `@testing-library/react-native` (13.2.2) declares `react: >=18.2.0` with no upper bound, which React 19.2.3 satisfies — but it also declares **`react-test-renderer` as a peer dependency**, and React has deprecated that package outright. RNTL v14 is the line that drops the peer. Compounding it, `react-test-renderer` is pinned `19.0.0` against React `19.2.3`, a skew in a package React publishes in lockstep with itself. Before adding the first Jest test to mobile, the toolchain must be resolved and this note removed. No package bumps are planned until the gate tier decision is made.
 
 ---
 
