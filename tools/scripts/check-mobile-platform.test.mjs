@@ -402,6 +402,52 @@ test('fails crypto.subtle and the optional-chained form', (t) => {
   assert.equal(matches.length, 2);
 });
 
+// `crypto` gets the same shadow protection the bare globals get: a file that
+// declares its own binding is not reaching WebCrypto.
+test('does not flag crypto.subtle reached through a locally-declared crypto', (t) => {
+  const workspace = scaffold(t, {
+    'libs/mobile/utils/src/mock.ts': `const crypto = {
+  subtle: { digest: async () => new Uint8Array() },
+};
+export async function digest() {
+  return crypto.subtle.digest();
+}
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+// Shadowing is per name here too: a local `crypto` buys nothing for `window`.
+test('shadowing crypto does not suppress the other banned globals', (t) => {
+  const workspace = scaffold(t, {
+    'libs/mobile/utils/src/mixed-crypto.ts': `const crypto = { subtle: null };
+export function leak() {
+  return [crypto.subtle, window.innerWidth];
+}
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /references the browser global `window`/);
+  assert.doesNotMatch(result.stderr, /references `crypto\.subtle`/);
+});
+
+// `foo.window` is a member name, not the global; `foo.crypto.subtle` was treated
+// as the global for any object at all, which contradicted that for no reason.
+test('does not flag crypto.subtle reached off an object that is not the global', (t) => {
+  const workspace = scaffold(t, {
+    'libs/mobile/utils/src/adapter.ts': `export function digest(platform: {
+  crypto: { subtle: { digest: () => Promise<Uint8Array> } };
+}) {
+  return platform.crypto.subtle.digest();
+}
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 0, result.stderr);
+});
+
 test('does not flag window or document used as a property or parameter name', (t) => {
   const workspace = scaffold(t, {
     'libs/mobile/ui/src/mock.ts': `export function describeScreen({ window }: { window: number }) {

@@ -92,6 +92,15 @@ const BANNED_BARE_GLOBALS = new Set([
   'document',
 ]);
 
+/**
+ * Names a file can shadow. `crypto` is here but not above because the rule
+ * bans `crypto.subtle`, not a bare `crypto` — WebCrypto is the banned surface,
+ * while `crypto` alone is also the name of the Node and `react-native-quick-crypto`
+ * modules. It still needs collecting so a local binding suppresses the rule the
+ * same way it does for the bare globals.
+ */
+const SHADOWABLE_GLOBALS = new Set([...BANNED_BARE_GLOBALS, 'crypto']);
+
 const fail = (msg) => {
   console.error(`mobile-platform: ${msg}`);
   process.exit(2);
@@ -274,14 +283,34 @@ function isBoundName(node) {
   return ts.isQualifiedName(parent) && parent.right === node;
 }
 
-/** `crypto.subtle`, `crypto?.subtle`, or the same reached through a property chain. */
-function isCryptoSubtleAccess(node) {
+/**
+ * `crypto.subtle`, `crypto?.subtle`, or `globalThis.crypto.subtle`.
+ *
+ * `crypto` gets the same two protections the bare globals get, because it is
+ * the same kind of claim about the same kind of name:
+ *
+ * - A file that declares its own `crypto` binding shadows the ambient one, so
+ *   `shadowed` suppresses it exactly as it does for `window` — plausible the
+ *   moment a mobile crypto mock or test double exists.
+ * - Reached off an object, it counts only when that object is the global object
+ *   itself. `isBoundName` already treats `foo.window` as a member name rather
+ *   than the global; matching any `foo.crypto.subtle` contradicted that for no
+ *   reason. The real corpus use is `globalThis.crypto.subtle` in the vault
+ *   Platform Variant, which this still catches.
+ */
+function isCryptoSubtleAccess(node, shadowed) {
   if (!ts.isPropertyAccessExpression(node) || node.name.text !== 'subtle') {
     return false;
   }
+  if (shadowed.has('crypto')) return false;
+
   const target = node.expression;
   if (ts.isIdentifier(target)) return target.text === 'crypto';
-  return ts.isPropertyAccessExpression(target) && target.name.text === 'crypto';
+  return (
+    ts.isPropertyAccessExpression(target) &&
+    target.name.text === 'crypto' &&
+    isGlobalObjectRoot(target.expression)
+  );
 }
 
 /**
@@ -364,7 +393,7 @@ function declaredBannedNames(sourceFile) {
   const visit = (node) => {
     if (
       ts.isIdentifier(node) &&
-      BANNED_BARE_GLOBALS.has(node.text) &&
+      SHADOWABLE_GLOBALS.has(node.text) &&
       node.parent &&
       VALUE_BINDING_PARENTS.some((is) => is(node.parent)) &&
       node.parent.name === node &&
@@ -410,7 +439,7 @@ function inspect(path, sourceFile) {
       );
     }
 
-    if (isCryptoSubtleAccess(node)) {
+    if (isCryptoSubtleAccess(node, shadowed)) {
       findings.push(
         `${path}:${lineOf(sourceFile, node)}: references \`crypto.subtle\`. ` +
           'WebCrypto is a browser API; reach it only through the vault crypto ' +
