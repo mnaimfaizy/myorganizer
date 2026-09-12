@@ -78,6 +78,8 @@
     "enum:fanout:test": "node --test tools/scripts/check-enum-fanout.test.mjs",
     "tailwind:classes:check": "node tools/scripts/check-tailwind-classes.mjs",
     "tailwind:classes:test": "node --test tools/scripts/check-tailwind-classes.test.mjs",
+    "mobile-platform:check": "node tools/scripts/check-mobile-platform.mjs",
+    "mobile-platform:test": "node --test tools/scripts/check-mobile-platform.test.mjs",
     "gates:run": "node tools/scripts/run-assertion-gates.mjs",
     "gates:run:test": "node --test tools/scripts/lib/gate-manifest.test.mjs tools/scripts/run-assertion-gates.test.mjs",
     "gates:coverage:check": "node tools/scripts/check-gate-coverage.mjs",

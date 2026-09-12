@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "comment": "Files `check-mobile-platform.mjs` skips for both mobile platform rules (no bare `react-native/` subpath imports, no browser globals). Every entry names a file and carries a written reason; an entry naming a file that no longer exists fails the check. A `*.web.ts` filename convention was considered and rejected — it would silently exempt every future `.web.ts` anyone adds, which contradicts the mobile vault guide's statement that the WebCrypto Platform Variant below is the only place in libs/mobile allowed to hold a browser API.",
+  "exemptions": [
+    {
+      "path": "libs/mobile/feat/vault/src/crypto.web.ts",
+      "reason": "The vault crypto Platform Variant (see CONTEXT.md): selected by the Vite `resolve.extensions` list in apps/mobile/vite.config.mts ('.web.ts' ahead of '.ts') because react-native-quick-crypto is a JSI module that does not bundle for react-native-web. It reaches `crypto.subtle` because WebCrypto is the web-target implementation of the same VaultCrypto interface the native path implements with react-native-quick-crypto — the two are wire-compatible by construction (see the file's own header comment), not a leak of browser APIs into shared mobile code."
+    },
+    {
+      "path": "apps/mobile/src/main-web.tsx",
+      "reason": "The Vite web entry point for the mobile app's web target, mounting into `document.getElementById('root')` the way every Vite web entry does. It is not a variant of anything else in libs/mobile — apps/mobile/src/main.tsx is the React Native entry, and this file replaces it wholesale for the web build rather than standing in for one native module."
+    }
+  ]
+}

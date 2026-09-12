@@ -147,6 +147,12 @@ export const GATE_MANIFEST = [
     script: 'tools/scripts/check-tailwind-classes.mjs',
     args: [],
   },
+  {
+    id: 'mobile-platform:check',
+    npmScript: 'mobile-platform:check',
+    script: 'tools/scripts/check-mobile-platform.mjs',
+    args: [],
+  },
   // The meta-gate reads this manifest to resolve one level of indirection, so
   // a checker reached only through the aggregate still counts as wired. It is
   // a file-reading checker itself, which is why it runs here rather than only

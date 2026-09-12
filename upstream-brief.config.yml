@@ -20,6 +20,7 @@ script_globs:
   - tools/scripts/check-readme.mjs
   - tools/scripts/check-vault-pages.mjs
   - tools/scripts/check-auth-pages.mjs
+  - tools/scripts/check-mobile-platform.mjs
 
 source_globs:
   - apps/myorganizer/src/**/*.{ts,tsx}
