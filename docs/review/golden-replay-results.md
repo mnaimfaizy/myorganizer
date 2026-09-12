@@ -46,24 +46,25 @@ Promotion to `guard` takes **three consecutive catches**; demotion to
 `frontier` takes **one miss**. The asymmetry is deliberate — a wrongly
 promoted case is a detector that quietly stopped running.
 
-| Case                                         | Tier       | Since      | History                                                                                                                                                                                                                                                                                                          |
-| -------------------------------------------- | ---------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `groceries-blob-type-without-fanouts`        | `guard`    | 2026-09-07 | caught in every run, now eleven of eleven (34345667427, 34351285079, 34582767531, 34591297535); void in 34441162698 (turn ceiling), which neither extends nor breaks the streak                                                                                                                                  |
-| `export-envelope-drops-tasks`                | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught again in 34215499508, the first run after retirement; caught in 34344266006, missed in 34345667427, 34351285079 and 34441162698; caught in 34591297535 and 34663295486 — two of three needed for promotion |
-| `release-bump-leaves-generated-client-stale` | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit); caught in 34441162698; missed in 34591297535; caught in 34663295486 — one of three needed for promotion                                                                                                    |
-| `signup-password-wrapper-inside-formcontrol` | `frontier` | 2026-09-07 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; missed in 34441162698; caught in 34591297535 and 34663295486 — two of three needed for promotion                                                                                                     |
-| `import-confirm-is-bare-window-confirm`      | `frontier` | 2026-09-07 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak; missed in 34441162698; caught in 34591297535 and 34663295486 — two of three needed for promotion                                                                                                      |
-| `mail-test-setup-assigns-undefined-to-env`   | `guard`    | 2026-09-12 | missed in 34345667427; void in 34351285079 (rate limit); **first catch** in 34441162698, then 34591297535 and 34663295486 — **three consecutive, promoted**                                                                                                                                                      |
+| Case                                         | Tier       | Since      | History                                                                                                                                                                                                                                                                                                                                   |
+| -------------------------------------------- | ---------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `groceries-blob-type-without-fanouts`        | `guard`    | 2026-09-07 | caught in every run, now eleven of eleven (34345667427, 34351285079, 34582767531, 34591297535); void in 34441162698 (turn ceiling), which neither extends nor breaks the streak                                                                                                                                                           |
+| `export-envelope-drops-tasks`                | `guard`    | 2026-09-12 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught again in 34215499508, the first run after retirement; caught in 34344266006, missed in 34345667427, 34351285079 and 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted a second time** |
+| `release-bump-leaves-generated-client-stale` | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit); caught in 34441162698; missed in 34591297535; caught in 34663295486 and 34673097908 — two of three needed for promotion, and the only frontier case left                                                                            |
+| `signup-password-wrapper-inside-formcontrol` | `guard`    | 2026-09-12 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**                                                                                                                   |
+| `import-confirm-is-bare-window-confirm`      | `guard`    | 2026-09-12 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**                                                                                                                    |
+| `mail-test-setup-assigns-undefined-to-env`   | `guard`    | 2026-09-12 | missed in 34345667427; void in 34351285079 (rate limit); **first catch** in 34441162698, then 34591297535 and 34663295486 — **three consecutive, promoted**                                                                                                                                                                               |
 
 The tier and the evidence that earned it are in
 `tools/config/review-golden-set.json`, asserted by `yarn review:golden:check`.
-`export-envelope-drops-tasks` keeps its slot for exactly this table's reason:
-`missed, caught, caught, caught, caught, missed, caught` is a case flickering
-near half, and a case that always passes or never passes carries less
-information per run than one in the middle (ADR 0072's Alternatives considered
-made the same point about this case when it was one of two fan-out cases; its
-2026-09-11 amendment repeats it as the reason this case keeps its slot in the
-narrowed six).
+`export-envelope-drops-tasks` was kept in the narrowed six for the opposite
+reason to the one that now moves it: it flickered near half, and a case that
+always passes or never passes carries less information per run than one in the
+middle (ADR 0072's Alternatives considered, repeated in its 2026-09-11
+amendment). Three consecutive catches promoted it anyway on 2026-09-12. The
+rule does not read intent, and the case is no longer flickering — but the
+paragraph is left standing rather than deleted, because the reason it was kept
+is the reason to watch it: one miss demotes it straight back.
 
 **Retired.** `groceries-ui-written-against-absent-roles` was retired on
 2026-09-08 as unwinnable rather than hard: the gate ADR 0065 added as the fix
@@ -83,7 +84,7 @@ item 7). It stays in the set under `parked`, id reserved the same way, with a
 `reentryCondition` in place of a `reason`: it returns to the replayed set the
 day the matching entry in `docs/review/REVIEW_CHECKLIST.md`'s Deferred
 candidates — "New persisted state has an inverse" — is promoted into
-`tools/config/review-obligations.json`. **Six cases remain**: two guard, four
+`tools/config/review-obligations.json`. **Six cases remain**: five guard, one
 frontier.
 
 ## Authorship
@@ -109,22 +110,22 @@ correcting.
 | `mail-test-setup-assigns-undefined-to-env`    | PR #415, carrying interrupted slice #396's TestScaffold output | agent  | Claude (Haiku 4.5, `test-scaffold` on the Claude harness) |
 
 Catch rate by authorship, across every valid replay of each case recorded in
-this file through Run 48 (2026-09-12). "Valid" excludes void runs (rate limit,
+this file through Run 49 (2026-09-12). "Valid" excludes void runs (rate limit,
 turn exhaustion) and the 2026-09-09 run `34344266006`, which the record itself
 says not to read as evidence (confounded mid-flight, see the "wired-gate
 qualifier" run above).
 
-| Case                                             | Author        | Catches | Valid runs |    Rate |
-| ------------------------------------------------ | ------------- | ------: | ---------: | ------: |
-| `groceries-blob-type-without-fanouts` (guard)    | human         |      11 |         11 |    100% |
-| `export-envelope-drops-tasks`                    | human         |       8 |         14 |     57% |
-| `release-bump-leaves-generated-client-stale`     | human         |       3 |          9 |     33% |
-| `import-confirm-is-bare-window-confirm`          | human         |       3 |          9 |     33% |
-| **Human total**                                  |               |  **25** |     **43** | **58%** |
-| **Human total, frontier only** (drops the guard) |               |  **14** |     **32** | **44%** |
-| `signup-password-wrapper-inside-formcontrol`     | agent, Cursor |       3 |         10 |     30% |
-| `mail-test-setup-assigns-undefined-to-env`       | agent, Claude |       3 |          8 |     38% |
-| **Agent total**                                  |               |   **6** |     **18** | **33%** |
+| Case                                                | Author        | Catches | Valid runs |    Rate |
+| --------------------------------------------------- | ------------- | ------: | ---------: | ------: |
+| `groceries-blob-type-without-fanouts` (guard)       | human         |      11 |         11 |    100% |
+| `export-envelope-drops-tasks`                       | human         |       9 |         15 |     60% |
+| `release-bump-leaves-generated-client-stale`        | human         |       4 |         10 |     40% |
+| `import-confirm-is-bare-window-confirm`             | human         |       4 |         10 |     40% |
+| **Human total**                                     |               |  **28** |     **46** | **61%** |
+| **Human, frontier only** (now `release-bump` alone) |               |   **4** |     **10** | **40%** |
+| `signup-password-wrapper-inside-formcontrol`        | agent, Cursor |       4 |         11 |     36% |
+| `mail-test-setup-assigns-undefined-to-env`          | agent, Claude |       3 |          8 |     38% |
+| **Agent total**                                     |               |   **7** |     **19** | **37%** |
 
 ## Cadence
 
@@ -174,6 +175,7 @@ Newest last. "Cases" is the tier replayed, not the whole set.
 | 2026-09-11 | `claude-sonnet-5` | 1 (`guard`)    | **1 of 1**                  | reviewer containment and the allowlist check  |
 | 2026-09-11 | `claude-sonnet-5` | 6 (all tiers)  | **5 of 6**                  | PRD #713 integrated, on pull request #733     |
 | 2026-09-12 | `claude-sonnet-5` | 5 (`frontier`) | **5 of 5**                  | same branch, dispatched deliberately          |
+| 2026-09-12 | `claude-sonnet-5` | 4 (`frontier`) | **4 of 4**                  | third dispatch; the measurement #722 defines  |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each. Run 46 was one guard case: 56 turns of an 80-turn budget, 26

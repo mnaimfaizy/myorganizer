@@ -37,7 +37,8 @@
       "id": "export-envelope-drops-tasks",
       "title": "The hardened export envelope enumerates blob types by hand and omits Tasks",
       "incident": "ADR 0053, issue #537, fixed by PR #540, introduced by PR #77",
-      "tier": "frontier",
+      "tier": "guard",
+      "tierEvidence": "promoted 2026-09-12 on three consecutive catches: runs 34591297535, 34663295486 and 34673097908. Its earlier promotion on 2026-09-07 was reversed by the miss in 34105977391; this streak is the second it has earned.",
       "base": "dea9122c1854879044d51696dec93a57c89e914d",
       "head": "7fde881c0a2f57d05bfc92a20c9cbb863dd52200",
       "spec": {
@@ -93,7 +94,8 @@
       "id": "signup-password-wrapper-inside-formcontrol",
       "title": "The unified sign-up form wraps its password inputs in a div inside FormControl so the label association lands on the div",
       "incident": "issue #525, fixed by PR #532, introduced by PR #215 (git blame on the FormControl > div lines → 8fb1087, the squash commit; base is its first parent)",
-      "tier": "frontier",
+      "tier": "guard",
+      "tierEvidence": "promoted 2026-09-12 on three consecutive catches: runs 34591297535, 34663295486 and 34673097908. It was never caught before an obligation fired on its site.",
       "base": "25edfd7ad7b4d11d44e9716dfc2185a4f4df7df5",
       "head": "8fb1087f36938f5e8e4631a65cff43b3997ff6db",
       "spec": {
@@ -118,7 +120,8 @@
       "id": "import-confirm-is-bare-window-confirm",
       "title": "Vault import replaces both wrappings behind a bare window.confirm that only mentions local vault data",
       "incident": "issue #657, fixed by PR #683, introduced by PR #40 (git log -S 'Importing will replace' → b030fd1, the squash commit; base is its first parent)",
-      "tier": "frontier",
+      "tier": "guard",
+      "tierEvidence": "promoted 2026-09-12 on three consecutive catches: runs 34591297535, 34663295486 and 34673097908.",
       "base": "66a59cac6b0d174476cb3fbc27f803cc9e678abc",
       "head": "b030fd19547e544c461607c10594f1c95f453377",
       "spec": {
