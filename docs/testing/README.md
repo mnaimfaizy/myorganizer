@@ -20,19 +20,20 @@ below plus **only the file for the project you are testing**.
 
 ## Project index
 
-| Target                 | Test type             | Runner                             | Command                       | Guide                                         |
-| ---------------------- | --------------------- | ---------------------------------- | ----------------------------- | --------------------------------------------- |
-| `apps/backend`         | Jest unit/integration | `ts-jest` + `node` env             | `yarn nx test backend`        | [backend.md](./projects/backend.md)           |
-| `apps/myorganizer`     | Jest unit/integration | `babel-jest` + `jsdom` env         | `yarn nx test myorganizer`    | [myorganizer.md](./projects/myorganizer.md)   |
-| `libs/web-ui`          | Jest unit/integration | `babel-jest` + `jsdom` env (React) | `yarn nx test web-ui`         | [web-ui.md](./projects/web-ui.md)             |
-| `libs/auth`            | Jest unit/integration | `ts-jest` + `jsdom` env            | `yarn nx test auth`           | [auth.md](./projects/auth.md)                 |
-| `libs/core`            | Jest unit             | `ts-jest` or `babel-jest`          | `yarn nx test core`           | [core.md](./projects/core.md)                 |
-| `libs/email-shell`     | Jest unit             | `ts-jest` + `node` env             | `yarn nx test email-shell`    | [email-shell.md](./projects/email-shell.md)   |
-| `libs/vault-core`      | Jest unit/integration | `babel-jest` + `jsdom` env         | `yarn nx test vault-core`     | [vault-core.md](./projects/vault-core.md)     |
-| `libs/web-vault`       | Jest unit/integration | `babel-jest` + `jsdom` env (React) | `yarn nx test web-vault`      | [web-vault.md](./projects/web-vault.md)       |
-| `libs/web-vault-ui`    | Jest unit/integration | `babel-jest` + `jsdom` env (React) | `yarn nx test web-vault-ui`   | [web-vault-ui.md](./projects/web-vault-ui.md) |
-| `libs/web/pages/*`     | Jest unit/integration | `babel-jest` + `jsdom` env (React) | `yarn nx test <lib-name>`     | [web-pages.md](./projects/web-pages.md)       |
-| `apps/myorganizer-e2e` | Playwright E2E        | `@playwright/test`                 | `yarn nx e2e myorganizer-e2e` | [e2e.md](./projects/e2e.md)                   |
+| Target                         | Test type                           | Runner                               | Command                       | Guide                                         |
+| ------------------------------ | ----------------------------------- | ------------------------------------ | ----------------------------- | --------------------------------------------- |
+| `apps/backend`                 | Jest unit/integration               | `ts-jest` + `node` env               | `yarn nx test backend`        | [backend.md](./projects/backend.md)           |
+| `apps/myorganizer`             | Jest unit/integration               | `babel-jest` + `jsdom` env           | `yarn nx test myorganizer`    | [myorganizer.md](./projects/myorganizer.md)   |
+| `libs/web-ui`                  | Jest unit/integration               | `babel-jest` + `jsdom` env (React)   | `yarn nx test web-ui`         | [web-ui.md](./projects/web-ui.md)             |
+| `libs/auth`                    | Jest unit/integration               | `ts-jest` + `jsdom` env              | `yarn nx test auth`           | [auth.md](./projects/auth.md)                 |
+| `libs/core`                    | Jest unit                           | `ts-jest` or `babel-jest`            | `yarn nx test core`           | [core.md](./projects/core.md)                 |
+| `libs/email-shell`             | Jest unit                           | `ts-jest` + `node` env               | `yarn nx test email-shell`    | [email-shell.md](./projects/email-shell.md)   |
+| `libs/vault-core`              | Jest unit/integration               | `babel-jest` + `jsdom` env           | `yarn nx test vault-core`     | [vault-core.md](./projects/vault-core.md)     |
+| `libs/web-vault`               | Jest unit/integration               | `babel-jest` + `jsdom` env (React)   | `yarn nx test web-vault`      | [web-vault.md](./projects/web-vault.md)       |
+| `libs/web-vault-ui`            | Jest unit/integration               | `babel-jest` + `jsdom` env (React)   | `yarn nx test web-vault-ui`   | [web-vault-ui.md](./projects/web-vault-ui.md) |
+| `libs/web/pages/*`             | Jest unit/integration               | `babel-jest` + `jsdom` env (React)   | `yarn nx test <lib-name>`     | [web-pages.md](./projects/web-pages.md)       |
+| `apps/myorganizer-e2e`         | Playwright E2E                      | `@playwright/test`                   | `yarn nx e2e myorganizer-e2e` | [e2e.md](./projects/e2e.md)                   |
+| `apps/mobile`, `libs/mobile/*` | Jest — **unresolved, no tests yet** | `babel-jest` + `react-native` preset | `yarn nx test mobile`         | [mobile.md](./projects/mobile.md)             |
 
 Use Jest for `*.spec.ts(x)` and `*.test.ts(x)` **outside** `apps/myorganizer-e2e`.
 Use `@playwright/test` **only** under `apps/myorganizer-e2e`.

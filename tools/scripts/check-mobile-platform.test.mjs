@@ -106,17 +106,47 @@ module.exports = transformer;
   );
 });
 
-// `apps/mobile/jest.config.ts` holds exactly this call in the real repo. The
-// rule covers `from '...'` and `require('...')` only — `require.resolve` is a
-// property access on `require`, not a call to it, and is deliberately outside
-// what the PRD asked this checker to cover.
-test('does not flag require.resolve, which is a different call than require', (t) => {
+// `require.resolve` is a property access on `require` rather than a call to it,
+// so it needs its own clause. `apps/mobile/jest.config.ts` holds exactly this
+// call in the real repo and is exempted by name; an unexempted file is not.
+test('fails a bare react-native subpath reached through `require.resolve`', (t) => {
   const workspace = scaffold(t, {
-    'apps/mobile/jest.config.ts': `module.exports = {
+    'apps/mobile/some.config.ts': `module.exports = {
   transform: {
     '^.+\\\\.(png)$': require.resolve('react-native/jest/assetFileTransformer.js'),
   },
 };
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /resolves 'react-native\/jest\/assetFileTransformer\.js' — a bare react-native\/ subpath/,
+  );
+});
+
+// An import specifier's propertyName names a member of the *other* module. It
+// can never reach the ambient global, so aliasing one to a banned name is not a
+// violation — `import { window as win } from './local'` is somebody else's
+// export called `window`, not a browser API.
+test('does not flag an import specifier merely aliased from a banned global name', (t) => {
+  const workspace = scaffold(t, {
+    'apps/mobile/src/thing.ts': `import { window as win, document as doc } from './local-module';
+
+export const size = win;
+export const root = doc;
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+// The same reasoning for a re-export, where the propertyName sits on an
+// ExportSpecifier instead.
+test('does not flag a re-exported specifier aliased from a banned global name', (t) => {
+  const workspace = scaffold(t, {
+    'apps/mobile/src/reexport.ts': `export { window as win } from './local-module';
 `,
   });
   const result = run(workspace);

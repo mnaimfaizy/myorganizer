@@ -24,12 +24,14 @@
 // all contain the substring `react-native/` one character in. The rule instead
 // parses each file and looks only at import specifiers and `require(...)`
 // call arguments, so a specifier is checked by what it *starts with*, not by
-// what it contains. That same parse is why `apps/mobile/jest.config.ts` —
-// which does hold a genuine bare subpath, `require.resolve('react-native/jest/assetFileTransformer.js')`
-// — reports clean: `require.resolve` is a property access on `require`, not a
-// call to the `require` identifier itself. The rule also covers dynamic
-// `import('react-native/...')`, the third syntactic way to name a module
-// specifier — leaving it out would trade one blind spot for another.
+// what it contains. The rule covers all four syntactic ways to name a module
+// specifier — `from '...'`, `require('...')`, `require.resolve('...')`, and
+// dynamic `import('...')`. `require.resolve` was covered last and is the
+// reason `apps/mobile/jest.config.ts` carries an exemption entry: it holds a
+// genuine `require.resolve('react-native/jest/assetFileTransformer.js')`, and
+// that line is legitimate, so the file is exempted by name with a written
+// reason rather than passing because one call form went unparsed. Leaving any
+// of the four out would trade one blind spot for another.
 //
 // The browser-globals rule is not an import scan — `localStorage` and
 // `crypto.subtle` are ambient, reached without importing anything — so it
@@ -211,6 +213,7 @@ function isBoundName(node) {
       ts.isMethodSignature(parent) ||
       ts.isEnumMember(parent) ||
       ts.isImportSpecifier(parent) ||
+      ts.isExportSpecifier(parent) ||
       ts.isImportClause(parent) ||
       ts.isNamespaceImport(parent) ||
       ts.isTypeAliasDeclaration(parent) ||
@@ -224,6 +227,15 @@ function isBoundName(node) {
     (ts.isPropertyAssignment(parent) ||
       ts.isShorthandPropertyAssignment(parent)) &&
     parent.name === node
+  ) {
+    return true;
+  }
+  // `import { window as win }` / `export { window as w } from './m'`: the
+  // propertyName names a member of the other module, not a reference into this
+  // file's scope, so it can never reach the ambient global the rule catches.
+  if (
+    (ts.isImportSpecifier(parent) || ts.isExportSpecifier(parent)) &&
+    parent.propertyName === node
   ) {
     return true;
   }
@@ -276,6 +288,23 @@ function inspect(path, sourceFile) {
         `${path}:${lineOf(sourceFile, node)}: requires '${node.arguments[0].text}' — ` +
           'a bare react-native/ subpath. Deep imports are deprecated at 0.80 with ' +
           'removal planned; require from the package root or a maintained entry point.',
+      );
+    }
+
+    if (
+      ts.isCallExpression(node) &&
+      ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression) &&
+      node.expression.expression.text === 'require' &&
+      node.expression.name.text === 'resolve' &&
+      node.arguments.length === 1 &&
+      ts.isStringLiteral(node.arguments[0]) &&
+      isBannedSubpath(node.arguments[0].text)
+    ) {
+      findings.push(
+        `${path}:${lineOf(sourceFile, node)}: resolves '${node.arguments[0].text}' — ` +
+          'a bare react-native/ subpath. Deep imports are deprecated at 0.80 with ' +
+          'removal planned; resolve from the package root or a maintained entry point.',
       );
     }
 
