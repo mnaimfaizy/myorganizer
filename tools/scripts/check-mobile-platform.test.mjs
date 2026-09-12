@@ -266,6 +266,64 @@ export function leak() {
   assert.match(result.stderr, /references the browser global `document`/);
 });
 
+// A shorthand property is a key and a live read at once, so unlike every other
+// name slot it must still be checked against the surrounding scope.
+test('flags a banned global referenced through object shorthand', (t) => {
+  const workspace = scaffold(t, {
+    'libs/mobile/core/src/shorthand.ts': `export function capture() {
+  return { window, localStorage };
+}
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /references the browser global `window`/);
+  assert.match(result.stderr, /references the browser global `localStorage`/);
+});
+
+// ...but a shorthand that reads a genuine local is still a local.
+test('does not flag object shorthand reading a local that shadows a banned name', (t) => {
+  const workspace = scaffold(t, {
+    'libs/mobile/core/src/shorthand-local.ts': `export function capture(window: number) {
+  return { window };
+}
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+// Two positions the old kind-by-kind enumeration never listed. Neither occurs
+// in the corpus today; both would have been silent false positives.
+test('does not flag a JSX attribute or a qualified type name spelled like a banned global', (t) => {
+  const workspace = scaffold(t, {
+    'libs/mobile/ui/src/Attr.tsx': `import { View } from 'react-native';
+export const Attr = () => <View window={1} document="x" />;
+`,
+    'libs/mobile/core/src/qualified.ts': `declare namespace Config {
+  export type window = string;
+}
+export type Alias = Config.window;
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+// The `right` match is pinned to QualifiedName: BinaryExpression carries one
+// too, and a blanket check would excuse the most ordinary reference there is.
+test('flags a banned global on the right of a binary expression', (t) => {
+  const workspace = scaffold(t, {
+    'libs/mobile/core/src/binary.ts': `export function pick(fallback: unknown) {
+  return fallback || document;
+}
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /references the browser global `document`/);
+});
+
 // A naive substring match on \`react-native/\` hits all three of these — each
 // is a reference to the separate \`@react-native/*\` scope one character in.
 test('does not flag the @react-native/ scope: babel preset, metro config, vite alias', (t) => {

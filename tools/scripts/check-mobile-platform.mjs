@@ -207,17 +207,15 @@ function isGlobalObjectRoot(expr) {
 }
 
 /**
- * A name is a declaration, or a property name, not a reference to whatever
- * global might share its spelling. `{ window: value }`, `function f(document)`,
- * and `import { window } from 'x'` all bind or key a name; none of them reach
- * the ambient global. A property name reached off `globalThis` or `self` is
- * the exception: `globalThis.window` and `self.localStorage` name the same
- * ambient global a bare reference does, so those are never treated as bound.
- */
-/**
  * Declaration kinds that introduce a name which can later be *referenced as a
  * bare identifier*. Only these can shadow an ambient global, so this is the
  * list `declaredBannedNames` uses.
+ *
+ * This list is bounded in a way `isBoundName`'s former one was not: the
+ * question "which syntax creates a value binding?" has a finite answer, while
+ * "which syntax names something?" does not. A kind missing from here is a
+ * false *negative* on a shadow — noisier, not silent — so the asymmetry with
+ * `isBoundName`'s structural test is deliberate.
  */
 const VALUE_BINDING_PARENTS = [
   ts.isVariableDeclaration,
@@ -233,59 +231,47 @@ const VALUE_BINDING_PARENTS = [
 ];
 
 /**
- * Declaration kinds whose name is *not* a value binding — a member, a type, or
- * a label. They cannot shadow a global, so `declaredBannedNames` ignores them,
- * but the name at that position is still not a reference, so `isBoundName`
- * must skip it. That asymmetry is the only difference between the two lists:
- * keep it in mind when adding a kind, and add it to the list it belongs to.
+ * Is this identifier naming something rather than referencing scope?
+ *
+ * This was an enumeration of node kinds and it leaked once per review round —
+ * `ExportSpecifier.propertyName`, then `BindingElement.propertyName`, then
+ * `ShorthandPropertyAssignment` — because the set of positions where a name is
+ * not a reference is open-ended, and a missing kind is a silent false positive.
+ * `JsxAttribute` and `QualifiedName.right` were two more waiting to be found.
+ *
+ * So the test is inverted. Instead of listing the positions that bind, it asks
+ * the structural question directly: an identifier sitting at its parent's
+ * `name` or `propertyName` slot, or on the right of a qualified type name, is
+ * naming something. That holds for every declaration, member, label, JSX
+ * attribute, and import or export alias without naming any of them, so a node
+ * kind TypeScript adds later is covered on arrival.
+ *
+ * Two positions read scope despite sitting in a name slot, and both are
+ * checked before the general rule:
+ *
+ * - A shorthand property (`{ window }`) is simultaneously a key and a live
+ *   reference to the surrounding scope. It is the only name slot that is also
+ *   a read, which is exactly why enumeration got it wrong.
+ * - `globalThis.window` and `self.localStorage` reach the same ambient global a
+ *   bare reference does, so a property name is bound only when its object is
+ *   something other than the global object itself.
+ *
+ * `right` is matched only on a QualifiedName: `BinaryExpression` also carries a
+ * `right`, and a blanket check would silently excuse `foo || window`.
  */
-const NON_VALUE_NAME_PARENTS = [
-  ts.isPropertySignature,
-  ts.isPropertyDeclaration,
-  ts.isMethodDeclaration,
-  ts.isMethodSignature,
-  ts.isEnumMember,
-  ts.isExportSpecifier,
-  ts.isTypeAliasDeclaration,
-  ts.isInterfaceDeclaration,
-  ts.isLabeledStatement,
-];
-
 function isBoundName(node) {
   const parent = node.parent;
   if (!parent) return false;
-  if (
-    [...VALUE_BINDING_PARENTS, ...NON_VALUE_NAME_PARENTS].some((is) =>
-      is(parent),
-    ) &&
-    parent.name === node
-  ) {
-    return true;
-  }
-  if (
-    (ts.isPropertyAssignment(parent) ||
-      ts.isShorthandPropertyAssignment(parent)) &&
-    parent.name === node
-  ) {
-    return true;
-  }
-  // `import { window as win }` / `export { window as w } from './m'` /
-  // `const { window: win } = foo`: the propertyName names a member of the other
-  // module or of the object being destructured, not a reference into this file's
-  // scope, so it can never reach the ambient global the rule catches. All three
-  // share one carve-out because they share one reason.
-  if (
-    (ts.isImportSpecifier(parent) ||
-      ts.isExportSpecifier(parent) ||
-      ts.isBindingElement(parent)) &&
-    parent.propertyName === node
-  ) {
-    return true;
+
+  if (ts.isShorthandPropertyAssignment(parent) && parent.name === node) {
+    return false;
   }
   if (ts.isPropertyAccessExpression(parent) && parent.name === node) {
     return !isGlobalObjectRoot(parent.expression);
   }
-  return false;
+
+  if (parent.name === node || parent.propertyName === node) return true;
+  return ts.isQualifiedName(parent) && parent.right === node;
 }
 
 /** `crypto.subtle`, `crypto?.subtle`, or the same reached through a property chain. */
