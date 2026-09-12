@@ -256,68 +256,75 @@ function isCryptoSubtleAccess(node) {
 }
 
 /**
- * Both rules in one pass: import/require specifiers for the subpath rule,
- * every identifier and property access for the browser-globals rule.
+ * The four syntactic ways a module specifier can be named, each matched by its
+ * own guard so that none is silently skipped, and each reporting with the verb
+ * that names what the code actually did. The guards stay separate on purpose —
+ * the shared part is only the specifier and the message.
  */
-function inspect(path, sourceFile) {
-  const findings = [];
-
-  const visit = (node) => {
-    if (
+const SPECIFIER_FORMS = [
+  {
+    verb: 'imports',
+    remedy: 'import from the package root or a maintained entry point',
+    specifierOf: (node) =>
       (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
       node.moduleSpecifier &&
-      ts.isStringLiteral(node.moduleSpecifier) &&
-      isBannedSubpath(node.moduleSpecifier.text)
-    ) {
-      findings.push(
-        `${path}:${lineOf(sourceFile, node)}: imports '${node.moduleSpecifier.text}' — ` +
-          'a bare react-native/ subpath. Deep imports are deprecated at 0.80 with ' +
-          'removal planned; import from the package root or a maintained entry point.',
-      );
-    }
-
-    if (
+      ts.isStringLiteral(node.moduleSpecifier)
+        ? node.moduleSpecifier
+        : undefined,
+  },
+  {
+    verb: 'requires',
+    remedy: 'require from the package root or a maintained entry point',
+    specifierOf: (node) =>
       ts.isCallExpression(node) &&
       ts.isIdentifier(node.expression) &&
       node.expression.text === 'require' &&
       node.arguments.length === 1 &&
-      ts.isStringLiteral(node.arguments[0]) &&
-      isBannedSubpath(node.arguments[0].text)
-    ) {
-      findings.push(
-        `${path}:${lineOf(sourceFile, node)}: requires '${node.arguments[0].text}' — ` +
-          'a bare react-native/ subpath. Deep imports are deprecated at 0.80 with ' +
-          'removal planned; require from the package root or a maintained entry point.',
-      );
-    }
-
-    if (
+      ts.isStringLiteral(node.arguments[0])
+        ? node.arguments[0]
+        : undefined,
+  },
+  {
+    verb: 'resolves',
+    remedy: 'resolve from the package root or a maintained entry point',
+    specifierOf: (node) =>
       ts.isCallExpression(node) &&
       ts.isPropertyAccessExpression(node.expression) &&
       ts.isIdentifier(node.expression.expression) &&
       node.expression.expression.text === 'require' &&
       node.expression.name.text === 'resolve' &&
       node.arguments.length === 1 &&
-      ts.isStringLiteral(node.arguments[0]) &&
-      isBannedSubpath(node.arguments[0].text)
-    ) {
-      findings.push(
-        `${path}:${lineOf(sourceFile, node)}: resolves '${node.arguments[0].text}' — ` +
-          'a bare react-native/ subpath. Deep imports are deprecated at 0.80 with ' +
-          'removal planned; resolve from the package root or a maintained entry point.',
-      );
-    }
-
-    if (
+      ts.isStringLiteral(node.arguments[0])
+        ? node.arguments[0]
+        : undefined,
+  },
+  {
+    verb: 'dynamically imports',
+    remedy: 'import from the package root or a maintained entry point',
+    specifierOf: (node) =>
       ts.isImportCall(node) &&
       node.arguments.length === 1 &&
-      ts.isStringLiteral(node.arguments[0]) &&
-      isBannedSubpath(node.arguments[0].text)
-    ) {
+      ts.isStringLiteral(node.arguments[0])
+        ? node.arguments[0]
+        : undefined,
+  },
+];
+
+/**
+ * Both rules in one pass: module specifiers for the subpath rule, every
+ * identifier and property access for the browser-globals rule.
+ */
+function inspect(path, sourceFile) {
+  const findings = [];
+
+  const visit = (node) => {
+    for (const { verb, remedy, specifierOf } of SPECIFIER_FORMS) {
+      const specifier = specifierOf(node);
+      if (!specifier || !isBannedSubpath(specifier.text)) continue;
       findings.push(
-        `${path}:${lineOf(sourceFile, node)}: dynamically imports '${node.arguments[0].text}' — ` +
+        `${path}:${lineOf(sourceFile, node)}: ${verb} '${specifier.text}' — ` +
           'a bare react-native/ subpath. Deep imports are deprecated at 0.80 with ' +
-          'removal planned; import from the package root or a maintained entry point.',
+          `removal planned; ${remedy}.`,
       );
     }
 

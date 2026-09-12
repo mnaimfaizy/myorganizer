@@ -31,4 +31,4 @@ The autonomous verification gate for mobile is lint + typecheck + format. Do not
 - Do not run `nx run mobile:bundle` as a slice or PR gate.
 - Do not treat mobile refresh as an httpOnly cookie.
 - Do not add NativeWind or `className` styling.
-- Do not "fix" or exempt `jest.config.ts`'s `require.resolve('react-native/jest/assetFileTransformer.js')` — it's the React Native Jest preset's own transformer, and `yarn mobile-platform:check` already ignores `require.resolve` calls (see the checker's own comment).
+- Do not remove `jest.config.ts` from `tools/config/mobile-platform-exemptions.json`, and do not "fix" its `require.resolve('react-native/jest/assetFileTransformer.js')`. That is the transformer React Native ships for Jest and it has no package-root export, so the subpath is the published interface for that one line. `yarn mobile-platform:check` parses `require.resolve` like every other call form — the file passes because of the named exemption and its written reason, not because the form is ignored.
