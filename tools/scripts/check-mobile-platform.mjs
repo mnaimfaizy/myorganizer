@@ -59,10 +59,10 @@ const require = createRequire(import.meta.url);
 const cwd = process.cwd();
 const printOnly = process.argv.includes('--print');
 
-export const EXEMPTIONS_PATH = 'tools/config/mobile-platform-exemptions.json';
-export const SCHEMA_VERSION = 1;
-export const SOURCE_ROOTS = ['apps/mobile', 'libs/mobile'];
-export const SOURCE_EXTENSIONS = /\.(ts|tsx|js|jsx|mjs|mts)$/;
+const EXEMPTIONS_PATH = 'tools/config/mobile-platform-exemptions.json';
+const SCHEMA_VERSION = 1;
+const SOURCE_ROOTS = ['apps/mobile', 'libs/mobile'];
+const SOURCE_EXTENSIONS = /\.(ts|tsx|js|jsx|mjs|mts)$/;
 
 /** Ambient browser globals banned from mobile app and library source. */
 const BANNED_BARE_GLOBALS = new Set([
@@ -85,10 +85,7 @@ try {
 }
 
 /** Reads and validates the reasoned exemption list. Never returns on error — it exits. */
-export function readExemptions({
-  cwd: root = cwd,
-  path = EXEMPTIONS_PATH,
-} = {}) {
+function readExemptions({ cwd: root = cwd, path = EXEMPTIONS_PATH } = {}) {
   const absolute = join(root, path);
   if (!existsSync(absolute)) {
     fail(`${path} not found — the exemption list is a required artifact`);
@@ -135,7 +132,7 @@ export function readExemptions({
 }
 
 /** Every tracked TypeScript/JavaScript file under the mobile app and libraries. */
-export function sourceFiles({ cwd: root = cwd } = {}) {
+function sourceFiles({ cwd: root = cwd } = {}) {
   let tracked;
   try {
     tracked = execFileSync('git', ['ls-files', '-z', '--', ...SOURCE_ROOTS], {

@@ -248,14 +248,14 @@
 | `@testing-library/dom`          | 10.4.1  | DOM testing utilities                                  |
 | `react-test-renderer`           | 19.0.0  | Test renderer for React Native/Jest tests (deprecated) |
 | `jsdom`                         | ~22.1.0 | DOM environment for Jest tests                         |
-
-> **Mobile Test Toolchain Note**: This repo's mobile test infrastructure is unresolved. `@testing-library/react-native` v13.2.0 is the React 18 line; the repo runs React 19.2.3, which is beyond its support window. `react-test-renderer` is deprecated upstream and pinned at 19.0.0 to match React 19.2.3 — a mismatch that is already incorrect on its own terms, independent of the deprecation. Before adding the first Jest test to mobile, the toolchain must be resolved and this note removed. No package bumps are planned until the gate tier decision is made.
-> | `vitest` | 4.1.8 | Vite-native test runner (via `@nx/vitest`) |
-> | `@vitest/ui` | 4.1.8 | Vitest browser UI |
-> | `@playwright/test` | 1.57.0 | End-to-end test runner |
-> | `supertest` | 7.2.2 | HTTP assertion library for Express integration tests |
+| `vitest`                        | 4.1.8   | Vite-native test runner (via `@nx/vitest`)             |
+| `@vitest/ui`                    | 4.1.8   | Vitest browser UI                                      |
+| `@playwright/test`              | 1.57.0  | End-to-end test runner                                 |
+| `supertest`                     | 7.2.2   | HTTP assertion library for Express integration tests   |
 
 > **Note**: Jest is the canonical unit test runner for web and mobile. Vitest is installed for Vite-based projects via `@nx/vitest`.
+
+> **Mobile Test Toolchain Note**: This repo's mobile test infrastructure is unresolved. `@testing-library/react-native` v13.2.0 is the React 18 line; the repo runs React 19.2.3, which is beyond its support window. `react-test-renderer` is deprecated upstream, and its 19.0.0 pin does not match React 19.2.3 — a test renderer must match React exactly, so the pin is already wrong on its own terms, independent of the deprecation. Before adding the first Jest test to mobile, the toolchain must be resolved and this note removed. No package bumps are planned until the gate tier decision is made.
 
 ---
 
