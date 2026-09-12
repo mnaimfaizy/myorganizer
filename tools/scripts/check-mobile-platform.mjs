@@ -35,9 +35,21 @@
 //
 // The browser-globals rule is not an import scan — `localStorage` and
 // `crypto.subtle` are ambient, reached without importing anything — so it
-// walks every identifier and property access instead, skipping only the
-// positions where a name is being declared or is itself a property name
-// rather than a reference (`{ window: value }`, `function f(document) {}`).
+// walks every identifier and property access instead, skipping the positions
+// where a name is being declared or is itself a property name rather than a
+// reference (`{ window: value }`, `function f(document) {}`).
+//
+// Skipping the declaration alone is not enough: `function log(window) { return
+// window; }` declares a local and then *references* it, and flagging those
+// references would fail the pre-commit gate on ordinary shadowing code. So a
+// first pass collects every banned name this file declares as a binding, and
+// the reference pass skips that name for the whole file. That is deliberately
+// coarser than real scope resolution — a file that declares a local `window`
+// in one function and reaches the ambient `window` in another gets a pass it
+// has not earned. The trade is chosen on which way the error hurts: a false
+// positive breaks somebody's commit on correct code, while this false negative
+// needs a file that both shadows a browser global and reaches the real one,
+// which `dom`-free typechecking and review are better placed to catch.
 // A property name is not always a dead end, though: `globalThis.window` and
 // `self.localStorage` are how strict-mode code reaches the same ambient
 // global by qualifying it, so those two roots are followed rather than
@@ -311,11 +323,43 @@ const SPECIFIER_FORMS = [
 ];
 
 /**
+ * Banned names this file declares as its own binding. A reference to one of
+ * these is the file's own local, not the ambient global.
+ */
+function declaredBannedNames(sourceFile) {
+  const declared = new Set();
+  const visit = (node) => {
+    if (
+      ts.isIdentifier(node) &&
+      BANNED_BARE_GLOBALS.has(node.text) &&
+      node.parent &&
+      (ts.isVariableDeclaration(node.parent) ||
+        ts.isParameter(node.parent) ||
+        ts.isBindingElement(node.parent) ||
+        ts.isFunctionDeclaration(node.parent) ||
+        ts.isFunctionExpression(node.parent) ||
+        ts.isClassDeclaration(node.parent) ||
+        ts.isClassExpression(node.parent) ||
+        ts.isImportSpecifier(node.parent) ||
+        ts.isImportClause(node.parent) ||
+        ts.isNamespaceImport(node.parent)) &&
+      node.parent.name === node
+    ) {
+      declared.add(node.text);
+    }
+    ts.forEachChild(node, visit);
+  };
+  visit(sourceFile);
+  return declared;
+}
+
+/**
  * Both rules in one pass: module specifiers for the subpath rule, every
  * identifier and property access for the browser-globals rule.
  */
 function inspect(path, sourceFile) {
   const findings = [];
+  const shadowed = declaredBannedNames(sourceFile);
 
   const visit = (node) => {
     for (const { verb, remedy, specifierOf } of SPECIFIER_FORMS) {
@@ -331,6 +375,7 @@ function inspect(path, sourceFile) {
     if (
       ts.isIdentifier(node) &&
       BANNED_BARE_GLOBALS.has(node.text) &&
+      !shadowed.has(node.text) &&
       !isBoundName(node)
     ) {
       findings.push(

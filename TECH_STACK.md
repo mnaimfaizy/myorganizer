@@ -255,7 +255,7 @@
 
 > **Note**: Jest is the canonical unit test runner for web and mobile. Vitest is installed for Vite-based projects via `@nx/vitest`.
 
-> **Mobile Test Toolchain Note**: This repo's mobile test infrastructure is unresolved. `@testing-library/react-native` v13.2.0 is the React 18 line; the repo runs React 19.2.3, which is beyond its support window. `react-test-renderer` is deprecated upstream, and its 19.0.0 pin does not match React 19.2.3 — a test renderer must match React exactly, so the pin is already wrong on its own terms, independent of the deprecation. Before adding the first Jest test to mobile, the toolchain must be resolved and this note removed. No package bumps are planned until the gate tier decision is made.
+> **Mobile Test Toolchain Note**: This repo's mobile test infrastructure is unresolved, and the reason is `react-test-renderer`, not a React version range. The installed `@testing-library/react-native` (13.2.2) declares `react: >=18.2.0` with no upper bound, which React 19.2.3 satisfies — but it also declares **`react-test-renderer` as a peer dependency**, and React has deprecated that package outright. RNTL v14 is the line that drops the peer. Compounding it, `react-test-renderer` is pinned `19.0.0` against React `19.2.3`, a skew in a package React publishes in lockstep with itself. Before adding the first Jest test to mobile, the toolchain must be resolved and this note removed. No package bumps are planned until the gate tier decision is made.
 
 ---
 

@@ -15,10 +15,10 @@ That success is not evidence the toolchain works.
 
 ## Why the first test is blocked
 
-| Package                         | Pinned    | Problem                                                                                                                                                                    |
-| ------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `@testing-library/react-native` | `~13.2.0` | The 13.x line is the React 18 line. This repo runs React `19.2.3`, outside its support window.                                                                             |
-| `react-test-renderer`           | `19.0.0`  | Deprecated upstream by React, **and** off-version: a test renderer must match React exactly, so `19.0.0` against `19.2.3` is already wrong independent of the deprecation. |
+| Package                         | Pinned                       | Problem                                                                                                                                                                                                                                                                                    |
+| ------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `@testing-library/react-native` | `~13.2.0` (installed 13.2.2) | Declares **`react-test-renderer` as a peer dependency**, and React has deprecated that package. Its `react` peer is `>=18.2.0` with no upper bound, so React 19.2.3 satisfies it — the React version is _not_ the blocker. RNTL v14 is the line that drops the `react-test-renderer` peer. |
+| `react-test-renderer`           | `19.0.0`                     | Deprecated upstream by React, and pinned off-version against React `19.2.3` — a skew in a package React publishes in lockstep with itself.                                                                                                                                                 |
 
 Resolving this means moving to RNTL v14 and dropping `react-test-renderer` — a package change that
 waits on whether mobile gets a test gate at all. Until then the mobile verification gate is

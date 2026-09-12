@@ -142,6 +142,55 @@ export const root = doc;
   assert.equal(result.status, 0, result.stderr);
 });
 
+// Skipping the declaration but not its later uses was a false positive that
+// would have failed the pre-commit gate on ordinary shadowing code.
+test('does not flag later references to a local that shadows a banned global', (t) => {
+  const workspace = scaffold(t, {
+    'apps/mobile/src/shadow.ts': `export function log(window: number) {
+  console.log(window);
+  return window;
+}
+
+export function pick(document: string[]) {
+  return document.length;
+}
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('does not flag a local const shadowing a banned global, nor its uses', (t) => {
+  const workspace = scaffold(t, {
+    'apps/mobile/src/localvar.ts': `const localStorage = new Map<string, string>();
+
+export function put(k: string, v: string) {
+  localStorage.set(k, v);
+  return localStorage.size;
+}
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+// The shadow suppression is per name, not per file: a file that shadows one
+// banned name must still be held to the others.
+test('still flags a different banned global in a file that shadows one', (t) => {
+  const workspace = scaffold(t, {
+    'apps/mobile/src/mixed.ts': `export function log(window: number) {
+  return window;
+}
+
+export const stored = localStorage.getItem('k');
+`,
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /references the browser global `localStorage`/);
+  assert.doesNotMatch(result.stderr, /references the browser global `window`/);
+});
+
 // The same reasoning for a re-export, where the propertyName sits on an
 // ExportSpecifier instead.
 test('does not flag a re-exported specifier aliased from a banned global name', (t) => {
