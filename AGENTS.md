@@ -23,6 +23,14 @@ Current `next` version lives in `TECH_STACK.md`. The bundled docs above match th
 - Do not suggest `next lint`. Lint with Nx/ESLint (`yarn nx lint <project>` or `yarn lint`).
 - Express middleware in `apps/backend/src/middleware/` is unrelated. Do not rename it to proxy.
 
+## React Native
+
+React Native ships no bundled documentation, so the Next.js "read the bundled docs" instrument above does not transfer — verify an export against the installed package rather than from memory.
+
+- Import only from the `react-native` package root, never a `react-native/...` subpath. Deep imports are deprecated at 0.80 with removal planned; `yarn mobile-platform:check` enforces this over `apps/mobile` and `libs/mobile`.
+- `targetSdk 35` means Android 15 already enforces edge-to-edge for this app; every screen root must come from `react-native-safe-area-context`, not a manual status-bar inset.
+- Style mobile components with `StyleSheet.create` over the token theme — never an inline style object, never a browser API. See [ADR 0008](docs/adr/0008-mobile-styling-stylesheet-theme.md).
+
 ## Setup
 
 - Use Node and Corepack-managed Yarn.
@@ -190,14 +198,15 @@ Do not treat every test/component touch as a full multi-agent pipeline. Classify
 | `gate:standard`   | Matching specialist hop for the artifact                                                             |
 | `gate:full`       | Full mandatory pipelines                                                                             |
 
-| File Pattern                                      | Skill                                                   |
-| ------------------------------------------------- | ------------------------------------------------------- |
-| `*.spec.ts` (Playwright E2E)                      | `.agents/skills/playwright-e2e-workflow/SKILL.md`       |
-| `*.test.ts` (Jest)                                | `.agents/skills/unit-test-delegation-workflow/SKILL.md` |
-| `*.stories.tsx`                                   | `.agents/skills/storybook-delegation-workflow/SKILL.md` |
-| Components in `libs/web-ui/` / `libs/web/pages/`  | `.agents/skills/component-builder/SKILL.md`             |
-| API Contract (controllers, DTOs, Prisma for HTTP) | `.agents/skills/backend-api-contract-change/SKILL.md`   |
-| House Explainer Page (`docs/**/*.html`)           | `.agents/skills/design-brief/SKILL.md` → `Designer`     |
+| File Pattern                                              | Skill                                                                                                           |
+| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `*.spec.ts` (Playwright E2E)                              | `.agents/skills/playwright-e2e-workflow/SKILL.md`                                                               |
+| `*.test.ts` (Jest)                                        | `.agents/skills/unit-test-delegation-workflow/SKILL.md`                                                         |
+| `*.stories.tsx`                                           | `.agents/skills/storybook-delegation-workflow/SKILL.md`                                                         |
+| Components in `libs/web-ui/` / `libs/web/pages/`          | `.agents/skills/component-builder/SKILL.md`                                                                     |
+| API Contract (controllers, DTOs, Prisma for HTTP)         | `.agents/skills/backend-api-contract-change/SKILL.md`                                                           |
+| House Explainer Page (`docs/**/*.html`)                   | `.agents/skills/design-brief/SKILL.md` → `Designer`                                                             |
+| Mobile app / library (`apps/mobile/**`, `libs/mobile/**`) | No specialist hop — direct edit; gate is lint + typecheck + format (ADR 0005) plus `yarn mobile-platform:check` |
 
 ### Key Anti-Patterns
 
