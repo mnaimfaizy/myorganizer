@@ -101,18 +101,20 @@ Stores the user's OAuth connection to YouTube.
 
 Stores channels the user has chosen to sync.
 
-| Column              | Type                          | Notes                            |
-| ------------------- | ----------------------------- | -------------------------------- |
-| `id`                | `String @id @default(cuid())` |                                  |
-| `userId`            | `String`                      | FK → User                        |
-| `channelId`         | `String`                      | YouTube channel ID               |
-| `channelTitle`      | `String`                      | Display name                     |
-| `channelThumbnail`  | `String?`                     | URL to channel avatar            |
-| `uploadsPlaylistId` | `String`                      | The channel's "Uploads" playlist |
-| `enabled`           | `Boolean @default(true)`      | User can toggle sync on/off      |
-| `lastSyncedAt`      | `DateTime?`                   |                                  |
-| `createdAt`         | `DateTime`                    |                                  |
-| `updatedAt`         | `DateTime`                    |                                  |
+| Column              | Type                          | Notes                                                                                                  |
+| ------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `id`                | `String @id @default(cuid())` |                                                                                                        |
+| `userId`            | `String`                      | FK → User                                                                                              |
+| `channelId`         | `String`                      | YouTube channel ID                                                                                     |
+| `channelTitle`      | `String`                      | Display name                                                                                           |
+| `channelThumbnail`  | `String?`                     | URL to channel avatar                                                                                  |
+| `uploadsPlaylistId` | `String`                      | The channel's "Uploads" playlist                                                                       |
+| `enabled`           | `Boolean @default(true)`      | User can toggle sync on/off                                                                            |
+| `lastSyncedAt`      | `DateTime?`                   | Stamp of the last Sync Run that synced this channel                                                    |
+| `lastSyncAttemptAt` | `DateTime?`                   | Stamp of the last Sync Run that _attempted_ it, success or failure                                     |
+| `lastSyncError`     | `String?`                     | Error code from the last failed attempt; null once one succeeds. Non-null makes this a Failing Channel |
+| `createdAt`         | `DateTime`                    |                                                                                                        |
+| `updatedAt`         | `DateTime`                    |                                                                                                        |
 
 ### `YouTubeVideo`
 
@@ -149,18 +151,19 @@ Cached video metadata from synced channels.
 
 All under `/api/v1/youtube`, JWT-secured unless noted.
 
-| Method   | Path                     | Description                                                                                   |
-| -------- | ------------------------ | --------------------------------------------------------------------------------------------- |
-| `GET`    | `/auth-url`              | Returns Google OAuth consent URL                                                              |
-| `POST`   | `/callback`              | OAuth callback — exchanges `{ code }` JSON body for tokens (JWT-authenticated)                |
-| `GET`    | `/status`                | Returns integration status (`connected`/`disconnected`)                                       |
-| `DELETE` | `/disconnect`            | Revokes tokens and removes integration                                                        |
-| `GET`    | `/subscriptions`         | Lists all user's YouTube channel subscriptions                                                |
-| `PUT`    | `/subscriptions/sync`    | Fetches fresh subscriptions from YouTube                                                      |
-| `PATCH`  | `/subscriptions/:id`     | Toggle a subscription enabled/disabled                                                        |
-| `GET`    | `/videos`                | Returns cached videos with query params: `sort` (latest/oldest/az), `search`, `page`, `limit` |
-| `GET`    | `/notification-settings` | Returns digest preferences: opt-in flag, preferred weekday, time zone                         |
-| `PATCH`  | `/notification-settings` | Updates opt-in flag, `preferredWeekday` (0-6), and IANA `timeZone`                            |
+| Method   | Path                     | Description                                                                                                      |
+| -------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/auth-url`              | Returns Google OAuth consent URL                                                                                 |
+| `POST`   | `/callback`              | OAuth callback — exchanges `{ code }` JSON body for tokens (JWT-authenticated)                                   |
+| `GET`    | `/status`                | Returns integration status (`connected`/`disconnected`)                                                          |
+| `DELETE` | `/disconnect`            | Revokes tokens and removes integration                                                                           |
+| `GET`    | `/subscriptions`         | Lists all user's YouTube channel subscriptions                                                                   |
+| `PUT`    | `/subscriptions/sync`    | Starts a Sync Run for the caller. Returns its outcome when it ends, but the web client does not wait — see below |
+| `GET`    | `/sync-status`           | The last Sync Run's outcome, the manual-refresh `retryAt`, and a `progress` block while one is live              |
+| `PATCH`  | `/subscriptions/:id`     | Toggle a subscription enabled/disabled                                                                           |
+| `GET`    | `/videos`                | Returns cached videos with query params: `sort` (latest/oldest/az), `search`, `page`, `limit`                    |
+| `GET`    | `/notification-settings` | Returns digest preferences: opt-in flag, preferred weekday, time zone                                            |
+| `PATCH`  | `/notification-settings` | Updates opt-in flag, `preferredWeekday` (0-6), and IANA `timeZone`                                               |
 
 | `POST` | `/digest/unsubscribe` | **Public**. Turns the digest off from the token carried by every digest email |
 | `POST` | `/cron/sync` | **Cron-only** (X-Cron-Secret). One bounded pass of the metadata sync worker |
@@ -168,6 +171,48 @@ All under `/api/v1/youtube`, JWT-secured unless noted.
 
 `POST /cron/sync-and-notify` was replaced by the two separate cron endpoints
 above. Existing deployments must update their cron entries — see below.
+
+## Sync Runs and visible progress
+
+A **Sync Run** is one attempt to refresh a User's Followed Channels and the Cached
+Uploads of their Enabled Channels. At most one is live per User, whatever started
+it — `PUT /subscriptions/sync`, the sync worker, or the digest worker, all of which
+funnel through `YouTubeSyncService.syncVideosForUserWithStatus`. The run is claimed
+there with an optimistic `updateMany`; losing the claim is a normal outcome and
+returns the live run's status rather than an error.
+
+A User-initiated run stays **inline in the request**, and the web client does not
+wait for the response. It fires the `PUT` and polls `GET /sync-status` every two
+seconds, which is the single source of truth for the run. Express does not abort a
+handler when the client disconnects, so the run finishes and records its outcome
+whether or not the tab is open — leaving the page is safe, and the page picks a run
+in flight back up on mount. A gateway timeout on the ignored `PUT` is cosmetic.
+[ADR 0080](../adr/0080-a-user-initiated-sync-is-tracked-in-place-not-queued.md)
+records why this is not a queued job: cron on the production host cannot tick more
+often than every five minutes, so a queued run could not start sooner than that.
+
+Progress is **derived**, not journalled. The run stamps `YouTubeIntegration.lastSyncAttemptAt`
+once and writes that same timestamp to each Enabled Channel as it is attempted, so
+`processed`, `succeeded`, `failed` and the Failing Channel list all read off the
+channel rows by equality on that stamp. There is no run or job table.
+
+Statuses, in the order a run moves through them:
+
+| Status           | Meaning                                                                                                                                                               |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `discovering`    | Paginating the channel list. No per-channel count is meaningful yet                                                                                                   |
+| `running`        | Syncing Enabled Channels; `progress` counts are live                                                                                                                  |
+| `success`        | Every Enabled Channel synced. No `progress` block — there is nothing to break down                                                                                    |
+| `partial`        | A **Partial Sync**: some channels synced, some failed. `progress.failedChannels` names them, on the terminal read as well as mid-run                                  |
+| `failed`         | No channel synced. `lastSyncError` of `syncInterrupted` means an **Interrupted Sync** — the process died mid-run, so what completed is known and what remained is not |
+| `quota_exceeded` | The daily YouTube quota ran out; channels after the stall were never reached                                                                                          |
+| `cooldown`       | A manual-refresh outcome, not a health state: the User asked again inside the 15-minute window                                                                        |
+
+An Interrupted Sync is a **read-time projection**, not a stored status. A run whose
+persisted status is still `discovering` or `running` past the run TTL is reported as
+interrupted, keeping its last known counts. The TTL equals the manual-refresh
+cooldown deliberately, so that "declared dead" and "may retry" are the same instant
+— ADR 0080 decision 3 explains why the two constants must not drift apart.
 
 ## Weekly digest
 
@@ -217,7 +262,14 @@ above. Existing deployments must update their cron entries — see below.
 #### Subscription Manager
 
 - List of synced channels with toggle switches.
-- "Sync Subscriptions" button to pull latest from YouTube.
+- "Sync Subscriptions" button to pull latest from YouTube, disabled during the
+  manual-refresh cooldown.
+- While a Sync Run is live: the phase, a bar with channels processed of total,
+  elapsed time, and — once at least five channels are done — a coarse estimate of
+  the time left. The panel says syncing continues if the User leaves the page,
+  because it does.
+- After a Partial Sync, the channels that failed are named. After an Interrupted
+  Sync, how far the run got.
 - "Disconnect YouTube" button.
 
 #### Video Feed — Grid View (default)
