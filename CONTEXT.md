@@ -424,15 +424,75 @@ _Avoid_: PR label (as a second vocabulary), topic tag, category
 
 **Gate Tier**:
 The pipeline depth chosen for a piece of work before its code exists — `gate:mechanical`, `gate:standard`, or `gate:full` (ADR 0012). Chosen by `to-issues` or by the main agent, recorded as an Issue Orchestration Label, and a judgement about intent that nothing later verifies. Never applied to a Pull Request.
-_Avoid_: tier (alone), risk tier, review depth
+_Avoid_: tier (alone), risk tier, review depth, Review Tier (a different question), a Golden Case's Frontier/Guard tier (a third, different question)
 
 **Review Tier**:
 The merge policy a Pull Request's diff earns — `review:auto`, `review:agent`, or `review:human` — computed after the code exists by a deterministic Wired Gate from affected projects, a path map, manifests, size, and author; never by an LLM and never by hand (ADR 0070). The job output is the state; the label is a view of it. Anything unclassifiable or any classifier error is `human`. Distinct from a Gate Tier in time, author, and question; either may only tighten the other's effect.
-_Avoid_: tier (alone), risk level, gate tier (for this sense), PR label
+_Avoid_: tier (alone), risk level, gate tier (for this sense), PR label, a Golden Case's Frontier/Guard tier (a third, different question)
 
 **Request Label**:
 A GitHub label a human or `ai:create-pr` puts on a Pull Request to ask a workflow to run now, and which that workflow removes when the run ends — a button, not a state. The one Request Label is `agent-review`, which starts the CI code review in any `CODE_REVIEW_MODE` (ADR 0070 item 7). Distinct from a Surface Label (names the change), a Review Tier label (computed, never hand-applied), and an Issue Orchestration Label (never on a Pull Request). Carries no classification and never appears on an Issue.
 _Avoid_: trigger label (in prose), review label, review requested
+
+**Finding**:
+A code review's unit of feedback about the diff under review — one axis (`standards` or `spec`), one rule drawn from a bounded catalogue, one severity, and the Evidence behind it. It is addressed to the author and nothing else: an Obligation answer that meets its own defect condition is a fact about the pipeline until a Finding is actually raised for it, and the two are never the same artifact ([ADR 0071](docs/adr/0071-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md), [ADR 0078](docs/adr/0078-a-citation-that-does-not-match-its-source-is-a-fact-about-the-pipeline.md)).
+_Avoid_: comment, issue, defect (as the general name), review note
+
+**Evidence**:
+What a Finding cites so a reader can check its claim without trusting the reviewer — `executed` (a command, its exit code, and its output), `cited` (a source and the quoted rule), or `inferred` (reasoning alone). Only `executed` or `cited` Evidence, anchored to a diff location or a quoted spec line, can make a Finding Blocking ([ADR 0071](docs/adr/0071-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md)).
+_Avoid_: proof, confidence, backing, Vault Claim Evidence (a different sense)
+
+**Blocking**:
+A Finding severity, the top of three (`blocking`, `should-fix`, `nit`), earned only by Evidence that is `executed` or `cited` and anchored to a diff location or a quoted spec line ([ADR 0071](docs/adr/0071-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md)). It names the Finding, never the pipeline: a Blocking finding fails the Agent Verdict check and relabels the Pull Request `review:human`, but does not stop a merge — the Agent Verdict is advisory permanently, because a check may assert a fact about the pipeline and never a judgment about the diff ([ADR 0073](docs/adr/0073-a-required-check-is-a-fact-about-the-pipeline-not-a-judgment-about-the-diff.md)). A check that does stop a merge is a required status check in the branch ruleset; `Agent Review Ran` is the only one of the review's two checks eligible to be one.
+_Avoid_: required (for a finding), gating finding, merge-blocking, hard fail
+
+**Agent Verdict**:
+The computed outcome of one code review run — `approve`, `comment`, or `request-changes` — a pure function of its Findings' severities that no model writes: any Blocking finding requests changes, only `nit` findings approve, and otherwise the verdict is `comment` ([ADR 0071](docs/adr/0071-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md)). Also the CI status check that reports it, which is advisory permanently and never a required check — distinct from `Agent Review Ran`, which reports whether the reviewer produced a usable report at all and is the one eligible to be required ([ADR 0073](docs/adr/0073-a-required-check-is-a-fact-about-the-pipeline-not-a-judgment-about-the-diff.md)).
+_Avoid_: review result (as the general name), approval, verdict (alone), merge decision
+
+**Golden Set**:
+The collection of Golden Cases in `tools/config/review-golden-set.json`, replayed to measure whether the current reviewer would still catch defects this repository has already documented, and grown by attribution as a merged defect is traced to the Pull Request that introduced it. A regression signal for the reviewer, not a trust measure for the next diff — that is the Escaped Defect rate's job, and neither number is quoted as the other ([ADR 0072](docs/adr/0072-a-golden-case-earns-its-replay-frequency.md), [ADR 0077](docs/adr/0077-an-escaped-defect-is-one-the-reviewer-saw-and-passed.md)).
+_Avoid_: golden data, fixture set, regression suite, test suite (for this sense)
+
+**Golden Case**:
+One entry in the Golden Set: a real commit range from this repository's history in which a documented incident merged, together with the pattern an acceptable Finding about it must match — an expectation, not a Finding itself, since recall is judged by matching rather than by identity. Standards are always today's — a case asks whether the current reviewer would catch the defect, not whether the rule existed when the incident merged.
+_Avoid_: test case (for this sense), fixture, incident (alone), golden test
+
+**Frontier**:
+The Golden Case tier for a case the reviewer misses — the reason to run the replay at all, and the tier every case falls back to on a single miss. It runs on any change to the paths that produce a review ([ADR 0072](docs/adr/0072-a-golden-case-earns-its-replay-frequency.md)). A third sense of "tier," distinct from a Gate Tier (chosen before code exists) and a Review Tier (the merge policy a diff earns).
+_Avoid_: Gate Tier (a different question), Review Tier (a different question), hard case, risk tier
+
+**Guard**:
+The Golden Case tier for a case the reviewer catches reliably — a detector for whether a brief or contract edit has silently undone something that already works. It replays only when the Standards brief or the finding contract changes, and it is earned: promotion takes three consecutive catches cited in the case's own evidence, demotion back to Frontier takes one miss ([ADR 0072](docs/adr/0072-a-golden-case-earns-its-replay-frequency.md)). The same third sense of "tier" as Frontier.
+_Avoid_: Gate Tier (a different question), Review Tier (a different question), stable case, safe case
+
+**Obligation**:
+An entry in `tools/config/review-obligations.json` — whose human-readable form is `docs/review/REVIEW_CHECKLIST.md` — naming a question a reviewer must answer in writing about a hunk a selector already matched against the diff, so that noticing a documented failure mode is nobody's job to remember. Every answer field that claims something about source must cite it; whether an Obligation was raised as a Finding is read out of the reviewer's own report, never taken from the answer sheet's own declaration ([ADR 0078](docs/adr/0078-a-citation-that-does-not-match-its-source-is-a-fact-about-the-pipeline.md)). An unanswered Obligation is reported and blocks nobody — thoroughness is not itself a gate.
+_Avoid_: checklist item, requirement (alone), review question, mandate
+
+**Escaped Defect**:
+A defect whose root cause is a Pull Request the code reviewer **saw and passed** — `approve` or `comment`, the two verdicts that do not block (ADR 0077). A Pull Request the reviewer never saw is not one, nor is one it asked changes on that merged anyway, and neither is ever counted as one. The escaped-defect rate is escaped defects over the Pull Requests the reviewer passed in the same window, and it is the reviewer's trust measure; golden recall is a regression signal and is not this.
+_Avoid_: miss, false negative, regression (for this sense), leaked bug
+
+**Attributable Fix**:
+A merged fix that names the change which introduced the defect, in its issue, its Pull Request body, or its commits — `introduced in #415`, not `Closes #721`, which names the ticket the fix resolves. A fix naming none is unattributable and is counted as such rather than dropped, because the denominator is only worth reading if nothing was filtered out of it silently.
+_Avoid_: linked fix, traced fix, root-caused fix
+
+**Not Measurable**:
+The reported outcome of a review trust measurement — the Escaped Defect rate, the Effective False Positive rate — whose denominator is empty, and which is never rendered as 0%. Zero would claim the reviewer passed work and none of it broke, or that a rule's findings were all acted on; the true state until enough history accumulates is that nothing has been measured yet ([ADR 0077](docs/adr/0077-an-escaped-defect-is-one-the-reviewer-saw-and-passed.md), [ADR 0079](docs/adr/0079-an-effective-false-positive-is-a-finding-nobody-acted-on.md)).
+_Avoid_: 0%, zero, no data (as the reported value), unmeasurable
+
+**Effective False Positive**:
+A code review finding that was raised and was still there on the next push — inaction, not incorrectness. Whether the finding was right is deliberately not asked: it cost the same attention either way, and the question cannot be answered without a human labelling every comment (ADR 0079). The term is Google's. The effective-false-positive rate is these over the findings observed for the same rule, and it measures what the reviewer costs; the Escaped Defect rate measures what it misses, and neither is quoted as the other.
+_Avoid_: false positive (alone), noise, wrong finding, dismissed finding
+
+**Review Acknowledgement**:
+A `Review-ack: <finding id>` line in a commit message, which takes that finding out of the effective-false-positive numerator. Optional and never required — the measurement reads inaction and asks for no label. It names the finding id the report prints, never a rule id, and it can only remove evidence about a rule, never create it: an acknowledged finding leaves the denominator too.
+_Avoid_: suppression, ignore marker, wontfix, dismissal
+
+**Noise Budget**:
+The written share of effective false positives a rule may produce — 10%, borrowed with its definition from Google's Tricorder criteria, judged only once a rule has ten observations. A marker a human reads the rate against, not a threshold anything acts on: no rule is disabled on it (ADR 0079).
+_Avoid_: threshold (alone), error budget, SLO, quality bar
 
 **Gated Pipeline**:
 A specialist chain that retries between agents until a reviewer or runner verdict passes, with a cap. Components and Jest use this shape. Hitting the cap is a stop, not another silent retry.

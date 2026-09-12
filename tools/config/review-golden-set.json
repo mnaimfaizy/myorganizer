@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 3,
-  "comment": "The code-review golden set (ADR 0071, Consequences). Each case is a real commit range from this repository's history in which a defect the repo later documented was merged, and the finding a reviewer should have raised about it. `source` and `rule` are case-insensitive patterns because the reviewer phrases a rule in the source's words; `files` lists every path at which the same defect is fairly located. Recall is matched over expected and a case passes at or above `minRecall`. Each case carries a `tier` (ADR 0072). A `frontier` case is one the reviewer misses; it is the reason to run the replay and runs whenever anything that produces a review changes. A `guard` case is one the reviewer catches reliably; it carries no new information per run and exists to catch a brief or contract edit silently undoing something that works, so it runs only when the brief or the finding contract changes. Promotion to `guard` takes three consecutive catches cited in `tierEvidence`; demotion takes one miss. Replayed by .github/workflows/review-golden-replay.yml, which skips a push whose head commit message contains [skip replay]; scored by tools/scripts/review/score-golden-case.mjs; shape and ranges asserted by tools/scripts/check-review-golden-set.mjs. Standards are always today's: the question a case asks is whether the current reviewer would catch the defect, not whether the rule existed when it merged. Grows by attribution: when a merged defect is traced to the pull request that introduced it, its range and expected finding go here, with the attribution evidence in the incident line. A squash-merged pull request uses the squash commit as head and its first parent as base.",
+  "schemaVersion": 4,
+  "comment": "The code-review golden set (ADR 0071, Consequences), re-pointed by ADR 0072's amendment as a regression harness for the obligations in tools/config/review-obligations.json: four of the six cases below are the goldenCase an obligation cites, and a case's own incident line still names the defect. Each case is a real commit range from this repository's history in which a defect the repo later documented was merged, and the finding a reviewer should have raised about it. `source` and `rule` are case-insensitive patterns because the reviewer phrases a rule in the source's words; `files` lists every path at which the same defect is fairly located. `ruleId` is optional and is the opposite kind of field: a literal drawn from tools/config/review-rules.json, validated against that catalogue rather than compiled as a pattern. It does two things, and neither is a tightening — it is the sole input to the `strict` annotation, which claims the validator's own axis + ruleId + file hash would have matched and so is never true for an expectation that pins nothing, and it is an alternative way to match, so a reviewer that picked exactly this id scores a hit even when its `source` and `rule` wording drifts off the patterns above. Recall is matched over expected and a case passes at or above `minRecall`. Each case carries a `tier` (ADR 0072). A `frontier` case is one the reviewer misses; it is the reason to run the replay and runs whenever anything that produces a review changes. A `guard` case is one the reviewer catches reliably; it carries no new information per run and exists to catch a brief or contract edit silently undoing something that works, so it runs only when the brief or the finding contract changes. Promotion to `guard` takes three consecutive catches cited in `tierEvidence`; demotion takes one miss. Replayed by .github/workflows/review-golden-replay.yml, which skips a push whose head commit message contains [skip replay]; scored by tools/scripts/review/score-golden-case.mjs; shape and ranges asserted by tools/scripts/check-review-golden-set.mjs. Standards are always today's: the question a case asks is whether the current reviewer would catch the defect, not whether the rule existed when it merged. Grows by attribution: when a merged defect is traced to the pull request that introduced it, its range and expected finding go here, with the attribution evidence in the incident line. A squash-merged pull request uses the squash commit as head and its first parent as base. A case leaves `cases` for `retired` when it is unwinnable rather than hard — a wired gate already suppresses its defect (ADR 0074) — and for `parked` when it is merely hard: never caught, but with no reason to think it cannot be won. A parked entry keeps its id reserved exactly as a retired one does, and carries `reentryCondition` in place of `reason`: the fact, checkable independently of anyone's opinion, that puts the case back in `cases`.",
   "cases": [
     {
       "id": "groceries-blob-type-without-fanouts",
@@ -18,6 +18,7 @@
         {
           "id": "reconcile-omits-new-member",
           "axis": "standards",
+          "ruleId": "standard-enum-fanout-not-pinned",
           "source": "AGENTS\\.md|0053|vaultMigration",
           "rule": "fan-?out|enum|every member|Record<|blob type",
           "files": [
@@ -36,7 +37,8 @@
       "id": "export-envelope-drops-tasks",
       "title": "The hardened export envelope enumerates blob types by hand and omits Tasks",
       "incident": "ADR 0053, issue #537, fixed by PR #540, introduced by PR #77",
-      "tier": "frontier",
+      "tier": "guard",
+      "tierEvidence": "promoted 2026-09-12 on three consecutive catches: runs 34591297535, 34663295486 and 34673097908. Its earlier promotion on 2026-09-07 was reversed by the miss in 34105977391; this streak is the second it has earned.",
       "base": "dea9122c1854879044d51696dec93a57c89e914d",
       "head": "7fde881c0a2f57d05bfc92a20c9cbb863dd52200",
       "spec": {
@@ -47,6 +49,7 @@
         {
           "id": "envelope-omits-tasks",
           "axis": "standards",
+          "ruleId": "standard-enum-fanout-not-pinned",
           "source": "AGENTS\\.md|0053",
           "rule": "fan-?out|enum|every member|Record<|blob type",
           "files": ["libs/web-vault/src/lib/vault/vaultExportImport.ts"],
@@ -55,50 +58,6 @@
         }
       ],
       "minRecall": 1
-    },
-    {
-      "id": "sync-bookmarks-without-restore-or-meta-push",
-      "title": "Sync Bookmarks and separate Vault Meta convergence arrive without a restore that clears them or a path that pushes a local wrapping",
-      "incident": "issues #617 and #589, fixed by PRs #620 and #594, introduced by PR #573 (git log --diff-filter=A -- syncBookmarkStorage.ts → f267817; vaultMetaConverge split 0cce8c1; both in #573)",
-      "tier": "frontier",
-      "base": "0d05e9cb5c10bf84f5b3c3d6b94a9bbeb99c0086",
-      "head": "bf58bc8276656e287b334a9bae8dc3e0b9c2b96c",
-      "spec": {
-        "kind": "none",
-        "foundBy": "none"
-      },
-      "expected": [
-        {
-          "id": "restore-leaves-bookmark-etag-in-place",
-          "axis": "standards",
-          "source": "0063|0058|0055|web-vault/AGENTS\\.md",
-          "rule": "bookmark|restore|evidence|If-?Match|etag|conditional push",
-          "files": [
-            "libs/web-vault/src/lib/vault/syncBookmarkAccess.ts",
-            "libs/web-vault/src/lib/vault/syncBookmarkStorage.ts",
-            "libs/web-vault/src/lib/vault/vaultHandle.ts",
-            "libs/web-vault/src/lib/vault/vaultConverge.ts",
-            "libs/web-vault/src/lib/vault/vaultExportImport.ts"
-          ],
-          "minSeverity": "should-fix",
-          "why": "the diff added per-type Sync Bookmarks holding the last pushed ETag and left importVault untouched, so a restored older vault hashed as unsent while the bookmark's If-Match still matched an unmoved server, and the old ciphertext was conditionally pushed over newer data on every device (#617)"
-        },
-        {
-          "id": "local-wrapping-change-never-leaves-device",
-          "axis": "standards",
-          "source": "0057|0060|web-vault/AGENTS\\.md|CONTEXT",
-          "rule": "vault meta|wrapping|passphrase|push|never silently|holds no",
-          "files": [
-            "libs/web-vault/src/lib/vault/vaultReconcile.ts",
-            "libs/web-vault/src/lib/vault/vaultMetaConverge.ts",
-            "libs/web-vault/src/lib/vault/vaultHandle.ts",
-            "docs/adr/0057-vault-meta-converges-separately-and-never-silently.md"
-          ],
-          "minSeverity": "should-fix",
-          "why": "the diff deleted keep-local's putServerVaultMetaEtagAware push and guarded the one remaining meta write on the server holding no Vault Meta at all, while changePassphrase still rewrapped locally, so a passphrase change never reached the server and the changing device was later told its own change came from another device (#589)"
-        }
-      ],
-      "minRecall": 0.5
     },
     {
       "id": "release-bump-leaves-generated-client-stale",
@@ -115,6 +74,7 @@
         {
           "id": "version-bump-without-openapi-sync",
           "axis": "standards",
+          "ruleId": "obligation-run-the-gate-that-covers-this-change",
           "source": "AGENTS\\.md",
           "rule": "openapi:sync|openapi:check|generated|synced output|api-specs|app-api-client",
           "files": [
@@ -134,7 +94,8 @@
       "id": "signup-password-wrapper-inside-formcontrol",
       "title": "The unified sign-up form wraps its password inputs in a div inside FormControl so the label association lands on the div",
       "incident": "issue #525, fixed by PR #532, introduced by PR #215 (git blame on the FormControl > div lines → 8fb1087, the squash commit; base is its first parent)",
-      "tier": "frontier",
+      "tier": "guard",
+      "tierEvidence": "promoted 2026-09-12 on three consecutive catches: runs 34591297535, 34663295486 and 34673097908. It was never caught before an obligation fired on its site.",
       "base": "25edfd7ad7b4d11d44e9716dfc2185a4f4df7df5",
       "head": "8fb1087f36938f5e8e4631a65cff43b3997ff6db",
       "spec": {
@@ -145,6 +106,7 @@
         {
           "id": "formcontrol-slot-injects-onto-div",
           "axis": "standards",
+          "ruleId": "obligation-slot-injected-props-land-on-the-control",
           "source": "GUIDELINES",
           "rule": "FormLabel|htmlFor|associated|label|accessib|aria-describedby",
           "files": ["apps/myorganizer/src/app/(auth)/signup/page.tsx"],
@@ -158,7 +120,8 @@
       "id": "import-confirm-is-bare-window-confirm",
       "title": "Vault import replaces both wrappings behind a bare window.confirm that only mentions local vault data",
       "incident": "issue #657, fixed by PR #683, introduced by PR #40 (git log -S 'Importing will replace' → b030fd1, the squash commit; base is its first parent)",
-      "tier": "frontier",
+      "tier": "guard",
+      "tierEvidence": "promoted 2026-09-12 on three consecutive catches: runs 34591297535, 34663295486 and 34673097908.",
       "base": "66a59cac6b0d174476cb3fbc27f803cc9e678abc",
       "head": "b030fd19547e544c461607c10594f1c95f453377",
       "spec": {
@@ -169,6 +132,7 @@
         {
           "id": "destructive-replace-without-disclosure-dialog",
           "axis": "standards",
+          "ruleId": "obligation-destructive-confirmation-names-what-it-mutates",
           "source": "GUIDELINES|0068|0063",
           "rule": "dialog|Radix|window\\.confirm|confirm|disclos|destroy|what it will",
           "files": ["apps/myorganizer/src/app/vault-export/page.tsx"],
@@ -182,7 +146,8 @@
       "id": "mail-test-setup-assigns-undefined-to-env",
       "title": "The mail sender's test setup assigns undefined to two SMTP environment variables, which stores the string \"undefined\"",
       "incident": "issue #409, fixed by PR #423, introduced by PR #415 (git log --follow --diff-filter=A -- apps/backend/src/services/EmailService.spec.ts → 1f056fa, the interrupted slice #396 checkpoint that #415 carried; the file is absent at the merge commit's first parent, and MAIL_USERNAME = undefined is present at its head)",
-      "tier": "frontier",
+      "tier": "guard",
+      "tierEvidence": "promoted 2026-09-12 on three consecutive catches: run 34441162698 (its first catch in any run), run 34591297535, and the dispatched frontier run 34663295486. The rate-limit void in 34351285079 neither extends nor breaks the streak.",
       "base": "264e7d6141eb5a55ce3a7027062043aed0ca18db",
       "head": "194fd43b4927bb0b63fec611f3175eb8f8d12262",
       "spec": {
@@ -193,14 +158,25 @@
         {
           "id": "assigning-undefined-to-a-process-env-key-stores-a-string",
           "axis": "standards",
+          "ruleId": "obligation-env-assignment-runtime-value",
           "source": "smell-baseline|testing|AGENTS|CODING_STANDARDS",
           "rule": "undefined|coerc|string|truthy|delete|setup|misleading|no-op|dead",
           "files": ["apps/backend/src/services/EmailService.spec.ts"],
           "minSeverity": "nit",
-          "why": "the setup writes MAIL_USERNAME and MAIL_PASSWORD as undefined to configure no SMTP auth, but a process.env setter coerces its value to a string, so the transport is built with auth: { user: 'undefined', pass: 'undefined' } while the code reads as though it configures none; delete on both keys was meant (#409). This case is deliberately held out from the consequence checks added on 2026-09-07: the defect is entirely inside the hunk and turns on a language semantic, not on what the hunk does to code the diff never touched. No documented rule names it, so the honest report is smell-baseline and inferred, which caps at should-fix — hence no severity floor. The question this case asks is only whether the reviewer sees it"
+          "why": "the setup writes MAIL_USERNAME and MAIL_PASSWORD as undefined to configure no SMTP auth, but a process.env setter coerces its value to a string, so the transport is built with auth: { user: 'undefined', pass: 'undefined' } while the code reads as though it configures none; delete on both keys was meant (#409). This case is deliberately held out from the consequence checks added on 2026-09-07: the defect is entirely inside the hunk and turns on a language semantic, not on what the hunk does to code the diff never touched. When this case was written no documented rule named it, so the honest report was smell-baseline and inferred, which caps at should-fix — hence no severity floor. The review obligations since gave it a name, and `ruleId` pins that one: an env-assignment site is exactly what obligation-env-assignment-runtime-value asks about. The patterns stay as they were, so a reviewer that still files it as a baseline smell is still matched. The question this case asks is only whether the reviewer sees it"
         }
       ],
       "minRecall": 1
+    }
+  ],
+  "parked": [
+    {
+      "id": "sync-bookmarks-without-restore-or-meta-push",
+      "title": "Sync Bookmarks and separate Vault Meta convergence arrive without a restore that clears them or a path that pushes a local wrapping",
+      "incident": "issues #617 and #589, fixed by PRs #620 and #594, introduced by PR #573 (git log --diff-filter=A -- syncBookmarkStorage.ts → f267817; vaultMetaConverge split 0cce8c1; both in #573)",
+      "base": "0d05e9cb5c10bf84f5b3c3d6b94a9bbeb99c0086",
+      "head": "bf58bc8276656e287b334a9bae8dc3e0b9c2b96c",
+      "reentryCondition": "Hard, not unwinnable: no gate covers this range (enum:fanout:check passes cleanly at its head, per docs/review/golden-replay-results.md), so ADR 0074 does not apply and retirement would misstate why the reviewer keeps missing it. Docs/review/REVIEW_CHECKLIST.md's Deferred candidates section holds the matching checklist entry — 'New persisted state has an inverse' — back for exactly one reason: its trigger cannot yet be stated precisely enough to fire only on a write path with no inverse, rather than on every write path in the repo. The case returns to `cases`, at the tier its evidence then supports, the day that entry is promoted into tools/config/review-obligations.json with `goldenCase: sync-bookmarks-without-restore-or-meta-push` — i.e. the day the trigger can be stated precisely. Parked 2026-09-11 (issue #722); see docs/adr/0072-a-golden-case-earns-its-replay-frequency.md and docs/review/golden-replay-results.md."
     }
   ],
   "retired": [

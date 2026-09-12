@@ -21,6 +21,14 @@ because they must stay current; the reasoning lives there because it must not.
 The first entry's reasoning is
 [the 2026-09-07 baseline](../research/2026-09-07-golden-replay-baseline.md).
 
+**Recall is not trust.** Every number here is scored against curated
+historical defects, which makes it a regression signal and nothing more: it
+says whether a change to the reviewer moved cases the reviewer has already
+seen. Whether a human can rely on a passing review is a different question
+with its own running record —
+[`escaped-defect-rate.md`](escaped-defect-rate.md), which asks what fraction
+of the Pull Requests the reviewer passed a later fix names as root cause.
+
 ## What the numbers mean
 
 Recall is matched expected findings over expected findings, scored by
@@ -38,18 +46,25 @@ Promotion to `guard` takes **three consecutive catches**; demotion to
 `frontier` takes **one miss**. The asymmetry is deliberate — a wrongly
 promoted case is a detector that quietly stopped running.
 
-| Case                                          | Tier       | Since      | History                                                                                                                                                     |
-| --------------------------------------------- | ---------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `groceries-blob-type-without-fanouts`         | `guard`    | 2026-09-07 | caught in every run, now nine of nine (34344266006, 34345667427, 34351285079)                                                                               |
-| `export-envelope-drops-tasks`                 | `frontier` | 2026-09-07 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught in 34344266006, missed in 34345667427 and 34351285079 |
-| `sync-bookmarks-without-restore-or-meta-push` | `frontier` | 2026-09-07 | invalid report in 34344266006 (void); missed in 34345667427 and 34351285079                                                                                 |
-| `release-bump-leaves-generated-client-stale`  | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit)                                                        |
-| `signup-password-wrapper-inside-formcontrol`  | `frontier` | 2026-09-07 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; one of three needed for promotion               |
-| `import-confirm-is-bare-window-confirm`       | `frontier` | 2026-09-07 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak                                                   |
-| `mail-test-setup-assigns-undefined-to-env`    | `frontier` | 2026-09-07 | missed in 34345667427; void in 34351285079 (rate limit)                                                                                                     |
+| Case                                         | Tier       | Since      | History                                                                                                                                                                                                                                                                                                                                   |
+| -------------------------------------------- | ---------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `groceries-blob-type-without-fanouts`        | `guard`    | 2026-09-07 | caught in every run, now eleven of eleven (34345667427, 34351285079, 34582767531, 34591297535); void in 34441162698 (turn ceiling), which neither extends nor breaks the streak                                                                                                                                                           |
+| `export-envelope-drops-tasks`                | `guard`    | 2026-09-12 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught again in 34215499508, the first run after retirement; caught in 34344266006, missed in 34345667427, 34351285079 and 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted a second time** |
+| `release-bump-leaves-generated-client-stale` | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit); caught in 34441162698; missed in 34591297535; caught in 34663295486 and 34673097908 — two of three needed for promotion, and the only frontier case left                                                                            |
+| `signup-password-wrapper-inside-formcontrol` | `guard`    | 2026-09-12 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**                                                                                                                   |
+| `import-confirm-is-bare-window-confirm`      | `guard`    | 2026-09-12 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**                                                                                                                    |
+| `mail-test-setup-assigns-undefined-to-env`   | `guard`    | 2026-09-12 | missed in 34345667427; void in 34351285079 (rate limit); **first catch** in 34441162698, then 34591297535 and 34663295486 — **three consecutive, promoted**                                                                                                                                                                               |
 
 The tier and the evidence that earned it are in
 `tools/config/review-golden-set.json`, asserted by `yarn review:golden:check`.
+`export-envelope-drops-tasks` was kept in the narrowed six for the opposite
+reason to the one that now moves it: it flickered near half, and a case that
+always passes or never passes carries less information per run than one in the
+middle (ADR 0072's Alternatives considered, repeated in its 2026-09-11
+amendment). Three consecutive catches promoted it anyway on 2026-09-12. The
+rule does not read intent, and the case is no longer flickering — but the
+paragraph is left standing rather than deleted, because the reason it was kept
+is the reason to watch it: one miss demotes it straight back.
 
 **Retired.** `groceries-ui-written-against-absent-roles` was retired on
 2026-09-08 as unwinnable rather than hard: the gate ADR 0065 added as the fix
@@ -57,7 +72,86 @@ for that incident fails on the case's own range, and a wired gate's defect is a
 suppressed count and not a finding
 ([ADR 0074](../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md)).
 It stays in the set under `retired`, with its reason and its id reserved, so
-nothing re-adds it — the workings are below. Seven cases remain.
+nothing re-adds it — the workings are below.
+
+**Parked.** `sync-bookmarks-without-restore-or-meta-push` was parked on
+2026-09-11 (issue #722), never caught in any run above and never covered by
+the gate its own incident named (`enum:fanout:check` passes cleanly at its
+head). That is a different claim than retirement's: this case is hard, not
+unwinnable, and filing it as unwinnable would be a lie in the field that
+state exists to keep honest ([ADR 0072](../adr/0072-a-golden-case-earns-its-replay-frequency.md),
+item 7). It stays in the set under `parked`, id reserved the same way, with a
+`reentryCondition` in place of a `reason`: it returns to the replayed set the
+day the matching entry in `docs/review/REVIEW_CHECKLIST.md`'s Deferred
+candidates — "New persisted state has an inverse" — is promoted into
+`tools/config/review-obligations.json`. **Six cases remain**: five guard, one
+frontier.
+
+## Authorship
+
+Each case's incident line already names the pull request that introduced its
+defect. Read against `git log` for that PR, four are human-authored and two
+are agent-authored — and the two agents are not the same model family as each
+other, which matters for the reviewer's own family (Claude, `claude-sonnet-5`
+by default per `CODE_REVIEW_MODEL`). The reasoning and the run-by-run ledger
+these two tables summarize are in
+[the 2026-09-11 authorship brief](../research/2026-09-11-the-same-family-test-has-one-data-point.md),
+which is frozen at that date. These two tables are not: like the rest of this
+file, update them as new runs land or a case's classification needs
+correcting.
+
+| Case                                          | Introduced by                                                  | Author | Family                                                    |
+| --------------------------------------------- | -------------------------------------------------------------- | ------ | --------------------------------------------------------- |
+| `groceries-blob-type-without-fanouts` (guard) | PR #101                                                        | human  | —                                                         |
+| `export-envelope-drops-tasks`                 | PR #77                                                         | human  | —                                                         |
+| `release-bump-leaves-generated-client-stale`  | PR #379 (`yarn release:cut`, run by a human)                   | human  | —                                                         |
+| `import-confirm-is-bare-window-confirm`       | PR #40                                                         | human  | —                                                         |
+| `signup-password-wrapper-inside-formcontrol`  | PR #215 (`Co-authored-by: Cursor <cursoragent@cursor.com>`)    | agent  | Cursor (Composer)                                         |
+| `mail-test-setup-assigns-undefined-to-env`    | PR #415, carrying interrupted slice #396's TestScaffold output | agent  | Claude (Haiku 4.5, `test-scaffold` on the Claude harness) |
+
+Catch rate by authorship, across every valid replay of each case recorded in
+this file through Run 49 (2026-09-12). "Valid" excludes void runs (rate limit,
+turn exhaustion) and the 2026-09-09 run `34344266006`, which the record itself
+says not to read as evidence (confounded mid-flight, see the "wired-gate
+qualifier" run above).
+
+| Case                                                | Author        | Catches | Valid runs |    Rate |
+| --------------------------------------------------- | ------------- | ------: | ---------: | ------: |
+| `groceries-blob-type-without-fanouts` (guard)       | human         |      11 |         11 |    100% |
+| `export-envelope-drops-tasks`                       | human         |       9 |         15 |     60% |
+| `release-bump-leaves-generated-client-stale`        | human         |       4 |         10 |     40% |
+| `import-confirm-is-bare-window-confirm`             | human         |       4 |         10 |     40% |
+| **Human total**                                     |               |  **28** |     **46** | **61%** |
+| **Human, frontier only** (now `release-bump` alone) |               |   **4** |     **10** | **40%** |
+| `signup-password-wrapper-inside-formcontrol`        | agent, Cursor |       4 |         11 |     36% |
+| `mail-test-setup-assigns-undefined-to-env`          | agent, Claude |       3 |          8 |     38% |
+| **Agent total**                                     |               |   **7** |     **19** | **37%** |
+
+## Cadence
+
+The replay's own strategy now runs at **parallelism one**
+(`.github/workflows/review-golden-replay.yml`): cases replay one at a time
+within a dispatch instead of four at once. That is a direct response to what
+the budget section below records — `max-parallel: 4` locked the maintainer
+out of their own five-hour subscription window once, and a replay competes
+with the maintainer for that same window rather than a separate budget.
+
+One `workflow_dispatch` is **one repetition** of the tier requested, not
+three. Three repetitions, dispatched one at a time on separate days, cost the
+same total reviewer-minutes as three run back to back, without ever holding
+the window at the moment the maintainer needs it.
+
+**A single run is not a measurement, and a score moves nothing on its own.**
+The reviewer is stochastic — a single run of a single case never was a
+measurement, which is why the baseline above took five runs of the same three
+cases before drawing any conclusion. What changes here is only how the
+repetitions are spread out: three dispatches, read together once all three
+have landed, are what this record treats as one measurement. A single
+dispatch can still move a case's tier exactly as before — promotion on three
+consecutive catches, demotion on one miss, both mechanical rules ADR 0072
+already sets and this does not touch — but no narrative conclusion in this
+file ("the brief helped," "the cadence fixed it") should rest on one dispatch
+alone. See ADR 0072, item 8.
 
 ## Runs
 
@@ -78,9 +172,15 @@ Newest last. "Cases" is the tier replayed, not the whole set.
 | 2026-09-09 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 7**, 2 of 8 findings | wired-gate qualifier on the suppression rule  |
 | 2026-09-09 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 4 scorable**, 3 void | obligation worklist live (pre-fix triggers)   |
 | 2026-09-10 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 6 scorable**, 1 void | corrected triggers; first dispatched run      |
+| 2026-09-11 | `claude-sonnet-5` | 1 (`guard`)    | **1 of 1**                  | reviewer containment and the allowlist check  |
+| 2026-09-11 | `claude-sonnet-5` | 6 (all tiers)  | **5 of 6**                  | PRD #713 integrated, on pull request #733     |
+| 2026-09-12 | `claude-sonnet-5` | 5 (`frontier`) | **5 of 5**                  | same branch, dispatched deliberately          |
+| 2026-09-12 | `claude-sonnet-5` | 4 (`frontier`) | **4 of 4**                  | third dispatch; the measurement #722 defines  |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
-to 60 turns each.
+to 60 turns each. Run 46 was one guard case: 56 turns of an 80-turn budget, 26
+permission denials, $2.93. Its reasoning is
+[the 2026-09-11 containment brief](../research/2026-09-11-the-guard-came-back-with-the-refusals-intact.md).
 
 ### Run 45 (2026-09-10), the first deliberately dispatched replay
 
@@ -402,3 +502,9 @@ Run the replay from the Actions tab — the **Golden Replay** workflow takes a
 itself: frontier cases on any review-tooling change, guards only when the brief
 or the finding contract changes. `[skip replay]` in the head commit message
 skips it for that push; `CODE_REVIEW_ENABLED=false` stops it entirely.
+
+Cases within a dispatch now run at parallelism one, so a dispatch is one
+repetition (see Cadence, above). Taking a real measurement means dispatching
+it three times, on separate days rather than back to back, so it never
+competes with the maintainer's own five-hour window the way run 34176461268
+did.

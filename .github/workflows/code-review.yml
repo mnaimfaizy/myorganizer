@@ -13,8 +13,12 @@ name: Code Review
 #      report that fails the contract is rejected whole, the Pull Request is
 #      relabelled `review:human`, and this check fails.
 #   4. Two checks, not one. "Agent Review Ran" fails when the reviewer
-#      crashed, was rate-limited, or wrote a report the contract rejected —
-#      a broken gate. "Agent Verdict" fails on `request-changes` — a
+#      crashed, was rate-limited, hit the turn ceiling before writing a
+#      report, or wrote a report the contract rejected — a broken gate. A
+#      validated report wins over all of those: dispatching both axes first
+#      (the skill's step 3) means a run the ceiling or the lockout cut short
+#      partway through often still has one. "Agent Verdict" fails on
+#      `request-changes` — a
 #      judgment about the diff. Only the first is worth requiring in a
 #      ruleset; the reviewer's recall does not earn a merge block. Both are
 #      status checks, never a review approval (ADR 0070 item 6). Merge
@@ -340,24 +344,25 @@ jobs:
           github-token: ${{ github.token }}
           transcript-artifact: code-review-transcript
 
-      # Completeness of the obligation answers, beside the finding contract and
-      # never inside it. Thoroughness fails nothing: an unanswered obligation
-      # says the review was thin, which is neither a fact about the pipeline
-      # nor a judgment about the diff (ADR 0073), and a report that met its
-      # contract is not rejected for it. What it buys is that a missed defect
-      # now reads as one of three causes instead of one opaque one.
+      # The obligation answers, beside the finding contract and never inside
+      # it. Thoroughness still fails nothing: an unanswered obligation says the
+      # review was thin, which is neither a fact about the pipeline nor a
+      # judgment about the diff (ADR 0073), and a report that met its contract
+      # is not rejected for it. What it buys is that a missed defect reads as
+      # one of three causes instead of one opaque one.
       #
-      # The script also exits 1 on a SELF-CONTRADICTION — an answer meeting its
-      # own defect condition while raising no finding — which is a different
-      # kind of fact and arguably an `Agent Review Ran` failure in the ADR 0073
-      # sense, alongside "wrote a report the contract rejected". That is a
-      # required-check semantics decision, so `continue-on-error` STAYS until
-      # it is made deliberately: today the contradiction is reported loudly and
-      # blocks nothing. Removing this line is the whole change; see
-      # docs/research/2026-09-10-the-answer-sheet-is-inert.md.
+      # What DOES fail the check are facts about the reviewer rather than
+      # judgments about the diff (ADR 0078): an answer that meets its
+      # obligation's own defect condition while the report carries no finding
+      # for it, a quotation that does not match the tree at head, and — since
+      # the step gates at all — an answer sheet nobody can parse or a head that
+      # does not resolve, which the script exits 2 on. This
+      # step no longer continues on error, which is what makes them gates;
+      # every step below it is `always()` so that a failed answer sheet still
+      # publishes the findings the reviewer did produce, instead of taking the
+      # whole review down with it.
       - name: Check the obligation answers
         if: always() && steps.preflight.outputs.skip != 'true'
-        continue-on-error: true
         run: |
           if [ ! -f tmp/code-review/obligations.json ]; then
             echo 'no worklist: nothing to check'; exit 0
@@ -366,9 +371,20 @@ jobs:
             echo 'review-obligations-check: the reviewer wrote no answer sheet'
             exit 0
           fi
+          # --report is what makes "you answered your own defect condition and
+          # raised nothing" a thing this step looks up rather than a thing the
+          # reviewer declares about itself (ADR 0078 item 4). Passed only when
+          # the reviewer wrote one; without it the sheet's own declaration is
+          # all there is, and the failure message says which it read.
+          report=''
+          if [ -f tmp/code-review/report.json ]; then
+            report='--report tmp/code-review/report.json'
+          fi
+          # shellcheck disable=SC2086
           corepack yarn review:obligations:check \
             tmp/code-review/obligations.json \
             tmp/code-review/obligations.answers.json \
+            $report \
             --out tmp/code-review/obligations.report.json
 
       # The previous run's normalized report, for the new / persisting /
@@ -377,7 +393,7 @@ jobs:
       # run has none. No --status filter: a run with a blocking verdict
       # concludes "failure" by design and still carries the artifact.
       - name: Fetch the previous report
-        if: steps.preflight.outputs.skip != 'true'
+        if: always() && steps.preflight.outputs.skip != 'true'
         id: previous
         env:
           GH_TOKEN: ${{ github.token }}
@@ -394,7 +410,7 @@ jobs:
           echo "previous report: ${found:-none}"
 
       - name: Render the report
-        if: steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated == 'true'
+        if: always() && steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated == 'true'
         run: |
           if [ -n '${{ steps.previous.outputs.path }}' ]; then
             corepack yarn review:render tmp/code-review/normalized.json \
@@ -408,7 +424,7 @@ jobs:
       # and by this run's publish job, which holds the write token and so
       # cannot share a filesystem with the reviewer.
       - name: Keep the normalized report for the next run
-        if: steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated == 'true'
+        if: always() && steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated == 'true'
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: code-review-normalized
@@ -423,7 +439,7 @@ jobs:
       # A rejected report still gets published — as the reason the check
       # failed, not as a review. Its file is outside the workspace.
       - name: Keep the rejection reason
-        if: steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated != 'true' && steps.reviewer.outputs.rejected-file != ''
+        if: always() && steps.preflight.outputs.skip != 'true' && steps.reviewer.outputs.validated != 'true' && steps.reviewer.outputs.rejected-file != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: code-review-rejected
@@ -437,11 +453,36 @@ jobs:
       # the separate "Agent Verdict" job below.
       - name: Agent review ran
         id: outcome
-        if: steps.preflight.outputs.skip != 'true'
+        if: always() && steps.preflight.outputs.skip != 'true'
         run: |
           echo "reviewer step: ${{ steps.reviewer.outputs.reviewer-outcome }}; validated: ${{ steps.reviewer.outputs.validated }}"
-          # Say which kind of no-report this is. Both are review:human, but one
-          # is a reviewer that failed and one is a reviewer that never ran.
+          # A validated report wins regardless of what else happened in the
+          # run. Dispatching both axes first (the skill's step 3) means a run
+          # cut short partway through still has one to assemble; treating
+          # turn-exhausted or rate-limited as an automatic failure here would
+          # throw that report away and read a partial measurement as none.
+          if [ '${{ steps.reviewer.outputs.validated }}' = 'true' ]; then
+            VERDICT="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('tmp/code-review/normalized.json','utf8')).verdict)")"
+            echo "verdict: $VERDICT"
+            echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          # No report. Say which kind of no-report this is. All three below
+          # are review:human, but they are not the same event: a prevented
+          # measurement is a bug in the allowlist or the instructions: the
+          # reviewer was refused a permission its own instructions told it to
+          # use, and the disagreement, not the diff, burned the turns. A
+          # window lockout is a scheduling fact about the subscription. Only
+          # a report that fails validation, or a reviewer that crashed
+          # outright, is actually about this pull request.
+          if [ '${{ steps.reviewer.outputs.prevented }}' = 'true' ]; then
+            echo '::error::the reviewer hit the turn ceiling after being refused a permission its own instructions told it to use; this pull request is review:human, and the fix is the allowlist or the instructions, not this diff'
+            exit 1
+          fi
+          if [ '${{ steps.reviewer.outputs.turn-exhausted }}' = 'true' ]; then
+            echo '::error::the reviewer hit the turn ceiling before writing a report; this pull request is review:human'
+            exit 1
+          fi
           case '${{ steps.reviewer.outputs.rate-limited }}' in
             true)
               echo '::error::the reviewer was cut off by the subscription rate limit before it finished; this pull request is review:human and nothing was reviewed'
@@ -450,19 +491,17 @@ jobs:
               echo '::error::the reviewer transcript could not be read, so whether it finished is unknown; this pull request is review:human'
               exit 1 ;;
           esac
-          if [ '${{ steps.reviewer.outputs.validated }}' != 'true' ]; then
-            echo '::error::the reviewer produced no valid report; this pull request is review:human'
-            exit 1
-          fi
-          VERDICT="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('tmp/code-review/normalized.json','utf8')).verdict)")"
-          echo "verdict: $VERDICT"
-          echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+          echo '::error::the reviewer produced no valid report; this pull request is review:human'
+          exit 1
 
   # The reviewer's judgment, split from the fact that it ran. The two fail for
   # unrelated reasons and only one of them is about your code: "Agent Review
-  # Ran" fails when the reviewer crashed, was rate-limited, or wrote a report
-  # the contract rejected, which is a broken gate; this job fails when the
-  # reviewer read the diff and asked for changes, which is a judgment.
+  # Ran" fails when the reviewer crashed, was rate-limited, hit the turn
+  # ceiling before writing a report (whether or not a refused permission
+  # caused it), wrote a report the contract rejected, or wrote an obligation
+  # answer sheet that does not hold up against the tree at head (ADR 0078) —
+  # every one of them a broken gate; this job fails when the reviewer read the
+  # diff and asked for changes, which is a judgment.
   #
   # They are separate checks because they deserve different answers. A reviewer
   # measured at roughly one catch in seven on the golden set's frontier cases

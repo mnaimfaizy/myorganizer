@@ -5,22 +5,24 @@
 //   node tools/scripts/check-review-pages.mjs
 //
 // The page embeds a manifest of the vocabularies it asserts. This diffs each
-// entry against its source: the finding contract's exported constants, the CI
-// job names the main-branch ruleset requires, the Agent Verdict job name in
-// the code-review workflow, and the gate tier labels in the label catalog. A
-// rename in any of those fails here instead of leaving a confidently wrong
-// explainer in docs/.
+// entry against its source: the finding contract's exported constants and its
+// report schema version, the CI job names the main-branch ruleset requires,
+// the Agent Verdict job name in the code-review workflow, and the gate tier
+// labels in the label catalog. A rename in any of those fails here instead of
+// leaving a confidently wrong explainer in docs/.
 //
 // Exit 0 = in sync. Exit 1 = drift (fix the page or the source). Exit 2 = the
 // check could not run.
 import { existsSync, readFileSync } from 'node:fs';
 
+import { RULE_FAMILIES } from './review/rules.mjs';
 import {
   FINDING_AXES,
   FINDING_EVIDENCE_KINDS,
   FINDING_IDENTITY_FIELDS,
   FINDING_SEVERITIES,
   GATE_TIER_LABELS,
+  REPORT_SCHEMA_VERSION,
   REVIEW_TIER_LABELS,
   VERDICT_VALUES,
 } from './review/schema.mjs';
@@ -122,11 +124,22 @@ eqList(
   FINDING_IDENTITY_FIELDS,
   manifest.findingIdentityFields,
 );
+// The identity tuple now names a bounded vocabulary rather than a free-form
+// source (issue #724), so the page has to show which vocabulary. A page that
+// pictures `ruleId` without its families describes an enum with no members.
+eqList('ruleFamilies', RULE_FAMILIES, manifest.ruleFamilies);
 eqList(
   'requiredCheckContexts',
   REQUIRED_CHECK_CONTEXTS,
   manifest.requiredCheckContexts,
 );
+// The identity fields and the version that scopes them move together: an id
+// only means anything within a schema version, so a page that names one and
+// not the other describes a diff nobody can reproduce (issue #718).
+if (manifest.reportSchemaVersion !== REPORT_SCHEMA_VERSION)
+  findings.push(
+    `reportSchemaVersion: source says ${REPORT_SCHEMA_VERSION}, page says ${JSON.stringify(manifest.reportSchemaVersion ?? null)}`,
+  );
 eqList('gateTierLabels', GATE_TIER_LABELS, manifest.gateTierLabels);
 
 for (const context of REQUIRED_CHECK_CONTEXTS) {
@@ -162,11 +175,33 @@ for (const word of [
   ...FINDING_SEVERITIES,
   ...FINDING_EVIDENCE_KINDS,
   ...VERDICT_VALUES,
+  ...FINDING_IDENTITY_FIELDS,
+  ...RULE_FAMILIES,
   AGENT_VERDICT_CHECK,
   AGENT_REVIEW_RAN_CHECK,
 ]) {
   if (!body.includes(word))
     findings.push(`"${word}" is in the manifest but nowhere in the page body`);
+}
+
+// The version is a number the page states in prose, so asserting the word
+// `schemaVersion` appears would be satisfied by editing the file — the shape
+// ADR 0043 rejects. The page writes its current-version claims as
+// `currently <code>N</code>`; every one of them is compared to the constant,
+// and there must be at least one, or the manifest pins a version the picture
+// never states.
+const versionClaims = [...body.matchAll(/currently <code>(\d+)<\/code>/g)].map(
+  (m) => Number(m[1]),
+);
+if (versionClaims.length === 0)
+  findings.push(
+    'reportSchemaVersion: the page body states no current version — write it as `currently <code>N</code>`',
+  );
+for (const claimed of versionClaims) {
+  if (claimed !== REPORT_SCHEMA_VERSION)
+    findings.push(
+      `reportSchemaVersion: the page body says the current version is ${claimed}, source says ${REPORT_SCHEMA_VERSION}`,
+    );
 }
 
 if (findings.length) {
@@ -178,5 +213,5 @@ if (findings.length) {
 }
 
 console.log(
-  `review-pages: OK — ${PAGE} matches the finding contract, ${REQUIRED_CHECK_CONTEXTS.length} required checks, the ${AGENT_VERDICT_CHECK} and ${AGENT_REVIEW_RAN_CHECK} jobs, and ${GATE_TIER_LABELS.length} gate tier labels`,
+  `review-pages: OK — ${PAGE} matches the finding contract, ${RULE_FAMILIES.length} rule families, ${REQUIRED_CHECK_CONTEXTS.length} required checks, the ${AGENT_VERDICT_CHECK} and ${AGENT_REVIEW_RAN_CHECK} jobs, and ${GATE_TIER_LABELS.length} gate tier labels`,
 );

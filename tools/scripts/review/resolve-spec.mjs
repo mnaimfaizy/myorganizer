@@ -15,6 +15,12 @@
 // The body is untrusted text (ADR 0071 item 4); it is written verbatim for
 // the reviewer to quote, never interpreted here.
 //
+// The pull request body is deliberately NOT a source here: on agent-authored
+// work it is the author's own summary of the diff, so the Spec axis would be
+// checking the diff against itself (ADR 0076). Branches whose names carry no
+// issue number — `feat/<prd-slug>`, `claude/…`, `copilot/…` — carry it in
+// their first commit instead, which the commit step below already reads.
+//
 // Exit 0 = written (a `none` spec is a valid result). Exit 2 = could not run.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';

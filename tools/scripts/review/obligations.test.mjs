@@ -18,6 +18,7 @@ const obligation = (over = {}) => ({
   title: 'An obligation',
   question: 'Answer this.',
   answerFields: ['a', 'b'],
+  citedFields: ['a'],
   defect: 'a is false',
   trigger: { paths: ['libs/**'] },
   seededFrom: '#1',
@@ -178,6 +179,12 @@ test('sites are capped and the overflow is counted, not dropped silently', () =>
   assert.equal(selected[0].truncated, 40 - MAX_SITES_PER_OBLIGATION);
 });
 
+// Every catalogue entry now names at least one cited field, and checkAnswers
+// refuses a selected entry that does not (ADR 0078), so these completeness
+// fixtures carry one. They assert on completeness alone; whether the quotation
+// holds is tools/scripts/review/citations.test.mjs.
+const io = { readSource: () => null };
+
 const worklist = {
   head: 'abc',
   selected: [
@@ -186,6 +193,7 @@ const worklist = {
       title: 'An obligation',
       question: 'Answer this.',
       answerFields: ['a', 'b'],
+      citedFields: [{ field: 'a' }],
       defect: 'a is false',
       sites: [
         { file: 'libs/a.ts', line: 1 },
@@ -197,58 +205,70 @@ const worklist = {
 };
 
 test('a fully answered worklist is complete', () => {
-  const report = checkAnswers(worklist, {
-    head: 'abc',
-    answers: [
-      {
-        id: 'an-obligation',
-        site: worklist.selected[0].sites[0],
-        answer: { a: 1, b: 2 },
-      },
-      {
-        id: 'an-obligation',
-        site: worklist.selected[0].sites[1],
-        answer: { a: 1, b: 2 },
-      },
-    ],
-  });
+  const report = checkAnswers(
+    worklist,
+    {
+      head: 'abc',
+      answers: [
+        {
+          id: 'an-obligation',
+          site: worklist.selected[0].sites[0],
+          answer: { a: 1, b: 2 },
+        },
+        {
+          id: 'an-obligation',
+          site: worklist.selected[0].sites[1],
+          answer: { a: 1, b: 2 },
+        },
+      ],
+    },
+    io,
+  );
   assert.equal(report.complete, true);
   assert.equal(report.answered, 2);
   assert.equal(report.expected, 2);
 });
 
 test('an unanswered site is named, and completeness is false', () => {
-  const report = checkAnswers(worklist, {
-    head: 'abc',
-    answers: [
-      {
-        id: 'an-obligation',
-        site: worklist.selected[0].sites[0],
-        answer: { a: 1, b: 2 },
-      },
-    ],
-  });
+  const report = checkAnswers(
+    worklist,
+    {
+      head: 'abc',
+      answers: [
+        {
+          id: 'an-obligation',
+          site: worklist.selected[0].sites[0],
+          answer: { a: 1, b: 2 },
+        },
+      ],
+    },
+    io,
+  );
   assert.equal(report.complete, false);
   assert.equal(report.unanswered.length, 1);
   assert.equal(report.unanswered[0].site.file, 'libs/b.ts');
 });
 
 test('a missing answer field is incomplete, not merely present', () => {
-  const report = checkAnswers(worklist, {
-    head: 'abc',
-    answers: [
-      {
-        id: 'an-obligation',
-        site: worklist.selected[0].sites[0],
-        answer: { a: 1 },
-      },
-      {
-        id: 'an-obligation',
-        site: worklist.selected[0].sites[1],
-        answer: { a: 1, b: null },
-      },
-    ],
-  });
+  const report = checkAnswers(
+    worklist,
+    {
+      head: 'abc',
+      answers: [
+        {
+          id: 'an-obligation',
+          site: worklist.selected[0].sites[0],
+          answer: { a: 1 },
+        },
+        {
+          id: 'an-obligation',
+          site: worklist.selected[0].sites[1],
+          answer: { a: 1, b: null },
+        },
+      ],
+    },
+    io,
+  );
   assert.equal(report.complete, false);
   assert.deepEqual(
     report.incomplete.map((i) => i.missing),
@@ -261,21 +281,25 @@ test('an empty or whitespace-only answer is not an answer', () => {
   // over what was written - namesEverything against a quoted confirmation,
   // runtimeValue against an expression - so a blank field satisfies the
   // completeness signal while leaving the question unanswered.
-  const report = checkAnswers(worklist, {
-    head: 'abc',
-    answers: [
-      {
-        id: 'an-obligation',
-        site: worklist.selected[0].sites[0],
-        answer: { a: '', b: 2 },
-      },
-      {
-        id: 'an-obligation',
-        site: worklist.selected[0].sites[1],
-        answer: { a: 1, b: '   ' },
-      },
-    ],
-  });
+  const report = checkAnswers(
+    worklist,
+    {
+      head: 'abc',
+      answers: [
+        {
+          id: 'an-obligation',
+          site: worklist.selected[0].sites[0],
+          answer: { a: '', b: 2 },
+        },
+        {
+          id: 'an-obligation',
+          site: worklist.selected[0].sites[1],
+          answer: { a: 1, b: '   ' },
+        },
+      ],
+    },
+    io,
+  );
   assert.equal(report.complete, false);
   assert.deepEqual(
     report.incomplete.map((i) => i.missing),
@@ -287,21 +311,25 @@ test('false and zero are answers, and are not mistaken for blanks', () => {
   // The obvious way to write the blank test is a falsiness check, which would
   // discard exactly the answers that matter: namesEverything and
   // isFocusableControl are findings precisely when they are false.
-  const report = checkAnswers(worklist, {
-    head: 'abc',
-    answers: [
-      {
-        id: 'an-obligation',
-        site: worklist.selected[0].sites[0],
-        answer: { a: false, b: 0 },
-      },
-      {
-        id: 'an-obligation',
-        site: worklist.selected[0].sites[1],
-        answer: { a: false, b: 0 },
-      },
-    ],
-  });
+  const report = checkAnswers(
+    worklist,
+    {
+      head: 'abc',
+      answers: [
+        {
+          id: 'an-obligation',
+          site: worklist.selected[0].sites[0],
+          answer: { a: false, b: 0 },
+        },
+        {
+          id: 'an-obligation',
+          site: worklist.selected[0].sites[1],
+          answer: { a: false, b: 0 },
+        },
+      ],
+    },
+    io,
+  );
   assert.equal(report.complete, true);
   assert.deepEqual(report.incomplete, []);
 });
@@ -321,6 +349,11 @@ test('the real selector output carries defectWhen all the way to checkAnswers', 
   const w = selectObligations({ catalogue, addedLines, head: 'abc' });
   assert.equal(w.selected.length, 1);
   assert.ok(w.selected[0].defectWhen, 'defectWhen must survive selection');
+  assert.deepEqual(
+    w.selected[0].citedFields,
+    [{ field: 'slotChild' }],
+    'citedFields must survive selection for the same reason defectWhen must',
+  );
 
   const sheet = {
     head: 'abc',
@@ -333,11 +366,19 @@ test('the real selector output carries defectWhen all the way to checkAnswers', 
           propsLandOn: 'div',
           isFocusableControl: false,
         },
+        citations: {
+          slotChild: {
+            file: 'apps/a.tsx',
+            line: 2,
+            text: '<div className="relative">',
+          },
+        },
         raisedFindingIds: [],
       })),
     ),
   };
-  assert.equal(checkAnswers(w, sheet).contradictions.length, 1);
+  const readSource = () => '  <FormControl>\n  <div className="relative">\n';
+  assert.equal(checkAnswers(w, sheet, { readSource }).contradictions.length, 1);
 });
 
 test('an answer meeting its own defect condition and raising nothing contradicts itself', () => {
@@ -352,28 +393,33 @@ test('an answer meeting its own defect condition and raising nothing contradicts
         id: 'an-obligation',
         question: 'q',
         answerFields: ['a', 'b'],
+        citedFields: [{ field: 'a' }],
         defectWhen: { field: 'b', equals: false },
         sites: worklist.selected[0].sites,
       },
     ],
   };
-  const report = checkAnswers(w, {
-    head: 'abc',
-    answers: [
-      {
-        id: 'an-obligation',
-        site: w.selected[0].sites[0],
-        answer: { a: 1, b: false },
-        raisedFindingIds: [],
-      },
-      {
-        id: 'an-obligation',
-        site: w.selected[0].sites[1],
-        answer: { a: 1, b: false },
-        raisedFindingIds: ['f1'],
-      },
-    ],
-  });
+  const report = checkAnswers(
+    w,
+    {
+      head: 'abc',
+      answers: [
+        {
+          id: 'an-obligation',
+          site: w.selected[0].sites[0],
+          answer: { a: 1, b: false },
+          raisedFindingIds: [],
+        },
+        {
+          id: 'an-obligation',
+          site: w.selected[0].sites[1],
+          answer: { a: 1, b: false },
+          raisedFindingIds: ['f1'],
+        },
+      ],
+    },
+    io,
+  );
   assert.equal(report.contradictions.length, 1);
   assert.equal(report.contradictions[0].site.file, w.selected[0].sites[0].file);
   // The old signal saw nothing wrong, which is the point.
@@ -388,17 +434,22 @@ test('a blank field is reported once as incomplete, not also as a contradiction'
         id: 'an-obligation',
         question: 'q',
         answerFields: ['a', 'b'],
+        citedFields: [{ field: 'a' }],
         defectWhen: { field: 'b', equals: undefined },
         sites: [worklist.selected[0].sites[0]],
       },
     ],
   };
-  const report = checkAnswers(w, {
-    head: 'abc',
-    answers: [
-      { id: 'an-obligation', site: w.selected[0].sites[0], answer: { a: 1 } },
-    ],
-  });
+  const report = checkAnswers(
+    w,
+    {
+      head: 'abc',
+      answers: [
+        { id: 'an-obligation', site: w.selected[0].sites[0], answer: { a: 1 } },
+      ],
+    },
+    io,
+  );
   assert.equal(report.incomplete.length, 1);
   assert.equal(report.contradictions.length, 0);
 });
@@ -442,16 +493,20 @@ test('a defectWhen naming a field outside answerFields is a load error', () => {
 });
 
 test('an answer for a site nobody asked about is reported, not counted', () => {
-  const report = checkAnswers(worklist, {
-    head: 'abc',
-    answers: [
-      {
-        id: 'an-obligation',
-        site: { file: 'libs/z.ts', line: 9 },
-        answer: { a: 1, b: 2 },
-      },
-    ],
-  });
+  const report = checkAnswers(
+    worklist,
+    {
+      head: 'abc',
+      answers: [
+        {
+          id: 'an-obligation',
+          site: { file: 'libs/z.ts', line: 9 },
+          answer: { a: 1, b: 2 },
+        },
+      ],
+    },
+    io,
+  );
   assert.equal(report.answered, 0);
   assert.equal(report.unexpected.length, 1);
 });

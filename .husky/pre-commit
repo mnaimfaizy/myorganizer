@@ -64,11 +64,17 @@ if ! git diff --cached --quiet --diff-filter=ACMRT -- \
  tools/scripts/lib/sandcastle-resume.test.mjs \
  tools/scripts/lib/sandcastle-subagent-trace.mjs \
  tools/scripts/lib/sandcastle-subagent-trace.test.mjs \
+ tools/scripts/lib/sandcastle-spec-anchor.mjs \
+ tools/scripts/lib/sandcastle-spec-anchor.test.mjs \
+ tools/scripts/review/resolve-spec.mjs \
  .sandcastle/main.mts \
  .sandcastle/dispatch-waves.mts
 then
 corepack yarn sandcastle:resume:test
 corepack yarn sandcastle:subagent-trace:test
+# The anchor asserts against the real resolver, so a change to resolve-spec.mjs
+# is a change to this contract even when no sandcastle file is staged.
+corepack yarn sandcastle:spec-anchor:test
 fi
 # The five sandcastle atlas pages state constants that live as module-local literals in the
 # two orchestrator files, as exports in sandcastle-resume.mjs and sandcastle-subagent-trace.mjs,

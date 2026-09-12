@@ -55,13 +55,20 @@ writes it.**
 4. **The reviewer may execute, in a tree it cannot keep.** Existing targets on affected projects and
    throwaway reproductions in a `git worktree` under `tmp/` are permitted; the tree is discarded after
    the run and nothing is committed or pushed. A failing test the reviewer wrote is the strongest
-   evidence class there is. Network, `git push`, and edits outside that tree are refused by the harness
-   allow-list, not by prose.
+   evidence class there is. Network and `git push` are refused by the harness allow-list.
+   **Corrected by [ADR 0075](0075-a-reviewers-writable-surface-is-scoped-to-its-own-tmp-directory.md):**
+   "edits outside that tree are refused by the harness allow-list, not by prose" was not true when
+   written — `Write` and `Edit` were granted unscoped, and a replay run wrote a scratch script outside
+   its worktree after an inline execution was refused, then ran that script instead, and separately
+   tried to disable the sandbox. `Write` and `Edit` now carry `tmp/code-review/**`, so the claim holds
+   from there forward.
 
 5. **The verdict is computed.** Any `blocking` finding requests changes; only `nit` findings approve;
-   otherwise the verdict is comment. A report with no spec source is tightened to `review:human` at
-   the envelope level without becoming a finding, because half of the reviewer's value is absent and
-   there is nothing in the diff to fix. A report that fails validation is rejected whole — no partial
+   otherwise the verdict is comment. A report with no spec source is tightened down one tier level
+   at the envelope level without becoming a finding — `auto` → `agent`, `agent` → `human`,
+   `human` → `human` — because the spec source contributes one confidence step to the tier decision:
+   half of the reviewer's value is absent, and there is nothing in the diff to fix. Interactive
+   runs (tier `null`) stay `null`. A report that fails validation is rejected whole — no partial
    verdict, no downgraded severity — and a rejected report is a pipeline error, which ADR 0070
    resolves to `human`.
 
@@ -70,6 +77,57 @@ writes it.**
    mint or reuse ids. Each run reviews fresh; the renderer diffs against the previous run's artifact to
    show new, persisting, and resolved findings. Feeding a model its own prior verdict trades
    correctness for consistency.
+
+   > **Amended by issue #718 — `rule` is out of the tuple; the hash is `axis + source + file`.**
+   > Excluding the line was the right instinct applied to the wrong half. `rule` is free-form prose the
+   > reviewer composes in the source's words, and it composes it differently every run — a single
+   > Unicode arrow degrading to ASCII is enough. The published record shows a persisting count of zero
+   > in 38 of 38 consecutive reports across four Pull Requests: no identity has ever survived a push.
+   > The consequence is not a wrong counter. A finding the author declined is announced as resolved on
+   > the next push and vanishes, and the publisher resolves every inline thread on every push, because
+   > every prior id is always absent — ignored blocking feedback certified as fixed. Every field that
+   > remains is either a closed enum or a path the reviewer copies.
+   >
+   > The tuple is now coarser than the finding: two distinct defects in one file cited against one
+   > source collide, and the within-report disambiguator orders them by line. Fixing one of the two
+   > renumbers the survivor onto the vacated id, so the strip reads one persisting and one resolved
+   > while the report re-posts the survivor under the other id. The collision is widest where `file`
+   > is empty — an unlocated finding hashes the empty string, so on the spec axis, where every finding
+   > cites the same issue ref, all unlocated findings collide with each other. That is accepted: the
+   > cost is churn, a resolve and a repost of feedback still on the report, where the bug it replaces
+   > lost the feedback outright. Issue #724 closes it with a bounded rule identifier, a closed
+   > vocabulary the reviewer selects from rather than writes.
+   >
+   > `schemaVersion` moves to `2`, because an id is only meaningful within a version. Both readers of
+   > an id are scoped to it. The renderer refuses to diff across versions and says there is no
+   > comparable previous run; the publisher's thread markers carry the version that minted the id
+   > inside them, so a thread from an earlier version is neither reused nor resolved — it is left for
+   > a human, the way a human's own thread is. Without that second half the bump would have prevented
+   > the mass auto-resolve in the strip and delivered it through the publisher instead.
+
+   > **Amended by issue #724 — `source` is out of the tuple too; the hash is `axis + ruleId + file`.**
+   > The #718 amendment above named the collision it accepted and said what would close it. This is
+   > that. `source` discriminates far too coarsely to be an identity on its own: one of its values,
+   > `smell-baseline`, covered all twelve Fowler smells, so two unrelated smells in one file were one
+   > finding as far as the strip was concerned — and a source that coarse is also no unit to measure
+   > noise against or ever to disable.
+   >
+   > `ruleId` is a new required field holding one id from a bounded catalogue,
+   > `tools/config/review-rules.json`. The reviewer selects from it and never composes one, so the
+   > field is stable like an enum while discriminating like the prose it replaces; the validator
+   > rejects an id the catalogue does not carry and an id used off its axis. Five families, each
+   > bounded by something that already existed: the twelve smells, one entry per review obligation,
+   > the two reach-through checks, one entry per documented repo standard, and the three defect kinds
+   > the Spec brief asks for. `rule` and `source` stay in the report as display, read by people and by
+   > the golden scorer's patterns, and by nothing that decides an identity, a severity, or a verdict.
+   >
+   > One fallback, `standard-other`, and the Spec axis has none. A reviewer that cannot name its
+   > finding must still be able to file it: a report nobody writes costs more than a coarse one
+   > (`docs/research/2026-09-10-the-answer-sheet-is-inert.md`). What is left of the collision is a
+   > repeat of the _same_ rule in one file — which is what a repeat should mean — plus unlocated spec
+   > findings of one kind and `standard-other` findings in one file, both still ordered by line.
+   >
+   > `schemaVersion` moves to `3`, for the same reason and with the same two readers.
 
 7. **Two axes stay two.** Every finding carries `axis: standards | spec`. The prose report renders two
    sections and sorts by severity within each, never across them, so ADR 0017's refusal to rerank one
@@ -123,8 +181,14 @@ Spec discovery reads the branch name first, because `<type>/<issue>-slug` is the
 makes the issue mandatory and machine-readable; then commit references, then an argument, and only the
 interactive mode asks.
 
-A golden set lives in `tools/config/review-golden-set.json` as expected findings written as the same
-`axis + source + rule + file` tuples, hashed identically, so recall is a set intersection. It is seeded
+A golden set lives in `tools/config/review-golden-set.json` as expected findings written as
+`axis + source + rule + file`, where `source` and `rule` are patterns and `file` is a set, so recall is
+a match over expected rather than a hash comparison — and it stays that way, because a case is a
+historical measurement and tightening it to one exact id would score a reviewer that named the defect
+defensibly differently as a miss. The strict-tuple annotation beside each match does hash what the
+validator hashes (`axis + ruleId + file` since item 6's #724 amendment), so an expectation says
+whether it is literal enough to be a tuple by pinning `ruleId`; one that pins none is never strict.
+It is seeded
 from incidents the repo already documents — the enum fan-out losses behind
 [ADR 0053](0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md), the unstyled groceries
 pages behind [ADR 0065](0065-tokens-json-is-the-single-source-of-web-colour.md) — and from merged Pull

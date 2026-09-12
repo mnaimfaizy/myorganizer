@@ -18,6 +18,13 @@
  * neither a fact about the pipeline nor a judgment about the diff (ADR 0073), so
  * it is reported separately and fails nothing.
  *
+ * An answer CITES rather than asserts. Every answer field that makes a claim
+ * about source carries the file, the line, and the literal text at that line,
+ * and `verifyCitation` compares the quotation to the tree at the reviewed head.
+ * A mismatch is a fact about the pipeline and fails the check (ADR 0078); it is
+ * never a finding, because a finding is about the diff and this is about the
+ * reviewer.
+ *
  * Everything here is pure. `select-obligations.mjs` reads git and writes files.
  */
 
@@ -110,6 +117,38 @@ export function assertObligationCatalogue(cat, source = 'obligations') {
         if (!o.answerFields.includes(f))
           fail(`${where}: defectWhen names ${f}, which is not an answerField`);
     }
+    // An answer field that makes a claim about source must quote that source.
+    // Required, and required to be non-empty: an obligation asks what the code
+    // actually does, so at least one of its fields is always a claim about a
+    // line somebody can go and read. An entry with no cited field is an entry
+    // whose answers nothing can be compared against, which is the state run 45
+    // measured (docs/research/2026-09-10-the-answer-sheet-is-inert.md).
+    if (!Array.isArray(o.citedFields) || o.citedFields.length === 0)
+      fail(
+        `${where}: citedFields must name at least one answerField that claims something about source`,
+      );
+    const cited = new Set();
+    for (const c of o.citedFields) {
+      const field = typeof c === 'string' ? c : c?.field;
+      if (typeof field !== 'string' || !field)
+        fail(
+          `${where}: a citedFields entry is a field name or an object with one`,
+        );
+      if (!o.answerFields.includes(field))
+        fail(
+          `${where}: citedFields names ${field}, which is not an answerField`,
+        );
+      if (cited.has(field))
+        fail(`${where}: duplicate citedFields entry ${field}`);
+      cited.add(field);
+      if (typeof c === 'object' && c.uncitedWhen !== undefined) {
+        // The one answer with no line to point at: `wiredBy: "none"` says the
+        // gate is invoked nowhere, and nowhere has no file and no line. Any
+        // other value must quote one.
+        if (typeof c.uncitedWhen !== 'string' || !c.uncitedWhen)
+          fail(`${where}: ${field}: uncitedWhen must be a non-empty string`);
+      }
+    }
     if (typeof o.goldenCase !== 'string' || !ID.test(o.goldenCase))
       fail(`${where}: goldenCase must name the case that scores this entry`);
     const t = o.trigger;
@@ -142,6 +181,24 @@ export function assertObligationCatalogue(cat, source = 'obligations') {
   }
   return cat;
 }
+
+/**
+ * The catalogue's two spellings of a cited field — a bare name, or a name with
+ * the one value that legitimately has no line to quote — reduced to one shape.
+ * The worklist carries the normalized form, so the reviewer reading it and the
+ * checker comparing against it see the same thing.
+ *
+ * @param {(string|{field: string, uncitedWhen?: string})[]} citedFields
+ * @returns {{field: string, uncitedWhen?: string}[]}
+ */
+export const normalizeCitedFields = (citedFields = []) =>
+  citedFields.map((c) =>
+    typeof c === 'string'
+      ? { field: c }
+      : c.uncitedWhen === undefined
+        ? { field: c.field }
+        : { field: c.field, uncitedWhen: c.uncitedWhen },
+  );
 
 export const loadObligationCatalogue = (path = OBLIGATIONS_PATH) =>
   assertObligationCatalogue(JSON.parse(readFileSync(path, 'utf8')), path);
@@ -225,6 +282,11 @@ export const selectObligations = ({
       title: o.title,
       question: o.question,
       answerFields: o.answerFields,
+      // Normalized and carried for the same reason defectWhen is: the checker
+      // reads it off the worklist, so an entry that arrives without it is not
+      // an error but a citation nobody verifies. It is also what tells the
+      // reviewer, in the file it is handed, which answers must quote a line.
+      citedFields: normalizeCitedFields(o.citedFields),
       defect: o.defect,
       // Carried, or the contradiction check downstream reads undefined on
       // every entry and silently reports nothing. Its guard is
@@ -272,10 +334,23 @@ export function defectHolds(rule, answer) {
   return false;
 }
 
+/** How much of a mismatching line is quoted back in the report. */
+export const MAX_QUOTED_SOURCE = 200;
+
+export const CitationSchema = z.strictObject({
+  file: z.string().min(1),
+  line: z.number().int().positive(),
+  text: z.string().min(1),
+});
+
 export const AnswerSchema = z.strictObject({
   id: z.string().regex(ID),
   site: z.strictObject({ file: z.string().min(1), line: z.number().int() }),
   answer: z.record(z.string(), z.unknown()),
+  // One citation per cited answer field, keyed by the field it backs. Optional
+  // in the schema and required by the check: a sheet that carries none is
+  // readable, and every cited field it left unquoted is a failure with a name.
+  citations: z.record(z.string(), CitationSchema).optional(),
   raisedFindingIds: z.array(z.string()).optional(),
 });
 
@@ -287,11 +362,129 @@ export const AnswerSheetSchema = z.strictObject({
 const siteKey = (id, site) => `${id}@${site.file}:${site.line}`;
 
 /**
- * Completeness, never a verdict. Every fact here is reported and none of it
- * fails a check: an unanswered obligation says the review was thin, which is
- * worth knowing and is not grounds to reject a report that met its contract.
+ * Whitespace is presentation. A line the reviewer copied out of a Read result
+ * carries whatever indentation it had; comparing on collapsed whitespace means
+ * a re-indented quote is the same quote and a different quote is not.
  */
-export const checkAnswers = (worklist, sheet) => {
+const normalizeSource = (s) => String(s).replace(/\s+/g, ' ').trim();
+
+/**
+ * Compare one quotation to the tree at the reviewed head.
+ *
+ * This is the half of the answer sheet that run 45 showed was missing. The
+ * reviewer wrote `slotChild: "Input"` for two sites whose direct child is a
+ * positioning `div`, and nothing compared the writing to anything — a wrong
+ * element name is a perfectly non-blank string. A quotation can still be true
+ * about the wrong line, but it can no longer be invented: the file, the line,
+ * and the text at that line are three facts a reader can check, and this
+ * checks them.
+ *
+ * @param {{file: string, line: number, text: string}} citation
+ * @param {(file: string) => string|null} readSource file contents at head, or null
+ * @returns {{ok: true} | {ok: false, reason: string, actual?: string, lineCount?: number}}
+ */
+export const verifyCitation = (citation, readSource) => {
+  // A quotation with no content in it is not a quotation. Whitespace is
+  // presentation everywhere else in this comparison, which is exactly what
+  // makes `text: " "` a forgery that would otherwise match every blank line in
+  // the tree — the cheapest possible way to satisfy a citation without reading
+  // anything, and the failure this check exists to stop.
+  if (normalizeSource(citation.text) === '')
+    return { ok: false, reason: 'quotes-nothing' };
+  const source = readSource(citation.file);
+  if (source === null || source === undefined)
+    return { ok: false, reason: 'file-not-found' };
+  // A file ending in a newline splits to a trailing empty element that is not
+  // a line anybody can cite. Counting it would report one more line than the
+  // file has, in the message whose whole job is to say how many there are.
+  const lines = source.split('\n');
+  if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+  if (
+    !Number.isInteger(citation.line) ||
+    citation.line < 1 ||
+    citation.line > lines.length
+  )
+    return { ok: false, reason: 'line-out-of-range', lineCount: lines.length };
+  const actual = lines[citation.line - 1];
+  if (normalizeSource(actual) !== normalizeSource(citation.text))
+    return {
+      ok: false,
+      reason: 'text-differs',
+      actual: actual.trim().slice(0, MAX_QUOTED_SOURCE),
+    };
+  return { ok: true };
+};
+
+/**
+ * The rule id the catalogue mirrors for an obligation. One per entry, asserted
+ * in both directions by `review:rules:check`, which is what makes it usable
+ * here: the reviewer picks it from a list it was handed, so a finding raised
+ * for an obligation is findable in the report without anybody agreeing on a
+ * second identifier.
+ */
+export const obligationRuleId = (id) => `obligation-${id}`;
+
+/**
+ * Did the reviewer actually raise the finding its own answer says is there?
+ *
+ * Read out of the report when there is one, and only declared otherwise. The
+ * declaration alone cannot be the check: a finding's id is a hash the
+ * validator computes after the sheet is written, so a reviewer that raised the
+ * finding correctly has no id to write and would be failed for it, while any
+ * string at all would pass. Same failure as the one ADR 0078 is about — a
+ * written answer is not a verified answer — one level up.
+ *
+ * A finding counts for a site when it carries the obligation's mirrored rule id
+ * and is anchored in the site's file, or carries no location at all (the
+ * contract allows a located-nowhere finding, and refusing to count one would
+ * fail a reviewer for using the contract as written).
+ *
+ * @param {string} id the obligation id
+ * @param {{file: string}} site
+ * @param {{raisedFindingIds?: string[]}} answer
+ * @param {{ruleId?: string, location?: {file?: string}}[]|undefined} findings
+ * @returns {{raised: boolean, readFrom: 'report'|'declaration'}}
+ */
+export const raisedForSite = (id, site, answer, findings) => {
+  if (!Array.isArray(findings))
+    return {
+      raised: (answer.raisedFindingIds ?? []).length > 0,
+      readFrom: 'declaration',
+    };
+  const want = obligationRuleId(id);
+  const raised = findings.some(
+    (f) =>
+      f?.ruleId === want &&
+      (f.location?.file === undefined || f.location.file === site.file),
+  );
+  return { raised, readFrom: 'report' };
+};
+
+/**
+ * Two kinds of fact, kept apart.
+ *
+ * **Completeness is never a verdict.** An unanswered obligation says the
+ * review was thin, which is worth knowing and is not grounds to reject a
+ * report that met its contract.
+ *
+ * **A citation that does not match its source is.** So is an answer that meets
+ * its own defect condition while raising no finding. Both are facts about the
+ * reviewer rather than judgments about the diff, which is what makes them
+ * eligible to fail a check at all (ADR 0073, ADR 0078). Neither becomes a
+ * finding: a finding is about the code under review, and this is not.
+ *
+ * @param {object} worklist the selector's output
+ * @param {object} sheet the reviewer's answers
+ * @param {{readSource?: (file: string) => string|null, findings?: object[]}} [io]
+ *   `readSource` reads a file at the reviewed head; `findings` is the report
+ *   the reviewer wrote, which is how a raised finding is confirmed rather than
+ *   taken on trust.
+ */
+export const checkAnswers = (
+  worklist,
+  sheet,
+  { readSource, findings } = {},
+) => {
   const expected = new Map();
   for (const o of worklist.selected) {
     for (const site of o.sites)
@@ -299,14 +492,37 @@ export const checkAnswers = (worklist, sheet) => {
         id: o.id,
         site,
         fields: o.answerFields,
+        // Normalized again here rather than trusted: the selector writes the
+        // object form, and a worklist written by hand is as likely to carry
+        // the catalogue's bare-name spelling.
+        cited: normalizeCitedFields(o.citedFields ?? []),
         defectWhen: o.defectWhen,
       });
   }
+  // Refused rather than skipped, twice over. A citation check with no tree to
+  // read, and an entry that asks for no citation at all, are the same silent
+  // no-op: every sheet comes back sound and nothing says why. The catalogue
+  // requires at least one cited field on every entry, so an entry that arrives
+  // here without one did not come from the selector at this head — a stale
+  // worklist or one written by hand — and waving it through is exactly the
+  // state run 45 was in.
+  for (const [key, want] of expected)
+    if (want.cited.length === 0)
+      throw new ObligationError(
+        `checkAnswers: ${key} names no cited field, so nothing in its answer could be compared to the tree`,
+      );
+  if (expected.size > 0 && typeof readSource !== 'function')
+    throw new ObligationError(
+      'checkAnswers: this worklist has cited fields and no readSource, so no quotation could be compared to anything',
+    );
   const seen = new Set();
   const unanswered = [];
   const unexpected = [];
   const incomplete = [];
   const contradictions = [];
+  const citationFailures = [];
+  let citationsRequired = 0;
+  let citationsVerified = 0;
   for (const a of sheet.answers) {
     const key = siteKey(a.id, a.site);
     const want = expected.get(key);
@@ -324,6 +540,44 @@ export const checkAnswers = (worklist, sheet) => {
       return v === undefined || v === null || String(v).trim() === '';
     });
     if (missing.length) incomplete.push({ key, missing });
+    // Every cited field that carries a real answer must quote a real line. A
+    // field left blank is already reported as incomplete, so it is not failed
+    // twice, and a field whose answer is the obligation's `uncitedWhen` value
+    // has no line to quote by construction.
+    for (const spec of want.cited) {
+      if (missing.includes(spec.field)) continue;
+      if ('uncitedWhen' in spec && a.answer[spec.field] === spec.uncitedWhen)
+        continue;
+      citationsRequired += 1;
+      const citation = a.citations?.[spec.field];
+      if (!citation) {
+        citationFailures.push({
+          key,
+          id: want.id,
+          site: want.site,
+          field: spec.field,
+          reason: 'uncited',
+        });
+        continue;
+      }
+      const verdict = verifyCitation(citation, readSource);
+      if (verdict.ok) {
+        citationsVerified += 1;
+        continue;
+      }
+      citationFailures.push({
+        key,
+        id: want.id,
+        site: want.site,
+        field: spec.field,
+        reason: verdict.reason,
+        cited: citation,
+        ...(verdict.actual === undefined ? {} : { actual: verdict.actual }),
+        ...(verdict.lineCount === undefined
+          ? {}
+          : { lineCount: verdict.lineCount }),
+      });
+    }
     // The self-contradiction. An answer that meets its obligation's own
     // defect condition and raises nothing is not a judgment call the
     // reviewer is entitled to make: the catalogue already decided that this
@@ -332,15 +586,18 @@ export const checkAnswers = (worklist, sheet) => {
     if (
       !missing.length &&
       want.defectWhen &&
-      defectHolds(want.defectWhen, a.answer) &&
-      (a.raisedFindingIds ?? []).length === 0
-    )
-      contradictions.push({
-        key,
-        id: want.id,
-        site: want.site,
-        answer: a.answer,
-      });
+      defectHolds(want.defectWhen, a.answer)
+    ) {
+      const raised = raisedForSite(want.id, want.site, a, findings);
+      if (!raised.raised)
+        contradictions.push({
+          key,
+          id: want.id,
+          site: want.site,
+          answer: a.answer,
+          readFrom: raised.readFrom,
+        });
+    }
   }
   for (const [key, want] of expected) {
     if (!seen.has(key)) unanswered.push({ key, id: want.id, site: want.site });
@@ -353,7 +610,13 @@ export const checkAnswers = (worklist, sheet) => {
     incomplete,
     unexpected,
     contradictions,
+    citations: { required: citationsRequired, verified: citationsVerified },
+    citationFailures,
     complete:
       unanswered.length === 0 && incomplete.length === 0 && expected.size > 0,
+    // Thoroughness is `complete`; this is trust. A sound sheet is one whose
+    // claims about source hold and whose answers do not contradict their own
+    // defect rules — the two things a check may fail on.
+    sound: contradictions.length === 0 && citationFailures.length === 0,
   };
 };

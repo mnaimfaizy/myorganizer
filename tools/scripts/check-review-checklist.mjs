@@ -13,17 +13,21 @@
 // describes the old one, and the file's own claim — one artifact, two
 // readers — quietly stops being true.
 //
-// What is asserted is what is mechanical: the set and order of ids, and
-// each entry's answer fields. The rationale, the trigger prose, and the
-// incident history are deliberately not asserted; they are writing, and a
-// gate over writing is a gate nobody can satisfy.
+// What is asserted is what is mechanical: the set and order of ids, each
+// entry's answer fields, and which of those fields must quote a line of
+// source. The rationale, the trigger prose, and the incident history are
+// deliberately not asserted; they are writing, and a gate over writing is a
+// gate nobody can satisfy.
 //
 // Exit 0 = sound. Exit 1 = findings. Exit 2 = could not run.
 import { readFileSync } from 'node:fs';
 
 import { isMain } from './review/cli.mjs';
 import { loadGoldenSet } from './review/golden.mjs';
-import { loadObligationCatalogue } from './review/obligations.mjs';
+import {
+  loadObligationCatalogue,
+  normalizeCitedFields,
+} from './review/obligations.mjs';
 
 const CHECKLIST = 'docs/review/REVIEW_CHECKLIST.md';
 
@@ -40,7 +44,7 @@ const die = (msg) => {
  * file) are prose about the list rather than entries in it, and are skipped.
  *
  * @param {string} md
- * @returns {{id: string, title: string, answerFields: string[]}[]}
+ * @returns {{id: string, title: string, answerFields: string[], citedFields: {field: string, uncitedWhen?: string}[]}[]}
  */
 export function parseChecklist(md) {
   const entries = [];
@@ -57,10 +61,29 @@ export function parseChecklist(md) {
       const cell = line.match(/^\|\s*`([^`]+)`\s*\|/);
       if (cell) answerFields.push(cell[1]);
     }
-    entries.push({ id: idMatch[1], title, answerFields });
+    // The `**Cites**` line names the fields whose answer must quote a line of
+    // source, in the catalogue's order, each optionally with the one value
+    // that has no line to quote: `**Cites** `wiredBy` unless `none``.
+    const citedFields = [];
+    const citesLine = section.match(/^\*\*Cites\*\*\s+(.*)$/m);
+    if (citesLine) {
+      const pattern = /`([^`]+)`(?:\s+unless\s+`([^`]+)`)?/g;
+      let m;
+      while ((m = pattern.exec(citesLine[1])) !== null)
+        citedFields.push(
+          m[2] === undefined
+            ? { field: m[1] }
+            : { field: m[1], uncitedWhen: m[2] },
+        );
+    }
+    entries.push({ id: idMatch[1], title, answerFields, citedFields });
   }
   return entries;
 }
+
+/** One comparable string per cited field, the same on both sides. */
+export const citedFieldLabel = (c) =>
+  c.uncitedWhen === undefined ? c.field : `${c.field} unless ${c.uncitedWhen}`;
 
 const main = () => {
   let md;
@@ -101,16 +124,18 @@ const main = () => {
     );
 
   // Every obligation cites the golden case that scores it. That field was
-  // shape-validated and never resolved, so a case renamed or retired left it
-  // dangling with nothing noticing - the same drift this file gates for the
-  // checklist, on the sibling relationship. A retired case still counts: its
-  // id stays reserved precisely so the reason it left is not lost.
+  // shape-validated and never resolved, so a case renamed, retired, or parked
+  // left it dangling with nothing noticing - the same drift this file gates
+  // for the checklist, on the sibling relationship. A retired or parked case
+  // still counts: its id stays reserved precisely so the reason it left is
+  // not lost.
   let known;
   try {
     const set = loadGoldenSet();
     known = new Set([
       ...(set.cases ?? []).map((c) => c.id),
       ...(set.retired ?? []).map((c) => c.id),
+      ...(set.parked ?? []).map((c) => c.id),
     ]);
   } catch (err) {
     die(`cannot read the golden set: ${err.message}`);
@@ -131,12 +156,28 @@ const main = () => {
         `${o.id}: answerFields are [${a}] in the catalogue but the entry's ` +
           `answer table lists [${b}]`,
       );
+    // Which answers must quote a line is the difference between an answer that
+    // cites and one that merely asserts, so the two forms have to agree on it
+    // as exactly as they agree on the fields themselves. A human reading an
+    // entry that does not ask for the quotation writes none.
+    const c = normalizeCitedFields(o.citedFields)
+      .map(citedFieldLabel)
+      .join(', ');
+    const d = entry.citedFields.map(citedFieldLabel).join(', ');
+    if (c !== d)
+      findings.push(
+        `${o.id}: citedFields are [${c}] in the catalogue but the entry's ` +
+          `**Cites** line reads [${d}]`,
+      );
   }
 
   if (process.argv.includes('--print')) {
     console.log(`catalogue: ${wanted.join(', ')}`);
     for (const e of entries)
-      console.log(`entry ${e.id}: ${e.answerFields.join(', ')}`);
+      console.log(
+        `entry ${e.id}: ${e.answerFields.join(', ')} ` +
+          `(cites ${e.citedFields.map(citedFieldLabel).join(', ') || 'nothing'})`,
+      );
   }
 
   if (findings.length) {

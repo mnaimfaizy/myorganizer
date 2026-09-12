@@ -1,0 +1,45 @@
+{
+  "head": "8fb1087f36938f5e8e4631a65cff43b3997ff6db",
+  "answers": [
+    {
+      "id": "slot-injected-props-land-on-the-control",
+      "site": {
+        "file": "apps/myorganizer/src/app/(auth)/signup/page.tsx",
+        "line": 232
+      },
+      "answer": {
+        "slotChild": "Input",
+        "propsLandOn": "Input",
+        "isFocusableControl": true
+      },
+      "citations": {
+        "slotChild": {
+          "file": "apps/myorganizer/src/app/(auth)/signup/page.tsx",
+          "line": 233,
+          "text": "<Input"
+        }
+      },
+      "raisedFindingIds": []
+    },
+    {
+      "id": "slot-injected-props-land-on-the-control",
+      "site": {
+        "file": "apps/myorganizer/src/app/(auth)/signup/page.tsx",
+        "line": 267
+      },
+      "answer": {
+        "slotChild": "Input",
+        "propsLandOn": "Input",
+        "isFocusableControl": true
+      },
+      "citations": {
+        "slotChild": {
+          "file": "apps/myorganizer/src/app/(auth)/signup/page.tsx",
+          "line": 268,
+          "text": "<Input"
+        }
+      },
+      "raisedFindingIds": []
+    }
+  ]
+}

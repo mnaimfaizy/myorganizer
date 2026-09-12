@@ -1,0 +1,18 @@
+{
+  "head": "b030fd19547e544c461607c10594f1c95f453377",
+  "answers": [
+    {
+      "id": "destructive-confirmation-names-what-it-mutates",
+      "site": {
+        "file": "apps/myorganizer/src/app/vault-export/page.tsx",
+        "line": 172
+      },
+      "answer": {
+        "mutates": "the local vault blob, wrapped_mk_passphrase, kdf_salt",
+        "confirmationText": "Importing will replace your current local vault data. Continue?",
+        "namesEverything": false
+      },
+      "raisedFindingIds": []
+    }
+  ]
+}

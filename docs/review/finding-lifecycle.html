@@ -600,7 +600,10 @@
     font-size: 10.5px;
     letter-spacing: 0.06em;
     text-align: right;
-    white-space: nowrap;
+    /* Was nowrap; the "NOT HASHED" label (issue #718) runs longer than the
+       130px column at this size, and clipped text is worse than a
+       second line. */
+    white-space: normal;
   }
   .frow.gr {
     border-left: 4px solid var(--accent);
@@ -613,6 +616,53 @@
   }
   .frow.do .fclass {
     color: var(--ink-3);
+  }
+
+  /* ── The five rule families (Panel A). Distinguished by border style, not
+     colour alone — five distinct styles for five families. ─────────────── */
+  .families {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin: 14px 0 0;
+  }
+  .family {
+    border-radius: var(--r);
+    padding: 10px 11px;
+    font-size: 12px;
+    background: var(--surface-2);
+  }
+  .family h4 {
+    margin: 0 0 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .family p {
+    margin: 0;
+    color: var(--ink-2);
+  }
+  .family.smell { border: 2px solid var(--line-2); }
+  .family.obligation { border: 2px dashed var(--line-2); }
+  .family.reach-through { border: 2px dotted var(--line-2); }
+  .family.standard { border: 2px double var(--line-2); }
+  .family.spec { border: 2px ridge var(--line-2); }
+  .fallbacknote {
+    margin: 10px 0 0;
+    padding: 8px 12px;
+    border: 1px dashed var(--ink-3);
+    border-radius: var(--r);
+    font-size: 12.5px;
+    color: var(--ink-2);
+  }
+  @media (max-width: 900px) {
+    .families {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 480px) {
+    .families {
+      grid-template-columns: 1fr;
+    }
   }
 
   /* ── Decision table (Panel B) ──────────────────────────────────────────── */
@@ -1183,11 +1233,21 @@
         <dt>validator</dt>
         <dd id="note-validator">
           Rejects the report whole on any schema violation (ADR 0071 item 5).
-          Derives each finding's id from <code>axis + source + rule +
-          file</code>, line excluded (ADR 0071 item 6). Computes the verdict:
-          any <code>blocking</code> means <code>request-changes</code>; only
-          <code>nit</code> means <code>approve</code>; otherwise
-          <code>comment</code> (ADR 0071 item 5).
+          Derives each finding's id from
+          <code>axis + ruleId + file</code>, line and <code>rule</code>
+          excluded &mdash; <code>rule</code> is prose the reviewer rewrites
+          every run, not a copied citation (ADR 0071 item 6, amended by issue
+          #718). Rejects a <code>ruleId</code> that is not in the bounded
+          rule catalogue, or one used on the wrong axis &mdash; and a
+          rejected report is rejected whole. An id only means anything
+          within one report schema version
+          (<code>REPORT_SCHEMA_VERSION</code>, currently <code>3</code>): a
+          stored artifact whose <code>schemaVersion</code> does not match
+          this run's is not diffable at all &mdash; see Panel E. Computes the
+          verdict: any <code>blocking</code> means
+          <code>request-changes</code>; only <code>nit</code> means
+          <code>approve</code>; otherwise <code>comment</code> (ADR 0071
+          item 5).
           No spec source tightens the envelope to <code>human</code> &mdash;
           see the reading test above the diagram.
         </dd>
@@ -1294,8 +1354,23 @@
           <div class="fclass">GATE READS</div>
         </div>
         <div class="frow gr">
+          <div class="fname">ruleId</div>
+          <div class="fdesc">The one identity field the reviewer chooses rather than copies: one id from a bounded catalogue of five families (<code>tools/config/review-rules.json</code>). The validator rejects an id that is not in the catalogue, and rejects an id used on the wrong axis &mdash; a rejected report is rejected whole. Feeds <code>id</code> below, together with <code>axis</code> and <code>file</code>.</div>
+          <div class="fclass">GATE READS &middot; IDENTITY</div>
+        </div>
+        <div class="frow gr">
+          <div class="fname">source</div>
+          <div class="fdesc">The standard's path, the issue reference, or <code>smell-baseline</code> &mdash; copied from the citation, not composed by the model. Left the identity tuple when the bounded <code>ruleId</code> took its place (issue #724); still read, not merely shown &mdash; a <code>smell-baseline</code> source alone still caps a finding at should-fix, belt-and-braces with the catalogue's own cap.</div>
+          <div class="fclass">GATE READS &middot; CAPS SEVERITY</div>
+        </div>
+        <div class="frow do">
+          <div class="fname">rule</div>
+          <div class="fdesc">Names the requirement the citation applies &mdash; prose the reviewer composes fresh every run. Not hashed: a single Unicode arrow degrading to ASCII once minted a brand-new finding id here, which is why it left the tuple (issue #718).</div>
+          <div class="fclass">DISPLAY ONLY &middot; NOT HASHED</div>
+        </div>
+        <div class="frow gr">
           <div class="fname">id</div>
-          <div class="fdesc">Derived from <code>axis + source + rule + file</code>, line excluded &mdash; never written by the reviewer. Used to diff new / persisting / resolved findings against the previous artifact.</div>
+          <div class="fdesc">Derived from <code>axis + ruleId + file</code>, line and <code>rule</code> excluded &mdash; never written by the reviewer. Used to diff new / persisting / resolved findings against the previous artifact, and only comparable within one report schema version.</div>
           <div class="fclass">GATE READS &middot; DERIVED</div>
         </div>
         <div class="frow do">
@@ -1314,6 +1389,71 @@
           <div class="fclass">DISPLAY ONLY</div>
         </div>
       </div>
+      <p class="small muted" style="margin-top: 12px">
+        Two <i>different</i> rules cited in the same file are two identities
+        now: the bounded <code>ruleId</code> discriminates where a free-form
+        <code>source</code> used to collapse them (issue #724). What remains
+        a repeat is one rule applied twice &mdash; which is what a repeat
+        should mean. Two residues are worth naming honestly, both still
+        ordered by line and both still costing churn rather than lost
+        feedback: several unlocated <code>spec</code> findings of the same
+        kind all hash the empty <code>file</code>, so they still collide with
+        each other; and several <code>standard-other</code> findings in one
+        file do the same, because the fallback is what a reviewer reaches for
+        when it cannot name the rule. The disambiguator orders those repeats
+        by line and renumbers on the next run, so fixing one of two colliding
+        findings moves the survivor onto the vacated id &mdash; <b>churn, a
+        resolve plus a repost of feedback that is still on the report</b>,
+        not the silent loss the old four-field tuple produced.
+      </p>
+      <div class="callout" style="margin-top: 16px">
+        <div class="ctitle">The reading test &mdash; for finding identity</div>
+        <blockquote>
+          &ldquo;If your change only reworks what the reviewer writes &mdash;
+          a <code>rule</code> sentence, a <code>summary</code> &mdash; no
+          finding changes identity. If it touches <code>axis</code>, the
+          chosen <code>ruleId</code>, or the file a finding is located at,
+          every open thread for that finding is orphaned.&rdquo;
+        </blockquote>
+      </div>
+      <h3 class="small" style="margin: 18px 0 4px">
+        What <code>ruleId</code> is allowed to say
+      </h3>
+      <p class="small muted" style="margin: 0 0 4px">
+        A closed vocabulary of five families
+        (<code>tools/config/review-rules.json</code>), each bounded by
+        something that already exists &mdash; not colour alone marks them
+        apart; the border style does.
+      </p>
+      <div class="families">
+        <div class="family smell">
+          <h4>smell</h4>
+          <p>One id per Fowler smell the Standards brief pastes in full. Every <code>smell-*</code> id caps at should-fix.</p>
+        </div>
+        <div class="family obligation">
+          <h4>obligation</h4>
+          <p>One id per entry of <code>tools/config/review-obligations.json</code>, prefixed <code>obligation-</code>. The gate keeps the two lists equal.</p>
+        </div>
+        <div class="family reach-through">
+          <h4>reach-through</h4>
+          <p>The two whole-tree checks the Standards brief runs instead of reading only the diff.</p>
+        </div>
+        <div class="family standard">
+          <h4>standard</h4>
+          <p>One id per documented repo standard. Every entry cites the document that holds the rule; the gate asserts it exists.</p>
+        </div>
+        <div class="family spec">
+          <h4>spec</h4>
+          <p>Exactly three: a requirement missing or partial, behaviour nobody asked for, a requirement implemented wrong.</p>
+        </div>
+      </div>
+      <p class="fallbacknote">
+        <code>standard-other</code> is the only entry marked
+        <code>fallback: true</code>, an exception rather than a sixth family
+        &mdash; the catalogue permits at most one fallback per family, and
+        the <code>spec</code> axis has none. A reviewer that cannot name its
+        finding still has to be able to file it.
+      </p>
     </div>
   </section>
 
@@ -1468,9 +1608,13 @@
       <p class="small muted">
         One summary comment, edited in place per run &mdash; two sections,
         each sorted by severity within itself and never across (ADR 0071 item
-        7), nits folded, a new/persisting/resolved strip against the previous
-        artifact, and inline comments only for <code>blocking</code> findings
-        that carry a <code>location</code>.
+        7), nits folded, and inline comments only for <code>blocking</code>
+        findings that carry a <code>location</code>. The strip has two
+        forms: a new/persisting/resolved diff against the previous artifact,
+        but only when that artifact's <code>schemaVersion</code> matches this
+        run's <code>REPORT_SCHEMA_VERSION</code> (currently <code>3</code>);
+        otherwise the second form below, because ids minted under a different
+        schema version are not comparable at all.
       </p>
       <div class="mockcomment">
         <span class="tag">Illustrative &mdash; not a live comment</span>
@@ -1493,6 +1637,28 @@
           <span>resolved: 2</span>
         </div>
       </div>
+      <div class="mockcomment" style="margin-top: 12px">
+        <span class="tag"
+          >Illustrative &mdash; the other form, when
+          <code>schemaVersion</code> does not match</span
+        >
+        <p class="small" style="margin: 8px 0 0; font-family: var(--mono)">
+          No comparable previous run: the stored report is report schema
+          <code>2</code>, this run is <code>3</code>.<br />
+          - finding identities are only comparable within a schema version,
+          so nothing below is marked new, persisting, or resolved.
+        </p>
+      </div>
+      <p class="small muted" style="margin-top: 12px">
+        The strip is not the only reader the version scopes: an inline
+        thread's marker carries it too, as
+        <code>&lt;!-- code-review:finding:v3:&lt;id&gt; --&gt;</code>
+        (currently <code>3</code>). A thread minted at an earlier version is
+        neither reused nor resolved &mdash; it is left for a human, exactly
+        like a human's own thread &mdash; because without that, the version
+        bump would have stopped the strip's mass auto-resolve and delivered
+        the same mass resolve through the publisher instead.
+      </p>
     </div>
   </section>
 
@@ -1540,7 +1706,15 @@
     "findingEvidenceKinds": ["executed", "cited", "inferred"],
     "findingAxes": ["standards", "spec"],
     "verdictValues": ["request-changes", "comment", "approve"],
-    "findingIdentityFields": ["axis", "source", "rule", "file"],
+    "findingIdentityFields": ["axis", "ruleId", "file"],
+    "ruleFamilies": [
+      "smell",
+      "obligation",
+      "reach-through",
+      "standard",
+      "spec"
+    ],
+    "reportSchemaVersion": 3,
     "requiredCheckContexts": [
       "Authoritative Lockfile Policy",
       "Secure Install Review",

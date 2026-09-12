@@ -6,12 +6,19 @@
  *
  * A case names a real commit range from this repository's history and the
  * findings expected in a report about that range. An expected finding is
- * the same tuple a finding id is hashed from — axis, source, rule, file —
- * but source and rule are patterns and file is a set: the reviewer phrases
- * a rule in the source's words, and the same defect is fairly located at
- * more than one of the files involved. Recall is matched over expected. A
- * finding that matches an expected tuple also reports whether its id would
- * have matched exactly, so the strict ADR reading stays visible.
+ * axis, source, rule, and file, where source and rule are patterns and file
+ * is a set: the reviewer phrases a rule in the source's words, and the same
+ * defect is fairly located at more than one of the files involved. `rule` is
+ * a matching pattern only — it left the identity tuple in issue #718 because
+ * the reviewer rewords it every run. Matching stays on those patterns: a case
+ * is a historical measurement, and tightening it to one exact id would score
+ * a reviewer that named the defect defensibly differently as a miss.
+ *
+ * The strict-tuple annotation is the part that must track the tuple, because
+ * it claims the validator's own hash would have matched. Since issue #724 that
+ * hash is axis + ruleId + file, so an expectation says whether it is literal
+ * enough to be a tuple by pinning `ruleId` to one catalogue id; an expectation
+ * that pins none is simply never strict. Recall is matched over expected.
  *
  * Everything here is pure; `score-golden-case.mjs` reads files and exits.
  */
@@ -20,6 +27,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { CASE_TIERS, GOLDEN_SET_PATH } from './golden-tiers.mjs';
+import { RULES_DISPLAY_PATH, ruleById } from './rules.mjs';
 import { FINDING_AXES, FINDING_SEVERITIES, findingId } from './schema.mjs';
 
 // The tier vocabulary and the set's location are declared once, in the
@@ -29,7 +37,7 @@ import { FINDING_AXES, FINDING_SEVERITIES, findingId } from './schema.mjs';
 // only one of two hand-typed lists would let the filter accept a case the
 // validator rejects — the same disagreement the single filter removed.
 export const REVIEW_GOLDEN_SET_PATH = join(...GOLDEN_SET_PATH.split('/'));
-export const GOLDEN_SET_SCHEMA_VERSION = 3;
+export const GOLDEN_SET_SCHEMA_VERSION = 4;
 
 /**
  * A case's tier decides how often it is replayed (ADR 0072).
@@ -115,6 +123,14 @@ export function assertGoldenSet(set, source = 'golden set') {
       compile(e.source, w);
       if (typeof e.rule !== 'string') fail(`${w}: rule pattern missing`);
       compile(e.rule, w);
+      // Optional, and a literal rather than a pattern: it is hashed, not
+      // matched. An id the catalogue does not carry could never be minted by
+      // the validator, so an expectation naming one would annotate `strict`
+      // false for ever and read as a reviewer that keeps missing the tuple.
+      if (e.ruleId !== undefined) {
+        if (typeof e.ruleId !== 'string' || !ruleById(e.ruleId))
+          fail(`${w}: ruleId ${e.ruleId} is not in ${RULES_DISPLAY_PATH}`);
+      }
       if (!Array.isArray(e.files) || e.files.length === 0)
         fail(`${w}: files must name at least one path`);
       if (e.minSeverity && !FINDING_SEVERITIES.includes(e.minSeverity))
@@ -125,30 +141,58 @@ export function assertGoldenSet(set, source = 'golden set') {
     if (typeof c.minRecall !== 'number' || c.minRecall < 0 || c.minRecall > 1)
       fail(`${where}: minRecall must be between 0 and 1`);
   }
-  // Retired cases are kept, not deleted. A case leaves the replay when it turns
-  // out to be unwinnable rather than hard — most often because the incident was
-  // fixed by adding a gate whose defect the reviewer is told not to report
-  // (ADR 0074: a wired gate suppresses; a checker nothing runs does not).
-  // Deleting such a case loses the reason and invites the next person to add it
-  // back; the id stays reserved and the reason stays readable.
+  // A case leaves `cases` for one of two reserved buckets, and both are kept,
+  // not deleted, so the id cannot be silently re-added. Retirement says a case
+  // cannot be won: a wired gate already suppresses its defect (ADR 0074), so it
+  // carries `reason`. Parking says the opposite — a case is merely hard, still
+  // never caught, with no reason to think it unwinnable — so filing it as
+  // retired would be a lie in the field that state exists to keep honest, and
+  // it carries `reentryCondition` instead: not why the case cannot be won, but
+  // the written, checkable fact that returns it to `cases`. The shape the two
+  // buckets share is asserted by one helper so a field added to one cannot
+  // drift from the other.
+  const assertReservedEntry = (
+    entry,
+    bucket,
+    narrativeField,
+    narrativeMustSay,
+  ) => {
+    const where = `${bucket} ${entry.id ?? '(no id)'}`;
+    if (typeof entry.id !== 'string' || !ID.test(entry.id))
+      fail(`${where}: id must be a lowercase slug`);
+    if (ids.has(entry.id))
+      fail(`${entry.id} is already a case, retired, or parked entry`);
+    ids.add(entry.id);
+    if (typeof entry.title !== 'string' || !entry.title)
+      fail(`${where}: no title`);
+    if (typeof entry.incident !== 'string' || !entry.incident)
+      fail(`${where}: incident must cite the ADR or issue it comes from`);
+    if (typeof entry[narrativeField] !== 'string' || !entry[narrativeField])
+      fail(`${where}: ${narrativeField} must ${narrativeMustSay}`);
+    if (entry.base !== undefined && !SHA.test(entry.base))
+      fail(`${where}: base must be a full 40-hex SHA`);
+    if (entry.head !== undefined && !SHA.test(entry.head))
+      fail(`${where}: head must be a full 40-hex SHA`);
+  };
+  if (set.parked !== undefined) {
+    if (!Array.isArray(set.parked)) fail('parked must be an array');
+    for (const p of set.parked)
+      assertReservedEntry(
+        p,
+        'parked',
+        'reentryCondition',
+        'say what returns this case to cases',
+      );
+  }
   if (set.retired !== undefined) {
     if (!Array.isArray(set.retired)) fail('retired must be an array');
-    for (const r of set.retired) {
-      const where = `retired ${r.id ?? '(no id)'}`;
-      if (typeof r.id !== 'string' || !ID.test(r.id))
-        fail(`${where}: id must be a lowercase slug`);
-      if (ids.has(r.id)) fail(`${r.id} is both a case and retired`);
-      ids.add(r.id);
-      if (typeof r.title !== 'string' || !r.title) fail(`${where}: no title`);
-      if (typeof r.incident !== 'string' || !r.incident)
-        fail(`${where}: incident must cite the ADR or issue it comes from`);
-      if (typeof r.reason !== 'string' || !r.reason)
-        fail(`${where}: reason must say why the case cannot be won`);
-      if (r.base !== undefined && !SHA.test(r.base))
-        fail(`${where}: base must be a full 40-hex SHA`);
-      if (r.head !== undefined && !SHA.test(r.head))
-        fail(`${where}: head must be a full 40-hex SHA`);
-    }
+    for (const r of set.retired)
+      assertReservedEntry(
+        r,
+        'retired',
+        'reason',
+        'say why the case cannot be won',
+      );
   }
   return set;
 }
@@ -158,10 +202,35 @@ const severityRank = (s) => FINDING_SEVERITIES.indexOf(s);
 const atLeast = (severity, min) =>
   !min || severityRank(severity) <= severityRank(min);
 
+/**
+ * Did the finding name the rule the expectation is about? Two ways, and either
+ * is enough.
+ *
+ * The prose patterns are the historical way and stay, for the reason the module
+ * header gives: a case is a historical measurement, and requiring one exact id
+ * would score a reviewer that named the defect defensibly differently as a miss.
+ *
+ * The pinned `ruleId` is the second way, added with the bounded catalogue
+ * (issue #724). It is a widening, never a tightening: a reviewer that picked the
+ * very id the expectation pins has named the rule exactly, and it would be
+ * perverse to score that a miss because its `source` or `rule` wording drifted
+ * off a keyword alternation. That drift is not hypothetical — rewording is what
+ * took `rule` out of the identity tuple in issue #718 — and leaving recall to
+ * rest on it alone is what makes the free-form text decide a measurement it is
+ * not supposed to decide (issue #724: the rule text feeds no decision).
+ *
+ * `strict` stays meaningful because this is not what it reads: matching never
+ * requires the id, so an expectation can still be matched loosely and annotated
+ * not-strict, which is the distinction the annotation exists to report.
+ */
+const namesTheRule = (expected, finding) =>
+  (expected.ruleId !== undefined && finding.ruleId === expected.ruleId) ||
+  (compile(expected.source).test(finding.source) &&
+    compile(expected.rule).test(finding.rule));
+
 const matches = (expected, finding) =>
   finding.axis === expected.axis &&
-  compile(expected.source).test(finding.source) &&
-  compile(expected.rule).test(finding.rule) &&
+  namesTheRule(expected, finding) &&
   expected.files.includes(finding.location?.file ?? '') &&
   atLeast(finding.severity, expected.minSeverity);
 
@@ -181,16 +250,18 @@ export const scoreCase = (goldenCase, normalized) => {
       continue;
     }
     used.add(hit.id);
-    // Would the strict tuple hash have matched? Only when the expected
-    // patterns are literal enough to be a tuple themselves.
+    // Would the strict tuple hash have matched? Only when the expectation is
+    // literal enough to be a tuple itself, which since issue #724 means it
+    // pins the `ruleId` the validator hashes. Recomputing this from the
+    // finding's own id would make the claim circular and always true.
     const strict =
+      expected.ruleId !== undefined &&
       hit.id ===
-      findingId({
-        axis: expected.axis,
-        source: expected.source,
-        rule: expected.rule,
-        location: { file: hit.location.file },
-      });
+        findingId({
+          axis: expected.axis,
+          ruleId: expected.ruleId,
+          location: { file: hit.location.file },
+        });
     matched.push({ expected: expected.id, finding: hit.id, strict });
   }
   const recall = matched.length / goldenCase.expected.length;

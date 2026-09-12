@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   SUMMARY_MARKER,
+  findingIdsIn,
   findingMarker,
   inlineComments,
   planPublication,
@@ -11,12 +12,14 @@ import {
   targetTierLabel,
   threadsToResolve,
 } from './publish.mjs';
+import { REPORT_SCHEMA_VERSION } from './schema.mjs';
 
 const finding = (over = {}) => ({
   id: 'abc123def456',
   axis: 'standards',
   severity: 'blocking',
   summary: 'a thing',
+  ruleId: 'standard-enum-fanout-not-pinned',
   source: 'AGENTS.md',
   rule: 'the rule',
   evidence: {
@@ -112,6 +115,14 @@ test('inline comments: blocking with a location only, and not while a thread is 
   );
   assert.ok(out[0].body.startsWith(findingMarker('abc123def456')));
   assert.match(out[0].body, /\*\*Blocking · Standards\*\*/);
+  // The bounded id is on the inline comment, not just the summary: it is what
+  // a maintainer replying to the thread needs in order to say which rule they
+  // are declining, and it is the field that decides whether the next run
+  // recognises this thread as the same finding (issue #724).
+  assert.match(
+    out[0].body,
+    /Rule: `standard-enum-fanout-not-pinned` — the rule \(AGENTS\.md\)/,
+  );
   assert.match(out[0].body, /Evidence: cited standard: `q`/);
 });
 
@@ -131,6 +142,37 @@ test('threads resolve when their finding is gone, never when it persists or when
     ],
   });
   assert.deepEqual(resolve, ['T2']);
+});
+
+// The other half of the schema bump (issue #718). The renderer's strip is not
+// the only thing that reads an id: the publisher resolves threads by id too,
+// and on the run that changes how ids are derived every stored id is absent.
+// Left ungated, that run would close every open thread on every Pull Request
+// at once — ignored blocking feedback certified as fixed, one last time.
+test('a thread from an earlier report schema version is neither reused nor resolved', () => {
+  const stale = `<!-- code-review:finding:v${REPORT_SCHEMA_VERSION - 1}:aaaaaaaaaaaa --> raised before the bump`;
+  assert.deepEqual(findingIdsIn(stale), []);
+  // Not resolved: this run does not recognise the id, so the thread is a
+  // human's as far as it is concerned.
+  assert.deepEqual(
+    threadsToResolve({
+      findings: [],
+      openThreads: [{ id: 'T1', body: stale }],
+    }),
+    [],
+  );
+  // Not reused either: a live blocking finding still gets its own comment at
+  // the id this version mints, rather than being suppressed by a thread whose
+  // id means something else.
+  const out = inlineComments({
+    findings: [finding()],
+    openThreadBodies: [stale],
+  });
+  assert.deepEqual(
+    out.map((c) => c.id),
+    ['abc123def456'],
+  );
+  assert.ok(out[0].body.startsWith(findingMarker('abc123def456')));
 });
 
 test('previous summaries are marked outdated, never deleted, and only once', () => {

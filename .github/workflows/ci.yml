@@ -541,6 +541,9 @@ jobs:
       - name: Sandcastle sub-agent trace contracts
         run: corepack yarn sandcastle:subagent-trace:test
 
+      - name: Sandcastle spec-anchor contracts
+        run: corepack yarn sandcastle:spec-anchor:test
+
       - name: OpenAPI artifact checker contracts
         run: corepack yarn openapi:artifacts:test
 
@@ -630,6 +633,12 @@ jobs:
       - name: Review checklist checker contracts
         run: corepack yarn review:checklist:test
 
+      - name: Reviewer tool allowlist checker contracts
+        run: corepack yarn review:allowlist:test
+
+      - name: Rule catalogue checker contracts
+        run: corepack yarn review:rules:test
+
       - name: Gate coverage checker contracts
         run: corepack yarn gates:coverage:test
 
@@ -642,6 +651,18 @@ jobs:
       # The checks below also run through `yarn gates:run` in the pre-commit
       # hook (ADR 0043). CI runs each as its own named step instead of the
       # aggregate so a failure is identifiable without opening a log.
+
+      # An instruction the reviewer is refused permission to follow is an
+      # instruction nothing can carry out, and it is not free: run 45's guard
+      # case spent 26 permission denials of an 81-turn budget and wrote no
+      # report at all. This ran CI-only while it still failed on the tree that
+      # introduced it, because the aggregate is what `.husky/pre-commit` calls
+      # and wiring it there sooner would have blocked every commit in the
+      # repository. It has passed since the contradiction was fixed, so it now
+      # sits in `tools/scripts/lib/gate-manifest.mjs` with the rest.
+      - name: Check the reviewer may run what it is told to run
+        run: corepack yarn review:allowlist:check
+
       - name: Check the review checklist against the obligation catalogue
         run: corepack yarn review:checklist:check
 

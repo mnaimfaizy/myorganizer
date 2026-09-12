@@ -32,6 +32,7 @@ on:
       - '.github/workflows/review-golden-replay.yml'
       - 'tools/config/review-golden-set.json'
       - 'tools/config/review-obligations.json'
+      - 'tools/config/review-rules.json'
   workflow_dispatch:
     inputs:
       tier:
@@ -98,8 +99,12 @@ jobs:
           CHANGED="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" \
             --paginate --jq '.[].filename')"
           # The brief the guards protect, and the contract that decides
-          # whether a finding of theirs is even accepted.
-          if grep -qE '^(\.agents/skills/code-review/|\.github/actions/code-reviewer/|tools/scripts/review/(schema|validate-review-report)\.mjs$)' <<<"$CHANGED"; then
+          # whether a finding of theirs is even accepted — which since issue
+          # #724 includes the rule catalogue: a finding naming an id the
+          # catalogue does not carry is rejected exactly as a bad severity is,
+          # so narrowing an axis or retiring an id can turn a guard's catch
+          # into a rejected report.
+          if grep -qE '^(\.agents/skills/code-review/|\.github/actions/code-reviewer/|tools/config/review-rules\.json$|tools/scripts/review/(schema|rules|validate-review-report)\.mjs$)' <<<"$CHANGED"; then
             echo 'tiers=all' >> "$GITHUB_OUTPUT"
             echo 'the brief or the finding contract changed: guards run too'
           else
@@ -195,9 +200,15 @@ jobs:
       # also runs code-review.yml. Eight at once exceeded the subscription's
       # session limit and lost a whole run to failures in under a minute
       # (docs/research/2026-09-07-golden-replay-baseline.md, Limits). Four
-      # leaves headroom for the ordinary review running alongside, and holds
-      # whether this run is the frontier alone or every tier.
-      max-parallel: 4
+      # still locked the maintainer out of their own session for the rest of
+      # the five-hour window (docs/review/golden-replay-results.md, "What it
+      # does measure: the budget"; run 34176461268). A replay competes with
+      # the maintainer for the same token, on the same window, so it does not
+      # get to spend it on its own schedule: cases now run one at a time, and
+      # ADR 0072's amendment moves the second and third repetition of a
+      # measurement to separate dispatches on separate days rather than
+      # squeezing all three into one.
+      max-parallel: 1
       matrix:
         case: ${{ fromJSON(needs.cases.outputs.matrix) }}
     env:
@@ -260,13 +271,30 @@ jobs:
 
       # A case that never finished is not a result. It has to fail — there is
       # no report to score — but it must never be written into the record as a
-      # miss, because nothing about the reviewer was measured. Two ways to not
-      # finish: the subscription rate limit, and the turn ceiling. Run 45 hit
-      # the second on the guard case and the message below said only "no valid
-      # report", which reads exactly like a miss and would have demoted a tier
-      # under ADR 0072.
+      # miss, because nothing about the reviewer was measured. Three ways to
+      # not finish: the subscription rate limit, the turn ceiling on a
+      # genuinely hard case, and the turn ceiling because the allowlist
+      # refused a permission the reviewer's own instructions told it to use —
+      # a prevented measurement, and the only one of the three that is a bug
+      # someone can fix. Run 45 hit the second on the guard case and the
+      # message below said only "no valid report", which reads exactly like a
+      # miss and would have demoted a tier under ADR 0072.
+      #
+      # A validated report is checked first and wins outright: dispatching
+      # both axes before the reviewer's own exploration (the skill's step 3)
+      # means a run cut short partway through often still wrote one, and that
+      # partial report is scored below like any other, not discarded because
+      # the run also hit a ceiling or a lockout along the way.
       - name: Require a validated report
         run: |
+          if [ '${{ steps.reviewer.outputs.validated }}' = 'true' ]; then
+            echo "case ${{ matrix.case }}: a report was written; scoring it as usual"
+            exit 0
+          fi
+          if [ '${{ steps.reviewer.outputs.prevented }}' = 'true' ]; then
+            echo "::error::case ${{ matrix.case }} hit the turn ceiling after being refused a permission its own instructions told it to use; this is a prevented measurement, not a miss — fix the allowlist or the instructions, not the case"
+            exit 1
+          fi
           if [ '${{ steps.reviewer.outputs.turn-exhausted }}' = 'true' ]; then
             echo "::error::case ${{ matrix.case }} hit the turn ceiling and wrote no report; it measured nothing and is not a miss"
             exit 1
@@ -279,11 +307,9 @@ jobs:
               echo "::error::case ${{ matrix.case }} produced a transcript that could not be read for rate-limit events, so whether it measured anything is unknown; do not record it as a miss"
               exit 1 ;;
           esac
-          if [ '${{ steps.reviewer.outputs.validated }}' != 'true' ]; then
-            echo "::error::no valid report for case ${{ matrix.case }} (reviewer step outcome: ${{ steps.reviewer.outputs.reviewer-outcome }})"
-            cat '${{ steps.reviewer.outputs.rejected-file }}' 2>/dev/null || true
-            exit 1
-          fi
+          echo "::error::no valid report for case ${{ matrix.case }} (reviewer step outcome: ${{ steps.reviewer.outputs.reviewer-outcome }})"
+          cat '${{ steps.reviewer.outputs.rejected-file }}' 2>/dev/null || true
+          exit 1
 
       # Recall against the case's expected findings; below the minimum fails
       # this case, and the summary names what was missed and why it mattered.

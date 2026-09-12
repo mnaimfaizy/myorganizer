@@ -32,12 +32,16 @@ const goldenCase = {
   ],
   minRecall: 1,
 };
-const set = { schemaVersion: 3, cases: [goldenCase] };
+const set = { schemaVersion: 4, cases: [goldenCase] };
 
 const finding = (over = {}) => ({
   id: 'abcdefabcdef',
   axis: 'standards',
   severity: 'blocking',
+  // A validated finding always carries one, and the strict-tuple annotation
+  // hashes it. A fixture without it makes that assertion compare two
+  // `undefined`s and pass while the shipped path is broken (issue #724).
+  ruleId: 'standard-enum-fanout-not-pinned',
   source: 'AGENTS.md',
   rule: 'Code fanning out over a domain enum reaches one table',
   location: { file: 'libs/web-vault/src/lib/vault/vaultMigration.ts' },
@@ -64,6 +68,15 @@ test('a well-formed set passes and the committed set loads', () => {
     committed.cases.some((c) => c.tier === 'frontier'),
     'the set has no frontier case left',
   );
+  // The narrowed set is six cases; the never-caught synchronisation case is
+  // parked, not retired, and its id stays reserved with a written condition
+  // for its return rather than a reason it cannot be won.
+  assert.equal(committed.cases.length, 6);
+  assert.ok(committed.parked?.length >= 1, 'the set has no parked case');
+  for (const p of committed.parked) {
+    assert.match(p.incident, /#\d+/, p.id);
+    assert.ok(p.reentryCondition, p.id);
+  }
 });
 
 test('malformed sets are named precisely', () => {
@@ -100,7 +113,44 @@ test('malformed sets are named precisely', () => {
   assert.throws(
     () =>
       assertGoldenSet({ ...set, retired: [{ ...retired, id: goldenCase.id }] }),
-    /both a case and retired/,
+    /already a case, retired, or parked/,
+  );
+  // A parked case keeps its id reserved the same way, but for the opposite
+  // reason retirement does: it is hard, not unwinnable, so it carries a
+  // reentryCondition rather than a reason it cannot be won.
+  const parked = {
+    id: 'sync-bookmarks-without-restore-or-meta-push',
+    title: 'a case that is hard, not unwinnable',
+    incident: 'issues #617 and #589',
+    reentryCondition:
+      'returns when the deferred checklist candidate becomes a real obligation',
+  };
+  assert.equal(assertGoldenSet({ ...set, parked: [parked] }).parked.length, 1);
+  assert.throws(
+    () =>
+      assertGoldenSet({
+        ...set,
+        parked: [{ ...parked, reentryCondition: '' }],
+      }),
+    /reentryCondition/,
+  );
+  assert.throws(
+    () =>
+      assertGoldenSet({ ...set, parked: [{ ...parked, id: goldenCase.id }] }),
+    /already a case, retired, or parked/,
+  );
+  // The collision message is worded generically because a retired id can
+  // collide with a parked one, not only with a case (this used to say "is
+  // both a case and retired" even when the real conflict was with a parked
+  // entry).
+  assert.throws(
+    () =>
+      assertGoldenSet({
+        ...set,
+        parked: [parked],
+        retired: [{ ...retired, id: parked.id }],
+      }),
+    /already a case, retired, or parked/,
   );
   assert.throws(
     bad((s) => delete s.cases[0].tier),
@@ -179,21 +229,74 @@ test('one finding satisfies one expectation, and extras are counted', () => {
   assert.equal(score.pass, false);
 });
 
-test('an exact tuple is reported as strict', () => {
-  const literal = {
+test('an expectation that pins a rule id is reported as strict', () => {
+  const pinned = {
     ...goldenCase,
     expected: [
       {
         ...goldenCase.expected[0],
-        source: 'AGENTS.md',
-        rule: 'Code fanning out over a domain enum reaches one table',
+        ruleId: 'standard-enum-fanout-not-pinned',
       },
     ],
   };
   const f = finding();
   f.id = findingId(f);
-  const score = scoreCase(literal, { findings: [f] });
-  assert.equal(score.matched[0].strict, true);
+  assert.equal(scoreCase(pinned, { findings: [f] }).matched[0].strict, true);
+  // The reviewer named the defect under a different catalogue id: matching
+  // still succeeds on the source and rule patterns, but the validator's tuple
+  // would not have matched, and the annotation must say so.
+  const other = finding({ ruleId: 'standard-missing-focused-test' });
+  other.id = findingId(other);
+  assert.equal(
+    scoreCase(pinned, { findings: [other] }).matched[0].strict,
+    false,
+  );
+  // An expectation that pins nothing is never strict — it is not literal
+  // enough to be a tuple, which is the whole claim the annotation makes.
+  assert.equal(
+    scoreCase(goldenCase, { findings: [f] }).matched[0].strict,
+    false,
+  );
+});
+
+test('a pinned rule id matches on its own, so reworded prose is not a miss', () => {
+  const pinned = {
+    ...goldenCase,
+    expected: [
+      { ...goldenCase.expected[0], ruleId: 'standard-enum-fanout-not-pinned' },
+    ],
+  };
+  // The reviewer picked exactly the pinned id but phrased `source` and `rule`
+  // nothing like the patterns. Rewording is what took `rule` out of the
+  // identity tuple in issue #718; letting it decide recall here would put the
+  // free-form text back in charge of a measurement (issue #724).
+  const reworded = finding({
+    source:
+      'docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md',
+    rule: 'reach the pinned table instead of listing the members again',
+  });
+  assert.equal(scoreCase(pinned, { findings: [reworded] }).pass, true);
+
+  // The widening is not a free pass: a finding that neither pins the id nor
+  // matches the prose is still a miss.
+  const unrelated = finding({
+    ruleId: 'standard-missing-focused-test',
+    source: 'docs/ui/GUIDELINES.md',
+    rule: 'Mysterious Name',
+  });
+  assert.equal(scoreCase(pinned, { findings: [unrelated] }).pass, false);
+
+  // An expectation that pins nothing is unchanged: the prose still decides.
+  assert.equal(scoreCase(goldenCase, { findings: [reworded] }).pass, false);
+});
+
+test('a pinned rule id must exist in the rule catalogue', () => {
+  const copy = JSON.parse(JSON.stringify(set));
+  copy.cases[0].expected[0].ruleId = 'standard-invented-here';
+  assert.throws(
+    () => assertGoldenSet(copy),
+    /ruleId standard-invented-here is not in tools\/config\/review-rules\.json/,
+  );
 });
 
 test('the rendered score names misses with their why', () => {

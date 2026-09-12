@@ -11,7 +11,9 @@
 // are folded. A located finding shows the addressed lines, read from the
 // checkout at the head SHA (`git show`), so the reader sees the hunk without
 // any diff text having passed through a model. With --previous, a strip of
-// new, persisting, and resolved findings is derived from ids.
+// new, persisting, and resolved findings is derived from ids — or, when that
+// artifact was written at another report schema version, a line saying there
+// is no comparable previous run (issue #718).
 //
 // Exit 0 = rendered. Exit 2 = the script could not run, or the input is not
 // a normalized report.
@@ -25,9 +27,12 @@ import {
   AXIS_TITLES,
   FINDING_AXES,
   NormalizedReportSchema,
-  VERDICT_TITLES,
+  REPORT_SCHEMA_VERSION,
   bySeverity,
   formatIssues,
+  isComparableReport,
+  reportSchemaVersionOf,
+  verdictHeading,
 } from './schema.mjs';
 
 /** Most lines of a hunk shown inline; a finding is a pointer, not a file. */
@@ -77,7 +82,7 @@ const renderFinding = (f, { hunks }) => {
     .join(' · ');
   const lines = [
     `- ${head}`,
-    `  - source: \`${f.source}\` — ${f.rule}`,
+    `  - rule: \`${f.ruleId}\` — ${f.rule} (source: \`${f.source}\`)`,
     `  - ${evidenceText(f)}`,
   ];
   if (f.evidence.kind === 'executed' && f.evidence.outputExcerpt) {
@@ -141,6 +146,21 @@ const renderDelta = (current, previous) => {
   ].join('\n');
 };
 
+/**
+ * What the strip says when the stored artifact predates a change to how ids
+ * are derived. Reporting nothing at all would read as a first run; reporting a
+ * diff would announce every finding new and every prior one resolved, which is
+ * the mass auto-resolve the schema bump exists to prevent (issue #718).
+ */
+const renderIncomparable = (previous) => {
+  const version = reportSchemaVersionOf(previous);
+  return [
+    `No comparable previous run: the stored report is report schema \`${version ?? 'unknown'}\`, this run is \`${REPORT_SCHEMA_VERSION}\`.`,
+    '- finding identities are only comparable within a schema version, so nothing below is marked new, persisting, or resolved.',
+    '',
+  ].join('\n');
+};
+
 const worst = (findings) =>
   [...findings].sort(bySeverity)[0]?.severity ?? 'none';
 
@@ -150,7 +170,11 @@ const worst = (findings) =>
  */
 export const renderReport = (raw, previous = null, { hunks = true } = {}) => {
   const report = NormalizedReportSchema.parse(raw);
-  const prior = previous ? NormalizedReportSchema.parse(previous) : null;
+  // A previous report of another vintage is read for its version and nothing
+  // else; parsing it against today's schema would reject a file that is not
+  // wrong, only old.
+  const comparable = previous !== null && isComparableReport(previous);
+  const prior = comparable ? NormalizedReportSchema.parse(previous) : null;
   const specText =
     report.spec.kind === 'none'
       ? 'none (tightened to review:human)'
@@ -160,7 +184,7 @@ export const renderReport = (raw, previous = null, { hunks = true } = {}) => {
     ? ` · ${report.cost.inputTokens} in / ${report.cost.outputTokens} out tokens`
     : '';
   const parts = [
-    `# Code review — ${VERDICT_TITLES[report.verdict]}`,
+    verdictHeading(report.verdict),
     '',
     `- range: \`${report.base.slice(0, 7)}...${report.head.slice(0, 7)}\``,
     `- tier: ${tierText}`,
@@ -170,6 +194,7 @@ export const renderReport = (raw, previous = null, { hunks = true } = {}) => {
     '',
   ];
   if (prior) parts.push(renderDelta(report, prior));
+  else if (previous !== null) parts.push(renderIncomparable(previous));
   const byAxis = Object.fromEntries(
     FINDING_AXES.map((axis) => [
       axis,

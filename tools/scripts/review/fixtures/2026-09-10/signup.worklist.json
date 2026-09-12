@@ -1,0 +1,25 @@
+{
+  "head": "8fb1087f36938f5e8e4631a65cff43b3997ff6db",
+  "selected": [
+    {
+      "id": "slot-injected-props-land-on-the-control",
+      "title": "Injected props land on the control, not on a wrapper",
+      "question": "For each site: name the element that is the direct child of the Slot-based component, state where the injected id, aria-describedby and aria-invalid land, and state whether that element is the focusable control the user types into.",
+      "answerFields": ["slotChild", "propsLandOn", "isFocusableControl"],
+      "citedFields": [{ "field": "slotChild" }],
+      "defect": "isFocusableControl false is a finding.",
+      "defectWhen": { "field": "isFocusableControl", "equals": false },
+      "sites": [
+        {
+          "file": "apps/myorganizer/src/app/(auth)/signup/page.tsx",
+          "line": 232
+        },
+        {
+          "file": "apps/myorganizer/src/app/(auth)/signup/page.tsx",
+          "line": 267
+        }
+      ],
+      "truncated": 0
+    }
+  ]
+}

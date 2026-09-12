@@ -11,6 +11,14 @@
       "reason": "Not a gate. It reports sub-agent model assignments against the published model catalogs and opens a drift issue on a monthly schedule; it asserts nothing about the commit in front of it, and a catalog moving under us is not a reason to fail somebody's unrelated change."
     },
     {
+      "check": "review:escaped:measure",
+      "reason": "Not a gate. It measures the escaped-defect rate over merged history — of the Pull Requests the reviewer passed, how many a later fix names as root cause — so its subject is months of `main`, not the commit in front of it, and there is no threshold a change could cross. It also reads `gh`, which a hook must not depend on. The number is published in docs/review/escaped-defect-rate.md and kept current by running it; its reasoning is a frozen Research Brief."
+    },
+    {
+      "check": "review:noise:measure",
+      "reason": "Not a gate. It measures the effective-false-positive rate over the review's stored report artifacts — per rule, the share of findings raised and still there on the next push — so its subject is weeks of other branches' pushes, not the commit in front of it, and no rule is disabled on the result. It also reads `gh` and downloads artifacts, which a hook must not depend on. The rate is published in docs/review/effective-false-positive-rate.md and kept current by running it; its reasoning is a frozen Research Brief."
+    },
+    {
       "check": "graphify:project-edges",
       "reason": "Not a gate. It benchmarks graphify project-edge extraction and reports timings, so it has no fact to fail on and no threshold a commit could cross. Run it by hand when tuning extraction."
     }
