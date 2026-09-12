@@ -37,8 +37,14 @@
  * (ADR 0014) surfaces as a required revision during review instead of only
  * at commit time.
  *
- * Exit codes: 0 = within budget, 1 = errors or exceeded warning budget,
- * 2 = bad invocation.
+ * Exit codes: 0 = files were inspected and came in within budget, 1 = errors,
+ * exceeded warning budget, or every input fell out of scope, 2 = bad
+ * invocation.
+ *
+ * The last case of 1 is deliberate: a run that inspected nothing printed the
+ * same "0 error(s), 0 warning(s)" as a run that inspected everything, which is
+ * how a whole library sat behind a green checker (#290). 0 now means checks
+ * ran and passed, never that there were no checks to run.
  */
 
 import { existsSync } from 'node:fs';
@@ -63,6 +69,9 @@ const USAGE = `Usage:
   node tools/scripts/check-component-hygiene.mjs --staged [--max-warnings=0]
 
 --max-warnings=0 composes with any mode above, including explicit files.
+
+Exits non-zero when every input is out of scope: a run that checked nothing is
+not a pass.
 
 Runs the mechanical (non-judgment) ComponentReviewer checklist items against
 React components in libs/web-ui/ (UI Primitives), libs/web/pages/ (Feature
@@ -848,10 +857,13 @@ async function main() {
   const results = [];
   let errors = 0;
   let warnings = 0;
+  let inspected = 0;
+  let skipped = 0;
 
   for (const file of files) {
     const scope = scopeOf(file);
     if (!scope) {
+      skipped += 1;
       results.push({
         file,
         skipped: 'not a UI Primitive, Vault UI Component, or Feature Component',
@@ -859,6 +871,7 @@ async function main() {
       });
       continue;
     }
+    inspected += 1;
     let findings;
     try {
       findings = await inspect(file, scope, barrels);
@@ -883,6 +896,40 @@ async function main() {
     );
   } else {
     reportFindings(results, 'Component hygiene');
+  }
+
+  // A run that inspected nothing is almost always an invocation mistake, and
+  // it is the exact failure this checker was found to have: every file fell
+  // out of scope, the per-file SKIPPED lines scrolled past, and the summary
+  // read "0 error(s), 0 warning(s)" — indistinguishable from a clean pass
+  // (#290). The summary line already says so; so must the exit code, because
+  // callers branch on the exit code and agents quote the last line.
+  //
+  // A mixed run is untouched: it exits on the merits of what it did check,
+  // because there a skip is the scope filter working rather than a mistake.
+  // `--staged` never reaches here with zero inspected files — it filters by
+  // scope while selecting, and an empty selection returns above with 0, since
+  // "no components staged" is a legitimate state, not a bad invocation.
+  //
+  // The message goes to stderr rather than into the JSON, whose top-level
+  // keys are a published contract; a JSON consumer already sees every result
+  // carrying `skipped`.
+  //
+  // Both conjuncts are load-bearing. `inspected === 0` alone is exact today,
+  // because an empty file list already returned above and every file then
+  // increments exactly one of the two counters — but if that early return ever
+  // moves, `skipped > 0` is what stops this branch from firing on no input at
+  // all and reporting "all 0 file(s) were out of scope".
+  if (inspected === 0 && skipped > 0) {
+    process.stderr.write(
+      `Component hygiene: nothing was checked — all ${skipped} file(s) were out of scope. ` +
+        'This is not a pass. Point the checker at a UI Primitive ' +
+        '(libs/web-ui/src/lib/components/), a Vault UI Component ' +
+        '(libs/web-vault-ui/src/lib/), or a Feature Component ' +
+        '(libs/web/pages/<route>/src/) — see docs/ui/GUIDELINES.md §1.\n',
+    );
+    process.exitCode = 1;
+    return;
   }
 
   process.exitCode = errors > 0 || (strictWarnings && warnings > 0) ? 1 : 0;
