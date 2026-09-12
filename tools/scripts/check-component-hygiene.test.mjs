@@ -669,13 +669,97 @@ test('summary distinguishes a run that skipped everything from a clean run', (t)
 
   const result = runChecker(workspace, file);
 
-  assert.equal(result.status, 0);
   // "0 error(s), 0 warning(s)" alone is what let a whole unchecked library
-  // look green. The summary has to say nothing was inspected.
+  // look green. The summary has to say nothing was inspected, and the exit
+  // code has to agree with it: a run that checked nothing did not pass.
+  assert.equal(result.status, 1);
   assert.match(
     result.stdout,
     /0 file\(s\) inspected, 1 skipped as out of scope/,
   );
+  assert.match(result.stderr, /nothing was checked/i);
+});
+
+test('all-skipped run in JSON mode exits 1 without changing the top-level keys', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/some-other-lib/src/Thing.tsx',
+    ['export function Thing() {', '  return <div>hi</div>;', '}', ''].join(
+      '\n',
+    ),
+  );
+
+  const result = runChecker(workspace, '--json', file);
+
+  assert.equal(result.status, 1);
+  // The exit code carries the signal; the JSON shape is a published contract
+  // and a consumer can already see every result carrying `skipped`.
+  const parsed = JSON.parse(result.stdout);
+  assert.deepEqual(Object.keys(parsed), ['errors', 'warnings', 'results']);
+  assert.equal(parsed.results.length, 1);
+  assert.ok(parsed.results[0].skipped);
+  assert.match(result.stderr, /nothing was checked/i);
+});
+
+test('mixed run with one clean in-scope file exits 0 despite a skipped file', (t) => {
+  const workspace = createWorkspace(t);
+  const skippedFile = writeFixture(
+    workspace,
+    'libs/some-other-lib/src/Thing.tsx',
+    ['export function Thing() {', '  return <div>hi</div>;', '}', ''].join(
+      '\n',
+    ),
+  );
+  const checkedFile = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/CleanComponent.tsx',
+    [
+      "import * as React from 'react';",
+      '',
+      'export function CleanComponent() {',
+      '  return <div>clean</div>;',
+      '}',
+      '',
+    ].join('\n'),
+  );
+
+  const result = runChecker(workspace, skippedFile, checkedFile);
+
+  assert.equal(result.status, 0);
+  assert.doesNotMatch(result.stderr, /nothing was checked/i);
+});
+
+test('mixed run exits on the merits of the file it did check', (t) => {
+  const workspace = createWorkspace(t);
+  const skippedFile = writeFixture(
+    workspace,
+    'libs/some-other-lib/src/Thing.tsx',
+    ['export function Thing() {', '  return <div>hi</div>;', '}', ''].join(
+      '\n',
+    ),
+  );
+  const checkedFile = writeFixture(
+    workspace,
+    'libs/web-ui/src/lib/components/broken/broken.tsx',
+    [
+      "import * as React from 'react';",
+      '',
+      'const Broken = React.forwardRef<HTMLDivElement, { label: string }>(',
+      '  ({ label }, ref) => <div ref={ref}>{label}</div>,',
+      ');',
+      '',
+      'export { Broken };',
+      '',
+    ].join('\n'),
+  );
+
+  const result = runChecker(workspace, skippedFile, checkedFile);
+
+  assert.equal(result.status, 1);
+  // Failing for its own reason, not for having skipped anything.
+  assert.match(result.stdout, /forwardref-displayname/);
+  assert.doesNotMatch(result.stderr, /nothing was checked/i);
 });
 
 function exportBasenameFindings(workspace, file) {
