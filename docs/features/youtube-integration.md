@@ -176,8 +176,8 @@ above. Existing deployments must update their cron entries — see below.
 
 A **Sync Run** is one attempt to refresh a User's Followed Channels and the Cached
 Uploads of their Enabled Channels. At most one is live per User, whatever started
-it — `PUT /subscriptions/sync`, the sync worker, or the digest worker, all of which
-funnel through `YouTubeSyncService.syncVideosForUserWithStatus`. The run is claimed
+it — `PUT /subscriptions/sync` or the cron sync worker, both of which funnel
+through `YouTubeSyncService.syncVideosForUserWithStatus`. The run is claimed
 there with an optimistic `updateMany`; losing the claim is a normal outcome and
 returns the live run's status rather than an error.
 

@@ -377,32 +377,15 @@ class YouTubeSyncService {
     // Discovery and the video phase are two phases of one Sync Run, not two runs.
     // When manualRefresh claims and marks 'discovering', it passes claimedAt so this method
     // skips re-claiming and transitions to 'running' with the same run stamp.
-    // Worker and digest paths claim here since they have only one phase.
+    // The cron sync worker claims here since it has only one phase.
     const attemptAt = options.claimedAt ?? new Date();
 
     if (!options.claimedAt) {
-      // Worker and digest paths: claim the Sync Run atomically (ADR 0080 decision 4).
+      // Cron sync worker path: claim the Sync Run atomically (ADR 0080 decision 4).
       // If the claim fails, a concurrent run is already live — return its status without doing work.
-      const runClaim = await this.prisma.youTubeIntegration.updateMany({
-        where: {
-          userId,
-          OR: [
-            { lastSyncStatus: { notIn: ['running', 'discovering'] } },
-            {
-              lastSyncAttemptAt: {
-                lt: new Date(attemptAt.getTime() - RUN_TTL_MS),
-              },
-            },
-          ],
-        },
-        data: {
-          lastSyncAttemptAt: attemptAt,
-          lastSyncStatus: 'running',
-          lastSyncError: null,
-        },
-      });
+      const claimed = await this.claimSyncRun(userId, attemptAt, 'running');
 
-      if (runClaim.count !== 1) {
+      if (!claimed) {
         // A Sync Run is already live — return its current status without doing any work.
         // This is a normal outcome, not an error.
         return {
@@ -577,22 +560,9 @@ class YouTubeSyncService {
     try {
       // Claim the Sync Run atomically, marking it 'discovering' before paginating subscriptions.
       // If the claim fails, a concurrent run is already live — return its status.
-      const runClaim = await this.prisma.youTubeIntegration.updateMany({
-        where: {
-          userId,
-          OR: [
-            { lastSyncStatus: { notIn: ['running', 'discovering'] } },
-            { lastSyncAttemptAt: { lt: new Date(now.getTime() - RUN_TTL_MS) } },
-          ],
-        },
-        data: {
-          lastSyncAttemptAt: now,
-          lastSyncStatus: 'discovering',
-          lastSyncError: null,
-        },
-      });
+      const claimed = await this.claimSyncRun(userId, now, 'discovering');
 
-      if (runClaim.count !== 1) {
+      if (!claimed) {
         // A Sync Run is already live — return its current status without doing work.
         return {
           subscriptionsSynced: 0,
@@ -1158,6 +1128,42 @@ class YouTubeSyncService {
     await this.prisma.youTubeVideo.deleteMany({
       where: { userId, channelId: { in: channelIds } },
     });
+  }
+
+  /**
+   * Atomically claim a Sync Run with the given status and timestamp.
+   *
+   * Returns true if the claim was won (exactly one row updated), false if a concurrent
+   * run is already live and the claim was lost (zero rows updated).
+   *
+   * This is the single place the run-claim predicate (and therefore RUN_TTL_MS)
+   * lives, ensuring it stays in sync across all call sites (ADR 0080 decision 4).
+   */
+  private async claimSyncRun(
+    userId: string,
+    at: Date,
+    status: 'running' | 'discovering',
+  ): Promise<boolean> {
+    const runClaim = await this.prisma.youTubeIntegration.updateMany({
+      where: {
+        userId,
+        OR: [
+          { lastSyncStatus: { notIn: ['running', 'discovering'] } },
+          {
+            lastSyncAttemptAt: {
+              lt: new Date(at.getTime() - RUN_TTL_MS),
+            },
+          },
+        ],
+      },
+      data: {
+        lastSyncAttemptAt: at,
+        lastSyncStatus: status,
+        lastSyncError: null,
+      },
+    });
+
+    return runClaim.count === 1;
   }
 
   private async recordSyncState(

@@ -85,7 +85,7 @@ client stop waiting for a response it does not need.
    complete.
 
 4. **One Sync Run per User at a time, claimed atomically where the triggers converge.** Manual
-   refresh, the cron worker, and the digest service all call
+   refresh and the cron sync worker both call
    `YouTubeSyncService.syncVideosForUserWithStatus`. Two runs for one User write the same channel
    rows with different stamps, so the derived processed count falls as the later run overwrites
    channels the earlier one finished — the progress bar runs backwards. The unconditional write of
@@ -114,8 +114,9 @@ client stop waiting for a response it does not need.
 - The polling loop's termination condition is provably reachable, because decision 3 guarantees the
   status leaves `running` within the TTL. No client-side safety timer is needed, and a client that
   invented one would disagree with the server.
-- The guard in decision 4 covers the digest service, which also syncs and which nothing previously
-  counted as a racer.
+- The guard in decision 4 covers the cron sync worker, which can reach a User mid-manual-refresh
+  and which nothing previously counted as a racer. The digest worker is not one: it reads already
+  Cached Uploads and never calls the sync service.
 - A Sync Run still cannot survive a process restart, and the honest report of that is an Interrupted
   Sync rather than a resumption. Making user-initiated runs genuinely durable means the queue this
   ADR rejects, and would need the cron budget to change first.
