@@ -225,21 +225,75 @@ describe('YouTubePageClient', () => {
     expect(screen.getByText(/Last synced/)).toHaveTextContent(/Last synced/);
   });
 
-  it('shows error after failed refresh and Retry triggers sync', async () => {
+  // Helper to create a sync status with test data
+  const statusOf = (
+    overrides: Partial<Record<string, unknown>> = {},
+  ): Record<string, unknown> => ({
+    status: 'success' as const,
+    lastSyncedAt: null,
+    lastSyncAttemptAt: null,
+    lastSyncError: null,
+    retryAt: null,
+    ...overrides,
+  });
+
+  it('triggers sync without blocking on the response', async () => {
     mockUseYouTubeStatus.mockReturnValue({
       connected: true,
       status: 'connected',
       refresh: jest.fn(),
     });
 
-    const trigger = jest.fn().mockResolvedValue({ status: 'failed' });
+    // triggerSync never resolves, simulating a stuck connection
+    const triggerSync = jest.fn(() => new Promise(() => {}));
+    const refresh = jest.fn();
+
     mockUseYouTubeSyncStatus.mockReturnValue({
       status: null,
       loading: false,
-      triggerSync: trigger,
+      triggerSync,
       isCooldownActive: false,
+      refresh,
+    });
+
+    render(<YouTubePageClient />);
+
+    // Click the sync button
+    const syncBtn = screen.getByRole('button', { name: 'Sync from YouTube' });
+    fireEvent.click(syncBtn);
+
+    // Verify triggerSync was called
+    expect(triggerSync).toHaveBeenCalled();
+
+    // Verify refresh was called to start polling
+    expect(refresh).toHaveBeenCalled();
+
+    // UI should be rendered and responsive (no hang waiting for triggerSync)
+    expect(screen.getByText('Videos')).toBeInTheDocument();
+  });
+
+  it('shows refresh failed alert when run completes and refresh fails', async () => {
+    jest.useFakeTimers();
+
+    mockUseYouTubeStatus.mockReturnValue({
+      connected: true,
+      status: 'connected',
       refresh: jest.fn(),
     });
+
+    const syncStatusState: {
+      current: Record<string, unknown> | null;
+    } = { current: null };
+    const syncStatusRefresh = jest.fn();
+    const triggerSync = jest.fn();
+
+    mockUseYouTubeSyncStatus.mockImplementation(() => ({
+      status: syncStatusState.current,
+      loading: false,
+      triggerSync,
+      isCooldownActive: false,
+      refresh: syncStatusRefresh,
+    }));
 
     const subs = {
       ...defaultSubs,
@@ -247,19 +301,72 @@ describe('YouTubePageClient', () => {
     };
     mockUseYouTubeSubscriptions.mockReturnValue(subs);
 
-    render(<YouTubePageClient />);
+    const { rerender } = render(<YouTubePageClient />);
 
-    // Click the subscription sync button
-    const syncBtn = screen.getByRole('button', { name: 'Sync from YouTube' });
-    expect(syncBtn).toBeInTheDocument();
-    await act(async () => {
-      fireEvent.click(syncBtn);
+    // Transition to running
+    syncStatusState.current = statusOf({ status: 'running' });
+    act(() => {
+      rerender(<YouTubePageClient />);
     });
 
-    // Wait for the alert to appear
+    // Allow effects to settle and polling to start
+    await act(async () => {
+      jest.advanceTimersByTime(0);
+    });
+
+    // Transition to terminal (success)
+    syncStatusState.current = statusOf({ status: 'success' });
+    act(() => {
+      rerender(<YouTubePageClient />);
+    });
+
+    // Allow effects to settle and onRunComplete to fire
+    await act(async () => {
+      jest.advanceTimersByTime(0);
+    });
+
+    // Wait for the alert to appear (subs.refresh rejection triggers alert)
     const alert = await screen.findByRole('alert');
-    expect(alert).toHaveTextContent(/Refresh failed/);
-    expect(trigger).toHaveBeenCalled();
+    expect(alert).toHaveTextContent('Refresh failed');
+
+    jest.useRealTimers();
+  });
+
+  it('does not surface error when triggerSync rejects', async () => {
+    mockUseYouTubeStatus.mockReturnValue({
+      connected: true,
+      status: 'connected',
+      refresh: jest.fn(),
+    });
+
+    // triggerSync rejects (504 timeout from long-running connection)
+    const triggerSync = jest.fn().mockRejectedValue(new Error('504 timeout'));
+    const refresh = jest.fn();
+
+    mockUseYouTubeSyncStatus.mockReturnValue({
+      status: null,
+      loading: false,
+      triggerSync,
+      isCooldownActive: false,
+      refresh,
+    });
+
+    render(<YouTubePageClient />);
+
+    // Click sync button
+    const syncBtn = screen.getByRole('button', { name: 'Sync from YouTube' });
+    await act(async () => {
+      fireEvent.click(syncBtn);
+      // Let the promise rejection settle
+      await Promise.resolve();
+    });
+
+    // Verify triggerSync was called
+    expect(triggerSync).toHaveBeenCalled();
+
+    // No error alert should appear (rejection is swallowed)
+    const alert = screen.queryByRole('alert');
+    expect(alert).not.toBeInTheDocument();
   });
 
   it('disables sync and retry when cooldown is active', () => {
@@ -363,6 +470,234 @@ describe('YouTubePageClient', () => {
       render(<YouTubePageClient />);
 
       expect(screen.getByText('Older upload C')).toBeInTheDocument();
+    });
+  });
+
+  describe('claim-wait polling loop (sync run claim detection)', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('polls refreshSync() at 1s intervals until a live status is found', async () => {
+      mockUseYouTubeStatus.mockReturnValue({
+        connected: true,
+        status: 'connected',
+        refresh: jest.fn(),
+      });
+
+      let callCount = 0;
+      const refreshSync = jest.fn(async () => {
+        callCount++;
+        // First call returns non-live, second returns live
+        return callCount === 1
+          ? { status: 'never' }
+          : { status: 'discovering' };
+      });
+
+      const triggerSync = jest.fn().mockResolvedValue(undefined);
+      mockUseYouTubeSyncStatus.mockReturnValue({
+        status: { status: 'never' },
+        loading: false,
+        triggerSync,
+        isCooldownActive: false,
+        refresh: refreshSync,
+      });
+
+      render(<YouTubePageClient />);
+
+      // Click sync to start the claim-wait loop
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Sync from YouTube' }),
+        );
+      });
+
+      // Claim-wait loop calls refreshSync immediately via doPoll()
+      expect(refreshSync).toHaveBeenCalledTimes(1);
+
+      // Advance to trigger the second poll at ~1s
+      await act(async () => {
+        jest.advanceTimersByTime(2000);
+      });
+
+      // Should have called refreshSync at least twice (initial + second after 1s interval)
+      expect(refreshSync).toHaveBeenCalledTimes(2);
+    });
+
+    it('stops polling claim-wait loop once a live status is received from refreshSync()', async () => {
+      mockUseYouTubeStatus.mockReturnValue({
+        connected: true,
+        status: 'connected',
+        refresh: jest.fn(),
+      });
+
+      let callCount = 0;
+      const refreshSync = jest.fn(async () => {
+        callCount++;
+        // Returns live on second call
+        return callCount < 2 ? { status: 'never' } : { status: 'discovering' };
+      });
+
+      const triggerSync = jest.fn().mockResolvedValue(undefined);
+      mockUseYouTubeSyncStatus.mockReturnValue({
+        status: { status: 'never' },
+        loading: false,
+        triggerSync,
+        isCooldownActive: false,
+        refresh: refreshSync,
+      });
+
+      render(<YouTubePageClient />);
+
+      // Click sync to start the claim-wait loop
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Sync from YouTube' }),
+        );
+      });
+
+      // Advance to trigger polling (using 1s increments to ensure timers fire properly)
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+      });
+
+      // Should have called twice (initial call + one at 1s, then finds live status and stops)
+      expect(refreshSync.mock.calls.length).toBe(2);
+
+      // After finding live status, the claim-wait loop stops scheduling new polls
+      // Verify by advancing further and checking call growth
+      const callsAfterPolling = refreshSync.mock.calls.length;
+      await act(async () => {
+        jest.advanceTimersByTime(3000); // Advance another 3s
+      });
+
+      // With the claim-wait loop stopped, no more 1s-interval calls should be added
+      const newCalls = refreshSync.mock.calls.length - callsAfterPolling;
+      expect(newCalls).toBe(0);
+    });
+
+    it('stops polling after 30 second deadline without finding a live status', async () => {
+      mockUseYouTubeStatus.mockReturnValue({
+        connected: true,
+        status: 'connected',
+        refresh: jest.fn(),
+      });
+
+      // Always return non-live
+      const refreshSync = jest.fn(async () => ({ status: 'never' }));
+
+      const triggerSync = jest.fn().mockResolvedValue(undefined);
+      mockUseYouTubeSyncStatus.mockReturnValue({
+        status: { status: 'never' },
+        loading: false,
+        triggerSync,
+        isCooldownActive: false,
+        refresh: refreshSync,
+      });
+
+      render(<YouTubePageClient />);
+
+      // Click sync to start the claim-wait loop
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Sync from YouTube' }),
+        );
+      });
+
+      // Advance through the 30s deadline using smaller increments to ensure all timers fire
+      for (let i = 0; i < 31; i++) {
+        await act(async () => {
+          jest.advanceTimersByTime(1000);
+        });
+      }
+
+      const callsAt31s = refreshSync.mock.calls.length;
+      // The claim-wait loop calls refreshSync immediately, then at 1s intervals.
+      // With 1s intervals, after 31000ms the loop has executed at t=0, 1, 2, ..., 30
+      // That's 31 calls total (then it checks elapsedMs=31000 > 30000 and stops).
+      expect(callsAt31s).toBe(31);
+
+      // The claim-wait loop's 1s polling should stop at 30s.
+      // After 31s, no more 1s-interval calls should be added from the claim-wait loop.
+      await act(async () => {
+        jest.advanceTimersByTime(2000); // Advance 2 more seconds
+      });
+
+      // In the 2s window after the deadline, we expect no calls from the claim-wait loop
+      const newCallsInWindow = refreshSync.mock.calls.length - callsAt31s;
+      expect(newCallsInWindow).toBe(0);
+    });
+
+    it('does not restart the polling loop when sync is clicked while already waiting', async () => {
+      mockUseYouTubeStatus.mockReturnValue({
+        connected: true,
+        status: 'connected',
+        refresh: jest.fn(),
+      });
+
+      const refreshSync = jest.fn(async () => ({ status: 'never' }));
+
+      const triggerSync = jest.fn().mockResolvedValue(undefined);
+      mockUseYouTubeSyncStatus.mockReturnValue({
+        status: { status: 'never' },
+        loading: false,
+        triggerSync,
+        isCooldownActive: false,
+        refresh: refreshSync,
+      });
+
+      render(<YouTubePageClient />);
+
+      // Click sync the first time
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Sync from YouTube' }),
+        );
+      });
+
+      // Advance 1.5s in small increments to ensure timers fire properly
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+      });
+      const callsAfterFirstClick = refreshSync.mock.calls.length;
+
+      // Click again (setWaitingForClaim(true) when already true is a no-op)
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Sync from YouTube' }),
+        );
+      });
+
+      // Advance another 1.5s
+      await act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+      });
+
+      // After 1.5s: calls at t=0 (initial) and t=1000ms (first scheduled poll) = 2 calls.
+      // After another 1.5s (total 3s): call at t=2000ms adds 1 more call.
+      // New calls in second 1.5s window: 1 (the t=2000ms call).
+      const newCalls = refreshSync.mock.calls.length - callsAfterFirstClick;
+      expect(newCalls).toBe(1);
+
+      // At t=3000ms with 1s intervals starting from t=0:
+      // calls execute at t=0, t=1000, t=2000 = 3 calls total (not doubled)
+      expect(refreshSync.mock.calls.length).toBe(3);
     });
   });
 });

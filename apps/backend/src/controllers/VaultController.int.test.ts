@@ -327,8 +327,6 @@ describe('VaultController (HTTP integration)', () => {
 
   describe('ADR 0055: GET /vault/blob/:type If-None-Match handling', () => {
     test('returns 304 with empty body when If-None-Match matches current ETag', async () => {
-      const app = makeApp();
-
       const vaultService = require('../services/VaultService').default;
       const currentEtag = 'W/"abcd1234"';
 
@@ -353,8 +351,6 @@ describe('VaultController (HTTP integration)', () => {
     });
 
     test('returns 200 with full body when If-None-Match does not match current ETag', async () => {
-      const app = makeApp();
-
       const vaultService = require('../services/VaultService').default;
       const currentEtag = 'W/"abcd1234"';
 
@@ -380,8 +376,6 @@ describe('VaultController (HTTP integration)', () => {
     });
 
     test('returns 404 unchanged when If-None-Match is set but blob does not exist', async () => {
-      const app = makeApp();
-
       const vaultService = require('../services/VaultService').default;
 
       vaultService.getBlob.mockResolvedValueOnce({

@@ -774,6 +774,12 @@ export interface GetSyncStatus200Response {
     'retryAt': string | null;
     /**
      * 
+     * @type {ProgressResponse}
+     * @memberof GetSyncStatus200Response
+     */
+    'progress': ProgressResponse | null;
+    /**
+     * 
      * @type {string}
      * @memberof GetSyncStatus200Response
      */
@@ -1218,6 +1224,74 @@ export interface PartialRecordVaultBlobTypeEncryptedBlobV1 {
      * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
      */
     'todos'?: EncryptedBlobV1;
+}
+/**
+ * 
+ * @export
+ * @interface ProgressResponse
+ */
+export interface ProgressResponse {
+    /**
+     * 
+     * @type {number}
+     * @memberof ProgressResponse
+     */
+    'total': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof ProgressResponse
+     */
+    'processed': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof ProgressResponse
+     */
+    'succeeded': number;
+    /**
+     * 
+     * @type {number}
+     * @memberof ProgressResponse
+     */
+    'failed': number;
+    /**
+     * 
+     * @type {string}
+     * @memberof ProgressResponse
+     */
+    'startedAt': string;
+    /**
+     * 
+     * @type {Array<ProgressResponseFailedChannelsInner>}
+     * @memberof ProgressResponse
+     */
+    'failedChannels': Array<ProgressResponseFailedChannelsInner>;
+}
+/**
+ * 
+ * @export
+ * @interface ProgressResponseFailedChannelsInner
+ */
+export interface ProgressResponseFailedChannelsInner {
+    /**
+     * 
+     * @type {string}
+     * @memberof ProgressResponseFailedChannelsInner
+     */
+    'error': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ProgressResponseFailedChannelsInner
+     */
+    'channelTitle': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ProgressResponseFailedChannelsInner
+     */
+    'channelId': string;
 }
 /**
  * 
@@ -1717,6 +1791,12 @@ export interface SyncResponse {
     'retryAt': string | null;
     /**
      * 
+     * @type {ProgressResponse}
+     * @memberof SyncResponse
+     */
+    'progress': ProgressResponse | null;
+    /**
+     * 
      * @type {number}
      * @memberof SyncResponse
      */
@@ -1764,6 +1844,12 @@ export interface SyncStatusResponse {
      * @memberof SyncStatusResponse
      */
     'retryAt': string | null;
+    /**
+     * 
+     * @type {ProgressResponse}
+     * @memberof SyncStatusResponse
+     */
+    'progress': ProgressResponse | null;
 }
 /**
  * 
@@ -1801,6 +1887,12 @@ export interface SyncSubscriptions200Response {
      * @memberof SyncSubscriptions200Response
      */
     'retryAt': string | null;
+    /**
+     * 
+     * @type {ProgressResponse}
+     * @memberof SyncSubscriptions200Response
+     */
+    'progress': ProgressResponse | null;
     /**
      * 
      * @type {number}

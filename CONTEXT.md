@@ -162,6 +162,22 @@ _Avoid_: Viewed, seen, played, completed
 A Cached Upload that is not Watched.
 _Avoid_: Unwatched, unread, unseen
 
+**Sync Run**:
+One attempt to refresh a User's Followed Channels and the Cached Uploads of their Enabled Channels. At most one is live per User, whatever triggered it.
+_Avoid_: sync job, sync task, refresh, background job
+
+**Partial Sync**:
+The outcome of a Sync Run in which at least one Enabled Channel synced and at least one failed, leaving the User with fresh Cached Uploads for some channels and their last good snapshot for the rest.
+_Avoid_: partial failure, degraded sync, incomplete sync
+
+**Interrupted Sync**:
+The outcome of a Sync Run that stopped without reporting one, so what it completed is known and what remained is not.
+_Avoid_: stalled sync, timed-out sync, crashed sync, stuck sync
+
+**Failing Channel**:
+An Enabled Channel whose most recent Sync Run attempt errored. It stays one across Sync Runs until one succeeds for it.
+_Avoid_: broken channel, errored channel, dead channel
+
 **Weekly Digest**:
 The weekly email of long-form Cached Uploads that are still New and inside the Digest Window. Shorts are never part of it.
 _Avoid_: notification email, YouTube newsletter, catch-up mail, sync-and-notify

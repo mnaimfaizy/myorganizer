@@ -60,6 +60,46 @@ components:
         - lastSyncedAt
       type: object
       additionalProperties: false
+    ProgressResponse:
+      properties:
+        total:
+          type: number
+          format: double
+        processed:
+          type: number
+          format: double
+        succeeded:
+          type: number
+          format: double
+        failed:
+          type: number
+          format: double
+        startedAt:
+          type: string
+        failedChannels:
+          items:
+            properties:
+              error:
+                type: string
+              channelTitle:
+                type: string
+              channelId:
+                type: string
+            required:
+              - error
+              - channelTitle
+              - channelId
+            type: object
+          type: array
+      required:
+        - total
+        - processed
+        - succeeded
+        - failed
+        - startedAt
+        - failedChannels
+      type: object
+      additionalProperties: false
     SyncResponse:
       properties:
         status:
@@ -76,6 +116,10 @@ components:
         retryAt:
           type: string
           nullable: true
+        progress:
+          allOf:
+            - $ref: "#/components/schemas/ProgressResponse"
+          nullable: true
         synced:
           type: number
           format: double
@@ -88,6 +132,7 @@ components:
         - lastSyncAttemptAt
         - lastSyncError
         - retryAt
+        - progress
         - synced
         - videosSynced
       type: object
@@ -108,12 +153,17 @@ components:
         retryAt:
           type: string
           nullable: true
+        progress:
+          allOf:
+            - $ref: "#/components/schemas/ProgressResponse"
+          nullable: true
       required:
         - status
         - lastSyncedAt
         - lastSyncAttemptAt
         - lastSyncError
         - retryAt
+        - progress
       type: object
       additionalProperties: false
     VideoResponse:

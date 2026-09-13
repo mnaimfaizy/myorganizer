@@ -37,6 +37,14 @@ ComponentReviewer: Skipped — ComponentBuilder did not complete (Status: BLOCKE
 
    Report its output verbatim. Do not re-derive those checks by reading the file.
 
+   **Read the exit code, not the tally.** The script exits non-zero when every
+   path you gave it fell out of scope, and in that run the summary still reads
+   `0 error(s), 0 warning(s)` — it inspected nothing. A non-zero exit is FAIL
+   even at a zero tally, and the reason is your own invocation: you pointed the
+   checker at something that is not a UI Primitive, a Vault UI Component, or a
+   Feature Component. Fix the paths and rerun; never report that run as PASS
+   (ADR 0014, issue #290).
+
 2. Run `tsc` and `eslint` for the owning project (table below).
 3. If step 1 reported an **error or a warning**, or step 2 failed, stop and
    return `FAIL` with those findings. Do not spend a judgment pass on a
@@ -150,7 +158,7 @@ PASS | PASS_WITH_WARNINGS | FAIL
 
 ### Static Checks
 
-- check-component-hygiene: PASS | FAIL (<N error(s), N warning(s)>)
+- check-component-hygiene: PASS | FAIL (<N error(s), N warning(s)>; FAIL on a non-zero exit even at 0/0 — see the nothing-inspected case above)
 - tsc: PASS | FAIL (<first error with file:line if FAIL>)
 - eslint: PASS | FAIL (<rule violations if FAIL>)
 

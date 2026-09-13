@@ -24,6 +24,7 @@ function statusOf(
     lastSyncAttemptAt: null,
     lastSyncError: null,
     retryAt: null,
+    progress: null,
     ...overrides,
   };
 }
