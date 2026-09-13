@@ -83,7 +83,7 @@ export interface YouTubeSyncStatus {
    * This field is a hand-maintained duplicate of the generated `SyncStatusResponse.progress`
    * in libs/app-api-client and must be kept in step with it.
    */
-  progress?: SyncProgressInfo | null;
+  progress: SyncProgressInfo | null;
 }
 
 export interface YouTubeSyncResult extends YouTubeSyncStatus {

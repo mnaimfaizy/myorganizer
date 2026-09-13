@@ -44,6 +44,7 @@ describe('useSyncRun', () => {
       lastSyncAttemptAt: null,
       lastSyncError: null,
       retryAt: null,
+      progress: null,
       ...overrides,
     };
   }

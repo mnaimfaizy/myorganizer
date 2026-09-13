@@ -492,10 +492,14 @@ export function useYouTubeSyncStatus() {
   const triggerSync = useCallback(async () => {
     setLoading(true);
     try {
-      // Ensure we have the authoritative sync-status from the backend
+      // Fetch the authoritative sync-status for the cooldown guard only.
+      // This read happens before the PUT is sent, so it is always stale — do not publish
+      // it as the component's current status. Publishing a stale observation can
+      // overwrite a live status if another fetch happens to resolve afterward, which
+      // would kill the poll loop. The component will poll for the actual live status
+      // after the PUT is sent.
       const latest =
         await apiFetch<import('../types').YouTubeSyncStatus>('/sync-status');
-      setStatus(latest);
       if (isRetryCooldownActive(latest.retryAt)) {
         throw new Error(
           `Sync disabled until ${formatRetryAt(latest.retryAt) ?? latest.retryAt}`,

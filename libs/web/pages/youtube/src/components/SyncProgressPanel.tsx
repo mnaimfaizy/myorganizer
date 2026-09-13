@@ -131,13 +131,13 @@ export function SyncProgressPanel({
       {reading.failedChannels.length > 0 && (
         <div className="border-t border-secondary pt-3">
           <div className="flex items-start gap-2">
-            <AlertCircle className="h-4 w-4 shrink-0 text-warning mt-0.5" />
+            <AlertCircle className="h-4 w-4 shrink-0 text-destructive mt-0.5" />
             <div className="flex-1">
-              <p className="text-xs font-medium text-warning mb-1.5">
+              <p className="text-xs font-medium text-destructive mb-1.5">
                 {reading.failedChannels.length} channel
                 {reading.failedChannels.length === 1 ? '' : 's'} didn't sync
               </p>
-              <ul className="text-xs text-warning space-y-1">
+              <ul className="text-xs text-destructive space-y-1">
                 {reading.failedChannels.map((channel) => (
                   <li key={channel.channelId} className="line-clamp-1">
                     <strong>{channel.channelTitle}</strong>: {channel.error}

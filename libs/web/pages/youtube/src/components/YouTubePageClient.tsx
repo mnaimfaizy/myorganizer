@@ -4,7 +4,7 @@ import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 import { RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   formatRetryAt,
   useChannelUploads,
@@ -71,6 +71,13 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
   const [syncError, setSyncError] = useState<string | null>(null);
 
   const isCooldownActive = !!syncStatus.isCooldownActive;
+  const [waitingForClaim, setWaitingForClaim] = useState(false);
+
+  // Extract stable function references and status value to use in effects without
+  // triggering linter warnings about missing object dependencies.
+  const refreshSync = syncStatus.refresh;
+  const triggerSync = syncStatus.triggerSync;
+  const syncStatusValue = syncStatus.status;
 
   // Refresh lists when the sync run completes. This is the terminal transition only;
   // incremental refresh during the run is deferred per ADR 0080 decision 1.
@@ -90,9 +97,57 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
   // Poll loop: starts on mount if run is already live, continues every 2s while live,
   // pauses on tab-hidden, resumes with immediate poll on tab-visible.
   useSyncRun(syncStatus.status, {
-    poll: syncStatus.refresh,
+    poll: refreshSync,
     onRunComplete: handleRunComplete,
   });
+
+  // After firing a sync PUT, poll until the server claims the run (status becomes
+  // discovering or running). The claim happens asynchronously inside the PUT handler,
+  // so a single refresh() call races with the server's claim and often loses,
+  // leaving the UI in a terminal state while the sync actually runs server-side.
+  // This loop bridges the gap until the status reflects the live run, then useSyncRun
+  // takes over the 2-second poll cycle.
+  useEffect(() => {
+    if (!waitingForClaim) return;
+
+    let isMounted = true;
+    let elapsedMs = 0;
+    const pollIntervalMs = 1000; // ~1 second between polls
+    const maxWaitMs = 30000; // 30 second deadline to stop polling
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const doPoll = async () => {
+      if (!isMounted) return;
+
+      try {
+        const status = await refreshSync();
+        if (!isMounted) return; // Component unmounted while fetching
+        if (isRunLive(status)) {
+          // Status is live; useSyncRun will take over from here
+          setWaitingForClaim(false);
+          return;
+        }
+      } catch {
+        // Swallow network errors and transient issues; keep polling
+        if (!isMounted) return;
+      }
+
+      elapsedMs += pollIntervalMs;
+      if (elapsedMs <= maxWaitMs && isMounted) {
+        timeoutId = setTimeout(doPoll, pollIntervalMs);
+      } else if (isMounted) {
+        // Deadline reached or component unmounted
+        setWaitingForClaim(false);
+      }
+    };
+
+    void doPoll();
+
+    return () => {
+      isMounted = false;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [waitingForClaim, refreshSync]);
 
   const channelUploads = useChannelUploads();
 
@@ -154,8 +209,8 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
     if (isCooldownActive) return;
 
     // Check cooldown before attempting PUT
-    if (syncStatus.status && syncStatus.status.retryAt) {
-      const retryTime = Date.parse(syncStatus.status.retryAt);
+    if (syncStatusValue && syncStatusValue.retryAt) {
+      const retryTime = Date.parse(syncStatusValue.retryAt);
       if (!Number.isNaN(retryTime) && retryTime > Date.now()) {
         return;
       }
@@ -163,14 +218,16 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
 
     // Fire the PUT without awaiting — the polling loop will catch its outcome.
     // Errors (504, connection drop) are swallowed; the loop will report what happened.
-    void syncStatus.triggerSync().catch(() => {
+    void triggerSync().catch(() => {
       // Swallow errors; the polled status is authoritative.
     });
 
-    // Start polling immediately so the UI updates without waiting for PUT response.
-    // The useSyncRun hook will see the live status and begin the 2s poll cycle.
-    void syncStatus.refresh();
-  }, [isCooldownActive, syncStatus]);
+    // Start polling to catch the server's claim of the run. The claim lands
+    // asynchronously inside the PUT handler, so a single refresh() often races and
+    // loses. The polling loop will run until status becomes live (discovering/running),
+    // then useSyncRun takes over the 2s poll cycle.
+    setWaitingForClaim(true);
+  }, [isCooldownActive, triggerSync, syncStatusValue]);
 
   const handleRetryClick = useCallback(async () => {
     if (isCooldownActive) return;
