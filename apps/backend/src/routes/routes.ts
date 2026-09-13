@@ -61,6 +61,19 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "ProgressResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "total": {"dataType":"double","required":true},
+            "processed": {"dataType":"double","required":true},
+            "succeeded": {"dataType":"double","required":true},
+            "failed": {"dataType":"double","required":true},
+            "startedAt": {"dataType":"string","required":true},
+            "failedChannels": {"dataType":"array","array":{"dataType":"nestedObjectLiteral","nestedProperties":{"error":{"dataType":"string","required":true},"channelTitle":{"dataType":"string","required":true},"channelId":{"dataType":"string","required":true}}},"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "SyncResponse": {
         "dataType": "refObject",
         "properties": {
@@ -69,6 +82,7 @@ const models: TsoaRoute.Models = {
             "lastSyncAttemptAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "lastSyncError": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "retryAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "progress": {"dataType":"union","subSchemas":[{"ref":"ProgressResponse"},{"dataType":"enum","enums":[null]}],"required":true},
             "synced": {"dataType":"double","required":true},
             "videosSynced": {"dataType":"double","required":true},
         },
@@ -83,6 +97,7 @@ const models: TsoaRoute.Models = {
             "lastSyncAttemptAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "lastSyncError": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
             "retryAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+            "progress": {"dataType":"union","subSchemas":[{"ref":"ProgressResponse"},{"dataType":"enum","enums":[null]}],"required":true},
         },
         "additionalProperties": false,
     },

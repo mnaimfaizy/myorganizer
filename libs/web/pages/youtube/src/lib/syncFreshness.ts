@@ -124,6 +124,18 @@ export function describeSyncFreshness(
       };
 
     case 'failed':
+      // Interrupted Sync: run stopped (TTL exceeded) but some channels completed
+      if (status.lastSyncError === 'syncInterrupted') {
+        return {
+          tone: 'error',
+          label: 'Sync was interrupted',
+          lastSyncedLabel,
+          detail:
+            'The sync ran out of time, but the channels shown are up to date. Retry to complete the rest.',
+          suggestRetry: true,
+        };
+      }
+      // Regular failure: no channel synced at all
       return {
         tone: 'error',
         label: 'Last sync failed',
@@ -131,6 +143,15 @@ export function describeSyncFreshness(
         detail:
           'No channel synced on the last attempt, so you are seeing the last good snapshot. Retry to try again now.',
         suggestRetry: true,
+      };
+
+    case 'discovering':
+      return {
+        tone: 'pending',
+        label: 'Finding your channels…',
+        lastSyncedLabel,
+        detail: null,
+        suggestRetry: false,
       };
 
     case 'partial':

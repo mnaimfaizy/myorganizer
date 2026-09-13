@@ -48,9 +48,25 @@ export interface NotificationSettings {
 
 export type SortOption = 'latest' | 'oldest' | 'az';
 
+export interface FailingChannelInfo {
+  channelId: string;
+  channelTitle: string;
+  error: string;
+}
+
+export interface SyncProgressInfo {
+  total: number; // Enabled Channels in this Sync Run
+  processed: number;
+  succeeded: number;
+  failed: number;
+  startedAt: string; // ISO timestamp — the run stamp
+  failedChannels: FailingChannelInfo[];
+}
+
 export interface YouTubeSyncStatus {
   status:
     | 'never'
+    | 'discovering'
     | 'running'
     | 'success'
     | 'partial'
@@ -61,6 +77,13 @@ export interface YouTubeSyncStatus {
   lastSyncAttemptAt: string | null;
   lastSyncError: string | null;
   retryAt: string | null;
+  /**
+   * Progress data is non-null while a run is live AND on the terminal read of
+   * `partial`, `failed`, and `quota_exceeded`; it is null on `success` and `never`.
+   * This field is a hand-maintained duplicate of the generated `SyncStatusResponse.progress`
+   * in libs/app-api-client and must be kept in step with it.
+   */
+  progress: SyncProgressInfo | null;
 }
 
 export interface YouTubeSyncResult extends YouTubeSyncStatus {

@@ -12,6 +12,7 @@ function statusOf(
     lastSyncAttemptAt: null,
     lastSyncError: null,
     retryAt: null,
+    progress: null,
     ...overrides,
   };
 }
@@ -72,6 +73,21 @@ describe('describeSyncFreshness', () => {
       expect(reading.label).toContain('quota');
       expect(reading.detail).toContain('cached uploads stay available');
       expect(reading.suggestRetry).toBe(false);
+    });
+
+    it('does not claim "No channel synced" on an Interrupted Sync', () => {
+      // Interrupted runs completed some channels before TTL expiry; the label must not
+      // flatten that distinction into "none synced". This branch prevents fall-through
+      // to the "No channel synced on the last attempt" detail, which is false for
+      // interrupted runs where counts show channels that did complete.
+      const reading = describeSyncFreshness(
+        statusOf({
+          status: 'failed',
+          lastSyncError: 'syncInterrupted',
+        }),
+        NOW,
+      );
+      expect(reading.detail).not.toContain('No channel synced');
     });
 
     it('keeps the last synced line on a failure, so the snapshot age stays visible', () => {
@@ -152,6 +168,33 @@ describe('describeSyncFreshness', () => {
   });
 
   describe('in-flight and first-run states', () => {
+    it('reports a discovering sync without suggesting Retry', () => {
+      const reading = describeSyncFreshness(
+        statusOf({ status: 'discovering' }),
+        NOW,
+      );
+      expect(reading.tone).toBe('pending');
+      expect(reading.label).toBe('Finding your channels…');
+      expect(reading.suggestRetry).toBe(false);
+    });
+
+    it('does not apply staleness check during discovery (prevents fall-through bug)', () => {
+      // The default branch calls isDelayed(), so if discovering case is missing,
+      // an actively-discovering run renders as stale when lastSyncedAt is old.
+      // Force that condition and verify it is bypassed.
+      const reading = describeSyncFreshness(
+        statusOf({
+          status: 'discovering',
+          lastSyncedAt: new Date(
+            NOW.getTime() - SYNC_DELAYED_AFTER_MS - 1000,
+          ).toISOString(),
+        }),
+        NOW,
+      );
+      expect(reading.label).not.toBe('Sync delayed');
+      expect(reading.tone).toBe('pending');
+    });
+
     it('reports a running sync without suggesting Retry', () => {
       const reading = describeSyncFreshness(
         statusOf({ status: 'running' }),
