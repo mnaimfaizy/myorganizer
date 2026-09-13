@@ -388,11 +388,7 @@ class YouTubeSyncService {
       if (!claimed) {
         // A Sync Run is already live — return its current status without doing any work.
         // This is a normal outcome, not an error.
-        return {
-          subscriptionsSynced: 0,
-          videosSynced: 0,
-          ...(await this.getSyncStatus(userId)),
-        };
+        return this.noopResult(userId);
       }
     } else {
       // Manual refresh path: the claim was already made in manualRefresh with the 'discovering' status.
@@ -412,11 +408,7 @@ class YouTubeSyncService {
 
     if (subscriptions.length === 0) {
       await this.recordSyncState(userId, attemptAt, 'success', null);
-      return {
-        subscriptionsSynced: 0,
-        videosSynced: 0,
-        ...(await this.getSyncStatus(userId)),
-      };
+      return this.noopResult(userId);
     }
 
     let youtube: youtube_v3.Youtube;
@@ -520,9 +512,7 @@ class YouTubeSyncService {
 
     if (cooldownUntil && cooldownUntil > now) {
       return {
-        subscriptionsSynced: 0,
-        videosSynced: 0,
-        ...(await this.getSyncStatus(userId)),
+        ...(await this.noopResult(userId)),
         status: 'cooldown',
         retryAt: cooldownUntil,
       };
@@ -564,11 +554,7 @@ class YouTubeSyncService {
 
       if (!claimed) {
         // A Sync Run is already live — return its current status without doing work.
-        return {
-          subscriptionsSynced: 0,
-          videosSynced: 0,
-          ...(await this.getSyncStatus(userId)),
-        };
+        return this.noopResult(userId);
       }
 
       const subscriptions = await this.syncSubscriptions(userId);
@@ -584,12 +570,7 @@ class YouTubeSyncService {
         ? 'quota_exceeded'
         : 'failed';
       await this.recordSyncState(userId, now, status, getSyncErrorCode(error));
-      return {
-        subscriptionsSynced: 0,
-        videosSynced: 0,
-        ...(await this.getSyncStatus(userId)),
-        status,
-      };
+      return { ...(await this.noopResult(userId)), status };
     }
   }
 
@@ -1180,6 +1161,19 @@ class YouTubeSyncService {
         lastSyncError: error,
       },
     });
+  }
+
+  /**
+   * The result shape for a call that did no work: zero counts plus the
+   * authoritative current status. Callers that need to override a field
+   * (for example `status: 'cooldown'`) spread this and then set it.
+   */
+  private async noopResult(userId: string): Promise<YouTubeRefreshResult> {
+    return {
+      subscriptionsSynced: 0,
+      videosSynced: 0,
+      ...(await this.getSyncStatus(userId)),
+    };
   }
 }
 
