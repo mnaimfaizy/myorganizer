@@ -686,6 +686,183 @@ describe('YouTubeSyncService', () => {
       expect(subsSpy).not.toHaveBeenCalled();
     });
 
+    it('manualRefresh should restore prior timestamp when run claim is lost', async () => {
+      const priorDate = new Date('2026-08-01T10:00:00Z');
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          status: 'connected',
+          lastManualRefreshAt: priorDate,
+        },
+      );
+
+      let updateManyCallCount = 0;
+      (
+        mockPrisma.youTubeIntegration.updateMany as jest.Mock
+      ).mockImplementation(async () => {
+        updateManyCallCount++;
+        if (updateManyCallCount === 1) {
+          return { count: 1 }; // Cooldown claim succeeds
+        }
+        return { count: 0 }; // Run claim fails
+      });
+
+      // Mock getSyncStatus to avoid complex Prisma setup
+      jest.spyOn(youtubeSyncService, 'getSyncStatus').mockResolvedValue({
+        status: 'running',
+        lastSyncedAt: null,
+        lastSyncAttemptAt: null,
+        lastSyncError: null,
+        retryAt: null,
+        progress: null,
+      });
+
+      const result = await youtubeSyncService.manualRefresh('user-1');
+
+      // Assert update was called to restore the prior timestamp
+      expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        data: { lastManualRefreshAt: priorDate },
+      });
+      // Assert no sync work was done
+      expect(result.subscriptionsSynced).toBe(0);
+      expect(result.videosSynced).toBe(0);
+    });
+
+    it('manualRefresh should restore null when run claim is lost and no prior refresh', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          status: 'connected',
+          lastManualRefreshAt: null,
+        },
+      );
+
+      let updateManyCallCount = 0;
+      (
+        mockPrisma.youTubeIntegration.updateMany as jest.Mock
+      ).mockImplementation(async () => {
+        updateManyCallCount++;
+        if (updateManyCallCount === 1) {
+          return { count: 1 }; // Cooldown claim succeeds
+        }
+        return { count: 0 }; // Run claim fails
+      });
+
+      jest.spyOn(youtubeSyncService, 'getSyncStatus').mockResolvedValue({
+        status: 'discovering',
+        lastSyncedAt: null,
+        lastSyncAttemptAt: null,
+        lastSyncError: null,
+        retryAt: null,
+        progress: null,
+      });
+
+      const result = await youtubeSyncService.manualRefresh('user-1');
+
+      // Assert update restores the null value explicitly
+      expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        data: { lastManualRefreshAt: null },
+      });
+      expect(result.subscriptionsSynced).toBe(0);
+      expect(result.videosSynced).toBe(0);
+    });
+
+    it('manualRefresh should not invoke sync when run claim is lost', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          status: 'connected',
+          lastManualRefreshAt: new Date('2026-08-01T10:00:00Z'),
+        },
+      );
+
+      let updateManyCallCount = 0;
+      (
+        mockPrisma.youTubeIntegration.updateMany as jest.Mock
+      ).mockImplementation(async () => {
+        updateManyCallCount++;
+        if (updateManyCallCount === 1) {
+          return { count: 1 }; // Cooldown claim succeeds
+        }
+        return { count: 0 }; // Run claim fails
+      });
+
+      jest.spyOn(youtubeSyncService, 'getSyncStatus').mockResolvedValue({
+        status: 'running',
+        lastSyncedAt: null,
+        lastSyncAttemptAt: null,
+        lastSyncError: null,
+        retryAt: null,
+        progress: null,
+      });
+
+      const mockYoutube = require('googleapis').google.youtube();
+      const subscriptionsSpy = jest
+        .spyOn(youtubeSyncService, 'syncSubscriptions')
+        .mockResolvedValue([]);
+
+      await youtubeSyncService.manualRefresh('user-1');
+
+      // Assert YouTube API was not called
+      expect(mockYoutube.subscriptions.list).not.toHaveBeenCalled();
+      expect(mockYoutube.playlistItems.list).not.toHaveBeenCalled();
+      // Assert sync was not performed
+      expect(subscriptionsSpy).not.toHaveBeenCalled();
+    });
+
+    it('manualRefresh should not restore when run claim succeeds', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          userId: 'user-1',
+          status: 'connected',
+          lastManualRefreshAt: new Date('2026-08-01T10:00:00Z'),
+          encrypted_access_token: 'token-a',
+          encrypted_refresh_token: 'token-r',
+          token_iv: 'iv1:iv2',
+          token_auth_tag: 'tag1:tag2',
+        },
+      );
+
+      // Both claims succeed
+      (mockPrisma.youTubeIntegration.updateMany as jest.Mock).mockResolvedValue(
+        { count: 1 },
+      );
+
+      // Mock subscription and video sync to complete normally
+      jest.spyOn(youtubeSyncService, 'syncSubscriptions').mockResolvedValue([
+        {
+          id: 'sub-1',
+          channelId: 'ch-1',
+          channelTitle: 'Test Channel',
+          channelThumbnail: null,
+          uploadsPlaylistId: 'pl-1',
+        },
+      ]);
+      jest
+        .spyOn(youtubeSyncService, 'syncVideosForUserWithStatus')
+        .mockResolvedValue({
+          subscriptionsSynced: 1,
+          videosSynced: 5,
+          status: 'success',
+          lastSyncedAt: null,
+          lastSyncAttemptAt: null,
+          lastSyncError: null,
+          retryAt: null,
+        });
+
+      await youtubeSyncService.manualRefresh('user-1');
+
+      // Assert update was NOT called to restore lastManualRefreshAt
+      const updateCalls = (mockPrisma.youTubeIntegration.update as jest.Mock)
+        .mock.calls;
+      const hasLastManualRefreshAtRestore = updateCalls.some(
+        ([args]) => args.data?.lastManualRefreshAt !== undefined,
+      );
+      expect(hasLastManualRefreshAtRestore).toBe(false);
+    });
+
     it('should stop processing channels on quotaExceeded and report quota_exceeded', async () => {
       (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
         {

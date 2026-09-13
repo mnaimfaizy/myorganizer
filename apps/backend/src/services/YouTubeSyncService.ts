@@ -503,6 +503,8 @@ class YouTubeSyncService {
     }
 
     const now = new Date();
+    // Store the previous value so we can restore it if claimSyncRun loses.
+    const previousLastManualRefreshAt = integration.lastManualRefreshAt;
     const cooldownUntil = integration.lastManualRefreshAt
       ? new Date(
           integration.lastManualRefreshAt.getTime() +
@@ -553,6 +555,16 @@ class YouTubeSyncService {
       const claimed = await this.claimSyncRun(userId, now, 'discovering');
 
       if (!claimed) {
+        // User pressed Sync, but a background sync was already live. We won the cooldown claim
+        // above but are doing no work on their behalf. Restore lastManualRefreshAt to its
+        // previous value so their 15-minute cooldown window is not spent.
+        // Note: This is a compensating write, not an atomic one. A process death between the
+        // initial stamp and this restore leaves the cooldown spent, which is acceptable as
+        // the consequence is bounded and self-heals after 15 minutes.
+        await this.prisma.youTubeIntegration.update({
+          where: { userId },
+          data: { lastManualRefreshAt: previousLastManualRefreshAt },
+        });
         // A Sync Run is already live — return its current status without doing work.
         return this.noopResult(userId);
       }
