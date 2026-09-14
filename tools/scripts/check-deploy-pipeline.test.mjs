@@ -26,6 +26,7 @@ const REPO = resolve(HERE, '..', '..');
 const PAGE = 'docs/deployment/release-pipeline.html';
 const STAGING = '.github/workflows/deploy-staging.yml';
 const PRODUCTION = '.github/workflows/deploy-production.yml';
+const CUT_GUARD = 'tools/scripts/lib/staging-host-apply-guard.mjs';
 
 const FIXTURE_FILES = [
   PAGE,
@@ -36,6 +37,7 @@ const FIXTURE_FILES = [
   '.github/workflows/publish-github-release.yml',
   'package.json',
   'tools/scripts/release.mjs',
+  'tools/scripts/lib/staging-host-apply-guard.mjs',
 ];
 
 function createWorkspace(t) {
@@ -193,6 +195,24 @@ test('fails when the page drops a key the checker knows about', (t) => {
 
   assert.equal(result.status, 1);
   assert.match(result.stderr, /productionRefGuardPattern.*missing/s);
+});
+
+test('fails when the Cut guard reads its upload job from a different job name', (t) => {
+  const workspace = createWorkspace(t);
+  // The guard, not the page, is the source of truth for which job Staging's
+  // upload is read from — the page must follow it, not assert it independently.
+  edit(
+    workspace,
+    CUT_GUARD,
+    "export const UPLOAD_JOB = 'deploy-backend';",
+    "export const UPLOAD_JOB = 'deploy-backend-legacy';",
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /cutGuardUploadJob/);
+  assert.match(result.stderr, /deploy-backend-legacy/);
 });
 
 test('reads manifest values containing /* without masking them away', (t) => {

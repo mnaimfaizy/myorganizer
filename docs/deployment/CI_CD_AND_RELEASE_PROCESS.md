@@ -256,8 +256,11 @@ toggle that reverts, so an apply chained to the upload would go red on every
 push where the shell happened to be off — and a red apply nobody reads is how
 unapplied migrations shipped in the first place. This amends PRD #565 user
 story 3; it means an uploaded Staging bundle is not a migrated Staging backend
-until you say so, and it is why the Cut checklist's "Staging Host Apply green"
-below is load-bearing rather than a formality.
+until you say so. An automatic upload writes a "Backend uploaded, not applied"
+notice to its job summary so a green run does not read as a finished deploy,
+and `release:cut` refuses any commit Staging has not both uploaded and Host
+Applied — see [Release script notes](#release-script-notes) and the
+[ADR 0056 amendment](../adr/0056-ci-owns-host-apply-without-describing-the-jail.md#amendment-2026-09-14).
 
 Staging splits its concurrency by whether a job writes to `APP_ROOT`.
 `deploy-backend` and `host-apply` share `deploy-staging-apply` with
@@ -358,7 +361,7 @@ Replace `vX.Y.Z` with your version (example: `v0.1.1`).
 
 - CI is green
 - Staging deploy is successful
-- **Staging Host Apply is green** (backend bundle is uploaded, migrations applied, Prisma client regenerated, and service restarted). It does not run by itself — dispatch `Deploy Staging` with the SSH shell toggled on. An uploaded bundle is not a migrated backend.
+- **Staging Host Apply is green for the commit you will cut.** It does not run by itself — dispatch `Deploy Staging` (with `apply_only` if the bundle is already uploaded) with the SSH shell toggled on. `release:cut` checks this and refuses otherwise; ticking it here saves you the refusal.
 - **Production Host Apply has been rehearsed**: `yarn host-apply:preflight production` passes its readiness checks. Do this before cutting, not during the release — see [the operator runbook](HOST_APPLY_OPERATOR_SETUP.md#step-8--production). Production Host Apply has never run, so the first release after this feature is the first time it will.
 
 2. Cut the release branch (recommended):
@@ -419,6 +422,7 @@ The script lives at `tools/scripts/release.mjs` and automates the git steps.
 - It enforces `vX.Y.Z` format (no prerelease strings).
 - It requires a clean working tree.
 - `release:cut` requires you to be on `main` and up-to-date with `origin/main`.
+- `release:cut` then refuses unless Staging holds that commit, Host Applied: the latest successful Staging `deploy-backend` uploaded it, and a green `host-apply` at that commit started after the upload landed, with no upload of another commit in between. An `apply_only` retry counts. The uploaded commit is read from each run's name (`run-name` in `deploy-staging.yml`), so a run from before that line existed can only refuse. It reads the recent `Deploy Staging` runs with `gh api`, so the GitHub CLI must be installed and authenticated. There is no flag to skip it — a break-glass SSH apply is invisible to CI, so it cannot satisfy the check ([ADR 0056 amendment](../adr/0056-ci-owns-host-apply-without-describing-the-jail.md#amendment-2026-09-14)). `--dry-run` runs the check too.
 - It does **not** dispatch or approve any deploy. Pushing the release branch is what dispatches a production run (via `dispatch-production-deploy.yml`), and that run still waits for approval.
 - `release:cut` **cannot** create a tag. Tagging is a separate command, run only after Production Host Apply succeeds — the tag is a receipt, not a trigger. See [ADR 0028](../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md) and [ADR 0056](../adr/0056-ci-owns-host-apply-without-describing-the-jail.md).
 
@@ -428,12 +432,15 @@ Both deploy bundles are designed for cPanel shared hosting:
 
 - Backend bundle includes a deploy-ready `package.json`, npm guardrail config, `prisma.config.cjs`, and `prisma/` folder.
   - It also includes a deploy-only `package-lock.json` generated during packaging.
-  - After upload, run `npm ci --omit=dev` in the backend app root.
-  - Prisma client generation runs via `postinstall`.
+  - An upload is not a deploy: Host Apply installs, migrates, regenerates the Prisma client, and restarts — see [Host Apply](#host-apply-staging--production). Do not run those steps by hand except through [Break-glass](HOST_APPLY_OPERATOR_SETUP.md#break-glass).
 - Frontend bundle is a Next standalone-based deploy with a Linux-safe `server.js`.
   - After upload, run `npm install` in the frontend app root.
 
 The deploy folders also contain `CPANEL_STARTUP.md` files with the exact startup file names.
+
+What the host needs, and what differs between Staging and Production, is in
+[Backend API on cPanel](CPANEL_BACKEND_HOSTING.md) and
+[Web app on cPanel](CPANEL_WEB_HOSTING.md).
 
 ## Hosting the frontend on Vercel
 

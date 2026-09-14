@@ -1024,9 +1024,13 @@
               A push or pull request against main or release triggers CI,
               drawn as one pass or fail box. Green CI on main also triggers a
               fully automatic staging deploy, off to the side, that never
-              leads to production. A maintainer decides when to run yarn
-              release colon cut, which creates and pushes a release branch.
-              That single push produces two simultaneous, independent
+              leads to production; applying that upload on the host is a
+              separate, operator-triggered dispatch. A maintainer decides
+              when to run yarn release colon cut, which refuses to proceed
+              unless staging already holds this exact commit, host applied,
+              with no flag to skip that check, and otherwise creates and
+              pushes a release branch. That single push produces two
+              simultaneous, independent
               consequences: a Release PR workflow that opens or updates a
               pull request back to main and tries to auto merge it, and a
               Dispatch Production Deploy workflow that only dispatches the
@@ -1133,7 +1137,7 @@
                 CI green on main &#8594; Deploy Staging
               </text>
               <text class="nc" x="876" y="143">
-                deploy-staging.yml:4-7, :23
+                deploy-staging.yml:9-12, :29
               </text>
               <text class="nc" x="876" y="158">
                 a dead end here &#8212; see panel 2
@@ -1171,8 +1175,8 @@
                 yarn release:cut --version vX.Y.Z --push
               </text>
               <text class="nc" x="72" y="260">
-                creates + pushes release/vX.Y.Z &#183; package.json:27,
-                release.mjs:541, :571-576
+                creates + pushes release/vX.Y.Z, only if Staging is Host
+                Applied &#183; package.json:26, release.mjs:600, :628-637
               </text>
             </g>
             <path
@@ -1517,10 +1521,10 @@
               </text>
               <text class="nc" x="272" y="1070">
                 no commit, no files &#8212; asserts branch state first &#183;
-                release.mjs:684-691
+                release.mjs:743-751
               </text>
               <text class="nc" x="272" y="1084">
-                package.json:28
+                package.json:27
               </text>
             </g>
 
@@ -1574,18 +1578,35 @@
         <dd id="note-staging">
           <code>workflow_run</code> on <code>CI</code> completing with
           <code>conclusion == 'success'</code> on <code>main</code>
-          (<code>deploy-staging.yml:4-7</code>, <code>:23</code>). Fully
+          (<code>deploy-staging.yml:9-12</code>, <code>:29</code>). Fully
           automatic, and it never leads anywhere near production &mdash; the
           backend path is identical to production's, the frontend path is
-          not. See panel&nbsp;2.
+          not. See panel&nbsp;2. Uploaded is not applied: <code>host-apply</code>
+          runs only on <code>workflow_dispatch</code>
+          (<code>:161</code>, <code>:163</code>), so an automatic run lands the
+          bundle and stops &mdash; it writes a
+          &#8220;Backend uploaded, not applied&#8221; notice to the job
+          summary instead (<code>:126-141</code>). The Cut step below refuses
+          this commit until an operator dispatches
+          <code>Deploy Staging</code> with <code>apply_only</code>.
         </dd>
         <dt>cut</dt>
         <dd id="note-cut">
           The one human choice on this whole spine before the halt: when to
           run it. <code>release:cut</code> checks out <code>main</code>,
-          confirms it is clean and up to date, and creates + pushes
-          <code>release/vX.Y.Z</code> (<code>package.json:27</code>,
-          <code>release.mjs:541</code>, <code>:571-576</code>). It has no
+          confirms it is clean and up to date, and then refuses unless
+          Staging already holds this exact commit, Host Applied: its latest
+          successful upload (<code>deploy-backend</code>) must be this
+          commit, and a successful <code>host-apply</code> at this commit
+          must have started after that upload landed. There is no flag to
+          skip this. Only then does it create + push
+          <code>release/vX.Y.Z</code> (<code>package.json:26</code>,
+          <code>release.mjs:600</code>, <code>:628-637</code>). If Staging's
+          last green <code>host-apply</code> is older than its last upload,
+          the Cut refuses and names which condition failed &mdash; dispatch
+          <code>Deploy Staging</code> with <code>apply_only</code> first
+          (<code>staging-host-apply-guard.mjs</code>, ADR&nbsp;0056,
+          amendment 2026-09-14). <code>release:cut</code> has no
           <code>--tag</code> flag &mdash; cutting cannot tag.
         </dd>
         <dt>releasepr</dt>
@@ -1713,9 +1734,9 @@
         <dd id="note-tag">
           Asserts it is on the release branch and up to date with origin, and
           that <code>package.json</code> matches the tag
-          (<code>release.mjs:684-686</code>); refuses an existing tag
-          (<code>:688-690</code>); creates no commit and writes no files
-          (<code>package.json:28</code>). A commit here would move the
+          (<code>release.mjs:743-745</code>); refuses an existing tag
+          (<code>:747-749</code>); creates no commit and writes no files
+          (<code>package.json:27</code>). A commit here would move the
           branch past the exact SHA CI verified and a reviewer approved.
           <code>vX.Y.Z</code> existing means that version reached production.
         </dd>
@@ -1762,13 +1783,16 @@
               <code>conclusion == 'success'</code>
             </td>
             <td><code>Deploy Staging</code></td>
-            <td class="cite">deploy-staging.yml:4-7, :23</td>
+            <td class="cite">deploy-staging.yml:9-12, :29</td>
           </tr>
           <tr>
             <td>3</td>
             <td><code>yarn release:cut --version vX.Y.Z --push</code></td>
-            <td>creates + pushes <code>release/vX.Y.Z</code></td>
-            <td class="cite">package.json:27, release.mjs:541, :571-576</td>
+            <td>
+              creates + pushes <code>release/vX.Y.Z</code>, only if Staging
+              is Host Applied at this commit
+            </td>
+            <td class="cite">package.json:26, release.mjs:600, :628-637</td>
           </tr>
           <tr class="fork">
             <td>4a</td>
@@ -1801,7 +1825,7 @@
             <td>6</td>
             <td><code>yarn release:tag --version vX.Y.Z --push</code></td>
             <td>annotated tag, no commit, no files</td>
-            <td class="cite">package.json:28, release.mjs:684-691</td>
+            <td class="cite">package.json:27, release.mjs:743-751</td>
           </tr>
           <tr>
             <td>7</td>
@@ -1840,12 +1864,12 @@
         <div class="ccard cpanel">
           <div class="ctop">cPanel over FTP</div>
           <p><code>./dist/deploy/backend-api/</code></p>
-          <span class="cite">deploy-staging.yml:111, :117</span>
+          <span class="cite">deploy-staging.yml:116, :122</span>
         </div>
         <div class="ccard vercel">
           <div class="ctop">Vercel</div>
           <p>CLI pinned to <code>50.1.1</code></p>
-          <span class="cite">deploy-staging.yml:255-289, :270</span>
+          <span class="cite">deploy-staging.yml:317-351, :332</span>
         </div>
 
         <div class="rlabel">Production</div>
@@ -1925,11 +1949,11 @@
       <p>
         <code>release:tag</code> asserts it is on the release branch, up to
         date with origin, and that <code>package.json</code> matches the tag
-        (<code>release.mjs:684-686</code>); refuses an existing tag
-        (<code>:688-690</code>); and creates no commits and writes no files
+        (<code>release.mjs:743-745</code>); refuses an existing tag
+        (<code>:747-749</code>); and creates no commits and writes no files
         &mdash; a commit here would move the branch past the exact SHA that
         CI verified and a reviewer approved
-        (<code>:670-676</code>). <code>release:cut</code> has no way to tag
+        (<code>:735-742</code>). <code>release:cut</code> has no way to tag
         at all: there is no <code>--tag</code> flag. <code>vX.Y.Z</code>
         existing means that version reached production
         (<a href="../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md"
@@ -1955,7 +1979,7 @@
             <code>deploy-staging.yml</code>, <code>deploy-production.yml</code>.
             The repo floor is <code>&gt;=22.0.0</code>
             (<code>package.json:7</code>). <code>release.mjs</code> refuses a
-            major below 22 (<code>:11-19</code>). Three scopes, one floor
+            major below 22 (<code>:15-23</code>). Three scopes, one floor
             &mdash; not a single pinned number.
           </p>
         </div>
@@ -1963,7 +1987,7 @@
           <div class="fname">Vercel CLI</div>
           <p>
             <code>50.1.1</code>, staging frontend deploy only
-            (<code>deploy-staging.yml:269</code>). Production never invokes
+            (<code>deploy-staging.yml:332</code>). Production never invokes
             Vercel.
             <a href="VERCEL_FRONTEND_HOSTING.md">VERCEL_FRONTEND_HOSTING.md:56-66</a>
             says <code>vercel@latest</code> &mdash; that is human first-time
@@ -1974,7 +1998,7 @@
           <div class="fname">FTP transfer timeout</div>
           <p>
             <code>300000</code> ms, the same value at three sites: staging
-            backend (<code>deploy-staging.yml:118</code>), production backend
+            backend (<code>deploy-staging.yml:124</code>), production backend
             (<code>deploy-production.yml:170</code>), production frontend
             (<code>:326</code>). <code>host-apply</code> has no FTP step and
             no site here &mdash; it applies over SSH, not FTP.
@@ -1984,8 +2008,8 @@
           <div class="fname">Job timeouts</div>
           <p>
             <code>validate</code> 5&nbsp;min (<code>:29</code>); staging jobs
-            30&nbsp;min (<code>deploy-staging.yml:26</code>, <code>:66</code>,
-            <code>:131</code>, <code>:217</code>) &mdash; four now, including
+            30&nbsp;min (<code>deploy-staging.yml:32</code>, <code>:72</code>,
+            <code>:165</code>, <code>:280</code>) &mdash; four now, including
             <code>host-apply</code>; production's three approval-gated jobs
             45&nbsp;min each (<code>deploy-production.yml:127</code>,
             <code>:180</code>, <code>:263</code>) &mdash; three now, also
@@ -2002,7 +2026,7 @@
             <code>deploy-staging-apply</code>
             (<code>cancel-in-progress: false</code>) covers
             <code>deploy-backend</code> and <code>host-apply</code>
-            (<code>deploy-staging.yml:73-75</code>, <code>:134-136</code>)
+            (<code>deploy-staging.yml:78-80</code>, <code>:167-169</code>)
             &mdash; the two jobs that land and then apply the bundle. A newer
             <code>main</code> push queues behind them: it must not cancel an
             in-flight <code>prisma migrate deploy</code> (the one behaviour
@@ -2011,7 +2035,7 @@
             <code>deploy-staging</code>
             (<code>cancel-in-progress: true</code>) covers
             <code>prepare-dependencies</code> and <code>deploy-frontend</code>
-            (<code>:28-30</code>, <code>:220-222</code>) &mdash; neither
+            (<code>:33-35</code>, <code>:282-284</code>) &mdash; neither
             touches <code>APP_ROOT</code>, so a newer run still kills whichever
             is in flight. Production is unchanged: one workflow-level group,
             <code>deploy-production</code>,
@@ -2347,7 +2371,7 @@
     const NOTE = {
       1: 'A push or PR lands on main or a release branch, and CI runs as one pass/fail box. Nobody decided anything yet.',
       2: 'Green CI on main also uploads to staging automatically, off to the side. Applying that upload on the host is a separate, operator-triggered dispatch. It is not on the way to a Release — see panel 2.',
-      3: 'The one human choice on this whole spine: a maintainer decides when to cut the release branch.',
+      3: 'The one human choice on this whole spine: a maintainer decides when to cut the release branch. Cutting now refuses unless Staging already holds this exact commit, Host Applied — if Staging’s last green host-apply is older than its last upload, release:cut refuses and dispatching Deploy Staging with apply_only is next. There is no flag to skip this.',
       4: 'One push, two simultaneous consequences. The dispatcher only dispatches — it does not check whether CI is green on the branch it just found.',
       5: 'The workflow named "(manual)" started on workflow_dispatch — fired by the node one step back, not by a person.',
       6: 'validate rejects a non-release ref, then resolves which branch actually gets checked out. Panel 3 has the asymmetry in full.',
@@ -2597,6 +2621,8 @@
     "productionRefGuardPattern": "refs/heads/release/*",
     "dispatcherReleaseBranchPattern": "^release/v[0-9]+\\.[0-9]+\\.[0-9]+$",
     "publishReleaseTagPattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$",
+    "cutGuardUploadJob": "deploy-backend",
+    "cutGuardApplyJob": "host-apply",
     "backendArtifactDir": "./dist/deploy/backend-api/",
     "productionFrontendArtifactDir": "./dist/deploy/myorganizer-web/",
     "releaseNotesFileName": "RELEASE_NOTES.md"
