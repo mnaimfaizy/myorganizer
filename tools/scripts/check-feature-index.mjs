@@ -1,29 +1,39 @@
 #!/usr/bin/env node
-// Asserts that the feature index names no dashboard route the app router
-// does not serve (ADR 0043).
+// Asserts bidirectional coverage of the feature index against dashboard
+// routes (ADR 0043).
 //
-//   node tools/scripts/check-feature-index.mjs [featureIndexPath] [dashboardRoot]
+//   node tools/scripts/check-feature-index.mjs [featureIndexPath] [dashboardRoot] [exclusionsPath]
 //
 // `docs/features/README.md` carries a "Features Index" table naming each
 // product feature. This slugifies each name ("Mobile Numbers" ->
-// "mobile-numbers") and checks it against the top-level directories Next.js
-// actually serves under `apps/myorganizer/src/app/dashboard`, the same
-// directory `check-readme.mjs` walks for its own route claims.
+// "mobile-numbers") and checks it bidirectionally against the top-level
+// directories Next.js actually serves under `apps/myorganizer/src/app/dashboard`:
 //
-// One-way on purpose: a dashboard route with no feature-index row is not a
-// failure here (`account` is a real route and platform-level, not a listed
-// product feature). Only a stale index entry — one that used to be a route
-// and no longer is — is the failure this incident-shaped check is for.
+// 1. Every indexed feature must map to a real route.
+// 2. Every real route (except those explicitly excluded) must have an index entry.
 //
-// Exit 0 = every indexed feature resolves to a real route. Exit 1 = drift,
-// naming the feature and the route it no longer resolves to. Exit 2 = the
-// check could not run.
+// Platform-level routes like `account` (administers settings, not a feature)
+// are exempted in tools/config/feature-index-exclusions.json with documented
+// reasons. An exclusion with no reason, naming a route that no longer exists,
+// naming a route twice, or naming a route the index already covers fails.
+//
+// The exclusions live in their own file rather than in
+// tools/config/gate-coverage-optout.json on purpose. That file exempts a
+// checker from the Meta-Gate and every entry is keyed by a checker name, which
+// `gates:coverage:check` validates as an existing check; a dashboard route is a
+// different kind of subject and would fail that validation.
+//
+// Exit 0 = bidirectional coverage holds. Exit 1 = drift or staleness.
+// Exit 2 = the check could not run.
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const FEATURE_INDEX = resolve(process.argv[2] ?? 'docs/features/README.md');
 const DASHBOARD_ROOT = resolve(
   process.argv[3] ?? 'apps/myorganizer/src/app/dashboard',
+);
+const EXCLUSIONS_CONFIG = resolve(
+  process.argv[4] ?? 'tools/config/feature-index-exclusions.json',
 );
 
 const fail = (msg) => {
@@ -33,6 +43,20 @@ const fail = (msg) => {
 
 if (!existsSync(FEATURE_INDEX)) fail(`${FEATURE_INDEX} not found`);
 if (!existsSync(DASHBOARD_ROOT)) fail(`${DASHBOARD_ROOT} not found`);
+if (!existsSync(EXCLUSIONS_CONFIG)) fail(`${EXCLUSIONS_CONFIG} not found`);
+
+let exclusionEntries;
+try {
+  exclusionEntries = JSON.parse(
+    readFileSync(EXCLUSIONS_CONFIG, 'utf8'),
+  ).exclusions;
+} catch (err) {
+  fail(`could not parse ${EXCLUSIONS_CONFIG}: ${err.message}`);
+}
+if (!Array.isArray(exclusionEntries)) {
+  fail(`${EXCLUSIONS_CONFIG} has no "exclusions" array`);
+}
+const exclusions = new Set(exclusionEntries.map((entry) => entry.route));
 
 const content = readFileSync(FEATURE_INDEX, 'utf8');
 
@@ -70,6 +94,8 @@ const realRoutes = new Set(
 );
 
 const findings = [];
+
+// Check 1: every indexed feature must map to a real route
 for (const feature of features) {
   const slug = slugify(feature);
   if (!realRoutes.has(slug)) {
@@ -79,17 +105,51 @@ for (const feature of features) {
   }
 }
 
+// Check 2: every real route (except excluded ones) must have an index entry
+const indexedSlugs = new Set(features.map(slugify));
+for (const route of realRoutes) {
+  if (!exclusions.has(route) && !indexedSlugs.has(route)) {
+    findings.push(
+      `dashboard route /dashboard/${route} has no entry in the feature index`,
+    );
+  }
+}
+
+// Check 3: every exclusion must carry a reason, name a route once, name a
+// route that still exists, and not name a route the index already covers
+const seenExclusions = new Set();
+for (const exclusion of exclusionEntries) {
+  if (seenExclusions.has(exclusion.route)) {
+    findings.push(
+      `exclusion for /dashboard/${exclusion.route} is listed twice`,
+    );
+  }
+  seenExclusions.add(exclusion.route);
+  if (typeof exclusion.reason !== 'string' || !exclusion.reason.trim()) {
+    findings.push(
+      `exclusion for /dashboard/${exclusion.route} has no written reason`,
+    );
+  }
+  if (!realRoutes.has(exclusion.route)) {
+    findings.push(
+      `exclusion for /dashboard/${exclusion.route} is stale; the route no longer exists`,
+    );
+  } else if (indexedSlugs.has(exclusion.route)) {
+    findings.push(
+      `exclusion for /dashboard/${exclusion.route} is stale; the route now has a feature-index entry`,
+    );
+  }
+}
+
 if (findings.length) {
-  console.error(
-    `feature-index: ${findings.length} feature index entry(ies) no longer resolve\n`,
-  );
+  console.error(`feature-index: ${findings.length} issue(s) found\n`);
   for (const finding of findings) console.error(`  - ${finding}`);
   console.error(
-    `\nUpdate ${FEATURE_INDEX}, or the app router, whichever is wrong.`,
+    `\nUpdate ${FEATURE_INDEX}, the app router, or the exclusions config, as appropriate.`,
   );
   process.exit(1);
 }
 
 console.log(
-  `feature-index: ${features.length} feature(s) indexed, all resolve to a route the app router serves`,
+  `feature-index: ${features.length} feature(s) indexed, ${realRoutes.size} route(s) exist, ${exclusions.size} route(s) excluded, all checks pass`,
 );
