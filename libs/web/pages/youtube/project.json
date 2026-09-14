@@ -3,15 +3,5 @@
   "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/web/pages/youtube/src",
   "projectType": "library",
-  "tags": ["type:page", "scope:web", "tier:agent"],
-  "targets": {
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/libs/web/pages/youtube"],
-      "options": {
-        "jestConfig": "libs/web/pages/youtube/jest.config.ts",
-        "passWithNoTests": true
-      }
-    }
-  }
+  "tags": ["type:page", "scope:web", "tier:agent"]
 }

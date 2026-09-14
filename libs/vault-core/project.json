@@ -3,15 +3,5 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/vault-core/src",
   "projectType": "library",
-  "tags": ["type:domain", "scope:shared", "tier:human"],
-  "targets": {
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/libs/vault-core"],
-      "options": {
-        "jestConfig": "libs/vault-core/jest.config.ts",
-        "passWithNoTests": true
-      }
-    }
-  }
+  "tags": ["type:domain", "scope:shared", "tier:human"]
 }

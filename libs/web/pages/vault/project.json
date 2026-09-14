@@ -3,15 +3,5 @@
   "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/web/pages/vault/src",
   "projectType": "library",
-  "tags": ["type:page", "scope:web", "tier:human"],
-  "targets": {
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/libs/web/pages/vault"],
-      "options": {
-        "jestConfig": "libs/web/pages/vault/jest.config.ts",
-        "passWithNoTests": true
-      }
-    }
-  }
+  "tags": ["type:page", "scope:web", "tier:human"]
 }

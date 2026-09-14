@@ -13,16 +13,6 @@
       "executor": "@nx/js:node"
     },
     {
-      "project": "backend",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "core",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
       "project": "myorganizer-e2e",
       "target": "e2e-firefox",
       "executor": "@nx/playwright:playwright"
@@ -46,91 +36,6 @@
       "project": "myorganizer",
       "target": "serve",
       "executor": "@nx/next:server"
-    },
-    {
-      "project": "myorganizer",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "tools",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "vault-core",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-account",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-addresses",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-admin",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-dashboard",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-groceries",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-home",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-mobile-numbers",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-subscriptions",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-tasks",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-vault",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-youtube",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-ui",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-vault-ui",
-      "target": "test",
-      "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-vault",
-      "target": "test",
-      "executor": "@nx/jest:jest"
     }
   ]
 }

@@ -3,14 +3,5 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/web-ui/src",
   "projectType": "library",
-  "tags": ["type:ui", "scope:web", "tier:agent"],
-  "targets": {
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/libs/web-ui"],
-      "options": {
-        "jestConfig": "libs/web-ui/jest.config.ts"
-      }
-    }
-  }
+  "tags": ["type:ui", "scope:web", "tier:agent"]
 }

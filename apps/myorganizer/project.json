@@ -60,13 +60,6 @@
           "node tools/scripts/package-myorganizer-web.mjs"
         ]
       }
-    },
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/apps/myorganizer"],
-      "options": {
-        "jestConfig": "apps/myorganizer/jest.config.ts"
-      }
     }
   }
 }
