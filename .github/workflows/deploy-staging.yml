@@ -1,4 +1,9 @@
 name: Deploy Staging
+# The commit this run checks out and uploads. `release:cut` reads it from here
+# rather than from a job's head_sha, which on workflow_run may be the tip of
+# main when the run fired instead of the commit CI tested (ADR 0056,
+# amendment 2026-09-14; tools/scripts/lib/staging-host-apply-guard.mjs).
+run-name: Deploy Staging ${{ github.event.workflow_run.head_sha || github.sha }}
 
 on:
   workflow_run:
@@ -118,6 +123,23 @@ jobs:
           server-dir: ${{ secrets.FTP_SERVER_DIR }}
           timeout: 300000
 
+      # An automatic upload is not a deploy: host-apply only runs on dispatch,
+      # so without this a green run reads as "Staging is on this commit" while
+      # the running process still uses the previous install and schema. A
+      # dispatched run applies in the next job and needs no notice.
+      - name: Report upload awaiting Host Apply
+        if: ${{ github.event_name != 'workflow_dispatch' }}
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          {
+            echo "### Backend uploaded, not applied"
+            echo
+            echo "Bundle \`${HEAD_SHA:0:7}\` is uploaded to Staging, but nothing runs it until **Host Apply** is green for it."
+            echo
+            echo "Switch SSH shell access on, then dispatch \`Deploy Staging\` with **apply_only**. \`release:cut\` refuses this commit until then (ADR 0056)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
   # Applies backend upload (install, migrate, generate, restart) over SSH and
   # verifies with HTTP probes (ADR 0056).
   #
@@ -125,10 +147,10 @@ jobs:
   # follows a green `main`: SSH shell access on this hosting account is a
   # manual toggle that reverts, so an automatic apply would go red on every
   # push where the shell happened to be off. Uploads still land automatically;
-  # applying them is an operator action taken with the shell switched on. That
-  # makes the Cut checklist's "Staging Host Apply green" load-bearing rather
-  # than a formality — nothing else applies a Staging migration now. Amends
-  # PRD #565 user story 3.
+  # applying them is an operator action taken with the shell switched on.
+  # Nothing else applies a Staging migration now, so `release:cut` refuses a
+  # commit Staging has not both uploaded and Host Applied (ADR 0056,
+  # amendment 2026-09-14). Amends PRD #565 user story 3.
   #
   # Shares the `deploy-staging-apply` group with deploy-backend, and never
   # cancels in progress: an automatic upload must queue behind an in-flight

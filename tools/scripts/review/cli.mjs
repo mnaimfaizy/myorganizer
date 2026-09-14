@@ -10,6 +10,8 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { gh as runGh, ghJson as runGhJson } from '../lib/gh.mjs';
+
 /**
  * Split argv into `{ positional, flags }`. A flag is `--name value`; a flag
  * given twice keeps the last value; a flag with no value is `null`.
@@ -53,12 +55,8 @@ export const readJsonOr = (path, onError) => {
  * publisher use it, and only from steps that hold the job token; the
  * reviewer itself never does (ADR 0071 item 8).
  */
-export const gh = (args, input) => {
-  const opts = { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] };
-  if (input !== undefined) opts.input = input;
-  return execFileSync('gh', args, opts);
-};
-export const ghJson = (args, input) => JSON.parse(gh(args, input) || 'null');
+export const gh = (args, input) => runGh(args, { input });
+export const ghJson = (args, input) => runGhJson(args, { input });
 export const ghGraphql = (query, variables) =>
   ghJson(
     ['api', 'graphql', '--input', '-'],

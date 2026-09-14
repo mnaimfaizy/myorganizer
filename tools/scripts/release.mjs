@@ -2,11 +2,16 @@ import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { GhJsonError, ghJson } from './lib/gh.mjs';
 import {
   classifyCommit,
   resolveNotesPlan,
   upsertChangelogSection,
 } from './lib/release-notes.mjs';
+import {
+  evaluateStagingHostApply,
+  normalizeJobs,
+} from './lib/staging-host-apply-guard.mjs';
 
 function assertNodeVersion() {
   const major = Number(String(process.versions.node).split('.')[0]);
@@ -228,6 +233,55 @@ function assertUpToDateWithOrigin(branch) {
       `Local ${branch} is not up to date with origin/${branch}. Run: git pull --ff-only`,
     );
   }
+}
+
+// Recent `Deploy Staging` runs to read, newest first, from every ref: a run
+// from any branch writes the same APP_ROOT, so filtering one out could only
+// allow a Cut. Those runs queue one at a time, so an upload outside the window
+// cannot be Staging's latest; missing one can only refuse a Cut.
+const STAGING_RUNS_TO_READ = 20;
+
+function ghApi(endpoint) {
+  try {
+    return ghJson(['api', endpoint]);
+  } catch (error) {
+    if (error instanceof GhJsonError) {
+      die(
+        `Refusing to Cut: \`gh api ${endpoint}\` did not return JSON:\n${error.stdout.slice(0, 500)}`,
+      );
+    }
+    die(
+      `Refusing to Cut: could not read Staging deploy runs with \`gh api ${endpoint}\`. ` +
+        'Install and authenticate the GitHub CLI (`gh auth login`).\n' +
+        String(error.stderr ?? error.message).trim(),
+    );
+  }
+}
+
+// ADR 0056 (amendment 2026-09-14): Staging must hold the commit being cut,
+// Host Applied. There is deliberately no flag to skip this.
+function assertStagingHostApplied(cutSha) {
+  const { workflow_runs: runs } = ghApi(
+    `repos/{owner}/{repo}/actions/workflows/deploy-staging.yml/runs?per_page=${STAGING_RUNS_TO_READ}`,
+  );
+
+  const jobs = runs.flatMap((stagingRun) =>
+    normalizeJobs(
+      stagingRun,
+      ghApi(
+        `repos/{owner}/{repo}/actions/runs/${stagingRun.id}/jobs?per_page=100`,
+      ).jobs,
+    ),
+  );
+
+  const result = evaluateStagingHostApply({
+    cutSha,
+    jobs,
+    runsRead: STAGING_RUNS_TO_READ,
+  });
+  if (!result.ok) die(result.reason);
+
+  console.log(`Staging holds ${cutSha.slice(0, 7)}, Host Applied.`);
 }
 
 function branchExists(branchName) {
@@ -571,6 +625,7 @@ assertCleanTree();
 if (command === 'cut') {
   assertOnBranch('main');
   assertUpToDateWithOrigin('main');
+  assertStagingHostApplied(run('git rev-parse main'));
 
   if (branchExists(releaseBranch)) {
     die(`Branch already exists: ${releaseBranch}`);

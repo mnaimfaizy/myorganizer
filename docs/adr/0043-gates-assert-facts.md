@@ -1,6 +1,6 @@
 # Gates assert facts; they never require a file to be touched
 
-Issue #438 was filed after release v0.4.0 shipped the focused YouTube experience with nine new production environment variables and a cron wiring requirement, none of which reached `docs/deployment/CPANEL_STAGING_DEPLOYMENT_PLAN_MYORGANIZER.md`. Following that deployment doc exactly produced an API that could neither authenticate cron nor send mail. The issue proposed the obvious fix: detect when a backend or frontend surface changes and fail the commit unless documentation changed too.
+Issue #438 was filed after release v0.4.0 shipped the focused YouTube experience with nine new production environment variables and a cron wiring requirement, none of which reached `docs/deployment/CPANEL_STAGING_DEPLOYMENT_PLAN_MYORGANIZER.md` (since renamed [`CPANEL_BACKEND_HOSTING.md`](../deployment/CPANEL_BACKEND_HOSTING.md), #437). Following that deployment doc exactly produced an API that could neither authenticate cron nor send mail. The issue proposed the obvious fix: detect when a backend or frontend surface changes and fail the commit unless documentation changed too.
 
 That is a different kind of gate from anything this repo has. `check-readme.mjs`, `check-libs-markdown.mjs`, `check-skill-map.mjs`, `check-docs-notes.mjs`, `check-openapi-artifacts.mjs`, `check-lint-coverage.mjs`, `check-vault-pages.mjs`, and `check-auth-pages.mjs` all compare two artifacts and fail on a factual mismatch. Not one of them says "you touched X, therefore touch Y."
 

@@ -43,6 +43,12 @@ const DISPATCHER = join(WORKFLOWS, 'dispatch-production-deploy.yml');
 const PUBLISH = join(WORKFLOWS, 'publish-github-release.yml');
 const PACKAGE_JSON = 'package.json';
 const RELEASE_SCRIPT = join('tools', 'scripts', 'release.mjs');
+const STAGING_HOST_APPLY_GUARD = join(
+  'tools',
+  'scripts',
+  'lib',
+  'staging-host-apply-guard.mjs',
+);
 
 /** The workflows whose runners the page claims share one Node pin. The monthly
  *  model audit also pins Node 22 and is deliberately not one of them: it is not
@@ -314,6 +320,22 @@ const EXTRACTORS = {
         ),
       ],
       'release-notes filename across the publish workflow and release.mjs',
+    ),
+
+  // `release:cut` refuses a commit Staging has not both uploaded and Host
+  // Applied (ADR 0056, amendment 2026-09-14). The guard names the two jobs it
+  // reads from the Deploy Staging run rather than the page assuming them.
+  cutGuardUploadJob: () =>
+    capture(
+      STAGING_HOST_APPLY_GUARD,
+      /export const UPLOAD_JOB = '([^']+)'/,
+      'the job the Cut guard reads as Staging’s upload',
+    ),
+  cutGuardApplyJob: () =>
+    capture(
+      STAGING_HOST_APPLY_GUARD,
+      /export const APPLY_JOB = '([^']+)'/,
+      'the job the Cut guard reads as Staging’s Host Apply',
     ),
 };
 
