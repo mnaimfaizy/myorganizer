@@ -1046,7 +1046,7 @@ open coverage/apps/backend/index.html
 yarn build:backend
 
 # Or using Nx
-yarn nx run backend:build:production
+yarn nx build backend
 
 # Output is in dist/apps/backend/
 ```

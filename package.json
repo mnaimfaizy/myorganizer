@@ -21,7 +21,7 @@
     "start:backend:prod": "yarn build:backend && node tools/scripts/run-backend-prod.mjs",
     "build:myorganizer": "nx build myorganizer",
     "package:myorganizer:web": "nx run myorganizer:package",
-    "build:backend": "nx run backend:build:production",
+    "build:backend": "nx build backend",
     "package:backend:api": "nx run backend:package",
     "release:cut": "node tools/scripts/release.mjs cut",
     "release:tag": "node tools/scripts/release.mjs tag",

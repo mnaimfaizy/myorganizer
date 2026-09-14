@@ -6,21 +6,7 @@
   "tags": ["type:app", "scope:backend", "tier:human"],
   "targets": {
     "build": {
-      "executor": "@nx/webpack:webpack",
-      "dependsOn": ["generate-types"],
-      "options": {
-        "webpackConfig": "apps/backend/webpack.config.js",
-        "main": "apps/backend/src/main.ts",
-        "tsConfig": "apps/backend/tsconfig.app.json",
-        "assets": ["apps/backend/src/assets"],
-        "externalDependencies": "all",
-        "generatePackageJson": true,
-        "outputHashing": "none",
-        "sourceMap": false,
-        "outputPath": "dist/apps/backend/",
-        "compiler": "tsc",
-        "target": "node"
-      }
+      "dependsOn": ["generate-types"]
     },
     "package": {
       "executor": "nx:run-commands",
@@ -28,14 +14,13 @@
         "cwd": "{workspaceRoot}",
         "parallel": false,
         "commands": [
-          "yarn nx run backend:build:production",
+          "yarn nx build backend",
           "node tools/scripts/package-backend-api.mjs"
         ]
       }
     },
     "serve": {
       "executor": "@nx/js:node",
-      "defaultConfiguration": "development",
       "dependsOn": ["generate-types"],
       "options": {
         "buildTarget": "backend:build",
