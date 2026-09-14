@@ -514,8 +514,16 @@ _Avoid_: threshold (alone), error budget, SLO, quality bar
 A specialist chain that retries between agents until a reviewer or runner verdict passes, with a cap. Components and Jest use this shape. Hitting the cap is a stop, not another silent retry.
 _Avoid_: review loop, QA cycle, writer-reviewer loop
 
+**Inferred Target**:
+An Nx target a registered plugin derives from a tool's own config file in the project root, with nothing written in `project.json`. The target state for every target a plugin can derive (ADR 0082).
+_Avoid_: plugin target, crystal target
+
+**Declared Target**:
+An Nx target written out in `project.json`. On an `@nx/*` executor it is migration debt, not a pattern to copy (ADR 0082); a `nx:run-commands` target is declared by nature and is not.
+_Avoid_: executor target, hand-declared target, explicit target
+
 **Gate Coverage**:
-The set of projects a gate actually reaches, which is not the set its command appears to name. A project can sit inside a gate's invocation and outside its reach: `nx affected -t lint` selects only projects declaring a target named `lint`, so a project whose ESLint target carries another name passes by being invisible. Asserted by a check; never inferred from a green run.
+The set of projects a gate actually reaches, which is not the set its command appears to name. A project can sit inside a gate's invocation and outside its reach: `nx affected -t lint` selects only projects that have a target named `lint`, declared or inferred, so a project whose ESLint target carries another name passes by being invisible. Asserted by a check; never inferred from a green run.
 _Avoid_: test coverage, CI coverage, gate scope
 
 **Assertion Gate**:
