@@ -61,7 +61,7 @@ function scaffold(t, projects = {}, baseline = []) {
   return workspace;
 }
 
-test('exits 0 against the real repository with the committed 52-entry baseline', () => {
+test('exits 0 against the real repository with the committed 7-entry baseline', () => {
   const result = spawnSync(process.execPath, [CHECKER], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
@@ -69,7 +69,7 @@ test('exits 0 against the real repository with the committed 52-entry baseline',
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.match(
     result.stdout,
-    /OK — 52 @nx\/\* Declared Target\(s\) match the 52-entry baseline/,
+    /OK — 7 @nx\/\* Declared Target\(s\) match the 7-entry baseline/,
   );
 });
 
