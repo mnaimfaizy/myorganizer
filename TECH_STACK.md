@@ -3,7 +3,7 @@
 > **Single source of truth** for installed package versions and canonical technology choices.
 > All agent instruction files and documentation must reference this file rather than declaring versions inline.
 > Owned and kept current by the **DepSync** agent/skill — do not edit versions manually.
-> Last synced from `package.json` on 2026-09-03.
+> Last synced from `package.json` on 2026-09-13.
 
 > **Reading this file as an agent:** it is a lookup table, not a briefing. Read
 > the one section you need. Component work needs
@@ -30,7 +30,7 @@
 
 | Package     | Version | Purpose                                                |
 | ----------- | ------- | ------------------------------------------------------ |
-| `next`      | 16.2.6  | App framework — App Router, server components, routing |
+| `next`      | 16.3.4  | App framework — App Router, server components, routing |
 | `react`     | 19.2.3  | UI rendering                                           |
 | `react-dom` | 19.2.3  | DOM renderer for React                                 |
 
@@ -181,7 +181,7 @@
 
 | Package      | Version | Purpose        |
 | ------------ | ------- | -------------- |
-| `nodemailer` | 8.0.5   | Email delivery |
+| `nodemailer` | 9.1.1   | Email delivery |
 
 ### Google Integration
 
@@ -327,10 +327,16 @@ These transitive dependencies are explicitly resolved to patched versions via Ya
 | `deepmerge-ts`              | 8.0.1            | Patches stack exhaustion in schema merging (pulled by @prisma/config@7.2.0)                                                                                    | GHSA-ggr8-5vv4-36mx                |
 | `react-native-quick-base64` | 3.0.0            | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto)                                                                              | —                                  |
 | `nanoid`                    | 3.3.17           | Patches infinite loops on negative and zero `size` (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8)                                                                  | 1138811, 1138813                   |
+| `js-yaml`                   | 3.15.2, 4.3.2    | Patches unbounded CPU use from empty merge sources despite `maxTotalMergeKeys` (GHSA-2883-xcg3-v3hh)                                                           | 1193726, 1193727                   |
+| `sharp`                     | 0.35.4           | Patches bundled libheif vulnerabilities (GHSA-rgj7-g3m4-5g8c); pulled by `next`                                                                                | 1193725                            |
+| `smol-toml`                 | 1.8.0            | Patches DoS via malformed TOML documents (GHSA-7w5x-hrqm-74c2); `nx@22.7.7` pins 1.6.1 exactly                                                                 | 1193945                            |
+| `svgo`                      | 3.3.5, 4.1.0     | Patches `removeScripts` bypass via namespace and control characters (GHSA-w27v-7q3p-w38r)                                                                      | 1193735, 1193736                   |
 
 > **Note**: `shell-quote` is a transitive dependency of `concurrently@9.2.1` (pulled in by `@openapitools/openapi-generator-cli@2.27.0`) and `launch-editor@2.9.1` (pulled in by `webpack-dev-server@5.2.3`). Upstream packages are pinned to versions that contain vulnerable `shell-quote`, so we use resolutions to force the patched version globally.
 
 > **Note**: `nanoid` reaches the tree through `postcss@8.5.18` (`^3.3.11`) and `@react-navigation/native@7.2.5` (`^3.3.12`). Both are resolved to `3.3.17`, the first release patching both advisories. It is also listed in `npmPreapprovedPackages` because it was published inside the 7-day `npmMinimalAgeGate` window.
+
+> **Note**: `js-yaml` 3.x reaches the tree through `cosmiconfig@5.2.1` and 4.x through `@eslint/eslintrc`. `sharp` comes from `next`, `svgo` 3.x from `@svgr/plugin-svgo@8.1.0` and 4.x from `postcss-svgo@7.1.3`. `smol-toml` is pinned exactly at `1.6.1` by `nx@22.7.7`, so the `1.8.0` resolution overrides a declared exact version — drop it when Nx takes a patched release. Patched versions chosen here are all older than the 7-day `npmMinimalAgeGate`.
 
 > **Note**: `browserslist` reaches the tree through `@babel/helper-compilation-targets` and `@nx/webpack@22.7.7`. `fast-uri` is pulled by `ajv@8.17.1`. `mysql2` is pinned at `3.15.3` by `prisma@7.2.0` (this app uses the Postgres adapter; the resolution still has to lift the CLI's unused MySQL driver so `yarn npm audit --severity high` can pass). Patched versions chosen here are all older than the 7-day `npmMinimalAgeGate`.
 
