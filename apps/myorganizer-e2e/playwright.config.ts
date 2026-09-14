@@ -52,19 +52,20 @@ export default defineConfig({
    * Set `E2E_DEV_SERVER=1` for the fast local edit-run loop, accepting that it
    * no longer matches what CI runs.
    *
-   * The production branch builds before it serves. `serve:production` runs
-   * `next start` against whatever `dist/` already holds and never rebuilds it,
-   * so without this the suite happily tests a stale bundle — a build three days
-   * older than the branch under test read as "the feature does not exist",
-   * costing an afternoon of misdiagnosis. Nx caches the build, so this is a
-   * no-op when nothing changed, and CI (which builds in its own step) hits that
-   * cache rather than paying twice. The dev branch is excluded deliberately: it
-   * compiles on demand, so building there would be pure waste.
+   * The production branch builds before it serves. `next start` serves
+   * whatever `apps/myorganizer/.next` already holds and never rebuilds it, so a
+   * bare `next start` happily tests a stale bundle — a build three days older
+   * than the branch under test read as "the feature does not exist", costing an
+   * afternoon of misdiagnosis. The inferred `myorganizer:start` target depends
+   * on `build`, so the task graph enforces the build (ADR 0083). Nx caches it,
+   * so this is a no-op when nothing changed, and CI (which builds in its own
+   * step) hits that cache rather than paying twice. The dev branch runs `dev`,
+   * which compiles on demand, so building there would be pure waste.
    */
   webServer: {
     command: useDevServer
-      ? `corepack yarn nx run myorganizer:serve:development --port=${port}`
-      : `corepack yarn nx run myorganizer:build:production && corepack yarn nx run myorganizer:serve:production --port=${port}`,
+      ? `corepack yarn nx run myorganizer:dev --port=${port}`
+      : `corepack yarn nx run myorganizer:start --port=${port}`,
     url: baseURL,
     /**
      * Reuse is a dev-loop convenience, never a production-run one.

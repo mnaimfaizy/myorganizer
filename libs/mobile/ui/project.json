@@ -3,13 +3,5 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/mobile/ui/src",
   "projectType": "library",
-  "tags": ["type:ui", "scope:mobile", "tier:agent"],
-  "targets": {
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": ["libs/mobile/ui/src/**/*.{ts,tsx}"]
-      }
-    }
-  }
+  "tags": ["type:ui", "scope:mobile", "tier:agent"]
 }

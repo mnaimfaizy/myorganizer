@@ -40,7 +40,8 @@ The repository is public, so Actions minutes are free. Wall-clock is the only bu
 
 **The app is served from a production build.** `webServer.command` becomes
 `nx run myorganizer:serve:production`, **including locally**, with `E2E_DEV_SERVER=1` as a documented
-opt-out for fast iteration.
+opt-out for fast iteration. (Since [ADR 0083](0083-a-declared-target-is-debt-only-on-an-executor-nx-deprecated.md)
+the target is the inferred `myorganizer:start`, which depends on `build`.)
 
 **Browsers are installed per lane** — `playwright install --with-deps chromium` in the blocking lane,
 all three only in the nightly. Browser binaries are **not** cached, per Playwright's guidance that

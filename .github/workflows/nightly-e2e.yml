@@ -69,7 +69,7 @@ jobs:
       # Built here rather than inside Playwright's webServer timeout, so a build
       # failure is attributable and starting the server is only that.
       - name: Build frontend for E2E
-        run: corepack yarn nx run myorganizer:build:production
+        run: corepack yarn nx build myorganizer
 
       # --fail-on-flaky-tests lives here and not on the blocking lane. A test
       # that passes on retry is not evidence that a pull request broke

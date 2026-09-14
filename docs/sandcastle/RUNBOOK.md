@@ -574,10 +574,12 @@ To reproduce the sandbox behavior locally: `MYORGANIZER_SANDBOX=1 yarn nx test t
   why this matters for the mounted graphify graph.
 - **The sandbox image's Node is pinned to 22.16 — do not float it to `node:22`.** Node 22.17
   reimplemented `fs.cpSync` in C++ and the new version returns `EACCES` for a recursive directory
-  copy whose destination is on a Docker Desktop bind mount. `@nx/next:build` copies `public/` into
-  `dist/` with exactly that call, so **every** slice's build gate fails with
+  copy whose destination is on a Docker Desktop bind mount. The retired `@nx/next:build` executor
+  copied `public/` into `dist/` with exactly that call, so **every** slice's build gate failed with
   `NX EACCES, Permission denied 'dist/apps/myorganizer/public'` — always after a clean compile and
-  typecheck, which makes it look like a code failure when it is not. It is not permissions: it
+  typecheck, which made it look like a code failure when it was not. Since ADR 0083 the web build
+  is plain `next build` into `apps/myorganizer/.next` and no longer makes that copy; the pin stays
+  until a recursive cpSync onto the mount is ruled out for every other build step. It is not permissions: it
   fails as root, `access()` reports RWX, and `cp -R` works on the same path. Bisected 22.16.0 OK /
   22.17.1 EACCES / 22.23.2 EACCES / 24.19.0 EACCES. CI is unaffected (ext4, not VirtioFS). See the
   comment on `FROM` in `.sandcastle/Dockerfile` before changing it.

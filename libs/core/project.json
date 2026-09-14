@@ -3,21 +3,5 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/core/src",
   "projectType": "library",
-  "tags": ["type:domain", "scope:shared", "tier:agent"],
-  "targets": {
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": ["libs/core/src/**/*.ts"]
-      }
-    },
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/libs/core"],
-      "options": {
-        "jestConfig": "libs/core/jest.config.ts",
-        "passWithNoTests": true
-      }
-    }
-  }
+  "tags": ["type:domain", "scope:shared", "tier:agent"]
 }

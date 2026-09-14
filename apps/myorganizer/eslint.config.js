@@ -5,7 +5,7 @@ module.exports = [
   ...baseConfig,
   ...nx.configs['flat/react'],
   {
-    ignores: ['.next/**/*'],
+    ignores: ['.next/**/*', 'next-env.d.ts'],
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],

@@ -10,42 +10,16 @@
       "options": {
         "cwd": "{workspaceRoot}",
         "commands": [
-          "node -e \"const fs=require('fs'); const path=require('path'); const dirs=['apps/myorganizer/.next','dist/apps/myorganizer']; for (const d of dirs) { fs.rmSync(path.resolve(d), { recursive: true, force: true }); }\""
+          "node -e \"const fs=require('fs'); const path=require('path'); fs.rmSync(path.resolve('apps/myorganizer/.next'), { recursive: true, force: true });\""
         ],
         "parallel": false
       }
     },
-    "serve": {
-      "executor": "@nx/next:server",
-      "options": {
-        "buildTarget": "myorganizer:build",
-        "dev": true
-      },
-      "configurations": {
-        "production": {
-          "buildTarget": "myorganizer:build:production",
-          "dev": false
-        },
-        "development": {
-          "buildTarget": "myorganizer:build:development",
-          "dev": true
-        }
-      },
-      "defaultConfiguration": "development"
-    },
     "build": {
-      "executor": "@nx/next:build",
-      "outputs": ["{options.outputPath}"],
-      "defaultConfiguration": "production",
       "dependsOn": ["clean"],
       "options": {
-        "outputPath": "dist/apps/myorganizer",
-        "postcssConfig": "apps/myorganizer/postcss.config.js"
-      },
-      "configurations": {
-        "production": {},
-        "development": {
-          "outputPath": "dist/apps/myorganizer"
+        "env": {
+          "NODE_ENV": "production"
         }
       }
     },
@@ -56,23 +30,9 @@
         "cwd": "{workspaceRoot}",
         "parallel": false,
         "commands": [
-          "yarn nx run myorganizer:build:production",
+          "yarn nx run myorganizer:build",
           "node tools/scripts/package-myorganizer-web.mjs"
         ]
-      }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "outputs": ["{options.outputFile}"],
-      "options": {
-        "lintFilePatterns": ["apps/myorganizer/src/**/*.{ts,tsx,js,jsx}"]
-      }
-    },
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/apps/myorganizer"],
-      "options": {
-        "jestConfig": "apps/myorganizer/jest.config.ts"
       }
     }
   }

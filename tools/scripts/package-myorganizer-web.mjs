@@ -56,8 +56,10 @@ function createZipFromDir({ dir, outFile }) {
   });
 }
 
-const buildOut = path.join(workspaceRoot, 'dist', 'apps', 'myorganizer');
-const nextDir = path.join(buildOut, '.next');
+// Next's default distDir, inside the app: `distDir` may not leave the project
+// directory, so the build no longer writes to dist/ (ADR 0083).
+const appDir = path.join(workspaceRoot, 'apps', 'myorganizer');
+const nextDir = path.join(appDir, '.next');
 const standaloneDir = path.join(nextDir, 'standalone');
 const staticDir = path.join(nextDir, 'static');
 
@@ -65,13 +67,13 @@ const deployRoot = path.join(
   workspaceRoot,
   'dist',
   'deploy',
-  'myorganizer-web'
+  'myorganizer-web',
 );
 
 if (!exists(standaloneDir)) {
   throw new Error(
     `Expected Next standalone output at: ${standaloneDir}. ` +
-      `Ensure apps/myorganizer/next.config.js has output: 'standalone' and re-run the build.`
+      `Ensure apps/myorganizer/next.config.js has output: 'standalone' and re-run the build.`,
   );
 }
 
@@ -92,7 +94,7 @@ mkdir(deployRoot);
 const standaloneNodeModules = path.join(standaloneDir, 'node_modules');
 if (!exists(standaloneNodeModules)) {
   throw new Error(
-    `Expected standalone node_modules at: ${standaloneNodeModules}`
+    `Expected standalone node_modules at: ${standaloneNodeModules}`,
   );
 }
 
@@ -152,7 +154,7 @@ function listStandalonePackages(nodeModulesDir) {
         const pkgJsonPath = path.join(
           scopeDir,
           scopedEntry.name,
-          'package.json'
+          'package.json',
         );
         if (!exists(pkgJsonPath)) continue;
         const pkgJson = readJson(pkgJsonPath);
@@ -173,7 +175,7 @@ function listStandalonePackages(nodeModulesDir) {
 
   // Ensure stable output
   return Object.fromEntries(
-    Object.entries(dependencies).sort(([a], [b]) => a.localeCompare(b))
+    Object.entries(dependencies).sort(([a], [b]) => a.localeCompare(b)),
   );
 }
 
@@ -191,9 +193,9 @@ fs.writeFileSync(
       dependencies: deployDependencies,
     },
     null,
-    2
+    2,
   ),
-  'utf8'
+  'utf8',
 );
 
 if (!exists(nextDir)) {
@@ -211,12 +213,9 @@ if (!exists(staticDir)) {
   throw new Error(`Expected Next static assets at: ${staticDir}`);
 }
 
-const publicFromDist = path.join(buildOut, 'public');
-const publicFromApp = path.join(workspaceRoot, 'apps', 'myorganizer', 'public');
+const publicFromApp = path.join(appDir, 'public');
 
-if (exists(publicFromDist)) {
-  copyDir(publicFromDist, path.join(deployRoot, 'public'));
-} else if (exists(publicFromApp)) {
+if (exists(publicFromApp)) {
   copyDir(publicFromApp, path.join(deployRoot, 'public'));
 }
 
@@ -264,7 +263,7 @@ fs.writeFileSync(
     '});',
     '',
   ].join('\n'),
-  'utf8'
+  'utf8',
 );
 
 // Create a tiny README to reduce operator error on cPanel.
@@ -287,7 +286,7 @@ fs.writeFileSync(
     '- If you change API base URL, prefer updating `API_BASE_URL` and restarting the app.',
     '',
   ].join('\n'),
-  'utf8'
+  'utf8',
 );
 
 // Optional: create a zip if `zip` exists on the system.
@@ -302,7 +301,7 @@ try {
     log(`Created archive: ${outFile}`);
   } catch (err) {
     log(
-      'zip command not available and JS zip fallback failed; skipping archive creation.'
+      'zip command not available and JS zip fallback failed; skipping archive creation.',
     );
     log(String(err));
     log(`Deploy folder ready at: ${deployRoot}`);

@@ -23,12 +23,12 @@
  */
 import '@testing-library/jest-dom';
 
+import { Marker } from './jest-node-env-fixture';
+
 jest.mock('./jest-node-env-fixture', () => ({
   // Inline JSX in a hoisted factory — the construct that crashed the transform.
   Marker: () => <span data-testid="marker">ok</span>,
 }));
-
-import { Marker } from './jest-node-env-fixture';
 
 describe('jest environment', () => {
   it('pins NODE_ENV to test regardless of the ambient value', () => {

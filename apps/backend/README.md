@@ -473,7 +473,7 @@ nx serve backend
 # Build for production
 yarn build:backend
 # or
-nx run backend:build:production
+nx build backend
 
 # Run tests
 yarn test:backend
@@ -626,7 +626,7 @@ describe('UserService', () => {
 yarn build:backend
 
 # Or directly
-nx run backend:build:production
+nx build backend
 ```
 
 This will:

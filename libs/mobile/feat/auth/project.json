@@ -3,13 +3,5 @@
   "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/mobile/feat/auth/src",
   "projectType": "library",
-  "tags": ["type:feature", "scope:mobile", "tier:human"],
-  "targets": {
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": ["libs/mobile/feat/auth/src/**/*.{ts,tsx}"]
-      }
-    }
-  }
+  "tags": ["type:feature", "scope:mobile", "tier:human"]
 }

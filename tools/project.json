@@ -3,14 +3,5 @@
   "name": "tools",
   "projectType": "library",
   "sourceRoot": "tools",
-  "targets": {
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/tools"],
-      "options": {
-        "jestConfig": "tools/jest.config.ts"
-      }
-    }
-  },
   "tags": ["type:tooling", "scope:tooling", "tier:human"]
 }

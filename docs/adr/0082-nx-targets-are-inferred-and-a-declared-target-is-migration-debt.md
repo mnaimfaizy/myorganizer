@@ -2,7 +2,8 @@
 
 ## Status
 
-proposed
+accepted — decision 3 superseded and decision 1 sharpened by
+[ADR 0083](0083-a-declared-target-is-debt-only-on-an-executor-nx-deprecated.md)
 
 ## Context
 

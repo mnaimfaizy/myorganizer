@@ -7,24 +7,25 @@
   "// targets": "to see all targets run: nx show project myorganizer-e2e --web",
   "targets": {
     "e2e": {
-      "executor": "@nx/playwright:playwright",
+      "cache": false,
       "options": {
-        "config": "apps/myorganizer-e2e/playwright.config.ts",
-        "project": ["chromium"]
+        "args": ["--project=chromium"]
       }
     },
     "e2e-firefox": {
-      "executor": "@nx/playwright:playwright",
+      "executor": "nx:run-commands",
+      "parallelism": false,
       "options": {
-        "config": "apps/myorganizer-e2e/playwright.config.ts",
-        "project": ["firefox"]
+        "cwd": "{projectRoot}",
+        "command": "playwright test --project=firefox"
       }
     },
     "e2e-webkit": {
-      "executor": "@nx/playwright:playwright",
+      "executor": "nx:run-commands",
+      "parallelism": false,
       "options": {
-        "config": "apps/myorganizer-e2e/playwright.config.ts",
-        "project": ["webkit"]
+        "cwd": "{projectRoot}",
+        "command": "playwright test --project=webkit"
       }
     },
     "e2e-all": {

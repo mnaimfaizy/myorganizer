@@ -6,7 +6,7 @@ Next.js app shell for MyOrganizer. Route wrappers live here; page logic lives in
 
 ## Commands
 
-- Serve: `yarn start:myorganizer` or `yarn nx serve myorganizer`.
+- Serve: `yarn start:myorganizer` or `yarn nx dev myorganizer` (dev server); `yarn nx start myorganizer` builds and serves production. The targets are inferred from `next.config.js` (ADR 0083).
 - Test: `yarn nx test myorganizer`.
 - Lint: `yarn nx lint myorganizer`.
 - Build: `yarn build:myorganizer`.

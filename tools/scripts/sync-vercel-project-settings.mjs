@@ -49,9 +49,8 @@ const desiredSettings = pickSettings({
   rootDirectory: null,
   installCommand:
     vercelConfig.installCommand ?? 'corepack yarn install --immutable',
-  buildCommand: vercelConfig.buildCommand ?? 'npx nx build myorganizer --prod',
-  outputDirectory:
-    vercelConfig.outputDirectory ?? 'dist/apps/myorganizer/.next',
+  buildCommand: vercelConfig.buildCommand ?? 'npx nx build myorganizer',
+  outputDirectory: vercelConfig.outputDirectory ?? 'apps/myorganizer/.next',
   nodeVersion: process.env.VERCEL_NODE_VERSION ?? DEFAULT_NODE_VERSION,
 });
 
@@ -110,7 +109,7 @@ if (!response.ok) {
   );
   console.error(body);
   console.error(
-    'Manual fix: set Install Command to "corepack yarn install --immutable", Build Command to "npx nx build myorganizer --prod", Output Directory to "dist/apps/myorganizer/.next", Root Directory to the project root, and Node.js to 22.x.',
+    'Manual fix: set Install Command to "corepack yarn install --immutable", Build Command to "npx nx build myorganizer", Output Directory to "apps/myorganizer/.next", Root Directory to the project root, and Node.js to 22.x.',
   );
   process.exit(1);
 }

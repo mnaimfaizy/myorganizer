@@ -3,24 +3,5 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/web-vault-ui/src",
   "projectType": "library",
-  "tags": ["type:feature", "scope:web", "tier:human"],
-  "targets": {
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": [
-          "libs/web-vault-ui/src/**/*.ts",
-          "libs/web-vault-ui/src/**/*.tsx"
-        ]
-      }
-    },
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/libs/web-vault-ui"],
-      "options": {
-        "jestConfig": "libs/web-vault-ui/jest.config.ts",
-        "passWithNoTests": true
-      }
-    }
-  }
+  "tags": ["type:feature", "scope:web", "tier:human"]
 }
