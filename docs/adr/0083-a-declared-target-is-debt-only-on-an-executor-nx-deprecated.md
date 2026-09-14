@@ -2,7 +2,7 @@
 
 ## Status
 
-proposed
+accepted
 
 Supersedes decision 3 of [ADR 0082](0082-nx-targets-are-inferred-and-a-declared-target-is-migration-debt.md)
 and sharpens its decision 1. Decision 2 (the ratchet) stands.
