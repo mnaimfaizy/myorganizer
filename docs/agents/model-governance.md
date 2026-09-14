@@ -48,17 +48,38 @@ Each sub-agent has a fixed model assignment per harness. The orchestrator does n
 Executable adapters:
 
 - `.github/agents/*.agent.md` (canonical bodies)
-- `.claude/agents/*.md`, `.cursor/agents/*.md`, `.gemini/agents/*.md` (synced bodies and model frontmatter)
+- `.claude/agents/*.md`, `.cursor/agents/*.md`, `.gemini/agents/*.md` (synced bodies, model frontmatter, and tool grants)
+
+### Tool grants
+
+Capabilities are governed by the same shape as models, with the source moved to where authors already
+write it: the `tools:` role list in each canonical body. [`tools/config/agent-tool-map.json`](../../tools/config/agent-tool-map.json)
+translates the seven roles (`read`, `search`, `edit`, `execute`, `web`, `todo`, `graphify/*`) into each
+harness's grant, and `yarn agents:sync` renders it. To change what an agent may do, change its canonical
+role. Hand-edits to a harness file's grant are reported as `toolDrift` and overwritten on the next sync
+([ADR 0081](../adr/0081-sub-agent-tool-grants-are-derived-from-canonical-roles.md)).
+
+| Harness     | Grant                                                                                         |
+| ----------- | --------------------------------------------------------------------------------------------- |
+| Copilot     | Canonical roles, verbatim                                                                     |
+| Claude Code | `tools: [...]` allowlist rendered from the map                                                |
+| Gemini CLI  | `tools:` YAML list rendered from the map                                                      |
+| Cursor      | `readonly: true` unless the agent declares `edit` or `execute`; no per-agent tool list exists |
+
+**Cursor gap.** Cursor subagents inherit the parent's tools, and `readonly` is the only capability key.
+An agent that runs state-changing commands but should not edit files (`api-sync`, `commit`, `pr-author`)
+cannot be expressed there, so it stays writable in Cursor.
 
 ## Commands
 
-| Command                    | Purpose                                               |
-| -------------------------- | ----------------------------------------------------- |
-| `yarn agents:sync`         | Sync agent bodies, then model frontmatter from policy |
-| `yarn agents:sync:check`   | Validate body and model frontmatter                   |
-| `yarn agents:map:check`    | Assert the orchestration map still matches the policy |
-| `yarn agents:models:audit` | Check assignments and first-party catalog snapshots   |
-| `yarn agents:usage:report` | Summarize Sandcastle token telemetry                  |
+| Command                    | Purpose                                                               |
+| -------------------------- | --------------------------------------------------------------------- |
+| `yarn agents:sync`         | Sync agent bodies and tool grants, then model frontmatter from policy |
+| `yarn agents:sync:check`   | Validate body, tool grants, and model frontmatter                     |
+| `yarn agents:sync:test`    | Test the harness-section and tool-grant renderers                     |
+| `yarn agents:map:check`    | Assert the orchestration map still matches the policy                 |
+| `yarn agents:models:audit` | Check assignments and first-party catalog snapshots                   |
+| `yarn agents:usage:report` | Summarize Sandcastle token telemetry                                  |
 
 ### Audit options
 
@@ -148,6 +169,8 @@ Use usage reports to investigate:
 ## References
 
 - [ADR 0013: Role-pinned sub-agent model governance](../adr/0013-bounded-subagent-model-governance.md)
+- [ADR 0081: Sub-agent tool grants are derived from canonical roles](../adr/0081-sub-agent-tool-grants-are-derived-from-canonical-roles.md)
+- [Tool map](../../tools/config/agent-tool-map.json)
 - [ADR 0012: Tiered quality gates](../adr/0012-tiered-quality-gates.md)
 - [Sub-agent synchronization workflow](../../.agents/skills/sub-agent-sync-workflow/SKILL.md)
 - [Model policy](../../tools/config/agent-model-policy.json)

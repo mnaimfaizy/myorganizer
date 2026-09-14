@@ -2,7 +2,7 @@
 name: IssueCreator
 description: >
   Use when the user asks to create a GitHub issue and you need a focused workflow for duplicate detection, mandatory detail collection, label validation, and safe issue creation in MyOrganizer.
-tools: [Read, Glob, Grep, Edit, Write, Bash]
+tools: [Read, Glob, Grep, Bash]
 model: haiku
 ---
 

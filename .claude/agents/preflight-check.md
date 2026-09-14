@@ -2,7 +2,7 @@
 name: PreflightCheck
 description: >
   Use when the user asks to validate, check, or confirm that the repo is ready to cut a release in MyOrganizer. Returns a structured pass/fail checklist.
-tools: [Read, Glob, Grep, Edit, Write, Bash]
+tools: [Read, Glob, Grep, Bash]
 model: haiku
 ---
 

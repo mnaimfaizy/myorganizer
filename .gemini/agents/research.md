@@ -5,11 +5,12 @@ description: >
 model: gemini-3.6-flash
 tools:
   - read_file
-  - list_files
-  - search_files
-  - replace_in_file
-  - write_file
-  - run_shell_command
+  - read_many_files
+  - glob
+  - grep_search
+  - list_directory
+  - web_fetch
+  - google_web_search
 ---
 
 You are a research specialist. Your job is to gather information from the web, summarize it accurately, and return a concise, citation-backed brief.

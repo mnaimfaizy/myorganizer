@@ -2,7 +2,7 @@
 name: Docs
 description: >
   Use when the user asks to write, update, or expand long-form documentation, READMEs, ADRs, feature docs, or guides under docs/ or library README files in MyOrganizer. Produces Markdown content; main agent decides where to write it.
-tools: [Read, Glob, Grep, Edit, Write, Bash]
+tools: [Read, Glob, Grep]
 model: sonnet
 ---
 

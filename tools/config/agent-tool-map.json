@@ -1,0 +1,58 @@
+{
+  "$comment": "Translates the capability roles declared in canonical .github/agents/*.agent.md `tools:` lines into each harness's grant. Roles are authoritative; this file only translates them. Rendered by tools/scripts/sync-subagents.mjs via tools/scripts/lib/agent-tool-grants.mjs. See ADR 0081 and issue #421.",
+  "reviewedAt": "2026-09-14",
+  "sources": {
+    "gemini": [
+      "https://geminicli.com/docs/reference/tools/",
+      "https://geminicli.com/docs/core/subagents/"
+    ],
+    "cursor": ["https://cursor.com/docs/agent/subagents"]
+  },
+  "roles": {
+    "read": "Read file contents",
+    "search": "Glob, grep, and list the tree",
+    "edit": "Create and modify files",
+    "execute": "Run shell commands",
+    "web": "Fetch and search the public web",
+    "todo": "Maintain a task list",
+    "graphify/*": "Query the Graphify MCP server"
+  },
+  "harnesses": {
+    "claude": {
+      "grant": "tools",
+      "tools": {
+        "read": ["Read"],
+        "search": ["Glob", "Grep"],
+        "edit": ["Edit", "Write"],
+        "execute": ["Bash"],
+        "web": ["WebFetch", "WebSearch"],
+        "todo": ["TodoWrite"],
+        "graphify/*": [
+          "mcp__graphify__query_graph",
+          "mcp__graphify__get_neighbors",
+          "mcp__graphify__get_node",
+          "mcp__graphify__god_nodes",
+          "mcp__graphify__graph_stats"
+        ]
+      }
+    },
+    "gemini": {
+      "grant": "tools",
+      "tools": {
+        "read": ["read_file", "read_many_files"],
+        "search": ["glob", "grep_search", "list_directory"],
+        "edit": ["replace", "write_file"],
+        "execute": ["run_shell_command"],
+        "web": ["web_fetch", "google_web_search"],
+        "todo": ["write_todos"],
+        "graphify/*": ["mcp_graphify_*"]
+      }
+    },
+    "cursor": {
+      "grant": "readonly",
+      "$comment": "Cursor subagents have no per-agent tool list; tools are inherited from the parent. The only capability key is `readonly`, which blocks file edits and state-changing shell commands. An agent is readonly unless it declares any of `writableRoles`.",
+      "writableRoles": ["edit", "execute"]
+    }
+  },
+  "overrides": {}
+}

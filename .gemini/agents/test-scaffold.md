@@ -9,9 +9,11 @@ description: >
 model: gemini-3.6-flash
 tools:
   - read_file
-  - list_files
-  - search_files
-  - replace_in_file
+  - read_many_files
+  - glob
+  - grep_search
+  - list_directory
+  - replace
   - write_file
   - run_shell_command
 ---

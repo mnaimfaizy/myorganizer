@@ -2,7 +2,7 @@
 name: Commit
 description: >
   Use when the user asks to write, draft, generate, or suggest a Conventional Commit message based on staged changes. Read-only — produces the message text only and does not create the commit.
-tools: [Read, Glob, Grep, Edit, Write, Bash]
+tools: [Read, Glob, Grep, Bash]
 model: haiku
 ---
 

@@ -6,7 +6,7 @@ description: >
   writes the component following docs/ui/GUIDELINES.md and TECH_STACK.md.
   Always prefers the compound/composition pattern. Triggers ComponentReviewer
   upon completion.
-tools: [Read, Glob, Grep, Edit, Write, Bash]
+tools: [Read, Glob, Grep, Edit, Write, Bash, TodoWrite]
 model: haiku
 ---
 

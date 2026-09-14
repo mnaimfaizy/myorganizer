@@ -5,10 +5,10 @@ description: >
 model: gemini-3.5-flash-lite
 tools:
   - read_file
-  - list_files
-  - search_files
-  - replace_in_file
-  - write_file
+  - read_many_files
+  - glob
+  - grep_search
+  - list_directory
   - run_shell_command
 ---
 

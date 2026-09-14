@@ -1,7 +1,7 @@
 ---
 description: 'Use when the user asks to determine, suggest, or propose the next semantic version number based on commit history in MyOrganizer.'
 name: 'VersionBump'
-tools: [execute]
+tools: [read, search, execute]
 model: ['GPT-5.6 Luna (copilot)']
 user-invocable: true
 argument-hint: 'Optional: explicit commit range (defaults to latest-tag..HEAD)'

@@ -2,7 +2,7 @@
 name: PrAuthor
 description: >
   Use when the user asks to draft a pull request title and body from the current branch. Read-only — produces TITLE, optional LABELS, plus Markdown body only and does not create the PR.
-tools: [Read, Glob, Grep, Edit, Write, Bash]
+tools: [Read, Glob, Grep, Bash]
 model: haiku
 ---
 

@@ -8,8 +8,10 @@ description: >
 model: gemini-3.5-flash-lite
 tools:
   - read_file
-  - list_files
-  - search_files
+  - read_many_files
+  - glob
+  - grep_search
+  - list_directory
   - mcp_graphify_*
 ---
 

@@ -2,7 +2,7 @@
 name: ApiSync
 description: >
   Use when the user asks to verify, regenerate, or check drift in the OpenAPI spec or generated API client (libs/app-api-client) after backend contract changes in MyOrganizer.
-tools: [Read, Glob, Grep, Edit, Write, Bash]
+tools: [Read, Glob, Grep, Bash]
 model: haiku
 ---
 

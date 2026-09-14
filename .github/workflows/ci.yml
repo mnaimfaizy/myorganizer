@@ -550,6 +550,9 @@ jobs:
       - name: Env-declared checker contracts
         run: corepack yarn env:declared:test
 
+      - name: Sub-agent sync contracts (harness sections, tool grants)
+        run: corepack yarn agents:sync:test
+
       - name: Env-deployment checker contracts
         run: corepack yarn env:deployment:test
 
