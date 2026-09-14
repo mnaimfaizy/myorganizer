@@ -1176,7 +1176,7 @@
               </text>
               <text class="nc" x="72" y="260">
                 creates + pushes release/vX.Y.Z, only if Staging is Host
-                Applied &#183; package.json:26, release.mjs:600, :628-637
+                Applied &#183; package.json:26, release.mjs:595, :623-632
               </text>
             </g>
             <path
@@ -1521,7 +1521,7 @@
               </text>
               <text class="nc" x="272" y="1070">
                 no commit, no files &#8212; asserts branch state first &#183;
-                release.mjs:743-751
+                release.mjs:738-746
               </text>
               <text class="nc" x="272" y="1084">
                 package.json:27
@@ -1601,7 +1601,7 @@
           must have started after that upload landed. There is no flag to
           skip this. Only then does it create + push
           <code>release/vX.Y.Z</code> (<code>package.json:26</code>,
-          <code>release.mjs:600</code>, <code>:628-637</code>). If Staging's
+          <code>release.mjs:595</code>, <code>:623-632</code>). If Staging's
           last green <code>host-apply</code> is older than its last upload,
           the Cut refuses and names which condition failed &mdash; dispatch
           <code>Deploy Staging</code> with <code>apply_only</code> first
@@ -1734,8 +1734,8 @@
         <dd id="note-tag">
           Asserts it is on the release branch and up to date with origin, and
           that <code>package.json</code> matches the tag
-          (<code>release.mjs:743-745</code>); refuses an existing tag
-          (<code>:747-749</code>); creates no commit and writes no files
+          (<code>release.mjs:738-740</code>); refuses an existing tag
+          (<code>:742-744</code>); creates no commit and writes no files
           (<code>package.json:27</code>). A commit here would move the
           branch past the exact SHA CI verified and a reviewer approved.
           <code>vX.Y.Z</code> existing means that version reached production.
@@ -1792,7 +1792,7 @@
               creates + pushes <code>release/vX.Y.Z</code>, only if Staging
               is Host Applied at this commit
             </td>
-            <td class="cite">package.json:26, release.mjs:600, :628-637</td>
+            <td class="cite">package.json:26, release.mjs:595, :623-632</td>
           </tr>
           <tr class="fork">
             <td>4a</td>
@@ -1825,7 +1825,7 @@
             <td>6</td>
             <td><code>yarn release:tag --version vX.Y.Z --push</code></td>
             <td>annotated tag, no commit, no files</td>
-            <td class="cite">package.json:27, release.mjs:743-751</td>
+            <td class="cite">package.json:27, release.mjs:738-746</td>
           </tr>
           <tr>
             <td>7</td>
@@ -1949,11 +1949,11 @@
       <p>
         <code>release:tag</code> asserts it is on the release branch, up to
         date with origin, and that <code>package.json</code> matches the tag
-        (<code>release.mjs:743-745</code>); refuses an existing tag
-        (<code>:747-749</code>); and creates no commits and writes no files
+        (<code>release.mjs:738-740</code>); refuses an existing tag
+        (<code>:742-744</code>); and creates no commits and writes no files
         &mdash; a commit here would move the branch past the exact SHA that
         CI verified and a reviewer approved
-        (<code>:735-742</code>). <code>release:cut</code> has no way to tag
+        (<code>:730-737</code>). <code>release:cut</code> has no way to tag
         at all: there is no <code>--tag</code> flag. <code>vX.Y.Z</code>
         existing means that version reached production
         (<a href="../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md"
@@ -1979,7 +1979,7 @@
             <code>deploy-staging.yml</code>, <code>deploy-production.yml</code>.
             The repo floor is <code>&gt;=22.0.0</code>
             (<code>package.json:7</code>). <code>release.mjs</code> refuses a
-            major below 22 (<code>:15-23</code>). Three scopes, one floor
+            major below 22 (<code>:16-24</code>). Three scopes, one floor
             &mdash; not a single pinned number.
           </p>
         </div>
@@ -2057,7 +2057,7 @@
             <code>^v[0-9]+\.[0-9]+\.[0-9]+$</code>
             (<code>publish-github-release.yml:35</code>); and
             <code>/^v?(\d+)\.(\d+)\.(\d+)$/</code>
-            (<code>release.mjs:140</code>), which rejects prerelease input
+            (<code>release.mjs:141</code>), which rejects prerelease input
             outright.
           </p>
         </div>

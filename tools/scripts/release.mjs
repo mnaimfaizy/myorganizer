@@ -1,7 +1,8 @@
-import { execFileSync, execSync } from 'node:child_process';
+import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { GhJsonError, ghJson } from './lib/gh.mjs';
 import {
   classifyCommit,
   resolveNotesPlan,
@@ -241,24 +242,18 @@ function assertUpToDateWithOrigin(branch) {
 const STAGING_RUNS_TO_READ = 20;
 
 function ghApi(endpoint) {
-  let output;
   try {
-    output = execFileSync('gh', ['api', endpoint], {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    }).toString('utf8');
+    return ghJson(['api', endpoint]);
   } catch (error) {
+    if (error instanceof GhJsonError) {
+      die(
+        `Refusing to Cut: \`gh api ${endpoint}\` did not return JSON:\n${error.stdout.slice(0, 500)}`,
+      );
+    }
     die(
       `Refusing to Cut: could not read Staging deploy runs with \`gh api ${endpoint}\`. ` +
         'Install and authenticate the GitHub CLI (`gh auth login`).\n' +
         String(error.stderr ?? error.message).trim(),
-    );
-  }
-
-  try {
-    return JSON.parse(output);
-  } catch {
-    die(
-      `Refusing to Cut: \`gh api ${endpoint}\` did not return JSON:\n${output.slice(0, 500)}`,
     );
   }
 }
