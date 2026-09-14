@@ -28,20 +28,22 @@ if (!existsSync(POLICY)) fail(`${POLICY} not found`);
 const page = readFileSync(PAGE, 'utf8');
 const policy = JSON.parse(readFileSync(POLICY, 'utf8'));
 
-const manifestRaw = page.match(
-  /<script type="application\/json" id="agent-map-manifest">([\s\S]*?)<\/script>/,
-);
-if (!manifestRaw)
-  fail(
-    `no #agent-map-manifest block in ${PAGE} — rebuild it with build-agent-map.mjs`,
+function readManifest(html, path) {
+  const raw = html.match(
+    /<script type="application\/json" id="agent-map-manifest">([\s\S]*?)<\/script>/,
   );
-
-let manifest;
-try {
-  manifest = JSON.parse(manifestRaw[1]);
-} catch (err) {
-  fail(`#agent-map-manifest is not valid JSON: ${err.message}`);
+  if (!raw)
+    fail(
+      `no #agent-map-manifest block in ${path} — rebuild it with build-agent-map.mjs`,
+    );
+  try {
+    return JSON.parse(raw[1]);
+  } catch (err) {
+    fail(`#agent-map-manifest in ${path} is not valid JSON: ${err.message}`);
+  }
 }
+
+const manifest = readManifest(page, PAGE);
 
 // Policy keys are kebab file stems; the diagram labels agents by their frontmatter `name`.
 const displayNames = Object.fromEntries(
@@ -92,16 +94,24 @@ for (const name of Object.keys(claimed)) {
   }
 }
 
-if (manifest.policyReviewedAt !== policy.reviewedAt) {
-  findings.push(
-    `policy reviewedAt moved: page says ${manifest.policyReviewedAt}, policy says ${policy.reviewedAt}`,
-  );
+function checkReviewedAt(manifest, path) {
+  if (manifest.policyReviewedAt !== policy.reviewedAt) {
+    findings.push(
+      `policy reviewedAt moved: ${path} says ${manifest.policyReviewedAt}, policy says ${policy.reviewedAt}`,
+    );
+  }
 }
 
-// The journey page hard-codes a tier per station in its own script, independent of the manifest.
-// Those are what a reader actually sees on the rail, so they get checked against the policy too.
+checkReviewedAt(manifest, PAGE);
+
+// The journey page carries its own #agent-map-manifest block — the same shape as the
+// orchestration map's — and its policyReviewedAt drifts independently of it. It also
+// hard-codes a tier per station in its own script, independent of either manifest. Those
+// are what a reader actually sees on the rail, so they get checked against the policy too.
 if (existsSync(JOURNEY)) {
   const journey = readFileSync(JOURNEY, 'utf8');
+  const journeyManifest = readManifest(journey, JOURNEY);
+  checkReviewedAt(journeyManifest, JOURNEY);
   const stations = [
     ...journey.matchAll(/name\s*:\s*'([^']+)'\s*,\s*tier\s*:\s*'(T[012])'/g),
   ];

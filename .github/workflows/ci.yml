@@ -618,6 +618,9 @@ jobs:
       - name: Mobile platform checker contracts
         run: corepack yarn mobile-platform:test
 
+      - name: Agent orchestration map checker contracts
+        run: corepack yarn agents:map:test
+
       - name: Gate manifest checker contracts
         run: corepack yarn gates:run:test
 
