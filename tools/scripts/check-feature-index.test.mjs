@@ -134,6 +134,34 @@ test('rejects a stale exclusion naming a route that no longer exists', (t) => {
   assert.match(result.stderr, /account.*stale/);
 });
 
+test('rejects an exclusion that carries no written reason', (t) => {
+  const workspace = createWorkspace(t);
+  writeFeatureIndex(workspace, ['Tasks']);
+  writeDashboardRoute(workspace, 'tasks');
+  writeDashboardRoute(workspace, 'account');
+  writeExclusionsConfig(workspace, [{ route: 'account', reason: ' ' }]);
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /account.*no written reason/);
+});
+
+test('rejects a stale exclusion naming a route the index now covers', (t) => {
+  const workspace = createWorkspace(t);
+  writeFeatureIndex(workspace, ['Tasks', 'Account']);
+  writeDashboardRoute(workspace, 'tasks');
+  writeDashboardRoute(workspace, 'account');
+  writeExclusionsConfig(workspace, [
+    { route: 'account', reason: 'Platform-level route' },
+  ]);
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /account.*now has a feature-index entry/);
+});
+
 test('cannot run when the feature index is missing', (t) => {
   const workspace = createWorkspace(t);
   writeDashboardRoute(workspace, 'tasks');
@@ -179,4 +207,32 @@ test('cannot run when the feature index has no Features Index section', (t) => {
 
   assert.equal(result.status, 2);
   assert.match(result.stderr, /Features Index/);
+});
+
+test('cannot run when the exclusions config is not valid JSON', (t) => {
+  const workspace = createWorkspace(t);
+  writeFeatureIndex(workspace, ['Tasks']);
+  writeDashboardRoute(workspace, 'tasks');
+  const path = join(workspace, EXCLUSIONS_CONFIG);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, '{ not json');
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /could not parse/);
+});
+
+test('cannot run when the exclusions config has no exclusions array', (t) => {
+  const workspace = createWorkspace(t);
+  writeFeatureIndex(workspace, ['Tasks']);
+  writeDashboardRoute(workspace, 'tasks');
+  const path = join(workspace, EXCLUSIONS_CONFIG);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, JSON.stringify({ schemaVersion: 1 }));
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /no "exclusions" array/);
 });

@@ -14,7 +14,8 @@
 //
 // Platform-level routes like `account` (administers settings, not a feature)
 // are exempted in tools/config/feature-index-exclusions.json with documented
-// reasons. Every exclusion is validated to exist; a stale exemption fails.
+// reasons. An exclusion with no reason, naming a route that no longer exists,
+// or naming a route the index already covers fails.
 //
 // Exit 0 = bidirectional coverage holds. Exit 1 = drift or staleness.
 // Exit 2 = the check could not run.
@@ -38,15 +39,18 @@ if (!existsSync(FEATURE_INDEX)) fail(`${FEATURE_INDEX} not found`);
 if (!existsSync(DASHBOARD_ROOT)) fail(`${DASHBOARD_ROOT} not found`);
 if (!existsSync(EXCLUSIONS_CONFIG)) fail(`${EXCLUSIONS_CONFIG} not found`);
 
-let exclusions = new Set();
+let exclusionEntries;
 try {
-  const config = JSON.parse(readFileSync(EXCLUSIONS_CONFIG, 'utf8'));
-  if (config.exclusions && Array.isArray(config.exclusions)) {
-    exclusions = new Set(config.exclusions.map((e) => e.route));
-  }
+  exclusionEntries = JSON.parse(
+    readFileSync(EXCLUSIONS_CONFIG, 'utf8'),
+  ).exclusions;
 } catch (err) {
   fail(`could not parse ${EXCLUSIONS_CONFIG}: ${err.message}`);
 }
+if (!Array.isArray(exclusionEntries)) {
+  fail(`${EXCLUSIONS_CONFIG} has no "exclusions" array`);
+}
+const exclusions = new Set(exclusionEntries.map((entry) => entry.route));
 
 const content = readFileSync(FEATURE_INDEX, 'utf8');
 
@@ -105,15 +109,22 @@ for (const route of realRoutes) {
   }
 }
 
-// Check 3: validate that excluded routes actually exist
-const exclusionsConfig = JSON.parse(readFileSync(EXCLUSIONS_CONFIG, 'utf8'));
-if (exclusionsConfig.exclusions && Array.isArray(exclusionsConfig.exclusions)) {
-  for (const exclusion of exclusionsConfig.exclusions) {
-    if (!realRoutes.has(exclusion.route)) {
-      findings.push(
-        `exclusion for /dashboard/${exclusion.route} is stale; the route no longer exists`,
-      );
-    }
+// Check 3: every exclusion must carry a reason, name a route that still
+// exists, and not name a route the index already covers
+for (const exclusion of exclusionEntries) {
+  if (typeof exclusion.reason !== 'string' || !exclusion.reason.trim()) {
+    findings.push(
+      `exclusion for /dashboard/${exclusion.route} has no written reason`,
+    );
+  }
+  if (!realRoutes.has(exclusion.route)) {
+    findings.push(
+      `exclusion for /dashboard/${exclusion.route} is stale; the route no longer exists`,
+    );
+  } else if (indexedSlugs.has(exclusion.route)) {
+    findings.push(
+      `exclusion for /dashboard/${exclusion.route} is stale; the route now has a feature-index entry`,
+    );
   }
 }
 
