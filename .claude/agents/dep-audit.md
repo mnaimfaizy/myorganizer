@@ -2,7 +2,7 @@
 name: DepAudit
 description: >
   Use when the user asks to audit dependencies, check for outdated packages, scan for vulnerabilities, or review dependency upgrade risk in MyOrganizer.
-tools: [Read, Glob, Grep, Edit, Write, Bash]
+tools: [Read, Glob, Grep, Bash]
 model: haiku
 ---
 

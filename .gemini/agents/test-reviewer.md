@@ -8,7 +8,10 @@ description: >
 model: gemini-3.6-flash
 tools:
   - read_file
-  - search_files
+  - read_many_files
+  - glob
+  - grep_search
+  - list_directory
   - run_shell_command
 ---
 

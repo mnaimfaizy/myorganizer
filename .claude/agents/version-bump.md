@@ -2,7 +2,7 @@
 name: VersionBump
 description: >
   Use when the user asks to determine, suggest, or propose the next semantic version number based on commit history in MyOrganizer.
-tools: [Read, Glob, Grep, Edit, Write, Bash]
+tools: [Read, Glob, Grep, Bash]
 model: haiku
 ---
 

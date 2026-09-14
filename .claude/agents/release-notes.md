@@ -2,7 +2,7 @@
 name: ReleaseNotes
 description: >
   Use when the user asks to draft release notes, CHANGELOG entries, or summarize commits between two refs/tags for MyOrganizer.
-tools: [Read, Glob, Grep, Edit, Write, Bash]
+tools: [Read, Glob, Grep, Bash]
 model: haiku
 ---
 

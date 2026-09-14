@@ -2,7 +2,7 @@
 name: Research
 description: >
   Use when the user asks to research, look up, investigate, or summarize external documentation, libraries, standards, RFCs, security advisories, or web content. Produces a structured brief with citations.
-tools: [Read, Glob, Grep, Edit, Write, Bash]
+tools: [Read, Glob, Grep, WebFetch, WebSearch]
 model: sonnet
 ---
 

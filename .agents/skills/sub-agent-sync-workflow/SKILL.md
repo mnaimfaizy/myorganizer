@@ -21,9 +21,11 @@ Synchronization means:
 1. Every canonical agent exists in each target harness.
 2. Agent body content in each target harness matches canonical body content.
 3. Added or removed canonical agents are propagated to all target harnesses.
-4. Harness-specific frontmatter is preserved when file already exists.
-5. Missing files are created with harness defaults.
-6. Harness-specific **body** content lives in canonical, wrapped in `<!-- harness:... -->` markers.
+4. Tool grants in every harness match the canonical `tools:` roles, rendered through
+   `tools/config/agent-tool-map.json`.
+5. All other harness-specific frontmatter is preserved when the file already exists.
+6. Missing files are created with rendered frontmatter.
+7. Harness-specific **body** content lives in canonical, wrapped in `<!-- harness:... -->` markers.
 
 ## Harness-Specific Body Sections
 
@@ -61,13 +63,29 @@ Rules:
   (`**Claude Code —** ...`) so that reads as a reference table, not as contradictory instructions.
 - Implementation and tests: `tools/scripts/lib/harness-sections.mjs`, run with `yarn agents:sync:test`.
 
+## Tool Grants
+
+Capabilities are declared once, by role, in the canonical body: `tools: [read, search, execute]`.
+Never hand-edit `tools:` (or Cursor's `readonly:`) in `.claude/agents`, `.cursor/agents`, or
+`.gemini/agents` — `yarn agents:sync:check` reports the edit as `toolDrift` and `yarn agents:sync`
+overwrites it. See [ADR 0081](../../../docs/adr/0081-sub-agent-tool-grants-are-derived-from-canonical-roles.md).
+
+- Roles: `read`, `search`, `edit`, `execute`, `web`, `todo`, `graphify/*`. An unknown role is a hard error.
+- Claude and Gemini render an allowlist from the map. Cursor has no per-agent tool list and gets
+  `readonly: true` unless the agent declares `edit` or `execute`.
+- `--apply` prints each grant change with `WIDENED` apart from `narrowed`. Read the widenings before
+  committing.
+- If the vocabulary cannot express a grant, add an entry under `overrides` in the map, keyed by agent
+  then harness, with a written `reason`. A recurring override should become a role instead.
+- Implementation and tests: `tools/scripts/lib/agent-tool-grants.mjs`, run with `yarn agents:sync:test`.
+
 ## Commands
 
 - Check drift only:
   - `yarn agents:sync:check`
 - Apply sync and prune extras:
   - `yarn agents:sync`
-- Test the harness-section renderer:
+- Test the harness-section and tool-grant renderers:
   - `yarn agents:sync:test`
 - Keep extra non-canonical files (rare):
   - `node tools/scripts/sync-subagents.mjs --apply --no-prune`
@@ -76,7 +94,8 @@ Rules:
 
 - Canonical file body: `.github/agents/<agent>.agent.md`
 - Canonical model assignment: `tools/config/agent-model-policy.json`
-- Body sync: `tools/scripts/sync-subagents.mjs`
+- Canonical tool grants: the `tools:` roles in `.github/agents/<agent>.agent.md`, translated by `tools/config/agent-tool-map.json`
+- Body and grant sync: `tools/scripts/sync-subagents.mjs`
 - Model sync: `tools/scripts/sync-agent-models.mjs`
 
 Do not manually copy agent bodies across harnesses unless the script is unavailable.
@@ -111,7 +130,7 @@ Run this workflow after any of the following:
 Before closing the task:
 
 - `yarn agents:sync:check` returns exit code 0.
-- `yarn agents:sync:test` passes if you touched the harness-section renderer or its markers.
+- `yarn agents:sync:test` passes if you touched the harness-section or tool-grant renderer, their markers, or `tools/config/agent-tool-map.json`.
 - `CodeExplorer` in Cursor remains `model: composer-2.5`.
 - Every harness model matches `tools/config/agent-model-policy.json`.
 - No canonical agent exists only in `.github/agents`.

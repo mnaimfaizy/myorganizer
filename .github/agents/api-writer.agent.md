@@ -1,7 +1,7 @@
 ---
 description: 'Use when implementing or editing a MyOrganizer API Contract (TSOA controller, DTOs/validation, and the service method that controller calls). One-shot: write, report, stop. Do not sync OpenAPI, migrate Prisma, or write tests.'
 name: 'ApiWriter'
-tools: [read, edit, search]
+tools: [read, edit, search, execute]
 model: ['Gemini 3.6 Flash (copilot)', 'GPT-5.6 Luna (copilot)']
 user-invocable: false
 argument-hint: 'API Contract Brief (capability, action, paths, request/response, persistence status)'
