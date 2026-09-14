@@ -51,9 +51,9 @@ const run = (workspace, ...args) =>
   });
 
 /** A workspace carrying a baseline plus the given project.json files. */
-function scaffold(t, projects = {}, baseline = []) {
+function scaffold(t, projects = {}, baseline = [], overrides = {}) {
   const workspace = createRepo(t);
-  writeBaseline(workspace, baseline);
+  writeBaseline(workspace, baseline, overrides);
   for (const [path, json] of Object.entries(projects)) {
     write(workspace, path, json);
   }
@@ -61,7 +61,7 @@ function scaffold(t, projects = {}, baseline = []) {
   return workspace;
 }
 
-test('exits 0 against the real repository with the committed 7-entry baseline', () => {
+test('exits 0 against the real repository with the committed baseline and notDebt list', () => {
   const result = spawnSync(process.execPath, [CHECKER], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
@@ -69,7 +69,7 @@ test('exits 0 against the real repository with the committed 7-entry baseline', 
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.match(
     result.stdout,
-    /OK — 7 @nx\/\* Declared Target\(s\) match the 7-entry baseline/,
+    /OK — 6 @nx\/\* Declared Target\(s\) match the 6-entry baseline, 1 target\(s\) on a not-debt executor/,
   );
 });
 
@@ -270,5 +270,96 @@ test('--print lists every baseline entry and every classified target', (t) => {
   assert.match(
     result.stdout,
     /target: x lint \(@nx\/eslint:lint\) \[libs\/x\/project\.json\]/,
+  );
+});
+
+const NODE_NOT_DEBT = {
+  executor: '@nx/js:node',
+  reason: 'fixture reason',
+  source: 'https://nx.dev/blog/nx-23-release',
+};
+
+const serveProject = {
+  'apps/api/project.json': {
+    name: 'api',
+    targets: {
+      serve: { executor: '@nx/js:node', options: { buildTarget: 'api:build' } },
+    },
+  },
+};
+
+test('does not report a target on an executor the notDebt list names', (t) => {
+  const workspace = scaffold(t, serveProject, [], { notDebt: [NODE_NOT_DEBT] });
+  const result = run(workspace);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /1 target\(s\) on a not-debt executor/);
+});
+
+test('fails a notDebt executor that no tracked project.json uses as stale', (t) => {
+  const workspace = scaffold(
+    t,
+    { 'libs/x/project.json': { name: 'x', targets: {} } },
+    [],
+    { notDebt: [NODE_NOT_DEBT] },
+  );
+  const result = run(workspace);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /notDebt entry `@nx\/js:node` covers no target/);
+});
+
+test('a baseline entry on a notDebt executor is still reported, never silently covered twice', (t) => {
+  const workspace = scaffold(
+    t,
+    serveProject,
+    [{ project: 'api', target: 'serve', executor: '@nx/js:node' }],
+    { notDebt: [NODE_NOT_DEBT] },
+  );
+  const result = run(workspace);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /is listed in both "baseline" and "notDebt"/);
+});
+
+test('exits 2 when notDebt is not an array', (t) => {
+  const workspace = scaffold(t, serveProject, [], { notDebt: {} });
+  const result = run(workspace);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /expected "notDebt" to be an array/);
+});
+
+test('exits 2 when a notDebt entry lacks a reason or source', (t) => {
+  const workspace = scaffold(t, serveProject, [], {
+    notDebt: [{ executor: '@nx/js:node', reason: 'x' }],
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 2);
+  assert.match(
+    result.stderr,
+    /notDebt\[0\]: entry requires non-empty "executor", "reason", and "source"/,
+  );
+});
+
+test('exits 2 when a notDebt executor is outside the @nx/ namespace', (t) => {
+  const workspace = scaffold(t, serveProject, [], {
+    notDebt: [{ ...NODE_NOT_DEBT, executor: 'nx:run-commands' }],
+  });
+  const result = run(workspace);
+  assert.equal(result.status, 2);
+  assert.match(
+    result.stderr,
+    /notDebt\[0\]: executor "nx:run-commands" is not in the @nx\/ namespace/,
+  );
+});
+
+test('--print lists every notDebt entry and every target it covers', (t) => {
+  const workspace = scaffold(t, serveProject, [], { notDebt: [NODE_NOT_DEBT] });
+  const result = run(workspace, '--print');
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(
+    result.stdout,
+    /notDebt: @nx\/js:node — fixture reason \(https:\/\/nx\.dev\/blog\/nx-23-release\)/,
+  );
+  assert.match(
+    result.stdout,
+    /covered: api serve \(@nx\/js:node\) \[apps\/api\/project\.json\]/,
   );
 });

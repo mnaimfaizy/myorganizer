@@ -21,6 +21,11 @@
 // together — a target that keeps its name but switches executor reads as one
 // stale entry and one new one, never a silent substitution.
 //
+// Not debt, deliberately: a target on an `@nx/*` executor Nx has not
+// deprecated — `@nx/js:node` serving a Node app is the case — is covered by
+// the baseline file's `notDebt` list, which names the executor with a reason
+// and a source (ADR 0083). A `notDebt` entry that covers no target is stale.
+//
 // Out of scope, deliberately: `nx:run-commands` targets (not an `@nx/*`
 // executor), third-party executors such as `@driimus/nx-plugin-openapi`'s
 // generator, and an override that sets `options` or `dependsOn` with no
@@ -28,8 +33,8 @@
 // replacing it.
 //
 // Exit 0 = every `@nx/*` Declared Target matches the baseline exactly.
-// Exit 1 = a target not in the baseline, or a baseline entry with no
-// matching target. Exit 2 = the baseline is missing/malformed, or a tracked
+// Exit 1 = a target not in the baseline, a baseline entry with no
+// matching target, or a `notDebt` executor covering no target. Exit 2 = the baseline is missing/malformed, or a tracked
 // project.json could not be read.
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -51,8 +56,9 @@ const fail = (msg) => {
 };
 
 let baseline;
+let notDebt;
 try {
-  baseline = readBaseline({ cwd });
+  ({ baseline, notDebt } = readBaseline({ cwd }));
 } catch (error) {
   fail(error.message);
 }
@@ -80,8 +86,11 @@ const projects = files.map((path) => {
   return { name: json.name ?? path, path, targets: json.targets ?? {} };
 });
 
-const actual = classifyDeclaredTargets(projects);
-const { missing, stale } = compareBaseline(baseline, actual);
+const { debt, covered, missing, stale, staleNotDebt } = compareBaseline(
+  baseline,
+  classifyDeclaredTargets(projects),
+  notDebt,
+);
 
 if (printOnly) {
   console.log(
@@ -93,11 +102,24 @@ if (printOnly) {
     );
   }
   console.log(
-    `nx-declared-targets: ${actual.length} @nx/* Declared Target(s) classified`,
+    `nx-declared-targets: ${debt.length} @nx/* Declared Target(s) classified`,
   );
-  for (const entry of actual) {
+  for (const entry of debt) {
     console.log(
       `  target: ${entry.project} ${entry.target} (${entry.executor}) [${entry.path}]`,
+    );
+  }
+  console.log(
+    `nx-declared-targets: ${notDebt.length} notDebt executor(s), covering ${covered.length} target(s)`,
+  );
+  for (const entry of notDebt) {
+    console.log(
+      `  notDebt: ${entry.executor} — ${entry.reason} (${entry.source})`,
+    );
+  }
+  for (const entry of covered) {
+    console.log(
+      `  covered: ${entry.project} ${entry.target} (${entry.executor}) [${entry.path}]`,
     );
   }
 }
@@ -118,6 +140,13 @@ for (const entry of stale) {
   );
 }
 
+for (const entry of staleNotDebt) {
+  findings.push(
+    `${BASELINE_PATH}: notDebt entry \`${entry.executor}\` covers no target — remove the ` +
+      'stale entry so the list names only executors a project.json still uses.',
+  );
+}
+
 if (findings.length > 0) {
   console.error(
     'nx-declared-targets: Declared Target baseline drift (ADR 0082)\n',
@@ -127,6 +156,7 @@ if (findings.length > 0) {
 }
 
 console.log(
-  `nx-declared-targets: OK — ${actual.length} @nx/* Declared Target(s) match the ` +
-    `${baseline.length}-entry baseline (${BASELINE_PATH})`,
+  `nx-declared-targets: OK — ${debt.length} @nx/* Declared Target(s) match the ` +
+    `${baseline.length}-entry baseline, ${covered.length} target(s) on a not-debt ` +
+    `executor (${BASELINE_PATH})`,
 );

@@ -519,7 +519,7 @@ An Nx target a registered plugin derives from a tool's own config file in the pr
 _Avoid_: plugin target, crystal target
 
 **Declared Target**:
-An Nx target written out in `project.json`. On an `@nx/*` executor it is migration debt, not a pattern to copy (ADR 0082); a `nx:run-commands` target is declared by nature and is not.
+An Nx target written out in `project.json`. On an `@nx/*` executor that Nx has deprecated in favour of an inferred plugin it is migration debt, not a pattern to copy (ADR 0082, sharpened by ADR 0083); a `nx:run-commands` target is declared by nature and is not, and neither is one on an `@nx/*` executor Nx still ships as its own answer, such as `@nx/js:node` serving a Node app.
 _Avoid_: executor target, hand-declared target, explicit target
 
 **Gate Coverage**:
