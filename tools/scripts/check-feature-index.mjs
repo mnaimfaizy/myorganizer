@@ -15,7 +15,13 @@
 // Platform-level routes like `account` (administers settings, not a feature)
 // are exempted in tools/config/feature-index-exclusions.json with documented
 // reasons. An exclusion with no reason, naming a route that no longer exists,
-// or naming a route the index already covers fails.
+// naming a route twice, or naming a route the index already covers fails.
+//
+// The exclusions live in their own file rather than in
+// tools/config/gate-coverage-optout.json on purpose. That file exempts a
+// checker from the Meta-Gate and every entry is keyed by a checker name, which
+// `gates:coverage:check` validates as an existing check; a dashboard route is a
+// different kind of subject and would fail that validation.
 //
 // Exit 0 = bidirectional coverage holds. Exit 1 = drift or staleness.
 // Exit 2 = the check could not run.
@@ -109,9 +115,16 @@ for (const route of realRoutes) {
   }
 }
 
-// Check 3: every exclusion must carry a reason, name a route that still
-// exists, and not name a route the index already covers
+// Check 3: every exclusion must carry a reason, name a route once, name a
+// route that still exists, and not name a route the index already covers
+const seenExclusions = new Set();
 for (const exclusion of exclusionEntries) {
+  if (seenExclusions.has(exclusion.route)) {
+    findings.push(
+      `exclusion for /dashboard/${exclusion.route} is listed twice`,
+    );
+  }
+  seenExclusions.add(exclusion.route);
   if (typeof exclusion.reason !== 'string' || !exclusion.reason.trim()) {
     findings.push(
       `exclusion for /dashboard/${exclusion.route} has no written reason`,

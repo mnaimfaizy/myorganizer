@@ -147,6 +147,22 @@ test('rejects an exclusion that carries no written reason', (t) => {
   assert.match(result.stderr, /account.*no written reason/);
 });
 
+test('rejects an exclusion listed twice for the same route', (t) => {
+  const workspace = createWorkspace(t);
+  writeFeatureIndex(workspace, ['Tasks']);
+  writeDashboardRoute(workspace, 'tasks');
+  writeDashboardRoute(workspace, 'account');
+  writeExclusionsConfig(workspace, [
+    { route: 'account', reason: 'Platform-level route' },
+    { route: 'account', reason: 'Account settings' },
+  ]);
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /account.*listed twice/);
+});
+
 test('rejects a stale exclusion naming a route the index now covers', (t) => {
   const workspace = createWorkspace(t);
   writeFeatureIndex(workspace, ['Tasks', 'Account']);
