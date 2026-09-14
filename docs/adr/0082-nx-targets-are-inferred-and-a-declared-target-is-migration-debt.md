@@ -62,11 +62,16 @@ generated file — and says nothing about target shape. It needed a scope, not a
 - Removing an ESLint override is not a pure deletion. The inferred target runs `eslint .` from the
   project root (`node_modules/@nx/eslint/src/plugins/plugin.js`), while 25 Declared Targets narrow
   it with `lintFilePatterns` — `libs/core` lints only `src/**/*.ts`. Gate Coverage widens to config
-  files and specs, and may surface failures that were never reached. That widening is a gain, and
-  it lands as its own slice so new failures read as its consequence rather than as noise.
-- Removing a Jest override is not a pure deletion either. 15 projects set `passWithNoTests: true` on
-  the executor; the inferred target runs bare `jest`, so the option moves into that project's
-  `jest.config.ts` or a project with no tests starts failing.
+  files, declaration files, and specs outside `src`. Measured on 2026-09-14 across all 26 projects,
+  the widening surfaces 2 errors, both in `apps/myorganizer`. It also exposes ignore patterns
+  written relative to the workspace root, which match nothing once ESLint runs from the project
+  root: the backend's ignore for generated Prisma code is one. Inferred lint targets are cached;
+  the Declared Targets are not.
+- Removing a Jest override is nearly a pure deletion. The 15 projects that set `passWithNoTests`
+  all contain tests, so bare `jest` passes for each and the option can be dropped. The one real loss
+  is the backend's `dependsOn` on type generation, which must survive as an executor-less override
+  or a `test` target default. The `@nx/jest:jest` key in `targetDefaults` stops matching anything
+  and becomes dead config.
 - Target names stay stable. CI, Husky, and root scripts invoke `lint`, `test`, `build`, and `serve`
   by name, and `check-nx-project-tags.mjs` reads only `tags`, so nothing downstream observes which
   kind of target answers.
