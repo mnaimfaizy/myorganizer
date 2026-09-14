@@ -76,6 +76,12 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'nx:targets:check',
+    npmScript: 'nx:targets:check',
+    script: 'tools/scripts/check-nx-declared-targets.mjs',
+    args: [],
+  },
+  {
     id: 'review:concurrency:check',
     npmScript: 'review:concurrency:check',
     script: 'tools/scripts/check-review-concurrency.mjs',

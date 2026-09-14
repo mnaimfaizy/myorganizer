@@ -1,0 +1,266 @@
+{
+  "schemaVersion": 1,
+  "comment": "The Declared Target ratchet baseline for tools/scripts/check-nx-declared-targets.mjs (`yarn nx:targets:check`). Every entry is a target on an @nx/* executor that project.json still declares instead of leaving to Nx's Inferred Targets; the list can only shrink as later slices remove overrides (ADR 0082, PRD #762). A target present here with no matching project.json entry fails the check as stale — remove it in the same change that removes the override. A target found on the tree but absent here fails the check as a new Declared Target.",
+  "baseline": [
+    {
+      "project": "backend",
+      "target": "build",
+      "executor": "@nx/webpack:webpack"
+    },
+    {
+      "project": "backend",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "backend",
+      "target": "serve",
+      "executor": "@nx/js:node"
+    },
+    {
+      "project": "backend",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "core",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "core",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "design-tokens",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "mobile-core",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "mobile-feat-auth",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "mobile-feat-vault",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "mobile-hooks",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "mobile-screens",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "mobile-ui",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "mobile-utils",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "myorganizer-e2e",
+      "target": "e2e-firefox",
+      "executor": "@nx/playwright:playwright"
+    },
+    {
+      "project": "myorganizer-e2e",
+      "target": "e2e-webkit",
+      "executor": "@nx/playwright:playwright"
+    },
+    {
+      "project": "myorganizer-e2e",
+      "target": "e2e",
+      "executor": "@nx/playwright:playwright"
+    },
+    {
+      "project": "myorganizer",
+      "target": "build",
+      "executor": "@nx/next:build"
+    },
+    {
+      "project": "myorganizer",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "myorganizer",
+      "target": "serve",
+      "executor": "@nx/next:server"
+    },
+    {
+      "project": "myorganizer",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "tools",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "vault-core",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "vault-core",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "web-pages-account",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "web-pages-account",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "web-pages-addresses",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "web-pages-addresses",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "web-pages-admin",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "web-pages-admin",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "web-pages-dashboard",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "web-pages-dashboard",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "web-pages-groceries",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "web-pages-groceries",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "web-pages-home",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "web-pages-home",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "web-pages-mobile-numbers",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "web-pages-mobile-numbers",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "web-pages-subscriptions",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "web-pages-subscriptions",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "web-pages-tasks",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "web-pages-tasks",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "web-pages-vault",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "web-pages-vault",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "web-pages-youtube",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "web-pages-youtube",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "web-ui",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "web-ui",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "web-vault-ui",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "web-vault-ui",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    },
+    {
+      "project": "web-vault",
+      "target": "lint",
+      "executor": "@nx/eslint:lint"
+    },
+    {
+      "project": "web-vault",
+      "target": "test",
+      "executor": "@nx/jest:jest"
+    }
+  ]
+}
