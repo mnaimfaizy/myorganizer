@@ -15,15 +15,19 @@ The repo points the other way. `project.json` files carry 52 Declared Targets on
 that v24 removes: 26 `@nx/eslint:lint`, 19 `@nx/jest:jest`, 3 `@nx/playwright:playwright`, and one
 each of `@nx/webpack:webpack` and `@nx/js:node` (backend) and `@nx/next:build` and
 `@nx/next:server` (myorganizer). The 10 `nx:run-commands` targets and the
-`@driimus/nx-plugin-openapi` generator are not affected.
+`@driimus/nx-plugin-openapi` generator are not affected. Issue #420 recorded 27, 20, and 54 on
+2026-08-21. The difference is a recount, not a correction of method: the vault route consolidation
+(`5c06097`) deleted two page libraries that each declared a lint and a test target, and the
+consolidated vault page library (`0d8eef7`) added one of each.
 
 Two facts make this a live problem rather than a v24 problem. First, `nx.json` already registers
 `@nx/eslint/plugin` and `@nx/jest/plugin` under the target names `lint` and `test`, so every
 project already has an Inferred Target that its Declared Target silently overrides: each target is
 defined twice. Second, the pile grows by copying, not generating. `libs/email-shell` (added
 2026-08-20) was scaffolded by the generator and declares no `lint` or `test` target.
-`libs/web/pages/vault` (added four days later) declares both, copied from its sibling page
-libraries. The generators already emit the target state; the siblings do not.
+`libs/web/pages/vault` was generated the same way on 2026-08-24 (`220578e`, empty `targets`), and
+a follow-up commit the same day (`0d8eef7`) declared both "to match" its sibling page libraries.
+The generators already emit the target state; the siblings pull new projects away from it.
 
 The Nx Skill's rule against hand-editing `project.json` was read as contradicting the 52 targets.
 It is a rule about scaffolding and fixes — generate a project, fix generator inputs rather than the
@@ -35,10 +39,12 @@ generated file — and says nothing about target shape. It needed a scope, not a
    debt to be removed before v24, not a pattern to follow. `project.json` keeps tags,
    `nx:run-commands` targets, and option overrides a tool's own config file cannot express.
 
-2. **Growth stops first, by a ratchet, not by prose.** A checker holds a baseline of today's
-   Declared Targets on `@nx/*` executors and fails on any target not in it and on any stale entry,
-   so the list can only shrink. Prose already failed: the vault library copied the pattern while
-   the Skill rule existed.
+2. **Growth is stopped first, by a ratchet, not by prose.** The first migration step adds a checker
+   that holds a baseline of the Declared Targets on `@nx/*` executors and fails on any target not
+   in it and on any stale entry, so the list can only shrink (#763, under PRD #762). No such check
+   exists when this ADR is accepted; until it lands, only the Nx Skill's rule stands against
+   growth, and prose already failed once: the vault library's targets were declared while the
+   Skill rule existed.
 
 3. **Order of work: Jest and ESLint on Nx 22; Playwright and build/serve with the v23 hop.**
    - Jest and ESLint inference is already active at 22.7.7 and does not change at the hop, so
@@ -63,9 +69,11 @@ generated file — and says nothing about target shape. It needed a scope, not a
   project root (`node_modules/@nx/eslint/src/plugins/plugin.js`), while 25 Declared Targets narrow
   it with `lintFilePatterns` — `libs/core` lints only `src/**/*.ts`. Gate Coverage widens to config
   files, declaration files, and specs outside `src`. Measured on 2026-09-14 across all 26 projects,
-  the widening surfaces 2 errors, both in `apps/myorganizer`. It also exposes ignore patterns
+  the widening surfaces 1 error in tracked files: an import-order error in an `apps/myorganizer`
+  spec. A second error appears wherever Next.js has generated its gitignored `next-env.d.ts`, so a
+  clean checkout does not show it and a developer machine does. It also exposes ignore patterns
   written relative to the workspace root, which match nothing once ESLint runs from the project
-  root: the backend's ignore for generated Prisma code is one. Inferred lint targets are cached;
+  root: the backend's ignore for its gitignored generated Prisma client is one. Inferred lint targets are cached;
   the Declared Targets are not.
 - Removing a Jest override is nearly a pure deletion. The 15 projects that set `passWithNoTests`
   all contain tests, so bare `jest` passes for each and the option can be dropped. The one real loss
