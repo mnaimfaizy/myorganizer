@@ -234,10 +234,10 @@ function assertUpToDateWithOrigin(branch) {
   }
 }
 
-// How many recent `Deploy Staging` runs to read, newest first. Runs that touch
-// APP_ROOT queue one at a time in `deploy-staging-apply`, so an upload outside
-// this window finished before every upload inside it and cannot be Staging's
-// latest. Missing an older upload can only refuse a Cut, never allow one.
+// Recent `Deploy Staging` runs to read, newest first, from every ref: a run
+// from any branch writes the same APP_ROOT, so filtering one out could only
+// allow a Cut. Those runs queue one at a time, so an upload outside the window
+// cannot be Staging's latest; missing one can only refuse a Cut.
 const STAGING_RUNS_TO_READ = 20;
 
 function ghApi(endpoint) {
@@ -267,7 +267,7 @@ function ghApi(endpoint) {
 // Host Applied. There is deliberately no flag to skip this.
 function assertStagingHostApplied(cutSha) {
   const { workflow_runs: runs } = ghApi(
-    `repos/{owner}/{repo}/actions/workflows/deploy-staging.yml/runs?branch=main&per_page=${STAGING_RUNS_TO_READ}`,
+    `repos/{owner}/{repo}/actions/workflows/deploy-staging.yml/runs?per_page=${STAGING_RUNS_TO_READ}`,
   );
 
   const jobs = runs.flatMap((stagingRun) =>
