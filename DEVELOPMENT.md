@@ -224,7 +224,7 @@ The development server features:
 yarn start:myorganizer
 
 # Or using Nx directly
-yarn nx serve myorganizer
+yarn nx dev myorganizer
 
 # The frontend will be available at http://localhost:4200
 ```
@@ -1073,18 +1073,20 @@ node main.js
 yarn build:myorganizer
 
 # Or using Nx
-yarn nx run myorganizer:build:production
+yarn nx build myorganizer
 
-# Output is in dist/apps/myorganizer/
+# Output is in apps/myorganizer/.next/
 ```
 
 **Running Production Build**:
 
 ```bash
-cd dist/apps/myorganizer
-npm install --production
-npm start
+# Builds (or restores the build from cache), then runs `next start`
+yarn start:myorganizer:prod
 ```
+
+To produce the self-hosted deploy bundle in `dist/deploy/myorganizer-web/`, run
+`yarn nx run myorganizer:package`.
 
 ### Building Storybook
 

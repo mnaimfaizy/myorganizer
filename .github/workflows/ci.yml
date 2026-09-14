@@ -818,7 +818,7 @@ jobs:
       # Built here rather than inside Playwright's webServer timeout, so a build
       # failure is attributable and starting the server is only that.
       - name: Build frontend for E2E
-        run: corepack yarn nx run myorganizer:build:production
+        run: corepack yarn nx build myorganizer
 
       - name: Run E2E shard
         run: corepack yarn nx run myorganizer-e2e:e2e --shard=${{ matrix.shard }}/3 --reporter=blob

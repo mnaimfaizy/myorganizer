@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
   "installCommand": "corepack yarn install --immutable",
-  "buildCommand": "npx nx build myorganizer --prod",
-  "outputDirectory": "dist/apps/myorganizer/.next"
+  "buildCommand": "npx nx build myorganizer",
+  "outputDirectory": "apps/myorganizer/.next"
 }

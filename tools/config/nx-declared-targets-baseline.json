@@ -21,16 +21,6 @@
       "project": "myorganizer-e2e",
       "target": "e2e",
       "executor": "@nx/playwright:playwright"
-    },
-    {
-      "project": "myorganizer",
-      "target": "build",
-      "executor": "@nx/next:build"
-    },
-    {
-      "project": "myorganizer",
-      "target": "serve",
-      "executor": "@nx/next:server"
     }
   ],
   "notDebt": [

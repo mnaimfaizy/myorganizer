@@ -43,8 +43,8 @@ Follow Nx's official guidance for deploying Nx-managed Next.js apps to Vercel:
 - **Root Directory**: leave empty (workspace root)
 - **Framework Preset**: Next.js
 - **Install Command (override)**: `corepack yarn install --immutable`
-- **Build Command (override)**: `npx nx build myorganizer --prod`
-- **Output Directory (override)**: `dist/apps/myorganizer/.next`
+- **Build Command (override)**: `npx nx build myorganizer`
+- **Output Directory (override)**: `apps/myorganizer/.next`
 
 3. Set the environment variables (see below).
 4. Deploy.

@@ -8,12 +8,14 @@
 #
 #   22.16.0  OK      22.17.1  EACCES      22.23.2  EACCES      24.19.0  EACCES
 #
-# `@nx/next:build` copies `public/` into `dist/` with exactly that call
-# (node_modules/@nx/next/src/executors/build/build.impl.js), so every slice's build
-# gate failed on macOS once the image drifted ahead of the host's Node 22.13 —
-# always AFTER a clean compile and typecheck, which is what made it read as a code
-# failure. It hits the agent sandbox too, not just the gate: both run builds inside
-# a bind-mounted worktree.
+# The retired `@nx/next:build` executor copied `public/` into `dist/` with exactly
+# that call, so every slice's build gate failed on macOS once the image drifted
+# ahead of the host's Node 22.13 — always AFTER a clean compile and typecheck,
+# which is what made it read as a code failure. It hit the agent sandbox too, not
+# just the gate: both run builds inside a bind-mounted worktree. Since ADR 0083 the
+# web app builds with plain `next build` into `apps/myorganizer/.next`, which no
+# longer makes that copy; the pin stays until something verifies no other build
+# step reaches a recursive cpSync onto the mount.
 #
 # CI floats on `node-version: 22` and is unaffected (ext4, not VirtioFS), so this
 # pin makes the sandbox lag CI by design. Before unpinning, verify with a recursive
