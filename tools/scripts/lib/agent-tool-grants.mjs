@@ -259,6 +259,13 @@ export function grantsEqual(a, b) {
   );
 }
 
+/** One-line human rendering of a grant, for --check / --apply output. */
+export function describeGrant(grant) {
+  if (!grant) return INHERIT_ALL;
+  if ('readonly' in grant) return `readonly: ${grant.readonly}`;
+  return `[${grant.tools.join(', ')}]`;
+}
+
 /**
  * Classifies a grant change so --apply can print capability increases apart
  * from decreases. Cursor's `readonly` is a restriction: gaining it narrows.

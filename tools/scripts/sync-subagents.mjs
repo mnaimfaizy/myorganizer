@@ -5,6 +5,7 @@ import path from 'node:path';
 import process from 'node:process';
 
 import {
+  describeGrant,
   describeGrantChange,
   formatGrant,
   grantsEqual,
@@ -328,12 +329,6 @@ async function syncHarness(harness, canonicalAgents, mode, prune) {
   }
 
   return report;
-}
-
-function describeGrant(grant) {
-  if (!grant) return '(no tools key: inherits all tools)';
-  if ('readonly' in grant) return `readonly: ${grant.readonly}`;
-  return `[${grant.tools.join(', ')}]`;
 }
 
 // Widenings and narrowings are printed on separate labelled lines so a

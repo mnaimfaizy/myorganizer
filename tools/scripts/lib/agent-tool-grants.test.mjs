@@ -8,6 +8,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import {
+  describeGrant,
   describeGrantChange,
   formatGrant,
   grantsEqual,
@@ -344,4 +345,10 @@ test('formatGrant renders each harness shape, and false readonly as nothing', ()
   );
   assert.equal(formatGrant('cursor', { readonly: true }), 'readonly: true\n');
   assert.equal(formatGrant('cursor', { readonly: false }), '');
+});
+
+test('describeGrant renders every grant shape, including a missing one', () => {
+  assert.equal(describeGrant({ tools: ['Read', 'Bash'] }), '[Read, Bash]');
+  assert.equal(describeGrant({ readonly: true }), 'readonly: true');
+  assert.equal(describeGrant(null), INHERIT_ALL);
 });
