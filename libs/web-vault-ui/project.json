@@ -5,15 +5,6 @@
   "projectType": "library",
   "tags": ["type:feature", "scope:web", "tier:human"],
   "targets": {
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": [
-          "libs/web-vault-ui/src/**/*.ts",
-          "libs/web-vault-ui/src/**/*.tsx"
-        ]
-      }
-    },
     "test": {
       "executor": "@nx/jest:jest",
       "outputs": ["{workspaceRoot}/coverage/libs/web-vault-ui"],

@@ -9,11 +9,6 @@
     },
     {
       "project": "backend",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "backend",
       "target": "serve",
       "executor": "@nx/js:node"
     },
@@ -24,53 +19,8 @@
     },
     {
       "project": "core",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "core",
       "target": "test",
       "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "design-tokens",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "mobile-core",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "mobile-feat-auth",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "mobile-feat-vault",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "mobile-hooks",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "mobile-screens",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "mobile-ui",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "mobile-utils",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
     },
     {
       "project": "myorganizer-e2e",
@@ -94,11 +44,6 @@
     },
     {
       "project": "myorganizer",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "myorganizer",
       "target": "serve",
       "executor": "@nx/next:server"
     },
@@ -114,18 +59,8 @@
     },
     {
       "project": "vault-core",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "vault-core",
       "target": "test",
       "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-account",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
     },
     {
       "project": "web-pages-account",
@@ -134,18 +69,8 @@
     },
     {
       "project": "web-pages-addresses",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "web-pages-addresses",
       "target": "test",
       "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-admin",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
     },
     {
       "project": "web-pages-admin",
@@ -154,18 +79,8 @@
     },
     {
       "project": "web-pages-dashboard",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "web-pages-dashboard",
       "target": "test",
       "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-groceries",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
     },
     {
       "project": "web-pages-groceries",
@@ -174,18 +89,8 @@
     },
     {
       "project": "web-pages-home",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "web-pages-home",
       "target": "test",
       "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-mobile-numbers",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
     },
     {
       "project": "web-pages-mobile-numbers",
@@ -194,18 +99,8 @@
     },
     {
       "project": "web-pages-subscriptions",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "web-pages-subscriptions",
       "target": "test",
       "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-tasks",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
     },
     {
       "project": "web-pages-tasks",
@@ -214,18 +109,8 @@
     },
     {
       "project": "web-pages-vault",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "web-pages-vault",
       "target": "test",
       "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-pages-youtube",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
     },
     {
       "project": "web-pages-youtube",
@@ -234,28 +119,13 @@
     },
     {
       "project": "web-ui",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "web-ui",
       "target": "test",
       "executor": "@nx/jest:jest"
     },
     {
       "project": "web-vault-ui",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
-    },
-    {
-      "project": "web-vault-ui",
       "target": "test",
       "executor": "@nx/jest:jest"
-    },
-    {
-      "project": "web-vault",
-      "target": "lint",
-      "executor": "@nx/eslint:lint"
     },
     {
       "project": "web-vault",

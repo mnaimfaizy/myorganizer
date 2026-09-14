@@ -3,13 +3,5 @@
   "$schema": "../../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "libs/mobile/hooks/src",
   "projectType": "library",
-  "tags": ["type:util", "scope:mobile", "tier:agent"],
-  "targets": {
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": ["libs/mobile/hooks/src/**/*.{ts,tsx}"]
-      }
-    }
-  }
+  "tags": ["type:util", "scope:mobile", "tier:agent"]
 }

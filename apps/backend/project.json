@@ -42,12 +42,6 @@
         "watch": true
       }
     },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": ["apps/backend/**/*.ts"]
-      }
-    },
     "test": {
       "executor": "@nx/jest:jest",
       "dependsOn": ["generate-types"],

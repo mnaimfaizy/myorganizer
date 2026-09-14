@@ -16,12 +16,6 @@
         "cwd": "libs/design-tokens",
         "command": "node scripts/build-tokens.cjs"
       }
-    },
-    "lint": {
-      "executor": "@nx/eslint:lint",
-      "options": {
-        "lintFilePatterns": ["libs/design-tokens/src/**/*.{ts,tsx,js}"]
-      }
     }
   }
 }
