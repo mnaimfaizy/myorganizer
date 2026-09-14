@@ -404,8 +404,8 @@ it is off.
 
 ### 8c. The release itself
 
-1. Cut the release branch. The Cut checklist requires **Staging Host Apply
-   green** — not merely CI and a successful upload.
+1. Cut the release branch. `release:cut` refuses unless **Staging Host Apply
+   is green for the commit being cut** — not merely CI and a successful upload.
 2. The Production run waits on **Deploy Approval**. The approval authorises Host
    Apply; it does not replace it. Approving is the ship decision, and `host-apply`
    is what executes it.

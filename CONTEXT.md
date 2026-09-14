@@ -593,7 +593,7 @@ A version of MyOrganizer that is live in Production, identified by a `vX.Y.Z` ta
 _Avoid_: version, deployment, ship, build
 
 **Cut**:
-Creating the Release Branch with its version bump and CHANGELOG entry. Produces a candidate; a Cut that never deploys never becomes a Release.
+Creating the Release Branch with its version bump and CHANGELOG entry. Produces a candidate; a Cut that never deploys never becomes a Release. Only a commit that Staging has both uploaded and Host Applied may be Cut.
 _Avoid_: release (as a verb), branch off, prepare, bump
 
 **Release Branch**:
@@ -605,7 +605,7 @@ The required-reviewer sign-off on the `production` GitHub Environment. This is t
 _Avoid_: deploy trigger, manual deploy, production run, workflow dispatch
 
 **Host Apply**:
-The on-host work that turns an uploaded backend bundle into that environment's running process. Distinct from the upload that only lands files, and from Deploy Approval, which only authorises this work for Production.
+The on-host work that turns an uploaded backend bundle into that environment's running process. Distinct from the upload that only lands files, and from Deploy Approval, which only authorises this work for Production. An upload alone is not a deploy.
 _Avoid_: post-deploy sequence, go-live, activate, restart (as the whole thing)
 
 **Tag**:

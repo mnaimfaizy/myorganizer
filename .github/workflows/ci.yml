@@ -568,6 +568,12 @@ jobs:
       - name: Host Apply engine contracts
         run: corepack yarn host-apply:test
 
+      - name: Release script contracts
+        run: corepack yarn release:test
+
+      - name: GitHub CLI helper contracts
+        run: corepack yarn gh:lib:test
+
       - name: Host Apply workflow checker contracts
         run: corepack yarn host-apply:workflow:test
 

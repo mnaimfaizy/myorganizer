@@ -26,6 +26,7 @@ import {
 } from 'node:fs';
 import { dirname } from 'node:path';
 
+import { gh } from './lib/gh.mjs';
 import { loadProjectGraph } from './lib/nx-graph.mjs';
 import {
   classifyReviewTier,
@@ -97,10 +98,7 @@ try {
   if (!author && !process.env.GITHUB_ACTIONS) {
     // Local convenience only: CI always passes the Pull Request author.
     try {
-      author = execFileSync('gh', ['api', 'user', '--jq', '.login'], {
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      }).trim();
+      author = gh(['api', 'user', '--jq', '.login']).trim();
       console.error(
         `review-tier: --author not given, using gh login ${author}`,
       );

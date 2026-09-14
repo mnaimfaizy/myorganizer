@@ -13,10 +13,10 @@
 // current rules have tiered this right?), not a reconstruction of history.
 //
 // Not a gate: it reports a distribution and has nothing to fail on.
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
 
+import { ghJson } from '../lib/gh.mjs';
 import { loadProjectGraph } from '../lib/nx-graph.mjs';
 import {
   REVIEW_TIERS,
@@ -31,23 +31,20 @@ const opt = (flag, fallback) => {
 };
 const limit = Number(opt('--limit', 200));
 
-const prs = JSON.parse(
-  execFileSync(
-    'gh',
-    [
-      'pr',
-      'list',
-      '--state',
-      'merged',
-      '--base',
-      'main',
-      '--limit',
-      String(limit),
-      '--json',
-      'number,title,author,files,additions,deletions,mergedAt,labels',
-    ],
-    { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 },
-  ),
+const prs = ghJson(
+  [
+    'pr',
+    'list',
+    '--state',
+    'merged',
+    '--base',
+    'main',
+    '--limit',
+    String(limit),
+    '--json',
+    'number,title,author,files,additions,deletions,mergedAt,labels',
+  ],
+  { maxBuffer: 256 * 1024 * 1024 },
 );
 
 const graph = loadProjectGraph(opt('--graph'));

@@ -16,11 +16,11 @@ Staging and Production are distinct app roots and distinct databases. They curre
 
 ## Decision
 
-- **This repository owns Host Apply** for Staging (after a green `main` deploy) and Production (after Deploy Approval). Execute and verify; do not verify-only.
+- **This repository owns Host Apply** for Staging (after a green `main` deploy — _amended 2026-09-14: operator-dispatched, see below_) and Production (after Deploy Approval). Execute and verify; do not verify-only.
 - **The channel is SSH with a deploy key.** The account password is never a CI secret. Connection values (host, port, user, key) and on-host pins (`APP_ROOT`, activate path, selector app identity, `API_ORIGIN`) live only in GitHub Environment secrets.
 - **`DATABASE_URL` is never a GitHub secret.** The SSH session loads it on the host from that environment’s Node.js selector store, for the secret app identity only. It does not enumerate sibling apps, print the value, or write a second copy as an app-root `.env` unless the selector has no key (then planting `.env` is a documented operator prerequisite, not a default).
 - **Host Apply is a separable job** after upload: re-runnable without a second FTP, and not cancelled mid-migrate when a newer `main` lands (queue, do not kill).
-- **Fail closed.** A failed Host Apply leaves the host as it is. No automated file or migrate-down rollback. Do not Tag. Cut requires Staging Host Apply green, not merely CI green.
+- **Fail closed.** A failed Host Apply leaves the host as it is. No automated file or migrate-down rollback. Do not Tag. Cut requires Staging Host Apply green, not merely CI green (_made precise and enforced by the 2026-09-14 amendment_).
 - **Verify** with on-host migration status plus existing HTTP probes (`/docs`, cron rejected as `401` not `500` / HTML `403`). No readiness endpoint in #437.
 - **Public git contains the algorithm and secret names only.** Workflows and deploy docs use placeholders. They do not hardcode host, user, port, home paths, or selector keys. Logs must not dump environment or connection strings.
 
@@ -40,5 +40,15 @@ Shared-account blast radius is accepted and written here: pin `APP_ROOT` per env
 
 - Operator HITL before the first green Host Apply: install the deploy public key; confirm non-interactive SSH can `source` the Node activate script and load `DATABASE_URL` from the selector without printing it.
 - Deploy documentation drops environment _values_ from the public tree (secret-name tables, not jail maps). Already-public site URLs that pre-exist in docs are not a reason to add new fingerprints.
-- A readiness endpoint that reports migration status without SSH remains a follow-up, not this decision.
+- A readiness endpoint that reports migration status without SSH is not pursued (_amended 2026-09-14, see below_).
 - Vocabulary: [`CONTEXT.md`](../../CONTEXT.md) § Release & Deploy (Staging, Production, Host Apply, Deploy Approval, Tag).
+
+## Amendment (2026-09-14)
+
+Grilled on #437 after the Staging half of the engine went live (#569). The decision that CI owns Host Apply stands; three things around it moved.
+
+- **Staging Host Apply is operator-dispatched, not automatic.** SSH shell access on this hosting account is a manual toggle that reverts, so an automatic apply goes red on every push where the shell is off. The backend upload stays automatic after a green `main`. Staging may therefore run an uploaded bundle that no Host Apply has touched; `deploy-backend` says so in its job summary rather than looking finished.
+- **Cut enforces Staging Host Apply, by commit.** `release:cut` refuses unless Staging's latest successful `deploy-backend` uploaded the commit being cut **and** a green Staging `host-apply` at that commit started after that upload landed, with no upload of another commit in between. The commit a run uploaded is read from the run's name, which the workflow sets, not from a job's `head_sha`. An `apply_only` retry, or an automatic upload applied by a later dispatch, satisfies it; an upload of any other commit in between does not. There is no override flag: a break-glass SSH apply is invisible to CI, and waiting for the shell costs a day where an unapplied release cost v0.4.0.
+- **No readiness endpoint.** With the Cut guard covering Staging and Production Host Apply verifying itself after Deploy Approval, what remains is drift outside a deploy — and a public migration-status probe would publish schema state unless guarded by yet another secret. Not worth either.
+
+Considered and rejected here: making the backend upload dispatch-only as well (keeps the host consistent, but the same toggle then blocks every Staging backend update); attempting Host Apply on every push with a named "shell off" failure (a red that is expected most days trains people to ignore red); a checklist item alone for the Cut (a green run on Monday reads as ticked for Wednesday's Cut of different commits).
