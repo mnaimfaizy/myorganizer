@@ -69,7 +69,7 @@ test('exits 0 against the real repository with the committed baseline and notDeb
   assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
   assert.match(
     result.stdout,
-    /OK — 4 @nx\/\* Declared Target\(s\) match the 4-entry baseline, 1 target\(s\) on a not-debt executor/,
+    /OK — 1 @nx\/\* Declared Target\(s\) match the 1-entry baseline, 1 target\(s\) on a not-debt executor/,
   );
 });
 

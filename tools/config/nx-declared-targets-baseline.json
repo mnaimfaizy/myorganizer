@@ -6,21 +6,6 @@
       "project": "backend",
       "target": "build",
       "executor": "@nx/webpack:webpack"
-    },
-    {
-      "project": "myorganizer-e2e",
-      "target": "e2e-firefox",
-      "executor": "@nx/playwright:playwright"
-    },
-    {
-      "project": "myorganizer-e2e",
-      "target": "e2e-webkit",
-      "executor": "@nx/playwright:playwright"
-    },
-    {
-      "project": "myorganizer-e2e",
-      "target": "e2e",
-      "executor": "@nx/playwright:playwright"
     }
   ],
   "notDebt": [
