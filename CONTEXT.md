@@ -538,6 +538,10 @@ _Avoid_: enabled gate, active check, gate coverage (for this sense)
 The gate whose asserted artifacts are the other gates: `gates:coverage:check` compares the checkers on disk against the ones hooks and workflows invoke, and fails naming each checker that is not a Wired Gate. An ordinary Assertion Gate in shape — its subject is simply the gate set rather than a document. A checker it must not fail is not silently skipped; it carries an entry with a written reason in `tools/config/gate-coverage-optout.json`.
 _Avoid_: gate-of-gates, master gate, gate linter
 
+**Unasserted Claim**:
+A fact about the tree that an artifact states and nothing checks. Distinct from prose a gate cannot reach: an Unasserted Claim is one an extractor could have read — a count, a source citation, a version — that simply has none, so it drifts silently while the page around it stays green. The defect is the gap between what an artifact states and what it asserts, which is why it applies equally to a page whose manifest omits a number it prints and to a checker whose header claims a direction its code does not run.
+_Avoid_: stale doc, prose drift, uncovered fact, documentation rot
+
 **Enum Fan-Out**:
 A place in code that covers every member of a domain enum by hand — an object literal keyed by the members, an if-chain over them, a union of their values. Distinct from the parallel-work sense the word carries elsewhere: an Independent Hop is never called this. A fan-out is judged per scope, not per file, because one module routinely iterates the Pinned Table in one function and hand-enumerates in the next.
 _Avoid_: exhaustive switch, member sweep, enum iteration
