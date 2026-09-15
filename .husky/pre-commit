@@ -77,8 +77,9 @@ corepack yarn sandcastle:subagent-trace:test
 corepack yarn sandcastle:spec-anchor:test
 fi
 # The five sandcastle atlas pages state constants that live as module-local literals in the
-# two orchestrator files, as exports in sandcastle-resume.mjs and sandcastle-subagent-trace.mjs,
-# and as JSON in the model policy and package.json. They rot the moment any of those move, and
+# two orchestrator files and in the slice-selection lib they share, as exports in
+# sandcastle-resume.mjs and sandcastle-subagent-trace.mjs, and as JSON in the model policy,
+# package.json, and the CI workflow. They rot the moment any of those move, and
 # the checker passed green through the whole of #467 precisely because it asserted constants
 # while the prose went false around them — so the guard must list every input it reads, plus
 # the pages and the check script themselves, or an unrelated commit is failed by drift it did
@@ -92,8 +93,10 @@ if ! git diff --cached --quiet --diff-filter=ACMRTD -- \
  tools/scripts/check-sandcastle-map.mjs \
  tools/scripts/lib/sandcastle-resume.mjs \
  tools/scripts/lib/sandcastle-subagent-trace.mjs \
+ tools/scripts/lib/sandcastle-slice-selection.mjs \
  tools/config/agent-model-policy.json \
  package.json \
+ .github/workflows/ci.yml \
  .sandcastle/main.mts \
  .sandcastle/dispatch-waves.mts
 then
