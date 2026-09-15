@@ -97,6 +97,12 @@ function createWorkspace(t) {
   }
   write(workspace, '.prettierignore', FIXTURE_PAGES.join('\n'));
 
+  // The checker resolves a bare-name citation with `git ls-files` (basenameIndex,
+  // check-design-hygiene.mjs), so citation tests need a real index to search —
+  // not a commit, just files staged so `git ls-files` can see them.
+  spawnSync('git', ['init', '-q'], { cwd: workspace });
+  spawnSync('git', ['add', '-A'], { cwd: workspace });
+
   return workspace;
 }
 
@@ -150,6 +156,210 @@ test('a legacy page is skipped rather than failed, with its reason', (t) => {
     result.stdout,
     /docs\/agents\/skill-atlas\.html\s+SKIPPED \(Carries no @font-face/,
   );
+});
+
+// --- the LEGACY split (ADR 0085) ----------------------------------------------
+//
+// A LEGACY reason exempts a page from the mechanical-hygiene rules only. The
+// citation rule is a factual-assertion rule, so it still runs — and still fails
+// — over a page every other rule skips.
+
+test('a legacy page with an unresolvable citation still fails', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/agents/skill-atlas.html',
+    housePage('skill-atlas').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<span class="cite">nonexistent-source.yml:5</span>',
+      ].join('\n'),
+    ),
+  );
+
+  const result = run(workspace, 'docs/agents/skill-atlas.html');
+
+  assert.equal(result.status, 1);
+  // Still exempt from the mechanical rules — SKIPPED prints — and still failed
+  // by the factual one, in the same report.
+  assert.match(result.stdout, /SKIPPED \(Carries no @font-face/);
+  assert.match(result.stdout, /ERROR citation-unresolved/);
+  assert.match(result.stdout, /nonexistent-source\.yml/);
+});
+
+test('the same legacy page with only a non-canonical font block still passes — that reason stays exempt', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/agents/skill-atlas.html',
+    housePage('skill-atlas').replace(
+      FONT_BLOCK,
+      '@font-face { font-family: Impostor; src: url(data:font/woff2;base64,ZZZZ); }',
+    ),
+  );
+
+  const result = run(workspace, 'docs/agents/skill-atlas.html');
+
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /font-block-drift/);
+  assert.match(result.stdout, /SKIPPED/);
+});
+
+// docs/example/notes.md would exist on disk but not in the index the checker
+// searches (`git ls-files`, built once at createWorkspace time) — these two
+// cite a file createWorkspace already staged, the same way production citations
+// resolve against the committed tree rather than an untracked scratch file.
+
+test('a citation on a roster page resolves against a real file in the tree', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    housePage('waves').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<span class="cite">tools/scripts/lib/source-scan.mjs:2</span>',
+      ].join('\n'),
+    ),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /citation-unresolved/);
+});
+
+test('a citation past the end of a real file fails on a roster page', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    housePage('waves').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<span class="cite">tools/scripts/lib/source-scan.mjs:99999</span>',
+      ].join('\n'),
+    ),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-unresolved/);
+  assert.match(result.stdout, /source-scan\.mjs/);
+});
+
+test("a citation to a file's real last line resolves, and the line past it does not", (t) => {
+  // A trailing newline is not a line of its own. Every tracked file here ends
+  // with one (.editorconfig, insert_final_newline), so a resolver that counts
+  // split('\n').length uncorrected reports one line too many for all of them —
+  // silently accepting a citation to the line just past every file's real end.
+  const workspace = createWorkspace(t);
+  write(workspace, 'target.txt', 'one\ntwo\nthree\n');
+  spawnSync('git', ['add', '-A'], { cwd: workspace });
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    housePage('waves').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<span class="cite">target.txt:3</span>',
+      ].join('\n'),
+    ),
+  );
+  const goodResult = run(workspace, 'docs/sandcastle/waves.html');
+  assert.equal(goodResult.status, 0, goodResult.stdout);
+
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    housePage('waves').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<span class="cite">target.txt:4</span>',
+      ].join('\n'),
+    ),
+  );
+  const badResult = run(workspace, 'docs/sandcastle/waves.html');
+  assert.equal(badResult.status, 1);
+  assert.match(badResult.stdout, /ERROR citation-unresolved/);
+});
+
+test('a citation whose name is short a directory prefix still resolves by suffix', (t) => {
+  // The real defect this guards: skill-atlas.html cites `implement/SKILL.md`,
+  // two segments short of `.agents/skills/implement/SKILL.md`. A resolver that
+  // only tried the name as a literal repo-root path missed every one of these.
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'a/deep/nested/check-design-hygiene.mjs',
+    'line one\nline two\nline three\n',
+  );
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    housePage('waves').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<span class="cite">nested/check-design-hygiene.mjs:2</span>',
+      ].join('\n'),
+    ),
+  );
+  spawnSync('git', ['add', '-A'], { cwd: workspace });
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /citation-unresolved/);
+});
+
+test('a bare-name citation resolves against a git-tracked file sharing that basename', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    housePage('waves').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        // check-design-hygiene.mjs is written into the workspace and tracked by
+        // createWorkspace's `git add -A` — its line 1 always exists.
+        '<span class="cite">check-design-hygiene.mjs:1</span>',
+      ].join('\n'),
+    ),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /citation-unresolved/);
+});
+
+test('a bare-name citation to a file absent from the tree fails', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    housePage('waves').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<span class="cite">nonexistent-anywhere.yml:1</span>',
+      ].join('\n'),
+    ),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-unresolved/);
+  assert.match(result.stdout, /does not exist in the tree/);
 });
 
 test('a roster page passed explicitly is checked', (t) => {

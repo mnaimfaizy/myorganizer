@@ -1,11 +1,22 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
+  findCitations,
   fontBlockHash,
   maskHtmlComments,
+  RULE_KINDS,
   scanDesignPage,
+  scanFactualAssertions,
 } from './design-page-scan.mjs';
+
+const SCAN_MODULE_SOURCE = join(
+  dirname(fileURLToPath(import.meta.url)),
+  'design-page-scan.mjs',
+);
 
 const FONT_HASH = 'a'.repeat(64);
 
@@ -65,6 +76,7 @@ function scan(source, options = {}) {
     pageFontHash: FONT_HASH,
     prettierIgnored: true,
     adrLinkExists: () => true,
+    resolveCitation: () => ({ ok: true }),
     ...options,
   });
 }
@@ -661,6 +673,364 @@ test('an ADR link carrying a fragment is resolved without the fragment', () => {
     },
   );
   assert.deepEqual(seen, ['docs/adr/0043-gates-assert-facts.md']);
+});
+
+// --- citation-unresolved -------------------------------------------------------
+//
+// A citation is discovered by findCitations regardless of which element carries
+// it, so each markup-form test asserts on discovery (via a recording resolver)
+// rather than on the wrapping tag.
+
+function recordingResolver(result = { ok: true }) {
+  const seen = [];
+  const resolveCitation = (citation) => {
+    seen.push(citation);
+    return result;
+  };
+  return { seen, resolveCitation };
+}
+
+test('a class="cite" span citation is discovered', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>\n<span class="cite">ci.yml:3-12</span>',
+    }),
+    { resolveCitation },
+  );
+  assert.equal(seen.length, 1);
+  assert.deepEqual(
+    [seen[0].name, seen[0].line, seen[0].endLine],
+    ['ci.yml', 3, 12],
+  );
+});
+
+test('a class="src" span carrying several bare citations is discovered as one name and three lines', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>\n<span class="src">deploy-production.yml:128, :181, :293</span>',
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(
+    seen.map((c) => [c.name, c.line, c.endLine]),
+    [
+      ['deploy-production.yml', 128, 128],
+      ['deploy-production.yml', 181, 181],
+      ['deploy-production.yml', 293, 293],
+    ],
+  );
+});
+
+test('an inline <code> citation carrying a path is discovered', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: '<p>Table at <code>docs/adr/0012-tiered-quality-gates.md:17-19</code>.</p>',
+    }),
+    { resolveCitation },
+  );
+  assert.equal(seen.length, 1);
+  assert.deepEqual(
+    [seen[0].name, seen[0].line, seen[0].endLine],
+    ['docs/adr/0012-tiered-quality-gates.md', 17, 19],
+  );
+});
+
+test('an SVG label-text citation is discovered', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="x">',
+        '  <text class="src" x="52" y="130">SKILL.md:25</text>',
+        '</svg>',
+      ].join('\n'),
+    }),
+    { resolveCitation },
+  );
+  assert.equal(seen.length, 1);
+  assert.deepEqual(
+    [seen[0].name, seen[0].line, seen[0].endLine],
+    ['SKILL.md', 25, 25],
+  );
+});
+
+test('a table-cell citation is discovered', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>',
+        '<table><tbody><tr><td class="cite">release-pr.yml:4-6, :103-115</td></tr></tbody></table>',
+      ].join('\n'),
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(
+    seen.map((c) => [c.name, c.line, c.endLine]),
+    [
+      ['release-pr.yml', 4, 6],
+      ['release-pr.yml', 103, 115],
+    ],
+  );
+});
+
+test('a bare :NNN several lines below still resolves to the filename named earlier', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>',
+        '<p><code>deploy-staging.yml:9-12</code> triggers the deploy.</p>',
+        '<p>Fully applied only once the wait job clears</p>',
+        '<p>(<code>:29</code>).</p>',
+      ].join('\n'),
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(
+    seen.map((c) => [c.name, c.line, c.endLine]),
+    [
+      ['deploy-staging.yml', 9, 12],
+      ['deploy-staging.yml', 29, 29],
+    ],
+  );
+});
+
+test('a class="src" caption naming a file with no line still sets the context for a later bare citation', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>',
+        '<span class="src">what &#8220;green&#8221; means before a deploy &middot; ci.yml</span>',
+        '<p>Lint <code>:412</code></p>',
+      ].join('\n'),
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(
+    seen.map((c) => [c.name, c.line, c.endLine]),
+    [['ci.yml', 412, 412]],
+  );
+});
+
+test('a code-shaped token outside a class="src" caption does not steal context from the last real citation', () => {
+  // github.ref reads as a dotted name exactly like a filename does. The real
+  // defect this guards: the bare :88 that follows is a line in the file the list
+  // is actually about (deploy-production.yml), not in "github.ref".
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>',
+        '<p><code>deploy-production.yml:1</code> guards the job.</p>',
+        '<p>It tests <code>github.ref</code> <span class="cite">:88</span>.</p>',
+      ].join('\n'),
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(
+    seen.map((c) => [c.name, c.line, c.endLine]),
+    [
+      ['deploy-production.yml', 1, 1],
+      ['deploy-production.yml', 88, 88],
+    ],
+  );
+});
+
+test('a known-extension mention immediately beside its bare citations sets the context', () => {
+  // The real defect this guards: session-lifecycle.html writes "Four secrets in
+  // ApiTokens.ts (:36 access, :41 refresh, :26 verify, :16 reset)" — a plain
+  // <code> mention, not a class="src" caption, immediately followed by four bare
+  // citations. Without this, they were misattributed to whatever file was last
+  // fully cited, sometimes an unrelated file several screens above.
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>',
+        '<p>Four secrets in <code>ApiTokens.ts</code> (<span class="cite">:36</span> access,',
+        '<span class="cite">:41</span> refresh).</p>',
+      ].join('\n'),
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(
+    seen.map((c) => [c.name, c.line, c.endLine]),
+    [
+      ['ApiTokens.ts', 36, 36],
+      ['ApiTokens.ts', 41, 41],
+    ],
+  );
+});
+
+test('a known-extension mention a whole clause away from its citation does not set the context', () => {
+  // RELEASE_NOTES.md is a real file with a real extension, but the bare citation
+  // that follows belongs to the file named earlier in the sentence
+  // (publish-github-release.yml), not to RELEASE_NOTES.md — there is a full
+  // clause of prose between the mention and the citation, not just punctuation.
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>',
+        '<p><code>publish-github-release.yml:4-6</code>. Reads',
+        '<code>RELEASE_NOTES.md</code> from the tagged commit and creates the',
+        'release, so re-running it is safe (<span class="cite">:79-100</span>).</p>',
+      ].join('\n'),
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(
+    seen.map((c) => [c.name, c.line, c.endLine]),
+    [
+      ['publish-github-release.yml', 4, 6],
+      ['publish-github-release.yml', 79, 100],
+    ],
+  );
+});
+
+test('a slash-shaped prose token (a branch pattern, not a file) does not become a citation name', () => {
+  // release/vX.Y.Z is a git ref pattern in prose, not a file — it has the same
+  // word/word shape a real path citation does.
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>',
+        '<p><code>deploy-production.yml:40-50</code> resolves the newest',
+        'release/vX.Y.Z by sort -V <span class="cite">:71-85</span>.</p>',
+      ].join('\n'),
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(
+    seen.map((c) => [c.name, c.line, c.endLine]),
+    [
+      ['deploy-production.yml', 40, 50],
+      ['deploy-production.yml', 71, 85],
+    ],
+  );
+});
+
+test('a bare :NNN with no filename named earlier on the page is not a citation', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>\n<p>See <code>:29</code> above.</p>',
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(seen, []);
+});
+
+test('an unresolved citation is reported with the resolver reason', () => {
+  const findings = scan(
+    goodPage({
+      body: '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>\n<span class="cite">ghost.yml:5</span>',
+    }),
+    {
+      resolveCitation: () => ({
+        ok: false,
+        reason: 'ghost.yml:5 cites a file that does not exist in the tree.',
+      }),
+    },
+  );
+  assert.deepEqual(rules(findings), ['citation-unresolved']);
+  assert.match(findings[0].message, /ghost\.yml/);
+});
+
+test('a resolved citation produces no finding', () => {
+  const findings = scan(
+    goodPage({
+      body: '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>\n<span class="cite">ci.yml:3-12</span>',
+    }),
+    { resolveCitation: () => ({ ok: true }) },
+  );
+  assert.deepEqual(rules(findings), []);
+});
+
+test("the finding lands on the citation's own line, not line 1", () => {
+  const findings = scan(
+    goodPage({
+      body: [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>',
+        '<p>filler</p>',
+        '<span class="cite">ghost.yml:5</span>',
+      ].join('\n'),
+    }),
+    { resolveCitation: () => ({ ok: false, reason: 'nope' }) },
+  );
+  // head is 10 lines, style 14: body starts at line 25, and the cite span is the
+  // third body line.
+  assert.equal(findings[0].line, 27);
+});
+
+test('findCitations is a pure discovery function usable without scanDesignPage', () => {
+  const citations = findCitations('<span class="cite">ci.yml:3-12</span>');
+  assert.equal(citations.length, 1);
+  assert.equal(citations[0].name, 'ci.yml');
+});
+
+test('a citation inside a <style> or <script> block is not discovered', () => {
+  // opacity:0 / opacity:1 in a CSS keyframe is not a citation — the real defect
+  // this guards: :root's dark palette selector shares the digit-after-colon shape
+  // with a citation, and an @keyframes block writes exactly this pattern.
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>\n<style>@keyframes pop { from { opacity:0; } to { opacity:1; } }</style>',
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(seen, []);
+});
+
+test('RULE_KINDS classifies citation-unresolved as factual-assertion and the rest as mechanical-hygiene', () => {
+  assert.equal(RULE_KINDS['citation-unresolved'], 'factual-assertion');
+  const mechanical = Object.entries(RULE_KINDS)
+    .filter(([rule]) => rule !== 'citation-unresolved')
+    .map(([, kind]) => kind);
+  assert.ok(mechanical.every((kind) => kind === 'mechanical-hygiene'));
+});
+
+test('RULE_KINDS has exactly one entry per rule name this module can actually emit', () => {
+  // A rule added to a check* function and wired into scanDesignPage but never
+  // added here would run over ROSTER pages with no kind — silently exempt from
+  // nothing, included in nothing's exemption boundary — and nothing would fail.
+  // Reading the rule names back out of the module's own source is what catches
+  // that drift instead of trusting this list to stay hand-in-sync with it.
+  const source = readFileSync(SCAN_MODULE_SOURCE, 'utf8');
+  const emitted = new Set(
+    [...source.matchAll(/rule: '([\w-]+)'/g)].map((m) => m[1]),
+  );
+  assert.deepEqual([...emitted].sort(), Object.keys(RULE_KINDS).sort());
+});
+
+test('scanFactualAssertions runs only citation resolution, even on a page with other defects', () => {
+  // Not a house page at all — no font block, no manifest, a <title> inside an
+  // <svg>. None of that may surface here; that is what makes a page eligible for
+  // the LEGACY exemption safe to still run this against (ADR 0085).
+  const source = [
+    '<svg role="img"><title>Bad</title></svg>',
+    '<span class="cite">ghost.yml:5</span>',
+  ].join('\n');
+  const findings = scanFactualAssertions({
+    source,
+    resolveCitation: () => ({ ok: false, reason: 'ghost.yml:5 is missing.' }),
+  });
+  assert.deepEqual(rules(findings), ['citation-unresolved']);
+});
+
+test('scanFactualAssertions reports nothing when the page has no citations', () => {
+  const findings = scanFactualAssertions({
+    source: '<p>No sources cited here.</p>',
+    resolveCitation: () => ({ ok: false, reason: 'should never be called' }),
+  });
+  assert.deepEqual(findings, []);
 });
 
 // --- helpers -----------------------------------------------------------------

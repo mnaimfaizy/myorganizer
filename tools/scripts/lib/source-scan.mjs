@@ -246,15 +246,18 @@ export function reportFindings(results, label) {
   let skipped = 0;
   let inspected = 0;
   for (const result of results) {
+    console.log(`\n${result.file}`);
     if (result.skipped) {
       skipped += 1;
-      console.log(`\n${result.file}\n  SKIPPED (${result.skipped})`);
-      continue;
+      console.log(`  SKIPPED (${result.skipped})`);
+    } else {
+      inspected += 1;
     }
-    inspected += 1;
-    console.log(`\n${result.file}`);
+    // A skipped result can still carry findings: a factual-assertion rule runs
+    // over a LEGACY page even though its written reason exempts it from every
+    // mechanical-hygiene one (ADR 0085), so SKIPPED and a finding both print.
     if (!result.findings.length) {
-      console.log('  PASS — no mechanical issues');
+      if (!result.skipped) console.log('  PASS — no mechanical issues');
       continue;
     }
     for (const f of result.findings) {

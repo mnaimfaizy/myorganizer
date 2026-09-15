@@ -13,6 +13,14 @@
  * the page: whether the hero is the right hero, whether a panel earns its place,
  * whether the prose is true. An Assertion Gate compares two artifacts (ADR 0043);
  * "is this diagram clear" compares an artifact to a feeling.
+ *
+ * Rules are classified by kind (`RULE_KINDS`, ADR 0085). Every rule above the
+ * citation rule is mechanical-hygiene: the `LEGACY` roster exempts a page from
+ * these on the strength of one written reason. `checkCitations` is the one
+ * factual-assertion rule today — it asserts that a citation resolves, which is
+ * necessary and not sufficient (see its own comment) — and `LEGACY` does not
+ * exempt a page from it: `scanDesignPage` runs everything for a `ROSTER` page,
+ * `scanFactualAssertions` runs only this for a `LEGACY` one.
  */
 
 import { createHash } from 'node:crypto';
@@ -418,6 +426,209 @@ function resolveRelative(dir, target) {
   return out.join('/');
 }
 
+/** Replaces every `<tag …>`, attributes included, with spaces — what is left is
+ * the page's visible text in document order, whatever element carried it. */
+function blankTags(code) {
+  return code.replace(/<[^>]*>/g, blank);
+}
+
+// A citation's name is either a path with at least one `/` (extension optional,
+// so `.github/CODEOWNERS` counts) or a single segment carrying an extension
+// (`ci.yml`, `SKILL.md`). Neither shape appears in ordinary prose, which is what
+// lets this scan the whole visible page instead of one tag at a time.
+const NAME_RE = /(?:[\w.-]+\/)+[\w.-]+|[\w.-]+\.[A-Za-z0-9]+/;
+// Either a name (optionally followed by :line, whether or not it carries one —
+// a panel heading routinely just names the file it is about) or, with no name,
+// a bare :line on its own.
+const TOKEN_RE = new RegExp(
+  `(?<name>${NAME_RE.source})(?::(?<start>\\d+)(?:-(?<end>\\d+))?)?` +
+    `|:(?<bareStart>\\d+)(?:-(?<bareEnd>\\d+))?`,
+  'g',
+);
+
+/**
+ * Character ranges of `<span class="src">…</span>` / `<text class="src">…</text>`
+ * content — the house convention for a caption that names the file a panel or
+ * section is about. Scoped to this class deliberately: prose and `<code>` are
+ * full of dotted, sometimes slash-bearing tokens that are not files at all —
+ * `github.ref`, `release/vX.Y.Z`, `inputs.apply_only` — and treating every one
+ * of them as naming a file misattributes the citation after it. A `class="src"`
+ * caption is short and deliberate; nothing here has ever named the wrong file.
+ */
+function srcRanges(code) {
+  const ranges = [];
+  for (const m of code.matchAll(
+    /<(span|text)\b[^>]*\bclass="src"[^>]*>([\s\S]*?)<\/\1\s*>/gi,
+  )) {
+    const start = m.index + m[0].indexOf('>') + 1;
+    ranges.push([start, start + m[2].length]);
+  }
+  return ranges;
+}
+
+function within(ranges, index) {
+  return ranges.some(([start, end]) => index >= start && index < end);
+}
+
+// Extensions a bare mention (no line of its own) is allowed to name a file by.
+// Bounded deliberately: `github.ref`, `inputs.apply_only`, `needs.x.result` are
+// GitHub Actions expressions with the same dotted shape a filename has, and an
+// unbounded check would read every one of them as naming a file too.
+const KNOWN_EXTENSIONS = new Set([
+  'ts',
+  'tsx',
+  'js',
+  'jsx',
+  'mjs',
+  'cjs',
+  'mts',
+  'cts',
+  'json',
+  'yml',
+  'yaml',
+  'md',
+  'mdx',
+  'html',
+  'css',
+  'toml',
+  'py',
+]);
+
+function knownExtension(name) {
+  const ext = /\.([A-Za-z0-9]+)$/.exec(name)?.[1];
+  return ext !== undefined && KNOWN_EXTENSIONS.has(ext.toLowerCase());
+}
+
+/**
+ * Every `file:line` citation on the page, in document order, regardless of which
+ * element carries it — a `cite`/`src` span, a table cell, inline `<code>`, or SVG
+ * label text are all just visible text once tags and embedded code are blanked
+ * out (ADR 0085: "finds citations in every markup form a page uses").
+ *
+ * A bare `:line` or `:line-line` carries no name of its own; it resolves against
+ * the filename most recently *named* on the page. A citation (`name:line`)
+ * always names its file, wherever it sits. A bare *mention* — the file with no
+ * line — counts in two narrower cases, because most dotted or slashed tokens in
+ * prose are not files at all:
+ *   - inside a `class="src"` caption (`srcRanges`): a panel heading routinely
+ *     writes `<span class="src">… &middot; ci.yml</span>` once and leaves every
+ *     citation under it bare, sometimes many elements later.
+ *   - immediately beside the bare citation it names — nothing between them but
+ *     blanked tags and punctuation, no actual word — and carrying a known file
+ *     extension. `<code>ApiTokens.ts</code> (:36 access, …)` qualifies;
+ *     `<code>github.ref</code> <span class="cite">:88</span>` sits just as close
+ *     but `.ref` is not a file extension, and `RELEASE_NOTES.md` read from the
+ *     tagged commit, so re-running it is safe (:79-100)` carries a real
+ *     extension but a whole clause between it and the citation, so neither
+ *     counts. A bare citation with nothing named yet ahead of it is not a
+ *     citation — `16:9` in plain prose does not become one just because a regex
+ *     can parse it as one — so it is silently skipped.
+ */
+export function findCitations(source) {
+  const code = maskEmbeddedCode(maskHtmlComments(source));
+  const ranges = srcRanges(code);
+  const flat = blankTags(code);
+  const matches = [...flat.matchAll(TOKEN_RE)];
+  const citations = [];
+  let lastName = null;
+  for (let i = 0; i < matches.length; i += 1) {
+    const m = matches[i];
+    const start = m.groups.start ?? m.groups.bareStart;
+
+    if (m.groups.name && start === undefined) {
+      const next = matches[i + 1];
+      const adjacentBareCitation =
+        next &&
+        next.groups.name === undefined &&
+        !/\w/.test(flat.slice(m.index + m[0].length, next.index));
+      if (
+        within(ranges, m.index) ||
+        (adjacentBareCitation && knownExtension(m.groups.name))
+      ) {
+        lastName = m.groups.name;
+      }
+      continue;
+    }
+    if (m.groups.name) lastName = m.groups.name;
+    if (start === undefined) continue;
+
+    const name = m.groups.name ?? lastName;
+    if (!name) continue;
+    const end = m.groups.end ?? m.groups.bareEnd;
+    citations.push({
+      name,
+      line: Number(start),
+      endLine: end ? Number(end) : Number(start),
+      sourceLine: lineOf(flat, m.index),
+      raw: m[0],
+    });
+  }
+  return citations;
+}
+
+/**
+ * A factual-assertion rule (ADR 0085): it runs over `LEGACY` pages as well as
+ * `ROSTER` ones, because none of the five `LEGACY` reasons are about being wrong.
+ *
+ * Resolving a citation here is necessary and not sufficient — it proves the claim
+ * is *possible*, not that it is *true*. `resolveCitation` is asked only whether
+ * some file named `name` exists with enough lines; it is not asked whether that
+ * file is the right one, which needs the citation to carry the content it names
+ * (#788's anchoring). A bare name with several same-named candidates in the tree
+ * (`package.json`, `SKILL.md`) resolves if any one of them is long enough — this
+ * step can tell an impossible citation from a possible one, not a right file from
+ * a coincidentally long wrong one.
+ */
+function checkCitations(source, findings, resolveCitation) {
+  for (const citation of findCitations(source)) {
+    const result = resolveCitation(citation);
+    if (!result.ok) {
+      findings.push({
+        rule: 'citation-unresolved',
+        line: citation.sourceLine,
+        message: result.reason,
+      });
+    }
+  }
+}
+
+/**
+ * Which rules honour the `LEGACY` exemption and which do not (ADR 0085). A
+ * mechanical-hygiene rule is about how the page is built — font blocks, storage
+ * guards, self-containment — and a `LEGACY` reason is always one of those, so
+ * `LEGACY` pages skip these. A factual-assertion rule is about whether the page
+ * still describes the tree, and no styling exemption is a reason to stop checking
+ * that: these run over `ROSTER` and `LEGACY` pages alike.
+ */
+export const RULE_KINDS = {
+  'svg-title-tooltip': 'mechanical-hygiene',
+  'tip-note-bijection': 'mechanical-hygiene',
+  'external-resource': 'mechanical-hygiene',
+  'theme-tokens-incomplete': 'mechanical-hygiene',
+  'unguarded-storage': 'mechanical-hygiene',
+  'manifest-missing': 'mechanical-hygiene',
+  'manifest-invalid': 'mechanical-hygiene',
+  'prettier-ignore-missing': 'mechanical-hygiene',
+  'adr-link-broken': 'mechanical-hygiene',
+  'font-block-drift': 'mechanical-hygiene',
+  'citation-unresolved': 'factual-assertion',
+};
+
+/**
+ * Runs only the factual-assertion rules — today, citation resolution — over a
+ * page the `LEGACY` exemption otherwise skips entirely (ADR 0085).
+ *
+ * @param {object} input
+ * @param {string} input.source raw page text
+ * @param {(citation: {name: string, line: number, endLine: number}) => {ok: boolean, reason?: string}} input.resolveCitation
+ * @returns {Array<{rule: string, line: number, message: string}>}
+ */
+export function scanFactualAssertions({ source, resolveCitation }) {
+  const findings = [];
+  checkCitations(source, findings, resolveCitation);
+  return findings.sort((a, b) => a.line - b.line);
+}
+
 // --- entry point -------------------------------------------------------------
 
 /**
@@ -430,6 +641,7 @@ function resolveRelative(dir, target) {
  * @param {string|null} input.pageFontHash `fontBlockHash` of this page
  * @param {boolean} input.prettierIgnored  whether .prettierignore covers this file
  * @param {(resolved: string) => boolean} input.adrLinkExists
+ * @param {(citation: {name: string, line: number, endLine: number}) => {ok: boolean, reason?: string}} input.resolveCitation
  * @returns {Array<{rule: string, line: number, message: string}>} findings, in file order
  */
 export function scanDesignPage({
@@ -439,6 +651,7 @@ export function scanDesignPage({
   pageFontHash,
   prettierIgnored,
   adrLinkExists,
+  resolveCitation,
 }) {
   const code = maskHtmlComments(source);
   const findings = [];
@@ -451,6 +664,7 @@ export function scanDesignPage({
   checkManifest(code, findings);
   checkPrettierIgnored(file, prettierIgnored, findings);
   checkAdrLinks(file, code, adrLinkExists, findings);
+  checkCitations(source, findings, resolveCitation);
 
   if (pageFontHash === null) {
     findings.push({
