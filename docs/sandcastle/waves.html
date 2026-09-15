@@ -1852,9 +1852,11 @@
         </li>
         <li>
           <b>Read the edges.</b> Each body is matched for a
-          <code>## Blocked by</code> section; every <code>#&lt;number&gt;</code>
-          inside it becomes an edge. References that are not themselves slices
-          of this PRD are dropped, and so is a self-reference.
+          <code>## Blocked by</code> section; the <code>#&lt;number&gt;</code>
+          each list item starts with becomes an edge, and a reference anywhere
+          else in the section is explanation, not an edge. References that are
+          not themselves slices of this PRD are dropped, and so is a
+          self-reference.
         </li>
         <li>
           <b>Level it.</b> Kahn's algorithm, level by level: a slice enters the
@@ -2351,7 +2353,8 @@ Nothing is pushed and nothing was discarded. Every slice branch is intact.</pre
           <dt>Dependency cycle &rarr; fail()</dt>
           <dd id="note-cycle">
             When a level resolves to zero slices while slices remain, the driver
-            names every remaining slice and exits. There is no partial run: the
+            names the cycle &mdash; or, with no cycle, every remaining slice &mdash;
+            and exits. There is no partial run: the
             cycle is a planning error in the issue bodies, and the fix is to edit
             a <code>## Blocked by</code> section, not to re-run.
           </dd>

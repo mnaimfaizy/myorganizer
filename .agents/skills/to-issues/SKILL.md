@@ -47,6 +47,8 @@ Dependency edges are part of the label + body contract (ADR 0002):
 | `## Blocks`      | Downstream issues this slice unlocks when it completes                         |
 | `status:blocked` | Machine-readable “not ready”; orchestrator and `/implement` skip until removed |
 
+In both sections, only the issue a list item **starts with** is a dependency (`- #123 — why`). Put explanation — including "not blocked by #N" — in prose or its own section; the orchestrator ignores any reference that does not lead a list item.
+
 ### When publishing slices
 
 1. Publish **blockers first**.

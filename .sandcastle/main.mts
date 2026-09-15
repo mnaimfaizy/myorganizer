@@ -34,8 +34,13 @@ import {
   blockedBy,
   blocks,
   describeAssembly,
+  describeBlockedSlices,
+  findDependencyCycles,
+  formatCycle,
   isCompleted,
+  isDependencySatisfied,
   selectPrdSlices,
+  unfinishedDependencies,
 } from '../tools/scripts/lib/sandcastle-slice-selection.mjs';
 import {
   parseSubagentTranscript,
@@ -596,9 +601,34 @@ type Issue = {
   body: string;
 };
 
-function isIssueSatisfied(issue: Issue | undefined): boolean {
-  if (!issue) return false;
-  return isCompleted(issue);
+// `issue list` is capped, so a `## Blocked by` entry naming an older issue — a
+// standalone bug outside the PRD, say — is often not in the listing. Fetch it on
+// demand. Unlike `ghJson`, a failed lookup must not abort the run: an issue that
+// cannot be read is reported as an unfinished dependency, not as a crash.
+const fetchedIssues = new Map<number, Issue | undefined>();
+
+function fetchIssue(number: number): Issue | undefined {
+  if (fetchedIssues.has(number)) return fetchedIssues.get(number);
+  const r = spawnSync(
+    'gh',
+    [
+      'issue',
+      'view',
+      String(number),
+      '--repo',
+      REPO,
+      '--json',
+      'number,title,state,labels,body',
+    ],
+    { encoding: 'utf8', windowsHide: true },
+  );
+  const issue =
+    r.status === 0 && !r.error ? (JSON.parse(r.stdout) as Issue) : undefined;
+  if (!issue) {
+    console.warn(`  could not load dependency #${number}: ${r.stderr?.trim()}`);
+  }
+  fetchedIssues.set(number, issue);
+  return issue;
 }
 
 /**
@@ -662,11 +692,14 @@ function unblockDependents(completed: Issue): void {
     }
 
     const deps = blockedBy(dependent);
-    const unfinished = deps.filter((blockerNumber) => {
-      if (blockerNumber === completed.number) return false;
-      const blocker = byNumber.get(blockerNumber);
-      return !isIssueSatisfied(blocker);
-    });
+    const unfinished = deps.filter(
+      (blockerNumber) =>
+        blockerNumber !== completed.number &&
+        !isDependencySatisfied(blockerNumber, {
+          lookup: (number: number) =>
+            byNumber.get(number) ?? fetchIssue(number),
+        }),
+    );
 
     if (unfinished.length > 0) {
       console.log(
@@ -989,16 +1022,25 @@ const completedIssueNumbers = new Set(
     .map((issue) => issue.number),
 );
 
+// A dependency is satisfied by completing in this run, or by being complete on
+// GitHub — closed or `status:done` — whether or not it is a slice of this PRD.
+// Counting only this PRD's slices stranded #772's #787 behind #771, a standalone
+// bug that had already closed. See isDependencySatisfied.
+const dependencyStatus = {
+  completed: completedIssueNumbers,
+  lookup: (number: number) =>
+    allIssues.find((issue) => issue.number === number) ?? fetchIssue(number),
+};
+
 function nextReadySlice(pending: Issue[]): Issue | undefined {
   // `## Blocked by` ordering is PRD vocabulary. Standalone runs a single issue the
   // human named explicitly — honouring a stale blocker section there would silently
   // refuse to run it, since completedIssueNumbers is empty by construction.
   const ready =
     mode === 'prd'
-      ? pending.filter((issue) =>
-          blockedBy(issue).every((dependency) =>
-            completedIssueNumbers.has(dependency),
-          ),
+      ? pending.filter(
+          (issue) =>
+            unfinishedDependencies(issue, dependencyStatus).length === 0,
         )
       : pending;
 
@@ -2400,6 +2442,17 @@ function printPlanPreview(): void {
         : `integrates into ${integrationBranch}`),
   );
   console.log('  Nothing is pushed to origin.\n');
+
+  // A cycle can never drain, so say so before the first container spends quota
+  // on the slices that can run, rather than only in the end-of-run summary.
+  if (mode === 'prd') {
+    for (const cycle of findDependencyCycles(slices)) {
+      console.warn(
+        `  ⚠ dependency cycle: ${formatCycle(cycle)} — these slices will not run ` +
+          'until a `## Blocked by` section is corrected.\n',
+      );
+    }
+  }
 }
 
 if (dryRun) {
@@ -2455,13 +2508,10 @@ const pendingSlices = [...slices];
 while (pendingSlices.length > 0) {
   const issue = nextReadySlice(pendingSlices);
   if (!issue) {
-    for (const blockedIssue of pendingSlices) {
-      const dependencies = blockedBy(blockedIssue).filter(
-        (dependency) => !completedIssueNumbers.has(dependency),
-      );
-      const reason = `blocked by unfinished slice(s): ${dependencies
-        .map((dependency) => `#${dependency}`)
-        .join(', ')}`;
+    for (const { issue: blockedIssue, reason } of describeBlockedSlices(
+      pendingSlices,
+      dependencyStatus,
+    )) {
       console.error(`  ⚠ #${blockedIssue.number} ${reason}`);
       results.push({
         issue: blockedIssue,

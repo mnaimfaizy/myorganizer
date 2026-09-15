@@ -22,6 +22,11 @@ import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 
 import { planWaveForwarding } from '../tools/scripts/lib/sandcastle-resume.mjs';
+import {
+  blockedBy,
+  findDependencyCycles,
+  formatCycle,
+} from '../tools/scripts/lib/sandcastle-slice-selection.mjs';
 
 dotenv.config({ path: join(process.cwd(), '.sandcastle', '.env') });
 
@@ -129,12 +134,12 @@ const sliceNumbers = new Set(slices.map((s) => s.number));
 // ─── Parse `## Blocked by` → dependency edges (within this PRD only) ──────────
 
 function blockersOf(issue: Issue): number[] {
-  const m = issue.body.match(/##\s*Blocked by([\s\S]*?)(?:\n##\s|$)/i);
-  if (!m) return [];
-  const section = m[1];
-  const refs = [...section.matchAll(/#(\d+)/g)].map((x) => parseInt(x[1], 10));
+  // The shared parser reads only the reference each list item leads with, so a
+  // note in the section ("not blocked by #771") is not mistaken for an edge.
   // Only count blockers that are themselves slices of this PRD.
-  return refs.filter((n) => sliceNumbers.has(n) && n !== issue.number);
+  return blockedBy(issue).filter(
+    (n: number) => sliceNumbers.has(n) && n !== issue.number,
+  );
 }
 
 const blockers = new Map<number, number[]>();
@@ -153,8 +158,14 @@ function computeWaves(): number[][] {
       .sort((a, b) => a - b);
 
     if (wave.length === 0) {
+      const cycles = findDependencyCycles(
+        slices.filter((s) => remaining.has(s.number)),
+      );
       fail(
-        `Dependency cycle or unsatisfiable blocker among slices: ${[...remaining].join(', ')}`,
+        cycles.length > 0
+          ? `Dependency cycle among slices: ${cycles.map(formatCycle).join('; ')}.\n` +
+              'Correct the `## Blocked by` sections, then re-run.'
+          : `Unsatisfiable blocker among slices: ${[...remaining].join(', ')}`,
       );
     }
     for (const n of wave) {
