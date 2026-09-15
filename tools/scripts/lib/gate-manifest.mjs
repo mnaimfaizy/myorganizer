@@ -181,6 +181,12 @@ export const GATE_MANIFEST = [
     script: 'tools/scripts/check-gate-coverage.mjs',
     args: [],
   },
+  {
+    id: 'checker-contracts:check',
+    npmScript: 'checker-contracts:check',
+    script: 'tools/scripts/check-checker-contracts.mjs',
+    args: [],
+  },
 ];
 
 const formatInvocation = (script, args) =>
