@@ -455,7 +455,7 @@ A code review's unit of feedback about the diff under review — one axis (`stan
 _Avoid_: comment, issue, defect (as the general name), review note
 
 **Evidence**:
-What a Finding cites so a reader can check its claim without trusting the reviewer — `executed` (a command, its exit code, and its output), `cited` (a source and the quoted rule), or `inferred` (reasoning alone). Only `executed` or `cited` Evidence, anchored to a diff location or a quoted spec line, can make a Finding Blocking ([ADR 0071](docs/adr/0071-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md)).
+What a Finding cites so a reader can check its claim without trusting the reviewer — `executed` (a command, its exit code, and its output), `cited` (a source and the quoted rule), or `inferred` (reasoning alone). Only `executed` or `cited` Evidence, anchored to a diff location or a quoted spec line, can make a Finding Blocking ([ADR 0071](docs/adr/0071-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md)). An Upstream Finding cites the same kinds plus one of its own, `absent` — the documents matching its version were read and do not say it — which on its own never proves the repo wrong.
 _Avoid_: proof, confidence, backing, Vault Claim Evidence (a different sense)
 
 **Blocking**:
@@ -579,8 +579,36 @@ A specialist job that does not need another specialist's output. Only Independen
 _Avoid_: fan-out, parallel pipeline, concurrent by default
 
 **Upstream Brief**:
-A dated, cited report of how this repo's instructions and usage compare to official upstream documentation for named languages, frameworks, or libraries. Records future-risk, mismatch, and missed improvement only. Its proposed plan may change instructions and hygiene scripts; application-code findings are follow-on, not part of that plan. Never a package upgrade plan.
+A dated, cited report of how this repo's instructions and usage compare to official upstream documentation for named Ecosystems, anchored to each Ecosystem's Baseline and optionally looking ahead to a Horizon. Records future-risk, mismatch, and missed improvement only, each as an Upstream Finding. Its proposed plan may change instructions and hygiene scripts; application-code findings are follow-on, not part of that plan. Never a package upgrade plan.
 _Avoid_: research base, research note, upgrade plan, dependency audit
+
+**Ecosystem**:
+The unit an Upstream Brief audits: one lead package together with the companion packages its upstream releases, documents, or defines compatibility against. An unrelated library that merely runs inside an Ecosystem is its own Ecosystem, audited against its own version, never against the lead's.
+_Avoid_: subject (as the unit), release line, package group
+
+**Baseline**:
+The version of an Ecosystem actually installed in the repo, which an Upstream Brief is anchored to. It is read from what is installed, never from a document that records versions, and never from a declared range.
+_Avoid_: pin, current version, target, Pinned Table (a different sense)
+
+**Horizon**:
+A later version of an Ecosystem the human names so an Upstream Brief can look ahead from the Baseline. Without one, a brief still reports what the Baseline's own documents say is deprecated or scheduled for removal, but never decides for itself what comes next.
+_Avoid_: target, latest, next version
+
+**Upstream Finding**:
+An Upstream Brief's unit of report: one claim about this repo's instructions or usage, grounded in an upstream statement matched to the Baseline or to the range up to the Horizon, with its Evidence and an urgency. Distinct from a code review's Finding, which is about a diff and carries a rule and a severity.
+_Avoid_: Finding (unqualified), upstream issue, drift item
+
+**Upstream Opportunity**:
+A technique an Ecosystem's upstream documents — or an alternative that upstream itself names — that would improve code quality or performance at a named place in this repo where nothing is wrong today. It is adoptable at the Baseline or by the Horizon, and its benefit is the upstream's own statement, never an estimate. Never an Upstream Finding and never counted as one; an Upstream Brief carries at most three per Ecosystem.
+_Avoid_: suggestion, recommendation, best practice, Missed improvement (grounded in something wrong here)
+
+**Instruction Claim**:
+A version-sensitive assertion a repo-owned Instruction File or Skill makes about an Ecosystem — a command, an API, a file convention, or a version. An Upstream Brief checks every one it inventories, and each ends as an Upstream Finding or as checked and clear.
+_Avoid_: rule, instruction line, teaching
+
+**Incidental Observation**:
+A local defect an Upstream Brief notices that no upstream statement grounds. It is recorded and routed to whoever owns that kind of defect, but it is not a finding, is not counted as one, and never enters the brief's proposed plan.
+_Avoid_: follow-on (a different section), side finding, bonus finding
 
 ## Release & Deploy
 
