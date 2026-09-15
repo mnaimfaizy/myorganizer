@@ -16,7 +16,7 @@ Two issues were opened months apart and stress-tested together, because they are
 
 **In a checker** ([#712](https://github.com/mnaimfaizy/myorganizer/issues/712)). A sweep found six gates claiming more than they check. `check-readme.mjs` states "drift runs both ways"; one direction is implemented (#710). `check-skill-map.mjs` says the classified set "sums to what its manifest claims"; a subset is asserted (#711).
 
-The shape is identical on both surfaces: the gap between what an artifact **states** and what it **asserts**. It appeared a third time while this decision was being designed — the House Explainer Page roster's `LEGACY` map exempts a page from *every* rule on the strength of one written reason, and every reason in it is about styling.
+The shape is identical on both surfaces: the gap between what an artifact **states** and what it **asserts**. It appeared a third time while this decision was being designed — the House Explainer Page roster's `LEGACY` map exempts a page from *every* rule on the strength of one written reason, and not one of those five reasons is about being wrong. Four concern styling — a missing or non-canonical `@font-face` block, dark tokens defined in the wrong state — and the fifth concerns self-containment, a bundled canvas-export runtime carrying CDN fallback URLs the rule cannot distinguish from a real load. All five are mechanical hygiene; none is a reason to stop checking whether the page describes the tree.
 
 ## Decision
 
