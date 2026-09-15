@@ -148,6 +148,55 @@ said 14 while the tree held 18, for two weeks, with nothing noticing.
 
 Brief the prose accordingly. A count the brief asks for is a count someone has to keep true.
 
+**A `file:line` citation carries an expected-content anchor.** A citation is a claim about a line,
+and a line number that still resolves is not a citation that is still true: all 19 stale citations
+on `release-pipeline.html` pointed at lines that exist, and one of them claimed
+`environment: production` over a line reading `rm -f "$RUNNER_TEMP/host_apply_key"`. So the page
+carries a second JSON block, `id="citation-anchors"`, recording what it says is at each line:
+
+```html
+<script type="application/json" id="citation-anchors">
+  {
+    "note": "…what this block is, and the date it was verified against the tree…",
+    "anchors": {
+      "deploy-production.yml:128": {
+        "file": ".github/workflows/deploy-production.yml",
+        "start": "environment: production"
+      },
+      "deploy-production.yml:40-50": {
+        "file": ".github/workflows/deploy-production.yml",
+        "start": "- name: Validate release branch",
+        "end": "exit 1"
+      }
+    }
+  }
+</script>
+```
+
+One block per page, holding one entry per **distinct** citation — the same `file:line` written in
+four places is one claim, and one entry keeps it from disagreeing with itself. The key is the
+citation as the page writes it; `file` resolves the bare name to a repo-relative path, because
+`package.json` and `SKILL.md` each match several files and "some file of that name is long enough"
+is not the claim. `start` is the literal text at the cited line and `end` the literal text at the
+last line of a range — **both ends, so a range that grows or shrinks at either end is caught** —
+whitespace-normalised on comparison, following `verifyCitation` in
+`tools/scripts/review/obligations.mjs`.
+
+Why a block rather than an attribute beside each citation: citations arrive four or five to a text
+node (`<td class="cite">deploy-production.yml:3-4, :128, :181, :293</td>`, an SVG `<text>` label),
+so an inline anchor means splitting hand-tuned markup that `.prettierignore` exists to protect. The
+block is also the one form that is identical across every markup a citation uses.
+
+**Write the anchor from the page's claim, not from the line.** Copying whatever the line currently
+says converts a stale citation into a permanently green one, which is worse than the drift: it
+makes a false claim gate-backed. If the two disagree, the citation is wrong — fix the line number
+first, in its own commit, and say why.
+
+This is the marker ADR 0043 rejected only in shape, not in substance. That objection holds when the
+marker is what makes a claim findable — a document that forgets it passes by being invisible. A
+citation's `file:line` syntax cannot be dropped without it ceasing to be a citation, so a citation
+carrying no anchor is detectable, and can be failed.
+
 ## Two Devices Worth Requesting
 
 **The reading test.** A line inside the artifact that converts it from a poster into a review

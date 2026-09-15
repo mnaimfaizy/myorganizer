@@ -363,6 +363,64 @@ test('a second manifest block is validated too', () => {
   assert.match(findings[0].message, /second-manifest/);
 });
 
+// A `type="application/json"` script holds data, and `checkManifest` parses the
+// output of `maskHtmlComments`. Masking JS comment syntax there does not hide a
+// finding — it corrupts the document being parsed, in one case silently. Both
+// byte pairs occur in the citation anchors on `release-pipeline.html`, which
+// quote source lines verbatim (ADR 0085).
+
+/** What `checkManifest` sees for `#example-manifest`, parsed. */
+function manifestAsScanned(manifest) {
+  const body = /id="example-manifest">([\s\S]*?)<\/script>/.exec(
+    maskHtmlComments(goodPage({ manifest })),
+  )[1];
+  return JSON.parse(body);
+}
+
+test('a glob and a later */ in a manifest do not blank what lies between them', () => {
+  const manifest = [
+    '<script type="application/json" id="example-manifest">',
+    '{ "guard": "refs/heads/release/*", "close": "ends with */ here" }',
+    '</script>',
+  ].join('\n');
+  // The failure this guards against is silent: the blanked span still parses as
+  // JSON, with "guard" truncated and "close" gone entirely.
+  assert.deepEqual(manifestAsScanned(manifest), {
+    guard: 'refs/heads/release/*',
+    close: 'ends with */ here',
+  });
+  assert.deepEqual(rules(scan(goodPage({ manifest }))), []);
+});
+
+test('a quoted // inside a manifest string does not blank the rest of its line', () => {
+  const manifest = [
+    '<script type="application/json" id="example-manifest">',
+    '{ "quoted": "// command === \'tag\'", "note": "asserted" }',
+    '</script>',
+  ].join('\n');
+  // Here the blanking ran to end of line, taking the closing quote and brace with
+  // it, so the block stopped parsing at all.
+  assert.deepEqual(manifestAsScanned(manifest), {
+    quoted: "// command === 'tag'",
+    note: 'asserted',
+  });
+  assert.deepEqual(rules(scan(goodPage({ manifest }))), []);
+});
+
+test('a comment in an ordinary script is still masked', () => {
+  const findings = scan(
+    goodPage({
+      manifest: [
+        '<script type="application/json" id="example-manifest">{}</script>',
+        '<script>',
+        "  // localStorage.getItem('x') is discussed, not called",
+        '</script>',
+      ].join('\n'),
+    }),
+  );
+  assert.deepEqual(rules(findings), []);
+});
+
 test('an @font-face inside an HTML comment cannot shift the hashed slice', () => {
   const commented = goodPage({
     style: [

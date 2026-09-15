@@ -29,13 +29,20 @@ import { blockAfter, lineOf } from './source-scan.mjs';
 
 const blank = (match) => match.replace(/[^\n]/g, ' ');
 
-/** Rewrites the body of every `<script>` and `<style>`, leaving markup untouched. */
+/**
+ * Rewrites the body of every `<script>` and `<style>`, leaving markup untouched.
+ * The transform is handed the opening tag too, so it can tell a script that holds
+ * code from one that holds data.
+ */
 function mapEmbeddedCode(source, transform) {
   return source.replace(
     /(<(script|style)\b[^>]*>)([\s\S]*?)(<\/\2\s*>)/gi,
-    (_, open, __, body, close) => `${open}${transform(body)}${close}`,
+    (_, open, __, body, close) => `${open}${transform(body, open)}${close}`,
   );
 }
+
+/** A `<script type="application/json">` — an embedded manifest, not code. */
+const isJsonScript = (openTag) => /\btype="application\/json"/i.test(openTag);
 
 /**
  * Masks `/* … *\/` and `//` comments. Scoped to code, because in prose those byte
@@ -75,11 +82,23 @@ function maskCodeComments(code) {
  *
  * The hazard was already known when this was written document-wide — the `/* … *\/`
  * above had to be escaped to keep this very comment from eating itself.
+ *
+ * `<script type="application/json">` is exempt for the same reason prose is: it
+ * holds data, not code, and the rule that reads it — `checkManifest` — parses the
+ * output of this function. Masking there does not hide a finding, it corrupts the
+ * document being parsed, in both available flavours. A quoted `// command ===
+ * 'tag'` blanks to end of line, closing quote and brace included, and the block
+ * stops parsing: a valid manifest reported as invalid JSON. A `refs/heads/release/*`
+ * with any later `*\/` blanks the span between them and still parses, so the
+ * checker silently reads a truncated value and misses the keys in between — the
+ * same fail-open the document-wide hazard above describes, one block smaller.
+ * The citation anchors quote source lines verbatim (ADR 0085), so a page carrying
+ * them is full of both.
  */
 export function maskHtmlComments(source) {
   return mapEmbeddedCode(
     source.replace(/<!--[\s\S]*?-->/g, blank),
-    maskCodeComments,
+    (body, open) => (isJsonScript(open) ? body : maskCodeComments(body)),
   );
 }
 
