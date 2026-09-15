@@ -136,7 +136,7 @@ names are how a wrong value survives review.
 **Which facts go in it, and what to do with the rest.** A page states no claim it does not assert
 ([ADR 0085](../../../docs/adr/0085-an-artifact-states-no-claim-it-does-not-assert.md)). The test is
 not "would a reader act on this number" — that is a judgment call the next brief re-litigates — but
-whether the fact is *assertable*: could an extractor read it from the tree? If yes, the manifest
+whether the fact is _assertable_: could an extractor read it from the tree? If yes, the manifest
 asserts it.
 
 If a fact is assertable and not worth an extractor, **do not print it unasserted — state less**.
