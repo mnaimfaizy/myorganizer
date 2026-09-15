@@ -1457,7 +1457,7 @@
               </text>
               <text class="nc" x="272" y="886">
                 fails closed, no rollback, no Tag &#183;
-                deploy-production.yml:176-257
+                deploy-production.yml:176-286
               </text>
             </g>
 
@@ -1484,7 +1484,7 @@
                 deploy-frontend &#8594; cPanel over FTP, beside host-apply
               </text>
               <text class="nc" x="272" y="962">
-                not Vercel &#183; needs deploy-backend, not host-apply (:261)
+                not Vercel &#183; needs deploy-backend, not host-apply (:290)
                 &#183; deploy-production.yml:318-326
               </text>
             </g>
@@ -1671,7 +1671,7 @@
         <dd id="note-halt">
           <code>deploy-backend</code> (<code>deploy-production.yml:128</code>),
           <code>host-apply</code> (<code>:181</code>), and
-          <code>deploy-frontend</code> (<code>:264</code>) all declare
+          <code>deploy-frontend</code> (<code>:293</code>) all declare
           <code>environment: production</code> &mdash; three jobs, one
           approval batch. Any job you add that declares
           <code>environment: production</code> joins this same batch; nothing
@@ -1706,12 +1706,12 @@
           <code>touch tmp/restart.txt</code> &#8594;
           <code>prisma migrate status</code>, all under
           <code>set -euo pipefail</code>
-          (<code>deploy-production.yml:176-257</code>): the first failing step
+          (<code>deploy-production.yml:176-286</code>): the first failing step
           stops everything after it &mdash; no rollback, no migrate-down, no
           &#8220;restart anyway,&#8221; no Tag
           (<a href="../adr/0056-ci-owns-host-apply-without-describing-the-jail.md"
             >ADR&nbsp;0056</a
-          >). Verified with two HTTP probes (<code>:248-257</code>):
+          >). Verified with two HTTP probes (<code>:269-286</code>):
           <code>GET {API_ORIGIN}/docs</code> must be 2xx, and a cron POST
           carrying a deliberately wrong secret must be exactly
           <code>401</code>. This page names the algorithm and the secret
@@ -1727,7 +1727,7 @@
           two environments genuinely diverge &mdash; see panel&nbsp;2. Runs
           alongside <code>host-apply</code>, not after it &mdash; its
           <code>needs:</code> lists <code>deploy-backend</code>, not
-          <code>host-apply</code> (<code>:261</code>), since neither job needs
+          <code>host-apply</code> (<code>:290</code>), since neither job needs
           the other.
         </dd>
         <dt>tag</dt>
@@ -1819,7 +1819,7 @@
               <code>Deploy Production (manual)</code> &mdash; halts at
               approval
             </td>
-            <td class="cite">deploy-production.yml:3-4, :128, :181, :264</td>
+            <td class="cite">deploy-production.yml:3-4, :128, :181, :293</td>
           </tr>
           <tr>
             <td>6</td>
@@ -2012,7 +2012,7 @@
             <code>:165</code>, <code>:280</code>) &mdash; four now, including
             <code>host-apply</code>; production's three approval-gated jobs
             45&nbsp;min each (<code>deploy-production.yml:127</code>,
-            <code>:180</code>, <code>:263</code>) &mdash; three now, also
+            <code>:180</code>, <code>:292</code>) &mdash; three now, also
             including <code>host-apply</code>; dispatcher, release-PR and
             publish 10&nbsp;min each.
           </p>
