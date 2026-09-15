@@ -1485,7 +1485,7 @@
               </text>
               <text class="nc" x="272" y="962">
                 not Vercel &#183; needs deploy-backend, not host-apply (:290)
-                &#183; deploy-production.yml:318-326
+                &#183; deploy-production.yml:344-355
               </text>
             </g>
 
@@ -1722,7 +1722,7 @@
         <dd id="note-deployfrontend">
           Packages with <code>yarn package:myorganizer:web</code> and ships
           <code>./dist/deploy/myorganizer-web/</code> over FTP to cPanel
-          (<code>deploy-production.yml:318-326</code>). Production never
+          (<code>deploy-production.yml:344-355</code>). Production never
           invokes Vercel; staging's frontend does. That is the one place the
           two environments genuinely diverge &mdash; see panel&nbsp;2. Runs
           alongside <code>host-apply</code>, not after it &mdash; its
@@ -1881,7 +1881,7 @@
         <div class="ccard cpanel">
           <div class="ctop">cPanel over FTP</div>
           <p><code>./dist/deploy/myorganizer-web/</code></p>
-          <span class="cite">deploy-production.yml:318, :324</span>
+          <span class="cite">deploy-production.yml:347, :353</span>
         </div>
       </div>
       <p class="small muted">
@@ -2000,7 +2000,7 @@
             <code>300000</code> ms, the same value at three sites: staging
             backend (<code>deploy-staging.yml:124</code>), production backend
             (<code>deploy-production.yml:170</code>), production frontend
-            (<code>:326</code>). <code>host-apply</code> has no FTP step and
+            (<code>:355</code>). <code>host-apply</code> has no FTP step and
             no site here &mdash; it applies over SSH, not FTP.
           </p>
         </div>
