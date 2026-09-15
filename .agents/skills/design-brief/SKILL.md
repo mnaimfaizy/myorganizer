@@ -133,6 +133,21 @@ asserts, so a check script can diff it against the exported source constants. Na
 scope — `envelopeParseBytes`, `backendExportBytes` — never one ambiguous `maxBytes`. Ambiguous
 names are how a wrong value survives review.
 
+**Which facts go in it, and what to do with the rest.** A page states no claim it does not assert
+([ADR 0084](../../../docs/adr/0084-an-artifact-states-no-claim-it-does-not-assert.md)). The test is
+not "would a reader act on this number" — that is a judgment call the next brief re-litigates — but
+whether the fact is *assertable*: could an extractor read it from the tree? If yes, the manifest
+asserts it.
+
+If a fact is assertable and not worth an extractor, **do not print it unasserted — state less**.
+Prefer a universally-quantified claim to a counted one wherever a gate already proves the universal:
+_"every `setup-node` step pins `'22'`"_ over _"14 `setup-node` steps pin `'22'`"_. The universal is
+the stronger claim, needs no new key, and is already covered by the extractor that asserts sameness
+across every match. The counted form was the weaker one, and it is the half that drifted — the page
+said 14 while the tree held 18, for two weeks, with nothing noticing.
+
+Brief the prose accordingly. A count the brief asks for is a count someone has to keep true.
+
 ## Two Devices Worth Requesting
 
 **The reading test.** A line inside the artifact that converts it from a poster into a review
