@@ -590,6 +590,46 @@ export function findCitations(source) {
 }
 
 /**
+ * Normalizes text for anchor comparison by:
+ * - Collapsing consecutive whitespace to single spaces
+ * - Trimming leading/trailing whitespace
+ * - Unescaping HTML entities
+ * - Removing trailing newlines
+ */
+function normalizeAnchorText(text) {
+  return text
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .split('\n')
+    .map((line) => line.replace(/\s+/g, ' ').trim())
+    .join('\n')
+    .trim();
+}
+
+/**
+ * Extracts the citation-anchors JSON block from a page if present.
+ * Returns a map keyed by citation name (e.g., "file.yml:42" or "file.yml:42-50")
+ * with values containing the expected anchor text.
+ */
+function extractAnchorMap(source) {
+  const match = source.match(
+    /<script\b[^>]*\bid="citation-anchors"[^>]*>([\s\S]*?)<\/script>/i,
+  );
+  if (!match) return null;
+
+  try {
+    const json = JSON.parse(match[1]);
+    if (!json.anchors || typeof json.anchors !== 'object') return null;
+    return json.anchors;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * A factual-assertion rule (ADR 0085): it runs over `LEGACY` pages as well as
  * `ROSTER` ones, because none of the five `LEGACY` reasons are about being wrong.
  *
@@ -601,9 +641,16 @@ export function findCitations(source) {
  * (`package.json`, `SKILL.md`) resolves if any one of them is long enough — this
  * step can tell an impossible citation from a possible one, not a right file from
  * a coincidentally long wrong one.
+ *
+ * When anchors are present, each citation is further checked: the anchor text
+ * at the cited line(s) is compared against what the page claims it should be.
+ * A citation carrying no anchor is a finding (ADR 0085).
  */
-function checkCitations(source, findings, resolveCitation) {
-  for (const citation of findCitations(source)) {
+function checkCitations(source, findings, resolveCitation, getFileContent) {
+  const anchors = getFileContent ? extractAnchorMap(source) : null;
+  const citations = findCitations(source);
+
+  for (const citation of citations) {
     const result = resolveCitation(citation);
     if (!result.ok) {
       findings.push({
@@ -611,6 +658,69 @@ function checkCitations(source, findings, resolveCitation) {
         line: citation.sourceLine,
         message: result.reason,
       });
+      continue;
+    }
+
+    // If we have anchors available, check them
+    if (anchors && getFileContent) {
+      const key =
+        citation.endLine !== citation.line
+          ? `${citation.name}:${citation.line}-${citation.endLine}`
+          : `${citation.name}:${citation.line}`;
+
+      const anchor = anchors[key];
+      if (!anchor) {
+        // Missing anchor for this citation
+        findings.push({
+          rule: 'citation-missing-anchor',
+          line: citation.sourceLine,
+          message: `Citation ${key} has no anchor in citation-anchors. Without an anchor, nothing asserts what this citation names.`,
+        });
+      } else {
+        // Use the anchor's file path for reading, as it disambiguates among multiple same-named files
+        const filePath = anchor.file || result.filePath;
+        const fileContent = getFileContent(filePath);
+        if (fileContent) {
+          const lines = fileContent.split('\n');
+          if (lines[lines.length - 1] === '') lines.pop();
+
+          const startIdx = citation.line - 1;
+          const endIdx = citation.endLine - 1;
+
+          if (startIdx >= 0 && startIdx < lines.length) {
+            const actualStartText = normalizeAnchorText(lines[startIdx]);
+            const expectedStartText = normalizeAnchorText(anchor.start);
+
+            if (actualStartText !== expectedStartText) {
+              findings.push({
+                rule: 'citation-anchor-mismatch',
+                line: citation.sourceLine,
+                message: `Citation ${key} anchor does not match: expected "${expectedStartText}" but found "${actualStartText}".`,
+              });
+              continue;
+            }
+
+            // For ranges, also check the end
+            if (
+              citation.endLine !== citation.line &&
+              anchor.end !== undefined
+            ) {
+              if (endIdx >= 0 && endIdx < lines.length) {
+                const actualEndText = normalizeAnchorText(lines[endIdx]);
+                const expectedEndText = normalizeAnchorText(anchor.end);
+
+                if (actualEndText !== expectedEndText) {
+                  findings.push({
+                    rule: 'citation-anchor-mismatch',
+                    line: citation.sourceLine,
+                    message: `Citation ${key} anchor (end) does not match: expected "${expectedEndText}" but found "${actualEndText}".`,
+                  });
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -635,6 +745,8 @@ export const RULE_KINDS = {
   'adr-link-broken': 'mechanical-hygiene',
   'font-block-drift': 'mechanical-hygiene',
   'citation-unresolved': 'factual-assertion',
+  'citation-missing-anchor': 'factual-assertion',
+  'citation-anchor-mismatch': 'factual-assertion',
 };
 
 /**
@@ -643,12 +755,17 @@ export const RULE_KINDS = {
  *
  * @param {object} input
  * @param {string} input.source raw page text
- * @param {(citation: {name: string, line: number, endLine: number}) => {ok: boolean, reason?: string}} input.resolveCitation
+ * @param {(citation: {name: string, line: number, endLine: number}) => {ok: boolean, reason?: string, filePath?: string}} input.resolveCitation
+ * @param {(filePath: string) => string | null} input.getFileContent function to read file content by path
  * @returns {Array<{rule: string, line: number, message: string}>}
  */
-export function scanFactualAssertions({ source, resolveCitation }) {
+export function scanFactualAssertions({
+  source,
+  resolveCitation,
+  getFileContent,
+}) {
   const findings = [];
-  checkCitations(source, findings, resolveCitation);
+  checkCitations(source, findings, resolveCitation, getFileContent);
   return findings.sort((a, b) => a.line - b.line);
 }
 
@@ -664,7 +781,8 @@ export function scanFactualAssertions({ source, resolveCitation }) {
  * @param {string|null} input.pageFontHash `fontBlockHash` of this page
  * @param {boolean} input.prettierIgnored  whether .prettierignore covers this file
  * @param {(resolved: string) => boolean} input.adrLinkExists
- * @param {(citation: {name: string, line: number, endLine: number}) => {ok: boolean, reason?: string}} input.resolveCitation
+ * @param {(citation: {name: string, line: number, endLine: number}) => {ok: boolean, reason?: string, filePath?: string}} input.resolveCitation
+ * @param {(filePath: string) => string | null} input.getFileContent function to read file content by path
  * @returns {Array<{rule: string, line: number, message: string}>} findings, in file order
  */
 export function scanDesignPage({
@@ -675,6 +793,7 @@ export function scanDesignPage({
   prettierIgnored,
   adrLinkExists,
   resolveCitation,
+  getFileContent,
 }) {
   const code = maskHtmlComments(source);
   const findings = [];
@@ -687,7 +806,7 @@ export function scanDesignPage({
   checkManifest(code, source, findings);
   checkPrettierIgnored(file, prettierIgnored, findings);
   checkAdrLinks(file, code, adrLinkExists, findings);
-  checkCitations(source, findings, resolveCitation);
+  checkCitations(source, findings, resolveCitation, getFileContent);
 
   if (pageFontHash === null) {
     findings.push({

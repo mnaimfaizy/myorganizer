@@ -500,3 +500,203 @@ test('a comment inside a script is still masked', (t) => {
   assert.equal(result.status, 0, result.stdout);
   assert.doesNotMatch(result.stdout, /unguarded-storage/);
 });
+
+// --- anchor checking (ADR 0085, #788) ----------------------------------------
+//
+// Citations carry expected-content anchors so a broken reference is caught:
+// a changed line no longer matches what the page claims it contains. Anchors
+// are optional today (as a bridge while pages are retrofitted), but a citation
+// carrying no anchor is itself a finding — leaving the rule silent if the anchor
+// is forgotten or omitted.
+
+test('a citation with a matching anchor passes', (t) => {
+  const workspace = createWorkspace(t);
+  write(workspace, 'target.yml', 'key: value\nline two\nline three\n');
+  spawnSync('git', ['add', '-A'], { cwd: workspace });
+
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    housePage('waves').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<span class="cite">target.yml:1</span>',
+        '<script type="application/json" id="citation-anchors">',
+        '{ "anchors": { "target.yml:1": { "file": "target.yml", "start": "key: value" } } }',
+        '</script>',
+      ].join('\n'),
+    ),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /citation-anchor-mismatch/);
+  assert.doesNotMatch(result.stdout, /citation-missing-anchor/);
+});
+
+test('a citation with a mismatched anchor fails', (t) => {
+  const workspace = createWorkspace(t);
+  write(workspace, 'target.yml', 'key: value\nline two\nline three\n');
+  spawnSync('git', ['add', '-A'], { cwd: workspace });
+
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    housePage('waves').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<span class="cite">target.yml:1</span>',
+        '<script type="application/json" id="citation-anchors">',
+        '{ "anchors": { "target.yml:1": { "file": "target.yml", "start": "wrong content here" } } }',
+        '</script>',
+      ].join('\n'),
+    ),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-anchor-mismatch/);
+  assert.match(result.stdout, /wrong content here/);
+  assert.match(result.stdout, /key: value/);
+});
+
+test('a citation with no anchor is a finding', (t) => {
+  const workspace = createWorkspace(t);
+  write(workspace, 'target.yml', 'key: value\nline two\nline three\n');
+  spawnSync('git', ['add', '-A'], { cwd: workspace });
+
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    housePage('waves').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<span class="cite">target.yml:1</span>',
+        '<script type="application/json" id="citation-anchors">',
+        '{ "anchors": {} }',
+        '</script>',
+      ].join('\n'),
+    ),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-missing-anchor/);
+  assert.match(result.stdout, /target.yml:1/);
+});
+
+test('a range citation with matching start and end anchors passes', (t) => {
+  const workspace = createWorkspace(t);
+  write(workspace, 'target.yml', 'line one\nline two\nline three\nline four\n');
+  spawnSync('git', ['add', '-A'], { cwd: workspace });
+
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    housePage('waves').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<span class="cite">target.yml:2-3</span>',
+        '<script type="application/json" id="citation-anchors">',
+        '{ "anchors": { "target.yml:2-3": { "file": "target.yml", "start": "line two", "end": "line three" } } }',
+        '</script>',
+      ].join('\n'),
+    ),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /citation-anchor-mismatch/);
+});
+
+test('a range citation with mismatched end anchor fails', (t) => {
+  const workspace = createWorkspace(t);
+  write(workspace, 'target.yml', 'line one\nline two\nline three\nline four\n');
+  spawnSync('git', ['add', '-A'], { cwd: workspace });
+
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    housePage('waves').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<span class="cite">target.yml:2-3</span>',
+        '<script type="application/json" id="citation-anchors">',
+        '{ "anchors": { "target.yml:2-3": { "file": "target.yml", "start": "line two", "end": "wrong end" } } }',
+        '</script>',
+      ].join('\n'),
+    ),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-anchor-mismatch/);
+  assert.match(result.stdout, /wrong end/);
+  assert.match(result.stdout, /line three/);
+});
+
+test('anchor comparison normalizes whitespace', (t) => {
+  const workspace = createWorkspace(t);
+  write(workspace, 'target.yml', '  key:   value  \nline two\nline three\n');
+  spawnSync('git', ['add', '-A'], { cwd: workspace });
+
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    housePage('waves').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<span class="cite">target.yml:1</span>',
+        '<script type="application/json" id="citation-anchors">',
+        '{ "anchors": { "target.yml:1": { "file": "target.yml", "start": "key: value" } } }',
+        '</script>',
+      ].join('\n'),
+    ),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /citation-anchor-mismatch/);
+});
+
+test('anchor comparison unescapes HTML entities', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'target.yml',
+    '"quoted" & <bracketed>\nline two\nline three\n',
+  );
+  spawnSync('git', ['add', '-A'], { cwd: workspace });
+
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    housePage('waves').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<span class="cite">target.yml:1</span>',
+        '<script type="application/json" id="citation-anchors">',
+        '{ "anchors": { "target.yml:1": { "file": "target.yml", "start": "&quot;quoted&quot; &amp; &lt;bracketed&gt;" } } }',
+        '</script>',
+      ].join('\n'),
+    ),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /citation-anchor-mismatch/);
+});

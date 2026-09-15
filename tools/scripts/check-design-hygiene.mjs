@@ -202,12 +202,36 @@ function makeCitationResolver(index) {
       };
     }
     const counts = candidates.map(lineCount).filter((n) => n !== null);
-    if (counts.some((n) => n >= need)) return { ok: true };
-    const longest = counts.length ? Math.max(...counts) : 0;
-    return {
-      ok: false,
-      reason: `${name}:${span} cites line ${need}, past the end of every ${name} in the tree (longest is ${longest} line(s)).`,
-    };
+    if (!counts.some((n) => n >= need)) {
+      const longest = counts.length ? Math.max(...counts) : 0;
+      return {
+        ok: false,
+        reason: `${name}:${span} cites line ${need}, past the end of every ${name} in the tree (longest is ${longest} line(s)).`,
+      };
+    }
+    // Return the first matching candidate path for anchor verification
+    const resolvedPath = candidates.find(
+      (path) => lineCount(path) !== null && lineCount(path) >= need,
+    );
+    return { ok: true, filePath: resolvedPath };
+  };
+}
+
+/**
+ * Creates a function to read file content by path for anchor verification.
+ */
+function makeFileContentGetter() {
+  const cache = new Map();
+  return (filePath) => {
+    if (!filePath) return null;
+    if (!cache.has(filePath)) {
+      try {
+        cache.set(filePath, readFileSync(filePath, 'utf8'));
+      } catch {
+        cache.set(filePath, null);
+      }
+    }
+    return cache.get(filePath);
   };
 }
 
@@ -243,6 +267,7 @@ if (options.printFontBlock) {
 
 const isPrettierIgnored = prettierIgnoreMatcher();
 const resolveCitation = makeCitationResolver(basenameIndex());
+const getFileContent = makeFileContentGetter();
 const results = [];
 
 // A page under docs/ that is in neither list is unclassified: nobody decided
@@ -315,8 +340,9 @@ for (const file of selected) {
           prettierIgnored: isPrettierIgnored(file),
           adrLinkExists: (resolved) => existsSync(resolved),
           resolveCitation,
+          getFileContent,
         })
-      : scanFactualAssertions({ source, resolveCitation })
+      : scanFactualAssertions({ source, resolveCitation, getFileContent })
   ).map((finding) => ({ level: 'error', ...finding }));
   results.push({
     file,
