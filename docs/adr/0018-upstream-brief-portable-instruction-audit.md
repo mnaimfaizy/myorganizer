@@ -16,7 +16,7 @@ Three briefs showed the single target version contradicting its own source rule,
 - A finding is valid only from a primary upstream page for the named target. The training corpus, blogs, and vendor skills are not sources.
 - The brief records future-risk, mismatch, and missed improvement, plus a proposed plan. Nothing is applied.
 - The plan may change repo-owned instructions and hygiene/test scripts only. Application-code findings and vendor-skill contradictions are follow-on (separate issue, or update/pin the installed skill).
-- If there is at least one finding, the skill proposes a HITL issue and files it only on confirm. Default roles: `research`, `quality` → `qa`, `hitl` → `type:hitl`. No `dependencies`. No `ready-for-agent`. The human starts `/grill-with-docs`; the skill does not.
+- If there is at least one finding, the skill proposes a HITL issue and files it only on confirm. Default roles: `research`, `quality` → `qa` (withdrawn: [ADR 0049](0049-qa-and-grilling-are-orchestration-labels.md) reserves `qa` for QA Plan Issues, and [ADR 0084](0084-an-upstream-brief-is-anchored-to-what-is-installed-and-accepted-on-checked-evidence.md) removes the `quality` role), `hitl` → `type:hitl`. No `dependencies`. No `ready-for-agent`. The human starts `/grill-with-docs`; the skill does not.
 - A failed hop still yields a partial brief. An issue is proposed only for subjects that produced findings.
 
 ## Considered Options

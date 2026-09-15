@@ -2,7 +2,7 @@
 
 ## Status
 
-accepted
+proposed
 
 Supersedes [ADR 0018](0018-upstream-brief-portable-instruction-audit.md).
 
