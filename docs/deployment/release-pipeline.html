@@ -967,7 +967,7 @@
   <section class="panel" aria-labelledby="hero-h">
     <div class="phead">
       <h2 id="hero-h">One gate, and it is not a box on this page</h2>
-      <span class="src">deploy-production.yml:128, :181, :264</span>
+      <span class="src">deploy-production.yml:128, :181, :293</span>
     </div>
     <div class="pbody">
       <p class="small muted">
@@ -1457,7 +1457,7 @@
               </text>
               <text class="nc" x="272" y="886">
                 fails closed, no rollback, no Tag &#183;
-                deploy-production.yml:176-257
+                deploy-production.yml:176-286
               </text>
             </g>
 
@@ -1484,8 +1484,8 @@
                 deploy-frontend &#8594; cPanel over FTP, beside host-apply
               </text>
               <text class="nc" x="272" y="962">
-                not Vercel &#183; needs deploy-backend, not host-apply (:261)
-                &#183; deploy-production.yml:318-326
+                not Vercel &#183; needs deploy-backend, not host-apply (:290)
+                &#183; deploy-production.yml:344-355
               </text>
             </g>
 
@@ -1671,7 +1671,7 @@
         <dd id="note-halt">
           <code>deploy-backend</code> (<code>deploy-production.yml:128</code>),
           <code>host-apply</code> (<code>:181</code>), and
-          <code>deploy-frontend</code> (<code>:264</code>) all declare
+          <code>deploy-frontend</code> (<code>:293</code>) all declare
           <code>environment: production</code> &mdash; three jobs, one
           approval batch. Any job you add that declares
           <code>environment: production</code> joins this same batch; nothing
@@ -1706,12 +1706,12 @@
           <code>touch tmp/restart.txt</code> &#8594;
           <code>prisma migrate status</code>, all under
           <code>set -euo pipefail</code>
-          (<code>deploy-production.yml:176-257</code>): the first failing step
+          (<code>deploy-production.yml:176-286</code>): the first failing step
           stops everything after it &mdash; no rollback, no migrate-down, no
           &#8220;restart anyway,&#8221; no Tag
           (<a href="../adr/0056-ci-owns-host-apply-without-describing-the-jail.md"
             >ADR&nbsp;0056</a
-          >). Verified with two HTTP probes (<code>:248-257</code>):
+          >). Verified with two HTTP probes (<code>:269-286</code>):
           <code>GET {API_ORIGIN}/docs</code> must be 2xx, and a cron POST
           carrying a deliberately wrong secret must be exactly
           <code>401</code>. This page names the algorithm and the secret
@@ -1722,12 +1722,12 @@
         <dd id="note-deployfrontend">
           Packages with <code>yarn package:myorganizer:web</code> and ships
           <code>./dist/deploy/myorganizer-web/</code> over FTP to cPanel
-          (<code>deploy-production.yml:318-326</code>). Production never
+          (<code>deploy-production.yml:344-355</code>). Production never
           invokes Vercel; staging's frontend does. That is the one place the
           two environments genuinely diverge &mdash; see panel&nbsp;2. Runs
           alongside <code>host-apply</code>, not after it &mdash; its
           <code>needs:</code> lists <code>deploy-backend</code>, not
-          <code>host-apply</code> (<code>:261</code>), since neither job needs
+          <code>host-apply</code> (<code>:290</code>), since neither job needs
           the other.
         </dd>
         <dt>tag</dt>
@@ -1819,7 +1819,7 @@
               <code>Deploy Production (manual)</code> &mdash; halts at
               approval
             </td>
-            <td class="cite">deploy-production.yml:3-4, :128, :181, :264</td>
+            <td class="cite">deploy-production.yml:3-4, :128, :181, :293</td>
           </tr>
           <tr>
             <td>6</td>
@@ -1881,7 +1881,7 @@
         <div class="ccard cpanel">
           <div class="ctop">cPanel over FTP</div>
           <p><code>./dist/deploy/myorganizer-web/</code></p>
-          <span class="cite">deploy-production.yml:318, :324</span>
+          <span class="cite">deploy-production.yml:347, :353</span>
         </div>
       </div>
       <p class="small muted">
@@ -1921,7 +1921,7 @@
           The four job guards (<code>prepare-dependencies</code>,
           <code>deploy-backend</code>, <code>host-apply</code>,
           <code>deploy-frontend</code>) test <code>github.ref</code>
-          <span class="cite">:88, :124, :178, :234</span> &mdash; the ref the
+          <span class="cite">:88, :124, :178, :289</span> &mdash; the ref the
           run was launched against. <code>host-apply</code>'s guard also
           gates on <code>needs.deploy-backend.result == 'success'</code> or
           <code>inputs.apply_only</code>, since it can run in apply-only mode
@@ -1932,7 +1932,7 @@
           <code>deploy-backend</code>, <code>host-apply</code>, and
           <code>deploy-frontend</code> &mdash; check out
           <code>release_ref</code>
-          <span class="cite">:99, :135, :188, :245</span> &mdash; the resolved
+          <span class="cite">:99, :135, :188, :300</span> &mdash; the resolved
           branch from step 2, which is not always the same string.
         </li>
       </ol>
@@ -2000,7 +2000,7 @@
             <code>300000</code> ms, the same value at three sites: staging
             backend (<code>deploy-staging.yml:124</code>), production backend
             (<code>deploy-production.yml:170</code>), production frontend
-            (<code>:326</code>). <code>host-apply</code> has no FTP step and
+            (<code>:355</code>). <code>host-apply</code> has no FTP step and
             no site here &mdash; it applies over SSH, not FTP.
           </p>
         </div>
@@ -2012,7 +2012,7 @@
             <code>:165</code>, <code>:280</code>) &mdash; four now, including
             <code>host-apply</code>; production's three approval-gated jobs
             45&nbsp;min each (<code>deploy-production.yml:127</code>,
-            <code>:180</code>, <code>:263</code>) &mdash; three now, also
+            <code>:180</code>, <code>:292</code>) &mdash; three now, also
             including <code>host-apply</code>; dispatcher, release-PR and
             publish 10&nbsp;min each.
           </p>
@@ -2093,10 +2093,10 @@
           <span class="cite">:458</span>
         </li>
         <li>
-          Build Backend <span class="cite">:648</span>, only when
-          <code>backend</code> is affected <span class="cite">:652</span>, and
-          Build Frontend <span class="cite">:694</span>,
-          <span class="cite">:698</span>
+          Build Backend <span class="cite">:887</span>, only when
+          <code>backend</code> is affected <span class="cite">:891</span>, and
+          Build Frontend <span class="cite">:933</span>,
+          <span class="cite">:937</span>
         </li>
       </ol>
       <p class="small muted">
