@@ -967,7 +967,7 @@
   <section class="panel" aria-labelledby="hero-h">
     <div class="phead">
       <h2 id="hero-h">One gate, and it is not a box on this page</h2>
-      <span class="src">deploy-production.yml:128, :181, :264</span>
+      <span class="src">deploy-production.yml:128, :181, :293</span>
     </div>
     <div class="pbody">
       <p class="small muted">
@@ -1921,7 +1921,7 @@
           The four job guards (<code>prepare-dependencies</code>,
           <code>deploy-backend</code>, <code>host-apply</code>,
           <code>deploy-frontend</code>) test <code>github.ref</code>
-          <span class="cite">:88, :124, :178, :234</span> &mdash; the ref the
+          <span class="cite">:88, :124, :178, :289</span> &mdash; the ref the
           run was launched against. <code>host-apply</code>'s guard also
           gates on <code>needs.deploy-backend.result == 'success'</code> or
           <code>inputs.apply_only</code>, since it can run in apply-only mode
@@ -1932,7 +1932,7 @@
           <code>deploy-backend</code>, <code>host-apply</code>, and
           <code>deploy-frontend</code> &mdash; check out
           <code>release_ref</code>
-          <span class="cite">:99, :135, :188, :245</span> &mdash; the resolved
+          <span class="cite">:99, :135, :188, :300</span> &mdash; the resolved
           branch from step 2, which is not always the same string.
         </li>
       </ol>
@@ -2093,10 +2093,10 @@
           <span class="cite">:458</span>
         </li>
         <li>
-          Build Backend <span class="cite">:648</span>, only when
-          <code>backend</code> is affected <span class="cite">:652</span>, and
-          Build Frontend <span class="cite">:694</span>,
-          <span class="cite">:698</span>
+          Build Backend <span class="cite">:887</span>, only when
+          <code>backend</code> is affected <span class="cite">:891</span>, and
+          Build Frontend <span class="cite">:933</span>,
+          <span class="cite">:937</span>
         </li>
       </ol>
       <p class="small muted">
