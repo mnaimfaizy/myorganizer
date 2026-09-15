@@ -4,7 +4,7 @@ Agent training data and even installed vendor skills go stale (the Research agen
 
 ## Status
 
-superseded by [ADR 0083](0083-an-upstream-brief-is-anchored-to-what-is-installed-and-accepted-on-checked-evidence.md)
+superseded by [ADR 0084](0084-an-upstream-brief-is-anchored-to-what-is-installed-and-accepted-on-checked-evidence.md)
 
 Three briefs showed the single target version contradicting its own source rule, current versions read from a document that drifts, and no mechanism accepting or rejecting a claim. What survives is the skill's boundary: user-invoked, portable, primary sources only, and never an upgrade plan.
 
