@@ -38,7 +38,6 @@ import {
   findDependencyCycles,
   formatCycle,
   isCompleted,
-  isDependencySatisfied,
   selectPrdSlices,
   unfinishedDependencies,
 } from '../tools/scripts/lib/sandcastle-slice-selection.mjs';
@@ -691,15 +690,10 @@ function unblockDependents(completed: Issue): void {
       continue;
     }
 
-    const deps = blockedBy(dependent);
-    const unfinished = deps.filter(
-      (blockerNumber) =>
-        blockerNumber !== completed.number &&
-        !isDependencySatisfied(blockerNumber, {
-          lookup: (number: number) =>
-            byNumber.get(number) ?? fetchIssue(number),
-        }),
-    );
+    // byNumber already carries `completed` as CLOSED, so it resolves as satisfied.
+    const unfinished = unfinishedDependencies(dependent, {
+      lookup: (number: number) => byNumber.get(number) ?? fetchIssue(number),
+    });
 
     if (unfinished.length > 0) {
       console.log(

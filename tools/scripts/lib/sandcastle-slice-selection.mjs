@@ -98,6 +98,13 @@ export function blocks(issue) {
   return leadingListRefs(sectionBody(issue, 'Blocks'));
 }
 
+/** The `## Blocked by` entries of `issue` that are in `numbers`, excluding itself. */
+function blockersWithin(issue, numbers) {
+  return blockedBy(issue).filter(
+    (dependency) => numbers.has(dependency) && dependency !== issue.number,
+  );
+}
+
 /**
  * Whether one dependency no longer holds anything back.
  *
@@ -137,12 +144,7 @@ export function unfinishedDependencies(issue, options) {
 export function findDependencyCycles(issues) {
   const numbers = new Set(issues.map((issue) => issue.number));
   const edges = new Map(
-    issues.map((issue) => [
-      issue.number,
-      blockedBy(issue).filter(
-        (dependency) => numbers.has(dependency) && dependency !== issue.number,
-      ),
-    ]),
+    issues.map((issue) => [issue.number, blockersWithin(issue, numbers)]),
   );
 
   const cycles = new Map();
@@ -246,10 +248,7 @@ export function selectPrdSlices(issues, { prd, only } = {}) {
     if (isCompleted(issue)) continue;
 
     if (hasLabel(issue, 'status:blocked')) {
-      const inPrdBlockers = blockedBy(issue).filter(
-        (dependency) =>
-          prdNumbers.has(dependency) && dependency !== issue.number,
-      );
+      const inPrdBlockers = blockersWithin(issue, prdNumbers);
       if (inPrdBlockers.length === 0) {
         deferred.push({
           issue,
