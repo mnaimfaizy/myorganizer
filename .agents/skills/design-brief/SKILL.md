@@ -185,6 +185,11 @@ last line of a range — **both ends, so a range that grows or shrinks at either
 whitespace-normalised on comparison, following `verifyCitation` in
 `tools/scripts/review/obligations.mjs`.
 
+That last claim holds only as far as the end line says something. `release.mjs:16-24` ends on a bare
+`}` and line 23 is `  }`, which normalises to the same string, so a one-line shrink there verifies
+anyway. Prefer a range whose last line is distinctive; where the source offers none, the anchor is
+weaker than the rule sounds, and writing that down costs less than discovering it from a green check.
+
 Why a block rather than an attribute beside each citation: citations arrive four or five to a text
 node (`<td class="cite">deploy-production.yml:3-4, :128, :181, :293</td>`, an SVG `<text>` label),
 so an inline anchor means splitting hand-tuned markup that `.prettierignore` exists to protect. The

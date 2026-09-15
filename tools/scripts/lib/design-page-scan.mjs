@@ -29,20 +29,13 @@ import { blockAfter, lineOf } from './source-scan.mjs';
 
 const blank = (match) => match.replace(/[^\n]/g, ' ');
 
-/**
- * Rewrites the body of every `<script>` and `<style>`, leaving markup untouched.
- * The transform is handed the opening tag too, so it can tell a script that holds
- * code from one that holds data.
- */
+/** Rewrites the body of every `<script>` and `<style>`, leaving markup untouched. */
 function mapEmbeddedCode(source, transform) {
   return source.replace(
     /(<(script|style)\b[^>]*>)([\s\S]*?)(<\/\2\s*>)/gi,
-    (_, open, __, body, close) => `${open}${transform(body, open)}${close}`,
+    (_, open, __, body, close) => `${open}${transform(body)}${close}`,
   );
 }
-
-/** A `<script type="application/json">` — an embedded manifest, not code. */
-const isJsonScript = (openTag) => /\btype="application\/json"/i.test(openTag);
 
 /**
  * Masks `/* … *\/` and `//` comments. Scoped to code, because in prose those byte
@@ -83,22 +76,20 @@ function maskCodeComments(code) {
  * The hazard was already known when this was written document-wide — the `/* … *\/`
  * above had to be escaped to keep this very comment from eating itself.
  *
- * `<script type="application/json">` is exempt for the same reason prose is: it
- * holds data, not code, and the rule that reads it — `checkManifest` — parses the
- * output of this function. Masking there does not hide a finding, it corrupts the
- * document being parsed, in both available flavours. A quoted `// command ===
- * 'tag'` blanks to end of line, closing quote and brace included, and the block
- * stops parsing: a valid manifest reported as invalid JSON. A `refs/heads/release/*`
- * with any later `*\/` blanks the span between them and still parses, so the
- * checker silently reads a truncated value and misses the keys in between — the
- * same fail-open the document-wide hazard above describes, one block smaller.
- * The citation anchors quote source lines verbatim (ADR 0085), so a page carrying
- * them is full of both.
+ * A `<script type="application/json">` body is masked like any other, and the one
+ * rule that needs it intact — `checkManifest`, which parses it — reads the raw
+ * bytes at the offsets it located here. It is deliberately not exempted at this
+ * level: every rule below runs on this output, so an exemption here widens what
+ * *all* of them see, not just the parser. Two are satisfied by presence
+ * (`checkTipNoteBijection`, `checkThemeTokens`) and `fontBlock` slices from the
+ * last `@font-face` it can see, so a block quoting any of those inside `/* … *\/`
+ * would be answering a rule with text the page only quotes. That is a fail-open in
+ * the same family as the document-wide one above, bought to fix a parse.
  */
 export function maskHtmlComments(source) {
   return mapEmbeddedCode(
     source.replace(/<!--[\s\S]*?-->/g, blank),
-    (body, open) => (isJsonScript(open) ? body : maskCodeComments(body)),
+    maskCodeComments,
   );
 }
 
@@ -366,18 +357,31 @@ function insideTry(code, index) {
  * the source constants later. Without one the page starts rotting the day it lands
  * and nobody finds out (design-brief/SKILL.md, step 6).
  */
-function checkManifest(code, findings) {
+function checkManifest(code, source, findings) {
   // Attribute order is not fixed by anything, so matching `type` before `id` made a
   // perfectly good manifest report as missing. Every JSON block is parsed, not just
   // the first — a page carrying two and breaking the second would have passed.
+  //
+  // Blocks are located in the masked `code`, so a manifest inside an HTML comment
+  // does not count as one, and the body is then read from `source` at the same
+  // offsets — masking preserves length and newlines, so the two are byte-aligned.
+  // That split is load-bearing: a citation anchor quotes source verbatim (ADR
+  // 0085) and release-pipeline.html already quotes both `//` and `/*`. Parsing the
+  // masked body reports a valid manifest as invalid when a quoted `//` blanks the
+  // closing brace, and — worse, because it still parses — silently drops the keys
+  // between a quoted `/*` and the next `*/`.
   let found = 0;
   for (const m of code.matchAll(
     /<script\b([^>]*\btype="application\/json"[^>]*)>([\s\S]*?)<\/script>/gi,
   )) {
-    found++;
     const id = m[1].match(/\bid="([^"]+)"/)?.[1] ?? '(no id)';
+    // Only a `…-manifest` block answers this rule. A page may carry other JSON —
+    // `citation-anchors` is the first — and counting those would let a page with
+    // nothing asserting it pass the check whose message names the block it wants.
+    if (id.endsWith('-manifest')) found++;
+    const bodyStart = m.index + m[0].indexOf('>') + 1;
     try {
-      JSON.parse(m[2]);
+      JSON.parse(source.slice(bodyStart, bodyStart + m[2].length));
     } catch (err) {
       findings.push({
         rule: 'manifest-invalid',
@@ -680,7 +684,7 @@ export function scanDesignPage({
   checkExternalResources(code, findings);
   checkThemeTokens(code, findings);
   checkStorageGuards(code, findings);
-  checkManifest(code, findings);
+  checkManifest(code, source, findings);
   checkPrettierIgnored(file, prettierIgnored, findings);
   checkAdrLinks(file, code, adrLinkExists, findings);
   checkCitations(source, findings, resolveCitation);

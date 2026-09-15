@@ -363,48 +363,106 @@ test('a second manifest block is validated too', () => {
   assert.match(findings[0].message, /second-manifest/);
 });
 
-// A `type="application/json"` script holds data, and `checkManifest` parses the
-// output of `maskHtmlComments`. Masking JS comment syntax there does not hide a
-// finding — it corrupts the document being parsed, in one case silently. Both
-// byte pairs occur in the citation anchors on `release-pipeline.html`, which
-// quote source lines verbatim (ADR 0085).
-
-/** What `checkManifest` sees for `#example-manifest`, parsed. */
-function manifestAsScanned(manifest) {
-  const body = /id="example-manifest">([\s\S]*?)<\/script>/.exec(
-    maskHtmlComments(goodPage({ manifest })),
-  )[1];
-  return JSON.parse(body);
-}
+// `checkManifest` parses the raw body at the offsets it located in the masked
+// code. Both halves of that split are asserted below: parsing must survive JS
+// comment syntax quoted inside JSON, and the masking that protects every *other*
+// rule must stay in force over the same block. A citation anchor quotes source
+// verbatim (ADR 0085), so `release-pipeline.html` carries both byte pairs today.
 
 test('a glob and a later */ in a manifest do not blank what lies between them', () => {
+  // The failure this guards against is silent: the blanked span still parses as
+  // JSON, with "guard" truncated and "close" gone entirely.
   const manifest = [
     '<script type="application/json" id="example-manifest">',
     '{ "guard": "refs/heads/release/*", "close": "ends with */ here" }',
     '</script>',
   ].join('\n');
-  // The failure this guards against is silent: the blanked span still parses as
-  // JSON, with "guard" truncated and "close" gone entirely.
-  assert.deepEqual(manifestAsScanned(manifest), {
-    guard: 'refs/heads/release/*',
-    close: 'ends with */ here',
-  });
   assert.deepEqual(rules(scan(goodPage({ manifest }))), []);
 });
 
 test('a quoted // inside a manifest string does not blank the rest of its line', () => {
+  // Here the blanking ran to end of line, taking the closing quote and brace with
+  // it, so the block stopped parsing at all.
   const manifest = [
     '<script type="application/json" id="example-manifest">',
     '{ "quoted": "// command === \'tag\'", "note": "asserted" }',
     '</script>',
   ].join('\n');
-  // Here the blanking ran to end of line, taking the closing quote and brace with
-  // it, so the block stopped parsing at all.
-  assert.deepEqual(manifestAsScanned(manifest), {
-    quoted: "// command === 'tag'",
-    note: 'asserted',
-  });
   assert.deepEqual(rules(scan(goodPage({ manifest }))), []);
+});
+
+test('a manifest block cannot answer a presence rule with text it only quotes', () => {
+  // The other direction of the same split, and the reason the exemption does not
+  // live in `maskHtmlComments`: that function feeds every rule, and two of them
+  // are satisfied by presence. A page whose stylesheet has no dark pin must still
+  // fail even when its manifest quotes one inside a comment span.
+  const findings = scan(
+    goodPage({
+      style: [
+        '<style>',
+        '@font-face { font-family: Caprasimo; src: url(data:font/woff2;base64,AAAA); }',
+        ':root {',
+        '  --ink: #101010;',
+        '}',
+        '@media (prefers-color-scheme: dark) {',
+        "  :root:not([data-theme='light']) {",
+        '    --ink: #f0f0f0;',
+        '  }',
+        '}',
+        '</style>',
+      ].join('\n'),
+      manifest: [
+        '<script type="application/json" id="example-manifest">',
+        '{ "anchor": "/* :root[data-theme=\'dark\'] { --ink: #f0f0f0; } */" }',
+        '</script>',
+      ].join('\n'),
+    }),
+  );
+  assert.deepEqual(rules(findings), ['theme-tokens-incomplete']);
+});
+
+test('a JSON block that is not a manifest does not satisfy the manifest rule', () => {
+  // `citation-anchors` is the first `application/json` block on a page that
+  // asserts nothing. Counting it would let a page carrying no manifest pass the
+  // check whose own message names the block it wants.
+  const findings = scan(
+    goodPage({
+      manifest: [
+        '<script type="application/json" id="citation-anchors">',
+        '{ "anchors": {} }',
+        '</script>',
+      ].join('\n'),
+    }),
+  );
+  assert.deepEqual(rules(findings), ['manifest-missing']);
+});
+
+test('a non-manifest JSON block is still parsed for validity', () => {
+  const findings = scan(
+    goodPage({
+      manifest: [
+        '<script type="application/json" id="example-manifest">{ "a": 1 }</script>',
+        '<script type="application/json" id="citation-anchors">{ broken ]</script>',
+      ].join('\n'),
+    }),
+  );
+  assert.deepEqual(rules(findings), ['manifest-invalid']);
+  assert.match(findings[0].message, /citation-anchors/);
+});
+
+test('a manifest inside an HTML comment does not count as one', () => {
+  // Blocks are located in the masked code precisely so this stays true; reading
+  // the raw source for the body must not smuggle a commented-out block back in.
+  const findings = scan(
+    goodPage({
+      manifest: [
+        '<!--',
+        '<script type="application/json" id="example-manifest">{ "a": 1 }</script>',
+        '-->',
+      ].join('\n'),
+    }),
+  );
+  assert.deepEqual(rules(findings), ['manifest-missing']);
 });
 
 test('a comment in an ordinary script is still masked', () => {

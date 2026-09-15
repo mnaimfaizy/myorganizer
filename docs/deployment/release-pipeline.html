@@ -2604,7 +2604,7 @@
 
 <script type="application/json" id="citation-anchors">
   {
-    "note": "Expected-content anchors for every file:line citation on this page (ADR 0085). Key is the citation as the page writes it, resolved to a file; \"start\" is the text at that line and \"end\" the text at the last line of a range, both whitespace-normalised on comparison. Verified against the tree on 2026-09-15.",
+    "note": "Expected-content anchors for every file:line citation on this page (ADR 0085). Key is name:line or name:start-end with the name the citation resolves to, which is not always the name the page prints: most citations here are bare (\":181\", \":126-141\") and inherit the last file named ahead of them. \"file\" resolves that name to a repo-relative path; \"start\" is the text at that line and \"end\" the text at the last line of a range, both whitespace-normalised on comparison. Verified against the tree on 2026-09-15.",
     "anchors": {
       "VERCEL_FRONTEND_HOSTING.md:56-66": { "file": "docs/deployment/VERCEL_FRONTEND_HOSTING.md", "start": "- `corepack yarn dlx vercel@latest login`", "end": "- `corepack yarn dlx vercel@latest --prod`" },
       "ci.yml:3-12": { "file": ".github/workflows/ci.yml", "start": "on:", "end": "workflow_dispatch:" },
