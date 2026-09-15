@@ -13,8 +13,9 @@
 //                                READING, the way tools/scripts/check-agent-map.mjs does.
 //
 //   assertedFromOrchestratorSource
-//                                Module-local literals inside .sandcastle/main.mts and
-//                                .sandcastle/dispatch-waves.mts with no export to import,
+//                                Module-local literals inside .sandcastle/main.mts,
+//                                .sandcastle/dispatch-waves.mts, and the slice-selection
+//                                lib they share, with no export to import,
 //                                verified by ANCHORED regex against the source text.
 //                                Anchored — `^…$` on the whole statement — and never a bare
 //                                substring search: ADR 0043 records a gate that passed
@@ -51,6 +52,7 @@ const PKG = 'package.json';
 const MAIN = '.sandcastle/main.mts';
 const WAVES = '.sandcastle/dispatch-waves.mts';
 const CI = '.github/workflows/ci.yml';
+const SELECTION = 'tools/scripts/lib/sandcastle-slice-selection.mjs';
 
 const PAGES = [
   ['docs/sandcastle/dispatch-map.html', 'sandcastle-dispatch-manifest'],
@@ -65,7 +67,7 @@ const fail = (msg) => {
   process.exit(2);
 };
 
-for (const f of [RESUME, TRACE, POLICY, PKG, MAIN, WAVES, CI]) {
+for (const f of [RESUME, TRACE, POLICY, PKG, MAIN, WAVES, CI, SELECTION]) {
   if (!existsSync(f)) fail(`${f} not found`);
 }
 for (const [page] of PAGES) {
@@ -74,6 +76,7 @@ for (const [page] of PAGES) {
 
 const mainSrc = readFileSync(MAIN, 'utf8');
 const wavesSrc = readFileSync(WAVES, 'utf8');
+const selectionSrc = readFileSync(SELECTION, 'utf8');
 const ciSrc = readFileSync(CI, 'utf8');
 const policy = JSON.parse(readFileSync(POLICY, 'utf8'));
 const pkg = JSON.parse(readFileSync(PKG, 'utf8'));
@@ -257,7 +260,7 @@ const EXPORT_RESOLVERS = {
 // fact is genuinely written more than once and every occurrence must produce the same
 // value; a new copy that disagrees — or simply a new copy — is a finding.
 
-const src = { main: mainSrc, waves: wavesSrc };
+const src = { main: mainSrc, waves: wavesSrc, selection: selectionSrc };
 const first = (m) => m[1];
 const num = (m) => Number(m[1]);
 
@@ -576,10 +579,11 @@ const SOURCE_ASSERTIONS = {
     in: 'waves',
     re: /^\s*issue\.labels\.some\(\(l\) => l\.name === '(status:done)'\)$/gm,
   },
+  // dispatch-waves reads edges through the shared parser, so the heading lives there.
   wavesBlockedBySectionHeading: {
-    file: WAVES,
-    in: 'waves',
-    re: /^\s*const m = issue\.body\.match\(\/##\\s\*(Blocked by)\(\[\\s\\S\]\*\?\)\(\?:\\n##\\s\|\$\)\/i\);$/gm,
+    file: SELECTION,
+    in: 'selection',
+    re: /^\s*return leadingListRefs\(sectionBody\(issue, '(Blocked by)'\)\);$/gm,
     t: (m) => `## ${m[1]}`,
   },
   wavesPlanFlag: {

@@ -5,9 +5,13 @@ import {
   blockedBy,
   blocks,
   describeAssembly,
+  describeBlockedSlices,
+  findDependencyCycles,
   isCompleted,
+  isDependencySatisfied,
   selectPrdSlices,
   slicesOfPrd,
+  unfinishedDependencies,
 } from './sandcastle-slice-selection.mjs';
 
 const PRD = 461;
@@ -256,6 +260,130 @@ test('blockedBy stops at the next section heading', () => {
 
 test('blockedBy on an issue with no such section is empty', () => {
   assert.deepEqual(blockedBy({ body: '## What to build\n\nthings\n' }), []);
+});
+
+// ─── PRD #772: prose in `## Blocked by` is not a dependency edge ───────────────
+
+// The shape slice #774 carried when the run stalled: one genuine blocker, then a
+// note whose issue references are explanation, one of them a negation.
+const PROSE_NOTE_SECTION =
+  '## Blocked by\n\n' +
+  '- #773 — the ADR this rule implements\n\n' +
+  'Note: **not** blocked by #771. Every stale citation it corrected pointed at a ' +
+  'line that exists. #787 is the slice that needs it. (#771 has since merged.)\n\n' +
+  '## Blocks\n\n- #787 — anchoring\n- #788 — tightening\n';
+
+test('blockedBy ignores an issue reference that appears only in prose', () => {
+  assert.deepEqual(blockedBy({ body: PROSE_NOTE_SECTION }), [773]);
+});
+
+test('blockedBy does not read a negated mention as a blocker', () => {
+  const body =
+    '## Blocked by\n\n- None — can start immediately. Does not wait on #272.\n';
+  assert.deepEqual(blockedBy({ body }), []);
+});
+
+test('blockedBy reports a repeated reference once', () => {
+  const body = '## Blocked by\n\n- #787 — anchors\n- #774\n- #787 again\n';
+  assert.deepEqual(blockedBy({ body }), [787, 774]);
+});
+
+test('blockedBy accepts the list-item forms a slice body uses', () => {
+  const body =
+    '## Blocked by\n\n* #1\n- [#2](https://github.com/o/r/issues/2)\n' +
+    '- [ ] #3\n1. #4\n  - #5 nested\n- see #6\n';
+  assert.deepEqual(blockedBy({ body }), [1, 2, 3, 4, 5]);
+});
+
+test('blocks ignores prose the same way blockedBy does', () => {
+  const body = '## Blocks\n\n- #788 — tightening\n\nIndirectly, #790.\n';
+  assert.deepEqual(blocks({ body }), [788]);
+});
+
+test('a closed issue outside the PRD satisfies a dependency on it', () => {
+  // #787's real blocker list named #771, a standalone bug that was already closed.
+  const outside = { number: 771, state: 'CLOSED', labels: [], body: '' };
+  const lookup = (n) => (n === 771 ? outside : undefined);
+
+  assert.equal(isDependencySatisfied(771, { lookup }), true);
+  const migrate = slice(787, { body: blockedBySection(774, 771) });
+  assert.deepEqual(
+    unfinishedDependencies(migrate, { completed: new Set([774]), lookup }),
+    [],
+  );
+});
+
+test('an open or unknown dependency is not satisfied', () => {
+  const open = { number: 900, state: 'OPEN', labels: [], body: '' };
+  const lookup = (n) => (n === 900 ? open : undefined);
+  assert.equal(isDependencySatisfied(900, { lookup }), false);
+  assert.equal(isDependencySatisfied(901, { lookup }), false);
+  assert.equal(
+    isDependencySatisfied(901, { completed: new Set([901]), lookup }),
+    true,
+    'completing in this run satisfies a dependency GitHub has not caught up on',
+  );
+});
+
+test('a two-slice cycle is found once, whichever slice the walk starts from', () => {
+  const pending = [
+    slice(787, { body: blockedBySection(774) }),
+    slice(774, { body: blockedBySection(787) }),
+    slice(788, { body: blockedBySection(787, 774) }),
+  ];
+  assert.deepEqual(findDependencyCycles(pending), [[774, 787, 774]]);
+});
+
+test('a chain without a loop, or a self-reference, is not a cycle', () => {
+  const pending = [
+    slice(774, { body: blockedBySection(774) }),
+    slice(787, { body: blockedBySection(774) }),
+    slice(788, { body: blockedBySection(787) }),
+  ];
+  assert.deepEqual(findDependencyCycles(pending), []);
+});
+
+test('slices left blocked by a cycle are reported as a cycle, not as unfinished work', () => {
+  const pending = [
+    slice(774, { body: blockedBySection(787) }),
+    slice(787, { body: blockedBySection(774) }),
+    slice(788, { body: blockedBySection(787, 774) }),
+  ];
+  const reasons = Object.fromEntries(
+    describeBlockedSlices(pending, { completed: new Set() }).map(
+      ({ issue, reason }) => [issue.number, reason],
+    ),
+  );
+  assert.equal(reasons[774], 'dependency cycle: #774 → #787 → #774');
+  assert.equal(reasons[787], 'dependency cycle: #774 → #787 → #774');
+  assert.equal(reasons[788], 'blocked by unfinished slice(s): #787, #774');
+});
+
+test('the #772 run drains once prose is ignored and closed outside issues count', () => {
+  const issues = new Map(
+    [
+      { number: 771, state: 'CLOSED', labels: [], body: 'a standalone bug' },
+      slice(773, { state: 'CLOSED', body: blockedBySection() }),
+    ].map((issue) => [issue.number, issue]),
+  );
+  const options = { completed: new Set(), lookup: (n) => issues.get(n) };
+  const pending = [
+    slice(774, { body: PROSE_NOTE_SECTION }),
+    slice(787, { body: blockedBySection(774, 771) }),
+    slice(788, { body: blockedBySection(787, 774) }),
+  ];
+
+  const order = [];
+  while (pending.length > 0) {
+    const ready = pending.find(
+      (issue) => unfinishedDependencies(issue, options).length === 0,
+    );
+    assert.ok(ready, `stalled with ${pending.map((i) => i.number)} pending`);
+    order.push(ready.number);
+    options.completed.add(ready.number);
+    pending.splice(pending.indexOf(ready), 1);
+  }
+  assert.deepEqual(order, [774, 787, 788]);
 });
 
 test('isCompleted accepts either a closed state or status:done', () => {

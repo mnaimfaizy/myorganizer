@@ -56,8 +56,8 @@ if ! git diff --cached --quiet --diff-filter=ACMRT -- 'docs/**/*.html'
 then
 corepack yarn design:hygiene --staged
 fi
-# The sandcastle resume and sub-agent-trace decisions are pure functions with no Nx
-# project of their own, so `affected:lint` and `nx affected -t test` never reach them.
+# The sandcastle resume, sub-agent-trace, and slice-selection decisions are pure functions
+# with no Nx project of their own, so `affected:lint` and `nx affected -t test` never reach them.
 # Run their contracts whenever a module or its consumer is staged.
 if ! git diff --cached --quiet --diff-filter=ACMRT -- \
  tools/scripts/lib/sandcastle-resume.mjs \
@@ -66,19 +66,23 @@ if ! git diff --cached --quiet --diff-filter=ACMRT -- \
  tools/scripts/lib/sandcastle-subagent-trace.test.mjs \
  tools/scripts/lib/sandcastle-spec-anchor.mjs \
  tools/scripts/lib/sandcastle-spec-anchor.test.mjs \
+ tools/scripts/lib/sandcastle-slice-selection.mjs \
+ tools/scripts/lib/sandcastle-slice-selection.test.mjs \
  tools/scripts/review/resolve-spec.mjs \
  .sandcastle/main.mts \
  .sandcastle/dispatch-waves.mts
 then
 corepack yarn sandcastle:resume:test
 corepack yarn sandcastle:subagent-trace:test
+corepack yarn sandcastle:slice-selection:test
 # The anchor asserts against the real resolver, so a change to resolve-spec.mjs
 # is a change to this contract even when no sandcastle file is staged.
 corepack yarn sandcastle:spec-anchor:test
 fi
 # The five sandcastle atlas pages state constants that live as module-local literals in the
-# two orchestrator files, as exports in sandcastle-resume.mjs and sandcastle-subagent-trace.mjs,
-# and as JSON in the model policy and package.json. They rot the moment any of those move, and
+# two orchestrator files and in the slice-selection lib they share, as exports in
+# sandcastle-resume.mjs and sandcastle-subagent-trace.mjs, and as JSON in the model policy,
+# package.json, and the CI workflow. They rot the moment any of those move, and
 # the checker passed green through the whole of #467 precisely because it asserted constants
 # while the prose went false around them — so the guard must list every input it reads, plus
 # the pages and the check script themselves, or an unrelated commit is failed by drift it did
@@ -92,8 +96,10 @@ if ! git diff --cached --quiet --diff-filter=ACMRTD -- \
  tools/scripts/check-sandcastle-map.mjs \
  tools/scripts/lib/sandcastle-resume.mjs \
  tools/scripts/lib/sandcastle-subagent-trace.mjs \
+ tools/scripts/lib/sandcastle-slice-selection.mjs \
  tools/config/agent-model-policy.json \
  package.json \
+ .github/workflows/ci.yml \
  .sandcastle/main.mts \
  .sandcastle/dispatch-waves.mts
 then
