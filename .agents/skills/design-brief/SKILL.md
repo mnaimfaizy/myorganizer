@@ -174,10 +174,13 @@ carries a second JSON block, `id="citation-anchors"`, recording what it says is 
 ```
 
 One block per page, holding one entry per **distinct** citation — the same `file:line` written in
-four places is one claim, and one entry keeps it from disagreeing with itself. The key is the
-citation as the page writes it; `file` resolves the bare name to a repo-relative path, because
-`package.json` and `SKILL.md` each match several files and "some file of that name is long enough"
-is not the claim. `start` is the literal text at the cited line and `end` the literal text at the
+four places is one claim, and one entry keeps it from disagreeing with itself. The key is
+`name:line` or `name:start-end` with the name the citation resolves to, not the characters the page
+happens to print: most citations on a page are bare (`:181`, `:126-141`) and inherit the last file
+named ahead of them, so writing the key as printed would leave every one of them unkeyable and the
+same line anchored twice under two spellings. `file` then resolves that name to a repo-relative
+path, because `package.json` and `SKILL.md` each match several files and "some file of that name is
+long enough" is not the claim. `start` is the literal text at the cited line and `end` the literal text at the
 last line of a range — **both ends, so a range that grows or shrinks at either end is caught** —
 whitespace-normalised on comparison, following `verifyCitation` in
 `tools/scripts/review/obligations.mjs`.
