@@ -2052,9 +2052,11 @@
             Not the same strictness:
             <code>refs/heads/release/*</code>
             (<code>deploy-production.yml:43</code>);
-            <code>^release/v[0-9]+\.[0-9]+\.[0-9]+$</code>, used twice
-            (<code>dispatch-production-deploy.yml:38</code>, <code>:53</code>,
-            <code>release-pr.yml:34</code>);
+            the release-branch pattern in two spellings,
+            <code>^release/v[0-9]+\.[0-9]+\.[0-9]+$</code>
+            (<code>dispatch-production-deploy.yml:38</code>, <code>:53</code>)
+            and <code>/^release\/v\d+\.\d+\.\d+$/</code>
+            (<code>release-pr.yml:34</code>);
             <code>^v[0-9]+\.[0-9]+\.[0-9]+$</code>
             (<code>publish-github-release.yml:35</code>); and
             <code>/^v?(\d+)\.(\d+)\.(\d+)$/</code>
