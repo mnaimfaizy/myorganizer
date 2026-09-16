@@ -90,6 +90,39 @@ for (const lib of dirNames('libs').filter((n) => !LIBS_IGNORED.has(n))) {
   }
 }
 
+// Check the reverse direction: every app/lib in the diagram must exist in the filesystem.
+const sections = { apps: [], libs: [] };
+let currentSection = null;
+
+for (const line of diagram.split('\n')) {
+  if (line.includes('├── apps/') || line.includes('└── apps/')) {
+    currentSection = 'apps';
+  } else if (line.includes('├── libs/') || line.includes('└── libs/')) {
+    currentSection = 'libs';
+  } else if (line.match(/^├── |^└── /)) {
+    currentSection = null;
+  } else if (currentSection) {
+    const match = line.match(/│\s*[├└]──\s+([\w/-]+)\//);
+    if (match) {
+      sections[currentSection].push(match[1]);
+    }
+  }
+}
+
+for (const app of sections.apps) {
+  asserted += 1;
+  if (!APPS_IGNORED.has(app) && !existsSync(`apps/${app}`)) {
+    findings.push(`layout diagram names apps/${app}, which does not exist`);
+  }
+}
+
+for (const lib of sections.libs) {
+  asserted += 1;
+  if (!LIBS_IGNORED.has(lib) && !existsSync(`libs/${lib}`)) {
+    findings.push(`layout diagram names libs/${lib}, which does not exist`);
+  }
+}
+
 // ---------------------------------------------------------------- 3. routes are real
 
 const ROUTES_ROOT = 'apps/myorganizer/src/app/dashboard';
