@@ -94,10 +94,35 @@ const VAULT_BLOB_ASK_COPY = {
   (name: string) => VaultReconcilePromptCopy
 >;
 
+/**
+ * The whole-Vault reconcile prompt's title — raised only when the remote
+ * Ciphertext cannot be opened with this device's Vault at all. Exported so an
+ * in-lib caller that needs to prove a whole-Vault prompt did *not* fire
+ * asserts against this value instead of re-spelling it, the way the old
+ * dialog title `'Choose vault data to keep'` was re-spelled until #554
+ * deleted it out from under those assertions (issue #574). A Playwright spec
+ * cannot import this: `myorganizer-e2e` is tagged `type:e2e`, which
+ * `@nx/enforce-module-boundaries` only lets depend on `type:app` /
+ * `type:util` / `type:data-access`, not this lib's `type:feature`. E2E specs
+ * assert on the `data-testid` set below instead.
+ */
+export const VAULT_STANDOFF_DIALOG_TITLE =
+  'This vault is not the one on the server';
+
+/**
+ * The `data-testid` an E2E spec asserts on instead of
+ * {@link VAULT_STANDOFF_DIALOG_TITLE} (see that doc comment for why). A
+ * contract test in `reconcileRunner.spec.tsx` reads this constant against the
+ * literal text of both `tasks-vault-sync-*.spec.ts` files, so renaming this
+ * id here without updating them fails that test the same way the deleted
+ * dialog title's rename fell silent until issue #574.
+ */
+export const VAULT_STANDOFF_DIALOG_TEST_ID = 'vault-standoff-dialog';
+
 function describeAsk(ask: VaultReconcileAsk): VaultReconcilePromptCopy {
   if (ask.kind === 'vault') {
     return {
-      title: 'This vault is not the one on the server',
+      title: VAULT_STANDOFF_DIALOG_TITLE,
       lead: "The encrypted data on the server cannot be opened with this device's vault, so the two cannot be combined.",
       body: [
         "Keeping this device's data replaces the copy on the server.",
@@ -478,7 +503,18 @@ export function VaultReconcileRunner() {
 
   return (
     <Dialog open onOpenChange={handleDialogOpenChange}>
-      <DialogContent showCloseButton={false}>
+      <DialogContent
+        showCloseButton={false}
+        // A Playwright spec cannot cross into this lib to import
+        // VAULT_STANDOFF_DIALOG_TITLE (see its doc comment above), so this
+        // id is the seam an E2E spec asserts a whole-Vault prompt against —
+        // present only for the same `ask.kind` that title is keyed on.
+        data-testid={
+          pendingPrompt.ask.kind === 'vault'
+            ? VAULT_STANDOFF_DIALOG_TEST_ID
+            : undefined
+        }
+      >
         <DialogHeader>
           <DialogTitle>{copy.title}</DialogTitle>
           <DialogDescription>{copy.lead}</DialogDescription>

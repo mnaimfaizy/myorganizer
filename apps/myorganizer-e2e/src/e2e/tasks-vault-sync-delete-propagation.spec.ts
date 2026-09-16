@@ -304,12 +304,7 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
       .toBeTruthy();
 
     // Step 6: Assert no whole-Vault conflict prompt in ctx1
-    await expect(
-      page1
-        .getByRole('dialog')
-        .filter({ hasText: 'Choose vault data to keep' })
-        .first(),
-    ).toHaveCount(0);
+    await expect(page1.getByTestId('vault-standoff-dialog')).toHaveCount(0);
 
     // Step 7: Session 2 (ctx2) — login and download Meta
     const ctx2 = await browser.newContext();
@@ -326,12 +321,7 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
     await unlockWithPassphrase(page2, passphrase);
 
     // Step 9: Assert no whole-Vault conflict prompt in ctx2
-    await expect(
-      page2
-        .getByRole('dialog')
-        .filter({ hasText: 'Choose vault data to keep' })
-        .first(),
-    ).toHaveCount(0);
+    await expect(page2.getByTestId('vault-standoff-dialog')).toHaveCount(0);
 
     // Step 10: ctx1 adds a task
     const seedTaskTitle = `Seed Task ${Date.now()}`;
@@ -362,12 +352,7 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
       .toBeTruthy();
 
     // Step 12: Assert no whole-Vault conflict prompt in ctx1 after push
-    await expect(
-      page1
-        .getByRole('dialog')
-        .filter({ hasText: 'Choose vault data to keep' })
-        .first(),
-    ).toHaveCount(0);
+    await expect(page1.getByTestId('vault-standoff-dialog')).toHaveCount(0);
 
     // Step 13: Snapshot ctx2's local vault before pull
     const beforePull = await readOwnedVault(page2, E2E_USER_ID);
@@ -384,12 +369,7 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
       .not.toBe(beforePull);
 
     // Step 16: Assert no whole-Vault conflict prompt in ctx2 after pull
-    await expect(
-      page2
-        .getByRole('dialog')
-        .filter({ hasText: 'Choose vault data to keep' })
-        .first(),
-    ).toHaveCount(0);
+    await expect(page2.getByTestId('vault-standoff-dialog')).toHaveCount(0);
 
     // Step 17: Re-navigate ctx2 to observe the converged task
     await gotoStable(page2, '/dashboard/tasks');
@@ -436,12 +416,7 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
       .toBeTruthy();
 
     // Step 6 (deletion): Assert no whole-Vault conflict prompt in ctx1
-    await expect(
-      page1
-        .getByRole('dialog')
-        .filter({ hasText: 'Choose vault data to keep' })
-        .first(),
-    ).toHaveCount(0);
+    await expect(page1.getByTestId('vault-standoff-dialog')).toHaveCount(0);
 
     // Step 7 (deletion): Snapshot ctx2's local vault before pull
     const beforePullCtx2 = await readOwnedVault(page2, E2E_USER_ID);
@@ -457,12 +432,7 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
       .not.toBe(beforePullCtx2);
 
     // Step 10 (deletion): Assert no whole-Vault conflict prompt in ctx2
-    await expect(
-      page2
-        .getByRole('dialog')
-        .filter({ hasText: 'Choose vault data to keep' })
-        .first(),
-    ).toHaveCount(0);
+    await expect(page2.getByTestId('vault-standoff-dialog')).toHaveCount(0);
 
     // Step 11 (deletion): Re-navigate ctx2 to observe deletion
     await gotoStable(page2, '/dashboard/tasks');
@@ -517,18 +487,8 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
     );
 
     // Step 18 (deletion): Final assertion — no whole-Vault prompt anywhere
-    await expect(
-      page1
-        .getByRole('dialog')
-        .filter({ hasText: 'Choose vault data to keep' })
-        .first(),
-    ).toHaveCount(0);
-    await expect(
-      page2
-        .getByRole('dialog')
-        .filter({ hasText: 'Choose vault data to keep' })
-        .first(),
-    ).toHaveCount(0);
+    await expect(page1.getByTestId('vault-standoff-dialog')).toHaveCount(0);
+    await expect(page2.getByTestId('vault-standoff-dialog')).toHaveCount(0);
 
     await ctx1.close();
     await ctx2.close();

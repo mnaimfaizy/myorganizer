@@ -35,8 +35,13 @@ import type {
   VaultReconcileDecision,
 } from '@myorganizer/web-vault';
 import { VaultBlobType } from '@myorganizer/app-api-client';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 import { useOptionalVaultSession } from './session';
-import { VaultReconcileRunner } from './reconcileRunner';
+import {
+  VaultReconcileRunner,
+  VAULT_STANDOFF_DIALOG_TEST_ID,
+} from './reconcileRunner';
 import { vaultBlobTypeLabel } from './vaultSyncMessages';
 
 type ReconcileOptions = {
@@ -207,6 +212,10 @@ describe('VaultReconcileRunner', () => {
     expect(
       screen.getByRole('button', { name: "Keep the server's data" }),
     ).not.toBeNull();
+
+    // Not the whole-Vault standoff id — a per-type ask must not trip the E2E
+    // specs' "no whole-Vault prompt" assertion (issue #574).
+    expect(screen.queryByTestId(VAULT_STANDOFF_DIALOG_TEST_ID)).toBeNull();
   });
 
   test('clicking keep-local button sends keep-local decision', async () => {
@@ -262,6 +271,13 @@ describe('VaultReconcileRunner', () => {
     expect(
       screen.getByText(/this vault is not the one on the server/i),
     ).not.toBeNull();
+
+    // The E2E specs that assert no whole-Vault prompt fired cannot import
+    // this lib's copy across the `type:e2e` -> `type:feature` module
+    // boundary, so they assert on this id instead (issue #574). Proving it
+    // is present exactly when the whole-Vault ask renders is what keeps that
+    // E2E assertion from going vacuous the way the deleted dialog title did.
+    expect(screen.getByTestId(VAULT_STANDOFF_DIALOG_TEST_ID)).toBe(dialog);
   });
 
   test('dismissing conflict dialog resolves prompt with defer, not keep-server (ADR 0033)', async () => {
@@ -1011,4 +1027,34 @@ describe('VaultReconcileRunner', () => {
       });
     });
   });
+});
+
+/**
+ * The `myorganizer-e2e` Playwright specs cannot import
+ * VAULT_STANDOFF_DIALOG_TEST_ID (module boundary, see its doc comment) — they
+ * hold their own copy of the literal instead. A hardcoded copy that drifts
+ * silently is exactly how issue #574 happened the first time, so this reads
+ * both spec files' text directly (no module import, no boundary crossed) and
+ * fails if either stops referencing this id — the rename would otherwise go
+ * undetected until an actual whole-Vault prompt started firing unnoticed.
+ */
+describe('E2E specs stay pinned to the whole-Vault standoff testid (issue #574)', () => {
+  const E2E_SPEC_PATHS = [
+    'apps/myorganizer-e2e/src/e2e/tasks-vault-sync-convergence.spec.ts',
+    'apps/myorganizer-e2e/src/e2e/tasks-vault-sync-delete-propagation.spec.ts',
+  ];
+
+  test.each(E2E_SPEC_PATHS)(
+    '%s asserts the standoff testid',
+    (relativePath) => {
+      const contents = readFileSync(
+        join(__dirname, '../../../..', relativePath),
+        'utf8',
+      );
+
+      expect(contents).toContain(
+        `getByTestId('${VAULT_STANDOFF_DIALOG_TEST_ID}')`,
+      );
+    },
+  );
 });
