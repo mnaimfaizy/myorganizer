@@ -4,7 +4,7 @@ MyOrganizer has one git tree, and it is public. An **Operator Fingerprint** does
 
 ## Status
 
-proposed
+accepted
 
 ## Context
 
