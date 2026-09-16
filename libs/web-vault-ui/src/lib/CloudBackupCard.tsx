@@ -16,6 +16,7 @@ import {
 } from '@myorganizer/web-ui';
 import * as React from 'react';
 import { formatDistance } from 'date-fns';
+import { formatDate } from './formatDate';
 
 /**
  * Connection state shown by {@link CloudBackupCard}. Mirrors the discriminated
@@ -71,16 +72,6 @@ const AGE_LIMIT_LABELS: Record<CloudBackupCardAgeLimit, string> = {
   '1-month': '1 month',
 };
 
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleString();
-  } catch {
-    return iso;
-  }
-}
-
 /**
  * Encrypted Escape Copy management card. Pure presentational component;
  * all state and side effects are owned by the parent (typically a hook
@@ -127,6 +118,8 @@ export function CloudBackupCard({
     );
   }
 
+  let distanceText: string | null = null;
+  let formattedDate: string | null = null;
   let latestBody: React.ReactNode;
   if (isLatestLoading) {
     latestBody = (
@@ -148,10 +141,10 @@ export function CloudBackupCard({
   } else {
     const createdDate = new Date(latestRecord.createdAt);
     const nowDate = new Date(now);
-    const distanceText = formatDistance(createdDate, nowDate, {
+    distanceText = formatDistance(createdDate, nowDate, {
       addSuffix: false,
     });
-    const formattedDate = formatDate(latestRecord.createdAt);
+    formattedDate = formatDate(latestRecord.createdAt);
     latestBody = (
       <p data-testid="cloud-backup-latest-recorded">
         Newest copy:{' '}
@@ -225,13 +218,8 @@ export function CloudBackupCard({
             {latestRecord ? (
               <>
                 <p>
-                  Your newest copy is{' '}
-                  {formatDistance(
-                    new Date(latestRecord.createdAt),
-                    new Date(now),
-                    { addSuffix: false },
-                  )}{' '}
-                  old, past your {AGE_LIMIT_LABELS[ageLimit]} limit.
+                  Your newest copy is {distanceText} old, past your{' '}
+                  {AGE_LIMIT_LABELS[ageLimit]} limit.
                 </p>
                 {isLinked && (
                   <p className="mt-1">Use Back up now to make a new copy.</p>

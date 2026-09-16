@@ -190,16 +190,9 @@ export function useCloudBackup(
     });
   }, [coordinator, refreshConnection, runWithBusy]);
 
-  const reconnect = useCallback(async () => {
-    await runWithBusy(async () => {
-      try {
-        const next = await coordinator.connect();
-        if (mountedRef.current) setConnection(next);
-      } finally {
-        await refreshConnection();
-      }
-    });
-  }, [coordinator, refreshConnection, runWithBusy]);
+  // reconnect is the same operation as connect; only the button label differs
+  // (Link vs Reconnect). Both names are exported and used by the card.
+  const reconnect = connect;
 
   const disconnect = useCallback(async () => {
     await runWithBusy(async () => {

@@ -1,4 +1,5 @@
 export * from './lib/CloudBackupCard';
+export * from './lib/formatDate';
 export * from './lib/LastBackupCard';
 export * from './lib/metaConvergeRunner';
 export * from './lib/pullRunner';

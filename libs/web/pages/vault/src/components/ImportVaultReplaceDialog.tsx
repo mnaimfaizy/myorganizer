@@ -15,17 +15,9 @@ import {
   Label,
 } from '@myorganizer/web-ui';
 
-import { type VaultImportDisclosureState } from '../hooks';
+import { formatDate } from '@myorganizer/web-vault-ui';
 
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleString();
-  } catch {
-    return iso;
-  }
-}
+import { type VaultImportDisclosureState } from '../hooks';
 
 export interface ImportVaultReplaceDialogProps {
   open: boolean;

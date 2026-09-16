@@ -16,6 +16,7 @@ import {
 import {
   useOptionalVaultSession,
   vaultBlobTypeLabel,
+  formatDate,
 } from '@myorganizer/web-vault-ui';
 
 import { getErrorMessage } from '../utils/getErrorMessage';
@@ -27,19 +28,6 @@ import {
 } from '../hooks';
 import { VAULT_OPERATIONS } from '../policy';
 import { VaultUnavailableNotice } from './VaultUnavailableNotice';
-
-/**
- * Format an ISO date string to locale string, with fallback.
- */
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleString();
-  } catch {
-    return iso;
-  }
-}
 
 export function RemoveVaultCard() {
   const { toast } = useToast();

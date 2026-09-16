@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from '@myorganizer/web-ui';
 import * as React from 'react';
+import { formatDate } from './formatDate';
 
 /**
  * Minimal subset of {@link GetLatestVaultBackupResponse} required to render the
@@ -32,18 +33,6 @@ export interface LastBackupCardProps {
   isLoading?: boolean;
   /** Optional className for layout overrides. */
   className?: string;
-}
-
-function formatDate(iso: string): string {
-  try {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) {
-      return iso;
-    }
-    return d.toLocaleString();
-  } catch {
-    return iso;
-  }
 }
 
 /**
