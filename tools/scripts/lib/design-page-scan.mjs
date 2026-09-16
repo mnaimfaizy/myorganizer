@@ -16,11 +16,12 @@
  *
  * Rules are classified by kind (`RULE_KINDS`, ADR 0085). Every rule above the
  * citation rule is mechanical-hygiene: the `LEGACY` roster exempts a page from
- * these on the strength of one written reason. `checkCitations` is the one
- * factual-assertion rule today — it asserts that a citation resolves, which is
- * necessary and not sufficient (see its own comment) — and `LEGACY` does not
- * exempt a page from it: `scanDesignPage` runs everything for a `ROSTER` page,
- * `scanFactualAssertions` runs only this for a `LEGACY` one.
+ * these on the strength of one written reason. `checkCitations` carries the
+ * factual-assertion rules — a citation must resolve, carry an expected-content
+ * anchor, and match it, since resolution alone is necessary and not sufficient
+ * (see its own comment) — and `LEGACY` does not exempt a page from them:
+ * `scanDesignPage` runs everything for a `ROSTER` page, `scanFactualAssertions`
+ * runs only these for a `LEGACY` one.
  */
 
 import { createHash } from 'node:crypto';
@@ -750,7 +751,8 @@ export const RULE_KINDS = {
 };
 
 /**
- * Runs only the factual-assertion rules — today, citation resolution — over a
+ * Runs only the factual-assertion rules — citation resolution, the presence of an
+ * expected-content anchor, and its comparison against the cited line — over a
  * page the `LEGACY` exemption otherwise skips entirely (ADR 0085).
  *
  * @param {object} input

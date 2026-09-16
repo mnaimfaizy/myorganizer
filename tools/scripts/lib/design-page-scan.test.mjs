@@ -1105,10 +1105,20 @@ test('a citation inside a <style> or <script> block is not discovered', () => {
   assert.deepEqual(seen, []);
 });
 
-test('RULE_KINDS classifies citation-unresolved as factual-assertion and the rest as mechanical-hygiene', () => {
-  assert.equal(RULE_KINDS['citation-unresolved'], 'factual-assertion');
+test('RULE_KINDS classifies every citation rule as factual-assertion and the rest as mechanical-hygiene', () => {
+  // All three are what a LEGACY page still has to face: resolution alone catches
+  // none of the drift #771 corrected, so the anchor rules are factual too.
+  const factual = Object.entries(RULE_KINDS)
+    .filter(([, kind]) => kind === 'factual-assertion')
+    .map(([rule]) => rule)
+    .sort();
+  assert.deepEqual(factual, [
+    'citation-anchor-mismatch',
+    'citation-missing-anchor',
+    'citation-unresolved',
+  ]);
   const mechanical = Object.entries(RULE_KINDS)
-    .filter(([rule]) => rule !== 'citation-unresolved')
+    .filter(([rule]) => !factual.includes(rule))
     .map(([, kind]) => kind);
   assert.ok(mechanical.every((kind) => kind === 'mechanical-hygiene'));
 });
