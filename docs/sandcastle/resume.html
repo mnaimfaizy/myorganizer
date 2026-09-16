@@ -2824,7 +2824,7 @@ Your FIRST output must be the inventory required by rule 4. Only then start work
           </li>
           <li>
             A reset time was <b>parsed</b>, not guessed. Only the observed
-            <code>resets 4:30am (UTC)</code> shape is accepted; a bare local time
+            <code>resets 4&#58;30am (UTC)</code> shape is accepted; a bare local time
             would be ambiguous across the machines this runs on. An unreadable
             timestamp exits.
           </li>
@@ -2850,7 +2850,7 @@ Your FIRST output must be the inventory required by rule 4. Only then start work
         <p class="small muted" style="margin-bottom: 0">
           The wait window is reported in the operator's own timezone with the
           duration attached &mdash;
-          <code>21 Aug, 2:30 pm AEST (in 19h 25m)</code> &mdash; because a UTC
+          <code>21 Aug, 2&#58;30 pm AEST (in 19h 25m)</code> &mdash; because a UTC
           timestamp reads as unremarkable while a duration makes an obviously
           wrong wait obvious.
         </p>
@@ -2941,6 +2941,19 @@ Your FIRST output must be the inventory required by rule 4. Only then start work
       "resumeQuotaWaitFlag": "--wait-for-quota",
       "resumeQuotaWaitMarginMs": 300000,
       "resumeAgentMaxIterations": 2
+    }
+  }
+</script>
+
+<script type="application/json" id="citation-anchors">
+  {
+    "note": "Expected-content anchors for every file:line citation on this page (ADR 0085). Verified against the tree on 2026-09-16.",
+    "anchors": {
+      ".sandcastle/main.mts:2917-2952": {
+        "file": ".sandcastle/main.mts",
+        "start": "// Was this a provider usage limit, and did the maintainer ask us to wait it out?",
+        "end": "continue;"
+      }
     }
   }
 </script>
