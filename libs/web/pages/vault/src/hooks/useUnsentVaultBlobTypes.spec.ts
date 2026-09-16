@@ -9,7 +9,11 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
 
 import { renderHook, waitFor } from '@testing-library/react';
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
-import { createVaultHandle, VAULT_BLOB_FIELDS } from '@myorganizer/web-vault';
+import {
+  createVaultHandle,
+  VAULT_BLOB_FIELDS,
+  type VaultHandle,
+} from '@myorganizer/web-vault';
 import { VaultBlobType } from '@myorganizer/app-api-client';
 
 import { useUnsentVaultBlobTypes } from './useUnsentVaultBlobTypes';
@@ -24,6 +28,15 @@ import { useUnsentVaultBlobTypes } from './useUnsentVaultBlobTypes';
  */
 const TEST_OWNER = 'test-owner';
 const TEST_PASSPHRASE = 'unit-test-pass';
+
+async function createUnlockedHandle(
+  owner: string = TEST_OWNER,
+): Promise<VaultHandle> {
+  const handle = createVaultHandle({ owner });
+  await handle.initialize({ passphrase: TEST_PASSPHRASE });
+  await handle.unlockWithPassphrase({ passphrase: TEST_PASSPHRASE });
+  return handle;
+}
 
 describe('useUnsentVaultBlobTypes', () => {
   beforeEach(() => {
@@ -50,9 +63,7 @@ describe('useUnsentVaultBlobTypes', () => {
 
   // Test 2: Dialog closed — hasUnsentChanges is never called when active is false
   test('does not call hasUnsentChanges when dialog is closed (active=false)', async () => {
-    const handle = createVaultHandle({ owner: TEST_OWNER });
-    await handle.initialize({ passphrase: TEST_PASSPHRASE });
-    await handle.unlockWithPassphrase({ passphrase: TEST_PASSPHRASE });
+    const handle = await createUnlockedHandle();
 
     (useOptionalVaultSession as jest.Mock).mockReturnValue({ handle });
 
@@ -71,9 +82,7 @@ describe('useUnsentVaultBlobTypes', () => {
 
   // Test 3: Initial synchronous state — returns pending synchronously before effect runs
   test('returns pending state synchronously before async derivation', async () => {
-    const handle = createVaultHandle({ owner: TEST_OWNER });
-    await handle.initialize({ passphrase: TEST_PASSPHRASE });
-    await handle.unlockWithPassphrase({ passphrase: TEST_PASSPHRASE });
+    const handle = await createUnlockedHandle();
 
     (useOptionalVaultSession as jest.Mock).mockReturnValue({ handle });
 
@@ -85,9 +94,7 @@ describe('useUnsentVaultBlobTypes', () => {
 
   // Test 4: Fully synced — empty unsent types array when all data is pushed
   test('returns empty unsent types when all saved data has been pushed', async () => {
-    const handle = createVaultHandle({ owner: TEST_OWNER });
-    await handle.initialize({ passphrase: TEST_PASSPHRASE });
-    await handle.unlockWithPassphrase({ passphrase: TEST_PASSPHRASE });
+    const handle = await createUnlockedHandle();
 
     // Save and push Addresses and Tasks
     await handle.saveEncryptedData({
@@ -119,9 +126,7 @@ describe('useUnsentVaultBlobTypes', () => {
 
   // Test 5: Known subset unsent — correct types array with unsent changes
   test('returns correct unsent types in VAULT_BLOB_TYPES iteration order', async () => {
-    const handle = createVaultHandle({ owner: TEST_OWNER });
-    await handle.initialize({ passphrase: TEST_PASSPHRASE });
-    await handle.unlockWithPassphrase({ passphrase: TEST_PASSPHRASE });
+    const handle = await createUnlockedHandle();
 
     // Addresses: saved and pushed (synced)
     await handle.saveEncryptedData({
@@ -162,9 +167,7 @@ describe('useUnsentVaultBlobTypes', () => {
   // Test 6: Locked handle — correct unsent types even on a locked (never-unlocked) handle
   test('returns correct unsent types from a locked handle without Master Key', async () => {
     // Step 1: Build unsent state via unlocked handle
-    const unlockedHandle = createVaultHandle({ owner: TEST_OWNER });
-    await unlockedHandle.initialize({ passphrase: TEST_PASSPHRASE });
-    await unlockedHandle.unlockWithPassphrase({ passphrase: TEST_PASSPHRASE });
+    const unlockedHandle = await createUnlockedHandle();
 
     // Addresses: saved and pushed
     await unlockedHandle.saveEncryptedData({
@@ -209,9 +212,7 @@ describe('useUnsentVaultBlobTypes', () => {
 
   // Test 7: Reopen recomputes — unsent types are recomputed on each dialog open
   test('recomputes unsent types each time dialog reopens, reflecting live Vault state', async () => {
-    const handle = createVaultHandle({ owner: TEST_OWNER });
-    await handle.initialize({ passphrase: TEST_PASSPHRASE });
-    await handle.unlockWithPassphrase({ passphrase: TEST_PASSPHRASE });
+    const handle = await createUnlockedHandle();
 
     (useOptionalVaultSession as jest.Mock).mockReturnValue({ handle });
 

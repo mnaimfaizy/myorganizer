@@ -16,7 +16,11 @@ libs/web/pages/<route>/src/**/<name>.spec.ts(x)
 
 ## Patterns
 
-- Mock the API client, auth, and vault at the module boundary.
+- Mock the API client, auth, and vault at the module boundary — **except** when the hook under
+  test derives its answer from real Ciphertext (e.g. `handle.hasUnsentChanges`). A stubbed handle
+  there would only prove the stub returns what it was told to return; drive a real `VaultHandle`
+  from `@myorganizer/web-vault` instead, and keep mocking `@myorganizer/web-vault-ui`'s
+  `useOptionalVaultSession` to supply it. See `useUnsentVaultBlobTypes.spec.ts` (issue #702).
 - Use Zod schema `safeParse` directly for form validation tests — no DOM rendering needed.
 - Use React Testing Library for component integration.
 - Reference form-validation spec: `libs/web/pages/addresses/src/utils/addressForm.spec.ts`.
