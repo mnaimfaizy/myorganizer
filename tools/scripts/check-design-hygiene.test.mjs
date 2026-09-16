@@ -243,6 +243,59 @@ test('the same legacy page with only a non-canonical font block still passes —
   assert.match(result.stdout, /SKIPPED/);
 });
 
+// --- an anchor nobody can check is not a passing anchor -----------------------
+
+test('an anchor naming a file that cannot be read is a finding, not a skip', (t) => {
+  // Falling through silently would let a citation pass by naming a file nobody
+  // can read — a claim asserted by nothing, which is the defect this gate is for.
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    pageWithCitation('waves', {
+      citation: 'tools/scripts/lib/source-scan.mjs:2',
+      anchor: {
+        'tools/scripts/lib/source-scan.mjs:2': {
+          file: 'does/not/exist.mjs',
+          start: 'whatever text',
+        },
+      },
+    }),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-anchor-unreadable/);
+  assert.match(result.stdout, /does\/not\/exist\.mjs/);
+});
+
+test('an anchor whose cited line is past the end of its own file is a finding', (t) => {
+  // The citation resolves against short.txt, which is long enough; the anchor
+  // names a shorter file, so the cited line is past the end of the file the
+  // comparison actually reads.
+  const workspace = createWorkspace(t);
+  write(workspace, 'short.txt', 'one\ntwo\n');
+  write(workspace, 'shorter.txt', 'only one line\n');
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    pageWithCitation('waves', {
+      citation: 'short.txt:2',
+      anchor: {
+        'short.txt:2': { file: 'shorter.txt', start: 'two' },
+      },
+    }),
+  );
+  spawnSync('git', ['add', '-A'], { cwd: workspace });
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-anchor-unreadable/);
+  assert.match(result.stdout, /1 line\(s\)/);
+});
+
 // --- the anchor requirement is per citation, not per page (ADR 0085) ----------
 //
 // Keyed off the presence of a `citation-anchors` block, the rule would hold only

@@ -185,6 +185,10 @@ last line of a range — **both ends, so a range that grows or shrinks at either
 whitespace-normalised on comparison, following `verifyCitation` in
 `tools/scripts/review/obligations.mjs`.
 
+`file` is itself a claim, so the gate fails a citation whose `file` cannot be read or whose cited
+line is past that file's end (`citation-anchor-unreadable`), rather than passing it unverified. An
+anchor nobody can check asserts nothing, which is the state this whole block exists to leave.
+
 That last claim holds only as far as the end line says something. `release.mjs:16-24` ends on a bare
 `}` and line 23 is `  }`, which normalises to the same string, so a one-line shrink there verifies
 anyway. Prefer a range whose last line is distinctive; where the source offers none, the anchor is

@@ -53,7 +53,7 @@ import {
   ROSTER,
 } from './lib/design-page-roster.mjs';
 import { readBaselineEnvelope } from './lib/baseline-file.mjs';
-import { reportFindings } from './lib/source-scan.mjs';
+import { citableLines, reportFindings } from './lib/source-scan.mjs';
 
 // Pages whose citations are not yet anchored (ADR 0085; PRD #772). The rule is
 // per citation, so this list is the only thing holding a page back from it — and
@@ -173,13 +173,7 @@ function basenameIndex() {
 
 function lineCount(file) {
   try {
-    // A trailing newline is not a line of its own. .editorconfig enforces one
-    // on nearly every tracked file, so counting split('\n').length uncorrected
-    // over-reports every such file's last line by one — a citation to the line
-    // past the real end would resolve as in range instead of failing.
-    const lines = readFileSync(file, 'utf8').split('\n');
-    if (lines[lines.length - 1] === '') lines.pop();
-    return lines.length;
+    return citableLines(readFileSync(file, 'utf8')).length;
   } catch {
     return null;
   }

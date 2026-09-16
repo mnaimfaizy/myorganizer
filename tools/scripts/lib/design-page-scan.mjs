@@ -26,7 +26,7 @@
 
 import { createHash } from 'node:crypto';
 
-import { blockAfter, lineOf } from './source-scan.mjs';
+import { blockAfter, citableLines, lineOf } from './source-scan.mjs';
 
 const blank = (match) => match.replace(/[^\n]/g, ' ');
 
@@ -692,47 +692,63 @@ function checkCitations(
           });
         }
       } else {
-        // Use the anchor's file path for reading, as it disambiguates among multiple same-named files
+        // The anchor's own `file` disambiguates among same-named files, so it is
+        // what gets read — and it is a claim in its own right. A file that
+        // cannot be read, or a cited line past its end, is an unverifiable
+        // anchor, not an absent one: falling through with no finding would let a
+        // citation pass by naming a file nobody can check, which is the failure
+        // this rule exists to stop.
         const filePath = anchor.file || result.filePath;
-        const fileContent = getFileContent(filePath);
-        if (fileContent) {
-          const lines = fileContent.split('\n');
-          if (lines[lines.length - 1] === '') lines.pop();
+        const fileContent = filePath ? getFileContent(filePath) : null;
+        if (fileContent === null || fileContent === undefined) {
+          findings.push({
+            rule: 'citation-anchor-unreadable',
+            line: citation.sourceLine,
+            message: `Citation ${key} names ${filePath ?? 'no file'} in citation-anchors, which cannot be read. Nothing can verify what this citation claims.`,
+          });
+          continue;
+        }
 
-          const startIdx = citation.line - 1;
-          const endIdx = citation.endLine - 1;
+        const lines = citableLines(fileContent);
+        const startIdx = citation.line - 1;
+        const endIdx = citation.endLine - 1;
+        const lastCitedIdx =
+          citation.endLine !== citation.line && anchor.end !== undefined
+            ? endIdx
+            : startIdx;
 
-          if (startIdx >= 0 && startIdx < lines.length) {
-            const actualStartText = normalizeAnchorText(lines[startIdx]);
-            const expectedStartText = normalizeAnchorText(anchor.start);
+        if (startIdx < 0 || lastCitedIdx >= lines.length) {
+          findings.push({
+            rule: 'citation-anchor-unreadable',
+            line: citation.sourceLine,
+            message: `Citation ${key} is outside ${filePath}, which has ${lines.length} line(s). Nothing can verify what this citation claims.`,
+          });
+          continue;
+        }
 
-            if (actualStartText !== expectedStartText) {
-              findings.push({
-                rule: 'citation-anchor-mismatch',
-                line: citation.sourceLine,
-                message: `Citation ${key} anchor does not match: expected "${expectedStartText}" but found "${actualStartText}".`,
-              });
-              continue;
-            }
+        const actualStartText = normalizeAnchorText(lines[startIdx]);
+        const expectedStartText = normalizeAnchorText(anchor.start);
 
-            // For ranges, also check the end
-            if (
-              citation.endLine !== citation.line &&
-              anchor.end !== undefined
-            ) {
-              if (endIdx >= 0 && endIdx < lines.length) {
-                const actualEndText = normalizeAnchorText(lines[endIdx]);
-                const expectedEndText = normalizeAnchorText(anchor.end);
+        if (actualStartText !== expectedStartText) {
+          findings.push({
+            rule: 'citation-anchor-mismatch',
+            line: citation.sourceLine,
+            message: `Citation ${key} anchor does not match: expected "${expectedStartText}" but found "${actualStartText}".`,
+          });
+          continue;
+        }
 
-                if (actualEndText !== expectedEndText) {
-                  findings.push({
-                    rule: 'citation-anchor-mismatch',
-                    line: citation.sourceLine,
-                    message: `Citation ${key} anchor (end) does not match: expected "${expectedEndText}" but found "${actualEndText}".`,
-                  });
-                }
-              }
-            }
+        // A range drifts at either end, so both are compared.
+        if (citation.endLine !== citation.line && anchor.end !== undefined) {
+          const actualEndText = normalizeAnchorText(lines[endIdx]);
+          const expectedEndText = normalizeAnchorText(anchor.end);
+
+          if (actualEndText !== expectedEndText) {
+            findings.push({
+              rule: 'citation-anchor-mismatch',
+              line: citation.sourceLine,
+              message: `Citation ${key} anchor (end) does not match: expected "${expectedEndText}" but found "${actualEndText}".`,
+            });
           }
         }
       }
@@ -762,6 +778,7 @@ export const RULE_KINDS = {
   'citation-unresolved': 'factual-assertion',
   'citation-missing-anchor': 'factual-assertion',
   'citation-anchor-mismatch': 'factual-assertion',
+  'citation-anchor-unreadable': 'factual-assertion',
 };
 
 /**

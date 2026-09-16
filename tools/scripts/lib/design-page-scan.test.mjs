@@ -1114,6 +1114,7 @@ test('RULE_KINDS classifies every citation rule as factual-assertion and the res
     .sort();
   assert.deepEqual(factual, [
     'citation-anchor-mismatch',
+    'citation-anchor-unreadable',
     'citation-missing-anchor',
     'citation-unresolved',
   ]);
