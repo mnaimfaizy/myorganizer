@@ -1729,6 +1729,83 @@
   }
 </script>
 
+<script type="application/json" id="citation-anchors">
+  {
+    "note": "Expected-content anchors for finding-lifecycle.html, verified against source on 2026-09-16",
+    "anchors": {
+      "SKILL.md:15": {
+        "file": ".agents/skills/code-review/SKILL.md",
+        "start": "- **Spec** — does the code faithfully implement the originating issue / PRD / spec?"
+      },
+      "SKILL.md:54": {
+        "file": ".agents/skills/code-review/SKILL.md",
+        "start": "The diff command is `git diff <fixed-point>...HEAD` (three-dot); the commit list is"
+      },
+      "SKILL.md:64": {
+        "file": ".agents/skills/code-review/SKILL.md",
+        "start": "2. **Issue references in commits** — `#123`, `Closes #45` in the commit list. `foundBy: commits`."
+      },
+      "SKILL.md:82": {
+        "file": ".agents/skills/code-review/SKILL.md",
+        "start": "it (`AGENTS.md`, Branch naming). That is why an agent-authored pull request resolves a spec without"
+      },
+      "AGENTS.md:159": {
+        "file": "AGENTS.md",
+        "start": "Format: `<type>/<issue-number>-<short-slug>`. The issue number comes **first**, right after the"
+      },
+      "ci.yml:16": {
+        "file": ".github/workflows/ci.yml",
+        "start": "cancel-in-progress: true"
+      },
+      "ci.yml:23": {
+        "file": ".github/workflows/ci.yml",
+        "start": "name: Authoritative Lockfile Policy"
+      },
+      "ci.yml:142": {
+        "file": ".github/workflows/ci.yml",
+        "start": "name: Secure Install Review"
+      },
+      "ci.yml:203": {
+        "file": ".github/workflows/ci.yml",
+        "start": "name: Prepare Dependency Cache"
+      },
+      "ci.yml:335": {
+        "file": ".github/workflows/ci.yml",
+        "start": "name: Setup Affected Context"
+      },
+      "ci.yml:413": {
+        "file": ".github/workflows/ci.yml",
+        "start": "name: Lint"
+      },
+      "ci.yml:459": {
+        "file": ".github/workflows/ci.yml",
+        "start": "name: Test"
+      },
+      "ci.yml:467": {
+        "file": ".github/workflows/ci.yml",
+        "start": "DATABASE_URL: postgresql://localhost:5432/myorganizer"
+      },
+      ".github/CODEOWNERS:3": {
+        "file": ".github/CODEOWNERS",
+        "start": "* @mnaimfaizy"
+      },
+      "docs/adr/0012-tiered-quality-gates.md:17-19": {
+        "file": "docs/adr/0012-tiered-quality-gates.md",
+        "start": "| `gate:mechanical` | Fixture/type retarget, rename, delete dead code, selector-only E2E string fix, already-satisfied AC verification, import/path fix with no behavior change | Main agent may edit directly (interactive or AFK) | Focused lint + focused tests (or `tsc` for type-only). No specialist chain. Short report (≤5 bullets). |",
+        "end": "| `gate:full` | New UI primitive/feature module, vault/crypto, API contract, multi-file product behavior, ambiguous UX | Current mandatory chains. **API Contract** uses One-shot Specialists (ADR 0015), not a Gated Pipeline. | Full documented pipelines. ComponentReviewer retry cap = 2 (mirror test pipeline; [ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md)). API Contract: PrismaWriter → ApiWriter → ApiSync, then leave. |"
+      },
+      "tools/config/github-labels.json:3": {
+        "file": "tools/config/github-labels.json",
+        "start": "\"orchestration\": ["
+      },
+      "tools/config/github-labels.json:80": {
+        "file": "tools/config/github-labels.json",
+        "start": "\"review\": ["
+      }
+    }
+  }
+</script>
+
 <script>
   'use strict';
 
