@@ -3085,7 +3085,7 @@ const SCENES = [
     settles: 'Why a fresh account gets 403, not 401.', state: 'pending_verification',
     body: 'Nothing advances until a human clicks the link. Login returns 403 the whole time — a check that exists only in the file that runs. Resending is refused while the stored token still verifies, so the cooldown is exactly the 10m TTL.',
     code: 'if (!user.email_verified) return res.status(403)  // auth.ts:52-58',
-    refs: ['auth.ts:52-58', 'UserService.ts:410-421'],
+    refs: ['auth.ts:52-58', 'UserService.ts:409-420'],
     flow: [{ t: 'POST /auth/login' }, { t: '403 email_not_verified', bad: true }],
     halt: { title: 'Halt — email verification', body: 'The stepper will not glide past this. An animation that runs straight through the gate teaches the opposite of the truth.', label: 'Click the link in the email' },
     tokens: [tok('verify', 'verify #1', 8, 26, 'live', 'still verifies → /verify/resend answers "already sent recently"')]
@@ -3093,8 +3093,8 @@ const SCENES = [
   {
     id: 'verified', kicker: 'Scene 4 · GET /auth/verify/email', title: 'Verified — and delegated, not diverged',
     settles: 'Which of the four handlers actually share code.', state: 'verified',
-    body: 'This is one of the four paths where authRouter delegates straight back into AuthController (auth.ts:270). The express/tsoa story is a partial overlap, not a clean fork — here the two implementations agree because they are the same code.',
-    refs: ['auth.ts:270', 'AuthController.ts'],
+    body: 'This is one of the four paths where authRouter delegates straight back into AuthController (auth.ts:271). The express/tsoa story is a partial overlap, not a clean fork — here the two implementations agree because they are the same code.',
+    refs: ['auth.ts:271', 'AuthController.ts'],
     flow: [{ t: 'authRouter' }, { t: 'AuthController.verifyEmail', good: true }, { t: 'email_verified = true' }],
     tokens: [tok('verify', 'verify #1', 8, 20, 'used', 'consumed — the token, not a column, was the gate')]
   },
@@ -3114,8 +3114,8 @@ const SCENES = [
     id: 'expiry', kicker: 'Scene 6 · ten minutes later', title: 'Two concurrent 401s collapse into one refresh',
     settles: 'Why a burst of stale requests does not stampede.', state: 'authenticated',
     body: 'The access token expires silently; the next two requests both get 401. The interceptor de-duplicates them through a single in-flight promise, retries each original request exactly once, and never refreshes for a 401 that came from an excluded auth path.',
-    code: 'refreshInFlight ??= refresh()   // :86  single-flight\nif (config._retry) throw err    // :75  one retry only\nEXCLUDED = [/auth/login, …]     // :33-41',
-    refs: ['auth-session-transport-adapter.ts:63-98'],
+    code: 'refreshInFlight ??= refresh()   // :119  single-flight\nif (config._retry) throw err    // :100  one retry only\nEXCLUDED = [/auth/login, …]     // :58-66',
+    refs: ['auth-session-transport-adapter.ts:88-146'],
     flow: [{ t: '401 ×2' }, { t: '1 × /auth/refresh', good: true }, { t: 'replay both' }],
     tokens: [
       tok('access', 'access #1', 30, 42, 'expired', 'exp reached — no revocation involved, just time'),
@@ -3166,11 +3166,11 @@ const SCENES = [
     id: 'force-logout', kicker: 'Scene 10 · admin force-logout', title: 'Watch which tokens go dark — and which do not',
     settles: 'What "log everyone out" actually kills.', state: 'disabled · sessions_invalidated_at set',
     body: 'One timestamp lands on the row. Every access and refresh token issued before it dies at its next check. The verify and reset tokens in flight are signed by different secrets and are checked by neither mechanism — they survive. That is the counter-intuitive result this scene exists to deliver.',
-    code: 'tokenIat * 1000 < sessionsInvalidatedAt.getTime()\n// passport.ts:97 (access) · auth.ts:404 (refresh) · sessionInvalidation.ts:14',
-    refs: ['UserService.ts:169,170,212', 'passport.ts:97', 'auth.ts:404'],
+    code: 'tokenIat * 1000 < sessionsInvalidatedAt.getTime()\n// passport.ts:95 (access) · auth.ts:404 (refresh) · sessionInvalidation.ts:14',
+    refs: ['UserService.ts:168,169,211', 'passport.ts:95', 'auth.ts:404'],
     flow: [{ t: 'admin: force_logout' }, { t: 'sessions_invalidated_at = now' }, { t: '3 dark', bad: true }, { t: '2 survive', good: true }],
     tokens: [
-      tok('access', 'access #2', 44, 56, 'dark', 'iat < timestamp → rejected at passport.ts:97'),
+      tok('access', 'access #2', 44, 56, 'dark', 'iat < timestamp → rejected at passport.ts:95'),
       tok('access', 'access #3', 52, 64, 'dark', 'newer, still older than the timestamp → also rejected'),
       tok('refresh', 'refresh #2', 44, 96, 'dark', 'rejected at auth.ts:404 — the 7d window is irrelevant now'),
       tok('verify', 'verify #2', 60, 76, 'live', 'SURVIVES — VERIFY_JWT_SECRET, checked by neither mechanism'),
@@ -3181,8 +3181,8 @@ const SCENES = [
     id: 'logout', kicker: 'Scene 11 · POST /auth/logout', title: 'Blacklisting cuts the narrowest of the three',
     settles: 'Why logout on one device leaves the others alone.', state: 'guest (this client)',
     body: 'Logout appends one refresh token to blacklisted_tokens[], and that list is consulted at the refresh endpoint only. An access token already in a tab keeps working until its ten minutes are up — no gate reads the blacklist.',
-    code: 'blacklisted_tokens.push(refresh)  // UserService.ts:498\nif (blacklisted.includes(t)) 401   // auth.ts:413  ← refresh only',
-    refs: ['UserService.ts:498', 'auth.ts:413'],
+    code: 'blacklisted_tokens.push(refresh)  // UserService.ts:499\nif (blacklisted.includes(t)) 401   // auth.ts:413  ← refresh only',
+    refs: ['UserService.ts:499', 'auth.ts:413'],
     flow: [{ t: 'logout' }, { t: 'blacklist that refresh', good: true }, { t: 'access token unaffected', bad: true }],
     tokens: [
       tok('access', 'access #4', 66, 78, 'live', 'still accepted — nothing checks the blacklist here'),
