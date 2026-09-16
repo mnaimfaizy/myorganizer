@@ -2627,6 +2627,42 @@ const __ds_scope = {};
   "notYetExported": ["hashing.bcryptSaltRounds", "clientStorage.accessTokenStorageKey", "clientStorage.userStorageKey", "clientStorage.tokenStorageModeKey"]
 }
 </script>
+<script type="application/json" id="citation-anchors">
+{
+  "note": "Expected-content anchors for every file:line citation on this page (ADR 0085; PRD #772; issue #797). Verified against the tree at HEAD as of 2026-09-16 — 11 of the page's original citations had drifted or were mis-cited and were corrected in the same change that added this block; see the commit message for the source diffs that proved each one.",
+  "anchors": {
+    "main.ts:165": { "file": "apps/backend/src/main.ts", "start": "api.use('/auth', authRouter);" },
+    "main.ts:171": { "file": "apps/backend/src/main.ts", "start": "RegisterRoutes(api);" },
+    "auth.ts:271": { "file": "apps/backend/src/routes/auth.ts", "start": "router.patch('/verify/email', async (req, res) => {" },
+    "auth.ts:52-58": { "file": "apps/backend/src/routes/auth.ts", "start": "(requestUser as any)?.email_verification_timestamp,", "end": "});" },
+    "AuthController.ts:47-79": { "file": "apps/backend/src/controllers/AuthController.ts", "start": "export class AuthController extends Controller {", "end": "requestBody.client_type," },
+    "auth.ts:89": { "file": "apps/backend/src/routes/auth.ts", "start": ".cookie('refresh_cookie', refreshToken, {" },
+    "auth.ts:434": { "file": "apps/backend/src/routes/auth.ts", "start": ".cookie('refresh_cookie', newRefreshToken, {" },
+    "AuthController.ts:161": { "file": "apps/backend/src/controllers/AuthController.ts", "start": ") {" },
+    "UserService.ts:499": { "file": "apps/backend/src/services/UserService.ts", "start": "blacklisted_tokens: {" },
+    "auth.ts:413": { "file": "apps/backend/src/routes/auth.ts", "start": "if (user.blacklisted_tokens?.includes(refreshToken)) {" },
+    "UserService.ts:169": { "file": "apps/backend/src/services/UserService.ts", "start": "sessions_invalidated_at: new Date()," },
+    "passport.ts:95": { "file": "apps/backend/src/utils/passport.ts", "start": "return done(null, false);" },
+    "auth.ts:404": { "file": "apps/backend/src/routes/auth.ts", "start": "(user as { sessions_invalidated_at?: Date | null })" },
+    "UserService.ts:168": { "file": "apps/backend/src/services/UserService.ts", "start": "disabled: true," },
+    "sessionInvalidation.ts:14": { "file": "apps/backend/src/helpers/sessionInvalidation.ts", "start": "return tokenIat * 1000 < sessionsInvalidatedAt.getTime();" },
+    "ApiTokens.ts:36": { "file": "apps/backend/src/helpers/ApiTokens.ts", "start": "process.env.ACCESS_JWT_SECRET," },
+    "ApiTokens.ts:41": { "file": "apps/backend/src/helpers/ApiTokens.ts", "start": "process.env.REFRESH_JWT_SECRET," },
+    "ApiTokens.ts:26": { "file": "apps/backend/src/helpers/ApiTokens.ts", "start": "process.env.VERIFY_JWT_SECRET," },
+    "ApiTokens.ts:16": { "file": "apps/backend/src/helpers/ApiTokens.ts", "start": "process.env.RESET_JWT_SECRET," },
+    "UserService.ts:409-420": { "file": "apps/backend/src/services/UserService.ts", "start": "if (existingToken) {", "end": "}" },
+    "AuthController.ts:359-377": { "file": "apps/backend/src/controllers/AuthController.ts", "start": "): Promise<{ status: number; message: string }> {", "end": "// If the existing token is still valid, block resending to prevent spamming." },
+    "UserService.ts:377-396": { "file": "apps/backend/src/services/UserService.ts", "start": "async resetPassword(", "end": "}" },
+    "refresh-client-contract.ts:86": { "file": "libs/auth/src/lib/refresh-client-contract.ts", "start": "export function shouldIncludeRefreshTokenInLoginBody(" },
+    "auth-session-module.ts:95-103": { "file": "libs/auth/src/lib/auth-session-module.ts", "start": "getSnapshot(): SessionSnapshot {", "end": "}," },
+    "auth-session-transport-adapter.ts:119": { "file": "libs/auth/src/lib/auth-session-transport-adapter.ts", "start": "if (!refreshInFlight) {" },
+    "auth-session-transport-adapter.ts:100": { "file": "libs/auth/src/lib/auth-session-transport-adapter.ts", "start": "if (originalRequest._retry) {" },
+    "auth-session-transport-adapter.ts:58-66": { "file": "libs/auth/src/lib/auth-session-transport-adapter.ts", "start": "function isAuthUrl(url: string | undefined): boolean {", "end": "}" },
+    "auth-session-transport-adapter.ts:88-146": { "file": "libs/auth/src/lib/auth-session-transport-adapter.ts", "start": "instance.interceptors.response.use(", "end": ");" },
+    "auth-session-types.ts:5-11": { "file": "libs/auth/src/lib/auth-session-types.ts", "start": "export type AuthErrorCode =", "end": "| 'unknown';" }
+  }
+}
+</script>
 </helmet>
 
 <div style="background:var(--color-bg);color:var(--color-text);font-family:var(--font-body);min-height:100vh;padding:0 0 var(--space-8)">
@@ -2677,7 +2713,7 @@ const __ds_scope = {};
               <strong style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px">routes/auth.ts</strong>
               <span class="tag tag-accent" style="font-weight:700">RUNS</span>
             </div>
-            <div style="font-size:12px;margin-top:4px" class="text-muted">hand-written <code>authRouter</code> — mounted at <code>main.ts:182</code>. Serves <strong>every</strong> <code>/auth/*</code> path.</div>
+            <div style="font-size:12px;margin-top:4px" class="text-muted">hand-written <code>authRouter</code> — mounted at <code>main.ts:165</code>. Serves <strong>every</strong> <code>/auth/*</code> path.</div>
           </div>
           <div aria-hidden="true" style="flex:none;display:flex;align-items:center"><div style="width:24px;height:2px;background:var(--color-accent)"></div><div style="width:0;height:0;border-left:8px solid var(--color-accent);border-top:5px solid transparent;border-bottom:5px solid transparent"></div></div>
           <div style="flex:none;display:flex;flex-direction:column;gap:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px">
@@ -2693,7 +2729,7 @@ const __ds_scope = {};
               <span class="tag tag-accent-2">partial overlap — 4 handlers delegate down</span>
               <span class="text-muted" style="font-size:12px">not a clean fork</span>
             </div>
-            <div style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;margin-top:6px;color:var(--color-accent-2-700)">/verify/email · /verify/resend · /password/reset · /password/reset/confirm <span class="text-muted" style="font-family:var(--font-body)">— auth.ts:270,339,344,349 call straight back into the controller</span></div>
+            <div style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;margin-top:6px;color:var(--color-accent-2-700)">/verify/email · /verify/resend · /password/reset · /password/reset/confirm <span class="text-muted" style="font-family:var(--font-body)">— auth.ts:271,340,345,350 call straight back into the controller</span></div>
           </div>
         </div>
 
@@ -2708,7 +2744,7 @@ const __ds_scope = {};
               <strong style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:14px;color:var(--color-neutral-700)">AuthController.ts</strong>
               <span class="tag tag-neutral">NEVER REACHED</span>
             </div>
-            <div style="font-size:12px;margin-top:4px" class="text-muted">tsoa · <code>RegisterRoutes(api)</code> at <code>main.ts:188</code> — mounted second, so no <code>/auth/*</code> request ever arrives.</div>
+            <div style="font-size:12px;margin-top:4px" class="text-muted">tsoa · <code>RegisterRoutes(api)</code> at <code>main.ts:171</code> — mounted second, so no <code>/auth/*</code> request ever arrives.</div>
           </div>
           <div aria-hidden="true" style="flex:none;display:flex;align-items:center"><div style="width:22px;height:2px;background:var(--color-neutral-500)"></div><div style="width:0;height:0;border-left:8px solid var(--color-neutral-500);border-top:5px solid transparent;border-bottom:5px solid transparent"></div></div>
           <div style="flex:none;padding:8px 14px;border-radius:999px;border:1px dashed var(--color-neutral-500);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px">api-specs.openapi.yaml</div>
@@ -2873,19 +2909,19 @@ const __ds_scope = {};
       <sc-raw-tbody>
         <sc-raw-tr>
           <sc-raw-td style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px">blacklisted_tokens[]</sc-raw-td>
-          <sc-raw-td style="font-size:13px">logout<br><span class="text-muted" style="font-size:11px">UserService.ts:498</span></sc-raw-td>
+          <sc-raw-td style="font-size:13px">logout<br><span class="text-muted" style="font-size:11px">UserService.ts:499</span></sc-raw-td>
           <sc-raw-td style="font-size:13px"><strong>refresh only</strong><br><span class="text-muted" style="font-size:11px">auth.ts:413</span></sc-raw-td>
           <sc-raw-td style="font-size:13px">that one refresh token</sc-raw-td>
         </sc-raw-tr>
         <sc-raw-tr>
           <sc-raw-td style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px">sessions_invalidated_at</sc-raw-td>
-          <sc-raw-td style="font-size:13px">admin disable / force-logout<br><span class="text-muted" style="font-size:11px">UserService.ts:170,212</span></sc-raw-td>
-          <sc-raw-td style="font-size:13px">every access token <span class="text-muted" style="font-size:11px">passport.ts:97</span><br>and refresh <span class="text-muted" style="font-size:11px">auth.ts:404</span></sc-raw-td>
+          <sc-raw-td style="font-size:13px">admin disable / force-logout<br><span class="text-muted" style="font-size:11px">UserService.ts:169,211</span></sc-raw-td>
+          <sc-raw-td style="font-size:13px">every access token <span class="text-muted" style="font-size:11px">passport.ts:95</span><br>and refresh <span class="text-muted" style="font-size:11px">auth.ts:404</span></sc-raw-td>
           <sc-raw-td style="font-size:13px">all tokens issued before the timestamp</sc-raw-td>
         </sc-raw-tr>
         <sc-raw-tr>
           <sc-raw-td style="font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px">disabled</sc-raw-td>
-          <sc-raw-td style="font-size:13px">admin disable<br><span class="text-muted" style="font-size:11px">UserService.ts:169</span></sc-raw-td>
+          <sc-raw-td style="font-size:13px">admin disable<br><span class="text-muted" style="font-size:11px">UserService.ts:168</span></sc-raw-td>
           <sc-raw-td style="font-size:13px">four separate gates</sc-raw-td>
           <sc-raw-td style="font-size:13px">all future authentication — <strong>tokens stay valid</strong></sc-raw-td>
         </sc-raw-tr>
@@ -2915,7 +2951,7 @@ const __ds_scope = {};
     <div class="card elev-sm">
       <span class="card-kicker">Panel 2 · "already sent recently"</span>
       <span class="card-title">The cooldown is the token itself</span>
-      <p class="card-body">There is no cooldown column. <code>sendVerificationMail</code> decodes the previously stored token; if it <em>still verifies</em>, it returns an error instead of sending (<code>UserService.ts:410-421</code>). The reset path does the same (<code>AuthController.ts:359-377</code>).</p>
+      <p class="card-body">There is no cooldown column. <code>sendVerificationMail</code> decodes the previously stored token; if it <em>still verifies</em>, it returns an error instead of sending (<code>UserService.ts:409-420</code>). The reset path does the same (<code>AuthController.ts:359-377</code>).</p>
       <div style="padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--color-accent-100);color:var(--color-accent-800);font-size:13px">The still-valid token <strong>is</strong> the rate limiter, so the cooldown equals the token TTL — <strong>10m</strong> — by construction, not by configuration.</div>
     </div>
 
@@ -2925,13 +2961,13 @@ const __ds_scope = {};
       <p class="card-body">The row is the lock. <code>resetPassword</code> matches on the token and nulls the column in the same statement — a second use matches no row.</p>
       <pre style="margin:0;padding:var(--space-3);border-radius:var(--radius-md);background:var(--color-neutral-100);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;line-height:1.6;overflow-x:auto;white-space:pre">where: { id, reset_password_token: token }
 data:  { password: hash, reset_password_token: null }
-// UserService.ts:378-397</pre>
+// UserService.ts:377-396</pre>
     </div>
 
     <div class="card elev-sm">
       <span class="card-kicker">Panel 4 · where the refresh token lives</span>
       <span class="card-title">Web and mobile split at the same endpoint</span>
-      <p class="card-body"><code>shouldIncludeRefreshTokenInLoginBody</code> (<code>refresh-client-contract.ts:64</code>) forks on <code>client_type</code>. One endpoint, two trust models.</p>
+      <p class="card-body"><code>shouldIncludeRefreshTokenInLoginBody</code> (<code>refresh-client-contract.ts:86</code>) forks on <code>client_type</code>. One endpoint, two trust models.</p>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-2)">
         <div style="padding:var(--space-3);border-radius:var(--radius-md);background:var(--color-bg);border:1px solid var(--color-divider)">
           <strong style="font-family:var(--font-heading);font-size:14px">web</strong>
@@ -2969,7 +3005,7 @@ data:  { password: hash, reset_password_token: null }
         <div aria-hidden="true" style="display:flex;align-items:center"><div style="width:22px;height:2px;background:var(--color-accent)"></div><div style="width:0;height:0;border-left:8px solid var(--color-accent);border-top:5px solid transparent;border-bottom:5px solid transparent"></div></div>
         <span style="padding:8px 12px;border-radius:999px;background:var(--color-accent);color:var(--color-bg);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;text-align:center">1 × POST /auth/refresh</span>
       </div>
-      <p class="card-body">Single-flight via <code>refreshInFlight</code> (:86), exactly one retry via <code>_retry</code> (:75), and an exclusion list (:33-41) so a 401 from <code>/auth/login</code> never starts a refresh loop. <span class="text-muted">auth-session-transport-adapter.ts:63-98</span></p>
+      <p class="card-body">Single-flight via <code>refreshInFlight</code> in <code>auth-session-transport-adapter.ts</code> (:119), exactly one retry via <code>_retry</code> (:100), and an exclusion list (:58-66) so a 401 from <code>/auth/login</code> never starts a refresh loop. <span class="text-muted">auth-session-transport-adapter.ts:88-146</span></p>
     </div>
   </div>
 </section>

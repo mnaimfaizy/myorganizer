@@ -1,7 +1,5 @@
 {
   "schemaVersion": 1,
   "comment": "The expected-content anchor ratchet baseline for the House Explainer Page citation rule (`yarn design:hygiene`). Every entry names a page that carries file:line citations with no `citation-anchors` entry, so nothing asserts what those citations name (ADR 0085; PRD #772). A citation on a page NOT listed here must carry an anchor. The list can only shrink: a page whose citations are all anchored fails the check as stale — remove it in the same change that anchors it — and a page with unanchored citations and no entry here fails as new, untracked debt. Deliberately no written-reason opt-out, and no per-citation entries: a page is anchored or it is not. Slice #787 anchored release-pipeline.html, the page whose drift (#771) motivated the rule; these are the pages the rule newly reaches.",
-  "baseline": [
-    "docs/authentication/session-lifecycle.html"
-  ]
+  "baseline": []
 }
