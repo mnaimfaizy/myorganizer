@@ -28,15 +28,16 @@ export type LatestCloudBackupApiFactory = () => {
   getLatestBackup: (req: {
     status?: string;
     source?: string;
+    event?: string;
   }) => Promise<{ data: LatestBackupRecord }>;
 };
 
 /**
- * Fetch the most recent successful Google Drive backup record on mount and
+ * Fetch the most recent successful Google Drive Escape Copy record on mount and
  * whenever `refreshKey` changes. Mirrors the cross-source `useLatestBackup`
  * hook (`libs/web/pages/account/src/hooks/useLatestBackup.ts`, private to
- * that route) but filters by `source='google-drive'` so the returned record
- * is provider-scoped.
+ * that route) but filters by `source='google-drive'` and `event='export'` so
+ * the returned record is provider-scoped and excludes restore imports.
  */
 export function useLatestCloudBackup(
   refreshKey = 0,
@@ -53,6 +54,7 @@ export function useLatestCloudBackup(
       const response = await api.getLatestBackup({
         status: 'success',
         source: 'google-drive',
+        event: 'export',
       });
       setState({ status: 'loaded', record: response.data });
     } catch (error: unknown) {

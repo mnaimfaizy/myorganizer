@@ -4,10 +4,13 @@
 
 accepted
 
-The decision is made and it constrains work that has not been done yet. What exists today is the
-implicit-flow provider this ADR keeps; what does not exist is the honest connection vocabulary and
-the standalone reader that make the property useful
-([ADR 0064](0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md)).
+The implicit-flow provider this ADR keeps is shipped, and so is the honest vocabulary it asks for:
+Linked / Not linked / Reconnect Needed, the age of the newest Escape Copy on the vault page, and an
+Escape Copy Age Limit in place of `daily`/`weekly`/`monthly`
+([#514](https://github.com/mnaimfaizy/myorganizer/issues/514)). The standalone reader that makes the
+property useful does not exist yet
+([ADR 0064](0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md),
+[#792](https://github.com/mnaimfaizy/myorganizer/issues/792)).
 
 ## Context
 

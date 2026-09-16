@@ -10,6 +10,7 @@ import {
   vaultBlobRouteAbsolute,
   vaultBlobTypeExtractor,
   waitForOwnedVault,
+  waitForReload,
 } from './helpers';
 
 /**
@@ -144,11 +145,13 @@ function setupBackend(page: Page) {
     const url = new URL(request.url());
     const wantStatus = url.searchParams.get('status');
     const wantSource = url.searchParams.get('source');
+    const wantEvent = url.searchParams.get('event');
     const matching = backupRecords
       .filter((r) =>
         wantStatus ? r.status === wantStatus : r.status === 'success',
       )
       .filter((r) => (wantSource ? r.source === wantSource : true))
+      .filter((r) => (wantEvent ? r.event === wantEvent : true))
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     if (matching.length === 0) {
       await route.fulfill({
@@ -321,17 +324,24 @@ function setupBackend(page: Page) {
  * token client to invoke its callback with `{error}`, or `'ok'` which yields
  * a fresh access token. Interactive (`prompt=consent`) requests always
  * succeed.
+ *
+ * `tokenTtlSec` (default 1) controls the TTL of issued tokens. For most tests,
+ * 1s makes the provider re-request tokens; flow (b) passes 300 to keep a token
+ * usable, so we can assert the scheduler did not request a new one.
  */
 async function installGoogleMocks(
   page: Page,
-  options?: { tokenFailures?: ReadonlyArray<'ok' | string> },
+  options?: {
+    tokenFailures?: ReadonlyArray<'ok' | string>;
+    tokenTtlSec?: number;
+  },
 ) {
   // Mock the GIS script load — the loader script itself is irrelevant because
   // we pre-populate `window.google.accounts.oauth2`. We just need the request
   // to resolve so the script tag's `load` event fires.
   // Intercepts the Google Identity Services *script*, not an API, so it must
   // not fall through to the network.
-  // eslint-disable-next-line no-restricted-syntax -- script stub, not an API stub
+  // eslint-disable-next-line no-restricted-syntax -- GIS script stub, not an API stub
   await page.route(/accounts\.google\.com\/gsi\/client/, async (route) => {
     await route.fulfill({
       status: 200,
@@ -347,7 +357,7 @@ async function installGoogleMocks(
   // self-contained, we route into the same in-page handler via window.
   // Third-party Google Drive REST host, not this app's API — no app route can
   // collide with it.
-  // eslint-disable-next-line no-restricted-syntax -- third-party host, not an API stub
+  // eslint-disable-next-line no-restricted-syntax -- third-party Google host, not an API stub
   await page.route(
     /^https:\/\/(www\.)?googleapis\.com\/(upload\/)?drive\/v3\/.*/,
     async (route) => {
@@ -383,9 +393,11 @@ async function installGoogleMocks(
   );
 
   await page.addInitScript(
-    ({ clientId, tokenFailures }) => {
+    ({ clientId, tokenFailures, tokenTtlSec }) => {
       const w = window as unknown as Record<string, unknown>;
       w.__MYORG_GOOGLE_CLIENT_ID__ = clientId;
+      // Counter for auth requests � used to assert scheduler did not request a new auth.
+      w.__authRequestCount = 0;
 
       // ---- Drive appDataFolder state ----
       type FakeFile = {
@@ -547,6 +559,10 @@ async function installGoogleMocks(
                 const interactive =
                   (req?.prompt ?? '') === 'consent' ||
                   (req?.prompt ?? '') === 'select_account';
+                // Increment counter on every request (used to assert scheduler did not request).
+                (w as { __authRequestCount?: number }).__authRequestCount =
+                  ((w as { __authRequestCount?: number }).__authRequestCount ??
+                    0) + 1;
                 queueMicrotask(() => {
                   if (interactive) {
                     revoked = false;
@@ -556,7 +572,7 @@ async function installGoogleMocks(
                       // Use a tiny TTL so the provider always reacquires on
                       // the silent path, making test-driven failures
                       // deterministic without mocking time.
-                      expires_in: 1,
+                      expires_in: tokenTtlSec,
                       scope: cfg.scope,
                       token_type: 'Bearer',
                     });
@@ -579,7 +595,7 @@ async function installGoogleMocks(
                   }
                   client.callback({
                     access_token: `token-${Math.random().toString(36).slice(2)}`,
-                    expires_in: 1,
+                    expires_in: tokenTtlSec,
                     scope: cfg.scope,
                     token_type: 'Bearer',
                   });
@@ -597,12 +613,16 @@ async function installGoogleMocks(
 
       (w as { google?: unknown }).google = { accounts };
     },
-    { clientId: TEST_CLIENT_ID, tokenFailures: options?.tokenFailures ?? [] },
+    {
+      clientId: TEST_CLIENT_ID,
+      tokenFailures: options?.tokenFailures ?? [],
+      tokenTtlSec: options?.tokenTtlSec ?? 1,
+    },
   );
 }
 
 async function setupVaultWithSampleData(page: Page) {
-  const passphrase = 'correct horse battery staple';
+  const passphrase = 'testpass99';
   await gotoStable(page, '/dashboard/addresses');
   await createOwnedVault(page, { passphrase });
   await unlockWithPassphrase(page, passphrase);
@@ -664,7 +684,7 @@ test.describe('Vault cloud backup via Google Drive (E2E)', () => {
     await ctx.close();
   });
 
-  test('connect + manual backup updates the cloud last-backup record', async ({
+  test('(a) connect + manual backup updates the cloud last-backup record', async ({
     browser,
   }) => {
     test.setTimeout(180000);
@@ -683,14 +703,14 @@ test.describe('Vault cloud backup via Google Drive (E2E)', () => {
       timeout: 60000,
     });
     await expect(
-      page.getByTestId('cloud-backup-connection-disconnected'),
+      page.getByTestId('cloud-backup-connection-not-linked'),
     ).toBeVisible();
     await expect(page.getByTestId('cloud-backup-latest-empty')).toBeVisible();
 
     // Connect.
     await page.getByTestId('cloud-backup-connect-button').click();
     await expect(
-      page.getByTestId('cloud-backup-connection-connected'),
+      page.getByTestId('cloud-backup-connection-linked'),
     ).toBeVisible({ timeout: 30000 });
 
     // Manual backup.
@@ -706,9 +726,62 @@ test.describe('Vault cloud backup via Google Drive (E2E)', () => {
     await ctx.close();
   });
 
-  test('automatic backup runs when interval is due, then surfaces needs-reconnect on silent token failure', async ({
+  test('(b) overdue notice + automatic backup from a held token', async ({
     browser,
   }) => {
+    test.setTimeout(180000);
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    setupBackend(page);
+    await installGoogleMocks(page, { tokenTtlSec: 300 });
+
+    await login(page);
+    await setupVaultWithSampleData(page);
+    await gotoVaultSettings(page);
+
+    await page.getByTestId('cloud-backup-connect-button').click();
+    await expect(
+      page.getByTestId('cloud-backup-connection-linked'),
+    ).toBeVisible({ timeout: 30000 });
+
+    await page.getByTestId('cloud-backup-age-limit-trigger').click();
+    await page.getByTestId('cloud-backup-age-limit-1-day').click();
+
+    await expect(page.getByTestId('cloud-backup-overdue')).toBeVisible({
+      timeout: 30000,
+    });
+
+    const countBefore = await page.evaluate(() => {
+      return (
+        (window as unknown as { __authRequestCount?: number })
+          .__authRequestCount ?? 0
+      );
+    });
+
+    await page.evaluate(() => {
+      window.dispatchEvent(new Event('online'));
+    });
+
+    await expect(page.getByTestId('cloud-backup-latest-recorded')).toBeVisible({
+      timeout: 60000,
+    });
+
+    await expect(page.getByTestId('cloud-backup-overdue')).toHaveCount(0, {
+      timeout: 30000,
+    });
+
+    const countAfter = await page.evaluate(() => {
+      return (
+        (window as unknown as { __authRequestCount?: number })
+          .__authRequestCount ?? 0
+      );
+    });
+    expect(countBefore).toBe(countAfter);
+
+    await ctx.close();
+  });
+
+  test('(c) refusal persists across reload', async ({ browser }) => {
     test.setTimeout(180000);
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
@@ -721,29 +794,9 @@ test.describe('Vault cloud backup via Google Drive (E2E)', () => {
 
     await page.getByTestId('cloud-backup-connect-button').click();
     await expect(
-      page.getByTestId('cloud-backup-connection-connected'),
+      page.getByTestId('cloud-backup-connection-linked'),
     ).toBeVisible({ timeout: 30000 });
 
-    // Configure a daily interval. With no prior cloud backup, the scheduler
-    // treats the next online tick as due.
-    await page.getByTestId('cloud-backup-interval-trigger').click();
-    await page.getByTestId('cloud-backup-interval-daily').click();
-
-    // Trigger the scheduler immediately rather than waiting for its 15min
-    // poll. The scheduler listens for `online` events, so dispatching one
-    // forces a `checkOnce`.
-    await page.evaluate(() => {
-      window.dispatchEvent(new Event('online'));
-    });
-
-    // Auto-backup must produce a `cloud-backup-latest-recorded` entry.
-    await expect(page.getByTestId('cloud-backup-latest-recorded')).toBeVisible({
-      timeout: 60000,
-    });
-
-    // Now flip the GIS mock so the next silent token request fails with
-    // `consent_required`, then trigger a manual backup. The provider's silent
-    // token acquisition should fail and surface `needs-reconnect` in the UI.
     await page.evaluate(() => {
       (
         window as unknown as { __myorgRevokeNext?: () => void }
@@ -753,29 +806,41 @@ test.describe('Vault cloud backup via Google Drive (E2E)', () => {
     await page.getByTestId('cloud-backup-now-button').click();
 
     await expect(
-      page.getByTestId('cloud-backup-connection-needs-reconnect'),
+      page.getByTestId('cloud-backup-connection-reconnect-needed'),
     ).toBeVisible({ timeout: 60000 });
+
+    await waitForReload(page, async () => {
+      await page.reload();
+    });
+
+    await expect(
+      page.getByTestId('cloud-backup-connection-reconnect-needed'),
+    ).toBeVisible({ timeout: 60000 });
+
+    await page.getByTestId('cloud-backup-reconnect-button').click();
+    await expect(
+      page.getByTestId('cloud-backup-connection-linked'),
+    ).toBeVisible({ timeout: 30000 });
 
     await ctx.close();
   });
 
-  test('restore from cloud after fresh local state, then disconnect', async ({
+  test('(d) restore dialog - unreadable disclosure requires checkbox', async ({
     browser,
   }) => {
     test.setTimeout(180000);
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
-    setupBackend(page);
+    const { backupRecords } = setupBackend(page);
     await installGoogleMocks(page);
 
     await login(page);
     await setupVaultWithSampleData(page);
     await gotoVaultSettings(page);
 
-    // Connect + backup so something exists in Drive.
     await page.getByTestId('cloud-backup-connect-button').click();
     await expect(
-      page.getByTestId('cloud-backup-connection-connected'),
+      page.getByTestId('cloud-backup-connection-linked'),
     ).toBeVisible({ timeout: 30000 });
     const backupNow = page.getByTestId('cloud-backup-now-button');
     await expect(backupNow).toBeEnabled({ timeout: 30000 });
@@ -784,22 +849,114 @@ test.describe('Vault cloud backup via Google Drive (E2E)', () => {
       timeout: 60000,
     });
 
-    // Simulate fresh local state by clearing the local vault.
     await removeOwnedVault(page, E2E_USER_ID);
 
-    // Restore.
-    page.once('dialog', (d) => d.accept());
     const restore = page.getByTestId('cloud-backup-restore-button');
     await expect(restore).toBeEnabled({ timeout: 30000 });
     await restore.click();
 
-    // Local vault should be re-materialized from the restore.
+    await expect(page.getByTestId('import-vault-replace-dialog')).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(
+      page.getByTestId('import-vault-replace-copy-age'),
+    ).toBeVisible();
+
+    await expect(
+      page.getByTestId('import-vault-replace-acknowledge'),
+    ).toBeVisible();
+
+    const confirmBtn = page.getByTestId('import-vault-replace-confirm');
+    await expect(confirmBtn).toBeDisabled();
+
+    const countBefore = backupRecords.length;
+    const cancelBtn = page.getByTestId('import-vault-replace-cancel');
+    await cancelBtn.click();
+
+    await expect(page.getByTestId('import-vault-replace-dialog')).toHaveCount(
+      0,
+    );
+    expect(backupRecords.length).toBe(countBefore);
+
+    await restore.click();
+    await expect(page.getByTestId('import-vault-replace-dialog')).toBeVisible({
+      timeout: 30000,
+    });
+
+    const checkbox = page.getByTestId('import-vault-replace-acknowledge');
+    await checkbox.click();
+    await expect(checkbox).toBeChecked({ timeout: 30000 });
+
+    await expect(confirmBtn).toBeEnabled();
+    await confirmBtn.click();
+
     await waitForOwnedVault(page, E2E_USER_ID);
 
-    // Disconnect.
-    await page.getByTestId('cloud-backup-disconnect-button').click();
+    const importRecord = backupRecords.find((r) => r.event === 'import');
+    expect(importRecord).toBeDefined();
+
+    await ctx.close();
+  });
+
+  test('(e) restore does not reset newest-copy age + unlink', async ({
+    browser,
+  }) => {
+    test.setTimeout(180000);
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    const { backupRecords } = setupBackend(page);
+    await installGoogleMocks(page);
+
+    await login(page);
+    await setupVaultWithSampleData(page);
+    await gotoVaultSettings(page);
+
+    await page.getByTestId('cloud-backup-connect-button').click();
     await expect(
-      page.getByTestId('cloud-backup-connection-disconnected'),
+      page.getByTestId('cloud-backup-connection-linked'),
+    ).toBeVisible({ timeout: 30000 });
+    const backupNow = page.getByTestId('cloud-backup-now-button');
+    await expect(backupNow).toBeEnabled({ timeout: 30000 });
+    await backupNow.click();
+    await expect(page.getByTestId('cloud-backup-latest-recorded')).toBeVisible({
+      timeout: 60000,
+    });
+
+    const datetimeAttrBefore = await page
+      .getByTestId('cloud-backup-latest-recorded')
+      .locator('time')
+      .getAttribute('datetime');
+
+    const restore = page.getByTestId('cloud-backup-restore-button');
+    await restore.click();
+
+    await expect(page.getByTestId('import-vault-replace-dialog')).toBeVisible({
+      timeout: 30000,
+    });
+    await expect(
+      page.getByTestId('import-vault-replace-acknowledge'),
+    ).toHaveCount(0);
+
+    const confirmBtn = page.getByTestId('import-vault-replace-confirm');
+    await expect(confirmBtn).toBeEnabled();
+    await confirmBtn.click();
+
+    await expect(page.getByTestId('import-vault-replace-dialog')).toHaveCount(
+      0,
+    );
+    const importRecord = backupRecords.find((r) => r.event === 'import');
+    expect(importRecord).toBeDefined();
+
+    const datetimeAttrAfter = await page
+      .getByTestId('cloud-backup-latest-recorded')
+      .locator('time')
+      .getAttribute('datetime');
+    expect(datetimeAttrAfter).toBe(datetimeAttrBefore);
+
+    const disconnect = page.getByTestId('cloud-backup-disconnect-button');
+    await disconnect.click();
+    await expect(
+      page.getByTestId('cloud-backup-connection-not-linked'),
     ).toBeVisible({ timeout: 30000 });
 
     await ctx.close();

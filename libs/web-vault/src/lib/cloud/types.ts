@@ -9,12 +9,23 @@
 
 export type CloudBackupProviderId = 'google-drive';
 
+/**
+ * What this device knows about the User's link to a provider (CONTEXT.md:
+ * Linked Provider). `linked` says the User completed the connection and
+ * nothing more — whether a token can be obtained right now is only discovered
+ * by trying. `reconnect-needed` is entered only when the provider itself
+ * refused an attempt, and it is remembered across reloads.
+ */
 export type CloudBackupConnectionState =
-  | { status: 'disconnected' }
-  | { status: 'connected'; account?: { email?: string; displayName?: string } }
-  | { status: 'needs-reconnect'; reason?: string };
+  | { status: 'not-linked' }
+  | { status: 'linked' }
+  | { status: 'reconnect-needed'; reason?: string };
 
-export type CloudBackupAutoInterval = 'off' | 'daily' | 'weekly' | 'monthly';
+/**
+ * The age past which the User wants a newer Escape Copy (CONTEXT.md: Escape
+ * Copy Age Limit). A limit on staleness, never a clock promise.
+ */
+export type EscapeCopyAgeLimit = 'off' | '1-day' | '1-week' | '1-month';
 
 export interface CloudBackupFileMetadata {
   /** Provider-native file id. */
@@ -53,6 +64,13 @@ export interface CloudBackupProvider {
 
   /** Returns the current local connection state for this provider. */
   getConnectionState(): Promise<CloudBackupConnectionState>;
+
+  /**
+   * True when an upload or download could run right now without asking the
+   * User for anything — no prompt, no popup. Never attempts to obtain a
+   * token, so it is safe to call with nobody present.
+   */
+  canRunWithoutPrompt(): boolean;
 
   /**
    * Initiate user-driven connect flow. MUST only be called from a user

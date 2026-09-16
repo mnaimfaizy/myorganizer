@@ -4,9 +4,10 @@
 
 accepted
 
-The decision is made; the code does not do this yet. The defect it corrects is filed as
-[#617](https://github.com/mnaimfaizy/myorganizer/issues/617), and this ADR is the reasoning that
-issue implements.
+Both decisions are implemented. A restore clears Sync Bookmarks since
+[#617](https://github.com/mnaimfaizy/myorganizer/issues/617), the defect this ADR is the reasoning
+for. A restore from Google Drive is confirmed through the same dialog as a file import, showing the
+copy's age, since [#514](https://github.com/mnaimfaizy/myorganizer/issues/514).
 
 ## Context
 

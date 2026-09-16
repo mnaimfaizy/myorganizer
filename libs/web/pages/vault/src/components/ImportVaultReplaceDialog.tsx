@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 
 import {
   Button,
@@ -16,6 +17,16 @@ import {
 
 import { type VaultImportDisclosureState } from '../hooks';
 
+function formatDate(iso: string): string {
+  try {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return iso;
+    return d.toLocaleString();
+  } catch {
+    return iso;
+  }
+}
+
 export interface ImportVaultReplaceDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -25,6 +36,12 @@ export interface ImportVaultReplaceDialogProps {
   onDecline: () => void;
   /** Disclosure of what this import changes about vault credentials. */
   disclosure: VaultImportDisclosureState;
+  /** Optional ISO timestamp of when the copy was made. When present, shows copy age. */
+  copyCreatedAt?: string;
+  /** Optional dialog title. Defaults to "Replace this device's vault?". */
+  title?: string;
+  /** Optional confirm button label. Defaults to "Replace and import". */
+  confirmLabel?: string;
 }
 
 export function ImportVaultReplaceDialog({
@@ -33,6 +50,9 @@ export function ImportVaultReplaceDialog({
   onConfirm,
   onDecline,
   disclosure,
+  copyCreatedAt,
+  title,
+  confirmLabel,
 }: ImportVaultReplaceDialogProps) {
   const acknowledgeId = useId();
   const skipDeclineOnCloseRef = useRef(false);
@@ -113,7 +133,7 @@ export function ImportVaultReplaceDialog({
         return 'Checking what this backup changes about opening your Vault…';
 
       case 'unreadable':
-        return 'This file could not be read as a vault backup, so what it changes about opening your Vault cannot be shown here. Importing it will most likely fail.';
+        return 'This backup could not be read, so what it changes about opening your Vault cannot be shown here. Importing it will most likely fail.';
 
       case 'loaded':
         switch (disclosure.outcome.kind) {
@@ -153,7 +173,7 @@ export function ImportVaultReplaceDialog({
         return null;
 
       case 'unreadable':
-        return 'I understand this file could not be read, and that importing it may replace the passphrase and Recovery Key on this device.';
+        return 'I understand this backup could not be read, and that importing it may replace the passphrase and Recovery Key on this device.';
 
       case 'loaded':
         switch (disclosure.outcome.kind) {
@@ -190,11 +210,31 @@ export function ImportVaultReplaceDialog({
         data-testid="import-vault-replace-dialog"
       >
         <DialogHeader>
-          <DialogTitle>Replace this device&apos;s vault?</DialogTitle>
+          <DialogTitle>{title ?? "Replace this device's vault?"}</DialogTitle>
           <DialogDescription data-testid="import-vault-replace-disclosure">
             {describeOutcome()}
           </DialogDescription>
         </DialogHeader>
+
+        {copyCreatedAt && (
+          <div
+            data-testid="import-vault-replace-copy-age"
+            className="text-sm text-muted-foreground"
+          >
+            <p>
+              This copy was made{' '}
+              {formatDistanceToNow(new Date(copyCreatedAt), {
+                addSuffix: true,
+              })}{' '}
+              (<time dateTime={copyCreatedAt}>{formatDate(copyCreatedAt)}</time>
+              ). Everything changed on this device since then will be replaced.
+            </p>
+            <p className="mt-2">
+              The next sync will ask you about anything that differs from the
+              copy on the server.
+            </p>
+          </div>
+        )}
 
         {acknowledgement !== null && (
           <div className="flex items-start gap-2">
@@ -236,7 +276,9 @@ export function ImportVaultReplaceDialog({
             onClick={handleConfirm}
             disabled={confirmDisabled}
           >
-            {isConfirming ? 'Importing…' : 'Replace and import'}
+            {isConfirming
+              ? 'Importing…'
+              : (confirmLabel ?? 'Replace and import')}
           </Button>
         </DialogFooter>
       </DialogContent>

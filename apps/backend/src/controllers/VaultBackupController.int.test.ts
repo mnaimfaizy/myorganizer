@@ -313,7 +313,12 @@ describe('VaultBackupController (HTTP integration)', () => {
       .set('Authorization', 'Bearer user-1');
 
     expect(res.status).toBe(200);
-    expect(svc.getLatest).toHaveBeenCalledWith('user-1', 'success', undefined);
+    expect(svc.getLatest).toHaveBeenCalledWith(
+      'user-1',
+      'success',
+      undefined,
+      undefined,
+    );
   });
 
   test('cross-user isolation: user-2 only sees user-2 records', async () => {
@@ -406,7 +411,7 @@ describe('VaultBackupController (HTTP integration)', () => {
     );
   });
 
-  test('returns latest record filtered by source=google-drive', async () => {
+  test('returns latest export record filtered by source=google-drive', async () => {
     const svc = require('../services/VaultBackupService').default;
     svc.getLatest.mockResolvedValueOnce({
       ok: true,
@@ -426,7 +431,9 @@ describe('VaultBackupController (HTTP integration)', () => {
     });
 
     const res = await request(app)
-      .get('/vault/backups/latest?status=success&source=google-drive')
+      .get(
+        '/vault/backups/latest?status=success&source=google-drive&event=export',
+      )
       .set('Authorization', 'Bearer user-1');
 
     expect(res.status).toBe(200);
@@ -435,6 +442,7 @@ describe('VaultBackupController (HTTP integration)', () => {
       'user-1',
       'success',
       'google-drive',
+      'export',
     );
   });
 

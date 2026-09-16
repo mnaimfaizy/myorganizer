@@ -1,55 +1,62 @@
-import { CloudBackupAutoInterval } from './types';
+import { EscapeCopyAgeLimit } from './types';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-export const INTERVAL_MS: Record<CloudBackupAutoInterval, number | null> = {
+export const ESCAPE_COPY_AGE_LIMIT_MS = {
   off: null,
-  daily: 1 * MS_PER_DAY,
-  weekly: 7 * MS_PER_DAY,
-  monthly: 30 * MS_PER_DAY,
-};
+  '1-day': 1 * MS_PER_DAY,
+  '1-week': 7 * MS_PER_DAY,
+  '1-month': 30 * MS_PER_DAY,
+} as const satisfies Record<EscapeCopyAgeLimit, number | null>;
 
 /**
- * Returns true when `nowMs - lastSuccessMs >= interval threshold`. When
- * `lastSuccessMs` is `null` the result is always true (the user has no
- * recorded successful cloud backup yet).
- *
- * Returns false when `interval === 'off'`.
+ * True when the newest Escape Copy is older than the User's Escape Copy Age
+ * Limit, or when there is no Escape Copy at all. Always false when the limit
+ * is `off`: with no limit set, no age is too old.
  */
-export function isBackupDue(input: {
-  interval: CloudBackupAutoInterval;
-  lastSuccessMs: number | null;
+export function isEscapeCopyOverdue(input: {
+  ageLimit: EscapeCopyAgeLimit;
+  newestCopyMs: number | null;
   nowMs: number;
 }): boolean {
-  const threshold = INTERVAL_MS[input.interval];
-  if (threshold === null) return false;
-  if (input.lastSuccessMs === null) return true;
-  return input.nowMs - input.lastSuccessMs >= threshold;
+  const limit = ESCAPE_COPY_AGE_LIMIT_MS[input.ageLimit];
+  if (limit === null) return false;
+  if (input.newestCopyMs === null) return true;
+  return input.nowMs - input.newestCopyMs >= limit;
 }
 
 export interface SchedulerCallbacks {
   /**
-   * Resolve the timestamp (ms since epoch) of the latest successful cloud
-   * backup for the configured provider, or `null` when none exists. The
-   * scheduler uses this as the source of truth for due-time calculation.
+   * Resolve the time (ms since epoch) the newest confirmed Escape Copy was
+   * made at this provider, or `null` when there is none.
    */
-  getLastSuccessMs(): Promise<number | null>;
-  /** Returns the configured auto-backup interval (`off | daily | …`). */
-  getInterval(): CloudBackupAutoInterval;
-  /** Returns true when the provider can run a backup right now. */
-  canRunNow(): Promise<boolean>;
+  getNewestCopyMs(): Promise<number | null>;
+  /** Returns the User's current Escape Copy Age Limit. */
+  getAgeLimit(): EscapeCopyAgeLimit;
+  /**
+   * True when a backup can run without asking the User for anything. MUST NOT
+   * attempt to obtain a token: this runs with nobody present, and a prompt
+   * outside a user gesture is blocked by the browser.
+   */
+  canRunWithoutPrompt(): boolean;
   /** Run an actual backup attempt. */
   runBackup(): Promise<void>;
   /** Optional `now` provider for tests. */
   now?: () => number;
 }
 
+export type SchedulerCheckResult = {
+  ranBackup: boolean;
+  /**
+   * Why no backup ran. `needs-prompt` means the copy is overdue but making one
+   * would need the User — the vault page shows the Overdue state instead.
+   */
+  skipped?: 'off' | 'not-overdue' | 'needs-prompt' | 'in-flight';
+};
+
 export interface SchedulerHandle {
-  /** Run a one-shot due-check. */
-  checkOnce(): Promise<{
-    ranBackup: boolean;
-    skipped?: 'off' | 'not-due' | 'cannot-run' | 'in-flight';
-  }>;
+  /** Run a one-shot overdue check. */
+  checkOnce(): Promise<SchedulerCheckResult>;
   /** Stop background timers and listeners. */
   stop(): void;
 }
@@ -62,19 +69,19 @@ export interface StartSchedulerOptions extends SchedulerCallbacks {
 const DEFAULT_POLL_INTERVAL_MS = 15 * 60 * 1000;
 
 /**
- * Lightweight client-only scheduler. Only runs while the app is open.
+ * Client-only Escape Copy Age Limit check. Only runs while the app is open.
  *
- * The scheduler listens for `visibilitychange` and `online` events and
- * additionally polls on a timer. It calls `runBackup` only when:
+ * It listens for `visibilitychange` and `online` events and additionally
+ * polls on a timer. It calls `runBackup` only when:
  *
- * 1. The configured interval is not `off`.
- * 2. `getLastSuccessMs()` shows the interval has elapsed (or is `null`).
- * 3. `canRunNow()` returns true (e.g. token is silently available).
+ * 1. The Escape Copy Age Limit is not `off`.
+ * 2. The newest Escape Copy is older than the limit, or there is none.
+ * 3. `canRunWithoutPrompt()` is true — a token is already held.
  * 4. No prior `runBackup` is still in flight.
  *
- * The scheduler MUST NEVER trigger an interactive OAuth prompt; that is the
- * provider's responsibility, and the provider's `canRunNow` should return
- * `false` when consent must be reacquired.
+ * It never prompts, so it never makes a copy on a clock; an overdue copy that
+ * needs the User is reported by the vault page, not produced here
+ * (ADR 0062).
  */
 export function startScheduler(
   options: StartSchedulerOptions,
@@ -86,28 +93,20 @@ export function startScheduler(
   let stopped = false;
   let timer: ReturnType<typeof setInterval> | null = null;
 
-  async function checkOnce(): Promise<{
-    ranBackup: boolean;
-    skipped?: 'off' | 'not-due' | 'cannot-run' | 'in-flight';
-  }> {
+  async function checkOnce(): Promise<SchedulerCheckResult> {
     if (stopped) return { ranBackup: false, skipped: 'in-flight' };
     if (inFlight) return { ranBackup: false, skipped: 'in-flight' };
-    const interval = options.getInterval();
-    if (interval === 'off') return { ranBackup: false, skipped: 'off' };
+    const ageLimit = options.getAgeLimit();
+    if (ageLimit === 'off') return { ranBackup: false, skipped: 'off' };
 
-    const last = await options.getLastSuccessMs();
-    if (
-      !isBackupDue({
-        interval,
-        lastSuccessMs: last,
-        nowMs: now(),
-      })
-    ) {
-      return { ranBackup: false, skipped: 'not-due' };
+    const newestCopyMs = await options.getNewestCopyMs();
+    if (!isEscapeCopyOverdue({ ageLimit, newestCopyMs, nowMs: now() })) {
+      return { ranBackup: false, skipped: 'not-overdue' };
     }
 
-    const canRun = await options.canRunNow();
-    if (!canRun) return { ranBackup: false, skipped: 'cannot-run' };
+    if (!options.canRunWithoutPrompt()) {
+      return { ranBackup: false, skipped: 'needs-prompt' };
+    }
 
     inFlight = true;
     try {

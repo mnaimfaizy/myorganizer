@@ -1,4 +1,4 @@
-import { CloudBackupAutoInterval, CloudBackupProviderId } from './types';
+import { CloudBackupProviderId, EscapeCopyAgeLimit } from './types';
 
 const PREFERENCES_KEY = 'myorganizer.cloud-backup.preferences.v1';
 
@@ -6,12 +6,23 @@ export const CLOUD_BACKUP_PROVIDER_IDS: readonly CloudBackupProviderId[] = [
   'google-drive',
 ] as const;
 
-export const CLOUD_BACKUP_AUTO_INTERVALS: readonly CloudBackupAutoInterval[] = [
+export const ESCAPE_COPY_AGE_LIMITS: readonly EscapeCopyAgeLimit[] = [
   'off',
-  'daily',
-  'weekly',
-  'monthly',
+  '1-day',
+  '1-week',
+  '1-month',
 ] as const;
+
+/**
+ * Values stored before the setting stopped promising a clock. A device that
+ * chose `weekly` keeps a one-week limit; nothing it chose is lost.
+ */
+const LEGACY_AUTO_INTERVAL_AGE_LIMITS = {
+  off: 'off',
+  daily: '1-day',
+  weekly: '1-week',
+  monthly: '1-month',
+} as const satisfies Record<string, EscapeCopyAgeLimit>;
 
 /** Default retention: keep N most recent completed backups per provider. */
 export const CLOUD_BACKUP_DEFAULT_RETENTION = 10;
@@ -20,7 +31,7 @@ export const CLOUD_BACKUP_DEFAULT_RETENTION = 10;
 export const CLOUD_BACKUP_STALE_PENDING_MS = 24 * 60 * 60 * 1000; // 24h
 
 export interface CloudBackupProviderPrefs {
-  autoInterval: CloudBackupAutoInterval;
+  ageLimit: EscapeCopyAgeLimit;
 }
 
 export interface CloudBackupPreferences {
@@ -29,13 +40,30 @@ export interface CloudBackupPreferences {
 
 const DEFAULT_PREFS: CloudBackupPreferences = { providers: {} };
 
-function isCloudBackupAutoInterval(
+export function isEscapeCopyAgeLimit(
   value: unknown,
-): value is CloudBackupAutoInterval {
+): value is EscapeCopyAgeLimit {
   return (
     typeof value === 'string' &&
-    (CLOUD_BACKUP_AUTO_INTERVALS as readonly string[]).includes(value)
+    (ESCAPE_COPY_AGE_LIMITS as readonly string[]).includes(value)
   );
+}
+
+function readAgeLimit(entry: Record<string, unknown>): EscapeCopyAgeLimit {
+  if (isEscapeCopyAgeLimit(entry.ageLimit)) return entry.ageLimit;
+  const legacy = entry.autoInterval;
+  if (
+    typeof legacy === 'string' &&
+    Object.prototype.hasOwnProperty.call(
+      LEGACY_AUTO_INTERVAL_AGE_LIMITS,
+      legacy,
+    )
+  ) {
+    return LEGACY_AUTO_INTERVAL_AGE_LIMITS[
+      legacy as keyof typeof LEGACY_AUTO_INTERVAL_AGE_LIMITS
+    ];
+  }
+  return 'off';
 }
 
 function getStorage(): Storage | null {
@@ -67,9 +95,8 @@ export function loadCloudBackupPreferences(): CloudBackupPreferences {
       for (const id of CLOUD_BACKUP_PROVIDER_IDS) {
         const entry = (candidates as Record<string, unknown>)[id];
         if (entry && typeof entry === 'object' && !Array.isArray(entry)) {
-          const auto = (entry as Record<string, unknown>).autoInterval;
           providers[id] = {
-            autoInterval: isCloudBackupAutoInterval(auto) ? auto : 'off',
+            ageLimit: readAgeLimit(entry as Record<string, unknown>),
           };
         }
       }
@@ -96,7 +123,7 @@ export function getProviderPrefs(
   prefs: CloudBackupPreferences,
   id: CloudBackupProviderId,
 ): CloudBackupProviderPrefs {
-  return prefs.providers[id] ?? { autoInterval: 'off' };
+  return prefs.providers[id] ?? { ageLimit: 'off' };
 }
 
 export function setProviderPrefs(
