@@ -458,7 +458,7 @@ async function confirmImportReplaceDialog(
       // shows a checkbox; confirm is disabled until ticked.
       await expect(
         replaceDialog.getByTestId('import-vault-replace-disclosure'),
-      ).toContainText('This file could not be read as a vault backup');
+      ).toContainText('This backup could not be read');
 
       const confirmReplace = replaceDialog.getByTestId(
         'import-vault-replace-confirm',
