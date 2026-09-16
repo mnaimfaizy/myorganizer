@@ -1,8 +1,10 @@
 import {
+  GisErrorResponse,
   GisTokenClient,
   GisTokenResponse,
   GoogleNamespace,
 } from './googleIdentity.types';
+import { CloudBackupPromptError } from './promptError';
 import {
   CloudBackupConnectionState,
   CloudBackupFileMetadata,
@@ -19,7 +21,12 @@ const APP_PROPERTY_KIND_VALUE = 'myorganizer-vault-backup';
 const APP_PROPERTY_STATUS = 'status';
 const APP_PROPERTY_EXPORT_ID = 'exportId';
 const APP_PROPERTY_SCHEMA_VERSION = 'schemaVersion';
-const CONNECTED_FLAG_KEY = 'myorganizer.cloudBackup.googleDrive.connected';
+// The stored value keeps its historical key so existing links survive; it
+// records that the User completed a connection (Linked), nothing more.
+const LINKED_FLAG_KEY = 'myorganizer.cloudBackup.googleDrive.connected';
+// Recorded because it cost an attempt to learn (CONTEXT.md: Linked Provider).
+const RECONNECT_NEEDED_FLAG_KEY =
+  'myorganizer.cloudBackup.googleDrive.reconnectNeeded';
 
 export interface GoogleDriveProviderOptions {
   /**
@@ -58,26 +65,42 @@ function resolveGoogle(
   return undefined;
 }
 
-function readConnectedFlag(): boolean {
+function readFlag(key: string): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    return window.localStorage.getItem(CONNECTED_FLAG_KEY) === '1';
+    return window.localStorage.getItem(key) === '1';
   } catch {
     return false;
   }
 }
 
-function writeConnectedFlag(value: boolean): void {
+function writeFlag(key: string, value: boolean): void {
   if (typeof window === 'undefined') return;
   try {
     if (value) {
-      window.localStorage.setItem(CONNECTED_FLAG_KEY, '1');
+      window.localStorage.setItem(key, '1');
     } else {
-      window.localStorage.removeItem(CONNECTED_FLAG_KEY);
+      window.localStorage.removeItem(key);
     }
   } catch {
     // ignore quota or access errors
   }
+}
+
+const GIS_PROMPT_FAILURES: Record<
+  'popup_failed_to_open' | 'popup_closed',
+  'popup-blocked' | 'popup-closed'
+> = {
+  popup_failed_to_open: 'popup-blocked',
+  popup_closed: 'popup-closed',
+};
+
+function toPromptError(err: GisErrorResponse): CloudBackupPromptError {
+  const failure =
+    err.type === 'popup_failed_to_open' || err.type === 'popup_closed'
+      ? GIS_PROMPT_FAILURES[err.type]
+      : 'unknown';
+  return new CloudBackupPromptError(failure, err.message);
 }
 
 function parseDriveFile(raw: unknown): CloudBackupFileMetadata | null {
@@ -140,8 +163,11 @@ export class GoogleDriveCloudBackupProvider implements CloudBackupProvider {
 
   private tokenClient: GisTokenClient | null = null;
   private currentToken: AccessToken | null = null;
-  private connected = false;
-  private needsReconnect = false;
+  /** Settlers for the token request in flight; GIS callbacks dispatch here. */
+  private pendingToken: {
+    resolve: (resp: GisTokenResponse) => void;
+    reject: (err: CloudBackupPromptError) => void;
+  } | null = null;
 
   constructor(options: GoogleDriveProviderOptions) {
     this.clientId = options.clientId;
@@ -157,32 +183,22 @@ export class GoogleDriveCloudBackupProvider implements CloudBackupProvider {
   }
 
   async getConnectionState(): Promise<CloudBackupConnectionState> {
-    // We do NOT eagerly re-acquire a token here, because the GIS implicit
-    // token flow always tries to open a popup window. Browsers block popups
-    // that aren't tied to a user gesture, so calling this on page load
-    // produces a "Failed to open popup" warning. Instead, treat the
-    // localStorage "connected" flag as optimistic state; the next user
-    // gesture (backup/restore) will lazily re-acquire the token.
-    if (this.needsReconnect) {
-      return { status: 'needs-reconnect' };
+    // Never tries to obtain a token: the GIS implicit flow always opens a
+    // popup, and whether a token can be had is only discovered by trying
+    // from a user gesture. The state reports what is recorded, nothing more.
+    if (!readFlag(LINKED_FLAG_KEY)) {
+      return { status: 'not-linked' };
     }
-    if (this.connected && this.currentToken) {
-      return { status: 'connected' };
+    if (readFlag(RECONNECT_NEEDED_FLAG_KEY)) {
+      return { status: 'reconnect-needed' };
     }
-    if (readConnectedFlag()) {
-      // Show "Connected" optimistically; actions will refresh state if the
-      // token cannot be silently re-acquired.
-      return { status: 'connected' };
-    }
-    return { status: 'disconnected' };
+    return { status: 'linked' };
   }
 
   async connect(): Promise<CloudBackupConnectionState> {
     await this.acquireToken({ interactive: true });
-    this.connected = true;
-    this.needsReconnect = false;
-    writeConnectedFlag(true);
-    return { status: 'connected' };
+    writeFlag(LINKED_FLAG_KEY, true);
+    return { status: 'linked' };
   }
 
   async disconnect(): Promise<void> {
@@ -199,24 +215,17 @@ export class GoogleDriveCloudBackupProvider implements CloudBackupProvider {
     }
     this.currentToken = null;
     this.tokenClient = null;
-    this.connected = false;
-    this.needsReconnect = false;
-    writeConnectedFlag(false);
+    writeFlag(LINKED_FLAG_KEY, false);
+    writeFlag(RECONNECT_NEEDED_FLAG_KEY, false);
   }
 
   /**
-   * Returns true when a valid access token is available without prompting.
-   * Used by the scheduler.
+   * True when this instance already holds an unexpired access token, so a
+   * backup can run with nobody present. Never requests one: a request outside
+   * a user gesture opens a popup the browser blocks.
    */
-  async canRunSilently(): Promise<boolean> {
-    try {
-      await this.acquireToken({ interactive: false });
-      return true;
-    } catch {
-      this.needsReconnect = true;
-      this.connected = false;
-      return false;
-    }
+  canRunWithoutPrompt(): boolean {
+    return this.holdsUsableToken();
   }
 
   async uploadBackup(input: UploadBackupInput): Promise<UploadBackupResult> {
@@ -333,10 +342,27 @@ export class GoogleDriveCloudBackupProvider implements CloudBackupProvider {
   // Internals
   // -----------------------------------------------------------------------
 
-  private async acquireToken(opts: { interactive: boolean }): Promise<string> {
+  private holdsUsableToken(): boolean {
     const cached = this.currentToken;
-    if (cached && cached.expiresAtMs - this.tokenSkewMs > Date.now()) {
-      return cached.token;
+    return (
+      cached !== null && cached.expiresAtMs - this.tokenSkewMs > Date.now()
+    );
+  }
+
+  /**
+   * Obtain an access token, from memory when one is held, otherwise from GIS.
+   *
+   * Three outcomes, each recorded differently (CONTEXT.md: Linked Provider):
+   * - a token — Reconnect Needed, if recorded, is cleared;
+   * - a refusal Google returned through `callback` — evidence against the
+   *   link, recorded as Reconnect Needed when a link exists (a connection
+   *   never completed is not Linked, so it cannot need reconnecting);
+   * - a `CloudBackupPromptError` through `error_callback` — the attempt never
+   *   reached Google and records nothing.
+   */
+  private async acquireToken(opts: { interactive: boolean }): Promise<string> {
+    if (this.holdsUsableToken() && this.currentToken) {
+      return this.currentToken.token;
     }
 
     const google = resolveGoogle(this.googleOverride);
@@ -344,43 +370,69 @@ export class GoogleDriveCloudBackupProvider implements CloudBackupProvider {
       throw new Error('Google Identity Services is not available');
     }
 
-    return await new Promise<string>((resolve, reject) => {
-      const settle = (resp: GisTokenResponse) => {
-        if (resp.error || !resp.access_token) {
-          this.needsReconnect = true;
-          reject(
-            new Error(
-              resp.error_description ?? resp.error ?? 'token-acquire-failed',
-            ),
-          );
-          return;
-        }
-        const expiresInMs = (resp.expires_in ?? 3600) * 1000;
-        this.currentToken = {
-          token: resp.access_token,
-          expiresAtMs: Date.now() + expiresInMs,
-        };
-        this.connected = true;
-        this.needsReconnect = false;
-        resolve(resp.access_token);
-      };
+    // A request superseded by a newer one will never be answered; settle it
+    // rather than leave its caller waiting forever.
+    this.pendingToken?.reject(
+      new CloudBackupPromptError('unknown', 'Superseded by a newer request'),
+    );
 
+    const resp = await new Promise<GisTokenResponse>((resolve, reject) => {
+      this.pendingToken = { resolve, reject };
       try {
         if (!this.tokenClient) {
           this.tokenClient = google.accounts.oauth2.initTokenClient({
             client_id: this.clientId,
             scope: DRIVE_APPDATA_SCOPE,
-            callback: settle,
+            callback: (answer) => this.settleToken(answer),
+            error_callback: (err) => this.failToken(err),
           });
-        } else {
-          this.tokenClient.callback = settle;
         }
         const prompt = opts.interactive ? 'consent' : '';
         this.tokenClient.requestAccessToken({ prompt });
       } catch (err) {
+        this.pendingToken = null;
         reject(err instanceof Error ? err : new Error(String(err)));
       }
     });
+
+    if (resp.error || !resp.access_token) {
+      if (readFlag(LINKED_FLAG_KEY)) {
+        writeFlag(RECONNECT_NEEDED_FLAG_KEY, true);
+      }
+      throw new Error(
+        resp.error_description ?? resp.error ?? 'token-acquire-failed',
+      );
+    }
+
+    const expiresInMs = (resp.expires_in ?? 3600) * 1000;
+    this.currentToken = {
+      token: resp.access_token,
+      expiresAtMs: Date.now() + expiresInMs,
+    };
+    writeFlag(RECONNECT_NEEDED_FLAG_KEY, false);
+    return resp.access_token;
+  }
+
+  private settleToken(answer: GisTokenResponse): void {
+    const pending = this.pendingToken;
+    this.pendingToken = null;
+    pending?.resolve(answer);
+  }
+
+  private failToken(err: GisErrorResponse): void {
+    const pending = this.pendingToken;
+    this.pendingToken = null;
+    pending?.reject(toPromptError(err));
+  }
+
+  /**
+   * A 401 on a token this instance believed unexpired means Google no longer
+   * honours it. Drop it so the next attempt asks Google, whose answer is the
+   * one that decides whether the link needs reconnecting.
+   */
+  private async failDriveRequest(res: Response): Promise<never> {
+    if (res.status === 401) this.currentToken = null;
+    throw new Error(await formatDriveError(res));
   }
 
   private async listBackupFiles(
@@ -425,7 +477,7 @@ export class GoogleDriveCloudBackupProvider implements CloudBackupProvider {
     headers.set('Authorization', `Bearer ${token}`);
     const res = await this.fetchImpl(url, { ...init, headers });
     if (!res.ok) {
-      throw new Error(await formatDriveError(res));
+      return await this.failDriveRequest(res);
     }
     if (res.status === 204) return {};
     return await res.json();
@@ -443,7 +495,7 @@ export class GoogleDriveCloudBackupProvider implements CloudBackupProvider {
     headers.set('Authorization', `Bearer ${token}`);
     const res = await this.fetchImpl(url, { ...init, headers });
     if (!res.ok) {
-      throw new Error(await formatDriveError(res));
+      return await this.failDriveRequest(res);
     }
     return await res.text();
   }

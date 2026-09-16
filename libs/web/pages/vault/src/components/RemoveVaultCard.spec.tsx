@@ -31,6 +31,7 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
   useOptionalVaultSession: jest.fn(),
   vaultBlobTypeLabel: jest.requireActual('@myorganizer/web-vault-ui')
     .vaultBlobTypeLabel,
+  formatDate: jest.requireActual('@myorganizer/web-vault-ui').formatDate,
 }));
 
 /**

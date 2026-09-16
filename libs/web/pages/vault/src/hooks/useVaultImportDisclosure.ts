@@ -33,7 +33,7 @@ const UNREADABLE: VaultImportDisclosureState = {
 };
 
 /**
- * Which of three things importing `file` will do to the User's credentials —
+ * Which of three things importing a backup will do to the User's credentials —
  * what the import confirmation says instead of one warning written for the
  * worst case (ADR 0068, decision point 5).
  *
@@ -43,13 +43,16 @@ const UNREADABLE: VaultImportDisclosureState = {
  * warning, because it is the reassuring answer that flashes.
  *
  * Recomputed every time `active` becomes true (the confirmation dialog's own
- * `open` state) or the chosen file changes, so the answer belongs to the
+ * `open` state) or the source changes, so the answer belongs to the
  * bundle actually about to be imported. The comparison reads Vault Meta only
  * — key-derivation parameters and two wrappings — so it needs no Master Key
  * and is correct while the Vault is locked.
+ *
+ * `source` can be any object with a `text(): Promise<string>` method, allowing
+ * both Files (which satisfy this structurally) and downloaded copies.
  */
 export function useVaultImportDisclosure(
-  file: File | null,
+  source: { text(): Promise<string> } | null,
   active: boolean,
 ): VaultImportDisclosureState {
   const vaultSession = useOptionalVaultSession();
@@ -58,7 +61,7 @@ export function useVaultImportDisclosure(
   const [state, setState] = useState<VaultImportDisclosureState>(PENDING);
 
   useEffect(() => {
-    if (!active || !handle || !file) {
+    if (!active || !handle || !source) {
       // Only update state if it would actually change — prevents cascading renders
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setState((prev) => (prev.status === 'pending' ? prev : PENDING));
@@ -78,7 +81,7 @@ export function useVaultImportDisclosure(
           return cancelled ? undefined : setState(UNREADABLE);
         }
 
-        const envelope = parseVaultExportEnvelope(await file.text());
+        const envelope = parseVaultExportEnvelope(await source.text());
         const outcome = classifyVaultImportCredentialOutcome({
           local: localToServerMeta(localVault),
           bundle: envelope.meta,
@@ -93,7 +96,7 @@ export function useVaultImportDisclosure(
     return () => {
       cancelled = true;
     };
-  }, [active, file, handle]);
+  }, [active, source, handle]);
 
   return state;
 }

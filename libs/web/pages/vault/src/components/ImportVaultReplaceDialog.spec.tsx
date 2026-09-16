@@ -11,13 +11,9 @@ import { ImportVaultReplaceDialog } from './ImportVaultReplaceDialog';
 import type { VaultImportDisclosureState } from '../hooks';
 
 function renderDialog(
-  overrides: Partial<{
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
-    onConfirm: () => Promise<void>;
-    onDecline: () => void;
-    disclosure: VaultImportDisclosureState;
-  }> = {},
+  overrides: Partial<
+    React.ComponentProps<typeof ImportVaultReplaceDialog>
+  > = {},
 ) {
   const onOpenChange = jest.fn();
   const onConfirm = jest.fn().mockResolvedValue(undefined);
@@ -350,18 +346,23 @@ describe('ImportVaultReplaceDialog', () => {
   });
 
   describe('C6: unreadable disclosure', () => {
-    test('says file could not be read, acknowledgement present and gates confirm', () => {
+    test('says backup could not be read, acknowledgement present and gates confirm', () => {
       renderDialog({
         disclosure: { status: 'unreadable', outcome: null },
       });
 
       const disclosure = screen.getByTestId('import-vault-replace-disclosure');
-      expect(disclosure.textContent).toContain('could not be read');
+      expect(disclosure.textContent).toContain('This backup could not be read');
 
       const acknowledgement = screen.getByTestId(
         'import-vault-replace-acknowledge',
       );
       expect(acknowledgement).toBeInTheDocument();
+
+      const acknowledgementLabel = screen.getByText(
+        /I understand this backup could not be read/,
+      );
+      expect(acknowledgementLabel).toBeInTheDocument();
 
       const confirmButton = screen.getByTestId('import-vault-replace-confirm');
       expect(confirmButton).toBeDisabled();
@@ -371,7 +372,7 @@ describe('ImportVaultReplaceDialog', () => {
     });
   });
 
-  describe('C7: rerender from pending to resolved outcome — acknowledgement resets', () => {
+  describe('C10: rerender from pending to resolved outcome — acknowledgement resets', () => {
     test('when outcome resolves after box was ticked, checkbox resets and confirm disables', () => {
       const { rerender } = renderDialog({
         disclosure: { status: 'pending', outcome: null },
@@ -447,7 +448,78 @@ describe('ImportVaultReplaceDialog', () => {
     });
   });
 
-  describe('C8: no passphrase/unlock input in any state', () => {
+  describe('C7: copy age displayed when copyCreatedAt is set', () => {
+    test('shows relative age, time element, and sync sentences when copyCreatedAt is provided', () => {
+      const fakeNow = new Date('2026-09-15T12:00:00Z');
+      jest.useFakeTimers();
+      jest.setSystemTime(fakeNow);
+
+      try {
+        // Create a date 3 days before fakeNow
+        const threeDaysAgo = new Date(fakeNow);
+        threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+        const copyCreatedAt = threeDaysAgo.toISOString();
+
+        renderDialog({
+          disclosure: { status: 'loaded', outcome: { kind: 'unchanged' } },
+          copyCreatedAt,
+        });
+
+        const copyAgeEl = screen.getByTestId('import-vault-replace-copy-age');
+        expect(copyAgeEl).toBeInTheDocument();
+
+        // Verify relative age is shown
+        expect(copyAgeEl.textContent).toContain('3 days ago');
+
+        // Verify time element has correct dateTime
+        const timeEl = copyAgeEl.querySelector('time');
+        expect(timeEl).toHaveAttribute('dateTime', copyCreatedAt);
+
+        // Verify both sentences are present
+        expect(copyAgeEl.textContent).toContain(
+          'Everything changed on this device since then will be replaced',
+        );
+        expect(copyAgeEl.textContent).toContain(
+          'The next sync will ask you about anything that differs from the copy on the server',
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+  });
+
+  describe('C8: copy age absent when copyCreatedAt not set', () => {
+    test('does not render copy-age element when copyCreatedAt prop is undefined', () => {
+      renderDialog({
+        disclosure: { status: 'loaded', outcome: { kind: 'unchanged' } },
+        // copyCreatedAt not provided
+      });
+
+      const copyAgeEl = screen.queryByTestId('import-vault-replace-copy-age');
+      expect(copyAgeEl).not.toBeInTheDocument();
+    });
+  });
+
+  describe('C9: custom title and confirm label', () => {
+    test('renders custom title and confirm button label when provided', () => {
+      renderDialog({
+        disclosure: { status: 'loaded', outcome: { kind: 'unchanged' } },
+        title: 'Restore this copy from Google Drive?',
+        confirmLabel: 'Restore',
+      });
+
+      expect(
+        screen.getByRole('heading', {
+          name: 'Restore this copy from Google Drive?',
+        }),
+      ).toBeInTheDocument();
+
+      const confirmButton = screen.getByTestId('import-vault-replace-confirm');
+      expect(confirmButton).toHaveTextContent('Restore');
+    });
+  });
+
+  describe('C11: no passphrase/unlock input in any state', () => {
     test('pending state has no password input', () => {
       renderDialog({
         disclosure: { status: 'pending', outcome: null },

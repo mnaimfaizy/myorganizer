@@ -369,4 +369,75 @@ describe('useVaultImportDisclosure', () => {
       // Should not attempt to load or parse anything
     });
   });
+
+  describe('B9: non-File source object with text() method reaching loaded', () => {
+    test('accepts any object with text(): Promise<string> and resolves to loaded/unchanged', async () => {
+      const localMeta = createMockServerMeta();
+      const bundleMeta = createMockServerMeta();
+
+      const mockHandle = {
+        loadVault: jest.fn().mockReturnValue({}),
+      };
+      (useOptionalVaultSession as jest.Mock).mockReturnValue({
+        handle: mockHandle,
+      });
+      (localToServerMeta as jest.Mock).mockReturnValue(localMeta);
+      (parseVaultExportEnvelope as jest.Mock).mockReturnValue({
+        meta: bundleMeta,
+      });
+      (classifyVaultImportCredentialOutcome as jest.Mock).mockReturnValue({
+        kind: 'unchanged',
+      });
+
+      // Create a non-File source object with text() method
+      const source = {
+        text: jest.fn().mockResolvedValue(JSON.stringify({ data: 'test' })),
+      };
+
+      const { result } = renderHook(() =>
+        useVaultImportDisclosure(source, true),
+      );
+
+      // First render: should be pending
+      expect(result.current.status).toBe('pending');
+
+      // After async work resolves
+      await waitFor(() => {
+        expect(result.current.status).toBe('loaded');
+      });
+
+      expect(result.current.outcome).toEqual({ kind: 'unchanged' });
+      expect(source.text).toHaveBeenCalled();
+    });
+  });
+
+  describe('B10: non-File source with invalid JSON resolves to unreadable', () => {
+    test('when non-File source text() returns invalid JSON, resolves to unreadable', async () => {
+      const mockHandle = {
+        loadVault: jest.fn().mockReturnValue({}),
+      };
+      (useOptionalVaultSession as jest.Mock).mockReturnValue({
+        handle: mockHandle,
+      });
+      (parseVaultExportEnvelope as jest.Mock).mockImplementation(() => {
+        throw new Error('Invalid envelope format');
+      });
+
+      // Create a non-File source with invalid JSON
+      const source = {
+        text: jest.fn().mockResolvedValue('not valid json {'),
+      };
+
+      const { result } = renderHook(() =>
+        useVaultImportDisclosure(source, true),
+      );
+
+      await waitFor(() => {
+        expect(result.current.status).toBe('unreadable');
+      });
+
+      expect(result.current.outcome).toBe(null);
+      expect(source.text).toHaveBeenCalled();
+    });
+  });
 });

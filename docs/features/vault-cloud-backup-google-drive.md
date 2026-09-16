@@ -23,8 +23,10 @@ and troubleshooting.
 - [Environment variables](#environment-variables)
 - [Frontend integration points](#frontend-integration-points)
 - [Backend integration points](#backend-integration-points)
-- [Connection persistence and the silent-token flow](#connection-persistence-and-the-silent-token-flow)
-- [Auto-backup scheduler](#auto-backup-scheduler)
+- [What the feature is for](#what-the-feature-is-for)
+- [Linked, Not linked, Reconnect Needed](#linked-not-linked-reconnect-needed)
+- [Newest copy age and the Escape Copy Age Limit](#newest-copy-age-and-the-escape-copy-age-limit)
+- [Restore](#restore)
 - [Retention and pending-file cleanup](#retention-and-pending-file-cleanup)
 - [Troubleshooting](#troubleshooting)
 - [References](#references)
@@ -50,8 +52,9 @@ Key properties:
   happen from the browser to `googleapis.com`.
 - **Audit log only on the backend.** The backend is told _that_ a backup
   succeeded/failed (size, blob types, schema version, source =
-  `google-drive`), so the user can see "Last cloud backup at …" across
-  devices via `GET /vault/backups/latest`.
+  `google-drive`), so the vault page can show the age of the newest copy on
+  any device via `GET /vault/backups/latest`. The success row is written only
+  after Drive has confirmed the upload complete.
 
 ### How is this different from "Vault Export / Import"?
 
@@ -59,13 +62,13 @@ Cloud backup and Export/Import both live on the same `/dashboard/vault`
 page — this isn't a separate page or route, just a different backup
 mechanism offered alongside the manual file-based one:
 
-| Capability       | Vault Export / Import                             | Vault Cloud Backup                                          |
-| ---------------- | ------------------------------------------------- | ----------------------------------------------------------- |
-| Trigger          | Manual download / upload of a JSON file           | Manual "Back up now" button + optional daily/weekly/monthly |
-| Storage          | User's local filesystem                           | User's Google Drive (`appDataFolder`)                       |
-| Auth             | None beyond the app login                         | Google account (browser OAuth, scope `drive.appdata`)       |
-| Encryption       | Client-side envelope (E2EE)                       | Same client-side envelope (E2EE)                            |
-| Server knowledge | Backup audit row (size, blobTypes, schemaVersion) | Same audit row, but with `source = 'google-drive'`          |
+| Capability       | Vault Export / Import                             | Vault Cloud Backup                                    |
+| ---------------- | ------------------------------------------------- | ----------------------------------------------------- |
+| Trigger          | Manual download / upload of a JSON file           | Manual "Back up now" + optional Escape Copy Age Limit |
+| Storage          | User's local filesystem                           | User's Google Drive (`appDataFolder`)                 |
+| Auth             | None beyond the app login                         | Google account (browser OAuth, scope `drive.appdata`) |
+| Encryption       | Client-side envelope (E2EE)                       | Same client-side envelope (E2EE)                      |
+| Server knowledge | Backup audit row (size, blobTypes, schemaVersion) | Same audit row, but with `source = 'google-drive'`    |
 
 ### How is this different from the YouTube integration?
 
@@ -259,8 +262,9 @@ libs/web-vault/src/lib/cloud/
 ├── coordinator.ts          # CloudBackupCoordinator — orchestrates upload+audit
 ├── googleDriveProvider.ts  # GoogleDriveCloudBackupProvider — GIS + Drive calls
 ├── googleIdentity.types.ts # GIS / window.google typings
-├── preferences.ts          # localStorage prefs (auto-backup interval, retention)
-├── scheduler.ts            # Client-side poll + visibility/online listeners
+├── preferences.ts          # localStorage prefs (Escape Copy Age Limit, retention)
+├── promptError.ts          # CloudBackupPromptError — an attempt that never reached Google
+├── scheduler.ts            # Escape Copy Age Limit check (poll + visibility/online)
 └── types.ts                # Public CloudBackupProvider interface
 
 libs/web-vault/src/lib/vault/auditReporter.ts
@@ -268,23 +272,25 @@ libs/web-vault/src/lib/vault/auditReporter.ts
 
 libs/web/pages/vault/src/
 ├── hooks/
-│   ├── useCloudBackup.ts          # connect / backupNow / restoreLatest / autoInterval
+│   ├── useCloudBackup.ts          # link / reconnect / backupNow / restore / ageLimit
 │   ├── useGoogleIdentityScript.ts # loads https://accounts.google.com/gsi/client
-│   └── useLatestCloudBackup.ts    # latest backup with source='google-drive'
+│   ├── useLatestCloudBackup.ts    # newest export/success row, source='google-drive'
+│   └── useVaultImportDisclosure.ts # what a restore or import does to credentials
 ├── components/
 │   ├── CloudBackupLiveCard.tsx    # renders CloudBackupCard once GIS is ready
 │   ├── CloudBackupUnavailableCard.tsx # disabled-state card
 │   ├── ExportVaultCard.tsx
 │   ├── ImportVaultCard.tsx
+│   ├── ImportVaultReplaceDialog.tsx # confirms file import and Drive restore
 │   └── VaultPageClient.tsx        # VaultPage — cloud backup, export, import
 └── page.tsx
 
 libs/web/pages/account/src/hooks/useLatestBackup.ts
-                            # cross-source latest backup — feeds the
+                            # cross-source latest export — feeds the
                             # last-backup summary card on the account page,
                             # not the vault page
 
-libs/web-vault-ui/src/lib/cloud/CloudBackupCard.tsx
+libs/web-vault-ui/src/lib/CloudBackupCard.tsx
                             # The visible card with all the buttons
 ```
 
@@ -310,84 +316,132 @@ Two old routes redirect here permanently:
 
 The backend exposes three JWT-protected endpoints under `/api/v1/vault/backups`:
 
-| Method | Path                                       | Purpose                                         |
-| ------ | ------------------------------------------ | ----------------------------------------------- |
-| POST   | `/vault/backups`                           | Append an audit row (called by `AuditReporter`) |
-| GET    | `/vault/backups/latest?status=…&source=…`  | Fetch latest matching audit row (404 if none)   |
-| GET    | `/vault/backups?cursor=…&limit=…&source=…` | Cursor-paginated list of audit rows             |
+| Method | Path                                              | Purpose                                         |
+| ------ | ------------------------------------------------- | ----------------------------------------------- |
+| POST   | `/vault/backups`                                  | Append an audit row (called by `AuditReporter`) |
+| GET    | `/vault/backups/latest?status=…&source=…&event=…` | Fetch latest matching audit row (404 if none)   |
+| GET    | `/vault/backups?cursor=…&limit=…&source=…`        | Cursor-paginated list of audit rows             |
 
-Schema highlights (Prisma model `VaultBackup`):
+Schema highlights (Prisma model `VaultBackupRecord`):
 
-- `event` — `export | restore` (always `export` for cloud backup writes)
-- `source` — `download | google-drive` (extend the union to add providers)
-- `status` — `success | failure`
+- `event` — `export | import` (a Drive backup writes `export`, a Drive restore
+  writes `import` — which is why anything reporting the newest copy filters on
+  `event=export`)
+- `source` — `local-file | google-drive` (extend the union to add providers)
+- `status` — `success | failed`
 - `errorCode`, `schemaVersion`, `blobTypes[]`, `sizeBytes`, `createdAt`
 
 `source = 'google-drive'` is allow-listed in
-[apps/backend/src/services/vaultBackup/constants.ts](../../apps/backend/src/services/vaultBackup/constants.ts);
+[apps/backend/src/services/vaultBackupConstants.ts](../../apps/backend/src/services/vaultBackupConstants.ts);
 adding a new cloud provider means extending that allow-list, regenerating
 the OpenAPI client (`yarn openapi:sync && yarn api:generate`), and updating
 the relevant page hooks/UI.
 
 ---
 
-## Connection persistence and the silent-token flow
+## What the feature is for
 
-Browsers block popup windows that aren't tied to a user gesture. That means
-we **cannot** silently re-acquire a Google access token on page load.
-Instead, the provider uses an **optimistic-connected** model:
+Vault Cloud Backup makes an **Escape Copy** (see `CONTEXT.md`): a whole-Vault
+copy in storage the User controls, so their Ciphertext outlives MyOrganizer.
+It is **not** how a Vault stays durable — the server already holds every Vault
+Blob and converges it per record. So the feature promises no schedule, and a
+months-old copy is not broken. What it owes the User is honesty about how old
+the newest copy is, and about whether the link still works.
 
-1. After a successful `connect()`, the provider writes a flag to
-   `localStorage`:
-
-   ```
-   key:   myorganizer.cloudBackup.googleDrive.connected
-   value: "1"
-   ```
-
-2. On subsequent page loads, `getConnectionState()` reads the flag and
-   returns `{ status: 'connected' }` without contacting Google. The UI
-   shows **"Connected"**.
-
-3. The first authenticated **user gesture** (clicking _Back up now_ or
-   _Restore from cloud_) triggers `acquireToken({ interactive: false })`,
-   which calls `requestAccessToken({ prompt: '' })`. Because this runs
-   inside a click handler, the popup is allowed; if the user is still
-   signed into the same Google account, GIS reuses the existing session
-   and the popup self-closes within ~50 ms (no consent screen).
-
-4. If the silent acquisition fails (the user revoked consent, signed out
-   of Google, etc.), `runWithBusy` catches the error and refreshes
-   connection state to `needs-reconnect`, surfacing a "Reconnect" prompt
-   in the UI.
-
-5. `disconnect()` revokes the token via `google.accounts.oauth2.revoke()`
-   and clears the localStorage flag.
-
-> **Implementation:**
-> [libs/web-vault/src/lib/cloud/googleDriveProvider.ts](../../libs/web-vault/src/lib/cloud/googleDriveProvider.ts)
-> — see `getConnectionState`, `connect`, `disconnect`, `acquireToken`,
-> `readConnectedFlag`, and `writeConnectedFlag`.
+The backend never holds a Drive token and the feature never adopts the
+authorization-code flow
+([ADR 0062](../adr/0062-the-drive-escape-hatch-holds-no-token-we-could-lose.md)).
+Service Workers cannot close the tab-must-be-open gap either; ADR 0062 records
+why.
 
 ---
 
-## Auto-backup scheduler
+## Linked, Not linked, Reconnect Needed
 
-When the user picks a non-`off` interval (`daily`, `weekly`, `monthly`), the
-hook starts the client-side scheduler from
-[libs/web-vault/src/lib/cloud/scheduler.ts](../../libs/web-vault/src/lib/cloud/scheduler.ts).
+Browsers block popups that aren't tied to a user gesture, and the GIS implicit
+flow always opens one, so a token can never be obtained on page load. The
+provider therefore reports only what it has recorded — `getConnectionState()`
+never contacts Google:
 
-- Default poll: **15 minutes** while the tab is open.
-- Also fires on `visibilitychange` (tab becomes visible) and `online`
-  (network restored) events.
-- Skip rules: `interval === 'off'`, not yet due, `canRunNow()` returned
-  false (e.g. silent token would prompt), or a backup is in flight.
-- Due-ness uses the **server-side last successful Google Drive backup**
-  (`GET /vault/backups/latest?status=success&source=google-drive`), not
-  any client clock — so multi-device users converge.
-- The scheduler **never** triggers an interactive OAuth prompt. If
-  `provider.canRunSilently()` returns false, it skips and the user must
-  click _Back up now_ to reauthorize.
+| State              | Recorded by                                        | Card offers                  |
+| ------------------ | -------------------------------------------------- | ---------------------------- |
+| `not-linked`       | No link flag                                       | **Link Google Drive**        |
+| `linked`           | A `connect()` that obtained a token                | Back up now, Restore, Unlink |
+| `reconnect-needed` | Google itself refused a token request while linked | **Reconnect**, Unlink        |
+
+```
+myorganizer.cloudBackup.googleDrive.connected       = "1"   # linked (historical key name)
+myorganizer.cloudBackup.googleDrive.reconnectNeeded = "1"   # a recorded refusal
+```
+
+Which failures count is precise, because Reconnect Needed survives a reload:
+
+| What happened                                                              | Result                                                                  |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| GIS `callback` returns an `error` (`access_denied`, `consent_required`, …) | Reconnect Needed, if linked. A first link that fails stays Not linked.  |
+| GIS `error_callback` with `popup_failed_to_open`                           | `CloudBackupPromptError('popup-blocked')`; stays Linked; error is shown |
+| GIS `error_callback` with `popup_closed`                                   | `CloudBackupPromptError('popup-closed')`; stays Linked; nothing shown   |
+| GIS not loaded, or `error_callback` with `unknown`                         | Stays Linked; the action's error is shown                               |
+
+Without `error_callback`, GIS delivers a blocked or dismissed popup to nothing
+and the token request never settles. Reconnect Needed clears on any successful
+token and on Unlink. A Drive `401` on a held token drops that token, so the next
+attempt asks Google, whose answer decides.
+
+> **Implementation:**
+> [libs/web-vault/src/lib/cloud/googleDriveProvider.ts](../../libs/web-vault/src/lib/cloud/googleDriveProvider.ts)
+> — see `getConnectionState`, `connect`, `disconnect`, `acquireToken`, and
+> `canRunWithoutPrompt`.
+
+---
+
+## Newest copy age and the Escape Copy Age Limit
+
+The card always shows the **age of the newest Escape Copy** ("3 days old",
+exact date on hover), read from
+`GET /vault/backups/latest?event=export&status=success&source=google-drive`.
+Because it is a server audit row, it is correct on any device and needs no
+token.
+
+Two rules keep that age honest:
+
+- The coordinator holds back the export's `success` row until Drive has
+  confirmed the upload `complete`. A failed upload writes a `failed` row
+  instead, so it never reads as a new copy.
+- A restore writes `import`, and the query filters on `export`, so restoring
+  never resets the age.
+
+The optional **Escape Copy Age Limit** (`off | 1-day | 1-week | 1-month`,
+stored per device in `localStorage`; older `daily | weekly | monthly` values
+are read as the matching limit) is a limit on staleness, not a clock:
+
+- When the newest copy is older than the limit, or there is none, the card
+  shows an **Overdue** notice next to _Back up now_. That notice is what the
+  limit is for.
+- While the page is open and the provider is Linked,
+  [scheduler.ts](../../libs/web-vault/src/lib/cloud/scheduler.ts) checks every
+  15 minutes and on `visibilitychange` / `online`. It backs up **only** when
+  the copy is overdue **and** this tab already holds an unexpired token
+  (`canRunWithoutPrompt()`). It never requests a token, so it never opens a
+  popup and never records anything against the link.
+
+---
+
+## Restore
+
+Restore replaces the whole Local Vault, so it is confirmed first
+([ADR 0063](../adr/0063-a-restore-discards-the-evidence-it-holds-about-the-server.md)):
+
+1. _Restore from Google Drive_ runs `coordinator.fetchLatestCopy()` inside the
+   click, so the popup is allowed. Nothing is written. With no completed copy,
+   the card says so.
+2. The shared `ImportVaultReplaceDialog` opens with the same credential
+   disclosure file import uses (ADR 0068), plus the copy's age and a note that
+   the next sync will ask about anything that differs from the server.
+3. Confirm runs `coordinator.restoreCopy(copy, handle)`, which imports **the
+   bytes that were shown**. The import clears Sync Bookmarks for every type it
+   writes, so the next Vault Reconcile asks instead of pushing the older copy
+   over the server. Decline writes and audits nothing.
 
 ---
 
@@ -408,18 +462,19 @@ Override defaults via `CloudBackupCoordinator` constructor options
 
 ## Troubleshooting
 
-| Symptom                                                              | Likely cause                                                                               | Fix                                                                                                                                                             |
-| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Error 400: redirect_uri_mismatch` on connect popup                  | The page origin is not in **Authorized JavaScript origins** of the OAuth client.           | Add `http://localhost:4200` (and prod origins) under **Credentials → OAuth client → Authorized JavaScript origins**.                                            |
-| `Drive request failed: 403 …Drive API has not been used in project…` | Google Drive API is not enabled in the GCP project owning the OAuth client.                | Enable **Google Drive API** in **APIs & Services → Library**.                                                                                                   |
-| `Drive request failed: 403 Insufficient Permission`                  | The user closed the consent popup before granting `drive.appdata`.                         | Click **Disconnect**, then **Connect Google Drive** again, leaving the scope checkbox checked.                                                                  |
-| `Drive request failed: 403 access_denied` / "App is blocked"         | Consent screen is in **Testing** and the user is not on the test-users list.               | Add the email to **OAuth consent → Audience → Test users**, or publish the app.                                                                                 |
-| Cloud backup card shows _"Cloud backup is not configured"_           | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is empty at build time.                                     | Set the env var in `.env` (and the production deploy environment) and rebuild.                                                                                  |
-| Brief popup flashes on every page load                               | Old build still calls `acquireToken({ interactive: false })` from `getConnectionState`.    | Pull latest `main`. Current code never re-acquires tokens outside a user gesture.                                                                               |
-| `[GSI_LOGGER]: Failed to open popup window … Maybe blocked…`         | A token request is happening outside a user-gesture (e.g. scheduler called interactively). | Filed in code: scheduler uses `canRunSilently()` which only checks cached tokens. If you patched it, restore the user-gesture-only invariant.                   |
-| `POST /vault/backups → 401`                                          | The app's JWT access token expired or was signed with a different secret.                  | Logout → login. If still failing, check that `ACCESS_JWT_SECRET` matches between the running backend and the token issuer.                                      |
-| `GET /vault/backups/latest → 401`                                    | Same as above.                                                                             | Logout → login.                                                                                                                                                 |
-| Connect button is disabled                                           | The GIS script (`https://accounts.google.com/gsi/client`) failed to load.                  | Check Network tab; common causes are content blockers, an offline state, or a strict CSP that omits `accounts.google.com`. Allowlist `*.gstatic.com` if needed. |
+| Symptom                                                              | Likely cause                                                                            | Fix                                                                                                                                                             |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Error 400: redirect_uri_mismatch` on connect popup                  | The page origin is not in **Authorized JavaScript origins** of the OAuth client.        | Add `http://localhost:4200` (and prod origins) under **Credentials → OAuth client → Authorized JavaScript origins**.                                            |
+| `Drive request failed: 403 …Drive API has not been used in project…` | Google Drive API is not enabled in the GCP project owning the OAuth client.             | Enable **Google Drive API** in **APIs & Services → Library**.                                                                                                   |
+| `Drive request failed: 403 Insufficient Permission`                  | The user closed the consent popup before granting `drive.appdata`.                      | Click **Unlink**, then **Link Google Drive** again, leaving the scope checkbox checked.                                                                         |
+| `Drive request failed: 403 access_denied` / "App is blocked"         | Consent screen is in **Testing** and the user is not on the test-users list.            | Add the email to **OAuth consent → Audience → Test users**, or publish the app.                                                                                 |
+| Cloud backup card shows _"Cloud backup is not configured"_           | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is empty at build time.                                  | Set the env var in `.env` (and the production deploy environment) and rebuild.                                                                                  |
+| Brief popup flashes on every page load                               | Old build still calls `acquireToken({ interactive: false })` from `getConnectionState`. | Pull latest `main`. Current code never re-acquires tokens outside a user gesture.                                                                               |
+| `[GSI_LOGGER]: Failed to open popup window … Maybe blocked…`         | A token request is happening outside a user gesture.                                    | The scheduler only uses `canRunWithoutPrompt()`, which never requests a token. If you patched it, restore the user-gesture-only invariant.                      |
+| Card stuck on "Working…" after closing the Google popup              | A build without `error_callback` on `initTokenClient`.                                  | Pull latest `main`; a dismissed popup now ends the action quietly.                                                                                              |
+| `POST /vault/backups → 401`                                          | The app's JWT access token expired or was signed with a different secret.               | Logout → login. If still failing, check that `ACCESS_JWT_SECRET` matches between the running backend and the token issuer.                                      |
+| `GET /vault/backups/latest → 401`                                    | Same as above.                                                                          | Logout → login.                                                                                                                                                 |
+| Connect button is disabled                                           | The GIS script (`https://accounts.google.com/gsi/client`) failed to load.               | Check Network tab; common causes are content blockers, an offline state, or a strict CSP that omits `accounts.google.com`. Allowlist `*.gstatic.com` if needed. |
 
 When debugging Drive errors specifically, the provider re-reads the response
 body and includes Google's `error.message` field in the thrown `Error`. The
@@ -434,5 +489,5 @@ request — it is the most authoritative source.
 - Drive API — [`appDataFolder` reference](https://developers.google.com/drive/api/guides/appdata)
 - Drive API — [files.create with appProperties](https://developers.google.com/drive/api/reference/rest/v3/files)
 - OWASP — [OAuth 2.0 implicit flow guidance](https://cheatsheetseries.owasp.org/cheatsheets/OAuth2_Cheat_Sheet.html)
-- Internal: [ADR 0039 — vault crypto suite](../adr/0039-web-and-mobile-vaults-share-one-crypto-suite.md), [ADR 0033 — local vaults are user-owned](../adr/0033-local-vaults-are-user-owned-and-never-silently-destroyed.md), [vault overview](../vault/README.md)
+- Internal: [ADR 0062](../adr/0062-the-drive-escape-hatch-holds-no-token-we-could-lose.md), [ADR 0063](../adr/0063-a-restore-discards-the-evidence-it-holds-about-the-server.md), [ADR 0064 — standalone reader, not built yet (#792)](../adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md), [ADR 0039 — vault crypto suite](../adr/0039-web-and-mobile-vaults-share-one-crypto-suite.md), [ADR 0033 — local vaults are user-owned](../adr/0033-local-vaults-are-user-owned-and-never-silently-destroyed.md), [vault overview](../vault/README.md)
 - Sibling integration: [YouTube OAuth setup](./google-youtube-oauth-setup.md), [YouTube integration architecture](./youtube-integration.md)

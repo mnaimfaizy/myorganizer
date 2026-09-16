@@ -1522,6 +1522,11 @@ paths:
           required: false
           schema:
             $ref: "#/components/schemas/VaultBackupSource"
+        - in: query
+          name: event
+          required: false
+          schema:
+            $ref: "#/components/schemas/VaultBackupEvent"
   /auth/login:
     post:
       operationId: Login

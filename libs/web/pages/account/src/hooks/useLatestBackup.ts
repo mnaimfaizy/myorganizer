@@ -25,7 +25,7 @@ export type LatestBackupState =
   | { status: 'error'; record: null; error: unknown };
 
 /**
- * Fetch the most recent successful backup record on mount.
+ * Fetch the most recent successful export record on mount.
  * - 200 → `loaded` with the record
  * - 404 → `empty` (no backups yet)
  * - any other error → `error`
@@ -34,10 +34,12 @@ export function useLatestBackup(
   apiFactory: () => {
     getLatestBackup: (req: {
       status?: string;
+      event?: string;
     }) => Promise<{ data: LatestBackupRecord }>;
   } = createVaultBackupsApi as unknown as () => {
     getLatestBackup: (req: {
       status?: string;
+      event?: string;
     }) => Promise<{ data: LatestBackupRecord }>;
   },
 ): LatestBackupState {
@@ -49,7 +51,11 @@ export function useLatestBackup(
   const fetchLatest = useCallback(async () => {
     try {
       const api = apiFactory();
-      const response = await api.getLatestBackup({ status: 'success' });
+      // Exports only: a restore is not a backup and must not read as one.
+      const response = await api.getLatestBackup({
+        status: 'success',
+        event: 'export',
+      });
       setState({ status: 'loaded', record: response.data });
     } catch (error: unknown) {
       const err = error as { response?: { status?: number } };

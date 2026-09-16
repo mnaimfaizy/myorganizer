@@ -209,6 +209,7 @@ export class VaultBackupService {
     userId: string,
     status?: string,
     source?: string,
+    event?: string,
   ): Promise<ServiceResult<VaultBackupRecordDto>> {
     if (status !== undefined && !isVaultBackupStatus(status)) {
       return {
@@ -224,12 +225,20 @@ export class VaultBackupService {
         body: { message: 'Invalid source filter' },
       };
     }
+    if (event !== undefined && !isVaultBackupEvent(event)) {
+      return {
+        ok: false,
+        status: 422,
+        body: { message: 'Invalid event filter' },
+      };
+    }
 
     const row = await this.prisma.vaultBackupRecord.findFirst({
       where: {
         userId,
         ...(status ? { status } : {}),
         ...(source ? { source } : {}),
+        ...(event ? { event } : {}),
       },
       orderBy: { createdAt: 'desc' },
     });

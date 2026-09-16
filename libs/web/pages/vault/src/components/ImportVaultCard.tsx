@@ -48,7 +48,10 @@ export function ImportVaultCard() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [lastServerNote, setLastServerNote] = useState<string | null>(null);
   const [replaceDialogOpen, setReplaceDialogOpen] = useState(false);
-  const disclosure = useVaultImportDisclosure(selectedFile, replaceDialogOpen);
+  const disclosure = useVaultImportDisclosure(
+    selectedFile as { text(): Promise<string> } | null,
+    replaceDialogOpen,
+  );
 
   const runImport = useCallback(async () => {
     if (!handle || !selectedFile) {

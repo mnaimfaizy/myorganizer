@@ -103,6 +103,37 @@ describe('VaultBackupService source filtering', () => {
     if (!result.ok) expect(result.status).toBe(404);
   });
 
+  test('getLatest filters by event when provided', async () => {
+    prisma.vaultBackupRecord.findFirst.mockResolvedValueOnce(makeRow());
+    const result = await service.getLatest(
+      'user-1',
+      undefined,
+      undefined,
+      'export',
+    );
+    expect(result.ok).toBe(true);
+    expect(prisma.vaultBackupRecord.findFirst).toHaveBeenCalledWith({
+      where: {
+        userId: 'user-1',
+        event: 'export',
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  });
+
+  test('getLatest rejects invalid event filter without querying prisma', async () => {
+    const result = await service.getLatest(
+      'user-1',
+      undefined,
+      undefined,
+      'restore',
+    );
+    expect(result.ok).toBe(false);
+    expect(result.status).toBe(422);
+    expect((result as any).body.message).toBe('Invalid event filter');
+    expect(prisma.vaultBackupRecord.findFirst).not.toHaveBeenCalled();
+  });
+
   test('listHistory filters by source', async () => {
     prisma.vaultBackupRecord.findMany.mockResolvedValueOnce([]);
     const result = await service.listHistory('user-1', {

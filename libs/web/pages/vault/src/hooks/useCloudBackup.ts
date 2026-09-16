@@ -1,17 +1,17 @@
 'use client';
 
 import {
-  CLOUD_BACKUP_AUTO_INTERVALS,
-  CloudBackupAutoInterval,
+  ESCAPE_COPY_AGE_LIMITS,
   CloudBackupConnectionState,
   CloudBackupCoordinator,
   CloudBackupProvider,
   CloudBackupProviderId,
-  GoogleDriveCloudBackupProvider,
-  SchedulerHandle,
+  CloudEscapeCopy,
+  EscapeCopyAgeLimit,
   clearProviderPrefs,
   createDefaultAuditReporter,
   getProviderPrefs,
+  isCloudBackupPromptError,
   loadCloudBackupPreferences,
   saveCloudBackupPreferences,
   setProviderPrefs,
@@ -35,12 +35,12 @@ export interface UseCloudBackupOptions {
     provider: CloudBackupProvider,
   ) => CloudBackupCoordinator;
   /**
-   * Optional async resolver for the timestamp of the latest successful
-   * provider-scoped backup. Used by the scheduler to determine due-ness.
+   * Optional async resolver for the timestamp of the newest Escape Copy
+   * confirmed at this provider. Used by the scheduler to determine due-ness.
    * If not provided, the scheduler is not started even when the user
-   * configures an auto-backup interval.
+   * configures an age limit.
    */
-  getLastSuccessMs?: () => Promise<number | null>;
+  getNewestCopyMs?: () => Promise<number | null>;
   /**
    * Optional override for `startScheduler`, useful for tests. Defaults to
    * the implementation exported from `@myorganizer/web-vault`.
@@ -51,24 +51,29 @@ export interface UseCloudBackupOptions {
 export interface UseCloudBackupResult {
   providerId: CloudBackupProviderId;
   connection: CloudBackupConnectionState;
-  /** Currently configured auto-backup interval. */
-  autoInterval: CloudBackupAutoInterval;
+  /** Currently configured Escape Copy Age Limit. */
+  ageLimit: EscapeCopyAgeLimit;
   /** True while connect/disconnect/backup/restore is in flight. */
   isBusy: boolean;
   /** Last action error, if any. */
   lastError: string | null;
   /** Bumps after each successful backup; useful as a refreshKey trigger. */
   backupCounter: number;
+  /** A copy fetched and awaiting confirmation. */
+  pendingRestore: CloudEscapeCopy | null;
 
   connect: () => Promise<void>;
+  reconnect: () => Promise<void>;
   disconnect: () => Promise<void>;
   backupNow: () => Promise<void>;
-  restoreLatest: () => Promise<{ sizeBytes: number } | null>;
-  setAutoInterval: (next: CloudBackupAutoInterval) => void;
+  beginRestore: () => Promise<void>;
+  confirmRestore: () => Promise<void>;
+  cancelRestore: () => void;
+  setAgeLimit: (next: EscapeCopyAgeLimit) => void;
 }
 
 const DEFAULT_CONNECTION: CloudBackupConnectionState = {
-  status: 'disconnected',
+  status: 'not-linked',
 };
 
 function describeError(err: unknown): string {
@@ -80,11 +85,15 @@ function describeError(err: unknown): string {
 /**
  * Browser-only hook that exposes connection state + actions for a single
  * cloud backup provider. The hook owns one {@link CloudBackupCoordinator}
- * instance and persists the auto-backup interval to local storage.
+ * instance and persists the Escape Copy Age Limit to local storage.
  *
  * The hook is intentionally agnostic about how the {@link CloudBackupProvider}
  * is constructed; callers wire up the GIS-backed provider (or a mock) and
  * pass it in via `options.provider`.
+ *
+ * Restore is split in two steps: `beginRestore` fetches a copy and stores it
+ * pending confirmation; `confirmRestore` actually imports it after the user
+ * confirms what it changes about credentials (ADR 0063).
  */
 export function useCloudBackup(
   options: UseCloudBackupOptions,
@@ -94,7 +103,7 @@ export function useCloudBackup(
     provider,
     handle,
     coordinatorFactory,
-    getLastSuccessMs,
+    getNewestCopyMs,
     schedulerImpl,
   } = options;
 
@@ -108,11 +117,13 @@ export function useCloudBackup(
 
   const [connection, setConnection] =
     useState<CloudBackupConnectionState>(DEFAULT_CONNECTION);
-  const [autoInterval, setAutoIntervalState] =
-    useState<CloudBackupAutoInterval>('off');
+  const [ageLimit, setAgeLimitState] = useState<EscapeCopyAgeLimit>('off');
   const [isBusy, setIsBusy] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
   const [backupCounter, setBackupCounter] = useState(0);
+  const [pendingRestore, setPendingRestore] = useState<CloudEscapeCopy | null>(
+    null,
+  );
 
   const mountedRef = useRef(true);
 
@@ -120,7 +131,7 @@ export function useCloudBackup(
   useEffect(() => {
     mountedRef.current = true;
     const prefs = loadCloudBackupPreferences();
-    setAutoIntervalState(getProviderPrefs(prefs, providerId).autoInterval);
+    setAgeLimitState(getProviderPrefs(prefs, providerId).ageLimit);
 
     void coordinator
       .getConnectionState()
@@ -128,7 +139,7 @@ export function useCloudBackup(
         if (mountedRef.current) setConnection(state);
       })
       .catch(() => {
-        // ignore; default to disconnected
+        // ignore; default to not-linked
       });
 
     return () => {
@@ -148,6 +159,17 @@ export function useCloudBackup(
       try {
         return await fn();
       } catch (err) {
+        // Quiet popup-closed errors: user dismissed the prompt, not a failure
+        if (isCloudBackupPromptError(err) && err.failure === 'popup-closed') {
+          // Rethrow but don't show error
+          throw err;
+        }
+        if (isCloudBackupPromptError(err) && err.failure === 'popup-blocked') {
+          const msg =
+            'Your browser blocked the Google sign-in window. Allow pop-ups for this site and try again.';
+          if (mountedRef.current) setLastError(msg);
+          throw new Error(msg);
+        }
         if (mountedRef.current) setLastError(describeError(err));
         throw err;
       } finally {
@@ -159,19 +181,31 @@ export function useCloudBackup(
 
   const connect = useCallback(async () => {
     await runWithBusy(async () => {
-      const next = await coordinator.connect();
-      if (mountedRef.current) setConnection(next);
+      try {
+        const next = await coordinator.connect();
+        if (mountedRef.current) setConnection(next);
+      } finally {
+        await refreshConnection();
+      }
     });
-  }, [coordinator, runWithBusy]);
+  }, [coordinator, refreshConnection, runWithBusy]);
+
+  // reconnect is the same operation as connect; only the button label differs
+  // (Link vs Reconnect). Both names are exported and used by the card.
+  const reconnect = connect;
 
   const disconnect = useCallback(async () => {
     await runWithBusy(async () => {
-      await coordinator.disconnect();
-      if (mountedRef.current) {
-        setConnection({ status: 'disconnected' });
+      try {
+        await coordinator.disconnect();
+        if (mountedRef.current) {
+          setConnection({ status: 'not-linked' });
+        }
+      } finally {
+        await refreshConnection();
       }
     });
-  }, [coordinator, runWithBusy]);
+  }, [coordinator, refreshConnection, runWithBusy]);
 
   const backupNow = useCallback(async () => {
     await runWithBusy(async () => {
@@ -194,54 +228,70 @@ export function useCloudBackup(
     });
   }, [coordinator, handle, refreshConnection, runWithBusy]);
 
-  const restoreLatest = useCallback(async () => {
-    return await runWithBusy(async () => {
-      const result = await coordinator.restoreLatest(handle);
-      await refreshConnection();
-      if (!result) return null;
-      return { sizeBytes: result.sizeBytes };
+  const beginRestore = useCallback(async () => {
+    await runWithBusy(async () => {
+      try {
+        const copy = await coordinator.fetchLatestCopy();
+        if (!copy) {
+          throw new Error('No copy found in Google Drive.');
+        }
+        if (mountedRef.current) {
+          setPendingRestore(copy);
+        }
+      } finally {
+        await refreshConnection();
+      }
     });
-  }, [coordinator, handle, refreshConnection, runWithBusy]);
+  }, [coordinator, refreshConnection, runWithBusy]);
 
-  const setAutoInterval = useCallback(
-    (next: CloudBackupAutoInterval) => {
-      if (!CLOUD_BACKUP_AUTO_INTERVALS.includes(next)) return;
-      setAutoIntervalState(next);
+  const confirmRestore = useCallback(async () => {
+    if (!pendingRestore) {
+      throw new Error('No copy pending restore.');
+    }
+    await runWithBusy(async () => {
+      try {
+        await coordinator.restoreCopy(pendingRestore, handle);
+        if (mountedRef.current) {
+          setPendingRestore(null);
+        }
+      } finally {
+        await refreshConnection();
+      }
+    });
+  }, [coordinator, handle, pendingRestore, refreshConnection, runWithBusy]);
+
+  const cancelRestore = useCallback(() => {
+    setPendingRestore(null);
+  }, []);
+
+  const setAgeLimit = useCallback(
+    (next: EscapeCopyAgeLimit) => {
+      if (!ESCAPE_COPY_AGE_LIMITS.includes(next)) return;
+      setAgeLimitState(next);
       const current = loadCloudBackupPreferences();
       const updated =
         next === 'off'
           ? clearProviderPrefs(current, providerId)
-          : setProviderPrefs(current, providerId, { autoInterval: next });
+          : setProviderPrefs(current, providerId, { ageLimit: next });
       saveCloudBackupPreferences(updated);
     },
     [providerId],
   );
 
-  // Auto-backup scheduler: only runs when connected, interval !== 'off',
-  // and a `getLastSuccessMs` resolver was supplied.
-  const intervalRef = useRef<CloudBackupAutoInterval>(autoInterval);
-  intervalRef.current = autoInterval;
+  // Auto-backup scheduler: only runs when linked, ageLimit !== 'off',
+  // and a `getNewestCopyMs` resolver was supplied.
+  const ageLimitRef = useRef<EscapeCopyAgeLimit>(ageLimit);
+  ageLimitRef.current = ageLimit;
   useEffect(() => {
-    if (!getLastSuccessMs) return;
-    if (autoInterval === 'off') return;
-    if (connection.status !== 'connected') return;
+    if (!getNewestCopyMs) return;
+    if (ageLimit === 'off') return;
+    if (connection.status !== 'linked') return;
 
     const start = schedulerImpl ?? startScheduler;
-    const schedulerHandle: SchedulerHandle = start({
-      getInterval: () => intervalRef.current,
-      getLastSuccessMs,
-      canRunNow: async () => {
-        let canRun: boolean;
-        if (provider instanceof GoogleDriveCloudBackupProvider) {
-          canRun = await provider.canRunSilently();
-        } else {
-          const state = await provider.getConnectionState();
-          canRun = state.status === 'connected';
-        }
-        // Reflect any state transition (e.g. silent token denial) in the UI.
-        await refreshConnection();
-        return canRun;
-      },
+    const schedulerHandle = start({
+      getNewestCopyMs,
+      getAgeLimit: () => ageLimitRef.current,
+      canRunWithoutPrompt: () => coordinator.canRunWithoutPrompt(),
       runBackup: async () => {
         const localVault = handle.loadVault();
         if (!localVault) return;
@@ -261,12 +311,11 @@ export function useCloudBackup(
       schedulerHandle.stop();
     };
   }, [
-    autoInterval,
+    ageLimit,
     connection.status,
     coordinator,
-    getLastSuccessMs,
+    getNewestCopyMs,
     handle,
-    provider,
     refreshConnection,
     schedulerImpl,
   ]);
@@ -274,14 +323,18 @@ export function useCloudBackup(
   return {
     providerId,
     connection,
-    autoInterval,
+    ageLimit,
     isBusy,
     lastError,
     backupCounter,
+    pendingRestore,
     connect,
+    reconnect,
     disconnect,
     backupNow,
-    restoreLatest,
-    setAutoInterval,
+    beginRestore,
+    confirmRestore,
+    cancelRestore,
+    setAgeLimit,
   };
 }

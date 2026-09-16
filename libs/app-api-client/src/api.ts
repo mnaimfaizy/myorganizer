@@ -4647,10 +4647,11 @@ export const VaultBackupsApiAxiosParamCreator = function (configuration?: Config
          * 
          * @param {VaultBackupStatus} [status] 
          * @param {VaultBackupSource} [source] 
+         * @param {VaultBackupEvent} [event] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        getLatestBackup: async (status?: VaultBackupStatus, source?: VaultBackupSource, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        getLatestBackup: async (status?: VaultBackupStatus, source?: VaultBackupSource, event?: VaultBackupEvent, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/vault/backups/latest`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -4673,6 +4674,10 @@ export const VaultBackupsApiAxiosParamCreator = function (configuration?: Config
 
             if (source !== undefined) {
                 localVarQueryParameter['source'] = source;
+            }
+
+            if (event !== undefined) {
+                localVarQueryParameter['event'] = event;
             }
 
 
@@ -4787,11 +4792,12 @@ export const VaultBackupsApiFp = function(configuration?: Configuration) {
          * 
          * @param {VaultBackupStatus} [status] 
          * @param {VaultBackupSource} [source] 
+         * @param {VaultBackupEvent} [event] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async getLatestBackup(status?: VaultBackupStatus, source?: VaultBackupSource, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetLatestVaultBackupResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.getLatestBackup(status, source, options);
+        async getLatestBackup(status?: VaultBackupStatus, source?: VaultBackupSource, event?: VaultBackupEvent, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetLatestVaultBackupResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getLatestBackup(status, source, event, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['VaultBackupsApi.getLatestBackup']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -4839,7 +4845,7 @@ export const VaultBackupsApiFactory = function (configuration?: Configuration, b
          * @throws {RequiredError}
          */
         getLatestBackup(requestParameters: VaultBackupsApiGetLatestBackupRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<GetLatestVaultBackupResponse> {
-            return localVarFp.getLatestBackup(requestParameters.status, requestParameters.source, options).then((request) => request(axios, basePath));
+            return localVarFp.getLatestBackup(requestParameters.status, requestParameters.source, requestParameters.event, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -4881,6 +4887,13 @@ export interface VaultBackupsApiGetLatestBackupRequest {
      * @memberof VaultBackupsApiGetLatestBackup
      */
     readonly source?: VaultBackupSource
+
+    /**
+     * 
+     * @type {VaultBackupEvent}
+     * @memberof VaultBackupsApiGetLatestBackup
+     */
+    readonly event?: VaultBackupEvent
 }
 
 /**
@@ -4940,7 +4953,7 @@ export class VaultBackupsApi extends BaseAPI {
      * @memberof VaultBackupsApi
      */
     public getLatestBackup(requestParameters: VaultBackupsApiGetLatestBackupRequest = {}, options?: RawAxiosRequestConfig) {
-        return VaultBackupsApiFp(this.configuration).getLatestBackup(requestParameters.status, requestParameters.source, options).then((request) => request(this.axios, this.basePath));
+        return VaultBackupsApiFp(this.configuration).getLatestBackup(requestParameters.status, requestParameters.source, requestParameters.event, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

@@ -1251,6 +1251,7 @@ export function RegisterRoutes(app: Router) {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 status: {"in":"query","name":"status","ref":"VaultBackupStatus"},
                 source: {"in":"query","name":"source","ref":"VaultBackupSource"},
+                event: {"in":"query","name":"event","ref":"VaultBackupEvent"},
         };
         app.get('/vault/backups/latest',
             authenticateMiddleware([{"jwt":[]}]),

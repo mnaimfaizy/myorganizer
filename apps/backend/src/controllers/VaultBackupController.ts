@@ -64,10 +64,16 @@ export class VaultBackupController extends Controller {
     @Request() req: ExRequest,
     @Query() status?: VaultBackupStatus,
     @Query() source?: VaultBackupSource,
+    @Query() event?: VaultBackupEvent,
   ): Promise<GetLatestVaultBackupResponse> {
     const userId = requireUserId(req);
 
-    const result = await vaultBackupService.getLatest(userId, status, source);
+    const result = await vaultBackupService.getLatest(
+      userId,
+      status,
+      source,
+      event,
+    );
     this.setStatus(result.status);
     return result.body as GetLatestVaultBackupResponse;
   }
