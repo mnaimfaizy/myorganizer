@@ -3732,6 +3732,69 @@
   }
 </script>
 
+<script type="application/json" id="citation-anchors">
+  {
+    "note": "Expected-content anchors for file:line citations on this page, verified 2026-09-16 against .sandcastle/main.mts, .sandcastle/dispatch-waves.mts, and tools/scripts/lib/sandcastle-resume.mjs. See ADR 0085.",
+    "anchors": {
+      "main.mts:700-820": {
+        "file": ".sandcastle/main.mts",
+        "start": "`  [#${completed.number}] #${dependentNumber} still blocked by ${unfinished",
+        "end": "// label is NOT explained that way stays out: it means something this code cannot"
+      },
+      "main.mts:762-768": {
+        "file": ".sandcastle/main.mts",
+        "start": "'issue',",
+        "end": "REPO,"
+      },
+      "main.mts:153-205": {
+        "file": ".sandcastle/main.mts",
+        "start": "}",
+        "end": "/**"
+      },
+      "main.mts:1629-1700": {
+        "file": ".sandcastle/main.mts",
+        "start": "`Refs #${issue.number}`,",
+        "end": "): boolean {"
+      },
+      "main.mts:1077-1099": {
+        "file": ".sandcastle/main.mts",
+        "start": "// run whose sub-agent behaviour you most want to read. A mount sidesteps the ordering",
+        "end": "// Absent, no mount is added and CodeExplorer falls back to Glob/Grep as already"
+      },
+      "main.mts:2343-2357": {
+        "file": ".sandcastle/main.mts",
+        "start": "* Sessions are selected by mtime against the moment this run started rather than by id.",
+        "end": "'logs',"
+      },
+      "main.mts:1030-1037": {
+        "file": ".sandcastle/main.mts",
+        "start": "// `## Blocked by` ordering is PRD vocabulary. Standalone runs a single issue the",
+        "end": "unfinishedDependencies(issue, dependencyStatus).length === 0,"
+      },
+      "main.mts:1110-1121": {
+        "file": ".sandcastle/main.mts",
+        "start": "* Graphify records no commit sha of its own, so \"built at\" is approximated from",
+        "end": "const builtAt = statSync(graphifyGraphPath).mtime;"
+      },
+      "main.mts:1720-1776": {
+        "file": ".sandcastle/main.mts",
+        "start": "const crossProjectTargets = targetList.filter((t) => t !== 'lint');",
+        "end": "// separate path means it never holds the slice branch checked out and it is"
+      },
+      "sandcastle-resume.mjs:316-527": {
+        "file": "tools/scripts/lib/sandcastle-resume.mjs",
+        "start": "// thing, and failing silently on capitalisation is the worst outcome here.",
+        "end": "// would be ambiguous across the machines this runs on."
+      },
+      ".sandcastle/dispatch-waves.mts:111-297": {
+        "file": ".sandcastle/dispatch-waves.mts",
+        "start": "REPO,",
+        "end": "// Record and CARRY ON. Aborting here is what turned an unattended PRD into a"
+      }
+    }
+  }
+</script>
+
 <script>
   'use strict';
 
