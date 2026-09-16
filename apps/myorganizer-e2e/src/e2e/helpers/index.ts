@@ -36,3 +36,4 @@ export {
   vaultBlobRouteAbsolute,
   vaultBlobTypeExtractor,
 } from './vaultBlobRoutes';
+export { changePassphrase, unlockVaultOnSettingsPage } from './vaultSettings';

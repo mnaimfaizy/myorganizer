@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
+  changePassphrase,
   createOwnedVault,
   E2E_USER_ID,
   gotoStable,
@@ -10,6 +11,7 @@ import {
   routeApi,
   submitLoginForm,
   unlockWithPassphrase,
+  unlockVaultOnSettingsPage,
   vaultBlobRouteRelative,
   vaultBlobTypeExtractor,
   waitForOwnedVault,
@@ -891,17 +893,10 @@ test.describe('Vault export/import (E2E)', () => {
     const fs = await import('node:fs/promises');
     const oldExportedText = await fs.readFile(downloadPath as string, 'utf8');
 
-    // Step 4: Change the passphrase from P1 to P2
+    // Step 4: Unlock vault on settings page, then change the passphrase from P1 to P2
+    await unlockVaultOnSettingsPage(page, p1);
     const p2 = 'other-pass-1';
-    await page.getByLabel('Current passphrase', { exact: true }).fill(p1);
-    await page.getByLabel('New passphrase', { exact: true }).fill(p2);
-    await page.getByLabel('Confirm new passphrase', { exact: true }).fill(p2);
-    const changePassphraseSubmit = page.getByTestId('change-passphrase-submit');
-    await expect(changePassphraseSubmit).toBeEnabled({ timeout: 60000 });
-    await changePassphraseSubmit.click();
-    await expect(
-      page.getByText('Passphrase changed', { exact: true }),
-    ).toBeVisible({ timeout: 60000 });
+    await changePassphrase(page, { current: p1, next: p2 });
 
     // Step 5: Re-import the OLD exported text (still P1-wrapped)
     const importInput = page.getByTestId('import-vault-file');
@@ -919,10 +914,24 @@ test.describe('Vault export/import (E2E)', () => {
     // Step 6: Confirm the import replace dialog with wrapping-reverts-passphrase outcome
     await confirmImportReplaceDialog(page, 'wrapping-reverts-passphrase');
 
-    // Step 7: Assert import complete
+    // Step 7: Assert the import landed.
+    //
+    // Deliberately not the 'Import complete' toast. This test changes the
+    // passphrase first, so the toast it would assert is the SECOND toast on
+    // this page, and `use-toast` drops that one — issue #810. A trace taken
+    // here shows 'Passphrase changed' in a DOM snapshot and 'Import complete'
+    // in none of 185, while the import itself succeeds.
+    //
+    // These three signals are durable and set only on the success path:
+    // `lastServerNote` renders solely after `importVault` resolves, the button
+    // re-disables once the selected file is cleared, and the vault is owned.
+    // Restore the toast assertion when #810 is fixed.
     await expect(
-      page.getByText('Import complete', { exact: true }),
+      page.getByText('Imported locally. Audit recorded on server.', {
+        exact: true,
+      }),
     ).toBeVisible({ timeout: 60000 });
+    await expect(importButton).toBeDisabled();
 
     // Step 8: Verify vault ownership
     await waitForOwnedVault(page, E2E_USER_ID);

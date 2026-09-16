@@ -8,7 +8,7 @@ import { E2E_USER_ID, waitForOwnedVault } from './vaultStorage';
  * WebKit under CI load. Generous on purpose: a timeout is not a sleep, and
  * the assertions below still resolve as soon as the state lands.
  */
-const PBKDF2_BUDGET_MS = 60000;
+export const PBKDF2_BUDGET_MS = 60000;
 
 /**
  * The phrase specs use to create and unlock a Local Vault.
