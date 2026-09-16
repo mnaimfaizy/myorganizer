@@ -408,8 +408,17 @@ async function setupVaultWithGroceryData(page: Page) {
  *   shown and gates confirm.
  * - `different-vault`: The bundle holds a different Vault Identity; checkbox
  *   shown and gates confirm.
+ * - `wrapping-reverts-passphrase`: Same Vault Identity, but the bundle is
+ *   wrapped with a passphrase older than the one currently in use (e.g. the
+ *   passphrase was changed on this device after the backup was made). The
+ *   disclosure must name the passphrase specifically and must never read as
+ *   a different-Vault warning (issue #700); checkbox shown and gates confirm.
  */
-type ImportDisclosureOutcome = 'unchanged' | 'unreadable' | 'different-vault';
+type ImportDisclosureOutcome =
+  | 'unchanged'
+  | 'unreadable'
+  | 'different-vault'
+  | 'wrapping-reverts-passphrase';
 
 /**
  * Wipe + reload is not an empty Local Vault: reconcile restores from the stub,
@@ -493,6 +502,43 @@ async function confirmImportReplaceDialog(
       const acknowledge = replaceDialog.getByTestId(
         'import-vault-replace-acknowledge',
       );
+      await acknowledge.click();
+      await expect(acknowledge).toBeChecked({ timeout: 30000 });
+      await expect(confirmReplace).toBeEnabled();
+
+      await confirmReplace.click();
+      break;
+    }
+
+    case 'wrapping-reverts-passphrase': {
+      // Same Vault, wrapped with the passphrase in use when the backup was
+      // made — older than the one currently on this device. The dialog must
+      // name the passphrase specifically, and must never read as a
+      // different-Vault warning (issue #700's regression: the two rows must
+      // not collapse into one).
+      const disclosure = replaceDialog.getByTestId(
+        'import-vault-replace-disclosure',
+      );
+      await expect(disclosure).toHaveText(
+        'This backup holds the Vault this device already has, wrapped with the passphrase that was in use when the backup was made. After importing, that passphrase unlocks this device and the one you use now stops working. Your Recovery Key is unaffected.',
+      );
+      await expect(disclosure).not.toContainText('different Vault');
+
+      const confirmReplace = replaceDialog.getByTestId(
+        'import-vault-replace-confirm',
+      );
+      await expect(confirmReplace).toBeDisabled();
+
+      const acknowledge = replaceDialog.getByTestId(
+        'import-vault-replace-acknowledge',
+      );
+      await expect(
+        replaceDialog.getByText(
+          "I understand the passphrase on this device will revert to the backup's.",
+          { exact: true },
+        ),
+      ).toBeVisible();
+
       await acknowledge.click();
       await expect(acknowledge).toBeChecked({ timeout: 30000 });
       await expect(confirmReplace).toBeEnabled();
@@ -812,6 +858,76 @@ test.describe('Vault export/import (E2E)', () => {
     ).toHaveCount(0);
     await expect(importButton).toBeDisabled();
 
+    await ctx.close();
+  });
+
+  test('import older backup after passphrase change: wrapping-reverts disclosure', async ({
+    browser,
+  }) => {
+    test.setTimeout(180000);
+
+    const ctx = await browser.newContext({
+      acceptDownloads: true,
+    });
+    const page = await ctx.newPage();
+    setupBackend(page);
+
+    // Step 1: Login and setup vault with initial passphrase (P1)
+    await login(page);
+    const p1 = await setupVaultWithSampleData(page);
+
+    // Step 2: Navigate to vault page and export
+    await gotoStable(page, '/dashboard/vault');
+    const exportButton = page.getByTestId('export-vault-button');
+    await expect(exportButton).toBeVisible({ timeout: 60000 });
+
+    // Step 3: Capture the exported JSON (wrapped with P1)
+    const [download] = await Promise.all([
+      page.waitForEvent('download'),
+      exportButton.click(),
+    ]);
+    const downloadPath = await download.path();
+    expect(downloadPath).toBeTruthy();
+    const fs = await import('node:fs/promises');
+    const oldExportedText = await fs.readFile(downloadPath as string, 'utf8');
+
+    // Step 4: Change the passphrase from P1 to P2
+    const p2 = 'other-pass-1';
+    await page.getByLabel('Current passphrase', { exact: true }).fill(p1);
+    await page.getByLabel('New passphrase', { exact: true }).fill(p2);
+    await page.getByLabel('Confirm new passphrase', { exact: true }).fill(p2);
+    const changePassphraseSubmit = page.getByTestId('change-passphrase-submit');
+    await expect(changePassphraseSubmit).toBeEnabled({ timeout: 60000 });
+    await changePassphraseSubmit.click();
+    await expect(
+      page.getByText('Passphrase changed', { exact: true }),
+    ).toBeVisible({ timeout: 60000 });
+
+    // Step 5: Re-import the OLD exported text (still P1-wrapped)
+    const importInput = page.getByTestId('import-vault-file');
+    await expect(importInput).toBeVisible({ timeout: 60000 });
+    await importInput.setInputFiles({
+      name: 'vault-export.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(oldExportedText, 'utf8'),
+    });
+
+    const importButton = page.getByTestId('import-vault-button');
+    await expect(importButton).toBeEnabled({ timeout: 60000 });
+    await importButton.click();
+
+    // Step 6: Confirm the import replace dialog with wrapping-reverts-passphrase outcome
+    await confirmImportReplaceDialog(page, 'wrapping-reverts-passphrase');
+
+    // Step 7: Assert import complete
+    await expect(
+      page.getByText('Import complete', { exact: true }),
+    ).toBeVisible({ timeout: 60000 });
+
+    // Step 8: Verify vault ownership
+    await waitForOwnedVault(page, E2E_USER_ID);
+
+    // Step 9: Close context
     await ctx.close();
   });
 });
