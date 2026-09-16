@@ -621,14 +621,31 @@ const SS = [
   ["implement","to-issues","A","implement/SKILL.md \u2014 back-reference to the slice that spawned it"],
   ["qa-plan","playwright-e2e-workflow","A","qa-plan/SKILL.md:22-25 \u2014 planning Playwright specs is a different task owned elsewhere; qa-plan sends it away."],
   ["qa-plan","unit-test-delegation-workflow","A","qa-plan/SKILL.md:22-25 \u2014 a Jest behavior matrix is that skill's job."],
-  ["qa-plan","code-review","A","qa-plan/SKILL.md:26 \u2014 \u201cReviewing the diff for defects\u201d belongs to code-review."]
+  ["qa-plan","code-review","A","qa-plan/SKILL.md:26 \u2014 \u201cReviewing the diff for defects\u201d belongs to code-review."],
+
+  /* ask-matt is the router: 21 routes-to targets, ask-matt/SKILL.md:17-81 */
+  ["ask-matt","grill-with-docs","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","prototype","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","handoff","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","to-prd","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","to-issues","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","github-issue-creation-workflow","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","implement","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","tdd","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","code-review","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","triage","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","diagnosing-bugs","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","improve-codebase-architecture","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","codebase-design","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","domain-modeling","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","unit-test-delegation-workflow","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","playwright-e2e-workflow","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","storybook-delegation-workflow","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","backend-api-contract-change","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","prisma-migration-workflow","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","release-and-deploy-workflow","A","ask-matt/SKILL.md:17-81 \u2014 router"],
+  ["ask-matt","upstream-brief","A","ask-matt/SKILL.md:17-81 \u2014 router"]
 ];
-/* ask-matt is the router: 21 routes-to targets, ask-matt/SKILL.md:17-81 */
-["grill-with-docs","prototype","handoff","to-prd","to-issues","github-issue-creation-workflow","implement","tdd",
- "code-review","triage","diagnosing-bugs","improve-codebase-architecture","codebase-design","domain-modeling",
- "unit-test-delegation-workflow","playwright-e2e-workflow","storybook-delegation-workflow","backend-api-contract-change",
- "prisma-migration-workflow","release-and-deploy-workflow","upstream-brief"]
-  .forEach(t => SS.push(["ask-matt", t, "A", "ask-matt/SKILL.md:17-81 \u2014 router"]));
 
 /* \u2500\u2500 Skill \u2192 sub-agent edges (53 drawn; see the false-positive note below) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 const AGENTS = {

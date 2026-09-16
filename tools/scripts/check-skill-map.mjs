@@ -285,6 +285,11 @@ if (classified.length === 0) {
     'could not read the classified edge list from the page — did its script change shape?',
   );
 } else {
+  eq(
+    'skillToSkillEdgeCount (page)',
+    classified.length,
+    manifest.skillToSkillEdgeCount,
+  );
   const warns = classified.filter((t) => t === 'C').length;
   eq(
     'skillToSkillWarnsOffEdgeCount',
