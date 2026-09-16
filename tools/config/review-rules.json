@@ -229,6 +229,13 @@
       "cites": "AGENTS.md"
     },
     {
+      "id": "standard-operator-fingerprint-in-source",
+      "family": "standard",
+      "title": "An Operator Fingerprint is written into the tracked tree",
+      "axes": ["standards"],
+      "cites": "docs/adr/0086-a-public-tree-hides-an-operator-not-a-product.md"
+    },
+    {
       "id": "standard-branch-or-commit-convention",
       "family": "standard",
       "title": "A branch name or commit message breaks the naming convention",
