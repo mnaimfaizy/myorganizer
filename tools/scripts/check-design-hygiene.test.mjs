@@ -23,6 +23,8 @@ const CHECKER_SOURCE = join(SCRIPT_DIR, 'check-design-hygiene.mjs');
 const SCAN_SOURCE = join(SCRIPT_DIR, 'lib', 'design-page-scan.mjs');
 const SHARED_SCAN_SOURCE = join(SCRIPT_DIR, 'lib', 'source-scan.mjs');
 const ROSTER_SOURCE = join(SCRIPT_DIR, 'lib', 'design-page-roster.mjs');
+const BASELINE_LIB_SOURCE = join(SCRIPT_DIR, 'lib', 'baseline-file.mjs');
+const ANCHOR_BASELINE_FILE = 'tools/config/citation-anchor-baseline.json';
 
 const FONT_BLOCK =
   '@font-face { font-family: Caprasimo; src: url(data:font/woff2;base64,AAAA); }';
@@ -87,6 +89,14 @@ function createWorkspace(t) {
     'tools/scripts/lib/design-page-roster.mjs',
     readFileSync(ROSTER_SOURCE, 'utf8'),
   );
+  write(
+    workspace,
+    'tools/scripts/lib/baseline-file.mjs',
+    readFileSync(BASELINE_LIB_SOURCE, 'utf8'),
+  );
+  // Empty by default: a fixture page carrying an unanchored citation is held to
+  // the rule unless a test puts it on the list itself.
+  writeAnchorBaseline(workspace, []);
 
   for (const page of FIXTURE_PAGES) {
     write(
@@ -104,6 +114,33 @@ function createWorkspace(t) {
   spawnSync('git', ['add', '-A'], { cwd: workspace });
 
   return workspace;
+}
+
+function writeAnchorBaseline(workspace, pages) {
+  write(
+    workspace,
+    ANCHOR_BASELINE_FILE,
+    `${JSON.stringify({ schemaVersion: 1, baseline: pages }, null, 2)}\n`,
+  );
+}
+
+/** A page carrying one citation, with an anchor map only when `anchor` is given. */
+function pageWithCitation(title, { citation, anchor }) {
+  const blocks = [`<span class="cite">${citation}</span>`];
+  if (anchor) {
+    blocks.push(
+      `<script type="application/json" id="citation-anchors">${JSON.stringify({
+        anchors: anchor,
+      })}</script>`,
+    );
+  }
+  return housePage(title).replace(
+    '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+    [
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      ...blocks,
+    ].join('\n'),
+  );
 }
 
 function run(workspace, ...args) {
@@ -206,6 +243,90 @@ test('the same legacy page with only a non-canonical font block still passes —
   assert.match(result.stdout, /SKIPPED/);
 });
 
+// --- the anchor requirement is per citation, not per page (ADR 0085) ----------
+//
+// Keyed off the presence of a `citation-anchors` block, the rule would hold only
+// the page that already opted in — every other cited page would pass by carrying
+// nothing. The baseline is the migration hatch, and it can only shrink.
+
+test('a citation with no anchor fails on a page the baseline does not name', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    pageWithCitation('waves', {
+      citation: 'tools/scripts/lib/source-scan.mjs:2',
+    }),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-missing-anchor/);
+  assert.match(result.stdout, /source-scan\.mjs:2/);
+});
+
+test('the same citation passes while its page is on the anchor baseline', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    pageWithCitation('waves', {
+      citation: 'tools/scripts/lib/source-scan.mjs:2',
+    }),
+  );
+  writeAnchorBaseline(workspace, ['docs/sandcastle/waves.html']);
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /citation-missing-anchor/);
+});
+
+test('a baselined page is still held to citation resolution — the hatch is only about anchors', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    pageWithCitation('waves', { citation: 'nonexistent-source.yml:5' }),
+  );
+  writeAnchorBaseline(workspace, ['docs/sandcastle/waves.html']);
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-unresolved/);
+});
+
+test('a baselined page whose citations are all anchored is reported as a stale entry', (t) => {
+  // Otherwise the list stops meaning "not yet anchored" and starts meaning
+  // nothing at all, which is the defect this PRD is named for.
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    pageWithCitation('waves', {
+      citation: 'tools/scripts/lib/source-scan.mjs:2',
+      anchor: {
+        'tools/scripts/lib/source-scan.mjs:2': {
+          file: 'tools/scripts/lib/source-scan.mjs',
+          start: readFileSync(
+            join(workspace, 'tools/scripts/lib/source-scan.mjs'),
+            'utf8',
+          ).split('\n')[1],
+        },
+      },
+    }),
+  );
+  writeAnchorBaseline(workspace, ['docs/sandcastle/waves.html']);
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-anchor-baseline-stale/);
+  assert.match(result.stdout, /citation-anchor-baseline\.json/);
+});
+
 // docs/example/notes.md would exist on disk but not in the index the checker
 // searches (`git ls-files`, built once at createWorkspace time) — these two
 // cite a file createWorkspace already staged, the same way production citations
@@ -224,6 +345,10 @@ test('a citation on a roster page resolves against a real file in the tree', (t)
       ].join('\n'),
     ),
   );
+
+  // This page cites without an anchor on purpose: the subject here is resolution,
+  // so the anchor requirement is held off with the baseline rather than satisfied.
+  writeAnchorBaseline(workspace, ['docs/sandcastle/waves.html']);
 
   const result = run(workspace, 'docs/sandcastle/waves.html');
 
@@ -271,6 +396,10 @@ test("a citation to a file's real last line resolves, and the line past it does 
       ].join('\n'),
     ),
   );
+  // This page cites without an anchor on purpose: the subject here is resolution,
+  // so the anchor requirement is held off with the baseline rather than satisfied.
+  writeAnchorBaseline(workspace, ['docs/sandcastle/waves.html']);
+
   const goodResult = run(workspace, 'docs/sandcastle/waves.html');
   assert.equal(goodResult.status, 0, goodResult.stdout);
 
@@ -313,6 +442,10 @@ test('a citation whose name is short a directory prefix still resolves by suffix
   );
   spawnSync('git', ['add', '-A'], { cwd: workspace });
 
+  // This page cites without an anchor on purpose: the subject here is resolution,
+  // so the anchor requirement is held off with the baseline rather than satisfied.
+  writeAnchorBaseline(workspace, ['docs/sandcastle/waves.html']);
+
   const result = run(workspace, 'docs/sandcastle/waves.html');
 
   assert.equal(result.status, 0, result.stdout);
@@ -334,6 +467,10 @@ test('a bare-name citation resolves against a git-tracked file sharing that base
       ].join('\n'),
     ),
   );
+
+  // This page cites without an anchor on purpose: the subject here is resolution,
+  // so the anchor requirement is held off with the baseline rather than satisfied.
+  writeAnchorBaseline(workspace, ['docs/sandcastle/waves.html']);
 
   const result = run(workspace, 'docs/sandcastle/waves.html');
 

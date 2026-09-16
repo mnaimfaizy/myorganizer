@@ -52,7 +52,19 @@ import {
   LEGACY,
   ROSTER,
 } from './lib/design-page-roster.mjs';
+import { readBaselineEnvelope } from './lib/baseline-file.mjs';
 import { reportFindings } from './lib/source-scan.mjs';
+
+// Pages whose citations are not yet anchored (ADR 0085; PRD #772). The rule is
+// per citation, so this list is the only thing holding a page back from it — and
+// it can only shrink: an entry whose page is fully anchored is reported as stale.
+const ANCHOR_BASELINE_FILE = 'tools/config/citation-anchor-baseline.json';
+const anchorBaseline = new Set(
+  readBaselineEnvelope({
+    path: ANCHOR_BASELINE_FILE,
+    schemaVersion: 1,
+  }).baseline,
+);
 
 const USAGE = `Usage:
   node tools/scripts/check-design-hygiene.mjs <file> [<file> ...]
@@ -330,6 +342,7 @@ for (const file of selected) {
   const source = readFileSync(file, 'utf8');
   // LEGACY still honours its written reason for mechanical-hygiene rules — it
   // just no longer buys an exemption from the factual-assertion ones (ADR 0085).
+  const requireAnchors = !anchorBaseline.has(file);
   const findings = (
     inRoster
       ? scanDesignPage({
@@ -341,9 +354,31 @@ for (const file of selected) {
           adrLinkExists: (resolved) => existsSync(resolved),
           resolveCitation,
           getFileContent,
+          requireAnchors,
         })
-      : scanFactualAssertions({ source, resolveCitation, getFileContent })
+      : scanFactualAssertions({
+          source,
+          resolveCitation,
+          getFileContent,
+          requireAnchors,
+        })
   ).map((finding) => ({ level: 'error', ...finding }));
+
+  // A baselined page that now anchors everything has to leave the list, or the
+  // list stops meaning "not yet anchored" and starts meaning nothing at all.
+  if (
+    !requireAnchors &&
+    scanFactualAssertions({ source, resolveCitation, getFileContent }).every(
+      (finding) => finding.rule !== 'citation-missing-anchor',
+    )
+  ) {
+    findings.push({
+      level: 'error',
+      rule: 'citation-anchor-baseline-stale',
+      line: 1,
+      message: `Every citation on this page carries an anchor, so its entry in ${ANCHOR_BASELINE_FILE} is stale. Remove it — the baseline only shrinks.`,
+    });
+  }
   results.push({
     file,
     ...(inLegacy ? { skipped: legacyReason } : {}),

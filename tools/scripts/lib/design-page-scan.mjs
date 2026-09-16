@@ -643,12 +643,26 @@ function extractAnchorMap(source) {
  * step can tell an impossible citation from a possible one, not a right file from
  * a coincidentally long wrong one.
  *
- * When anchors are present, each citation is further checked: the anchor text
- * at the cited line(s) is compared against what the page claims it should be.
- * A citation carrying no anchor is a finding (ADR 0085).
+ * Each citation is further checked against its expected-content anchor: the text
+ * at the cited line(s) must be what the page claims is there. A citation carrying
+ * no anchor is itself a finding (ADR 0085) — the requirement is per CITATION, not
+ * per page. Keying it off the presence of a `citation-anchors` block would hold
+ * only the pages that already opted in, so a page with no block at all would pass
+ * by carrying nothing, which is the shape ADR 0043's marker objection warns about.
+ *
+ * `requireAnchors` is the migration hatch and nothing more: a page named in the
+ * anchor baseline still has its citations resolved and any anchors it does carry
+ * compared, it is simply not yet failed for the anchors it lacks. The baseline can
+ * only shrink, so the hatch closes.
  */
-function checkCitations(source, findings, resolveCitation, getFileContent) {
-  const anchors = getFileContent ? extractAnchorMap(source) : null;
+function checkCitations(
+  source,
+  findings,
+  resolveCitation,
+  getFileContent,
+  requireAnchors = true,
+) {
+  const anchors = getFileContent ? (extractAnchorMap(source) ?? {}) : null;
   const citations = findCitations(source);
 
   for (const citation of citations) {
@@ -662,7 +676,6 @@ function checkCitations(source, findings, resolveCitation, getFileContent) {
       continue;
     }
 
-    // If we have anchors available, check them
     if (anchors && getFileContent) {
       const key =
         citation.endLine !== citation.line
@@ -671,12 +684,13 @@ function checkCitations(source, findings, resolveCitation, getFileContent) {
 
       const anchor = anchors[key];
       if (!anchor) {
-        // Missing anchor for this citation
-        findings.push({
-          rule: 'citation-missing-anchor',
-          line: citation.sourceLine,
-          message: `Citation ${key} has no anchor in citation-anchors. Without an anchor, nothing asserts what this citation names.`,
-        });
+        if (requireAnchors) {
+          findings.push({
+            rule: 'citation-missing-anchor',
+            line: citation.sourceLine,
+            message: `Citation ${key} has no anchor in citation-anchors. Without an anchor, nothing asserts what this citation names.`,
+          });
+        }
       } else {
         // Use the anchor's file path for reading, as it disambiguates among multiple same-named files
         const filePath = anchor.file || result.filePath;
@@ -765,9 +779,16 @@ export function scanFactualAssertions({
   source,
   resolveCitation,
   getFileContent,
+  requireAnchors = true,
 }) {
   const findings = [];
-  checkCitations(source, findings, resolveCitation, getFileContent);
+  checkCitations(
+    source,
+    findings,
+    resolveCitation,
+    getFileContent,
+    requireAnchors,
+  );
   return findings.sort((a, b) => a.line - b.line);
 }
 
@@ -796,6 +817,7 @@ export function scanDesignPage({
   adrLinkExists,
   resolveCitation,
   getFileContent,
+  requireAnchors = true,
 }) {
   const code = maskHtmlComments(source);
   const findings = [];
@@ -808,7 +830,13 @@ export function scanDesignPage({
   checkManifest(code, source, findings);
   checkPrettierIgnored(file, prettierIgnored, findings);
   checkAdrLinks(file, code, adrLinkExists, findings);
-  checkCitations(source, findings, resolveCitation, getFileContent);
+  checkCitations(
+    source,
+    findings,
+    resolveCitation,
+    getFileContent,
+    requireAnchors,
+  );
 
   if (pageFontHash === null) {
     findings.push({
