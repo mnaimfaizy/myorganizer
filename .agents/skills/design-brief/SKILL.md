@@ -148,6 +148,67 @@ said 14 while the tree held 18, for two weeks, with nothing noticing.
 
 Brief the prose accordingly. A count the brief asks for is a count someone has to keep true.
 
+**A `file:line` citation carries an expected-content anchor.** A citation is a claim about a line,
+and a line number that still resolves is not a citation that is still true: all 19 stale citations
+on `release-pipeline.html` pointed at lines that exist, and one of them claimed
+`environment: production` over a line reading `rm -f "$RUNNER_TEMP/host_apply_key"`. So the page
+carries a second JSON block, `id="citation-anchors"`, recording what it says is at each line:
+
+```html
+<script type="application/json" id="citation-anchors">
+  {
+    "note": "…what this block is, and the date it was verified against the tree…",
+    "anchors": {
+      "deploy-production.yml:128": {
+        "file": ".github/workflows/deploy-production.yml",
+        "start": "environment: production"
+      },
+      "deploy-production.yml:40-50": {
+        "file": ".github/workflows/deploy-production.yml",
+        "start": "- name: Validate release branch",
+        "end": "exit 1"
+      }
+    }
+  }
+</script>
+```
+
+One block per page, holding one entry per **distinct** citation — the same `file:line` written in
+four places is one claim, and one entry keeps it from disagreeing with itself. The key is
+`name:line` or `name:start-end` with the name the citation resolves to, not the characters the page
+happens to print: most citations on a page are bare (`:181`, `:126-141`) and inherit the last file
+named ahead of them, so writing the key as printed would leave every one of them unkeyable and the
+same line anchored twice under two spellings. `file` then resolves that name to a repo-relative
+path, because `package.json` and `SKILL.md` each match several files and "some file of that name is
+long enough" is not the claim. `start` is the literal text at the cited line and `end` the literal text at the
+last line of a range — **both ends, so a range that grows or shrinks at either end is caught** —
+whitespace-normalised on comparison, following `verifyCitation` in
+`tools/scripts/review/obligations.mjs`.
+
+`file` is itself a claim, so the gate fails a citation whose `file` cannot be read or whose cited
+line is past that file's end (`citation-anchor-unreadable`), rather than passing it unverified. An
+anchor nobody can check asserts nothing, which is the state this whole block exists to leave.
+
+That last claim holds only as far as the end line says something. `release.mjs:16-24` ends on a bare
+`}` and line 23 is `  }`, which normalises to the same string, so a one-line shrink there verifies
+anyway. Prefer a range whose last line is distinctive; where the source offers none, the anchor is
+weaker than the rule sounds, and writing that down costs less than discovering it from a green check.
+
+Why a block rather than an attribute beside each citation: citations arrive four or five to a text
+node (`<td class="cite">deploy-production.yml:3-4, :128, :181, :293</td>`, an SVG `<text>` label),
+so an inline anchor means splitting hand-tuned markup that `.prettierignore` exists to protect. The
+block is also the one form that is identical across every markup a citation uses.
+
+**Write the anchor from the page's claim, not from the line.** Copying whatever the line currently
+says converts a stale citation into a permanently green one, which is worse than the drift: it
+makes a false claim gate-backed. If the two disagree, the citation is wrong — fix the line number
+first, in its own commit, and say why.
+
+This is the marker ADR 0043 rejected only in shape, not in substance. That objection holds when the
+marker is what makes a claim findable — a document that forgets it passes by being invisible. A
+citation's `file:line` syntax cannot be dropped without it ceasing to be a citation, so a citation
+carrying no anchor is detectable, and can be failed.
+
 ## Two Devices Worth Requesting
 
 **The reading test.** A line inside the artifact that converts it from a poster into a review

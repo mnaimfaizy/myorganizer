@@ -16,6 +16,12 @@
  * ROSTER or in LEGACY with a written reason, and a page in neither is a finding
  * — so a new page cannot escape the gate by being new (ADR 0043).
  *
+ * A LEGACY reason buys an exemption from mechanical-hygiene rules only — none of
+ * the five written reasons are about being wrong — so a LEGACY page still runs
+ * the factual-assertion rules (today: citation resolution) and can still fail
+ * (ADR 0085). A page in neither list gets no rules at all: it carries no citation
+ * contract to hold it to.
+ *
  * Usage:
  *   node tools/scripts/check-design-hygiene.mjs <file> [<file> ...]
  *   node tools/scripts/check-design-hygiene.mjs --json <file>
@@ -35,6 +41,7 @@ import {
   fontBlock,
   fontBlockHash,
   scanDesignPage,
+  scanFactualAssertions,
 } from './lib/design-page-scan.mjs';
 // The roster is its own module so it has one definition. A CLI cannot export a
 // const without running its main body on import, so keeping it here forced the
@@ -45,7 +52,19 @@ import {
   LEGACY,
   ROSTER,
 } from './lib/design-page-roster.mjs';
-import { reportFindings } from './lib/source-scan.mjs';
+import { readBaselineEnvelope } from './lib/baseline-file.mjs';
+import { citableLines, reportFindings } from './lib/source-scan.mjs';
+
+// Pages whose citations are not yet anchored (ADR 0085; PRD #772). The rule is
+// per citation, so this list is the only thing holding a page back from it — and
+// it can only shrink: an entry whose page is fully anchored is reported as stale.
+const ANCHOR_BASELINE_FILE = 'tools/config/citation-anchor-baseline.json';
+const anchorBaseline = new Set(
+  readBaselineEnvelope({
+    path: ANCHOR_BASELINE_FILE,
+    schemaVersion: 1,
+  }).baseline,
+);
 
 const USAGE = `Usage:
   node tools/scripts/check-design-hygiene.mjs <file> [<file> ...]
@@ -125,6 +144,103 @@ function prettierIgnoreMatcher() {
     patterns.some((p) => file === p || (p.endsWith('/') && file.startsWith(p)));
 }
 
+/**
+ * Every git-tracked file, indexed by basename. A citation with a `/` in its name
+ * is checked as a repo-relative path directly; a bare name (`ci.yml`, `SKILL.md`)
+ * has to be found first, and more than one tracked file can share a basename.
+ *
+ * Reads the index with `git ls-files` rather than walking the filesystem, the
+ * same way `stagedHtmlFiles` above already does — `node_modules` alone is
+ * gigabytes, and git already knows what belongs to the tree. Outside a git
+ * checkout this returns an empty index rather than throwing, so a bare-name
+ * citation reports unresolved instead of crashing the run.
+ */
+function basenameIndex() {
+  let out;
+  try {
+    out = execFileSync('git', ['ls-files'], { encoding: 'utf8' });
+  } catch {
+    return new Map();
+  }
+  const index = new Map();
+  for (const f of out.split('\n').filter(Boolean)) {
+    const base = f.split('/').pop();
+    if (!index.has(base)) index.set(base, []);
+    index.get(base).push(f);
+  }
+  return index;
+}
+
+function lineCount(file) {
+  try {
+    return citableLines(readFileSync(file, 'utf8')).length;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Builds the `resolveCitation` callback `scanDesignPage`/`scanFactualAssertions`
+ * ask for each citation. See `checkCitations` in design-page-scan.mjs for what
+ * "resolves" deliberately does and does not prove.
+ *
+ * A citation's name is matched by path *suffix* against the basename index, not
+ * by an exact repo-root-relative path — `skill-atlas.html` cites
+ * `implement/SKILL.md`, two segments short of its real
+ * `.agents/skills/implement/SKILL.md`, and readers are trusted to fill in the
+ * directory a page's own domain implies. A single-segment name (`ci.yml`) is
+ * the same match with a one-segment suffix; a full repo-relative path
+ * (`docs/adr/0012-….md`) is the same match again, just with a suffix equal to
+ * the whole tracked path.
+ */
+function makeCitationResolver(index) {
+  return ({ name, line, endLine }) => {
+    const need = Math.max(line, endLine);
+    const span = endLine !== line ? `${line}-${endLine}` : `${line}`;
+    const base = name.split('/').pop();
+    const candidates = (index.get(base) ?? []).filter(
+      (path) => path === name || path.endsWith(`/${name}`),
+    );
+    if (candidates.length === 0) {
+      return {
+        ok: false,
+        reason: `${name}:${span} cites a file that does not exist in the tree.`,
+      };
+    }
+    const counts = candidates.map(lineCount).filter((n) => n !== null);
+    if (!counts.some((n) => n >= need)) {
+      const longest = counts.length ? Math.max(...counts) : 0;
+      return {
+        ok: false,
+        reason: `${name}:${span} cites line ${need}, past the end of every ${name} in the tree (longest is ${longest} line(s)).`,
+      };
+    }
+    // Return the first matching candidate path for anchor verification
+    const resolvedPath = candidates.find(
+      (path) => lineCount(path) !== null && lineCount(path) >= need,
+    );
+    return { ok: true, filePath: resolvedPath };
+  };
+}
+
+/**
+ * Creates a function to read file content by path for anchor verification.
+ */
+function makeFileContentGetter() {
+  const cache = new Map();
+  return (filePath) => {
+    if (!filePath) return null;
+    if (!cache.has(filePath)) {
+      try {
+        cache.set(filePath, readFileSync(filePath, 'utf8'));
+      } catch {
+        cache.set(filePath, null);
+      }
+    }
+    return cache.get(filePath);
+  };
+}
+
 // --- run ---------------------------------------------------------------------
 
 let options;
@@ -156,6 +272,8 @@ if (options.printFontBlock) {
 }
 
 const isPrettierIgnored = prettierIgnoreMatcher();
+const resolveCitation = makeCitationResolver(basenameIndex());
+const getFileContent = makeFileContentGetter();
 const results = [];
 
 // A page under docs/ that is in neither list is unclassified: nobody decided
@@ -179,27 +297,36 @@ if (options.all) {
 }
 
 const selected = options.all
-  ? ROSTER
+  ? [...ROSTER, ...Object.keys(LEGACY)]
   : (options.staged ? stagedHtmlFiles() : options.files).map(posix);
 
 for (const file of selected) {
-  if (!ROSTER.includes(file)) {
+  const inRoster = ROSTER.includes(file);
+  const legacyReason = LEGACY[file];
+  const inLegacy = legacyReason !== undefined;
+
+  // Neither ROSTER nor LEGACY: not a House Explainer Page at all, so even the
+  // factual-assertion rules do not apply — there is no citation contract to hold
+  // an arbitrary file under docs/ to.
+  if (!inRoster && !inLegacy) {
     results.push({
       file,
-      skipped: LEGACY[file] ?? 'not a House Explainer Page',
+      skipped: 'not a House Explainer Page',
       findings: [],
     });
     continue;
   }
+
   if (!existsSync(file)) {
     results.push({
       file,
+      ...(inLegacy ? { skipped: legacyReason } : {}),
       findings: [
         {
           level: 'error',
           rule: 'page-missing',
           line: 1,
-          message: 'Listed in ROSTER but not present on disk.',
+          message: `Listed in ${inRoster ? 'ROSTER' : 'LEGACY'} but not present on disk.`,
         },
       ],
     });
@@ -207,15 +334,50 @@ for (const file of selected) {
   }
 
   const source = readFileSync(file, 'utf8');
-  const findings = scanDesignPage({
+  // LEGACY still honours its written reason for mechanical-hygiene rules — it
+  // just no longer buys an exemption from the factual-assertion ones (ADR 0085).
+  const requireAnchors = !anchorBaseline.has(file);
+  const findings = (
+    inRoster
+      ? scanDesignPage({
+          file,
+          source,
+          canonicalFontHash,
+          pageFontHash: fontBlockHash(source),
+          prettierIgnored: isPrettierIgnored(file),
+          adrLinkExists: (resolved) => existsSync(resolved),
+          resolveCitation,
+          getFileContent,
+          requireAnchors,
+        })
+      : scanFactualAssertions({
+          source,
+          resolveCitation,
+          getFileContent,
+          requireAnchors,
+        })
+  ).map((finding) => ({ level: 'error', ...finding }));
+
+  // A baselined page that now anchors everything has to leave the list, or the
+  // list stops meaning "not yet anchored" and starts meaning nothing at all.
+  if (
+    !requireAnchors &&
+    scanFactualAssertions({ source, resolveCitation, getFileContent }).every(
+      (finding) => finding.rule !== 'citation-missing-anchor',
+    )
+  ) {
+    findings.push({
+      level: 'error',
+      rule: 'citation-anchor-baseline-stale',
+      line: 1,
+      message: `Every citation on this page carries an anchor, so its entry in ${ANCHOR_BASELINE_FILE} is stale. Remove it — the baseline only shrinks.`,
+    });
+  }
+  results.push({
     file,
-    source,
-    canonicalFontHash,
-    pageFontHash: fontBlockHash(source),
-    prettierIgnored: isPrettierIgnored(file),
-    adrLinkExists: (resolved) => existsSync(resolved),
-  }).map((finding) => ({ level: 'error', ...finding }));
-  results.push({ file, findings });
+    ...(inLegacy ? { skipped: legacyReason } : {}),
+    findings,
+  });
 }
 
 const errors = results.reduce((n, r) => n + r.findings.length, 0);

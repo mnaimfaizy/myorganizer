@@ -28,8 +28,9 @@
  * target is stale, exactly like a baseline entry with no target, so the list
  * cannot outlive the last target that needed it.
  */
-import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { readBaselineEnvelope } from './baseline-file.mjs';
 
 export const BASELINE_PATH = join(
   'tools',
@@ -52,24 +53,11 @@ export function readBaseline({
   cwd = process.cwd(),
   path = BASELINE_PATH,
 } = {}) {
-  const absolute = join(cwd, path);
-  if (!existsSync(absolute)) {
-    throw new Error(`${path} not found — the baseline is a required artifact`);
-  }
-  let parsed;
-  try {
-    parsed = JSON.parse(readFileSync(absolute, 'utf8'));
-  } catch (error) {
-    throw new Error(`${path} is not valid JSON: ${error.message}`);
-  }
-  if (parsed?.schemaVersion !== SCHEMA_VERSION) {
-    throw new Error(
-      `${path}: expected "schemaVersion": ${SCHEMA_VERSION}, found ${JSON.stringify(parsed?.schemaVersion)}`,
-    );
-  }
-  if (!Array.isArray(parsed?.baseline)) {
-    throw new Error(`${path}: expected a "baseline" array`);
-  }
+  const parsed = readBaselineEnvelope({
+    cwd,
+    path,
+    schemaVersion: SCHEMA_VERSION,
+  });
 
   const seen = new Set();
   const entries = [];

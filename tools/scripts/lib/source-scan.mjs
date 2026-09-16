@@ -228,6 +228,25 @@ export function normalize(source) {
   return source.replace(/\r\n/g, '\n');
 }
 
+/**
+ * The lines of a file that a `file:line` citation can actually name.
+ *
+ * A trailing newline is not a line of its own. `.editorconfig` enforces one on
+ * nearly every tracked file, so `split('\n').length` uncorrected over-reports
+ * every such file's last line by one — and a citation to the line past the real
+ * end then resolves as in range instead of failing. Three call sites had their
+ * own copy of this correction: the page checker's line count, the page scanner's
+ * anchor comparison, and the review pipeline's citation verifier.
+ *
+ * A file that is empty or holds a single line keeps its one element, so `''` is
+ * one empty line rather than no lines at all.
+ */
+export function citableLines(content) {
+  const lines = normalize(content).split('\n');
+  if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+  return lines;
+}
+
 /** Renders findings as text; returns the error/warning tally. */
 /**
  * The summary counts skipped files as well as findings, and says so whenever
@@ -246,15 +265,18 @@ export function reportFindings(results, label) {
   let skipped = 0;
   let inspected = 0;
   for (const result of results) {
+    console.log(`\n${result.file}`);
     if (result.skipped) {
       skipped += 1;
-      console.log(`\n${result.file}\n  SKIPPED (${result.skipped})`);
-      continue;
+      console.log(`  SKIPPED (${result.skipped})`);
+    } else {
+      inspected += 1;
     }
-    inspected += 1;
-    console.log(`\n${result.file}`);
+    // A skipped result can still carry findings: a factual-assertion rule runs
+    // over a LEGACY page even though its written reason exempts it from every
+    // mechanical-hygiene one (ADR 0085), so SKIPPED and a finding both print.
     if (!result.findings.length) {
-      console.log('  PASS — no mechanical issues');
+      if (!result.skipped) console.log('  PASS — no mechanical issues');
       continue;
     }
     for (const f of result.findings) {

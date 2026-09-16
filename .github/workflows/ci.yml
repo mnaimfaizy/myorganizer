@@ -657,6 +657,9 @@ jobs:
       - name: Gate coverage checker contracts
         run: corepack yarn gates:coverage:test
 
+      - name: Checker contract coverage checker contracts
+        run: corepack yarn checker-contracts:test
+
       # The meta-gate: asserts every check-*.mjs is invoked by some hook or
       # workflow, resolving one level of indirection through the aggregate's
       # manifest. Nine checkers ran nowhere when ADR 0043 was written.

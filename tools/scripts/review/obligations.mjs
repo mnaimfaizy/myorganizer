@@ -34,6 +34,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 
 import { globToRegExp } from '../lib/glob.mjs';
+import { citableLines } from '../lib/source-scan.mjs';
 
 // Re-exported: callers and tests of this module treat glob matching as
 // part of the selector's surface. The implementation is shared with the
@@ -395,10 +396,9 @@ export const verifyCitation = (citation, readSource) => {
   if (source === null || source === undefined)
     return { ok: false, reason: 'file-not-found' };
   // A file ending in a newline splits to a trailing empty element that is not
-  // a line anybody can cite. Counting it would report one more line than the
-  // file has, in the message whose whole job is to say how many there are.
-  const lines = source.split('\n');
-  if (lines.length > 1 && lines[lines.length - 1] === '') lines.pop();
+  // a line anybody can cite; citableLines drops it, so the count in the message
+  // whose whole job is to say how many lines there are is the real one.
+  const lines = citableLines(source);
   if (
     !Number.isInteger(citation.line) ||
     citation.line < 1 ||
