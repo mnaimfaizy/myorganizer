@@ -2653,7 +2653,7 @@ const __ds_scope = {};
     "ApiTokens.ts:41": { "file": "apps/backend/src/helpers/ApiTokens.ts", "start": "process.env.REFRESH_JWT_SECRET," },
     "ApiTokens.ts:26": { "file": "apps/backend/src/helpers/ApiTokens.ts", "start": "process.env.VERIFY_JWT_SECRET," },
     "ApiTokens.ts:16": { "file": "apps/backend/src/helpers/ApiTokens.ts", "start": "process.env.RESET_JWT_SECRET," },
-    "UserService.ts:409-420": { "file": "apps/backend/src/services/UserService.ts", "start": "if (existingToken) {", "end": "}" },
+    "UserService.ts:409-418": { "file": "apps/backend/src/services/UserService.ts", "start": "if (existingToken) {", "end": "return new Error('Verification email already sent recently');" },
     "AuthController.ts:359-377": { "file": "apps/backend/src/controllers/AuthController.ts", "start": "): Promise<{ status: number; message: string }> {", "end": "// If the existing token is still valid, block resending to prevent spamming." },
     "UserService.ts:377-396": { "file": "apps/backend/src/services/UserService.ts", "start": "async resetPassword(", "end": "}" },
     "refresh-client-contract.ts:86": { "file": "libs/auth/src/lib/refresh-client-contract.ts", "start": "export function shouldIncludeRefreshTokenInLoginBody(" },
@@ -2954,7 +2954,7 @@ const __ds_scope = {};
     <div class="card elev-sm">
       <span class="card-kicker">Panel 2 · "already sent recently"</span>
       <span class="card-title">The cooldown is the token itself</span>
-      <p class="card-body">There is no cooldown column. <code>sendVerificationMail</code> decodes the previously stored token; if it <em>still verifies</em>, it returns an error instead of sending (<code>UserService.ts:409-420</code>). The reset path does the same (<code>AuthController.ts:359-377</code>).</p>
+      <p class="card-body">There is no cooldown column. <code>sendVerificationMail</code> decodes the previously stored token; if it <em>still verifies</em>, it returns an error instead of sending (<code>UserService.ts:409-418</code>). The reset path does the same (<code>AuthController.ts:359-377</code>).</p>
       <div style="padding:var(--space-2) var(--space-3);border-radius:var(--radius-md);background:var(--color-accent-100);color:var(--color-accent-800);font-size:13px">The still-valid token <strong>is</strong> the rate limiter, so the cooldown equals the token TTL — <strong>10m</strong> — by construction, not by configuration.</div>
     </div>
 
@@ -3088,7 +3088,7 @@ const SCENES = [
     settles: 'Why a fresh account gets 403, not 401.', state: 'pending_verification',
     body: 'Nothing advances until a human clicks the link. Login returns 403 the whole time — a check that exists only in the file that runs. Resending is refused while the stored token still verifies, so the cooldown is exactly the 10m TTL.',
     code: 'if (!user.email_verified) return res.status(403)  // auth.ts:52-58',
-    refs: ['auth.ts:52-58', 'UserService.ts:409-420'],
+    refs: ['auth.ts:52-58', 'UserService.ts:409-418'],
     flow: [{ t: 'POST /auth/login' }, { t: '403 email_not_verified', bad: true }],
     halt: { title: 'Halt — email verification', body: 'The stepper will not glide past this. An animation that runs straight through the gate teaches the opposite of the truth.', label: 'Click the link in the email' },
     tokens: [tok('verify', 'verify #1', 8, 26, 'live', 'still verifies → /verify/resend answers "already sent recently"')]
