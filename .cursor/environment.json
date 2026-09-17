@@ -1,0 +1,15 @@
+{
+  "name": "MyOrganizer",
+  "install": "bash .cursor/install.sh",
+  "start": "bash .cursor/start.sh",
+  "terminals": [
+    {
+      "name": "backend",
+      "command": "corepack yarn start:backend"
+    },
+    {
+      "name": "frontend",
+      "command": "PORT=4200 corepack yarn start:myorganizer"
+    }
+  ]
+}
