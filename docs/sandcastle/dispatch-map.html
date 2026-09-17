@@ -2920,7 +2920,7 @@
   <section class="panel" aria-labelledby="modes-h">
     <div class="phead">
       <h2 id="modes-h">Three modes</h2>
-      <span class="src">main.mts:700-820, 762-768</span>
+      <span class="src">main.mts:700-820, :762-768</span>
     </div>
     <div class="pbody">
       <div class="scrollx">
@@ -3036,7 +3036,7 @@
   <section class="panel" aria-labelledby="gate-h">
     <div class="phead">
       <h2 id="gate-h">The gate &mdash; two project scopes</h2>
-      <span class="src">main.mts:153-205, 1629-1700</span>
+      <span class="src">main.mts:153-205, :1629-1700</span>
     </div>
     <div class="pbody">
       <p>
@@ -3391,7 +3391,7 @@
     <div class="phead">
       <h2 id="cont-h">What crosses the container boundary</h2>
       <span class="src"
-        >main.mts:1077-1099, 2343-2357 &middot; .sandcastle/Dockerfile</span
+        >main.mts:1077-1099, :2343-2357 &middot; .sandcastle/Dockerfile</span
       >
     </div>
     <div class="pbody">
@@ -3525,7 +3525,7 @@
   <section class="panel" aria-labelledby="routing-h">
     <div class="phead">
       <h2 id="routing-h">Routing: labels in, behaviour out</h2>
-      <span class="src">main.mts:1030-1037, 1110-1121, 1720-1776</span>
+      <span class="src">main.mts:1030-1037, :1110-1122, :1720-1776</span>
     </div>
     <div class="pbody">
       <p class="small">
@@ -3744,7 +3744,7 @@
       "main.mts:762-768": {
         "file": ".sandcastle/main.mts",
         "start": "'issue',",
-        "end": "REPO,"
+        "end": "'title,body',"
       },
       "main.mts:153-205": {
         "file": ".sandcastle/main.mts",
@@ -3764,14 +3764,14 @@
       "main.mts:2343-2357": {
         "file": ".sandcastle/main.mts",
         "start": "* Sessions are selected by mtime against the moment this run started rather than by id.",
-        "end": "'logs',"
+        "end": "'.sandcastle',"
       },
       "main.mts:1030-1037": {
         "file": ".sandcastle/main.mts",
         "start": "// `## Blocked by` ordering is PRD vocabulary. Standalone runs a single issue the",
         "end": "unfinishedDependencies(issue, dependencyStatus).length === 0,"
       },
-      "main.mts:1110-1121": {
+      "main.mts:1110-1122": {
         "file": ".sandcastle/main.mts",
         "start": "* Graphify records no commit sha of its own, so \"built at\" is approximated from",
         "end": "const builtAt = statSync(graphifyGraphPath).mtime;"
