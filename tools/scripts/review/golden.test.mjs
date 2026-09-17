@@ -93,6 +93,32 @@ test('malformed sets are named precisely', () => {
     bad((s) => (s.cases[0].tier = 'occasional')),
     /tier/,
   );
+  // Promoting the last frontier case satisfies the three-consecutive-catches
+  // rule and disables the arm it belongs to: guards run only when the brief or
+  // the finding contract moves, so an all-guard set replays nothing on an
+  // ordinary review-tooling change. ADR 0072 stated this in its Consequences
+  // and said the tests asserted it; none did until this one.
+  // The per-case checks run first, so a promotion with no evidence is refused
+  // for the missing evidence and never reaches the set-level rule — asserted
+  // below, at the guard-must-cite case, not repeated here. What reaches the
+  // set-level rule is a *properly cited* promotion of the last frontier case,
+  // which is the dangerous one precisely because it looks correct.
+  assert.throws(
+    bad((s) => {
+      s.cases[0].tier = 'guard';
+      s.cases[0].tierEvidence = 'promoted on runs 1, 2 and 3';
+    }),
+    /no frontier case/,
+  );
+  // A set that keeps one frontier case promotes the other freely.
+  const twoCases = JSON.parse(JSON.stringify(set));
+  twoCases.cases.push({
+    ...JSON.parse(JSON.stringify(goldenCase)),
+    id: 'enum-fanout-second',
+    tier: 'guard',
+    tierEvidence: 'promoted on runs 1, 2 and 3',
+  });
+  assert.equal(assertGoldenSet(twoCases), twoCases);
   // A retired case keeps its id reserved, so nothing can quietly re-add it as
   // a live case, and it has to say why it cannot be won.
   const retired = {
