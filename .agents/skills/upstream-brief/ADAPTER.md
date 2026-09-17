@@ -15,7 +15,7 @@ The adapter is host facts only. The skill body does not name a host. A consuming
 | `ecosystems`             | no       | none declared                         | A list of Ecosystem declarations. See below.                                                                                                                                                                                                                    |
 | `declined_opportunities` | no       | none                                  | Upstream Opportunities a human said no to, remembered between runs. See below.                                                                                                                                                                                  |
 | `instruction_globs`      | no       | See defaults                          | Repo-owned files that teach agents how to write code.                                                                                                                                                                                                           |
-| `brief_dir`              | no       | `docs/research`                       | Directory for the Upstream Brief. Create it if missing.                                                                                                                                                                                                         |
+| `brief_dir`              | no       | `docs/research`                       | Directory for the Upstream Brief and the structured report committed beside it. Create it if missing.                                                                                                                                                           |
 | `source_globs`           | no       | unset                                 | Optional application-code globs to _sample_ for mismatch evidence.                                                                                                                                                                                              |
 | `script_globs`           | no       | unset                                 | Optional hygiene/test-script globs to _sample_.                                                                                                                                                                                                                 |
 | `issue`                  | no       | unset                                 | When omitted, print a proposed issue and do not file.                                                                                                                                                                                                           |
@@ -73,7 +73,7 @@ declined_opportunities:
 A value runs to the end of its line, so a URL keeps its colons and a `#` is part of the value
 rather than a comment. An entry is **suppressed** while the Baseline stays inside
 `baseline_range` and the upstream quote is unchanged, and **resurfaces** when either moves — a
-decline is about one suggestion at one version, not about the subject forever. `quote` is required
+decline is about one suggestion at one version, not about the Ecosystem forever. `quote` is required
 for that second axis to exist at all: without it nothing could ever lift the suppression except a
 version bump.
 
@@ -88,10 +88,12 @@ repository that failure is `yarn upstream:briefs:check`.
 | `tracker`         | `github`, `gitlab`, or `none`                                |
 | `repository`      | Host `owner/name` when the tracker needs it                  |
 | `labels.research` | Label for “this came from an Upstream Brief”                 |
-| `labels.quality`  | Label for code-quality / practice (not a feature)            |
 | `labels.hitl`     | Label meaning a human must decide before an agent implements |
 
-Do not map a dependencies role. Do not add `ready-for-agent`.
+Two labels, and no third. A `labels.quality` role was mapped until ADR 0084 item 13 removed it:
+in this repository it resolved to `qa`, which [ADR 0049](../../../docs/adr/0049-qa-and-grilling-are-orchestration-labels.md)
+reserves for a QA Plan Issue, so a brief's issue arrived claiming to be something it was not. Do
+not map a dependencies role either, and do not add `ready-for-agent`.
 
 ## Default `instruction_globs`
 

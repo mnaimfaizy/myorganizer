@@ -1,71 +1,48 @@
 # Upstream Brief file
 
-Write one Markdown file per run. Date it. Cite every finding. Propose a plan; apply nothing.
+A run leaves two files in `brief_dir`: the **normalized structured report** and the **Markdown brief rendered from it**. Both are committed, and both are frozen at their date — a later run reads them and never edits them.
 
-> **The structured path.** A run that writes a structured report renders its brief from that report
-> instead of from the template below, and commits both — see [REPORT.md](REPORT.md). The renderer
-> owns the section order there; nothing in this file decides it. The template below is the
-> free-Markdown form the first three briefs were written in, kept because those briefs are not
-> migrated.
+The brief is not written by hand. `render.mjs` turns a normalized report into Markdown, and [REPORT.md](REPORT.md) is what a worker fills in. This file says what the two artifacts are called and what a reader finds in them.
 
-## Filename
+## Filenames
 
-`YYYY-MM-DD-upstream-brief-<subject>-<subject>.md` in `brief_dir`.
-
-Use lowercase subject tokens from the invocation (`next`, `react`). Join with hyphens.
-
-## Template
-
-```md
-# Upstream Brief: <subjects>
-
-- **Date:** <ISO date>
-- **Subjects:**
-  - `<subject>` current `<resolved or failed>` → target `<named>`
-- **Sources:** primary upstream pages only (linked on each finding)
-
-## Findings
-
-### <subject>
-
-#### Future-risk | Mismatch | Missed improvement
-
-- **Claim:** <one sentence>
-- **Source:** [title](url) — <target version the page describes>
-- **Local evidence:** <instruction or sampled script/usage, or “none in scanned files”>
-- **Disposition:** plan | follow-on
-
-(Repeat per finding. Omit a type heading when that type has no findings.)
-
-## Proposed plan
-
-Repo-owned instructions and hygiene/test scripts only. Name the _kind_ of file to change and what it should start saying. Hosts may add paths. No package bumps. No application-code edits.
-
-- <change>
-
-If there are no plan items, write `_None._`
-
-## Follow-on
-
-Application-code findings and third-party-skill contradictions. The human may file a separate issue after grilling.
-
-- <item> — code | vendor-skill
-
-If there are none, write `_None._`
-
-## Failed hops
-
-- `<subject>` — <why current version or research failed>
-
-If there are none, write `_None._`
+```text
+YYYY-MM-DD-upstream-brief-<leads>.json   the normalized report (validate-report.mjs --out)
+YYYY-MM-DD-upstream-brief-<leads>.md     the brief (validate-report.mjs --render)
 ```
+
+`<leads>` is the lead package name of each Ecosystem in the run, lowercased, in the order the human named them, joined with hyphens: `nx next react-native` becomes `2026-09-17-upstream-brief-nx-next-react-native`. One stem for both files, so a reader holding either finds the other.
+
+## Sections
+
+The renderer emits **every** section, always, in this order, and an empty one says `_None._` rather than disappearing — a section that vanishes when it has nothing in it reads as a section nobody ran.
+
+| #   | Section                   | What lands there                                                                                                                     |
+| --- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | `Delta`                   | What changed since this Ecosystem's last brief: new findings, earlier findings resolved, earlier findings still present.             |
+| 2   | `Upstream Findings`       | **The proposed plan.** Findings dispositioned `plan`, grouped by urgency, most urgent first, because urgency orders the plan.        |
+| 3   | `Checked and clear`       | Instruction Claims that held, each with the version range it holds for. The other half of the two-directional audit, and the ledger. |
+| 4   | `Upstream Opportunities`  | At most three per Ecosystem, each with its upstream benefit quote, its local sites, and its minimum version when above the Baseline. |
+| 5   | `Incidental Observations` | Real local defects no upstream statement grounds. Routed to an owner, never counted as findings, never in the plan.                  |
+| 6   | `Follow-on`               | Findings dispositioned `follow-on` — upstream-grounded, but about something the plan may not touch. Same urgency grouping.           |
+| 7   | `Unverified`              | Entries the contract refused, each with its reason. The rest of the report stands; a refused entry is named, never silently dropped. |
+| 8   | `Failed hops`             | An Ecosystem whose lead is not installed, or whose research hop failed. A failed hop still yields a partial brief.                   |
+| 9   | `Scanned`                 | Every path, glob, and page the run actually read. "None in scanned files" means nothing until the scanned files are named.           |
+
+The order above is `BRIEF_SECTIONS` in `render.mjs`, and `render.test.mjs` asserts this table against it — a heading added, removed, or reordered in either place fails there rather than drifting.
+
+Above the first section the brief records its date, the commit every local citation was checked against, and one line per Ecosystem: the Baseline, the Horizon or `no Horizon`, the members, and any drift notes.
 
 ## Finding types
 
-| Type                   | Meaning                                                                                            |
-| ---------------------- | -------------------------------------------------------------------------------------------------- |
-| **Future-risk**        | Official docs mark a feature this repo’s instructions still teach as changing or deprecated.       |
-| **Mismatch**           | Repo-owned instructions or sampled scripts/usage disagree with official docs for the named target. |
-| **Missed improvement** | Official docs show a better practice; the app may still build.                                     |
+| Type                   | What grounds it                                                                                                                                |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Future-risk**        | A Horizon-range document, or a deprecation or removal statement in the Baseline's own documents, about something the instructions still teach. |
+| **Mismatch**           | A Baseline-matched document disagrees with what the repo-owned instructions or sampled usage say. Never carried by `absent` Evidence alone.    |
+| **Missed improvement** | A Baseline-matched document shows a better practice than the instructions teach; nothing is broken today.                                      |
 
 A finding without a primary-source URL is not a finding. When two official pages disagree, record both and do not pick a winner.
+
+## The unmigrated briefs
+
+The three briefs written before [ADR 0084](../../../docs/adr/0084-an-upstream-brief-is-anchored-to-what-is-installed-and-accepted-on-checked-evidence.md) are free Markdown with no structured report beside them. They are read like any other frozen brief and are not migrated: a rule requiring a report beside every brief would fail on three documents nobody intends to change.

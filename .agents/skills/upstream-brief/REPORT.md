@@ -126,10 +126,10 @@ stays portable.
 
 ## Sections
 
-The brief emits every section, always, in this order, with `_None._` for an empty one:
-
-Delta · Upstream Findings · Checked and clear · Upstream Opportunities · Incidental Observations ·
-Follow-on · Unverified · Failed hops · Scanned
+The brief emits every section, always, in one order, with `_None._` for an empty one. That order is
+`BRIEF_SECTIONS` in `render.mjs`, and [BRIEF.md](BRIEF.md) is where it is written out — one copy,
+asserted against the renderer by `render.test.mjs`. It is not repeated here: a second list nothing
+checks is the drift the assertion exists to stop.
 
 Upstream Findings are grouped by urgency, most urgent first, because urgency orders the plan. A
 finding dispositioned `follow-on` renders under Follow-on and nowhere else.

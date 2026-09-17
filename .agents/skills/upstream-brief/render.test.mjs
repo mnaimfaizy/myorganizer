@@ -9,7 +9,9 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { fixtureReader, fixtureReport } from './report.test.mjs';
 import { normalizeUpstreamReport } from './report.mjs';
@@ -82,6 +84,21 @@ test('an Ecosystem renders its Baseline, its members, and whether it has a Horiz
   );
   assert.match(markdown, /- `nx` — Baseline `22\.7\.7`, no Horizon/);
   assert.match(markdown, /- drift: TECH_STACK\.md records 16\.1\.0/);
+});
+
+test('BRIEF.md documents the section order the renderer actually emits', () => {
+  // ADR 0085: an artifact states no claim it does not assert. BRIEF.md tells a
+  // reader what the brief looks like, so it names every section in order — and
+  // a template restating an order nothing checks is exactly the drift the two
+  // ADR 0018 briefs demonstrated by inventing a section the template lacked.
+  const brief = readFileSync(
+    fileURLToPath(new URL('./BRIEF.md', import.meta.url)),
+    'utf8',
+  );
+  const documented = [...brief.matchAll(/^\| \d+ +\| `([^`]+)`/gm)].map(
+    (m) => m[1],
+  );
+  assert.deepEqual(documented, [...BRIEF_SECTIONS]);
 });
 
 test('Upstream Findings are grouped by urgency, most urgent first', () => {

@@ -17,6 +17,15 @@ ecosystems:
       add: [eslint-config-next]
   - lead: react-native
 
+# ADR 0084 item 12. Upstream Opportunities a human declined, remembered so the
+# next run stays quiet about them until the Baseline leaves the recorded range
+# or the upstream quote changes. Nothing has been declined yet; the shape is
+# `{ecosystem, url, site, reason, baseline_range, quote}` (see ADAPTER.md), and
+# `yarn upstream:briefs:check` fails an entry whose Ecosystem or site is gone.
+# Written as a bare key rather than `[]`: the adapter reader matches the header
+# line exactly, so an entry added under a `[]` spelling would be read by nobody.
+declined_opportunities:
+
 instruction_globs:
   - '**/AGENTS.md'
   - CLAUDE.md
@@ -46,10 +55,12 @@ source_globs:
 
 brief_dir: docs/research
 
+# ADR 0084 item 13. Two labels and no third: a `quality` role used to map to
+# `qa`, which ADR 0049 reserves for a QA Plan Issue, so every brief issue
+# arrived labelled as something it was not.
 issue:
   tracker: github
   repository: mnaimfaizy/myorganizer
   labels:
     research: research
-    quality: qa
     hitl: type:hitl

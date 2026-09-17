@@ -657,7 +657,7 @@ const declines = (entry, opportunity, lead) =>
  * Suppressed while **both** hold: the Baseline is still inside the range the
  * decline was made at, and the upstream quote still says what it said. Either
  * one moving brings the Opportunity back, because the human declined a
- * specific suggestion at a specific version, not the subject forever.
+ * specific suggestion at a specific version, not the Ecosystem forever.
  *
  * An entry whose range this module cannot read suppresses nothing — see the
  * header: an unreadable decline must not be able to silence an Opportunity,
