@@ -30,7 +30,7 @@ if [ ! -f "$REPO_ROOT/.env" ]; then
   node -e '
     const fs = require("fs");
     const crypto = require("crypto");
-    const p = process.env.REPO_ROOT + "/.env";
+    const p = process.argv[1];
     let s = fs.readFileSync(p, "utf8");
     const gen = () => crypto.randomBytes(32).toString("hex");
     for (const k of ["ACCESS_JWT_SECRET","REFRESH_JWT_SECRET","VERIFY_JWT_SECRET","RESET_JWT_SECRET"]) {
@@ -39,7 +39,7 @@ if [ ! -f "$REPO_ROOT/.env" ]; then
     s = s.replace(/^YOUTUBE_TOKEN_ENCRYPTION_KEY=.*$/m, "YOUTUBE_TOKEN_ENCRYPTION_KEY=" + gen());
     s = s.replace(/^YOUTUBE_CRON_SECRET=.*$/m, "YOUTUBE_CRON_SECRET=" + gen());
     fs.writeFileSync(p, s);
-  '
+  ' "$REPO_ROOT/.env"
   echo "    Created .env with generated JWT secrets"
 else
   echo "    .env already present; leaving it untouched"
