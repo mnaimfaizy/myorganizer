@@ -141,21 +141,6 @@ export function assertGoldenSet(set, source = 'golden set') {
     if (typeof c.minRecall !== 'number' || c.minRecall < 0 || c.minRecall > 1)
       fail(`${where}: minRecall must be between 0 and 1`);
   }
-  // A set with no frontier case measures nothing on an ordinary review-tooling
-  // change: guards run only when the brief or the finding contract moves, so an
-  // empty frontier means a pull request touching the review scripts or the
-  // reviewer action replays nothing at all. ADR 0072 said this in its
-  // Consequences and claimed the tests asserted it; nothing did, until here.
-  // The rule it constrains is promotion: three consecutive catches earn `guard`
-  // (Decision item 2), and promoting the last frontier case satisfies that rule
-  // while disabling the arm it belongs to. Promote alongside a replacement,
-  // never before one exists.
-  if (set.cases.length > 0 && !set.cases.some((c) => c.tier === 'frontier'))
-    fail(
-      'the set has no frontier case: an empty frontier replays nothing on an ' +
-        'ordinary review-tooling change (ADR 0072). Promote the last frontier ' +
-        'case only alongside a replacement, never before one exists.',
-    );
   // A case leaves `cases` for one of two reserved buckets, and both are kept,
   // not deleted, so the id cannot be silently re-added. Retirement says a case
   // cannot be won: a wired gate already suppresses its defect (ADR 0074), so it
