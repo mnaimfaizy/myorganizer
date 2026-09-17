@@ -2947,14 +2947,8 @@ Your FIRST output must be the inventory required by rule 4. Only then start work
 
 <script type="application/json" id="citation-anchors">
   {
-    "note": "Expected-content anchors for every file:line citation on this page (ADR 0085). Verified against the tree on 2026-09-16.",
-    "anchors": {
-      ".sandcastle/main.mts:2917-2952": {
-        "file": ".sandcastle/main.mts",
-        "start": "// Was this a provider usage limit, and did the maintainer ask us to wait it out?",
-        "end": "continue;"
-      }
-    }
+    "note": "This page makes no file:line citation, so it anchors none (ADR 0085). Its source captions name files without line numbers, which findCitations does not read as citations. The two it did carry before 2026-09-16 were not claims about source at all: the clock times \"4:30am\" and \"2:30 pm\" parse as a bare :30, which findCitations attaches to the last file named on the page — inventing a citation to .sandcastle/main.mts:30 that nothing on this page ever meant. Those colons are now written as &#58; so they stay times. Add an entry here for any real citation added later.",
+    "anchors": {}
   }
 </script>
 
