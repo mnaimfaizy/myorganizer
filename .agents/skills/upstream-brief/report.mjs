@@ -60,12 +60,21 @@
  *   estimate". It is checked exactly like any other source quote.
  *
  * WHAT THIS MODULE DOES NOT DO
- *   The domain rules are a separate slice: the Evidence/urgency interplay
- *   (ADR 0084 item 5 — `broken-now` requires `executed` Evidence or is
- *   downgraded), the three-Opportunity-per-Ecosystem limit (item 8), and the
- *   ledger carry-forward (item 11) are not enforced here. This file is the
- *   report-level contract only: required fields, citation checking,
- *   Unverified, and the counts.
+ *   The ledger carry-forward (ADR 0084 item 11 — a checked-and-clear claim
+ *   whose recorded range still covers a new Baseline is carried forward
+ *   without new research) is a separate slice: it reads the *previous*
+ *   committed report, and this module validates exactly one report in
+ *   isolation.
+ *
+ *   Everything else ADR 0084 states about one report's own entries is
+ *   enforced here, in `validateEntry` and the per-Ecosystem pass in
+ *   `normalizeUpstreamReport`: `absent` Evidence alone cannot support a
+ *   `mismatch` (item 3), a `broken-now` claim without `executed` Evidence is
+ *   downgraded rather than trusted at face value (item 5), an Ecosystem
+ *   carries at most three Opportunities (item 8), an Opportunity whose
+ *   `minVersion` sits above the Baseline is valid only when a Horizon covers
+ *   it (item 8), and an Incidental Observation — never an Upstream Finding,
+ *   never counted as one — cannot carry a plan disposition (item 7).
  */
 
 // ── Vocabularies ────────────────────────────────────────────────────────────
@@ -109,6 +118,19 @@ export const UPSTREAM_DISPOSITIONS = /** @type {const} */ ([
   'follow-on',
 ]);
 
+/** ADR 0084 item 8: "at most three Upstream Opportunities per Ecosystem." */
+export const MAX_OPPORTUNITIES_PER_ECOSYSTEM = 3;
+
+/**
+ * ADR 0084 item 5: a `broken-now` claim without `executed` Evidence is
+ * downgraded rather than rejected — the claim itself may still be true, only
+ * the strongest urgency is not something citation or reasoning alone can
+ * support. `advisory` is the floor of `UPSTREAM_URGENCIES` on purpose: absent
+ * a runtime check, nothing here licenses picking a specific timeline
+ * (`deprecated`, `removal-scheduled`) the finding never claimed either.
+ */
+export const BROKEN_NOW_DOWNGRADE_URGENCY = 'advisory';
+
 /** ADR 0084 item 7 names the three owners an Incidental Observation routes to. */
 export const INCIDENTAL_OWNERS = /** @type {const} */ ([
   'DepAudit',
@@ -129,8 +151,13 @@ export const CITATION_FAILURE_REASONS = /** @type {const} */ ([
 
 /**
  * Why an entry is Unverified. The first three are ADR 0084 item 3's own list —
- * a URL, a verbatim quote, and the version the page states — and `malformed`
- * covers everything the shape itself refuses.
+ * a URL, a verbatim quote, and the version the page states — `malformed`
+ * covers everything the shape itself refuses (including the domain rules
+ * that are shape-shaped: an Incidental Observation carrying a disposition),
+ * and the last three are this file's own domain rules: `absent` Evidence
+ * cannot support a `mismatch` (item 3), an Ecosystem's fourth-and-later
+ * Opportunity (item 8), and an Opportunity above the Baseline with no
+ * Horizon that reaches it (item 8).
  */
 export const UNVERIFIED_REASONS = /** @type {const} */ ([
   'missing-source-url',
@@ -138,6 +165,9 @@ export const UNVERIFIED_REASONS = /** @type {const} */ ([
   'missing-page-version',
   'malformed',
   ...CITATION_FAILURE_REASONS,
+  'absent-evidence-mismatch',
+  'too-many-opportunities',
+  'opportunity-beyond-horizon',
 ]);
 
 /** The four entry kinds an Ecosystem carries, and the field each hangs off. */
@@ -209,6 +239,33 @@ const isTextArray = (v) => Array.isArray(v) && v.every(isText);
  * re-indented quote is the same quote and a different quote is not.
  */
 const collapse = (s) => String(s).replace(/\s+/g, ' ').trim();
+
+/**
+ * Compare two "x.y.z"-shaped version strings segment by segment. Not a full
+ * semver implementation — there is no ordering rule here for pre-release or
+ * build metadata — because every Baseline, Horizon, and `minVersion` this
+ * contract compares is a released version number (the Baseline resolver
+ * reads an installed package's own manifest; a Horizon and a `minVersion`
+ * are named the same way), never a pre-release channel.
+ *
+ * @returns {number} negative if `a` < `b`, positive if `a` > `b`, 0 if equal
+ */
+function compareVersions(a, b) {
+  const parts = (v) =>
+    String(v)
+      .trim()
+      .replace(/^v/, '')
+      .split('.')
+      .map((segment) => parseInt(segment, 10) || 0);
+  const pa = parts(a);
+  const pb = parts(b);
+  const length = Math.max(pa.length, pb.length);
+  for (let i = 0; i < length; i += 1) {
+    const diff = (pa[i] ?? 0) - (pb[i] ?? 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
 
 /**
  * The lines of a file a `file:line` citation can name. A file ending in a
@@ -387,8 +444,18 @@ const enumProblem = (value, members, field) =>
  * Validate one entry of a given kind. Returns `{ok: true, entry}` or
  * `{ok: false, reason, detail, label}`. Never throws: an entry failure is a
  * demotion, not a rejection.
+ *
+ * `entry` on a success is not always `raw` unchanged: a `broken-now` finding
+ * that survives every other check but lacks `executed` Evidence is still
+ * accepted, with its urgency downgraded and the downgrade recorded on the
+ * returned copy (ADR 0084 item 5) — see the bottom of this function.
+ *
+ * @param {{baseline?: string, horizon?: string}} context an Opportunity's
+ *   Ecosystem, for the Baseline/Horizon check (item 8). Unused by every other
+ *   kind; passed uniformly so the call site does not need to know which kind
+ *   cares.
  */
-function validateEntry(kind, raw, readSource) {
+function validateEntry(kind, raw, readSource, context = {}) {
   const label = entryLabel(kind, raw);
   const fail = (reason, detail) => ({ ok: false, reason, detail, label });
 
@@ -417,6 +484,17 @@ function validateEntry(kind, raw, readSource) {
       )
         problem = ['malformed', 'executed must be {command, exitCode}'];
     }
+    // ADR 0084 item 3: `absent` means the matching documents were read and do
+    // not say it, which on its own never proves the repo wrong — so it can
+    // name a missed improvement or a future risk worth watching, but it
+    // cannot itself be the evidence for "this contradicts upstream".
+    if (!problem && raw.type === 'mismatch' && raw.evidence === 'absent')
+      problem = [
+        'absent-evidence-mismatch',
+        'evidence is `absent` — the matching documents were read and say ' +
+          'nothing, which on its own never proves the repo wrong, so this ' +
+          'cannot be a mismatch (ADR 0084 item 3)',
+      ];
     if (!problem) problem = sourceProblems(raw)[0] ?? null;
     if (!problem) problem = localProblem(raw, readSource, { required: false });
   } else if (kind === 'checkedAndClear') {
@@ -443,14 +521,72 @@ function validateEntry(kind, raw, readSource) {
     // checked like any local evidence". Unlike a finding, zero sites is not a
     // legal Opportunity — it would be a suggestion about nowhere.
     if (!problem) problem = localProblem(raw, readSource, { required: true });
+    // ADR 0084 item 8: "adoptable at the Baseline, or by the Horizon with its
+    // minimum version stated". A minVersion the Baseline already satisfies
+    // needs nothing further; one above it is only legal when a Horizon was
+    // named and reaches at least that far.
+    if (!problem && isText(raw.minVersion) && isText(context.baseline)) {
+      if (compareVersions(raw.minVersion, context.baseline) > 0) {
+        const horizonCovers =
+          isText(context.horizon) &&
+          compareVersions(context.horizon, raw.minVersion) >= 0;
+        if (!horizonCovers)
+          problem = [
+            'opportunity-beyond-horizon',
+            `minVersion ${raw.minVersion} is above the Baseline ` +
+              `${context.baseline}` +
+              (context.horizon
+                ? ` and above the Horizon ${context.horizon}`
+                : ', and this Ecosystem names no Horizon') +
+              ' (ADR 0084 item 8)',
+          ];
+      }
+    }
   } else {
     problem = enumProblem(raw.owner, INCIDENTAL_OWNERS, 'owner');
     if (!problem && !isText(raw.summary))
       problem = ['malformed', 'summary is absent or empty'];
+    // ADR 0084 item 7: an Incidental Observation is "not a finding ... and
+    // never enters the brief's proposed plan". `disposition` is an Upstream
+    // Finding field; carrying one here would let an incidental slip into the
+    // plan the same way a Finding does.
+    if (!problem && raw.disposition !== undefined)
+      problem = [
+        'malformed',
+        'an Incidental Observation cannot carry a disposition — it is not ' +
+          "an Upstream Finding and never enters the brief's plan (ADR 0084 item 7)",
+      ];
     if (!problem) problem = localProblem(raw, readSource, { required: false });
   }
 
-  return problem ? fail(problem[0], problem[1]) : { ok: true, entry: raw };
+  if (problem) return fail(problem[0], problem[1]);
+
+  // ADR 0084 item 5, applied only once everything else about the finding
+  // already holds: `broken-now` without `executed` Evidence is downgraded,
+  // not rejected — the claim may still be right, only the strongest urgency
+  // needs proof citation or reasoning alone cannot supply.
+  if (kind === 'upstreamFinding' && raw.urgency === 'broken-now') {
+    const hasExecutedEvidence =
+      raw.evidence === 'executed' &&
+      isObject(raw.executed) &&
+      isText(raw.executed.command) &&
+      Number.isInteger(raw.executed.exitCode);
+    if (!hasExecutedEvidence)
+      return {
+        ok: true,
+        entry: {
+          ...raw,
+          urgency: BROKEN_NOW_DOWNGRADE_URGENCY,
+          downgradedFrom: 'broken-now',
+          downgradeReason:
+            'broken-now requires executed Evidence (a command and its exit ' +
+            'code); without it the finding is downgraded rather than trusted ' +
+            'at face value (ADR 0084 item 5)',
+        },
+      };
+  }
+
+  return { ok: true, entry: raw };
 }
 
 /** The entry's own sentence, for the Unverified list. */
@@ -594,13 +730,39 @@ export function normalizeUpstreamReport(raw, { readSource } = {}) {
 
   const ecosystems = raw.ecosystems.map((eco, ecoIndex) => {
     const kept = {};
+    const context = { baseline: eco.baseline, horizon: eco.horizon };
     for (const kind of ENTRY_KINDS) {
       const field = ENTRY_LIST_FIELDS[kind];
       kept[field] = [];
+      // ADR 0084 item 8: "at most three Upstream Opportunities per
+      // Ecosystem." Counted against what actually survives, in the order the
+      // worker wrote them — an Opportunity a citation already refused does
+      // not spend one of the three slots, and a report naming five where two
+      // fail still keeps the first three that hold.
+      let acceptedOpportunities = 0;
       eco[field].forEach((entry, entryIndex) => {
-        const verdict = validateEntry(kind, entry, readSource);
+        const verdict = validateEntry(kind, entry, readSource, context);
+        const at = `ecosystems[${ecoIndex}].${field}[${entryIndex}]`;
         if (verdict.ok) {
-          kept[field].push(entry);
+          if (kind === 'upstreamOpportunity') {
+            acceptedOpportunities += 1;
+            if (acceptedOpportunities > MAX_OPPORTUNITIES_PER_ECOSYSTEM) {
+              unverified.push(
+                reject(
+                  kind,
+                  eco.lead,
+                  at,
+                  'too-many-opportunities',
+                  `an Ecosystem carries at most ${MAX_OPPORTUNITIES_PER_ECOSYSTEM} ` +
+                    `Upstream Opportunities (ADR 0084 item 8); this is the ` +
+                    `${acceptedOpportunities}th that otherwise holds`,
+                  entryLabel(kind, verdict.entry),
+                ),
+              );
+              return;
+            }
+          }
+          kept[field].push(verdict.entry);
           counts[field] += 1;
           return;
         }
@@ -608,7 +770,7 @@ export function normalizeUpstreamReport(raw, { readSource } = {}) {
           reject(
             kind,
             eco.lead,
-            `ecosystems[${ecoIndex}].${field}[${entryIndex}]`,
+            at,
             verdict.reason,
             verdict.detail,
             verdict.label,

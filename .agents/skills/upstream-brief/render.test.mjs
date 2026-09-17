@@ -110,6 +110,23 @@ test('a finding renders its source, its Evidence kind, and any executed command'
   assert.ok(body.includes('Always `await cookies()` in a Server Component.'));
 });
 
+test('a downgraded broken-now finding renders why, not just its new urgency', () => {
+  const raw = fixtureReport();
+  raw.ecosystems[0].findings[0].evidence = 'cited';
+  const markdown = renderUpstreamBrief(normalize(raw));
+  const body = sectionBody(markdown, 'Upstream Findings');
+  assert.match(
+    body,
+    /\*\*Downgraded from:\*\* `broken-now` — broken-now requires executed Evidence/,
+  );
+  // It renders under its downgraded urgency's heading, not under "Broken now".
+  const order = body
+    .split('\n')
+    .filter((line) => line.startsWith('### '))
+    .map((line) => line.slice(4));
+  assert.deepEqual(order, ['Removal scheduled', 'Deprecated', 'Advisory']);
+});
+
 test('a follow-on finding is in Follow-on and not in Upstream Findings', () => {
   const markdown = renderUpstreamBrief(normalize());
   const claim =

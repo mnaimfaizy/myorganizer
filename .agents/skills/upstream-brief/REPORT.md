@@ -44,6 +44,33 @@ incidentalObservation summary, local[], owner
 `schemaVersion` is `1`. `unverified` and `counts` are computed by the validator and rejected if a
 report arrives carrying them: a derived field the author can forge is not derived.
 
+## Domain rules
+
+On top of the shape above, the validator enforces the parts of ADR 0084 that are about one
+report's own entries (the ledger carry-forward, item 11, reads the _previous_ committed report
+and is a separate slice):
+
+- **`absent` Evidence cannot support a `mismatch`** (item 3). The matching documents were read and
+  say nothing, which on its own never proves the repo wrong — legal for `future-risk` or
+  `missed-improvement`, refused as `absent-evidence-mismatch` for `mismatch`.
+- **`broken-now` without `executed` Evidence is downgraded, not rejected** (item 5). A finding
+  survives with its urgency forced to `advisory` — the floor, because nothing here licenses
+  picking a specific timeline (`deprecated`, `removal-scheduled`) the finding never claimed — and
+  two fields recording it: `downgradedFrom: "broken-now"` and a `downgradeReason` string. `advisory`
+  is exported as `BROKEN_NOW_DOWNGRADE_URGENCY`.
+- **At most three Upstream Opportunities per Ecosystem** (item 8, `MAX_OPPORTUNITIES_PER_ECOSYSTEM`).
+  Counted against what survives its own citation check, in the order the worker wrote them — an
+  Opportunity a citation already refused does not spend one of the three slots. The fourth and
+  later that otherwise hold are Unverified as `too-many-opportunities`.
+- **An Opportunity's `minVersion` above the Baseline needs a Horizon that reaches it** (item 8).
+  Adoptable at the Baseline needs nothing further; above it without a covering Horizon is
+  Unverified as `opportunity-beyond-horizon`. Version comparison is segment-by-segment on
+  `x.y.z` — not full semver, because every version this compares is a released number, never a
+  pre-release channel.
+- **An Incidental Observation cannot carry a `disposition`** (item 7). `disposition` is an Upstream
+  Finding field; one on an Incidental Observation would let it slip into the plan the same way a
+  Finding does. Refused as `malformed`.
+
 Closed vocabularies:
 
 | Field         | Values                                                      |
@@ -71,8 +98,9 @@ rejects a report whole: a review computes a verdict that one bad finding corrupt
 has no verdict, and losing an Ecosystem's good findings to one bad citation costs more than
 listing the bad one.
 
-Reasons: `missing-source-url`, `missing-source-quote`, `missing-page-version`, `malformed`, and the
-four citation reasons below.
+Reasons: `missing-source-url`, `missing-source-quote`, `missing-page-version`, `malformed`, the four
+citation reasons below, and the three domain-rule reasons above (`absent-evidence-mismatch`,
+`too-many-opportunities`, `opportunity-beyond-horizon`).
 
 The envelope is different. A report with no commit, no Baseline, or the wrong schema version is
 rejected whole — there is nothing left for a reader to use.

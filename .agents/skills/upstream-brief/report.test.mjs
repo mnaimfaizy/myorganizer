@@ -18,9 +18,11 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  BROKEN_NOW_DOWNGRADE_URGENCY,
   CITATION_FAILURE_REASONS,
   ENTRY_KINDS,
   ENTRY_LIST_FIELDS,
+  MAX_OPPORTUNITIES_PER_ECOSYSTEM,
   UNVERIFIED_REASONS,
   UPSTREAM_REPORT_SCHEMA_VERSION,
   UPSTREAM_URGENCIES,
@@ -191,6 +193,176 @@ test('a checked-and-clear claim with no holdsFor cannot be carried forward, so i
   const report = normalize(raw);
   assert.equal(report.unverified[0].kind, 'checkedAndClear');
   assert.match(report.unverified[0].detail, /holdsFor/);
+});
+
+// ── Domain rules (ADR 0084 items 3, 5, 7, 8) ────────────────────────────────
+
+test('a mismatch whose only Evidence is absent is refused, not accepted (ADR 0084 item 3)', () => {
+  const raw = fixtureReport();
+  raw.ecosystems[0].findings[0].type = 'mismatch';
+  raw.ecosystems[0].findings[0].evidence = 'absent';
+  const report = normalize(raw);
+  assert.equal(report.unverified.length, 1);
+  assert.equal(report.unverified[0].kind, 'upstreamFinding');
+  assert.equal(report.unverified[0].reason, 'absent-evidence-mismatch');
+  assert.equal(report.counts.findings, 3);
+});
+
+test('absent Evidence is fine for a future-risk or missed-improvement finding', () => {
+  // Only `mismatch` is refused: `absent` naming what upstream does not say is
+  // exactly the shape a missed-improvement or future-risk finding is for.
+  const report = normalize();
+  const absentButNotMismatch = report.ecosystems[0].findings.find(
+    (f) => f.evidence === 'absent',
+  );
+  assert.equal(absentButNotMismatch.type, 'missed-improvement');
+  assert.deepEqual(report.unverified, []);
+});
+
+test('broken-now with executed Evidence is accepted at full urgency', () => {
+  // The fixture's own broken-now finding carries `evidence: executed` plus a
+  // command and exit code — it must survive untouched.
+  const report = normalize();
+  const brokenNow = report.ecosystems[0].findings.find((f) =>
+    f.claim.startsWith('The instruction file teaches `await cookies()`'),
+  );
+  assert.equal(brokenNow.urgency, 'broken-now');
+  assert.equal('downgradedFrom' in brokenNow, false);
+});
+
+for (const [name, mutate] of [
+  [
+    'evidence is cited, not executed',
+    (f) => {
+      f.evidence = 'cited';
+    },
+  ],
+  [
+    'no executed record at all',
+    (f) => {
+      delete f.executed;
+      f.evidence = 'cited';
+    },
+  ],
+]) {
+  test(`broken-now without executed Evidence is downgraded, not rejected — ${name} (ADR 0084 item 5)`, () => {
+    const raw = fixtureReport();
+    mutate(raw.ecosystems[0].findings[0]);
+    const report = normalize(raw);
+
+    assert.deepEqual(report.unverified, []);
+    assert.equal(report.counts.findings, 4);
+    const downgraded = report.ecosystems[0].findings[0];
+    assert.equal(downgraded.urgency, BROKEN_NOW_DOWNGRADE_URGENCY);
+    assert.equal(downgraded.downgradedFrom, 'broken-now');
+    assert.match(downgraded.downgradeReason, /executed Evidence/);
+  });
+}
+
+test('an Ecosystem carries at most three Upstream Opportunities (ADR 0084 item 8)', () => {
+  const raw = fixtureReport();
+  const template = raw.ecosystems[0].opportunities[0];
+  raw.ecosystems[0].opportunities = Array.from({ length: 5 }, (_, i) => ({
+    ...template,
+    technique: `${template.technique} (#${i})`,
+  }));
+
+  const report = normalize(raw);
+
+  // The fixture's other Ecosystem (nx) carries one Opportunity of its own,
+  // untouched — the cap is per-Ecosystem, not a total across the report.
+  assert.equal(
+    report.counts.opportunities,
+    MAX_OPPORTUNITIES_PER_ECOSYSTEM + 1,
+  );
+  assert.equal(report.ecosystems[0].opportunities.length, 3);
+  const overflow = report.unverified.filter(
+    (u) => u.reason === 'too-many-opportunities',
+  );
+  assert.equal(overflow.length, 2);
+  assert.match(overflow[0].label, /\(#3\)/);
+  assert.match(overflow[1].label, /\(#4\)/);
+});
+
+test('a fourth Opportunity that fails its own citation does not spend a slot — the count is of what survives', () => {
+  const raw = fixtureReport();
+  const template = raw.ecosystems[0].opportunities[0];
+  raw.ecosystems[0].opportunities = [
+    { ...template, technique: 'ok-1' },
+    { ...template, technique: 'ok-2' },
+    { ...template, technique: 'broken', local: [] }, // refused: no local site
+    { ...template, technique: 'ok-3' },
+  ];
+
+  const report = normalize(raw);
+
+  // Plus the fixture's untouched nx-Ecosystem Opportunity.
+  assert.equal(report.counts.opportunities, 4);
+  assert.deepEqual(
+    report.ecosystems[0].opportunities.map((o) => o.technique),
+    ['ok-1', 'ok-2', 'ok-3'],
+  );
+  assert.equal(
+    report.unverified.filter((u) => u.reason === 'malformed').length,
+    1,
+  );
+  assert.equal(
+    report.unverified.filter((u) => u.reason === 'too-many-opportunities')
+      .length,
+    0,
+  );
+});
+
+test('an Opportunity above the Baseline is valid when the Horizon covers it', () => {
+  // The fixture: baseline 16.2.6, horizon 16.3.1, minVersion 16.3.0.
+  const report = normalize();
+  assert.deepEqual(report.unverified, []);
+  assert.equal(report.ecosystems[0].opportunities[0].minVersion, '16.3.0');
+});
+
+test('an Opportunity above the Baseline with no Horizon is refused (ADR 0084 item 8)', () => {
+  const raw = fixtureReport();
+  delete raw.ecosystems[0].horizon;
+  const report = normalize(raw);
+  assert.equal(report.unverified.length, 1);
+  assert.equal(report.unverified[0].kind, 'upstreamOpportunity');
+  assert.equal(report.unverified[0].reason, 'opportunity-beyond-horizon');
+  assert.match(report.unverified[0].detail, /names no Horizon/);
+});
+
+test('an Opportunity above the Baseline with a Horizon that does not reach it is refused', () => {
+  const raw = fixtureReport();
+  raw.ecosystems[0].horizon = '16.2.9';
+  const report = normalize(raw);
+  assert.equal(report.unverified[0].reason, 'opportunity-beyond-horizon');
+  assert.match(report.unverified[0].detail, /above the Horizon 16\.2\.9/);
+});
+
+test('an Opportunity at or below the Baseline needs no Horizon', () => {
+  const raw = fixtureReport();
+  delete raw.ecosystems[0].horizon;
+  raw.ecosystems[0].opportunities[0].minVersion = '16.2.6';
+  const report = normalize(raw);
+  assert.deepEqual(report.unverified, []);
+});
+
+test('an Incidental Observation cannot carry a disposition (ADR 0084 item 7)', () => {
+  const raw = fixtureReport();
+  raw.ecosystems[1].incidental[0].disposition = 'plan';
+  const report = normalize(raw);
+  assert.equal(report.unverified.length, 1);
+  assert.equal(report.unverified[0].kind, 'incidentalObservation');
+  assert.equal(report.unverified[0].reason, 'malformed');
+  assert.match(report.unverified[0].detail, /cannot carry a disposition/);
+});
+
+test('every domain-rule reason is one of the closed UNVERIFIED_REASONS', () => {
+  for (const reason of [
+    'absent-evidence-mismatch',
+    'too-many-opportunities',
+    'opportunity-beyond-horizon',
+  ])
+    assert.ok(UNVERIFIED_REASONS.includes(reason), reason);
 });
 
 // ── Local evidence ──────────────────────────────────────────────────────────

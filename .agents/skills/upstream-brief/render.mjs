@@ -124,6 +124,14 @@ const findingLines = (finding, lead) => [
         `  - **Executed:** ${code(finding.executed.command)} → exit ${finding.executed.exitCode}`,
       ]
     : []),
+  // ADR 0084 item 5: a downgrade is recorded, not just applied silently —
+  // a reader comparing this to the claim's own wording should see why its
+  // urgency is not the one the worker originally gave it.
+  ...(finding.downgradedFrom
+    ? [
+        `  - **Downgraded from:** ${code(finding.downgradedFrom)} — ${finding.downgradeReason}`,
+      ]
+    : []),
   ...localBlock(finding),
 ];
 
