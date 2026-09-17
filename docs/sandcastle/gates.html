@@ -1420,7 +1420,7 @@
   <section class="panel" aria-labelledby="hero-h">
     <div class="phead">
       <h2 id="hero-h">One gate, two callers</h2>
-      <span class="src">main.mts:1629-1824</span>
+      <span class="src">main.mts:1695-1925</span>
     </div>
     <div class="pbody">
       <div class="chips">
@@ -2112,7 +2112,7 @@
   <section class="panel" aria-labelledby="scope-h">
     <div class="phead">
       <h2 id="scope-h">Two scopes, because the targets have different blast radii</h2>
-      <span class="src">main.mts:153, 205, 1642-1687</span>
+      <span class="src">main.mts:153, :205, :1642-1687</span>
     </div>
     <div class="pbody">
       <p>
@@ -2282,7 +2282,7 @@
   <section class="panel" aria-labelledby="modes-h">
     <div class="phead">
       <h2 id="modes-h">The two modes, side by side</h2>
-      <span class="src">main.mts:1806-1824, 2659-2669, 2948-2963</span>
+      <span class="src">main.mts:1806-1824, :2659-2669, :2948-2963</span>
     </div>
     <div class="pbody">
       <div class="scrollx">
@@ -2350,7 +2350,7 @@
         on the PR &mdash; while costing one container install per slice.
         <span class="small muted"
           >&mdash; <code>runFeatureGate</code> docblock,
-          <code>main.mts:1812-1817</code></span
+          <code>main.mts:1915-1917</code></span
         >
       </blockquote>
 
@@ -2420,7 +2420,7 @@
   <section class="panel" aria-labelledby="red-h">
     <div class="phead">
       <h2 id="red-h">Reading a red gate</h2>
-      <span class="src">main.mts:1101-1115, 2891-2913</span>
+      <span class="src">main.mts:1812-1816, :2891-2913</span>
     </div>
     <div class="pbody">
       <ol class="chain">
@@ -3353,12 +3353,12 @@
 
 <script type="application/json" id="citation-anchors">
 {
-  "note": "Citation anchors for docs/sandcastle/gates.html, verified on 2026-09-16 against .sandcastle/main.mts. The citations are from the sandcastle orchestrator and document gate scope, validation, and checkpoint recovery behavior.",
+  "note": "Citation anchors for docs/sandcastle/gates.html, re-verified on 2026-09-17 against .sandcastle/main.mts. Every continuation range is written as a bare :NNN so findCitations sees it — a comma-separated number without a leading colon is a claim nothing checks.",
   "anchors": {
-    "main.mts:1629-1824": {
+    "main.mts:1695-1925": {
       "file": ".sandcastle/main.mts",
-      "start": "`Refs #${issue.number}`,",
-      "end": "'docker',"
+      "start": "function runGate(",
+      "end": "return runGate(featureBranch, prdGateBase, featureBranch);"
     },
     "main.mts:153": {
       "file": ".sandcastle/main.mts",
@@ -3366,7 +3366,7 @@
     },
     "main.mts:205": {
       "file": ".sandcastle/main.mts",
-      "start": ""
+      "start": "/**"
     },
     "main.mts:1642-1687": {
       "file": ".sandcastle/main.mts",
@@ -3386,17 +3386,17 @@
     "main.mts:2948-2963": {
       "file": ".sandcastle/main.mts",
       "start": "await new Promise((resolve) => setTimeout(resolve, sleepMs));",
-      "end": "[#${issue.number}] checkpoint ${checkpoint.sha} on ${sliceBranch} ` +"
+      "end": "` [#${issue.number}] checkpoint ${checkpoint.sha} on ${sliceBranch} ` +"
     },
-    "main.mts:1812-1817": {
+    "main.mts:1915-1917": {
+      "file": ".sandcastle/main.mts",
+      "start": "* This is the gate that matters. A per-slice gate can only see one slice against",
+      "end": "* and fail on the PR — while costing one container install per slice. Gating"
+    },
+    "main.mts:1812-1816": {
       "file": ".sandcastle/main.mts",
       "start": "console.log(",
-      "end": "// Read here rather than at module scope: --gate-only reaches runGate during module"
-    },
-    "main.mts:1101-1115": {
-      "file": ".sandcastle/main.mts",
-      "start": "const graphifyGraphPath = join(process.cwd(), 'graphify-out', 'graph.json');",
-      "end": "* primary checkout sits on an unrelated feature branch would resolve a sha off"
+      "end": "console.log(`  [${label}] gate: installing + running ...`);"
     },
     "main.mts:2891-2913": {
       "file": ".sandcastle/main.mts",
