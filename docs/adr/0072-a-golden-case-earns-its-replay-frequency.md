@@ -106,7 +106,8 @@ set runs when the brief or the contract changes, which is when it is worth its p
 
 The set gains a bound it did not have: as the brief improves, cases migrate from frontier to guard
 and the recurring cost falls rather than rises. A set with no frontier case left is measuring
-nothing, and the tests assert that at least one remains.
+nothing, and the tests assert that at least one remains (_this sentence was false when written —
+see the 2026-09-17 amendment, which made it true_).
 
 `schemaVersion` moves to `2`. `tier` is required on every case, so no golden set from before this
 decision loads — deliberate, since a case with no tier has no defined frequency.
@@ -136,6 +137,37 @@ caught`): a case that always passes and a case that never passes both carry less
 > their own session; `docs/review/golden-replay-results.md` states plainly, alongside the run that
 > cost that lockout, that a single run is not a measurement and a score moves nothing on its own
 > beyond the tier rule already in force.
+
+> **Amended 2026-09-17 (issue #563, pull request #809).** Promotion may not empty the frontier,
+> and the constraint is now asserted rather than asserted-about.
+>
+> `release-bump-leaves-generated-client-stale` reached four consecutive catches — runs 34663295486,
+> 34673097908, 35076286069 and 35156450789 — where Decision item 2 needs three. It is also the only
+> frontier case left. Promoting it would satisfy the rule exactly as written and disable the arm it
+> belongs to: guards run only when the Standards brief or the finding contract changes, so an
+> all-guard set replays **nothing** on an ordinary change to the review scripts or the reviewer
+> action. The rule is mechanical and does not read intent; what it does not price is that the last
+> frontier case is the whole early-warning signal, not one detector among several.
+>
+> **Promotion of the last frontier case waits for a replacement.** Three consecutive catches earn
+> `guard` and the evidence is still cited when they do, but a promotion that would leave `cases`
+> with no `frontier` entry is refused. Write or find the replacement first; then promote. Declining
+> to promote is not a claim the case is still hard — its history records the streak either way.
+>
+> This amendment does not weaken demotion. One miss still demotes, immediately and without a
+> counterpart, because the asymmetry in Decision item 2 exists to make falling back cheap. A miss
+> on the only guard is not the mirror of this case: demotion adds to the frontier, and the failure
+> mode named here is an empty one.
+>
+> **The Consequences section already said this and was wrong that anything checked it.** Its
+> sentence — "the tests assert that at least one remains" — was true of no test in
+> `golden.mjs`, `golden-tiers.mjs`, or either suite, from this ADR's acceptance until today. That is
+> the failure [ADR 0085](0085-an-artifact-states-no-claim-it-does-not-assert.md) names, in an ADR
+> rather than a checker header: a claim nobody asserts rots, and this one rotted silently because a
+> reader checking the rule would have found the sentence and stopped. `assertGoldenSet` now refuses
+> a set whose `cases` carry no `frontier` tier, and `golden.test.mjs` proves it refuses — including
+> the case that matters, a promotion whose `tierEvidence` is properly cited, which is the one that
+> looks correct on its way past review.
 
 ## Alternatives considered
 
