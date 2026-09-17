@@ -2629,7 +2629,7 @@ const __ds_scope = {};
 </script>
 <script type="application/json" id="citation-anchors">
 {
-  "note": "Expected-content anchors for every file:line citation on this page (ADR 0085; PRD #772; issue #797). Verified against the tree at HEAD as of 2026-09-16 — 11 of the page's original citations had drifted or were mis-cited and were corrected in the same change that added this block; see the commit message for the source diffs that proved each one.",
+  "note": "Expected-content anchors for every file:line citation the gate can see on this page (ADR 0085; PRD #772; issue #797). Verified against the tree at HEAD as of 2026-09-17 — 11 of the page's original citations had drifted or were mis-cited and were corrected in the same change that added this block; see the commit message for the source diffs that proved each one. THREE CITATIONS ARE DELIBERATELY NOT ANCHORED and are not covered by any gate: AuthController.ts:228, :228-244 and :232, which live in the SCENES walkthrough data. findCitations() blanks embedded script bodies before scanning, so it never extracts them, and an anchor keyed to a citation the checker does not extract is never looked up — it would assert nothing while reading as though it did. All three were checked by hand on 2026-09-17 and are correct: 228 is userService.create, 229 is sendVerificationMail, 232 is the deleteById rollback, 244 persists email_verification_token. Anchor them when the scanner reaches script data; see #822.",
   "anchors": {
     "main.ts:165": { "file": "apps/backend/src/main.ts", "start": "api.use('/auth', authRouter);" },
     "main.ts:171": { "file": "apps/backend/src/main.ts", "start": "RegisterRoutes(api);" },
