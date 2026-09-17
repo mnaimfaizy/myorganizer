@@ -65,6 +65,7 @@
     "skills:map:check": "node tools/scripts/check-skill-map.mjs",
     "vault:pages:check": "node tools/scripts/check-vault-pages.mjs",
     "readme:check": "node tools/scripts/check-readme.mjs",
+    "readme:test": "node --test tools/scripts/check-readme.test.mjs",
     "env:declared:check": "node tools/scripts/check-env-declared.mjs",
     "env:declared:test": "node --test tools/scripts/check-env-declared.test.mjs",
     "env:deployment:check": "node tools/scripts/check-env-deployment.mjs",

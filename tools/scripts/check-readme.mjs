@@ -76,17 +76,23 @@ const layout = readme.match(/```\s*\nmyorganizer\/([\s\S]*?)```/);
 if (!layout) fail('no repository layout diagram found in README.md');
 const diagram = layout[1];
 
-for (const app of dirNames('apps').filter((n) => !APPS_IGNORED.has(n))) {
-  asserted += 1;
-  if (!documentedIn(diagram, app)) {
-    findings.push(`apps/${app} exists but is missing from the layout diagram`);
-  }
-}
+// apps and libs differ only in which directory they read and which names they
+// skip, and the reverse pass below differs from this one only in its predicate.
+// Writing the pair out four times is how one of the four ends up missing a
+// direction, which is the defect this checker exists to catch.
+const SECTIONS = [
+  ['apps', APPS_IGNORED],
+  ['libs', LIBS_IGNORED],
+];
 
-for (const lib of dirNames('libs').filter((n) => !LIBS_IGNORED.has(n))) {
-  asserted += 1;
-  if (!documentedIn(diagram, lib)) {
-    findings.push(`libs/${lib} exists but is missing from the layout diagram`);
+for (const [kind, ignored] of SECTIONS) {
+  for (const name of dirNames(kind).filter((n) => !ignored.has(n))) {
+    asserted += 1;
+    if (!documentedIn(diagram, name)) {
+      findings.push(
+        `${kind}/${name} exists but is missing from the layout diagram`,
+      );
+    }
   }
 }
 
@@ -109,17 +115,14 @@ for (const line of diagram.split('\n')) {
   }
 }
 
-for (const app of sections.apps) {
-  asserted += 1;
-  if (!APPS_IGNORED.has(app) && !existsSync(`apps/${app}`)) {
-    findings.push(`layout diagram names apps/${app}, which does not exist`);
-  }
-}
-
-for (const lib of sections.libs) {
-  asserted += 1;
-  if (!LIBS_IGNORED.has(lib) && !existsSync(`libs/${lib}`)) {
-    findings.push(`layout diagram names libs/${lib}, which does not exist`);
+for (const [kind, ignored] of SECTIONS) {
+  for (const name of sections[kind]) {
+    asserted += 1;
+    if (!ignored.has(name) && !existsSync(`${kind}/${name}`)) {
+      findings.push(
+        `layout diagram names ${kind}/${name}, which does not exist`,
+      );
+    }
   }
 }
 

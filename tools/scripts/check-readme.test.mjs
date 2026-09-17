@@ -17,12 +17,31 @@ function createWorkspace(t) {
   return workspace;
 }
 
-function writeReadme(workspace, diagramContent) {
+function writeReadme(workspace, diagramContent, prose = '') {
   const readmePath = join(workspace, 'README.md');
   writeFileSync(
     readmePath,
-    `# MyOrganizer\n\n\`\`\`\nmyorganizer/\n${diagramContent}\n\`\`\`\n`,
+    `# MyOrganizer\n\n\`\`\`\nmyorganizer/\n${diagramContent}\n\`\`\`\n${prose}`,
   );
+}
+
+// The layout diagram is checked on every run, so a test about links or routes
+// still needs one that holds. This is the in-sync pair the first test uses.
+const IN_SYNC_DIAGRAM = [
+  '├── apps/',
+  '│   ├── backend/',
+  '│   └── myorganizer/',
+  '├── libs/',
+  '│   ├── core/',
+  '│   └── auth/',
+  '└── tools/',
+].join('\n');
+
+function createInSyncTree(workspace) {
+  createDirectory(workspace, 'apps/backend');
+  createDirectory(workspace, 'apps/myorganizer');
+  createDirectory(workspace, 'libs/core');
+  createDirectory(workspace, 'libs/auth');
 }
 
 function createDirectory(workspace, path) {
@@ -178,6 +197,91 @@ test('respects ignore lists for stale entries', (t) => {
   writeReadme(workspace, diagram);
   createDirectory(workspace, 'apps/backend');
   createDirectory(workspace, 'libs/core');
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
+// ---------------------------------------------------------------- 1. links resolve
+//
+// The header claims three checkable classes. These two sections cover the two
+// the diagram tests above do not, so the header's claim is asserted whole
+// rather than in the one part that happened to be written first.
+
+test('rejects a relative link whose target does not exist', (t) => {
+  const workspace = createWorkspace(t);
+  writeReadme(workspace, IN_SYNC_DIAGRAM, '\n[Licence](LICENSE)\n');
+  createInSyncTree(workspace);
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /links to LICENSE, which does not exist/);
+});
+
+test('rejects a broken href in the raw HTML header', (t) => {
+  const workspace = createWorkspace(t);
+  writeReadme(workspace, IN_SYNC_DIAGRAM, '\n<img src="docs/logo.svg" />\n');
+  createInSyncTree(workspace);
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /links to docs\/logo\.svg, which does not exist/);
+});
+
+test('accepts a relative link whose target exists', (t) => {
+  const workspace = createWorkspace(t);
+  writeReadme(workspace, IN_SYNC_DIAGRAM, '\n[Licence](LICENSE)\n');
+  createInSyncTree(workspace);
+  writeFileSync(join(workspace, 'LICENSE'), 'MIT\n');
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('ignores external, anchor, and mailto links', (t) => {
+  const workspace = createWorkspace(t);
+  writeReadme(
+    workspace,
+    IN_SYNC_DIAGRAM,
+    '\n[a](https://example.com/nope) [b](#nope) [c](mailto:nope@example.com)\n',
+  );
+  createInSyncTree(workspace);
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 0, result.stderr);
+});
+
+// ---------------------------------------------------------------- 3. routes are real
+
+test('rejects a /dashboard route the app router does not serve', (t) => {
+  const workspace = createWorkspace(t);
+  writeReadme(workspace, IN_SYNC_DIAGRAM, '\nVisit /dashboard/todo to plan.\n');
+  createInSyncTree(workspace);
+  createDirectory(workspace, 'apps/myorganizer/src/app/dashboard/vault');
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(
+    result.stderr,
+    /names \/dashboard\/todo, which the app router does not serve/,
+  );
+});
+
+test('accepts a /dashboard route the app router serves', (t) => {
+  const workspace = createWorkspace(t);
+  writeReadme(
+    workspace,
+    IN_SYNC_DIAGRAM,
+    '\nVisit /dashboard/vault to plan.\n',
+  );
+  createInSyncTree(workspace);
+  createDirectory(workspace, 'apps/myorganizer/src/app/dashboard/vault');
 
   const result = runChecker(workspace);
 
