@@ -183,6 +183,7 @@ Standards axis:
 - `standard-ui-composition` — a component breaking the composition or accessibility guidelines
 - `standard-doc-claim-drifted` — a document still claiming something this change made untrue
 - `standard-secret-committed` — a secret, credential, or plaintext value committed or logged
+- `standard-operator-fingerprint-in-source` — an Operator Fingerprint (host, port, account, home path, sibling app, or the operator's other properties) written into the tracked tree. Not the same as a secret: see ADR 0086
 - `standard-branch-or-commit-convention` — a branch name or commit message off convention
 - `standard-other` — FALLBACK. A documented standard none of the above names. Use it rather than
   dropping the finding, and say which document in `source` and which rule in `rule`.

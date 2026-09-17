@@ -46,14 +46,14 @@ Promotion to `guard` takes **three consecutive catches**; demotion to
 `frontier` takes **one miss**. The asymmetry is deliberate — a wrongly
 promoted case is a detector that quietly stopped running.
 
-| Case                                         | Tier       | Since      | History                                                                                                                                                                                                                                                                                                                                   |
-| -------------------------------------------- | ---------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `groceries-blob-type-without-fanouts`        | `guard`    | 2026-09-07 | caught in every run, now eleven of eleven (34345667427, 34351285079, 34582767531, 34591297535); void in 34441162698 (turn ceiling), which neither extends nor breaks the streak                                                                                                                                                           |
-| `export-envelope-drops-tasks`                | `guard`    | 2026-09-12 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught again in 34215499508, the first run after retirement; caught in 34344266006, missed in 34345667427, 34351285079 and 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted a second time** |
-| `release-bump-leaves-generated-client-stale` | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit); caught in 34441162698; missed in 34591297535; caught in 34663295486 and 34673097908 — two of three needed for promotion, and the only frontier case left                                                                            |
-| `signup-password-wrapper-inside-formcontrol` | `guard`    | 2026-09-12 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**                                                                                                                   |
-| `import-confirm-is-bare-window-confirm`      | `guard`    | 2026-09-12 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**                                                                                                                    |
-| `mail-test-setup-assigns-undefined-to-env`   | `guard`    | 2026-09-12 | missed in 34345667427; void in 34351285079 (rate limit); **first catch** in 34441162698, then 34591297535 and 34663295486 — **three consecutive, promoted**                                                                                                                                                                               |
+| Case                                         | Tier       | Since      | History                                                                                                                                                                                                                                                                                                                                                                          |
+| -------------------------------------------- | ---------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `groceries-blob-type-without-fanouts`        | `guard`    | 2026-09-07 | caught in every run, now eleven of eleven (34345667427, 34351285079, 34582767531, 34591297535); void in 34441162698 (turn ceiling), which neither extends nor breaks the streak; caught in 35076286069 and 35156450789                                                                                                                                                           |
+| `export-envelope-drops-tasks`                | `guard`    | 2026-09-12 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught again in 34215499508, the first run after retirement; caught in 34344266006, missed in 34345667427, 34351285079 and 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted a second time**; caught in 35076286069 and 35156450789 |
+| `release-bump-leaves-generated-client-stale` | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit); caught in 34441162698; missed in 34591297535; caught in 34663295486, 34673097908, 35076286069 and 35156450789 — **four consecutive, promotion earned and deliberately not taken**: it is the only frontier case left, and promoting it empties the arm                     |
+| `signup-password-wrapper-inside-formcontrol` | `guard`    | 2026-09-12 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, six turns); caught in 35156450789                                                                            |
+| `import-confirm-is-bare-window-confirm`      | `guard`    | 2026-09-12 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, one turn); caught in 35156450789                                                                              |
+| `mail-test-setup-assigns-undefined-to-env`   | `guard`    | 2026-09-12 | missed in 34345667427; void in 34351285079 (rate limit); **first catch** in 34441162698, then 34591297535 and 34663295486 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, one turn); caught in 35156450789                                                                                                                                         |
 
 The tier and the evidence that earned it are in
 `tools/config/review-golden-set.json`, asserted by `yarn review:golden:check`.
@@ -85,7 +85,7 @@ item 7). It stays in the set under `parked`, id reserved the same way, with a
 day the matching entry in `docs/review/REVIEW_CHECKLIST.md`'s Deferred
 candidates — "New persisted state has an inverse" — is promoted into
 `tools/config/review-obligations.json`. **Six cases remain**: five guard, one
-frontier.
+frontier — and the one frontier case has now earned promotion without taking it, for the reason recorded under Runs. Finding or writing a replacement frontier case is the open work.
 
 ## Authorship
 
@@ -490,6 +490,45 @@ no longer contains a case the reviewer was instructed not to report. Removing
 that case did not move the number, which is worth knowing on its own: the
 retirement was correct on its own terms, and it was not the explanation for the
 miss rate.
+
+### Two runs on one pull request, and the frontier arm reaches three
+
+Pull request #809 (ADR 0086) touched the code-review skill's Standards brief and
+`tools/config/review-rules.json`, so both arms replayed — twice, once per push.
+
+Run [35076286069](https://github.com/mnaimfaizy/myorganizer/actions/runs/35076286069)
+(2026-09-16, head `a5ffe50`) caught `groceries-blob-type-without-fanouts`,
+`export-envelope-drops-tasks` and `release-bump-leaves-generated-client-stale`.
+The other three were **voids, not misses**, and the apparatus said so itself:
+
+```
+the reviewer was cut off by the five_hour rate limit after 1 turn(s);
+this run measured nothing and is not a miss
+```
+
+`import-confirm-is-bare-window-confirm` and
+`mail-test-setup-assigns-undefined-to-env` stopped after one turn,
+`signup-password-wrapper-inside-formcontrol` after six. The job was red and the
+three cases show as failed checks, which is the cost of the guard being honest:
+a void has to fail loudly, because the alternative — passing quietly — is how a
+lockout gets recorded as a catch. Three guard cases came within one silent
+report of being demoted by an outage. Nothing was demoted.
+
+Run [35156450789](https://github.com/mnaimfaizy/myorganizer/actions/runs/35156450789)
+(2026-09-16, head `3d84b11`) replayed the same six after the rate-limit window
+cleared and **caught all six** — the first clean sweep of the narrowed set.
+
+**The frontier arm now reads 0, 1, 1, 1, 1, 1.** For
+`release-bump-leaves-generated-client-stale` that is catches in 34663295486,
+34673097908, 35076286069 and 35156450789: four consecutive, where three earn
+promotion. The streak is recorded here; **the promotion is not taken yet**, and
+that is a decision rather than an oversight. It is the only frontier case left,
+so promoting it empties the arm, and an empty frontier means a pull request
+touching `tools/scripts/review/**` or the reviewer action replays _nothing_
+until the brief or the finding contract changes. ADR 0072's rule does not read
+intent and would promote it; what the rule does not price is that this case is
+currently the entire early-warning signal. Promote it alongside a replacement
+frontier case, not before one exists.
 
 ## Reproduce
 

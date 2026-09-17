@@ -648,6 +648,14 @@ _Avoid_: post-deploy sequence, go-live, activate, restart (as the whole thing)
 An annotated `vX.Y.Z` tag applied after Production Host Apply has succeeded. A receipt that a version shipped — never a trigger that ships it.
 _Avoid_: release tag (when you mean a trigger), version marker
 
+**Product Surface**:
+A fact MyOrganizer publishes by existing — its domains, its app store identity, the API origin its clients call. Public by nature: hiding one in git hides it from nobody who can use the app.
+_Avoid_: public config, non-secret, branding
+
+**Operator Fingerprint**:
+A fact about where and by whom MyOrganizer is run — host, port, account name, home paths, sibling apps on the account, and the operator's other properties. Never enters the tracked tree. Not a secret: a secret is defeated by a secret store, a Fingerprint only by not writing it down.
+_Avoid_: secret, credential, private config, infra detail
+
 ## Documentation
 
 **Agent Guide**:

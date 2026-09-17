@@ -33,6 +33,7 @@ import type {
 import type { VaultMetaV1 } from '@myorganizer/app-api-client';
 import { useOptionalVaultSession } from './session';
 import { VaultMetaConvergeRunner } from './metaConvergeRunner';
+import { VAULT_STANDOFF_DIALOG_TITLE } from './reconcileRunner';
 
 type SettleVaultMetaOptions = {
   api: unknown;
@@ -186,7 +187,7 @@ describe('VaultMetaConvergeRunner', () => {
     await screen.findByRole('dialog');
 
     // Meta converge dialog should NOT contain reconcile-specific strings
-    expect(screen.queryByText('Choose vault data to keep')).toBeNull();
+    expect(screen.queryByText(VAULT_STANDOFF_DIALOG_TITLE)).toBeNull();
     expect(screen.queryByText("Keep this device's data")).toBeNull();
     expect(screen.queryByText("Keep the server's data")).toBeNull();
   });
