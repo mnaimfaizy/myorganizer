@@ -38,6 +38,28 @@ async function createUnlockedHandle(
   return handle;
 }
 
+async function seedSyncedAddresses(handle: VaultHandle): Promise<void> {
+  await handle.saveEncryptedData({
+    type: VAULT_BLOB_FIELDS[VaultBlobType.Addresses],
+    value: [{ id: '1', street: '123 Main St' }],
+  });
+  await handle.recordPushSuccess({
+    type: VAULT_BLOB_FIELDS[VaultBlobType.Addresses],
+    etag: 'etag-addresses-1',
+  });
+}
+
+async function seedUnsentGroceriesAndTasks(handle: VaultHandle): Promise<void> {
+  await handle.saveEncryptedData({
+    type: VAULT_BLOB_FIELDS[VaultBlobType.Groceries],
+    value: [{ id: 'g1', name: 'Milk' }],
+  });
+  await handle.saveEncryptedData({
+    type: VAULT_BLOB_FIELDS[VaultBlobType.Tasks],
+    value: [{ id: 't1', title: 'Task 1' }],
+  });
+}
+
 describe('useUnsentVaultBlobTypes', () => {
   beforeEach(() => {
     // Clear Jest mocks
@@ -90,6 +112,11 @@ describe('useUnsentVaultBlobTypes', () => {
 
     // Synchronously, state is still pending — effect hasn't run yet
     expect(result.current).toEqual({ status: 'pending', types: null });
+
+    // Allow the async effect to settle so setState doesn't land after test ends
+    await waitFor(() => {
+      expect(result.current.status).toBe('loaded');
+    });
   });
 
   // Test 4: Fully synced — empty unsent types array when all data is pushed
@@ -97,14 +124,7 @@ describe('useUnsentVaultBlobTypes', () => {
     const handle = await createUnlockedHandle();
 
     // Save and push Addresses and Tasks
-    await handle.saveEncryptedData({
-      type: VAULT_BLOB_FIELDS[VaultBlobType.Addresses],
-      value: [{ id: '1', street: '123 Main St' }],
-    });
-    await handle.recordPushSuccess({
-      type: VAULT_BLOB_FIELDS[VaultBlobType.Addresses],
-      etag: 'etag-addresses-1',
-    });
+    await seedSyncedAddresses(handle);
 
     await handle.saveEncryptedData({
       type: VAULT_BLOB_FIELDS[VaultBlobType.Tasks],
@@ -129,26 +149,10 @@ describe('useUnsentVaultBlobTypes', () => {
     const handle = await createUnlockedHandle();
 
     // Addresses: saved and pushed (synced)
-    await handle.saveEncryptedData({
-      type: VAULT_BLOB_FIELDS[VaultBlobType.Addresses],
-      value: [{ id: '1', street: '123 Main St' }],
-    });
-    await handle.recordPushSuccess({
-      type: VAULT_BLOB_FIELDS[VaultBlobType.Addresses],
-      etag: 'etag-addresses-1',
-    });
+    await seedSyncedAddresses(handle);
 
-    // Groceries: saved but NOT pushed (unsent)
-    await handle.saveEncryptedData({
-      type: VAULT_BLOB_FIELDS[VaultBlobType.Groceries],
-      value: [{ id: 'g1', name: 'Milk' }],
-    });
-
-    // Tasks: saved but NOT pushed (unsent)
-    await handle.saveEncryptedData({
-      type: VAULT_BLOB_FIELDS[VaultBlobType.Tasks],
-      value: [{ id: 't1', title: 'Task 1' }],
-    });
+    // Groceries and Tasks: saved but NOT pushed (unsent)
+    await seedUnsentGroceriesAndTasks(handle);
 
     // MobileNumbers, Subscriptions, Todos: not touched (no data)
 
@@ -170,24 +174,10 @@ describe('useUnsentVaultBlobTypes', () => {
     const unlockedHandle = await createUnlockedHandle();
 
     // Addresses: saved and pushed
-    await unlockedHandle.saveEncryptedData({
-      type: VAULT_BLOB_FIELDS[VaultBlobType.Addresses],
-      value: [{ id: '1', street: '123 Main St' }],
-    });
-    await unlockedHandle.recordPushSuccess({
-      type: VAULT_BLOB_FIELDS[VaultBlobType.Addresses],
-      etag: 'etag-addresses-1',
-    });
+    await seedSyncedAddresses(unlockedHandle);
 
     // Groceries and Tasks: saved but NOT pushed
-    await unlockedHandle.saveEncryptedData({
-      type: VAULT_BLOB_FIELDS[VaultBlobType.Groceries],
-      value: [{ id: 'g1', name: 'Milk' }],
-    });
-    await unlockedHandle.saveEncryptedData({
-      type: VAULT_BLOB_FIELDS[VaultBlobType.Tasks],
-      value: [{ id: 't1', title: 'Task 1' }],
-    });
+    await seedUnsentGroceriesAndTasks(unlockedHandle);
 
     // Step 2: Create a second, never-unlocked handle for the same owner
     const lockedHandle = createVaultHandle({ owner: TEST_OWNER });
