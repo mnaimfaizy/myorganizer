@@ -9,7 +9,7 @@ argument-hint: 'ecosystem[@horizon] [ecosystem[@horizon] ...]'
 
 A user-invoked audit. The human names Ecosystems and, optionally, a Horizon for each. The run writes one **Upstream Brief** and, when there is a finding, proposes a HITL issue. It does not bump packages, apply instruction edits, or start a grill.
 
-Load [ADAPTER.md](ADAPTER.md) when resolving the host adapter. Load [BRIEF.md](BRIEF.md) when writing the file. Load [REPORT.md](REPORT.md) when writing or validating the structured report the brief is rendered from.
+Load [ADAPTER.md](ADAPTER.md) when resolving the host adapter. Load [BRIEF.md](BRIEF.md) when writing the file. Load [REPORT.md](REPORT.md) when writing or validating the structured report the brief is rendered from. Load [LEDGER.md](LEDGER.md) when reading the previous run — what carries forward, what the delta says, and which Upstream Opportunities were declined.
 
 ## Guardrails
 
@@ -43,11 +43,30 @@ the version record or a declared range (ADR 0084 item 1).
 
 **Done when:** every named Ecosystem is either resolved to a Baseline or failed-closed.
 
-> Steps 4-7 below still describe the pre-ADR-0084 shape (`subject`, a single research pass per
-> subject, a Markdown-only brief). Migrating them to Ecosystem-wide workers, structured Upstream
-> Findings, the skeptic hop, and the ledger is tracked in the PRD's later slices, not this one.
+### 4. Read the ledger
 
-### 4. Load repo-owned instructions
+For each resolved Ecosystem, the latest structured report committed in the brief directory that
+carries it is its ledger (ADR 0084 item 11). Run
+`node .agents/skills/upstream-brief/resolve-ledger.mjs` to see, per Ecosystem: which
+checked-and-clear claims carry forward to the new Baseline, which go back on the research list and
+why, and which declined Upstream Opportunities are still suppressed. [LEDGER.md](LEDGER.md) is the
+rule for all three.
+
+A carried-forward claim is **not researched again** — it is written into this run's report as
+checked and clear, with the citations it already carried. An Ecosystem with no ledger researches
+everything and its report carries no `delta`. Frozen briefs are read, never edited.
+
+Before proposing an Upstream Opportunity, check it against `declined_opportunities`: a suppressed
+one is not proposed, and a resurfaced one is, with the reason it came back.
+
+**Done when:** every resolved Ecosystem has a carry-forward list, a research list, and its
+suppressed Opportunities known.
+
+> Steps 5-8 below still describe the pre-ADR-0084 shape (`subject`, a single research pass per
+> subject, a Markdown-only brief). Migrating them to Ecosystem-wide workers, structured Upstream
+> Findings, and the skeptic hop is tracked in the PRD's later slices, not this one.
+
+### 5. Load repo-owned instructions
 
 Read files matching `instruction_globs`. Always exclude install and cache trees (`node_modules`, `.yarn`, `vendor`, `.git`, generated output). Those globs are repo-owned files only — third-party skill bodies are out of scope.
 
@@ -55,7 +74,7 @@ If `source_globs` or `script_globs` are set, _sample_ them for names the researc
 
 **Done when:** instruction text is loaded, and optional samples are ready.
 
-### 5. Research hops
+### 6. Research hops
 
 Launch one **research worker** per resolved subject. These are Independent Hops — they may run in parallel. Each worker:
 
@@ -68,13 +87,13 @@ If the host has a Research specialist, use it as the worker. Otherwise the same 
 
 **Done when:** every resolved subject has a worker result or a failure note.
 
-### 6. Write the Upstream Brief
+### 7. Write the Upstream Brief
 
 Write one Markdown file into the brief directory using [BRIEF.md](BRIEF.md). Name it `YYYY-MM-DD-upstream-brief-<subjects>.md`. Include failed subjects. A run with zero findings still writes the brief.
 
 **Done when:** the file exists and every hop (success or failure) appears in it.
 
-### 7. Propose a HITL issue
+### 8. Propose a HITL issue
 
 If the brief has **no** findings, stop. Say so, and point at the brief.
 

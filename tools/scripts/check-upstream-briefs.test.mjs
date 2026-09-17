@@ -2,12 +2,14 @@
  * Contract suite for `check-upstream-briefs.mjs` (ADR 0085: the header is the
  * specification, this is what makes it true).
  *
- * The header claims one direction — every committed structured report's
- * surviving entries still hold at the commit it records — and claims three
- * things it deliberately does not assert: an unpaired Markdown brief, a
- * missing report, and the report's own write-time Unverified list. Each of
- * those is proved here too, because an omission nobody tests is indistinguish-
- * able from an omission nobody noticed.
+ * The header claims two directions — every committed structured report's
+ * surviving entries still hold at the commit it records, and every declined
+ * Upstream Opportunity in the adapter still names a declared Ecosystem and a
+ * file in the current tree — and claims four things it deliberately does not
+ * assert: an unpaired Markdown brief, a missing report, the report's own
+ * write-time Unverified list, and a declined entry matching an Opportunity
+ * some run actually proposed. Each of those is proved here too, because an
+ * omission nobody tests is indistinguishable from an omission nobody noticed.
  *
  * Every input is injected, so nothing here reads this repository or its
  * history: the checker's own git plumbing is the one part that does, and it is
@@ -303,6 +305,94 @@ test('an unreadable report is exit 2, and the worst code across reports wins', (
   assert.equal(result.exitCode, 2);
   assert.match(result.lines.join('\n'), /a\.json could not be read/);
   assert.match(result.lines.join('\n'), /b\.json is not valid JSON/);
+});
+
+// ── The second direction: the adapter's declined Opportunities ──────────────
+
+/** An adapter declaring one Ecosystem and one decline against it. */
+const declinedAdapter = ({ lead = 'nx', site = 'hygiene.mjs' } = {}) =>
+  `ecosystems:\n  - lead: ${lead}\n\n` +
+  'declined_opportunities:\n' +
+  `  - ecosystem: ${lead}\n` +
+  '    url: https://nx.dev/concepts/inferred-tasks\n' +
+  `    site: ${site}\n` +
+  '    reason: the migration is tracked and is not this quarter\n' +
+  "    baseline_range: '>=22.0.0 <23.0.0'\n" +
+  '    quote: Inferred tasks keep project configuration in step.\n';
+
+/** The fixture tree stands in for the current tree the sites are checked in. */
+const declinedRepo = (config, files = {}) =>
+  checkUpstreamBriefs({
+    read: (path) =>
+      path === 'upstream-brief.config.yml' ? config : (files[path] ?? null),
+    list: () => null,
+    hasCommit: () => true,
+    source: () => treeReader,
+    exists: (path) => treeReader(path) !== null,
+  });
+
+test('an adapter recording no declined Opportunity passes and says so', () => {
+  const result = declinedRepo('brief_dir: docs/research\n');
+  assert.equal(result.exitCode, 0);
+  assert.match(result.lines.join('\n'), /no declined Opportunity recorded/);
+});
+
+test('a declined entry naming a declared Ecosystem and a file in the tree passes', () => {
+  const result = declinedRepo(declinedAdapter());
+  assert.equal(result.exitCode, 0);
+  assert.match(
+    result.lines.join('\n'),
+    /1 declined Opportunity\(s\) still point at/,
+  );
+});
+
+test('a declined entry whose Ecosystem is no longer declared fails', () => {
+  // The adapter declares `next`; the entry still names `nx`.
+  const config = declinedAdapter().replace('- lead: nx', '- lead: next');
+  const result = declinedRepo(config);
+  assert.equal(result.exitCode, 1);
+  assert.match(result.lines.join('\n'), /unknown-ecosystem/);
+});
+
+test('a declined entry whose local site path is gone fails', () => {
+  const result = declinedRepo(
+    declinedAdapter({ site: 'tools/scripts/deleted.mjs' }),
+  );
+  assert.equal(result.exitCode, 1);
+  assert.match(result.lines.join('\n'), /site-not-found/);
+  assert.match(result.lines.join('\n'), /deleted\.mjs/);
+});
+
+test('a declined entry recorded against a range nothing can read fails', () => {
+  const result = declinedRepo(
+    declinedAdapter().replace('>=22.0.0 <23.0.0', '^22.0.0'),
+  );
+  assert.equal(result.exitCode, 1);
+  assert.match(result.lines.join('\n'), /unreadable-range/);
+});
+
+test('a declined entry is checked even when the brief directory holds no report', () => {
+  // The two assertions are about two artifacts. An empty brief directory is
+  // the state this gate shipped in, and it must not take the decline check
+  // down with it.
+  const result = declinedRepo(
+    declinedAdapter({ site: 'tools/scripts/deleted.mjs' }),
+  );
+  assert.match(
+    result.lines.join('\n'),
+    /does not exist|nothing to re-validate/,
+  );
+  assert.equal(result.exitCode, 1);
+});
+
+test('a declined entry matching no proposed Opportunity is not a failure', () => {
+  // The direction the header refuses. Suppression is decided at run time
+  // against the Baseline and the upstream quote; a gate demanding a live match
+  // would fail on exactly the entry doing its job.
+  const result = declinedRepo(declinedAdapter(), {
+    'docs/research/brief.json': json(committedReport()),
+  });
+  assert.equal(result.exitCode, 0);
 });
 
 test('a non-JSON file in the brief directory is not treated as a report', () => {

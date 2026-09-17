@@ -47,8 +47,8 @@ report arrives carrying them: a derived field the author can forge is not derive
 ## Domain rules
 
 On top of the shape above, the validator enforces the parts of ADR 0084 that are about one
-report's own entries (the ledger carry-forward, item 11, reads the _previous_ committed report
-and is a separate slice):
+report's own entries. Everything that reads the _previous_ committed report — the carry-forward,
+the delta, declined Upstream Opportunities — is [the ledger](LEDGER.md)'s, in `ledger.mjs`:
 
 - **`absent` Evidence cannot support a `mismatch`** (item 3). The matching documents were read and
   say nothing, which on its own never proves the repo wrong — legal for `future-risk` or
@@ -81,8 +81,9 @@ Closed vocabularies:
 | `disposition` | `plan`, `follow-on`                                         |
 | `owner`       | `DepAudit`, `Audit`, `ad-hoc-issue`                         |
 
-`delta` is `{newFindings[], resolved[], stillPresent[]}`. It is absent on the first run for an
-Ecosystem, which has no ledger to carry forward.
+`delta` is `{newFindings[], resolved[], stillPresent[]}`, computed by [the ledger](LEDGER.md) from
+the previous committed report and validated here like any other field. It is absent on the first
+run for an Ecosystem, which has no ledger to carry forward.
 
 An Ecosystem's own `lead`, `members`, `baseline`, and `driftNotes` are not authored by a worker —
 they come from the Baseline resolver (`baseline.mjs`, and `resolve-baseline.mjs` for this repo's
@@ -135,6 +136,7 @@ finding dispositioned `follow-on` renders under Follow-on and nowhere else.
 
 ## In this repository
 
-`yarn upstream:briefs:check` re-validates every committed report (a thin adapter,
-`tools/scripts/check-upstream-briefs.mjs`, so the Meta-Gate can see the gate). It runs in
-`yarn gates:run` and in CI. `yarn upstream:briefs:test` is the contract suite for all of it.
+`yarn upstream:briefs:check` re-validates every committed report and every declined Upstream
+Opportunity the adapter records (a thin adapter, `tools/scripts/check-upstream-briefs.mjs`, so the
+Meta-Gate can see the gate). It runs in `yarn gates:run` and in CI. `yarn upstream:briefs:test` is
+the contract suite for all of it, and `yarn upstream:ledger` prints what a run would carry forward.

@@ -15,19 +15,38 @@
 //   placed to be seen, and the judgment stays in the skill.
 //
 // WHAT IT ASSERTS, AND IN WHICH DIRECTION
-//   One direction: for every structured report committed in the brief
-//   directory, every entry that survived validation still holds at the commit
-//   that report records. A local citation is `file` + `line` + the literal
-//   text at that line, read back with `git show <commit>:<file>`. Because the
-//   commit is fixed, a brief frozen at its date stays valid however far the
-//   tree moves on — and a citation that stops matching means the report and
-//   the history disagree, which is drift a frozen document cannot self-report.
+//   Two assertions about two artifacts, each one direction.
+//
+//   1. THE COMMITTED REPORTS, AT THE COMMIT THEY RECORD. For every structured
+//   report committed in the brief directory, every entry that survived
+//   validation still holds at the commit that report records. A local citation
+//   is `file` + `line` + the literal text at that line, read back with
+//   `git show <commit>:<file>`. Because the commit is fixed, a brief frozen at
+//   its date stays valid however far the tree moves on — and a citation that
+//   stops matching means the report and the history disagree, which is drift a
+//   frozen document cannot self-report.
 //
 //   The other direction is deliberately NOT asserted: nothing here requires a
 //   Markdown brief to have a structured report beside it. The three briefs
 //   written before ADR 0084 are not migrated (ADR 0084, Consequences), so a
 //   rule of that shape would fail on three documents nobody intends to change.
 //   A brief directory holding no structured report passes, and says so.
+//
+//   2. THE ADAPTER'S DECLINED OPPORTUNITIES, AT THE CURRENT TREE (ADR 0084
+//   item 12: "The validator fails an entry whose Ecosystem or path no longer
+//   exists"). A declined entry is a standing instruction to stay quiet about
+//   one technique at one place. When the Ecosystem is no longer declared or
+//   the file is gone, the entry silences nothing and records a decision about
+//   something that is not there. Unlike the reports above, this one is about
+//   the tree in front of it: a decline is live configuration, not a frozen
+//   document, and the question is whether it still points at anything today.
+//
+//   Its other direction is deliberately NOT asserted either: nothing here
+//   requires a declined entry to name an Opportunity any run actually
+//   produced. Suppression is decided at run time against the Baseline and the
+//   upstream quote (`ledger.mjs`), and a gate that demanded a live match would
+//   fail on exactly the entry doing its job — the one whose Opportunity is no
+//   longer being proposed because it is suppressed.
 //
 //   Nor does it re-check the report's own `unverified` list. Those entries
 //   were refused at write time and carry no surviving claim; re-checking them
@@ -41,9 +60,11 @@
 //   assets folder is unaffected — and a JSON file in the brief directory that
 //   is not a report belongs in a subdirectory of it.
 //
-// Exit 0 = every committed report still holds (or there are none).
+// Exit 0 = every committed report still holds (or there are none), and every
+//          declined Opportunity still points at something real.
 // Exit 1 = a report is invalid, or its local evidence no longer matches the
-//          commit it records.
+//          commit it records, or a declined entry names an Ecosystem or a path
+//          that is gone.
 // Exit 2 = the check could not run: an unreadable report, or a recorded commit
 //          this clone does not have. The second is separated deliberately —
 //          `git show` fails identically for a missing path and an unresolvable
@@ -52,7 +73,18 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
+import { validateDeclinedOpportunities } from '../../.agents/skills/upstream-brief/ledger.mjs';
 import { recheckUpstreamReport } from '../../.agents/skills/upstream-brief/report.mjs';
+// The adapter schema belongs to the skill (ADAPTER.md), so where briefs live,
+// which Ecosystems are declared, and which Opportunities were declined are
+// read with the skill's own readers rather than a second set here. Same rule
+// as the git plumbing below: one vocabulary, one implementation.
+import {
+  DEFAULT_BRIEF_DIR,
+  readBriefDir,
+  readDeclaredLeads,
+  readDeclinedOpportunities,
+} from '../../.agents/skills/upstream-brief/resolve-ledger.mjs';
 // The skill's own git plumbing, imported rather than copied. Both modules are
 // already reached from here, and `validate-report.mjs` runs nothing on import:
 // its CLI body sits behind an `import.meta.url` guard. A second copy of "read
@@ -64,44 +96,16 @@ import {
 } from '../../.agents/skills/upstream-brief/validate-report.mjs';
 
 const LABEL = 'upstream-briefs';
-const CONFIG_PATHS = [
-  'upstream-brief.config.yml',
-  'upstream-brief.config.yaml',
-  'upstream-brief.config.json',
-];
-/** ADAPTER.md's default, used when the adapter declares nothing. */
-export const DEFAULT_BRIEF_DIR = 'docs/research';
 
 /**
- * The brief directory, from the adapter.
- *
- * This repo has no YAML parser and this needs exactly one scalar, so it is
- * matched rather than parsed. The narrowness is the safety: an adapter key
- * this regex cannot see falls back to the documented default, which is the
- * same directory, rather than to a directory nobody named. A `.json` adapter
- * is parsed properly, because that costs nothing.
+ * Where the briefs are, and what the adapter's default is. Both are the
+ * skill's, re-exported under the name this gate's contract suite already uses:
+ * a second matcher here would be a second answer to "which directory does this
+ * repo keep briefs in", and the gate reading the wrong one passes forever
+ * while checking nothing.
  */
-export function resolveBriefDir(read) {
-  for (const path of CONFIG_PATHS) {
-    const text = read(path);
-    if (text === null || text === undefined) continue;
-    if (path.endsWith('.json')) {
-      try {
-        const parsed = JSON.parse(text);
-        if (typeof parsed?.brief_dir === 'string' && parsed.brief_dir.trim())
-          return parsed.brief_dir.trim();
-      } catch {
-        return DEFAULT_BRIEF_DIR;
-      }
-      continue;
-    }
-    const match = text.match(
-      /^brief_dir:[ \t]*['"]?([^'"\s#]+)['"]?[ \t]*(?:#.*)?$/m,
-    );
-    if (match) return match[1];
-  }
-  return DEFAULT_BRIEF_DIR;
-}
+export { DEFAULT_BRIEF_DIR };
+export const resolveBriefDir = readBriefDir;
 
 /**
  * Pure over its inputs so the contract suite drives fixtures rather than the
@@ -112,19 +116,72 @@ export function resolveBriefDir(read) {
  * @param {(dir: string) => string[]|null} io.list directory entries, or null
  * @param {(commit: string) => boolean} io.hasCommit
  * @param {(commit: string) => (file: string) => string|null} io.source
+ * @param {(path: string) => boolean} [io.exists] does the current tree carry
+ *   that path — asked only of a declined entry's local site. Defaults to
+ *   `read`, which is what a file map in a test is; the real run passes a
+ *   `existsSync`, because a site path that is a directory is still a path that
+ *   exists and `readFileSync` would only throw at it.
  */
-export function checkUpstreamBriefs({ read, list, hasCommit, source }) {
+export function checkUpstreamBriefs({
+  read,
+  list,
+  hasCommit,
+  source,
+  exists = (path) => {
+    const contents = read(path);
+    return contents !== null && contents !== undefined;
+  },
+}) {
   const briefDir = resolveBriefDir(read);
+  const lines = [];
+  const reports = [];
+  let exitCode = 0;
+  const worst = (code) => {
+    exitCode = Math.max(exitCode, code);
+  };
+
+  /** The second assertion, appended to whatever the first one found. */
+  const withDeclined = (result) => {
+    const declined = readDeclinedOpportunities(read);
+    if (declined.length === 0) {
+      // Said out loud, like the empty brief directory above: a gate that
+      // checked no declined entry must not read like one that checked them all.
+      result.lines.push(
+        `${LABEL}: no declined Opportunity recorded in the adapter`,
+      );
+      return result;
+    }
+    const { problems } = validateDeclinedOpportunities(declined, {
+      knownEcosystems: readDeclaredLeads(read),
+      exists,
+    });
+    if (problems.length === 0) {
+      result.lines.push(
+        `${LABEL}: ${declined.length} declined Opportunity(s) still point at a ` +
+          'declared Ecosystem and a file in the tree',
+      );
+      return result;
+    }
+    for (const problem of problems)
+      result.lines.push(
+        `${LABEL}: declined_opportunities[${problem.index}] ` +
+          `(${problem.entry.ecosystem || '(no ecosystem)'} → ` +
+          `${problem.entry.site || '(no site)'}) — ${problem.reason}: ${problem.detail}`,
+      );
+    result.exitCode = Math.max(result.exitCode, 1);
+    return result;
+  };
+
   const entries = list(briefDir);
   if (entries === null)
-    return {
+    return withDeclined({
       exitCode: 0,
       briefDir,
       reports: [],
       lines: [
         `${LABEL}: ${briefDir} does not exist — no structured report to check`,
       ],
-    };
+    });
 
   const paths = entries
     .filter((name) => name.endsWith('.json'))
@@ -132,7 +189,7 @@ export function checkUpstreamBriefs({ read, list, hasCommit, source }) {
     .map((name) => `${briefDir}/${name}`);
 
   if (paths.length === 0)
-    return {
+    return withDeclined({
       exitCode: 0,
       briefDir,
       reports: [],
@@ -143,14 +200,7 @@ export function checkUpstreamBriefs({ read, list, hasCommit, source }) {
       lines: [
         `${LABEL}: no structured report in ${briefDir} — nothing to re-validate`,
       ],
-    };
-
-  const lines = [];
-  const reports = [];
-  let exitCode = 0;
-  const worst = (code) => {
-    exitCode = Math.max(exitCode, code);
-  };
+    });
 
   for (const path of paths) {
     const text = read(path);
@@ -196,7 +246,7 @@ export function checkUpstreamBriefs({ read, list, hasCommit, source }) {
     worst(1);
   }
 
-  return { exitCode, briefDir, reports, lines };
+  return withDeclined({ exitCode, briefDir, reports, lines });
 }
 
 function run(argv) {
@@ -218,6 +268,7 @@ function run(argv) {
     list,
     hasCommit: (commit) => gitHasCommit(commit, cwd),
     source: (commit) => gitSource(commit, cwd),
+    exists: (path) => existsSync(join(cwd, path)),
   });
 
   if (argv.includes('--print'))

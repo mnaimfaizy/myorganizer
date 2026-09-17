@@ -166,12 +166,22 @@ function discoverScopeMembersIn(repo) {
   };
 }
 
-export function run({ repo = process.cwd() } = {}) {
+/**
+ * Every declared Ecosystem, resolved against what this repo has installed.
+ *
+ * Separated from `run` below because the ledger command
+ * (`resolve-ledger.mjs`) needs the resolution itself, not a printed line: a
+ * carry-forward decision is made against a **new Baseline**, so a second copy
+ * of "how this repo finds installed versions" is a second place for the two
+ * commands to disagree about what the Baseline is.
+ *
+ * @param {{repo?: string}} [options]
+ * @returns {{results: object[], ecosystems: object[], versionRecordPath: string}}
+ */
+export function resolveDeclaredEcosystems({ repo = process.cwd() } = {}) {
   const { ecosystems, versionRecordPath } = readAdapterConfig(repo);
   if (ecosystems.length === 0)
-    return [
-      `${LABEL}: no ecosystems declared in ${CONFIG_PATHS[0]} (or .yaml/.json) — nothing to resolve`,
-    ];
+    return { results: [], ecosystems, versionRecordPath };
 
   const recordText = readRepoFile(repo, versionRecordPath);
   const recordedVersion =
@@ -179,15 +189,27 @@ export function run({ repo = process.cwd() } = {}) {
       ? () => null
       : (name) => findVersionInText(recordText, name);
 
-  const results = resolveEcosystemBaselines(
+  return {
     ecosystems,
-    {
-      installedVersion: installedVersionIn(repo),
-      discoverScopeMembers: discoverScopeMembersIn(repo),
-      recordedVersion,
-    },
-    { recordSourceLabel: versionRecordPath },
-  );
+    versionRecordPath,
+    results: resolveEcosystemBaselines(
+      ecosystems,
+      {
+        installedVersion: installedVersionIn(repo),
+        discoverScopeMembers: discoverScopeMembersIn(repo),
+        recordedVersion,
+      },
+      { recordSourceLabel: versionRecordPath },
+    ),
+  };
+}
+
+export function run({ repo = process.cwd() } = {}) {
+  const { results, ecosystems } = resolveDeclaredEcosystems({ repo });
+  if (ecosystems.length === 0)
+    return [
+      `${LABEL}: no ecosystems declared in ${CONFIG_PATHS[0]} (or .yaml/.json) — nothing to resolve`,
+    ];
 
   const lines = [];
   for (const result of results) {

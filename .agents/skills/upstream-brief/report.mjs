@@ -62,9 +62,10 @@
  * WHAT THIS MODULE DOES NOT DO
  *   The ledger carry-forward (ADR 0084 item 11 — a checked-and-clear claim
  *   whose recorded range still covers a new Baseline is carried forward
- *   without new research) is a separate slice: it reads the *previous*
- *   committed report, and this module validates exactly one report in
- *   isolation.
+ *   without new research) lives in `ledger.mjs`: it reads the *previous*
+ *   committed report against a *new* Baseline, and this module validates
+ *   exactly one report in isolation. The `delta` this contract validates is
+ *   the ledger's output, not its own work.
  *
  *   Everything else ADR 0084 states about one report's own entries is
  *   enforced here, in `validateEntry` and the per-Ecosystem pass in
@@ -237,8 +238,13 @@ const isTextArray = (v) => Array.isArray(v) && v.every(isText);
  * Whitespace is presentation. A line a worker copied out of a file carries
  * whatever indentation it had, so comparing on collapsed whitespace means a
  * re-indented quote is the same quote and a different quote is not.
+ *
+ * Exported for `ledger.mjs`, which asks the same question across two runs
+ * ("is this the same claim?", "did the upstream quote change?"). Two spellings
+ * of "the same text" in one skill is two answers to one question.
  */
-const collapse = (s) => String(s).replace(/\s+/g, ' ').trim();
+export const collapseWhitespace = (s) => String(s).replace(/\s+/g, ' ').trim();
+const collapse = collapseWhitespace;
 
 /**
  * Compare two "x.y.z"-shaped version strings segment by segment. Not a full
@@ -248,9 +254,13 @@ const collapse = (s) => String(s).replace(/\s+/g, ' ').trim();
  * reads an installed package's own manifest; a Horizon and a `minVersion`
  * are named the same way), never a pre-release channel.
  *
+ * Exported for `ledger.mjs`, whose range comparisons (a `holdsFor` range
+ * against a new Baseline, a decline's range against the same) must order
+ * versions exactly as the Opportunity check here does.
+ *
  * @returns {number} negative if `a` < `b`, positive if `a` > `b`, 0 if equal
  */
-function compareVersions(a, b) {
+export function compareVersions(a, b) {
   const parts = (v) =>
     String(v)
       .trim()
