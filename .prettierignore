@@ -11,6 +11,7 @@ libs/design-tokens/src/generated
 docs/agents/orchestration-map.html
 docs/agents/agent-journey.html
 docs/agents/skill-atlas.html
+docs/authentication/session-lifecycle.html
 docs/sandcastle/dispatch-map.html
 docs/sandcastle/waves.html
 docs/sandcastle/gates.html

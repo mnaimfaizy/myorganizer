@@ -274,6 +274,180 @@ describe('VaultSessionProvider', () => {
     });
   });
 
+  describe('unlockSecret', () => {
+    test('starts null while locked', () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      expect(result.current.unlockSecret).toBeNull();
+      expect(result.current.masterKeyBytes).toBeNull();
+    });
+
+    test('records passphrase when setMasterKeyBytes is called with bytes only', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      act(() => {
+        result.current.setMasterKeyBytes(new Uint8Array([1, 2, 3]));
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBe('passphrase');
+      });
+    });
+
+    test('records recovery-key when setMasterKeyBytes is called with that secret', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([4, 5, 6]),
+          'recovery-key',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBe('recovery-key');
+      });
+    });
+
+    test('records passphrase when setMasterKeyBytes is called with explicit passphrase secret', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([7, 8, 9]),
+          'passphrase',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBe('passphrase');
+      });
+    });
+
+    test('lock clears unlockSecret', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([10, 11, 12]),
+          'recovery-key',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBe('recovery-key');
+      });
+
+      act(() => {
+        result.current.lock();
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBeNull();
+        expect(result.current.masterKeyBytes).toBeNull();
+      });
+    });
+
+    test('lock then passphrase unlock records passphrase not recovery-key', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([19, 20, 21]),
+          'recovery-key',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBe('recovery-key');
+      });
+
+      act(() => {
+        result.current.lock();
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBeNull();
+      });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([22, 23, 24]),
+          'passphrase',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBe('passphrase');
+      });
+    });
+
+    test('setMasterKeyBytes(null) clears unlockSecret', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([13, 14, 15]),
+          'recovery-key',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBe('recovery-key');
+      });
+
+      act(() => {
+        result.current.setMasterKeyBytes(null);
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBeNull();
+        expect(result.current.masterKeyBytes).toBeNull();
+      });
+    });
+
+    test('owner change clears unlockSecret when unlocked', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result, rerender } = renderHook(() => useVaultSession(), {
+        wrapper,
+      });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([16, 17, 18]),
+          'recovery-key',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBe('recovery-key');
+      });
+
+      mockGetCurrentUser.mockReturnValue({ id: 'user-b' });
+      rerender();
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBeNull();
+        expect(result.current.masterKeyBytes).toBeNull();
+      });
+    });
+  });
+
   describe('sync sink wiring', () => {
     test('handle gets the queue (identity check)', () => {
       mockGetCurrentUser.mockReturnValue({ id: 'user-a' });

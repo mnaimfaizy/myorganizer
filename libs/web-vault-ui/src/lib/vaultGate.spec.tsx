@@ -564,7 +564,7 @@ describe('VaultGate', () => {
   });
 
   describe('handle identity change recovery', () => {
-    test('should show unlock panel not create panel when handle changes from null to owned status', () => {
+    test('should show unlock panel not create panel when handle changes from absent to owned status', () => {
       const handleAbsent = createStubHandle({
         vaultStatus: jest.fn(() => 'absent'),
       });
@@ -662,24 +662,23 @@ describe('VaultGate', () => {
     });
   });
 
-  describe('Guard — the recovery branch uses the recovery-authorized entry point', () => {
+  describe('Guard — vaultGate does not host passphrase reset', () => {
     /**
-     * Asserted against the source text rather than by driving the control,
-     * because the control cannot be driven: the recovery panel stops rendering
-     * at the moment its button would become enabled (#593). A test that faked
-     * a path to it would assert something the product cannot do.
+     * Asserted against the source text rather than by driving dead UI.
+     * Authorization now lives on the session unlock secret; the Vault page
+     * hook is the caller of resetPassphraseAfterRecovery.
      *
-     * What it protects: `changePassphraseWithCurrent` verifies the current
-     * passphrase, and `resetPassphraseAfterRecovery` does not, because a User
-     * here has just proved they do not know it. Reaching for the first from
-     * this branch would demand a secret the flow exists to work without;
-     * reaching for the second from an unlocked-session surface would skip the
-     * authorization entirely. Each belongs to exactly one caller.
+     * What it protects: resetPassphraseAfterRecovery skips current-passphrase
+     * verification and belongs on a surface that has recorded a recovery-key
+     * unlock. changePassphraseWithCurrent belongs on a passphrase-unlocked
+     * session. Neither belongs in VaultGate.
      */
-    test('vaultGate.tsx does not reference changePassphraseWithCurrent', () => {
+    test('vaultGate.tsx does not reference passphrase reset or change entry points', () => {
       const source = readFileSync(join(__dirname, 'vaultGate.tsx'), 'utf8');
 
-      expect(source).toContain('resetPassphraseAfterRecovery');
+      expect(source).not.toContain('resetPassphraseAfterRecovery');
+      expect(source).not.toContain('RecoverySetNewPassphraseForm');
+      expect(source).not.toContain('Set a new passphrase');
       expect(source).not.toContain('changePassphraseWithCurrent');
     });
   });
@@ -838,6 +837,9 @@ describe('VaultGate', () => {
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'unclaimed'),
       });
+      mockClaimUnclaimedLocalVaultWithRecoveryKey.mockResolvedValue({
+        kind: 'no-match',
+      });
       mockUseOptionalVaultSession.mockReturnValue({
         masterKeyBytes: null,
         setMasterKeyBytes: setMasterKeyBytesFn,
@@ -878,6 +880,15 @@ describe('VaultGate', () => {
 
       fireEvent.click(submitButton);
 
+      await waitFor(() => {
+        expect(
+          mockClaimUnclaimedLocalVaultWithRecoveryKey,
+        ).toHaveBeenCalledWith({
+          handle,
+          recoveryKey: 'test-recovery-key',
+        });
+      });
+
       // The claim offer handles the key submission and shows the result.
       // An unclaimed vault with no server evidence receives the no-match response.
       await waitFor(() => {
@@ -893,9 +904,9 @@ describe('VaultGate', () => {
       const setMasterKeyBytesFn = jest.fn();
       const handle = createStubHandle({
         vaultStatus: jest.fn(() => 'unclaimed'),
-        unlockWithRecoveryKey: jest
-          .fn()
-          .mockRejectedValue(new VaultSecretMismatchError('recovery-key')),
+      });
+      mockClaimUnclaimedLocalVaultWithRecoveryKey.mockResolvedValue({
+        kind: 'no-match',
       });
       mockUseOptionalVaultSession.mockReturnValue({
         masterKeyBytes: null,
@@ -924,6 +935,15 @@ describe('VaultGate', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /Claim this vault/ }));
 
+      await waitFor(() => {
+        expect(
+          mockClaimUnclaimedLocalVaultWithRecoveryKey,
+        ).toHaveBeenCalledWith({
+          handle,
+          recoveryKey: 'wrong-recovery-key',
+        });
+      });
+
       // Wait for the error alert to appear
       await waitFor(() => {
         expect(screen.getByRole('alert')).toBeInTheDocument();
@@ -949,9 +969,9 @@ describe('VaultGate', () => {
       // === Setup 1: device with unclaimed vault, wrong recovery key ===
       const handle1 = createStubHandle({
         vaultStatus: jest.fn(() => 'unclaimed'),
-        unlockWithRecoveryKey: jest
-          .fn()
-          .mockRejectedValue(new VaultSecretMismatchError('recovery-key')),
+      });
+      mockClaimUnclaimedLocalVaultWithRecoveryKey.mockResolvedValue({
+        kind: 'no-match',
       });
       mockUseOptionalVaultSession.mockReturnValue({
         masterKeyBytes: null,
@@ -982,6 +1002,15 @@ describe('VaultGate', () => {
       fireEvent.click(screen.getByRole('button', { name: /Claim this vault/ }));
 
       await waitFor(() => {
+        expect(
+          mockClaimUnclaimedLocalVaultWithRecoveryKey,
+        ).toHaveBeenCalledWith({
+          handle: handle1,
+          recoveryKey: 'test-key',
+        });
+      });
+
+      await waitFor(() => {
         expect(screen.getByRole('alert')).toBeInTheDocument();
       });
 
@@ -992,6 +1021,10 @@ describe('VaultGate', () => {
       unmount1();
 
       // === Setup 2: device with nothing, same recovery key ===
+      jest.clearAllMocks();
+      mockClaimUnclaimedLocalVaultWithRecoveryKey.mockResolvedValue({
+        kind: 'no-match',
+      });
       const handle2 = createStubHandle({
         vaultStatus: jest.fn(() => 'absent'),
       });
@@ -1021,7 +1054,15 @@ describe('VaultGate', () => {
 
       fireEvent.click(screen.getByRole('button', { name: /Claim this vault/ }));
 
-      // For an empty device, the offer's onClaim returns 'no-match' because no handle
+      await waitFor(() => {
+        expect(
+          mockClaimUnclaimedLocalVaultWithRecoveryKey,
+        ).toHaveBeenCalledWith({
+          handle: handle2,
+          recoveryKey: 'test-key',
+        });
+      });
+
       await waitFor(() => {
         expect(screen.getByRole('alert')).toBeInTheDocument();
       });
@@ -1262,13 +1303,16 @@ describe('VaultGate', () => {
 
       // Use a state that will be updated to reflect the new masterKeyBytes
       let currentMasterKeyBytes: Uint8Array | null = null;
+      const setMasterKeyBytesFn = jest.fn(
+        (newBytes: Uint8Array | null, unlockSecret?: string) => {
+          currentMasterKeyBytes = newBytes;
+          void unlockSecret;
+        },
+      );
       mockUseOptionalVaultSession.mockImplementation(() => {
-        // Return the current state of masterKeyBytes
         return {
           masterKeyBytes: currentMasterKeyBytes,
-          setMasterKeyBytes: (newBytes: Uint8Array | null) => {
-            currentMasterKeyBytes = newBytes;
-          },
+          setMasterKeyBytes: setMasterKeyBytesFn,
           lock: jest.fn(),
           handle,
         };
@@ -1319,6 +1363,11 @@ describe('VaultGate', () => {
           recoveryKey: 'recovery-key-xyz',
         });
       });
+
+      expect(setMasterKeyBytesFn).toHaveBeenCalledWith(
+        masterKeyBytes,
+        'recovery-key',
+      );
 
       // Update state and rerender to reflect the new masterKeyBytes
       currentMasterKeyBytes = masterKeyBytes;

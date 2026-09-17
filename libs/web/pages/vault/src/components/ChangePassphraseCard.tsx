@@ -3,7 +3,13 @@
 import { useCallback } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import {
+  type Control,
+  type FieldValues,
+  type Path,
+  useForm,
+} from 'react-hook-form';
+import { z } from 'zod';
 
 import {
   Button,
@@ -25,19 +31,125 @@ import {
   changePassphraseSchema,
   ChangePassphraseInput,
   MIN_PASSPHRASE_LENGTH,
+  newPassphraseSchema,
 } from '@myorganizer/web-vault';
+import { type VaultUnlockSecret } from '@myorganizer/web-vault-ui';
 
 import { useChangePassphrase, useVaultOperationAvailability } from '../hooks';
 import { VAULT_OPERATIONS } from '../policy';
 import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
+type NewPassphraseInput = z.infer<typeof newPassphraseSchema>;
+
+type SharedNewPassphraseFields = Pick<
+  NewPassphraseInput,
+  'newPassphrase' | 'newPassphraseConfirm'
+>;
+
+interface ChangePassphraseSharedFieldsProps<
+  TFieldValues extends FieldValues & SharedNewPassphraseFields,
+> {
+  control: Control<TFieldValues>;
+  allowed: boolean;
+  changing: boolean;
+  submitLabel: string;
+}
+
+function ChangePassphraseSharedFields<
+  TFieldValues extends FieldValues & SharedNewPassphraseFields,
+>({
+  control,
+  allowed,
+  changing,
+  submitLabel,
+}: ChangePassphraseSharedFieldsProps<TFieldValues>) {
+  return (
+    <>
+      <FormField
+        control={control}
+        name={'newPassphrase' as Path<TFieldValues>}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>New passphrase</FormLabel>
+            <FormControl>
+              <Input {...field} type="password" disabled={!allowed} />
+            </FormControl>
+            <FormDescription>
+              Minimum {MIN_PASSPHRASE_LENGTH} characters.
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
+        name={'newPassphraseConfirm' as Path<TFieldValues>}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Confirm new passphrase</FormLabel>
+            <FormControl>
+              <Input {...field} type="password" disabled={!allowed} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <div className="flex gap-2">
+        <Button
+          type="submit"
+          data-testid="change-passphrase-submit"
+          disabled={changing || !allowed}
+        >
+          {changing ? 'Changing…' : submitLabel}
+        </Button>
+      </div>
+    </>
+  );
+}
+
+const CHANGE_PASSPHRASE_CARD_FOR_UNLOCK_SECRET = {
+  passphrase: {
+    title: 'Change passphrase',
+    description:
+      'Choose a new passphrase for unlocking your vault on this device.',
+    submitLabel: 'Change passphrase',
+  },
+  'recovery-key': {
+    title: 'Set new passphrase',
+    description:
+      'You unlocked with your recovery key. Choose a passphrase you will remember for unlocking your vault on this device.',
+    submitLabel: 'Set new passphrase',
+  },
+} as const satisfies Record<
+  VaultUnlockSecret,
+  {
+    title: string;
+    description: string;
+    submitLabel: string;
+  }
+>;
+
 export function ChangePassphraseCard() {
-  const { changing, changePassphrase } = useChangePassphrase();
+  const { changing, unlockSecret, changePassphrase } = useChangePassphrase();
   const { allowed, unavailableReason } = useVaultOperationAvailability(
     VAULT_OPERATIONS.PassphraseChange,
   );
 
-  const form = useForm<ChangePassphraseInput>({
+  const authorizedBy: VaultUnlockSecret = unlockSecret ?? 'passphrase';
+  const mode = CHANGE_PASSPHRASE_CARD_FOR_UNLOCK_SECRET[authorizedBy];
+  const isRecoveryReset = authorizedBy === 'recovery-key';
+
+  const recoveryForm = useForm<NewPassphraseInput>({
+    resolver: zodResolver(newPassphraseSchema),
+    defaultValues: {
+      newPassphrase: '',
+      newPassphraseConfirm: '',
+    },
+  });
+
+  const passphraseForm = useForm<ChangePassphraseInput>({
     resolver: zodResolver(changePassphraseSchema),
     defaultValues: {
       currentPassphrase: '',
@@ -46,7 +158,22 @@ export function ChangePassphraseCard() {
     },
   });
 
-  const onSubmit = useCallback(
+  const onSubmitRecovery = useCallback(
+    async (values: NewPassphraseInput) => {
+      const result = await changePassphrase({
+        currentPassphrase: '',
+        newPassphrase: values.newPassphrase,
+      });
+
+      if (result === 'ok') {
+        recoveryForm.reset();
+      }
+      // On 'error', the hook already toasted, so leave the form as-is
+    },
+    [changePassphrase, recoveryForm],
+  );
+
+  const onSubmitPassphrase = useCallback(
     async (values: ChangePassphraseInput) => {
       const result = await changePassphrase({
         currentPassphrase: values.currentPassphrase,
@@ -54,24 +181,22 @@ export function ChangePassphraseCard() {
       });
 
       if (result === 'ok') {
-        form.reset();
+        passphraseForm.reset();
       } else if (result === 'wrong-passphrase') {
-        form.setError('currentPassphrase', {
+        passphraseForm.setError('currentPassphrase', {
           message: 'That is not your current passphrase.',
         });
       }
       // On 'error', the hook already toasted, so leave the form as-is
     },
-    [changePassphrase, form],
+    [changePassphrase, passphraseForm],
   );
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Change passphrase</CardTitle>
-        <CardDescription>
-          Choose a new passphrase for unlocking your vault on this device.
-        </CardDescription>
+        <CardTitle>{mode.title}</CardTitle>
+        <CardDescription>{mode.description}</CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">
@@ -89,67 +214,49 @@ export function ChangePassphraseCard() {
           testId="change-passphrase-unavailable"
         />
 
-        <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSubmit)}
-            className="flex flex-col gap-3"
-          >
-            <FormField
-              control={form.control}
-              name="currentPassphrase"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Current passphrase</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="password" disabled={!allowed} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+        {isRecoveryReset ? (
+          <Form {...recoveryForm}>
+            <form
+              onSubmit={recoveryForm.handleSubmit(onSubmitRecovery)}
+              className="flex flex-col gap-3"
+            >
+              <ChangePassphraseSharedFields
+                control={recoveryForm.control}
+                allowed={allowed}
+                changing={changing}
+                submitLabel={mode.submitLabel}
+              />
+            </form>
+          </Form>
+        ) : (
+          <Form {...passphraseForm}>
+            <form
+              onSubmit={passphraseForm.handleSubmit(onSubmitPassphrase)}
+              className="flex flex-col gap-3"
+            >
+              <FormField
+                control={passphraseForm.control}
+                name="currentPassphrase"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Current passphrase</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="password" disabled={!allowed} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="newPassphrase"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>New passphrase</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="password" disabled={!allowed} />
-                  </FormControl>
-                  <FormDescription>
-                    Minimum {MIN_PASSPHRASE_LENGTH} characters.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="newPassphraseConfirm"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm new passphrase</FormLabel>
-                  <FormControl>
-                    <Input {...field} type="password" disabled={!allowed} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex gap-2">
-              <Button
-                type="submit"
-                data-testid="change-passphrase-submit"
-                disabled={changing || !allowed}
-              >
-                {changing ? 'Changing…' : 'Change passphrase'}
-              </Button>
-            </div>
-          </form>
-        </Form>
+              <ChangePassphraseSharedFields
+                control={passphraseForm.control}
+                allowed={allowed}
+                changing={changing}
+                submitLabel={mode.submitLabel}
+              />
+            </form>
+          </Form>
+        )}
       </CardContent>
     </Card>
   );

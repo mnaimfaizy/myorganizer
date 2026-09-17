@@ -261,8 +261,12 @@ _Avoid_: shim, web fallback, .web file, platform adapter (for this sense)
 ## Vault
 
 **Vault Unlock**:
-The client-side action of deriving the Master Key from the User's passphrase so vault Ciphertext can be decrypted for the session. No plaintext or key leaves the device. Unlock is a plaintext-access boundary, not a network one: a locked Vault can still send and receive its own Ciphertext, because moving bytes that are already encrypted needs no Master Key. What a lock withholds is the ability to read them.
+The client-side action of producing the Master Key so vault Ciphertext can be decrypted for the session — from the User's passphrase, or from the Recovery Key when that passphrase is forgotten. No plaintext or key leaves the device. Unlock is a plaintext-access boundary, not a network one: a locked Vault can still send and receive its own Ciphertext, because moving bytes that are already encrypted needs no Master Key. What a lock withholds is the ability to read them.
 _Avoid_: vault login, decrypt vault, open vault
+
+**Vault Unlock Secret**:
+Which wrapping secret produced the current in-memory Vault Unlock — passphrase or Recovery Key. Client-only session state: it is never written into the Local Vault and never sent to the server. It lives only while the Vault is unlocked on this device, and a lock or a later passphrase unlock clears a recovery-key unlock. It is what authorizes a passphrase _reset_ (no current passphrase) versus a passphrase _change_ (current passphrase required).
+_Avoid_: unlock provenance, unlock method, last unlock, recovery mode
 
 **Unclaimed Local Vault**:
 A Local Vault on a device with no recorded owner. It predates per-User scoping, so ownership cannot be read from it and must be established by Vault Claim Evidence. It is never removed on anyone's behalf, and a claim copies it into the claiming User's entry rather than moving it, so the slot survives a claim unchanged. It is never resolved implicitly: a User who cannot produce evidence for it sees a device that holds no Vault, and the Vault is not offered, not unlockable, and not guessable at. Offering it on a passphrase alone is what made a shared passphrase enough to open somebody else's Vault.
