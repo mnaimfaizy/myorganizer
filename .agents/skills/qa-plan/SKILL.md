@@ -1,11 +1,11 @@
 ---
 name: qa-plan
-description: 'Use when work is complete and its Pull Request is open, and a human needs to verify it before merge — normally a PRD Issue, occasionally a single issue. Establishes what the automated suites actually prove by running them at the branch and its merge-base, then writes a QA Plan containing only the residue: what no passing CI run can establish. Not for planning automated tests.'
+description: 'Use when work is complete and its Pull Request is open, and a human (or agent) needs to verify it before merge — normally a PRD Issue, occasionally a single issue. Compose mode writes a QA Plan that carries only the residue automation does not prove. Execute mode runs an existing plan (or compose-then-execute), records evidence, and signs off. Not for planning automated tests.'
 ---
 
 # QA Plan
 
-Write down what a human still has to prove. Nothing else.
+Write down what a human still has to prove. Nothing else. Then, when asked, **run** that plan.
 
 The deliverable is a **QA Plan** (`CONTEXT.md`): the manual verification for work whose Pull
 Request is open but unmerged. Its value is entirely in what it **leaves out** — a reader who
@@ -15,7 +15,10 @@ trusts it will skip everything it says is covered.
 
 - A PRD Issue's work is complete, its Pull Request is open, and it has not merged.
 - A single issue's Pull Request is open and the change warrants manual verification.
-- The user asks for a QA plan, a manual test plan, or how to verify something before merging.
+- The user asks for a QA plan, a manual test plan, or how to verify something before merging
+  (**compose**).
+- The user asks to QA a PR, execute a QA plan, run the scenarios, or sign off
+  (**execute**).
 
 ## Do Not Use When
 
@@ -28,10 +31,22 @@ trusts it will skip everything it says is covered.
   exists. Without a branch there is no diff, and without a Pull Request there is no pinned
   merge-base, so no coverage claim can be attributed. See the precondition in step 1.
 
-## Modes
+## Operation modes: compose vs execute
 
-Resolve the mode from the issue the Pull Request closes. Everything in this skill applies to both
-except where a step says otherwise.
+Resolve **operation** from the user's phrasing (independent of PRD vs Issue routing below).
+
+| Phrasing (examples)                                     | Operation                                                               |
+| ------------------------------------------------------- | ----------------------------------------------------------------------- |
+| "write a QA plan", "QA plan for #N", "how to verify"    | **compose**                                                             |
+| "QA the PR", "execute the QA plan", "run the scenarios" | **execute**                                                             |
+| "QA the PR" + path to a plan, or "compose then execute" | **execute** (compose first if the plan is missing — see Remote handoff) |
+
+One skill owns both. Do not invent a companion skill for execution — shared residue rules would drift.
+
+## Subject modes (PRD vs Issue)
+
+Resolve the subject mode from the issue the Pull Request closes. Everything in this skill applies to
+both except where a step says otherwise.
 
 |                   | **PRD mode**                                   | **Issue mode**                                |
 | ----------------- | ---------------------------------------------- | --------------------------------------------- |
@@ -40,6 +55,7 @@ except where a step says otherwise.
 | Composed in       | `tmp/QA-PLAN-prd-<number>.md`, gitignored      | `tmp/QA-PLAN-issue-<number>.md`, gitignored   |
 | Published to      | A **QA Plan Issue** on GitHub, labelled `qa`   | Nowhere — the working copy is the deliverable |
 | Sign-off          | Closing the QA Plan Issue                      | None — the file is consumed and discarded     |
+| Execution record  | On the **QA Plan Issue** (ticks + evidence)    | In the `tmp/` working copy                    |
 | Defects found     | Filed as issues, linked from the QA Plan Issue | Filed as issues                               |
 
 If the Pull Request closes several issues, or closes none, ask which subject the plan is for rather
@@ -48,7 +64,8 @@ so in the plan.
 
 **Both modes compose in `tmp/`.** The plan is a document before it is an issue, and it is revised
 against the source while you write it. Under ADR 0041 that draft is a short-lived working file, and
-`tmp/` is where those live. Write it there first in either mode. Never commit it.
+`tmp/` is where those live. Write it there first in either mode. Never commit it. There is no
+tracked `docs/qa/` (or similar) home for plans.
 
 **Only PRD mode publishes.** A PRD is large, multi-slice work whose validation is worth a durable
 record others can find, so its plan becomes a QA Plan Issue whose closure is the sign-off. A single
@@ -59,6 +76,22 @@ In PRD mode the working copy is scaffolding, not a second artifact. Once the QA 
 that issue is the plan: it is what you link, what the tester ticks, and what closes as the sign-off.
 The file can be discarded with the working tree. In Issue mode there is nothing to defer to, so the
 file is the plan.
+
+### Remote / Cloud Agent handoff
+
+Issue-mode plans live only in gitignored `tmp/`, so a remote agent often **cannot see** a plan the
+human composed locally. Operational consequence of ADR 0059 — not a reason to track plans in git.
+
+When executing remotely:
+
+1. Prefer the plan **pasted or attached** in the agent prompt, or a path that actually exists in the
+   workspace.
+2. If the plan is missing and the user asked to execute: **compose-then-execute**, and say so
+   explicitly (you recomposed because the working copy was absent).
+3. Never commit `tmp/`. Never invent a durable docs path for Issue-mode plans.
+
+For Cloud Agent **service ports, Postgres, MailHog, and frontend `PORT=4200`**, follow
+`AGENTS.md` → Cursor Cloud specific instructions. Do not duplicate those env facts here.
 
 ## Core Rules
 
@@ -88,7 +121,7 @@ file is the plan.
   does not build.
 - Use `CONTEXT.md` vocabulary. Do not use its avoided terms.
 
-## Workflow
+## Workflow — compose
 
 ### 1. Check the precondition, then fix the anchors
 
@@ -170,6 +203,9 @@ and good outcome; padding it to look substantial is the failure this skill exist
 Write the plan to its `tmp/` path using the anatomy below — `tmp/QA-PLAN-prd-<number>.md` in PRD
 mode, `tmp/QA-PLAN-issue-<number>.md` in Issue mode. Never commit it.
 
+Apply **Vault / crypto scenario hazards** and **failure classes** when drafting scenarios that touch
+Recovery Keys or other high-entropy secrets (see below).
+
 Then show the user the draft and ask whether to proceed. **Nothing leaves `tmp/` before they
 answer** — in PRD mode no issue is created, and in Issue mode the plan is not final and is not
 handed over. Writing the working copy is not the decision point; delivering it is.
@@ -182,12 +218,99 @@ handed over. Writing the working copy is not the decision point; delivering it i
   existing issue, they do not create a second one.
 - **Issue mode** — hand the working copy to the user. It is the deliverable; do not publish it.
 
-### 8. Close the loop
+### 8. Close the loop (compose)
 
 Tell the user how it ends. In PRD mode: tick the boxes on the QA Plan Issue while testing, file each
 defect as its own issue linked from it, and close the QA Plan Issue as the sign-off — the `tmp/`
 file has served its purpose and needs no further attention. In Issue mode: file defects as issues;
-the file needs no ceremony.
+the file needs no ceremony. If they want you to run the scenarios now, switch to **execute**.
+
+## Workflow — execute
+
+Preconditions: an open Pull Request and branch still apply. If you do not already have a plan:
+
+- Use the pasted/attached plan, or the `tmp/` path if present.
+- Otherwise **compose-then-execute** (steps 1–6 above), state that you recomposed, then continue.
+
+### E1. Setup
+
+Follow the plan's Setup exactly. For Cloud Agent environment facts, see Remote / Cloud Agent handoff
+above.
+
+If scenarios touch a Recovery Key or vault secret, obey **Vault / crypto scenario hazards** before
+the first unlock attempt.
+
+### E2. Run scenarios
+
+Execute each scenario in order. Use real UI copy from the plan. Capture evidence per **Evidence**
+below.
+
+When a secret-touching scenario fails, consult its **If this fails, first rule out…** list before
+treating the failure as a merge blocker.
+
+### E3. Execution record
+
+Fill an **Execution record** before declaring sign-off:
+
+| Destination | Where it lives                                                                                                                                                           |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Issue mode  | Append to the `tmp/` working copy                                                                                                                                        |
+| PRD mode    | Tick scenarios and attach evidence links on the **QA Plan Issue** (the durable record). Update `tmp/` only as scaffolding if useful; do not treat it as the audit trail. |
+
+Each row: scenario id/name → PASS/FAIL → artifact path or link → notes (optional).
+
+### E4. Defects and automatable residue
+
+- File product defects as issues (linked from the QA Plan Issue in PRD mode).
+- If a residue scenario is clearly something automation should own, **file a follow-up issue** (e2e
+  or equivalent). Do **not** block sign-off of the current PR on that follow-up existing — sign-off
+  still follows the residue scenarios themselves.
+
+### E5. Sign-off
+
+- Tick the Sign-off checklist (Issue mode: in `tmp/`; PRD mode: on the QA Plan Issue).
+- Report the verdict: all PASS → safe to merge from QA; any Stop-and-do-not-merge outcome → block
+  and file defects.
+- In PRD mode, closing the QA Plan Issue remains the formal sign-off once humans agree.
+
+## Vault / crypto scenario hazards
+
+Inline hazards for plans that touch a Recovery Key, passphrase reset after recovery, or other
+high-entropy vault secrets. Keep them next to Execute — do not invent a second fixture doc for these
+rules.
+
+- **Capture the Recovery Key from the DOM or Copy/Download**, never by visually selecting clipped
+  text. Prefer `#acknowledgment-recovery-key` `inputValue()`, or the UI Copy / Download controls.
+- **Assert length before use.** A minted Recovery Key is 44 Base64 characters (32 bytes). A shorter
+  string is truncated copy, not a product unlock failure.
+- **Do not rotate the Recovery Key** during a passphrase-reset QA plan unless the plan explicitly
+  tests rotation. Rotation invalidates the previous key by design and looks like an unlock bug.
+- **Soft-nav vs reload.** In-memory session signals (including Vault Unlock Secret) clear on full
+  reload. Soft-navigate (e.g. sidebar **Vault**) when the plan requires keeping the current unlock.
+- **Wrong-secret toasts are ambiguous.** "That recovery key didn't unlock this vault" is also what a
+  truncated or retired key produces — see failure classes on the scenario.
+
+## Failure classes on secret-touching scenarios
+
+Any scenario that uses a Recovery Key or equivalent secret **must** include a short list:
+
+> **If this fails, first rule out:** …
+> (e.g. key length ≠ 44 → re-copy; key was rotated mid-session → restart with a fresh vault;
+> passphrase unlock still works → wrapping may have moved intentionally)
+
+Do not require that taxonomy on ordinary UI copy or judgement-only scenarios.
+
+## Evidence
+
+Point at the walkthrough-artifacts skill; do not fork a second evidence system.
+
+QA-specific lines:
+
+1. **One short demo video** covering residue scenarios only — start recording **after** Setup
+   (login, vault mint, MailHog) is done.
+2. **Screenshots** for assertions about presence/absence of fields or copy (e.g. no **Current
+   passphrase** after recovery unlock).
+3. **Never upload a video of a failed run.** Discard, fix, re-record.
 
 ## The Plan Anatomy
 
@@ -205,6 +328,7 @@ each with the reason and the tracking issue. Prevents hours lost to known breaka
 
 ## Setup
 Exact commands, ports, services, and accounts needed. Assume a cold machine.
+Include vault/crypto capture steps when scenarios need a Recovery Key.
 
 ## Scenarios
 Numbered. Each carries:
@@ -212,12 +336,19 @@ Numbered. Each carries:
   - Steps, using real UI copy
   - Expected result
   - What a failure means — whether it blocks the merge or is a follow-up
+  - If this fails, first rule out… — required when the scenario uses a Recovery Key or
+    other high-entropy secret
 
 ## Sign-off checklist
 One checkbox per scenario, tickable while testing.
 
 ## Stop and do not merge if
 The short list of outcomes that block the merge outright, stated as observable results.
+
+## Execution record
+(Filled by Execute — absent or empty after Compose.)
+Table: scenario → PASS/FAIL → artifact path or link → notes.
+Issue mode: in this file. PRD mode: authoritative copy lives on the QA Plan Issue.
 ```
 
 ## References
@@ -227,12 +358,19 @@ The short list of outcomes that block the merge outright, stated as observable r
   enforces it.
 - `docs/adr/0059-a-qa-plan-is-composed-in-tmp-before-it-is-published.md` — why both modes compose
   in `tmp/`, and why that does not contradict ADR 0048, which decides only where a plan is
-  **published**. Extends ADR 0048; supersedes nothing.
+  **published**. Extends ADR 0048; supersedes nothing. Remote paste/attach is an operational
+  consequence of Issue mode publishing nothing.
 - `docs/adr/0041-internal-notes-have-homes.md` — why the working copy is an uncommitted file in
   `tmp/`.
 - `docs/adr/0043-gates-assert-facts.md` — the gate shape this repo does not build.
+- Walkthrough evidence: the `walkthrough-artifacts` skill (Cloud Agent), plus the three QA lines
+  under Evidence above.
+- Issue #827 — grill decisions that added Compose/Execute, hazards, failure classes, and Execution
+  record (skill-only; no new ADR).
 
 ## Completion Criteria
+
+### Compose
 
 - A branch and an open Pull Request were confirmed to exist before any planning began.
 - The mode was resolved from the subject issue and stated explicitly.
@@ -240,7 +378,17 @@ The short list of outcomes that block the merge outright, stated as observable r
 - No scenario re-tests something the coverage section says is covered.
 - Every scenario states why a human is required for it.
 - Steps quote UI copy read from source, not invented.
+- Secret-touching scenarios include failure-class preconditions.
 - Pre-existing failures appear as red herrings, never as scenarios.
 - The user confirmed the draft before it was published (PRD mode) or handed over (Issue mode).
 - The plan was composed in `tmp/` and was not committed.
 - In PRD mode a QA Plan Issue exists and carries the plan; in Issue mode nothing was published.
+
+### Execute
+
+- The plan source was stated (pasted/attached path, `tmp/` path, or compose-then-execute).
+- Vault/crypto hazards were obeyed when applicable.
+- Every scenario has an Execution record row with PASS/FAIL and evidence.
+- Defects and automatable-residue follow-ups were filed as issues (follow-ups do not block sign-off).
+- Evidence follows the walkthrough-artifacts pointer and the three QA lines.
+- Sign-off checklist is ticked at the correct destination (QA Plan Issue vs `tmp/`).
