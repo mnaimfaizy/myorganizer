@@ -38,6 +38,32 @@ React Native ships no bundled documentation, so the Next.js "read the bundled do
 - Start local services with `docker-compose up -d`.
 - Start apps with `yarn start:backend` and `yarn start:myorganizer`.
 
+## Cursor Cloud specific instructions
+
+The Cloud Agent VM has **no Docker**, so `docker-compose up -d` does not work there. The
+repository-managed environment in `.cursor/` handles this instead of Docker:
+
+- `.cursor/environment.json` defines the `install`/`start` scripts and two dev-server terminals
+  (`backend` on `:3000`, `frontend` on `:4200`).
+- `.cursor/install.sh` (idempotent bootstrap) installs PostgreSQL and MailHog natively when
+  missing, runs `corepack yarn install --immutable`, creates `.env` from `.env.example` with
+  generated JWT secrets, and generates the Prisma client.
+- `.cursor/start.sh` (per-boot) starts PostgreSQL on port **5453** (matching `.env` and
+  `docker-compose.yml`), ensures the role/database exist, starts MailHog (**SMTP 1025 / UI 8025**),
+  and applies Prisma migrations.
+
+Testing on a Cloud Agent:
+
+- Prefer these native services over `docker-compose`. If a service is down, re-run
+  `bash .cursor/start.sh` (safe and idempotent); it does not reinstall dependencies.
+- The frontend must run with `PORT=4200` (the inferred Nx `dev` target runs `next dev`, which
+  defaults to `:3000` and collides with the backend).
+- Verify email flows via the MailHog UI/API at `http://localhost:8025` (the app sends to
+  `localhost:1025`). Login and refresh require a verified email, so register → read the
+  verification email from MailHog → verify → login.
+- `next dev` rewrites `apps/myorganizer/AGENTS.md` (its `nextjs-agent-rules` block); do not commit
+  that incidental change unless it is the point of your work.
+
 ## Commands
 
 - Build: `yarn build:backend`, `yarn build:myorganizer`.
