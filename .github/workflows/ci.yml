@@ -660,6 +660,9 @@ jobs:
       - name: Gate coverage checker contracts
         run: corepack yarn gates:coverage:test
 
+      - name: Upstream Brief report contract and checker contracts
+        run: corepack yarn upstream:briefs:test
+
       - name: Checker contract coverage checker contracts
         run: corepack yarn checker-contracts:test
 
@@ -746,6 +749,14 @@ jobs:
       # base config puts `dom` in `lib`. Nothing else in CI sees either.
       - name: Check mobile platform rules
         run: corepack yarn mobile-platform:check
+
+      # A committed Upstream Brief report is frozen at its date, so its local
+      # evidence is checked against the commit it records rather than the tree
+      # in front of it. That is what lets a frozen brief stay checkable — and
+      # what makes a citation that stopped matching a fact worth failing on
+      # (ADR 0084 item 10).
+      - name: Check committed Upstream Brief reports
+        run: corepack yarn upstream:briefs:check
 
       - name: Restore Nx computation cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

@@ -2,6 +2,12 @@
 
 Write one Markdown file per run. Date it. Cite every finding. Propose a plan; apply nothing.
 
+> **The structured path.** A run that writes a structured report renders its brief from that report
+> instead of from the template below, and commits both — see [REPORT.md](REPORT.md). The renderer
+> owns the section order there; nothing in this file decides it. The template below is the
+> free-Markdown form the first three briefs were written in, kept because those briefs are not
+> migrated.
+
 ## Filename
 
 `YYYY-MM-DD-upstream-brief-<subject>-<subject>.md` in `brief_dir`.

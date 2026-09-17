@@ -215,6 +215,7 @@ button.primary { background: var(--accent); border-color: var(--accent); color: 
 .edge.t-D { stroke: var(--vocab); stroke-width: 1.2; opacity: .8; stroke-dasharray: 1 3.4; stroke-linecap: round; }
 .edge.t-S { stroke: var(--tier2); stroke-width: 1;   opacity: .45; }
 .edge.t-S.cond { stroke-dasharray: 3 3; }
+.edge.t-S.owner { stroke-dasharray: 1 4; stroke-linecap: round; }
 .edge.hidden { display: none; }
 .edge.dim { opacity: .07 !important; }
 .edge.lit  { opacity: 1 !important; }
@@ -412,7 +413,7 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
           </label>
           <label><input type="checkbox" data-t="S" checked>
             <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H52" stroke="var(--tier2)" stroke-width="1" fill="none" marker-end="url(#ar-S)"/></svg>
-            <span class="ltext"><b>delegates-to sub-agent</b> &#x2014; Tier 2. <i>Dashed variant = conditional. 53 drawn.</i></span>
+            <span class="ltext"><b>delegates-to sub-agent</b> &#x2014; Tier 2. <i>Dashed variant = conditional; dotted variant = names-as-owner, not a delegation &#x2014; the skill writes a finding and names this agent as who a human routes it to. 55 drawn.</i></span>
           </label>
         </div>
 
@@ -474,7 +475,7 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
     <div class="pbody">
       <ul class="plain">
         <li><span class="tag flag-note">ALL&#160;36&#160;ROUTABLE</span><span>Every skill carries <code>name:</code> and <code>description:</code> frontmatter. <code>sub-agent-sync-workflow</code> was the one exception until it was given a trigger sentence; <code>check-skill-map.mjs</code> now fails on a missing one <b>against the source</b>, so a future gap cannot be papered over by recording it faithfully here.</span></li>
-        <li><span class="tag flag-note">STANDING&#160;SPECIALIST</span><span><code>Audit</code>, <code>DepAudit</code>, <code>Docs</code> are <code>user-invocable</code> and belong to no pipeline. Belonging to no chain is their shape, not a defect &#x2014; they are entered directly. See <b>Standing Specialist</b> in <code>CONTEXT.md</code>.</span></li>
+        <li><span class="tag flag-note">STANDING&#160;SPECIALIST</span><span><code>Audit</code>, <code>DepAudit</code>, <code>Docs</code> are <code>user-invocable</code> and belong to no pipeline &#x2014; entered directly, not run as a hop in someone else's chain. See <b>Standing Specialist</b> in <code>CONTEXT.md</code>. That is still true of all three; <code>Docs</code> is also reached by nothing, but <code>Audit</code> and <code>DepAudit</code> are not: <code>upstream-brief</code> names each as the owner an Incidental Observation is routed to, drawn as a dotted <b>names-as-owner</b> edge below, not a delegation.</span></li>
         <li><span class="tag flag-note">NO&#160;PERSONAL&#160;SCOPE</span><span>Every approved third-party skill is committed here. The thirteen personal-scope approvals were dropped: nobody installed one in four months, and one package died upstream unnoticed. <code>ask-matt</code> now routes a foggy effort to <code>/grill-with-docs</code> rather than to <code>/wayfinder</code>, which was never installed and pointed at nothing (ADR 0032).</span></li>
         <li><span class="tag flag-note">UPSTREAM-OWNED</span><span>Six skills &#x2014; <code>codebase-design</code>, <code>diagnosing-bugs</code>, <code>domain-modeling</code>, <code>handoff</code>, <code>modern-web-guidance</code>, <code>prototype</code> &#x2014; have bodies authored upstream and refreshed by the Skills CLI. They are drawn in Tier 1 because they load like any other skill, but they contribute <b>no outbound edges</b>: their prose is someone else&#x27;s writing, not this repo&#x27;s routing configuration. <code>skills-lock.json</code> is the registry the check reads.</span></li>
         <li><span class="tag flag-note">FALSE&#160;HUB,&#160;RESOLVED</span><span><code>handoff</code> used to draw eight outbound edges from one line that named skills as <em>examples</em> of what to write into a handoff document. That line was this repo&#x27;s own addition to the upstream body; it went when the fork did. Found and drawn edges now agree at <b>67</b>, so the page no longer suppresses anything.</span></li>
@@ -510,7 +511,7 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
   <div>Node labels are <code>name:</code> frontmatter values. Tier-1 tooltips carry the <code>description:</code> value <b>verbatim</b> &#x2014; that string is the exact text the model matches when deciding whether to load a skill, so anything else would misreport routing behaviour.</div>
   <div class="hazard">
     <b class="htitle">Extraction hazard</b>
-    Sub-agent edges must be matched on <b>word boundaries</b>. A substring search for <code>TestRunner</code> returns 8 spurious hits in <code>nx-monorepo-workflow</code> from the Nx CLI flag <code>--unitTestRunner=jest</code>. Three further agent names &mdash; <code>Audit</code>, <code>Docs</code> and <code>Commit</code> &mdash; are ordinary English words and need hand-verification even with boundaries. This atlas asserts <b>51</b> skill&#8594;agent edges after those exclusions.
+    Sub-agent edges must be matched on <b>word boundaries</b>. A substring search for <code>TestRunner</code> returns 8 spurious hits in <code>nx-monorepo-workflow</code> from the Nx CLI flag <code>--unitTestRunner=jest</code>. Three further agent names &mdash; <code>Audit</code>, <code>Docs</code> and <code>Commit</code> &mdash; are ordinary English words and need hand-verification even with boundaries. This atlas asserts <b>55</b> skill&#8594;agent edges after those exclusions.
   </div>
   <div>Read from source on 2026-08-19. Diff this page against the filesystem with the embedded <code>skill-atlas-manifest</code> block, following the precedent of <code>tools/scripts/check-agent-map.mjs</code>.</div>
 </footer>
@@ -529,10 +530,10 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
   "repoSkillsAbsentFromAgentsMdChooser": 14,
   "subAgentCanonicalFileCount": 23,
   "subAgentMirrorFileCount": 23,
-  "subAgentsUnreferencedBySkills": ["Audit", "DepAudit", "Docs"],
+  "subAgentsUnreferencedBySkills": ["Docs"],
   "skillToSkillEdgeCount": 67,
   "skillToSkillWarnsOffEdgeCount": 5,
-  "skillToSubAgentEdgeCount": 53,
+  "skillToSubAgentEdgeCount": 55,
   "upstreamOwnedSkillCount": 6,
   "danglingSkillReferences": []
 }
@@ -663,16 +664,16 @@ const SS = [
   ["ask-matt","upstream-brief","A","ask-matt/SKILL.md:17-81 \u2014 router"]
 ];
 
-/* \u2500\u2500 Skill \u2192 sub-agent edges (53 drawn; see the false-positive note below) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
+/* \u2500\u2500 Skill \u2192 sub-agent edges (55 drawn; see the false-positive note below) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */
 const AGENTS = {
   "ApiSync": ["ask-matt","backend-api-contract-change","implement","to-issues"],
   "ApiWriter": ["ask-matt","backend-api-contract-change","implement","to-issues"],
-  "Audit": [],
+  "Audit": ["upstream-brief"],
   "CodeExplorer": ["design-brief","improve-codebase-architecture","sub-agent-sync-workflow","to-issues","to-prd"],
   "Commit": ["commit-change-workflow"],
   "ComponentBuilder": ["component-builder","to-issues"],
   "ComponentReviewer": ["component-builder","to-issues"],
-  "DepAudit": [],
+  "DepAudit": ["upstream-brief"],
   "DepSync": ["dep-sync"],
   "Designer": ["design-brief"],
   "Docs": [],
@@ -691,8 +692,8 @@ const AGENTS = {
 };
 const AGENT_NOTE = {
   "Research": "Conditional \u2014 upstream-brief/SKILL.md:58: \u201cIf the host has a Research specialist, use it as the worker. Otherwise the same agent fetches the pages.\u201d",
-  "Audit": "Standing Specialist \u2014 user-invocable, in no pipeline. Belonging to no chain is its shape, not a defect (CONTEXT.md).",
-  "DepAudit": "Standing Specialist \u2014 user-invocable, in no pipeline. Belonging to no chain is its shape, not a defect (CONTEXT.md).",
+  "Audit": "Standing Specialist \u2014 user-invocable, in no pipeline; entered directly, not run as a hop (CONTEXT.md). The dotted edge from upstream-brief is not a delegation: that skill writes a brief and stops, then names Audit as the owner a human routes an Incidental Observation to (INCIDENTAL_OWNERS, upstream-brief/report.mjs). Nothing invokes this agent automatically.",
+  "DepAudit": "Standing Specialist \u2014 user-invocable, in no pipeline; entered directly, not run as a hop (CONTEXT.md). The dotted edge from upstream-brief is not a delegation: that skill writes a brief and stops, then names DepAudit as the owner a human routes an Incidental Observation to (INCIDENTAL_OWNERS, upstream-brief/report.mjs). Nothing invokes this agent automatically.",
   "Docs": "Standing Specialist \u2014 user-invocable, in no pipeline. Belonging to no chain is its shape, not a defect (CONTEXT.md)."
 };
 
@@ -747,8 +748,9 @@ const agentNodes = Object.keys(AGENTS).map(a => ({
 
 /* edges */
 let EDGES = SS.map(e => ({ s: e[0], t: e[1], type: e[2], src: e[3] }));
+const OWNER_NOT_DELEGATE = new Set(["Audit", "DepAudit"]);
 Object.entries(AGENTS).forEach(([a, ps]) => ps.forEach(p =>
-  EDGES.push({ s: p, t: "agent:" + a, type: "S", cond: a === "Research", src: AGENT_NOTE[a] || (".github/agents/" ) })
+  EDGES.push({ s: p, t: "agent:" + a, type: "S", cond: a === "Research", owner: OWNER_NOT_DELEGATE.has(a), src: AGENT_NOTE[a] || (".github/agents/" ) })
 ));
 /* The brief's second trap \u2014 a `handoff` filter \u2014 is gone: handoff is Upstream-Owned, so it
    contributes no outbound rows in the first place and there is nothing left to suppress. */
@@ -887,7 +889,7 @@ const edgeEls = new Map();
 EDGES.forEach((e, i) => {
   const a = NODES.get(e.s), b = NODES.get(e.t);
   if (!a || !b) return;
-  const p = mk("path", { class: "edge t-" + e.type + (e.cond ? " cond" : ""), "marker-end": "url(#ar-" + e.type + ")" });
+  const p = mk("path", { class: "edge t-" + e.type + (e.cond ? " cond" : "") + (e.owner ? " owner" : ""), "marker-end": "url(#ar-" + e.type + ")" });
   e._i = i; e._el = p; edgeEls.set(i, e);
   elEdges.appendChild(p);
 });
@@ -1169,14 +1171,14 @@ function renderInspector(d) {
   const o = out.get(d.id) || [], i = inn.get(d.id) || [];
   if (o.length) {
     h += '<div class="subhead">outbound (' + o.length + ")</div><div class='edgelist'>";
-    o.forEach(e => { h += '<div class="el"><span class="glyph g-' + e.type + '">' + TYPE_GLYPH[e.type] + '</span><span><button class="link" data-go="' + esc(e.t) + '">' + esc(nodeName(e.t)) + '</button> <span class="muted">' + TYPE_NAME[e.type] + (e.cond ? " \u00b7 conditional" : "") + "</span></span></div>"; });
+    o.forEach(e => { h += '<div class="el"><span class="glyph g-' + e.type + '">' + TYPE_GLYPH[e.type] + '</span><span><button class="link" data-go="' + esc(e.t) + '">' + esc(nodeName(e.t)) + '</button> <span class="muted">' + TYPE_NAME[e.type] + (e.cond ? " \u00b7 conditional" : "") + (e.owner ? " \u00b7 names-as-owner, not invoked" : "") + "</span></span></div>"; });
     h += "</div>";
   } else if (d.tier === 1) {
     h += '<div class="subhead">outbound (0)</div><p class="muted">' + (UPSTREAM_OWNED.has(d.id) ? "None \u2014 Upstream-Owned skills are not read as routing." : "None.") + "</p>";
   }
   if (i.length) {
     h += '<div class="subhead">inbound (' + i.length + ")</div><div class='edgelist'>";
-    i.forEach(e => { h += '<div class="el"><span class="glyph g-' + e.type + '">' + TYPE_GLYPH[e.type] + '</span><span><button class="link" data-go="' + esc(e.s) + '">' + esc(nodeName(e.s)) + '</button> <span class="muted">' + TYPE_NAME[e.type] + "</span></span></div>"; });
+    i.forEach(e => { h += '<div class="el"><span class="glyph g-' + e.type + '">' + TYPE_GLYPH[e.type] + '</span><span><button class="link" data-go="' + esc(e.s) + '">' + esc(nodeName(e.s)) + '</button> <span class="muted">' + TYPE_NAME[e.type] + (e.owner ? " · names-as-owner, not invoked" : "") + "</span></span></div>"; });
     h += "</div>";
   }
   b.innerHTML = h;
@@ -1264,6 +1266,7 @@ function renderTrav(rootId) {
     const gl = c.kind === "S" ? "\u21b3 " : c.kind === "D" ? "\u22ef " : "\u21d2 ";
     h += '<div class="st ' + cls + '">' + (i + 1) + " \u00b7 " + gl + esc(nodeName(c.to))
        + (c.kind === "D" ? '  <span class="muted">prerequisite</span>' : "")
+       + (c.edge && c.edge.owner ? '  <span class="muted">names-as-owner, not invoked</span>' : "")
        + (c.halt ? "  \u23f8" : "") + "</div>";
   });
   h += "</div>";

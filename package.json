@@ -87,6 +87,8 @@
     "gates:run:test": "node --test tools/scripts/lib/gate-manifest.test.mjs tools/scripts/run-assertion-gates.test.mjs",
     "gates:coverage:check": "node tools/scripts/check-gate-coverage.mjs",
     "gates:coverage:test": "node --test tools/scripts/lib/gate-coverage.test.mjs tools/scripts/check-gate-coverage.test.mjs",
+    "upstream:briefs:check": "node tools/scripts/check-upstream-briefs.mjs",
+    "upstream:briefs:test": "node --test tools/scripts/check-upstream-briefs.test.mjs .agents/skills/upstream-brief/report.test.mjs .agents/skills/upstream-brief/render.test.mjs .agents/skills/upstream-brief/validate-report.test.mjs",
     "checker-contracts:check": "node tools/scripts/check-checker-contracts.mjs",
     "checker-contracts:test": "node --test tools/scripts/check-checker-contracts.test.mjs",
     "lint:coverage:check": "node tools/scripts/check-lint-coverage.mjs",

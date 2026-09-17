@@ -9,7 +9,7 @@ argument-hint: 'subject@version [subject@version ...]'
 
 A user-invoked audit. The human names subjects and target versions. The run writes one **Upstream Brief** and, when there is a finding, proposes a HITL issue. It does not bump packages, apply instruction edits, or start a grill.
 
-Load [ADAPTER.md](ADAPTER.md) when resolving the host adapter. Load [BRIEF.md](BRIEF.md) when writing the file.
+Load [ADAPTER.md](ADAPTER.md) when resolving the host adapter. Load [BRIEF.md](BRIEF.md) when writing the file. Load [REPORT.md](REPORT.md) when writing or validating the structured report the brief is rendered from.
 
 ## Guardrails
 

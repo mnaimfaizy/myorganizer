@@ -171,6 +171,15 @@ export const GATE_MANIFEST = [
     script: 'tools/scripts/check-mobile-platform.mjs',
     args: [],
   },
+  // The validator this adapter calls ships inside the skill directory, which
+  // the Meta-Gate's non-recursive scan of tools/scripts/ cannot see. The
+  // adapter is what makes the gate visible (ADR 0084 item 10).
+  {
+    id: 'upstream:briefs:check',
+    npmScript: 'upstream:briefs:check',
+    script: 'tools/scripts/check-upstream-briefs.mjs',
+    args: [],
+  },
   // The meta-gate reads this manifest to resolve one level of indirection, so
   // a checker reached only through the aggregate still counts as wired. It is
   // a file-reading checker itself, which is why it runs here rather than only
