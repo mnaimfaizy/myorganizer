@@ -4,7 +4,6 @@
   "baseline": [
     "docs/authentication/session-lifecycle.html",
     "docs/sandcastle/dispatch-map.html",
-    "docs/sandcastle/gates.html",
-    "docs/sandcastle/resume.html"
+    "docs/sandcastle/gates.html"
   ]
 }
