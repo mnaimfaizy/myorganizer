@@ -587,7 +587,7 @@ A specialist job that does not need another specialist's output. Only Independen
 _Avoid_: fan-out, parallel pipeline, concurrent by default
 
 **Upstream Brief**:
-A dated, cited report of how this repo's instructions and usage compare to official upstream documentation for named Ecosystems, anchored to each Ecosystem's Baseline and optionally looking ahead to a Horizon. Records future-risk, mismatch, and missed improvement only, each as an Upstream Finding. Its proposed plan may change instructions and hygiene scripts; application-code findings are follow-on, not part of that plan. Never a package upgrade plan.
+A dated, cited report of how this repo's instructions and usage compare to official upstream documentation for named Ecosystems, anchored to each Ecosystem's Baseline and optionally looking ahead to a Horizon. Records future-risk, mismatch, and missed improvement only, each as an Upstream Finding. Its proposed plan may change five things and nothing else: Instruction Files, Skills, hygiene and test scripts, the definition behind a command an instruction teaches, and its own adapter config. An upstream-grounded finding about anything else — application code, an installed third-party skill — is follow-on, not part of that plan. Never a package upgrade plan.
 _Avoid_: research base, research note, upgrade plan, dependency audit
 
 **Ecosystem**:

@@ -78,5 +78,5 @@ If the work is:
 - **Ad-hoc fix now, no ticket** → classify gate → `/implement` (with `/tdd` when appropriate)
 - **Test-heavy behavioral change** → matching test workflow at `standard`/`full`
 - **Architecture/terminology uncertainty** → `/grill-with-docs` (and `/domain-modeling` when updating glossary/ADRs)
-- **Stale framework or library instruction truth** → `/upstream-brief` (human names `subject@version`; writes an Upstream Brief; does not bump packages)
+- **Stale framework or library instruction truth** → `/upstream-brief` (human names Ecosystems, each optionally with a Horizon; writes an Upstream Brief against what is installed; does not bump packages)
 - **Words/shape are the problem** → `/domain-modeling` or `/codebase-design`

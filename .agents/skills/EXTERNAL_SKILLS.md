@@ -4,7 +4,7 @@ Third-party skills approved for use in MyOrganizer. They add fast-moving framewo
 
 **Project scope only.** A third-party skill is either committed here and stewarded like any other file, or it is not approved. Personal-scope recommendations were removed: this repo cannot update, review, or vouch for a skill living on one developer's machine, and an approval list nobody installs from decays silently — see [ADR 0032](../../docs/adr/0032-no-personal-scope-external-skills.md).
 
-For fast-moving framework knowledge, use `upstream-brief`. It compares repo-owned instructions against official docs for the `subject@version` you name and proposes a HITL issue, which keeps the knowledge in this repo and under review rather than in a vendor's package.
+For fast-moving framework knowledge, use `upstream-brief`. It compares repo-owned instructions against official docs for the Ecosystems you name — anchored to the version actually installed — and proposes a HITL issue, which keeps the knowledge in this repo and under review rather than in a vendor's package.
 
 `GoogleChrome/modern-web-guidance@modern-web-guidance` was verified against upstream documentation and a disposable install on August 15, 2026; see the [evaluation](../../docs/research/2026-08-15-modern-web-guidance-evaluation.md). The `mattpocock/skills` entries were verified by sandbox install on August 19, 2026.
 
