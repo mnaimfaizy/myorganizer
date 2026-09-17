@@ -91,8 +91,14 @@ jest.mock('@myorganizer/web-ui', () => {
     return <FormProvider {...props}>{children}</FormProvider>;
   }
 
+  const FormFieldContext = React.createContext<{ name: string } | null>(null);
+
   function FormField({ name, render, ...props }: any) {
-    return <Controller name={name} render={render} {...props} />;
+    return (
+      <FormFieldContext.Provider value={{ name }}>
+        <Controller name={name} render={render} {...props} />
+      </FormFieldContext.Provider>
+    );
   }
 
   function FormItem({ children, ...props }: any) {
@@ -111,8 +117,16 @@ jest.mock('@myorganizer/web-ui', () => {
     return <p data-testid="form-description">{children}</p>;
   }
 
-  function FormMessage({ children }: any) {
-    return <div data-testid="form-message">{children}</div>;
+  function FormMessage() {
+    const fieldContext = React.useContext(FormFieldContext);
+    const {
+      formState: { errors },
+    } = useFormContext();
+    const message =
+      fieldContext?.name && errors[fieldContext.name]?.message
+        ? String(errors[fieldContext.name]?.message)
+        : undefined;
+    return <div data-testid="form-message">{message}</div>;
   }
 
   function Input({ type, disabled, id, ...props }: any) {
@@ -372,7 +386,7 @@ describe('ChangePassphraseCard', () => {
       expect(passwordInputs[2].value).toBe('newpass12345');
     });
 
-    test('10: component calls hook changePassphrase on form submission', () => {
+    test('10: component calls hook changePassphrase on form submission', async () => {
       const mockChangePassphrase = jest.fn().mockResolvedValue('ok');
 
       (useChangePassphrase as jest.Mock).mockReturnValue({
@@ -382,11 +396,30 @@ describe('ChangePassphraseCard', () => {
 
       render(<ChangePassphraseCard />);
 
-      // When the hook returns 'ok', the component should handle it correctly
-      expect(mockChangePassphrase).toBeDefined();
+      const inputs = screen.getAllByDisplayValue('');
+      const passwordInputs = inputs.filter(isPasswordInput);
+
+      fireEvent.change(passwordInputs[0], {
+        target: { value: 'oldpass1234' },
+      });
+      fireEvent.change(passwordInputs[1], {
+        target: { value: 'newpass12345' },
+      });
+      fireEvent.change(passwordInputs[2], {
+        target: { value: 'newpass12345' },
+      });
+
+      fireEvent.click(screen.getByTestId('change-passphrase-submit'));
+
+      await waitFor(() => {
+        expect(mockChangePassphrase).toHaveBeenCalledWith({
+          currentPassphrase: 'oldpass1234',
+          newPassphrase: 'newpass12345',
+        });
+      });
     });
 
-    test('11: hook result "wrong-passphrase" indicates field-level error', () => {
+    test('11: hook result "wrong-passphrase" indicates field-level error', async () => {
       const mockChangePassphrase = jest
         .fn()
         .mockResolvedValue('wrong-passphrase');
@@ -398,12 +431,29 @@ describe('ChangePassphraseCard', () => {
 
       render(<ChangePassphraseCard />);
 
-      // When the hook returns 'wrong-passphrase', the component sets a field error
-      // on currentPassphrase via form.setError('currentPassphrase', { message: '...' })
-      expect(mockChangePassphrase).toBeDefined();
+      const inputs = screen.getAllByDisplayValue('');
+      const passwordInputs = inputs.filter(isPasswordInput);
+
+      fireEvent.change(passwordInputs[0], {
+        target: { value: 'oldpass1234' },
+      });
+      fireEvent.change(passwordInputs[1], {
+        target: { value: 'newpass12345' },
+      });
+      fireEvent.change(passwordInputs[2], {
+        target: { value: 'newpass12345' },
+      });
+
+      fireEvent.click(screen.getByTestId('change-passphrase-submit'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('That is not your current passphrase.'),
+        ).toBeInTheDocument();
+      });
     });
 
-    test('12: hook result "error" means hook already toasted, leave form as-is', () => {
+    test('12: hook result "error" means hook already toasted, leave form as-is', async () => {
       const mockToast = jest.fn();
       const mockChangePassphrase = jest.fn().mockResolvedValue('error');
 
@@ -415,9 +465,31 @@ describe('ChangePassphraseCard', () => {
 
       render(<ChangePassphraseCard />);
 
-      // When the hook returns 'error', the component leaves the form as-is.
-      // The hook itself has already toasted with the error.
-      expect(mockChangePassphrase).toBeDefined();
+      const inputs = screen.getAllByDisplayValue('');
+      const passwordInputs = inputs.filter(isPasswordInput);
+
+      fireEvent.change(passwordInputs[0], {
+        target: { value: 'oldpass1234' },
+      });
+      fireEvent.change(passwordInputs[1], {
+        target: { value: 'newpass12345' },
+      });
+      fireEvent.change(passwordInputs[2], {
+        target: { value: 'newpass12345' },
+      });
+
+      fireEvent.click(screen.getByTestId('change-passphrase-submit'));
+
+      await waitFor(() => {
+        expect(mockChangePassphrase).toHaveBeenCalled();
+      });
+
+      expect(passwordInputs[0].value).toBe('oldpass1234');
+      expect(passwordInputs[1].value).toBe('newpass12345');
+      expect(passwordInputs[2].value).toBe('newpass12345');
+      expect(
+        screen.queryByText('That is not your current passphrase.'),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -449,8 +521,67 @@ describe('ChangePassphraseCard', () => {
     });
   });
 
+  describe('Recovery-key mode', () => {
+    test('15: unlockSecret recovery-key → Set new passphrase title, no Current passphrase field, two password inputs', () => {
+      (useChangePassphrase as jest.Mock).mockReturnValue({
+        changing: false,
+        unlockSecret: 'recovery-key',
+        changePassphrase: jest.fn(),
+      });
+
+      render(<ChangePassphraseCard />);
+
+      expect(
+        screen.getByRole('heading', { name: 'Set new passphrase' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/You unlocked with your recovery key/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Current passphrase')).not.toBeInTheDocument();
+
+      const inputs = screen.getAllByDisplayValue('');
+      const passwordInputs = inputs.filter(isPasswordInput);
+      expect(passwordInputs).toHaveLength(2);
+
+      expect(screen.getByTestId('change-passphrase-submit')).toHaveTextContent(
+        'Set new passphrase',
+      );
+    });
+
+    test('16: recovery mode submit calls hook with empty currentPassphrase', async () => {
+      const mockChangePassphrase = jest.fn().mockResolvedValue('ok');
+
+      (useChangePassphrase as jest.Mock).mockReturnValue({
+        changing: false,
+        unlockSecret: 'recovery-key',
+        changePassphrase: mockChangePassphrase,
+      });
+
+      render(<ChangePassphraseCard />);
+
+      const inputs = screen.getAllByDisplayValue('');
+      const passwordInputs = inputs.filter(isPasswordInput);
+
+      fireEvent.change(passwordInputs[0], {
+        target: { value: 'newpass12345' },
+      });
+      fireEvent.change(passwordInputs[1], {
+        target: { value: 'newpass12345' },
+      });
+
+      fireEvent.click(screen.getByTestId('change-passphrase-submit'));
+
+      await waitFor(() => {
+        expect(mockChangePassphrase).toHaveBeenCalledWith({
+          currentPassphrase: '',
+          newPassphrase: 'newpass12345',
+        });
+      });
+    });
+  });
+
   describe('Guard — card does not call resetPassphraseAfterRecovery', () => {
-    test('15: after successful passphrase change, resetPassphraseAfterRecovery is never called', async () => {
+    test('17: after successful passphrase change, resetPassphraseAfterRecovery is never called', async () => {
       const mockChangePassphrase = jest.fn().mockResolvedValue('ok');
 
       (useChangePassphrase as jest.Mock).mockReturnValue({
@@ -481,13 +612,15 @@ describe('ChangePassphraseCard', () => {
       const submitButton = screen.getByTestId('change-passphrase-submit');
       fireEvent.click(submitButton);
 
-      // Await the hook call to complete
       await waitFor(() => {
-        expect(mockChangePassphrase).toHaveBeenCalled();
+        expect(mockChangePassphrase).toHaveBeenCalledWith({
+          currentPassphrase: 'oldpass1234',
+          newPassphrase: 'newpass12345',
+        });
       });
 
-      // Assert that resetPassphraseAfterRecovery was never called
-      // (it should only be called for recovery-key-based passphrase reset)
+      // The hook (mocked here) is the caller of resetPassphraseAfterRecovery;
+      // the card never imports or invokes it directly.
       expect(resetPassphraseAfterRecovery).not.toHaveBeenCalled();
     });
   });

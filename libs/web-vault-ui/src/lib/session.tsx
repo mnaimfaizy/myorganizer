@@ -31,9 +31,30 @@ import {
   type VaultClaimEvidenceState,
 } from './useVaultClaimEvidence';
 
+/**
+ * Which wrapping secret produced the current in-memory Vault Unlock.
+ * Session-scoped only — never persisted into the Local Vault.
+ */
+export type VaultUnlockSecret = 'passphrase' | 'recovery-key';
+
 type VaultSessionContextValue = {
   masterKeyBytes: Uint8Array | null;
-  setMasterKeyBytes: (value: Uint8Array | null) => void;
+  /**
+   * Null while locked. Set with the Master Key when unlocking, and cleared
+   * by `lock` or an owner change. A later passphrase unlock overwrites a
+   * recovery-key unlock; the Local Vault never records this.
+   */
+  unlockSecret: VaultUnlockSecret | null;
+  /**
+   * Unlock with bytes plus the secret that produced them. Passing `null`
+   * locks and clears `unlockSecret`. Omitting the secret on a non-null
+   * value records a passphrase unlock — the authorization that still
+   * requires the current passphrase to change wrapping.
+   */
+  setMasterKeyBytes: (
+    value: Uint8Array | null,
+    unlockSecret?: VaultUnlockSecret,
+  ) => void;
   lock: () => void;
   handle: VaultHandle | null;
   /** The Vault Sync Queue `handle` reports to. Exposed for a sync status reading. */
@@ -76,22 +97,39 @@ export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
   const [masterKeyBytes, setMasterKeyBytesState] = useState<Uint8Array | null>(
     null,
   );
+  const [unlockSecret, setUnlockSecretState] =
+    useState<VaultUnlockSecret | null>(null);
 
   const owner = getCurrentUser()?.id ?? null;
   const ownerRef = useRef(owner);
 
-  const setMasterKeyBytes = setMasterKeyBytesState;
+  const setMasterKeyBytes = useCallback(
+    (value: Uint8Array | null, nextUnlockSecret?: VaultUnlockSecret) => {
+      if (value === null) {
+        setMasterKeyBytesState(null);
+        setUnlockSecretState(null);
+        return;
+      }
+      setMasterKeyBytesState(value);
+      setUnlockSecretState(nextUnlockSecret ?? 'passphrase');
+    },
+    [],
+  );
 
   const lock = useCallback(() => {
     setMasterKeyBytesState(null);
+    setUnlockSecretState(null);
   }, []);
 
   let currentMasterKeyBytes = masterKeyBytes;
+  let currentUnlockSecret = unlockSecret;
   if (ownerRef.current !== owner) {
     ownerRef.current = owner;
     if (masterKeyBytes !== null) {
       currentMasterKeyBytes = null;
+      currentUnlockSecret = null;
       setMasterKeyBytesState(null);
+      setUnlockSecretState(null);
     }
   }
 
@@ -165,6 +203,7 @@ export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
   const value = useMemo<VaultSessionContextValue>(
     () => ({
       masterKeyBytes: currentMasterKeyBytes,
+      unlockSecret: currentUnlockSecret,
       setMasterKeyBytes,
       lock,
       handle,
@@ -175,6 +214,7 @@ export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
     }),
     [
       currentMasterKeyBytes,
+      currentUnlockSecret,
       setMasterKeyBytes,
       lock,
       handle,

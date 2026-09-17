@@ -43,7 +43,7 @@ export function useVaultUnlock() {
 
       try {
         const result = await handle.unlockWithPassphrase({ passphrase });
-        setMasterKeyBytes(result.masterKeyBytes);
+        setMasterKeyBytes(result.masterKeyBytes, 'passphrase');
 
         toast({
           title: 'Unlocked',

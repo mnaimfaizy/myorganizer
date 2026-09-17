@@ -176,7 +176,10 @@ describe('useVaultUnlock', () => {
       });
 
       expect(callResult).toBe('ok');
-      expect(mockSetMasterKeyBytes).toHaveBeenCalledWith(mockMasterKeyBytes);
+      expect(mockSetMasterKeyBytes).toHaveBeenCalledWith(
+        mockMasterKeyBytes,
+        'passphrase',
+      );
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Unlocked',
