@@ -2112,7 +2112,7 @@
   <section class="panel" aria-labelledby="scope-h">
     <div class="phead">
       <h2 id="scope-h">Two scopes, because the targets have different blast radii</h2>
-      <span class="src">main.mts:153, :205, :1642-1687</span>
+      <span class="src">main.mts:157-167, :206-209, :1708-1722</span>
     </div>
     <div class="pbody">
       <p>
@@ -2282,7 +2282,7 @@
   <section class="panel" aria-labelledby="modes-h">
     <div class="phead">
       <h2 id="modes-h">The two modes, side by side</h2>
-      <span class="src">main.mts:1806-1824, :2659-2669, :2948-2963</span>
+      <span class="src">main.mts:1806-1824, :1904-1908, :1912-1920</span>
     </div>
     <div class="pbody">
       <div class="scrollx">
@@ -3360,33 +3360,35 @@
       "start": "function runGate(",
       "end": "return runGate(featureBranch, prdGateBase, featureBranch);"
     },
-    "main.mts:153": {
+    "main.mts:157-167": {
       "file": ".sandcastle/main.mts",
-      "start": "}"
+      "start": "* Maps the files a slice changed (between base and head) to the Nx projects that",
+      "end": "* `affectedProjects` instead."
     },
-    "main.mts:205": {
+    "main.mts:206-209": {
       "file": ".sandcastle/main.mts",
-      "start": "/**"
+      "start": "* The Nx projects a slice affects: the projects whose own files changed PLUS every",
+      "end": "* and that consumer's own files never changed."
     },
-    "main.mts:1642-1687": {
+    "main.mts:1708-1722": {
       "file": ".sandcastle/main.mts",
-      "start": "const ahead = (",
-      "end": "//"
+      "start": "const targets = (process.env.SLICE_GATE_TARGETS || 'lint test build').trim();",
+      "end": "const changed = changedProjects(base, head);"
     },
     "main.mts:1806-1824": {
       "file": ".sandcastle/main.mts",
       "start": "// Validate this slice INSIDE the Linux container (cross-platform: WSL2, native",
       "end": "'docker',"
     },
-    "main.mts:2659-2669": {
+    "main.mts:1904-1908": {
       "file": ".sandcastle/main.mts",
-      "start": "encoding: 'utf8',",
-      "end": "const result = await run({"
+      "start": "* Gate ONE slice against its base. Retained for standalone runs, where the work",
+      "end": "return runGate(`#${issue.number}`, baseRef, sliceBranch, issue.number);"
     },
-    "main.mts:2948-2963": {
+    "main.mts:1912-1920": {
       "file": ".sandcastle/main.mts",
-      "start": "await new Promise((resolve) => setTimeout(resolve, sleepMs));",
-      "end": "` [#${issue.number}] checkpoint ${checkpoint.sha} on ${sliceBranch} ` +"
+      "start": "* Gate the whole PRD once, on the integrated feature branch, against the ref the",
+      "end": "function runFeatureGate(featureBranch: string): boolean {"
     },
     "main.mts:1915-1917": {
       "file": ".sandcastle/main.mts",
