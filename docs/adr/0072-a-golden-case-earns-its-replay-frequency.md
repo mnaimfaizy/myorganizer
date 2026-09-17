@@ -138,7 +138,9 @@ caught`): a case that always passes and a case that never passes both carry less
 > cost that lockout, that a single run is not a measurement and a score moves nothing on its own
 > beyond the tier rule already in force.
 
-> **Amended 2026-09-17 (issue #563, pull request #809).** Promotion may not empty the frontier,
+> **Amended 2026-09-17.** Noticed while recording replay runs during #563's pull request #809 and
+> decided on its own; neither issue scopes this rule, and it tracks no issue of its own.
+> Promotion may not empty the frontier,
 > and the constraint is now asserted rather than asserted-about.
 >
 > `release-bump-leaves-generated-client-stale` reached four consecutive catches — runs 34663295486,

@@ -99,13 +99,10 @@ test('malformed sets are named precisely', () => {
   // ordinary review-tooling change. ADR 0072 stated this in its Consequences
   // and said the tests asserted it; none did until this one.
   // The per-case checks run first, so a promotion with no evidence is refused
-  // for the missing evidence and never reaches the set-level rule. The set-level
-  // rule is what a *properly cited* promotion of the last frontier case hits —
-  // which is the dangerous one, because it is the promotion that looks correct.
-  assert.throws(
-    bad((s) => (s.cases[0].tier = 'guard')),
-    /a guard must cite the runs that promoted it/,
-  );
+  // for the missing evidence and never reaches the set-level rule — asserted
+  // below, at the guard-must-cite case, not repeated here. What reaches the
+  // set-level rule is a *properly cited* promotion of the last frontier case,
+  // which is the dangerous one precisely because it looks correct.
   assert.throws(
     bad((s) => {
       s.cases[0].tier = 'guard';
