@@ -9,14 +9,41 @@ The adapter is host facts only. The skill body does not name a host. A consuming
 
 ## Keys
 
-| Key                     | Required | Default                             | Meaning                                                                                                              |
-| ----------------------- | -------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `current_versions.path` | no       | `package.json` if present, else ask | File the skill reads to resolve the **current** version of each named subject. Fail closed when a subject is absent. |
-| `instruction_globs`     | no       | See defaults                        | Repo-owned files that teach agents how to write code.                                                                |
-| `brief_dir`             | no       | `docs/research`                     | Directory for the Upstream Brief. Create it if missing.                                                              |
-| `source_globs`          | no       | unset                               | Optional application-code globs to _sample_ for mismatch evidence.                                                   |
-| `script_globs`          | no       | unset                               | Optional hygiene/test-script globs to _sample_.                                                                      |
-| `issue`                 | no       | unset                               | When omitted, print a proposed issue and do not file.                                                                |
+| Key                   | Required | Default                               | Meaning                                                                                                                                                                                                                                                         |
+| --------------------- | -------- | ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `version_record.path` | no       | `package.json` if present, else unset | A file this repo maintains that records versions for humans (a tech-stack table, for example). The Baseline resolver only **compares** it against each Ecosystem's installed version and names a drift note on disagreement — never a source (ADR 0084 item 1). |
+| `ecosystems`          | no       | none declared                         | A list of Ecosystem declarations. See below.                                                                                                                                                                                                                    |
+| `instruction_globs`   | no       | See defaults                          | Repo-owned files that teach agents how to write code.                                                                                                                                                                                                           |
+| `brief_dir`           | no       | `docs/research`                       | Directory for the Upstream Brief. Create it if missing.                                                                                                                                                                                                         |
+| `source_globs`        | no       | unset                                 | Optional application-code globs to _sample_ for mismatch evidence.                                                                                                                                                                                              |
+| `script_globs`        | no       | unset                                 | Optional hygiene/test-script globs to _sample_.                                                                                                                                                                                                                 |
+| `issue`               | no       | unset                                 | When omitted, print a proposed issue and do not file.                                                                                                                                                                                                           |
+
+### `ecosystems` entries
+
+Each entry declares one Ecosystem (ADR 0084 item 2):
+
+| Key              | Required | Meaning                                                                                                        |
+| ---------------- | -------- | -------------------------------------------------------------------------------------------------------------- |
+| `lead`           | yes      | The lead package name. Its installed version is the Ecosystem's Baseline.                                      |
+| `members.add`    | no       | Companion package names the lead's scope convention misses (an unscoped package such as `eslint-config-next`). |
+| `members.remove` | no       | Companion package names to drop from the discovered set.                                                       |
+
+Members are otherwise discovered by the lead's npm scope prefix: `nx` names companions
+installed under `@nx/*`; a lead already scoped (`@remix-run/react`) names companions under its
+own scope (`@remix-run/*`). The Baseline resolver — `.agents/skills/upstream-brief/baseline.mjs`
+(dependency-free) plus `resolve-baseline.mjs` (its CLI) — ships inside the skill, like the report
+validator. An Ecosystem whose lead is not installed fails closed with a reason and does not stop
+the rest from resolving.
+
+```yaml
+ecosystems:
+  - lead: nx
+  - lead: next
+    members:
+      add: [eslint-config-next]
+      remove: []
+```
 
 ### `issue` map
 
@@ -57,8 +84,10 @@ Third-party skill install trees are not repo-owned. Do not add them to `instruct
 ## Example
 
 ```yaml
-current_versions:
+version_record:
   path: package.json
+ecosystems:
+  - lead: nx
 brief_dir: docs/research
 # source_globs and script_globs omitted — instructions only
 # issue omitted — print the proposal, do not file

@@ -1,8 +1,21 @@
 # MyOrganizer adapter for the portable Upstream Brief skill.
 # Schema: .agents/skills/upstream-brief/ADAPTER.md
 
-current_versions:
+version_record:
   path: TECH_STACK.md
+
+# ADR 0084 items 1-2. Each Ecosystem's Baseline is resolved from what is
+# installed, never from this file or from the entry below — the version
+# record is compared against for a drift note (routed to DepSync), never
+# read as a source. Members are discovered by the lead's npm scope prefix
+# (`nx` -> `@nx/*`) and can be extended or trimmed with `members.add` /
+# `members.remove`. See `.agents/skills/upstream-brief/resolve-baseline.mjs`.
+ecosystems:
+  - lead: nx
+  - lead: next
+    members:
+      add: [eslint-config-next]
+  - lead: react-native
 
 instruction_globs:
   - '**/AGENTS.md'

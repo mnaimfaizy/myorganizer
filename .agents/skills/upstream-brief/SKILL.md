@@ -1,13 +1,13 @@
 ---
 name: upstream-brief
-description: Write one Upstream Brief comparing repo-owned instructions to official docs for subjects and target versions the human names.
+description: Write one Upstream Brief comparing repo-owned instructions to official docs for the Ecosystems and Horizons the human names.
 disable-model-invocation: true
-argument-hint: 'subject@version [subject@version ...]'
+argument-hint: 'ecosystem[@horizon] [ecosystem[@horizon] ...]'
 ---
 
 # Upstream Brief
 
-A user-invoked audit. The human names subjects and target versions. The run writes one **Upstream Brief** and, when there is a finding, proposes a HITL issue. It does not bump packages, apply instruction edits, or start a grill.
+A user-invoked audit. The human names Ecosystems and, optionally, a Horizon for each. The run writes one **Upstream Brief** and, when there is a finding, proposes a HITL issue. It does not bump packages, apply instruction edits, or start a grill.
 
 Load [ADAPTER.md](ADAPTER.md) when resolving the host adapter. Load [BRIEF.md](BRIEF.md) when writing the file. Load [REPORT.md](REPORT.md) when writing or validating the structured report the brief is rendered from.
 
@@ -22,21 +22,30 @@ Load [ADAPTER.md](ADAPTER.md) when resolving the host adapter. Load [BRIEF.md](B
 
 ### 1. Parse the run
 
-Require one or more `subject@version` tokens (example: `next@16 react@19 node@24`). If any subject lacks a target version, ask once and stop.
+Require one or more Ecosystem names, each optionally followed by a Horizon (example: `next nx@23 react-native`). An Ecosystem named with no Horizon still looks at what its own Baseline documents call deprecated or scheduled for removal — nothing further is asked.
 
-**Done when:** every subject has a human-named target, or the run has stopped.
+**Done when:** every named Ecosystem is recorded, with its Horizon if one was given.
 
 ### 2. Resolve the adapter
 
 Read `upstream-brief.config.yml` (also `.yaml` / `.json`) from the repo root. Missing keys take the defaults in [ADAPTER.md](ADAPTER.md). A missing file is not an error.
 
-**Done when:** current-version source, instruction globs, brief directory, optional source/script globs, and optional issue map are known.
+**Done when:** the Ecosystem declarations, the version-record path, instruction globs, brief directory, optional source/script globs, and optional issue map are known.
 
-### 3. Resolve current versions
+### 3. Resolve the Baseline
 
-For each subject, read the current version from the adapter source. If a subject cannot be resolved, mark it **failed** and continue. Do not invent a version. Do not fetch “latest.”
+For each named Ecosystem, run the Baseline resolver
+(`.agents/skills/upstream-brief/resolve-baseline.mjs`, built on the dependency-free
+`baseline.mjs`) to get its lead's installed version (the Baseline), its member list, and any
+drift notes against the version record. An Ecosystem whose lead is not installed is marked
+**failed** and the run continues with the rest. Never invent a Baseline, and never read one from
+the version record or a declared range (ADR 0084 item 1).
 
-**Done when:** every subject is either resolved or failed-closed.
+**Done when:** every named Ecosystem is either resolved to a Baseline or failed-closed.
+
+> Steps 4-7 below still describe the pre-ADR-0084 shape (`subject`, a single research pass per
+> subject, a Markdown-only brief). Migrating them to Ecosystem-wide workers, structured Upstream
+> Findings, the skeptic hop, and the ledger is tracked in the PRD's later slices, not this one.
 
 ### 4. Load repo-owned instructions
 

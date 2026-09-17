@@ -57,6 +57,12 @@ Closed vocabularies:
 `delta` is `{newFindings[], resolved[], stillPresent[]}`. It is absent on the first run for an
 Ecosystem, which has no ledger to carry forward.
 
+An Ecosystem's own `lead`, `members`, `baseline`, and `driftNotes` are not authored by a worker —
+they come from the Baseline resolver (`baseline.mjs`, and `resolve-baseline.mjs` for this repo's
+adapter), which turns an Ecosystem declaration and the installed package tree into exactly those
+four fields before any research hop runs (ADR 0084 items 1 and 2). This contract still validates
+them as any other report field; it does not resolve them itself.
+
 ## Unverified
 
 An entry the contract refuses moves to `unverified` with a named reason, and **the rest of the
