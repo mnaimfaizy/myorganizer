@@ -3,7 +3,12 @@
 import { useCallback } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import {
+  type Control,
+  type FieldValues,
+  type Path,
+  useForm,
+} from 'react-hook-form';
 import { z } from 'zod';
 
 import {
@@ -35,6 +40,74 @@ import { VAULT_OPERATIONS } from '../policy';
 import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
 type NewPassphraseInput = z.infer<typeof newPassphraseSchema>;
+
+type SharedNewPassphraseFields = Pick<
+  NewPassphraseInput,
+  'newPassphrase' | 'newPassphraseConfirm'
+>;
+
+interface ChangePassphraseSharedFieldsProps<
+  TFieldValues extends FieldValues & SharedNewPassphraseFields,
+> {
+  control: Control<TFieldValues>;
+  allowed: boolean;
+  changing: boolean;
+  submitLabel: string;
+}
+
+function ChangePassphraseSharedFields<
+  TFieldValues extends FieldValues & SharedNewPassphraseFields,
+>({
+  control,
+  allowed,
+  changing,
+  submitLabel,
+}: ChangePassphraseSharedFieldsProps<TFieldValues>) {
+  return (
+    <>
+      <FormField
+        control={control}
+        name={'newPassphrase' as Path<TFieldValues>}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>New passphrase</FormLabel>
+            <FormControl>
+              <Input {...field} type="password" disabled={!allowed} />
+            </FormControl>
+            <FormDescription>
+              Minimum {MIN_PASSPHRASE_LENGTH} characters.
+            </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
+        name={'newPassphraseConfirm' as Path<TFieldValues>}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Confirm new passphrase</FormLabel>
+            <FormControl>
+              <Input {...field} type="password" disabled={!allowed} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <div className="flex gap-2">
+        <Button
+          type="submit"
+          data-testid="change-passphrase-submit"
+          disabled={changing || !allowed}
+        >
+          {changing ? 'Changing…' : submitLabel}
+        </Button>
+      </div>
+    </>
+  );
+}
 
 const CHANGE_PASSPHRASE_CARD_FOR_UNLOCK_SECRET = {
   passphrase: {
@@ -147,46 +220,12 @@ export function ChangePassphraseCard() {
               onSubmit={recoveryForm.handleSubmit(onSubmitRecovery)}
               className="flex flex-col gap-3"
             >
-              <FormField
+              <ChangePassphraseSharedFields
                 control={recoveryForm.control}
-                name="newPassphrase"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New passphrase</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="password" disabled={!allowed} />
-                    </FormControl>
-                    <FormDescription>
-                      Minimum {MIN_PASSPHRASE_LENGTH} characters.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                allowed={allowed}
+                changing={changing}
+                submitLabel={mode.submitLabel}
               />
-
-              <FormField
-                control={recoveryForm.control}
-                name="newPassphraseConfirm"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm new passphrase</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="password" disabled={!allowed} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  data-testid="change-passphrase-submit"
-                  disabled={changing || !allowed}
-                >
-                  {changing ? 'Changing…' : mode.submitLabel}
-                </Button>
-              </div>
             </form>
           </Form>
         ) : (
@@ -209,46 +248,12 @@ export function ChangePassphraseCard() {
                 )}
               />
 
-              <FormField
+              <ChangePassphraseSharedFields
                 control={passphraseForm.control}
-                name="newPassphrase"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>New passphrase</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="password" disabled={!allowed} />
-                    </FormControl>
-                    <FormDescription>
-                      Minimum {MIN_PASSPHRASE_LENGTH} characters.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+                allowed={allowed}
+                changing={changing}
+                submitLabel={mode.submitLabel}
               />
-
-              <FormField
-                control={passphraseForm.control}
-                name="newPassphraseConfirm"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Confirm new passphrase</FormLabel>
-                    <FormControl>
-                      <Input {...field} type="password" disabled={!allowed} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex gap-2">
-                <Button
-                  type="submit"
-                  data-testid="change-passphrase-submit"
-                  disabled={changing || !allowed}
-                >
-                  {changing ? 'Changing…' : mode.submitLabel}
-                </Button>
-              </div>
             </form>
           </Form>
         )}
