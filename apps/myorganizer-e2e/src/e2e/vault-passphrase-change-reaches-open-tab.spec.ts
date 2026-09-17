@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test';
 import {
+  changePassphrase,
   createOwnedVault,
   gotoStable,
   E2E_USER_ID,
   routeApi,
   submitLoginForm,
   unlockWithPassphrase,
+  unlockVaultOnSettingsPage,
   vaultBlobRouteRelative,
   vaultBlobTypeExtractor,
   waitForOwnedVault,
@@ -313,68 +315,41 @@ test.describe('Vault Passphrase Change Reaches Open Tab (E2E)', () => {
 
     // Step 13: Unlock page1 via VaultUnlockCard (vault settings page route)
     // This uses different selectors than VaultGate's unlock panel.
-    const vaultUnlockPassphrase = page1.getByLabel('Passphrase', {
-      exact: true,
-    });
-    await expect(vaultUnlockPassphrase).toBeVisible({ timeout: 30000 });
-    await vaultUnlockPassphrase.fill(ORIGINAL_PASSPHRASE);
-    const vaultUnlockSubmit = page1.getByTestId('vault-unlock-submit');
-    await expect(vaultUnlockSubmit).toBeVisible();
-    await vaultUnlockSubmit.click();
+    await unlockVaultOnSettingsPage(page1, ORIGINAL_PASSPHRASE);
 
-    // Step 14: VaultUnlockCard's passphrase input disappearing is the unlock
-    // landing signal — not the click resolving.
-    await expect(vaultUnlockPassphrase).toHaveCount(0, { timeout: 30000 });
-
-    // Step 15: Capture etag before passphrase change
+    // Step 14: Capture etag before passphrase change
     const priorMetaEtag = serverMetaEtag;
 
-    // Step 16: Fill and submit ChangePassphraseCard
-    // The ChangePassphraseCard renders when vault is unlocked on the vault settings page
-    const currentPassphrase = page1.getByLabel('Current passphrase', {
-      exact: true,
+    // Step 15: Fill and submit ChangePassphraseCard
+    await changePassphrase(page1, {
+      current: ORIGINAL_PASSPHRASE,
+      next: NEW_PASSPHRASE,
     });
-    // Without `exact`, this also matches "Confirm new passphrase".
-    const newPassphrase = page1.getByLabel('New passphrase', { exact: true });
-    const confirmPassphrase = page1.getByLabel('Confirm new passphrase', {
-      exact: true,
-    });
-    const changeSubmit = page1.getByTestId('change-passphrase-submit');
 
-    await expect(currentPassphrase).toBeVisible({ timeout: 30000 });
-    await expect(newPassphrase).toBeVisible({ timeout: 30000 });
-    await expect(confirmPassphrase).toBeVisible({ timeout: 30000 });
-    await expect(changeSubmit).toBeVisible({ timeout: 30000 });
-
-    await currentPassphrase.fill(ORIGINAL_PASSPHRASE);
-    await newPassphrase.fill(NEW_PASSPHRASE);
-    await confirmPassphrase.fill(NEW_PASSPHRASE);
-    await changeSubmit.click();
-
-    // Step 17: Poll for Meta etag change - proves passphrase change pushed to server
+    // Step 16: Poll for Meta etag change - proves passphrase change pushed to server
     await expect
       .poll(() => serverMetaEtag !== priorMetaEtag, { timeout: 30000 })
       .toBeTruthy();
 
-    // Step 18: Dispatch focus event on page2 to trigger convergence
+    // Step 17: Dispatch focus event on page2 to trigger convergence
     // page2 was never reloaded — only a simulated window focus event per hard constraint
     await page2.evaluate(() => window.dispatchEvent(new Event('focus')));
 
-    // Step 19: Assert dialog appears on page2
+    // Step 18: Assert dialog appears on page2
     // The dialog is rendered by VaultMetaConvergeRunner when it detects passphrase change.
     // We assert the dialog is visible without asserting on copy text (which comes from
     // VAULT_META_CHANGE_COPY table and may move).
     await expect(page2.getByRole('dialog')).toBeVisible({ timeout: 30000 });
     await expect(page2.getByRole('dialog')).toHaveCount(1);
 
-    // Step 20: Dismiss dialog via Escape
+    // Step 19: Dismiss dialog via Escape
     // Dismissal records a session-scoped refusal, not a real answer.
     await page2.keyboard.press('Escape');
 
     // Verify dialog closed
     await expect(page2.getByRole('dialog')).toHaveCount(0);
 
-    // Step 21: Cleanup
+    // Step 20: Cleanup
     await ctx1.close();
     await ctx2.close();
   });
