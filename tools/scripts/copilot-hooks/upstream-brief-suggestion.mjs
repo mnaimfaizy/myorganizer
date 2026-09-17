@@ -152,15 +152,7 @@ export function checkEcosystemBaseline(
   const { toResearch } = carryForwardCheckedAndClear({
     previous: report,
     ecosystems: [{ lead: ecosystemLead, baseline: currentBaseline }],
-    readCurrent: (file) => {
-      const absolute = join(repoDir, file);
-      if (!existsSync(absolute)) return null;
-      try {
-        return readFileSync(absolute, 'utf8');
-      } catch {
-        return null;
-      }
-    },
+    readCurrent: makeFsIo(repoDir).read,
   });
 
   const baselineLeftRange = toResearch.some(

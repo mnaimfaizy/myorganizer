@@ -6,7 +6,7 @@ The reason is stewardship, not quality. This repo cannot update, review, or vouc
 
 "Personal scope, recommended" was also a contradiction on its own terms. A skill recommended to everyone belongs at project scope so everyone actually has it, in CI and in fresh clones; a skill for a particular task is situational and needs a stated trigger. The middle is where an approval sits unowned.
 
-For the need the tier was meant to serve — fast-moving framework knowledge the repo should not duplicate — `upstream-brief` is the repo-owned answer. The human names `subject@version`, it compares repo-owned instructions against official docs, and it proposes a HITL issue. The knowledge lands in this repo, under review, rather than in a vendor's package on one laptop.
+For the need the tier was meant to serve — fast-moving framework knowledge the repo should not duplicate — `upstream-brief` is the repo-owned answer. The human names an Ecosystem, optionally with a Horizon; it compares repo-owned instructions against official docs at the installed Baseline ([ADR 0084](0084-an-upstream-brief-is-anchored-to-what-is-installed-and-accepted-on-checked-evidence.md)); and it proposes a HITL issue. The knowledge lands in this repo, under review, rather than in a vendor's package on one laptop.
 
 ## Status
 
