@@ -7,26 +7,12 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Readable } from 'node:stream';
-
-// Mock the functions we need
-const mockPayload = (toolName, toolInput) => ({
-  toolName,
-  toolInput,
-});
-
-const mockStdin = (data) => {
-  const readable = Readable.from([data]);
-  return readable;
-};
 
 // ── Hook Integration Tests ──────────────────────────────────────────
 
 test('dep-sync-reminder: emits DepSync message on package mutation', async () => {
   // This test verifies that the DepSync reminder is always emitted
   // when a package mutation command is run
-
-  const payload = mockPayload('bash', 'yarn add lodash');
 
   // The hook should detect this as a package mutation and emit the reminder
   const isPackageMutation =
@@ -105,7 +91,7 @@ test('dep-sync-reminder: graceful error handling', () => {
   try {
     // Simulate an error in upstream-brief suggestion check
     throw new Error('Mock resolver failure');
-  } catch (error) {
+  } catch {
     // Hook should catch and continue with dep-sync message only
     errorHandled = true;
   }
