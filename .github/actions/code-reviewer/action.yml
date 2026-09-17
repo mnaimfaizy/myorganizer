@@ -120,6 +120,15 @@ runs:
         claude_code_oauth_token: ${{ inputs.oauth-token }}
         anthropic_api_key: ${{ inputs.api-key }}
         github_token: ${{ inputs.github-token }}
+        # By default the action refuses a workflow initiated by a bot actor,
+        # which makes every Cursor Cloud Agent push (attributed to `cursor[bot]`)
+        # fail "Agent Review Ran" with "non-human actor: cursor" instead of being
+        # reviewed. Cursor Cloud is a first-class environment here (see the
+        # `cursor/…` reserved branch prefix and the Cloud instructions in
+        # AGENTS.md), so allow that bot to be reviewed like any human push. The
+        # reviewer's job still holds only read scopes; nothing about the trust
+        # boundary changes by reviewing a cursor-authored diff.
+        allowed_bots: cursor
         prompt: |
           /code-review
 
