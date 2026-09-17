@@ -1,0 +1,332 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-09-17",
+  "commit": "f9fa66cb8a590bfd85f3176454bb03015742de84",
+  "ecosystems": [
+    {
+      "lead": "nx",
+      "members": [
+        "@nx/cypress",
+        "@nx/detox",
+        "@nx/devkit",
+        "@nx/docker",
+        "@nx/eslint",
+        "@nx/eslint-plugin",
+        "@nx/express",
+        "@nx/jest",
+        "@nx/js",
+        "@nx/module-federation",
+        "@nx/next",
+        "@nx/node",
+        "@nx/nx-darwin-arm64",
+        "@nx/playwright",
+        "@nx/react",
+        "@nx/react-native",
+        "@nx/rollup",
+        "@nx/storybook",
+        "@nx/vite",
+        "@nx/vitest",
+        "@nx/web",
+        "@nx/webpack",
+        "@nx/workspace",
+        "nx"
+      ],
+      "baseline": "22.7.7",
+      "driftNotes": [],
+      "findings": [
+        {
+          "type": "mismatch",
+          "urgency": "broken-now",
+          "claim": "libs/email-shell/AGENTS.md teaches `yarn nx run email-shell:eslint:lint` and says nx.json names the inferred ESLint target `eslint:lint`, but `@nx/eslint/plugin` at 22.7.7 defaults the inferred target to `lint`, this workspace sets `targetName` to `lint`, and the taught command fails.",
+          "evidence": "executed",
+          "source": {
+            "url": "https://raw.githubusercontent.com/nrwl/nx/22.7.7/packages/eslint/src/plugins/plugin.ts",
+            "quote": "targetName: options?.targetName ?? 'lint',",
+            "pageVersion": "22.7.7"
+          },
+          "local": [
+            {
+              "file": "libs/email-shell/AGENTS.md",
+              "line": 15,
+              "text": "- Lint: `yarn nx run email-shell:eslint:lint`. This library has no `lint` target of its own — the"
+            },
+            {
+              "file": "libs/email-shell/AGENTS.md",
+              "line": 16,
+              "text": "  one it runs is inferred by `@nx/eslint/plugin`, which nx.json names `eslint:lint`."
+            },
+            {
+              "file": "nx.json",
+              "line": 56,
+              "text": "        \"targetName\": \"lint\""
+            }
+          ],
+          "executed": {
+            "command": "yarn nx run email-shell:eslint:lint --skip-nx-cache",
+            "exitCode": 1
+          },
+          "disposition": "plan"
+        },
+        {
+          "type": "mismatch",
+          "urgency": "advisory",
+          "claim": "The Nx workflow Skill generator table lists a `library` generator on `@nx/workspace`, but `@nx/workspace` at 22.7.7 has no such generator — its project generators are `move` and `remove`.",
+          "evidence": "executed",
+          "source": {
+            "url": "https://raw.githubusercontent.com/nrwl/nx/22.7.7/packages/workspace/generators.json",
+            "quote": "\"description\": \"Move an application or library to another folder.\"",
+            "pageVersion": "22.7.7"
+          },
+          "local": [
+            {
+              "file": ".agents/skills/nx-monorepo-workflow/SKILL.md",
+              "line": 41,
+              "text": "| `@nx/workspace`  | `library`, `move`, `remove`        |"
+            }
+          ],
+          "executed": {
+            "command": "yarn nx list @nx/workspace",
+            "exitCode": 0
+          },
+          "disposition": "plan"
+        }
+      ],
+      "checkedAndClear": [
+        {
+          "claim": "`yarn nx lint <project>` matches the inferred ESLint target name this workspace configures (`lint`) and the plugin default at 22.7.7.",
+          "source": {
+            "url": "https://raw.githubusercontent.com/nrwl/nx/22.7.7/packages/eslint/src/plugins/plugin.ts",
+            "quote": "targetName: options?.targetName ?? 'lint',",
+            "pageVersion": "22.7.7"
+          },
+          "local": [
+            {
+              "file": "AGENTS.md",
+              "line": 23,
+              "text": "- Do not suggest `next lint`. Lint with Nx/ESLint (`yarn nx lint <project>` or `yarn lint`)."
+            }
+          ],
+          "holdsFor": "22.x"
+        },
+        {
+          "claim": "`yarn nx test <project-name>` is the documented infix form for running a project's test target.",
+          "source": {
+            "url": "https://nx.dev/docs/reference/nx-commands",
+            "quote": "nx affected -t custom-target",
+            "pageVersion": "22.7.7"
+          },
+          "local": [
+            {
+              "file": "AGENTS.md",
+              "line": 44,
+              "text": "- Test one Jest project: `yarn nx test <project-name>`."
+            }
+          ],
+          "holdsFor": "22.x"
+        },
+        {
+          "claim": "`yarn nx graph` is the documented graph command; this repo no longer teaches `nx dep-graph`.",
+          "source": {
+            "url": "https://nx.dev/docs/reference/nx-commands",
+            "quote": "Graph dependencies within workspace.",
+            "pageVersion": "22.7.7"
+          },
+          "local": [
+            {
+              "file": ".agents/skills/nx-monorepo-workflow/references/nx-cli-runbook.md",
+              "line": 186,
+              "text": "yarn nx graph"
+            }
+          ],
+          "holdsFor": "22.x"
+        },
+        {
+          "claim": "`yarn nx show projects --affected` is the documented replacement for the removed `affected:apps` / `affected:libs` commands.",
+          "source": {
+            "url": "https://nx.dev/docs/reference/nx-commands",
+            "quote": "nx show projects --affected",
+            "pageVersion": "22.7.7"
+          },
+          "local": [
+            {
+              "file": "DEVELOPMENT.md",
+              "line": 1147,
+              "text": "yarn nx show projects --affected"
+            }
+          ],
+          "holdsFor": "22.x"
+        },
+        {
+          "claim": "`yarn nx affected -t <target>` is the documented affected form; colon-form `affected:build` aliases are no longer taught.",
+          "source": {
+            "url": "https://nx.dev/docs/reference/nx-commands",
+            "quote": "Run target for affected projects. Affected projects are projects that have been changed and projects that depend on the changed projects.",
+            "pageVersion": "22.7.7"
+          },
+          "local": [
+            {
+              "file": ".agents/skills/nx-monorepo-workflow/SKILL.md",
+              "line": 68,
+              "text": "5. If affected commands are needed (e.g. CI), use `yarn nx affected -t <target>`. To see which projects"
+            }
+          ],
+          "holdsFor": "22.x"
+        },
+        {
+          "claim": "Since 22.0.0, `nx format` no longer sorts TypeScript path mappings by default; `--sort-root-tsconfig-paths` restores it, and the instructions teach that flag.",
+          "source": {
+            "url": "https://github.com/nrwl/nx/releases/tag/22.0.0",
+            "quote": "BREAKING CHANGE: The `nx format` command and generators no longer default to sorting TypeScript path mappings. To keep the previous behavior, pass the `--sort-root-tsconfig-paths` flag to the command or set `NX_FORMAT_SORT_TSCONFIG_PATHS=true`.",
+            "pageVersion": "22.0.0"
+          },
+          "local": [
+            {
+              "file": "DEVELOPMENT.md",
+              "line": 701,
+              "text": "yarn nx format:write --sort-root-tsconfig-paths"
+            },
+            {
+              "file": "DEVELOPMENT.md",
+              "line": 704,
+              "text": "Since Nx 22.0.0, `nx format` no longer sorts `tsconfig.base.json` path mappings by default, and neither"
+            }
+          ],
+          "holdsFor": ">=22.0.0 <23.0.0"
+        },
+        {
+          "claim": "`@nx/react:hook` exists at 22.7.7, so the generator table's `hook` row holds.",
+          "source": {
+            "url": "https://raw.githubusercontent.com/nrwl/nx/22.7.7/packages/react/generators.json",
+            "quote": "\"description\": \"Create a hook.\"",
+            "pageVersion": "22.7.7"
+          },
+          "local": [
+            {
+              "file": ".agents/skills/nx-monorepo-workflow/SKILL.md",
+              "line": 34,
+              "text": "| `@nx/react`      | `library`, `component`, `hook`     |"
+            }
+          ],
+          "holdsFor": "22.x"
+        },
+        {
+          "claim": "`yarn nx g @nx/react:lib` is a documented alias of `@nx/react:library` at 22.7.7.",
+          "source": {
+            "url": "https://nx.dev/docs/reference/nx-commands",
+            "quote": "Generate or update source code (e.g., nx generate @nx/js:lib mylib).",
+            "pageVersion": "22.7.7"
+          },
+          "local": [
+            {
+              "file": "DEVELOPMENT.md",
+              "line": 1105,
+              "text": "yarn nx g @nx/react:lib my-new-lib"
+            }
+          ],
+          "holdsFor": "22.x"
+        },
+        {
+          "claim": "`nx generate` / `nx g` is the documented scaffolding command; the Skill tells agents to use it instead of hand-creating libraries.",
+          "source": {
+            "url": "https://nx.dev/docs/reference/nx-commands",
+            "quote": "Generate or update source code (e.g., nx generate @nx/js:lib mylib).",
+            "pageVersion": "22.7.7"
+          },
+          "local": [
+            {
+              "file": ".agents/skills/nx-monorepo-workflow/SKILL.md",
+              "line": 19,
+              "text": "- **Always use the Nx CLI** (`nx generate` / `nx g`) instead of creating library or app scaffolding by hand. This ensures consistent project config, `project.json`, `tsconfig`, Jest config, and ESLint config are all wired up correctly."
+            }
+          ],
+          "holdsFor": "22.x"
+        },
+        {
+          "claim": "The Skill no longer hard-codes an Nx version literal; it points at TECH_STACK.md as the pin.",
+          "source": {
+            "url": "https://github.com/nrwl/nx/releases/tag/22.7.7",
+            "quote": "**core:** prevent path traversal / zip-slip in self-hosted remote cache (#36116)",
+            "pageVersion": "22.7.7"
+          },
+          "local": [
+            {
+              "file": ".agents/skills/nx-monorepo-workflow/SKILL.md",
+              "line": 73,
+              "text": "`TECH_STACK.md` records which Nx version is pinned — do not restate it here or anywhere else in this"
+            }
+          ],
+          "holdsFor": "22.x"
+        }
+      ],
+      "opportunities": [],
+      "incidental": []
+    }
+  ],
+  "scanned": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "GEMINI.md",
+    "DEVELOPMENT.md",
+    ".github/copilot-instructions.md",
+    ".claude/checklist.md",
+    "docs/ui/GUIDELINES.md",
+    "apps/AGENTS.md",
+    "apps/backend/AGENTS.md",
+    "apps/myorganizer/AGENTS.md",
+    "apps/mobile/AGENTS.md",
+    "apps/myorganizer-e2e/AGENTS.md",
+    "libs/AGENTS.md",
+    "libs/email-shell/AGENTS.md",
+    "libs/design-tokens/AGENTS.md",
+    "libs/web/pages/AGENTS.md",
+    ".agents/skills/nx-monorepo-workflow/SKILL.md",
+    ".agents/skills/nx-monorepo-workflow/references/nx-cli-runbook.md",
+    ".agents/skills/implement/SKILL.md",
+    ".agents/skills/frontend-page-library-workflow/SKILL.md",
+    ".agents/skills/vault-feature-workflow/SKILL.md",
+    ".agents/skills/backend-api-contract-change/SKILL.md",
+    ".agents/skills/prisma-migration-workflow/SKILL.md",
+    ".agents/skills/playwright-e2e-workflow/SKILL.md",
+    ".agents/skills/unit-test-delegation-workflow/SKILL.md",
+    ".agents/skills/commit-change-workflow/SKILL.md",
+    ".agents/skills/code-review/SKILL.md",
+    ".github/agents/audit.agent.md",
+    ".github/agents/test-reviewer.agent.md",
+    ".github/agents/test-scaffold.agent.md",
+    ".github/agents/test-runner.agent.md",
+    ".github/agents/explore.agent.md",
+    "tools/scripts/check-component-hygiene.mjs",
+    "tools/scripts/check-test-hygiene.mjs",
+    "tools/scripts/check-readme.mjs",
+    "tools/scripts/check-vault-pages.mjs",
+    "tools/scripts/check-auth-pages.mjs",
+    "tools/scripts/check-mobile-platform.mjs",
+    "nx.json",
+    "https://github.com/nrwl/nx/releases/tag/22.0.0",
+    "https://github.com/nrwl/nx/releases/tag/22.7.7",
+    "https://nx.dev/docs/reference/nx-commands",
+    "https://nx.dev/docs/reference/releases",
+    "https://raw.githubusercontent.com/nrwl/nx/22.7.7/astro-docs/src/content/docs/concepts/inferred-tasks.mdoc",
+    "https://raw.githubusercontent.com/nrwl/nx/22.7.7/astro-docs/src/content/docs/reference/releases.mdoc",
+    "https://raw.githubusercontent.com/nrwl/nx/22.7.7/packages/eslint/src/plugins/plugin.ts",
+    "https://raw.githubusercontent.com/nrwl/nx/22.7.7/packages/workspace/generators.json",
+    "https://raw.githubusercontent.com/nrwl/nx/22.7.7/packages/react/generators.json",
+    "nx — https://raw.githubusercontent.com/nrwl/nx/22.7.7/astro-docs/src/content/docs/concepts/inferred-tasks.mdoc — already adopted at nx.json @nx/eslint/plugin and @nx/jest/plugin; yarn nx:targets:check baseline is empty",
+    "nx — https://raw.githubusercontent.com/nrwl/nx/22.7.7/astro-docs/src/content/docs/guides/Tasks%20%26%20Caching/convert-to-inferred.mdoc — infer-targets considered; no remaining @nx/* executor Declared Targets to convert",
+    "nx — https://github.com/nrwl/nx/releases/tag/22.7.7 — self-hosted remote-cache zip-slip fix does not reach this repo (no nxCloud/remoteCache configured)",
+    "nx — https://raw.githubusercontent.com/nrwl/nx/22.7.7/packages/webpack/index.d.ts — withNx/composePlugins carry no @deprecated marker at 22.7.7; v23 blog not cited (no Horizon)",
+    "nx — https://raw.githubusercontent.com/nrwl/nx/22.7.7/astro-docs/src/content/docs/reference/releases.mdoc — 22.7.7-tagged support table lists v22 as Current; live nx.dev/docs/reference/releases (unstated page version) lists v22 as LTS; no Horizon so the live calendar is not a Baseline-matched source",
+    "https://nx.dev/docs/concepts/inferred-tasks — 404 / Mental Model redirect",
+    "https://nx.dev/docs/features/inferred-tasks — 404",
+    "https://nx.dev/nx-api/next/documents/with-nx — 404"
+  ],
+  "failedHops": [],
+  "unverified": [],
+  "counts": {
+    "findings": 2,
+    "checkedAndClear": 10,
+    "opportunities": 0,
+    "incidental": 0,
+    "unverified": 0
+  }
+}
