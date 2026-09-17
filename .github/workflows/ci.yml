@@ -562,6 +562,9 @@ jobs:
       - name: Documented-command checker contracts
         run: corepack yarn docs:commands:test
 
+      - name: README checker contracts
+        run: corepack yarn readme:test
+
       - name: Release pipeline page checker contracts
         run: corepack yarn deploy:pages:test
 

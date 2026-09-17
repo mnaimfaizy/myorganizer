@@ -76,17 +76,53 @@ const layout = readme.match(/```\s*\nmyorganizer\/([\s\S]*?)```/);
 if (!layout) fail('no repository layout diagram found in README.md');
 const diagram = layout[1];
 
-for (const app of dirNames('apps').filter((n) => !APPS_IGNORED.has(n))) {
-  asserted += 1;
-  if (!documentedIn(diagram, app)) {
-    findings.push(`apps/${app} exists but is missing from the layout diagram`);
+// apps and libs differ only in which directory they read and which names they
+// skip, and the reverse pass below differs from this one only in its predicate.
+// Writing the pair out four times is how one of the four ends up missing a
+// direction, which is the defect this checker exists to catch.
+const SECTIONS = [
+  ['apps', APPS_IGNORED],
+  ['libs', LIBS_IGNORED],
+];
+
+for (const [kind, ignored] of SECTIONS) {
+  for (const name of dirNames(kind).filter((n) => !ignored.has(n))) {
+    asserted += 1;
+    if (!documentedIn(diagram, name)) {
+      findings.push(
+        `${kind}/${name} exists but is missing from the layout diagram`,
+      );
+    }
   }
 }
 
-for (const lib of dirNames('libs').filter((n) => !LIBS_IGNORED.has(n))) {
-  asserted += 1;
-  if (!documentedIn(diagram, lib)) {
-    findings.push(`libs/${lib} exists but is missing from the layout diagram`);
+// Check the reverse direction: every app/lib in the diagram must exist in the filesystem.
+const sections = { apps: [], libs: [] };
+let currentSection = null;
+
+for (const line of diagram.split('\n')) {
+  if (line.includes('├── apps/') || line.includes('└── apps/')) {
+    currentSection = 'apps';
+  } else if (line.includes('├── libs/') || line.includes('└── libs/')) {
+    currentSection = 'libs';
+  } else if (line.match(/^├── |^└── /)) {
+    currentSection = null;
+  } else if (currentSection) {
+    const match = line.match(/│\s*[├└]──\s+([\w/-]+)\//);
+    if (match) {
+      sections[currentSection].push(match[1]);
+    }
+  }
+}
+
+for (const [kind, ignored] of SECTIONS) {
+  for (const name of sections[kind]) {
+    asserted += 1;
+    if (!ignored.has(name) && !existsSync(`${kind}/${name}`)) {
+      findings.push(
+        `layout diagram names ${kind}/${name}, which does not exist`,
+      );
+    }
   }
 }
 

@@ -1040,14 +1040,14 @@
               <circle class="tipdot" cx="542" cy="74" r="4" />
               <text class="title" x="312" y="92">Fixed point</text>
               <text x="312" y="112">git diff &lt;fp&gt;...HEAD</text>
-              <text class="src" x="312" y="130">SKILL.md:25</text>
+              <text class="src" x="312" y="130">SKILL.md:54</text>
             </g>
             <g class="step" data-tip="local-spec" tabindex="0" aria-label="Spec source: branch name, then commit references, then argument, then ask" aria-describedby="note-local-spec">
               <rect class="box" x="590" y="66" width="290" height="76" rx="6" />
               <circle class="tipdot" cx="872" cy="74" r="4" />
               <text class="title" x="602" y="92">Spec source</text>
               <text x="602" y="112">branch &#8594; commits &#8594; arg &#8594; ask</text>
-              <text class="src" x="602" y="130">AGENTS.md:133, SKILL.md:33</text>
+              <text class="src" x="602" y="130">AGENTS.md:185, SKILL.md:64</text>
             </g>
             <path class="flow local" d="M 880 142 C 940 220, 980 250, 1030 300" />
 
@@ -1153,14 +1153,14 @@
         <dt>local-diff</dt>
         <dd id="note-local-diff">
           The fixed point is pinned with <code>git diff &lt;fixed-point&gt;...HEAD</code>
-          (three-dot, against the merge-base) &mdash; <code>SKILL.md:25</code>.
+          (three-dot, against the merge-base) &mdash; <code>SKILL.md:54</code>.
         </dd>
         <dt>local-spec</dt>
         <dd id="note-local-spec">
           Spec discovery tries, in order: the issue number in the branch name
           (<code>&lt;type&gt;/&lt;issue-number&gt;-&lt;slug&gt;</code> puts the
-          issue first, <code>AGENTS.md:133</code>), then commit references
-          (<code>SKILL.md:33</code>), then an argument, then it asks. No spec
+          issue first, <code>AGENTS.md:185</code>), then commit references
+          (<code>SKILL.md:64</code>), then an argument, then it asks. No spec
           source tightens the envelope to <code>human</code> &mdash; only the
           validator's verdict math does that.
         </dd>
@@ -1192,7 +1192,7 @@
           <code>Authoritative Lockfile Policy</code>, <code>Secure Install
           Review</code>, <code>Prepare Dependency Cache</code>,
           <code>Setup Affected Context</code>, <code>Lint</code>,
-          <code>Test</code> (<code>ci.yml:23,142,203,335,413,459</code>). The
+          <code>Test</code> (<code>ci.yml:23, :142, :203, :335, :413, :459</code>). The
           <code>Test</code> job sets <code>DATABASE_URL</code>
           (<code>ci.yml:467</code>) but starts no database service, so
           affected Jest runs without one &mdash; which is why the Reviewer's
@@ -1217,7 +1217,7 @@
         <dt>reviewer</dt>
         <dd id="note-reviewer">
           Two sub-agents, one per axis, <code>standards</code> and
-          <code>spec</code> (<code>SKILL.md:15,64</code>), each emitting a
+          <code>spec</code> (<code>SKILL.md:14-15, :17</code>), each emitting a
           findings array; the main agent assembles the envelope and authors no
           finding of its own (ADR 0071 item 7). It may execute, in a
           <code>git worktree</code> under <code>tmp/</code> it cannot keep
@@ -1556,7 +1556,7 @@
             <li>A third label set beside <code>orchestration</code> and <code>surface</code></li>
             <li>Lives on a Pull Request, never an Issue</li>
           </ul>
-          <p class="small muted"><code>tools/config/github-labels.json:3,80</code>.</p>
+          <p class="small muted"><code>tools/config/github-labels.json:3, :80</code>.</p>
         </div>
       </div>
       <p class="small muted" style="margin-top: 12px">
@@ -1726,6 +1726,88 @@
     "gateTierLabels": ["gate:mechanical", "gate:standard", "gate:full"],
     "agentVerdictCheck": "Agent Verdict",
     "agentReviewRanCheck": "Agent Review Ran"
+  }
+</script>
+
+<script type="application/json" id="citation-anchors">
+  {
+    "note": "Expected-content anchors for finding-lifecycle.html, verified against source on 2026-09-16",
+    "anchors": {
+      "SKILL.md:14-15": {
+        "file": ".agents/skills/code-review/SKILL.md",
+        "start": "- **Standards** — does the code conform to this repo's documented coding standards?",
+        "end": "- **Spec** — does the code faithfully implement the originating issue / PRD / spec?"
+      },
+      "SKILL.md:17": {
+        "file": ".agents/skills/code-review/SKILL.md",
+        "start": "Each axis runs as a **parallel sub-agent** that returns findings as JSON. The main agent assembles"
+      },
+      "SKILL.md:54": {
+        "file": ".agents/skills/code-review/SKILL.md",
+        "start": "The diff command is `git diff <fixed-point>...HEAD` (three-dot); the commit list is"
+      },
+      "SKILL.md:64": {
+        "file": ".agents/skills/code-review/SKILL.md",
+        "start": "2. **Issue references in commits** — `#123`, `Closes #45` in the commit list. `foundBy: commits`."
+      },
+      "SKILL.md:82": {
+        "file": ".agents/skills/code-review/SKILL.md",
+        "start": "it (`AGENTS.md`, Branch naming). That is why an agent-authored pull request resolves a spec without"
+      },
+      "AGENTS.md:185": {
+        "file": "AGENTS.md",
+        "start": "Format: `<type>/<issue-number>-<short-slug>`. The issue number comes **first**, right after the"
+      },
+      "ci.yml:16": {
+        "file": ".github/workflows/ci.yml",
+        "start": "cancel-in-progress: true"
+      },
+      "ci.yml:23": {
+        "file": ".github/workflows/ci.yml",
+        "start": "name: Authoritative Lockfile Policy"
+      },
+      "ci.yml:142": {
+        "file": ".github/workflows/ci.yml",
+        "start": "name: Secure Install Review"
+      },
+      "ci.yml:203": {
+        "file": ".github/workflows/ci.yml",
+        "start": "name: Prepare Dependency Cache"
+      },
+      "ci.yml:335": {
+        "file": ".github/workflows/ci.yml",
+        "start": "name: Setup Affected Context"
+      },
+      "ci.yml:413": {
+        "file": ".github/workflows/ci.yml",
+        "start": "name: Lint"
+      },
+      "ci.yml:459": {
+        "file": ".github/workflows/ci.yml",
+        "start": "name: Test"
+      },
+      "ci.yml:467": {
+        "file": ".github/workflows/ci.yml",
+        "start": "DATABASE_URL: postgresql://localhost:5432/myorganizer"
+      },
+      ".github/CODEOWNERS:3": {
+        "file": ".github/CODEOWNERS",
+        "start": "* @mnaimfaizy"
+      },
+      "docs/adr/0012-tiered-quality-gates.md:17-19": {
+        "file": "docs/adr/0012-tiered-quality-gates.md",
+        "start": "| `gate:mechanical` | Fixture/type retarget, rename, delete dead code, selector-only E2E string fix, already-satisfied AC verification, import/path fix with no behavior change | Main agent may edit directly (interactive or AFK) | Focused lint + focused tests (or `tsc` for type-only). No specialist chain. Short report (≤5 bullets). |",
+        "end": "| `gate:full` | New UI primitive/feature module, vault/crypto, API contract, multi-file product behavior, ambiguous UX | Current mandatory chains. **API Contract** uses One-shot Specialists (ADR 0015), not a Gated Pipeline. | Full documented pipelines. ComponentReviewer retry cap = 2 (mirror test pipeline; [ADR 0017](0017-gated-pipeline-cap-and-slice-code-review.md)). API Contract: PrismaWriter → ApiWriter → ApiSync, then leave. |"
+      },
+      "tools/config/github-labels.json:3": {
+        "file": "tools/config/github-labels.json",
+        "start": "\"orchestration\": ["
+      },
+      "tools/config/github-labels.json:80": {
+        "file": "tools/config/github-labels.json",
+        "start": "\"review\": ["
+      }
+    }
   }
 </script>
 

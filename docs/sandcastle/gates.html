@@ -1420,7 +1420,7 @@
   <section class="panel" aria-labelledby="hero-h">
     <div class="phead">
       <h2 id="hero-h">One gate, two callers</h2>
-      <span class="src">main.mts:1629-1824</span>
+      <span class="src">main.mts:1695-1925</span>
     </div>
     <div class="pbody">
       <div class="chips">
@@ -2112,7 +2112,7 @@
   <section class="panel" aria-labelledby="scope-h">
     <div class="phead">
       <h2 id="scope-h">Two scopes, because the targets have different blast radii</h2>
-      <span class="src">main.mts:153, 205, 1642-1687</span>
+      <span class="src">main.mts:157-167, :206-209, :1708-1722</span>
     </div>
     <div class="pbody">
       <p>
@@ -2282,7 +2282,7 @@
   <section class="panel" aria-labelledby="modes-h">
     <div class="phead">
       <h2 id="modes-h">The two modes, side by side</h2>
-      <span class="src">main.mts:1806-1824, 2659-2669, 2948-2963</span>
+      <span class="src">main.mts:1806-1824, :1904-1908, :1912-1920</span>
     </div>
     <div class="pbody">
       <div class="scrollx">
@@ -2350,7 +2350,7 @@
         on the PR &mdash; while costing one container install per slice.
         <span class="small muted"
           >&mdash; <code>runFeatureGate</code> docblock,
-          <code>main.mts:1812-1817</code></span
+          <code>main.mts:1915-1917</code></span
         >
       </blockquote>
 
@@ -2420,7 +2420,7 @@
   <section class="panel" aria-labelledby="red-h">
     <div class="phead">
       <h2 id="red-h">Reading a red gate</h2>
-      <span class="src">main.mts:1101-1115, 2891-2913</span>
+      <span class="src">main.mts:1881-1882, :2891-2913</span>
     </div>
     <div class="pbody">
       <ol class="chain">
@@ -3349,4 +3349,66 @@
     paint();
     /* Never autoplay when the reader has asked for less motion. */
   })();
+</script>
+
+<script type="application/json" id="citation-anchors">
+{
+  "note": "Citation anchors for docs/sandcastle/gates.html, re-verified on 2026-09-17 against .sandcastle/main.mts. Every continuation range is written as a bare :NNN so findCitations sees it — a comma-separated number without a leading colon is a claim nothing checks.",
+  "anchors": {
+    "main.mts:1695-1925": {
+      "file": ".sandcastle/main.mts",
+      "start": "function runGate(",
+      "end": "return runGate(featureBranch, prdGateBase, featureBranch);"
+    },
+    "main.mts:157-167": {
+      "file": ".sandcastle/main.mts",
+      "start": "* Maps the files a slice changed (between base and head) to the Nx projects that",
+      "end": "* `affectedProjects` instead."
+    },
+    "main.mts:206-209": {
+      "file": ".sandcastle/main.mts",
+      "start": "* The Nx projects a slice affects: the projects whose own files changed PLUS every",
+      "end": "* and that consumer's own files never changed."
+    },
+    "main.mts:1708-1722": {
+      "file": ".sandcastle/main.mts",
+      "start": "const targets = (process.env.SLICE_GATE_TARGETS || 'lint test build').trim();",
+      "end": "const changed = changedProjects(base, head);"
+    },
+    "main.mts:1806-1824": {
+      "file": ".sandcastle/main.mts",
+      "start": "// Validate this slice INSIDE the Linux container (cross-platform: WSL2, native",
+      "end": "'docker',"
+    },
+    "main.mts:1904-1908": {
+      "file": ".sandcastle/main.mts",
+      "start": "* Gate ONE slice against its base. Retained for standalone runs, where the work",
+      "end": "return runGate(`#${issue.number}`, baseRef, sliceBranch, issue.number);"
+    },
+    "main.mts:1912-1920": {
+      "file": ".sandcastle/main.mts",
+      "start": "* Gate the whole PRD once, on the integrated feature branch, against the ref the",
+      "end": "function runFeatureGate(featureBranch: string): boolean {"
+    },
+    "main.mts:1915-1917": {
+      "file": ".sandcastle/main.mts",
+      "start": "* This is the gate that matters. A per-slice gate can only see one slice against",
+      "end": "* and fail on the PR — while costing one container install per slice. Gating"
+    },
+    "main.mts:1881-1882": {
+      "file": ".sandcastle/main.mts",
+      "start": "const ok = gate.status === 0;",
+      "end": "console.log(`  [${label}] gate: ${ok ? 'PASS' : 'FAIL'}.`);"
+    },
+    "main.mts:2891-2913": {
+      "file": ".sandcastle/main.mts",
+      "start": "'edit',",
+      "end": ");"
+    },
+    "main.mts:1925": {
+      "file": ".sandcastle/main.mts",
+      "start": "return runGate(featureBranch, prdGateBase, featureBranch);"
+    }
+  }
+}
 </script>

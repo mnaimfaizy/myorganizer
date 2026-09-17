@@ -35,7 +35,7 @@ export const LEGACY = {
   'docs/agents/skill-atlas.html':
     'Carries no @font-face block; its typography falls back to system stacks. Predates the canonical block.',
   'docs/authentication/session-lifecycle.html':
-    'Carries its own @font-face block rather than the canonical one, defines dark tokens under an unguarded @media, and is absent from .prettierignore.',
+    'Carries its own @font-face block rather than the canonical one, and defines dark tokens under an unguarded @media.',
   'docs/vault/lifecycle.html':
     'Canvas export, and the source of the canonical @font-face block. Defines dark tokens only under [data-theme=dark], with no prefers-color-scheme state.',
   'docs/vault/trust-boundary.html':

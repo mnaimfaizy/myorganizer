@@ -1091,6 +1091,32 @@ test('findCitations is a pure discovery function usable without scanDesignPage',
   assert.equal(citations[0].name, 'ci.yml');
 });
 
+test('a clock time is not a citation', () => {
+  // `4:30am` shares the bare-citation shape, and the bare form takes its name
+  // from the last file the page named — so this minted a citation to
+  // main.mts:30 that nothing on the page ever meant. resume.html carried two of
+  // them, and they were the only citations the scanner found on a page that
+  // cites nothing (#800), which is how that issue's premise came to be wrong.
+  const citations = findCitations(
+    '<span class="src">main.mts</span> resets 4:30am (UTC), then 2:30 pm AEST',
+  );
+  assert.deepEqual(citations, []);
+});
+
+test('a continuation range after a separator is still a citation', () => {
+  // The guard above refuses a colon a DIGIT precedes, not every bare colon. The
+  // house form for several ranges of one file writes them after a comma, and
+  // that must keep working — it is what makes the continuations visible to the
+  // gate at all.
+  const citations = findCitations(
+    '<span class="src">main.mts:153, :205, :1642-1687</span>',
+  );
+  assert.deepEqual(
+    citations.map((c) => `${c.name}:${c.line}-${c.endLine}`),
+    ['main.mts:153-153', 'main.mts:205-205', 'main.mts:1642-1687'],
+  );
+});
+
 test('a citation inside a <style> or <script> block is not discovered', () => {
   // opacity:0 / opacity:1 in a CSS keyframe is not a citation — the real defect
   // this guards: :root's dark palette selector shares the digit-after-colon shape

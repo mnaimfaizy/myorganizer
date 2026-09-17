@@ -17,12 +17,10 @@ import {
   VaultSecretMismatchError,
   claimUnclaimedLocalVaultWithRecoveryKey,
   createDefaultAuditReporter,
-  createVaultApi,
   exportVault,
   newPassphraseSchema,
   replaceOwnedLocalVaultOnEvidence,
   replaceOwnedLocalVaultWithRecoveryKey,
-  resetPassphraseAfterRecovery,
 } from '@myorganizer/web-vault';
 
 import { downloadJsonFile } from './downloadFile';
@@ -32,7 +30,6 @@ import {
 } from './RecoveryKeyClaimOffer';
 import { RecoveryKeyAcknowledgment } from './RecoveryKeyAcknowledgment';
 import { UnacknowledgedRecoveryKeyBanner } from './UnacknowledgedRecoveryKeyBanner';
-import { RecoverySetNewPassphraseForm } from './RecoverySetNewPassphraseForm';
 import { useOptionalVaultSession } from './session';
 import { useLocalVaultRevision } from './useLocalVaultRevision';
 import { ABSENT_EVIDENCE_WITHOUT_OWNER } from './useVaultAbsentEvidence';
@@ -200,7 +197,7 @@ export function VaultGate(props: VaultGateProps) {
       // Claimed and unlocked in one step: the evidence was the key, so there is
       // nothing further to ask for. The vault status is already 'owned' and will
       // be read live on the next render.
-      setMasterKeyBytes(result.masterKeyBytes);
+      setMasterKeyBytes(result.masterKeyBytes, 'recovery-key');
       toast({
         title: 'Vault claimed',
         description: 'This vault is yours and is unlocked on this device.',
@@ -247,7 +244,7 @@ export function VaultGate(props: VaultGateProps) {
         setPendingReplace(null);
         return;
       }
-      setMasterKeyBytes(result.masterKeyBytes);
+      setMasterKeyBytes(result.masterKeyBytes, 'recovery-key');
     } else {
       const result = replaceOwnedLocalVaultOnEvidence({ handle });
       if (result.kind !== 'replaced') {
@@ -283,53 +280,6 @@ export function VaultGate(props: VaultGateProps) {
       setDismissedServerMetaOffer(true);
     }
   }, [pendingReplace]);
-
-  const handleSetNewPassphrase = useCallback(
-    async (passphrase: string): Promise<void> => {
-      if (!masterKeyBytes || !handle) return;
-
-      try {
-        const result = await resetPassphraseAfterRecovery({
-          api: createVaultApi(),
-          handle,
-          newPassphrase: passphrase,
-        });
-
-        // The local change has landed either way, so the User is
-        // let in either way. What differs is whether their other
-        // devices know — and a User who has just recovered from a
-        // passphrase they could not remember needs to hear that the
-        // old one still unlocks those devices. That is the reason
-        // they were rotating, not a sync detail.
-        // `noop-already-in-sync` is a success too: the server holds
-        // this wrapping, which is all the copy below claims.
-        const reachedServer =
-          result.push.kind === 'pushed' ||
-          result.push.kind === 'noop-already-in-sync';
-
-        toast(
-          reachedServer
-            ? {
-                title: 'Passphrase updated',
-                description:
-                  'Your other devices will offer you the new passphrase next time you use them.',
-              }
-            : {
-                title: 'Passphrase updated on this device',
-                description:
-                  'Your other devices still unlock with the old passphrase. This device will keep trying to tell them.',
-              },
-        );
-      } catch (e: unknown) {
-        toast({
-          title: 'Failed',
-          description: e instanceof Error ? e.message : String(e),
-          variant: 'destructive',
-        });
-      }
-    },
-    [masterKeyBytes, handle, toast],
-  );
 
   const handleAcknowledgeRecoveryKey = useCallback((): void => {
     handle?.acknowledgeRecoveryKey();
@@ -378,7 +328,7 @@ export function VaultGate(props: VaultGateProps) {
         recoveryKey: recoveryInput.trim(),
       });
 
-      setMasterKeyBytes(result.masterKeyBytes);
+      setMasterKeyBytes(result.masterKeyBytes, 'recovery-key');
       toast({
         title: 'Recovered',
         description: 'Vault unlocked with your recovery key.',
@@ -415,7 +365,7 @@ export function VaultGate(props: VaultGateProps) {
       const result = await handle.unlockWithPassphrase({
         passphrase,
       });
-      setMasterKeyBytes(result.masterKeyBytes);
+      setMasterKeyBytes(result.masterKeyBytes, 'passphrase');
       toast({
         title: 'Unlocked',
         description: 'Vault unlocked for this session.',
@@ -704,11 +654,6 @@ export function VaultGate(props: VaultGateProps) {
             >
               Unlock with recovery key
             </Button>
-
-            <RecoverySetNewPassphraseForm
-              masterKeyBytes={masterKeyBytes}
-              onSubmit={handleSetNewPassphrase}
-            />
           </CardContent>
         </Card>
       </div>

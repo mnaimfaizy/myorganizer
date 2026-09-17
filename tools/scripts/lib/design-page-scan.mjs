@@ -464,9 +464,16 @@ const NAME_RE = /(?:[\w.-]+\/)+[\w.-]+|[\w.-]+\.[A-Za-z0-9]+/;
 // Either a name (optionally followed by :line, whether or not it carries one —
 // a panel heading routinely just names the file it is about) or, with no name,
 // a bare :line on its own.
+// The bare form refuses a colon that a digit precedes. `4:30am` and `2:30 pm`
+// are clock times, and matching their `:30` attaches a citation to whatever file
+// the page named last — inventing a claim about a line nobody cited. That is not
+// hypothetical: resume.html carried two of them, and they were the only citations
+// the scanner found on a page that cites nothing (#800). A real continuation is
+// written after a separator — `main.mts:153, :205` — so nothing legitimate puts a
+// digit immediately before the colon.
 const TOKEN_RE = new RegExp(
   `(?<name>${NAME_RE.source})(?::(?<start>\\d+)(?:-(?<end>\\d+))?)?` +
-    `|:(?<bareStart>\\d+)(?:-(?<bareEnd>\\d+))?`,
+    `|(?<![0-9]):(?<bareStart>\\d+)(?:-(?<bareEnd>\\d+))?`,
   'g',
 );
 
