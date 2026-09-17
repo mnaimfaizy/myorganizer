@@ -712,6 +712,47 @@ describe('Auth HTTP routes (HTTP integration)', () => {
     });
   });
 
+  describe('PATCH /auth/password/reset/confirm', () => {
+    test('returns 200 when password is reset', async () => {
+      const userService = require('../services/UserService').default;
+
+      userService.getById.mockImplementation(async () => verifiedUser);
+      userService.resetPassword.mockImplementation(async () => verifiedUser);
+
+      const res = await request(app)
+        .patch('/auth/password/reset/confirm')
+        .send({
+          token: 'verify-ok',
+          password: 'test-pass-1',
+          confirm_password: 'test-pass-1',
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ message: 'Password reset successfully' });
+      expect(userService.resetPassword).toHaveBeenCalledWith(
+        'user-1',
+        'test-pass-1',
+        'verify-ok',
+      );
+    });
+
+    test('returns 400 when token is invalid', async () => {
+      const userService = require('../services/UserService').default;
+
+      const res = await request(app)
+        .patch('/auth/password/reset/confirm')
+        .send({
+          token: 'bad-token',
+          password: 'test-pass-1',
+          confirm_password: 'test-pass-1',
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({ message: 'Invalid token' });
+      expect(userService.resetPassword).not.toHaveBeenCalled();
+    });
+  });
+
   describe('POST /auth/logout/:userId (intended contract)', () => {
     test('returns 200, revokes cookie token, and clears refresh cookie', async () => {
       const userService = require('../services/UserService').default;
