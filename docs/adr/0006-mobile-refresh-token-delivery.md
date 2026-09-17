@@ -14,3 +14,4 @@ The `/auth/login` request carries a client type. When it is `mobile`, the respon
 
 - `app-api-client` is regenerated with an additive optional `refresh_token` field on the login response; web behavior is unaffected, but the web auth flow gets a smoke check in the same change.
 - The refresh token now exists in two delivery channels (cookie for web, body for mobile) gated by client type — both must be kept in sync if the token contract changes.
+- Logout uses those same two channels: cookie for web, `refresh_token` in the body for mobile (`body ?? cookie`, and the chosen token must belong to the JWT User). A cookie-only Logout leaves the Mobile App able to clear local state while the Refresh Token stays live.

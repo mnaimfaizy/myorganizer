@@ -47,7 +47,6 @@ const capture = (path, pattern, label) => {
 const TOKEN_LIFETIMES = 'apps/backend/src/helpers/tokenLifetimes.ts';
 const COOKIE_HELPER = 'apps/backend/src/helpers/cookieHelper.ts';
 const STORAGE_ADAPTER = 'libs/auth/src/lib/auth-session-storage-adapter.ts';
-const AUTH_ROUTES = 'apps/backend/src/routes/auth.ts';
 const MAIN = 'apps/backend/src/main.ts';
 
 // Access and refresh lifetimes are derived in the source from a single number, so they are
@@ -88,7 +87,11 @@ const EXTRACTORS = {
   'tokens.accessTokenExpiresInMs': () => accessTtlMinutes() * 60_000,
 
   'cookie.refreshCookieName': () =>
-    capture(AUTH_ROUTES, /\.cookie\('([^']+)'/, 'refresh cookie name'),
+    capture(
+      COOKIE_HELPER,
+      /export const REFRESH_COOKIE_NAME\s*=\s*'([^']+)'/,
+      'refresh cookie name',
+    ),
 
   // The cookie no longer carries its own number — it derives from the refresh token's
   // lifetime. Asserting that derivation is what stops the two drifting apart again, so a
@@ -165,15 +168,14 @@ const EXTRACTORS = {
       .filter(Boolean);
   },
 
-  // The whole page describes the router that actually serves /auth/*. Express is
-  // first-match-wins, so if RegisterRoutes ever precedes the hand-written router the tsoa
-  // AuthController starts handling requests and every divergence the page documents inverts.
+  // Authentication HTTP is AuthController-only (ADR 0087). A remount of
+  // `api.use('/auth', authRouter)` in front of RegisterRoutes is a reversal.
   'routerPrecedence.authRouterBeforeTsoaRoutes': () => {
     const source = read(MAIN);
     const mount = source.search(/api\.use\(\s*'\/auth',\s*authRouter\s*\)/);
     const tsoa = source.search(/RegisterRoutes\(\s*api\s*\)/);
-    if (mount === -1) fail(`could not find the /auth router mount in ${MAIN}`);
     if (tsoa === -1) fail(`could not find the RegisterRoutes call in ${MAIN}`);
+    if (mount === -1) return false;
     return mount < tsoa;
   },
 };

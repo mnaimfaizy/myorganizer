@@ -16,7 +16,6 @@ import { createCorsOptions } from './config/http';
 import { maybeCreateGlobalApiRateLimiterFromEnv } from './middleware/globalRateLimit';
 import { vaultRateLimiter } from './middleware/vaultRateLimit';
 import { bootstrapPlatformAdminFromEnv } from './bootstrap/platformAdminBootstrap';
-import authRouter from './routes/auth';
 import { RegisterRoutes } from './routes/routes';
 import usersRouter from './routes/user';
 import passport from './utils/passport';
@@ -162,7 +161,6 @@ const globalApiRateLimiter = maybeCreateGlobalApiRateLimiterFromEnv();
 if (globalApiRateLimiter) api.use(globalApiRateLimiter);
 
 api.use('/user', usersRouter);
-api.use('/auth', authRouter);
 
 // Apply additional protections for blind-storage endpoints.
 api.use('/vault', vaultRateLimiter);

@@ -425,6 +425,14 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "RefreshTokenBody": {
+        "dataType": "refObject",
+        "properties": {
+            "refresh_token": {"dataType":"string"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "RegisterUserResponse": {
         "dataType": "refObject",
         "properties": {
@@ -1319,6 +1327,7 @@ export function RegisterRoutes(app: Router) {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 requestBody: {"in":"body","name":"requestBody","required":true,"ref":"UserLoginBody"},
                 unauthorized: {"in":"res","name":"401","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"message":{"dataType":"string","required":true}}},
+                forbidden: {"in":"res","name":"403","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"message":{"dataType":"string","required":true}}},
         };
         app.post('/auth/login',
             ...(fetchMiddlewares<RequestHandler>(AuthController)),
@@ -1350,6 +1359,7 @@ export function RegisterRoutes(app: Router) {
         const argsAuthController_logout: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
+                requestBody: {"in":"body","name":"requestBody","ref":"RefreshTokenBody"},
         };
         app.post('/auth/logout/:userId',
             authenticateMiddleware([{"jwt":[]}]),
@@ -1382,8 +1392,9 @@ export function RegisterRoutes(app: Router) {
         const argsAuthController_refreshToken: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 unauthorized: {"in":"res","name":"401","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"message":{"dataType":"string","required":true}}},
+                forbidden: {"in":"res","name":"403","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"message":{"dataType":"string","required":true}}},
                 notFound: {"in":"res","name":"404","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"message":{"dataType":"string","required":true}}},
-                requestBody: {"in":"body","name":"requestBody","dataType":"nestedObjectLiteral","nestedProperties":{"refresh_token":{"dataType":"string"}}},
+                requestBody: {"in":"body","name":"requestBody","ref":"RefreshTokenBody"},
         };
         app.post('/auth/refresh',
             ...(fetchMiddlewares<RequestHandler>(AuthController)),
@@ -1503,6 +1514,7 @@ export function RegisterRoutes(app: Router) {
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAuthController_resendVerificationEmail: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
         };
         app.post('/auth/verify/resend/:userId',

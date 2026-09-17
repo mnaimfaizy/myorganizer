@@ -15,34 +15,43 @@ export type LoginResponseBody = {
   refresh_token?: string;
 };
 
+export type IssuedLoginSession = {
+  body: LoginResponseBody;
+  refreshToken: string;
+};
+
 export class PlatformTokenHandler {
-  static buildLoginResponse(
+  static issueLoginSession(
     user: User,
     clientType?: string,
-  ): LoginResponseBody {
+  ): IssuedLoginSession {
     const { token, refreshToken } = apiTokens.createTokens(user);
 
-    if (token instanceof Error) {
-      throw new Error('Failed to create access token');
+    if (token instanceof Error || refreshToken instanceof Error) {
+      throw new Error('Failed to create auth tokens');
     }
 
     const filteredUser = filterUser(user as UserInterface);
     const authClientType = resolveAuthClientType(clientType);
 
-    const response: LoginResponseBody = {
+    const body: LoginResponseBody = {
       token,
       expires_in: ACCESS_TOKEN_EXPIRES_IN_MS,
       user: filteredUser,
     };
 
-    if (
-      shouldIncludeRefreshTokenInLoginBody(authClientType) &&
-      !(refreshToken instanceof Error)
-    ) {
-      response.refresh_token = refreshToken;
+    if (shouldIncludeRefreshTokenInLoginBody(authClientType)) {
+      body.refresh_token = refreshToken;
     }
 
-    return response;
+    return { body, refreshToken };
+  }
+
+  static buildLoginResponse(
+    user: User,
+    clientType?: string,
+  ): LoginResponseBody {
+    return this.issueLoginSession(user, clientType).body;
   }
 }
 

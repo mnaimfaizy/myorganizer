@@ -750,6 +750,14 @@ components:
         - password
       type: object
       additionalProperties: false
+    RefreshTokenBody:
+      description: Refresh Token presented in a JSON body (mobile). Cookie remains the
+        web channel.
+      properties:
+        refresh_token:
+          type: string
+      type: object
+      additionalProperties: false
     RegisterUserResponse:
       properties:
         message:
@@ -1563,7 +1571,16 @@ paths:
                   - message
                 type: object
         "403":
-          description: Email not verified
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
         "422":
           description: Validation Failed
           content:
@@ -1597,6 +1614,8 @@ paths:
                 type: object
         "401":
           description: Unauthorized
+        "403":
+          description: Forbidden
         "500":
           description: Failed to logout
       tags:
@@ -1609,6 +1628,12 @@ paths:
           required: true
           schema:
             type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshTokenBody"
   /auth/refresh:
     post:
       operationId: RefreshToken
@@ -1632,6 +1657,17 @@ paths:
                   - token
                 type: object
         "401":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+        "403":
           description: ""
           content:
             application/json:
@@ -1668,10 +1704,7 @@ paths:
         content:
           application/json:
             schema:
-              properties:
-                refresh_token:
-                  type: string
-              type: object
+              $ref: "#/components/schemas/RefreshTokenBody"
   /auth/register:
     post:
       operationId: RegisterUser
@@ -1707,7 +1740,12 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FilteredUserInterface"
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
         "422":
           description: Validation Failed
           content:
@@ -1741,12 +1779,8 @@ paths:
                 properties:
                   message:
                     type: string
-                  status:
-                    type: number
-                    format: double
                 required:
                   - message
-                  - status
                 type: object
       tags:
         - Authentication
@@ -1767,8 +1801,17 @@ paths:
     post:
       operationId: ResendVerificationEmail
       responses:
-        "204":
-          description: No content
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
       tags:
         - Authentication
       security:
@@ -1791,12 +1834,8 @@ paths:
                 properties:
                   message:
                     type: string
-                  status:
-                    type: number
-                    format: double
                 required:
                   - message
-                  - status
                 type: object
       tags:
         - Authentication
@@ -1820,12 +1859,8 @@ paths:
                 properties:
                   message:
                     type: string
-                  status:
-                    type: number
-                    format: double
                 required:
                   - message
-                  - status
                 type: object
       tags:
         - Authentication

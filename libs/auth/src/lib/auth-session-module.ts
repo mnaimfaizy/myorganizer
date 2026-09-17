@@ -83,7 +83,7 @@ export function createAuthSessionModule(deps: {
 
   async function refreshSessionViaTransport(): Promise<AuthSessionData> {
     const res = await transport.getAuthApi().refreshToken({
-      refreshTokenRequest: buildRefreshTokenRequest('web'),
+      refreshTokenBody: buildRefreshTokenRequest('web'),
     });
     const session = toSessionData(res.data);
     storage.setAccessToken(session.token);

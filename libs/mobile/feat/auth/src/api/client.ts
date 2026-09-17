@@ -108,7 +108,7 @@ apiClient.interceptors.response.use(
       );
 
       const response = await refreshApi.refreshToken({
-        refreshTokenRequest: buildRefreshTokenRequest(
+        refreshTokenBody: buildRefreshTokenRequest(
           'mobile',
           storedRefreshToken,
         ),

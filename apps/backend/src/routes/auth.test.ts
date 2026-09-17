@@ -2,7 +2,8 @@ import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import request from 'supertest';
-import authRouter from './auth';
+import { ValidateError } from 'tsoa';
+import { RegisterRoutes } from './routes';
 
 import apiTokens from '../helpers/ApiTokens';
 import userController from '../controllers/UserController';
@@ -10,6 +11,10 @@ import userService from '../services/UserService';
 import passport from '../utils/passport';
 
 import { decodeToken } from '../helpers/jwtHelper';
+
+jest.mock('@myorganizer/auth', () =>
+  jest.requireActual('../../../../libs/auth/src/lib/refresh-client-contract'),
+);
 
 jest.mock('../helpers/jwtHelper', () => ({
   __esModule: true,
@@ -20,7 +25,22 @@ jest.mock('../helpers/jwtHelper', () => ({
 jest.mock('../utils/passport', () => ({
   __esModule: true,
   default: {
+    initialize: () => (_req: any, _res: any, next: any) => next(),
     authenticate: jest.fn(() => (_req: any, _res: any, next: any) => next()),
+  },
+}));
+
+jest.mock('../middleware/authentication', () => ({
+  expressAuthentication: async (req: {
+    headers?: { authorization?: string };
+  }) => {
+    const authHeader = req?.headers?.authorization;
+    if (!authHeader?.startsWith('Bearer ')) {
+      const err = new Error('Unauthorized') as Error & { status?: number };
+      err.status = 401;
+      throw err;
+    }
+    return { id: 'user-1' };
   },
 }));
 
@@ -29,10 +49,40 @@ jest.mock('../services/UserService', () => ({
   default: {
     refreshToken: jest.fn(),
     getByEmail: jest.fn(),
+    getById: jest.fn(),
+    create: jest.fn(),
     sendVerificationMail: jest.fn(),
     sendPasswordResetMail: jest.fn(),
+    resetPassword: jest.fn(),
     update: jest.fn(),
+    deleteById: jest.fn(),
+    logout: jest.fn(),
   },
+}));
+
+jest.mock('../services/VaultService', () => ({
+  __esModule: true,
+  default: {},
+}));
+
+jest.mock('../services/VaultBackupService', () => ({
+  __esModule: true,
+  default: {},
+}));
+
+jest.mock('../services/YouTubeSyncWorkerService', () => ({
+  __esModule: true,
+  default: {},
+}));
+
+jest.mock('../services/YouTubeDigestService', () => ({
+  __esModule: true,
+  default: {},
+}));
+
+jest.mock('../services/YouTubeSyncService', () => ({
+  __esModule: true,
+  default: {},
 }));
 
 jest.mock('../controllers/UserController', () => ({
@@ -66,16 +116,49 @@ jest.mock('../helpers/filterUser', () => ({
   })),
 }));
 
-jest.mock('../helpers/cookieHelper', () => ({
-  __esModule: true,
-  getExpiry: jest.fn(() => new Date('2026-06-17')),
-}));
+function makeApp() {
+  const app = express();
+  app.use(cookieParser());
+  app.use(bodyParser.json({ limit: '2mb' }));
+  RegisterRoutes(app);
+  app.use(function tsoaErrorHandler(
+    err: unknown,
+    _req: any,
+    res: any,
+    next: any,
+  ) {
+    if (err instanceof ValidateError) {
+      return res.status(422).json({
+        message: 'Validation Failed',
+        details: err?.fields,
+      });
+    }
+
+    const anyErr = err as {
+      status?: number;
+      statusCode?: number;
+      message?: string;
+    };
+    const httpStatus = anyErr?.status ?? anyErr?.statusCode;
+    if (
+      anyErr &&
+      typeof anyErr === 'object' &&
+      typeof httpStatus === 'number'
+    ) {
+      return res.status(httpStatus).json({ message: anyErr.message });
+    }
+
+    if (err instanceof Error) {
+      return res.status(500).json({ message: 'Internal Server Error' });
+    }
+
+    return next(err);
+  });
+  return app;
+}
 
 describe('Auth Routes', () => {
-  const app = express();
-  app.use(bodyParser.json());
-  app.use(cookieParser());
-  app.use('/auth', authRouter);
+  const app = makeApp();
 
   beforeEach(() => {
     jest.clearAllMocks();

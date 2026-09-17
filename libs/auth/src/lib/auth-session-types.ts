@@ -57,10 +57,8 @@ export type ResendVerificationOutcome = AuthOperationResult<{
 
 export type PasswordResetRequestOutcome = AuthOperationResult<{
   message: string;
-  status: number;
 }>;
 
 export type PasswordResetConfirmOutcome = AuthOperationResult<{
   message: string;
-  status: number;
 }>;

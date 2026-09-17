@@ -86,7 +86,7 @@ export function AuthProvider({
 
         const authApi = createAuthApi();
         const response = await authApi.refreshToken({
-          refreshTokenRequest: buildRefreshTokenRequest(
+          refreshTokenBody: buildRefreshTokenRequest(
             'mobile',
             storedRefreshToken,
           ),
@@ -165,7 +165,13 @@ export function AuthProvider({
     try {
       if (session?.user.id) {
         const authApi = createAuthApi();
-        await authApi.logout({ userId: session.user.id });
+        await authApi.logout({
+          userId: session.user.id,
+          refreshTokenBody: buildRefreshTokenRequest(
+            'mobile',
+            session.tokens.refreshToken,
+          ),
+        });
       }
     } catch {
       // Continue with local logout even if server logout fails

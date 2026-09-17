@@ -118,8 +118,12 @@ _Avoid_: Anonymous user, logged-out user, visitor, unauthenticated user
 A User who has registered but not yet proven control of their email address. Cannot obtain a Session, and is refused at sign-in with a distinct reason rather than a credential failure.
 _Avoid_: Pending user, inactive user, new user, unconfirmed account
 
+**Logout**:
+The User action that ends this client's Session by retiring this User's Refresh Token for that client. Another User's token is not Logout; other Sessions are untouched. Distinct from Force Logout, which a Platform Admin uses to end every Session.
+_Avoid_: sign-out (as the domain name), log off, disconnect, session end
+
 **Force Logout**:
-The Platform Admin action that ends a User's existing Sessions while leaving them free to sign in again immediately. Distinct from disabling: Force Logout answers "this User's device is compromised", disabling answers "this User should not be here".
+The Platform Admin action that ends a User's existing Sessions while leaving them free to sign in again immediately. Distinct from disabling: Force Logout answers "this User's device is compromised", disabling answers "this User should not be here". Distinct from Logout, which the User performs on one client.
 _Avoid_: Kick, revoke access, sign out user, terminate session, ban
 
 **Resend Cooldown**:

@@ -110,26 +110,18 @@ describe('PlatformTokenHandler', () => {
 
       expect(() =>
         PlatformTokenHandler.buildLoginResponse(mockUser, 'mobile'),
-      ).toThrow('Failed to create access token');
+      ).toThrow('Failed to create auth tokens');
     });
 
-    it('omits refresh_token for mobile when refresh token creation fails', () => {
+    it('throws when refresh token creation fails', () => {
       mockCreateTokens.mockReturnValue({
         token: 'access-token',
         refreshToken: new Error('refresh sign failed'),
       });
 
-      const response = PlatformTokenHandler.buildLoginResponse(
-        mockUser,
-        'mobile',
-      );
-
-      expect(response).toEqual({
-        token: 'access-token',
-        expires_in: 600_000,
-        user: filteredUser,
-      });
-      expect(response).not.toHaveProperty('refresh_token');
+      expect(() =>
+        PlatformTokenHandler.buildLoginResponse(mockUser, 'mobile'),
+      ).toThrow('Failed to create auth tokens');
     });
   });
 });

@@ -1584,15 +1584,15 @@ export interface RefreshToken200Response {
     'token': string;
 }
 /**
- * 
+ * Refresh Token presented in a JSON body (mobile). Cookie remains the web channel.
  * @export
- * @interface RefreshTokenRequest
+ * @interface RefreshTokenBody
  */
-export interface RefreshTokenRequest {
+export interface RefreshTokenBody {
     /**
      * 
      * @type {string}
-     * @memberof RefreshTokenRequest
+     * @memberof RefreshTokenBody
      */
     'refresh_token'?: string;
 }
@@ -1614,25 +1614,6 @@ export interface RegisterUserResponse {
      * @memberof RegisterUserResponse
      */
     'user'?: FilteredUserInterface;
-}
-/**
- * 
- * @export
- * @interface ResendVerificationEmailByEmail200Response
- */
-export interface ResendVerificationEmailByEmail200Response {
-    /**
-     * 
-     * @type {string}
-     * @memberof ResendVerificationEmailByEmail200Response
-     */
-    'message': string;
-    /**
-     * 
-     * @type {number}
-     * @memberof ResendVerificationEmailByEmail200Response
-     */
-    'status': number;
 }
 /**
  * 
@@ -2609,10 +2590,11 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
         /**
          * 
          * @param {string} userId 
+         * @param {RefreshTokenBody} [refreshTokenBody] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        logout: async (userId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        logout: async (userId: string, refreshTokenBody?: RefreshTokenBody, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             // verify required parameter 'userId' is not null or undefined
             assertParamExists('logout', 'userId', userId)
             const localVarPath = `/auth/logout/{userId}`
@@ -2634,9 +2616,12 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
 
 
     
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(refreshTokenBody, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -2645,11 +2630,11 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
         },
         /**
          * 
-         * @param {RefreshTokenRequest} [refreshTokenRequest] 
+         * @param {RefreshTokenBody} [refreshTokenBody] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        refreshToken: async (refreshTokenRequest?: RefreshTokenRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        refreshToken: async (refreshTokenBody?: RefreshTokenBody, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/auth/refresh`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -2669,7 +2654,7 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(refreshTokenRequest, localVarRequestOptions, configuration)
+            localVarRequestOptions.data = serializeDataIfNeeded(refreshTokenBody, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -2869,7 +2854,7 @@ export const AuthenticationApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async confirmResetPassword(confirmResetPasswordBody: ConfirmResetPasswordBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ResendVerificationEmailByEmail200Response>> {
+        async confirmResetPassword(confirmResetPasswordBody: ConfirmResetPasswordBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Login401Response>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.confirmResetPassword(confirmResetPasswordBody, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AuthenticationApi.confirmResetPassword']?.[localVarOperationServerIndex]?.url;
@@ -2890,23 +2875,24 @@ export const AuthenticationApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @param {string} userId 
+         * @param {RefreshTokenBody} [refreshTokenBody] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async logout(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Login401Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.logout(userId, options);
+        async logout(userId: string, refreshTokenBody?: RefreshTokenBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Login401Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.logout(userId, refreshTokenBody, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AuthenticationApi.logout']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
          * 
-         * @param {RefreshTokenRequest} [refreshTokenRequest] 
+         * @param {RefreshTokenBody} [refreshTokenBody] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async refreshToken(refreshTokenRequest?: RefreshTokenRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RefreshToken200Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.refreshToken(refreshTokenRequest, options);
+        async refreshToken(refreshTokenBody?: RefreshTokenBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<RefreshToken200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.refreshToken(refreshTokenBody, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AuthenticationApi.refreshToken']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -2929,7 +2915,7 @@ export const AuthenticationApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async resendVerificationEmail(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+        async resendVerificationEmail(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Login401Response>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.resendVerificationEmail(userId, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AuthenticationApi.resendVerificationEmail']?.[localVarOperationServerIndex]?.url;
@@ -2941,7 +2927,7 @@ export const AuthenticationApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async resendVerificationEmailByEmail(resendVerificationEmailByEmailRequest: ResendVerificationEmailByEmailRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ResendVerificationEmailByEmail200Response>> {
+        async resendVerificationEmailByEmail(resendVerificationEmailByEmailRequest: ResendVerificationEmailByEmailRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Login401Response>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.resendVerificationEmailByEmail(resendVerificationEmailByEmailRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AuthenticationApi.resendVerificationEmailByEmail']?.[localVarOperationServerIndex]?.url;
@@ -2953,7 +2939,7 @@ export const AuthenticationApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async resetPassword(resetPasswordByEmailBody: ResetPasswordByEmailBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ResendVerificationEmailByEmail200Response>> {
+        async resetPassword(resetPasswordByEmailBody: ResetPasswordByEmailBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Login401Response>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.resetPassword(resetPasswordByEmailBody, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AuthenticationApi.resetPassword']?.[localVarOperationServerIndex]?.url;
@@ -2965,7 +2951,7 @@ export const AuthenticationApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async verifyEmail(verifyEmailRequest: VerifyEmailRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<FilteredUserInterface>> {
+        async verifyEmail(verifyEmailRequest: VerifyEmailRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Login401Response>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.verifyEmail(verifyEmailRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['AuthenticationApi.verifyEmail']?.[localVarOperationServerIndex]?.url;
@@ -2987,7 +2973,7 @@ export const AuthenticationApiFactory = function (configuration?: Configuration,
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        confirmResetPassword(requestParameters: AuthenticationApiConfirmResetPasswordRequest, options?: RawAxiosRequestConfig): AxiosPromise<ResendVerificationEmailByEmail200Response> {
+        confirmResetPassword(requestParameters: AuthenticationApiConfirmResetPasswordRequest, options?: RawAxiosRequestConfig): AxiosPromise<Login401Response> {
             return localVarFp.confirmResetPassword(requestParameters.confirmResetPasswordBody, options).then((request) => request(axios, basePath));
         },
         /**
@@ -3006,7 +2992,7 @@ export const AuthenticationApiFactory = function (configuration?: Configuration,
          * @throws {RequiredError}
          */
         logout(requestParameters: AuthenticationApiLogoutRequest, options?: RawAxiosRequestConfig): AxiosPromise<Login401Response> {
-            return localVarFp.logout(requestParameters.userId, options).then((request) => request(axios, basePath));
+            return localVarFp.logout(requestParameters.userId, requestParameters.refreshTokenBody, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3015,7 +3001,7 @@ export const AuthenticationApiFactory = function (configuration?: Configuration,
          * @throws {RequiredError}
          */
         refreshToken(requestParameters: AuthenticationApiRefreshTokenRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<RefreshToken200Response> {
-            return localVarFp.refreshToken(requestParameters.refreshTokenRequest, options).then((request) => request(axios, basePath));
+            return localVarFp.refreshToken(requestParameters.refreshTokenBody, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -3032,7 +3018,7 @@ export const AuthenticationApiFactory = function (configuration?: Configuration,
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        resendVerificationEmail(requestParameters: AuthenticationApiResendVerificationEmailRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+        resendVerificationEmail(requestParameters: AuthenticationApiResendVerificationEmailRequest, options?: RawAxiosRequestConfig): AxiosPromise<Login401Response> {
             return localVarFp.resendVerificationEmail(requestParameters.userId, options).then((request) => request(axios, basePath));
         },
         /**
@@ -3041,7 +3027,7 @@ export const AuthenticationApiFactory = function (configuration?: Configuration,
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        resendVerificationEmailByEmail(requestParameters: AuthenticationApiResendVerificationEmailByEmailRequest, options?: RawAxiosRequestConfig): AxiosPromise<ResendVerificationEmailByEmail200Response> {
+        resendVerificationEmailByEmail(requestParameters: AuthenticationApiResendVerificationEmailByEmailRequest, options?: RawAxiosRequestConfig): AxiosPromise<Login401Response> {
             return localVarFp.resendVerificationEmailByEmail(requestParameters.resendVerificationEmailByEmailRequest, options).then((request) => request(axios, basePath));
         },
         /**
@@ -3050,7 +3036,7 @@ export const AuthenticationApiFactory = function (configuration?: Configuration,
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        resetPassword(requestParameters: AuthenticationApiResetPasswordRequest, options?: RawAxiosRequestConfig): AxiosPromise<ResendVerificationEmailByEmail200Response> {
+        resetPassword(requestParameters: AuthenticationApiResetPasswordRequest, options?: RawAxiosRequestConfig): AxiosPromise<Login401Response> {
             return localVarFp.resetPassword(requestParameters.resetPasswordByEmailBody, options).then((request) => request(axios, basePath));
         },
         /**
@@ -3059,7 +3045,7 @@ export const AuthenticationApiFactory = function (configuration?: Configuration,
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        verifyEmail(requestParameters: AuthenticationApiVerifyEmailRequest, options?: RawAxiosRequestConfig): AxiosPromise<FilteredUserInterface> {
+        verifyEmail(requestParameters: AuthenticationApiVerifyEmailRequest, options?: RawAxiosRequestConfig): AxiosPromise<Login401Response> {
             return localVarFp.verifyEmail(requestParameters.verifyEmailRequest, options).then((request) => request(axios, basePath));
         },
     };
@@ -3105,6 +3091,13 @@ export interface AuthenticationApiLogoutRequest {
      * @memberof AuthenticationApiLogout
      */
     readonly userId: string
+
+    /**
+     * 
+     * @type {RefreshTokenBody}
+     * @memberof AuthenticationApiLogout
+     */
+    readonly refreshTokenBody?: RefreshTokenBody
 }
 
 /**
@@ -3115,10 +3108,10 @@ export interface AuthenticationApiLogoutRequest {
 export interface AuthenticationApiRefreshTokenRequest {
     /**
      * 
-     * @type {RefreshTokenRequest}
+     * @type {RefreshTokenBody}
      * @memberof AuthenticationApiRefreshToken
      */
-    readonly refreshTokenRequest?: RefreshTokenRequest
+    readonly refreshTokenBody?: RefreshTokenBody
 }
 
 /**
@@ -3228,7 +3221,7 @@ export class AuthenticationApi extends BaseAPI {
      * @memberof AuthenticationApi
      */
     public logout(requestParameters: AuthenticationApiLogoutRequest, options?: RawAxiosRequestConfig) {
-        return AuthenticationApiFp(this.configuration).logout(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
+        return AuthenticationApiFp(this.configuration).logout(requestParameters.userId, requestParameters.refreshTokenBody, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -3239,7 +3232,7 @@ export class AuthenticationApi extends BaseAPI {
      * @memberof AuthenticationApi
      */
     public refreshToken(requestParameters: AuthenticationApiRefreshTokenRequest = {}, options?: RawAxiosRequestConfig) {
-        return AuthenticationApiFp(this.configuration).refreshToken(requestParameters.refreshTokenRequest, options).then((request) => request(this.axios, this.basePath));
+        return AuthenticationApiFp(this.configuration).refreshToken(requestParameters.refreshTokenBody, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

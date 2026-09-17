@@ -36,8 +36,11 @@ export const updatePasswordSchema = z
     }
   });
 
-export const refreshTokenSchema = z
-  .object({
-    refresh_token: z.string().min(1, 'Refresh token is required').optional(),
-  })
-  .strict();
+export const refreshTokenSchema = z.preprocess(
+  (val) => (val === undefined || val === null ? {} : val),
+  z
+    .object({
+      refresh_token: z.string().min(1, 'Refresh token is required').optional(),
+    })
+    .strict(),
+);
