@@ -2420,7 +2420,7 @@
   <section class="panel" aria-labelledby="red-h">
     <div class="phead">
       <h2 id="red-h">Reading a red gate</h2>
-      <span class="src">main.mts:1812-1816, :2891-2913</span>
+      <span class="src">main.mts:1881-1882, :2891-2913</span>
     </div>
     <div class="pbody">
       <ol class="chain">
@@ -3395,10 +3395,10 @@
       "start": "* This is the gate that matters. A per-slice gate can only see one slice against",
       "end": "* and fail on the PR — while costing one container install per slice. Gating"
     },
-    "main.mts:1812-1816": {
+    "main.mts:1881-1882": {
       "file": ".sandcastle/main.mts",
-      "start": "console.log(",
-      "end": "console.log(`  [${label}] gate: installing + running ...`);"
+      "start": "const ok = gate.status === 0;",
+      "end": "console.log(`  [${label}] gate: ${ok ? 'PASS' : 'FAIL'}.`);"
     },
     "main.mts:2891-2913": {
       "file": ".sandcastle/main.mts",
