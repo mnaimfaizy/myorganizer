@@ -7,6 +7,7 @@
 jest.mock('@myorganizer/web-vault', () => ({
   ...jest.requireActual('@myorganizer/web-vault'),
   changePassphraseWithCurrent: jest.fn(),
+  resetPassphraseAfterRecovery: jest.fn(),
   createVaultApi: jest.fn(),
 }));
 
@@ -33,10 +34,11 @@ jest.mock('../utils/getErrorMessage', () => ({
   getErrorMessage: jest.fn((error: Error) => error.message),
 }));
 
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import {
   changePassphraseWithCurrent,
   createVaultApi,
+  resetPassphraseAfterRecovery,
   VaultSecretMismatchError,
 } from '@myorganizer/web-vault';
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
@@ -130,6 +132,7 @@ describe('useChangePassphrase', () => {
         }),
       );
       expect(changePassphraseWithCurrent).not.toHaveBeenCalled();
+      expect(resetPassphraseAfterRecovery).not.toHaveBeenCalled();
     });
 
     test('2: masterKeyBytes === null → returns "error" with destructive toast, never calls changePassphraseWithCurrent', async () => {
@@ -158,6 +161,123 @@ describe('useChangePassphrase', () => {
         }),
       );
       expect(changePassphraseWithCurrent).not.toHaveBeenCalled();
+      expect(resetPassphraseAfterRecovery).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Authorization by unlockSecret', () => {
+    test('10: unlockSecret "passphrase" → changePassphraseWithCurrent with current+new, not resetPassphraseAfterRecovery', async () => {
+      const mockHandle = createMockHandle();
+      (useOptionalVaultSession as jest.Mock).mockReturnValue({
+        handle: mockHandle,
+        masterKeyBytes: new Uint8Array(32),
+        unlockSecret: 'passphrase',
+      });
+      (changePassphraseWithCurrent as jest.Mock).mockResolvedValue({
+        push: { kind: 'pushed' },
+      });
+
+      const { result } = renderHook(() => useChangePassphrase());
+
+      let callResult: 'ok' | 'wrong-passphrase' | 'error' | undefined;
+      await act(async () => {
+        callResult = await result.current.changePassphrase({
+          currentPassphrase: 'oldpass1234',
+          newPassphrase: 'newpass12345',
+        });
+      });
+
+      expect(callResult).toBe('ok');
+      expect(changePassphraseWithCurrent).toHaveBeenCalledWith({
+        api: {},
+        handle: mockHandle,
+        currentPassphrase: 'oldpass1234',
+        newPassphrase: 'newpass12345',
+      });
+      expect(resetPassphraseAfterRecovery).not.toHaveBeenCalled();
+    });
+
+    test('11: unlockSecret null → defaults to changePassphraseWithCurrent', async () => {
+      const mockHandle = createMockHandle();
+      (useOptionalVaultSession as jest.Mock).mockReturnValue({
+        handle: mockHandle,
+        masterKeyBytes: new Uint8Array(32),
+        unlockSecret: null,
+      });
+      (changePassphraseWithCurrent as jest.Mock).mockResolvedValue({
+        push: { kind: 'pushed' },
+      });
+
+      const { result } = renderHook(() => useChangePassphrase());
+
+      await act(async () => {
+        await result.current.changePassphrase({
+          currentPassphrase: 'oldpass1234',
+          newPassphrase: 'newpass12345',
+        });
+      });
+
+      expect(changePassphraseWithCurrent).toHaveBeenCalled();
+      expect(resetPassphraseAfterRecovery).not.toHaveBeenCalled();
+    });
+
+    test('12: unlockSecret "recovery-key" → resetPassphraseAfterRecovery with new only, not changePassphraseWithCurrent', async () => {
+      const mockHandle = createMockHandle();
+      (useOptionalVaultSession as jest.Mock).mockReturnValue({
+        handle: mockHandle,
+        masterKeyBytes: new Uint8Array(32),
+        unlockSecret: 'recovery-key',
+      });
+      (resetPassphraseAfterRecovery as jest.Mock).mockResolvedValue({
+        push: { kind: 'pushed' },
+      });
+
+      const { result } = renderHook(() => useChangePassphrase());
+
+      let callResult: 'ok' | 'wrong-passphrase' | 'error' | undefined;
+      await act(async () => {
+        callResult = await result.current.changePassphrase({
+          currentPassphrase: 'ignored1234',
+          newPassphrase: 'newpass12345',
+        });
+      });
+
+      expect(callResult).toBe('ok');
+      expect(resetPassphraseAfterRecovery).toHaveBeenCalledWith({
+        api: {},
+        handle: mockHandle,
+        newPassphrase: 'newpass12345',
+      });
+      expect(changePassphraseWithCurrent).not.toHaveBeenCalled();
+    });
+
+    test('13: unlockSecret "recovery-key" success → same passphraseChangeReading toast', async () => {
+      const mockToast = jest.fn();
+      (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
+      (useOptionalVaultSession as jest.Mock).mockReturnValue({
+        handle: createMockHandle(),
+        masterKeyBytes: new Uint8Array(32),
+        unlockSecret: 'recovery-key',
+      });
+      (resetPassphraseAfterRecovery as jest.Mock).mockResolvedValue({
+        push: { kind: 'pushed' },
+      });
+
+      const { result } = renderHook(() => useChangePassphrase());
+
+      await act(async () => {
+        await result.current.changePassphrase({
+          currentPassphrase: '',
+          newPassphrase: 'newpass12345',
+        });
+      });
+
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Passphrase changed',
+          description: expect.stringContaining('other devices'),
+        }),
+      );
     });
   });
 
@@ -300,13 +420,12 @@ describe('useChangePassphrase', () => {
   });
 
   describe('Loading state', () => {
-    test('8: changing boolean is true during async operation, false after', async () => {
+    test('8: changing is true while operation pending, false after completion', async () => {
+      let resolveChange!: (value: { push: { kind: string } }) => void;
       (changePassphraseWithCurrent as jest.Mock).mockImplementation(
         () =>
           new Promise((resolve) => {
-            setTimeout(() => {
-              resolve({ push: { kind: 'pushed' } });
-            }, 50);
+            resolveChange = resolve;
           }),
       );
 
@@ -314,7 +433,7 @@ describe('useChangePassphrase', () => {
 
       expect(result.current.changing).toBe(false);
 
-      let callPromise: Promise<any>;
+      let callPromise: Promise<unknown>;
       act(() => {
         callPromise = result.current.changePassphrase({
           currentPassphrase: 'oldpass1234',
@@ -322,9 +441,12 @@ describe('useChangePassphrase', () => {
         });
       });
 
-      // After the async call starts, changing might be true briefly
-      // After it completes, it should be false
+      await waitFor(() => {
+        expect(result.current.changing).toBe(true);
+      });
+
       await act(async () => {
+        resolveChange({ push: { kind: 'pushed' } });
         await callPromise!;
       });
 
@@ -333,7 +455,7 @@ describe('useChangePassphrase', () => {
   });
 
   describe('Hook contract — reading usage', () => {
-    test('9: calls passphraseChangeReading with the push outcome and toasts the reading', async () => {
+    test('9: success toast uses non-destructive reading from push outcome', async () => {
       const mockToast = jest.fn();
 
       (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
