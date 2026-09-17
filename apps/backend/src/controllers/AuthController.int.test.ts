@@ -10,8 +10,8 @@ import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import request from 'supertest';
-import { ValidateError } from 'tsoa';
 import { ACCESS_TOKEN_EXPIRES_IN_MS } from '../helpers/tokenLifetimes';
+import { attachTsoaErrorHandler } from '../testing/tsoaErrorHandler';
 
 jest.setTimeout(30_000);
 
@@ -226,40 +226,7 @@ function makeApp() {
   app.use(bodyParser.json({ limit: '2mb' }));
   app.use(passport.initialize());
   RegisterRoutes(app);
-
-  app.use(function tsoaErrorHandler(
-    err: unknown,
-    _req: any,
-    res: any,
-    next: any,
-  ) {
-    if (err instanceof ValidateError) {
-      return res.status(422).json({
-        message: 'Validation Failed',
-        details: err?.fields,
-      });
-    }
-
-    const anyErr = err as {
-      status?: number;
-      statusCode?: number;
-      message?: string;
-    };
-    const httpStatus = anyErr?.status ?? anyErr?.statusCode;
-    if (
-      anyErr &&
-      typeof anyErr === 'object' &&
-      typeof httpStatus === 'number'
-    ) {
-      return res.status(httpStatus).json({ message: anyErr.message });
-    }
-
-    if (err instanceof Error) {
-      return res.status(500).json({ message: 'Internal Server Error' });
-    }
-
-    return next(err);
-  });
+  attachTsoaErrorHandler(app);
 
   return app;
 }

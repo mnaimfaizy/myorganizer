@@ -46,13 +46,6 @@ export class PlatformTokenHandler {
 
     return { body, refreshToken };
   }
-
-  static buildLoginResponse(
-    user: User,
-    clientType?: string,
-  ): LoginResponseBody {
-    return this.issueLoginSession(user, clientType).body;
-  }
 }
 
 export default PlatformTokenHandler;

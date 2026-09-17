@@ -48,26 +48,27 @@ describe('PlatformTokenHandler', () => {
     mockFilterUser.mockReturnValue(filteredUser);
   });
 
-  describe('buildLoginResponse', () => {
+  describe('issueLoginSession', () => {
     it('includes refresh_token in the body for mobile clients when refresh token succeeds', () => {
       mockCreateTokens.mockReturnValue({
         token: 'access-token',
         refreshToken: 'refresh-token',
       });
 
-      const response = PlatformTokenHandler.buildLoginResponse(
+      const session = PlatformTokenHandler.issueLoginSession(
         mockUser,
         'mobile',
       );
 
       expect(mockCreateTokens).toHaveBeenCalledWith(mockUser);
       expect(mockFilterUser).toHaveBeenCalledWith(mockUser);
-      expect(response).toEqual({
+      expect(session.body).toEqual({
         token: 'access-token',
         expires_in: 600_000,
         user: filteredUser,
         refresh_token: 'refresh-token',
       });
+      expect(session.refreshToken).toBe('refresh-token');
     });
 
     it('omits refresh_token in the body for web clients', () => {
@@ -76,14 +77,15 @@ describe('PlatformTokenHandler', () => {
         refreshToken: 'refresh-token',
       });
 
-      const response = PlatformTokenHandler.buildLoginResponse(mockUser, 'web');
+      const session = PlatformTokenHandler.issueLoginSession(mockUser, 'web');
 
-      expect(response).toEqual({
+      expect(session.body).toEqual({
         token: 'access-token',
         expires_in: 600_000,
         user: filteredUser,
       });
-      expect(response).not.toHaveProperty('refresh_token');
+      expect(session.body).not.toHaveProperty('refresh_token');
+      expect(session.refreshToken).toBe('refresh-token');
     });
 
     it('defaults to web behavior when clientType is omitted', () => {
@@ -92,14 +94,15 @@ describe('PlatformTokenHandler', () => {
         refreshToken: 'refresh-token',
       });
 
-      const response = PlatformTokenHandler.buildLoginResponse(mockUser);
+      const session = PlatformTokenHandler.issueLoginSession(mockUser);
 
-      expect(response).toEqual({
+      expect(session.body).toEqual({
         token: 'access-token',
         expires_in: 600_000,
         user: filteredUser,
       });
-      expect(response).not.toHaveProperty('refresh_token');
+      expect(session.body).not.toHaveProperty('refresh_token');
+      expect(session.refreshToken).toBe('refresh-token');
     });
 
     it('throws when access token creation fails', () => {
@@ -109,7 +112,7 @@ describe('PlatformTokenHandler', () => {
       });
 
       expect(() =>
-        PlatformTokenHandler.buildLoginResponse(mockUser, 'mobile'),
+        PlatformTokenHandler.issueLoginSession(mockUser, 'mobile'),
       ).toThrow('Failed to create auth tokens');
     });
 
@@ -120,7 +123,7 @@ describe('PlatformTokenHandler', () => {
       });
 
       expect(() =>
-        PlatformTokenHandler.buildLoginResponse(mockUser, 'mobile'),
+        PlatformTokenHandler.issueLoginSession(mockUser, 'mobile'),
       ).toThrow('Failed to create auth tokens');
     });
   });
