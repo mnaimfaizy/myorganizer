@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import {
+  changePassphrase,
   createOwnedVault,
   gotoStable,
   E2E_USER_ID,
@@ -320,26 +321,10 @@ test.describe('Vault Passphrase Change Reaches Open Tab (E2E)', () => {
     const priorMetaEtag = serverMetaEtag;
 
     // Step 15: Fill and submit ChangePassphraseCard
-    // The ChangePassphraseCard renders when vault is unlocked on the vault settings page
-    const currentPassphrase = page1.getByLabel('Current passphrase', {
-      exact: true,
+    await changePassphrase(page1, {
+      current: ORIGINAL_PASSPHRASE,
+      next: NEW_PASSPHRASE,
     });
-    // Without `exact`, this also matches "Confirm new passphrase".
-    const newPassphrase = page1.getByLabel('New passphrase', { exact: true });
-    const confirmPassphrase = page1.getByLabel('Confirm new passphrase', {
-      exact: true,
-    });
-    const changeSubmit = page1.getByTestId('change-passphrase-submit');
-
-    await expect(currentPassphrase).toBeVisible({ timeout: 30000 });
-    await expect(newPassphrase).toBeVisible({ timeout: 30000 });
-    await expect(confirmPassphrase).toBeVisible({ timeout: 30000 });
-    await expect(changeSubmit).toBeVisible({ timeout: 30000 });
-
-    await currentPassphrase.fill(ORIGINAL_PASSPHRASE);
-    await newPassphrase.fill(NEW_PASSPHRASE);
-    await confirmPassphrase.fill(NEW_PASSPHRASE);
-    await changeSubmit.click();
 
     // Step 16: Poll for Meta etag change - proves passphrase change pushed to server
     await expect
