@@ -169,13 +169,21 @@ export function rangeCovers(range, version) {
  * Why a checked-and-clear claim is researched again rather than carried
  * forward. Closed, because the run reports these back to the human and a
  * free-text reason is one nobody can count.
+ *
+ * Every call site below reaches this table rather than spelling the string
+ * again, which is what makes "closed" a fact instead of a comment: a reason
+ * nobody can write by hand is a reason that cannot drift out of the list.
+ * `RESEARCH_REASONS` is the same vocabulary as a list, for a caller that wants
+ * to check membership — the two cannot disagree, because one is derived.
  */
-export const RESEARCH_REASONS = /** @type {const} */ ([
-  'unreadable-range',
-  'baseline-outside-range',
-  'no-local-evidence',
-  'instruction-changed',
-]);
+export const RESEARCH = /** @type {const} */ ({
+  unreadableRange: UNREADABLE_RANGE,
+  baselineOutsideRange: 'baseline-outside-range',
+  noLocalEvidence: 'no-local-evidence',
+  instructionChanged: 'instruction-changed',
+});
+
+export const RESEARCH_REASONS = Object.values(RESEARCH);
 
 /**
  * Decide, for one Ecosystem, which of the previous run's checked-and-clear
@@ -218,7 +226,7 @@ function carryForwardOne(previousEcosystem, current, readCurrent) {
     }
     if (!range.covers(current.baseline)) {
       research(
-        'baseline-outside-range',
+        RESEARCH.baselineOutsideRange,
         `the claim was recorded as holding for ${range.source}, and the new ` +
           `Baseline is ${current.baseline}`,
       );
@@ -233,7 +241,7 @@ function carryForwardOne(previousEcosystem, current, readCurrent) {
     const local = Array.isArray(entry?.local) ? entry.local : [];
     if (local.length === 0) {
       research(
-        'no-local-evidence',
+        RESEARCH.noLocalEvidence,
         'the claim quotes no instruction text, so nothing about this repo ' +
           'can be shown unchanged',
       );
@@ -248,7 +256,7 @@ function carryForwardOne(previousEcosystem, current, readCurrent) {
       .find(({ verdict }) => !verdict.ok);
     if (changed) {
       research(
-        'instruction-changed',
+        RESEARCH.instructionChanged,
         `${changed.citation.file}:${changed.citation.line} — ` +
           `${changed.verdict.reason} at the current commit`,
       );
@@ -468,19 +476,26 @@ export const DECLINED_ADAPTER_KEYS = {
  */
 export const DECLINED_REQUIRED_FIELDS = Object.values(DECLINED_ADAPTER_KEYS);
 
-/** Why a declined entry is not a declined entry. Closed, and each one fails. */
-export const DECLINED_PROBLEM_REASONS = /** @type {const} */ ([
-  'malformed',
-  'unreadable-range',
-  'unknown-ecosystem',
-  'site-not-found',
-]);
+/**
+ * Why a declined entry is not a declined entry. Closed, and each one fails.
+ * Reached from the call sites, for the reason written on `RESEARCH` above.
+ */
+export const DECLINED_PROBLEM = /** @type {const} */ ({
+  malformed: 'malformed',
+  unreadableRange: UNREADABLE_RANGE,
+  unknownEcosystem: 'unknown-ecosystem',
+  siteNotFound: 'site-not-found',
+});
+
+export const DECLINED_PROBLEM_REASONS = Object.values(DECLINED_PROBLEM);
 
 /** Why a declined Opportunity came back. Closed, and each one is reported. */
-export const DECLINED_RESURFACE_REASONS = /** @type {const} */ ([
-  'baseline-left-range',
-  'quote-changed',
-]);
+export const DECLINED_RESURFACE = /** @type {const} */ ({
+  baselineLeftRange: 'baseline-left-range',
+  quoteChanged: 'quote-changed',
+});
+
+export const DECLINED_RESURFACE_REASONS = Object.values(DECLINED_RESURFACE);
 
 const text = (value) =>
   typeof value === 'string' && value.trim() !== '' ? value.trim() : '';
@@ -588,7 +603,7 @@ export function validateDeclinedOpportunities(
     );
     if (missing.length) {
       fail(
-        'malformed',
+        DECLINED_PROBLEM.malformed,
         `absent or empty: ${missing.join(', ')}. An entry records identity ` +
           '(ecosystem, url, site), a one-line reason, the Baseline range it ' +
           'was declined at, and the upstream quote at the time — without the ' +
@@ -606,13 +621,13 @@ export function validateDeclinedOpportunities(
       );
     if (!leads.has(entry.ecosystem))
       fail(
-        'unknown-ecosystem',
+        DECLINED_PROBLEM.unknownEcosystem,
         `"${entry.ecosystem}" is not a declared Ecosystem, so this entry ` +
           'silences an Opportunity no run can produce',
       );
     if (!exists(entry.site))
       fail(
-        'site-not-found',
+        DECLINED_PROBLEM.siteNotFound,
         `"${entry.site}" is not in the tree, so this entry declines a ` +
           'technique at a place that is no longer there',
       );
@@ -689,7 +704,9 @@ export function applyDeclinedOpportunities(
     resurfaced.push({
       opportunity,
       entry,
-      reason: inRange ? 'quote-changed' : 'baseline-left-range',
+      reason: inRange
+        ? DECLINED_RESURFACE.quoteChanged
+        : DECLINED_RESURFACE.baselineLeftRange,
       detail: inRange
         ? `the upstream page now states ${JSON.stringify(
             opportunity?.benefitQuote ?? '',

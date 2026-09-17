@@ -25,7 +25,9 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  DECLINED_PROBLEM_REASONS,
   DECLINED_RESURFACE_REASONS,
+  RESEARCH_REASONS,
   applyDeclinedOpportunities,
   carryForwardCheckedAndClear,
   classifyFindings,
@@ -92,6 +94,64 @@ test('caret and tilde are refused by name rather than approximated', () => {
     const parsed = parseVersionRange(range);
     assert.equal(parsed.ok, false, `${range} must not parse`);
     assert.equal(parsed.reason, 'unreadable-range');
+  }
+});
+
+// ── The closed vocabularies ─────────────────────────────────────────────────
+
+test('every reason the ledger emits is one of the reasons it publishes', () => {
+  // The three lists call themselves closed. What makes that true is that the
+  // call sites reach the table rather than spelling a string again — so this
+  // asserts the other half: nothing leaves this module carrying a reason the
+  // vocabulary does not name.
+  const reasons = (list) => new Set(list);
+
+  const research = reasons(RESEARCH_REASONS);
+  const previous = ledger();
+  previous.ecosystems[0].checkedAndClear = [
+    { ...previous.ecosystems[0].checkedAndClear[0], holdsFor: '^15.0.0' },
+    { ...previous.ecosystems[0].checkedAndClear[0], holdsFor: '99.0.0' },
+    { ...previous.ecosystems[0].checkedAndClear[0], local: [] },
+    {
+      ...previous.ecosystems[0].checkedAndClear[0],
+      local: [{ file: 'gone.md', line: 1, text: 'x' }],
+    },
+  ];
+  const carried = carryForwardCheckedAndClear({
+    previous,
+    ecosystems: [NEXT],
+    readCurrent: currentTree,
+  });
+  assert.equal(carried.toResearch.length, 4);
+  for (const entry of carried.toResearch)
+    assert.ok(research.has(entry.reason), `unpublished reason ${entry.reason}`);
+
+  const problems = reasons(DECLINED_PROBLEM_REASONS);
+  const declined = validateDeclinedOpportunities(
+    [
+      { ...DECLINED[0], quote: '' },
+      { ...DECLINED[0], baselineRange: '^22.0.0' },
+      { ...DECLINED[0], ecosystem: 'unheard-of' },
+      { ...DECLINED[0], site: 'tools/scripts/gone.mjs' },
+    ],
+    { knownEcosystems: ['nx'], exists: (path) => currentTree(path) !== null },
+  );
+  assert.ok(declined.problems.length >= 4);
+  for (const problem of declined.problems)
+    assert.ok(problems.has(problem.reason), `unpublished ${problem.reason}`);
+
+  const resurface = reasons(DECLINED_RESURFACE_REASONS);
+  const [opportunity] = nxOpportunities();
+  for (const [entries, baseline] of [
+    [DECLINED, '23.0.1'],
+    [[{ ...DECLINED[0], quote: 'something else entirely' }], '22.7.7'],
+  ]) {
+    const applied = applyDeclinedOpportunities([opportunity], entries, {
+      lead: 'nx',
+      baseline,
+    });
+    assert.equal(applied.resurfaced.length, 1);
+    assert.ok(resurface.has(applied.resurfaced[0].reason));
   }
 });
 

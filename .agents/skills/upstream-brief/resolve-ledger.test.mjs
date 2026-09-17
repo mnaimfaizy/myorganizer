@@ -22,6 +22,7 @@ import {
   ledgerStatus,
   readBriefDir,
   readCommittedReports,
+  readDeclaredLeads,
   readDeclinedOpportunities,
 } from './resolve-ledger.mjs';
 
@@ -76,6 +77,24 @@ test('the brief directory comes from the adapter, or the documented default', ()
     readBriefDir(() => null),
     DEFAULT_BRIEF_DIR,
   );
+});
+
+test('the first config file present is the adapter, and a key it omits takes the default', () => {
+  // ADAPTER.md's lookup order is over files: the `.yml` present here is the
+  // adapter, so a key it does not carry falls to the documented default rather
+  // than sending the search on to a `.json` file the repo also did not choose.
+  // All three readers walk the same way, which is why they share one walker.
+  const files = {
+    'upstream-brief.config.yml': 'ecosystems:\n  - lead: nx\n',
+    'upstream-brief.config.json': json({
+      brief_dir: 'docs/never-read',
+      ecosystems: [{ lead: 'never-read' }],
+    }),
+  };
+  const read = (p) => files[p] ?? null;
+  assert.equal(readBriefDir(read), DEFAULT_BRIEF_DIR);
+  assert.deepEqual(readDeclaredLeads(read), ['nx']);
+  assert.deepEqual(readDeclinedOpportunities(read), []);
 });
 
 test('every JSON file in the brief directory is read as a report, and nothing else is', () => {

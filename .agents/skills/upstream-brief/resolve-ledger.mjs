@@ -27,6 +27,7 @@ import { join } from 'node:path';
 import {
   applyDeclinedOpportunities,
   carryForwardCheckedAndClear,
+  normalizeDeclinedEntry,
   parseDeclinedOpportunitiesFromConfig,
   selectLatestLedgerReport,
   validateDeclinedOpportunities,
@@ -46,83 +47,78 @@ const CONFIG_PATHS = [
 export const DEFAULT_BRIEF_DIR = 'docs/research';
 
 /**
- * The adapter's declined entries, from whichever dialect it is written in.
- * A `.json` adapter is parsed properly; a YAML one is matched by the narrow
- * reader in `ledger.mjs`, for the reason written there.
+ * Read one thing out of the adapter, in whichever dialect it is written in.
+ *
+ * One walker for all three readers below, because three copies of "find the
+ * config file, branch on JSON, fall back to the documented default" are three
+ * chances to disagree about which file wins and what an absent key means —
+ * and they did. ADAPTER.md's lookup order is over **files**: the first config
+ * file present is the adapter, and a key it does not carry takes the default
+ * rather than sending the search on to a file the repo also did not choose.
+ *
+ * A reader returns `undefined` for "this adapter does not say", which is the
+ * one thing a legitimate value is never allowed to be.
  */
-export function readDeclinedOpportunities(read) {
+function fromAdapter(read, { json, yaml, fallback }) {
   for (const path of CONFIG_PATHS) {
     const text = read(path);
     if (text === null || text === undefined) continue;
     if (path.endsWith('.json')) {
+      let parsed;
       try {
-        const parsed = JSON.parse(text);
-        return Array.isArray(parsed?.declined_opportunities)
-          ? parsed.declined_opportunities.map(normalizeJsonEntry)
-          : [];
+        parsed = JSON.parse(text);
       } catch {
-        return [];
+        return fallback;
       }
+      return json(parsed) ?? fallback;
     }
-    return parseDeclinedOpportunitiesFromConfig(text);
+    return yaml(text) ?? fallback;
   }
-  return [];
+  return fallback;
 }
+
+/**
+ * The adapter's declined entries. Both dialects land on
+ * `normalizeDeclinedEntry`, which is keyed off `DECLINED_ADAPTER_KEYS` — the
+ * one table of what a declined entry is made of. A second hand-written list
+ * here would mean a key added to that table arrives required by the validator
+ * and never populated from a `.json` adapter.
+ */
+export const readDeclinedOpportunities = (read) =>
+  fromAdapter(read, {
+    json: (parsed) =>
+      Array.isArray(parsed?.declined_opportunities)
+        ? parsed.declined_opportunities.map(normalizeDeclinedEntry)
+        : undefined,
+    yaml: parseDeclinedOpportunitiesFromConfig,
+    fallback: [],
+  });
 
 /**
  * The leads the adapter declares, which is what "this Ecosystem still exists"
  * means when a declined entry names one (ADR 0084 item 12).
  */
-export function readDeclaredLeads(read) {
-  for (const path of CONFIG_PATHS) {
-    const text = read(path);
-    if (text === null || text === undefined) continue;
-    if (path.endsWith('.json')) {
-      try {
-        const parsed = JSON.parse(text);
-        return Array.isArray(parsed?.ecosystems)
-          ? parsed.ecosystems.map((eco) => String(eco?.lead ?? '').trim())
-          : [];
-      } catch {
-        return [];
-      }
-    }
-    return parseEcosystemsFromConfig(text).map((eco) => eco.lead);
-  }
-  return [];
-}
-
-const normalizeJsonEntry = (raw) => ({
-  ecosystem: String(raw?.ecosystem ?? '').trim(),
-  url: String(raw?.url ?? '').trim(),
-  site: String(raw?.site ?? '').trim(),
-  reason: String(raw?.reason ?? '').trim(),
-  baselineRange: String(raw?.baseline_range ?? raw?.baselineRange ?? '').trim(),
-  quote: String(raw?.quote ?? '').trim(),
-});
+export const readDeclaredLeads = (read) =>
+  fromAdapter(read, {
+    json: (parsed) =>
+      Array.isArray(parsed?.ecosystems)
+        ? parsed.ecosystems.map((eco) => String(eco?.lead ?? '').trim())
+        : undefined,
+    yaml: (text) => parseEcosystemsFromConfig(text).map((eco) => eco.lead),
+    fallback: [],
+  });
 
 /** `brief_dir:`, matched rather than parsed — see `check-upstream-briefs.mjs`. */
-export function readBriefDir(read) {
-  for (const path of CONFIG_PATHS) {
-    const text = read(path);
-    if (text === null || text === undefined) continue;
-    if (path.endsWith('.json')) {
-      try {
-        const parsed = JSON.parse(text);
-        if (typeof parsed?.brief_dir === 'string' && parsed.brief_dir.trim())
-          return parsed.brief_dir.trim();
-      } catch {
-        return DEFAULT_BRIEF_DIR;
-      }
-      continue;
-    }
-    const match = text.match(
-      /^brief_dir:[ \t]*['"]?([^'"\s#]+)['"]?[ \t]*(?:#.*)?$/m,
-    );
-    if (match) return match[1];
-  }
-  return DEFAULT_BRIEF_DIR;
-}
+export const readBriefDir = (read) =>
+  fromAdapter(read, {
+    json: (parsed) =>
+      typeof parsed?.brief_dir === 'string' && parsed.brief_dir.trim()
+        ? parsed.brief_dir.trim()
+        : undefined,
+    yaml: (text) =>
+      text.match(/^brief_dir:[ \t]*['"]?([^'"\s#]+)['"]?[ \t]*(?:#.*)?$/m)?.[1],
+    fallback: DEFAULT_BRIEF_DIR,
+  });
 
 /** Every structured report committed in the brief directory, newest last. */
 export function readCommittedReports(read, list, briefDir) {
@@ -149,11 +145,23 @@ export function readCommittedReports(read, list, briefDir) {
  * @param {object} io
  * @param {(path: string) => string|null} io.read a repo file, or null
  * @param {(dir: string) => string[]|null} io.list directory entries, or null
+ * @param {(path: string) => boolean} [io.exists] does the current tree carry
+ *   that path — asked only of a declined entry's local site, and the same
+ *   question the gate asks. It is a seam rather than `read(path) !== null`
+ *   because the two must agree: a site that is a directory, or a file this
+ *   process cannot read, exists for the gate and would read as
+ *   `site-not-found` here, and this command's whole claim is that it reports
+ *   the condition `check-upstream-briefs.mjs` fails on.
  * @param {Array<{lead: string, ok: boolean, baseline?: string, reason?: string}>} io.resolved
  *   the Baseline resolution for every declared Ecosystem
  * @returns {{lines: string[], briefDir: string}}
  */
-export function ledgerStatus({ read, list, resolved }) {
+export function ledgerStatus({
+  read,
+  list,
+  resolved,
+  exists = (path) => read(path) !== null && read(path) !== undefined,
+}) {
   const briefDir = readBriefDir(read);
   const reports = readCommittedReports(read, list, briefDir);
   const declined = readDeclinedOpportunities(read);
@@ -218,7 +226,7 @@ export function ledgerStatus({ read, list, resolved }) {
 
   const problems = validateDeclinedOpportunities(declined, {
     knownEcosystems: resolved.map((eco) => eco.lead),
-    exists: (path) => read(path) !== null,
+    exists,
   }).problems;
   if (declined.length === 0)
     lines.push(`${LABEL}: no declined Opportunity recorded in the adapter`);
@@ -257,7 +265,9 @@ function main(argv) {
   };
 
   const { results } = resolveDeclaredEcosystems({ repo });
-  for (const line of ledgerStatus({ read, list, resolved: results }).lines)
+  const exists = (path) => existsSync(join(repo, path));
+  for (const line of ledgerStatus({ read, list, exists, resolved: results })
+    .lines)
     console.log(line);
 }
 
