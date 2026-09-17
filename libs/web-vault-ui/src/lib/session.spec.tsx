@@ -358,6 +358,42 @@ describe('VaultSessionProvider', () => {
       });
     });
 
+    test('lock then passphrase unlock records passphrase not recovery-key', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([19, 20, 21]),
+          'recovery-key',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBe('recovery-key');
+      });
+
+      act(() => {
+        result.current.lock();
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBeNull();
+      });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([22, 23, 24]),
+          'passphrase',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBe('passphrase');
+      });
+    });
+
     test('setMasterKeyBytes(null) clears unlockSecret', async () => {
       mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
 

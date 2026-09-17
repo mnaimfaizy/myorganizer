@@ -548,7 +548,7 @@ describe('ChangePassphraseCard', () => {
       );
     });
 
-    test('16: recovery mode submit calls hook with empty currentPassphrase', async () => {
+    test('16: recovery-key unlock submit calls hook with empty currentPassphrase', async () => {
       const mockChangePassphrase = jest.fn().mockResolvedValue('ok');
 
       (useChangePassphrase as jest.Mock).mockReturnValue({
@@ -580,7 +580,7 @@ describe('ChangePassphraseCard', () => {
     });
   });
 
-  describe('Guard — card does not call resetPassphraseAfterRecovery', () => {
+  describe('Guard — current-passphrase path never calls resetPassphraseAfterRecovery', () => {
     test('17: after successful passphrase change, resetPassphraseAfterRecovery is never called', async () => {
       const mockChangePassphrase = jest.fn().mockResolvedValue('ok');
 
