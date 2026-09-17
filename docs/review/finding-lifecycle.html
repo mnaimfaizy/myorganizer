@@ -1192,7 +1192,7 @@
           <code>Authoritative Lockfile Policy</code>, <code>Secure Install
           Review</code>, <code>Prepare Dependency Cache</code>,
           <code>Setup Affected Context</code>, <code>Lint</code>,
-          <code>Test</code> (<code>ci.yml:23,142,203,335,413,459</code>). The
+          <code>Test</code> (<code>ci.yml:23, :142, :203, :335, :413, :459</code>). The
           <code>Test</code> job sets <code>DATABASE_URL</code>
           (<code>ci.yml:467</code>) but starts no database service, so
           affected Jest runs without one &mdash; which is why the Reviewer's
@@ -1217,7 +1217,7 @@
         <dt>reviewer</dt>
         <dd id="note-reviewer">
           Two sub-agents, one per axis, <code>standards</code> and
-          <code>spec</code> (<code>SKILL.md:15,64</code>), each emitting a
+          <code>spec</code> (<code>SKILL.md:14-15, :17</code>), each emitting a
           findings array; the main agent assembles the envelope and authors no
           finding of its own (ADR 0071 item 7). It may execute, in a
           <code>git worktree</code> under <code>tmp/</code> it cannot keep
@@ -1556,7 +1556,7 @@
             <li>A third label set beside <code>orchestration</code> and <code>surface</code></li>
             <li>Lives on a Pull Request, never an Issue</li>
           </ul>
-          <p class="small muted"><code>tools/config/github-labels.json:3,80</code>.</p>
+          <p class="small muted"><code>tools/config/github-labels.json:3, :80</code>.</p>
         </div>
       </div>
       <p class="small muted" style="margin-top: 12px">
@@ -1733,9 +1733,14 @@
   {
     "note": "Expected-content anchors for finding-lifecycle.html, verified against source on 2026-09-16",
     "anchors": {
-      "SKILL.md:15": {
+      "SKILL.md:14-15": {
         "file": ".agents/skills/code-review/SKILL.md",
-        "start": "- **Spec** — does the code faithfully implement the originating issue / PRD / spec?"
+        "start": "- **Standards** — does the code conform to this repo's documented coding standards?",
+        "end": "- **Spec** — does the code faithfully implement the originating issue / PRD / spec?"
+      },
+      "SKILL.md:17": {
+        "file": ".agents/skills/code-review/SKILL.md",
+        "start": "Each axis runs as a **parallel sub-agent** that returns findings as JSON. The main agent assembles"
       },
       "SKILL.md:54": {
         "file": ".agents/skills/code-review/SKILL.md",
