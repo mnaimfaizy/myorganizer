@@ -4,7 +4,6 @@
   "baseline": [
     "docs/agents/skill-atlas.html",
     "docs/authentication/session-lifecycle.html",
-    "docs/review/finding-lifecycle.html",
     "docs/sandcastle/dispatch-map.html",
     "docs/sandcastle/gates.html",
     "docs/sandcastle/resume.html"
