@@ -168,7 +168,7 @@ const EXTRACTORS = {
       .filter(Boolean);
   },
 
-  // Authentication HTTP is AuthController-only (ADR 0087). A remount of
+  // Authentication HTTP is AuthController-only (ADR 0089). A remount of
   // `api.use('/auth', authRouter)` in front of RegisterRoutes is a reversal.
   'routerPrecedence.authRouterBeforeTsoaRoutes': () => {
     const source = read(MAIN);

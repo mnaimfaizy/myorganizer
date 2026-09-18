@@ -19,7 +19,11 @@ import {
   Tags,
   TsoaResponse,
 } from 'tsoa';
-import { Body, ValidateBody } from '../decorators/request-body-validator';
+import {
+  Body,
+  ValidateBody,
+  zodIssuesToDetails,
+} from '../decorators/request-body-validator';
 import apiTokens from '../helpers/ApiTokens';
 import { ACCESS_TOKEN_EXPIRES_IN_MS } from '../helpers/tokenLifetimes';
 import {
@@ -60,17 +64,10 @@ function validateLoginBody(
 ): void {
   const check = LoginSchema.safeParse(req.body);
   if (!check.success) {
-    const details = check.error.issues.reduce(
-      (acc, err) => {
-        acc[err.path.join('.')] = {
-          message: err.message,
-          value: err.code,
-        };
-        return acc;
-      },
-      {} as Record<string, { message: string; value: string }>,
-    );
-    res.status(422).json({ message: 'Validation Failed', details });
+    res.status(422).json({
+      message: 'Validation Failed',
+      details: zodIssuesToDetails(check.error),
+    });
     return;
   }
   next();
