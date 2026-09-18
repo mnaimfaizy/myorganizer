@@ -354,11 +354,11 @@ _Avoid_: vault identity flag, mismatch flag, standoff flag, vault check cache
 
 **Vault Sync Standoff**:
 The sync status reported while a device's Observed Vault Identity for a User differs from that device's own — the visible half of a Vault Blob convergence refusing to take across a differing Vault Identity ([ADR 0067](docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)). It exists because that refusal is otherwise invisible: nothing else says why sync has stopped, and a User who has durably declined the Vault Meta dialog has no other notification left to silence. A standoff is not fixed by retrying — the two sides are different Vaults — and it clears only when a pass observes a Vault Identity that matches this device's own again.
+_Avoid_: vault mismatch, sync conflict, identity conflict, vault divergence
 
 **Vault Pull Stall**:
 The sync status reported while this device's most recent Vault Pull Pass ended without learning what the server holds for some Vault Blob Type — it ran out of time, could not read the Vault Blob Inventory, or could not reach a type the inventory named. It exists because a pass that stops getting answers is otherwise silent: nothing else says the device has stopped hearing from its other devices. Unlike a Vault Sync Standoff it is fixed by trying again, and it clears when a later pass gets every answer — a fact about the last pass, not a flag anything has to lower. A pass replaced by a newer one has not stalled; it was superseded ([ADR 0088](docs/adr/0088-a-vault-pull-pass-has-a-budget-and-is-superseded-never-queued.md)).
 _Avoid_: pull failure, pull error, offline, pull timeout
-_Avoid_: vault mismatch, sync conflict, identity conflict, vault divergence
 
 **Server Reachability**:
 What one attempt to reach a User's own Vault Meta found, at the moment it ran. It is an observation and never a state: it is discovered by trying, in the same way a Linked Provider's token is, and it says nothing about whether the next write will land — a third device can move the server between the reading and the push. It is therefore shown and never gated on, and a reading that found the server is shown as nothing at all, because a User told the server is reachable has been told something the product cannot keep. What it can honestly carry is the negative: a User about to retire a Recovery Key can be told, before the point of no return, that the retirement will not reach their other devices yet.
