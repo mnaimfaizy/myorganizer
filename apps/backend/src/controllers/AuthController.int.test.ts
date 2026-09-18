@@ -50,6 +50,28 @@ const disabledUser = {
   disabled: true,
 };
 
+const platformAdminUser = {
+  ...verifiedUser,
+  id: 'admin-1',
+  email: 'admin@example.com',
+  name: 'Platform Admin',
+  first_name: 'Platform',
+  last_name: 'Admin',
+  role: 'platform_admin',
+};
+
+const defaultRoleUser = {
+  id: 'user-default',
+  name: 'Default User',
+  first_name: 'Default',
+  last_name: 'User',
+  email: 'default@example.com',
+  phone: null,
+  email_verification_timestamp: new Date('2024-01-01'),
+  blacklisted_tokens: [] as string[],
+  sessions_invalidated_at: null as Date | null,
+};
+
 const filteredVerifiedUser = {
   id: verifiedUser.id,
   name: verifiedUser.name,
@@ -131,6 +153,16 @@ jest.mock('../utils/passport', () => ({
 
           if (email === verifiedUser.email) {
             cb(null, verifiedUser);
+            return;
+          }
+
+          if (email === platformAdminUser.email) {
+            cb(null, platformAdminUser);
+            return;
+          }
+
+          if (email === defaultRoleUser.email) {
+            cb(null, defaultRoleUser);
             return;
           }
 
@@ -357,6 +389,39 @@ describe('Auth HTTP routes (HTTP integration)', () => {
       expect(res.status).toBe(401);
       expect(res.body).toEqual({ message: 'Invalid credentials' });
     });
+
+    test('returns 200 with platform_admin role and disabled false in user payload', async () => {
+      const res = await request(app).post('/auth/login').send({
+        email: platformAdminUser.email,
+        password: 'test-pass-1',
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body.user.role).toBe('platform_admin');
+      expect(res.body.user.disabled).toBe(false);
+    });
+
+    test('returns 200 with default role user and disabled false when role and disabled are omitted', async () => {
+      const res = await request(app).post('/auth/login').send({
+        email: defaultRoleUser.email,
+        password: 'test-pass-1',
+      });
+
+      expect(res.status).toBe(200);
+      expect(res.body.user.role).toBe('user');
+      expect(res.body.user.disabled).toBe(false);
+    });
+
+    test('returns 422 when client_type is an invalid enum value', async () => {
+      const res = await request(app).post('/auth/login').send({
+        email: verifiedUser.email,
+        password: 'test-pass-1',
+        client_type: 'desktop',
+      });
+
+      expect(res.status).toBe(422);
+      expect(res.body).toEqual({ message: 'Validation Failed' });
+    });
   });
 
   describe('POST /auth/refresh', () => {
@@ -391,6 +456,21 @@ describe('Auth HTTP routes (HTTP integration)', () => {
       ).toBe(true);
     });
 
+    test('returns 200 with role and disabled on the user payload', async () => {
+      const userService = require('../services/UserService').default;
+
+      userService.refreshToken.mockResolvedValueOnce(platformAdminUser);
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', ['refresh_cookie=refresh-token-1']);
+
+      expect(res.status).toBe(200);
+      expect(res.body.user.role).toBe('platform_admin');
+      expect(res.body.user.disabled).toBe(false);
+      expect(res.body.refresh_token).toBeUndefined();
+    });
+
     test('returns 401 when refresh token is missing', async () => {
       const userService = require('../services/UserService').default;
 
@@ -423,6 +503,105 @@ describe('Auth HTTP routes (HTTP integration)', () => {
             cookie.includes('refresh_cookie=;'),
         ),
       ).toBe(true);
+    });
+
+    test('returns 401 and clears refresh cookie when user account is disabled', async () => {
+      const userService = require('../services/UserService').default;
+      const apiTokens = require('../helpers/ApiTokens').default;
+
+      userService.refreshToken.mockResolvedValueOnce(disabledUser);
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', ['refresh_cookie=refresh-token-1']);
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Account disabled' });
+      expect(apiTokens.createTokens).not.toHaveBeenCalled();
+
+      const setCookie = asSetCookieHeaders(res.headers['set-cookie']);
+      expect(
+        setCookie.some((cookie) => cookie.startsWith('refresh_cookie=')),
+      ).toBe(true);
+    });
+
+    test('returns 401 and clears refresh cookie when session was invalidated after token was issued', async () => {
+      const userService = require('../services/UserService').default;
+      const { decodeToken } = require('../helpers/jwtHelper');
+      const apiTokens = require('../helpers/ApiTokens').default;
+
+      const sessionsInvalidatedAt = new Date('2025-06-01T12:00:00.000Z');
+      const iatSeconds = Math.floor(
+        sessionsInvalidatedAt.getTime() / 1000 - 60,
+      );
+
+      userService.refreshToken.mockResolvedValueOnce({
+        ...verifiedUser,
+        sessions_invalidated_at: sessionsInvalidatedAt,
+      });
+      decodeToken.mockReturnValue({
+        userId: 'user-1',
+        iat: iatSeconds,
+      });
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', ['refresh_cookie=refresh-token-1']);
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Session invalidated' });
+      expect(apiTokens.createTokens).not.toHaveBeenCalled();
+
+      const setCookie = asSetCookieHeaders(res.headers['set-cookie']);
+      expect(
+        setCookie.some((cookie) => cookie.startsWith('refresh_cookie=')),
+      ).toBe(true);
+    });
+
+    test('accepts refresh token from request body', async () => {
+      const userService = require('../services/UserService').default;
+
+      userService.refreshToken.mockResolvedValueOnce(verifiedUser);
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .send({ refresh_token: 'body-refresh-token' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.refresh_token).toBeUndefined();
+      expect(userService.refreshToken).toHaveBeenCalledWith(
+        'body-refresh-token',
+      );
+    });
+
+    test('prefers body refresh_token over cookie', async () => {
+      const userService = require('../services/UserService').default;
+
+      userService.refreshToken.mockResolvedValueOnce(verifiedUser);
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', ['refresh_cookie=cookie-token'])
+        .send({ refresh_token: 'body-token' });
+
+      expect(res.status).toBe(200);
+      expect(userService.refreshToken).toHaveBeenCalledWith('body-token');
+    });
+
+    test('returns 401 when refresh token is blacklisted', async () => {
+      const userService = require('../services/UserService').default;
+
+      userService.refreshToken.mockResolvedValueOnce({
+        ...verifiedUser,
+        blacklisted_tokens: ['refresh-token-1'],
+      });
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', ['refresh_cookie=refresh-token-1']);
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Unauthorized' });
     });
   });
 
@@ -501,6 +680,35 @@ describe('Auth HTTP routes (HTTP integration)', () => {
       });
       expect(userService.create).not.toHaveBeenCalled();
     });
+
+    test('resends verification and returns 409 when email is registered but unverified', async () => {
+      const userService = require('../services/UserService').default;
+
+      userService.getByEmail.mockImplementation(async () => unverifiedUser);
+      userService.sendVerificationMail.mockImplementation(
+        async () => 'verify-token-resend',
+      );
+      userService.update.mockImplementation(async (id, data) => ({
+        ...unverifiedUser,
+        id,
+        ...data,
+      }));
+
+      const res = await request(app).post('/auth/register').send({
+        firstName: 'Bob',
+        lastName: 'Example',
+        email: unverifiedUser.email,
+        password: 'test-pass-1',
+      });
+
+      expect(res.status).toBe(409);
+      expect(res.body.message).toBe(
+        "Email already registered but isn't verified yet. We've resent the verification email.",
+      );
+      expect(userService.sendVerificationMail).toHaveBeenCalledTimes(1);
+      expect(userService.update).toHaveBeenCalledTimes(1);
+      expect(userService.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('PATCH /auth/verify/email', () => {
@@ -575,6 +783,48 @@ describe('Auth HTTP routes (HTTP integration)', () => {
       expect(res.status).toBe(404);
       expect(res.body).toEqual({ message: 'User not found' });
       expect(userService.sendVerificationMail).not.toHaveBeenCalled();
+    });
+
+    test('returns 429 when a verification email was already sent recently', async () => {
+      const userService = require('../services/UserService').default;
+
+      userService.getByEmail.mockImplementation(async () => ({
+        ...unverifiedUser,
+        email_verification_token: 'existing-verify-token',
+      }));
+      userService.sendVerificationMail.mockImplementation(
+        async () => new Error('Verification email already sent recently'),
+      );
+
+      const res = await request(app)
+        .post('/auth/verify/resend')
+        .send({ email: unverifiedUser.email });
+
+      expect(res.status).toBe(429);
+      expect(res.body).toEqual({
+        message:
+          'A verification email was already sent recently. Please check your inbox and try again later.',
+      });
+      expect(userService.update).not.toHaveBeenCalled();
+    });
+
+    test('does not persist a token when sending the verification email fails', async () => {
+      const userService = require('../services/UserService').default;
+
+      userService.getByEmail.mockImplementation(async () => unverifiedUser);
+      userService.sendVerificationMail.mockImplementation(
+        async () => new Error('smtp down'),
+      );
+
+      const res = await request(app)
+        .post('/auth/verify/resend')
+        .send({ email: unverifiedUser.email });
+
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({
+        message: 'Failed to send verification email.',
+      });
+      expect(userService.update).not.toHaveBeenCalled();
     });
   });
 
@@ -676,6 +926,49 @@ describe('Auth HTTP routes (HTTP integration)', () => {
       expect(res.status).toBe(404);
       expect(res.body).toEqual({ message: 'User not found' });
       expect(userService.sendPasswordResetMail).not.toHaveBeenCalled();
+    });
+
+    test('returns 429 when a non-expired reset token already exists', async () => {
+      const userService = require('../services/UserService').default;
+      const { decodeToken } = require('../helpers/jwtHelper');
+
+      userService.getByEmail.mockImplementation(async () => ({
+        ...verifiedUser,
+        reset_password_token: 'existing-token',
+      }));
+      decodeToken.mockReturnValue({ userId: 'user-1' });
+
+      const res = await request(app)
+        .post('/auth/password/reset')
+        .send({ email: verifiedUser.email });
+
+      expect(res.status).toBe(429);
+      expect(res.body).toEqual({
+        message:
+          'A password reset email was already sent recently. Please check your inbox and try again later.',
+      });
+      expect(userService.sendPasswordResetMail).not.toHaveBeenCalled();
+      expect(userService.update).not.toHaveBeenCalled();
+    });
+
+    test('does not persist a token when sending the reset email fails', async () => {
+      const userService = require('../services/UserService').default;
+
+      userService.getByEmail.mockImplementation(async () => ({
+        ...verifiedUser,
+        reset_password_token: null,
+      }));
+      userService.sendPasswordResetMail.mockImplementation(
+        async () => new Error('smtp down'),
+      );
+
+      const res = await request(app)
+        .post('/auth/password/reset')
+        .send({ email: verifiedUser.email });
+
+      expect(res.status).toBe(500);
+      expect(res.body).toEqual({ message: 'Failed to reset password' });
+      expect(userService.update).not.toHaveBeenCalled();
     });
   });
 

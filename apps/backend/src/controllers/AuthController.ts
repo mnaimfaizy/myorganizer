@@ -22,7 +22,11 @@ import {
 import { Body, ValidateBody } from '../decorators/request-body-validator';
 import apiTokens from '../helpers/ApiTokens';
 import { ACCESS_TOKEN_EXPIRES_IN_MS } from '../helpers/tokenLifetimes';
-import { clearRefreshCookie, setRefreshCookie } from '../helpers/cookieHelper';
+import {
+  REFRESH_COOKIE_NAME,
+  clearRefreshCookie,
+  setRefreshCookie,
+} from '../helpers/cookieHelper';
 import filterUser from '../helpers/filterUser';
 import PlatformTokenHandler from '../helpers/PlatformTokenHandler';
 import { decodeToken } from '../helpers/jwtHelper';
@@ -151,7 +155,7 @@ export class AuthController extends Controller {
     const user = req.user as UserInterface;
     const refreshToken =
       requestBody?.refresh_token ??
-      (req.cookies?.refresh_cookie as string | undefined);
+      (req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined);
 
     if (!user || !refreshToken) {
       this.setStatus(401);
@@ -204,7 +208,7 @@ export class AuthController extends Controller {
   }> {
     const refresh_token =
       requestBody?.refresh_token ??
-      (req.cookies?.refresh_cookie as string | undefined);
+      (req.cookies?.[REFRESH_COOKIE_NAME] as string | undefined);
     if (!refresh_token) {
       return unauthorized(401, { message: 'Unauthorized' });
     }

@@ -13,6 +13,10 @@ import * as path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { ValidateError } from 'tsoa';
 import { createCorsOptions } from './config/http';
+import {
+  getHttpErrorMessage,
+  getHttpErrorStatus,
+} from './helpers/httpErrorStatus';
 import { maybeCreateGlobalApiRateLimiterFromEnv } from './middleware/globalRateLimit';
 import { vaultRateLimiter } from './middleware/vaultRateLimit';
 import { bootstrapPlatformAdminFromEnv } from './bootstrap/platformAdminBootstrap';
@@ -45,23 +49,6 @@ const passengerBaseUri = normalizeRouterPrefix(process.env.PASSENGER_BASE_URI);
 const app = express();
 
 const isProd = process.env.NODE_ENV === 'production';
-
-type HttpLikeError = Error & {
-  status?: unknown;
-  statusCode?: unknown;
-};
-
-function getHttpErrorStatus(err: unknown): number | undefined {
-  if (!err || typeof err !== 'object') return undefined;
-
-  const maybeErr = err as HttpLikeError;
-  const rawStatus = maybeErr.status ?? maybeErr.statusCode;
-  if (typeof rawStatus !== 'number') return undefined;
-  if (!Number.isInteger(rawStatus)) return undefined;
-  if (rawStatus < 400 || rawStatus > 599) return undefined;
-
-  return rawStatus;
-}
 
 function parseTrustProxy(value: string | undefined): boolean | number {
   const raw = (value ?? '').trim().toLowerCase();
@@ -203,7 +190,7 @@ app.use(function errorHandler(
 
   const httpStatus = getHttpErrorStatus(err);
   if (httpStatus) {
-    const message = err instanceof Error ? err.message : 'Request failed';
+    const message = getHttpErrorMessage(err);
     return res.status(httpStatus).json({ message });
   }
 

@@ -1,10 +1,14 @@
 import type { Application, ErrorRequestHandler } from 'express';
 import { ValidateError } from 'tsoa';
+import {
+  getHttpErrorMessage,
+  getHttpErrorStatus,
+} from '../helpers/httpErrorStatus';
 
 /**
  * Last-resort TSOA/Express error mapper used by HTTP integration tests that
- * call RegisterRoutes without booting main.ts. Keep this in one place so the
- * two auth suites cannot drift apart on 422 / status / 500 mapping.
+ * call RegisterRoutes without booting main.ts. Status mapping is the same
+ * helper production uses in main.ts so 400–599 bounds cannot drift.
  */
 export function attachTsoaErrorHandler(app: Application): void {
   const tsoaErrorHandler: ErrorRequestHandler = (err, _req, res, next) => {
@@ -16,18 +20,10 @@ export function attachTsoaErrorHandler(app: Application): void {
       return;
     }
 
-    const anyErr = err as {
-      status?: number;
-      statusCode?: number;
-      message?: string;
-    };
-    const httpStatus = anyErr?.status ?? anyErr?.statusCode;
-    if (
-      anyErr &&
-      typeof anyErr === 'object' &&
-      typeof httpStatus === 'number'
-    ) {
-      res.status(httpStatus).json({ message: anyErr.message });
+    const httpStatus = getHttpErrorStatus(err);
+    if (httpStatus) {
+      const message = getHttpErrorMessage(err);
+      res.status(httpStatus).json({ message });
       return;
     }
 
