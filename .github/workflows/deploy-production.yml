@@ -342,6 +342,12 @@ jobs:
           fi
 
       - name: Package frontend (cPanel)
+        env:
+          # Public GIS client for Vault Cloud Backup. Sticky after first
+          # production enable — swapping it hides existing appDataFolder
+          # copies. Empty means the card shows "not configured"; there is
+          # no YouTube-style availability switch. See issue #751.
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
         run: corepack yarn package:myorganizer:web
 
       - name: Deploy frontend to cPanel (production)

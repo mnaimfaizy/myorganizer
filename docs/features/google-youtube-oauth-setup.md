@@ -233,6 +233,15 @@ A refresh token only works with the client that issued it. Moving an environment
 
 Each environment's `.env` file uses its own `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI`.
 
+Vault Cloud Backup is a **different** production Cloud project. Do not add
+`drive.appdata` to this YouTube production consent screen, and do not reuse
+the YouTube production client as `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. The Drive
+runbook — including the sticky-client warning — lives in
+[vault-cloud-backup-google-drive.md](./vault-cloud-backup-google-drive.md).
+Development and staging may still share one Testing-project client if that
+client has both redirect URIs and JavaScript origins
+([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)).
+
 ---
 
 ## Troubleshooting
