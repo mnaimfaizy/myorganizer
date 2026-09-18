@@ -1,8 +1,30 @@
 # MyOrganizer adapter for the portable Upstream Brief skill.
 # Schema: .agents/skills/upstream-brief/ADAPTER.md
 
-current_versions:
+version_record:
   path: TECH_STACK.md
+
+# ADR 0084 items 1-2. Each Ecosystem's Baseline is resolved from what is
+# installed, never from this file or from the entry below — the version
+# record is compared against for a drift note (routed to DepSync), never
+# read as a source. Members are discovered by the lead's npm scope prefix
+# (`nx` -> `@nx/*`) and can be extended or trimmed with `members.add` /
+# `members.remove`. See `.agents/skills/upstream-brief/resolve-baseline.mjs`.
+ecosystems:
+  - lead: nx
+  - lead: next
+    members:
+      add: [eslint-config-next]
+  - lead: react-native
+
+# ADR 0084 item 12. Upstream Opportunities a human declined, remembered so the
+# next run stays quiet about them until the Baseline leaves the recorded range
+# or the upstream quote changes. Nothing has been declined yet; the shape is
+# `{ecosystem, url, site, reason, baseline_range, quote}` (see ADAPTER.md), and
+# `yarn upstream:briefs:check` fails an entry whose Ecosystem or site is gone.
+# Written as a bare key rather than `[]`: the adapter reader matches the header
+# line exactly, so an entry added under a `[]` spelling would be read by nobody.
+declined_opportunities:
 
 instruction_globs:
   - '**/AGENTS.md'
@@ -33,10 +55,12 @@ source_globs:
 
 brief_dir: docs/research
 
+# ADR 0084 item 13. Two labels and no third: a `quality` role used to map to
+# `qa`, which ADR 0049 reserves for a QA Plan Issue, so every brief issue
+# arrived labelled as something it was not.
 issue:
   tracker: github
   repository: mnaimfaizy/myorganizer
   labels:
     research: research
-    quality: qa
     hitl: type:hitl

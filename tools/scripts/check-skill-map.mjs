@@ -245,7 +245,10 @@ eq('skillToSkillEdgeCount', ssPairs, manifest.skillToSkillEdgeCount);
 // red check at a time does not scale.
 const AGENT_FALSE_POSITIVES = {
   Docs: ['create-hooks', 'design-brief'], // a `## Docs` heading; the English word
-  Commit: ['implement', 'release-and-deploy-workflow'], // "Commit/PR only if…", "5. Commit:"
+  // "Commit/PR only if…", "5. Commit:", and — in upstream-brief — the
+  // `**Commit:**` line the rendered brief carries, which names the git commit
+  // every local citation was checked against, not the sub-agent.
+  Commit: ['implement', 'release-and-deploy-workflow', 'upstream-brief'],
 };
 
 let agentEdges = 0;
