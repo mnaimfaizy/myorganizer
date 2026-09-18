@@ -668,6 +668,51 @@ describe('taskNormalization', () => {
       expect(result.changed).toBe(true);
     });
 
+    it('skips legacy { id, todo } records with no title', () => {
+      const input = [{ id: 'legacy-1', todo: 'Buy milk' }];
+      const result = normalizeTasks(input);
+      expect(result.value).toEqual([]);
+      expect(result.changed).toBe(true);
+    });
+
+    it('drops todo-shaped item from mixed list and keeps valid task', () => {
+      const input = [
+        {
+          id: 'valid-1',
+          title: 'Valid Task',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+        { id: 'x', todo: 'old' },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0].id).toBe('valid-1');
+      expect(result.changed).toBe(true);
+    });
+
+    it('uses title when both title and todo are present', () => {
+      const createdAtISO = '2024-01-01T00:00:00.000Z';
+      const input = [
+        {
+          id: 'both-1',
+          title: 'Keep me',
+          todo: 'ignore me',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: createdAtISO,
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value).toHaveLength(1);
+      expect(result.value[0].title).toBe('Keep me');
+      expect(result.value[0]).not.toHaveProperty('todo');
+      expect(result.changed).toBe(false);
+    });
+
     it('skips tasks with whitespace-only title', () => {
       const input = [
         {

@@ -44,24 +44,6 @@ export function normalizeTasks(payload: unknown): NormalizeResult<Task[]> {
 
     const raw = item as Record<string, unknown>;
 
-    // Legacy { id, todo } migration
-    if (typeof raw['todo'] === 'string' && (raw['todo'] as string).trim()) {
-      const id = toTrimmedString(raw['id']) ?? randomId();
-      const task: Task = {
-        id,
-        title: (raw['todo'] as string).trim(),
-        status: 'pending',
-        priority: 'medium',
-        context: 'personal',
-        archived: false,
-        createdAt: migrationTimestamp,
-        updatedAt: migrationTimestamp,
-      };
-      normalized.push(task);
-      changed = true;
-      continue;
-    }
-
     // id: generate when missing
     const id = toTrimmedString(raw['id']) ?? randomId();
 
