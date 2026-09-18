@@ -87,6 +87,10 @@ function setupBackend(page: Page) {
 
   const backupRecords: BackupRecord[] = [];
 
+  // Getter for server Vault Meta, exposed to tests that need to verify
+  // that importVault does not write Vault Meta to the server.
+  const getServerMeta = () => serverMeta;
+
   const loginUrl = /\/auth\/login\/?(\?.*)?$/;
   const vaultMetaUrl = /\/vault\/?(\?.*)?$/;
   const vaultBlobUrl = vaultBlobRouteRelative();
@@ -311,7 +315,7 @@ function setupBackend(page: Page) {
     await route.fulfill({ status: 405, headers });
   });
 
-  return { backupRecords };
+  return { backupRecords, getServerMeta };
 }
 
 async function setupVaultWithSampleData(page: Page) {
@@ -488,13 +492,19 @@ async function confirmImportReplaceDialog(
     }
 
     case 'different-vault': {
-      // The bundle holds a different Vault. Confirm is disabled until the
+      // The bundle holds a different Vault. Its passphrase and Recovery Key
+      // replace the ones on this device, and this device will stop holding the
+      // Vault the server has (issue #701). Confirm is disabled until the
       // checkbox is ticked; the checkbox gates the operation.
-      await expect(
-        replaceDialog.getByTestId('import-vault-replace-disclosure'),
-      ).toContainText(
-        'This backup is a different Vault. Its passphrase and Recovery Key replace',
+      const disclosure = replaceDialog.getByTestId(
+        'import-vault-replace-disclosure',
       );
+      await expect(disclosure).toHaveText(
+        'This backup is a different Vault. Its passphrase and Recovery Key replace the ones on this device, and this device will stop holding the Vault the server has.',
+      );
+      // Reject the wrapping-reverts row's key phrase to ensure the two rows
+      // cannot converge without explicit assertion drift visible in code.
+      await expect(disclosure).not.toContainText('already has');
 
       const confirmReplace = replaceDialog.getByTestId(
         'import-vault-replace-confirm',
@@ -504,6 +514,13 @@ async function confirmImportReplaceDialog(
       const acknowledge = replaceDialog.getByTestId(
         'import-vault-replace-acknowledge',
       );
+      await expect(
+        replaceDialog.getByText(
+          "I understand the passphrase and Recovery Key on this device will be replaced by the backup's values.",
+          { exact: true },
+        ),
+      ).toBeVisible();
+
       await acknowledge.click();
       await expect(acknowledge).toBeChecked({ timeout: 30000 });
       await expect(confirmReplace).toBeEnabled();
@@ -938,5 +955,129 @@ test.describe('Vault export/import (E2E)', () => {
 
     // Step 9: Close context
     await ctx.close();
+  });
+
+  test('import different vault: disclosure and credential replacement claim holds', async ({
+    browser,
+  }) => {
+    test.setTimeout(180000);
+
+    // Step 1: Context A — set up a Vault, export it, capture its identity
+    const ctxA = await browser.newContext({
+      acceptDownloads: true,
+    });
+    const pageA = await ctxA.newPage();
+    setupBackend(pageA);
+
+    await login(pageA);
+    await setupVaultWithSampleData(pageA);
+
+    await gotoStable(pageA, '/dashboard/vault');
+    const exportButtonA = pageA.getByTestId('export-vault-button');
+    await expect(exportButtonA).toBeVisible({ timeout: 60000 });
+
+    const [downloadA] = await Promise.all([
+      pageA.waitForEvent('download'),
+      exportButtonA.click(),
+    ]);
+    const downloadPathA = await downloadA.path();
+    expect(downloadPathA).toBeTruthy();
+    const fs = await import('node:fs/promises');
+    const exportedTextA = await fs.readFile(downloadPathA as string, 'utf8');
+
+    // The salt is the Vault Identity: it is the facet `describeVaultMetaDivergence`
+    // reads to classify `different-vault`. Read it from the Escape Copy's meta.
+    const envelopeA = JSON.parse(exportedTextA) as {
+      meta: { kdf_salt: string };
+    };
+    const vaultIdentityA = envelopeA.meta.kdf_salt;
+
+    // Also read the local vault to verify the identity matches
+    const localVaultTextA = await readOwnedVault(pageA, E2E_USER_ID);
+    expect(localVaultTextA).toBeTruthy();
+    const localVaultA = JSON.parse(localVaultTextA as string) as {
+      vault: { kdf: { salt: string } };
+    };
+    expect(localVaultA.vault.kdf.salt).toBe(vaultIdentityA);
+
+    // Close context A before opening context B to avoid VaultMetaConvergeRunner
+    // focus events triggering different-vault dialogs over the test assertions
+    // (issue #691, libs/web-vault-ui/src/lib/metaConvergeRunner.tsx).
+    await ctxA.close();
+
+    // Step 2: Context B — fresh backend, different Vault with its own identity
+    const ctxB = await browser.newContext({
+      acceptDownloads: true,
+    });
+    const pageB = await ctxB.newPage();
+    const backendB = setupBackend(pageB);
+
+    await login(pageB);
+    const passphraseB = 'vault-b-phrase';
+    await gotoStable(pageB, '/dashboard/addresses');
+    await createOwnedVault(pageB, { passphrase: passphraseB });
+    await unlockWithPassphrase(pageB, passphraseB);
+
+    // Capture context B's Vault Identity before import
+    const localVaultTextB = await readOwnedVault(pageB, E2E_USER_ID);
+    expect(localVaultTextB).toBeTruthy();
+    const localVaultB = JSON.parse(localVaultTextB as string) as {
+      vault: { kdf: { salt: string } };
+    };
+    const vaultIdentityB = localVaultB.vault.kdf.salt;
+
+    // Precondition sanity: A and B have different Vault Identities
+    expect(vaultIdentityA).not.toBe(vaultIdentityB);
+
+    // Step 3: Import context A's backup into context B
+    await gotoStable(pageB, '/dashboard/vault');
+    const importInput = pageB.getByTestId('import-vault-file');
+    await expect(importInput).toBeVisible({ timeout: 60000 });
+
+    await importInput.setInputFiles({
+      name: 'vault-export.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(exportedTextA, 'utf8'),
+    });
+
+    const importButton = pageB.getByTestId('import-vault-button');
+    await expect(importButton).toBeEnabled({ timeout: 60000 });
+    await importButton.click();
+
+    // Step 4: Confirm the import with different-vault disclosure
+    await confirmImportReplaceDialog(pageB, 'different-vault');
+
+    // Step 5: Assert the import succeeded with durable signals (not the toast,
+    // which issue #810 may drop when a second toast follows).
+    // Scoped to `main`: here the toast may survive and repeat the same text.
+    await expect(
+      pageB
+        .getByRole('main')
+        .getByText('Imported locally. Audit recorded on server.', {
+          exact: true,
+        }),
+    ).toBeVisible({ timeout: 60000 });
+    await expect(importButton).toBeDisabled();
+    await waitForOwnedVault(pageB, E2E_USER_ID);
+
+    // Step 6: Assert the claim the disclosure makes: the Local Vault's Vault
+    // Identity now equals A's, while the server still holds B's.
+    const localVaultTextBAfter = await readOwnedVault(pageB, E2E_USER_ID);
+    expect(localVaultTextBAfter).toBeTruthy();
+    const localVaultBAfter = JSON.parse(localVaultTextBAfter as string) as {
+      vault: { kdf: { salt: string } };
+    };
+    expect(localVaultBAfter.vault.kdf.salt).toBe(vaultIdentityA);
+
+    // importVault never writes Vault Meta to the server, so the server still
+    // has context B's Vault Identity.
+    const serverMeta = backendB.getServerMeta();
+    expect(serverMeta).toBeTruthy();
+    const serverMetaTyped = serverMeta as { kdf_salt?: string };
+    expect(serverMetaTyped.kdf_salt).toBe(vaultIdentityB);
+
+    // Step 7: Close context B (no assertion about the follow-on convergence
+    // dialog; that is issue #691's surface, not this one).
+    await ctxB.close();
   });
 });
