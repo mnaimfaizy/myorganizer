@@ -108,7 +108,9 @@ intermediate and fails byte-identity against the record that still had ciphertex
 the source of truth, then poll the local record until it matches.
 
 A Vault Claim **copies** the Unclaimed Local Vault; it does not move it. After a silent claim the
-unsuffixed slot still holds the same wrapping. `gotoStable` is a full `page.goto`, so
+unsuffixed slot still holds the same wrapping. `gotoStable` is a full `page.goto` that retries
+only interrupted-by-another-navigation — not WebKit engine-internal errors
+([ADR 0090](../../../../docs/adr/0090-gotostable-retries-only-interrupted-navigation.md)).
 `login()` (which already lands on the dashboard) followed by `gotoStable` to another dashboard
 route remounts `VaultSessionProvider` and re-asks claim evidence. Owned + leftover copy is the
 same Vault, not a second one — the primitive returns `skipped-already-owned`, and the gate must
