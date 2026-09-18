@@ -17,7 +17,7 @@ This guide walks through creating Google OAuth 2.0 credentials required for the 
 4. Click **Create**.
 5. Make sure the new project is selected in the project dropdown.
 
-> **Tip:** Create separate projects for development/testing and production to keep credentials and quotas isolated.
+> **Production needs its own project.** Publishing status, app verification, and YouTube Data API quota belong to the Cloud project, not the OAuth client. Development and staging share one project that stays in **Testing**; production gets a separate project that is the only one ever published and verified. See [ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md).
 
 ---
 
@@ -184,7 +184,7 @@ Each redirect URI must be added to the **Authorized redirect URIs** list in the 
 
 | Setting                | Value                                                        |
 | ---------------------- | ------------------------------------------------------------ |
-| Google Cloud Project   | Separate dev project (recommended)                           |
+| Google Cloud Project   | Shared dev/staging project (one client per environment)      |
 | Consent Screen Status  | **Testing** (only test users can authorize)                  |
 | User Type              | External                                                     |
 | Test Users             | Add your dev Google accounts under **Audience > Test users** |
@@ -195,7 +195,7 @@ Each redirect URI must be added to the **Authorized redirect URIs** list in the 
 
 | Setting               | Value                                               |
 | --------------------- | --------------------------------------------------- |
-| Google Cloud Project  | Separate production project (recommended)           |
+| Google Cloud Project  | Dedicated production project (required)             |
 | Consent Screen Status | **In production** (any Google user can authorize)   |
 | User Type             | External                                            |
 | Redirect URI          | `https://yourdomain.com/dashboard/youtube/callback` |
@@ -215,17 +215,19 @@ When you're ready to go live:
    - Submit for verification review (can take several days to weeks)
 5. Until verified, users will see an "unverified app" warning screen.
 
-> **Note:** If your app is only for personal use, you can keep it in **Testing** mode indefinitely and add your own Google account as a test user. No verification needed.
+> **Testing mode is not an option for production.** Google expires refresh tokens issued in Testing after 7 days, so every YouTube Connection goes Revoked weekly, and the app is capped at 100 test users. Keep YouTube unavailable in production until the production project is verified.
 
 ---
 
 ## Multiple OAuth Clients (Recommended)
 
-For proper environment separation, create separate OAuth client IDs within the same or different Google Cloud projects:
+Create one OAuth client per environment, across two Google Cloud projects:
 
-1. **Development client:** Redirect URI points to `localhost:4200/dashboard/youtube/callback`
-2. **Staging client:** Redirect URI points to your staging frontend domain
-3. **Production client:** Redirect URI points to your production frontend domain
+1. **Development client** (dev/staging project): Redirect URI points to `localhost:4200/dashboard/youtube/callback`
+2. **Staging client** (dev/staging project): Redirect URI points to your staging frontend domain
+3. **Production client** (production project): Redirect URI points to your production frontend domain
+
+A refresh token only works with the client that issued it. Moving an environment to a different client or project turns every existing YouTube Connection Revoked, and each User must reconnect.
 
 Each environment's `.env` file uses its own `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI`.
 
