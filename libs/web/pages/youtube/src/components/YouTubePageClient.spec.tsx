@@ -44,7 +44,36 @@ jest.mock('@myorganizer/web-ui', () => ({
     <div className={className}>{children}</div>
   ),
   CardTitle: ({ children }: any) => <h2>{children}</h2>,
+  Checkbox: ({ id, checked, onCheckedChange, ...props }: any) => (
+    <input
+      type="checkbox"
+      id={id}
+      checked={checked}
+      onChange={(event) => onCheckedChange?.(event.target.checked)}
+      {...props}
+    />
+  ),
+  ConfirmDeleteDialog: ({
+    open,
+    title,
+    description,
+    children,
+    onConfirm,
+    confirmLabel,
+  }: any) =>
+    open ? (
+      <div role="dialog" aria-label={title}>
+        <div>{description}</div>
+        {children}
+        <button type="button" onClick={() => void onConfirm()}>
+          {confirmLabel ?? 'Delete'}
+        </button>
+      </div>
+    ) : null,
   Input: (props: any) => <input {...props} />,
+  Label: ({ children, htmlFor }: any) => (
+    <label htmlFor={htmlFor}>{children}</label>
+  ),
   Skeleton: ({ className }: any) => (
     <div className={className} data-testid="skeleton" />
   ),

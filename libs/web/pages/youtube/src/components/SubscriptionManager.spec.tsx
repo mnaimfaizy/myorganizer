@@ -52,7 +52,7 @@ describe('SubscriptionManager', () => {
     loading: false,
     onSync: jest.fn(),
     onToggle: jest.fn(),
-    onDisconnect: jest.fn(),
+    onRequestDisconnect: jest.fn(),
   };
 
   it('should render subscription channel titles', () => {
@@ -78,13 +78,16 @@ describe('SubscriptionManager', () => {
     expect(onSync).toHaveBeenCalledTimes(1);
   });
 
-  it('should call onDisconnect when disconnect button is clicked', () => {
-    const onDisconnect = jest.fn();
+  it('should call onRequestDisconnect when disconnect button is clicked', () => {
+    const onRequestDisconnect = jest.fn();
     render(
-      <SubscriptionManager {...defaultProps} onDisconnect={onDisconnect} />,
+      <SubscriptionManager
+        {...defaultProps}
+        onRequestDisconnect={onRequestDisconnect}
+      />,
     );
     fireEvent.click(screen.getByText('Disconnect'));
-    expect(onDisconnect).toHaveBeenCalledTimes(1);
+    expect(onRequestDisconnect).toHaveBeenCalledTimes(1);
   });
 
   it('should call onToggle when a toggle switch is clicked', () => {
