@@ -280,6 +280,11 @@ const models: TsoaRoute.Models = {
         "type": {"dataType":"union","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"etag":{"dataType":"string","required":true},"updatedAt":{"dataType":"string","required":true},"blob":{"ref":"EncryptedBlobV1","required":true},"type":{"ref":"VaultBlobType","required":true}}},{"ref":"ErrorResponse"}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "GetVaultBlobInventoryResponse": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"etag":{"dataType":"string","required":true},"blobs":{"dataType":"array","array":{"dataType":"nestedObjectLiteral","nestedProperties":{"updatedAt":{"dataType":"string","required":true},"etag":{"dataType":"string","required":true},"type":{"ref":"VaultBlobType","required":true}}},"required":true}}},{"ref":"ErrorResponse"}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "PutVaultBlobResponse": {
         "dataType": "refAlias",
         "type": {"dataType":"union","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"updatedAt":{"dataType":"string","required":true},"etag":{"dataType":"string","required":true},"ok":{"dataType":"enum","enums":[true],"required":true}}},{"ref":"ErrorResponse"}],"validators":{}},
@@ -1115,6 +1120,39 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'getVaultBlob',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsVaultController_getVaultBlobInventory: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                notModified: {"in":"res","name":"304","required":true,"dataType":"void"},
+                ifNoneMatch: {"in":"header","name":"if-none-match","dataType":"string"},
+        };
+        app.get('/vault/blobs',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(VaultController)),
+            ...(fetchMiddlewares<RequestHandler>(VaultController.prototype.getVaultBlobInventory)),
+
+            async function VaultController_getVaultBlobInventory(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsVaultController_getVaultBlobInventory, request, response });
+
+                const controller = new VaultController();
+
+              await templateService.apiHandler({
+                methodName: 'getVaultBlobInventory',
                 controller,
                 response,
                 next,

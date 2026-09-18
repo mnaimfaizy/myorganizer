@@ -41,6 +41,13 @@ type GetVaultBlobResponse =
     }
   | ErrorResponse;
 
+type GetVaultBlobInventoryResponse =
+  | {
+      blobs: Array<{ type: VaultBlobType; etag: string; updatedAt: string }>;
+      etag: string;
+    }
+  | ErrorResponse;
+
 type PutVaultBlobResponse =
   | { ok: true; etag: string; updatedAt: string }
   | ErrorResponse;
@@ -103,6 +110,29 @@ export class VaultController extends Controller {
 
     this.setStatus(result.status);
     return result.body as GetVaultBlobResponse;
+  }
+
+  @Response(304, 'Not Modified')
+  @Get('/blobs')
+  public async getVaultBlobInventory(
+    @Request() req: ExRequest,
+    @Res() notModified: TsoaResponse<304, void>,
+    @Header('if-none-match') ifNoneMatch?: string,
+  ): Promise<GetVaultBlobInventoryResponse> {
+    const userId = requireUserId(req);
+
+    const result = await vaultService.getBlobInventory(userId);
+
+    if (
+      result.ok &&
+      ifNoneMatch !== undefined &&
+      ifNoneMatch === result.body.etag
+    ) {
+      return notModified(304, undefined);
+    }
+
+    this.setStatus(result.status);
+    return result.body as GetVaultBlobInventoryResponse;
   }
 
   @Put('/blob/{type}')

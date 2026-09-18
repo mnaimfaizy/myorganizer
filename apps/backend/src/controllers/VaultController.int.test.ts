@@ -62,6 +62,7 @@ jest.mock('../services/VaultService', () => {
       getVaultMeta: jest.fn(),
       putVaultMeta: jest.fn(),
       getBlob: jest.fn(),
+      getBlobInventory: jest.fn(),
       putBlob: jest.fn(),
       exportVault: jest.fn(),
       importVault: jest.fn(),
@@ -196,6 +197,16 @@ describe('VaultController (HTTP integration)', () => {
       expect(res.status).toBe(401);
       expect(res.body).toEqual({ message: 'Unauthorized' });
       expect(vaultService.getBlob).not.toHaveBeenCalled();
+    });
+
+    test('requires auth for GET /vault/blobs', async () => {
+      const vaultService = require('../services/VaultService').default;
+
+      const res = await request(app).get('/vault/blobs');
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Unauthorized' });
+      expect(vaultService.getBlobInventory).not.toHaveBeenCalled();
     });
 
     test('requires auth for PUT /vault/blob/:type', async () => {
@@ -391,6 +402,151 @@ describe('VaultController (HTTP integration)', () => {
 
       expect(res.status).toBe(404);
       expect(res.body.message).toBe('Vault blob not found');
+    });
+  });
+
+  describe('ADR 0087: GET /vault/blobs If-None-Match handling', () => {
+    test('returns 200 with full body when service succeeds and no If-None-Match header', async () => {
+      const vaultService = require('../services/VaultService').default;
+
+      vaultService.getBlobInventory.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        body: {
+          blobs: [
+            {
+              type: 'addresses',
+              etag: 'W/"abc123"',
+              updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+            },
+          ],
+          etag: 'W/"inventory-etag"',
+        },
+      });
+
+      const res = await request(app)
+        .get('/vault/blobs')
+        .set('Authorization', 'Bearer test');
+
+      expect(res.status).toBe(200);
+      expect(res.body.blobs).toHaveLength(1);
+      expect(res.body.blobs[0].type).toBe('addresses');
+      expect(res.body.etag).toBe('W/"inventory-etag"');
+      expect(vaultService.getBlobInventory).toHaveBeenCalledWith('user-1');
+    });
+
+    test('returns 200 with empty blobs array when user has no blobs (never 404)', async () => {
+      const vaultService = require('../services/VaultService').default;
+
+      vaultService.getBlobInventory.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        body: {
+          blobs: [],
+          etag: 'W/"empty-inventory"',
+        },
+      });
+
+      const res = await request(app)
+        .get('/vault/blobs')
+        .set('Authorization', 'Bearer test');
+
+      expect(res.status).toBe(200);
+      expect(res.body.blobs).toEqual([]);
+      expect(res.body.etag).toBe('W/"empty-inventory"');
+      expect(vaultService.getBlobInventory).toHaveBeenCalledWith('user-1');
+    });
+
+    test('returns 304 with empty body when If-None-Match matches current inventory etag', async () => {
+      const vaultService = require('../services/VaultService').default;
+      const currentEtag = 'W/"current-inventory-etag"';
+
+      vaultService.getBlobInventory.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        body: {
+          blobs: [
+            {
+              type: 'addresses',
+              etag: 'W/"abc123"',
+              updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+            },
+          ],
+          etag: currentEtag,
+        },
+      });
+
+      const res = await request(app)
+        .get('/vault/blobs')
+        .set('Authorization', 'Bearer test')
+        .set('If-None-Match', currentEtag);
+
+      expect(res.status).toBe(304);
+      expect(res.text).toBe('');
+    });
+
+    test('returns 200 with full body when If-None-Match does not match current inventory etag', async () => {
+      const vaultService = require('../services/VaultService').default;
+      const currentEtag = 'W/"current-inventory-etag"';
+
+      vaultService.getBlobInventory.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        body: {
+          blobs: [
+            {
+              type: 'addresses',
+              etag: 'W/"abc123"',
+              updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+            },
+          ],
+          etag: currentEtag,
+        },
+      });
+
+      const res = await request(app)
+        .get('/vault/blobs')
+        .set('Authorization', 'Bearer test')
+        .set('If-None-Match', 'W/"different-etag"');
+
+      expect(res.status).toBe(200);
+      expect(res.body.blobs).toHaveLength(1);
+      expect(res.body.etag).toBe(currentEtag);
+    });
+
+    test('returns 200 with full body when If-None-Match is set but multiple blobs exist', async () => {
+      const vaultService = require('../services/VaultService').default;
+
+      vaultService.getBlobInventory.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        body: {
+          blobs: [
+            {
+              type: 'addresses',
+              etag: 'W/"abc123"',
+              updatedAt: new Date('2026-01-01T00:00:00.000Z').toISOString(),
+            },
+            {
+              type: 'groceries',
+              etag: 'W/"def456"',
+              updatedAt: new Date('2026-01-02T00:00:00.000Z').toISOString(),
+            },
+          ],
+          etag: 'W/"multi-blob-etag"',
+        },
+      });
+
+      const res = await request(app)
+        .get('/vault/blobs')
+        .set('Authorization', 'Bearer test')
+        .set('If-None-Match', 'W/"different-etag"');
+
+      expect(res.status).toBe(200);
+      expect(res.body.blobs).toHaveLength(2);
+      expect(res.body.blobs[0].type).toBe('addresses');
+      expect(res.body.blobs[1].type).toBe('groceries');
+      expect(res.body.etag).toBe('W/"multi-blob-etag"');
     });
   });
 });

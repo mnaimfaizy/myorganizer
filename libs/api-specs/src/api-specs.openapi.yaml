@@ -495,6 +495,31 @@ components:
             - type
           type: object
         - $ref: "#/components/schemas/ErrorResponse"
+    GetVaultBlobInventoryResponse:
+      anyOf:
+        - properties:
+            etag:
+              type: string
+            blobs:
+              items:
+                properties:
+                  updatedAt:
+                    type: string
+                  etag:
+                    type: string
+                  type:
+                    $ref: "#/components/schemas/VaultBlobType"
+                required:
+                  - updatedAt
+                  - etag
+                  - type
+                type: object
+              type: array
+          required:
+            - etag
+            - blobs
+          type: object
+        - $ref: "#/components/schemas/ErrorResponse"
     PutVaultBlobResponse:
       anyOf:
         - properties:
@@ -1418,6 +1443,28 @@ paths:
                 - blob
                 - type
               type: object
+  /vault/blobs:
+    get:
+      operationId: GetVaultBlobInventory
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetVaultBlobInventoryResponse"
+        "304":
+          description: ""
+      tags:
+        - Vault
+      security:
+        - jwt: []
+      parameters:
+        - in: header
+          name: if-none-match
+          required: false
+          schema:
+            type: string
   /vault/export:
     post:
       operationId: ExportVault
