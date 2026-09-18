@@ -49,4 +49,7 @@ serving YouTube, so do not deploy production YouTube credentials before then.
 Moving an OAuth client to another project later means every User consents again, and each refresh
 token issued by the old client stops working with `invalid_grant`. Production had no YouTube
 Connections when this was decided, so the split needed no migration. That will not be true next
-time.
+time. When it happens, the cutover marks every existing YouTube Connection Revoked in one step, in
+the same deploy that switches the client, rather than letting each one fail its next Sync Run. Each
+User then sees a reconnect prompt instead of a Connection that looks live and silently stops
+syncing.
