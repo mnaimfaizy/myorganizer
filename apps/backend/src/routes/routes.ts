@@ -47,6 +47,19 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DisconnectResponse": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"googlePermissionsUrl":{"dataType":"string"},"revokeFailed":{"dataType":"boolean"},"message":{"dataType":"string","required":true},"ok":{"dataType":"enum","enums":[true],"required":true}}},{"dataType":"nestedObjectLiteral","nestedProperties":{"code":{"dataType":"enum","enums":["sync_run_live"]},"message":{"dataType":"string","required":true},"ok":{"dataType":"enum","enums":[false],"required":true}}}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DisconnectRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "deleteWatchedMarks": {"dataType":"boolean"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "SubscriptionResponse": {
         "dataType": "refObject",
         "properties": {
@@ -619,6 +632,7 @@ export function RegisterRoutes(app: Router) {
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsYouTubeController_disconnect: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                body: {"in":"body","name":"body","ref":"DisconnectRequest"},
         };
         app.delete('/youtube/disconnect',
             authenticateMiddleware([{"jwt":[]}]),
