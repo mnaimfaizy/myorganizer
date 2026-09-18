@@ -42,8 +42,13 @@
  * Session from a merely-quiet one even when nothing has been pushed
  * ([ADR 0088](../../../../../docs/adr/0088-a-vault-pull-pass-has-a-budget-and-is-superseded-never-queued.md),
  * decision 7).
+ *
+ * The same `status()` also carries `stalledTypes` — which Vault Blob Types
+ * the most recent non-superseded pass left unanswered, the Vault Pull Stall
+ * of decision 6. `subscribe()` fires for that too, so a reading catches a
+ * stall, and a stall clearing, without waiting for the next `focus`.
  */
-import { VaultApi } from '@myorganizer/app-api-client';
+import { VaultApi, VaultBlobType } from '@myorganizer/app-api-client';
 
 import type {
   ConvergingVaultHandle,
@@ -92,6 +97,16 @@ export type VaultPullTriggerStatus = {
    * there is no Session left to check against.
    */
   sessionEnded: boolean;
+  /**
+   * The Vault Blob Types the most recent non-superseded pass left unanswered
+   * — over budget, a failed Vault Blob Inventory read, or a type it could not
+   * reach. Empty once a pass answers every type. This is the Vault Pull Stall
+   * of ADR 0088, decision 6: state about the last pass, not a flag anything
+   * has to lower — a later pass that gets every answer clears it by leaving
+   * this empty, and a superseded pass never touches it, because it claims
+   * nothing about what it was overtaken before finishing.
+   */
+  stalledTypes: VaultBlobType[];
 };
 
 /**
@@ -213,6 +228,13 @@ export function createVaultPullTrigger(options: {
   let scheduled = false;
   let lastHandle: ConvergingVaultHandle | null = null;
   /**
+   * The Vault Blob Types the most recent non-superseded pass left unanswered
+   * — see {@link VaultPullTriggerStatus.stalledTypes}. Updated only by a pass
+   * that actually finishes; a superseded one leaves this exactly as it found
+   * it.
+   */
+  let stalledTypes: VaultBlobType[] = [];
+  /**
    * The ETag the last pass's Vault Blob Inventory read answered with, so the
    * next pass can be answered 304 and read nothing at all.
    *
@@ -324,9 +346,22 @@ export function createVaultPullTrigger(options: {
     }
 
     const result = await runPass(handle);
-    if (result.stoppedUnauthenticated) {
-      stopped = true;
-      notify();
+    if (!result.superseded) {
+      // A superseded pass claims nothing — see `VaultPullPassResult`. Only a
+      // pass that actually finished may move what the trigger reports.
+      const nextStalledTypes = result.failed.map((failure) => failure.type);
+      const stalledChanged =
+        nextStalledTypes.length !== stalledTypes.length ||
+        nextStalledTypes.some((type, index) => type !== stalledTypes[index]);
+      stalledTypes = nextStalledTypes;
+
+      const stopsNow = result.stoppedUnauthenticated && !stopped;
+      if (stopsNow) stopped = true;
+
+      // Either half of `status()` may have just moved — a stop, or the
+      // Vault Pull Stall reading — and a caller reading only on the next
+      // `focus` would show a stale answer until the one after that.
+      if (stopsNow || stalledChanged) notify();
     }
     return result;
   }
@@ -348,7 +383,7 @@ export function createVaultPullTrigger(options: {
     check,
 
     status() {
-      return { sessionEnded: stopped };
+      return { sessionEnded: stopped, stalledTypes };
     },
 
     subscribe(listener) {

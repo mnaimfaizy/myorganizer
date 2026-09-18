@@ -43,9 +43,9 @@ import type {
 } from './vaultSyncQueue';
 
 /**
- * The five things a User can be told, in the order they take priority when
+ * The six things a User can be told, in the order they take priority when
  * more than one is true at once — the only enumeration of the members, so a
- * sixth kind fails to compile at {@link VAULT_SYNC_STATUS_RULES} until it says
+ * seventh kind fails to compile at {@link VAULT_SYNC_STATUS_RULES} until it says
  * what is reported for it ([ADR 0053](../../../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
  *
  * A Session ending and a standoff both outrank a terminal failure: neither is
@@ -56,12 +56,18 @@ import type {
  * either way. A terminal failure still outranks merely-pending types, per the
  * acceptance criterion that a terminal failure never reads as "not synced
  * yet".
+ *
+ * `pull-stalled` ranks below `pending` and above `synced` only: every kind
+ * above it is either about the User's own unsent edits or cannot be fixed by
+ * retrying, and a Vault Pull Stall can be ([ADR 0088](../../../../../docs/adr/0088-a-vault-pull-pass-has-a-budget-and-is-superseded-never-queued.md),
+ * decision 6).
  */
 export const VAULT_SYNC_STATUS_KINDS = [
   'session-ended',
   'standoff',
   'terminal',
   'pending',
+  'pull-stalled',
   'synced',
 ] as const;
 
@@ -84,6 +90,9 @@ type VaultSyncStatusEvidence = {
   terminalFailures: VaultSyncTerminalFailure[];
   pendingTypes: VaultBlobType[];
   retryScheduled: boolean;
+  /** Whether the most recent non-superseded Vault Pull Pass left any type
+   * unanswered — see {@link VaultPullTriggerStatus.stalledTypes}. */
+  pullStalled: boolean;
 };
 
 /**
@@ -151,6 +160,15 @@ const VAULT_SYNC_STATUS_RULES = {
       retrying: evidence.retryScheduled,
     }),
   },
+  'pull-stalled': {
+    applies: (evidence) => evidence.pullStalled,
+    build: (evidence) => ({
+      kind: 'pull-stalled',
+      pendingTypes: evidence.pendingTypes,
+      terminalFailures: evidence.terminalFailures,
+      retrying: false,
+    }),
+  },
   synced: {
     applies: () => true,
     build: () => ({
@@ -209,6 +227,7 @@ export async function computeVaultSyncStatus(options: {
     terminalFailures: queueStatus.terminalFailures,
     pendingTypes,
     retryScheduled: queueStatus.retryScheduled,
+    pullStalled: pullStatus.stalledTypes.length > 0,
   };
 
   for (const kind of VAULT_SYNC_STATUS_KINDS) {

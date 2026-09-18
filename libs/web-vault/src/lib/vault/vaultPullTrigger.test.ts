@@ -682,7 +682,7 @@ describe('createVaultPullTrigger', () => {
 
     // No passes run yet
     const status = trigger.status();
-    expect(status).toEqual({ sessionEnded: false });
+    expect(status).toEqual({ sessionEnded: false, stalledTypes: [] });
   });
 
   test('status() returns sessionEnded false after a successful pass', async () => {
@@ -704,7 +704,7 @@ describe('createVaultPullTrigger', () => {
     await trigger.check(handle);
 
     const status = trigger.status();
-    expect(status).toEqual({ sessionEnded: false });
+    expect(status).toEqual({ sessionEnded: false, stalledTypes: [] });
   });
 
   test('status() returns sessionEnded true after a 401 pass', async () => {
@@ -725,7 +725,7 @@ describe('createVaultPullTrigger', () => {
     await trigger.check(handle);
 
     const status = trigger.status();
-    expect(status).toEqual({ sessionEnded: true });
+    expect(status).toEqual({ sessionEnded: true, stalledTypes: [] });
   });
 
   test('unsubscribe prevents the listener from being notified on stop', async () => {
@@ -832,11 +832,11 @@ describe('createVaultPullTrigger', () => {
     expect(listener).not.toHaveBeenCalled();
   });
 
-  test('listener is NOT called for a non-401/403 failure', async () => {
-    // Matrix row: "Listener not called on normal failure"
+  test('listener IS called when a non-401/403 failure leaves types stalled', async () => {
+    // Matrix row: "Listener called when types are stalled by 500 errors"
     const handle = await setupHandle('user-1');
     const api = createApiDouble(handle);
-    // 500 is not a stop condition
+    // 500 is not a stop condition, but leaves every type unanswered/failed
     api.getVaultBlob.mockRejectedValue({
       response: { status: 500 },
     });
@@ -850,15 +850,18 @@ describe('createVaultPullTrigger', () => {
     const listener = jest.fn();
     trigger.subscribe(listener);
 
-    // Run a check that fails with 500
+    // Run a check that fails with 500 — this leaves types stalled
     await trigger.check(handle);
 
-    // Listener should not have been called
-    expect(listener).not.toHaveBeenCalled();
+    // Listener SHOULD have been called exactly once (stalledTypes changed from [] to populated)
+    expect(listener).toHaveBeenCalledTimes(1);
 
-    // Trigger should still be running (not stopped)
+    // stalledTypes should now contain every VAULT_BLOB_TYPES member (order-insensitive)
     const status = trigger.status();
-    expect(status).toEqual({ sessionEnded: false });
+    expect(status.sessionEnded).toBe(false);
+    const stalledTypesSorted = [...status.stalledTypes].sort();
+    const expectedTypesSorted = [...VAULT_BLOB_TYPES].sort();
+    expect(stalledTypesSorted).toEqual(expectedTypesSorted);
   });
 
   test('multiple listeners are all notified on stop', async () => {
@@ -1483,5 +1486,228 @@ describe('createVaultPullTrigger', () => {
     const result = await trigger.check(handle);
     expect(result.superseded).toBe(false);
     expect(result.failed).toHaveLength(0);
+  });
+
+  // ===== stalledTypes behavior: population, recovery, and notification =====
+
+  test('stalledTypes populated after a failing pass (budget exceeded)', async () => {
+    // Behavior: A pass that runs over budget leaves all types in failed,
+    // and stalledTypes reflects those failed types.
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+
+    // Inventory answers normally
+    api.getVaultBlobInventory.mockResolvedValue(
+      axiosOk({
+        etag: 'inventory-etag-v1',
+        blobs: VAULT_BLOB_TYPES.map((type) => ({
+          type,
+          etag: `server-etag-${type}`,
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        })),
+      }),
+    );
+
+    // getVaultBlob never settles, listening for abort to reject
+    api.getVaultBlob.mockImplementation(
+      (params, options) =>
+        new Promise((resolve, reject) => {
+          const signal = (options as any)?.signal;
+          if (signal) {
+            signal.addEventListener('abort', () => {
+              reject(signal.reason || new Error('Aborted'));
+            });
+          }
+          // Otherwise hang forever
+        }),
+    );
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+      budgetMs: 10,
+    });
+
+    // Run a check that hits budget and leaves all types failed
+    const result = await trigger.check(handle);
+    expect(result.superseded).toBe(false);
+    expect(result.failed).toHaveLength(VAULT_BLOB_TYPES.length);
+
+    // Verify stalledTypes now matches failed types
+    const status = trigger.status();
+    expect(status.sessionEnded).toBe(false);
+    const stalledTypesSorted = [...status.stalledTypes].sort();
+    const expectedTypesSorted = [...VAULT_BLOB_TYPES].sort();
+    expect(stalledTypesSorted).toEqual(expectedTypesSorted);
+  }, 3000);
+
+  test('superseded pass does not update stalledTypes', async () => {
+    // Behavior: Start a first pass whose per-type reads fail (populating stalledTypes),
+    // then start and await a second pass that supersedes an in-flight one.
+    // The superseded pass's outcome never lands in stalledTypes.
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+
+    // First, populate stalledTypes with a failing pass
+    api.getVaultBlob.mockRejectedValue({
+      response: { status: 500 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    // Run first pass to populate stalledTypes
+    const result1 = await trigger.check(handle);
+    expect(result1.failed.length).toBeGreaterThan(0);
+
+    const statusAfterFirst = trigger.status();
+    const stalledAfterFirst = [...statusAfterFirst.stalledTypes].sort();
+    expect(stalledAfterFirst.length).toBeGreaterThan(0);
+
+    // Now set up a hanging inventory for the second pass (to be superseded)
+    let inventoryCallCount = 0;
+    api.getVaultBlobInventory.mockImplementation(async (...args) => {
+      inventoryCallCount++;
+      if (inventoryCallCount === 1) {
+        // First call from second pass: hang indefinitely
+        return new Promise(() => {});
+      }
+      // Should not reach here in this test
+      return axiosOk({
+        etag: 'inventory-etag-v1',
+        blobs: VAULT_BLOB_TYPES.map((type) => ({
+          type,
+          etag: `server-etag-${type}`,
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        })),
+      });
+    });
+
+    api.getVaultBlob.mockRejectedValue({ response: { status: 404 } });
+
+    // Start second pass (will hang on inventory)
+    const promise2 = trigger.check(handle);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Verify it's hanging
+    expect(inventoryCallCount).toBe(1);
+
+    // Start third pass to supersede the second (will hang too or answer)
+    let inventoryCallCount2 = 0;
+    api.getVaultBlobInventory.mockImplementation(async () => {
+      inventoryCallCount2++;
+      return axiosOk({
+        etag: 'inventory-etag-v1',
+        blobs: VAULT_BLOB_TYPES.map((type) => ({
+          type,
+          etag: `server-etag-${type}`,
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        })),
+      });
+    });
+
+    const promise3 = trigger.check(handle);
+
+    // Await both passes
+    const result2 = await promise2;
+    const result3 = await promise3;
+
+    // result2 should be superseded
+    expect(result2.superseded).toBe(true);
+    // result3 should not be superseded
+    expect(result3.superseded).toBe(false);
+
+    // stalledTypes should reflect only completed non-superseded passes.
+    // After the superseding pass (result3, which answered 404 for all types),
+    // stalledTypes should be empty (404 is a valid answer, not a failure).
+    const statusAfterSupersede = trigger.status();
+    expect(statusAfterSupersede.stalledTypes).toHaveLength(0);
+  }, 3000);
+
+  test('stalledTypes clears and notifies on recovery', async () => {
+    // Behavior: First check() leaves types failed (e.g., per-type 500),
+    // second check() against a now-working API (types resolve, e.g., 404/absent or not-modified).
+    // stalledTypes goes from non-empty to empty, and listener is called again.
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+
+    const listener = jest.fn();
+
+    // First pass: all getVaultBlob calls fail with 500
+    api.getVaultBlob.mockRejectedValue({
+      response: { status: 500 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    trigger.subscribe(listener);
+
+    // First check: all types fail with 500 → stalledTypes populated
+    const result1 = await trigger.check(handle);
+    expect(result1.failed.length).toBeGreaterThan(0);
+    expect(listener).toHaveBeenCalledTimes(1); // Called once for stall
+
+    const status1 = trigger.status();
+    expect(status1.stalledTypes.length).toBeGreaterThan(0);
+
+    // Clear mock and set up second pass: all types answer 404 (not a failure)
+    api.getVaultBlob.mockClear();
+    api.getVaultBlob.mockRejectedValue({
+      response: { status: 404 },
+    });
+
+    // Second check: all types answer 404 → stalledTypes cleared, recovery notifies
+    const result2 = await trigger.check(handle);
+    // 404 is not a failure, so result2.failed should be empty
+    expect(result2.failed).toHaveLength(0);
+    // Listener should have been called again (stalledTypes changed from populated to empty)
+    expect(listener).toHaveBeenCalledTimes(2);
+
+    const status2 = trigger.status();
+    expect(status2.stalledTypes).toHaveLength(0);
+  });
+
+  test('no redundant notify in the steady state (two clean passes)', async () => {
+    // Behavior: Two consecutive check() calls both leave stalledTypes empty
+    // (e.g., two clean passes, no session end, no stall).
+    // Listener is NOT called at all (no state change).
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+
+    // All types answer 404 (not a failure, just "not found")
+    api.getVaultBlob.mockRejectedValue({
+      response: { status: 404 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    const listener = jest.fn();
+    trigger.subscribe(listener);
+
+    // First check: clean pass (404 for all, stalledTypes stays empty)
+    const result1 = await trigger.check(handle);
+    expect(result1.failed).toHaveLength(0);
+    expect(trigger.status().stalledTypes).toHaveLength(0);
+    // Listener should NOT have been called (no state change)
+    expect(listener).toHaveBeenCalledTimes(0);
+
+    // Second check: another clean pass (same state)
+    const result2 = await trigger.check(handle);
+    expect(result2.failed).toHaveLength(0);
+    expect(trigger.status().stalledTypes).toHaveLength(0);
+    // Listener should still NOT have been called (no new state change)
+    expect(listener).toHaveBeenCalledTimes(0);
   });
 });

@@ -54,6 +54,7 @@ describe('computeVaultSyncStatus', () => {
   ): VaultPullTriggerStatus {
     return {
       sessionEnded: false,
+      stalledTypes: [],
       ...overrides,
     };
   }
@@ -738,6 +739,172 @@ describe('computeVaultSyncStatus', () => {
       expect(result.kind).toBe('session-ended');
       expect(result.terminalFailures).toHaveLength(1);
       expect(result.retrying).toBe(false);
+    });
+  });
+
+  describe('Vault Pull Stall detection (pull-stalled kind)', () => {
+    test('pull-stalled reported alone when stalledTypes non-empty and queue clean', async () => {
+      const handle = createMockHandle(new Map());
+      const queueStatus = createQueueStatus();
+      const pullStatus = createPullStatus({
+        stalledTypes: [VaultBlobType.Tasks],
+      });
+
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
+
+      expect(result.kind).toBe('pull-stalled');
+      expect(result.pendingTypes).toEqual([]);
+      expect(result.terminalFailures).toEqual([]);
+      expect(result.retrying).toBe(false);
+    });
+
+    test('pull-stalled with multiple stalled types', async () => {
+      const handle = createMockHandle(new Map());
+      const queueStatus = createQueueStatus();
+      const pullStatus = createPullStatus({
+        stalledTypes: [VaultBlobType.Tasks, VaultBlobType.Addresses],
+      });
+
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
+
+      expect(result.kind).toBe('pull-stalled');
+      expect(result.pendingTypes).toEqual([]);
+      expect(result.terminalFailures).toEqual([]);
+      expect(result.retrying).toBe(false);
+    });
+
+    test('pending outranks pull-stalled when stalledTypes non-empty and unsent changes exist', async () => {
+      const unsentMap = new Map([['tasks', true]]);
+      const handle = createMockHandle(unsentMap);
+      const queueStatus = createQueueStatus();
+      const pullStatus = createPullStatus({
+        stalledTypes: [VaultBlobType.Addresses],
+      });
+
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
+
+      expect(result.kind).toBe('pending');
+      expect(result.pendingTypes).toContain(VaultBlobType.Tasks);
+      expect(result.retrying).toBe(false);
+    });
+
+    test('terminal outranks pull-stalled when stalledTypes non-empty and terminalFailures exist', async () => {
+      const handle = createMockHandle(new Map());
+      const queueStatus = createQueueStatus({
+        terminalFailures: [{ type: VaultBlobType.Groceries, status: 422 }],
+      });
+      const pullStatus = createPullStatus({
+        stalledTypes: [VaultBlobType.Tasks],
+      });
+
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
+
+      expect(result.kind).toBe('terminal');
+      expect(result.terminalFailures).toHaveLength(1);
+      expect(result.terminalFailures[0]?.type).toBe(VaultBlobType.Groceries);
+      expect(result.retrying).toBe(false);
+    });
+
+    test('standoff outranks pull-stalled when stalledTypes non-empty and vault identity mismatches', async () => {
+      const vault = makeMinimalVault('local-salt');
+      const differentVault = makeMinimalVault('different-salt');
+      const observedIdentity = vaultIdentityOf(
+        localToServerMeta(differentVault),
+      );
+
+      const handle = createMockHandle(new Map(), {
+        vault,
+        observedIdentity,
+      });
+      const queueStatus = createQueueStatus();
+      const pullStatus = createPullStatus({
+        stalledTypes: [VaultBlobType.Tasks],
+      });
+
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
+
+      expect(result.kind).toBe('standoff');
+      expect(result.retrying).toBe(false);
+    });
+
+    test('session-ended from queue outranks pull-stalled when stalledTypes non-empty', async () => {
+      const handle = createMockHandle(new Map());
+      const queueStatus = createQueueStatus({ sessionEnded: true });
+      const pullStatus = createPullStatus({
+        stalledTypes: [VaultBlobType.Tasks],
+      });
+
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
+
+      expect(result.kind).toBe('session-ended');
+      expect(result.retrying).toBe(false);
+    });
+
+    test('session-ended from pull outranks pull-stalled when stalledTypes non-empty', async () => {
+      const handle = createMockHandle(new Map());
+      const queueStatus = createQueueStatus({ sessionEnded: false });
+      const pullStatus = createPullStatus({
+        sessionEnded: true,
+        stalledTypes: [VaultBlobType.Tasks],
+      });
+
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
+
+      expect(result.kind).toBe('session-ended');
+      expect(result.retrying).toBe(false);
+    });
+
+    test('pull-stalled outranks synced when stalledTypes empty vs non-empty', async () => {
+      const handle = createMockHandle(new Map());
+      const queueStatus = createQueueStatus();
+
+      // First: empty stalledTypes → synced
+      const pullStatusClean = createPullStatus({ stalledTypes: [] });
+      const resultClean = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus: pullStatusClean,
+      });
+      expect(resultClean.kind).toBe('synced');
+
+      // Now: non-empty stalledTypes → pull-stalled
+      const pullStatusStalled = createPullStatus({
+        stalledTypes: [VaultBlobType.Tasks],
+      });
+      const resultStalled = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus: pullStatusStalled,
+      });
+      expect(resultStalled.kind).toBe('pull-stalled');
     });
   });
 });

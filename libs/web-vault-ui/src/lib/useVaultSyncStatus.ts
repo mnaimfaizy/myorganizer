@@ -21,8 +21,11 @@ export type UseVaultSyncStatusResult = {
   /** Null until a Vault Session exists and the first reading has resolved. */
   status: VaultSyncStatus | null;
   /**
-   * Ask the sync queue to try every unsent and terminally-failed type again
-   * right now. A no-op without a Vault Session.
+   * Ask for another attempt right now. Routes by the current status: a
+   * Vault Pull Stall asks the pull trigger for an immediate pass — retrying
+   * the queue would not touch what a stall is actually about — and every
+   * other retryable kind asks the sync queue to try its unsent and
+   * terminally-failed types again. A no-op without a Vault Session.
    */
   retry: () => void;
 };
@@ -83,9 +86,17 @@ export function useVaultSyncStatus(): UseVaultSyncStatusResult {
   }, [handle, syncQueue, pullTrigger]);
 
   const retry = useCallback(() => {
-    if (!handle || !syncQueue) return;
+    if (!handle) return;
+
+    if (status?.kind === 'pull-stalled') {
+      if (!pullTrigger) return;
+      void pullTrigger.check(handle);
+      return;
+    }
+
+    if (!syncQueue) return;
     void syncQueue.retryNow(handle);
-  }, [handle, syncQueue]);
+  }, [handle, syncQueue, pullTrigger, status]);
 
   // A stale reading from a since-departed Vault Session (sign-out) is never
   // shown — masked here rather than cleared by an effect, which is what lets
