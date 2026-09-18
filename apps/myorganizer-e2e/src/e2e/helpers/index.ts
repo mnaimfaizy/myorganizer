@@ -39,5 +39,6 @@ export {
 export {
   routeVaultBlobInventory,
   vaultBlobInventoryRouteAbsolute,
+  vaultBlobInventoryRouteRelative,
 } from './vaultBlobInventoryRoute';
 export { changePassphrase, unlockVaultOnSettingsPage } from './vaultSettings';

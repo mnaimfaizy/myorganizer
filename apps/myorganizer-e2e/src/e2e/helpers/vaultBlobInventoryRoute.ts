@@ -37,10 +37,11 @@ export type VaultBlobInventoryState = {
 };
 
 /**
- * Route matcher for the relative `/vault/blobs` URL — the default below, and
- * module-local because no caller has needed to name it.
+ * Route matcher for the relative `/vault/blobs` URL.
+ *
+ * Exported for specs that track request patterns to verify ADR 0087 compliance.
  */
-function vaultBlobInventoryRouteRelative(): RegExp {
+export function vaultBlobInventoryRouteRelative(): RegExp {
   return /\/vault\/blobs\/?(\?.*)?$/;
 }
 
