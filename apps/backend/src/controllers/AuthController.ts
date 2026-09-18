@@ -31,6 +31,7 @@ import {
   clearRefreshCookieIfPresent,
   setRefreshCookieIfPresent,
 } from '../helpers/cookieHelper';
+import { isEmailVerified } from '../helpers/isEmailVerified';
 import filterUser from '../helpers/filterUser';
 import PlatformTokenHandler from '../helpers/PlatformTokenHandler';
 import { decodeToken } from '../helpers/jwtHelper';
@@ -124,7 +125,7 @@ export class AuthController extends Controller {
       return unauthorized(401, { message: 'Account disabled' });
     }
 
-    if (!requestUser?.email_verification_timestamp) {
+    if (!isEmailVerified(requestUser)) {
       return forbidden(403, {
         message: 'Email not verified. Please verify your email first.',
       });
@@ -226,11 +227,7 @@ export class AuthController extends Controller {
       return unauthorized(401, { message: 'Account disabled' });
     }
 
-    const isVerified = Boolean(
-      (user as { email_verification_timestamp?: Date | null })
-        .email_verification_timestamp,
-    );
-    if (!isVerified) {
+    if (!isEmailVerified(user)) {
       clearRefreshCookieIfPresent(req);
       return forbidden(403, {
         message: 'Email not verified. Please verify your email first.',
@@ -287,10 +284,7 @@ export class AuthController extends Controller {
   ): Promise<RegisterUserResponse> {
     const existing = await userService.getByEmail(requestBody.email);
     if (existing) {
-      const isVerified = Boolean(
-        (existing as any)?.email_verification_timestamp,
-      );
-      if (isVerified) {
+      if (isEmailVerified(existing)) {
         this.setStatus(409);
         return { message: 'Email already registered. Please log in.' };
       }
@@ -387,8 +381,7 @@ export class AuthController extends Controller {
       return { message: 'User not found' };
     }
 
-    const isVerified = Boolean((user as any)?.email_verification_timestamp);
-    if (isVerified) {
+    if (isEmailVerified(user)) {
       this.setStatus(409);
       return { message: 'Email already verified. Please log in.' };
     }

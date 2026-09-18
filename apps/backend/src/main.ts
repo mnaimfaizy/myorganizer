@@ -3,20 +3,12 @@ import compression from 'compression';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import 'dotenv/config';
-import express, {
-  Request as ExRequest,
-  Response as ExResponse,
-  NextFunction,
-} from 'express';
+import express, { Request as ExRequest, Response as ExResponse } from 'express';
 import helmet from 'helmet';
 import * as path from 'path';
 import swaggerUi from 'swagger-ui-express';
-import { ValidateError } from 'tsoa';
 import { createCorsOptions } from './config/http';
-import {
-  getHttpErrorMessage,
-  getHttpErrorStatus,
-} from './helpers/httpErrorStatus';
+import { createTsoaErrorHandler } from './helpers/httpErrorHandler';
 import { maybeCreateGlobalApiRateLimiterFromEnv } from './middleware/globalRateLimit';
 import { vaultRateLimiter } from './middleware/vaultRateLimit';
 import { bootstrapPlatformAdminFromEnv } from './bootstrap/platformAdminBootstrap';
@@ -173,43 +165,23 @@ app.use(function notFoundHandler(_req, res: ExResponse) {
   });
 });
 
-// Error handler for Tsoa validation errors
-app.use(function errorHandler(
-  err: unknown,
-  req: ExRequest,
-  res,
-  next: NextFunction,
-) {
-  if (err instanceof ValidateError) {
-    console.warn(`Caught Validation Error for ${req.path}:`, err.fields);
-    return res.status(422).json({
-      message: 'Validation Failed',
-      details: err?.fields,
-    });
-  }
-
-  const httpStatus = getHttpErrorStatus(err);
-  if (httpStatus) {
-    const message = getHttpErrorMessage(err);
-    return res.status(httpStatus).json({ message });
-  }
-
-  if (err instanceof Error) {
-    if (isProd) {
-      console.error(
-        `Unhandled error on ${req.method} ${req.path}:`,
-        err.message,
-      );
-    } else {
-      console.error(`Unhandled error on ${req.method} ${req.path}:`, err);
-    }
-    return res.status(500).json({
-      message: 'Internal Server Error',
-    });
-  }
-
-  next();
-});
+app.use(
+  createTsoaErrorHandler({
+    onValidateError: (err, req) => {
+      console.warn(`Caught Validation Error for ${req.path}:`, err.fields);
+    },
+    onUnhandledError: (err, req) => {
+      if (isProd) {
+        console.error(
+          `Unhandled error on ${req.method} ${req.path}:`,
+          err.message,
+        );
+      } else {
+        console.error(`Unhandled error on ${req.method} ${req.path}:`, err);
+      }
+    },
+  }),
+);
 
 const port = process.env.PORT || 3000;
 const server = app.listen(port, () => {
