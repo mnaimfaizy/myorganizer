@@ -60,6 +60,10 @@ type ImportVaultResponse = { ok: true } | ErrorResponse;
 @Route('/vault')
 @Security('jwt')
 export class VaultController extends Controller {
+  private matchesIfNoneMatch(etag: string, ifNoneMatch?: string): boolean {
+    return ifNoneMatch !== undefined && ifNoneMatch === etag;
+  }
+
   @Get()
   public async getVaultMeta(
     @Request() req: ExRequest,
@@ -100,11 +104,7 @@ export class VaultController extends Controller {
 
     const result = await vaultService.getBlob(userId, type);
 
-    if (
-      result.ok &&
-      ifNoneMatch !== undefined &&
-      ifNoneMatch === result.body.etag
-    ) {
+    if (result.ok && this.matchesIfNoneMatch(result.body.etag, ifNoneMatch)) {
       return notModified(304, undefined);
     }
 
@@ -123,11 +123,7 @@ export class VaultController extends Controller {
 
     const result = await vaultService.getBlobInventory(userId);
 
-    if (
-      result.ok &&
-      ifNoneMatch !== undefined &&
-      ifNoneMatch === result.body.etag
-    ) {
+    if (result.ok && this.matchesIfNoneMatch(result.body.etag, ifNoneMatch)) {
       return notModified(304, undefined);
     }
 
