@@ -283,9 +283,12 @@ describe('serverVaultSync', () => {
       const passedEtag = 'prev-inventory-etag';
       await checkServerVaultBlobInventory(api, passedEtag);
 
-      expect(api.getVaultBlobInventory).toHaveBeenCalledWith({
-        ifNoneMatch: passedEtag,
-      });
+      // The per-call request options carry the caller's AbortSignal, and every
+      // read sends the same call shape whether or not there is one to send.
+      expect(api.getVaultBlobInventory).toHaveBeenCalledWith(
+        { ifNoneMatch: passedEtag },
+        { signal: undefined },
+      );
     });
 
     test('304 rejection returns not-modified', async () => {

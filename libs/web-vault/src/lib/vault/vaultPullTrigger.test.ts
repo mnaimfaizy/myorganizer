@@ -4,8 +4,8 @@
  *
  * The trigger collapses multiple requestCheck calls into one scheduled pass,
  * uses the most recently reported handle, and stops permanently on 401/403
- * (session loss). check() bypasses debounce, and passes are serialized so
- * concurrent calls do not race.
+ * (session loss). check() bypasses debounce, and newer passes supersede
+ * outstanding ones, aborting them rather than queuing behind them.
  */
 
 import type { AxiosResponse } from 'axios';
@@ -16,6 +16,7 @@ import {
   createVaultPullTrigger,
   type VaultPullTriggerScheduler,
   VAULT_PULL_DEBOUNCE_MS,
+  VAULT_PULL_PASS_BUDGET_MS,
 } from './vaultPullTrigger';
 import { VAULT_BLOB_TYPES } from './vaultBlobFields';
 import { localToServerMeta } from './vaultShapes';
@@ -47,11 +48,11 @@ describe('createVaultPullTrigger', () => {
   function createApiDouble(handle?: Awaited<ReturnType<typeof setupHandle>>) {
     const api = {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      getVaultMeta: jest.fn<Promise<AxiosResponse<any>>, []>(),
+      getVaultMeta: jest.fn<Promise<AxiosResponse<any>>, [any]>(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      getVaultBlob: jest.fn<Promise<AxiosResponse<any>>, [any?]>(),
+      getVaultBlob: jest.fn<Promise<AxiosResponse<any>>, [any, any]>(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      getVaultBlobInventory: jest.fn<Promise<AxiosResponse<any>>, [any?]>(),
+      getVaultBlobInventory: jest.fn<Promise<AxiosResponse<any>>, [any, any]>(),
       putVaultBlob: jest.fn<
         Promise<
           AxiosResponse<{
@@ -104,6 +105,58 @@ describe('createVaultPullTrigger', () => {
     await handle.initialize({ passphrase });
     await handle.unlockWithPassphrase({ passphrase });
     return handle;
+  }
+
+  /**
+   * Helper to configure getVaultBlobInventory to hang on first call, then answer.
+   * Used by tests that verify a second pass can supersede a hanging first pass.
+   */
+  function setupHangThenAnswerInventory(
+    api: ReturnType<typeof createApiDouble>,
+    options: {
+      firstCallDelay?: number;
+      firstCallEtag?: string;
+      secondCallEtag?: string;
+    } = {},
+  ) {
+    const {
+      firstCallDelay = 0,
+      firstCallEtag = 'inventory-etag-v1',
+      secondCallEtag = 'inventory-etag-v2',
+    } = options;
+    let inventoryCallCount = 0;
+    api.getVaultBlobInventory.mockImplementation(async () => {
+      inventoryCallCount++;
+      if (inventoryCallCount === 1) {
+        // First call: optionally delay, then hang (never resolves)
+        if (firstCallDelay > 0) {
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              resolve(
+                axiosOk({
+                  etag: firstCallEtag,
+                  blobs: VAULT_BLOB_TYPES.map((type) => ({
+                    type,
+                    etag: `server-etag-${type}`,
+                    updatedAt: '2026-01-01T00:00:00.000Z',
+                  })),
+                }),
+              );
+            }, firstCallDelay);
+          });
+        }
+        return new Promise(() => {}); // Hang forever
+      }
+      // Later calls answer immediately
+      return axiosOk({
+        etag: secondCallEtag,
+        blobs: VAULT_BLOB_TYPES.map((type) => ({
+          type,
+          etag: `server-etag-${type}`,
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        })),
+      });
+    });
   }
 
   test('should coalesce multiple requestCheck calls into one scheduled pass', async () => {
@@ -888,18 +941,26 @@ describe('createVaultPullTrigger', () => {
     // First pass: should send ifNoneMatch undefined (no prior etag)
     const result1 = await trigger.check(handle);
     expect(result1.inventoryEtag).toBe('inventory-etag-v1');
-    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(1, {
-      ifNoneMatch: undefined,
-    });
+    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(
+      1,
+      {
+        ifNoneMatch: undefined,
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
 
     // Reset mocks to count second pass separately
     api.getVaultBlobInventory.mockClear();
 
     // Second pass: should send ifNoneMatch with the first pass's etag
     const result2 = await trigger.check(handle);
-    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(1, {
-      ifNoneMatch: 'inventory-etag-v1',
-    });
+    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(
+      1,
+      {
+        ifNoneMatch: 'inventory-etag-v1',
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     // Second pass also echoes back the same etag
     expect(result2.inventoryEtag).toBe('inventory-etag-v1');
   });
@@ -937,9 +998,13 @@ describe('createVaultPullTrigger', () => {
 
     // Second pass: should NOT carry etag (types were left unanswered)
     await trigger.check(handle);
-    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(1, {
-      ifNoneMatch: undefined,
-    });
+    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(
+      1,
+      {
+        ifNoneMatch: undefined,
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
   test('401 on inventory stops trigger; no later pass reaches network', async () => {
@@ -1027,9 +1092,13 @@ describe('createVaultPullTrigger', () => {
 
     // Second pass: etag should NOT be carried because first pass converged a type
     await trigger.check(handle);
-    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(1, {
-      ifNoneMatch: undefined,
-    });
+    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(
+      1,
+      {
+        ifNoneMatch: undefined,
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
   test('first pass converging to refusal does NOT carry etag to second pass', async () => {
@@ -1094,8 +1163,325 @@ describe('createVaultPullTrigger', () => {
 
     // Second pass: etag should NOT be carried (so refusal is re-evaluated, not skipped)
     await trigger.check(handle);
-    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(1, {
-      ifNoneMatch: undefined,
+    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(
+      1,
+      {
+        ifNoneMatch: undefined,
+      },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+
+  // ===== T1: A newer pass supersedes an outstanding one (#697) =====
+  test('T1: A newer pass supersedes an outstanding one, allowing later checks to run (#697)', async () => {
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+
+    // First pass hangs, second pass succeeds
+    setupHangThenAnswerInventory(api);
+    api.getVaultBlob.mockRejectedValue({ response: { status: 404 } });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
     });
+
+    // Start first pass (will hang on inventory)
+    const promise1 = trigger.check(handle);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Verify first pass is stuck on inventory read
+    expect(api.getVaultBlobInventory).toHaveBeenCalledTimes(1);
+
+    // Start second pass (should supersede the first and run independently)
+    const result2Promise = trigger.check(handle);
+
+    // Await second pass — it should complete despite first pass hanging
+    const result2 = await result2Promise;
+    expect(result2.superseded).toBe(false);
+
+    // Verify second pass called inventory (independently from first)
+    expect(api.getVaultBlobInventory).toHaveBeenCalledTimes(2);
+
+    // Await first pass — should resolve with superseded: true
+    const result1 = await promise1;
+    expect(result1.superseded).toBe(true);
+    expect(result1.checked).toEqual([]);
+    expect(result1.failed).toEqual([]);
+    expect(result1.stoppedUnauthenticated).toBe(false);
+  }, 3000);
+
+  // ===== T2: Superseded pass's abort signal is aborted =====
+  test("T2: The superseded pass's abort signal is aborted before the newer pass starts", async () => {
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+
+    let capturedSignal: AbortSignal | undefined;
+    let inventoryCallCount = 0;
+    api.getVaultBlobInventory.mockImplementation(async (...args) => {
+      inventoryCallCount++;
+      if (inventoryCallCount === 1) {
+        // Capture the signal from the first call
+        capturedSignal = (args[1] as any)?.signal;
+        // Never settle on first call
+        return new Promise(() => {});
+      }
+      // Second call answers normally
+      return axiosOk({
+        etag: 'inventory-etag-v1',
+        blobs: VAULT_BLOB_TYPES.map((type) => ({
+          type,
+          etag: `server-etag-${type}`,
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        })),
+      });
+    });
+
+    api.getVaultBlob.mockRejectedValue({ response: { status: 404 } });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    // Start first pass
+    const promise1 = trigger.check(handle);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Verify signal exists and is not yet aborted
+    expect(capturedSignal).toBeInstanceOf(AbortSignal);
+    expect((capturedSignal as AbortSignal).aborted).toBe(false);
+
+    // Start second pass to supersede the first
+    const result2Promise = trigger.check(handle);
+
+    // Give a tick for the abort to propagate
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    // Now the signal should be aborted
+    expect((capturedSignal as AbortSignal).aborted).toBe(true);
+
+    // The first pass should resolve with superseded: true
+    const result1 = await promise1;
+    expect(result1.superseded).toBe(true);
+
+    // Second pass should resolve normally
+    const result2 = await result2Promise;
+    expect(result2.superseded).toBe(false);
+  }, 3000);
+
+  // ===== T3: Non-superseded pass is not marked superseded =====
+  test('T3: A pass that ran to its end is not marked superseded', async () => {
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+
+    api.getVaultBlob.mockRejectedValue({ response: { status: 404 } });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    const result = await trigger.check(handle);
+    expect(result.superseded).toBe(false);
+    expect(result.checked.length).toBeGreaterThan(0);
+  });
+
+  // ===== T4: Pass over budget resolves with unanswered types failed =====
+  test('T4: A pass over its budget resolves with its unanswered types in failed', async () => {
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+
+    // Inventory answers normally
+    api.getVaultBlobInventory.mockResolvedValue(
+      axiosOk({
+        etag: 'inventory-etag-v1',
+        blobs: VAULT_BLOB_TYPES.map((type) => ({
+          type,
+          etag: `server-etag-${type}`,
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        })),
+      }),
+    );
+
+    // getVaultBlob never settles, listening for abort to reject
+    api.getVaultBlob.mockImplementation(
+      (params, options) =>
+        new Promise((resolve, reject) => {
+          const signal = (options as any)?.signal;
+          if (signal) {
+            signal.addEventListener('abort', () => {
+              reject(signal.reason || new Error('Aborted'));
+            });
+          }
+          // Otherwise hang forever
+        }),
+    );
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+      budgetMs: 10,
+    });
+
+    const result = await trigger.check(handle);
+    expect(result.superseded).toBe(false);
+    // All types must be in failed since budget aborted before any could finish
+    expect(result.checked).toHaveLength(0);
+    expect(result.failed).toHaveLength(VAULT_BLOB_TYPES.length);
+    // Every failed type must be from VAULT_BLOB_TYPES (sorted comparison)
+    const failedTypes = result.failed.map((f) => f.type).sort();
+    const expectedTypes = [...VAULT_BLOB_TYPES].sort();
+    expect(failedTypes).toEqual(expectedTypes);
+    // Every failed entry must have an error mentioning the budget
+    for (const failed of result.failed) {
+      expect(failed.error).toBeDefined();
+      const errorMsg = (failed.error as Error).message || '';
+      expect(errorMsg.toLowerCase()).toContain('budget');
+    }
+  }, 3000);
+
+  // ===== T4b: Budget ends a pass whose request ignores abort =====
+  test('T4b: Budget ends a pass whose request ignores the abort entirely', async () => {
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+
+    // getVaultBlobInventory returns an unresolved promise with no abort listener
+    // This simulates a request that ignores the abort signal entirely
+    api.getVaultBlobInventory.mockImplementation(
+      () => new Promise(() => {}), // Never settles, no abort listener
+    );
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+      budgetMs: 10,
+    });
+
+    const result = await trigger.check(handle);
+    // Pass must still resolve despite the hung request (via untilAborted)
+    expect(result.superseded).toBe(false);
+    // Inventory read failed, so every type is unanswered
+    expect(result.checked).toHaveLength(0);
+    expect(result.failed).toHaveLength(VAULT_BLOB_TYPES.length);
+  }, 3000);
+
+  // ===== T6: Superseded pass does not move remembered ETag =====
+  test('T6: A superseded pass does not move the remembered inventory ETag', async () => {
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+
+    // Clean pass to establish the etag
+    api.getVaultBlob.mockRejectedValue({ response: { status: 404 } });
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    const result1 = await trigger.check(handle);
+    expect(result1.inventoryEtag).toBe('inventory-etag-v1');
+
+    // Clear mock and set up second scenario: first pass hangs, second pass runs
+    api.getVaultBlobInventory.mockClear();
+    setupHangThenAnswerInventory(api, {
+      firstCallEtag: 'inventory-etag-v1',
+      secondCallEtag: 'inventory-etag-v2',
+    });
+
+    // Start first pass (hangs)
+    const promise1 = trigger.check(handle);
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    // Start second pass
+    const result2Promise = trigger.check(handle);
+
+    // Wait for first pass to resolve (with superseded: true)
+    const result1b = await promise1;
+    expect(result1b.superseded).toBe(true);
+
+    // Wait for second pass to resolve
+    await result2Promise;
+
+    // Verify that second pass sent the original etag (not modified by the abandoned first pass)
+    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(
+      2,
+      { ifNoneMatch: 'inventory-etag-v1' },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  }, 3000);
+
+  // ===== T6b: Late-finishing superseded pass does not clobber successor's ETag =====
+  test('T6b: A superseded pass that finishes late must not clobber successor ETag', async () => {
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+
+    // First call takes ~50ms; later calls answer immediately
+    setupHangThenAnswerInventory(api, {
+      firstCallDelay: 50,
+      firstCallEtag: 'inventory-etag-v1',
+      secondCallEtag: 'inventory-etag-v2',
+    });
+
+    api.getVaultBlob.mockRejectedValue({ response: { status: 404 } });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    // Start pass 1 (slow inventory)
+    const promise1 = trigger.check(handle);
+
+    // Immediately start pass 2 (should supersede pass 1)
+    const promise2 = trigger.check(handle);
+
+    // Wait for pass 2 to complete
+    const result2 = await promise2;
+    expect(result2.superseded).toBe(false);
+
+    // Wait for pass 1 to finish (it will be marked superseded)
+    const result1 = await promise1;
+    expect(result1.superseded).toBe(true);
+
+    // Wait to ensure pass 1 has finished writing before starting pass 3
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
+    // Run pass 3 and verify it got pass 2's ETag, not pass 1's
+    // (Pass 2 answered with inventory-etag-v2, pass 1 would have had inventory-etag-v1)
+    const result3 = await trigger.check(handle);
+    expect(result3.superseded).toBe(false);
+    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(
+      3,
+      { ifNoneMatch: 'inventory-etag-v2' },
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  }, 3000);
+
+  // ===== T7: VAULT_PULL_PASS_BUDGET_MS is the default =====
+  test('T7: VAULT_PULL_PASS_BUDGET_MS is the default and is 10 seconds', async () => {
+    expect(VAULT_PULL_PASS_BUDGET_MS).toBe(10_000);
+
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+    api.getVaultBlob.mockRejectedValue({ response: { status: 404 } });
+
+    // Create trigger without budgetMs to use default
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    // A fast pass should not abort
+    const result = await trigger.check(handle);
+    expect(result.superseded).toBe(false);
+    expect(result.failed).toHaveLength(0);
   });
 });

@@ -38,11 +38,11 @@ describe('checkVaultBlobsForUpdates', () => {
   function createApiDouble(handle?: VaultHandle) {
     const api = {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      getVaultMeta: jest.fn<Promise<AxiosResponse<any>>, []>(),
+      getVaultMeta: jest.fn<Promise<AxiosResponse<any>>, [any]>(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      getVaultBlob: jest.fn<Promise<AxiosResponse<any>>, [any?]>(),
+      getVaultBlob: jest.fn<Promise<AxiosResponse<any>>, [any, any]>(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      getVaultBlobInventory: jest.fn<Promise<AxiosResponse<any>>, [any?]>(),
+      getVaultBlobInventory: jest.fn<Promise<AxiosResponse<any>>, [any, any]>(),
       putVaultBlob: jest.fn<
         Promise<
           AxiosResponse<{
@@ -1030,9 +1030,10 @@ describe('checkVaultBlobsForUpdates', () => {
     });
 
     // Only inventory read, with ifNoneMatch sent
-    expect(api.getVaultBlobInventory).toHaveBeenCalledWith({
-      ifNoneMatch: passedEtag,
-    });
+    expect(api.getVaultBlobInventory).toHaveBeenCalledWith(
+      { ifNoneMatch: passedEtag },
+      expect.any(Object), // Second argument is request options with signal (may be undefined)
+    );
     expect(api.getVaultBlob).not.toHaveBeenCalled();
     expect(api.getVaultMeta).not.toHaveBeenCalled();
 
@@ -1078,6 +1079,7 @@ describe('checkVaultBlobsForUpdates', () => {
         type: VaultBlobType.Groceries,
         ifNoneMatch: undefined,
       }),
+      expect.any(Object), // Second argument is request options with signal (may be undefined)
     );
 
     // Groceries converged
@@ -1375,5 +1377,198 @@ describe('checkVaultBlobsForUpdates', () => {
 
     // inventoryEtag returned from inventory response
     expect(result.inventoryEtag).toBe('inventory-etag-v1');
+  });
+
+  // ===== C1: Signal reaches inventory read =====
+  test('C1: The signal reaches the inventory read', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+    const api = createApiDouble(handle);
+    api.getVaultBlobInventory.mockResolvedValue(everyTypeInventoryResponse());
+    api.getVaultBlob.mockRejectedValue(create404Error());
+
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    const result = await checkVaultBlobsForUpdates({
+      api,
+      handle,
+      prompt: jest.fn(),
+      signal,
+    });
+
+    // getVaultBlobInventory called with the exact signal
+    expect(api.getVaultBlobInventory).toHaveBeenCalledWith(
+      expect.any(Object),
+      expect.objectContaining({ signal }),
+    );
+
+    // Pass completed normally
+    expect(result.checked.length).toBeGreaterThan(0);
+  });
+
+  // ===== C2: Signal reaches every per-type read =====
+  test('C2: The signal reaches every per-type read', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+    const api = createApiDouble(handle);
+    api.getVaultBlobInventory.mockResolvedValue(everyTypeInventoryResponse());
+    api.getVaultBlob.mockRejectedValue(create404Error());
+
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    await checkVaultBlobsForUpdates({
+      api,
+      handle,
+      prompt: jest.fn(),
+      signal,
+    });
+
+    // Every getVaultBlob call should have the same signal
+    const calls = api.getVaultBlob.mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    for (const callArgs of calls) {
+      expect(callArgs[1]).toEqual(expect.objectContaining({ signal }));
+    }
+  });
+
+  // ===== C3: Signal reaches Vault Meta observation =====
+  test('C3: The signal reaches the Vault Meta observation', async () => {
+    const handle = await setupHandle('user-1', [{ id: 'task1' }], 'tasks');
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-local' });
+
+    const remote = await captureRemoteBlob(
+      handle,
+      [{ id: 'remote1' }],
+      'tasks',
+    );
+
+    const api = createApiDouble(handle);
+    api.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag-differs',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
+    api.getVaultBlob.mockResolvedValue(formatGetVaultBlobResponse(remote));
+
+    const controller = new AbortController();
+    const signal = controller.signal;
+
+    await checkVaultBlobsForUpdates({
+      api,
+      handle,
+      prompt: jest.fn(),
+      signal,
+    });
+
+    // getVaultMeta should be called with the signal
+    expect(api.getVaultMeta).toHaveBeenCalledWith(
+      expect.objectContaining({ signal }),
+    );
+  });
+
+  // ===== C4: Signal already aborted before type loop =====
+  test('C4: A signal already aborted before the pass reaches the type loop', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+    const api = createApiDouble(handle);
+
+    // Inventory answers normally
+    api.getVaultBlobInventory.mockResolvedValue(everyTypeInventoryResponse());
+
+    const controller = new AbortController();
+    const abortReason = new Error('Pre-aborted by test');
+    controller.abort(abortReason);
+
+    const result = await checkVaultBlobsForUpdates({
+      api,
+      handle,
+      prompt: jest.fn(),
+      signal: controller.signal,
+    });
+
+    // No per-type reads since signal was already aborted
+    expect(api.getVaultBlob).not.toHaveBeenCalled();
+    // Every type is in failed with the abort reason
+    expect(result.failed).toHaveLength(VAULT_BLOB_TYPES.length);
+    for (const failed of result.failed) {
+      expect(failed.error).toBe(abortReason);
+    }
+    // No types were checked
+    expect(result.checked).toHaveLength(0);
+  });
+
+  // ===== C5: Abort part-way through the loop =====
+  test('C5: Abort part-way through the type loop', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+    const api = createApiDouble(handle);
+
+    // Inventory names every type
+    api.getVaultBlobInventory.mockResolvedValue(everyTypeInventoryResponse());
+
+    const controller = new AbortController();
+    const abortReason = new Error('Aborted during type loop');
+
+    let callCount = 0;
+    api.getVaultBlob.mockImplementation(async () => {
+      callCount++;
+      if (callCount === 2) {
+        // Abort on second type read, so first type is answered first
+        Promise.resolve().then(() => {
+          controller.abort(abortReason);
+        });
+      }
+      throw create404Error();
+    });
+
+    const result = await checkVaultBlobsForUpdates({
+      api,
+      handle,
+      prompt: jest.fn(),
+      signal: controller.signal,
+    });
+
+    // getVaultBlob called exactly twice (first and second types)
+    expect(api.getVaultBlob).toHaveBeenCalledTimes(2);
+
+    // First type in checked with outcome kind 'absent'
+    const firstType = VAULT_BLOB_TYPES[0];
+    expect(result.checked).toHaveLength(1);
+    expect(result.checked[0]).toEqual({
+      type: firstType,
+      outcome: { kind: 'absent' },
+    });
+
+    // Remaining types in failed (exactly)
+    const expectedFailedTypes = VAULT_BLOB_TYPES.slice(1);
+    expect(result.failed).toHaveLength(expectedFailedTypes.length);
+    const failedTypes = result.failed.map((f) => f.type);
+    expect(failedTypes).toEqual(expectedFailedTypes);
+
+    // Every failed entry has the abort reason
+    for (const failed of result.failed) {
+      expect(failed.error).toBe(abortReason);
+    }
+  });
+
+  // ===== C6: No signal still works =====
+  test('C6: No signal at all still works', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+    const api = createApiDouble(handle);
+    api.getVaultBlobInventory.mockResolvedValue(everyTypeInventoryResponse());
+    api.getVaultBlob.mockRejectedValue(create404Error());
+
+    // Call without signal parameter
+    const result = await checkVaultBlobsForUpdates({
+      api,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    // Pass should complete normally
+    expect(result.checked.length).toBeGreaterThan(0);
+    expect(result.failed).toHaveLength(0);
   });
 });

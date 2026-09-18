@@ -50,6 +50,26 @@ function getHttpStatus(error: unknown): number | undefined {
   return typeof status === 'number' ? status : undefined;
 }
 
+/**
+ * The per-call request options a read passes to the generated client, and the
+ * only way an `AbortSignal` reaches the network from here.
+ *
+ * The generated client takes a `RawAxiosRequestConfig` as the last argument of
+ * every operation and axios reads `signal` off it, so a caller that holds a
+ * budget or a supersede decision can end a request in flight
+ * ([ADR 0088](../../../../../docs/adr/0088-a-vault-pull-pass-has-a-budget-and-is-superseded-never-queued.md),
+ * decision 2). The client itself is a synced output and is never edited to
+ * carry one — this is the seam that exists for it.
+ *
+ * Built even when there is no signal, so every read has exactly one call shape
+ * rather than one per caller.
+ */
+function requestOptions(signal: AbortSignal | undefined): {
+  signal?: AbortSignal;
+} {
+  return { signal };
+}
+
 function defaultBlobConflictHandler(params: {
   local: EncryptedBlobV1;
   remote: ServerVaultBlob;
@@ -89,9 +109,11 @@ export async function getServerVaultMeta(
   // hand every caller the ability to push a local wrapping over the server's
   // and undo a passphrase change made on another device.
   api: Pick<VaultApiLike, 'getVaultMeta'>,
+  /** Ends this read in flight — see {@link requestOptions}. */
+  signal?: AbortSignal,
 ): Promise<ServerVaultMeta | null> {
   try {
-    const response = await api.getVaultMeta();
+    const response = await api.getVaultMeta(requestOptions(signal));
     return toServerVaultMeta(response.data as GetVaultMetaResponse);
   } catch (error) {
     if (getHttpStatus(error) === 404) return null;
@@ -122,9 +144,15 @@ export async function getServerVaultMeta(
  */
 export function observeServerVaultMetaOnce(
   api: Pick<VaultApiLike, 'getVaultMeta'>,
+  /**
+   * Ends the observation in flight. A pass's own signal, so the one request
+   * this makes is as abortable as the reads around it — a pass that gave up
+   * should not be left holding a socket on the one endpoint it asks last.
+   */
+  signal?: AbortSignal,
 ): () => Promise<ServerVaultMeta | null> {
   let observation: Promise<ServerVaultMeta | null> | null = null;
-  return () => (observation ??= getServerVaultMeta(api));
+  return () => (observation ??= getServerVaultMeta(api, signal));
 }
 
 export async function getServerVaultBlob(
@@ -166,9 +194,14 @@ export async function checkServerVaultBlob(
   api: Pick<VaultApiLike, 'getVaultBlob'>,
   type: VaultBlobType,
   ifNoneMatch: string | undefined,
+  /** Ends this read in flight — see {@link requestOptions}. */
+  signal?: AbortSignal,
 ): Promise<ServerVaultBlobCheck> {
   try {
-    const response = await api.getVaultBlob({ type, ifNoneMatch });
+    const response = await api.getVaultBlob(
+      { type, ifNoneMatch },
+      requestOptions(signal),
+    );
     return {
       kind: 'changed',
       blob: toServerVaultBlob(response.data as GetVaultBlobResponse),
@@ -230,9 +263,14 @@ export async function checkServerVaultBlobInventory(
   // Narrower than `VaultApiLike` for the same reason every other read here is.
   api: Pick<VaultApiLike, 'getVaultBlobInventory'>,
   ifNoneMatch: string | undefined,
+  /** Ends this read in flight — see {@link requestOptions}. */
+  signal?: AbortSignal,
 ): Promise<ServerVaultBlobInventoryCheck> {
   try {
-    const response = await api.getVaultBlobInventory({ ifNoneMatch });
+    const response = await api.getVaultBlobInventory(
+      { ifNoneMatch },
+      requestOptions(signal),
+    );
     const data = response.data as GetVaultBlobInventoryResponse;
     return {
       kind: 'inventory',

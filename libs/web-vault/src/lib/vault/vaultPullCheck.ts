@@ -43,6 +43,42 @@
  * working through the remaining Vault Blob Types against a Session that is
  * already gone. That holds for the inventory read exactly as it holds for a
  * per-type one.
+ *
+ * A pass can also be cut short from outside, through an `AbortSignal` its
+ * caller owns — `vaultPullTrigger.ts` aborts a pass that a newer one
+ * supersedes or that has run past its budget
+ * ([ADR 0088](../../../../../docs/adr/0088-a-vault-pull-pass-has-a-budget-and-is-superseded-never-queued.md),
+ * decisions 1–3). It acts in three places, and the three are not the same
+ * promise:
+ *
+ *   - It **reaches the network** on every read this pass makes itself — the
+ *     inventory, each per-type conditional GET, and the one Vault Meta
+ *     observation — through the generated client's per-call request options, so
+ *     a request in flight is actually cancelled and its socket released.
+ *   - It **ends every wait**, through {@link untilAborted}. Handing a transport
+ *     a signal is a request to stop, not a guarantee, and a pass that only
+ *     learned its budget was spent by the request rejecting would never end at
+ *     all against one that ignored it — which is the exact failure the budget
+ *     exists to prevent (ADR 0088's Context: "One request that never settles
+ *     stops the device pulling"). So the wait is ended here whether or not the
+ *     request obeys.
+ *   - It is **checked before each type**, which is what makes the common case
+ *     cost nothing: an abort that landed between two types buys no request.
+ *
+ * Every type the pass did not answer is recorded in `failed`, so a pass cut
+ * short reports what it owes rather than reporting a clean sweep of the types
+ * it never looked at. Because each wait ends where the type was owed, that set
+ * is the real one and not an approximation.
+ *
+ * What the signal does **not** do is cancel the requests `convergeVaultBlob`
+ * makes — its conflict re-read and its write are its own, and this pass does
+ * not reach into them. Only the waiting stops. So a convergence aborted
+ * mid-write may still land on the server, and that is allowed rather than
+ * worked around: each type converges against its own blob and its own Sync
+ * Bookmark, so a pass abandoned part-way has left every converged type
+ * complete, and a write whose bookmark was never recorded costs a repeated
+ * push, never an edit (ADR 0088, decision 5, and
+ * [ADR 0058](../../../../../docs/adr/0058-a-sync-bookmark-is-a-second-per-user-namespace-not-a-second-vault.md)).
  */
 import { VaultApi, VaultBlobType } from '@myorganizer/app-api-client';
 
@@ -77,7 +113,14 @@ export type VaultPullOutcome =
 export type VaultPullCheckResult = {
   /** Every type this pass reached, and what it found. */
   checked: { type: VaultBlobType; outcome: VaultPullOutcome }[];
-  /** A type this pass could not check — a transport failure, not a 401/403. */
+  /**
+   * A type this pass could not check — a transport failure, not a 401/403.
+   *
+   * Also every type left unreached when the pass was aborted, each recorded
+   * against the signal's abort reason. Unanswered is unanswered however the
+   * pass came to stop, and a caller that must say whether the last pass got
+   * every answer reads exactly this.
+   */
   failed: { type: VaultBlobType; error: unknown }[];
   /**
    * Set when the inventory read or a per-type check found the Session gone.
@@ -111,6 +154,54 @@ type VaultPullApi = Pick<
 >;
 
 /**
+ * What a Vault Blob Type left unreached by an abort is recorded against.
+ *
+ * The signal's own reason where there is one — the trigger names the
+ * difference between a supersede and a spent budget there — and a plain error
+ * otherwise, so a `failed` entry never carries `undefined` in the one field a
+ * caller reads to find out what went wrong.
+ */
+function abortReason(signal: AbortSignal): unknown {
+  return signal.reason ?? new Error('The Vault Pull Pass was aborted.');
+}
+
+/**
+ * Wait for `work`, or for `signal` to abort — whichever comes first.
+ *
+ * This is what makes a budget a budget. An `AbortSignal` handed to the
+ * generated client is a request to stop and not a promise to: axios honours it,
+ * a stubbed transport need not, and a request already past the point of
+ * cancelling will not. A pass that learned its time was up only by its own
+ * request rejecting would therefore keep the failure it was built to end —
+ * the device stops pulling, silently, exactly as in
+ * [#697](https://github.com/mnaimfaizy/myorganizer/issues/697).
+ *
+ * So the wait is ended here, from the pass's side, and the abandoned request is
+ * left to settle into nothing. Rejecting with the signal's own reason is what
+ * lets the caller's existing failure handling record the type as unanswered
+ * without knowing an abort is what happened.
+ */
+function untilAborted<T>(
+  signal: AbortSignal | undefined,
+  work: Promise<T>,
+): Promise<T> {
+  if (!signal) return work;
+
+  return Promise.race([
+    work,
+    new Promise<never>((_resolve, reject) => {
+      if (signal.aborted) {
+        reject(abortReason(signal));
+        return;
+      }
+      signal.addEventListener('abort', () => reject(abortReason(signal)), {
+        once: true,
+      });
+    }),
+  ]);
+}
+
+/**
  * Read the Vault Blob Inventory and converge every Vault Blob Type it says
  * moved.
  *
@@ -138,8 +229,14 @@ export async function checkVaultBlobsForUpdates(options: {
    * `vaultPullTrigger.ts` is what decides that, in `leftNothingToDo`.
    */
   inventoryEtag?: string;
+  /**
+   * Ends this pass early — a newer pass superseding it, or its budget running
+   * out. Reaches every read the pass makes and is checked before each Vault
+   * Blob Type; see the module doc for what it does not reach.
+   */
+  signal?: AbortSignal;
 }): Promise<VaultPullCheckResult> {
-  const { api, handle, prompt } = options;
+  const { api, handle, prompt, signal } = options;
   const result: VaultPullCheckResult = {
     checked: [],
     failed: [],
@@ -149,9 +246,9 @@ export async function checkVaultBlobsForUpdates(options: {
   let serverEtags: Map<VaultBlobType, string>;
 
   try {
-    const inventory = await checkServerVaultBlobInventory(
-      api,
-      options.inventoryEtag,
+    const inventory = await untilAborted(
+      signal,
+      checkServerVaultBlobInventory(api, options.inventoryEtag, signal),
     );
 
     if (inventory.kind === 'not-modified') {
@@ -185,9 +282,20 @@ export async function checkVaultBlobsForUpdates(options: {
   }
 
   /** This pass's one observation of the server's Vault Meta. */
-  const observeServerMeta = observeServerVaultMetaOnce(api);
+  const observeServerMeta = observeServerVaultMetaOnce(api, signal);
 
-  for (const type of VAULT_BLOB_TYPES) {
+  for (const [index, type] of VAULT_BLOB_TYPES.entries()) {
+    if (signal?.aborted) {
+      // Read before the request rather than after it, so an abort that landed
+      // between two types costs nothing at all. Every remaining type is
+      // unanswered — including this one, which was never asked about.
+      const reason = abortReason(signal);
+      for (const unreached of VAULT_BLOB_TYPES.slice(index)) {
+        result.failed.push({ type: unreached, error: reason });
+      }
+      break;
+    }
+
     const serverEtag = serverEtags.get(type);
 
     if (serverEtag === undefined) {
@@ -210,7 +318,10 @@ export async function checkVaultBlobsForUpdates(options: {
       // `ifNoneMatch` still goes up. The inventory is what decided this type
       // is worth asking about; the conditional GET is what keeps the answer
       // honest if the server moved again in between.
-      const check = await checkServerVaultBlob(api, type, ifNoneMatch);
+      const check = await untilAborted(
+        signal,
+        checkServerVaultBlob(api, type, ifNoneMatch, signal),
+      );
 
       if (check.kind !== 'changed') {
         result.checked.push({ type, outcome: check });
@@ -220,14 +331,22 @@ export async function checkVaultBlobsForUpdates(options: {
       // Never applied straight to the Local Vault — a remote change merges
       // by record against what this device already holds, so an unsent
       // local edit survives a pull that arrives before it is sent.
-      const outcome = await convergeVaultBlob({
-        api,
-        handle,
-        type,
-        prompt,
-        serverMeta: await observeServerMeta(),
-        remote: check.blob,
-      });
+      //
+      // Both waits end on an abort, convergence's included. Its own requests
+      // are not cancelled with it, so a write already sent may still land —
+      // which is the partly-applied pass decision 5 allows.
+      const serverMeta = await untilAborted(signal, observeServerMeta());
+      const outcome = await untilAborted(
+        signal,
+        convergeVaultBlob({
+          api,
+          handle,
+          type,
+          prompt,
+          serverMeta,
+          remote: check.blob,
+        }),
+      );
       result.checked.push({ type, outcome: { kind: 'converged', outcome } });
     } catch (error) {
       const status = getHttpStatus(error);
