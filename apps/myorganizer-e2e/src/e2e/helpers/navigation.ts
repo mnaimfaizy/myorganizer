@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 /**
  * True when Playwright aborted `page.goto` because a concurrent client-side
