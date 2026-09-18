@@ -34,7 +34,7 @@ function readManifest(html, path) {
   );
   if (!raw)
     fail(
-      `no #agent-map-manifest block in ${path} — rebuild it with build-agent-map.mjs`,
+      `no #agent-map-manifest block in ${path} — edit the page in place via design-brief → Designer (ADR 0046); build-agent-map.mjs is not a rebuild path`,
     );
   try {
     return JSON.parse(raw[1]);
@@ -136,7 +136,7 @@ if (findings.length > 0) {
   );
   for (const f of findings) console.error(`  - ${f}`);
   console.error(
-    `\nRebuild from the design export, or update the diagrams to match ${POLICY}.`,
+    `\nUpdate the diagrams in place via design-brief → Designer (ADR 0046) to match ${POLICY}.`,
   );
   process.exit(1);
 }

@@ -221,7 +221,7 @@ if (findings.length > 0) {
   );
   for (const f of findings) console.error(`  - ${f}`);
   console.error(
-    `\nRebuild from the design export, or correct the page to match the source constants.`,
+    `\nEdit lifecycle.html / trust-boundary.html in place via design-brief → Designer (ADR 0046) to match the source constants.`,
   );
   process.exit(1);
 }
