@@ -1,20 +1,10 @@
 /* eslint-disable import/first -- jest.mock must precede application imports */
 import { fireEvent, render } from '@testing-library/react';
 
-const mockRequestCheck = jest.fn();
-
-jest.mock('@myorganizer/web-vault', () => ({
-  createVaultApi: jest.fn(() => ({})),
-  createVaultPullTrigger: jest.fn(() => ({
-    requestCheck: mockRequestCheck,
-  })),
-}));
-
 jest.mock('./session', () => ({
   useOptionalVaultSession: jest.fn(),
 }));
 
-import { createVaultApi, createVaultPullTrigger } from '@myorganizer/web-vault';
 import { useOptionalVaultSession } from './session';
 import { VaultPullRunner } from './pullRunner';
 
@@ -22,22 +12,31 @@ type MockHandle = {
   owner: string;
 };
 
+type MockTrigger = {
+  requestCheck: jest.Mock;
+};
+
 function createMockHandle(owner: string): MockHandle {
+  return { owner };
+}
+
+function createMockTrigger(): MockTrigger {
   return {
-    owner,
+    requestCheck: jest.fn(),
   };
 }
 
 describe('VaultPullRunner', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockRequestCheck.mockClear();
   });
 
   test('renders nothing', () => {
     const mockHandle = createMockHandle('user-a');
+    const mockTrigger = createMockTrigger();
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: mockHandle,
+      pullTrigger: mockTrigger,
     });
 
     const { container } = render(<VaultPullRunner />);
@@ -45,136 +44,143 @@ describe('VaultPullRunner', () => {
     expect(container.firstChild).toBeNull();
   });
 
-  test('does not create trigger when no session is present', () => {
+  test('no session — does not call requestCheck', () => {
     (useOptionalVaultSession as jest.Mock).mockReturnValue(null);
 
     render(<VaultPullRunner />);
 
-    expect(createVaultPullTrigger).not.toHaveBeenCalled();
-    expect(createVaultApi).not.toHaveBeenCalled();
+    // No error, no side effects
+    expect(useOptionalVaultSession).toHaveBeenCalled();
   });
 
-  test('calls requestCheck on mount with current handle', () => {
+  test('session with no trigger — does not call requestCheck', () => {
     const mockHandle = createMockHandle('user-a');
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: mockHandle,
+      pullTrigger: null,
     });
 
     render(<VaultPullRunner />);
 
-    expect(mockRequestCheck).toHaveBeenCalledTimes(1);
-    expect(mockRequestCheck).toHaveBeenCalledWith(mockHandle);
+    // No error; effect early-returns
+    expect(useOptionalVaultSession).toHaveBeenCalled();
   });
 
-  test('calls requestCheck on window focus event', () => {
+  test('mount with session and trigger — calls requestCheck with handle', () => {
     const mockHandle = createMockHandle('user-a');
+    const mockTrigger = createMockTrigger();
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: mockHandle,
+      pullTrigger: mockTrigger,
     });
 
     render(<VaultPullRunner />);
 
-    // First call on mount
-    expect(mockRequestCheck).toHaveBeenCalledTimes(1);
+    expect(mockTrigger.requestCheck).toHaveBeenCalledTimes(1);
+    expect(mockTrigger.requestCheck).toHaveBeenCalledWith(mockHandle);
+  });
 
-    // Trigger focus event
+  test('focus event — calls requestCheck a second time with handle', () => {
+    const mockHandle = createMockHandle('user-a');
+    const mockTrigger = createMockTrigger();
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+      pullTrigger: mockTrigger,
+    });
+
+    render(<VaultPullRunner />);
+
+    expect(mockTrigger.requestCheck).toHaveBeenCalledTimes(1);
+
     fireEvent.focus(window);
 
-    // Should have been called a second time
-    expect(mockRequestCheck).toHaveBeenCalledTimes(2);
-    expect(mockRequestCheck).toHaveBeenLastCalledWith(mockHandle);
+    expect(mockTrigger.requestCheck).toHaveBeenCalledTimes(2);
+    expect(mockTrigger.requestCheck).toHaveBeenLastCalledWith(mockHandle);
   });
 
-  test('cleans up focus listener on unmount', () => {
+  test('unmount — removes focus listener', () => {
     const mockHandle = createMockHandle('user-a');
+    const mockTrigger = createMockTrigger();
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: mockHandle,
+      pullTrigger: mockTrigger,
     });
 
     const { unmount } = render(<VaultPullRunner />);
 
-    // First call on mount
-    expect(mockRequestCheck).toHaveBeenCalledTimes(1);
+    expect(mockTrigger.requestCheck).toHaveBeenCalledTimes(1);
 
-    // Unmount
     unmount();
 
-    // Trigger focus event after unmount
+    // Focus after unmount should not call requestCheck again
     fireEvent.focus(window);
 
-    // Should still have been called only once (no additional call after unmount)
-    expect(mockRequestCheck).toHaveBeenCalledTimes(1);
+    expect(mockTrigger.requestCheck).toHaveBeenCalledTimes(1);
   });
 
-  test('rebuilds trigger when owner changes', () => {
+  test('handle changes, trigger stays same — requestCheck uses latest handle', () => {
     const handleA = createMockHandle('user-a');
+    const mockTrigger = createMockTrigger();
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: handleA,
+      pullTrigger: mockTrigger,
     });
 
     const { rerender } = render(<VaultPullRunner />);
 
-    // Initial trigger created for user-a
-    expect(createVaultPullTrigger).toHaveBeenCalledTimes(1);
-    expect(mockRequestCheck).toHaveBeenCalledTimes(1);
-    expect(mockRequestCheck).toHaveBeenCalledWith(handleA);
+    expect(mockTrigger.requestCheck).toHaveBeenCalledTimes(1);
+    expect(mockTrigger.requestCheck).toHaveBeenCalledWith(handleA);
 
-    // Reset mocks to track new calls
-    mockRequestCheck.mockClear();
-    (createVaultPullTrigger as jest.Mock).mockClear();
+    mockTrigger.requestCheck.mockClear();
 
-    // Change owner to user-b
-    const handleB = createMockHandle('user-b');
-    (useOptionalVaultSession as jest.Mock).mockReturnValue({
-      handle: handleB,
-    });
-
-    rerender(<VaultPullRunner />);
-
-    // New trigger should be created
-    expect(createVaultPullTrigger).toHaveBeenCalledTimes(1);
-    // requestCheck should be called immediately with new handle
-    expect(mockRequestCheck).toHaveBeenCalledTimes(1);
-    expect(mockRequestCheck).toHaveBeenCalledWith(handleB);
-  });
-
-  test('does not rebuild trigger when handle identity changes but owner stays the same', () => {
-    const handleA = createMockHandle('user-a');
-    (useOptionalVaultSession as jest.Mock).mockReturnValue({
-      handle: handleA,
-    });
-
-    const { rerender } = render(<VaultPullRunner />);
-
-    // Initial trigger created for user-a
-    expect(createVaultPullTrigger).toHaveBeenCalledTimes(1);
-    expect(mockRequestCheck).toHaveBeenCalledTimes(1);
-    expect(mockRequestCheck).toHaveBeenCalledWith(handleA);
-
-    // Reset mocks to track new calls
-    mockRequestCheck.mockClear();
-    (createVaultPullTrigger as jest.Mock).mockClear();
-
-    // Provide a *different* handle object for same owner (simulating lock/unlock)
+    // New handle object, same owner, same trigger reference
     const handleA2 = createMockHandle('user-a');
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: handleA2,
+      pullTrigger: mockTrigger,
     });
 
     rerender(<VaultPullRunner />);
 
-    // Trigger should NOT be rebuilt (same owner)
-    expect(createVaultPullTrigger).not.toHaveBeenCalled();
+    // Effect should not re-run (trigger is same reference)
+    expect(mockTrigger.requestCheck).not.toHaveBeenCalled();
 
-    // But requestCheck should not have been called automatically by rerender
-    // (the effect is only triggered by mount or trigger change, not by handle change)
-    expect(mockRequestCheck).not.toHaveBeenCalled();
-
-    // Now trigger focus event to verify the latest handle is used
+    // Focus event should use the new handle via handleRef
     fireEvent.focus(window);
 
-    // requestCheck should be called with the new handle object
-    expect(mockRequestCheck).toHaveBeenCalledTimes(1);
-    expect(mockRequestCheck).toHaveBeenCalledWith(handleA2);
+    expect(mockTrigger.requestCheck).toHaveBeenCalledTimes(1);
+    expect(mockTrigger.requestCheck).toHaveBeenCalledWith(handleA2);
+  });
+
+  test('trigger changes — effect re-runs with current handle', () => {
+    const mockHandle = createMockHandle('user-a');
+    const trigger1 = createMockTrigger();
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+      pullTrigger: trigger1,
+    });
+
+    const { rerender } = render(<VaultPullRunner />);
+
+    expect(trigger1.requestCheck).toHaveBeenCalledTimes(1);
+    expect(trigger1.requestCheck).toHaveBeenCalledWith(mockHandle);
+
+    trigger1.requestCheck.mockClear();
+
+    // New trigger object (simulating owner change in session)
+    const trigger2 = createMockTrigger();
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+      pullTrigger: trigger2,
+    });
+
+    rerender(<VaultPullRunner />);
+
+    // Effect should re-run with new trigger
+    expect(trigger2.requestCheck).toHaveBeenCalledTimes(1);
+    expect(trigger2.requestCheck).toHaveBeenCalledWith(mockHandle);
+
+    // First trigger should not have been called again
+    expect(trigger1.requestCheck).not.toHaveBeenCalled();
   });
 });

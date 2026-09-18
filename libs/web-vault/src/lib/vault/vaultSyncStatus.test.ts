@@ -5,6 +5,7 @@
 import { VaultBlobType } from '@myorganizer/app-api-client';
 
 import { computeVaultSyncStatus } from './vaultSyncStatus';
+import type { VaultPullTriggerStatus } from './vaultPullTrigger';
 import type { VaultSyncQueueStatus } from './vaultSyncQueue';
 import type { VaultStorageV1 } from './localVaultStorage';
 import { vaultIdentityOf } from './vaultMetaConverge';
@@ -45,11 +46,53 @@ describe('computeVaultSyncStatus', () => {
     };
   }
 
+  /**
+   * Helper to create a pull trigger status with defaults.
+   */
+  function createPullStatus(
+    overrides: Partial<VaultPullTriggerStatus> = {},
+  ): VaultPullTriggerStatus {
+    return {
+      sessionEnded: false,
+      ...overrides,
+    };
+  }
+
+  /**
+   * Minimal vault fixture for testing standoff — contains only what vaultIdentityOf reads.
+   * No Master Key or plaintext needed.
+   */
+  function makeMinimalVault(saltValue = 'default-salt'): VaultStorageV1 {
+    return {
+      version: 1,
+      kdf: {
+        name: 'PBKDF2',
+        hash: 'SHA-256',
+        iterations: 310000,
+        salt: saltValue,
+      },
+      masterKeyWrappedWithPassphrase: {
+        iv: 'passphrase-iv',
+        ciphertext: 'passphrase-ct',
+      },
+      masterKeyWrappedWithRecoveryKey: {
+        iv: 'recovery-iv',
+        ciphertext: 'recovery-ct',
+      },
+      data: {},
+    };
+  }
+
   test('all types clean → synced, no pending, empty arrays', async () => {
     const handle = createMockHandle(new Map());
     const queueStatus = createQueueStatus();
+    const pullStatus = createPullStatus();
 
-    const result = await computeVaultSyncStatus({ handle, queueStatus });
+    const result = await computeVaultSyncStatus({
+      handle,
+      queueStatus,
+      pullStatus,
+    });
 
     expect(result.kind).toBe('synced');
     expect(result.pendingTypes).toEqual([]);
@@ -61,8 +104,13 @@ describe('computeVaultSyncStatus', () => {
     const unsentMap = new Map([['tasks', true]]);
     const handle = createMockHandle(unsentMap);
     const queueStatus = createQueueStatus({ retryScheduled: false });
+    const pullStatus = createPullStatus();
 
-    const result = await computeVaultSyncStatus({ handle, queueStatus });
+    const result = await computeVaultSyncStatus({
+      handle,
+      queueStatus,
+      pullStatus,
+    });
 
     expect(result.kind).toBe('pending');
     expect(result.pendingTypes).toContain(VaultBlobType.Tasks);
@@ -73,8 +121,13 @@ describe('computeVaultSyncStatus', () => {
     const unsentMap = new Map([['tasks', true]]);
     const handle = createMockHandle(unsentMap);
     const queueStatus = createQueueStatus({ retryScheduled: true });
+    const pullStatus = createPullStatus();
 
-    const result = await computeVaultSyncStatus({ handle, queueStatus });
+    const result = await computeVaultSyncStatus({
+      handle,
+      queueStatus,
+      pullStatus,
+    });
 
     expect(result.kind).toBe('pending');
     expect(result.pendingTypes).toContain(VaultBlobType.Tasks);
@@ -87,8 +140,13 @@ describe('computeVaultSyncStatus', () => {
     const queueStatus = createQueueStatus({
       terminalFailures: [{ type: VaultBlobType.Tasks, status: 422 }],
     });
+    const pullStatus = createPullStatus();
 
-    const result = await computeVaultSyncStatus({ handle, queueStatus });
+    const result = await computeVaultSyncStatus({
+      handle,
+      queueStatus,
+      pullStatus,
+    });
 
     expect(result.kind).toBe('terminal');
     expect(result.pendingTypes).toContain(VaultBlobType.Addresses);
@@ -103,8 +161,13 @@ describe('computeVaultSyncStatus', () => {
     const queueStatus = createQueueStatus({
       terminalFailures: [{ type: VaultBlobType.Tasks, status: 422 }],
     });
+    const pullStatus = createPullStatus();
 
-    const result = await computeVaultSyncStatus({ handle, queueStatus });
+    const result = await computeVaultSyncStatus({
+      handle,
+      queueStatus,
+      pullStatus,
+    });
 
     // Tasks is terminal, so it should NOT be in pendingTypes
     expect(result.pendingTypes).not.toContain(VaultBlobType.Tasks);
@@ -125,8 +188,13 @@ describe('computeVaultSyncStatus', () => {
       sessionEnded: true,
       terminalFailures: [{ type: VaultBlobType.Addresses, status: 422 }],
     });
+    const pullStatus = createPullStatus();
 
-    const result = await computeVaultSyncStatus({ handle, queueStatus });
+    const result = await computeVaultSyncStatus({
+      handle,
+      queueStatus,
+      pullStatus,
+    });
 
     expect(result.kind).toBe('session-ended');
     expect(result.pendingTypes).toContain(VaultBlobType.Tasks);
@@ -148,8 +216,13 @@ describe('computeVaultSyncStatus', () => {
       ],
       retryScheduled: false,
     });
+    const pullStatus = createPullStatus();
 
-    const result = await computeVaultSyncStatus({ handle, queueStatus });
+    const result = await computeVaultSyncStatus({
+      handle,
+      queueStatus,
+      pullStatus,
+    });
 
     expect(result.kind).toBe('session-ended');
     expect(result.pendingTypes).toContain(VaultBlobType.Groceries);
@@ -164,8 +237,13 @@ describe('computeVaultSyncStatus', () => {
         { type: VaultBlobType.Addresses, status: 422 },
       ],
     });
+    const pullStatus = createPullStatus();
 
-    const result = await computeVaultSyncStatus({ handle, queueStatus });
+    const result = await computeVaultSyncStatus({
+      handle,
+      queueStatus,
+      pullStatus,
+    });
 
     expect(result.kind).toBe('terminal');
     expect(result.terminalFailures).toHaveLength(2);
@@ -184,8 +262,13 @@ describe('computeVaultSyncStatus', () => {
     ]);
     const handle = createMockHandle(unsentMap);
     const queueStatus = createQueueStatus();
+    const pullStatus = createPullStatus();
 
-    const result = await computeVaultSyncStatus({ handle, queueStatus });
+    const result = await computeVaultSyncStatus({
+      handle,
+      queueStatus,
+      pullStatus,
+    });
 
     expect(result.kind).toBe('pending');
     expect(result.pendingTypes).toHaveLength(2);
@@ -199,8 +282,13 @@ describe('computeVaultSyncStatus', () => {
     const queueStatus = createQueueStatus({
       terminalFailures: [{ type: VaultBlobType.Tasks, status: 422 }],
     });
+    const pullStatus = createPullStatus();
 
-    const result = await computeVaultSyncStatus({ handle, queueStatus });
+    const result = await computeVaultSyncStatus({
+      handle,
+      queueStatus,
+      pullStatus,
+    });
 
     // Even though hasUnsentChanges returns true for tasks, it's not in pendingTypes
     // because it's in terminalFailures
@@ -214,8 +302,13 @@ describe('computeVaultSyncStatus', () => {
       terminalFailures: [{ type: VaultBlobType.Tasks, status: 422 }],
       retryScheduled: true,
     });
+    const pullStatus = createPullStatus();
 
-    const result = await computeVaultSyncStatus({ handle, queueStatus });
+    const result = await computeVaultSyncStatus({
+      handle,
+      queueStatus,
+      pullStatus,
+    });
 
     expect(result.kind).toBe('terminal');
     expect(result.retrying).toBe(false);
@@ -227,8 +320,13 @@ describe('computeVaultSyncStatus', () => {
       sessionEnded: true,
       retryScheduled: true,
     });
+    const pullStatus = createPullStatus();
 
-    const result = await computeVaultSyncStatus({ handle, queueStatus });
+    const result = await computeVaultSyncStatus({
+      handle,
+      queueStatus,
+      pullStatus,
+    });
 
     expect(result.kind).toBe('session-ended');
     expect(result.retrying).toBe(false);
@@ -237,8 +335,13 @@ describe('computeVaultSyncStatus', () => {
   test('retrying field is false for synced kind', async () => {
     const handle = createMockHandle(new Map());
     const queueStatus = createQueueStatus({ retryScheduled: true });
+    const pullStatus = createPullStatus();
 
-    const result = await computeVaultSyncStatus({ handle, queueStatus });
+    const result = await computeVaultSyncStatus({
+      handle,
+      queueStatus,
+      pullStatus,
+    });
 
     expect(result.kind).toBe('synced');
     expect(result.retrying).toBe(false);
@@ -260,8 +363,9 @@ describe('computeVaultSyncStatus', () => {
         { type: VaultBlobType.Todos, status: 422 }, // excluded from pending
       ],
     });
+    const pullStatus = createPullStatus();
 
-    await computeVaultSyncStatus({ handle, queueStatus });
+    await computeVaultSyncStatus({ handle, queueStatus, pullStatus });
 
     // Should have called hasUnsentChanges for all except todos (which is terminal)
     const callCount = (handle.hasUnsentChanges as jest.Mock).mock.calls.length;
@@ -269,39 +373,19 @@ describe('computeVaultSyncStatus', () => {
   });
 
   describe('Observed Vault Identity and standoff detection', () => {
-    /**
-     * Minimal vault fixture for testing standoff — contains only what vaultIdentityOf reads.
-     * No Master Key or plaintext needed.
-     */
-    function makeMinimalVault(saltValue = 'default-salt'): VaultStorageV1 {
-      return {
-        version: 1,
-        kdf: {
-          name: 'PBKDF2',
-          hash: 'SHA-256',
-          iterations: 310000,
-          salt: saltValue,
-        },
-        masterKeyWrappedWithPassphrase: {
-          iv: 'passphrase-iv',
-          ciphertext: 'passphrase-ct',
-        },
-        masterKeyWrappedWithRecoveryKey: {
-          iv: 'recovery-iv',
-          ciphertext: 'recovery-ct',
-        },
-        data: {},
-      };
-    }
-
     test('no local vault + observed identity → no standoff (cannot compare)', async () => {
       const handle = createMockHandle(new Map(), {
         vault: null, // No local vault
         observedIdentity: 'some-observed-identity',
       });
       const queueStatus = createQueueStatus();
+      const pullStatus = createPullStatus();
 
-      const result = await computeVaultSyncStatus({ handle, queueStatus });
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
 
       // Even though observedVaultIdentity is defined, no local vault means no standoff
       expect(result.kind).not.toBe('standoff');
@@ -315,8 +399,13 @@ describe('computeVaultSyncStatus', () => {
         observedIdentity: undefined, // Never observed
       });
       const queueStatus = createQueueStatus();
+      const pullStatus = createPullStatus();
 
-      const result = await computeVaultSyncStatus({ handle, queueStatus });
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
 
       // No observation means no standoff — under-report rather than guess
       expect(result.kind).not.toBe('standoff');
@@ -333,8 +422,13 @@ describe('computeVaultSyncStatus', () => {
         observedIdentity: expectedIdentity, // Matches local vault's own
       });
       const queueStatus = createQueueStatus();
+      const pullStatus = createPullStatus();
 
-      const result = await computeVaultSyncStatus({ handle, queueStatus });
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
 
       // Standoff clears on its own — local and observed match
       expect(result.kind).not.toBe('standoff');
@@ -356,14 +450,23 @@ describe('computeVaultSyncStatus', () => {
 
       // First call: differing identity → standoff
       const queueStatus = createQueueStatus();
-      let result = await computeVaultSyncStatus({ handle, queueStatus });
+      const pullStatus = createPullStatus();
+      let result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
       expect(result.kind).toBe('standoff');
 
       // Now update the observed identity to match
       observedId = expectedIdentity;
 
       // Second call: matching identity → not standoff anymore
-      result = await computeVaultSyncStatus({ handle, queueStatus });
+      result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
       expect(result.kind).not.toBe('standoff');
       expect(result.kind).toBe('synced');
     });
@@ -372,15 +475,22 @@ describe('computeVaultSyncStatus', () => {
       const vault = makeMinimalVault('local-salt');
       // Use a different salt to create a different identity
       const differentVault = makeMinimalVault('different-salt');
-      const observedIdentity = vaultIdentityOf(localToServerMeta(differentVault));
+      const observedIdentity = vaultIdentityOf(
+        localToServerMeta(differentVault),
+      );
 
       const handle = createMockHandle(new Map(), {
         vault,
         observedIdentity,
       });
       const queueStatus = createQueueStatus();
+      const pullStatus = createPullStatus();
 
-      const result = await computeVaultSyncStatus({ handle, queueStatus });
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
 
       expect(result.kind).toBe('standoff');
       expect(result.pendingTypes).toEqual([]);
@@ -391,7 +501,9 @@ describe('computeVaultSyncStatus', () => {
     test('standoff + pending types → both recorded in standoff status', async () => {
       const vault = makeMinimalVault('local-salt');
       const differentVault = makeMinimalVault('different-salt');
-      const observedIdentity = vaultIdentityOf(localToServerMeta(differentVault));
+      const observedIdentity = vaultIdentityOf(
+        localToServerMeta(differentVault),
+      );
 
       const unsentMap = new Map([['tasks', true]]);
       const handle = createMockHandle(unsentMap, {
@@ -399,8 +511,13 @@ describe('computeVaultSyncStatus', () => {
         observedIdentity,
       });
       const queueStatus = createQueueStatus();
+      const pullStatus = createPullStatus();
 
-      const result = await computeVaultSyncStatus({ handle, queueStatus });
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
 
       expect(result.kind).toBe('standoff');
       expect(result.pendingTypes).toContain(VaultBlobType.Tasks);
@@ -411,7 +528,9 @@ describe('computeVaultSyncStatus', () => {
     test('standoff + terminal failures → both recorded in standoff status', async () => {
       const vault = makeMinimalVault('local-salt');
       const differentVault = makeMinimalVault('different-salt');
-      const observedIdentity = vaultIdentityOf(localToServerMeta(differentVault));
+      const observedIdentity = vaultIdentityOf(
+        localToServerMeta(differentVault),
+      );
 
       const handle = createMockHandle(new Map(), {
         vault,
@@ -420,8 +539,13 @@ describe('computeVaultSyncStatus', () => {
       const queueStatus = createQueueStatus({
         terminalFailures: [{ type: VaultBlobType.Addresses, status: 422 }],
       });
+      const pullStatus = createPullStatus();
 
-      const result = await computeVaultSyncStatus({ handle, queueStatus });
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
 
       expect(result.kind).toBe('standoff');
       expect(result.terminalFailures).toHaveLength(1);
@@ -432,15 +556,22 @@ describe('computeVaultSyncStatus', () => {
     test('session-ended takes priority over standoff', async () => {
       const vault = makeMinimalVault('local-salt');
       const differentVault = makeMinimalVault('different-salt');
-      const observedIdentity = vaultIdentityOf(localToServerMeta(differentVault));
+      const observedIdentity = vaultIdentityOf(
+        localToServerMeta(differentVault),
+      );
 
       const handle = createMockHandle(new Map(), {
         vault,
         observedIdentity,
       });
       const queueStatus = createQueueStatus({ sessionEnded: true });
+      const pullStatus = createPullStatus();
 
-      const result = await computeVaultSyncStatus({ handle, queueStatus });
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
 
       // session-ended is checked before standoff
       expect(result.kind).toBe('session-ended');
@@ -450,7 +581,9 @@ describe('computeVaultSyncStatus', () => {
     test('standoff takes priority over terminal', async () => {
       const vault = makeMinimalVault('local-salt');
       const differentVault = makeMinimalVault('different-salt');
-      const observedIdentity = vaultIdentityOf(localToServerMeta(differentVault));
+      const observedIdentity = vaultIdentityOf(
+        localToServerMeta(differentVault),
+      );
 
       const handle = createMockHandle(new Map(), {
         vault,
@@ -459,8 +592,13 @@ describe('computeVaultSyncStatus', () => {
       const queueStatus = createQueueStatus({
         terminalFailures: [{ type: VaultBlobType.Tasks, status: 422 }],
       });
+      const pullStatus = createPullStatus();
 
-      const result = await computeVaultSyncStatus({ handle, queueStatus });
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
 
       // standoff is checked before terminal
       expect(result.kind).toBe('standoff');
@@ -472,20 +610,134 @@ describe('computeVaultSyncStatus', () => {
       // A vault fixture that would require a Master Key to decrypt, but identity derivation should work anyway
       const vault = makeMinimalVault('locked-salt');
       const differentVault = makeMinimalVault('different-salt');
-      const observedIdentity = vaultIdentityOf(localToServerMeta(differentVault));
+      const observedIdentity = vaultIdentityOf(
+        localToServerMeta(differentVault),
+      );
 
       const handle = createMockHandle(new Map(), {
         vault,
         observedIdentity,
       });
       const queueStatus = createQueueStatus();
+      const pullStatus = createPullStatus();
 
       // This should work even though the vault is "locked" (loadVault returns a vault without any decrypt capability)
       // because vaultIdentityOf only reads the salt from kdf, not any encrypted data
-      const result = await computeVaultSyncStatus({ handle, queueStatus });
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
 
       expect(result.kind).toBe('standoff');
       // No assertion about isUnlocked needed — it's not in the Pick, proving unlock is not required
+    });
+  });
+
+  describe('Pull trigger session-ended contribution', () => {
+    test('queue clean, pull sessionEnded=true → kind session-ended', async () => {
+      const handle = createMockHandle(new Map());
+      const queueStatus = createQueueStatus({ sessionEnded: false });
+      const pullStatus = createPullStatus({ sessionEnded: true });
+
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
+
+      expect(result.kind).toBe('session-ended');
+      expect(result.retrying).toBe(false);
+    });
+
+    test('queue sessionEnded=true, pull clean → kind session-ended', async () => {
+      const handle = createMockHandle(new Map());
+      const queueStatus = createQueueStatus({ sessionEnded: true });
+      const pullStatus = createPullStatus({ sessionEnded: false });
+
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
+
+      expect(result.kind).toBe('session-ended');
+      expect(result.retrying).toBe(false);
+    });
+
+    test('both queue and pull sessionEnded=true → kind session-ended', async () => {
+      const handle = createMockHandle(new Map());
+      const queueStatus = createQueueStatus({ sessionEnded: true });
+      const pullStatus = createPullStatus({ sessionEnded: true });
+
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
+
+      expect(result.kind).toBe('session-ended');
+      expect(result.retrying).toBe(false);
+    });
+
+    test('both queue and pull sessionEnded=false → kind is not session-ended', async () => {
+      const handle = createMockHandle(new Map());
+      const queueStatus = createQueueStatus({ sessionEnded: false });
+      const pullStatus = createPullStatus({ sessionEnded: false });
+
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
+
+      expect(result.kind).not.toBe('session-ended');
+      expect(result.kind).toBe('synced'); // Falls through to synced for clean state
+    });
+
+    test('pull sessionEnded outranks standoff', async () => {
+      const vault = makeMinimalVault('local-salt');
+      const differentVault = makeMinimalVault('different-salt');
+      const observedIdentity = vaultIdentityOf(
+        localToServerMeta(differentVault),
+      );
+
+      const handle = createMockHandle(new Map(), {
+        vault,
+        observedIdentity, // This creates a standoff condition
+      });
+      const queueStatus = createQueueStatus({ sessionEnded: false });
+      const pullStatus = createPullStatus({ sessionEnded: true });
+
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
+
+      // Pull trigger's sessionEnded takes priority over standoff
+      expect(result.kind).toBe('session-ended');
+      expect(result.retrying).toBe(false);
+    });
+
+    test('pull sessionEnded outranks terminal', async () => {
+      const handle = createMockHandle(new Map());
+      const queueStatus = createQueueStatus({
+        sessionEnded: false,
+        terminalFailures: [{ type: VaultBlobType.Tasks, status: 422 }],
+      });
+      const pullStatus = createPullStatus({ sessionEnded: true });
+
+      const result = await computeVaultSyncStatus({
+        handle,
+        queueStatus,
+        pullStatus,
+      });
+
+      // Pull trigger's sessionEnded takes priority over terminal
+      expect(result.kind).toBe('session-ended');
+      expect(result.terminalFailures).toHaveLength(1);
+      expect(result.retrying).toBe(false);
     });
   });
 });

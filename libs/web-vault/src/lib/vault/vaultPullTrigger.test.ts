@@ -585,4 +585,261 @@ describe('createVaultPullTrigger', () => {
     // Verify no putVaultBlob was attempted
     expect(api.putVaultBlob).not.toHaveBeenCalled();
   });
+
+  // ===== Status and Subscribe Tests =====
+
+  test('status() returns sessionEnded false initially', async () => {
+    // Matrix row: "status() before any pass"
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+    api.getVaultBlob.mockRejectedValue({
+      response: { status: 404 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    // No passes run yet
+    const status = trigger.status();
+    expect(status).toEqual({ sessionEnded: false });
+  });
+
+  test('status() returns sessionEnded false after a successful pass', async () => {
+    // Matrix row: "status() after successful pass"
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+    // 404 makes all types resolve quickly as "nothing changed"
+    api.getVaultBlob.mockRejectedValue({
+      response: { status: 404 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    // Run a check that succeeds (404 is not a stop condition)
+    await trigger.check(handle);
+
+    const status = trigger.status();
+    expect(status).toEqual({ sessionEnded: false });
+  });
+
+  test('status() returns sessionEnded true after a 401 pass', async () => {
+    // Matrix row: "status() after 401/403 pass"
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+    api.getVaultBlob.mockRejectedValueOnce({
+      response: { status: 401 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    // Run a check that hits 401
+    await trigger.check(handle);
+
+    const status = trigger.status();
+    expect(status).toEqual({ sessionEnded: true });
+  });
+
+  test('unsubscribe prevents the listener from being notified on stop', async () => {
+    // Matrix row: "subscribe() registration and unsubscribe effectiveness"
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+    api.getVaultBlob.mockRejectedValueOnce({
+      response: { status: 401 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    const listener = jest.fn();
+    const unsubscribe = trigger.subscribe(listener);
+
+    // Unsubscribe BEFORE the stop event that would notify
+    unsubscribe();
+
+    // Run check that hits 401 and would normally stop and notify
+    await trigger.check(handle);
+
+    // Listener should not have been called, proving unsubscribe worked
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  test('listener is called when trigger stops via 401', async () => {
+    // Matrix row: "Listener notification on stop (401)"
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+    api.getVaultBlob.mockRejectedValueOnce({
+      response: { status: 401 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    const listener = jest.fn();
+    trigger.subscribe(listener);
+
+    // Run a check that hits 401
+    const result = await trigger.check(handle);
+    expect(result.stoppedUnauthenticated).toBe(true);
+
+    // Listener should have been called exactly once with no arguments
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith();
+  });
+
+  test('listener is called when trigger stops via 403', async () => {
+    // Matrix row: "Listener notification on stop (403)"
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+    api.getVaultBlob.mockRejectedValueOnce({
+      response: { status: 403 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    const listener = jest.fn();
+    trigger.subscribe(listener);
+
+    // Run a check that hits 403
+    const result = await trigger.check(handle);
+    expect(result.stoppedUnauthenticated).toBe(true);
+
+    // Listener should have been called exactly once
+    expect(listener).toHaveBeenCalledTimes(1);
+    expect(listener).toHaveBeenCalledWith();
+  });
+
+  test('listener is NOT called for a successful pass', async () => {
+    // Matrix row: "Listener not called on success"
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+    // 404 is not a stop condition
+    api.getVaultBlob.mockRejectedValue({
+      response: { status: 404 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    const listener = jest.fn();
+    trigger.subscribe(listener);
+
+    // Run a check that succeeds
+    await trigger.check(handle);
+
+    // Listener should not have been called
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  test('listener is NOT called for a non-401/403 failure', async () => {
+    // Matrix row: "Listener not called on normal failure"
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+    // 500 is not a stop condition
+    api.getVaultBlob.mockRejectedValue({
+      response: { status: 500 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    const listener = jest.fn();
+    trigger.subscribe(listener);
+
+    // Run a check that fails with 500
+    await trigger.check(handle);
+
+    // Listener should not have been called
+    expect(listener).not.toHaveBeenCalled();
+
+    // Trigger should still be running (not stopped)
+    const status = trigger.status();
+    expect(status).toEqual({ sessionEnded: false });
+  });
+
+  test('multiple listeners are all notified on stop', async () => {
+    // Matrix row: "Multiple listeners"
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+    api.getVaultBlob.mockRejectedValueOnce({
+      response: { status: 401 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    const listener1 = jest.fn();
+    const listener2 = jest.fn();
+    const listener3 = jest.fn();
+    trigger.subscribe(listener1);
+    trigger.subscribe(listener2);
+    trigger.subscribe(listener3);
+
+    // Run a check that stops the trigger
+    await trigger.check(handle);
+
+    // All listeners should have been called exactly once
+    expect(listener1).toHaveBeenCalledTimes(1);
+    expect(listener2).toHaveBeenCalledTimes(1);
+    expect(listener3).toHaveBeenCalledTimes(1);
+  });
+
+  test('no double notification when check() is called again after stopped', async () => {
+    // Matrix row: "No double notification on stopped state"
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+    api.getVaultBlob.mockRejectedValue({
+      response: { status: 401 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    const listener = jest.fn();
+    trigger.subscribe(listener);
+
+    // First check stops the trigger
+    const result1 = await trigger.check(handle);
+    expect(result1.stoppedUnauthenticated).toBe(true);
+    expect(listener).toHaveBeenCalledTimes(1);
+
+    // Second check on the already-stopped trigger
+    const result2 = await trigger.check(handle);
+    expect(result2.stoppedUnauthenticated).toBe(true);
+
+    // Listener should not have been called again
+    expect(listener).toHaveBeenCalledTimes(1);
+  });
 });

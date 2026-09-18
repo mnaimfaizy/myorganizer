@@ -11,6 +11,11 @@
  *   - What the Vault Sync Queue's last drain found — `VaultSyncQueueStatus`,
  *     which is in-memory for exactly as long as the queue is (one browser
  *     session's Vault Handle), never written to storage.
+ *   - What the Vault Pull trigger's last pass found — `VaultPullTriggerStatus`,
+ *     in-memory the same way. A device that only reads stops pulling on a
+ *     401/403 without ever pushing, so `session-ended` cannot be read from
+ *     the queue alone ([ADR 0088](../../../../../docs/adr/0088-a-vault-pull-pass-has-a-budget-and-is-superseded-never-queued.md),
+ *     decision 7).
  *
  * A third is the one piece of state PRD #650 (ADR 0067) adds: the Observed
  * Vault Identity `convergeVaultBlob` records per User whenever a pass
@@ -30,6 +35,7 @@ import { VaultBlobType } from '@myorganizer/app-api-client';
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
 import type { VaultHandle } from './vaultHandle';
 import { vaultIdentityOf } from './vaultMetaConverge';
+import type { VaultPullTriggerStatus } from './vaultPullTrigger';
 import { localToServerMeta } from './vaultShapes';
 import type {
   VaultSyncQueueStatus,
@@ -168,9 +174,10 @@ const VAULT_SYNC_STATUS_RULES = {
  * `handle` needs the bookmark comparison (`hasUnsentChanges`), the Local
  * Vault (`loadVault`) and the Observed Vault Identity (`observedVaultIdentity`)
  * — all three answerable while the Vault is locked, since none needs the
- * Master Key. `queueStatus` is `VaultSyncQueue.status()`, read fresh by the
- * caller rather than cached here, since a queue notifies on every change that
- * could move this reading (see `VaultSyncQueue.subscribe`).
+ * Master Key. `queueStatus` is `VaultSyncQueue.status()` and `pullStatus` is
+ * `VaultPullTrigger.status()`, both read fresh by the caller rather than
+ * cached here, since each notifies on every change that could move this
+ * reading (see `VaultSyncQueue.subscribe` and `VaultPullTrigger.subscribe`).
  */
 export async function computeVaultSyncStatus(options: {
   handle: Pick<
@@ -178,8 +185,9 @@ export async function computeVaultSyncStatus(options: {
     'hasUnsentChanges' | 'loadVault' | 'observedVaultIdentity'
   >;
   queueStatus: VaultSyncQueueStatus;
+  pullStatus: VaultPullTriggerStatus;
 }): Promise<VaultSyncStatus> {
-  const { handle, queueStatus } = options;
+  const { handle, queueStatus, pullStatus } = options;
   const terminalTypes = new Set(
     queueStatus.terminalFailures.map((failure) => failure.type),
   );
@@ -193,7 +201,10 @@ export async function computeVaultSyncStatus(options: {
   }
 
   const evidence: VaultSyncStatusEvidence = {
-    sessionEnded: queueStatus.sessionEnded,
+    // Either side having seen a 401/403 ends the Session: a device that
+    // only reads never drains the queue, so the queue alone would miss it
+    // (ADR 0088, decision 7).
+    sessionEnded: queueStatus.sessionEnded || pullStatus.sessionEnded,
     standoff: isVaultSyncStandoff(handle),
     terminalFailures: queueStatus.terminalFailures,
     pendingTypes,

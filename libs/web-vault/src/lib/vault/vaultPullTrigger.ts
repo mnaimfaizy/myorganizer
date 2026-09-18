@@ -13,7 +13,12 @@
  *
  * Once a pass finds the Session gone (401/403), the trigger stops for good.
  * There is no Session left to check against, so a later focus event would
- * only repeat the same answer at the User's expense.
+ * only repeat the same answer at the User's expense. The trigger exposes
+ * that in memory the way `vaultSyncQueue` exposes its own `sessionEnded` —
+ * `status()` and `subscribe()` — so a sync status reading can tell a lost
+ * Session from a merely-quiet one even when nothing has been pushed
+ * ([ADR 0088](../../../../../docs/adr/0088-a-vault-pull-pass-has-a-budget-and-is-superseded-never-queued.md),
+ * decision 7).
  */
 import { VaultApi } from '@myorganizer/app-api-client';
 
@@ -37,6 +42,21 @@ export type VaultPullTriggerScheduler = (run: () => void) => void;
  */
 export const VAULT_PULL_DEBOUNCE_MS = 500;
 
+/**
+ * What the trigger currently knows, read without running a pass.
+ *
+ * Mirrors `VaultSyncQueueStatus` deliberately: a sync status reading treats
+ * the two the same way, so a caller comparing them needs no second shape to
+ * learn.
+ */
+export type VaultPullTriggerStatus = {
+  /**
+   * Set once a pass met a 401/403. The trigger does not resume on its own —
+   * there is no Session left to check against.
+   */
+  sessionEnded: boolean;
+};
+
 export type VaultPullTrigger = {
   /**
    * Ask for a check. Multiple calls inside the debounce window collapse into
@@ -54,6 +74,13 @@ export type VaultPullTrigger = {
    * trigger has stopped.
    */
   check(handle: ConvergingVaultHandle): Promise<VaultPullCheckResult>;
+  /** Everything the trigger currently knows, for a status reading. */
+  status(): VaultPullTriggerStatus;
+  /**
+   * Be told whenever `status()` might read differently — a pass stopping the
+   * trigger for good. Returns a function that stops listening.
+   */
+  subscribe(listener: () => void): () => void;
 };
 
 const debounceAfterDelay: VaultPullTriggerScheduler = (run) => {
@@ -82,6 +109,11 @@ export function createVaultPullTrigger(options: {
    */
   let tail: Promise<unknown> = Promise.resolve();
 
+  const listeners = new Set<() => void>();
+  function notify(): void {
+    for (const listener of listeners) listener();
+  }
+
   function runPass(
     handle: ConvergingVaultHandle,
   ): Promise<VaultPullCheckResult> {
@@ -107,7 +139,10 @@ export function createVaultPullTrigger(options: {
     }
 
     const result = await runPass(handle);
-    if (result.stoppedUnauthenticated) stopped = true;
+    if (result.stoppedUnauthenticated) {
+      stopped = true;
+      notify();
+    }
     return result;
   }
 
@@ -126,5 +161,14 @@ export function createVaultPullTrigger(options: {
     },
 
     check,
+
+    status() {
+      return { sessionEnded: stopped };
+    },
+
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
   };
 }
