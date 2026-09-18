@@ -1,9 +1,9 @@
 # Authentication
 
 > **[Session lifecycle](session-lifecycle.html)** is an interactive walk through one account from
-> registration to revocation — which check rejects a login, which of the two `/auth/*`
-> implementations actually runs, and what "log everyone out" really kills. Open it in a browser;
-> no build step or server needed. This file stays the endpoint reference.
+> registration to revocation — which check rejects a login, and what Force Logout kills. `/auth/*`
+> is served only by `AuthController`. Open it in a browser; no build step or server needed. This
+> file stays the endpoint reference.
 
 This project uses **Option A**:
 
@@ -25,7 +25,12 @@ All endpoints are under the backend router prefix (see `ROUTER_PREFIX`).
   - **Rotates the refresh token**: a new one is minted and the cookie is reset on every
     successful refresh. The response body carries only the access token, so the rotation is
     invisible to web clients and handled by the cookie jar.
-- `POST /auth/logout/:userId` – invalidates refresh token and clears refresh cookie
+- `POST /auth/logout/:userId` – Logout: ends this client's Session
+  - Requires JWT and ownership (`userId` matches the JWT User)
+  - Refresh token is `body.refresh_token ?? refresh_cookie` (same two channels as refresh)
+  - The chosen token must belong to the JWT User
+  - Revokes that Refresh Token and clears the refresh cookie
+  - Web sends the cookie; mobile sends `refresh_token` in the body
 
 Email verification:
 

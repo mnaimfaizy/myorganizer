@@ -7,7 +7,7 @@ import { toAuthError, toAuthErrorFromMessage } from './auth-error-mapping';
  */
 const BACKEND_MESSAGES = {
   wrongCredentials: 'Incorrect email or password!', // utils/passport.ts
-  unverified: 'Email not verified. Please verify your email first.', // routes/auth.ts
+  unverified: 'Email not verified. Please verify your email first.', // AuthController
   alreadyRegistered: 'Email already registered. Please log in.', // AuthController
   resent:
     "Email already registered but isn't verified yet. We've resent the verification email.",

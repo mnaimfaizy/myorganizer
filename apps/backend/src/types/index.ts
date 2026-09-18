@@ -71,7 +71,7 @@ export class MyError extends Error {
 
   constructor(title: string, statusCode: number, data?: object) {
     super(title);
-    Object.setPrototypeOf(this, MyError);
+    Object.setPrototypeOf(this, MyError.prototype);
     this.statusCode = statusCode;
     this.data = data;
     this.title = title;

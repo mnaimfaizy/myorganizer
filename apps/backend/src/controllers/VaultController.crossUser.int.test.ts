@@ -29,8 +29,8 @@ jest.mock('../prisma', () => ({
 
 jest.mock('../helpers/PlatformTokenHandler', () => ({
   __esModule: true,
-  PlatformTokenHandler: { buildLoginResponse: jest.fn() },
-  default: { buildLoginResponse: jest.fn() },
+  PlatformTokenHandler: { issueLoginSession: jest.fn() },
+  default: { issueLoginSession: jest.fn() },
 }));
 
 jest.mock('../utils/passport', () => ({

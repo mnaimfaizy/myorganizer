@@ -1,6 +1,6 @@
 import type {
   RefreshToken200Response,
-  RefreshTokenRequest,
+  RefreshTokenBody,
   UserLoginBody,
 } from '@myorganizer/app-api-client';
 
@@ -67,7 +67,7 @@ export function buildLoginUserBody(
 export function buildRefreshTokenRequest(
   clientType: AuthClientType,
   storedRefreshToken?: string | null,
-): RefreshTokenRequest | undefined {
+): RefreshTokenBody | undefined {
   if (clientType === 'mobile') {
     if (!storedRefreshToken) {
       throw new Error('No refresh token available');

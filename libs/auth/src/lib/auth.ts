@@ -14,7 +14,6 @@ import type { AuthOperationResult, AuthUser } from './auth-session-types';
 export type { AuthUser } from './auth-session-types';
 export type ResetPasswordResponse = {
   message: string;
-  status: number;
 };
 
 export type AuthSession = {

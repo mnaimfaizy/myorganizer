@@ -194,7 +194,7 @@ describe('useShortsBudget — metering and state management', () => {
   describe('hard stop', () => {
     it('stops accruing when spentMs reaches limitMs', () => {
       jest.clearAllMocks();
-      (readShortsBudget as jest.Mock).mockReturnValueOnce({
+      (readShortsBudget as jest.Mock).mockReturnValue({
         dayKey: getTodayKey(),
         spentMs: 3500000,
         limitMs: 3600000,

@@ -1,8 +1,23 @@
 // Function parameter Decorator Factory
 
 import express from 'express';
-import { ZodSchema } from 'zod';
+import { ZodError, ZodSchema } from 'zod';
 import { BaseError } from '../helpers/BaseError';
+
+export type ZodIssueDetails = Record<
+  string,
+  { message: string; value: string }
+>;
+
+export function zodIssuesToDetails(error: ZodError): ZodIssueDetails {
+  return error.issues.reduce((acc, err) => {
+    acc[err.path.join('.')] = {
+      message: err.message,
+      value: err.code,
+    };
+    return acc;
+  }, {} as ZodIssueDetails);
+}
 
 // Overrides tsoa Body Decorator
 export function Body() {
@@ -45,18 +60,9 @@ export function ValidateBody(validationSchema: ZodSchema) {
       // now we check if its payload is valid against the passed Zod schema
       const check = await validationSchema.safeParseAsync(args[bodyIndex]);
       if (!check.success) {
-        const errorDetails = check.error.issues.reduce(
-          (acc, err) => {
-            acc[err.path.join('.')] = {
-              message: err.message,
-              value: err.code,
-            };
-            return acc;
-          },
-          {} as Record<string, { message: string; value: string }>,
+        const validationErrors = BaseError.createInvalidArgumentError(
+          zodIssuesToDetails(check.error),
         );
-        const validationErrors =
-          BaseError.createInvalidArgumentError(errorDetails);
         express.response.status(422);
         return validationErrors;
       }

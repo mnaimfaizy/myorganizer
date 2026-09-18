@@ -9,10 +9,10 @@ jest.setTimeout(30_000);
 jest.mock('../helpers/PlatformTokenHandler', () => ({
   __esModule: true,
   PlatformTokenHandler: {
-    buildLoginResponse: jest.fn(),
+    issueLoginSession: jest.fn(),
   },
   default: {
-    buildLoginResponse: jest.fn(),
+    issueLoginSession: jest.fn(),
   },
 }));
 

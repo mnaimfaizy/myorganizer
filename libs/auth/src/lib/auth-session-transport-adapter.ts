@@ -68,7 +68,7 @@ export function createAuthSessionTransportAdapter(
   async function refreshSession(): Promise<AuthSessionData> {
     const api = getAuthApi();
     const res = await api.refreshToken({
-      refreshTokenRequest: buildRefreshTokenRequest('web'),
+      refreshTokenBody: buildRefreshTokenRequest('web'),
     });
     const session = toSessionData(res.data);
     storage.setAccessToken(session.token);

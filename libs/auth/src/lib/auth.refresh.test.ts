@@ -42,7 +42,7 @@ describe('auth.refresh', () => {
       await refresh();
 
       expect(mockRefreshToken).toHaveBeenCalledWith({
-        refreshTokenRequest: {},
+        refreshTokenBody: {},
       });
     });
 

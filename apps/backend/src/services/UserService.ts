@@ -9,6 +9,7 @@ import {
   VerificationSendFailedError,
 } from '../errors/AdminLifecycleErrors';
 import apiTokens from '../helpers/ApiTokens';
+import { isEmailVerified } from '../helpers/isEmailVerified';
 import { decodeToken } from '../helpers/jwtHelper';
 import { User, UserCreationBody } from '../models/User';
 import {
@@ -396,8 +397,7 @@ class UserService {
   }
 
   async sendVerificationMail(user: User): Promise<string | Error> {
-    const isVerified = Boolean((user as any)?.email_verification_timestamp);
-    if (isVerified) {
+    if (isEmailVerified(user)) {
       return new Error('Email already verified');
     }
 
