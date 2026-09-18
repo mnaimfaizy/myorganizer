@@ -5,6 +5,7 @@ import {
   REVIEW_TIER_LABELS,
   ReviewTierConfigError,
   classifyReviewTier,
+  errorResult,
   globToRegExp,
   loadPathMap,
   maxTier,
@@ -74,6 +75,14 @@ const f = (path, additions = 1, deletions = 0) => ({
 const classify = (files, overrides = {}) =>
   classifyReviewTier({ files, graph, pathMap, author: 'owner', ...overrides });
 const signal = (result, kind) => result.signals.find((s) => s.kind === kind);
+
+test('a classifier error is human, not a missing tier', () => {
+  const result = errorResult('nx graph failed', 'owner');
+  assert.equal(result.tier, 'human');
+  assert.equal(result.label, 'review:human');
+  assert.equal(result.signals[0].kind, 'error');
+  assert.equal(result.signals[0].detail, 'nx graph failed');
+});
 
 test('tiers are ordered and the labels derive from them', () => {
   assert.deepEqual(REVIEW_TIER_LABELS, [

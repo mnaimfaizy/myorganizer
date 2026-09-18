@@ -52,39 +52,47 @@ jobs:
 
       # Exit 2 means the classifier could not run; it still writes tier=human
       # to $GITHUB_OUTPUT, so the label step below applies human and the run
-      # fails visibly rather than silently.
+      # fails visibly rather than silently. A crash before finish() used to
+      # leave the output empty; the wrapper below fills human in that case so
+      # the label step still has something to display.
       - name: Classify the diff
         id: classify
         env:
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
         run: |
+          set +e
           corepack yarn review:tier:check \
             --base '${{ github.event.pull_request.base.sha }}' \
             --head '${{ github.event.pull_request.head.sha }}' \
             --author "$PR_AUTHOR" \
             --out "$RUNNER_TEMP/review-tier.json"
+          status=$?
+          if ! grep -q '^label=review:' "$GITHUB_OUTPUT" 2>/dev/null; then
+            echo 'tier=human' >> "$GITHUB_OUTPUT"
+            echo 'label=review:human' >> "$GITHUB_OUTPUT"
+            echo '::warning::classifier wrote no tier; defaulting to review:human'
+            if [ "$status" -eq 0 ]; then status=2; fi
+          fi
+          exit "$status"
 
-      # A fork's token cannot write labels; the output above still stands.
+      # The label is a display of the job output, never the truth (ADR 0070
+      # item 3). A GitHub GraphQL flake on `gh pr edit` failed the required
+      # check on #789 after the classifier had already emitted review:agent
+      # (run 34955049214). continue-on-error plus the applier's retries keep
+      # that from happening again. A fork's token cannot write labels; the
+      # output above still stands.
+      #
+      # A Review Tier job with no steps and no logs (runner_id 0, Azure
+      # BlobNotFound on the log API) is GitHub failing to assign a runner,
+      # not a classifier failure — see run 34952437386. Nothing in this
+      # workflow can write a log that GitHub never stored.
       - name: Apply the review tier label
         if: always() && steps.classify.outputs.label != '' && github.event.pull_request.head.repo.full_name == github.repository
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           LABEL: ${{ steps.classify.outputs.label }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          set -euo pipefail
-          # The label must exist: `yarn ai:create-labels` provisions the
-          # catalog in tools/config/github-labels.json. Say so instead of
-          # failing on a bare 422.
-          if ! gh label list --search 'review:' --json name --jq '.[].name' | grep -qx "$LABEL"; then
-            echo "::error::label $LABEL does not exist in this repository; run 'yarn ai:create-labels' once"
-            exit 1
-          fi
-          # Remove only the review:* labels the pull request currently wears;
-          # removing an absent label is an error, not a no-op.
-          REMOVE=''
-          for other in $(gh pr view "$PR" --json labels --jq '.labels[].name' | grep '^review:' || true); do
-            if [ "$other" != "$LABEL" ]; then REMOVE="$REMOVE --remove-label $other"; fi
-          done
-          # shellcheck disable=SC2086
-          gh pr edit "$PR" --add-label "$LABEL" $REMOVE
+          node tools/scripts/review/apply-review-tier-label.mjs \
+            --pr "$PR" --label "$LABEL" --repo "$GITHUB_REPOSITORY"

@@ -255,7 +255,7 @@ runs:
           echo 'validated=false' >> "$GITHUB_OUTPUT"
           exit 0
         fi
-        if [ '${{ inputs.tier }}' = 'null' ]; then
+        if [ -z '${{ inputs.tier }}' ] || [ '${{ inputs.tier }}' = 'null' ]; then
           corepack yarn review:validate tmp/code-review/report.json --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
         else
           corepack yarn review:validate tmp/code-review/report.json --tier '${{ inputs.tier }}' --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
