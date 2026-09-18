@@ -146,6 +146,10 @@ _Avoid_: email template, layout, wrapper, base template
 
 ## YouTube (focused watching)
 
+**YouTube Connection**:
+The User's grant letting MyOrganizer read their YouTube account on their behalf. It is either live or **Revoked** — Google no longer honours it, and only the User reconnecting restores it.
+_Avoid_: integration, YouTube account link, OAuth token
+
 **Followed Channel**:
 A YouTube channel the User follows, imported from their connected YouTube account.
 _Avoid_: Subscription, YouTube subscription, channel subscription
