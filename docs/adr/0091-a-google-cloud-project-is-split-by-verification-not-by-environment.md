@@ -27,15 +27,22 @@ and a review measured in weeks.
 - **Vault Cloud Backup** (`drive.appdata`, a non-sensitive scope, browser-only GIS flow) gets its
   own production project, so it never waits on YouTube's sensitive-scope review. The cost is two
   consent-screen brands to keep consistent.
-- YouTube is **unavailable in production** until its project is verified. Unavailable means an
-  explicit backend switch is off: routes answer 404, the cron worker does nothing, and the web
-  hides the feature by reading availability from the backend. The switch is separate from the
+- YouTube is **unavailable in production** until its project is verified. Unavailable will mean
+  that an explicit backend switch is off: routes answer 404, the cron worker does nothing, and the
+  web hides the feature by reading availability from the backend. The switch is separate from the
   presence of credentials, so the production client can be configured and exercised by test users
   before Users can see it.
-- When the switch is on in production, the backend refuses to start unless `GOOGLE_REDIRECT_URI` is
-  `https`, not `localhost`, and on the app's own origin. This is validated at boot rather than by an
-  ADR 0043 gate, because the values live in GitHub Environment secrets that no repository gate can
-  read, and asserting them in CI would print secret-derived values into logs.
+- When the switch is on in production, the backend will refuse to start unless
+  `GOOGLE_REDIRECT_URI` is `https`, not `localhost`, and on the app's own origin. This is to be
+  validated at boot rather than by an ADR 0043 gate, because the values live in GitHub Environment
+  secrets that no repository gate can read, and asserting them in CI would print secret-derived
+  values into logs.
+
+**Not yet implemented.** When this ADR was accepted, neither the switch nor the boot check existed:
+YouTube routes are always mounted and `GOOGLE_REDIRECT_URI` is passed to the OAuth client
+unvalidated. The work is tracked in PRD #844: the switch and the boot check in #846, the web side
+in #847, and the Cloud projects themselves in #848. Until #846 lands, nothing stops production from
+serving YouTube, so do not deploy production YouTube credentials before then.
 
 ## Consequences
 
