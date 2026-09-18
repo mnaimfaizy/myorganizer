@@ -56,6 +56,11 @@ for manual work on 4200.
 - **Nightly** — all three browsers as a matrix in `.github/workflows/nightly-e2e.yml`, run with
   `--fail-on-flaky-tests`. Failures open or comment on a single tracking issue.
 
+`gotoStable` retries only Playwright's interrupted-by-another-navigation class. Do not add
+WebKit (or other engine-internal) `page.goto` errors to that allowlist — a helper retry that
+succeeds never reaches Playwright as a failed attempt, so the nightly rot detector would miss
+it ([ADR 0090](../../docs/adr/0090-gotostable-retries-only-interrupted-navigation.md)).
+
 ## Waiting
 
 Do not add `page.waitForLoadState('networkidle')` or `waitForTimeout`. Playwright marks
