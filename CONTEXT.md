@@ -308,6 +308,14 @@ _Avoid_: vault sync (unqualified), upload, save to server, backup
 Taking one Vault Blob from the server and converging it with the Local Vault. The complement of Vault Push, and never a replacement: an arriving Vault Blob is merged against what the device already holds, so a pull cannot discard a local edit the server has not seen.
 _Avoid_: fetch, download, refresh, sync down
 
+**Vault Pull Pass**:
+One sweep of every Vault Blob Type of one User against that User's server Ciphertext, carrying out a Vault Pull for each type that moved. It is what a device runs to stay current: it starts when a tab arrives at the product and again whenever that tab regains focus, so two tabs side by side converge by being tabbed between rather than in place. Distinct from Vault Reconcile, which runs when the Local Vault is replaced under the device and not on any schedule, and distinct from the Vault Pull it performs per type — a pass is the unit that is triggered, debounced and budgeted, while a pull is the unit that converges. Naming the two apart matters because what a pass costs and what a pull decides are different questions: a pass may stop asking about a Vault Blob Type without changing anything about how that type converges when it does.
+_Avoid_: pull loop, pull cycle, sync pass, poll
+
+**Vault Blob Inventory**:
+What the server says it holds for one User: which Vault Blob Types exist, and the identity of each one's Ciphertext. It describes Ciphertext and contains none, so it is answerable without the Master Key and is as server-storable as the Vault Blobs it lists. It is what lets a Vault Pull Pass ask only about the types that moved, and it only ever narrows what a pass asks — a Vault Blob Type missing from it means there is nothing to pull, never that anything should be deleted ([ADR 0087](docs/adr/0087-a-vault-pull-pass-asks-the-vault-blob-inventory-and-absence-deletes-nothing.md)).
+_Avoid_: manifest, blob index, blob list
+
 **Deletion Log**:
 The record a Vault Blob keeps of which of its records were deleted, and when. It exists because absence cannot be merged: a device that has not yet seen a deletion holds the record and would otherwise reintroduce it on the next merge. A deletion beats a record that was last changed before it. Entries are kept, not expired — an entry that is dropped while some device is still behind resurrects the record it was there to bury.
 _Avoid_: tombstone log, graveyard, trash, deleted items
@@ -346,6 +354,10 @@ _Avoid_: vault identity flag, mismatch flag, standoff flag, vault check cache
 
 **Vault Sync Standoff**:
 The sync status reported while a device's Observed Vault Identity for a User differs from that device's own — the visible half of a Vault Blob convergence refusing to take across a differing Vault Identity ([ADR 0067](docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)). It exists because that refusal is otherwise invisible: nothing else says why sync has stopped, and a User who has durably declined the Vault Meta dialog has no other notification left to silence. A standoff is not fixed by retrying — the two sides are different Vaults — and it clears only when a pass observes a Vault Identity that matches this device's own again.
+
+**Vault Pull Stall**:
+The sync status reported while this device's most recent Vault Pull Pass ended without learning what the server holds for some Vault Blob Type — it ran out of time, could not read the Vault Blob Inventory, or could not reach a type the inventory named. It exists because a pass that stops getting answers is otherwise silent: nothing else says the device has stopped hearing from its other devices. Unlike a Vault Sync Standoff it is fixed by trying again, and it clears when a later pass gets every answer — a fact about the last pass, not a flag anything has to lower. A pass replaced by a newer one has not stalled; it was superseded ([ADR 0088](docs/adr/0088-a-vault-pull-pass-has-a-budget-and-is-superseded-never-queued.md)).
+_Avoid_: pull failure, pull error, offline, pull timeout
 _Avoid_: vault mismatch, sync conflict, identity conflict, vault divergence
 
 **Server Reachability**:
