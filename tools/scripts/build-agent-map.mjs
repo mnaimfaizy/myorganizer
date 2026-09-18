@@ -185,7 +185,7 @@ function generateAgentManifest() {
       ]),
   );
   const manifest = {
-    note: 'Asserted by tools/scripts/check-agent-map.mjs. Do not hand-edit — rebuild the page.',
+    note: 'Asserted by tools/scripts/check-agent-map.mjs: on orchestration-map.html — agents (name→tier), policyReviewedAt, and diagram presence; on agent-journey.html — policyReviewedAt and station tiers in the page script. Edit in place via design-brief → Designer (ADR 0046). Do not rebuild — build-agent-map.mjs is a one-time importer and cannot reproduce these pages.',
     policyReviewedAt: policy.reviewedAt,
     agents: Object.fromEntries(
       Object.entries(policy.agents)
