@@ -58,12 +58,22 @@ function validateLoginBody(
   res: ExResponse,
   next: NextFunction,
 ): void {
-  try {
-    LoginSchema.parse(req.body);
-    next();
-  } catch {
-    res.status(422).json({ message: 'Validation Failed' });
+  const check = LoginSchema.safeParse(req.body);
+  if (!check.success) {
+    const details = check.error.issues.reduce(
+      (acc, err) => {
+        acc[err.path.join('.')] = {
+          message: err.message,
+          value: err.code,
+        };
+        return acc;
+      },
+      {} as Record<string, { message: string; value: string }>,
+    );
+    res.status(422).json({ message: 'Validation Failed', details });
+    return;
   }
+  next();
 }
 
 function authenticateLocal(
@@ -398,25 +408,10 @@ export class AuthController extends Controller {
       return { message: 'Email already verified. Please log in.' };
     }
 
-    const token = await userService.sendVerificationMail(user);
-    if (token instanceof Error) {
-      if (token.message.includes('already sent recently')) {
-        this.setStatus(429);
-        return {
-          message:
-            'A verification email was already sent recently. Please check your inbox and try again later.',
-        };
-      }
-      this.setStatus(500);
-      return { message: 'Failed to send verification email.' };
-    }
-
-    await userService.update(user.id, {
-      email_verification_token: token,
-    });
-
-    this.setStatus(200);
-    return { message: 'Verification email sent successfully' };
+    return this.sendVerificationEmailFor(
+      user as UserInterface,
+      'Failed to send verification email.',
+    );
   }
 
   @Post('/verify/resend/{userId}')
@@ -434,6 +429,16 @@ export class AuthController extends Controller {
       return { message: 'User not found' };
     }
 
+    return this.sendVerificationEmailFor(
+      user,
+      'Failed to resend verification email.',
+    );
+  }
+
+  private async sendVerificationEmailFor(
+    user: UserInterface,
+    failedSendMessage: string,
+  ): Promise<{ message: string }> {
     const token = await userService.sendVerificationMail(user);
 
     if (token instanceof Error) {
@@ -451,7 +456,7 @@ export class AuthController extends Controller {
       }
 
       this.setStatus(500);
-      return { message: 'Failed to resend verification email.' };
+      return { message: failedSendMessage };
     }
 
     await userService.update(user.id, {

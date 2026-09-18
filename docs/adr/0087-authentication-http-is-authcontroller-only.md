@@ -22,5 +22,5 @@ This is not a blanket ban on shadowing. Legacy `/user` remains the deliberate cl
 ## Consequences
 
 - #577 deletes `routes/auth.ts` and its `api.use('/auth', …)` mount after `AuthController` matches the serving contract (including login/refresh cookies and Logout clearing `refresh_cookie`).
-- A later change that reintroduces `routes/auth` for cookies is reversing this ADR, not following TSOA-is-awkward.
+- A later change that reintroduces `routes/auth` for cookies is reversing this ADR, not following TSOA-is-awkward. CI does not boot `main.ts`; `AuthController.int.test.ts` reads that file and fails if an Express `/auth` mount or `./routes/auth` import returns.
 - [ADR 0006](0006-mobile-refresh-token-delivery.md) still owns cookie-versus-body delivery; this ADR owns which module may implement `/auth`.

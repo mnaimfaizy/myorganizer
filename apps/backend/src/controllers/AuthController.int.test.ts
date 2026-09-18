@@ -6,6 +6,8 @@ import {
   jest,
   test,
 } from '@jest/globals';
+import fs from 'fs';
+import path from 'path';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -377,7 +379,13 @@ describe('Auth HTTP routes (HTTP integration)', () => {
       });
 
       expect(res.status).toBe(422);
-      expect(res.body).toEqual({ message: 'Validation Failed' });
+      expect(res.body.message).toBe('Validation Failed');
+      expect(res.body.details).toEqual({
+        password: {
+          message: 'Invalid input: expected string, received undefined',
+          value: 'invalid_type',
+        },
+      });
     });
 
     test('returns 401 for invalid credentials', async () => {
@@ -420,7 +428,26 @@ describe('Auth HTTP routes (HTTP integration)', () => {
       });
 
       expect(res.status).toBe(422);
-      expect(res.body).toEqual({ message: 'Validation Failed' });
+      expect(res.body.message).toBe('Validation Failed');
+      expect(res.body.details).toEqual({
+        client_type: {
+          message: expect.stringContaining('mobile'),
+          value: 'invalid_value',
+        },
+      });
+    });
+  });
+
+  describe('main.ts auth routing', () => {
+    test('does not mount a separate Express /auth router before TSOA routes', () => {
+      const mainSource = fs.readFileSync(
+        path.join(__dirname, '../main.ts'),
+        'utf8',
+      );
+
+      expect(mainSource).toContain('RegisterRoutes(api)');
+      expect(mainSource).not.toMatch(/use\(['"]\/auth['"]/);
+      expect(mainSource).not.toMatch(/from ['"]\.\/routes\/auth['"]/);
     });
   });
 
