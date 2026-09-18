@@ -28,8 +28,8 @@ import apiTokens from '../helpers/ApiTokens';
 import { ACCESS_TOKEN_EXPIRES_IN_MS } from '../helpers/tokenLifetimes';
 import {
   REFRESH_COOKIE_NAME,
-  clearRefreshCookie,
-  setRefreshCookie,
+  clearRefreshCookieIfPresent,
+  setRefreshCookieIfPresent,
 } from '../helpers/cookieHelper';
 import filterUser from '../helpers/filterUser';
 import PlatformTokenHandler from '../helpers/PlatformTokenHandler';
@@ -135,9 +135,7 @@ export class AuthController extends Controller {
         requestUser,
         requestBody.client_type,
       );
-      if (req.res) {
-        setRefreshCookie(req.res, refreshToken);
-      }
+      setRefreshCookieIfPresent(req, refreshToken);
       this.setStatus(200);
       return body;
     } catch {
@@ -189,9 +187,7 @@ export class AuthController extends Controller {
     }
 
     void userId;
-    if (req.res) {
-      clearRefreshCookie(req.res);
-    }
+    clearRefreshCookieIfPresent(req);
     this.setStatus(200);
     return { message: 'Logged out successfully' };
   }
@@ -226,9 +222,7 @@ export class AuthController extends Controller {
     }
 
     if ((user as { disabled?: boolean }).disabled) {
-      if (req.res) {
-        clearRefreshCookie(req.res);
-      }
+      clearRefreshCookieIfPresent(req);
       return unauthorized(401, { message: 'Account disabled' });
     }
 
@@ -237,9 +231,7 @@ export class AuthController extends Controller {
         .email_verification_timestamp,
     );
     if (!isVerified) {
-      if (req.res) {
-        clearRefreshCookie(req.res);
-      }
+      clearRefreshCookieIfPresent(req);
       return forbidden(403, {
         message: 'Email not verified. Please verify your email first.',
       });
@@ -259,9 +251,7 @@ export class AuthController extends Controller {
           .sessions_invalidated_at,
       )
     ) {
-      if (req.res) {
-        clearRefreshCookie(req.res);
-      }
+      clearRefreshCookieIfPresent(req);
       return unauthorized(401, { message: 'Session invalidated' });
     }
 
@@ -278,9 +268,7 @@ export class AuthController extends Controller {
     }
     const filteredUser = filterUser(user as UserInterface);
 
-    if (req.res) {
-      setRefreshCookie(req.res, newRefreshToken);
-    }
+    setRefreshCookieIfPresent(req, newRefreshToken);
 
     this.setStatus(200);
     return {

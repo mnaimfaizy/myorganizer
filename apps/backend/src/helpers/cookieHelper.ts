@@ -1,4 +1,4 @@
-import type { CookieOptions, Response } from 'express';
+import type { CookieOptions, Request, Response } from 'express';
 import { REFRESH_TOKEN_TTL_DAYS } from './tokenLifetimes';
 
 export const REFRESH_COOKIE_NAME = 'refresh_cookie';
@@ -30,4 +30,19 @@ export function setRefreshCookie(res: Response, refreshToken: string): void {
 
 export function clearRefreshCookie(res: Response): void {
   res.clearCookie(REFRESH_COOKIE_NAME);
+}
+
+export function setRefreshCookieIfPresent(
+  req: Pick<Request, 'res'>,
+  refreshToken: string,
+): void {
+  if (req.res) {
+    setRefreshCookie(req.res, refreshToken);
+  }
+}
+
+export function clearRefreshCookieIfPresent(req: Pick<Request, 'res'>): void {
+  if (req.res) {
+    clearRefreshCookie(req.res);
+  }
 }
