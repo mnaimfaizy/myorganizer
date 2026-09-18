@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 
 import '@testing-library/jest-dom';
 
@@ -65,7 +72,14 @@ jest.mock('@myorganizer/web-ui', () => ({
       <div role="dialog" aria-label={title}>
         <div>{description}</div>
         {children}
-        <button type="button" onClick={() => void onConfirm()}>
+        <button
+          type="button"
+          onClick={() => {
+            void Promise.resolve(onConfirm()).catch(() => {
+              // Real dialog keeps open on failure; avoid unhandled rejection in tests.
+            });
+          }}
+        >
           {confirmLabel ?? 'Delete'}
         </button>
       </div>
@@ -499,6 +513,131 @@ describe('YouTubePageClient', () => {
       render(<YouTubePageClient />);
 
       expect(screen.getByText('Older upload C')).toBeInTheDocument();
+    });
+  });
+
+  describe('disconnect confirm', () => {
+    const renderConnected = (
+      disconnect = jest.fn().mockResolvedValue({ revokeFailed: false }),
+      syncStatusOverrides: Record<string, unknown> = {},
+    ) => {
+      const refreshStatus = jest.fn();
+      mockUseYouTubeStatus.mockReturnValue({
+        connected: true,
+        status: 'connected',
+        refresh: refreshStatus,
+      });
+      mockUseYouTubeConnect.mockReturnValue({
+        connect: jest.fn(),
+        disconnect,
+      });
+      mockUseYouTubeSyncStatus.mockReturnValue({
+        status: null,
+        loading: false,
+        triggerSync: jest.fn(),
+        isCooldownActive: false,
+        refresh: jest.fn(),
+        ...syncStatusOverrides,
+      });
+      render(<YouTubePageClient />);
+      return { disconnect, refreshStatus };
+    };
+
+    const openDisconnectDialog = () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Disconnect YouTube account' }),
+      );
+      return screen.getByRole('dialog', { name: 'Disconnect YouTube?' });
+    };
+
+    it('opens confirm dialog without calling disconnect until confirmed', () => {
+      const { disconnect } = renderConnected();
+      const dialog = openDisconnectDialog();
+
+      expect(dialog).toBeInTheDocument();
+      expect(disconnect).not.toHaveBeenCalled();
+    });
+
+    it('calls disconnect with deleteWatchedMarks false when confirmed without checkbox', async () => {
+      const disconnect = jest.fn().mockResolvedValue({ revokeFailed: false });
+      renderConnected(disconnect);
+      const dialog = openDisconnectDialog();
+
+      await act(async () => {
+        fireEvent.click(
+          within(dialog).getByRole('button', { name: 'Disconnect' }),
+        );
+      });
+
+      expect(disconnect).toHaveBeenCalledTimes(1);
+      expect(disconnect).toHaveBeenCalledWith({ deleteWatchedMarks: false });
+    });
+
+    it('calls disconnect with deleteWatchedMarks true when wipe checkbox is checked', async () => {
+      const disconnect = jest.fn().mockResolvedValue({ revokeFailed: false });
+      renderConnected(disconnect);
+      const dialog = openDisconnectDialog();
+
+      fireEvent.click(screen.getByLabelText('Also delete my Watched marks'));
+
+      await act(async () => {
+        fireEvent.click(
+          within(dialog).getByRole('button', { name: 'Disconnect' }),
+        );
+      });
+
+      expect(disconnect).toHaveBeenCalledTimes(1);
+      expect(disconnect).toHaveBeenCalledWith({ deleteWatchedMarks: true });
+    });
+
+    it('describes destroyed stores in the disconnect dialog', () => {
+      renderConnected();
+      const dialog = openDisconnectDialog();
+
+      expect(dialog).toHaveTextContent(/Followed Channels/);
+      expect(dialog).toHaveTextContent(/Cached Uploads/);
+      expect(dialog).toHaveTextContent(/notification/);
+      expect(dialog).toHaveTextContent(/digest/);
+      expect(dialog).toHaveTextContent(/OAuth/);
+    });
+
+    it.each(['discovering', 'running'] as const)(
+      'disables disconnect while sync status is %s and does not open confirm',
+      (liveStatus) => {
+        const disconnect = jest.fn();
+        renderConnected(disconnect, { status: { status: liveStatus } });
+
+        const disconnectBtn = screen.getByRole('button', {
+          name: 'Disconnect unavailable while a sync is running',
+        });
+        expect(disconnectBtn).toBeDisabled();
+
+        fireEvent.click(disconnectBtn);
+
+        expect(
+          screen.queryByRole('dialog', { name: 'Disconnect YouTube?' }),
+        ).not.toBeInTheDocument();
+        expect(disconnect).not.toHaveBeenCalled();
+      },
+    );
+
+    it('shows disconnect error alert inside the dialog when disconnect rejects', async () => {
+      const disconnect = jest
+        .fn()
+        .mockRejectedValue(new Error('Server unavailable'));
+      renderConnected(disconnect);
+      const dialog = openDisconnectDialog();
+
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: 'Disconnect' }),
+      );
+
+      await waitFor(() => {
+        expect(within(dialog).getByRole('alert')).toHaveTextContent(
+          'Server unavailable',
+        );
+      });
+      expect(disconnect).toHaveBeenCalledTimes(1);
     });
   });
 

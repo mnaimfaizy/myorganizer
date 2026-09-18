@@ -124,6 +124,25 @@ describe('SubscriptionManager', () => {
     expect(screen.getByText('B')).toBeTruthy();
   });
 
+  it('keeps disconnect disabled and does not call onRequestDisconnect when disconnectDisabled', () => {
+    const onRequestDisconnect = jest.fn();
+    render(
+      <SubscriptionManager
+        {...defaultProps}
+        onRequestDisconnect={onRequestDisconnect}
+        disconnectDisabled={true}
+        disconnectDisabledReason="Disconnect unavailable while a sync is running"
+      />,
+    );
+
+    const disconnectBtn = screen.getByRole('button', {
+      name: 'Disconnect unavailable while a sync is running',
+    });
+    expect(disconnectBtn).toBeDisabled();
+    fireEvent.click(disconnectBtn);
+    expect(onRequestDisconnect).not.toHaveBeenCalled();
+  });
+
   it('should render privacy statement and link to data privacy page', () => {
     render(<SubscriptionManager {...defaultProps} />);
     expect(
