@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 ---
 
 # Authentication HTTP is served only by AuthController
