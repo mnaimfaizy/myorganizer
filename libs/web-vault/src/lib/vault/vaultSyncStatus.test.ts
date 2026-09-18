@@ -245,27 +245,26 @@ describe('computeVaultSyncStatus', () => {
   });
 
   test('iterated all types to build pending (not early exit)', async () => {
-    // Verify that all 6 types are checked even when some are terminal
+    // Verify that all live types are checked even when some are terminal
     const unsentMap = new Map([
       ['tasks', true],
       ['addresses', true],
       ['groceries', false],
       ['mobileNumbers', false],
       ['subscriptions', false],
-      ['todos', false],
     ]);
     const handle = createMockHandle(unsentMap);
     const queueStatus = createQueueStatus({
       terminalFailures: [
-        { type: VaultBlobType.Todos, status: 422 }, // excluded from pending
+        { type: VaultBlobType.Groceries, status: 422 }, // excluded from pending
       ],
     });
 
     await computeVaultSyncStatus({ handle, queueStatus });
 
-    // Should have called hasUnsentChanges for all except todos (which is terminal)
+    // Should have called hasUnsentChanges for all except groceries (which is terminal)
     const callCount = (handle.hasUnsentChanges as jest.Mock).mock.calls.length;
-    expect(callCount).toBe(5); // All 6 types minus todos which is skipped
+    expect(callCount).toBe(4); // All 5 types minus groceries which is skipped
   });
 
   describe('Observed Vault Identity and standoff detection', () => {
@@ -372,7 +371,9 @@ describe('computeVaultSyncStatus', () => {
       const vault = makeMinimalVault('local-salt');
       // Use a different salt to create a different identity
       const differentVault = makeMinimalVault('different-salt');
-      const observedIdentity = vaultIdentityOf(localToServerMeta(differentVault));
+      const observedIdentity = vaultIdentityOf(
+        localToServerMeta(differentVault),
+      );
 
       const handle = createMockHandle(new Map(), {
         vault,
@@ -391,7 +392,9 @@ describe('computeVaultSyncStatus', () => {
     test('standoff + pending types → both recorded in standoff status', async () => {
       const vault = makeMinimalVault('local-salt');
       const differentVault = makeMinimalVault('different-salt');
-      const observedIdentity = vaultIdentityOf(localToServerMeta(differentVault));
+      const observedIdentity = vaultIdentityOf(
+        localToServerMeta(differentVault),
+      );
 
       const unsentMap = new Map([['tasks', true]]);
       const handle = createMockHandle(unsentMap, {
@@ -411,7 +414,9 @@ describe('computeVaultSyncStatus', () => {
     test('standoff + terminal failures → both recorded in standoff status', async () => {
       const vault = makeMinimalVault('local-salt');
       const differentVault = makeMinimalVault('different-salt');
-      const observedIdentity = vaultIdentityOf(localToServerMeta(differentVault));
+      const observedIdentity = vaultIdentityOf(
+        localToServerMeta(differentVault),
+      );
 
       const handle = createMockHandle(new Map(), {
         vault,
@@ -432,7 +437,9 @@ describe('computeVaultSyncStatus', () => {
     test('session-ended takes priority over standoff', async () => {
       const vault = makeMinimalVault('local-salt');
       const differentVault = makeMinimalVault('different-salt');
-      const observedIdentity = vaultIdentityOf(localToServerMeta(differentVault));
+      const observedIdentity = vaultIdentityOf(
+        localToServerMeta(differentVault),
+      );
 
       const handle = createMockHandle(new Map(), {
         vault,
@@ -450,7 +457,9 @@ describe('computeVaultSyncStatus', () => {
     test('standoff takes priority over terminal', async () => {
       const vault = makeMinimalVault('local-salt');
       const differentVault = makeMinimalVault('different-salt');
-      const observedIdentity = vaultIdentityOf(localToServerMeta(differentVault));
+      const observedIdentity = vaultIdentityOf(
+        localToServerMeta(differentVault),
+      );
 
       const handle = createMockHandle(new Map(), {
         vault,
@@ -472,7 +481,9 @@ describe('computeVaultSyncStatus', () => {
       // A vault fixture that would require a Master Key to decrypt, but identity derivation should work anyway
       const vault = makeMinimalVault('locked-salt');
       const differentVault = makeMinimalVault('different-salt');
-      const observedIdentity = vaultIdentityOf(localToServerMeta(differentVault));
+      const observedIdentity = vaultIdentityOf(
+        localToServerMeta(differentVault),
+      );
 
       const handle = createMockHandle(new Map(), {
         vault,

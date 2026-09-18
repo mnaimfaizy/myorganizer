@@ -79,7 +79,7 @@ describe('checkVaultBlobsForUpdates', () => {
   async function setupHandle(
     owner: string,
     payload?: unknown,
-    type: 'tasks' | 'groceries' | 'todos' = 'tasks',
+    type: 'tasks' | 'groceries' = 'tasks',
   ) {
     const handle = createVaultHandle({ owner });
     await handle.initialize({ passphrase });
@@ -102,7 +102,7 @@ describe('checkVaultBlobsForUpdates', () => {
   async function captureRemoteBlob(
     handle: VaultHandle,
     payload: unknown,
-    type: 'tasks' | 'groceries' | 'todos' = 'tasks',
+    type: 'tasks' | 'groceries' = 'tasks',
   ): Promise<ServerVaultBlob> {
     const vault = handle.loadVault();
     if (!vault) throw new Error('Handle has no vault');

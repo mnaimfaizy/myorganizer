@@ -54,13 +54,14 @@ ships looking correct and surfaces as ghost rows in one widget.
 `Record<VaultBlobType, …>` beside `VAULT_BLOB_FIELDS`, per
 [ADR 0053](0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md). `promptOnConflict` is
 a permanent strategy, not a stopgap: `groceries` is a nested payload of catalog, lists, and lines
-whose bulk mutations merge badly, and `todos` is a legacy read source nothing writes.
+whose bulk mutations merge badly, and groceries remains the type that uses `promptOnConflict` for that reason.
 
 ## Consequences
 
 The blob payload shape changes from a bare array to an envelope, so every normalizer must accept
-both. The normalizers already carry this kind of legacy handling (`migrateFromTodos`, the legacy
-`{id, todo}` branch).
+both. The normalizers already carry this kind of legacy handling (the legacy
+`{id, todo}` branch on Task records is gone with `'todos'`; remaining
+normalizers still accept both envelope and bare-array payloads).
 
 Export and import are unaffected. `VaultExportV1` carries `EncryptedBlobV1` Ciphertext, so the
 Deletion Log rides inside it opaquely.
@@ -70,4 +71,4 @@ resurrection for any device offline longer than the window — trading a specula
 a real correctness cliff. Garbage collection is deferred until the size pressure is measured rather
 than imagined.
 
-A seventh Vault Blob Type fails to compile until somebody decides how it converges.
+A sixth Vault Blob Type fails to compile until somebody decides how it converges.

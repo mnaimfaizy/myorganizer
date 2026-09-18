@@ -165,7 +165,7 @@ describe('Passphrase Collision Regression (AC #6)', () => {
     // Write some test data so we can verify the Master Key really does decrypt it
     const testTodos = { items: ['test-todo-a-1'] };
     await handleA.saveEncryptedData({
-      type: 'todos',
+      type: 'groceries',
       value: testTodos,
     });
 
@@ -188,7 +188,7 @@ describe('Passphrase Collision Regression (AC #6)', () => {
     // Write B's test data
     const testTodosB = { items: ['test-todo-b-1'] };
     await handleB.saveEncryptedData({
-      type: 'todos',
+      type: 'groceries',
       value: testTodosB,
     });
 
@@ -204,7 +204,7 @@ describe('Passphrase Collision Regression (AC #6)', () => {
     // ASSERTION 1e: Master Keys are different — prove by reading back B's data
     // which fails if B had A's Master Key
     const decryptedB = await handleB.loadDecryptedData({
-      type: 'todos',
+      type: 'groceries',
       defaultValue: null,
     });
 
@@ -262,7 +262,7 @@ describe('Passphrase Collision Regression (AC #6)', () => {
     // Write test data
     const testData = { items: ['data-in-a'] };
     await handleA.saveEncryptedData({
-      type: 'todos',
+      type: 'groceries',
       value: testData,
     });
 

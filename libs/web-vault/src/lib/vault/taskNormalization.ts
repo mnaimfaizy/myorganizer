@@ -1,10 +1,4 @@
-import {
-  randomId,
-  readVaultBlobRecords,
-  type Task,
-  type TaskPriority,
-  type TaskStatus,
-} from '@myorganizer/core';
+import { randomId, readVaultBlobRecords, type Task } from '@myorganizer/core';
 
 type NormalizeResult<T> = {
   value: T;
@@ -156,48 +150,4 @@ export function normalizeTasks(payload: unknown): NormalizeResult<Task[]> {
   }
 
   return { value: normalized, changed };
-}
-
-export function migrateFromTodos(raw: unknown): Task[] {
-  if (!Array.isArray(raw)) return [];
-
-  const now = new Date().toISOString();
-  const tasks: Task[] = [];
-
-  for (const item of raw) {
-    if (typeof item === 'string') {
-      const title = item.trim();
-      if (!title) continue;
-      tasks.push({
-        id: randomId(),
-        title,
-        status: 'pending' as TaskStatus,
-        priority: 'medium' as TaskPriority,
-        archived: false,
-        createdAt: now,
-      });
-      continue;
-    }
-    if (!item || typeof item !== 'object') continue;
-    const entry = item as Record<string, unknown>;
-    const title =
-      typeof entry['todo'] === 'string'
-        ? (entry['todo'] as string).trim()
-        : null;
-    if (!title) continue;
-    const id =
-      typeof entry['id'] === 'string' && (entry['id'] as string).trim()
-        ? (entry['id'] as string).trim()
-        : randomId();
-    tasks.push({
-      id,
-      title,
-      status: 'pending' as TaskStatus,
-      priority: 'medium' as TaskPriority,
-      archived: false,
-      createdAt: now,
-    });
-  }
-
-  return tasks;
 }

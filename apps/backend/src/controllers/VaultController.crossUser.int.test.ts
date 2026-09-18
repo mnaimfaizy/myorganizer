@@ -206,7 +206,7 @@ describe('Vault cross-user isolation (real service over a fake store)', () => {
   });
 
   test('POST /vault/export under token-a returns only A blobs', async () => {
-    store.seedBlob('user-b', 'todos', blobWith(B_CIPHERTEXT));
+    store.seedBlob('user-b', 'groceries', blobWith(B_CIPHERTEXT));
 
     const res = await request(app)
       .post('/vault/export')

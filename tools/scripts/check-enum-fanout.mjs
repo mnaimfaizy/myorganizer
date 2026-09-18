@@ -73,7 +73,7 @@ const GUARDED = [
     // `data.addresses`, `data.groceries`, ... counts even though it never says
     // `VaultBlobType`. That is the shape of the omission in
     // `envelopeFromLocalVault`, which dropped Tasks without naming the enum
-    // once (#537). Scoped to the vault libraries because `.tasks` and `.todos`
+    // once (#537). Scoped to the vault libraries because `.tasks` and `.groceries`
     // mean something else elsewhere in the repo.
     valueRoots: ['libs/web-vault/src/', 'libs/vault-core/src/'],
     // The modules that *declare* the member names, as against the ones that
@@ -92,7 +92,7 @@ const GUARDED = [
       {
         path: 'libs/vault-core/src/lib/types.ts',
         reason:
-          "Declares `vault-core`'s own copy of the field-name union, which cannot import the pinned table (wrong dependency direction). Tied back instead: the pin satisfies `Record<VaultBlobType, CoreVaultRecordType>`, so a member missing from this union is not assignable there. It listed five and omitted `todos` until #537.",
+          "Declares `vault-core`'s own copy of the field-name union, which cannot import the pinned table (wrong dependency direction). Tied back instead: the pin satisfies `Record<VaultBlobType, CoreVaultRecordType>`, so a member missing from this union is not assignable there. It listed five and omitted a member until #537.",
       },
       {
         path: 'libs/vault-core/src/lib/vaultExportEnvelope.ts',

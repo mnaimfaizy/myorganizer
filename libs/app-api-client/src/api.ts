@@ -1218,12 +1218,6 @@ export interface PartialRecordVaultBlobTypeEncryptedBlobV1 {
      * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
      */
     'tasks'?: EncryptedBlobV1;
-    /**
-     * 
-     * @type {EncryptedBlobV1}
-     * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
-     */
-    'todos'?: EncryptedBlobV1;
 }
 /**
  * 
@@ -2110,8 +2104,7 @@ export const VaultBackupBlobType = {
     Groceries: 'groceries',
     MobileNumbers: 'mobileNumbers',
     Subscriptions: 'subscriptions',
-    Tasks: 'tasks',
-    Todos: 'todos'
+    Tasks: 'tasks'
 } as const;
 
 export type VaultBackupBlobType = typeof VaultBackupBlobType[keyof typeof VaultBackupBlobType];
@@ -2258,8 +2251,7 @@ export const VaultBlobType = {
     Groceries: 'groceries',
     MobileNumbers: 'mobileNumbers',
     Subscriptions: 'subscriptions',
-    Tasks: 'tasks',
-    Todos: 'todos'
+    Tasks: 'tasks'
 } as const;
 
 export type VaultBlobType = typeof VaultBlobType[keyof typeof VaultBlobType];

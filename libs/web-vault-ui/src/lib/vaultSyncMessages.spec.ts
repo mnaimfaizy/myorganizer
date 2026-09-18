@@ -32,10 +32,6 @@ describe('vaultSyncMessages', () => {
       expect(vaultBlobTypeLabel(VaultBlobType.Tasks)).toBe('Tasks');
     });
 
-    test('returns label for Todos', () => {
-      expect(vaultBlobTypeLabel(VaultBlobType.Todos)).toBe('Todos');
-    });
-
     test('every VaultBlobType member has a label via constant', () => {
       const allTypes: VaultBlobType[] = [
         VaultBlobType.Addresses,
@@ -43,7 +39,6 @@ describe('vaultSyncMessages', () => {
         VaultBlobType.MobileNumbers,
         VaultBlobType.Subscriptions,
         VaultBlobType.Tasks,
-        VaultBlobType.Todos,
       ];
 
       for (const type of allTypes) {

@@ -281,7 +281,7 @@ describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
 
       // Todos should still be dirty (never pushed)
       const todosDirty = await access.hasUnsentChanges({
-        type: 'todos',
+        type: 'groceries',
         blob: blobTodos,
       });
       expect(todosDirty).toBe(true);
@@ -361,7 +361,7 @@ describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
         etag: 'etag-a',
       });
       await accessB.recordPushSuccess({
-        type: 'todos',
+        type: 'groceries',
         blob,
         etag: 'etag-b',
       });
@@ -374,7 +374,7 @@ describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
 
       // Assert: user-b untouched
       const bookmarksB = readSyncBookmarks('user-b');
-      expect(bookmarksB.todos).toBeDefined();
+      expect(bookmarksB.groceries).toBeDefined();
     });
   });
 
@@ -401,7 +401,7 @@ describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
 
       // User-b records success for todos
       await accessB.recordPushSuccess({
-        type: 'todos',
+        type: 'groceries',
         blob: blobB,
         etag: 'etag-b',
       });
@@ -415,14 +415,14 @@ describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
 
       // User-b checks todos: not dirty
       const bDirty = await accessB.hasUnsentChanges({
-        type: 'todos',
+        type: 'groceries',
         blob: blobB,
       });
       expect(bDirty).toBe(false);
 
       // User-a checks todos: dirty (never pushed by user-a)
       const aTodosDirty = await accessA.hasUnsentChanges({
-        type: 'todos',
+        type: 'groceries',
         blob: blobB,
       });
       expect(aTodosDirty).toBe(true);

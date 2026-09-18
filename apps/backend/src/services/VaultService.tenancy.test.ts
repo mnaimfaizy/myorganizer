@@ -270,7 +270,7 @@ describe('VaultService Tenancy', () => {
     // Seed user-b with vault + 2 blobs
     await seedUser(store, 'user-b', {
       kdfSalt: 'salt-b',
-      blobs: { tasks: blobB1, todos: blobB2 },
+      blobs: { tasks: blobB1, groceries: blobB2 },
     });
     store.resetCallLog();
 

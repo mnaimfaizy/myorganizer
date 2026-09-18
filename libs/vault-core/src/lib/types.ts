@@ -3,8 +3,7 @@ export type VaultRecordType =
   | 'groceries'
   | 'mobileNumbers'
   | 'subscriptions'
-  | 'tasks'
-  | 'todos';
+  | 'tasks';
 
 export type EncryptedBlob = {
   iv: string;

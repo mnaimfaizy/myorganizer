@@ -396,7 +396,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
           iv: 'aS1i',
           ciphertext: 'Y3QtYg==',
         },
-        data: { todos: { iv: 'aXY=', ciphertext: 'Y3Q=' } },
+        data: { groceries: { iv: 'aXY=', ciphertext: 'Y3Q=' } },
       };
 
       handleA.saveVault(vaultA);
@@ -867,7 +867,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         value: tasksValue,
       });
       await handle.saveEncryptedData({
-        type: 'todos',
+        type: 'groceries',
         value: todosValue,
       });
 
@@ -877,7 +877,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         defaultValue: [],
       });
       const loadedTodos = await handle.loadDecryptedData({
-        type: 'todos',
+        type: 'groceries',
         defaultValue: [],
       });
 
@@ -887,7 +887,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       // Verify vault data has both types.
       const vault = handle.loadVault();
       expect(vault?.data.tasks).toBeDefined();
-      expect(vault?.data.todos).toBeDefined();
+      expect(vault?.data.groceries).toBeDefined();
     });
   });
 
@@ -1056,7 +1056,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
           iv: 'aS1i',
           ciphertext: 'Y3QtYg==',
         },
-        data: { todos: { iv: 'aXY=', ciphertext: 'Y3Q=' } },
+        data: { groceries: { iv: 'aXY=', ciphertext: 'Y3Q=' } },
       };
 
       localStorage.setItem(
@@ -1436,7 +1436,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       // ASSERTION: locked handle rejects with VaultLockedError
       await expect(
         handle.loadDecryptedData({
-          type: 'todos',
+          type: 'groceries',
           defaultValue: null,
         }),
       ).rejects.toThrow(VaultLockedError);
@@ -1468,7 +1468,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
           ciphertext: 'cmVjb3ZlcnktY3Q=',
         },
         data: {
-          todos: {
+          groceries: {
             iv: 'cGFzc3BocmFzZS1pdg==',
             ciphertext: 'c29tZS1vdGhlci1kYXRh', // Some other data
           },
@@ -1485,7 +1485,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
 
       // ASSERTION: loadDecryptedData resolves to defaultValue and never tries to decrypt unclaimed vault's data
       const result = await handle.loadDecryptedData({
-        type: 'todos',
+        type: 'groceries',
         defaultValue: { items: ['default'] },
       });
 
@@ -1695,7 +1695,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
 
       // Save todos but do NOT record push success
       await handle.saveEncryptedData({
-        type: 'todos',
+        type: 'groceries',
         value: [{ id: 'a', text: 'Todo A' }],
       });
 
@@ -1703,7 +1703,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       expect(await handle.hasUnsentChanges('tasks')).toBe(false);
 
       // Todos should be dirty (never pushed)
-      expect(await handle.hasUnsentChanges('todos')).toBe(true);
+      expect(await handle.hasUnsentChanges('groceries')).toBe(true);
     });
   });
 
@@ -1782,7 +1782,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         value: [{ id: '1', title: 'Task 1' }],
       });
       await handle.saveEncryptedData({
-        type: 'todos',
+        type: 'groceries',
         value: [{ id: 'a', text: 'Todo A' }],
       });
 
@@ -1793,7 +1793,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       expect(await handle.hasUnsentChanges('tasks')).toBe(false);
 
       // Todos should still be dirty
-      expect(await handle.hasUnsentChanges('todos')).toBe(true);
+      expect(await handle.hasUnsentChanges('groceries')).toBe(true);
     });
 
     test('5: recordPushSuccess can be called multiple times for same type (re-push)', async () => {
@@ -1937,7 +1937,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       });
       writeSyncBookmark({
         owner: 'user-b',
-        type: 'todos',
+        type: 'groceries',
         entry: { ciphertextHash: 'hash-b', etag: 'etag-b' },
       });
 

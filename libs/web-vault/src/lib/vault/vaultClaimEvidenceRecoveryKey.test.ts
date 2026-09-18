@@ -157,7 +157,7 @@ describe('claimUnclaimedLocalVaultWithRecoveryKey', () => {
     await setupHandle.unlockWithPassphrase({ passphrase: testPassphrase });
     const testTodos = { items: ['test-todo-1', 'test-todo-2'] };
     await setupHandle.saveEncryptedData({
-      type: 'todos',
+      type: 'groceries',
       value: testTodos,
     });
 
@@ -187,7 +187,7 @@ describe('claimUnclaimedLocalVaultWithRecoveryKey', () => {
     });
 
     const decrypted = await readbackHandle.loadDecryptedData({
-      type: 'todos',
+      type: 'groceries',
       defaultValue: null,
     });
 
@@ -573,7 +573,7 @@ describe('claimUnclaimedLocalVaultByRecoveryKey (AC #6)', () => {
     await setupHandle.unlockWithPassphrase({ passphrase: testPassphrase });
     const testTodos = { items: ['test-todo-1', 'test-todo-2'] };
     await setupHandle.saveEncryptedData({
-      type: 'todos',
+      type: 'groceries',
       value: testTodos,
     });
 
@@ -598,7 +598,7 @@ describe('claimUnclaimedLocalVaultByRecoveryKey (AC #6)', () => {
     });
 
     const decrypted = await readbackHandle.loadDecryptedData({
-      type: 'todos',
+      type: 'groceries',
       defaultValue: null,
     });
 

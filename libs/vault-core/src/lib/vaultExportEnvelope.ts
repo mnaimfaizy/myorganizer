@@ -7,7 +7,6 @@ export const VAULT_EXPORT_BLOB_TYPES = [
   'mobileNumbers',
   'subscriptions',
   'tasks',
-  'todos',
 ] as const;
 
 export type VaultExportBlobType = (typeof VAULT_EXPORT_BLOB_TYPES)[number];
@@ -58,7 +57,6 @@ const BlobsSchema = z
     mobileNumbers: EncryptedBlobSchema.optional(),
     subscriptions: EncryptedBlobSchema.optional(),
     tasks: EncryptedBlobSchema.optional(),
-    todos: EncryptedBlobSchema.optional(),
   })
   .strict();
 

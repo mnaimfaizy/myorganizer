@@ -89,21 +89,18 @@ async function setupRoutes(page: import('@playwright/test').Page) {
     addresses: null,
     mobileNumbers: null,
     subscriptions: null,
-    todos: null,
     tasks: null,
   };
   const serverBlobEtags: Record<string, string> = {
     addresses: 'W/"0"',
     mobileNumbers: 'W/"0"',
     subscriptions: 'W/"0"',
-    todos: 'W/"0"',
     tasks: 'W/"0"',
   };
   const serverBlobUpdatedAt: Record<string, string> = {
     addresses: new Date(0).toISOString(),
     mobileNumbers: new Date(0).toISOString(),
     subscriptions: new Date(0).toISOString(),
-    todos: new Date(0).toISOString(),
     tasks: new Date(0).toISOString(),
   };
 
@@ -200,7 +197,7 @@ async function setupRoutes(page: import('@playwright/test').Page) {
     await route.fulfill({ status: 405, headers });
   });
 
-  // Vault blob route (handles addresses, mobileNumbers, subscriptions, todos, tasks)
+  // Vault blob route (handles addresses, mobileNumbers, subscriptions, tasks)
   await routeApi(page, vaultBlobUrl, async (route) => {
     const request = route.request();
     const origin = new URL(page.url() || 'http://localhost:3000').origin;

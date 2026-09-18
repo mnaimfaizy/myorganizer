@@ -159,13 +159,13 @@ describe('syncBookmarkStorage — Sync Bookmark storage primitives', () => {
       });
       writeSyncBookmark({
         owner: 'user-a',
-        type: 'todos',
+        type: 'groceries',
         entry: entry2,
       });
 
       const result = readSyncBookmarks('user-a');
       expect(result.tasks).toEqual(entry1);
-      expect(result.todos).toEqual(entry2);
+      expect(result.groceries).toEqual(entry2);
     });
 
     test('12: overwrites bookmark when type already exists', () => {
@@ -284,7 +284,7 @@ describe('syncBookmarkStorage — Sync Bookmark storage primitives', () => {
       });
       writeSyncBookmark({
         owner: 'user-b',
-        type: 'todos',
+        type: 'groceries',
         entry: entryB,
       });
 
@@ -295,7 +295,7 @@ describe('syncBookmarkStorage — Sync Bookmark storage primitives', () => {
       expect(readSyncBookmarks('user-a')).toEqual({});
 
       // Assert: user-b is untouched
-      expect(readSyncBookmarks('user-b')).toEqual({ todos: entryB });
+      expect(readSyncBookmarks('user-b')).toEqual({ groceries: entryB });
     });
 
     test('18: is a safe no-op when owner has no entry', () => {
@@ -599,7 +599,7 @@ describe('syncBookmarkStorage — Sync Bookmark storage primitives', () => {
       });
       writeSyncBookmark({
         owner: 'user-b',
-        type: 'todos',
+        type: 'groceries',
         entry: entryB,
       });
 
@@ -636,7 +636,7 @@ describe('syncBookmarkStorage — Sync Bookmark storage primitives', () => {
       });
       writeSyncBookmark({
         owner: 'user-b',
-        type: 'todos',
+        type: 'groceries',
         entry: entryB,
       });
 
@@ -696,7 +696,7 @@ describe('syncBookmarkStorage — Sync Bookmark storage primitives', () => {
       });
       writeSyncBookmark({
         owner: 'user-a',
-        type: 'todos',
+        type: 'groceries',
         entry: entryTodos,
       });
 
@@ -704,7 +704,7 @@ describe('syncBookmarkStorage — Sync Bookmark storage primitives', () => {
       const result = readSyncBookmarks('user-a');
 
       expect(result.tasks).toEqual(entryTasks);
-      expect(result.todos).toEqual(entryTodos);
+      expect(result.groceries).toEqual(entryTodos);
     });
   });
 
